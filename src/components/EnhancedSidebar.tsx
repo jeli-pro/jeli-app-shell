@@ -296,8 +296,8 @@ export const EnhancedSidebar = forwardRef<HTMLDivElement, SidebarProps>(
                     <User className={cn("text-primary-foreground", compactMode ? "w-4 h-4" : "w-5 h-5")} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className={cn("font-medium truncate", compactMode ? "text-xs" : "text-sm")}>John Doe</p>
-                    <p className={cn("text-muted-foreground truncate", compactMode ? "text-xs" : "text-xs")}>john@example.com</p>
+                    <p className={cn("font-medium truncate nav-label", compactMode ? "text-xs" : "text-sm")}>John Doe</p>
+                    <p className={cn("text-muted-foreground truncate nav-label", compactMode ? "text-[11px]" : "text-xs")}>john@example.com</p>
                   </div>
                 </div>
               </div>

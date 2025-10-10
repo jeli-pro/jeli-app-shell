@@ -15,6 +15,9 @@ export function AppShell() {
     sidebarWidth,
     isDarkMode,
     isResizing,
+    rightPaneWidth,
+    isResizingRightPane,
+    setRightPaneWidth,
     setSidebarState,
     setIsResizing,
     setSidebarWidth,
@@ -22,6 +25,7 @@ export function AppShell() {
     peekSidebar,
     toggleFullscreen,
     toggleSidePane,
+    setIsResizingRightPane,
     toggleDarkMode,
     reducedMotion,
     autoExpandSidebar
@@ -70,6 +74,35 @@ export function AppShell() {
       document.removeEventListener('mouseup', handleMouseUp)
     }
   }, [isResizing, setIsResizing, setSidebarWidth])
+
+  // Resize functionality for Right Pane
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizingRightPane) return
+      
+      const newWidth = window.innerWidth - e.clientX
+      setRightPaneWidth(newWidth)
+    }
+
+    const handleMouseUp = () => {
+      setIsResizingRightPane(false)
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+    }
+
+    if (isResizingRightPane) {
+      document.body.style.cursor = 'col-resize'
+      document.body.style.userSelect = 'none'
+      document.addEventListener('mousemove', handleMouseMove)
+      document.addEventListener('mouseup', handleMouseUp)
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+      document.body.style.cursor = ''
+    }
+  }, [isResizingRightPane, setIsResizingRightPane, setRightPaneWidth])
 
   // GSAP animations for sidebar transitions
   useEffect(() => {
@@ -137,11 +170,28 @@ export function AppShell() {
 
     // Right pane animation
     gsap.to(rightPaneRef.current, {
-      width: isSidePane ? 320 : 0,
+      width: rightPaneWidth,
+      x: isSidePane ? 0 : rightPaneWidth + 5, // +5 to hide border
       duration: animationDuration,
       ease,
     })
-  }, [bodyState, animationDuration])
+    
+    // Add backdrop for side pane
+    const backdrop = document.querySelector('.app-backdrop')
+    if (isSidePane) {
+      if (!backdrop) {
+        const el = document.createElement('div')
+        el.className = 'app-backdrop fixed inset-0 bg-black/30 z-[55]'
+        appRef.current?.appendChild(el)
+        gsap.fromTo(el, { opacity: 0 }, { opacity: 1, duration: animationDuration })
+        el.onclick = () => toggleSidePane()
+      }
+    } else {
+      if (backdrop) {
+        gsap.to(backdrop, { opacity: 0, duration: animationDuration, onComplete: () => backdrop.remove() })
+      }
+    }
+  }, [bodyState, animationDuration, rightPaneWidth, toggleSidePane])
 
   return (
     <div 
@@ -174,7 +224,10 @@ export function AppShell() {
             className={cn(
               "absolute top-0 w-2 h-full bg-transparent hover:bg-primary/20 cursor-col-resize z-50 transition-colors duration-200 group -translate-x-1/2"
             )}
-            onMouseDown={() => setIsResizing(true)}
+            onMouseDown={(e) => {
+              e.preventDefault()
+              setIsResizing(true)
+            }}
           >
             <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200 mx-auto" />
           </div>
@@ -198,9 +251,8 @@ export function AppShell() {
             bodyState={bodyState}
           />
         </div>
-        
-        <RightPane ref={rightPaneRef} />
       </div>
+      <RightPane ref={rightPaneRef} />
     </div>
   )
 }

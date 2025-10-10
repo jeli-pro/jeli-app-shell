@@ -8,7 +8,9 @@ interface AppState {
   bodyState: BodyState
   isDarkMode: boolean
   sidebarWidth: number
+  rightPaneWidth: number
   isResizing: boolean
+  isResizingRightPane: boolean
   
   // User Preferences
   autoExpandSidebar: boolean
@@ -20,7 +22,9 @@ interface AppState {
   setBodyState: (state: BodyState) => void
   toggleDarkMode: () => void
   setSidebarWidth: (width: number) => void
+  setRightPaneWidth: (width: number) => void
   setIsResizing: (resizing: boolean) => void
+  setIsResizingRightPane: (resizing: boolean) => void
   setAutoExpandSidebar: (auto: boolean) => void
   setReducedMotion: (reduced: boolean) => void
   setCompactMode: (compact: boolean) => void
@@ -39,8 +43,10 @@ const defaultState = {
   sidebarState: SIDEBAR_STATES.EXPANDED as SidebarState,
   bodyState: BODY_STATES.NORMAL as BodyState,
   isDarkMode: false,
-  sidebarWidth: 300,
+  sidebarWidth: 280,
+  rightPaneWidth: typeof window !== 'undefined' ? Math.max(300, Math.round(window.innerWidth * 0.6)) : 400,
   isResizing: false,
+  isResizingRightPane: false,
   autoExpandSidebar: true,
   reducedMotion: false,
   compactMode: false,
@@ -60,7 +66,9 @@ export const useAppStore = create<AppState>()(
         document.documentElement.classList.toggle('dark', newMode)
       },
       setSidebarWidth: (width) => set({ sidebarWidth: Math.max(200, Math.min(500, width)) }),
+      setRightPaneWidth: (width) => set({ rightPaneWidth: Math.max(300, Math.min(window.innerWidth * 0.8, width)) }),
       setIsResizing: (resizing) => set({ isResizing: resizing }),
+      setIsResizingRightPane: (resizing) => set({ isResizingRightPane: resizing }),
       setAutoExpandSidebar: (auto) => set({ autoExpandSidebar: auto }),
       setReducedMotion: (reduced) => set({ reducedMotion: reduced }),
       setCompactMode: (compact) => set({ compactMode: compact }),
@@ -104,6 +112,7 @@ export const useAppStore = create<AppState>()(
         bodyState: state.bodyState,
         isDarkMode: state.isDarkMode,
         sidebarWidth: state.sidebarWidth,
+        rightPaneWidth: state.rightPaneWidth,
         autoExpandSidebar: state.autoExpandSidebar,
         reducedMotion: state.reducedMotion,
         compactMode: state.compactMode,

@@ -129,13 +129,6 @@ export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
             ease: "power3.out"
           })
           break
-        case BODY_STATES.SIDE_PANE:
-          gsap.to(content, {
-            scale: 0.98,
-            duration: 0.4,
-            ease: "power3.out"
-          })
-          break
         default:
           gsap.to(content, {
             scale: 1,
@@ -179,8 +172,7 @@ export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
         ref={ref}
         className={cn(
           "flex-1 h-[calc(100vh-80px)] overflow-hidden transition-all duration-300",
-          bodyState === BODY_STATES.FULLSCREEN && "bg-background",
-          bodyState === BODY_STATES.SIDE_PANE && "bg-muted/30"
+          bodyState === BODY_STATES.FULLSCREEN && "bg-background"
         )}
       >
         <div 

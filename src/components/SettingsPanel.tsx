@@ -47,7 +47,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
 
   return (
     <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-[100] animate-in fade-in-0 duration-300">
-      <div className="fixed right-4 top-4 bottom-4 w-full max-w-sm bg-card/95 backdrop-blur-lg border border-border shadow-2xl rounded-2xl animate-in slide-in-from-right-8 duration-300">
+      <div className="fixed right-4 top-4 bottom-4 w-full max-w-sm bg-card border border-border shadow-2xl rounded-2xl animate-in slide-in-from-right-8 duration-300">
         <div className="flex flex-col h-full">
           {/* Header */}
           <div className="flex items-center justify-between p-6 border-b border-border">

@@ -7,6 +7,7 @@ src/
     EnhancedSidebar.tsx
     index.ts
     MainContent.tsx
+    RightPane.tsx
     SettingsPanel.tsx
     TopBar.tsx
   lib/
@@ -26,6 +27,41 @@ vite.config.ts
 ```
 
 # Files
+
+## File: src/components/RightPane.tsx
+```typescript
+import { forwardRef } from 'react'
+import { X, SlidersHorizontal } from 'lucide-react'
+import { useAppStore } from '@/store/appStore'
+
+export const RightPane = forwardRef<HTMLDivElement>((_props, ref) => {
+  const { toggleSidePane } = useAppStore()
+
+  return (
+    <aside ref={ref} className="bg-card border-l border-border flex flex-col h-full overflow-hidden w-0">
+      <div className="flex items-center justify-between p-4 border-b border-border h-20 flex-shrink-0">
+        <div className="flex items-center gap-2">
+          <SlidersHorizontal className="w-5 h-5" />
+          <h2 className="text-lg font-semibold whitespace-nowrap">Details Panel</h2>
+        </div>
+        <button
+          onClick={toggleSidePane}
+          className="p-2 hover:bg-accent rounded-lg transition-colors"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+      <div className="flex-1 overflow-y-auto p-6">
+        <p className="text-muted-foreground">
+          This is the side pane. It can be used to display contextual information, forms, or actions related to the main content.
+        </p>
+      </div>
+    </aside>
+  )
+})
+
+RightPane.displayName = "RightPane"
+```
 
 ## File: src/lib/utils.ts
 ```typescript
@@ -127,13 +163,6 @@ export default {
   "include": ["src"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }
-```
-
-## File: src/components/index.ts
-```typescript
-export { AppShell } from './AppShell'
-export { TopBar } from './TopBar'
-export { MainContent } from './MainContent'
 ```
 
 ## File: src/store/appStore.ts
@@ -468,225 +497,6 @@ export default defineConfig({
 })
 ```
 
-## File: src/components/AppShell.tsx
-```typescript
-import { useRef, useEffect } from 'react'
-import { gsap } from 'gsap'
-import { cn } from '@/lib/utils'
-import { EnhancedSidebar } from './EnhancedSidebar'
-import { MainContent } from './MainContent'
-import { TopBar } from './TopBar'
-import { useAppStore } from '@/store/appStore'
-import { SIDEBAR_STATES, BODY_STATES } from '@/lib/utils'
-
-export function AppShell() {
-  const {
-    sidebarState,
-    bodyState,
-    sidebarWidth,
-    isDarkMode,
-    isResizing,
-    setSidebarState,
-    setIsResizing,
-    setSidebarWidth,
-    toggleSidebar,
-    peekSidebar,
-    toggleFullscreen,
-    toggleSidePane,
-    toggleDarkMode,
-    reducedMotion,
-    autoExpandSidebar
-  } = useAppStore()
-  
-  const appRef = useRef<HTMLDivElement>(null)
-  const sidebarRef = useRef<HTMLDivElement>(null)
-  const mainContentRef = useRef<HTMLDivElement>(null)
-  const resizeHandleRef = useRef<HTMLDivElement>(null)
-
-  // Animation duration based on reduced motion preference
-  const animationDuration = reducedMotion ? 0.1 : 0.4
-
-  // Resize functionality
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!isResizing) return
-      
-      const newWidth = Math.max(200, Math.min(500, e.clientX))
-      setSidebarWidth(newWidth)
-      
-      if (sidebarRef.current) {
-        gsap.set(sidebarRef.current, { width: newWidth })
-      }
-    }
-
-    const handleMouseUp = () => {
-      setIsResizing(false)
-      document.body.style.cursor = ''
-      document.body.style.userSelect = ''
-    }
-
-    if (isResizing) {
-      document.body.style.cursor = 'col-resize'
-      document.body.style.userSelect = 'none'
-      document.addEventListener('mousemove', handleMouseMove)
-      document.addEventListener('mouseup', handleMouseUp)
-    }
-
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove)
-      document.removeEventListener('mouseup', handleMouseUp)
-    }
-  }, [isResizing])
-
-  // GSAP animations for sidebar transitions
-  useEffect(() => {
-    if (!sidebarRef.current || !mainContentRef.current) return
-
-    const sidebar = sidebarRef.current
-    
-    let targetWidth = 0
-    let targetOpacity = 1
-    let targetX = 0
-
-    switch (sidebarState) {
-      case SIDEBAR_STATES.HIDDEN:
-        targetWidth = 0
-        targetOpacity = 0
-        targetX = -100
-        break
-      case SIDEBAR_STATES.COLLAPSED:
-        targetWidth = 64
-        targetOpacity = 1
-        targetX = 0
-        break
-      case SIDEBAR_STATES.EXPANDED:
-        targetWidth = sidebarWidth
-        targetOpacity = 1
-        targetX = 0
-        break
-      case SIDEBAR_STATES.PEEK:
-        targetWidth = sidebarWidth * 0.8
-        targetOpacity = 0.95
-        targetX = 0
-        break
-    }
-
-    const tl = gsap.timeline({ ease: "power3.out" })
-    
-    tl.to(sidebar, {
-      width: targetWidth,
-      opacity: targetOpacity,
-      x: `${targetX}%`,
-      duration: animationDuration,
-    })
-    // Don't animate margin in the new layout structure
-
-  }, [sidebarState, sidebarWidth, bodyState])
-
-  // GSAP animations for body state transitions
-  useEffect(() => {
-    if (!mainContentRef.current) return
-
-    switch (bodyState) {
-      case BODY_STATES.FULLSCREEN:
-        // In fullscreen, hide sidebar completely
-        if (sidebarRef.current) {
-          gsap.to(sidebarRef.current, {
-            x: '-100%',
-            duration: animationDuration,
-            ease: "power3.out"
-          })
-        }
-        break
-      case BODY_STATES.SIDE_PANE:
-        // In side pane, make sidebar narrower and content takes remaining space
-        if (sidebarRef.current) {
-          const narrowWidth = Math.min(sidebarWidth * 0.7, 200)
-          gsap.to(sidebarRef.current, {
-            width: narrowWidth,
-            x: 0,
-            duration: animationDuration,
-            ease: "power3.out"
-          })
-        }
-        break
-      default:
-        // Normal state - restore sidebar
-        if (sidebarRef.current) {
-          gsap.to(sidebarRef.current, {
-            x: 0,
-            duration: animationDuration,
-            ease: "power3.out"
-          })
-        }
-        break
-    }
-  }, [bodyState, sidebarState, sidebarWidth, animationDuration])
-
-  return (
-    <div 
-      ref={appRef}
-      className={cn(
-        "relative h-screen w-screen overflow-hidden bg-background transition-colors duration-300",
-        isDarkMode && "dark"
-      )}
-    >
-      <div className="flex h-screen overflow-hidden">
-        {/* Enhanced Sidebar */}
-        <EnhancedSidebar
-          ref={sidebarRef}
-          onMouseEnter={() => {
-            if (autoExpandSidebar && sidebarState === SIDEBAR_STATES.COLLAPSED) {
-              peekSidebar()
-            }
-          }}
-          onMouseLeave={() => {
-            if (autoExpandSidebar && sidebarState === SIDEBAR_STATES.PEEK) {
-              setSidebarState(SIDEBAR_STATES.COLLAPSED)
-            }
-          }}
-        />
-
-        {/* Resize Handle */}
-        {sidebarState !== SIDEBAR_STATES.HIDDEN && (
-          <div
-            ref={resizeHandleRef}
-            className={cn(
-              "absolute top-0 w-1.5 h-full bg-transparent hover:bg-primary/20 cursor-col-resize z-50 transition-colors duration-200 group"
-            )}
-            style={{ 
-              left: sidebarState === SIDEBAR_STATES.COLLAPSED ? 64 : sidebarWidth 
-            }}
-            onMouseDown={() => setIsResizing(true)}
-          >
-            <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200 mx-auto" />
-          </div>
-        )}
-
-        {/* Main Content Area */}
-        <div className="flex-1 flex flex-col overflow-hidden bg-background">
-          {/* Top Bar */}
-          <TopBar
-            bodyState={bodyState}
-            isDarkMode={isDarkMode}
-            onToggleSidebar={toggleSidebar}
-            onToggleFullscreen={toggleFullscreen}
-            onToggleSidePane={toggleSidePane}
-            onToggleDarkMode={toggleDarkMode}
-          />
-          
-          {/* Main Content */}
-          <MainContent
-            ref={mainContentRef}
-            bodyState={bodyState}
-          />
-        </div>
-      </div>
-    </div>
-  )
-}
-```
-
 ## File: src/components/DemoContent.tsx
 ```typescript
 import { useRef, useEffect } from 'react'
@@ -907,320 +717,12 @@ export function DemoContent() {
 }
 ```
 
-## File: src/components/EnhancedSidebar.tsx
+## File: src/components/index.ts
 ```typescript
-import React, { forwardRef, useRef, useEffect } from 'react'
-import { gsap } from 'gsap'
-import { 
-  Home, 
-  Search, 
-  Bell, 
-  User, 
-  Settings, 
-  HelpCircle, 
-  FileText, 
-  Calendar, 
-  Mail,
-  FolderOpen,
-  Bookmark,
-  Download,
-  Star,
-  Trash2,
-  ChevronDown
-} from 'lucide-react'
-import { cn } from '@/lib/utils'
-import { useAppStore } from '@/store/appStore'
-import { SIDEBAR_STATES } from '@/lib/utils'
-
-interface NavItem {
-  icon: React.ReactNode
-  label: string
-  href: string
-  badge?: number
-  isActive?: boolean
-  children?: NavItem[]
-}
-
-interface NavSection {
-  title: string
-  items: NavItem[]
-  collapsible?: boolean
-  defaultExpanded?: boolean
-}
-
-const navigationSections: NavSection[] = [
-  {
-    title: "Main",
-    items: [
-      { icon: <Home className="w-4 h-4" />, label: "Dashboard", href: "/", isActive: true },
-      { icon: <Search className="w-4 h-4" />, label: "Search", href: "/search" },
-      { icon: <Bell className="w-4 h-4" />, label: "Notifications", href: "/notifications", badge: 3 },
-    ]
-  },
-  {
-    title: "Workspace",
-    collapsible: true,
-    defaultExpanded: true,
-    items: [
-      { 
-        icon: <FileText className="w-4 h-4" />, 
-        label: "Documents", 
-        href: "/documents",
-        children: [
-          { icon: <FileText className="w-3 h-3" />, label: "Recent", href: "/documents/recent" },
-          { icon: <Star className="w-3 h-3" />, label: "Starred", href: "/documents/starred" },
-          { icon: <Trash2 className="w-3 h-3" />, label: "Trash", href: "/documents/trash" },
-        ]
-      },
-      { icon: <FolderOpen className="w-4 h-4" />, label: "Projects", href: "/projects" },
-      { icon: <Calendar className="w-4 h-4" />, label: "Calendar", href: "/calendar" },
-      { icon: <Mail className="w-4 h-4" />, label: "Messages", href: "/messages", badge: 12 },
-    ]
-  },
-  {
-    title: "Personal",
-    collapsible: true,
-    defaultExpanded: false,
-    items: [
-      { icon: <Bookmark className="w-4 h-4" />, label: "Bookmarks", href: "/bookmarks" },
-      { icon: <Star className="w-4 h-4" />, label: "Favorites", href: "/favorites" },
-      { icon: <Download className="w-4 h-4" />, label: "Downloads", href: "/downloads" },
-    ]
-  }
-]
-
-const bottomNavItems: NavItem[] = [
-  { icon: <User className="w-4 h-4" />, label: "Profile", href: "/profile" },
-  { icon: <Settings className="w-4 h-4" />, label: "Settings", href: "/settings" },
-  { icon: <HelpCircle className="w-4 h-4" />, label: "Help", href: "/help" },
-]
-
-interface SidebarProps {
-  onMouseEnter?: () => void
-  onMouseLeave?: () => void
-}
-
-export const EnhancedSidebar = forwardRef<HTMLDivElement, SidebarProps>(
-  ({ onMouseEnter, onMouseLeave }, ref) => {
-    const { sidebarState, sidebarWidth, reducedMotion, compactMode } = useAppStore()
-    const contentRef = useRef<HTMLDivElement>(null)
-    const sectionsRef = useRef<(HTMLDivElement | null)[]>([])
-    const [expandedSections, setExpandedSections] = React.useState<Set<string>>(
-      new Set(navigationSections.filter(s => s.defaultExpanded).map(s => s.title))
-    )
-
-    const isCollapsed = sidebarState === SIDEBAR_STATES.COLLAPSED
-    const isHidden = sidebarState === SIDEBAR_STATES.HIDDEN
-    const isPeek = sidebarState === SIDEBAR_STATES.PEEK
-    const animationDuration = reducedMotion ? 0.1 : 0.3
-
-    // Toggle section expansion
-    const toggleSection = (sectionTitle: string) => {
-      setExpandedSections(prev => {
-        const newSet = new Set(prev)
-        if (newSet.has(sectionTitle)) {
-          newSet.delete(sectionTitle)
-        } else {
-          newSet.add(sectionTitle)
-        }
-        return newSet
-      })
-    }
-
-    // Animate content visibility
-    useEffect(() => {
-      if (!contentRef.current) return
-
-      const labels = contentRef.current.querySelectorAll('.nav-label')
-      const badges = contentRef.current.querySelectorAll('.nav-badge')
-      const sectionTitles = contentRef.current.querySelectorAll('.section-title')
-      const chevrons = contentRef.current.querySelectorAll('.section-chevron')
-
-      if (isCollapsed) {
-        gsap.to([labels, badges, sectionTitles, chevrons], {
-          opacity: 0,
-          scale: 0.8,
-          duration: animationDuration,
-          ease: "power2.out"
-        })
-      } else {
-        gsap.to([labels, badges, sectionTitles, chevrons], {
-          opacity: 1,
-          scale: 1,
-          duration: animationDuration,
-          delay: 0.1,
-          ease: "power2.out"
-        })
-      }
-    }, [isCollapsed, animationDuration])
-
-    // Hover animations for nav items
-    const handleItemHover = (element: HTMLElement, isHovering: boolean) => {
-      if (!element) return
-
-      gsap.to(element, {
-        scale: isHovering ? 1.02 : 1,
-        x: isHovering ? 4 : 0,
-        duration: animationDuration,
-        ease: "power2.out"
-      })
-    }
-
-    if (isHidden) {
-      return null
-    }
-
-    const renderNavItem = (item: NavItem, depth = 0) => (
-      <div key={item.label} className={cn("space-y-1", depth > 0 && "ml-6")}>
-        <div
-          className={cn(
-            "group relative flex items-center gap-3 rounded-lg cursor-pointer transition-all duration-200",
-            compactMode ? "px-2 py-1.5" : "px-4 py-2.5",
-            "hover:bg-accent",
-            item.isActive && "bg-primary text-primary-foreground hover:bg-primary/90",
-            depth > 0 && "text-sm"
-          )}
-          onMouseEnter={(e) => handleItemHover(e.currentTarget, true)}
-          onMouseLeave={(e) => handleItemHover(e.currentTarget, false)}
-        >
-          <div className="flex-shrink-0">
-            {item.icon}
-          </div>
-          
-          {!isCollapsed && (
-            <>
-              <span className="nav-label flex-1 font-medium truncate">
-                {item.label}
-              </span>
-              
-              {item.badge && (
-                <span className="nav-badge bg-destructive text-destructive-foreground text-xs px-1.5 py-0.5 rounded-full min-w-[1.25rem] text-center">
-                  {item.badge > 99 ? '99+' : item.badge}
-                </span>
-              )}
-
-              {item.children && (
-                <ChevronDown className="w-3 h-3 transition-transform" />
-              )}
-            </>
-          )}
-
-          {/* Tooltip for collapsed state */}
-          {isCollapsed && (
-            <div className="absolute left-full ml-2 px-2 py-1 bg-popover text-popover-foreground text-sm rounded-md shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
-              {item.label}
-              {item.badge && (
-                <span className="ml-2 bg-destructive text-destructive-foreground text-xs px-1.5 py-0.5 rounded-full">
-                  {item.badge > 99 ? '99+' : item.badge}
-                </span>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Children items */}
-        {item.children && !isCollapsed && (
-          <div className="space-y-1">
-            {item.children.map(child => renderNavItem(child, depth + 1))}
-          </div>
-        )}
-      </div>
-    )
-
-    return (
-      <div
-        ref={ref}
-        className={cn(
-          "relative bg-card border-r border-border flex-shrink-0 transition-all duration-300",
-          "h-full overflow-hidden",
-          isPeek && "shadow-xl z-40",
-          compactMode && "text-sm"
-        )}
-        style={{ width: sidebarWidth }}
-        onMouseEnter={onMouseEnter}
-        onMouseLeave={onMouseLeave}
-      >
-        {/* Background blur effect for peek mode */}
-        {isPeek && (
-          <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" />
-        )}
-
-        <div 
-          ref={contentRef}
-          className={cn(
-            "relative z-10 h-full flex flex-col",
-            compactMode ? "p-3" : "p-4"
-          )}
-        >
-          {/* Navigation Sections */}
-          <div className="flex-1 overflow-y-auto overflow-x-hidden space-y-6 pt-4">
-            {navigationSections.map((section, sectionIndex) => {
-              const isExpanded = expandedSections.has(section.title)
-              
-              return (
-                <div 
-                  key={section.title}
-                  ref={el => sectionsRef.current[sectionIndex] = el}
-                  className="space-y-1"
-                >
-                  {!isCollapsed && (
-                    <div 
-                      className={cn(
-                        "flex items-center justify-between px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider",
-                        section.collapsible && "cursor-pointer hover:text-foreground transition-colors"
-                      )}
-                      onClick={() => section.collapsible && toggleSection(section.title)}
-                    >
-                      <span className="section-title">{section.title}</span>
-                      {section.collapsible && (
-                        <ChevronDown 
-                          className={cn(
-                            "section-chevron w-3 h-3 transition-transform",
-                            isExpanded ? "rotate-0" : "-rotate-90"
-                          )} 
-                        />
-                      )}
-                    </div>
-                  )}
-                  
-                  {(!section.collapsible || isExpanded || isCollapsed) && (
-                    <nav className="space-y-1">
-                      {section.items.map(item => renderNavItem(item))}
-                    </nav>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-
-          {/* Bottom Navigation */}
-          <div className={cn("pt-4 border-t border-border", compactMode && "pt-3")}>
-            <nav className="space-y-1">
-              {bottomNavItems.map((item) => renderNavItem(item))}
-            </nav>
-
-            {/* User Profile */}
-            {!isCollapsed && (
-              <div className={cn("mt-6 p-3 bg-accent/50 rounded-xl", compactMode && "mt-4 p-2")}>
-                <div className="flex items-center gap-3">
-                  <div className={cn("bg-primary rounded-full flex items-center justify-center", compactMode ? "w-8 h-8" : "w-10 h-10")}>
-                    <User className={cn("text-primary-foreground", compactMode ? "w-4 h-4" : "w-5 h-5")} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className={cn("font-medium truncate", compactMode ? "text-xs" : "text-sm")}>John Doe</p>
-                    <p className={cn("text-muted-foreground truncate", compactMode ? "text-xs" : "text-xs")}>john@example.com</p>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    )
-  }
-)
-
-EnhancedSidebar.displayName = "EnhancedSidebar"
+export { AppShell } from './AppShell'
+export { TopBar } from './TopBar'
+export { MainContent } from './MainContent'
+export { RightPane } from './RightPane'
 ```
 
 ## File: src/components/MainContent.tsx
@@ -1591,6 +1093,720 @@ export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
 )
 ```
 
+## File: src/components/TopBar.tsx
+```typescript
+import { useState } from 'react'
+import { 
+  Menu, 
+  Maximize, 
+  Minimize, 
+  Moon, 
+  Sun,
+  Layout,
+  Settings,
+  Command,
+  Zap
+} from 'lucide-react'
+import { SettingsPanel } from './SettingsPanel'
+import { cn } from '@/lib/utils'
+import { BODY_STATES, type BodyState } from '@/lib/utils'
+
+interface TopBarProps {
+  bodyState: BodyState
+  isDarkMode: boolean
+  onToggleSidebar: () => void
+  onToggleFullscreen: () => void
+  onToggleSidePane: () => void
+  onToggleDarkMode: () => void
+}
+
+export function TopBar({
+  bodyState,
+  isDarkMode,
+  onToggleSidebar,
+  onToggleFullscreen,
+  onToggleSidePane,
+  onToggleDarkMode
+}: TopBarProps) {
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  return (
+    <div className="h-20 bg-card/80 backdrop-blur-sm border-b border-border flex items-center justify-between px-6 z-50">
+      {/* Left Section - Logo and Sidebar Controls */}
+      <div className="flex items-center gap-4">
+        {/* Logo */}
+        <div className="flex items-center gap-2">
+          <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary/60 rounded-full flex items-center justify-center">
+            <Layout className="w-5 h-5 text-primary-foreground" />
+          </div>
+          <span className="font-semibold text-xl text-foreground hidden sm:inline">AppShell</span>
+        </div>
+
+        {/* Sidebar Controls */}
+        <div className="flex items-center">
+          <button
+            onClick={onToggleSidebar}
+            className={cn(
+              "h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors"
+            )}
+            title="Toggle Sidebar"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+        </div>
+      </div>
+
+      {/* Right Section - View Controls */}
+      <div className="flex items-center gap-3">
+        {/* Quick Actions */}
+        <button
+          className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+          title="Command Palette (Ctrl+K)"
+        >
+          <Command className="w-5 h-5 group-hover:scale-110 transition-transform" />
+        </button>
+
+        <button
+          className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+          title="Quick Actions"
+        >
+          <Zap className="w-5 h-5 group-hover:scale-110 transition-transform" />
+        </button>
+
+        <div className="w-px h-6 bg-border mx-2" />
+
+        {/* Body State Controls */}
+        <button
+          onClick={onToggleSidePane}
+          className={cn(
+            "h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group",
+            bodyState === BODY_STATES.SIDE_PANE && "bg-accent"
+          )}
+          title="Toggle Side Pane"
+        >
+          <div className="w-5 h-5 flex group-hover:scale-110 transition-transform">
+            <div className="w-1/2 h-full bg-current opacity-60 rounded-l-sm" />
+            <div className="w-1/2 h-full bg-current rounded-r-sm" />
+          </div>
+        </button>
+
+        <button
+          onClick={onToggleFullscreen}
+          className={cn(
+            "h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group",
+            bodyState === BODY_STATES.FULLSCREEN && "bg-accent"
+          )}
+          title="Toggle Fullscreen"
+        >
+          {bodyState === BODY_STATES.FULLSCREEN ? (
+            <Minimize className="w-5 h-5 group-hover:scale-110 transition-transform" />
+          ) : (
+            <Maximize className="w-5 h-5 group-hover:scale-110 transition-transform" />
+          )}
+        </button>
+
+        <div className="w-px h-6 bg-border mx-2" />
+
+        {/* Theme and Settings */}
+        <button
+          onClick={onToggleDarkMode}
+          className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+          title="Toggle Dark Mode"
+        >
+          {isDarkMode ? (
+            <Sun className="w-5 h-5 group-hover:scale-110 transition-transform" />
+          ) : (
+            <Moon className="w-5 h-5 group-hover:scale-110 transition-transform" />
+          )}
+        </button>
+
+        <button
+          onClick={() => setIsSettingsOpen(true)}
+          className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+          title="Settings"
+        >
+          <Settings className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
+        </button>
+      </div>
+
+      {/* Settings Panel */}
+      <SettingsPanel 
+        isOpen={isSettingsOpen} 
+        onClose={() => setIsSettingsOpen(false)} 
+      />
+    </div>
+  )
+}
+```
+
+## File: package.json
+```json
+{
+  "name": "amazing-app-shell",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "gsap": "^3.12.2",
+    "zustand": "^4.4.7",
+    "lucide-react": "^0.294.0",
+    "clsx": "^2.0.0",
+    "tailwind-merge": "^2.0.0",
+    "class-variance-authority": "^0.7.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@types/react": "^18.2.37",
+    "@types/react-dom": "^18.2.15",
+    "@typescript-eslint/eslint-plugin": "^6.10.0",
+    "@typescript-eslint/parser": "^6.10.0",
+    "@vitejs/plugin-react": "^4.1.1",
+    "autoprefixer": "^10.4.16",
+    "eslint": "^8.53.0",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint-plugin-react-refresh": "^0.4.4",
+    "postcss": "^8.4.31",
+    "tailwindcss": "^3.3.5",
+    "typescript": "^5.2.2",
+    "vite": "^4.5.0",
+    "tailwindcss-animate": "^1.0.7"
+  }
+}
+```
+
+## File: src/components/AppShell.tsx
+```typescript
+import { useRef, useEffect } from 'react'
+import { gsap } from 'gsap'
+import { cn } from '@/lib/utils'
+import { EnhancedSidebar } from './EnhancedSidebar'
+import { MainContent } from './MainContent'
+import { RightPane } from './RightPane'
+import { TopBar } from './TopBar'
+import { useAppStore } from '@/store/appStore'
+import { SIDEBAR_STATES, BODY_STATES } from '@/lib/utils'
+
+export function AppShell() {
+  const {
+    sidebarState,
+    bodyState,
+    sidebarWidth,
+    isDarkMode,
+    isResizing,
+    setSidebarState,
+    setIsResizing,
+    setSidebarWidth,
+    toggleSidebar,
+    peekSidebar,
+    toggleFullscreen,
+    toggleSidePane,
+    toggleDarkMode,
+    reducedMotion,
+    autoExpandSidebar
+  } = useAppStore()
+  
+  const appRef = useRef<HTMLDivElement>(null)
+  const sidebarRef = useRef<HTMLDivElement>(null)
+  const mainContentRef = useRef<HTMLDivElement>(null)
+  const rightPaneRef = useRef<HTMLDivElement>(null)
+  const resizeHandleRef = useRef<HTMLDivElement>(null)
+
+  // Animation duration based on reduced motion preference
+  const animationDuration = reducedMotion ? 0.1 : 0.4
+
+  // Resize functionality
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizing) return
+      
+      const newWidth = Math.max(200, Math.min(500, e.clientX))
+      setSidebarWidth(newWidth)
+      
+      if (sidebarRef.current) {
+        gsap.set(sidebarRef.current, { width: newWidth })
+      }
+      if (resizeHandleRef.current) {
+        gsap.set(resizeHandleRef.current, { left: newWidth })
+      }
+    }
+
+    const handleMouseUp = () => {
+      setIsResizing(false)
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+    }
+
+    if (isResizing) {
+      document.body.style.cursor = 'col-resize'
+      document.body.style.userSelect = 'none'
+      document.addEventListener('mousemove', handleMouseMove)
+      document.addEventListener('mouseup', handleMouseUp)
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+    }
+  }, [isResizing, setIsResizing, setSidebarWidth])
+
+  // GSAP animations for sidebar transitions
+  useEffect(() => {
+    if (!sidebarRef.current || !mainContentRef.current || !resizeHandleRef.current) return
+
+    const sidebar = sidebarRef.current
+    const handle = resizeHandleRef.current
+    
+    let targetWidth = 0
+    let targetOpacity = 1
+    let targetX = 0
+
+    switch (sidebarState) {
+      case SIDEBAR_STATES.HIDDEN:
+        targetWidth = 0
+        targetOpacity = 0
+        targetX = -100
+        break
+      case SIDEBAR_STATES.COLLAPSED:
+        targetWidth = 64
+        targetOpacity = 1
+        targetX = 0
+        break
+      case SIDEBAR_STATES.EXPANDED:
+        targetWidth = sidebarWidth
+        targetOpacity = 1
+        targetX = 0
+        break
+      case SIDEBAR_STATES.PEEK:
+        targetWidth = sidebarWidth * 0.8
+        targetOpacity = 0.95
+        targetX = 0
+        break
+    }
+
+    const tl = gsap.timeline({ ease: "power3.out" })
+    
+    tl.to(sidebar, {
+      width: targetWidth,
+      opacity: targetOpacity,
+      x: `${targetX}%`,
+      duration: animationDuration,
+    })
+    tl.to(handle, {
+      left: targetWidth,
+      duration: animationDuration,
+    }, 0)
+
+  }, [sidebarState, sidebarWidth, bodyState, animationDuration])
+
+  // GSAP animations for body state transitions
+  useEffect(() => {
+    if (!mainContentRef.current || !sidebarRef.current || !rightPaneRef.current) return
+
+    const ease = "power3.out"
+    const isFullscreen = bodyState === BODY_STATES.FULLSCREEN
+    const isSidePane = bodyState === BODY_STATES.SIDE_PANE
+
+    // Sidebar animation for body state changes
+    gsap.to(sidebarRef.current, {
+      x: isFullscreen ? '-100%' : '0%',
+      duration: animationDuration,
+      ease,
+    })
+
+    // Right pane animation
+    gsap.to(rightPaneRef.current, {
+      width: isSidePane ? 320 : 0,
+      duration: animationDuration,
+      ease,
+    })
+  }, [bodyState, animationDuration])
+
+  return (
+    <div 
+      ref={appRef}
+      className={cn(
+        "relative h-screen w-screen overflow-hidden bg-background transition-colors duration-300",
+        isDarkMode && "dark"
+      )}
+    >
+      <div className="flex h-screen overflow-hidden">
+        {/* Enhanced Sidebar */}
+        <EnhancedSidebar
+          ref={sidebarRef}
+          onMouseEnter={() => {
+            if (autoExpandSidebar && sidebarState === SIDEBAR_STATES.COLLAPSED) {
+              peekSidebar()
+            }
+          }}
+          onMouseLeave={() => {
+            if (autoExpandSidebar && sidebarState === SIDEBAR_STATES.PEEK) {
+              setSidebarState(SIDEBAR_STATES.COLLAPSED)
+            }
+          }}
+        />
+
+        {/* Resize Handle */}
+        {sidebarState !== SIDEBAR_STATES.HIDDEN && (
+          <div
+            ref={resizeHandleRef}
+            className={cn(
+              "absolute top-0 w-2 h-full bg-transparent hover:bg-primary/20 cursor-col-resize z-50 transition-colors duration-200 group -translate-x-1/2"
+            )}
+            onMouseDown={() => setIsResizing(true)}
+          >
+            <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200 mx-auto" />
+          </div>
+        )}
+
+        {/* Main Content Area */}
+        <div className="flex-1 flex flex-col overflow-hidden bg-background">
+          {/* Top Bar */}
+          <TopBar
+            bodyState={bodyState}
+            isDarkMode={isDarkMode}
+            onToggleSidebar={toggleSidebar}
+            onToggleFullscreen={toggleFullscreen}
+            onToggleSidePane={toggleSidePane}
+            onToggleDarkMode={toggleDarkMode}
+          />
+          
+          {/* Main Content */}
+          <MainContent
+            ref={mainContentRef}
+            bodyState={bodyState}
+          />
+        </div>
+        
+        <RightPane ref={rightPaneRef} />
+      </div>
+    </div>
+  )
+}
+```
+
+## File: src/components/EnhancedSidebar.tsx
+```typescript
+import React, { forwardRef, useRef, useEffect } from 'react'
+import { gsap } from 'gsap'
+import { 
+  Home, 
+  Search, 
+  Bell, 
+  User, 
+  Settings, 
+  HelpCircle, 
+  FileText, 
+  Calendar, 
+  Mail,
+  FolderOpen,
+  Bookmark,
+  Download,
+  Star,
+  Trash2,
+  ChevronDown
+} from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { useAppStore } from '@/store/appStore'
+import { SIDEBAR_STATES } from '@/lib/utils'
+
+interface NavItem {
+  icon: React.ReactNode
+  label: string
+  href: string
+  badge?: number
+  isActive?: boolean
+  children?: NavItem[]
+}
+
+interface NavSection {
+  title: string
+  items: NavItem[]
+  collapsible?: boolean
+  defaultExpanded?: boolean
+}
+
+const navigationSections: NavSection[] = [
+  {
+    title: "Main",
+    items: [
+      { icon: <Home className="w-4 h-4" />, label: "Dashboard", href: "/", isActive: true },
+      { icon: <Search className="w-4 h-4" />, label: "Search", href: "/search" },
+      { icon: <Bell className="w-4 h-4" />, label: "Notifications", href: "/notifications", badge: 3 },
+    ]
+  },
+  {
+    title: "Workspace",
+    collapsible: true,
+    defaultExpanded: true,
+    items: [
+      { 
+        icon: <FileText className="w-4 h-4" />, 
+        label: "Documents", 
+        href: "/documents",
+        children: [
+          { icon: <FileText className="w-3 h-3" />, label: "Recent", href: "/documents/recent" },
+          { icon: <Star className="w-3 h-3" />, label: "Starred", href: "/documents/starred" },
+          { icon: <Trash2 className="w-3 h-3" />, label: "Trash", href: "/documents/trash" },
+        ]
+      },
+      { icon: <FolderOpen className="w-4 h-4" />, label: "Projects", href: "/projects" },
+      { icon: <Calendar className="w-4 h-4" />, label: "Calendar", href: "/calendar" },
+      { icon: <Mail className="w-4 h-4" />, label: "Messages", href: "/messages", badge: 12 },
+    ]
+  },
+  {
+    title: "Personal",
+    collapsible: true,
+    defaultExpanded: false,
+    items: [
+      { icon: <Bookmark className="w-4 h-4" />, label: "Bookmarks", href: "/bookmarks" },
+      { icon: <Star className="w-4 h-4" />, label: "Favorites", href: "/favorites" },
+      { icon: <Download className="w-4 h-4" />, label: "Downloads", href: "/downloads" },
+    ]
+  }
+]
+
+const bottomNavItems: NavItem[] = [
+  { icon: <User className="w-4 h-4" />, label: "Profile", href: "/profile" },
+  { icon: <Settings className="w-4 h-4" />, label: "Settings", href: "/settings" },
+  { icon: <HelpCircle className="w-4 h-4" />, label: "Help", href: "/help" },
+]
+
+interface SidebarProps {
+  onMouseEnter?: () => void
+  onMouseLeave?: () => void
+}
+
+export const EnhancedSidebar = forwardRef<HTMLDivElement, SidebarProps>(
+  ({ onMouseEnter, onMouseLeave }, ref) => {
+    const { sidebarState, sidebarWidth, reducedMotion, compactMode } = useAppStore()
+    const contentRef = useRef<HTMLDivElement>(null)
+    const sectionsRef = useRef<(HTMLDivElement | null)[]>([])
+    const [expandedSections, setExpandedSections] = React.useState<Set<string>>(
+      new Set(navigationSections.filter(s => s.defaultExpanded).map(s => s.title))
+    )
+
+    const isCollapsed = sidebarState === SIDEBAR_STATES.COLLAPSED
+    const isHidden = sidebarState === SIDEBAR_STATES.HIDDEN
+    const isPeek = sidebarState === SIDEBAR_STATES.PEEK
+    const animationDuration = reducedMotion ? 0.1 : 0.3
+
+    // Toggle section expansion
+    const toggleSection = (sectionTitle: string) => {
+      setExpandedSections(prev => {
+        const newSet = new Set(prev)
+        if (newSet.has(sectionTitle)) {
+          newSet.delete(sectionTitle)
+        } else {
+          newSet.add(sectionTitle)
+        }
+        return newSet
+      })
+    }
+
+    // Animate content visibility
+    useEffect(() => {
+      if (!contentRef.current) return
+
+      const labels = contentRef.current.querySelectorAll('.nav-label')
+      const badges = contentRef.current.querySelectorAll('.nav-badge')
+      const sectionTitles = contentRef.current.querySelectorAll('.section-title')
+      const chevrons = contentRef.current.querySelectorAll('.section-chevron')
+
+      if (isCollapsed) {
+        gsap.to([labels, badges, sectionTitles, chevrons], {
+          opacity: 0,
+          scale: 0.8,
+          duration: animationDuration,
+          ease: "power2.out"
+        })
+      } else {
+        gsap.to([labels, badges, sectionTitles, chevrons], {
+          opacity: 1,
+          scale: 1,
+          duration: animationDuration,
+          delay: 0.1,
+          ease: "power2.out"
+        })
+      }
+    }, [isCollapsed, animationDuration])
+
+    // Hover animations for nav items
+    const handleItemHover = (element: HTMLElement, isHovering: boolean) => {
+      if (!element) return
+
+      gsap.to(element, {
+        scale: isHovering ? 1.02 : 1,
+        x: isHovering ? 4 : 0,
+        duration: animationDuration,
+        ease: "power2.out"
+      })
+    }
+
+    if (isHidden) {
+      return null
+    }
+
+    const renderNavItem = (item: NavItem, depth = 0) => (
+      <div key={item.label} className={cn("space-y-1", depth > 0 && "ml-6")}>
+        <div
+          className={cn(
+            "group relative flex items-center gap-3 rounded-lg cursor-pointer transition-all duration-200",
+            compactMode ? "px-2 py-1.5" : "px-4 py-2.5",
+            "hover:bg-accent",
+            item.isActive && "bg-primary text-primary-foreground hover:bg-primary/90",
+            depth > 0 && "text-sm"
+          )}
+          onMouseEnter={(e) => handleItemHover(e.currentTarget, true)}
+          onMouseLeave={(e) => handleItemHover(e.currentTarget, false)}
+        >
+          <div className="flex-shrink-0">
+            {item.icon}
+          </div>
+          
+          {!isCollapsed && (
+            <>
+              <span className="nav-label flex-1 font-medium truncate">
+                {item.label}
+              </span>
+              
+              {item.badge && (
+                <span className="nav-badge bg-destructive text-destructive-foreground text-xs px-1.5 py-0.5 rounded-full min-w-[1.25rem] text-center">
+                  {item.badge > 99 ? '99+' : item.badge}
+                </span>
+              )}
+
+              {item.children && (
+                <ChevronDown className="w-3 h-3 transition-transform" />
+              )}
+            </>
+          )}
+
+          {/* Tooltip for collapsed state */}
+          {isCollapsed && (
+            <div className="absolute left-full ml-2 px-2 py-1 bg-popover text-popover-foreground text-sm rounded-md shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
+              {item.label}
+              {item.badge && (
+                <span className="ml-2 bg-destructive text-destructive-foreground text-xs px-1.5 py-0.5 rounded-full">
+                  {item.badge > 99 ? '99+' : item.badge}
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Children items */}
+        {item.children && !isCollapsed && (
+          <div className="space-y-1">
+            {item.children.map(child => renderNavItem(child, depth + 1))}
+          </div>
+        )}
+      </div>
+    )
+
+    return (
+      <div
+        ref={ref}
+        className={cn(
+          "relative bg-card flex-shrink-0",
+          "h-full overflow-hidden",
+          isPeek && "shadow-xl z-40",
+          compactMode && "text-sm"
+        )}
+        style={{ width: sidebarWidth }}
+        onMouseEnter={onMouseEnter}
+        onMouseLeave={onMouseLeave}
+      >
+        {/* Background blur effect for peek mode */}
+        {isPeek && (
+          <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" />
+        )}
+
+        <div 
+          ref={contentRef}
+          className={cn(
+            "relative z-10 h-full flex flex-col",
+            compactMode ? "p-3" : "p-4"
+          )}
+        >
+          {/* Navigation Sections */}
+          <div className="flex-1 overflow-y-auto overflow-x-hidden space-y-6 pt-4">
+            {navigationSections.map((section, sectionIndex) => {
+              const isExpanded = expandedSections.has(section.title)
+              
+              return (
+                <div 
+                  key={section.title}
+                  ref={el => sectionsRef.current[sectionIndex] = el}
+                  className="space-y-1"
+                >
+                  {!isCollapsed && (
+                    <div 
+                      className={cn(
+                        "flex items-center justify-between px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider",
+                        section.collapsible && "cursor-pointer hover:text-foreground transition-colors"
+                      )}
+                      onClick={() => section.collapsible && toggleSection(section.title)}
+                    >
+                      <span className="section-title">{section.title}</span>
+                      {section.collapsible && (
+                        <ChevronDown 
+                          className={cn(
+                            "section-chevron w-3 h-3 transition-transform",
+                            isExpanded ? "rotate-0" : "-rotate-90"
+                          )} 
+                        />
+                      )}
+                    </div>
+                  )}
+                  
+                  {(!section.collapsible || isExpanded || isCollapsed) && (
+                    <nav className="space-y-1">
+                      {section.items.map(item => renderNavItem(item))}
+                    </nav>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+
+          {/* Bottom Navigation */}
+          <div className={cn("pt-4 border-t border-border", compactMode && "pt-3")}>
+            <nav className="space-y-1">
+              {bottomNavItems.map((item) => renderNavItem(item))}
+            </nav>
+
+            {/* User Profile */}
+            {!isCollapsed && (
+              <div className={cn("mt-6 p-3 bg-accent/50 rounded-xl", compactMode && "mt-4 p-2")}>
+                <div className="flex items-center gap-3">
+                  <div className={cn("bg-primary rounded-full flex items-center justify-center", compactMode ? "w-8 h-8" : "w-10 h-10")}>
+                    <User className={cn("text-primary-foreground", compactMode ? "w-4 h-4" : "w-5 h-5")} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className={cn("font-medium truncate", compactMode ? "text-xs" : "text-sm")}>John Doe</p>
+                    <p className={cn("text-muted-foreground truncate", compactMode ? "text-xs" : "text-xs")}>john@example.com</p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    )
+  }
+)
+
+EnhancedSidebar.displayName = "EnhancedSidebar"
+```
+
 ## File: src/components/SettingsPanel.tsx
 ```typescript
 import { useState } from 'react'
@@ -1642,7 +1858,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
 
   return (
     <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-[100] animate-in fade-in-0 duration-300">
-      <div className="fixed right-4 top-4 bottom-4 w-full max-w-sm bg-card border border-border shadow-2xl rounded-2xl animate-in slide-in-from-right-8 duration-300">
+      <div className="fixed right-4 top-4 bottom-4 w-full max-w-sm bg-card/95 backdrop-blur-lg border border-border shadow-2xl rounded-2xl animate-in slide-in-from-right-8 duration-300">
         <div className="flex flex-col h-full">
           {/* Header */}
           <div className="flex items-center justify-between p-6 border-b border-border">
@@ -1893,193 +2109,5 @@ if (typeof document !== 'undefined') {
   const styleSheet = document.createElement('style')
   styleSheet.textContent = sliderStyles
   document.head.appendChild(styleSheet)
-}
-```
-
-## File: src/components/TopBar.tsx
-```typescript
-import { useState } from 'react'
-import { 
-  Menu, 
-  Maximize, 
-  Minimize, 
-  Moon, 
-  Sun,
-  Layout,
-  Settings,
-  Command,
-  Zap
-} from 'lucide-react'
-import { SettingsPanel } from './SettingsPanel'
-import { cn } from '@/lib/utils'
-import { BODY_STATES, type BodyState } from '@/lib/utils'
-
-interface TopBarProps {
-  bodyState: BodyState
-  isDarkMode: boolean
-  onToggleSidebar: () => void
-  onToggleFullscreen: () => void
-  onToggleSidePane: () => void
-  onToggleDarkMode: () => void
-}
-
-export function TopBar({
-  bodyState,
-  isDarkMode,
-  onToggleSidebar,
-  onToggleFullscreen,
-  onToggleSidePane,
-  onToggleDarkMode
-}: TopBarProps) {
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
-  return (
-    <div className="h-20 bg-card/80 backdrop-blur-sm border-b border-border flex items-center justify-between px-6 z-50">
-      {/* Left Section - Logo and Sidebar Controls */}
-      <div className="flex items-center gap-4">
-        {/* Logo */}
-        <div className="flex items-center gap-2">
-          <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary/60 rounded-full flex items-center justify-center">
-            <Layout className="w-5 h-5 text-primary-foreground" />
-          </div>
-          <span className="font-semibold text-xl text-foreground hidden sm:inline">AppShell</span>
-        </div>
-
-        {/* Sidebar Controls */}
-        <div className="flex items-center">
-          <button
-            onClick={onToggleSidebar}
-            className={cn(
-              "h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors"
-            )}
-            title="Toggle Sidebar"
-          >
-            <Menu className="w-5 h-5" />
-          </button>
-        </div>
-      </div>
-
-      {/* Right Section - View Controls */}
-      <div className="flex items-center gap-3">
-        {/* Quick Actions */}
-        <button
-          className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
-          title="Command Palette (Ctrl+K)"
-        >
-          <Command className="w-5 h-5 group-hover:scale-110 transition-transform" />
-        </button>
-
-        <button
-          className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
-          title="Quick Actions"
-        >
-          <Zap className="w-5 h-5 group-hover:scale-110 transition-transform" />
-        </button>
-
-        <div className="w-px h-6 bg-border mx-2" />
-
-        {/* Body State Controls */}
-        <button
-          onClick={onToggleSidePane}
-          className={cn(
-            "h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group",
-            bodyState === BODY_STATES.SIDE_PANE && "bg-accent"
-          )}
-          title="Toggle Side Pane"
-        >
-          <div className="w-5 h-5 flex group-hover:scale-110 transition-transform">
-            <div className="w-1/2 h-full bg-current opacity-60 rounded-l-sm" />
-            <div className="w-1/2 h-full bg-current rounded-r-sm" />
-          </div>
-        </button>
-
-        <button
-          onClick={onToggleFullscreen}
-          className={cn(
-            "h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group",
-            bodyState === BODY_STATES.FULLSCREEN && "bg-accent"
-          )}
-          title="Toggle Fullscreen"
-        >
-          {bodyState === BODY_STATES.FULLSCREEN ? (
-            <Minimize className="w-5 h-5 group-hover:scale-110 transition-transform" />
-          ) : (
-            <Maximize className="w-5 h-5 group-hover:scale-110 transition-transform" />
-          )}
-        </button>
-
-        <div className="w-px h-6 bg-border mx-2" />
-
-        {/* Theme and Settings */}
-        <button
-          onClick={onToggleDarkMode}
-          className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
-          title="Toggle Dark Mode"
-        >
-          {isDarkMode ? (
-            <Sun className="w-5 h-5 group-hover:scale-110 transition-transform" />
-          ) : (
-            <Moon className="w-5 h-5 group-hover:scale-110 transition-transform" />
-          )}
-        </button>
-
-        <button
-          onClick={() => setIsSettingsOpen(true)}
-          className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
-          title="Settings"
-        >
-          <Settings className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
-        </button>
-      </div>
-
-      {/* Settings Panel */}
-      <SettingsPanel 
-        isOpen={isSettingsOpen} 
-        onClose={() => setIsSettingsOpen(false)} 
-      />
-    </div>
-  )
-}
-```
-
-## File: package.json
-```json
-{
-  "name": "amazing-app-shell",
-  "private": true,
-  "version": "0.0.0",
-  "type": "module",
-  "scripts": {
-    "dev": "vite",
-    "build": "tsc && vite build",
-    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "preview": "vite preview"
-  },
-  "dependencies": {
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "gsap": "^3.12.2",
-    "zustand": "^4.4.7",
-    "lucide-react": "^0.294.0",
-    "clsx": "^2.0.0",
-    "tailwind-merge": "^2.0.0",
-    "class-variance-authority": "^0.7.0"
-  },
-  "devDependencies": {
-    "@types/node": "^20.10.0",
-    "@types/react": "^18.2.37",
-    "@types/react-dom": "^18.2.15",
-    "@typescript-eslint/eslint-plugin": "^6.10.0",
-    "@typescript-eslint/parser": "^6.10.0",
-    "@vitejs/plugin-react": "^4.1.1",
-    "autoprefixer": "^10.4.16",
-    "eslint": "^8.53.0",
-    "eslint-plugin-react-hooks": "^4.6.0",
-    "eslint-plugin-react-refresh": "^0.4.4",
-    "postcss": "^8.4.31",
-    "tailwindcss": "^3.3.5",
-    "typescript": "^5.2.2",
-    "vite": "^4.5.0",
-    "tailwindcss-animate": "^1.0.7"
-  }
 }
 ```
