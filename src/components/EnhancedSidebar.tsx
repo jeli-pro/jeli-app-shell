@@ -220,7 +220,7 @@ export const EnhancedSidebar = forwardRef<HTMLDivElement, SidebarProps>(
       <div
         ref={ref}
         className={cn(
-          "relative bg-card border-r border-border flex-shrink-0 transition-all duration-300",
+          "relative bg-card flex-shrink-0",
           "h-full overflow-hidden",
           isPeek && "shadow-xl z-40",
           compactMode && "text-sm"

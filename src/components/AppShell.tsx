@@ -3,6 +3,7 @@ import { gsap } from 'gsap'
 import { cn } from '@/lib/utils'
 import { EnhancedSidebar } from './EnhancedSidebar'
 import { MainContent } from './MainContent'
+import { RightPane } from './RightPane'
 import { TopBar } from './TopBar'
 import { useAppStore } from '@/store/appStore'
 import { SIDEBAR_STATES, BODY_STATES } from '@/lib/utils'
@@ -29,6 +30,7 @@ export function AppShell() {
   const appRef = useRef<HTMLDivElement>(null)
   const sidebarRef = useRef<HTMLDivElement>(null)
   const mainContentRef = useRef<HTMLDivElement>(null)
+  const rightPaneRef = useRef<HTMLDivElement>(null)
   const resizeHandleRef = useRef<HTMLDivElement>(null)
 
   // Animation duration based on reduced motion preference
@@ -44,6 +46,9 @@ export function AppShell() {
       
       if (sidebarRef.current) {
         gsap.set(sidebarRef.current, { width: newWidth })
+      }
+      if (resizeHandleRef.current) {
+        gsap.set(resizeHandleRef.current, { left: newWidth })
       }
     }
 
@@ -64,13 +69,14 @@ export function AppShell() {
       document.removeEventListener('mousemove', handleMouseMove)
       document.removeEventListener('mouseup', handleMouseUp)
     }
-  }, [isResizing])
+  }, [isResizing, setIsResizing, setSidebarWidth])
 
   // GSAP animations for sidebar transitions
   useEffect(() => {
-    if (!sidebarRef.current || !mainContentRef.current) return
+    if (!sidebarRef.current || !mainContentRef.current || !resizeHandleRef.current) return
 
     const sidebar = sidebarRef.current
+    const handle = resizeHandleRef.current
     
     let targetWidth = 0
     let targetOpacity = 1
@@ -107,49 +113,35 @@ export function AppShell() {
       x: `${targetX}%`,
       duration: animationDuration,
     })
-    // Don't animate margin in the new layout structure
+    tl.to(handle, {
+      left: targetWidth,
+      duration: animationDuration,
+    }, 0)
 
-  }, [sidebarState, sidebarWidth, bodyState])
+  }, [sidebarState, sidebarWidth, bodyState, animationDuration])
 
   // GSAP animations for body state transitions
   useEffect(() => {
-    if (!mainContentRef.current) return
+    if (!mainContentRef.current || !sidebarRef.current || !rightPaneRef.current) return
 
-    switch (bodyState) {
-      case BODY_STATES.FULLSCREEN:
-        // In fullscreen, hide sidebar completely
-        if (sidebarRef.current) {
-          gsap.to(sidebarRef.current, {
-            x: '-100%',
-            duration: animationDuration,
-            ease: "power3.out"
-          })
-        }
-        break
-      case BODY_STATES.SIDE_PANE:
-        // In side pane, make sidebar narrower and content takes remaining space
-        if (sidebarRef.current) {
-          const narrowWidth = Math.min(sidebarWidth * 0.7, 200)
-          gsap.to(sidebarRef.current, {
-            width: narrowWidth,
-            x: 0,
-            duration: animationDuration,
-            ease: "power3.out"
-          })
-        }
-        break
-      default:
-        // Normal state - restore sidebar
-        if (sidebarRef.current) {
-          gsap.to(sidebarRef.current, {
-            x: 0,
-            duration: animationDuration,
-            ease: "power3.out"
-          })
-        }
-        break
-    }
-  }, [bodyState, sidebarState, sidebarWidth, animationDuration])
+    const ease = "power3.out"
+    const isFullscreen = bodyState === BODY_STATES.FULLSCREEN
+    const isSidePane = bodyState === BODY_STATES.SIDE_PANE
+
+    // Sidebar animation for body state changes
+    gsap.to(sidebarRef.current, {
+      x: isFullscreen ? '-100%' : '0%',
+      duration: animationDuration,
+      ease,
+    })
+
+    // Right pane animation
+    gsap.to(rightPaneRef.current, {
+      width: isSidePane ? 320 : 0,
+      duration: animationDuration,
+      ease,
+    })
+  }, [bodyState, animationDuration])
 
   return (
     <div 
@@ -180,11 +172,8 @@ export function AppShell() {
           <div
             ref={resizeHandleRef}
             className={cn(
-              "absolute top-0 w-1.5 h-full bg-transparent hover:bg-primary/20 cursor-col-resize z-50 transition-colors duration-200 group"
+              "absolute top-0 w-2 h-full bg-transparent hover:bg-primary/20 cursor-col-resize z-50 transition-colors duration-200 group -translate-x-1/2"
             )}
-            style={{ 
-              left: sidebarState === SIDEBAR_STATES.COLLAPSED ? 64 : sidebarWidth 
-            }}
             onMouseDown={() => setIsResizing(true)}
           >
             <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200 mx-auto" />
@@ -209,6 +198,8 @@ export function AppShell() {
             bodyState={bodyState}
           />
         </div>
+        
+        <RightPane ref={rightPaneRef} />
       </div>
     </div>
   )

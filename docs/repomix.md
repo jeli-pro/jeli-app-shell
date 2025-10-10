@@ -53,6 +53,89 @@ export type SidebarState = typeof SIDEBAR_STATES[keyof typeof SIDEBAR_STATES]
 export type BodyState = typeof BODY_STATES[keyof typeof BODY_STATES]
 ```
 
+## File: src/main.tsx
+```typescript
+import React from 'react'
+import ReactDOM from 'react-dom/client'
+import App from './App.tsx'
+import './index.css'
+
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>,
+)
+```
+
+## File: index.html
+```html
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Amazing App Shell</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+```
+
+## File: postcss.config.js
+```javascript
+export default {
+  plugins: {
+    tailwindcss: {},
+    autoprefixer: {},
+  },
+}
+```
+
+## File: tsconfig.json
+```json
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "useDefineForClassFields": true,
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+
+    /* Bundler mode */
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+
+    /* Linting */
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+
+    /* Path mapping */
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": ["src"],
+  "references": [{ "path": "./tsconfig.node.json" }]
+}
+```
+
+## File: src/components/index.ts
+```typescript
+export { AppShell } from './AppShell'
+export { TopBar } from './TopBar'
+export { MainContent } from './MainContent'
+```
+
 ## File: src/store/appStore.ts
 ```typescript
 import { create } from 'zustand'
@@ -181,6 +264,22 @@ if (typeof window !== 'undefined') {
 }
 ```
 
+## File: src/App.tsx
+```typescript
+import { AppShell } from './components/AppShell'
+import './index.css'
+
+function App() {
+  return (
+    <div className="h-screen w-screen overflow-hidden bg-background">
+      <AppShell />
+    </div>
+  )
+}
+
+export default App
+```
+
 ## File: src/index.css
 ```css
 @import 'tailwindcss/base';
@@ -208,28 +307,28 @@ if (typeof window !== 'undefined') {
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
     --ring: 220 84% 60%;
-    --radius: 0.75rem;
+    --radius: 1rem;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
+    --background: 240 6% 12%;
     --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
+    --card: 240 6% 14%;
     --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
+    --popover: 240 6% 14%;
     --popover-foreground: 210 40% 98%;
     --primary: 220 84% 60%;
     --primary-foreground: 210 40% 98%;
-    --secondary: 217.2 32.6% 17.5%;
+    --secondary: 240 5% 20%;
     --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
+    --muted: 240 5% 20%;
     --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
+    --accent: 240 5% 20%;
     --accent-foreground: 210 40% 98%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
+    --border: 240 5% 20%;
+    --input: 240 5% 20%;
     --ring: 220 84% 60%;
   }
 }
@@ -259,47 +358,6 @@ if (typeof window !== 'undefined') {
 
 ::-webkit-scrollbar-thumb:hover {
   @apply bg-muted-foreground/50;
-}
-```
-
-## File: src/main.tsx
-```typescript
-import React from 'react'
-import ReactDOM from 'react-dom/client'
-import App from './App.tsx'
-import './index.css'
-
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>,
-)
-```
-
-## File: index.html
-```html
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Amazing App Shell</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
-</html>
-```
-
-## File: postcss.config.js
-```javascript
-export default {
-  plugins: {
-    tailwindcss: {},
-    autoprefixer: {},
-  },
 }
 ```
 
@@ -350,9 +408,9 @@ export default {
         },
       },
       borderRadius: {
-        lg: "var(--radius)", // 0.75rem
-        md: "calc(var(--radius) - 0.25rem)", // 0.5rem
-        sm: "calc(var(--radius) - 0.5rem)", // 0.25rem
+        lg: "var(--radius)",
+        md: "calc(var(--radius) - 4px)",
+        sm: "calc(var(--radius) - 8px)",
       },
       animation: {
         "fade-in": "fadeIn 0.5s ease-in-out",
@@ -375,43 +433,39 @@ export default {
       },
     },
   },
-  plugins: [],
+  plugins: [require("tailwindcss-animate")],
 }
 ```
 
-## File: tsconfig.json
+## File: tsconfig.node.json
 ```json
 {
   "compilerOptions": {
-    "target": "ES2020",
-    "useDefineForClassFields": true,
-    "lib": ["ES2020", "DOM", "DOM.Iterable"],
-    "module": "ESNext",
+    "composite": true,
     "skipLibCheck": true,
-
-    /* Bundler mode */
-    "moduleResolution": "bundler",
-    "allowImportingTsExtensions": true,
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "noEmit": true,
-    "jsx": "react-jsx",
-
-    /* Linting */
-    "strict": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noFallthroughCasesInSwitch": true,
-
-    /* Path mapping */
-    "baseUrl": ".",
-    "paths": {
-      "@/*": ["./src/*"]
-    }
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "allowSyntheticDefaultImports": true
   },
-  "include": ["src"],
-  "references": [{ "path": "./tsconfig.node.json" }]
+  "include": ["vite.config.ts"]
 }
+```
+
+## File: vite.config.ts
+```typescript
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+import { fileURLToPath, URL } from 'url'
+
+// https://vitejs.dev/config/
+export default defineConfig({
+  plugins: [react()],
+  resolve: {
+    alias: {
+      "@": fileURLToPath(new URL('./src', import.meta.url)),
+    },
+  },
+})
 ```
 
 ## File: src/components/AppShell.tsx
@@ -436,8 +490,6 @@ export function AppShell() {
     setIsResizing,
     setSidebarWidth,
     toggleSidebar,
-    hideSidebar,
-    showSidebar,
     peekSidebar,
     toggleFullscreen,
     toggleSidePane,
@@ -600,31 +652,27 @@ export function AppShell() {
           <div
             ref={resizeHandleRef}
             className={cn(
-              "absolute top-0 w-2 h-full bg-transparent hover:bg-primary/20 cursor-col-resize z-50 transition-colors duration-200 group"
+              "absolute top-0 w-1.5 h-full bg-transparent hover:bg-primary/20 cursor-col-resize z-50 transition-colors duration-200 group"
             )}
             style={{ 
               left: sidebarState === SIDEBAR_STATES.COLLAPSED ? 64 : sidebarWidth 
             }}
             onMouseDown={() => setIsResizing(true)}
           >
-            <div className="w-0.5 h-full bg-transparent group-hover:bg-primary transition-colors duration-200 mx-auto" />
+            <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200 mx-auto" />
           </div>
         )}
 
         {/* Main Content Area */}
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 flex flex-col overflow-hidden bg-background">
           {/* Top Bar */}
           <TopBar
-            sidebarState={sidebarState}
             bodyState={bodyState}
             isDarkMode={isDarkMode}
             onToggleSidebar={toggleSidebar}
             onToggleFullscreen={toggleFullscreen}
             onToggleSidePane={toggleSidePane}
             onToggleDarkMode={toggleDarkMode}
-            onHideSidebar={hideSidebar}
-            onShowSidebar={showSidebar}
-            onPeekSidebar={peekSidebar}
           />
           
           {/* Main Content */}
@@ -761,10 +809,10 @@ export function DemoContent() {
           <div
             key={feature.title}
             ref={el => cardsRef.current[index] = el}
-            className="group relative overflow-hidden rounded-lg bg-card border border-border p-6 hover:border-primary/30 hover:shadow-sm transition-all duration-300 cursor-pointer"
+            className="group relative overflow-hidden rounded-2xl bg-card border border-border/50 p-6 hover:border-primary/30 hover:bg-accent/30 transition-all duration-300 cursor-pointer"
           >
             <div className="relative z-10">
-              <div className="w-12 h-12 rounded-md bg-primary/10 flex items-center justify-center text-primary mb-4 group-hover:scale-110 group-hover:bg-primary/20 transition-transform">
+              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-4 group-hover:scale-110 group-hover:bg-primary/20 transition-transform">
                 {feature.icon}
               </div>
               
@@ -776,7 +824,7 @@ export function DemoContent() {
       </div>
 
       {/* Technology Stack */}
-      <div className="bg-card border border-border rounded-lg p-6">
+      <div className="bg-card border border-border/50 rounded-2xl p-6">
         <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
           <Star className="w-6 h-6 text-yellow-500" />
           Technology Stack
@@ -793,7 +841,7 @@ export function DemoContent() {
             { name: "Shadcn/ui", desc: "Beautiful components" },
             { name: "Lucide Icons", desc: "Consistent iconography" }
           ].map((tech) => (
-            <div key={tech.name} className="bg-background rounded-lg p-4 border border-border">
+            <div key={tech.name} className="bg-background rounded-xl p-4 border border-border/50">
               <h4 className="font-medium">{tech.name}</h4>
               <p className="text-sm text-muted-foreground">{tech.desc}</p>
             </div>
@@ -802,26 +850,26 @@ export function DemoContent() {
       </div>
 
       {/* Current State Display */}
-      <div className="bg-card border border-border rounded-lg p-6">
+      <div className="bg-card border border-border/50 rounded-2xl p-6">
         <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
           <Monitor className="w-5 h-5" />
           Current App State
         </h2>
         
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="text-center p-3 bg-background rounded-lg">
+          <div className="text-center p-3 bg-background rounded-xl">
             <div className="text-sm text-muted-foreground">Sidebar</div>
             <div className="font-medium capitalize">{sidebarState}</div>
           </div>
-          <div className="text-center p-3 bg-background rounded-lg">
+          <div className="text-center p-3 bg-background rounded-xl">
             <div className="text-sm text-muted-foreground">Body State</div>
             <div className="font-medium capitalize">{bodyState.replace('_', ' ')}</div>
           </div>
-          <div className="text-center p-3 bg-background rounded-lg">
+          <div className="text-center p-3 bg-background rounded-xl">
             <div className="text-sm text-muted-foreground">Theme</div>
             <div className="font-medium">{isDarkMode ? 'Dark' : 'Light'}</div>
           </div>
-          <div className="text-center p-3 bg-background rounded-lg">
+          <div className="text-center p-3 bg-background rounded-xl">
             <div className="text-sm text-muted-foreground">Mode</div>
             <div className="font-medium">{compactMode ? 'Compact' : 'Normal'}</div>
           </div>
@@ -878,9 +926,7 @@ import {
   Download,
   Star,
   Trash2,
-  ChevronDown,
-  Plus,
-  Command
+  ChevronDown
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAppStore } from '@/store/appStore'
@@ -1028,8 +1074,8 @@ export const EnhancedSidebar = forwardRef<HTMLDivElement, SidebarProps>(
       <div key={item.label} className={cn("space-y-1", depth > 0 && "ml-6")}>
         <div
           className={cn(
-            "group relative flex items-center gap-3 rounded-md cursor-pointer transition-all duration-200",
-            compactMode ? "px-2 py-1.5" : "px-3 py-2",
+            "group relative flex items-center gap-3 rounded-lg cursor-pointer transition-all duration-200",
+            compactMode ? "px-2 py-1.5" : "px-4 py-2.5",
             "hover:bg-accent",
             item.isActive && "bg-primary text-primary-foreground hover:bg-primary/90",
             depth > 0 && "text-sm"
@@ -1103,11 +1149,11 @@ export const EnhancedSidebar = forwardRef<HTMLDivElement, SidebarProps>(
           ref={contentRef}
           className={cn(
             "relative z-10 h-full flex flex-col",
-            compactMode ? "py-4" : "py-6"
+            compactMode ? "p-3" : "p-4"
           )}
         >
           {/* Navigation Sections */}
-          <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 space-y-6 pt-4">
+          <div className="flex-1 overflow-y-auto overflow-x-hidden space-y-6 pt-4">
             {navigationSections.map((section, sectionIndex) => {
               const isExpanded = expandedSections.has(section.title)
               
@@ -1120,7 +1166,7 @@ export const EnhancedSidebar = forwardRef<HTMLDivElement, SidebarProps>(
                   {!isCollapsed && (
                     <div 
                       className={cn(
-                        "flex items-center justify-between px-2 text-xs font-medium text-muted-foreground uppercase tracking-wider",
+                        "flex items-center justify-between px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider",
                         section.collapsible && "cursor-pointer hover:text-foreground transition-colors"
                       )}
                       onClick={() => section.collapsible && toggleSection(section.title)}
@@ -1148,17 +1194,17 @@ export const EnhancedSidebar = forwardRef<HTMLDivElement, SidebarProps>(
           </div>
 
           {/* Bottom Navigation */}
-          <div className={cn("px-4 pt-4 border-t border-border", compactMode && "pt-3")}>
+          <div className={cn("pt-4 border-t border-border", compactMode && "pt-3")}>
             <nav className="space-y-1">
               {bottomNavItems.map((item) => renderNavItem(item))}
             </nav>
 
             {/* User Profile */}
             {!isCollapsed && (
-              <div className={cn("mt-6 p-3 bg-accent/50 rounded-lg", compactMode && "mt-4 p-2")}>
+              <div className={cn("mt-6 p-3 bg-accent/50 rounded-xl", compactMode && "mt-4 p-2")}>
                 <div className="flex items-center gap-3">
-                  <div className={cn("bg-primary rounded-full flex items-center justify-center", compactMode ? "w-6 h-6" : "w-8 h-8")}>
-                    <User className={cn("text-primary-foreground", compactMode ? "w-3 h-3" : "w-4 h-4")} />
+                  <div className={cn("bg-primary rounded-full flex items-center justify-center", compactMode ? "w-8 h-8" : "w-10 h-10")}>
+                    <User className={cn("text-primary-foreground", compactMode ? "w-4 h-4" : "w-5 h-5")} />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className={cn("font-medium truncate", compactMode ? "text-xs" : "text-sm")}>John Doe</p>
@@ -1175,13 +1221,6 @@ export const EnhancedSidebar = forwardRef<HTMLDivElement, SidebarProps>(
 )
 
 EnhancedSidebar.displayName = "EnhancedSidebar"
-```
-
-## File: src/components/index.ts
-```typescript
-export { AppShell } from './AppShell'
-export { TopBar } from './TopBar'
-export { MainContent } from './MainContent'
 ```
 
 ## File: src/components/MainContent.tsx
@@ -1236,28 +1275,28 @@ const statsCards: StatsCard[] = [
     value: "$45,231.89",
     change: "+20.1%",
     trend: "up",
-    icon: <DollarSign className="w-4 h-4" />
+    icon: <DollarSign className="w-5 h-5" />
   },
   {
     title: "Active Users",
     value: "2,350",
     change: "+180.1%",
     trend: "up",
-    icon: <Users className="w-4 h-4" />
+    icon: <Users className="w-5 h-5" />
   },
   {
     title: "Conversion Rate",
     value: "12.5%",
     change: "+19%",
     trend: "up",
-    icon: <TrendingUp className="w-4 h-4" />
+    icon: <TrendingUp className="w-5 h-5" />
   },
   {
     title: "Performance",
     value: "573ms",
     change: "-5.3%",
     trend: "down",
-    icon: <Activity className="w-4 h-4" />
+    icon: <Activity className="w-5 h-5" />
   }
 ]
 
@@ -1366,14 +1405,14 @@ export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
       <div
         ref={ref}
         className={cn(
-          "flex-1 h-[calc(100vh-64px)] overflow-hidden transition-all duration-300",
+          "flex-1 h-[calc(100vh-80px)] overflow-hidden transition-all duration-300",
           bodyState === BODY_STATES.FULLSCREEN && "bg-background",
           bodyState === BODY_STATES.SIDE_PANE && "bg-muted/30"
         )}
       >
         <div 
           ref={contentRef}
-          className="h-full overflow-y-auto p-8 space-y-8"
+          className="h-full overflow-y-auto p-6 space-y-8"
         >
           {/* Header */}
           <div className="flex items-center justify-between">
@@ -1392,14 +1431,14 @@ export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
                   placeholder="Search..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-9 pr-4 py-2 border border-border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                  className="pl-9 pr-4 py-2 border-none rounded-lg bg-card focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                 />
               </div>
-              <button className="p-2 hover:bg-accent rounded-lg transition-colors">
-                <Filter className="w-4 h-4" />
+              <button className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors">
+                <Filter className="w-5 h-5" />
               </button>
-              <button className="bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-2">
-                <Plus className="w-4 h-4" />
+              <button className="bg-primary text-primary-foreground px-4 py-2 rounded-full hover:bg-primary/90 transition-colors flex items-center gap-2 h-10">
+                <Plus className="w-5 h-5" />
                 <span>New Project</span>
               </button>
             </div>
@@ -1411,10 +1450,10 @@ export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
               <div
                 key={stat.title}
                 ref={el => cardsRef.current[index] = el}
-                className="bg-card p-6 rounded-lg border border-border hover:border-primary/30 hover:shadow-sm transition-all duration-300 group cursor-pointer"
+                className="bg-card p-6 rounded-2xl border border-border/50 hover:border-primary/30 transition-all duration-300 group cursor-pointer"
               >
                 <div className="flex items-center justify-between">
-                  <div className="p-2 bg-primary/10 rounded-lg group-hover:bg-primary/20 transition-colors">
+                  <div className="p-3 bg-primary/10 rounded-full group-hover:bg-primary/20 transition-colors">
                     {stat.icon}
                   </div>
                   <div className={cn(
@@ -1440,16 +1479,16 @@ export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
             {/* Chart Area */}
             <div className="lg:col-span-2 space-y-6">
               {/* Analytics Chart */}
-              <div className="bg-card p-6 rounded-xl border border-border">
+              <div className="bg-card p-6 rounded-2xl border border-border/50">
                 <div className="flex items-center justify-between mb-6">
                   <h3 className="text-lg font-semibold">Analytics Overview</h3>
-                  <button className="p-2 hover:bg-accent rounded-lg transition-colors">
-                    <MoreVertical className="w-4 h-4" />
+                  <button className="h-8 w-8 flex items-center justify-center hover:bg-accent rounded-full transition-colors">
+                    <MoreVertical className="w-5 h-5" />
                   </button>
                 </div>
                 
                 {/* Mock Chart */}
-                <div className="h-64 bg-gradient-to-br from-primary/10 to-transparent rounded-lg flex items-center justify-center border border-border">
+                <div className="h-64 bg-gradient-to-br from-primary/10 to-transparent rounded-xl flex items-center justify-center border border-border/50">
                   <div className="text-center">
                     <BarChart3 className="w-12 h-12 text-primary mx-auto mb-2" />
                     <p className="text-muted-foreground">Chart visualization would go here</p>
@@ -1458,7 +1497,7 @@ export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
               </div>
 
               {/* Recent Projects */}
-              <div className="bg-card p-6 rounded-xl border border-border">
+              <div className="bg-card p-6 rounded-2xl border border-border/50">
                 <div className="flex items-center justify-between mb-6">
                   <h3 className="text-lg font-semibold">Recent Projects</h3>
                   <button className="text-primary hover:text-primary/80 text-sm font-medium flex items-center gap-1">
@@ -1473,7 +1512,7 @@ export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
                     { name: "Mobile App Redesign", progress: 45, team: 3, deadline: "Jan 20" },
                     { name: "Marketing Website", progress: 90, team: 4, deadline: "Dec 5" }
                   ].map((project) => (
-                    <div key={project.name} className="p-4 bg-accent/30 rounded-lg hover:bg-accent/50 transition-colors cursor-pointer">
+                    <div key={project.name} className="p-4 bg-accent/30 rounded-xl hover:bg-accent/50 transition-colors cursor-pointer">
                       <div className="flex items-center justify-between mb-2">
                         <h4 className="font-medium">{project.name}</h4>
                         <span className="text-sm text-muted-foreground">{project.progress}%</span>
@@ -1497,7 +1536,7 @@ export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
             {/* Sidebar Content */}
             <div className="space-y-6">
               {/* Quick Actions */}
-              <div className="bg-card p-6 rounded-xl border border-border">
+              <div className="bg-card p-6 rounded-2xl border border-border/50">
                 <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
                 <div className="space-y-3">
                   {[
@@ -1510,7 +1549,7 @@ export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
                       key={action.label}
                       className="w-full flex items-center gap-3 p-3 hover:bg-accent rounded-lg transition-colors text-left"
                     >
-                      <div className={cn("p-2 rounded-lg", action.color)}>
+                      <div className={cn("p-2 rounded-full", action.color)}>
                         {action.icon}
                       </div>
                       <span className="font-medium">{action.label}</span>
@@ -1520,12 +1559,12 @@ export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
               </div>
 
               {/* Recent Activity */}
-              <div className="bg-card p-6 rounded-xl border border-border">
+              <div className="bg-card p-6 rounded-2xl border border-border/50">
                 <h3 className="text-lg font-semibold mb-4">Recent Activity</h3>
                 <div className="space-y-4">
                   {recentActivity.map((activity) => (
-                    <div key={activity.id} className="flex items-start gap-3 p-3 hover:bg-accent/30 rounded-lg transition-colors cursor-pointer">
-                      <div className="p-2 bg-primary/10 rounded-lg flex-shrink-0">
+                    <div key={activity.id} className="flex items-start gap-3 p-3 hover:bg-accent/30 rounded-xl transition-colors cursor-pointer">
+                      <div className="p-2 bg-primary/10 rounded-full flex-shrink-0">
                         {getTypeIcon(activity.type)}
                       </div>
                       <div className="flex-1 min-w-0">
@@ -1602,8 +1641,8 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-[100] animate-fade-in">
-      <div className="fixed right-0 top-0 h-full w-96 bg-card border-l border-border shadow-2xl animate-slide-in">
+    <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-[100] animate-in fade-in-0 duration-300">
+      <div className="fixed right-4 top-4 bottom-4 w-full max-w-sm bg-card border border-border shadow-2xl rounded-2xl animate-in slide-in-from-right-8 duration-300">
         <div className="flex flex-col h-full">
           {/* Header */}
           <div className="flex items-center justify-between p-6 border-b border-border">
@@ -1620,7 +1659,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
           </div>
 
           {/* Content */}
-          <div className="flex-1 overflow-y-auto p-6 space-y-8">
+          <div className="flex-1 overflow-y-auto p-6 space-y-10">
             {/* Appearance */}
             <div className="space-y-4">
               <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
@@ -1640,13 +1679,13 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                 <button
                   onClick={toggleDarkMode}
                   className={cn(
-                    "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
+                    "relative inline-flex h-7 w-12 items-center rounded-full transition-colors",
                     isDarkMode ? "bg-primary" : "bg-muted"
                   )}
                 >
                   <span
                     className={cn(
-                      "inline-block h-4 w-4 transform rounded-full bg-background transition-transform",
+                      "inline-block h-5 w-5 transform rounded-full bg-background transition-transform",
                       isDarkMode ? "translate-x-6" : "translate-x-1"
                     )}
                   />
@@ -1665,13 +1704,13 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                 <button
                   onClick={() => setCompactMode(!compactMode)}
                   className={cn(
-                    "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
+                    "relative inline-flex h-7 w-12 items-center rounded-full transition-colors",
                     compactMode ? "bg-primary" : "bg-muted"
                   )}
                 >
                   <span
                     className={cn(
-                      "inline-block h-4 w-4 transform rounded-full bg-background transition-transform",
+                      "inline-block h-5 w-5 transform rounded-full bg-background transition-transform",
                       compactMode ? "translate-x-6" : "translate-x-1"
                     )}
                   />
@@ -1698,13 +1737,13 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                 <button
                   onClick={() => setAutoExpandSidebar(!autoExpandSidebar)}
                   className={cn(
-                    "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
+                    "relative inline-flex h-7 w-12 items-center rounded-full transition-colors",
                     autoExpandSidebar ? "bg-primary" : "bg-muted"
                   )}
                 >
                   <span
                     className={cn(
-                      "inline-block h-4 w-4 transform rounded-full bg-background transition-transform",
+                      "inline-block h-5 w-5 transform rounded-full bg-background transition-transform",
                       autoExpandSidebar ? "translate-x-6" : "translate-x-1"
                     )}
                   />
@@ -1728,7 +1767,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                     step="10"
                     value={tempSidebarWidth}
                     onChange={(e) => handleSidebarWidthChange(Number(e.target.value))}
-                    className="w-full h-2 bg-muted rounded-lg appearance-none cursor-pointer slider"
+                    className="w-full h-1.5 bg-muted rounded-lg appearance-none cursor-pointer slider"
                   />
                   <div className="flex justify-between text-xs text-muted-foreground">
                     <span>200px</span>
@@ -1758,13 +1797,13 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                 <button
                   onClick={() => setReducedMotion(!reducedMotion)}
                   className={cn(
-                    "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
+                    "relative inline-flex h-7 w-12 items-center rounded-full transition-colors",
                     reducedMotion ? "bg-primary" : "bg-muted"
                   )}
                 >
                   <span
                     className={cn(
-                      "inline-block h-4 w-4 transform rounded-full bg-background transition-transform",
+                      "inline-block h-5 w-5 transform rounded-full bg-background transition-transform",
                       reducedMotion ? "translate-x-6" : "translate-x-1"
                     )}
                   />
@@ -1785,7 +1824,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                     setReducedMotion(false)
                     setSidebarWidth(320)
                   }}
-                  className="p-3 bg-accent/30 hover:bg-accent/50 rounded-lg transition-colors text-left"
+                  className="p-4 bg-accent/30 hover:bg-accent/50 rounded-xl transition-colors text-left"
                 >
                   <Monitor className="w-4 h-4 mb-2" />
                   <p className="font-medium text-sm">Desktop</p>
@@ -1798,7 +1837,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                     setReducedMotion(true)
                     setSidebarWidth(240)
                   }}
-                  className="p-3 bg-accent/30 hover:bg-accent/50 rounded-lg transition-colors text-left"
+                  className="p-4 bg-accent/30 hover:bg-accent/50 rounded-xl transition-colors text-left"
                 >
                   <Smartphone className="w-4 h-4 mb-2" />
                   <p className="font-medium text-sm">Mobile</p>
@@ -1812,7 +1851,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
           <div className="p-6 border-t border-border">
             <button
               onClick={resetToDefaults}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-destructive/10 text-destructive hover:bg-destructive/20 rounded-lg transition-colors"
+              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-destructive/10 text-destructive hover:bg-destructive/20 rounded-lg transition-colors"
             >
               <RotateCcw className="w-4 h-4" />
               Reset to Defaults
@@ -1828,22 +1867,23 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
 const sliderStyles = `
 .slider::-webkit-slider-thumb {
   appearance: none;
-  height: 20px;
-  width: 20px;
+  height: 18px;
+  width: 18px;
   border-radius: 50%;
   background: hsl(var(--primary));
   cursor: pointer;
-  border: 2px solid hsl(var(--background));
+  border: 3px solid hsl(var(--background));
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  margin-top: -7px;
 }
 
 .slider::-moz-range-thumb {
-  height: 20px;
-  width: 20px;
+  height: 18px;
+  width: 18px;
   border-radius: 50%;
   background: hsl(var(--primary));
   cursor: pointer;
-  border: 2px solid hsl(var(--background));
+  border: 3px solid hsl(var(--background));
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 `
@@ -1864,11 +1904,7 @@ import {
   Maximize, 
   Minimize, 
   Moon, 
-  Sun, 
-  PanelLeft, 
-  PanelLeftClose,
-  Sidebar,
-  Eye,
+  Sun,
   Layout,
   Settings,
   Command,
@@ -1876,44 +1912,36 @@ import {
 } from 'lucide-react'
 import { SettingsPanel } from './SettingsPanel'
 import { cn } from '@/lib/utils'
-import { SIDEBAR_STATES, BODY_STATES, type SidebarState, type BodyState } from '@/lib/utils'
+import { BODY_STATES, type BodyState } from '@/lib/utils'
 
 interface TopBarProps {
-  sidebarState: SidebarState
   bodyState: BodyState
   isDarkMode: boolean
   onToggleSidebar: () => void
   onToggleFullscreen: () => void
   onToggleSidePane: () => void
   onToggleDarkMode: () => void
-  onHideSidebar: () => void
-  onShowSidebar: () => void
-  onPeekSidebar: () => void
 }
 
 export function TopBar({
-  sidebarState,
   bodyState,
   isDarkMode,
   onToggleSidebar,
   onToggleFullscreen,
   onToggleSidePane,
-  onToggleDarkMode,
-  onHideSidebar,
-  onShowSidebar,
-  onPeekSidebar
+  onToggleDarkMode
 }: TopBarProps) {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   return (
-    <div className="h-16 bg-card border-b border-border flex items-center justify-between px-4 z-50">
+    <div className="h-20 bg-card/80 backdrop-blur-sm border-b border-border flex items-center justify-between px-6 z-50">
       {/* Left Section - Logo and Sidebar Controls */}
       <div className="flex items-center gap-4">
         {/* Logo */}
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-gradient-to-br from-primary to-primary/60 rounded-lg flex items-center justify-center">
-            <Layout className="w-4 h-4 text-primary-foreground" />
+          <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary/60 rounded-full flex items-center justify-center">
+            <Layout className="w-5 h-5 text-primary-foreground" />
           </div>
-          <span className="font-semibold text-lg text-foreground hidden sm:inline">AppShell</span>
+          <span className="font-semibold text-xl text-foreground hidden sm:inline">AppShell</span>
         </div>
 
         {/* Sidebar Controls */}
@@ -1921,85 +1949,85 @@ export function TopBar({
           <button
             onClick={onToggleSidebar}
             className={cn(
-              "p-2 rounded-md hover:bg-accent transition-colors"
+              "h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors"
             )}
             title="Toggle Sidebar"
           >
-            <Menu className="w-4 h-4" />
+            <Menu className="w-5 h-5" />
           </button>
         </div>
       </div>
 
       {/* Right Section - View Controls */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-3">
         {/* Quick Actions */}
         <button
-          className="p-2 rounded-md hover:bg-accent transition-colors group"
+          className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
           title="Command Palette (Ctrl+K)"
         >
-          <Command className="w-4 h-4 group-hover:scale-110 transition-transform" />
+          <Command className="w-5 h-5 group-hover:scale-110 transition-transform" />
         </button>
 
         <button
-          className="p-2 rounded-md hover:bg-accent transition-colors group"
+          className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
           title="Quick Actions"
         >
-          <Zap className="w-4 h-4 group-hover:scale-110 transition-transform" />
+          <Zap className="w-5 h-5 group-hover:scale-110 transition-transform" />
         </button>
 
-        <div className="w-px h-6 bg-border mx-1" />
+        <div className="w-px h-6 bg-border mx-2" />
 
         {/* Body State Controls */}
         <button
           onClick={onToggleSidePane}
           className={cn(
-            "p-2 rounded-md hover:bg-accent transition-colors group",
+            "h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group",
             bodyState === BODY_STATES.SIDE_PANE && "bg-accent"
           )}
           title="Toggle Side Pane"
         >
-          <div className="w-4 h-4 flex group-hover:scale-110 transition-transform">
-            <div className="w-2 h-4 bg-current opacity-60" />
-            <div className="w-2 h-4 bg-current" />
+          <div className="w-5 h-5 flex group-hover:scale-110 transition-transform">
+            <div className="w-1/2 h-full bg-current opacity-60 rounded-l-sm" />
+            <div className="w-1/2 h-full bg-current rounded-r-sm" />
           </div>
         </button>
 
         <button
           onClick={onToggleFullscreen}
           className={cn(
-            "p-2 rounded-md hover:bg-accent transition-colors group",
+            "h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group",
             bodyState === BODY_STATES.FULLSCREEN && "bg-accent"
           )}
           title="Toggle Fullscreen"
         >
           {bodyState === BODY_STATES.FULLSCREEN ? (
-            <Minimize className="w-4 h-4 group-hover:scale-110 transition-transform" />
+            <Minimize className="w-5 h-5 group-hover:scale-110 transition-transform" />
           ) : (
-            <Maximize className="w-4 h-4 group-hover:scale-110 transition-transform" />
+            <Maximize className="w-5 h-5 group-hover:scale-110 transition-transform" />
           )}
         </button>
 
-        <div className="w-px h-6 bg-border mx-1" />
+        <div className="w-px h-6 bg-border mx-2" />
 
         {/* Theme and Settings */}
         <button
           onClick={onToggleDarkMode}
-          className="p-2 rounded-md hover:bg-accent transition-colors group"
+          className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
           title="Toggle Dark Mode"
         >
           {isDarkMode ? (
-            <Sun className="w-4 h-4 group-hover:scale-110 transition-transform" />
+            <Sun className="w-5 h-5 group-hover:scale-110 transition-transform" />
           ) : (
-            <Moon className="w-4 h-4 group-hover:scale-110 transition-transform" />
+            <Moon className="w-5 h-5 group-hover:scale-110 transition-transform" />
           )}
         </button>
 
         <button
           onClick={() => setIsSettingsOpen(true)}
-          className="p-2 rounded-md hover:bg-accent transition-colors group"
+          className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
           title="Settings"
         >
-          <Settings className="w-4 h-4 group-hover:rotate-90 transition-transform duration-300" />
+          <Settings className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
         </button>
       </div>
 
@@ -2011,22 +2039,6 @@ export function TopBar({
     </div>
   )
 }
-```
-
-## File: src/App.tsx
-```typescript
-import { AppShell } from './components/AppShell'
-import './index.css'
-
-function App() {
-  return (
-    <div className="h-screen w-screen overflow-hidden bg-background">
-      <AppShell />
-    </div>
-  )
-}
-
-export default App
 ```
 
 ## File: package.json
@@ -2066,38 +2078,8 @@ export default App
     "postcss": "^8.4.31",
     "tailwindcss": "^3.3.5",
     "typescript": "^5.2.2",
-    "vite": "^4.5.0"
+    "vite": "^4.5.0",
+    "tailwindcss-animate": "^1.0.7"
   }
 }
-```
-
-## File: tsconfig.node.json
-```json
-{
-  "compilerOptions": {
-    "composite": true,
-    "skipLibCheck": true,
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
-    "allowSyntheticDefaultImports": true
-  },
-  "include": ["vite.config.ts"]
-}
-```
-
-## File: vite.config.ts
-```typescript
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-import { fileURLToPath, URL } from 'url'
-
-// https://vitejs.dev/config/
-export default defineConfig({
-  plugins: [react()],
-  resolve: {
-    alias: {
-      "@": fileURLToPath(new URL('./src', import.meta.url)),
-    },
-  },
-})
 ```
