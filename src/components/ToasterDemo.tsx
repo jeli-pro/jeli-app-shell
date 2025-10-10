@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/toast';
+import { PageHeader } from '@/components/PageHeader';
 import { cn } from '@/lib/utils';
 
 type Variant = 'default' | 'success' | 'error' | 'warning';
@@ -17,6 +18,16 @@ const variantColors = {
   error: 'border-destructive text-destructive hover:bg-destructive/10 dark:hover:bg-destructive/20',
   warning: 'border-amber-600 text-amber-600 hover:bg-amber-600/10 dark:hover:bg-amber-400/20',
 }
+
+const DemoSection: React.FC<{ title: string; children: React.ReactNode }> = ({
+  title,
+  children,
+}) => (
+  <section>
+    <h2 className="text-lg font-semibold mb-2">{title}</h2>
+    {children}
+  </section>
+);
 
 export function ToasterDemo({ isInSidePane = false }: { isInSidePane?: boolean }) {
   const toast = useToast();
@@ -69,19 +80,13 @@ export function ToasterDemo({ isInSidePane = false }: { isInSidePane?: boolean }
   return (
     <div className={cn("overflow-y-auto p-6 lg:px-12 space-y-8", !isInSidePane && "h-full")}>
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Toaster</h1>
-          <p className="text-muted-foreground">
-            A customizable toast component for notifications.
-          </p>
-        </div>
-      </div>
-
+      <PageHeader
+        title="Toaster"
+        description="A customizable toast component for notifications."
+      />
       <div className="space-y-6">
         <div className="space-y-6">
-          <section>
-            <h2 className="text-lg font-semibold mb-2">Toast Variants</h2>
+          <DemoSection title="Toast Variants">
             <div className="flex flex-wrap gap-4">
               {(['default', 'success', 'error', 'warning'] as Variant[]).map((variantKey) => (
                 <Button
@@ -94,10 +99,9 @@ export function ToasterDemo({ isInSidePane = false }: { isInSidePane?: boolean }
                 </Button>
               ))}
             </div>
-          </section>
+          </DemoSection>
 
-          <section>
-            <h2 className="text-lg font-semibold mb-2">Toast Positions</h2>
+          <DemoSection title="Toast Positions">
             <div className="flex flex-wrap gap-4">
               {[
                 'top-left',
@@ -121,10 +125,9 @@ export function ToasterDemo({ isInSidePane = false }: { isInSidePane?: boolean }
                 </Button>
               ))}
             </div>
-          </section>
+          </DemoSection>
 
-          <section>
-            <h2 className="text-lg font-semibold mb-2">Real‑World Example</h2>
+          <DemoSection title="Real-World Example">
             <Button
               variant="outline"
               onClick={simulateApiCall}
@@ -132,7 +135,7 @@ export function ToasterDemo({ isInSidePane = false }: { isInSidePane?: boolean }
             >
               Schedule Meeting
             </Button>
-          </section>
+          </DemoSection>
         </div>
       </div>
     </div>

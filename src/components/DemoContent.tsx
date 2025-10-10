@@ -15,6 +15,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAppStore } from '@/store/appStore'
+import { Card } from '@/components/ui/card'
 
 export function DemoContent() {
   const { bodyState, sidebarState, isDarkMode, compactMode } = useAppStore()
@@ -115,10 +116,10 @@ export function DemoContent() {
       {/* Feature Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {features.map((feature, index) => (
-          <div
+          <Card
             key={feature.title}
             ref={el => cardsRef.current[index] = el}
-            className="group relative overflow-hidden rounded-2xl bg-card border border-border/50 p-6 hover:border-primary/30 hover:bg-accent/30 transition-all duration-300 cursor-pointer"
+            className="group relative overflow-hidden border-border/50 p-6 hover:border-primary/30 hover:bg-accent/30 transition-all duration-300 cursor-pointer"
           >
             <div className="relative z-10">
               <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-4 group-hover:scale-110 group-hover:bg-primary/20 transition-transform">
@@ -128,12 +129,12 @@ export function DemoContent() {
               <h3 className="text-lg font-semibold mb-2">{feature.title}</h3>
               <p className="text-muted-foreground text-sm">{feature.description}</p>
             </div>
-          </div>
+          </Card>
         ))}
       </div>
 
       {/* Technology Stack */}
-      <div className="bg-card border border-border/50 rounded-2xl p-6">
+      <Card className="border-border/50 p-6">
         <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
           <Star className="w-6 h-6 text-yellow-500" />
           Technology Stack
@@ -156,10 +157,10 @@ export function DemoContent() {
             </div>
           ))}
         </div>
-      </div>
+      </Card>
 
       {/* Current State Display */}
-      <div className="bg-card border border-border/50 rounded-2xl p-6">
+      <Card className="border-border/50 p-6">
         <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
           <Monitor className="w-5 h-5" />
           Current App State
@@ -183,7 +184,7 @@ export function DemoContent() {
             <div className="font-medium">{compactMode ? 'Compact' : 'Normal'}</div>
           </div>
         </div>
-      </div>
+      </Card>
 
       {/* Interactive Demo */}
       <div className="text-center space-y-4">

@@ -26,6 +26,8 @@ src/
     TopBar.tsx
     UserDropdown.tsx
     WorkspaceSwitcher.tsx
+  hooks/
+    useAutoAnimateTopBar.ts
   lib/
     utils.ts
   store/
@@ -1033,6 +1035,33 @@ export const UserDropdown = ({
 };
 ```
 
+## File: src/hooks/useAutoAnimateTopBar.ts
+```typescript
+import { useRef, useCallback } from 'react';
+import { useAppStore } from '@/store/appStore';
+
+export function useAutoAnimateTopBar(isPane = false) {
+  const setTopBarVisible = useAppStore((state) => state.setTopBarVisible);
+  const lastScrollTop = useRef(0);
+
+  const onScroll = useCallback((event: React.UIEvent<HTMLDivElement>) => {
+    if (isPane) return;
+
+    const { scrollTop } = event.currentTarget;
+    
+    if (scrollTop > lastScrollTop.current && scrollTop > 200) {
+      setTopBarVisible(false);
+    } else if (scrollTop < lastScrollTop.current || scrollTop <= 0) {
+      setTopBarVisible(true);
+    }
+    
+    lastScrollTop.current = scrollTop <= 0 ? 0 : scrollTop;
+  }, [isPane, setTopBarVisible]);
+
+  return { onScroll };
+}
+```
+
 ## File: src/lib/utils.ts
 ```typescript
 import { type ClassValue, clsx } from "clsx"
@@ -1649,372 +1678,6 @@ export default defineConfig({
 })
 ```
 
-## File: src/components/DashboardContent.tsx
-```typescript
-import { useRef, useEffect, useState } from 'react'
-import { gsap } from 'gsap'
-import { 
-  BarChart3, 
-  TrendingUp, 
-  Users, 
-  DollarSign, 
-  Activity,
-  Calendar,
-  Clock,
-  MessageSquare,
-  FileText,
-  Star,
-  ChevronRight,
-  MoreVertical,
-  ArrowDown
-} from 'lucide-react'
-import { cn } from '@/lib/utils'
-import { DemoContent } from './DemoContent'
-import { useAppStore } from '@/store/appStore'
-import { BODY_STATES } from '@/lib/utils'
-
-interface StatsCard {
-  title: string
-  value: string
-  change: string
-  trend: 'up' | 'down'
-  icon: React.ReactNode
-}
-
-interface ActivityItem {
-  id: string
-  type: 'comment' | 'file' | 'meeting' | 'task'
-  title: string
-  description: string
-  time: string
-  user: string
-}
-
-const statsCards: StatsCard[] = [
-  {
-    title: "Total Revenue",
-    value: "$45,231.89",
-    change: "+20.1%",
-    trend: "up",
-    icon: <DollarSign className="w-5 h-5" />
-  },
-  {
-    title: "Active Users",
-    value: "2,350",
-    change: "+180.1%",
-    trend: "up",
-    icon: <Users className="w-5 h-5" />
-  },
-  {
-    title: "Conversion Rate",
-    value: "12.5%",
-    change: "+19%",
-    trend: "up",
-    icon: <TrendingUp className="w-5 h-5" />
-  },
-  {
-    title: "Performance",
-    value: "573ms",
-    change: "-5.3%",
-    trend: "down",
-    icon: <Activity className="w-5 h-5" />
-  }
-]
-
-const recentActivity: ActivityItem[] = [
-  {
-    id: "1",
-    type: "comment",
-    title: "New comment on Project Alpha",
-    description: "Sarah Johnson added a comment to the design review",
-    time: "2 minutes ago",
-    user: "SJ"
-  },
-  {
-    id: "2",
-    type: "file",
-    title: "Document uploaded",
-    description: "quarterly-report.pdf was uploaded to Documents",
-    time: "15 minutes ago",
-    user: "MD"
-  },
-  {
-    id: "3",
-    type: "meeting",
-    title: "Meeting scheduled",
-    description: "Weekly standup meeting scheduled for tomorrow 9 AM",
-    time: "1 hour ago",
-    user: "RW"
-  },
-  {
-    id: "4",
-    type: "task",
-    title: "Task completed",
-    description: "UI wireframes for mobile app completed",
-    time: "2 hours ago",
-    user: "AL"
-  }
-]
-
-interface DashboardContentProps {
-  isInSidePane?: boolean;
-}
-
-export function DashboardContent({ isInSidePane = false }: DashboardContentProps) {
-    const contentRef = useRef<HTMLDivElement>(null)
-    const cardsRef = useRef<(HTMLDivElement | null)[]>([])
-    const [showScrollToBottom, setShowScrollToBottom] = useState(false)
-    const { bodyState, setTopBarVisible } = useAppStore()
-    const lastScrollTop = useRef(0);
-
-    const handleScroll = () => {
-      if (!contentRef.current) return
-      const { scrollTop, scrollHeight, clientHeight } = contentRef.current
-      
-      // Auto-hide top bar logic
-      if (!isInSidePane) {
-        if (scrollTop > lastScrollTop.current && scrollTop > 200) {
-          setTopBarVisible(false);
-        } else if (scrollTop < lastScrollTop.current || scrollTop <= 0) {
-          setTopBarVisible(true);
-        }
-      }
-      lastScrollTop.current = scrollTop <= 0 ? 0 : scrollTop;
-
-      // Show if scrolled down and not at the bottom
-      setShowScrollToBottom(scrollTop > 200 && scrollTop < scrollHeight - clientHeight - 200)
-    }
-
-    const scrollToBottom = () => {
-      contentRef.current?.scrollTo({
-        top: contentRef.current.scrollHeight,
-        behavior: 'smooth'
-      })
-    }
-
-    // Animate content based on body state
-    useEffect(() => {
-      if (!contentRef.current) return
-
-      const content = contentRef.current
-      const cards = cardsRef.current.filter(Boolean)
-
-      switch (bodyState) {
-        case BODY_STATES.FULLSCREEN:
-          gsap.to(content, {
-            scale: 1.02,
-            duration: 0.4,
-            ease: "power3.out"
-          })
-          break
-        default:
-          gsap.to(content, {
-            scale: 1,
-            duration: 0.4,
-            ease: "power3.out"
-          })
-          break
-      }
-
-      // Stagger animation for cards
-      gsap.fromTo(cards, 
-        { y: 20, opacity: 0 },
-        { 
-          y: 0, 
-          opacity: 1, 
-          duration: 0.6,
-          stagger: 0.1,
-          ease: "power3.out"
-        }
-      )
-
-    }, [bodyState])
-
-    const getTypeIcon = (type: ActivityItem['type']) => {
-      switch (type) {
-        case 'comment':
-          return <MessageSquare className="w-4 h-4" />
-        case 'file':
-          return <FileText className="w-4 h-4" />
-        case 'meeting':
-          return <Calendar className="w-4 h-4" />
-        case 'task':
-          return <Star className="w-4 h-4" />
-        default:
-          return <Activity className="w-4 h-4" />
-      }
-    }
-
-    return (
-        <div 
-          ref={contentRef}
-          className="h-full overflow-y-auto space-y-8 p-6 lg:px-12"
-          onScroll={handleScroll}
-        >
-          {/* Header */}
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-              <p className="text-muted-foreground">
-                Welcome to the amazing app shell demo! Explore all the features and customization options.
-              </p>
-            </div>
-          </div>
-            {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {statsCards.map((stat, index) => (
-                <div
-                key={stat.title}
-                ref={el => cardsRef.current[index] = el}
-                className="bg-card p-6 rounded-2xl border border-border/50 hover:border-primary/30 transition-all duration-300 group cursor-pointer"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="p-3 bg-primary/10 rounded-full group-hover:bg-primary/20 transition-colors">
-                    {stat.icon}
-                  </div>
-                  <div className={cn(
-                    "text-sm font-medium",
-                    stat.trend === 'up' ? "text-green-600" : "text-red-600"
-                  )}>
-                    {stat.change}
-                  </div>
-                </div>
-                <div className="mt-4">
-                  <h3 className="text-2xl font-bold">{stat.value}</h3>
-                  <p className="text-sm text-muted-foreground mt-1">{stat.title}</p>
-                </div>
-              </div>
-              ))}
-            </div>
-
-            {/* Demo Content */}
-            <DemoContent />
-
-            {/* Main Content Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Chart Area */}
-            <div className="lg:col-span-2 space-y-6">
-              {/* Analytics Chart */}
-              <div className="bg-card p-6 rounded-2xl border border-border/50">
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-lg font-semibold">Analytics Overview</h3>
-                  <button className="h-8 w-8 flex items-center justify-center hover:bg-accent rounded-full transition-colors">
-                    <MoreVertical className="w-5 h-5" />
-                  </button>
-                </div>
-                
-                {/* Mock Chart */}
-                <div className="h-64 bg-gradient-to-br from-primary/10 to-transparent rounded-xl flex items-center justify-center border border-border/50">
-                  <div className="text-center">
-                    <BarChart3 className="w-12 h-12 text-primary mx-auto mb-2" />
-                    <p className="text-muted-foreground">Chart visualization would go here</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Recent Projects */}
-              <div className="bg-card p-6 rounded-2xl border border-border/50">
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-lg font-semibold">Recent Projects</h3>
-                  <button className="text-primary hover:text-primary/80 text-sm font-medium flex items-center gap-1">
-                    View All
-                    <ChevronRight className="w-4 h-4" />
-                  </button>
-                </div>
-                
-                <div className="space-y-4">
-                  {[
-                    { name: "E-commerce Platform", progress: 75, team: 5, deadline: "Dec 15" },
-                    { name: "Mobile App Redesign", progress: 45, team: 3, deadline: "Jan 20" },
-                    { name: "Marketing Website", progress: 90, team: 4, deadline: "Dec 5" }
-                  ].map((project) => (
-                    <div key={project.name} className="p-4 bg-accent/30 rounded-xl hover:bg-accent/50 transition-colors cursor-pointer">
-                      <div className="flex items-center justify-between mb-2">
-                        <h4 className="font-medium">{project.name}</h4>
-                        <span className="text-sm text-muted-foreground">{project.progress}%</span>
-                      </div>
-                      <div className="w-full bg-muted rounded-full h-2 mb-3">
-                        <div 
-                          className="bg-primary h-2 rounded-full transition-all duration-500"
-                          style={{ width: `${project.progress}%` }}
-                        />
-                      </div>
-                      <div className="flex items-center justify-between text-sm text-muted-foreground">
-                        <span>{project.team} team members</span>
-                        <span>Due {project.deadline}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Sidebar Content */}
-            <div className="space-y-6">
-              {/* Quick Actions */}
-              <div className="bg-card p-6 rounded-2xl border border-border/50">
-                <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
-                <div className="space-y-3">
-                  {[
-                    { icon: <FileText className="w-4 h-4" />, label: "Create Document", color: "bg-blue-500/10 text-blue-600" },
-                    { icon: <Calendar className="w-4 h-4" />, label: "Schedule Meeting", color: "bg-green-500/10 text-green-600" },
-                    { icon: <Users className="w-4 h-4" />, label: "Invite Team", color: "bg-purple-500/10 text-purple-600" },
-                    { icon: <BarChart3 className="w-4 h-4" />, label: "View Reports", color: "bg-orange-500/10 text-orange-600" }
-                  ].map((action) => (
-                    <button
-                      key={action.label}
-                      className="w-full flex items-center gap-3 p-3 hover:bg-accent rounded-lg transition-colors text-left"
-                    >
-                      <div className={cn("p-2 rounded-full", action.color)}>
-                        {action.icon}
-                      </div>
-                      <span className="font-medium">{action.label}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Recent Activity */}
-              <div className="bg-card p-6 rounded-2xl border border-border/50">
-                <h3 className="text-lg font-semibold mb-4">Recent Activity</h3>
-                <div className="space-y-4">
-                  {recentActivity.map((activity) => (
-                    <div key={activity.id} className="flex items-start gap-3 p-3 hover:bg-accent/30 rounded-xl transition-colors cursor-pointer">
-                      <div className="p-2 bg-primary/10 rounded-full flex-shrink-0">
-                        {getTypeIcon(activity.type)}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h4 className="font-medium text-sm mb-1">{activity.title}</h4>
-                        <p className="text-xs text-muted-foreground mb-2">{activity.description}</p>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <Clock className="w-3 h-3" />
-                          <span>{activity.time}</span>
-                          <div className="w-5 h-5 bg-primary rounded-full flex items-center justify-center text-primary-foreground text-xs font-medium">
-                            {activity.user}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-          {showScrollToBottom && (
-            <button
-              onClick={scrollToBottom}
-              className="fixed bottom-8 right-8 w-12 h-12 bg-primary text-primary-foreground rounded-full flex items-center justify-center shadow-lg hover:bg-primary/90 transition-all animate-fade-in z-[51]"
-              style={{ animation: 'bounce 2s infinite' }}
-              title="Scroll to bottom"
-            >
-              <ArrowDown className="w-6 h-6" />
-            </button>
-          )}
-      </div>
-    )
-}
-```
-
 ## File: src/components/DemoContent.tsx
 ```typescript
 import { useRef, useEffect } from 'react'
@@ -2553,50 +2216,6 @@ if (typeof document !== 'undefined') {
   const styleSheet = document.createElement('style')
   styleSheet.textContent = sliderStyles
   document.head.appendChild(styleSheet)
-}
-```
-
-## File: src/components/SettingsPage.tsx
-```typescript
-import { useRef } from 'react'
-import { SettingsContent } from './SettingsContent'
-import { useAppStore } from '@/store/appStore'
-
-export function SettingsPage() {
-  const { setTopBarVisible } = useAppStore()
-  const scrollRef = useRef<HTMLDivElement>(null)
-  const lastScrollTop = useRef(0)
-
-  return (
-    <div
-      ref={scrollRef}
-      className="h-full overflow-y-auto p-6 lg:px-12 space-y-8"
-      onScroll={() => {
-        if (!scrollRef.current) return
-        const { scrollTop } = scrollRef.current
-        
-        if (scrollTop > lastScrollTop.current && scrollTop > 200) {
-          setTopBarVisible(false);
-        } else if (scrollTop < lastScrollTop.current || scrollTop <= 0) {
-          setTopBarVisible(true);
-        }
-        
-        lastScrollTop.current = scrollTop <= 0 ? 0 : scrollTop;
-      }}
-    >
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
-          <p className="text-muted-foreground">
-            Customize your experience. Changes are saved automatically.
-          </p>
-        </div>
-      </div>
-
-      <SettingsContent />
-    </div>
-  )
 }
 ```
 
@@ -3271,6 +2890,392 @@ function WorkspaceContent({
 export { WorkspaceProvider as Workspaces, WorkspaceTrigger, WorkspaceContent };
 ```
 
+## File: src/components/DashboardContent.tsx
+```typescript
+import { useRef, useEffect, useState } from 'react'
+import { gsap } from 'gsap'
+import { 
+  BarChart3, 
+  TrendingUp, 
+  Users, 
+  DollarSign, 
+  Activity,
+  Calendar,
+  Clock,
+  MessageSquare,
+  FileText,
+  Star,
+  ChevronRight,
+  MoreVertical,
+  ArrowDown
+} from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { DemoContent } from './DemoContent';
+import { useAppStore } from '@/store/appStore';
+import { BODY_STATES } from '@/lib/utils';
+import { useAutoAnimateTopBar } from '@/hooks/useAutoAnimateTopBar';
+
+interface StatsCard {
+  title: string
+  value: string
+  change: string
+  trend: 'up' | 'down'
+  icon: React.ReactNode
+}
+
+interface ActivityItem {
+  id: string
+  type: 'comment' | 'file' | 'meeting' | 'task'
+  title: string
+  description: string
+  time: string
+  user: string
+}
+
+const statsCards: StatsCard[] = [
+  {
+    title: "Total Revenue",
+    value: "$45,231.89",
+    change: "+20.1%",
+    trend: "up",
+    icon: <DollarSign className="w-5 h-5" />
+  },
+  {
+    title: "Active Users",
+    value: "2,350",
+    change: "+180.1%",
+    trend: "up",
+    icon: <Users className="w-5 h-5" />
+  },
+  {
+    title: "Conversion Rate",
+    value: "12.5%",
+    change: "+19%",
+    trend: "up",
+    icon: <TrendingUp className="w-5 h-5" />
+  },
+  {
+    title: "Performance",
+    value: "573ms",
+    change: "-5.3%",
+    trend: "down",
+    icon: <Activity className="w-5 h-5" />
+  }
+]
+
+const recentActivity: ActivityItem[] = [
+  {
+    id: "1",
+    type: "comment",
+    title: "New comment on Project Alpha",
+    description: "Sarah Johnson added a comment to the design review",
+    time: "2 minutes ago",
+    user: "SJ"
+  },
+  {
+    id: "2",
+    type: "file",
+    title: "Document uploaded",
+    description: "quarterly-report.pdf was uploaded to Documents",
+    time: "15 minutes ago",
+    user: "MD"
+  },
+  {
+    id: "3",
+    type: "meeting",
+    title: "Meeting scheduled",
+    description: "Weekly standup meeting scheduled for tomorrow 9 AM",
+    time: "1 hour ago",
+    user: "RW"
+  },
+  {
+    id: "4",
+    type: "task",
+    title: "Task completed",
+    description: "UI wireframes for mobile app completed",
+    time: "2 hours ago",
+    user: "AL"
+  }
+]
+
+interface DashboardContentProps {
+  isInSidePane?: boolean;
+}
+
+export function DashboardContent({ isInSidePane = false }: DashboardContentProps) {
+    const contentRef = useRef<HTMLDivElement>(null)
+    const cardsRef = useRef<(HTMLDivElement | null)[]>([])
+    const [showScrollToBottom, setShowScrollToBottom] = useState(false);
+    const { bodyState } = useAppStore();
+    const { onScroll: handleTopBarScroll } = useAutoAnimateTopBar(isInSidePane);
+
+    const scrollToBottom = () => {
+      contentRef.current?.scrollTo({
+        top: contentRef.current.scrollHeight,
+        behavior: 'smooth'
+      })
+    }
+
+    const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+      handleTopBarScroll(e);
+      if (!contentRef.current) return;
+      const { scrollTop, scrollHeight, clientHeight } = contentRef.current;
+      // Show if scrolled down and not at the bottom
+      setShowScrollToBottom(scrollTop > 200 && scrollTop < scrollHeight - clientHeight - 200);
+    };
+
+    // Animate content based on body state
+    useEffect(() => {
+      if (!contentRef.current) return
+
+      const content = contentRef.current
+      const cards = cardsRef.current.filter(Boolean)
+
+      switch (bodyState) {
+        case BODY_STATES.FULLSCREEN:
+          gsap.to(content, {
+            scale: 1.02,
+            duration: 0.4,
+            ease: "power3.out"
+          })
+          break
+        default:
+          gsap.to(content, {
+            scale: 1,
+            duration: 0.4,
+            ease: "power3.out"
+          })
+          break
+      }
+
+      // Stagger animation for cards
+      gsap.fromTo(cards, 
+        { y: 20, opacity: 0 },
+        { 
+          y: 0, 
+          opacity: 1, 
+          duration: 0.6,
+          stagger: 0.1,
+          ease: "power3.out"
+        }
+      )
+
+    }, [bodyState])
+
+    const getTypeIcon = (type: ActivityItem['type']) => {
+      switch (type) {
+        case 'comment':
+          return <MessageSquare className="w-4 h-4" />
+        case 'file':
+          return <FileText className="w-4 h-4" />
+        case 'meeting':
+          return <Calendar className="w-4 h-4" />
+        case 'task':
+          return <Star className="w-4 h-4" />
+        default:
+          return <Activity className="w-4 h-4" />
+      }
+    }
+
+    return (
+        <div 
+          ref={contentRef}
+          className="h-full overflow-y-auto space-y-8 p-6 lg:px-12"
+          onScroll={handleScroll}
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+              <p className="text-muted-foreground">
+                Welcome to the amazing app shell demo! Explore all the features and customization options.
+              </p>
+            </div>
+          </div>
+            {/* Stats Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {statsCards.map((stat, index) => (
+                <div
+                key={stat.title}
+                ref={el => cardsRef.current[index] = el}
+                className="bg-card p-6 rounded-2xl border border-border/50 hover:border-primary/30 transition-all duration-300 group cursor-pointer"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="p-3 bg-primary/10 rounded-full group-hover:bg-primary/20 transition-colors">
+                    {stat.icon}
+                  </div>
+                  <div className={cn(
+                    "text-sm font-medium",
+                    stat.trend === 'up' ? "text-green-600" : "text-red-600"
+                  )}>
+                    {stat.change}
+                  </div>
+                </div>
+                <div className="mt-4">
+                  <h3 className="text-2xl font-bold">{stat.value}</h3>
+                  <p className="text-sm text-muted-foreground mt-1">{stat.title}</p>
+                </div>
+              </div>
+              ))}
+            </div>
+
+            {/* Demo Content */}
+            <DemoContent />
+
+            {/* Main Content Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Chart Area */}
+            <div className="lg:col-span-2 space-y-6">
+              {/* Analytics Chart */}
+              <div className="bg-card p-6 rounded-2xl border border-border/50">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-lg font-semibold">Analytics Overview</h3>
+                  <button className="h-8 w-8 flex items-center justify-center hover:bg-accent rounded-full transition-colors">
+                    <MoreVertical className="w-5 h-5" />
+                  </button>
+                </div>
+                
+                {/* Mock Chart */}
+                <div className="h-64 bg-gradient-to-br from-primary/10 to-transparent rounded-xl flex items-center justify-center border border-border/50">
+                  <div className="text-center">
+                    <BarChart3 className="w-12 h-12 text-primary mx-auto mb-2" />
+                    <p className="text-muted-foreground">Chart visualization would go here</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Recent Projects */}
+              <div className="bg-card p-6 rounded-2xl border border-border/50">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-lg font-semibold">Recent Projects</h3>
+                  <button className="text-primary hover:text-primary/80 text-sm font-medium flex items-center gap-1">
+                    View All
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+                
+                <div className="space-y-4">
+                  {[
+                    { name: "E-commerce Platform", progress: 75, team: 5, deadline: "Dec 15" },
+                    { name: "Mobile App Redesign", progress: 45, team: 3, deadline: "Jan 20" },
+                    { name: "Marketing Website", progress: 90, team: 4, deadline: "Dec 5" }
+                  ].map((project) => (
+                    <div key={project.name} className="p-4 bg-accent/30 rounded-xl hover:bg-accent/50 transition-colors cursor-pointer">
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="font-medium">{project.name}</h4>
+                        <span className="text-sm text-muted-foreground">{project.progress}%</span>
+                      </div>
+                      <div className="w-full bg-muted rounded-full h-2 mb-3">
+                        <div 
+                          className="bg-primary h-2 rounded-full transition-all duration-500"
+                          style={{ width: `${project.progress}%` }}
+                        />
+                      </div>
+                      <div className="flex items-center justify-between text-sm text-muted-foreground">
+                        <span>{project.team} team members</span>
+                        <span>Due {project.deadline}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Sidebar Content */}
+            <div className="space-y-6">
+              {/* Quick Actions */}
+              <div className="bg-card p-6 rounded-2xl border border-border/50">
+                <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
+                <div className="space-y-3">
+                  {[
+                    { icon: <FileText className="w-4 h-4" />, label: "Create Document", color: "bg-blue-500/10 text-blue-600" },
+                    { icon: <Calendar className="w-4 h-4" />, label: "Schedule Meeting", color: "bg-green-500/10 text-green-600" },
+                    { icon: <Users className="w-4 h-4" />, label: "Invite Team", color: "bg-purple-500/10 text-purple-600" },
+                    { icon: <BarChart3 className="w-4 h-4" />, label: "View Reports", color: "bg-orange-500/10 text-orange-600" }
+                  ].map((action) => (
+                    <button
+                      key={action.label}
+                      className="w-full flex items-center gap-3 p-3 hover:bg-accent rounded-lg transition-colors text-left"
+                    >
+                      <div className={cn("p-2 rounded-full", action.color)}>
+                        {action.icon}
+                      </div>
+                      <span className="font-medium">{action.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Recent Activity */}
+              <div className="bg-card p-6 rounded-2xl border border-border/50">
+                <h3 className="text-lg font-semibold mb-4">Recent Activity</h3>
+                <div className="space-y-4">
+                  {recentActivity.map((activity) => (
+                    <div key={activity.id} className="flex items-start gap-3 p-3 hover:bg-accent/30 rounded-xl transition-colors cursor-pointer">
+                      <div className="p-2 bg-primary/10 rounded-full flex-shrink-0">
+                        {getTypeIcon(activity.type)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-medium text-sm mb-1">{activity.title}</h4>
+                        <p className="text-xs text-muted-foreground mb-2">{activity.description}</p>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <Clock className="w-3 h-3" />
+                          <span>{activity.time}</span>
+                          <div className="w-5 h-5 bg-primary rounded-full flex items-center justify-center text-primary-foreground text-xs font-medium">
+                            {activity.user}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+          {showScrollToBottom && (
+            <button
+              onClick={scrollToBottom}
+              className="fixed bottom-8 right-8 w-12 h-12 bg-primary text-primary-foreground rounded-full flex items-center justify-center shadow-lg hover:bg-primary/90 transition-all animate-fade-in z-[51]"
+              style={{ animation: 'bounce 2s infinite' }}
+              title="Scroll to bottom"
+            >
+              <ArrowDown className="w-6 h-6" />
+            </button>
+          )}
+      </div>
+    )
+}
+```
+
+## File: src/components/SettingsPage.tsx
+```typescript
+import { SettingsContent } from './SettingsContent';
+import { useAutoAnimateTopBar } from '@/hooks/useAutoAnimateTopBar';
+
+export function SettingsPage() {
+  const { onScroll } = useAutoAnimateTopBar();
+
+  return (
+    <div
+      className="h-full overflow-y-auto p-6 lg:px-12 space-y-8"
+      onScroll={onScroll}
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
+          <p className="text-muted-foreground">
+            Customize your experience. Changes are saved automatically.
+          </p>
+        </div>
+      </div>
+
+      <SettingsContent />
+    </div>
+  )
+}
+```
+
 ## File: src/index.css
 ```css
 @import 'tailwindcss/base';
@@ -3373,19 +3378,21 @@ import { DashboardContent } from './DashboardContent'
 import { ToasterDemo } from './ToasterDemo'
 
 export const RightPane = forwardRef<HTMLDivElement>((_props, ref) => {
-  const { closeSidePane, setIsResizingRightPane, sidePaneContent, setActivePage } = useAppStore()
+  const { closeSidePane, setIsResizingRightPane, sidePaneContent, setActivePage } = useAppStore();
 
-  const isSettings = sidePaneContent === 'settings'
-  const isMain = sidePaneContent === 'main'
-  const isToaster = sidePaneContent === 'toaster'
+  const contentMap = {
+    main: { title: 'Dashboard', icon: LayoutDashboard, page: 'dashboard', content: <DashboardContent isInSidePane={true} /> },
+    settings: { title: 'Settings', icon: Settings, page: 'settings', content: <SettingsContent /> },
+    toaster: { title: 'Toaster Demo', icon: Component, page: 'toaster', content: <ToasterDemo isInSidePane={true} /> },
+    details: { title: 'Details Panel', icon: SlidersHorizontal, content: <p className="text-muted-foreground">This is the side pane. It can be used to display contextual information, forms, or actions related to the main content.</p> }
+  };
+
+  const currentContent = contentMap[sidePaneContent as keyof typeof contentMap] || contentMap.details;
+  const CurrentIcon = currentContent.icon;
 
   const handleMaximize = () => {
-    if (isMain) {
-      setActivePage('dashboard')
-    } else if (isSettings) {
-      setActivePage('settings')
-    } else if (isToaster) {
-      setActivePage('toaster')
+    if (currentContent.page) {
+      setActivePage(currentContent.page as ActivePage);
     }
     closeSidePane()
   }
@@ -3412,16 +3419,13 @@ export const RightPane = forwardRef<HTMLDivElement>((_props, ref) => {
       </div>
       <div className="flex items-center justify-between p-4 border-b border-border h-20 flex-shrink-0 pl-6">
         <div className="flex items-center gap-2">
-          {isMain && <LayoutDashboard className="w-5 h-5" />}
-          {isSettings && <Settings className="w-5 h-5" />}
-          {isToaster && <Component className="w-5 h-5" />}
-          {!isMain && !isSettings && !isToaster && <SlidersHorizontal className="w-5 h-5" />}
+          <CurrentIcon className="w-5 h-5" />
           <h2 className="text-lg font-semibold whitespace-nowrap">
-            {isMain ? 'Dashboard' : isSettings ? 'Settings' : isToaster ? 'Toaster Demo' : 'Details Panel'}
+            {currentContent.title}
           </h2>
         </div>
         
-        {(isMain || isSettings || isToaster) && (
+        {currentContent.page && (
           <button
             onClick={handleMaximize}
             className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors mr-2"
@@ -3431,16 +3435,8 @@ export const RightPane = forwardRef<HTMLDivElement>((_props, ref) => {
           </button>
         )}
       </div>
-      <div className="flex-1 overflow-y-auto">
-        {isMain ? (
-          <div className="px-8 py-6 h-full"><DashboardContent isInSidePane={true} /></div>
-        ) : isSettings ? (
-          <div className="px-8 py-6"><SettingsContent /></div>
-        ) : isToaster ? (
-          <div className="px-8 py-6 h-full"><ToasterDemo isInSidePane={true} /></div>
-        ) : (
-          <div className="px-8 py-6"><p className="text-muted-foreground">This is the side pane. It can be used to display contextual information, forms, or actions related to the main content.</p></div>
-        )}
+      <div className="flex-1 overflow-y-auto px-8 py-6">
+        {currentContent.content}
       </div>
     </aside>
   )
@@ -3798,6 +3794,26 @@ interface MainContentProps {
   onToggleFullscreen: () => void
 }
 
+const ContentInSidePanePlaceholder = ({ icon: Icon, title, pageName, onBringBack }: { icon: React.ElementType, title: string, pageName: string, onBringBack: () => void }) => {
+  const capitalizedPageName = pageName.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+  return (
+    <div className="flex-1 flex flex-col items-center justify-center text-center p-4">
+      <Icon className="w-16 h-16 text-muted-foreground/50 mb-4" />
+      <h2 className="text-2xl font-bold">{title}</h2>
+      <p className="text-muted-foreground mt-2 max-w-md">
+        You've moved {pageName} to the side pane. You can bring it back or continue to navigate.
+      </p>
+      <button
+        onClick={onBringBack}
+        className="mt-6 bg-primary text-primary-foreground px-4 py-2 rounded-full hover:bg-primary/90 transition-colors flex items-center gap-2 h-10"
+      >
+        <ChevronsLeftRight className="w-5 h-5" />
+        <span>Bring {capitalizedPageName} Back</span>
+      </button>
+    </div>
+  );
+};
+
 export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
   ({ bodyState, onToggleFullscreen }, ref) => {
     const { sidePaneContent, openSidePane, activePage, setActivePage } = useAppStore()
@@ -3809,71 +3825,41 @@ export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
     const renderContent = () => {
       if (activePage === 'dashboard') {
         if (isDashboardInSidePane) {
-          return (
-            <div className="flex-1 flex flex-col items-center justify-center text-center">
-              <LayoutDashboard className="w-16 h-16 text-muted-foreground/50 mb-4" />
-              <h2 className="text-2xl font-bold">Dashboard is in Side Pane</h2>
-              <p className="text-muted-foreground mt-2 max-w-md">
-                You've moved the dashboard to the side pane. You can bring it back or continue to navigate.
-              </p>
-              <button
-                onClick={() => openSidePane('main')} // This will close it
-                className="mt-6 bg-primary text-primary-foreground px-4 py-2 rounded-full hover:bg-primary/90 transition-colors flex items-center gap-2 h-10"
-              >
-                <ChevronsLeftRight className="w-5 h-5" />
-                <span>Bring Dashboard Back</span>
-              </button>
-            </div>
-          )
+          return <ContentInSidePanePlaceholder 
+            icon={LayoutDashboard} 
+            title="Dashboard is in Side Pane" 
+            pageName="dashboard"
+            onBringBack={() => openSidePane('main')} 
+          />;
         }
         return <DashboardContent />
       }
 
       if (activePage === 'settings') {
         if (isSettingsInSidePane) {
-          return (
-            <div className="flex-1 flex flex-col items-center justify-center text-center">
-              <Settings className="w-16 h-16 text-muted-foreground/50 mb-4" />
-              <h2 className="text-2xl font-bold">Settings are in Side Pane</h2>
-              <p className="text-muted-foreground mt-2 max-w-md">
-                You've moved settings to the side pane. You can bring them back to the main view.
-              </p>
-              <button
-                onClick={() => {
-                  openSidePane('settings'); // This will close it
-                  setActivePage('settings');
-                }}
-                className="mt-6 bg-primary text-primary-foreground px-4 py-2 rounded-full hover:bg-primary/90 transition-colors flex items-center gap-2 h-10"
-              >
-                <ChevronsLeftRight className="w-5 h-5" />
-                <span>Bring Settings Back</span>
-              </button>
-            </div>
-          )
+          return <ContentInSidePanePlaceholder 
+            icon={Settings} 
+            title="Settings are in Side Pane" 
+            pageName="settings"
+            onBringBack={() => {
+              openSidePane('settings'); 
+              setActivePage('settings');
+            }}
+          />;
         }
         return <SettingsPage />
       }
       if (activePage === 'toaster') {
         if (isToasterInSidePane) {
-          return (
-            <div className="flex-1 flex flex-col items-center justify-center text-center">
-              <Component className="w-16 h-16 text-muted-foreground/50 mb-4" />
-              <h2 className="text-2xl font-bold">Toaster Demo is in Side Pane</h2>
-              <p className="text-muted-foreground mt-2 max-w-md">
-                You've moved the toaster demo to the side pane. You can bring it back to the main view.
-              </p>
-              <button
-                onClick={() => {
-                  openSidePane('toaster'); // This will close it
-                  setActivePage('toaster');
-                }}
-                className="mt-6 bg-primary text-primary-foreground px-4 py-2 rounded-full hover:bg-primary/90 transition-colors flex items-center gap-2 h-10"
-              >
-                <ChevronsLeftRight className="w-5 h-5" />
-                <span>Bring Toaster Demo Back</span>
-              </button>
-            </div>
-          )
+          return <ContentInSidePanePlaceholder
+            icon={Component}
+            title="Toaster Demo is in Side Pane"
+            pageName="toaster demo"
+            onBringBack={() => {
+              openSidePane('toaster');
+              setActivePage('toaster');
+            }}
+          />;
         }
         return <ToasterDemo />
       }
@@ -3927,7 +3913,6 @@ import {
   Star,
   Trash2,
   FolderOpen,
-  Calendar,
   Mail,
   Bookmark,
   Download,
@@ -3935,7 +3920,6 @@ import {
   Plus
 } from 'lucide-react';
 import { useAppStore } from '@/store/appStore';
-import { BODY_STATES } from '@/lib/utils';
 import {
   Workspaces,
   WorkspaceTrigger,
@@ -3978,63 +3962,6 @@ const mockWorkspaces: MyWorkspace[] = [
   { id: 'ws3', name: 'Stark Industries', logo: 'https://avatar.vercel.sh/stark.png', plan: 'Enterprise' },
 ];
 
-interface SidebarProps {
-  onMouseEnter?: () => void;
-  onMouseLeave?: () => void;
-}
-
-// Helper to determine if a menu item should be active
-const useIsActive = (pageName: string) => {
-  const { activePage, bodyState, sidePaneContent } = useAppStore();
-  const lowerCasePageName = pageName.toLowerCase();
-
-  switch (lowerCasePageName) {
-    case 'dashboard':
-      return activePage === 'dashboard';
-    case 'settings':
-      return activePage === 'settings' || (bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === 'settings');
-    case 'toaster':
-      return activePage === 'toaster' || (bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === 'toaster');
-    default:
-      return false;
-  }
-};
-
-// Helper to handle navigation clicks
-const useHandleClick = (pageName: string) => {
-  const { setActivePage, openSidePane, activePage: currentPage, bodyState, sidePaneContent } = useAppStore();
-  const lowerCasePageName = pageName.toLowerCase();
-
-  return () => {
-    switch (lowerCasePageName) {
-      case 'dashboard':
-        setActivePage('dashboard');
-        break;
-      case 'settings': {
-        const isSettingsInSidePane = bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === 'settings';
-        if (currentPage === 'settings' && !isSettingsInSidePane) {
-          openSidePane('settings');
-          setActivePage('dashboard');
-        } else {
-          openSidePane('settings');
-        }
-        break;
-      }
-      case 'toaster': {
-        const isToasterInSidePane = bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === 'toaster';
-        if (currentPage === 'toaster' && !isToasterInSidePane) {
-          openSidePane('toaster');
-          setActivePage('dashboard');
-        } else {
-          openSidePane('toaster');
-        }
-        break;
-      }
-      // Handle other navigation items if routing is implemented
-    }
-  };
-};
-
 const SidebarWorkspaceTrigger = () => {
   const { isCollapsed, compactMode } = useSidebar();
 
@@ -4049,6 +3976,11 @@ const SidebarWorkspaceTrigger = () => {
     />
   );
 };
+
+interface SidebarProps {
+  onMouseEnter?: () => void;
+  onMouseLeave?: () => void;
+}
 
 export const EnhancedSidebar = React.forwardRef<HTMLDivElement, SidebarProps>(
   ({ onMouseEnter, onMouseLeave }, ref) => {
@@ -4072,7 +4004,7 @@ export const EnhancedSidebar = React.forwardRef<HTMLDivElement, SidebarProps>(
 
           <SidebarBody>
             <SidebarSection title="Main">
-              <AppMenuItem icon={Home} label="Dashboard" />
+              <AppMenuItem icon={Home} label="Dashboard" page="dashboard" />
               <AppMenuItem icon={Search} label="Search" />
               <AppMenuItem icon={Bell} label="Notifications" badge={3} />
             </SidebarSection>
@@ -4084,7 +4016,6 @@ export const EnhancedSidebar = React.forwardRef<HTMLDivElement, SidebarProps>(
                 <AppMenuItem icon={Trash2} label="Trash" isSubItem />
               </AppMenuItem>
               <AppMenuItem icon={FolderOpen} label="Projects" hasActions />
-              <AppMenuItem icon={Calendar} label="Calendar" />
               <AppMenuItem icon={Mail} label="Messages" badge={12} />
             </SidebarSection>
             
@@ -4095,14 +4026,14 @@ export const EnhancedSidebar = React.forwardRef<HTMLDivElement, SidebarProps>(
             </SidebarSection>
 
             <SidebarSection title="Components" collapsible defaultExpanded>
-              <AppMenuItem icon={Component} label="Toaster" />
+              <AppMenuItem icon={Component} label="Toaster" page="toaster" />
             </SidebarSection>
           </SidebarBody>
 
           <SidebarFooter>
             <SidebarSection>
               <AppMenuItem icon={User} label="Profile" />
-              <AppMenuItem icon={Settings} label="Settings" />
+              <AppMenuItem icon={Settings} label="Settings" page="settings" />
               <AppMenuItem icon={HelpCircle} label="Help" />
             </SidebarSection>
 
@@ -4138,18 +4069,19 @@ interface AppMenuItemProps {
   hasActions?: boolean;
   children?: React.ReactNode;
   isSubItem?: boolean;
+  page?: 'dashboard' | 'settings' | 'toaster';
 }
 
-const AppMenuItem: React.FC<AppMenuItemProps> = ({ icon: Icon, label, badge, hasActions, children, isSubItem = false }) => {
-  const isActive = useIsActive(label);
-  const handleClick = useHandleClick(label);
+const AppMenuItem: React.FC<AppMenuItemProps> = ({ icon: Icon, label, badge, hasActions, children, isSubItem = false, page }) => {
+  const { handleNavigation, isPageActive } = useAppStore();
+  const isActive = page ? isPageActive(page) : false;
   const { compactMode } = useAppStore();
   const { isCollapsed } = useSidebar();
 
   return (
     <div className={isSubItem ? (compactMode ? 'ml-4' : 'ml-6') : ''}>
       <SidebarMenuItem>
-        <SidebarMenuButton onClick={handleClick} isActive={isActive}>
+        <SidebarMenuButton onClick={() => page && handleNavigation(page)} isActive={isActive}>
           <SidebarIcon>
             <Icon className={isSubItem ? "w-3 h-3" : "w-4 h-4"}/>
           </SidebarIcon>
@@ -4246,19 +4178,11 @@ export function TopBar({
     }
   }
 
-  const handleDashboardMoveToSidePane = () => {
-    openSidePane('main');
+  const handleMoveToSidePane = () => {
+    const mapping = { dashboard: 'main', settings: 'settings', toaster: 'toaster' } as const;
+    openSidePane(mapping[activePage]);
+    if (activePage !== 'dashboard') setActivePage('dashboard');
   };
-
-  const handleSettingsMoveToSidePane = () => {
-    openSidePane('settings');
-    setActivePage('dashboard');
-  }
-
-  const handleToasterMoveToSidePane = () => {
-    openSidePane('toaster');
-    setActivePage('dashboard');
-  }
 
   return (
     <div className={cn(
@@ -4322,14 +4246,8 @@ export function TopBar({
         
         {/* Page-specific: Move to side pane */}
         <div className={cn('flex items-center', isSearchFocused && activePage === 'dashboard' ? 'hidden md:flex' : '')}>
-          {activePage === 'dashboard' && (
-            <button onClick={handleDashboardMoveToSidePane} className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors" title="Move to Side Pane"><PanelRight className="w-5 h-5" /></button>
-          )}
-          {activePage === 'settings' && (
-            <button onClick={handleSettingsMoveToSidePane} className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors" title="Move to Side Pane"><PanelRight className="w-5 h-5" /></button>
-          )}
-          {activePage === 'toaster' && (
-            <button onClick={handleToasterMoveToSidePane} className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors" title="Move to Side Pane"><PanelRight className="w-5 h-5" /></button>
+          {['dashboard', 'settings', 'toaster'].includes(activePage) && (
+            <button onClick={handleMoveToSidePane} className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors" title="Move to Side Pane"><PanelRight className="w-5 h-5" /></button>
           )}
         </div>
 
@@ -4472,6 +4390,8 @@ interface AppState {
   openSidePane: (content: 'details' | 'settings' | 'main' | 'toaster') => void
   closeSidePane: () => void
   resetToDefaults: () => void
+  handleNavigation: (page: ActivePage) => void
+  isPageActive: (page: ActivePage) => boolean
 }
 
 const defaultState = {
@@ -4565,6 +4485,18 @@ export const useAppStore = create<AppState>()(
         } else {
           document.documentElement.classList.remove('dark')
         }
+      },
+      handleNavigation: (page) => {
+        set({ activePage: page });
+      },
+      isPageActive: (page) => {
+        const { activePage, bodyState, sidePaneContent } = get();
+        const pageToSidePaneContent = {
+          dashboard: 'main',
+          settings: 'settings',
+          toaster: 'toaster',
+        };
+        return activePage === page || (bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === pageToSidePaneContent[page]);
       },
     }),
     {

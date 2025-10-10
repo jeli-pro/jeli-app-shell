@@ -20,6 +20,8 @@ import { DemoContent } from './DemoContent';
 import { useAppStore } from '@/store/appStore';
 import { BODY_STATES } from '@/lib/utils';
 import { useAutoAnimateTopBar } from '@/hooks/useAutoAnimateTopBar';
+import { PageHeader } from './PageHeader';
+import { Card } from '@/components/ui/card';
 
 interface StatsCard {
   title: string
@@ -190,21 +192,17 @@ export function DashboardContent({ isInSidePane = false }: DashboardContentProps
           onScroll={handleScroll}
         >
           {/* Header */}
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-              <p className="text-muted-foreground">
-                Welcome to the amazing app shell demo! Explore all the features and customization options.
-              </p>
-            </div>
-          </div>
+          <PageHeader
+            title="Dashboard"
+            description="Welcome to the amazing app shell demo! Explore all the features and customization options."
+          />
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {statsCards.map((stat, index) => (
-                <div
+                <Card
                 key={stat.title}
                 ref={el => cardsRef.current[index] = el}
-                className="bg-card p-6 rounded-2xl border border-border/50 hover:border-primary/30 transition-all duration-300 group cursor-pointer"
+                className="p-6 border-border/50 hover:border-primary/30 transition-all duration-300 group cursor-pointer"
               >
                 <div className="flex items-center justify-between">
                   <div className="p-3 bg-primary/10 rounded-full group-hover:bg-primary/20 transition-colors">
@@ -221,7 +219,7 @@ export function DashboardContent({ isInSidePane = false }: DashboardContentProps
                   <h3 className="text-2xl font-bold">{stat.value}</h3>
                   <p className="text-sm text-muted-foreground mt-1">{stat.title}</p>
                 </div>
-              </div>
+              </Card>
               ))}
             </div>
 
@@ -233,7 +231,7 @@ export function DashboardContent({ isInSidePane = false }: DashboardContentProps
             {/* Chart Area */}
             <div className="lg:col-span-2 space-y-6">
               {/* Analytics Chart */}
-              <div className="bg-card p-6 rounded-2xl border border-border/50">
+              <Card className="p-6 border-border/50">
                 <div className="flex items-center justify-between mb-6">
                   <h3 className="text-lg font-semibold">Analytics Overview</h3>
                   <button className="h-8 w-8 flex items-center justify-center hover:bg-accent rounded-full transition-colors">
@@ -248,10 +246,10 @@ export function DashboardContent({ isInSidePane = false }: DashboardContentProps
                     <p className="text-muted-foreground">Chart visualization would go here</p>
                   </div>
                 </div>
-              </div>
+              </Card>
 
               {/* Recent Projects */}
-              <div className="bg-card p-6 rounded-2xl border border-border/50">
+              <Card className="p-6 border-border/50">
                 <div className="flex items-center justify-between mb-6">
                   <h3 className="text-lg font-semibold">Recent Projects</h3>
                   <button className="text-primary hover:text-primary/80 text-sm font-medium flex items-center gap-1">
@@ -284,13 +282,13 @@ export function DashboardContent({ isInSidePane = false }: DashboardContentProps
                     </div>
                   ))}
                 </div>
-              </div>
+              </Card>
             </div>
 
             {/* Sidebar Content */}
             <div className="space-y-6">
               {/* Quick Actions */}
-              <div className="bg-card p-6 rounded-2xl border border-border/50">
+              <Card className="p-6 border-border/50">
                 <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
                 <div className="space-y-3">
                   {[
@@ -310,10 +308,10 @@ export function DashboardContent({ isInSidePane = false }: DashboardContentProps
                     </button>
                   ))}
                 </div>
-              </div>
+              </Card>
 
               {/* Recent Activity */}
-              <div className="bg-card p-6 rounded-2xl border border-border/50">
+              <Card className="p-6 border-border/50">
                 <h3 className="text-lg font-semibold mb-4">Recent Activity</h3>
                 <div className="space-y-4">
                   {recentActivity.map((activity) => (
@@ -335,7 +333,7 @@ export function DashboardContent({ isInSidePane = false }: DashboardContentProps
                     </div>
                   ))}
                 </div>
-              </div>
+              </Card>
             </div>
           </div>
           {showScrollToBottom && (

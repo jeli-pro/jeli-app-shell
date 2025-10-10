@@ -1,5 +1,6 @@
 import { SettingsContent } from './SettingsContent';
 import { useAutoAnimateTopBar } from '@/hooks/useAutoAnimateTopBar';
+import { PageHeader } from './PageHeader';
 
 export function SettingsPage() {
   const { onScroll } = useAutoAnimateTopBar();
@@ -10,15 +11,10 @@ export function SettingsPage() {
       onScroll={onScroll}
     >
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
-          <p className="text-muted-foreground">
-            Customize your experience. Changes are saved automatically.
-          </p>
-        </div>
-      </div>
-
+      <PageHeader
+        title="Settings"
+        description="Customize your experience. Changes are saved automatically."
+      />
       <SettingsContent />
     </div>
   )
