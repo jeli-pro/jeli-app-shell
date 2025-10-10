@@ -186,11 +186,13 @@ function WorkspaceContent({
 	title = 'Workspaces',
 	searchable = false,
 	onSearch,
-	align,
+	align = 'start',
+	useTriggerWidth = true,
 	...props
 }: WorkspaceContentProps) {
 	const {
 		workspaces,
+		open,
 		selectedWorkspace,
 		onWorkspaceSelect,
 		getWorkspaceId,
@@ -239,7 +241,8 @@ function WorkspaceContent({
 	return (
 		<PopoverContent
 			className={cn('p-0', className)}
-			align={align || 'start'}
+			align={align}
+			useTriggerWidth={useTriggerWidth}
 			{...props}
 		>
 			<div className="border-b px-4 py-3">

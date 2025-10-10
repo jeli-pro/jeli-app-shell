@@ -1,0 +1,610 @@
+uuid: 181f3358-7e44-4e2b-8a58-0051187d7b38
+projectId: amazing-app-shell
+createdAt: '2025-10-10T22:13:29.030Z'
+gitCommitMsg: >-
+  feat(ui): enhance command palette styling and add shortcuts
+
+  Improved the command palette's visual appearance and usability.
+
+  - Increased the dialog width for better readability on larger screens. -
+  Refined spacing, padding, and sizing of the input and list elements to align
+  with the global UI theme. - Added keyboard shortcut hints to command items for
+  improved accessibility and user efficiency.
+promptSummary: >-
+  I want to improve the styling of the command palette by making it larger,
+  adjusting spacing, and adding keyboard shortcut hints.
+reasoning:
+  - >-
+    Of course. To enhance the command palette, I'll implement a few refinements
+    to improve its appearance and usability.
+  - >-
+    1.  **Enlarge the Dialog**: I'll increase the maximum width of the dialog
+    box to give the content more breathing room, making it feel less
+    constrained, especially on larger screens.
+  - '2.  **Improve Spacing and Sizing**:'
+  - >-
+    *   The search input area will be made taller and given more horizontal
+    padding for a more prominent and modern look.
+  - >-
+    *   I'll increase the overall height of the command list, allowing more
+    items to be visible at once.
+  - >-
+    *   I will adjust the internal padding to create a more consistent and
+    spacious layout for the command groups and items.
+  - >-
+    3.  **Add Keyboard Shortcuts**: To improve accessibility and efficiency for
+    power users, I will add visual indicators for keyboard shortcuts next to the
+    relevant commands.
+  - >-
+    These changes will result in a more polished, user-friendly, and visually
+    consistent command palette.
+  - First, I'll make the dialog box for the command palette wider.
+  - >-
+    Next, I'll adjust the spacing and sizing within the command palette
+    component itself.
+  - Finally, I'll add the keyboard shortcut hints to the `CommandPalette`.
+operations:
+  - type: write
+    path: src/components/ui/dialog.tsx
+    content: >+
+      --- src/components/ui/dialog.tsx
+
+      +++ src/components/ui/dialog.tsx
+
+      @@ -34,7 +34,7 @@
+           <DialogPrimitive.Content
+             ref={ref}
+             className={cn(
+      -        "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg
+      translate-x-[-50%] translate-y-[-50%] gap-4 border bg-card p-6 shadow-lg
+      duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out
+      data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0
+      data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95
+      data-[state=closed]:slide-out-to-left-1/2
+      data-[state=closed]:slide-out-to-top-[48%]
+      data-[state=open]:slide-in-from-left-1/2
+      data-[state=open]:slide-in-from-top-[48%]",
+
+      +        "fixed left-[50%] top-[50%] z-50 grid w-full max-w-xl
+      translate-x-[-50%] translate-y-[-50%] gap-4 border bg-card p-6 shadow-lg
+      duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out
+      data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0
+      data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95
+      data-[state=closed]:slide-out-to-left-1/2
+      data-[state=closed]:slide-out-to-top-[48%]
+      data-[state=open]:slide-in-from-left-1/2
+      data-[state=open]:slide-in-from-top-[48%]",
+               "sm:rounded-2xl",
+               className
+             )}
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/components/ui/command.tsx
+    content: >+
+      --- src/components/ui/command.tsx
+
+      +++ src/components/ui/command.tsx
+
+      @@ -25,8 +25,8 @@
+       const CommandDialog = ({ children, ...props }: CommandDialogProps) => {
+         return (
+           <Dialog {...props}>
+      -      <DialogContent className="overflow-hidden p-0">
+
+      -        <Command className="[&_[cmdk-group-heading]]:px-2
+      [&_[cmdk-group-heading]]:font-medium
+      [&_[cmdk-group-heading]]:text-muted-foreground
+      [&_[cmdk-group]:not([hidden])_~[cmdk-group]]:pt-0 [&_[cmdk-group]]:px-2
+      [&_[cmdk-input-wrapper]_svg]:h-5 [&_[cmdk-input-wrapper]_svg]:w-5
+      [&_[cmdk-item]_svg]:h-5 [&_[cmdk-item]_svg]:w-5">
+
+      +      <DialogContent className="overflow-hidden p-0">
+
+      +        <Command className="[&_[cmdk-group-heading]]:px-2
+      [&_[cmdk-group-heading]]:font-medium
+      [&_[cmdk-group-heading]]:text-muted-foreground
+      [&_[cmdk-group]:not([hidden])_~[cmdk-group]]:pt-0
+      [&_[cmdk-input-wrapper]_svg]:h-5 [&_[cmdk-input-wrapper]_svg]:w-5
+      [&_[cmdk-item]_svg]:h-5 [&_[cmdk-item]_svg]:w-5">
+                 {children}
+               </Command>
+             </DialogContent>
+      @@ -38,12 +38,12 @@
+         React.ElementRef<typeof CommandPrimitive.Input>,
+         React.ComponentPropsWithoutRef<typeof CommandPrimitive.Input>
+       >(({ className, ...props }, ref) => (
+      -  <div className="flex items-center border-b px-3" cmdk-input-wrapper="">
+
+      +  <div className="flex h-14 items-center border-b px-4"
+      cmdk-input-wrapper="">
+           <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+           <CommandPrimitive.Input
+             ref={ref}
+             className={cn(
+      -        "flex h-11 w-full rounded-md bg-transparent py-3 text-sm
+      outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed
+      disabled:opacity-50",
+
+      +        "flex h-full w-full rounded-md bg-transparent py-3 text-sm
+      outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed
+      disabled:opacity-50",
+               className
+             )}
+             {...props}
+      @@ -58,7 +58,7 @@
+       >(({ className, ...props }, ref) => (
+         <CommandPrimitive.List
+           ref={ref}
+      -    className={cn("max-h-[300px] overflow-y-auto overflow-x-hidden",
+      className)}
+
+      +    className={cn("max-h-[450px] overflow-y-auto overflow-x-hidden p-2",
+      className)}
+           {...props}
+         />
+       ))
+      @@ -84,7 +84,7 @@
+         <CommandPrimitive.Group
+           ref={ref}
+           className={cn(
+      -      "overflow-hidden p-1 text-foreground [&_[cmdk-group-heading]]:px-2
+      [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-xs
+      [&_[cmdk-group-heading]]:font-medium
+      [&_[cmdk-group-heading]]:text-muted-foreground",
+
+      +      "overflow-hidden text-foreground [&_[cmdk-group-heading]]:px-2
+      [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-xs
+      [&_[cmdk-group-heading]]:font-medium
+      [&_[cmdk-group-heading]]:text-muted-foreground",
+             className
+           )}
+           {...props}
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/components/CommandPalette.tsx
+    content: |+
+      --- src/components/CommandPalette.tsx
+      +++ src/components/CommandPalette.tsx
+      @@ -7,6 +7,7 @@
+         CommandItem,
+         CommandList,
+         CommandSeparator,
+      +  CommandShortcut,
+       } from '@/components/ui/command'
+       import { useAppStore } from '@/store/appStore'
+       import { Home, Settings, Moon, Sun, Monitor, Smartphone, PanelRight, Maximize, Component } from 'lucide-react'
+      @@ -39,34 +40,43 @@
+               <CommandEmpty>No results found.</CommandEmpty>
+               <CommandGroup heading="Navigation">
+                 <CommandItem onSelect={() => runCommand(() => setActivePage('dashboard'))}>
+                   <Home className="mr-2 h-4 w-4" />
+                   <span>Go to Dashboard</span>
+      +            <CommandShortcut>G D</CommandShortcut>
+                 </CommandItem>
+                 <CommandItem onSelect={() => runCommand(() => setActivePage('settings'))}>
+                   <Settings className="mr-2 h-4 w-4" />
+                   <span>Go to Settings</span>
+      +            <CommandShortcut>G S</CommandShortcut>
+                 </CommandItem>
+                 <CommandItem onSelect={() => runCommand(() => setActivePage('toaster'))}>
+                   <Component className="mr-2 h-4 w-4" />
+                   <span>Go to Toaster Demo</span>
+      +            <CommandShortcut>G T</CommandShortcut>
+                 </CommandItem>
+               </CommandGroup>
+               <CommandSeparator />
+               <CommandGroup heading="Actions">
+                 <CommandItem onSelect={() => runCommand(toggleDarkMode)}>
+                   {isDarkMode ? <Sun className="mr-2 h-4 w-4" /> : <Moon className="mr-2 h-4 w-4" />}
+                   <span>Toggle Theme</span>
+      +            <CommandShortcut>⌘T</CommandShortcut>
+                 </CommandItem>
+                 <CommandItem onSelect={() => runCommand(toggleFullscreen)}>
+                   <Maximize className="mr-2 h-4 w-4" />
+                   <span>Toggle Fullscreen</span>
+      +            <CommandShortcut>⌘F</CommandShortcut>
+                 </CommandItem>
+                 <CommandItem onSelect={() => runCommand(() => openSidePane('settings'))}>
+                   <PanelRight className="mr-2 h-4 w-4" />
+                   <span>Open Settings in Side Pane</span>
+      +            <CommandShortcut>⌥S</CommandShortcut>
+                 </CommandItem>
+               </CommandGroup>
+               <CommandSeparator />
+               <CommandGroup heading="Preferences">
+                 <CommandItem onSelect={() => runCommand(() => setCompactMode(true))}>
+                   <Smartphone className="mr-2 h-4 w-4" />
+                   <span>Enable Compact Mode</span>
+      +            <CommandShortcut>⌘C</CommandShortcut>
+                 </CommandItem>
+                 <CommandItem onSelect={() => runCommand(() => setCompactMode(false))}>
+                   <Monitor className="mr-2 h-4 w-4" />
+                   <span>Disable Compact Mode</span>
+      +            <CommandShortcut>⇧⌘C</CommandShortcut>
+                 </CommandItem>
+               </CommandGroup>
+             </CommandList>
+
+    patchStrategy: standard-diff
+snapshot:
+  src/components/CommandPalette.tsx: >-
+    import * as React from 'react'
+
+    import {
+      CommandDialog,
+      CommandEmpty,
+      CommandGroup,
+      CommandInput,
+      CommandItem,
+      CommandList,
+      CommandSeparator,
+    } from '@/components/ui/command'
+
+    import { useAppStore } from '@/store/appStore'
+
+    import { Home, Settings, Moon, Sun, Monitor, Smartphone, PanelRight,
+    Maximize, Component } from 'lucide-react'
+
+
+    export function CommandPalette() {
+      const {
+        isCommandPaletteOpen,
+        setCommandPaletteOpen,
+        setActivePage,
+        toggleDarkMode,
+        isDarkMode,
+        setCompactMode,
+        toggleFullscreen,
+        openSidePane,
+      } = useAppStore()
+
+      React.useEffect(() => {
+        const down = (e: KeyboardEvent) => {
+          if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
+            e.preventDefault()
+            setCommandPaletteOpen(!isCommandPaletteOpen)
+          }
+        }
+        document.addEventListener('keydown', down)
+        return () => document.removeEventListener('keydown', down)
+      }, [isCommandPaletteOpen, setCommandPaletteOpen])
+      
+      const runCommand = (command: () => void) => {
+        setCommandPaletteOpen(false)
+        command()
+      }
+
+      return (
+        <CommandDialog open={isCommandPaletteOpen} onOpenChange={setCommandPaletteOpen}>
+          <CommandInput placeholder="Type a command or search..." />
+          <CommandList>
+            <CommandEmpty>No results found.</CommandEmpty>
+            <CommandGroup heading="Navigation">
+              <CommandItem onSelect={() => runCommand(() => setActivePage('dashboard'))}>
+                <Home className="mr-2 h-4 w-4" />
+                <span>Go to Dashboard</span>
+              </CommandItem>
+              <CommandItem onSelect={() => runCommand(() => setActivePage('settings'))}>
+                <Settings className="mr-2 h-4 w-4" />
+                <span>Go to Settings</span>
+              </CommandItem>
+              <CommandItem onSelect={() => runCommand(() => setActivePage('toaster'))}>
+                <Component className="mr-2 h-4 w-4" />
+                <span>Go to Toaster Demo</span>
+              </CommandItem>
+            </CommandGroup>
+            <CommandSeparator />
+            <CommandGroup heading="Actions">
+              <CommandItem onSelect={() => runCommand(toggleDarkMode)}>
+                {isDarkMode ? <Sun className="mr-2 h-4 w-4" /> : <Moon className="mr-2 h-4 w-4" />}
+                <span>Toggle Theme</span>
+              </CommandItem>
+              <CommandItem onSelect={() => runCommand(toggleFullscreen)}>
+                <Maximize className="mr-2 h-4 w-4" />
+                <span>Toggle Fullscreen</span>
+              </CommandItem>
+              <CommandItem onSelect={() => runCommand(() => openSidePane('settings'))}>
+                <PanelRight className="mr-2 h-4 w-4" />
+                <span>Open Settings in Side Pane</span>
+              </CommandItem>
+            </CommandGroup>
+            <CommandSeparator />
+            <CommandGroup heading="Preferences">
+              <CommandItem onSelect={() => runCommand(() => setCompactMode(true))}>
+                <Smartphone className="mr-2 h-4 w-4" />
+                <span>Enable Compact Mode</span>
+              </CommandItem>
+              <CommandItem onSelect={() => runCommand(() => setCompactMode(false))}>
+                <Monitor className="mr-2 h-4 w-4" />
+                <span>Disable Compact Mode</span>
+              </CommandItem>
+            </CommandGroup>
+          </CommandList>
+        </CommandDialog>
+      )
+    }
+  src/components/ui/command.tsx: |-
+    import * as React from "react"
+    import { type DialogProps } from "@radix-ui/react-dialog"
+    import { Command as CommandPrimitive } from "cmdk"
+    import { Search } from "lucide-react"
+
+    import { cn } from "@/lib/utils"
+    import { Dialog, DialogContent } from "@/components/ui/dialog"
+
+    const Command = React.forwardRef<
+      React.ElementRef<typeof CommandPrimitive>,
+      React.ComponentPropsWithoutRef<typeof CommandPrimitive>
+    >(({ className, ...props }, ref) => (
+      <CommandPrimitive
+        ref={ref}
+        className={cn(
+          "flex h-full w-full flex-col overflow-hidden bg-popover text-popover-foreground",
+          className
+        )}
+        {...props}
+      />
+    ))
+    Command.displayName = CommandPrimitive.displayName
+
+    interface CommandDialogProps extends DialogProps {}
+
+    const CommandDialog = ({ children, ...props }: CommandDialogProps) => {
+      return (
+        <Dialog {...props}>
+          <DialogContent className="overflow-hidden p-0">
+            <Command className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group]:not([hidden])_~[cmdk-group]]:pt-0 [&_[cmdk-group]]:px-2 [&_[cmdk-input-wrapper]_svg]:h-5 [&_[cmdk-input-wrapper]_svg]:w-5 [&_[cmdk-item]_svg]:h-5 [&_[cmdk-item]_svg]:w-5">
+              {children}
+            </Command>
+          </DialogContent>
+        </Dialog>
+      )
+    }
+
+    const CommandInput = React.forwardRef<
+      React.ElementRef<typeof CommandPrimitive.Input>,
+      React.ComponentPropsWithoutRef<typeof CommandPrimitive.Input>
+    >(({ className, ...props }, ref) => (
+      <div className="flex items-center border-b px-3" cmdk-input-wrapper="">
+        <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+        <CommandPrimitive.Input
+          ref={ref}
+          className={cn(
+            "flex h-11 w-full rounded-md bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50",
+            className
+          )}
+          {...props}
+        />
+      </div>
+    ))
+
+    CommandInput.displayName = CommandPrimitive.Input.displayName
+
+    const CommandList = React.forwardRef<
+      React.ElementRef<typeof CommandPrimitive.List>,
+      React.ComponentPropsWithoutRef<typeof CommandPrimitive.List>
+    >(({ className, ...props }, ref) => (
+      <CommandPrimitive.List
+        ref={ref}
+        className={cn("max-h-[300px] overflow-y-auto overflow-x-hidden", className)}
+        {...props}
+      />
+    ))
+
+    CommandList.displayName = CommandPrimitive.List.displayName
+
+    const CommandEmpty = React.forwardRef<
+      React.ElementRef<typeof CommandPrimitive.Empty>,
+      React.ComponentPropsWithoutRef<typeof CommandPrimitive.Empty>
+    >((props, ref) => (
+      <CommandPrimitive.Empty
+        ref={ref}
+        className="py-6 text-center text-sm"
+        {...props}
+      />
+    ))
+
+    CommandEmpty.displayName = CommandPrimitive.Empty.displayName
+
+    const CommandGroup = React.forwardRef<
+      React.ElementRef<typeof CommandPrimitive.Group>,
+      React.ComponentPropsWithoutRef<typeof CommandPrimitive.Group>
+    >(({ className, ...props }, ref) => (
+      <CommandPrimitive.Group
+        ref={ref}
+        className={cn(
+          "overflow-hidden p-1 text-foreground [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground",
+          className
+        )}
+        {...props}
+      />
+    ))
+
+    CommandGroup.displayName = CommandPrimitive.Group.displayName
+
+    const CommandSeparator = React.forwardRef<
+      React.ElementRef<typeof CommandPrimitive.Separator>,
+      React.ComponentPropsWithoutRef<typeof CommandPrimitive.Separator>
+    >(({ className, ...props }, ref) => (
+      <CommandPrimitive.Separator
+        ref={ref}
+        className={cn("-mx-1 h-px bg-border", className)}
+        {...props}
+      />
+    ))
+    CommandSeparator.displayName = CommandPrimitive.Separator.displayName
+
+    const CommandItem = React.forwardRef<
+      React.ElementRef<typeof CommandPrimitive.Item>,
+      React.ComponentPropsWithoutRef<typeof CommandPrimitive.Item>
+    >(({ className, ...props }, ref) => (
+      <CommandPrimitive.Item
+        ref={ref}
+        className={cn(
+          "relative flex cursor-default select-none items-center rounded-lg px-4 py-2.5 text-sm outline-none aria-selected:bg-accent aria-selected:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+          className
+        )}
+        {...props}
+      />
+    ))
+
+    CommandItem.displayName = CommandPrimitive.Item.displayName
+
+    const CommandShortcut = ({
+      className,
+      ...props
+    }: React.HTMLAttributes<HTMLSpanElement>) => {
+      return (
+        <span
+          className={cn(
+            "ml-auto text-xs tracking-widest text-muted-foreground",
+            className
+          )}
+          {...props}
+        />
+      )
+    }
+    CommandShortcut.displayName = "CommandShortcut"
+
+    export {
+      Command,
+      CommandDialog,
+      CommandInput,
+      CommandList,
+      CommandEmpty,
+      CommandGroup,
+      CommandItem,
+      CommandShortcut,
+      CommandSeparator,
+    }
+  src/components/ui/dialog.tsx: |-
+    import * as React from "react"
+    import * as DialogPrimitive from "@radix-ui/react-dialog"
+    import { X } from "lucide-react"
+
+    import { cn } from "@/lib/utils"
+
+    const Dialog = DialogPrimitive.Root
+
+    const DialogTrigger = DialogPrimitive.Trigger
+
+    const DialogPortal = DialogPrimitive.Portal
+
+    const DialogClose = DialogPrimitive.Close
+
+    const DialogOverlay = React.forwardRef<
+      React.ElementRef<typeof DialogPrimitive.Overlay>,
+      React.ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay>
+    >(({ className, ...props }, ref) => (
+      <DialogPrimitive.Overlay
+        ref={ref}
+        className={cn(
+          "fixed inset-0 z-50 bg-background/80 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+          className
+        )}
+        {...props}
+      />
+    ))
+    DialogOverlay.displayName = DialogPrimitive.Overlay.displayName
+
+    const DialogContent = React.forwardRef<
+      React.ElementRef<typeof DialogPrimitive.Content>,
+      React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
+    >(({ className, children, ...props }, ref) => (
+      <DialogPortal>
+        <DialogOverlay />
+        <DialogPrimitive.Content
+          ref={ref}
+          className={cn(
+            "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-card p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]",
+            "sm:rounded-2xl",
+            className
+          )}
+          {...props}
+        >
+          {children}
+          <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
+            <X className="h-4 w-4" />
+            <span className="sr-only">Close</span>
+          </DialogPrimitive.Close>
+        </DialogPrimitive.Content>
+      </DialogPortal>
+    ))
+    DialogContent.displayName = DialogPrimitive.Content.displayName
+
+    const DialogHeader = ({
+      className,
+      ...props
+    }: React.HTMLAttributes<HTMLDivElement>) => (
+      <div
+        className={cn(
+          "flex flex-col space-y-1.5 text-center sm:text-left",
+          className
+        )}
+        {...props}
+      />
+    )
+    DialogHeader.displayName = "DialogHeader"
+
+    const DialogFooter = ({
+      className,
+      ...props
+    }: React.HTMLAttributes<HTMLDivElement>) => (
+      <div
+        className={cn(
+          "flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2",
+          className
+        )}
+        {...props}
+      />
+    )
+    DialogFooter.displayName = "DialogFooter"
+
+    const DialogTitle = React.forwardRef<
+      React.ElementRef<typeof DialogPrimitive.Title>,
+      React.ComponentPropsWithoutRef<typeof DialogPrimitive.Title>
+    >(({ className, ...props }, ref) => (
+      <DialogPrimitive.Title
+        ref={ref}
+        className={cn(
+          "text-lg font-semibold leading-none tracking-tight",
+          className
+        )}
+        {...props}
+      />
+    ))
+    DialogTitle.displayName = DialogPrimitive.Title.displayName
+
+    const DialogDescription = React.forwardRef<
+      React.ElementRef<typeof DialogPrimitive.Description>,
+      React.ComponentPropsWithoutRef<typeof DialogPrimitive.Description>
+    >(({ className, ...props }, ref) => (
+      <DialogPrimitive.Description
+        ref={ref}
+        className={cn("text-sm text-muted-foreground", className)}
+        {...props}
+      />
+    ))
+    DialogDescription.displayName = DialogPrimitive.Description.displayName
+
+    export {
+      Dialog,
+      DialogPortal,
+      DialogOverlay,
+      DialogClose,
+      DialogTrigger,
+      DialogContent,
+      DialogHeader,
+      DialogFooter,
+      DialogTitle,
+      DialogDescription,
+    }
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 71

@@ -37,6 +37,7 @@ export function TopBar({
     activePage,
     setActivePage,
     searchTerm,
+    setCommandPaletteOpen,
     setSearchTerm,
   } = useAppStore()
 
@@ -153,6 +154,7 @@ export function TopBar({
         <div className={cn('flex items-center gap-3', isSearchFocused && activePage === 'dashboard' ? 'hidden lg:flex' : '')}>
 
           <button
+            onClick={() => setCommandPaletteOpen(true)}
             className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
             title="Command Palette (Ctrl+K)"
           >

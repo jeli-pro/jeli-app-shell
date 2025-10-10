@@ -16,6 +16,7 @@ interface AppState {
   isResizing: boolean
   isResizingRightPane: boolean
   isTopBarVisible: boolean
+  isCommandPaletteOpen: boolean
   searchTerm: string
   
   // User Preferences
@@ -38,6 +39,7 @@ interface AppState {
   setReducedMotion: (reduced: boolean) => void
   setCompactMode: (compact: boolean) => void
   setPrimaryColor: (color: string) => void
+  setCommandPaletteOpen: (open: boolean) => void
   setSearchTerm: (term: string) => void
   
   // Composite Actions
@@ -62,6 +64,7 @@ const defaultState = {
   isResizing: false,
   isResizingRightPane: false,
   isTopBarVisible: true,
+  isCommandPaletteOpen: false,
   autoExpandSidebar: true,
   reducedMotion: false,
   compactMode: false,
@@ -93,6 +96,7 @@ export const useAppStore = create<AppState>()(
       setReducedMotion: (reduced) => set({ reducedMotion: reduced }),
       setCompactMode: (compact) => set({ compactMode: compact }),
       setPrimaryColor: (color) => set({ primaryColor: color }),
+      setCommandPaletteOpen: (open) => set({ isCommandPaletteOpen: open }),
       setSearchTerm: (term) => set({ searchTerm: term }),
       
       // Composite actions

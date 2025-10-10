@@ -1,0 +1,99 @@
+import * as React from 'react'
+import {
+  CommandDialog,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+  CommandSeparator,
+  CommandShortcut,
+} from '@/components/ui/command'
+import { useAppStore } from '@/store/appStore'
+import { Home, Settings, Moon, Sun, Monitor, Smartphone, PanelRight, Maximize, Component } from 'lucide-react'
+
+export function CommandPalette() {
+  const {
+    isCommandPaletteOpen,
+    setCommandPaletteOpen,
+    setActivePage,
+    toggleDarkMode,
+    isDarkMode,
+    setCompactMode,
+    toggleFullscreen,
+    openSidePane,
+  } = useAppStore()
+
+  React.useEffect(() => {
+    const down = (e: KeyboardEvent) => {
+      if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault()
+        setCommandPaletteOpen(!isCommandPaletteOpen)
+      }
+    }
+    document.addEventListener('keydown', down)
+    return () => document.removeEventListener('keydown', down)
+  }, [isCommandPaletteOpen, setCommandPaletteOpen])
+  
+  const runCommand = (command: () => void) => {
+    setCommandPaletteOpen(false)
+    command()
+  }
+
+  return (
+    <CommandDialog open={isCommandPaletteOpen} onOpenChange={setCommandPaletteOpen}>
+      <CommandInput placeholder="Type a command or search..." />
+      <CommandList>
+        <CommandEmpty>No results found.</CommandEmpty>
+        <CommandGroup heading="Navigation">
+          <CommandItem onSelect={() => runCommand(() => setActivePage('dashboard'))}>
+            <Home className="mr-2 h-4 w-4" />
+            <span>Go to Dashboard</span>
+            <CommandShortcut>G D</CommandShortcut>
+          </CommandItem>
+          <CommandItem onSelect={() => runCommand(() => setActivePage('settings'))}>
+            <Settings className="mr-2 h-4 w-4" />
+            <span>Go to Settings</span>
+            <CommandShortcut>G S</CommandShortcut>
+          </CommandItem>
+          <CommandItem onSelect={() => runCommand(() => setActivePage('toaster'))}>
+            <Component className="mr-2 h-4 w-4" />
+            <span>Go to Toaster Demo</span>
+            <CommandShortcut>G T</CommandShortcut>
+          </CommandItem>
+        </CommandGroup>
+        <CommandSeparator />
+        <CommandGroup heading="Actions">
+          <CommandItem onSelect={() => runCommand(toggleDarkMode)}>
+            {isDarkMode ? <Sun className="mr-2 h-4 w-4" /> : <Moon className="mr-2 h-4 w-4" />}
+            <span>Toggle Theme</span>
+            <CommandShortcut>⌘T</CommandShortcut>
+          </CommandItem>
+          <CommandItem onSelect={() => runCommand(toggleFullscreen)}>
+            <Maximize className="mr-2 h-4 w-4" />
+            <span>Toggle Fullscreen</span>
+            <CommandShortcut>⌘F</CommandShortcut>
+          </CommandItem>
+          <CommandItem onSelect={() => runCommand(() => openSidePane('settings'))}>
+            <PanelRight className="mr-2 h-4 w-4" />
+            <span>Open Settings in Side Pane</span>
+            <CommandShortcut>⌥S</CommandShortcut>
+          </CommandItem>
+        </CommandGroup>
+        <CommandSeparator />
+        <CommandGroup heading="Preferences">
+          <CommandItem onSelect={() => runCommand(() => setCompactMode(true))}>
+            <Smartphone className="mr-2 h-4 w-4" />
+            <span>Enable Compact Mode</span>
+            <CommandShortcut>⌘C</CommandShortcut>
+          </CommandItem>
+          <CommandItem onSelect={() => runCommand(() => setCompactMode(false))}>
+            <Monitor className="mr-2 h-4 w-4" />
+            <span>Disable Compact Mode</span>
+            <CommandShortcut>⇧⌘C</CommandShortcut>
+          </CommandItem>
+        </CommandGroup>
+      </CommandList>
+    </CommandDialog>
+  )
+}

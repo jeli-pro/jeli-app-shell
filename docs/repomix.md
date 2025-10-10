@@ -5,9 +5,12 @@ src/
     ui/
       avatar.tsx
       button.tsx
+      command.tsx
+      dialog.tsx
       popover.tsx
       toast.tsx
     AppShell.tsx
+    CommandPalette.tsx
     DashboardContent.tsx
     DemoContent.tsx
     EnhancedSidebar.tsx
@@ -36,6 +39,382 @@ vite.config.ts
 ```
 
 # Files
+
+## File: src/components/ui/command.tsx
+```typescript
+import * as React from "react"
+import { type DialogProps } from "@radix-ui/react-dialog"
+import { Command as CommandPrimitive } from "cmdk"
+import { Search } from "lucide-react"
+
+import { cn } from "@/lib/utils"
+import { Dialog, DialogContent } from "@/components/ui/dialog"
+
+const Command = React.forwardRef<
+  React.ElementRef<typeof CommandPrimitive>,
+  React.ComponentPropsWithoutRef<typeof CommandPrimitive>
+>(({ className, ...props }, ref) => (
+  <CommandPrimitive
+    ref={ref}
+    className={cn(
+      "flex h-full w-full flex-col overflow-hidden rounded-md bg-popover text-popover-foreground",
+      className
+    )}
+    {...props}
+  />
+))
+Command.displayName = CommandPrimitive.displayName
+
+interface CommandDialogProps extends DialogProps {}
+
+const CommandDialog = ({ children, ...props }: CommandDialogProps) => {
+  return (
+    <Dialog {...props}>
+      <DialogContent className="overflow-hidden p-0 shadow-lg">
+        <Command className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group]:not([hidden])_~[cmdk-group]]:pt-0 [&_[cmdk-group]]:px-2 [&_[cmdk-input-wrapper]_svg]:h-5 [&_[cmdk-input-wrapper]_svg]:w-5 [&_[cmdk-input]]:h-12 [&_[cmdk-item]]:px-2 [&_[cmdk-item]]:py-3 [&_[cmdk-item]_svg]:h-5 [&_[cmdk-item]_svg]:w-5">
+          {children}
+        </Command>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+const CommandInput = React.forwardRef<
+  React.ElementRef<typeof CommandPrimitive.Input>,
+  React.ComponentPropsWithoutRef<typeof CommandPrimitive.Input>
+>(({ className, ...props }, ref) => (
+  <div className="flex items-center border-b px-3" cmdk-input-wrapper="">
+    <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+    <CommandPrimitive.Input
+      ref={ref}
+      className={cn(
+        "flex h-11 w-full rounded-md bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50",
+        className
+      )}
+      {...props}
+    />
+  </div>
+))
+
+CommandInput.displayName = CommandPrimitive.Input.displayName
+
+const CommandList = React.forwardRef<
+  React.ElementRef<typeof CommandPrimitive.List>,
+  React.ComponentPropsWithoutRef<typeof CommandPrimitive.List>
+>(({ className, ...props }, ref) => (
+  <CommandPrimitive.List
+    ref={ref}
+    className={cn("max-h-[300px] overflow-y-auto overflow-x-hidden", className)}
+    {...props}
+  />
+))
+
+CommandList.displayName = CommandPrimitive.List.displayName
+
+const CommandEmpty = React.forwardRef<
+  React.ElementRef<typeof CommandPrimitive.Empty>,
+  React.ComponentPropsWithoutRef<typeof CommandPrimitive.Empty>
+>((props, ref) => (
+  <CommandPrimitive.Empty
+    ref={ref}
+    className="py-6 text-center text-sm"
+    {...props}
+  />
+))
+
+CommandEmpty.displayName = CommandPrimitive.Empty.displayName
+
+const CommandGroup = React.forwardRef<
+  React.ElementRef<typeof CommandPrimitive.Group>,
+  React.ComponentPropsWithoutRef<typeof CommandPrimitive.Group>
+>(({ className, ...props }, ref) => (
+  <CommandPrimitive.Group
+    ref={ref}
+    className={cn(
+      "overflow-hidden p-1 text-foreground [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground",
+      className
+    )}
+    {...props}
+  />
+))
+
+CommandGroup.displayName = CommandPrimitive.Group.displayName
+
+const CommandSeparator = React.forwardRef<
+  React.ElementRef<typeof CommandPrimitive.Separator>,
+  React.ComponentPropsWithoutRef<typeof CommandPrimitive.Separator>
+>(({ className, ...props }, ref) => (
+  <CommandPrimitive.Separator
+    ref={ref}
+    className={cn("-mx-1 h-px bg-border", className)}
+    {...props}
+  />
+))
+CommandSeparator.displayName = CommandPrimitive.Separator.displayName
+
+const CommandItem = React.forwardRef<
+  React.ElementRef<typeof CommandPrimitive.Item>,
+  React.ComponentPropsWithoutRef<typeof CommandPrimitive.Item>
+>(({ className, ...props }, ref) => (
+  <CommandPrimitive.Item
+    ref={ref}
+    className={cn(
+      "relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none aria-selected:bg-accent aria-selected:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      className
+    )}
+    {...props}
+  />
+))
+
+CommandItem.displayName = CommandPrimitive.Item.displayName
+
+const CommandShortcut = ({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLSpanElement>) => {
+  return (
+    <span
+      className={cn(
+        "ml-auto text-xs tracking-widest text-muted-foreground",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+CommandShortcut.displayName = "CommandShortcut"
+
+export {
+  Command,
+  CommandDialog,
+  CommandInput,
+  CommandList,
+  CommandEmpty,
+  CommandGroup,
+  CommandItem,
+  CommandShortcut,
+  CommandSeparator,
+}
+```
+
+## File: src/components/ui/dialog.tsx
+```typescript
+import * as React from "react"
+import * as DialogPrimitive from "@radix-ui/react-dialog"
+import { X } from "lucide-react"
+
+import { cn } from "@/lib/utils"
+
+const Dialog = DialogPrimitive.Root
+
+const DialogTrigger = DialogPrimitive.Trigger
+
+const DialogPortal = DialogPrimitive.Portal
+
+const DialogClose = DialogPrimitive.Close
+
+const DialogOverlay = React.forwardRef<
+  React.ElementRef<typeof DialogPrimitive.Overlay>,
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay>
+>(({ className, ...props }, ref) => (
+  <DialogPrimitive.Overlay
+    ref={ref}
+    className={cn(
+      "fixed inset-0 z-50 bg-background/80 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+      className
+    )}
+    {...props}
+  />
+))
+DialogOverlay.displayName = DialogPrimitive.Overlay.displayName
+
+const DialogContent = React.forwardRef<
+  React.ElementRef<typeof DialogPrimitive.Content>,
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
+>(({ className, children, ...props }, ref) => (
+  <DialogPortal>
+    <DialogOverlay />
+    <DialogPrimitive.Content
+      ref={ref}
+      className={cn(
+        "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-card p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]",
+        "sm:rounded-2xl",
+        className
+      )}
+      {...props}
+    >
+      {children}
+      <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
+        <X className="h-4 w-4" />
+        <span className="sr-only">Close</span>
+      </DialogPrimitive.Close>
+    </DialogPrimitive.Content>
+  </DialogPortal>
+))
+DialogContent.displayName = DialogPrimitive.Content.displayName
+
+const DialogHeader = ({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLDivElement>) => (
+  <div
+    className={cn(
+      "flex flex-col space-y-1.5 text-center sm:text-left",
+      className
+    )}
+    {...props}
+  />
+)
+DialogHeader.displayName = "DialogHeader"
+
+const DialogFooter = ({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLDivElement>) => (
+  <div
+    className={cn(
+      "flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2",
+      className
+    )}
+    {...props}
+  />
+)
+DialogFooter.displayName = "DialogFooter"
+
+const DialogTitle = React.forwardRef<
+  React.ElementRef<typeof DialogPrimitive.Title>,
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Title>
+>(({ className, ...props }, ref) => (
+  <DialogPrimitive.Title
+    ref={ref}
+    className={cn(
+      "text-lg font-semibold leading-none tracking-tight",
+      className
+    )}
+    {...props}
+  />
+))
+DialogTitle.displayName = DialogPrimitive.Title.displayName
+
+const DialogDescription = React.forwardRef<
+  React.ElementRef<typeof DialogPrimitive.Description>,
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Description>
+>(({ className, ...props }, ref) => (
+  <DialogPrimitive.Description
+    ref={ref}
+    className={cn("text-sm text-muted-foreground", className)}
+    {...props}
+  />
+))
+DialogDescription.displayName = DialogPrimitive.Description.displayName
+
+export {
+  Dialog,
+  DialogPortal,
+  DialogOverlay,
+  DialogClose,
+  DialogTrigger,
+  DialogContent,
+  DialogHeader,
+  DialogFooter,
+  DialogTitle,
+  DialogDescription,
+}
+```
+
+## File: src/components/CommandPalette.tsx
+```typescript
+import * as React from 'react'
+import {
+  CommandDialog,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+  CommandSeparator,
+} from '@/components/ui/command'
+import { useAppStore } from '@/store/appStore'
+import { Home, Settings, Moon, Sun, Monitor, Smartphone, PanelRight, Maximize, Component } from 'lucide-react'
+
+export function CommandPalette() {
+  const {
+    isCommandPaletteOpen,
+    setCommandPaletteOpen,
+    setActivePage,
+    toggleDarkMode,
+    isDarkMode,
+    setCompactMode,
+    toggleFullscreen,
+    openSidePane,
+  } = useAppStore()
+
+  React.useEffect(() => {
+    const down = (e: KeyboardEvent) => {
+      if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault()
+        setCommandPaletteOpen(!isCommandPaletteOpen)
+      }
+    }
+    document.addEventListener('keydown', down)
+    return () => document.removeEventListener('keydown', down)
+  }, [isCommandPaletteOpen, setCommandPaletteOpen])
+  
+  const runCommand = (command: () => void) => {
+    setCommandPaletteOpen(false)
+    command()
+  }
+
+  return (
+    <CommandDialog open={isCommandPaletteOpen} onOpenChange={setCommandPaletteOpen}>
+      <CommandInput placeholder="Type a command or search..." />
+      <CommandList>
+        <CommandEmpty>No results found.</CommandEmpty>
+        <CommandGroup heading="Navigation">
+          <CommandItem onSelect={() => runCommand(() => setActivePage('dashboard'))}>
+            <Home className="mr-2 h-4 w-4" />
+            <span>Go to Dashboard</span>
+          </CommandItem>
+          <CommandItem onSelect={() => runCommand(() => setActivePage('settings'))}>
+            <Settings className="mr-2 h-4 w-4" />
+            <span>Go to Settings</span>
+          </CommandItem>
+          <CommandItem onSelect={() => runCommand(() => setActivePage('toaster'))}>
+            <Component className="mr-2 h-4 w-4" />
+            <span>Go to Toaster Demo</span>
+          </CommandItem>
+        </CommandGroup>
+        <CommandSeparator />
+        <CommandGroup heading="Actions">
+          <CommandItem onSelect={() => runCommand(toggleDarkMode)}>
+            {isDarkMode ? <Sun className="mr-2 h-4 w-4" /> : <Moon className="mr-2 h-4 w-4" />}
+            <span>Toggle Theme</span>
+          </CommandItem>
+          <CommandItem onSelect={() => runCommand(toggleFullscreen)}>
+            <Maximize className="mr-2 h-4 w-4" />
+            <span>Toggle Fullscreen</span>
+          </CommandItem>
+          <CommandItem onSelect={() => runCommand(() => openSidePane('settings'))}>
+            <PanelRight className="mr-2 h-4 w-4" />
+            <span>Open Settings in Side Pane</span>
+          </CommandItem>
+        </CommandGroup>
+        <CommandSeparator />
+        <CommandGroup heading="Preferences">
+          <CommandItem onSelect={() => runCommand(() => setCompactMode(true))}>
+            <Smartphone className="mr-2 h-4 w-4" />
+            <span>Enable Compact Mode</span>
+          </CommandItem>
+          <CommandItem onSelect={() => runCommand(() => setCompactMode(false))}>
+            <Monitor className="mr-2 h-4 w-4" />
+            <span>Disable Compact Mode</span>
+          </CommandItem>
+        </CommandGroup>
+      </CommandList>
+    </CommandDialog>
+  )
+}
+```
 
 ## File: src/components/ui/avatar.tsx
 ```typescript
@@ -87,349 +466,6 @@ const AvatarFallback = React.forwardRef<
 AvatarFallback.displayName = AvatarPrimitive.Fallback.displayName
 
 export { Avatar, AvatarImage, AvatarFallback }
-```
-
-## File: src/components/ui/popover.tsx
-```typescript
-import * as React from "react"
-import * as PopoverPrimitive from "@radix-ui/react-popover"
-
-import { cn } from "@/lib/utils"
-
-const Popover = PopoverPrimitive.Root
-
-const PopoverTrigger = PopoverPrimitive.Trigger
-
-type PopoverContentProps = React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Content>
-
-const PopoverContent = React.forwardRef<
-  React.ElementRef<typeof PopoverPrimitive.Content>,
-  PopoverContentProps
->(({ className, align = "center", sideOffset = 4, ...props }, ref) => (
-  <PopoverPrimitive.Portal>
-    <PopoverPrimitive.Content
-      ref={ref}
-      align={align}
-      sideOffset={sideOffset}
-      className={cn(
-        "z-50 w-72 rounded-md border bg-popover p-4 text-popover-foreground shadow-md outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
-        className
-      )}
-      {...props}
-    />
-  </PopoverPrimitive.Portal>
-))
-PopoverContent.displayName = PopoverPrimitive.Content.displayName
-
-export { Popover, PopoverTrigger, PopoverContent, type PopoverContentProps }
-```
-
-## File: src/components/WorkspaceSwitcher.tsx
-```typescript
-import * as React from 'react';
-import { CheckIcon, ChevronsUpDownIcon } from 'lucide-react';
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { cn } from '@/lib/utils';
-import {
-	Popover,
-	PopoverTrigger,
-	PopoverContent,
-	type PopoverContentProps,
-} from '@/components/ui/popover';
-
-// Generic workspace interface - can be extended
-export interface Workspace {
-	id: string;
-	name: string;
-	[key: string]: any; // Allow additional properties
-}
-
-// Context for workspace state management
-interface WorkspaceContextValue<T extends Workspace> {
-	open: boolean;
-	setOpen: (open: boolean) => void;
-	selectedWorkspace: T | undefined;
-	workspaces: T[];
-	onWorkspaceSelect: (workspace: T) => void;
-	getWorkspaceId: (workspace: T) => string;
-	getWorkspaceName: (workspace: T) => string;
-}
-
-const WorkspaceContext = React.createContext<WorkspaceContextValue<any> | null>(
-	null,
-);
-
-function useWorkspaceContext<T extends Workspace>() {
-	const context = React.useContext(
-		WorkspaceContext,
-	) as WorkspaceContextValue<T> | null;
-	if (!context) {
-		throw new Error(
-			'Workspace components must be used within WorkspaceProvider',
-		);
-	}
-	return context;
-}
-
-// Main provider component
-interface WorkspaceProviderProps<T extends Workspace> {
-	children: React.ReactNode;
-	workspaces: T[];
-	selectedWorkspaceId?: string;
-	onWorkspaceChange?: (workspace: T) => void;
-	open?: boolean;
-	onOpenChange?: (open: boolean) => void;
-	getWorkspaceId?: (workspace: T) => string;
-	getWorkspaceName?: (workspace: T) => string;
-}
-
-function WorkspaceProvider<T extends Workspace>({
-	children,
-	workspaces,
-	selectedWorkspaceId,
-	onWorkspaceChange,
-	open: controlledOpen,
-	onOpenChange,
-	getWorkspaceId = (workspace) => workspace.id,
-	getWorkspaceName = (workspace) => workspace.name,
-}: WorkspaceProviderProps<T>) {
-	const [internalOpen, setInternalOpen] = React.useState(false);
-
-	const open = controlledOpen ?? internalOpen;
-	const setOpen = onOpenChange ?? setInternalOpen;
-
-	const selectedWorkspace = React.useMemo(() => {
-		if (!selectedWorkspaceId) return workspaces[0];
-		return (
-			workspaces.find((ws) => getWorkspaceId(ws) === selectedWorkspaceId) ||
-			workspaces[0]
-		);
-	}, [workspaces, selectedWorkspaceId, getWorkspaceId]);
-
-	const handleWorkspaceSelect = React.useCallback(
-		(workspace: T) => {
-			onWorkspaceChange?.(workspace);
-			setOpen(false);
-		},
-		[onWorkspaceChange, setOpen],
-	);
-
-	const value: WorkspaceContextValue<T> = {
-		open,
-		setOpen,
-		selectedWorkspace,
-		workspaces,
-		onWorkspaceSelect: handleWorkspaceSelect,
-		getWorkspaceId,
-		getWorkspaceName,
-	};
-
-	return (
-		<WorkspaceContext.Provider value={value}>
-			<Popover open={open} onOpenChange={setOpen}>
-				{children}
-			</Popover>
-		</WorkspaceContext.Provider>
-	);
-}
-
-// Trigger component
-interface WorkspaceTriggerProps extends React.ComponentProps<'button'> {
-	renderTrigger?: (workspace: Workspace, isOpen: boolean) => React.ReactNode;
-  collapsed?: boolean;
-  avatarClassName?: string;
-}
-
-function WorkspaceTrigger({
-	className,
-	renderTrigger,
-  collapsed = false,
-  avatarClassName,
-	...props
-}: WorkspaceTriggerProps) {
-	const { open, selectedWorkspace, getWorkspaceName } = useWorkspaceContext();
-
-	if (!selectedWorkspace) return null;
-
-	if (renderTrigger) {
-		return (
-			<PopoverTrigger asChild>
-				<button className={className} {...props}>
-					{renderTrigger(selectedWorkspace, open)}
-				</button>
-			</PopoverTrigger>
-		);
-	}
-
-	return (
-		<PopoverTrigger asChild>
-			<button
-				data-state={open ? 'open' : 'closed'}
-				className={cn(
-					'flex w-full items-center justify-between text-sm',
-					'focus:ring-ring focus:ring-2 focus:ring-offset-2 focus:outline-none',
-					className,
-				)}
-				{...props}
-			>
-				<div className={cn("flex items-center gap-3", collapsed ? "w-full justify-center" : "min-w-0 flex-1")}>
-					<Avatar className={cn("h-8 w-8", avatarClassName)}>
-						<AvatarImage
-							src={(selectedWorkspace as any).logo}
-							alt={getWorkspaceName(selectedWorkspace)}
-						/>
-						<AvatarFallback className="text-xs">
-							{getWorkspaceName(selectedWorkspace).charAt(0).toUpperCase()}
-						</AvatarFallback>
-					</Avatar>
-					{!collapsed && (
-						<div className="flex min-w-0 flex-1 flex-col items-start">
-							<span className="truncate font-medium">{getWorkspaceName(selectedWorkspace)}</span>
-							<span className="text-muted-foreground truncate text-xs">{(selectedWorkspace as any).plan}</span>
-						</div>
-					)}
-				</div>
-				{!collapsed && <ChevronsUpDownIcon className="h-4 w-4 shrink-0 opacity-50" />}
-			</button>
-		</PopoverTrigger>
-	);
-}
-
-// Content component
-interface WorkspaceContentProps
-	extends PopoverContentProps {
-	renderWorkspace?: (
-		workspace: Workspace,
-		isSelected: boolean,
-	) => React.ReactNode;
-	title?: string;
-	searchable?: boolean;
-	onSearch?: (query: string) => void;
-}
-
-function WorkspaceContent({
-	className,
-	children,
-	renderWorkspace,
-	title = 'Workspaces',
-	searchable = false,
-	onSearch,
-	align,
-	...props
-}: WorkspaceContentProps) {
-	const {
-		workspaces,
-		selectedWorkspace,
-		onWorkspaceSelect,
-		getWorkspaceId,
-		getWorkspaceName,
-	} = useWorkspaceContext();
-
-	const [searchQuery, setSearchQuery] = React.useState('');
-
-	const filteredWorkspaces = React.useMemo(() => {
-		if (!searchQuery) return workspaces;
-		return workspaces.filter((ws) =>
-			getWorkspaceName(ws).toLowerCase().includes(searchQuery.toLowerCase()),
-		);
-	}, [workspaces, searchQuery, getWorkspaceName]);
-
-	React.useEffect(() => {
-		onSearch?.(searchQuery);
-	}, [searchQuery, onSearch]);
-
-	const defaultRenderWorkspace = (
-		workspace: Workspace,
-		isSelected: boolean,
-	) => (
-		<div className="flex min-w-0 flex-1 items-center gap-2">
-			<Avatar className="h-6 w-6">
-				<AvatarImage
-					src={(workspace as any).logo}
-					alt={getWorkspaceName(workspace)}
-				/>
-				<AvatarFallback className="text-xs">
-					{getWorkspaceName(workspace).charAt(0).toUpperCase()}
-				</AvatarFallback>
-			</Avatar>
-			<div className="flex min-w-0 flex-1 flex-col items-start">
-				<span className="truncate text-sm">{getWorkspaceName(workspace)}</span>
-				{(workspace as any).plan && (
-					<span className="text-muted-foreground text-xs">
-						{(workspace as any).plan}
-					</span>
-				)}
-			</div>
-			{isSelected && <CheckIcon className="ml-auto h-4 w-4" />}
-		</div>
-	);
-
-	return (
-		<PopoverContent
-			className={cn('p-0', className)}
-			align={align || 'start'}
-			{...props}
-		>
-			<div className="border-b px-3 py-2">
-				<p className="text-muted-foreground text-sm font-medium">{title}</p>
-			</div>
-
-			{searchable && (
-				<div className="border-b px-3 py-2">
-					<input
-						type="text"
-						placeholder="Search workspaces..."
-						value={searchQuery}
-						onChange={(e) => setSearchQuery(e.target.value)}
-						className="placeholder:text-muted-foreground w-full border-none bg-transparent text-sm outline-none"
-					/>
-				</div>
-			)}
-
-			<div className="max-h-[300px] overflow-y-auto">
-				{filteredWorkspaces.length === 0 ? (
-					<div className="text-muted-foreground px-3 py-2 text-center text-sm">
-						No workspaces found
-					</div>
-				) : (
-					<div className="p-1">
-						{filteredWorkspaces.map((workspace) => {
-							const isSelected =
-								selectedWorkspace &&
-								getWorkspaceId(selectedWorkspace) === getWorkspaceId(workspace);
-
-							return (
-								<button
-									key={getWorkspaceId(workspace)}
-									onClick={() => onWorkspaceSelect(workspace)}
-									className={cn(
-										'flex w-full items-center gap-2 rounded-sm px-2 py-2 text-left text-sm',
-										'hover:bg-accent hover:text-accent-foreground',
-										'focus:outline-none',
-										isSelected && 'bg-accent text-accent-foreground',
-									)}
-								>
-									{renderWorkspace
-										? renderWorkspace(workspace, !!isSelected)
-										: defaultRenderWorkspace(workspace, !!isSelected)}
-								</button>
-							);
-						})}
-					</div>
-				)}
-			</div>
-
-			{children && (
-				<>
-					<div className="border-t" />
-					<div className="p-1">{children}</div>
-				</>
-			)}
-		</PopoverContent>
-	);
-}
-
-export { WorkspaceProvider as Workspaces, WorkspaceTrigger, WorkspaceContent };
 ```
 
 ## File: src/components/ui/button.tsx
@@ -490,6 +526,47 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 Button.displayName = "Button"
 
 export { Button, buttonVariants }
+```
+
+## File: src/components/ui/popover.tsx
+```typescript
+import * as React from "react"
+import * as PopoverPrimitive from "@radix-ui/react-popover"
+
+import { cn } from "@/lib/utils"
+
+const Popover = PopoverPrimitive.Root
+
+const PopoverTrigger = PopoverPrimitive.Trigger
+
+interface PopoverContentProps
+  extends React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Content> {
+  useTriggerWidth?: boolean
+}
+
+const PopoverContent = React.forwardRef<
+  React.ElementRef<typeof PopoverPrimitive.Content>,
+  PopoverContentProps
+>(
+  ({ className, align = "center", sideOffset = 4, useTriggerWidth = false, ...props }, ref) => (
+  <PopoverPrimitive.Portal>
+    <PopoverPrimitive.Content
+      ref={ref}
+      align={align}
+      sideOffset={sideOffset}
+      className={cn(
+        "z-50 w-72 rounded-xl border bg-popover p-4 text-popover-foreground shadow-xl outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
+        useTriggerWidth && "w-[var(--radix-popover-trigger-width)]",
+        className
+      )}
+      {...props}
+    />
+  </PopoverPrimitive.Portal>
+))
+PopoverContent.displayName = PopoverPrimitive.Content.displayName
+
+export { Popover, PopoverTrigger, PopoverContent }
+export type { PopoverContentProps }
 ```
 
 ## File: src/components/ui/toast.tsx
@@ -728,6 +805,320 @@ export const ToasterProvider = ({ children }: { children: ReactNode }) => {
     </ToasterContext.Provider>
   );
 };
+```
+
+## File: src/components/WorkspaceSwitcher.tsx
+```typescript
+import * as React from 'react';
+import { CheckIcon, ChevronsUpDownIcon, Search } from 'lucide-react';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { cn } from '@/lib/utils';
+import {
+	Popover,
+	PopoverTrigger,
+	PopoverContent,
+	type PopoverContentProps,
+} from '@/components/ui/popover';
+
+// Generic workspace interface - can be extended
+export interface Workspace {
+	id: string;
+	name: string;
+	[key: string]: any; // Allow additional properties
+}
+
+// Context for workspace state management
+interface WorkspaceContextValue<T extends Workspace> {
+	open: boolean;
+	setOpen: (open: boolean) => void;
+	selectedWorkspace: T | undefined;
+	workspaces: T[];
+	onWorkspaceSelect: (workspace: T) => void;
+	getWorkspaceId: (workspace: T) => string;
+	getWorkspaceName: (workspace: T) => string;
+}
+
+const WorkspaceContext = React.createContext<WorkspaceContextValue<any> | null>(
+	null,
+);
+
+function useWorkspaceContext<T extends Workspace>() {
+	const context = React.useContext(
+		WorkspaceContext,
+	) as WorkspaceContextValue<T> | null;
+	if (!context) {
+		throw new Error(
+			'Workspace components must be used within WorkspaceProvider',
+		);
+	}
+	return context;
+}
+
+// Main provider component
+interface WorkspaceProviderProps<T extends Workspace> {
+	children: React.ReactNode;
+	workspaces: T[];
+	selectedWorkspaceId?: string;
+	onWorkspaceChange?: (workspace: T) => void;
+	open?: boolean;
+	onOpenChange?: (open: boolean) => void;
+	getWorkspaceId?: (workspace: T) => string;
+	getWorkspaceName?: (workspace: T) => string;
+}
+
+function WorkspaceProvider<T extends Workspace>({
+	children,
+	workspaces,
+	selectedWorkspaceId,
+	onWorkspaceChange,
+	open: controlledOpen,
+	onOpenChange,
+	getWorkspaceId = (workspace) => workspace.id,
+	getWorkspaceName = (workspace) => workspace.name,
+}: WorkspaceProviderProps<T>) {
+	const [internalOpen, setInternalOpen] = React.useState(false);
+
+	const open = controlledOpen ?? internalOpen;
+	const setOpen = onOpenChange ?? setInternalOpen;
+
+	const selectedWorkspace = React.useMemo(() => {
+		if (!selectedWorkspaceId) return workspaces[0];
+		return (
+			workspaces.find((ws) => getWorkspaceId(ws) === selectedWorkspaceId) ||
+			workspaces[0]
+		);
+	}, [workspaces, selectedWorkspaceId, getWorkspaceId]);
+
+	const handleWorkspaceSelect = React.useCallback(
+		(workspace: T) => {
+			onWorkspaceChange?.(workspace);
+			setOpen(false);
+		},
+		[onWorkspaceChange, setOpen],
+	);
+
+	const value: WorkspaceContextValue<T> = {
+		open,
+		setOpen,
+		selectedWorkspace,
+		workspaces,
+		onWorkspaceSelect: handleWorkspaceSelect,
+		getWorkspaceId,
+		getWorkspaceName,
+	};
+
+	return (
+		<WorkspaceContext.Provider value={value}>
+			<Popover open={open} onOpenChange={setOpen}>
+				{children}
+			</Popover>
+		</WorkspaceContext.Provider>
+	);
+}
+
+// Trigger component
+interface WorkspaceTriggerProps extends React.ComponentProps<'button'> {
+	renderTrigger?: (workspace: Workspace, isOpen: boolean) => React.ReactNode;
+  collapsed?: boolean;
+  avatarClassName?: string;
+}
+
+function WorkspaceTrigger({
+	className,
+	renderTrigger,
+  collapsed = false,
+  avatarClassName,
+	...props
+}: WorkspaceTriggerProps) {
+	const { open, selectedWorkspace, getWorkspaceName } = useWorkspaceContext();
+
+	if (!selectedWorkspace) return null;
+
+	if (renderTrigger) {
+		return (
+			<PopoverTrigger asChild>
+				<button className={className} {...props}>
+					{renderTrigger(selectedWorkspace, open)}
+				</button>
+			</PopoverTrigger>
+		);
+	}
+
+	return (
+		<PopoverTrigger asChild>
+			<button
+				data-state={open ? 'open' : 'closed'}
+				className={cn(
+					'flex w-full items-center justify-between text-sm',
+					'focus:ring-ring focus:ring-2 focus:ring-offset-2 focus:outline-none',
+					className,
+				)}
+				{...props}
+			>
+				<div className={cn("flex items-center gap-3", collapsed ? "w-full justify-center" : "min-w-0 flex-1")}>
+					<Avatar className={cn(avatarClassName)}>
+						<AvatarImage
+							src={(selectedWorkspace as any).logo}
+							alt={getWorkspaceName(selectedWorkspace)}
+						/>
+						<AvatarFallback className="text-xs">
+							{getWorkspaceName(selectedWorkspace).charAt(0).toUpperCase()}
+						</AvatarFallback>
+					</Avatar>
+					{!collapsed && (
+						<div className="flex min-w-0 flex-1 flex-col items-start">
+							<span className="truncate font-medium">{getWorkspaceName(selectedWorkspace)}</span>
+							<span className="text-muted-foreground truncate text-xs">{(selectedWorkspace as any).plan}</span>
+						</div>
+					)}
+				</div>
+				{!collapsed && <ChevronsUpDownIcon className="h-4 w-4 shrink-0 opacity-50" />}
+			</button>
+		</PopoverTrigger>
+	);
+}
+
+// Content component
+interface WorkspaceContentProps
+	extends PopoverContentProps {
+	renderWorkspace?: (
+		workspace: Workspace,
+		isSelected: boolean,
+	) => React.ReactNode;
+	title?: string;
+	searchable?: boolean;
+	onSearch?: (query: string) => void;
+}
+
+function WorkspaceContent({
+	className,
+	children,
+	renderWorkspace,
+	title = 'Workspaces',
+	searchable = false,
+	onSearch,
+	align = 'start',
+	useTriggerWidth = true,
+	...props
+}: WorkspaceContentProps) {
+	const {
+		workspaces,
+		open,
+		selectedWorkspace,
+		onWorkspaceSelect,
+		getWorkspaceId,
+		getWorkspaceName,
+	} = useWorkspaceContext();
+
+	const [searchQuery, setSearchQuery] = React.useState('');
+
+	const filteredWorkspaces = React.useMemo(() => {
+		if (!searchQuery) return workspaces;
+		return workspaces.filter((ws) =>
+			getWorkspaceName(ws).toLowerCase().includes(searchQuery.toLowerCase()),
+		);
+	}, [workspaces, searchQuery, getWorkspaceName]);
+
+	React.useEffect(() => {
+		onSearch?.(searchQuery);
+	}, [searchQuery, onSearch]);
+
+	const defaultRenderWorkspace = (
+		workspace: Workspace,
+		isSelected: boolean,
+	) => (
+		<div className="flex min-w-0 flex-1 items-center gap-2">
+			<Avatar className="h-6 w-6">
+				<AvatarImage
+					src={(workspace as any).logo}
+					alt={getWorkspaceName(workspace)}
+				/>
+				<AvatarFallback className="text-xs">
+					{getWorkspaceName(workspace).charAt(0).toUpperCase()}
+				</AvatarFallback>
+			</Avatar>
+			<div className="flex min-w-0 flex-1 flex-col items-start">
+				<span className="truncate text-sm">{getWorkspaceName(workspace)}</span>
+				{(workspace as any).plan && (
+					<span className="text-muted-foreground text-xs">
+						{(workspace as any).plan}
+					</span>
+				)}
+			</div>
+			{isSelected && <CheckIcon className="ml-auto h-4 w-4" />}
+		</div>
+	);
+
+	return (
+		<PopoverContent
+			className={cn('p-0', className)}
+			align={align}
+			useTriggerWidth={useTriggerWidth}
+			{...props}
+		>
+			<div className="border-b px-4 py-3">
+				<h3 className="text-sm font-semibold text-foreground">{title}</h3>
+			</div>
+
+			{searchable && (
+				<div className="border-b p-2">
+					<div className="relative">
+						<Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+						<input
+							type="text"
+							placeholder="Search workspaces..."
+							value={searchQuery}
+							onChange={(e) => setSearchQuery(e.target.value)}
+							className="h-9 w-full rounded-md bg-transparent pl-9 text-sm placeholder:text-muted-foreground focus:bg-accent focus:outline-none"
+						/>
+					</div>
+				</div>
+			)}
+
+			<div className="max-h-[300px] overflow-y-auto">
+				{filteredWorkspaces.length === 0 ? (
+					<div className="text-muted-foreground px-3 py-2 text-center text-sm">
+						No workspaces found
+					</div>
+				) : (
+					<div className="space-y-1 p-2">
+						{filteredWorkspaces.map((workspace) => {
+							const isSelected =
+								selectedWorkspace &&
+								getWorkspaceId(selectedWorkspace) === getWorkspaceId(workspace);
+
+							return (
+								<button
+									key={getWorkspaceId(workspace)}
+									onClick={() => onWorkspaceSelect(workspace)}
+									className={cn(
+										'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm',
+										'hover:bg-accent hover:text-accent-foreground',
+										'focus:outline-none',
+										isSelected && 'bg-accent text-accent-foreground',
+									)}
+								>
+									{renderWorkspace
+										? renderWorkspace(workspace, !!isSelected)
+										: defaultRenderWorkspace(workspace, !!isSelected)}
+								</button>
+							);
+						})}
+					</div>
+				)}
+			</div>
+
+			{children && (
+				<>
+					<div className="border-t" />
+					<div className="p-1">{children}</div>
+				</>
+			)}
+		</PopoverContent>
+	);
+}
+
+export { WorkspaceProvider as Workspaces, WorkspaceTrigger, WorkspaceContent };
 ```
 
 ## File: src/lib/utils.ts
@@ -2161,7 +2552,9 @@ export function SettingsPage() {
     "@radix-ui/react-slot": "^1.0.2",
     "sonner": "^1.2.4",
     "@radix-ui/react-avatar": "^1.0.4",
-    "@radix-ui/react-popover": "^1.0.7"
+    "@radix-ui/react-popover": "^1.0.7",
+    "@radix-ui/react-dialog": "^1.0.5",
+    "cmdk": "^0.2.0"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",
@@ -2279,6 +2672,7 @@ import { EnhancedSidebar } from './EnhancedSidebar'
 import { MainContent } from './MainContent'
 import { RightPane } from './RightPane'
 import { TopBar } from './TopBar'
+import { CommandPalette } from './CommandPalette'
 import { useAppStore } from '@/store/appStore'
 import { SIDEBAR_STATES, BODY_STATES } from '@/lib/utils'
 
@@ -2539,6 +2933,238 @@ export function AppShell() {
         </div>
       </div>
       <RightPane ref={rightPaneRef} />
+      <CommandPalette />
+    </div>
+  )
+}
+```
+
+## File: src/components/TopBar.tsx
+```typescript
+import { useState } from 'react'
+import {
+  Menu, 
+  Maximize, 
+  Minimize, 
+  Moon, 
+  Sun,
+  Settings,
+  Command,
+  Zap,
+  ChevronRight,
+  Search,
+  Filter,
+  Plus,
+  PanelRight,
+} from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { BODY_STATES } from '@/lib/utils'
+import { useAppStore } from '@/store/appStore'
+
+interface TopBarProps {
+  onToggleSidebar: () => void
+  onToggleFullscreen: () => void
+  onToggleDarkMode: () => void
+}
+
+export function TopBar({
+  onToggleSidebar,
+  onToggleFullscreen,
+  onToggleDarkMode
+}: TopBarProps) {
+  const { 
+    bodyState, 
+    isDarkMode, 
+    openSidePane,
+    sidePaneContent,
+    activePage,
+    setActivePage,
+    searchTerm,
+    setCommandPaletteOpen,
+    setSearchTerm,
+  } = useAppStore()
+
+  const [isSearchFocused, setIsSearchFocused] = useState(false)
+
+  const handleSettingsClick = () => {
+    const isSettingsInSidePane = bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === 'settings'
+
+    // If we're on the settings page and it's not in the side pane, treat this as a "minimize" action.
+    if (activePage === 'settings' && !isSettingsInSidePane) {
+      openSidePane('settings');
+      setActivePage('dashboard');
+    } else {
+      // In all other cases (on dashboard page, or settings already in pane),
+      // just toggle the settings side pane.
+      openSidePane('settings');
+    }
+  }
+
+  const handleDashboardMoveToSidePane = () => {
+    openSidePane('main');
+  };
+
+  const handleSettingsMoveToSidePane = () => {
+    openSidePane('settings');
+    setActivePage('dashboard');
+  }
+
+  const handleToasterMoveToSidePane = () => {
+    openSidePane('toaster');
+    setActivePage('dashboard');
+  }
+
+  return (
+    <div className={cn(
+      "h-20 bg-card/80 backdrop-blur-sm border-b border-border flex items-center justify-between px-6 z-50 gap-4",
+      {
+        'transition-all duration-300 ease-in-out': activePage === 'dashboard',
+      }
+    )}>
+      {/* Left Section - Sidebar Controls & Breadcrumbs */}
+      <div className="flex items-center gap-4">
+        {/* Sidebar Controls */}
+        <button
+          onClick={onToggleSidebar}
+          className={cn(
+            "h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors"
+          )}
+          title="Toggle Sidebar"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
+
+        {/* Breadcrumbs */}
+        <div className={cn("hidden md:flex items-center gap-2 text-sm transition-opacity", {
+          "opacity-0 pointer-events-none": isSearchFocused && activePage === 'dashboard'
+        })}>
+          <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">Home</a>
+          <ChevronRight className="w-4 h-4 text-muted-foreground" />
+          <span className="font-medium text-foreground capitalize">{activePage}</span>
+        </div>
+      </div>
+
+      {/* Right Section - Search, page controls, and global controls */}
+      <div className={cn("flex items-center gap-3", isSearchFocused && activePage === 'dashboard' ? 'flex-1' : '')}>
+        {/* Page-specific: Dashboard search and actions */}
+        {activePage === 'dashboard' && (
+          <div className="flex items-center gap-2 flex-1 justify-end">
+            <div className={cn("relative transition-all duration-300 ease-in-out", isSearchFocused ? 'flex-1 max-w-lg' : 'w-auto')}>
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4 pointer-events-none" />
+              <input
+                type="text"
+                placeholder="Search..."
+                value={searchTerm}
+                onFocus={() => setIsSearchFocused(true)}
+                onBlur={() => setIsSearchFocused(false)}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className={cn(
+                  "pl-9 pr-4 py-2 h-10 border-none rounded-lg bg-card focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300 ease-in-out w-full",
+                  isSearchFocused ? 'bg-background' : 'w-48'
+                )}
+              />
+            </div>
+             <button className="h-10 w-10 flex-shrink-0 flex items-center justify-center hover:bg-accent rounded-full transition-colors">
+              <Filter className="w-5 h-5" />
+            </button>
+             <button className="bg-primary text-primary-foreground px-4 py-2 rounded-full hover:bg-primary/90 transition-colors flex items-center gap-2 h-10 flex-shrink-0">
+              <Plus className="w-5 h-5" />
+              <span className={cn(isSearchFocused ? 'hidden sm:inline' : 'inline')}>New Project</span>
+            </button>
+          </div>
+        )}
+        
+        {/* Page-specific: Move to side pane */}
+        <div className={cn('flex items-center', isSearchFocused && activePage === 'dashboard' ? 'hidden md:flex' : '')}>
+          {activePage === 'dashboard' && (
+            <button onClick={handleDashboardMoveToSidePane} className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors" title="Move to Side Pane"><PanelRight className="w-5 h-5" /></button>
+          )}
+          {activePage === 'settings' && (
+            <button onClick={handleSettingsMoveToSidePane} className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors" title="Move to Side Pane"><PanelRight className="w-5 h-5" /></button>
+          )}
+          {activePage === 'toaster' && (
+            <button onClick={handleToasterMoveToSidePane} className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors" title="Move to Side Pane"><PanelRight className="w-5 h-5" /></button>
+          )}
+        </div>
+
+        {/* Separator */}
+        <div className={cn(
+          'w-px h-6 bg-border mx-2', 
+          (activePage !== 'dashboard' && activePage !== 'settings' && activePage !== 'toaster') || (isSearchFocused && activePage === 'dashboard') ? 'hidden' : ''
+        )} />
+
+        {/* Quick Actions */}
+        <div className={cn('flex items-center gap-3', isSearchFocused && activePage === 'dashboard' ? 'hidden lg:flex' : '')}>
+
+          <button
+            onClick={() => setCommandPaletteOpen(true)}
+            className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+            title="Command Palette (Ctrl+K)"
+          >
+            <Command className="w-5 h-5 group-hover:scale-110 transition-transform" />
+          </button>
+
+        <button
+          className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+          title="Quick Actions"
+        >
+          <Zap className="w-5 h-5 group-hover:scale-110 transition-transform" />
+        </button>
+
+        {/* Body State Controls */}
+        <button
+          onClick={() => openSidePane('details')}
+          className={cn(
+            "h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group",
+            bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === 'details' && "bg-accent"
+          )}
+          title="Toggle Side Pane"
+        >
+          <div className="w-5 h-5 flex group-hover:scale-110 transition-transform">
+            <div className="w-1/2 h-full bg-current opacity-60 rounded-l-sm" />
+            <div className="w-1/2 h-full bg-current rounded-r-sm" />
+          </div>
+        </button>
+
+        <button
+          onClick={onToggleFullscreen}
+          className={cn(
+            "h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group",
+            bodyState === BODY_STATES.FULLSCREEN && "bg-accent"
+          )}
+          title="Toggle Fullscreen"
+        >
+          {bodyState === BODY_STATES.FULLSCREEN ? (
+            <Minimize className="w-5 h-5 group-hover:scale-110 transition-transform" />
+          ) : (
+            <Maximize className="w-5 h-5 group-hover:scale-110 transition-transform" />
+          )}
+        </button>
+
+        <div className="w-px h-6 bg-border mx-2" />
+
+        {/* Theme and Settings */}
+        <button
+          onClick={onToggleDarkMode}
+          className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+          title="Toggle Dark Mode"
+        >
+          {isDarkMode ? (
+            <Sun className="w-5 h-5 group-hover:scale-110 transition-transform" />
+          ) : (
+            <Moon className="w-5 h-5 group-hover:scale-110 transition-transform" />
+          )}
+        </button>
+
+        <button
+          onClick={handleSettingsClick}
+          className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+          title="Settings"
+        >
+          <Settings className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
+        </button>
+        </div>
+      </div>
     </div>
   )
 }
@@ -2953,235 +3579,6 @@ export const EnhancedSidebar = forwardRef<HTMLDivElement, SidebarProps>(
 EnhancedSidebar.displayName = "EnhancedSidebar"
 ```
 
-## File: src/components/TopBar.tsx
-```typescript
-import { useState } from 'react'
-import {
-  Menu, 
-  Maximize, 
-  Minimize, 
-  Moon, 
-  Sun,
-  Settings,
-  Command,
-  Zap,
-  ChevronRight,
-  Search,
-  Filter,
-  Plus,
-  PanelRight,
-} from 'lucide-react'
-import { cn } from '@/lib/utils'
-import { BODY_STATES } from '@/lib/utils'
-import { useAppStore } from '@/store/appStore'
-
-interface TopBarProps {
-  onToggleSidebar: () => void
-  onToggleFullscreen: () => void
-  onToggleDarkMode: () => void
-}
-
-export function TopBar({
-  onToggleSidebar,
-  onToggleFullscreen,
-  onToggleDarkMode
-}: TopBarProps) {
-  const { 
-    bodyState, 
-    isDarkMode, 
-    openSidePane,
-    sidePaneContent,
-    activePage,
-    setActivePage,
-    searchTerm,
-    setSearchTerm,
-  } = useAppStore()
-
-  const [isSearchFocused, setIsSearchFocused] = useState(false)
-
-  const handleSettingsClick = () => {
-    const isSettingsInSidePane = bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === 'settings'
-
-    // If we're on the settings page and it's not in the side pane, treat this as a "minimize" action.
-    if (activePage === 'settings' && !isSettingsInSidePane) {
-      openSidePane('settings');
-      setActivePage('dashboard');
-    } else {
-      // In all other cases (on dashboard page, or settings already in pane),
-      // just toggle the settings side pane.
-      openSidePane('settings');
-    }
-  }
-
-  const handleDashboardMoveToSidePane = () => {
-    openSidePane('main');
-  };
-
-  const handleSettingsMoveToSidePane = () => {
-    openSidePane('settings');
-    setActivePage('dashboard');
-  }
-
-  const handleToasterMoveToSidePane = () => {
-    openSidePane('toaster');
-    setActivePage('dashboard');
-  }
-
-  return (
-    <div className={cn(
-      "h-20 bg-card/80 backdrop-blur-sm border-b border-border flex items-center justify-between px-6 z-50 gap-4",
-      {
-        'transition-all duration-300 ease-in-out': activePage === 'dashboard',
-      }
-    )}>
-      {/* Left Section - Sidebar Controls & Breadcrumbs */}
-      <div className="flex items-center gap-4">
-        {/* Sidebar Controls */}
-        <button
-          onClick={onToggleSidebar}
-          className={cn(
-            "h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors"
-          )}
-          title="Toggle Sidebar"
-        >
-          <Menu className="w-5 h-5" />
-        </button>
-
-        {/* Breadcrumbs */}
-        <div className={cn("hidden md:flex items-center gap-2 text-sm transition-opacity", {
-          "opacity-0 pointer-events-none": isSearchFocused && activePage === 'dashboard'
-        })}>
-          <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">Home</a>
-          <ChevronRight className="w-4 h-4 text-muted-foreground" />
-          <span className="font-medium text-foreground capitalize">{activePage}</span>
-        </div>
-      </div>
-
-      {/* Right Section - Search, page controls, and global controls */}
-      <div className={cn("flex items-center gap-3", isSearchFocused && activePage === 'dashboard' ? 'flex-1' : '')}>
-        {/* Page-specific: Dashboard search and actions */}
-        {activePage === 'dashboard' && (
-          <div className="flex items-center gap-2 flex-1 justify-end">
-            <div className={cn("relative transition-all duration-300 ease-in-out", isSearchFocused ? 'flex-1 max-w-lg' : 'w-auto')}>
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4 pointer-events-none" />
-              <input
-                type="text"
-                placeholder="Search..."
-                value={searchTerm}
-                onFocus={() => setIsSearchFocused(true)}
-                onBlur={() => setIsSearchFocused(false)}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className={cn(
-                  "pl-9 pr-4 py-2 h-10 border-none rounded-lg bg-card focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300 ease-in-out w-full",
-                  isSearchFocused ? 'bg-background' : 'w-48'
-                )}
-              />
-            </div>
-             <button className="h-10 w-10 flex-shrink-0 flex items-center justify-center hover:bg-accent rounded-full transition-colors">
-              <Filter className="w-5 h-5" />
-            </button>
-             <button className="bg-primary text-primary-foreground px-4 py-2 rounded-full hover:bg-primary/90 transition-colors flex items-center gap-2 h-10 flex-shrink-0">
-              <Plus className="w-5 h-5" />
-              <span className={cn(isSearchFocused ? 'hidden sm:inline' : 'inline')}>New Project</span>
-            </button>
-          </div>
-        )}
-        
-        {/* Page-specific: Move to side pane */}
-        <div className={cn('flex items-center', isSearchFocused && activePage === 'dashboard' ? 'hidden md:flex' : '')}>
-          {activePage === 'dashboard' && (
-            <button onClick={handleDashboardMoveToSidePane} className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors" title="Move to Side Pane"><PanelRight className="w-5 h-5" /></button>
-          )}
-          {activePage === 'settings' && (
-            <button onClick={handleSettingsMoveToSidePane} className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors" title="Move to Side Pane"><PanelRight className="w-5 h-5" /></button>
-          )}
-          {activePage === 'toaster' && (
-            <button onClick={handleToasterMoveToSidePane} className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors" title="Move to Side Pane"><PanelRight className="w-5 h-5" /></button>
-          )}
-        </div>
-
-        {/* Separator */}
-        <div className={cn(
-          'w-px h-6 bg-border mx-2', 
-          (activePage !== 'dashboard' && activePage !== 'settings' && activePage !== 'toaster') || (isSearchFocused && activePage === 'dashboard') ? 'hidden' : ''
-        )} />
-
-        {/* Quick Actions */}
-        <div className={cn('flex items-center gap-3', isSearchFocused && activePage === 'dashboard' ? 'hidden lg:flex' : '')}>
-
-          <button
-            className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
-            title="Command Palette (Ctrl+K)"
-          >
-            <Command className="w-5 h-5 group-hover:scale-110 transition-transform" />
-          </button>
-
-        <button
-          className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
-          title="Quick Actions"
-        >
-          <Zap className="w-5 h-5 group-hover:scale-110 transition-transform" />
-        </button>
-
-        {/* Body State Controls */}
-        <button
-          onClick={() => openSidePane('details')}
-          className={cn(
-            "h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group",
-            bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === 'details' && "bg-accent"
-          )}
-          title="Toggle Side Pane"
-        >
-          <div className="w-5 h-5 flex group-hover:scale-110 transition-transform">
-            <div className="w-1/2 h-full bg-current opacity-60 rounded-l-sm" />
-            <div className="w-1/2 h-full bg-current rounded-r-sm" />
-          </div>
-        </button>
-
-        <button
-          onClick={onToggleFullscreen}
-          className={cn(
-            "h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group",
-            bodyState === BODY_STATES.FULLSCREEN && "bg-accent"
-          )}
-          title="Toggle Fullscreen"
-        >
-          {bodyState === BODY_STATES.FULLSCREEN ? (
-            <Minimize className="w-5 h-5 group-hover:scale-110 transition-transform" />
-          ) : (
-            <Maximize className="w-5 h-5 group-hover:scale-110 transition-transform" />
-          )}
-        </button>
-
-        <div className="w-px h-6 bg-border mx-2" />
-
-        {/* Theme and Settings */}
-        <button
-          onClick={onToggleDarkMode}
-          className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
-          title="Toggle Dark Mode"
-        >
-          {isDarkMode ? (
-            <Sun className="w-5 h-5 group-hover:scale-110 transition-transform" />
-          ) : (
-            <Moon className="w-5 h-5 group-hover:scale-110 transition-transform" />
-          )}
-        </button>
-
-        <button
-          onClick={handleSettingsClick}
-          className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
-          title="Settings"
-        >
-          <Settings className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
-        </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-```
-
 ## File: src/components/MainContent.tsx
 ```typescript
 import { forwardRef } from 'react'
@@ -3337,6 +3734,7 @@ interface AppState {
   isResizing: boolean
   isResizingRightPane: boolean
   isTopBarVisible: boolean
+  isCommandPaletteOpen: boolean
   searchTerm: string
   
   // User Preferences
@@ -3359,6 +3757,7 @@ interface AppState {
   setReducedMotion: (reduced: boolean) => void
   setCompactMode: (compact: boolean) => void
   setPrimaryColor: (color: string) => void
+  setCommandPaletteOpen: (open: boolean) => void
   setSearchTerm: (term: string) => void
   
   // Composite Actions
@@ -3383,6 +3782,7 @@ const defaultState = {
   isResizing: false,
   isResizingRightPane: false,
   isTopBarVisible: true,
+  isCommandPaletteOpen: false,
   autoExpandSidebar: true,
   reducedMotion: false,
   compactMode: false,
@@ -3414,6 +3814,7 @@ export const useAppStore = create<AppState>()(
       setReducedMotion: (reduced) => set({ reducedMotion: reduced }),
       setCompactMode: (compact) => set({ compactMode: compact }),
       setPrimaryColor: (color) => set({ primaryColor: color }),
+      setCommandPaletteOpen: (open) => set({ isCommandPaletteOpen: open }),
       setSearchTerm: (term) => set({ searchTerm: term }),
       
       // Composite actions

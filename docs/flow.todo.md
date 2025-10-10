@@ -1,5 +1,9 @@
 ===
 
+workspace switcher should be as popover, never constrained by sidebar size
+
+===
+
 this project is for creating UI library to be reuse to another project as deps... so please make everything production ready from pluggable architecture to final touch
 
 === DONE
