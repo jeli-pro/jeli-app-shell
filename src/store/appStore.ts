@@ -39,7 +39,7 @@ const defaultState = {
   sidebarState: SIDEBAR_STATES.EXPANDED as SidebarState,
   bodyState: BODY_STATES.NORMAL as BodyState,
   isDarkMode: false,
-  sidebarWidth: 280,
+  sidebarWidth: 300,
   isResizing: false,
   autoExpandSidebar: true,
   reducedMotion: false,

@@ -82,27 +82,27 @@ export function DemoContent() {
   const stats = [
     { label: "Components", value: "12+", color: "text-emerald-600" },
     { label: "Animations", value: "25+", color: "text-teal-600" },
-    { label: "States", value: "7", color: "text-green-600" },
+    { label: "States", value: "7", color: "text-primary" },
     { label: "Settings", value: "10+", color: "text-amber-600" }
   ]
 
   return (
-    <div ref={contentRef} className="p-8 space-y-8">
+    <div ref={contentRef} className="p-8 space-y-12">
       {/* Hero Section */}
       <div className="text-center space-y-4">
         <div className="flex items-center justify-center gap-2 mb-4">
           <Rocket className="w-8 h-8 text-primary" />
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-emerald-600 to-emerald-400 bg-clip-text text-transparent">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
             Amazing App Shell
           </h1>
         </div>
-        <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+        <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
           A super amazing application shell with resizable sidebar, multiple body states, 
-          beautiful animations, and comprehensive settings - all built with modern web technologies.
+          smooth animations, and comprehensive settings - all built with modern web technologies.
         </p>
         
         {/* Quick Stats */}
-        <div className="flex items-center justify-center gap-8 mt-8">
+        <div className="flex items-center justify-center gap-12 mt-8">
           {stats.map((stat) => (
             <div key={stat.label} className="text-center">
               <div className={cn("text-2xl font-bold", stat.color)}>{stat.value}</div>
@@ -118,18 +118,10 @@ export function DemoContent() {
           <div
             key={feature.title}
             ref={el => cardsRef.current[index] = el}
-            className="group relative overflow-hidden rounded-xl bg-card border border-border p-6 hover:shadow-xl transition-all duration-300 cursor-pointer"
+            className="group relative overflow-hidden rounded-2xl bg-card border border-border/50 p-6 hover:border-primary/30 hover:bg-accent/30 transition-all duration-300 cursor-pointer"
           >
-            <div className={cn(
-              "absolute inset-0 bg-gradient-to-br opacity-0 group-hover:opacity-10 transition-opacity",
-              feature.color
-            )} />
-            
             <div className="relative z-10">
-              <div className={cn(
-                "w-12 h-12 rounded-lg bg-gradient-to-br flex items-center justify-center text-white mb-4 group-hover:scale-110 transition-transform",
-                feature.color
-              )}>
+              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-4 group-hover:scale-110 group-hover:bg-primary/20 transition-transform">
                 {feature.icon}
               </div>
               
@@ -141,7 +133,7 @@ export function DemoContent() {
       </div>
 
       {/* Technology Stack */}
-      <div className="bg-accent/30 rounded-xl p-6">
+      <div className="bg-card border border-border/50 rounded-2xl p-6">
         <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
           <Star className="w-6 h-6 text-yellow-500" />
           Technology Stack
@@ -158,7 +150,7 @@ export function DemoContent() {
             { name: "Shadcn/ui", desc: "Beautiful components" },
             { name: "Lucide Icons", desc: "Consistent iconography" }
           ].map((tech) => (
-            <div key={tech.name} className="bg-background rounded-lg p-4 border border-border">
+            <div key={tech.name} className="bg-background rounded-xl p-4 border border-border/50">
               <h4 className="font-medium">{tech.name}</h4>
               <p className="text-sm text-muted-foreground">{tech.desc}</p>
             </div>
@@ -167,26 +159,26 @@ export function DemoContent() {
       </div>
 
       {/* Current State Display */}
-      <div className="bg-primary/5 rounded-xl p-6 border border-primary/20">
+      <div className="bg-card border border-border/50 rounded-2xl p-6">
         <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
           <Monitor className="w-5 h-5" />
           Current App State
         </h2>
         
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="text-center p-3 bg-background rounded-lg">
+          <div className="text-center p-3 bg-background rounded-xl">
             <div className="text-sm text-muted-foreground">Sidebar</div>
             <div className="font-medium capitalize">{sidebarState}</div>
           </div>
-          <div className="text-center p-3 bg-background rounded-lg">
+          <div className="text-center p-3 bg-background rounded-xl">
             <div className="text-sm text-muted-foreground">Body State</div>
             <div className="font-medium capitalize">{bodyState.replace('_', ' ')}</div>
           </div>
-          <div className="text-center p-3 bg-background rounded-lg">
+          <div className="text-center p-3 bg-background rounded-xl">
             <div className="text-sm text-muted-foreground">Theme</div>
             <div className="font-medium">{isDarkMode ? 'Dark' : 'Light'}</div>
           </div>
-          <div className="text-center p-3 bg-background rounded-lg">
+          <div className="text-center p-3 bg-background rounded-xl">
             <div className="text-sm text-muted-foreground">Mode</div>
             <div className="font-medium">{compactMode ? 'Compact' : 'Normal'}</div>
           </div>

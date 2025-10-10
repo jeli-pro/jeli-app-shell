@@ -18,13 +18,12 @@ export function AppShell() {
     setIsResizing,
     setSidebarWidth,
     toggleSidebar,
-    hideSidebar,
-    showSidebar,
     peekSidebar,
     toggleFullscreen,
     toggleSidePane,
     toggleDarkMode,
-    reducedMotion
+    reducedMotion,
+    autoExpandSidebar
   } = useAppStore()
   
   const appRef = useRef<HTMLDivElement>(null)
@@ -165,12 +164,12 @@ export function AppShell() {
         <EnhancedSidebar
           ref={sidebarRef}
           onMouseEnter={() => {
-            if (sidebarState === SIDEBAR_STATES.COLLAPSED) {
+            if (autoExpandSidebar && sidebarState === SIDEBAR_STATES.COLLAPSED) {
               peekSidebar()
             }
           }}
           onMouseLeave={() => {
-            if (sidebarState === SIDEBAR_STATES.PEEK) {
+            if (autoExpandSidebar && sidebarState === SIDEBAR_STATES.PEEK) {
               setSidebarState(SIDEBAR_STATES.COLLAPSED)
             }
           }}
@@ -181,32 +180,27 @@ export function AppShell() {
           <div
             ref={resizeHandleRef}
             className={cn(
-              "absolute top-0 w-1 h-full bg-transparent hover:bg-emerald-500/20 cursor-col-resize z-50 transition-colors",
-              "group"
+              "absolute top-0 w-1.5 h-full bg-transparent hover:bg-primary/20 cursor-col-resize z-50 transition-colors duration-200 group"
             )}
             style={{ 
               left: sidebarState === SIDEBAR_STATES.COLLAPSED ? 64 : sidebarWidth 
             }}
             onMouseDown={() => setIsResizing(true)}
           >
-            <div className="w-full h-full bg-transparent group-hover:bg-emerald-500/40 transition-colors" />
+            <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200 mx-auto" />
           </div>
         )}
 
         {/* Main Content Area */}
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 flex flex-col overflow-hidden bg-background">
           {/* Top Bar */}
           <TopBar
-            sidebarState={sidebarState}
             bodyState={bodyState}
             isDarkMode={isDarkMode}
             onToggleSidebar={toggleSidebar}
             onToggleFullscreen={toggleFullscreen}
             onToggleSidePane={toggleSidePane}
             onToggleDarkMode={toggleDarkMode}
-            onHideSidebar={hideSidebar}
-            onShowSidebar={showSidebar}
-            onPeekSidebar={peekSidebar}
           />
           
           {/* Main Content */}

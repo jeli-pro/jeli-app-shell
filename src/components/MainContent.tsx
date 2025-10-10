@@ -48,28 +48,28 @@ const statsCards: StatsCard[] = [
     value: "$45,231.89",
     change: "+20.1%",
     trend: "up",
-    icon: <DollarSign className="w-4 h-4" />
+    icon: <DollarSign className="w-5 h-5" />
   },
   {
     title: "Active Users",
     value: "2,350",
     change: "+180.1%",
     trend: "up",
-    icon: <Users className="w-4 h-4" />
+    icon: <Users className="w-5 h-5" />
   },
   {
     title: "Conversion Rate",
     value: "12.5%",
     change: "+19%",
     trend: "up",
-    icon: <TrendingUp className="w-4 h-4" />
+    icon: <TrendingUp className="w-5 h-5" />
   },
   {
     title: "Performance",
     value: "573ms",
     change: "-5.3%",
     trend: "down",
-    icon: <Activity className="w-4 h-4" />
+    icon: <Activity className="w-5 h-5" />
   }
 ]
 
@@ -178,14 +178,14 @@ export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
       <div
         ref={ref}
         className={cn(
-          "flex-1 h-[calc(100vh-64px)] overflow-hidden transition-all duration-300",
+          "flex-1 h-[calc(100vh-80px)] overflow-hidden transition-all duration-300",
           bodyState === BODY_STATES.FULLSCREEN && "bg-background",
           bodyState === BODY_STATES.SIDE_PANE && "bg-muted/30"
         )}
       >
         <div 
           ref={contentRef}
-          className="h-full overflow-y-auto p-6 space-y-6"
+          className="h-full overflow-y-auto p-6 space-y-8"
         >
           {/* Header */}
           <div className="flex items-center justify-between">
@@ -204,15 +204,15 @@ export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
                   placeholder="Search..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-9 pr-4 py-2 border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                  className="pl-9 pr-4 py-2 border-none rounded-lg bg-card focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                 />
               </div>
-              <button className="p-2 hover:bg-accent rounded-lg transition-colors">
-                <Filter className="w-4 h-4" />
+              <button className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors">
+                <Filter className="w-5 h-5" />
               </button>
-              <button className="bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-2">
-                <Plus className="w-4 h-4" />
-                New Project
+              <button className="bg-primary text-primary-foreground px-4 py-2 rounded-full hover:bg-primary/90 transition-colors flex items-center gap-2 h-10">
+                <Plus className="w-5 h-5" />
+                <span>New Project</span>
               </button>
             </div>
           </div>
@@ -223,10 +223,10 @@ export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
               <div
                 key={stat.title}
                 ref={el => cardsRef.current[index] = el}
-                className="bg-card p-6 rounded-xl border border-border hover:shadow-lg transition-all duration-300 group cursor-pointer"
+                className="bg-card p-6 rounded-2xl border border-border/50 hover:border-primary/30 transition-all duration-300 group cursor-pointer"
               >
                 <div className="flex items-center justify-between">
-                  <div className="p-2 bg-primary/10 rounded-lg group-hover:bg-primary/20 transition-colors">
+                  <div className="p-3 bg-primary/10 rounded-full group-hover:bg-primary/20 transition-colors">
                     {stat.icon}
                   </div>
                   <div className={cn(
@@ -252,16 +252,16 @@ export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
             {/* Chart Area */}
             <div className="lg:col-span-2 space-y-6">
               {/* Analytics Chart */}
-              <div className="bg-card p-6 rounded-xl border border-border">
+              <div className="bg-card p-6 rounded-2xl border border-border/50">
                 <div className="flex items-center justify-between mb-6">
                   <h3 className="text-lg font-semibold">Analytics Overview</h3>
-                  <button className="p-2 hover:bg-accent rounded-lg transition-colors">
-                    <MoreVertical className="w-4 h-4" />
+                  <button className="h-8 w-8 flex items-center justify-center hover:bg-accent rounded-full transition-colors">
+                    <MoreVertical className="w-5 h-5" />
                   </button>
                 </div>
                 
                 {/* Mock Chart */}
-                <div className="h-64 bg-gradient-to-br from-primary/5 to-primary/20 rounded-lg flex items-center justify-center border border-primary/20">
+                <div className="h-64 bg-gradient-to-br from-primary/10 to-transparent rounded-xl flex items-center justify-center border border-border/50">
                   <div className="text-center">
                     <BarChart3 className="w-12 h-12 text-primary mx-auto mb-2" />
                     <p className="text-muted-foreground">Chart visualization would go here</p>
@@ -270,7 +270,7 @@ export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
               </div>
 
               {/* Recent Projects */}
-              <div className="bg-card p-6 rounded-xl border border-border">
+              <div className="bg-card p-6 rounded-2xl border border-border/50">
                 <div className="flex items-center justify-between mb-6">
                   <h3 className="text-lg font-semibold">Recent Projects</h3>
                   <button className="text-primary hover:text-primary/80 text-sm font-medium flex items-center gap-1">
@@ -285,7 +285,7 @@ export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
                     { name: "Mobile App Redesign", progress: 45, team: 3, deadline: "Jan 20" },
                     { name: "Marketing Website", progress: 90, team: 4, deadline: "Dec 5" }
                   ].map((project) => (
-                    <div key={project.name} className="p-4 bg-accent/30 rounded-lg hover:bg-accent/50 transition-colors cursor-pointer">
+                    <div key={project.name} className="p-4 bg-accent/30 rounded-xl hover:bg-accent/50 transition-colors cursor-pointer">
                       <div className="flex items-center justify-between mb-2">
                         <h4 className="font-medium">{project.name}</h4>
                         <span className="text-sm text-muted-foreground">{project.progress}%</span>
@@ -309,7 +309,7 @@ export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
             {/* Sidebar Content */}
             <div className="space-y-6">
               {/* Quick Actions */}
-              <div className="bg-card p-6 rounded-xl border border-border">
+              <div className="bg-card p-6 rounded-2xl border border-border/50">
                 <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
                 <div className="space-y-3">
                   {[
@@ -322,7 +322,7 @@ export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
                       key={action.label}
                       className="w-full flex items-center gap-3 p-3 hover:bg-accent rounded-lg transition-colors text-left"
                     >
-                      <div className={cn("p-2 rounded-lg", action.color)}>
+                      <div className={cn("p-2 rounded-full", action.color)}>
                         {action.icon}
                       </div>
                       <span className="font-medium">{action.label}</span>
@@ -332,12 +332,12 @@ export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
               </div>
 
               {/* Recent Activity */}
-              <div className="bg-card p-6 rounded-xl border border-border">
+              <div className="bg-card p-6 rounded-2xl border border-border/50">
                 <h3 className="text-lg font-semibold mb-4">Recent Activity</h3>
                 <div className="space-y-4">
                   {recentActivity.map((activity) => (
-                    <div key={activity.id} className="flex items-start gap-3 p-3 hover:bg-accent/30 rounded-lg transition-colors cursor-pointer">
-                      <div className="p-2 bg-primary/10 rounded-lg flex-shrink-0">
+                    <div key={activity.id} className="flex items-start gap-3 p-3 hover:bg-accent/30 rounded-xl transition-colors cursor-pointer">
+                      <div className="p-2 bg-primary/10 rounded-full flex-shrink-0">
                         {getTypeIcon(activity.type)}
                       </div>
                       <div className="flex-1 min-w-0">

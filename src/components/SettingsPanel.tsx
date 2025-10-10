@@ -46,8 +46,8 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-[100] animate-fade-in">
-      <div className="fixed right-0 top-0 h-full w-96 bg-card border-l border-border shadow-2xl animate-slide-in">
+    <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-[100] animate-in fade-in-0 duration-300">
+      <div className="fixed right-4 top-4 bottom-4 w-full max-w-sm bg-card border border-border shadow-2xl rounded-2xl animate-in slide-in-from-right-8 duration-300">
         <div className="flex flex-col h-full">
           {/* Header */}
           <div className="flex items-center justify-between p-6 border-b border-border">
@@ -64,7 +64,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
           </div>
 
           {/* Content */}
-          <div className="flex-1 overflow-y-auto p-6 space-y-8">
+          <div className="flex-1 overflow-y-auto p-6 space-y-10">
             {/* Appearance */}
             <div className="space-y-4">
               <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
@@ -84,13 +84,13 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                 <button
                   onClick={toggleDarkMode}
                   className={cn(
-                    "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
+                    "relative inline-flex h-7 w-12 items-center rounded-full transition-colors",
                     isDarkMode ? "bg-primary" : "bg-muted"
                   )}
                 >
                   <span
                     className={cn(
-                      "inline-block h-4 w-4 transform rounded-full bg-background transition-transform",
+                      "inline-block h-5 w-5 transform rounded-full bg-background transition-transform",
                       isDarkMode ? "translate-x-6" : "translate-x-1"
                     )}
                   />
@@ -109,13 +109,13 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                 <button
                   onClick={() => setCompactMode(!compactMode)}
                   className={cn(
-                    "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
+                    "relative inline-flex h-7 w-12 items-center rounded-full transition-colors",
                     compactMode ? "bg-primary" : "bg-muted"
                   )}
                 >
                   <span
                     className={cn(
-                      "inline-block h-4 w-4 transform rounded-full bg-background transition-transform",
+                      "inline-block h-5 w-5 transform rounded-full bg-background transition-transform",
                       compactMode ? "translate-x-6" : "translate-x-1"
                     )}
                   />
@@ -142,13 +142,13 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                 <button
                   onClick={() => setAutoExpandSidebar(!autoExpandSidebar)}
                   className={cn(
-                    "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
+                    "relative inline-flex h-7 w-12 items-center rounded-full transition-colors",
                     autoExpandSidebar ? "bg-primary" : "bg-muted"
                   )}
                 >
                   <span
                     className={cn(
-                      "inline-block h-4 w-4 transform rounded-full bg-background transition-transform",
+                      "inline-block h-5 w-5 transform rounded-full bg-background transition-transform",
                       autoExpandSidebar ? "translate-x-6" : "translate-x-1"
                     )}
                   />
@@ -172,7 +172,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                     step="10"
                     value={tempSidebarWidth}
                     onChange={(e) => handleSidebarWidthChange(Number(e.target.value))}
-                    className="w-full h-2 bg-muted rounded-lg appearance-none cursor-pointer slider"
+                    className="w-full h-1.5 bg-muted rounded-lg appearance-none cursor-pointer slider"
                   />
                   <div className="flex justify-between text-xs text-muted-foreground">
                     <span>200px</span>
@@ -202,13 +202,13 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                 <button
                   onClick={() => setReducedMotion(!reducedMotion)}
                   className={cn(
-                    "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
+                    "relative inline-flex h-7 w-12 items-center rounded-full transition-colors",
                     reducedMotion ? "bg-primary" : "bg-muted"
                   )}
                 >
                   <span
                     className={cn(
-                      "inline-block h-4 w-4 transform rounded-full bg-background transition-transform",
+                      "inline-block h-5 w-5 transform rounded-full bg-background transition-transform",
                       reducedMotion ? "translate-x-6" : "translate-x-1"
                     )}
                   />
@@ -229,7 +229,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                     setReducedMotion(false)
                     setSidebarWidth(320)
                   }}
-                  className="p-3 bg-accent/30 hover:bg-accent/50 rounded-lg transition-colors text-left"
+                  className="p-4 bg-accent/30 hover:bg-accent/50 rounded-xl transition-colors text-left"
                 >
                   <Monitor className="w-4 h-4 mb-2" />
                   <p className="font-medium text-sm">Desktop</p>
@@ -242,7 +242,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                     setReducedMotion(true)
                     setSidebarWidth(240)
                   }}
-                  className="p-3 bg-accent/30 hover:bg-accent/50 rounded-lg transition-colors text-left"
+                  className="p-4 bg-accent/30 hover:bg-accent/50 rounded-xl transition-colors text-left"
                 >
                   <Smartphone className="w-4 h-4 mb-2" />
                   <p className="font-medium text-sm">Mobile</p>
@@ -256,7 +256,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
           <div className="p-6 border-t border-border">
             <button
               onClick={resetToDefaults}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-destructive/10 text-destructive hover:bg-destructive/20 rounded-lg transition-colors"
+              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-destructive/10 text-destructive hover:bg-destructive/20 rounded-lg transition-colors"
             >
               <RotateCcw className="w-4 h-4" />
               Reset to Defaults
@@ -272,22 +272,23 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
 const sliderStyles = `
 .slider::-webkit-slider-thumb {
   appearance: none;
-  height: 20px;
-  width: 20px;
+  height: 18px;
+  width: 18px;
   border-radius: 50%;
   background: hsl(var(--primary));
   cursor: pointer;
-  border: 2px solid hsl(var(--background));
+  border: 3px solid hsl(var(--background));
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  margin-top: -7px;
 }
 
 .slider::-moz-range-thumb {
-  height: 20px;
-  width: 20px;
+  height: 18px;
+  width: 18px;
   border-radius: 50%;
   background: hsl(var(--primary));
   cursor: pointer;
-  border: 2px solid hsl(var(--background));
+  border: 3px solid hsl(var(--background));
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 `

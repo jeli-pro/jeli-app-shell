@@ -27,6 +27,393 @@ vite.config.ts
 
 # Files
 
+## File: src/lib/utils.ts
+```typescript
+import { type ClassValue, clsx } from "clsx"
+import { twMerge } from "tailwind-merge"
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs))
+}
+
+export const SIDEBAR_STATES = {
+  HIDDEN: 'hidden',
+  COLLAPSED: 'collapsed', 
+  EXPANDED: 'expanded',
+  PEEK: 'peek'
+} as const
+
+export const BODY_STATES = {
+  NORMAL: 'normal',
+  FULLSCREEN: 'fullscreen',
+  SIDE_PANE: 'side_pane'
+} as const
+
+export type SidebarState = typeof SIDEBAR_STATES[keyof typeof SIDEBAR_STATES]
+export type BodyState = typeof BODY_STATES[keyof typeof BODY_STATES]
+```
+
+## File: src/store/appStore.ts
+```typescript
+import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
+import { SIDEBAR_STATES, BODY_STATES, type SidebarState, type BodyState } from '@/lib/utils'
+
+interface AppState {
+  // UI States
+  sidebarState: SidebarState
+  bodyState: BodyState
+  isDarkMode: boolean
+  sidebarWidth: number
+  isResizing: boolean
+  
+  // User Preferences
+  autoExpandSidebar: boolean
+  reducedMotion: boolean
+  compactMode: boolean
+  
+  // Actions
+  setSidebarState: (state: SidebarState) => void
+  setBodyState: (state: BodyState) => void
+  toggleDarkMode: () => void
+  setSidebarWidth: (width: number) => void
+  setIsResizing: (resizing: boolean) => void
+  setAutoExpandSidebar: (auto: boolean) => void
+  setReducedMotion: (reduced: boolean) => void
+  setCompactMode: (compact: boolean) => void
+  
+  // Composite Actions
+  toggleSidebar: () => void
+  hideSidebar: () => void
+  showSidebar: () => void
+  peekSidebar: () => void
+  toggleFullscreen: () => void
+  toggleSidePane: () => void
+  resetToDefaults: () => void
+}
+
+const defaultState = {
+  sidebarState: SIDEBAR_STATES.EXPANDED as SidebarState,
+  bodyState: BODY_STATES.NORMAL as BodyState,
+  isDarkMode: false,
+  sidebarWidth: 300,
+  isResizing: false,
+  autoExpandSidebar: true,
+  reducedMotion: false,
+  compactMode: false,
+}
+
+export const useAppStore = create<AppState>()(
+  persist(
+    (set, get) => ({
+      ...defaultState,
+      
+      // Basic setters
+      setSidebarState: (state) => set({ sidebarState: state }),
+      setBodyState: (state) => set({ bodyState: state }),
+      toggleDarkMode: () => {
+        const newMode = !get().isDarkMode
+        set({ isDarkMode: newMode })
+        document.documentElement.classList.toggle('dark', newMode)
+      },
+      setSidebarWidth: (width) => set({ sidebarWidth: Math.max(200, Math.min(500, width)) }),
+      setIsResizing: (resizing) => set({ isResizing: resizing }),
+      setAutoExpandSidebar: (auto) => set({ autoExpandSidebar: auto }),
+      setReducedMotion: (reduced) => set({ reducedMotion: reduced }),
+      setCompactMode: (compact) => set({ compactMode: compact }),
+      
+      // Composite actions
+      toggleSidebar: () => {
+        const current = get().sidebarState
+        if (current === SIDEBAR_STATES.HIDDEN) {
+          set({ sidebarState: SIDEBAR_STATES.COLLAPSED })
+        } else if (current === SIDEBAR_STATES.COLLAPSED) {
+          set({ sidebarState: SIDEBAR_STATES.EXPANDED })
+        } else if (current === SIDEBAR_STATES.EXPANDED) {
+          set({ sidebarState: SIDEBAR_STATES.COLLAPSED })
+        }
+      },
+      
+      hideSidebar: () => set({ sidebarState: SIDEBAR_STATES.HIDDEN }),
+      showSidebar: () => set({ sidebarState: SIDEBAR_STATES.EXPANDED }),
+      peekSidebar: () => set({ sidebarState: SIDEBAR_STATES.PEEK }),
+      
+      toggleFullscreen: () => {
+        const current = get().bodyState
+        set({ 
+          bodyState: current === BODY_STATES.FULLSCREEN ? BODY_STATES.NORMAL : BODY_STATES.FULLSCREEN 
+        })
+      },
+      
+      toggleSidePane: () => {
+        const current = get().bodyState
+        set({ 
+          bodyState: current === BODY_STATES.SIDE_PANE ? BODY_STATES.NORMAL : BODY_STATES.SIDE_PANE 
+        })
+      },
+      
+      resetToDefaults: () => set(defaultState),
+    }),
+    {
+      name: 'app-preferences',
+      partialize: (state) => ({
+        sidebarState: state.sidebarState,
+        bodyState: state.bodyState,
+        isDarkMode: state.isDarkMode,
+        sidebarWidth: state.sidebarWidth,
+        autoExpandSidebar: state.autoExpandSidebar,
+        reducedMotion: state.reducedMotion,
+        compactMode: state.compactMode,
+      }),
+    }
+  )
+)
+
+// Initialize dark mode on load
+if (typeof window !== 'undefined') {
+  const stored = localStorage.getItem('app-preferences')
+  if (stored) {
+    const parsed = JSON.parse(stored)
+    if (parsed.state?.isDarkMode) {
+      document.documentElement.classList.add('dark')
+    }
+  }
+}
+```
+
+## File: src/index.css
+```css
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import 'tailwindcss/utilities';
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 220 84% 60%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222.2 84% 4.9%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96%;
+    --accent-foreground: 222.2 84% 4.9%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 220 84% 60%;
+    --radius: 0.75rem;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 220 84% 60%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 220 84% 60%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Custom scrollbar styles */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-border rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-muted-foreground/50;
+}
+```
+
+## File: src/main.tsx
+```typescript
+import React from 'react'
+import ReactDOM from 'react-dom/client'
+import App from './App.tsx'
+import './index.css'
+
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>,
+)
+```
+
+## File: index.html
+```html
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Amazing App Shell</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+```
+
+## File: postcss.config.js
+```javascript
+export default {
+  plugins: {
+    tailwindcss: {},
+    autoprefixer: {},
+  },
+}
+```
+
+## File: tailwind.config.js
+```javascript
+/** @type {import('tailwindcss').Config} */
+export default {
+  content: [
+    "./index.html",
+    "./src/**/*.{js,ts,jsx,tsx}",
+  ],
+  darkMode: "class",
+  theme: {
+    extend: {
+      colors: {
+        border: "hsl(var(--border))",
+        input: "hsl(var(--input))",
+        ring: "hsl(var(--ring))",
+        background: "hsl(var(--background))",
+        foreground: "hsl(var(--foreground))",
+        primary: {
+          DEFAULT: "hsl(var(--primary))",
+          foreground: "hsl(var(--primary-foreground))",
+        },
+        secondary: {
+          DEFAULT: "hsl(var(--secondary))",
+          foreground: "hsl(var(--secondary-foreground))",
+        },
+        destructive: {
+          DEFAULT: "hsl(var(--destructive))",
+          foreground: "hsl(var(--destructive-foreground))",
+        },
+        muted: {
+          DEFAULT: "hsl(var(--muted))",
+          foreground: "hsl(var(--muted-foreground))",
+        },
+        accent: {
+          DEFAULT: "hsl(var(--accent))",
+          foreground: "hsl(var(--accent-foreground))",
+        },
+        popover: {
+          DEFAULT: "hsl(var(--popover))",
+          foreground: "hsl(var(--popover-foreground))",
+        },
+        card: {
+          DEFAULT: "hsl(var(--card))",
+          foreground: "hsl(var(--card-foreground))",
+        },
+      },
+      borderRadius: {
+        lg: "var(--radius)", // 0.75rem
+        md: "calc(var(--radius) - 0.25rem)", // 0.5rem
+        sm: "calc(var(--radius) - 0.5rem)", // 0.25rem
+      },
+      animation: {
+        "fade-in": "fadeIn 0.5s ease-in-out",
+        "slide-in": "slideIn 0.3s ease-out",
+        "scale-in": "scaleIn 0.2s ease-out",
+      },
+      keyframes: {
+        fadeIn: {
+          "0%": { opacity: "0" },
+          "100%": { opacity: "1" },
+        },
+        slideIn: {
+          "0%": { transform: "translateX(-100%)" },
+          "100%": { transform: "translateX(0)" },
+        },
+        scaleIn: {
+          "0%": { transform: "scale(0.95)", opacity: "0" },
+          "100%": { transform: "scale(1)", opacity: "1" },
+        },
+      },
+    },
+  },
+  plugins: [],
+}
+```
+
+## File: tsconfig.json
+```json
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "useDefineForClassFields": true,
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+
+    /* Bundler mode */
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+
+    /* Linting */
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+
+    /* Path mapping */
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": ["src"],
+  "references": [{ "path": "./tsconfig.node.json" }]
+}
+```
+
 ## File: src/components/AppShell.tsx
 ```typescript
 import { useRef, useEffect } from 'react'
@@ -55,7 +442,8 @@ export function AppShell() {
     toggleFullscreen,
     toggleSidePane,
     toggleDarkMode,
-    reducedMotion
+    reducedMotion,
+    autoExpandSidebar
   } = useAppStore()
   
   const appRef = useRef<HTMLDivElement>(null)
@@ -196,12 +584,12 @@ export function AppShell() {
         <EnhancedSidebar
           ref={sidebarRef}
           onMouseEnter={() => {
-            if (sidebarState === SIDEBAR_STATES.COLLAPSED) {
+            if (autoExpandSidebar && sidebarState === SIDEBAR_STATES.COLLAPSED) {
               peekSidebar()
             }
           }}
           onMouseLeave={() => {
-            if (sidebarState === SIDEBAR_STATES.PEEK) {
+            if (autoExpandSidebar && sidebarState === SIDEBAR_STATES.PEEK) {
               setSidebarState(SIDEBAR_STATES.COLLAPSED)
             }
           }}
@@ -212,15 +600,14 @@ export function AppShell() {
           <div
             ref={resizeHandleRef}
             className={cn(
-              "absolute top-0 w-1 h-full bg-transparent hover:bg-emerald-500/20 cursor-col-resize z-50 transition-colors",
-              "group"
+              "absolute top-0 w-2 h-full bg-transparent hover:bg-primary/20 cursor-col-resize z-50 transition-colors duration-200 group"
             )}
             style={{ 
               left: sidebarState === SIDEBAR_STATES.COLLAPSED ? 64 : sidebarWidth 
             }}
             onMouseDown={() => setIsResizing(true)}
           >
-            <div className="w-full h-full bg-transparent group-hover:bg-emerald-500/40 transition-colors" />
+            <div className="w-0.5 h-full bg-transparent group-hover:bg-primary transition-colors duration-200 mx-auto" />
           </div>
         )}
 
@@ -338,27 +725,27 @@ export function DemoContent() {
   const stats = [
     { label: "Components", value: "12+", color: "text-emerald-600" },
     { label: "Animations", value: "25+", color: "text-teal-600" },
-    { label: "States", value: "7", color: "text-green-600" },
+    { label: "States", value: "7", color: "text-primary" },
     { label: "Settings", value: "10+", color: "text-amber-600" }
   ]
 
   return (
-    <div ref={contentRef} className="p-8 space-y-8">
+    <div ref={contentRef} className="p-8 space-y-12">
       {/* Hero Section */}
       <div className="text-center space-y-4">
         <div className="flex items-center justify-center gap-2 mb-4">
           <Rocket className="w-8 h-8 text-primary" />
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-emerald-600 to-emerald-400 bg-clip-text text-transparent">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
             Amazing App Shell
           </h1>
         </div>
-        <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+        <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
           A super amazing application shell with resizable sidebar, multiple body states, 
-          beautiful animations, and comprehensive settings - all built with modern web technologies.
+          smooth animations, and comprehensive settings - all built with modern web technologies.
         </p>
         
         {/* Quick Stats */}
-        <div className="flex items-center justify-center gap-8 mt-8">
+        <div className="flex items-center justify-center gap-12 mt-8">
           {stats.map((stat) => (
             <div key={stat.label} className="text-center">
               <div className={cn("text-2xl font-bold", stat.color)}>{stat.value}</div>
@@ -374,18 +761,10 @@ export function DemoContent() {
           <div
             key={feature.title}
             ref={el => cardsRef.current[index] = el}
-            className="group relative overflow-hidden rounded-xl bg-card border border-border p-6 hover:shadow-xl transition-all duration-300 cursor-pointer"
+            className="group relative overflow-hidden rounded-lg bg-card border border-border p-6 hover:border-primary/30 hover:shadow-sm transition-all duration-300 cursor-pointer"
           >
-            <div className={cn(
-              "absolute inset-0 bg-gradient-to-br opacity-0 group-hover:opacity-10 transition-opacity",
-              feature.color
-            )} />
-            
             <div className="relative z-10">
-              <div className={cn(
-                "w-12 h-12 rounded-lg bg-gradient-to-br flex items-center justify-center text-white mb-4 group-hover:scale-110 transition-transform",
-                feature.color
-              )}>
+              <div className="w-12 h-12 rounded-md bg-primary/10 flex items-center justify-center text-primary mb-4 group-hover:scale-110 group-hover:bg-primary/20 transition-transform">
                 {feature.icon}
               </div>
               
@@ -397,7 +776,7 @@ export function DemoContent() {
       </div>
 
       {/* Technology Stack */}
-      <div className="bg-accent/30 rounded-xl p-6">
+      <div className="bg-card border border-border rounded-lg p-6">
         <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
           <Star className="w-6 h-6 text-yellow-500" />
           Technology Stack
@@ -423,7 +802,7 @@ export function DemoContent() {
       </div>
 
       {/* Current State Display */}
-      <div className="bg-primary/5 rounded-xl p-6 border border-primary/20">
+      <div className="bg-card border border-border rounded-lg p-6">
         <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
           <Monitor className="w-5 h-5" />
           Current App State
@@ -649,9 +1028,9 @@ export const EnhancedSidebar = forwardRef<HTMLDivElement, SidebarProps>(
       <div key={item.label} className={cn("space-y-1", depth > 0 && "ml-6")}>
         <div
           className={cn(
-            "group relative flex items-center gap-3 rounded-lg cursor-pointer transition-all duration-200",
-            compactMode ? "px-2 py-1" : "px-3 py-2",
-            "hover:bg-accent/50",
+            "group relative flex items-center gap-3 rounded-md cursor-pointer transition-all duration-200",
+            compactMode ? "px-2 py-1.5" : "px-3 py-2",
+            "hover:bg-accent",
             item.isActive && "bg-primary text-primary-foreground hover:bg-primary/90",
             depth > 0 && "text-sm"
           )}
@@ -727,23 +1106,8 @@ export const EnhancedSidebar = forwardRef<HTMLDivElement, SidebarProps>(
             compactMode ? "py-4" : "py-6"
           )}
         >
-          {/* Quick Actions Bar */}
-          {!isCollapsed && (
-            <div className="px-3 pb-4 border-b border-border">
-              <div className="flex gap-2">
-                <button className="flex-1 flex items-center justify-center gap-2 px-2 py-1.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors text-sm">
-                  <Plus className="w-3 h-3" />
-                  New
-                </button>
-                <button className="p-1.5 hover:bg-accent rounded-lg transition-colors">
-                  <Command className="w-3 h-3" />
-                </button>
-              </div>
-            </div>
-          )}
-
           {/* Navigation Sections */}
-          <div className="flex-1 overflow-y-auto overflow-x-hidden px-3 space-y-6">
+          <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 space-y-6 pt-4">
             {navigationSections.map((section, sectionIndex) => {
               const isExpanded = expandedSections.has(section.title)
               
@@ -756,7 +1120,7 @@ export const EnhancedSidebar = forwardRef<HTMLDivElement, SidebarProps>(
                   {!isCollapsed && (
                     <div 
                       className={cn(
-                        "flex items-center justify-between px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider",
+                        "flex items-center justify-between px-2 text-xs font-medium text-muted-foreground uppercase tracking-wider",
                         section.collapsible && "cursor-pointer hover:text-foreground transition-colors"
                       )}
                       onClick={() => section.collapsible && toggleSection(section.title)}
@@ -784,14 +1148,14 @@ export const EnhancedSidebar = forwardRef<HTMLDivElement, SidebarProps>(
           </div>
 
           {/* Bottom Navigation */}
-          <div className={cn("px-3 pt-6 border-t border-border", compactMode && "pt-4")}>
+          <div className={cn("px-4 pt-4 border-t border-border", compactMode && "pt-3")}>
             <nav className="space-y-1">
               {bottomNavItems.map((item) => renderNavItem(item))}
             </nav>
 
             {/* User Profile */}
             {!isCollapsed && (
-              <div className={cn("mt-6 p-3 bg-accent/30 rounded-lg", compactMode && "mt-4 p-2")}>
+              <div className={cn("mt-6 p-3 bg-accent/50 rounded-lg", compactMode && "mt-4 p-2")}>
                 <div className="flex items-center gap-3">
                   <div className={cn("bg-primary rounded-full flex items-center justify-center", compactMode ? "w-6 h-6" : "w-8 h-8")}>
                     <User className={cn("text-primary-foreground", compactMode ? "w-3 h-3" : "w-4 h-4")} />
@@ -1009,7 +1373,7 @@ export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
       >
         <div 
           ref={contentRef}
-          className="h-full overflow-y-auto p-6 space-y-6"
+          className="h-full overflow-y-auto p-8 space-y-8"
         >
           {/* Header */}
           <div className="flex items-center justify-between">
@@ -1028,7 +1392,7 @@ export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
                   placeholder="Search..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-9 pr-4 py-2 border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                  className="pl-9 pr-4 py-2 border border-border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                 />
               </div>
               <button className="p-2 hover:bg-accent rounded-lg transition-colors">
@@ -1036,7 +1400,7 @@ export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
               </button>
               <button className="bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-2">
                 <Plus className="w-4 h-4" />
-                New Project
+                <span>New Project</span>
               </button>
             </div>
           </div>
@@ -1047,7 +1411,7 @@ export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
               <div
                 key={stat.title}
                 ref={el => cardsRef.current[index] = el}
-                className="bg-card p-6 rounded-xl border border-border hover:shadow-lg transition-all duration-300 group cursor-pointer"
+                className="bg-card p-6 rounded-lg border border-border hover:border-primary/30 hover:shadow-sm transition-all duration-300 group cursor-pointer"
               >
                 <div className="flex items-center justify-between">
                   <div className="p-2 bg-primary/10 rounded-lg group-hover:bg-primary/20 transition-colors">
@@ -1085,7 +1449,7 @@ export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
                 </div>
                 
                 {/* Mock Chart */}
-                <div className="h-64 bg-gradient-to-br from-primary/5 to-primary/20 rounded-lg flex items-center justify-center border border-primary/20">
+                <div className="h-64 bg-gradient-to-br from-primary/10 to-transparent rounded-lg flex items-center justify-center border border-border">
                   <div className="text-center">
                     <BarChart3 className="w-12 h-12 text-primary mx-auto mb-2" />
                     <p className="text-muted-foreground">Chart visualization would go here</p>
@@ -1549,72 +1913,25 @@ export function TopBar({
           <div className="w-8 h-8 bg-gradient-to-br from-primary to-primary/60 rounded-lg flex items-center justify-center">
             <Layout className="w-4 h-4 text-primary-foreground" />
           </div>
-          <span className="font-semibold text-lg text-foreground">Jeli</span>
+          <span className="font-semibold text-lg text-foreground hidden sm:inline">AppShell</span>
         </div>
 
         {/* Sidebar Controls */}
-        <div className="flex items-center gap-1">
+        <div className="flex items-center">
           <button
             onClick={onToggleSidebar}
             className={cn(
-              "p-2 rounded-md hover:bg-accent transition-colors",
-              "tooltip-trigger"
+              "p-2 rounded-md hover:bg-accent transition-colors"
             )}
             title="Toggle Sidebar"
           >
             <Menu className="w-4 h-4" />
           </button>
-
-          <button
-            onClick={onHideSidebar}
-            className={cn(
-              "p-2 rounded-md hover:bg-accent transition-colors",
-              sidebarState === SIDEBAR_STATES.HIDDEN && "bg-accent"
-            )}
-            title="Hide Sidebar"
-          >
-            <PanelLeftClose className="w-4 h-4" />
-          </button>
-
-          <button
-            onClick={onShowSidebar}
-            className={cn(
-              "p-2 rounded-md hover:bg-accent transition-colors",
-              sidebarState === SIDEBAR_STATES.EXPANDED && "bg-accent"
-            )}
-            title="Show Sidebar"
-          >
-            <PanelLeft className="w-4 h-4" />
-          </button>
-
-          <button
-            onClick={onPeekSidebar}
-            className={cn(
-              "p-2 rounded-md hover:bg-accent transition-colors",
-              sidebarState === SIDEBAR_STATES.PEEK && "bg-accent"
-            )}
-            title="Peek Sidebar"
-          >
-            <Eye className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-
-      {/* Center Section - Status Indicators */}
-      <div className="flex items-center gap-2">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted px-3 py-1 rounded-full">
-          <Sidebar className="w-3 h-3" />
-          <span className="capitalize">{sidebarState}</span>
-        </div>
-        
-        <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted px-3 py-1 rounded-full">
-          <Layout className="w-3 h-3" />
-          <span className="capitalize">{bodyState.replace('_', ' ')}</span>
         </div>
       </div>
 
       {/* Right Section - View Controls */}
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-2">
         {/* Quick Actions */}
         <button
           className="p-2 rounded-md hover:bg-accent transition-colors group"
@@ -1696,160 +2013,6 @@ export function TopBar({
 }
 ```
 
-## File: src/lib/utils.ts
-```typescript
-import { type ClassValue, clsx } from "clsx"
-import { twMerge } from "tailwind-merge"
-
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
-}
-
-export const SIDEBAR_STATES = {
-  HIDDEN: 'hidden',
-  COLLAPSED: 'collapsed', 
-  EXPANDED: 'expanded',
-  PEEK: 'peek'
-} as const
-
-export const BODY_STATES = {
-  NORMAL: 'normal',
-  FULLSCREEN: 'fullscreen',
-  SIDE_PANE: 'side_pane'
-} as const
-
-export type SidebarState = typeof SIDEBAR_STATES[keyof typeof SIDEBAR_STATES]
-export type BodyState = typeof BODY_STATES[keyof typeof BODY_STATES]
-```
-
-## File: src/store/appStore.ts
-```typescript
-import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
-import { SIDEBAR_STATES, BODY_STATES, type SidebarState, type BodyState } from '@/lib/utils'
-
-interface AppState {
-  // UI States
-  sidebarState: SidebarState
-  bodyState: BodyState
-  isDarkMode: boolean
-  sidebarWidth: number
-  isResizing: boolean
-  
-  // User Preferences
-  autoExpandSidebar: boolean
-  reducedMotion: boolean
-  compactMode: boolean
-  
-  // Actions
-  setSidebarState: (state: SidebarState) => void
-  setBodyState: (state: BodyState) => void
-  toggleDarkMode: () => void
-  setSidebarWidth: (width: number) => void
-  setIsResizing: (resizing: boolean) => void
-  setAutoExpandSidebar: (auto: boolean) => void
-  setReducedMotion: (reduced: boolean) => void
-  setCompactMode: (compact: boolean) => void
-  
-  // Composite Actions
-  toggleSidebar: () => void
-  hideSidebar: () => void
-  showSidebar: () => void
-  peekSidebar: () => void
-  toggleFullscreen: () => void
-  toggleSidePane: () => void
-  resetToDefaults: () => void
-}
-
-const defaultState = {
-  sidebarState: SIDEBAR_STATES.EXPANDED as SidebarState,
-  bodyState: BODY_STATES.NORMAL as BodyState,
-  isDarkMode: false,
-  sidebarWidth: 280,
-  isResizing: false,
-  autoExpandSidebar: true,
-  reducedMotion: false,
-  compactMode: false,
-}
-
-export const useAppStore = create<AppState>()(
-  persist(
-    (set, get) => ({
-      ...defaultState,
-      
-      // Basic setters
-      setSidebarState: (state) => set({ sidebarState: state }),
-      setBodyState: (state) => set({ bodyState: state }),
-      toggleDarkMode: () => {
-        const newMode = !get().isDarkMode
-        set({ isDarkMode: newMode })
-        document.documentElement.classList.toggle('dark', newMode)
-      },
-      setSidebarWidth: (width) => set({ sidebarWidth: Math.max(200, Math.min(500, width)) }),
-      setIsResizing: (resizing) => set({ isResizing: resizing }),
-      setAutoExpandSidebar: (auto) => set({ autoExpandSidebar: auto }),
-      setReducedMotion: (reduced) => set({ reducedMotion: reduced }),
-      setCompactMode: (compact) => set({ compactMode: compact }),
-      
-      // Composite actions
-      toggleSidebar: () => {
-        const current = get().sidebarState
-        if (current === SIDEBAR_STATES.HIDDEN) {
-          set({ sidebarState: SIDEBAR_STATES.COLLAPSED })
-        } else if (current === SIDEBAR_STATES.COLLAPSED) {
-          set({ sidebarState: SIDEBAR_STATES.EXPANDED })
-        } else if (current === SIDEBAR_STATES.EXPANDED) {
-          set({ sidebarState: SIDEBAR_STATES.COLLAPSED })
-        }
-      },
-      
-      hideSidebar: () => set({ sidebarState: SIDEBAR_STATES.HIDDEN }),
-      showSidebar: () => set({ sidebarState: SIDEBAR_STATES.EXPANDED }),
-      peekSidebar: () => set({ sidebarState: SIDEBAR_STATES.PEEK }),
-      
-      toggleFullscreen: () => {
-        const current = get().bodyState
-        set({ 
-          bodyState: current === BODY_STATES.FULLSCREEN ? BODY_STATES.NORMAL : BODY_STATES.FULLSCREEN 
-        })
-      },
-      
-      toggleSidePane: () => {
-        const current = get().bodyState
-        set({ 
-          bodyState: current === BODY_STATES.SIDE_PANE ? BODY_STATES.NORMAL : BODY_STATES.SIDE_PANE 
-        })
-      },
-      
-      resetToDefaults: () => set(defaultState),
-    }),
-    {
-      name: 'app-preferences',
-      partialize: (state) => ({
-        sidebarState: state.sidebarState,
-        bodyState: state.bodyState,
-        isDarkMode: state.isDarkMode,
-        sidebarWidth: state.sidebarWidth,
-        autoExpandSidebar: state.autoExpandSidebar,
-        reducedMotion: state.reducedMotion,
-        compactMode: state.compactMode,
-      }),
-    }
-  )
-)
-
-// Initialize dark mode on load
-if (typeof window !== 'undefined') {
-  const stored = localStorage.getItem('app-preferences')
-  if (stored) {
-    const parsed = JSON.parse(stored)
-    if (parsed.state?.isDarkMode) {
-      document.documentElement.classList.add('dark')
-    }
-  }
-}
-```
-
 ## File: src/App.tsx
 ```typescript
 import { AppShell } from './components/AppShell'
@@ -1864,123 +2027,6 @@ function App() {
 }
 
 export default App
-```
-
-## File: src/index.css
-```css
-@import 'tailwindcss/base';
-@import 'tailwindcss/components';
-@import 'tailwindcss/utilities';
-
-@layer base {
-  :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 160 84% 39%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 222.2 84% 4.9%;
-    --muted: 210 40% 96%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96%;
-    --accent-foreground: 222.2 84% 4.9%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 160 84% 39%;
-    --radius: 0.5rem;
-  }
-
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 160 84% 39%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 160 84% 39%;
-  }
-}
-
-@layer base {
-  * {
-    @apply border-border;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
-}
-
-/* Custom scrollbar styles */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-
-::-webkit-scrollbar-track {
-  @apply bg-transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  @apply bg-border rounded-full;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  @apply bg-muted-foreground/50;
-}
-
-/* Smooth transitions for all elements */
-* {
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-```
-
-## File: src/main.tsx
-```typescript
-import React from 'react'
-import ReactDOM from 'react-dom/client'
-import App from './App.tsx'
-import './index.css'
-
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>,
-)
-```
-
-## File: index.html
-```html
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Amazing App Shell</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
-</html>
 ```
 
 ## File: package.json
@@ -2025,135 +2071,14 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
 }
 ```
 
-## File: postcss.config.js
-```javascript
-export default {
-  plugins: {
-    tailwindcss: {},
-    autoprefixer: {},
-  },
-}
-```
-
-## File: tailwind.config.js
-```javascript
-/** @type {import('tailwindcss').Config} */
-export default {
-  content: [
-    "./index.html",
-    "./src/**/*.{js,ts,jsx,tsx}",
-  ],
-  darkMode: "class",
-  theme: {
-    extend: {
-      colors: {
-        border: "hsl(var(--border))",
-        input: "hsl(var(--input))",
-        ring: "hsl(var(--ring))",
-        background: "hsl(var(--background))",
-        foreground: "hsl(var(--foreground))",
-        primary: {
-          DEFAULT: "hsl(var(--primary))",
-          foreground: "hsl(var(--primary-foreground))",
-        },
-        secondary: {
-          DEFAULT: "hsl(var(--secondary))",
-          foreground: "hsl(var(--secondary-foreground))",
-        },
-        destructive: {
-          DEFAULT: "hsl(var(--destructive))",
-          foreground: "hsl(var(--destructive-foreground))",
-        },
-        muted: {
-          DEFAULT: "hsl(var(--muted))",
-          foreground: "hsl(var(--muted-foreground))",
-        },
-        accent: {
-          DEFAULT: "hsl(var(--accent))",
-          foreground: "hsl(var(--accent-foreground))",
-        },
-        popover: {
-          DEFAULT: "hsl(var(--popover))",
-          foreground: "hsl(var(--popover-foreground))",
-        },
-        card: {
-          DEFAULT: "hsl(var(--card))",
-          foreground: "hsl(var(--card-foreground))",
-        },
-      },
-      borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
-      },
-      animation: {
-        "fade-in": "fadeIn 0.5s ease-in-out",
-        "slide-in": "slideIn 0.3s ease-out",
-        "scale-in": "scaleIn 0.2s ease-out",
-      },
-      keyframes: {
-        fadeIn: {
-          "0%": { opacity: "0" },
-          "100%": { opacity: "1" },
-        },
-        slideIn: {
-          "0%": { transform: "translateX(-100%)" },
-          "100%": { transform: "translateX(0)" },
-        },
-        scaleIn: {
-          "0%": { transform: "scale(0.95)", opacity: "0" },
-          "100%": { transform: "scale(1)", opacity: "1" },
-        },
-      },
-    },
-  },
-  plugins: [],
-}
-```
-
-## File: tsconfig.json
-```json
-{
-  "compilerOptions": {
-    "target": "ES2020",
-    "useDefineForClassFields": true,
-    "lib": ["ES2020", "DOM", "DOM.Iterable"],
-    "module": "ESNext",
-    "skipLibCheck": true,
-
-    /* Bundler mode */
-    "moduleResolution": "bundler",
-    "allowImportingTsExtensions": true,
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "noEmit": true,
-    "jsx": "react-jsx",
-
-    /* Linting */
-    "strict": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noFallthroughCasesInSwitch": true,
-
-    /* Path mapping */
-    "baseUrl": ".",
-    "paths": {
-      "@/*": ["./src/*"]
-    }
-  },
-  "include": ["src"],
-  "references": [{ "path": "./tsconfig.node.json" }]
-}
-```
-
 ## File: tsconfig.node.json
 ```json
 {
   "compilerOptions": {
     "composite": true,
     "skipLibCheck": true,
-    "module": "ESNext",
-    "moduleResolution": "bundler",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
     "allowSyntheticDefaultImports": true
   },
   "include": ["vite.config.ts"]
@@ -2164,14 +2089,14 @@ export default {
 ```typescript
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
-import path from 'path'
+import { fileURLToPath, URL } from 'url'
 
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "./src"),
+      "@": fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
 })
