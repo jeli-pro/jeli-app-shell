@@ -1,5 +1,17 @@
 ===
 
+1. fix broken layout of fullscreen mode
+2. side pane close button should not within pane, it should be outside of pane
+
+=== DONE
+
+1. setting content should use side pane
+2. add scroll to bottom icon
+3. no need scrollbar within header
+4. activating full screen content mode, should hide top bar and sidebar completely
+
+=== DONE
+
 1. collapsed sidebar icons should be horizontally centered
 2. also active icons should be horizontally centered
 3. add logo and logotext at sidebar header

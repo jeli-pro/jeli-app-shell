@@ -16,13 +16,15 @@ import {
   Filter,
   Search,
   MoreVertical
-} from 'lucide-react'
+,  ArrowDown,
+  X} from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { BODY_STATES, type BodyState } from '@/lib/utils'
 import { DemoContent } from './DemoContent'
 
 interface MainContentProps {
   bodyState: BodyState
+  onToggleFullscreen: () => void
 }
 
 interface StatsCard {
@@ -109,10 +111,33 @@ const recentActivity: ActivityItem[] = [
 ]
 
 export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
-  ({ bodyState }, ref) => {
+  ({ bodyState, onToggleFullscreen }, ref) => {
     const contentRef = useRef<HTMLDivElement>(null)
     const cardsRef = useRef<(HTMLDivElement | null)[]>([])
     const [searchTerm, setSearchTerm] = useState("")
+    const [showScrollToBottom, setShowScrollToBottom] = useState(false)
+
+    const handleScroll = () => {
+      if (!contentRef.current) return
+      const { scrollTop, scrollHeight, clientHeight } = contentRef.current
+      // Show if scrolled down and not at the bottom
+      setShowScrollToBottom(scrollTop > 200 && scrollTop < scrollHeight - clientHeight - 200)
+    }
+
+    useEffect(() => {
+      const contentEl = contentRef.current
+      if (contentEl) {
+        contentEl.addEventListener('scroll', handleScroll)
+        return () => contentEl.removeEventListener('scroll', handleScroll)
+      }
+    }, [])
+
+    const scrollToBottom = () => {
+      contentRef.current?.scrollTo({
+        top: contentRef.current.scrollHeight,
+        behavior: 'smooth'
+      })
+    }
 
     // Animate content based on body state
     useEffect(() => {
@@ -171,14 +196,20 @@ export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
       <div
         ref={ref}
         className={cn(
-          "flex-1 h-[calc(100vh-80px)] overflow-hidden transition-all duration-300",
-          bodyState === BODY_STATES.FULLSCREEN && "bg-background"
+        "flex flex-col h-full overflow-hidden transition-all duration-300 p-6 pt-[calc(80px+1.5rem)]",
+        bodyState === BODY_STATES.FULLSCREEN && "absolute inset-0 z-40 bg-background !p-6"
         )}
       >
-        <div 
-          ref={contentRef}
-          className="h-full overflow-y-auto p-6 space-y-8"
-        >
+        {bodyState === BODY_STATES.FULLSCREEN && (
+          <button
+            onClick={onToggleFullscreen}
+            className="fixed top-6 right-6 z-[100] h-12 w-12 flex items-center justify-center rounded-full bg-card/50 backdrop-blur-sm hover:bg-card/75 transition-colors group"
+            title="Exit Fullscreen"
+          >
+            <X className="w-6 h-6 group-hover:scale-110 group-hover:rotate-90 transition-all duration-300" />
+          </button>
+        )}
+
           {/* Header */}
           <div className="flex items-center justify-between">
             <div>
@@ -208,11 +239,14 @@ export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
               </button>
             </div>
           </div>
-
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {statsCards.map((stat, index) => (
-              <div
+        <div 
+          ref={contentRef}
+          className="flex-1 overflow-y-auto space-y-8 pt-8"
+        >
+            {/* Stats Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {statsCards.map((stat, index) => (
+                <div
                 key={stat.title}
                 ref={el => cardsRef.current[index] = el}
                 className="bg-card p-6 rounded-2xl border border-border/50 hover:border-primary/30 transition-all duration-300 group cursor-pointer"
@@ -233,14 +267,14 @@ export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
                   <p className="text-sm text-muted-foreground mt-1">{stat.title}</p>
                 </div>
               </div>
-            ))}
-          </div>
+              ))}
+            </div>
 
-          {/* Demo Content */}
-          <DemoContent />
+            {/* Demo Content */}
+            <DemoContent />
 
-          {/* Main Content Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Main Content Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Chart Area */}
             <div className="lg:col-span-2 space-y-6">
               {/* Analytics Chart */}
@@ -349,6 +383,16 @@ export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
               </div>
             </div>
           </div>
+          {showScrollToBottom && (
+            <button
+              onClick={scrollToBottom}
+              className="fixed bottom-8 right-8 w-12 h-12 bg-primary text-primary-foreground rounded-full flex items-center justify-center shadow-lg hover:bg-primary/90 transition-all animate-fade-in z-50"
+              style={{ animation: 'bounce 2s infinite' }}
+              title="Scroll to bottom"
+            >
+              <ArrowDown className="w-6 h-6" />
+            </button>
+          )}
         </div>
       </div>
     )

@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { 
   Menu, 
   Maximize, 
@@ -10,28 +9,28 @@ import {
   Zap,
   ChevronRight
 } from 'lucide-react'
-import { SettingsPanel } from './SettingsPanel'
 import { cn } from '@/lib/utils'
-import { BODY_STATES, type BodyState } from '@/lib/utils'
+import { BODY_STATES } from '@/lib/utils'
+import { useAppStore } from '@/store/appStore'
 
 interface TopBarProps {
-  bodyState: BodyState
-  isDarkMode: boolean
   onToggleSidebar: () => void
   onToggleFullscreen: () => void
-  onToggleSidePane: () => void
   onToggleDarkMode: () => void
 }
 
 export function TopBar({
-  bodyState,
-  isDarkMode,
   onToggleSidebar,
   onToggleFullscreen,
-  onToggleSidePane,
   onToggleDarkMode
 }: TopBarProps) {
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  const { 
+    bodyState, 
+    isDarkMode, 
+    openSidePane, 
+    sidePaneContent 
+  } = useAppStore()
+
   return (
     <div className="h-20 bg-card/80 backdrop-blur-sm border-b border-border flex items-center justify-between px-6 z-50">
       {/* Left Section - Sidebar Controls & Breadcrumbs */}
@@ -76,10 +75,10 @@ export function TopBar({
 
         {/* Body State Controls */}
         <button
-          onClick={onToggleSidePane}
+          onClick={() => openSidePane('details')}
           className={cn(
             "h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group",
-            bodyState === BODY_STATES.SIDE_PANE && "bg-accent"
+            bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === 'details' && "bg-accent"
           )}
           title="Toggle Side Pane"
         >
@@ -120,19 +119,13 @@ export function TopBar({
         </button>
 
         <button
-          onClick={() => setIsSettingsOpen(true)}
+          onClick={() => openSidePane('settings')}
           className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
           title="Settings"
         >
           <Settings className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
         </button>
       </div>
-
-      {/* Settings Panel */}
-      <SettingsPanel 
-        isOpen={isSettingsOpen} 
-        onClose={() => setIsSettingsOpen(false)} 
-      />
     </div>
   )
 }

@@ -7,6 +7,7 @@ interface AppState {
   sidebarState: SidebarState
   bodyState: BodyState
   isDarkMode: boolean
+  sidePaneContent: 'details' | 'settings'
   sidebarWidth: number
   rightPaneWidth: number
   isResizing: boolean
@@ -35,13 +36,15 @@ interface AppState {
   showSidebar: () => void
   peekSidebar: () => void
   toggleFullscreen: () => void
-  toggleSidePane: () => void
+  openSidePane: (content: 'details' | 'settings') => void
+  closeSidePane: () => void
   resetToDefaults: () => void
 }
 
 const defaultState = {
   sidebarState: SIDEBAR_STATES.EXPANDED as SidebarState,
   bodyState: BODY_STATES.NORMAL as BodyState,
+  sidePaneContent: 'details' as const,
   isDarkMode: false,
   sidebarWidth: 280,
   rightPaneWidth: typeof window !== 'undefined' ? Math.max(300, Math.round(window.innerWidth * 0.6)) : 400,
@@ -58,6 +61,7 @@ export const useAppStore = create<AppState>()(
       ...defaultState,
       
       // Basic setters
+      sidePaneContent: 'details',
       setSidebarState: (state) => set({ sidebarState: state }),
       setBodyState: (state) => set({ bodyState: state }),
       toggleDarkMode: () => {
@@ -96,11 +100,18 @@ export const useAppStore = create<AppState>()(
         })
       },
       
-      toggleSidePane: () => {
-        const current = get().bodyState
-        set({ 
-          bodyState: current === BODY_STATES.SIDE_PANE ? BODY_STATES.NORMAL : BODY_STATES.SIDE_PANE 
-        })
+      openSidePane: (content: 'details' | 'settings') => {
+        const { bodyState, sidePaneContent } = get()
+        if (bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === content) {
+          // If it's open with same content, close it.
+          set({ bodyState: BODY_STATES.NORMAL });
+        } else {
+          // If closed, or different content, open with new content.
+          set({ bodyState: BODY_STATES.SIDE_PANE, sidePaneContent: content });
+        }
+      },
+      closeSidePane: () => {
+        set({ bodyState: BODY_STATES.NORMAL })
       },
       
       resetToDefaults: () => set(defaultState),
@@ -110,6 +121,7 @@ export const useAppStore = create<AppState>()(
       partialize: (state) => ({
         sidebarState: state.sidebarState,
         bodyState: state.bodyState,
+        sidePaneContent: state.sidePaneContent,
         isDarkMode: state.isDarkMode,
         sidebarWidth: state.sidebarWidth,
         rightPaneWidth: state.rightPaneWidth,

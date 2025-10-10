@@ -19,12 +19,13 @@ export function AppShell() {
     isResizingRightPane,
     setRightPaneWidth,
     setSidebarState,
+    openSidePane,
+    closeSidePane,
     setIsResizing,
     setSidebarWidth,
     toggleSidebar,
     peekSidebar,
     toggleFullscreen,
-    toggleSidePane,
     setIsResizingRightPane,
     toggleDarkMode,
     reducedMotion,
@@ -36,6 +37,7 @@ export function AppShell() {
   const mainContentRef = useRef<HTMLDivElement>(null)
   const rightPaneRef = useRef<HTMLDivElement>(null)
   const resizeHandleRef = useRef<HTMLDivElement>(null)
+  const topBarContainerRef = useRef<HTMLDivElement>(null)
 
   // Animation duration based on reduced motion preference
   const animationDuration = reducedMotion ? 0.1 : 0.4
@@ -113,29 +115,29 @@ export function AppShell() {
     
     let targetWidth = 0
     let targetOpacity = 1
-    let targetX = 0
 
-    switch (sidebarState) {
-      case SIDEBAR_STATES.HIDDEN:
-        targetWidth = 0
-        targetOpacity = 0
-        targetX = -100
-        break
-      case SIDEBAR_STATES.COLLAPSED:
-        targetWidth = 64
-        targetOpacity = 1
-        targetX = 0
-        break
-      case SIDEBAR_STATES.EXPANDED:
-        targetWidth = sidebarWidth
-        targetOpacity = 1
-        targetX = 0
-        break
-      case SIDEBAR_STATES.PEEK:
-        targetWidth = sidebarWidth * 0.8
-        targetOpacity = 0.95
-        targetX = 0
-        break
+    if (bodyState === BODY_STATES.FULLSCREEN) {
+      targetWidth = 0;
+      targetOpacity = 0;
+    } else {
+      switch (sidebarState) {
+        case SIDEBAR_STATES.HIDDEN:
+          targetWidth = 0
+          targetOpacity = 0
+          break
+        case SIDEBAR_STATES.COLLAPSED:
+          targetWidth = 64
+          targetOpacity = 1
+          break
+        case SIDEBAR_STATES.EXPANDED:
+          targetWidth = sidebarWidth
+          targetOpacity = 1
+          break
+        case SIDEBAR_STATES.PEEK:
+          targetWidth = sidebarWidth * 0.8
+          targetOpacity = 0.95
+          break
+      }
     }
 
     const tl = gsap.timeline({ ease: "power3.out" })
@@ -143,7 +145,6 @@ export function AppShell() {
     tl.to(sidebar, {
       width: targetWidth,
       opacity: targetOpacity,
-      x: `${targetX}%`,
       duration: animationDuration,
     })
     tl.to(handle, {
@@ -161,17 +162,16 @@ export function AppShell() {
     const isFullscreen = bodyState === BODY_STATES.FULLSCREEN
     const isSidePane = bodyState === BODY_STATES.SIDE_PANE
 
-    // Sidebar animation for body state changes
-    gsap.to(sidebarRef.current, {
-      x: isFullscreen ? '-100%' : '0%',
-      duration: animationDuration,
-      ease,
-    })
-
     // Right pane animation
     gsap.to(rightPaneRef.current, {
       width: rightPaneWidth,
       x: isSidePane ? 0 : rightPaneWidth + 5, // +5 to hide border
+      duration: animationDuration,
+      ease,
+    })
+
+    gsap.to(topBarContainerRef.current, {
+      y: isFullscreen ? '-100%' : '0%',
       duration: animationDuration,
       ease,
     })
@@ -184,14 +184,14 @@ export function AppShell() {
         el.className = 'app-backdrop fixed inset-0 bg-black/30 z-[55]'
         appRef.current?.appendChild(el)
         gsap.fromTo(el, { opacity: 0 }, { opacity: 1, duration: animationDuration })
-        el.onclick = () => toggleSidePane()
+        el.onclick = () => closeSidePane()
       }
     } else {
       if (backdrop) {
         gsap.to(backdrop, { opacity: 0, duration: animationDuration, onComplete: () => backdrop.remove() })
       }
     }
-  }, [bodyState, animationDuration, rightPaneWidth, toggleSidePane])
+  }, [bodyState, animationDuration, rightPaneWidth, closeSidePane])
 
   return (
     <div 
@@ -234,21 +234,20 @@ export function AppShell() {
         )}
 
         {/* Main Content Area */}
-        <div className="flex-1 flex flex-col overflow-hidden bg-background">
-          {/* Top Bar */}
-          <TopBar
-            bodyState={bodyState}
-            isDarkMode={isDarkMode}
-            onToggleSidebar={toggleSidebar}
-            onToggleFullscreen={toggleFullscreen}
-            onToggleSidePane={toggleSidePane}
-            onToggleDarkMode={toggleDarkMode}
-          />
+        <div className="relative flex-1 overflow-hidden bg-background">
+          <div ref={topBarContainerRef} className="absolute inset-x-0 top-0 z-30">
+            <TopBar
+              onToggleSidebar={toggleSidebar}
+              onToggleFullscreen={toggleFullscreen}
+              onToggleDarkMode={toggleDarkMode}
+            />
+          </div>
           
           {/* Main Content */}
           <MainContent
             ref={mainContentRef}
             bodyState={bodyState}
+            onToggleFullscreen={toggleFullscreen}
           />
         </div>
       </div>
