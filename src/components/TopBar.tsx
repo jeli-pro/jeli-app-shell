@@ -65,6 +65,11 @@ export function TopBar({
     setActivePage('dashboard');
   }
 
+  const handleToasterMoveToSidePane = () => {
+    openSidePane('toaster');
+    setActivePage('dashboard');
+  }
+
   return (
     <div className={cn(
       "h-20 bg-card/80 backdrop-blur-sm border-b border-border flex items-center justify-between px-6 z-50 gap-4",
@@ -133,12 +138,15 @@ export function TopBar({
           {activePage === 'settings' && (
             <button onClick={handleSettingsMoveToSidePane} className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors" title="Move to Side Pane"><PanelRight className="w-5 h-5" /></button>
           )}
+          {activePage === 'toaster' && (
+            <button onClick={handleToasterMoveToSidePane} className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors" title="Move to Side Pane"><PanelRight className="w-5 h-5" /></button>
+          )}
         </div>
 
         {/* Separator */}
         <div className={cn(
           'w-px h-6 bg-border mx-2', 
-          (activePage !== 'dashboard' && activePage !== 'settings') || (isSearchFocused && activePage === 'dashboard') ? 'hidden' : ''
+          (activePage !== 'dashboard' && activePage !== 'settings' && activePage !== 'toaster') || (isSearchFocused && activePage === 'dashboard') ? 'hidden' : ''
         )} />
 
         {/* Quick Actions */}

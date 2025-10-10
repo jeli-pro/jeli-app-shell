@@ -9,7 +9,7 @@ interface AppState {
   sidebarState: SidebarState
   bodyState: BodyState
   isDarkMode: boolean
-  sidePaneContent: 'details' | 'settings' | 'main'
+  sidePaneContent: 'details' | 'settings' | 'main' | 'toaster'
   activePage: ActivePage
   sidebarWidth: number
   rightPaneWidth: number
@@ -46,7 +46,7 @@ interface AppState {
   showSidebar: () => void
   peekSidebar: () => void
   toggleFullscreen: () => void
-  openSidePane: (content: 'details' | 'settings' | 'main') => void
+  openSidePane: (content: 'details' | 'settings' | 'main' | 'toaster') => void
   closeSidePane: () => void
   resetToDefaults: () => void
 }
@@ -118,7 +118,7 @@ export const useAppStore = create<AppState>()(
         })
       },
       
-      openSidePane: (content) => {
+      openSidePane: (content: 'details' | 'settings' | 'main' | 'toaster') => {
         const { bodyState, sidePaneContent } = get()
         if (bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === content) {
           // If it's open with same content, close it.

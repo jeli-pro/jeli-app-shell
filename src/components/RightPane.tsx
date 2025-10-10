@@ -1,21 +1,25 @@
 import { forwardRef } from 'react'
-import { SlidersHorizontal, Settings, ChevronRight, LayoutDashboard, ChevronsLeftRight } from 'lucide-react'
+import { SlidersHorizontal, Settings, ChevronRight, LayoutDashboard, ChevronsLeftRight, Component } from 'lucide-react'
 import { useAppStore } from '@/store/appStore'
 import { cn } from '@/lib/utils'
 import { SettingsContent } from './SettingsContent'
 import { DashboardContent } from './DashboardContent'
+import { ToasterDemo } from './ToasterDemo'
 
 export const RightPane = forwardRef<HTMLDivElement>((_props, ref) => {
   const { closeSidePane, setIsResizingRightPane, sidePaneContent, setActivePage } = useAppStore()
 
   const isSettings = sidePaneContent === 'settings'
   const isMain = sidePaneContent === 'main'
+  const isToaster = sidePaneContent === 'toaster'
 
   const handleMaximize = () => {
     if (isMain) {
       setActivePage('dashboard')
     } else if (isSettings) {
       setActivePage('settings')
+    } else if (isToaster) {
+      setActivePage('toaster')
     }
     closeSidePane()
   }
@@ -44,13 +48,14 @@ export const RightPane = forwardRef<HTMLDivElement>((_props, ref) => {
         <div className="flex items-center gap-2">
           {isMain && <LayoutDashboard className="w-5 h-5" />}
           {isSettings && <Settings className="w-5 h-5" />}
-          {!isMain && !isSettings && <SlidersHorizontal className="w-5 h-5" />}
+          {isToaster && <Component className="w-5 h-5" />}
+          {!isMain && !isSettings && !isToaster && <SlidersHorizontal className="w-5 h-5" />}
           <h2 className="text-lg font-semibold whitespace-nowrap">
-            {isMain ? 'Dashboard' : isSettings ? 'Settings' : 'Details Panel'}
+            {isMain ? 'Dashboard' : isSettings ? 'Settings' : isToaster ? 'Toaster Demo' : 'Details Panel'}
           </h2>
         </div>
         
-        {(isMain || isSettings) && (
+        {(isMain || isSettings || isToaster) && (
           <button
             onClick={handleMaximize}
             className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors mr-2"
@@ -65,6 +70,8 @@ export const RightPane = forwardRef<HTMLDivElement>((_props, ref) => {
           <div className="px-8 py-6 h-full"><DashboardContent isInSidePane={true} /></div>
         ) : isSettings ? (
           <div className="px-8 py-6"><SettingsContent /></div>
+        ) : isToaster ? (
+          <div className="px-8 py-6 h-full"><ToasterDemo isInSidePane={true} /></div>
         ) : (
           <div className="px-8 py-6"><p className="text-muted-foreground">This is the side pane. It can be used to display contextual information, forms, or actions related to the main content.</p></div>
         )}

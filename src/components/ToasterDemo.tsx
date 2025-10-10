@@ -18,7 +18,7 @@ const variantColors = {
   warning: 'border-amber-600 text-amber-600 hover:bg-amber-600/10 dark:hover:bg-amber-400/20',
 }
 
-export function ToasterDemo() {
+export function ToasterDemo({ isInSidePane = false }: { isInSidePane?: boolean }) {
   const toast = useToast();
 
   const showToast = (variant: Variant, position: Position = 'bottom-right') => {
@@ -67,7 +67,7 @@ export function ToasterDemo() {
   };
 
   return (
-    <div className="h-full overflow-y-auto p-6 lg:px-12 space-y-8">
+    <div className={cn("overflow-y-auto p-6 lg:px-12 space-y-8", !isInSidePane && "h-full")}>
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

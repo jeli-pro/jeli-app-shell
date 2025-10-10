@@ -177,7 +177,7 @@ export const EnhancedSidebar = forwardRef<HTMLDivElement, SidebarProps>(
 
       const isDashboardActive = activePage === 'dashboard';
       const isSettingsActive = activePage === 'settings' || (bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === 'settings');
-      const isToasterActive = activePage === 'toaster';
+      const isToasterActive = activePage === 'toaster' || (bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === 'toaster');
       const isPageActive = (isDashboard && isDashboardActive) || (isSettings && isSettingsActive) || (isToaster && isToasterActive);
 
       const handleClick = () => {
@@ -194,7 +194,15 @@ export const EnhancedSidebar = forwardRef<HTMLDivElement, SidebarProps>(
             openSidePane('settings');
           }
         } else if (isToaster) {
-          setActivePage('toaster');
+          const isToasterInSidePane = bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === 'toaster'
+          // If we're on the toaster page and it's not in the side pane, treat this as a "minimize" action.
+          if (activePage === 'toaster' && !isToasterInSidePane) {
+            openSidePane('toaster');
+            setActivePage('dashboard');
+          } else {
+            // In all other cases (on dashboard page, or toaster already in pane), just toggle the toaster side pane.
+            openSidePane('toaster');
+          }
         }
         // Could add logic for other links here if routing was implemented
       };

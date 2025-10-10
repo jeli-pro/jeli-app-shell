@@ -1,5 +1,11 @@
 ===
 
+on every create new page, the view mode should automatically available to maximize or minimize from/to side pane view or full page view.
+
+currenly, toast page has no that option, also toast page should be as side pane view by default
+
+=== DONE
+
 page control like search, filter should be at top bar. when search focused, the form should expand full width replacing up to breadcrumbs
 
 === DONE

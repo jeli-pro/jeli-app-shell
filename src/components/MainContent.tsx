@@ -4,6 +4,7 @@ import {
   LayoutDashboard,
   ChevronsLeftRight,
   Settings,
+  Component,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { BODY_STATES, type BodyState } from '@/lib/utils'
@@ -23,6 +24,7 @@ export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
 
     const isDashboardInSidePane = sidePaneContent === 'main' && bodyState === BODY_STATES.SIDE_PANE
     const isSettingsInSidePane = sidePaneContent === 'settings' && bodyState === BODY_STATES.SIDE_PANE
+    const isToasterInSidePane = sidePaneContent === 'toaster' && bodyState === BODY_STATES.SIDE_PANE
 
     const renderContent = () => {
       if (activePage === 'dashboard') {
@@ -72,12 +74,35 @@ export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
         return <SettingsPage />
       }
       if (activePage === 'toaster') {
+        if (isToasterInSidePane) {
+          return (
+            <div className="flex-1 flex flex-col items-center justify-center text-center">
+              <Component className="w-16 h-16 text-muted-foreground/50 mb-4" />
+              <h2 className="text-2xl font-bold">Toaster Demo is in Side Pane</h2>
+              <p className="text-muted-foreground mt-2 max-w-md">
+                You've moved the toaster demo to the side pane. You can bring it back to the main view.
+              </p>
+              <button
+                onClick={() => {
+                  openSidePane('toaster'); // This will close it
+                  setActivePage('toaster');
+                }}
+                className="mt-6 bg-primary text-primary-foreground px-4 py-2 rounded-full hover:bg-primary/90 transition-colors flex items-center gap-2 h-10"
+              >
+                <ChevronsLeftRight className="w-5 h-5" />
+                <span>Bring Toaster Demo Back</span>
+              </button>
+            </div>
+          )
+        }
         return <ToasterDemo />
       }
       return null;
     }
     
-    const isContentVisible = (activePage === 'dashboard' && !isDashboardInSidePane) || (activePage === 'settings' && !isSettingsInSidePane) || activePage === 'toaster';
+    const isContentVisible = (activePage === 'dashboard' && !isDashboardInSidePane) || 
+                           (activePage === 'settings' && !isSettingsInSidePane) || 
+                           (activePage === 'toaster' && !isToasterInSidePane);
 
     return (
       <div
