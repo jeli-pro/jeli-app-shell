@@ -1,6 +1,12 @@
-
+1. topbar should auto hide while on scroll down, show while scrolling up
+2. add scroll to bottom iconbutton
 
 ===
+
+1. breadcrumbs should aware of route changes like dashboard/setting page
+2. need more left right spacing for content while on side pane view or full page view
+
+=== DONE
 
 mental model: every page main content body can be side pane able. reversible. so user can enjoy wether to minimize or maximize page to side pane or full page view
 

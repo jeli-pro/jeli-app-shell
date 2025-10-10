@@ -62,11 +62,11 @@ export const RightPane = forwardRef<HTMLDivElement>((_props, ref) => {
       </div>
       <div className="flex-1 overflow-y-auto">
         {isMain ? (
-          <div className="p-6 h-full"><DashboardContent isInSidePane={true} /></div>
+          <div className="px-8 py-6 h-full"><DashboardContent isInSidePane={true} /></div>
         ) : isSettings ? (
-          <div className="p-6"><SettingsContent /></div>
+          <div className="px-8 py-6"><SettingsContent /></div>
         ) : (
-          <div className="p-6"><p className="text-muted-foreground">This is the side pane. It can be used to display contextual information, forms, or actions related to the main content.</p></div>
+          <div className="px-8 py-6"><p className="text-muted-foreground">This is the side pane. It can be used to display contextual information, forms, or actions related to the main content.</p></div>
         )}
       </div>
     </aside>

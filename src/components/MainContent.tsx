@@ -79,8 +79,8 @@ export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
       <div
         ref={ref}
         className={cn(
-        "flex flex-col h-full overflow-hidden transition-all duration-300 p-6 pt-[calc(80px+1.5rem)]",
-        bodyState === BODY_STATES.FULLSCREEN && "absolute inset-0 z-40 bg-background !p-6"
+        "flex flex-col h-full overflow-hidden transition-all duration-300 p-6 lg:px-12 pt-[calc(80px+1.5rem)]",
+        bodyState === BODY_STATES.FULLSCREEN && "absolute inset-0 z-40 bg-background !p-6 lg:!px-12"
         )}
       >
         {bodyState === BODY_STATES.FULLSCREEN && isContentVisible && (
