@@ -10,11 +10,11 @@ make codebase highly DRY for super less codebase without UI look regression
 
 notification page
 
-===
+=== DONE
 
 profile
 
-===
+=== DONE
 
 workspace switcher should be as popover, never constrained by sidebar size
 

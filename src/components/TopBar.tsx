@@ -17,6 +17,7 @@ import {
 import { cn } from '@/lib/utils'
 import { BODY_STATES } from '@/lib/utils'
 import { useAppStore } from '@/store/appStore'
+import { UserDropdown } from './UserDropdown'
 
 interface TopBarProps {
   onToggleSidebar: () => void
@@ -220,6 +221,7 @@ export function TopBar({
         >
           <Settings className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
         </button>
+        <UserDropdown />
         </div>
       </div>
     </div>

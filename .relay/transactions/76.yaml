@@ -1,0 +1,736 @@
+uuid: c2ba43f7-926f-477a-97a1-5d63f9104037
+projectId: amazing-app-shell
+createdAt: '2025-10-10T22:41:13.506Z'
+gitCommitMsg: >-
+  feat: Add user profile dropdown to top bar
+
+  This commit introduces a user profile dropdown component in the top navigation
+  bar.
+
+  - Adds a new `UserDropdown` component with a detailed menu including user
+  status, profile actions, and account management. - Adds a new `Badge` UI
+  component as a dependency for the dropdown. - Integrates the `@iconify/react`
+  library for rich iconography within the dropdown menu. - Updates the `TopBar`
+  to include the new `UserDropdown` component, positioned next to the settings
+  icon. - Adds a `no-scrollbar` utility class to `index.css` for styling the
+  dropdown content.
+promptSummary: >-
+  Add a user profile dropdown with a profile picture to the top bar, next to the
+  settings icon.
+reasoning:
+  - >-
+    I will add a user profile dropdown to the top bar. This will involve
+    creating a new `UserDropdown` component and a `Badge` component that it
+    depends on. I'll also add a new dependency for icons and update the top bar
+    to include the new dropdown.
+  - '### 1. Create `Badge` Component'
+  - >-
+    First, I'll create the `Badge` component which is a dependency for the
+    `UserDropdown`. This will be a new file in the `src/components/ui`
+    directory.
+  - '### 2. Add Icon Dependency'
+  - >-
+    The `UserDropdown` component uses `@iconify/react` for icons. I'll add this
+    dependency to `package.json`.
+  - '### 3. Create `UserDropdown` Component'
+  - >-
+    Next, I'll create the `UserDropdown` component. I've adjusted the styling to
+    better match the existing UI components, using theme variables for colors
+    and backgrounds where appropriate.
+  - '### 4. Add Custom Styles'
+  - >-
+    I'll add a utility class to hide scrollbars, which is used by the
+    `UserDropdown`.
+  - '### 5. Integrate `UserDropdown` into `TopBar`'
+  - >-
+    Finally, I'll add the `UserDropdown` component to the `TopBar`, placing it
+    next to the settings icon.
+operations:
+  - type: write
+    path: src/components/ui/badge.tsx
+    content: |-
+      import * as React from "react"
+      import { cva, type VariantProps } from "class-variance-authority"
+
+      import { cn } from "@/lib/utils"
+
+      const badgeVariants = cva(
+        "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+        {
+          variants: {
+            variant: {
+              default:
+                "border-transparent bg-primary text-primary-foreground hover:bg-primary/80",
+              secondary:
+                "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80",
+              destructive:
+                "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80",
+              outline: "text-foreground",
+            },
+          },
+          defaultVariants: {
+            variant: "default",
+          },
+        },
+      )
+
+      export interface BadgeProps
+        extends React.HTMLAttributes<HTMLDivElement>,
+          VariantProps<typeof badgeVariants> {}
+
+      function Badge({ className, variant, ...props }: BadgeProps) {
+        return (
+          <div className={cn(badgeVariants({ variant }), className)} {...props} />
+        )
+      }
+
+      export { Badge, badgeVariants }
+    patchStrategy: replace
+  - type: write
+    path: package.json
+    content: |+
+      --- package.json
+      +++ package.json
+      @@ -19,7 +19,8 @@
+           "@radix-ui/react-popover": "^1.0.7",
+           "@radix-ui/react-dialog": "^1.0.5",
+           "cmdk": "^0.2.0",
+      -    "@radix-ui/react-dropdown-menu": "^2.0.6"
+      +    "@radix-ui/react-dropdown-menu": "^2.0.6",
+      +    "@iconify/react": "^4.1.1"
+         },
+         "devDependencies": {
+           "@types/node": "^20.10.0",
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/components/UserDropdown.tsx
+    content: >-
+      import { Avatar, AvatarFallback, AvatarImage } from
+      "@/components/ui/avatar";
+
+      import { Badge } from "@/components/ui/badge";
+
+      import {
+        DropdownMenu,
+        DropdownMenuContent,
+        DropdownMenuGroup,
+        DropdownMenuItem,
+        DropdownMenuPortal,
+        DropdownMenuRadioGroup,
+        DropdownMenuRadioItem,
+        DropdownMenuSeparator,
+        DropdownMenuSub,
+        DropdownMenuSubContent,
+        DropdownMenuSubTrigger,
+        DropdownMenuTrigger,
+      } from "@/components/ui/dropdown-menu";
+
+      import { cn } from "@/lib/utils"
+
+      import { Icon } from "@iconify/react";
+
+
+      const MENU_ITEMS = {
+        status: [
+          { value: "focus", icon: "solar:emoji-funny-circle-line-duotone", label: "Focus" },
+          { value: "offline", icon: "solar:moon-sleep-line-duotone", label: "Appear Offline" }
+        ],
+        profile: [
+          { icon: "solar:user-circle-line-duotone", label: "Your profile", action: "profile" },
+          { icon: "solar:sun-line-duotone", label: "Appearance", action: "appearance" },
+          { icon: "solar:settings-line-duotone", label: "Settings", action: "settings" },
+          { icon: "solar:bell-line-duotone", label: "Notifications", action: "notifications" }
+        ],
+        premium: [
+          { 
+            icon: "solar:star-bold", 
+            label: "Upgrade to Pro", 
+            action: "upgrade",
+            iconClass: "text-amber-500",
+            badge: { text: "20% off", className: "bg-amber-500 text-white text-[11px]" }
+          },
+          { icon: "solar:gift-line-duotone", label: "Referrals", action: "referrals" }
+        ],
+        support: [
+          { icon: "solar:download-line-duotone", label: "Download app", action: "download" },
+          { 
+            icon: "solar:letter-unread-line-duotone", 
+            label: "What's new?", 
+            action: "whats-new",
+            rightIcon: "solar:square-top-down-line-duotone"
+          },
+          { 
+            icon: "solar:question-circle-line-duotone", 
+            label: "Get help?", 
+            action: "help",
+            rightIcon: "solar:square-top-down-line-duotone"
+          }
+        ],
+        account: [
+          { 
+            icon: "solar:users-group-rounded-bold-duotone", 
+            label: "Switch account", 
+            action: "switch",
+            showAvatar: false
+          },
+          { icon: "solar:logout-2-bold-duotone", label: "Log out", action: "logout" }
+        ]
+      };
+
+
+      // Interface for menu item for better type safety
+
+      interface MenuItem {
+        value?: string;
+        icon: string;
+        label: string;
+        action?: string;
+        iconClass?: string;
+        badge?: { text: string; className: string };
+        rightIcon?: string;
+        showAvatar?: boolean;
+      }
+
+
+      export const UserDropdown = ({ 
+        user = {
+          name: "Ayman Echakar",
+          username: "@aymanch-03",
+          avatar: "https://avatars.githubusercontent.com/u/126724835?v=4",
+          initials: "AE",
+          status: "online"
+        },
+        onAction = () => {},
+        onStatusChange = () => {},
+        selectedStatus = "online",
+        promoDiscount = "20% off",
+      }) => {
+        const renderMenuItem = (item: MenuItem, index: number) => (
+          <DropdownMenuItem 
+            key={index}
+            className={cn(
+              "p-2 rounded-lg cursor-pointer",
+              item.badge || item.showAvatar || item.rightIcon ? "justify-between" : ""
+            )}
+            onClick={() => item.action && onAction(item.action)}
+          >
+            <span className="flex items-center gap-1.5 font-medium">
+              <Icon
+                icon={item.icon}
+                className={cn("h-5 w-5 text-muted-foreground", item.iconClass)}
+              />
+              {item.label}
+            </span>
+            {item.badge && (
+              <Badge className={item.badge.className}>
+                {promoDiscount || item.badge.text}
+              </Badge>
+            )}
+            {item.rightIcon && (
+              <Icon
+                icon={item.rightIcon}
+                className="h-4 w-4 text-muted-foreground"
+              />
+            )}
+            {item.showAvatar && (
+              <Avatar className="cursor-pointer h-6 w-6 shadow border-2 border-background">
+                <AvatarImage src={user.avatar} alt={user.name} />
+                <AvatarFallback>{user.initials}</AvatarFallback>
+              </Avatar>
+            )}
+          </DropdownMenuItem>
+        );
+
+        const getStatusColor = (status: string) => {
+          const colors = {
+            online: "text-green-600 bg-green-100 border-green-300 dark:text-green-400 dark:bg-green-900/30 dark:border-green-500/50",
+            offline: "text-muted-foreground bg-muted border-border",
+            busy: "text-red-600 bg-red-100 border-red-300 dark:text-red-400 dark:bg-red-900/30 dark:border-red-500/50"
+          };
+          return colors[status.toLowerCase() as keyof typeof colors] || colors.online;
+        };
+
+        return (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Avatar className="cursor-pointer h-10 w-10 border-2 border-transparent hover:border-primary transition-colors">
+                <AvatarImage src={user.avatar} alt={user.name} />
+                <AvatarFallback>{user.initials}</AvatarFallback>
+              </Avatar>
+            </DropdownMenuTrigger>
+
+            <DropdownMenuContent className="no-scrollbar w-[310px] rounded-2xl p-0" align="end">
+              <section className="bg-popover/50 backdrop-blur-lg rounded-2xl p-1 shadow-xl border">
+                <div className="flex items-center p-2">
+                  <div className="flex-1 flex items-center gap-2">
+                    <Avatar className="cursor-pointer h-10 w-10">
+                      <AvatarImage src={user.avatar} alt={user.name} />
+                      <AvatarFallback>{user.initials}</AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <h3 className="font-semibold text-sm">{user.name}</h3>
+                      <p className="text-muted-foreground text-xs">{user.username}</p>
+                    </div>
+                  </div>
+                  <Badge variant="outline" className={cn("border-[0.5px] text-[11px] rounded-sm capitalize", getStatusColor(user.status))}>
+                    {user.status}
+                  </Badge>
+                </div>
+
+                <DropdownMenuGroup>
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger className="cursor-pointer p-2 rounded-lg">
+                      <span className="flex items-center gap-1.5 font-medium text-muted-foreground">
+                        <Icon icon="solar:smile-circle-line-duotone" className="h-5 w-5" />
+                        Update status
+                      </span>
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuPortal>
+                      <DropdownMenuSubContent>
+                        <DropdownMenuRadioGroup value={selectedStatus} onValueChange={onStatusChange}>
+                          {MENU_ITEMS.status.map((status, index) => (
+                            <DropdownMenuRadioItem className="gap-2" key={index} value={status.value}>
+                              <Icon icon={status.icon} className="h-5 w-5 text-muted-foreground" />
+                              {status.label}
+                            </DropdownMenuRadioItem>
+                          ))}
+                        </DropdownMenuRadioGroup>
+                      </DropdownMenuSubContent>
+                    </DropdownMenuPortal>
+                  </DropdownMenuSub>
+                </DropdownMenuGroup>
+
+                <DropdownMenuSeparator />
+                <DropdownMenuGroup>
+                  {MENU_ITEMS.profile.map(renderMenuItem)}
+                </DropdownMenuGroup>
+
+                <DropdownMenuSeparator />
+                <DropdownMenuGroup>
+                  {MENU_ITEMS.premium.map(renderMenuItem)}
+                </DropdownMenuGroup>
+
+                <DropdownMenuSeparator />
+                <DropdownMenuGroup>
+                  {MENU_ITEMS.support.map(renderMenuItem)}
+                </DropdownMenuGroup>
+              </section>
+
+              <section className="mt-1 p-1">
+                <DropdownMenuGroup>
+                  {MENU_ITEMS.account.map(renderMenuItem)}
+                </DropdownMenuGroup>
+              </section>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        );
+      };
+    patchStrategy: replace
+  - type: write
+    path: src/index.css
+    content: |+
+      --- src/index.css
+      +++ src/index.css
+      @@ -83,3 +83,12 @@
+       ::-webkit-scrollbar-thumb:hover {
+         @apply bg-muted-foreground/50;
+       }
+      +
+      +/* For UserDropdown */
+      +.no-scrollbar::-webkit-scrollbar {
+      +  display: none;
+      +}
+      +.no-scrollbar {
+      +  -ms-overflow-style: none; /* IE and Edge */
+      +  scrollbar-width: none; /* Firefox */
+      +}
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/components/TopBar.tsx
+    content: |+
+      --- src/components/TopBar.tsx
+      +++ src/components/TopBar.tsx
+      @@ -14,6 +14,7 @@
+       import { cn } from '@/lib/utils'
+       import { BODY_STATES } from '@/lib/utils'
+       import { useAppStore } from '@/store/appStore'
+      +import { UserDropdown } from './UserDropdown'
+       
+       interface TopBarProps {
+         onToggleSidebar: () => void
+      @@ -165,6 +166,7 @@
+               >
+                 <Settings className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
+               </button>
+      +        <UserDropdown />
+               </div>
+             </div>
+           </div>
+
+    patchStrategy: standard-diff
+snapshot:
+  src/components/ui/badge.tsx: null
+  src/components/UserDropdown.tsx: null
+  package.json: |-
+    {
+      "name": "amazing-app-shell",
+      "private": true,
+      "version": "0.0.0",
+      "type": "module",
+      "scripts": {
+        "dev": "vite",
+        "build": "tsc && vite build",
+        "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+        "preview": "vite preview"
+      },
+      "dependencies": {
+        "react": "^18.2.0",
+        "react-dom": "^18.2.0",
+        "gsap": "^3.12.2",
+        "zustand": "^4.4.7",
+        "lucide-react": "^0.294.0",
+        "clsx": "^2.0.0",
+        "tailwind-merge": "^2.0.0",
+        "class-variance-authority": "^0.7.0",
+        "@radix-ui/react-slot": "^1.0.2",
+        "sonner": "^1.2.4",
+        "@radix-ui/react-avatar": "^1.0.4",
+        "@radix-ui/react-popover": "^1.0.7",
+        "@radix-ui/react-dialog": "^1.0.5",
+        "cmdk": "^0.2.0",
+        "@radix-ui/react-dropdown-menu": "^2.0.6"
+      },
+      "devDependencies": {
+        "@types/node": "^20.10.0",
+        "@types/react": "^18.2.37",
+        "@types/react-dom": "^18.2.15",
+        "@typescript-eslint/eslint-plugin": "^6.10.0",
+        "@typescript-eslint/parser": "^6.10.0",
+        "@vitejs/plugin-react": "^4.1.1",
+        "autoprefixer": "^10.4.16",
+        "eslint": "^8.53.0",
+        "eslint-plugin-react-hooks": "^4.6.0",
+        "eslint-plugin-react-refresh": "^0.4.4",
+        "postcss": "^8.4.31",
+        "tailwindcss": "^3.3.5",
+        "typescript": "^5.2.2",
+        "vite": "^4.5.0",
+        "tailwindcss-animate": "^1.0.7"
+      }
+    }
+  src/index.css: |-
+    @import 'tailwindcss/base';
+    @import 'tailwindcss/components';
+    @import 'tailwindcss/utilities';
+
+    @layer base {
+      :root {
+        --primary-hsl: 220 84% 60%;
+        --background: 210 40% 96.1%;
+        --foreground: 222.2 84% 4.9%;
+        --card: 0 0% 100%;
+        --card-foreground: 222.2 84% 4.9%;
+        --popover: 0 0% 100%;
+        --popover-foreground: 222.2 84% 4.9%;
+        --primary: var(--primary-hsl);
+        --primary-foreground: 210 40% 98%;
+        --secondary: 210 40% 96%;
+        --secondary-foreground: 222.2 84% 4.9%;
+        --muted: 210 40% 96%;
+        --muted-foreground: 215.4 16.3% 46.9%;
+        --accent: 210 40% 96%;
+        --accent-foreground: 222.2 84% 4.9%;
+        --destructive: 0 84.2% 60.2%;
+        --destructive-foreground: 210 40% 98%;
+        --border: 214.3 31.8% 91.4%;
+        --input: 214.3 31.8% 91.4%;
+        --ring: var(--primary-hsl);
+        --radius: 1rem;
+      }
+
+      .dark {
+        --background: 240 6% 9%;
+        --foreground: 210 40% 98%;
+        --card: 240 6% 14%;
+        --card-foreground: 210 40% 98%;
+        --popover: 240 6% 12%;
+        --popover-foreground: 210 40% 98%;
+        --primary: var(--primary-hsl);
+        --primary-foreground: 210 40% 98%;
+        --secondary: 240 5% 20%;
+        --secondary-foreground: 210 40% 98%;
+        --muted: 240 5% 20%;
+        --muted-foreground: 215 20.2% 65.1%;
+        --accent: 240 5% 20%;
+        --accent-foreground: 210 40% 98%;
+        --destructive: 0 62.8% 30.6%;
+        --destructive-foreground: 210 40% 98%;
+        --border: 240 5% 20%;
+        --input: 240 5% 20%;
+        --ring: var(--primary-hsl);
+      }
+    }
+
+    @layer base {
+      * {
+        @apply border-border;
+      }
+      body {
+        @apply bg-background text-foreground;
+      }
+    }
+
+    /* Custom scrollbar styles */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      @apply bg-transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      @apply bg-border rounded-full;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      @apply bg-muted-foreground/50;
+    }
+  src/components/TopBar.tsx: |-
+    import { useState } from 'react'
+    import {
+      Menu, 
+      Maximize, 
+      Minimize, 
+      Moon, 
+      Sun,
+      Settings,
+      Command,
+      Zap,
+      ChevronRight,
+      Search,
+      Filter,
+      Plus,
+      PanelRight,
+    } from 'lucide-react'
+    import { cn } from '@/lib/utils'
+    import { BODY_STATES } from '@/lib/utils'
+    import { useAppStore } from '@/store/appStore'
+
+    interface TopBarProps {
+      onToggleSidebar: () => void
+      onToggleFullscreen: () => void
+      onToggleDarkMode: () => void
+    }
+
+    export function TopBar({
+      onToggleSidebar,
+      onToggleFullscreen,
+      onToggleDarkMode
+    }: TopBarProps) {
+      const { 
+        bodyState, 
+        isDarkMode, 
+        openSidePane,
+        sidePaneContent,
+        activePage,
+        setActivePage,
+        searchTerm,
+        setCommandPaletteOpen,
+        setSearchTerm,
+      } = useAppStore()
+
+      const [isSearchFocused, setIsSearchFocused] = useState(false)
+
+      const handleSettingsClick = () => {
+        const isSettingsInSidePane = bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === 'settings'
+
+        // If we're on the settings page and it's not in the side pane, treat this as a "minimize" action.
+        if (activePage === 'settings' && !isSettingsInSidePane) {
+          openSidePane('settings');
+          setActivePage('dashboard');
+        } else {
+          // In all other cases (on dashboard page, or settings already in pane),
+          // just toggle the settings side pane.
+          openSidePane('settings');
+        }
+      }
+
+      const handleDashboardMoveToSidePane = () => {
+        openSidePane('main');
+      };
+
+      const handleSettingsMoveToSidePane = () => {
+        openSidePane('settings');
+        setActivePage('dashboard');
+      }
+
+      const handleToasterMoveToSidePane = () => {
+        openSidePane('toaster');
+        setActivePage('dashboard');
+      }
+
+      return (
+        <div className={cn(
+          "h-20 bg-card/80 backdrop-blur-sm border-b border-border flex items-center justify-between px-6 z-50 gap-4",
+          {
+            'transition-all duration-300 ease-in-out': activePage === 'dashboard',
+          }
+        )}>
+          {/* Left Section - Sidebar Controls & Breadcrumbs */}
+          <div className="flex items-center gap-4">
+            {/* Sidebar Controls */}
+            <button
+              onClick={onToggleSidebar}
+              className={cn(
+                "h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors"
+              )}
+              title="Toggle Sidebar"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+
+            {/* Breadcrumbs */}
+            <div className={cn("hidden md:flex items-center gap-2 text-sm transition-opacity", {
+              "opacity-0 pointer-events-none": isSearchFocused && activePage === 'dashboard'
+            })}>
+              <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">Home</a>
+              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+              <span className="font-medium text-foreground capitalize">{activePage}</span>
+            </div>
+          </div>
+
+          {/* Right Section - Search, page controls, and global controls */}
+          <div className={cn("flex items-center gap-3", isSearchFocused && activePage === 'dashboard' ? 'flex-1' : '')}>
+            {/* Page-specific: Dashboard search and actions */}
+            {activePage === 'dashboard' && (
+              <div className="flex items-center gap-2 flex-1 justify-end">
+                <div className={cn("relative transition-all duration-300 ease-in-out", isSearchFocused ? 'flex-1 max-w-lg' : 'w-auto')}>
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4 pointer-events-none" />
+                  <input
+                    type="text"
+                    placeholder="Search..."
+                    value={searchTerm}
+                    onFocus={() => setIsSearchFocused(true)}
+                    onBlur={() => setIsSearchFocused(false)}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className={cn(
+                      "pl-9 pr-4 py-2 h-10 border-none rounded-lg bg-card focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300 ease-in-out w-full",
+                      isSearchFocused ? 'bg-background' : 'w-48'
+                    )}
+                  />
+                </div>
+                 <button className="h-10 w-10 flex-shrink-0 flex items-center justify-center hover:bg-accent rounded-full transition-colors">
+                  <Filter className="w-5 h-5" />
+                </button>
+                 <button className="bg-primary text-primary-foreground px-4 py-2 rounded-full hover:bg-primary/90 transition-colors flex items-center gap-2 h-10 flex-shrink-0">
+                  <Plus className="w-5 h-5" />
+                  <span className={cn(isSearchFocused ? 'hidden sm:inline' : 'inline')}>New Project</span>
+                </button>
+              </div>
+            )}
+            
+            {/* Page-specific: Move to side pane */}
+            <div className={cn('flex items-center', isSearchFocused && activePage === 'dashboard' ? 'hidden md:flex' : '')}>
+              {activePage === 'dashboard' && (
+                <button onClick={handleDashboardMoveToSidePane} className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors" title="Move to Side Pane"><PanelRight className="w-5 h-5" /></button>
+              )}
+              {activePage === 'settings' && (
+                <button onClick={handleSettingsMoveToSidePane} className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors" title="Move to Side Pane"><PanelRight className="w-5 h-5" /></button>
+              )}
+              {activePage === 'toaster' && (
+                <button onClick={handleToasterMoveToSidePane} className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors" title="Move to Side Pane"><PanelRight className="w-5 h-5" /></button>
+              )}
+            </div>
+
+            {/* Separator */}
+            <div className={cn(
+              'w-px h-6 bg-border mx-2', 
+              (activePage !== 'dashboard' && activePage !== 'settings' && activePage !== 'toaster') || (isSearchFocused && activePage === 'dashboard') ? 'hidden' : ''
+            )} />
+
+            {/* Quick Actions */}
+            <div className={cn('flex items-center gap-3', isSearchFocused && activePage === 'dashboard' ? 'hidden lg:flex' : '')}>
+
+              <button
+                onClick={() => setCommandPaletteOpen(true)}
+                className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+                title="Command Palette (Ctrl+K)"
+              >
+                <Command className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              </button>
+
+            <button
+              className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+              title="Quick Actions"
+            >
+              <Zap className="w-5 h-5 group-hover:scale-110 transition-transform" />
+            </button>
+
+            {/* Body State Controls */}
+            <button
+              onClick={() => openSidePane('details')}
+              className={cn(
+                "h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group",
+                bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === 'details' && "bg-accent"
+              )}
+              title="Toggle Side Pane"
+            >
+              <div className="w-5 h-5 flex group-hover:scale-110 transition-transform">
+                <div className="w-1/2 h-full bg-current opacity-60 rounded-l-sm" />
+                <div className="w-1/2 h-full bg-current rounded-r-sm" />
+              </div>
+            </button>
+
+            <button
+              onClick={onToggleFullscreen}
+              className={cn(
+                "h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group",
+                bodyState === BODY_STATES.FULLSCREEN && "bg-accent"
+              )}
+              title="Toggle Fullscreen"
+            >
+              {bodyState === BODY_STATES.FULLSCREEN ? (
+                <Minimize className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              ) : (
+                <Maximize className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              )}
+            </button>
+
+            <div className="w-px h-6 bg-border mx-2" />
+
+            {/* Theme and Settings */}
+            <button
+              onClick={onToggleDarkMode}
+              className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+              title="Toggle Dark Mode"
+            >
+              {isDarkMode ? (
+                <Sun className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              ) : (
+                <Moon className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              )}
+            </button>
+
+            <button
+              onClick={handleSettingsClick}
+              className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+              title="Settings"
+            >
+              <Settings className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
+            </button>
+            </div>
+          </div>
+        </div>
+      )
+    }
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 76
