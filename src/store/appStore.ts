@@ -2,12 +2,15 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { SIDEBAR_STATES, BODY_STATES, type SidebarState, type BodyState } from '@/lib/utils'
 
+export type ActivePage = 'dashboard' | 'settings';
+
 interface AppState {
   // UI States
   sidebarState: SidebarState
   bodyState: BodyState
   isDarkMode: boolean
-  sidePaneContent: 'details' | 'settings'
+  sidePaneContent: 'details' | 'settings' | 'main'
+  activePage: ActivePage
   sidebarWidth: number
   rightPaneWidth: number
   isResizing: boolean
@@ -22,6 +25,7 @@ interface AppState {
   setSidebarState: (state: SidebarState) => void
   setBodyState: (state: BodyState) => void
   toggleDarkMode: () => void
+  setActivePage: (page: ActivePage) => void
   setSidebarWidth: (width: number) => void
   setRightPaneWidth: (width: number) => void
   setIsResizing: (resizing: boolean) => void
@@ -36,7 +40,7 @@ interface AppState {
   showSidebar: () => void
   peekSidebar: () => void
   toggleFullscreen: () => void
-  openSidePane: (content: 'details' | 'settings') => void
+  openSidePane: (content: 'details' | 'settings' | 'main') => void
   closeSidePane: () => void
   resetToDefaults: () => void
 }
@@ -45,6 +49,7 @@ const defaultState = {
   sidebarState: SIDEBAR_STATES.EXPANDED as SidebarState,
   bodyState: BODY_STATES.NORMAL as BodyState,
   sidePaneContent: 'details' as const,
+  activePage: 'dashboard' as ActivePage,
   isDarkMode: false,
   sidebarWidth: 280,
   rightPaneWidth: typeof window !== 'undefined' ? Math.max(300, Math.round(window.innerWidth * 0.6)) : 400,
@@ -64,6 +69,7 @@ export const useAppStore = create<AppState>()(
       sidePaneContent: 'details',
       setSidebarState: (state) => set({ sidebarState: state }),
       setBodyState: (state) => set({ bodyState: state }),
+      setActivePage: (page) => set({ activePage: page }),
       toggleDarkMode: () => {
         const newMode = !get().isDarkMode
         set({ isDarkMode: newMode })
@@ -100,7 +106,7 @@ export const useAppStore = create<AppState>()(
         })
       },
       
-      openSidePane: (content: 'details' | 'settings') => {
+      openSidePane: (content) => {
         const { bodyState, sidePaneContent } = get()
         if (bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === content) {
           // If it's open with same content, close it.
@@ -121,6 +127,7 @@ export const useAppStore = create<AppState>()(
       partialize: (state) => ({
         sidebarState: state.sidebarState,
         bodyState: state.bodyState,
+        activePage: state.activePage,
         sidePaneContent: state.sidePaneContent,
         isDarkMode: state.isDarkMode,
         sidebarWidth: state.sidebarWidth,

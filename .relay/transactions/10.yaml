@@ -1,0 +1,1240 @@
+uuid: c2596495-263a-4467-8d00-4747761d15fd
+projectId: amazing-app-shell
+createdAt: '2025-10-10T09:56:35.809Z'
+gitCommitMsg: >-
+  fix(ui): Resolve multiple UI and animation issues
+
+  This commit addresses several visual and functional bugs throughout the
+  application shell:
+
+  -   **Side Panel**: Implements a new `RightPane` component to provide a
+  functional side panel when the corresponding body state is active. The
+  previous implementation was incomplete. -   **Sidebar Border**: Fixes the
+  "double border" effect by removing the sidebar's CSS border and making the
+  resize handle the sole visual separator. -   **Animation Glitches**: Refactors
+  GSAP animations in `AppShell` for smoother and more reliable transitions
+  between states. The resize handle is now correctly animated with the sidebar
+  to prevent visual tearing. CSS transitions that conflicted with GSAP have been
+  removed. -   **Settings Panel**: Updates the settings panel with a
+  semi-transparent, blurred background to improve visual consistency with the
+  top bar and fix transparency issues.
+promptSummary: >-
+  The user reported several aesthetic and functional issues with the app shell,
+  including a doubled sidebar border, a non-functional side panel, a transparent
+  settings panel, and animation glitches.
+reasoning:
+  - >-
+    Hello! As an expert AI programmer, I've analyzed the issues you're facing
+    with your application shell. The problems with doubled sidebar lines,
+    missing side panel, transparent settings, and transition glitches stem from
+    a mix of CSS conflicts, incomplete features, and incorrect animation logic.
+    I'll fix these for you.
+  - 'Here''s my plan:'
+  - >-
+    1.  **Fix Doubled Sidebar Line & Transitions**: I'll remove the sidebar's
+    right border and use the resize handle as the visual separator. I'll adjust
+    its position and size for a better user experience and animate its position
+    using GSAP to prevent it from jumping during sidebar state changes. This
+    will also resolve related transition issues.
+  - >-
+    2.  **Implement Side Panel**: The "Side Pane" state was not correctly
+    implemented. I will create a new `RightPane` component that will appear from
+    the right when the "Side Pane" mode is active, providing a true side panel
+    experience.
+  - >-
+    3.  **Adjust Settings Panel Appearance**: To fix the transparency issue and
+    create a more cohesive design, I'll update the settings panel to have a
+    blurred, semi-transparent background, similar to your top bar.
+  - >-
+    4.  **Refactor Animations**: I'll refactor the GSAP animation logic in
+    `AppShell.tsx` to be more robust and streamlined, ensuring smooth
+    transitions between different application states (Normal, Fullscreen, and
+    Side Pane).
+  - Let's get to the code.
+  - '### 1. Create the new `RightPane` component'
+  - >-
+    I'll start by creating the new `RightPane` component. This will serve as the
+    side panel that appears when you toggle "Side Pane" mode.
+  - '### 2. Export the new component'
+  - >-
+    Now, let's export `RightPane` from the components' `index.ts` file so it can
+    be easily imported elsewhere.
+  - '### 3. Fix the Settings Panel appearance'
+  - >-
+    I'll update the `SettingsPanel` to use a blurred, semi-transparent
+    background for a consistent and modern look.
+  - '### 4. Remove the sidebar border'
+  - >-
+    To fix the double border issue, I'm removing the right border from the
+    sidebar. The resize handle will now serve as the visual separator. I'm also
+    removing a conflicting CSS transition property.
+  - '### 5. Integrate `RightPane` and fix animations in `AppShell`'
+  - 'This is the core of the fix. I''ll update `AppShell.tsx` to:'
+  - '-   Integrate the new `RightPane`.'
+  - '-   Fix the resize handle''s behavior during animations and manual resizing.'
+  - >-
+    -   Refactor the animation logic for body state changes to be cleaner and
+    correctly handle the new side panel.
+  - >-
+    These changes should resolve all the reported issues, leading to a much
+    smoother and more visually polished application shell.
+operations:
+  - type: write
+    path: src/components/RightPane.tsx
+    content: |-
+      import { forwardRef } from 'react'
+      import { X, SlidersHorizontal } from 'lucide-react'
+      import { useAppStore } from '@/store/appStore'
+
+      export const RightPane = forwardRef<HTMLDivElement>((_props, ref) => {
+        const { toggleSidePane } = useAppStore()
+
+        return (
+          <aside ref={ref} className="bg-card border-l border-border flex flex-col h-full overflow-hidden w-0">
+            <div className="flex items-center justify-between p-4 border-b border-border h-20 flex-shrink-0">
+              <div className="flex items-center gap-2">
+                <SlidersHorizontal className="w-5 h-5" />
+                <h2 className="text-lg font-semibold whitespace-nowrap">Details Panel</h2>
+              </div>
+              <button
+                onClick={toggleSidePane}
+                className="p-2 hover:bg-accent rounded-lg transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-6">
+              <p className="text-muted-foreground">
+                This is the side pane. It can be used to display contextual information, forms, or actions related to the main content.
+              </p>
+            </div>
+          </aside>
+        )
+      })
+
+      RightPane.displayName = "RightPane"
+    patchStrategy: replace
+  - type: write
+    path: src/components/index.ts
+    content: |+
+      --- src/components/index.ts
+      +++ src/components/index.ts
+      @@ -1,3 +1,4 @@
+       export { AppShell } from './AppShell'
+       export { TopBar } from './TopBar'
+       export { MainContent } from './MainContent'
+      +export { RightPane } from './RightPane'
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/components/SettingsPanel.tsx
+    content: >+
+      --- src/components/SettingsPanel.tsx
+
+      +++ src/components/SettingsPanel.tsx
+
+      @@ -28,7 +28,7 @@
+       
+         return (
+           <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-[100] animate-in fade-in-0 duration-300">
+      -      <div className="fixed right-4 top-4 bottom-4 w-full max-w-sm
+      bg-card border border-border shadow-2xl rounded-2xl animate-in
+      slide-in-from-right-8 duration-300">
+
+      +      <div className="fixed right-4 top-4 bottom-4 w-full max-w-sm
+      bg-card/95 backdrop-blur-lg border border-border shadow-2xl rounded-2xl
+      animate-in slide-in-from-right-8 duration-300">
+               <div className="flex flex-col h-full">
+                 {/* Header */}
+                 <div className="flex items-center justify-between p-6 border-b border-border">
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/components/EnhancedSidebar.tsx
+    content: >+
+      --- src/components/EnhancedSidebar.tsx
+
+      +++ src/components/EnhancedSidebar.tsx
+
+      @@ -165,8 +165,8 @@
+           return (
+             <div
+               ref={ref}
+               className={cn(
+      -          "relative bg-card border-r border-border flex-shrink-0
+      transition-all duration-300",
+
+      +          "relative bg-card flex-shrink-0",
+                 "h-full overflow-hidden",
+                 isPeek && "shadow-xl z-40",
+                 compactMode && "text-sm"
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/components/AppShell.tsx
+    content: >+
+      --- src/components/AppShell.tsx
+
+      +++ src/components/AppShell.tsx
+
+      @@ -2,8 +2,9 @@
+       import { gsap } from 'gsap'
+       import { cn } from '@/lib/utils'
+       import { EnhancedSidebar } from './EnhancedSidebar'
+       import { MainContent } from './MainContent'
+      +import { RightPane } from './RightPane'
+       import { TopBar } from './TopBar'
+       import { useAppStore } from '@/store/appStore'
+       import { SIDEBAR_STATES, BODY_STATES } from '@/lib/utils'
+      @@ -26,6 +27,7 @@
+         const appRef = useRef<HTMLDivElement>(null)
+         const sidebarRef = useRef<HTMLDivElement>(null)
+         const mainContentRef = useRef<HTMLDivElement>(null)
+      +  const rightPaneRef = useRef<HTMLDivElement>(null)
+         const resizeHandleRef = useRef<HTMLDivElement>(null)
+       
+         // Animation duration based on reduced motion preference
+      @@ -40,6 +42,9 @@
+             
+             if (sidebarRef.current) {
+               gsap.set(sidebarRef.current, { width: newWidth })
+      +      }
+
+      +      if (resizeHandleRef.current) {
+
+      +        gsap.set(resizeHandleRef.current, { left: newWidth })
+             }
+           }
+       
+      @@ -58,13 +63,14 @@
+           return () => {
+             document.removeEventListener('mousemove', handleMouseMove)
+             document.removeEventListener('mouseup', handleMouseUp)
+           }
+      -  }, [isResizing])
+
+      +  }, [isResizing, setIsResizing, setSidebarWidth])
+       
+         // GSAP animations for sidebar transitions
+         useEffect(() => {
+      -    if (!sidebarRef.current || !mainContentRef.current) return
+
+      +    if (!sidebarRef.current || !mainContentRef.current ||
+      !resizeHandleRef.current) return
+       
+           const sidebar = sidebarRef.current
+      +    const handle = resizeHandleRef.current
+           
+           let targetWidth = 0
+           let targetOpacity = 1
+      @@ -98,50 +104,36 @@
+             x: `${targetX}%`,
+             duration: animationDuration,
+           })
+      -    // Don't animate margin in the new layout structure
+
+      +    tl.to(handle, {
+
+      +      left: targetWidth,
+
+      +      duration: animationDuration,
+
+      +    }, 0)
+       
+      -  }, [sidebarState, sidebarWidth, bodyState])
+
+      +  }, [sidebarState, sidebarWidth, bodyState, animationDuration])
+       
+         // GSAP animations for body state transitions
+         useEffect(() => {
+      -    if (!mainContentRef.current) return
+
+      +    if (!mainContentRef.current || !sidebarRef.current ||
+      !rightPaneRef.current) return
+       
+      -    switch (bodyState) {
+
+      -      case BODY_STATES.FULLSCREEN:
+
+      -        // In fullscreen, hide sidebar completely
+
+      -        if (sidebarRef.current) {
+
+      -          gsap.to(sidebarRef.current, {
+
+      -            x: '-100%',
+
+      -            duration: animationDuration,
+
+      -            ease: "power3.out"
+
+      -          })
+
+      -        }
+
+      -        break
+
+      -      case BODY_STATES.SIDE_PANE:
+
+      -        // In side pane, make sidebar narrower and content takes
+      remaining space
+
+      -        if (sidebarRef.current) {
+
+      -          const narrowWidth = Math.min(sidebarWidth * 0.7, 200)
+
+      -          gsap.to(sidebarRef.current, {
+
+      -            width: narrowWidth,
+
+      -            x: 0,
+
+      -            duration: animationDuration,
+
+      -            ease: "power3.out"
+
+      -          })
+
+      -        }
+
+      -        break
+
+      -      default:
+
+      -        // Normal state - restore sidebar
+
+      -        if (sidebarRef.current) {
+
+      -          gsap.to(sidebarRef.current, {
+
+      -            x: 0,
+
+      -            duration: animationDuration,
+
+      -            ease: "power3.out"
+
+      -          })
+
+      -        }
+
+      -        break
+
+      -    }
+
+      -  }, [bodyState, sidebarState, sidebarWidth, animationDuration])
+
+      +    const ease = "power3.out"
+
+      +    const isFullscreen = bodyState === BODY_STATES.FULLSCREEN
+
+      +    const isSidePane = bodyState === BODY_STATES.SIDE_PANE
+
+      +
+
+      +    // Sidebar animation for body state changes
+
+      +    gsap.to(sidebarRef.current, {
+
+      +      x: isFullscreen ? '-100%' : '0%',
+
+      +      duration: animationDuration,
+
+      +      ease,
+
+      +    })
+
+      +
+
+      +    // Right pane animation
+
+      +    gsap.to(rightPaneRef.current, {
+
+      +      width: isSidePane ? 320 : 0,
+
+      +      duration: animationDuration,
+
+      +      ease,
+
+      +    })
+
+      +  }, [bodyState, animationDuration])
+       
+         return (
+           <div 
+      @@ -176,13 +168,9 @@
+                 <div
+                   ref={resizeHandleRef}
+                   className={cn(
+      -              "absolute top-0 w-1.5 h-full bg-transparent
+      hover:bg-primary/20 cursor-col-resize z-50 transition-colors duration-200
+      group"
+
+      +              "absolute top-0 w-2 h-full bg-transparent
+      hover:bg-primary/20 cursor-col-resize z-50 transition-colors duration-200
+      group -translate-x-1/2"
+                   )}
+      -            style={{ 
+
+      -              left: sidebarState === SIDEBAR_STATES.COLLAPSED ? 64 :
+      sidebarWidth 
+
+      -            }}
+                   onMouseDown={() => setIsResizing(true)}
+                 >
+                   <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200 mx-auto" />
+      @@ -201,6 +189,8 @@
+                   bodyState={bodyState}
+                 />
+               </div>
+      +        
+
+      +        <RightPane ref={rightPaneRef} />
+             </div>
+           </div>
+         )
+
+    patchStrategy: standard-diff
+snapshot:
+  src/components/RightPane.tsx: null
+  src/components/SettingsPanel.tsx: |-
+    import { useState } from 'react'
+    import { 
+      Settings, 
+      X, 
+      Moon, 
+      Sun, 
+      Zap, 
+      Eye, 
+      Minimize2, 
+      RotateCcw,
+      Monitor,
+      Smartphone,
+      Palette,
+      Accessibility
+    } from 'lucide-react'
+    import { cn } from '@/lib/utils'
+    import { useAppStore } from '@/store/appStore'
+
+    interface SettingsPanelProps {
+      isOpen: boolean
+      onClose: () => void
+    }
+
+    export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
+      const {
+        isDarkMode,
+        reducedMotion,
+        compactMode,
+        autoExpandSidebar,
+        sidebarWidth,
+        toggleDarkMode,
+        setReducedMotion,
+        setCompactMode,
+        setAutoExpandSidebar,
+        setSidebarWidth,
+        resetToDefaults
+      } = useAppStore()
+
+      const [tempSidebarWidth, setTempSidebarWidth] = useState(sidebarWidth)
+
+      const handleSidebarWidthChange = (width: number) => {
+        setTempSidebarWidth(width)
+        setSidebarWidth(width)
+      }
+
+      if (!isOpen) return null
+
+      return (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-[100] animate-in fade-in-0 duration-300">
+          <div className="fixed right-4 top-4 bottom-4 w-full max-w-sm bg-card border border-border shadow-2xl rounded-2xl animate-in slide-in-from-right-8 duration-300">
+            <div className="flex flex-col h-full">
+              {/* Header */}
+              <div className="flex items-center justify-between p-6 border-b border-border">
+                <div className="flex items-center gap-2">
+                  <Settings className="w-5 h-5" />
+                  <h2 className="text-lg font-semibold">Settings</h2>
+                </div>
+                <button
+                  onClick={onClose}
+                  className="p-2 hover:bg-accent rounded-lg transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Content */}
+              <div className="flex-1 overflow-y-auto p-6 space-y-10">
+                {/* Appearance */}
+                <div className="space-y-4">
+                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                    <Palette className="w-4 h-4" />
+                    Appearance
+                  </h3>
+                  
+                  {/* Dark Mode */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      {isDarkMode ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+                      <div>
+                        <p className="font-medium">Dark Mode</p>
+                        <p className="text-sm text-muted-foreground">Toggle dark theme</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={toggleDarkMode}
+                      className={cn(
+                        "relative inline-flex h-7 w-12 items-center rounded-full transition-colors",
+                        isDarkMode ? "bg-primary" : "bg-muted"
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          "inline-block h-5 w-5 transform rounded-full bg-background transition-transform",
+                          isDarkMode ? "translate-x-6" : "translate-x-1"
+                        )}
+                      />
+                    </button>
+                  </div>
+
+                  {/* Compact Mode */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Minimize2 className="w-4 h-4" />
+                      <div>
+                        <p className="font-medium">Compact Mode</p>
+                        <p className="text-sm text-muted-foreground">Reduce spacing and sizes</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setCompactMode(!compactMode)}
+                      className={cn(
+                        "relative inline-flex h-7 w-12 items-center rounded-full transition-colors",
+                        compactMode ? "bg-primary" : "bg-muted"
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          "inline-block h-5 w-5 transform rounded-full bg-background transition-transform",
+                          compactMode ? "translate-x-6" : "translate-x-1"
+                        )}
+                      />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Behavior */}
+                <div className="space-y-4">
+                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                    <Zap className="w-4 h-4" />
+                    Behavior
+                  </h3>
+
+                  {/* Auto Expand Sidebar */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Eye className="w-4 h-4" />
+                      <div>
+                        <p className="font-medium">Auto Expand Sidebar</p>
+                        <p className="text-sm text-muted-foreground">Expand on hover when collapsed</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setAutoExpandSidebar(!autoExpandSidebar)}
+                      className={cn(
+                        "relative inline-flex h-7 w-12 items-center rounded-full transition-colors",
+                        autoExpandSidebar ? "bg-primary" : "bg-muted"
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          "inline-block h-5 w-5 transform rounded-full bg-background transition-transform",
+                          autoExpandSidebar ? "translate-x-6" : "translate-x-1"
+                        )}
+                      />
+                    </button>
+                  </div>
+
+                  {/* Sidebar Width */}
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3">
+                      <Monitor className="w-4 h-4" />
+                      <div>
+                        <p className="font-medium">Sidebar Width</p>
+                        <p className="text-sm text-muted-foreground">{tempSidebarWidth}px</p>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <input
+                        type="range"
+                        min="200"
+                        max="500"
+                        step="10"
+                        value={tempSidebarWidth}
+                        onChange={(e) => handleSidebarWidthChange(Number(e.target.value))}
+                        className="w-full h-1.5 bg-muted rounded-lg appearance-none cursor-pointer slider"
+                      />
+                      <div className="flex justify-between text-xs text-muted-foreground">
+                        <span>200px</span>
+                        <span>350px</span>
+                        <span>500px</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Accessibility */}
+                <div className="space-y-4">
+                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                    <Accessibility className="w-4 h-4" />
+                    Accessibility
+                  </h3>
+
+                  {/* Reduced Motion */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Zap className="w-4 h-4" />
+                      <div>
+                        <p className="font-medium">Reduced Motion</p>
+                        <p className="text-sm text-muted-foreground">Minimize animations</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setReducedMotion(!reducedMotion)}
+                      className={cn(
+                        "relative inline-flex h-7 w-12 items-center rounded-full transition-colors",
+                        reducedMotion ? "bg-primary" : "bg-muted"
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          "inline-block h-5 w-5 transform rounded-full bg-background transition-transform",
+                          reducedMotion ? "translate-x-6" : "translate-x-1"
+                        )}
+                      />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Presets */}
+                <div className="space-y-4">
+                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+                    Quick Presets
+                  </h3>
+                  
+                  <div className="grid grid-cols-2 gap-3">
+                    <button 
+                      onClick={() => {
+                        setCompactMode(false)
+                        setReducedMotion(false)
+                        setSidebarWidth(320)
+                      }}
+                      className="p-4 bg-accent/30 hover:bg-accent/50 rounded-xl transition-colors text-left"
+                    >
+                      <Monitor className="w-4 h-4 mb-2" />
+                      <p className="font-medium text-sm">Desktop</p>
+                      <p className="text-xs text-muted-foreground">Spacious layout</p>
+                    </button>
+                    
+                    <button 
+                      onClick={() => {
+                        setCompactMode(true)
+                        setReducedMotion(true)
+                        setSidebarWidth(240)
+                      }}
+                      className="p-4 bg-accent/30 hover:bg-accent/50 rounded-xl transition-colors text-left"
+                    >
+                      <Smartphone className="w-4 h-4 mb-2" />
+                      <p className="font-medium text-sm">Mobile</p>
+                      <p className="text-xs text-muted-foreground">Compact layout</p>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="p-6 border-t border-border">
+                <button
+                  onClick={resetToDefaults}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-destructive/10 text-destructive hover:bg-destructive/20 rounded-lg transition-colors"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                  Reset to Defaults
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )
+    }
+
+    // Custom slider styles
+    const sliderStyles = `
+    .slider::-webkit-slider-thumb {
+      appearance: none;
+      height: 18px;
+      width: 18px;
+      border-radius: 50%;
+      background: hsl(var(--primary));
+      cursor: pointer;
+      border: 3px solid hsl(var(--background));
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      margin-top: -7px;
+    }
+
+    .slider::-moz-range-thumb {
+      height: 18px;
+      width: 18px;
+      border-radius: 50%;
+      background: hsl(var(--primary));
+      cursor: pointer;
+      border: 3px solid hsl(var(--background));
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    `
+
+    // Inject styles
+    if (typeof document !== 'undefined') {
+      const styleSheet = document.createElement('style')
+      styleSheet.textContent = sliderStyles
+      document.head.appendChild(styleSheet)
+    }
+  src/components/index.ts: |-
+    export { AppShell } from './AppShell'
+    export { TopBar } from './TopBar'
+    export { MainContent } from './MainContent'
+  src/components/EnhancedSidebar.tsx: |-
+    import React, { forwardRef, useRef, useEffect } from 'react'
+    import { gsap } from 'gsap'
+    import { 
+      Home, 
+      Search, 
+      Bell, 
+      User, 
+      Settings, 
+      HelpCircle, 
+      FileText, 
+      Calendar, 
+      Mail,
+      FolderOpen,
+      Bookmark,
+      Download,
+      Star,
+      Trash2,
+      ChevronDown
+    } from 'lucide-react'
+    import { cn } from '@/lib/utils'
+    import { useAppStore } from '@/store/appStore'
+    import { SIDEBAR_STATES } from '@/lib/utils'
+
+    interface NavItem {
+      icon: React.ReactNode
+      label: string
+      href: string
+      badge?: number
+      isActive?: boolean
+      children?: NavItem[]
+    }
+
+    interface NavSection {
+      title: string
+      items: NavItem[]
+      collapsible?: boolean
+      defaultExpanded?: boolean
+    }
+
+    const navigationSections: NavSection[] = [
+      {
+        title: "Main",
+        items: [
+          { icon: <Home className="w-4 h-4" />, label: "Dashboard", href: "/", isActive: true },
+          { icon: <Search className="w-4 h-4" />, label: "Search", href: "/search" },
+          { icon: <Bell className="w-4 h-4" />, label: "Notifications", href: "/notifications", badge: 3 },
+        ]
+      },
+      {
+        title: "Workspace",
+        collapsible: true,
+        defaultExpanded: true,
+        items: [
+          { 
+            icon: <FileText className="w-4 h-4" />, 
+            label: "Documents", 
+            href: "/documents",
+            children: [
+              { icon: <FileText className="w-3 h-3" />, label: "Recent", href: "/documents/recent" },
+              { icon: <Star className="w-3 h-3" />, label: "Starred", href: "/documents/starred" },
+              { icon: <Trash2 className="w-3 h-3" />, label: "Trash", href: "/documents/trash" },
+            ]
+          },
+          { icon: <FolderOpen className="w-4 h-4" />, label: "Projects", href: "/projects" },
+          { icon: <Calendar className="w-4 h-4" />, label: "Calendar", href: "/calendar" },
+          { icon: <Mail className="w-4 h-4" />, label: "Messages", href: "/messages", badge: 12 },
+        ]
+      },
+      {
+        title: "Personal",
+        collapsible: true,
+        defaultExpanded: false,
+        items: [
+          { icon: <Bookmark className="w-4 h-4" />, label: "Bookmarks", href: "/bookmarks" },
+          { icon: <Star className="w-4 h-4" />, label: "Favorites", href: "/favorites" },
+          { icon: <Download className="w-4 h-4" />, label: "Downloads", href: "/downloads" },
+        ]
+      }
+    ]
+
+    const bottomNavItems: NavItem[] = [
+      { icon: <User className="w-4 h-4" />, label: "Profile", href: "/profile" },
+      { icon: <Settings className="w-4 h-4" />, label: "Settings", href: "/settings" },
+      { icon: <HelpCircle className="w-4 h-4" />, label: "Help", href: "/help" },
+    ]
+
+    interface SidebarProps {
+      onMouseEnter?: () => void
+      onMouseLeave?: () => void
+    }
+
+    export const EnhancedSidebar = forwardRef<HTMLDivElement, SidebarProps>(
+      ({ onMouseEnter, onMouseLeave }, ref) => {
+        const { sidebarState, sidebarWidth, reducedMotion, compactMode } = useAppStore()
+        const contentRef = useRef<HTMLDivElement>(null)
+        const sectionsRef = useRef<(HTMLDivElement | null)[]>([])
+        const [expandedSections, setExpandedSections] = React.useState<Set<string>>(
+          new Set(navigationSections.filter(s => s.defaultExpanded).map(s => s.title))
+        )
+
+        const isCollapsed = sidebarState === SIDEBAR_STATES.COLLAPSED
+        const isHidden = sidebarState === SIDEBAR_STATES.HIDDEN
+        const isPeek = sidebarState === SIDEBAR_STATES.PEEK
+        const animationDuration = reducedMotion ? 0.1 : 0.3
+
+        // Toggle section expansion
+        const toggleSection = (sectionTitle: string) => {
+          setExpandedSections(prev => {
+            const newSet = new Set(prev)
+            if (newSet.has(sectionTitle)) {
+              newSet.delete(sectionTitle)
+            } else {
+              newSet.add(sectionTitle)
+            }
+            return newSet
+          })
+        }
+
+        // Animate content visibility
+        useEffect(() => {
+          if (!contentRef.current) return
+
+          const labels = contentRef.current.querySelectorAll('.nav-label')
+          const badges = contentRef.current.querySelectorAll('.nav-badge')
+          const sectionTitles = contentRef.current.querySelectorAll('.section-title')
+          const chevrons = contentRef.current.querySelectorAll('.section-chevron')
+
+          if (isCollapsed) {
+            gsap.to([labels, badges, sectionTitles, chevrons], {
+              opacity: 0,
+              scale: 0.8,
+              duration: animationDuration,
+              ease: "power2.out"
+            })
+          } else {
+            gsap.to([labels, badges, sectionTitles, chevrons], {
+              opacity: 1,
+              scale: 1,
+              duration: animationDuration,
+              delay: 0.1,
+              ease: "power2.out"
+            })
+          }
+        }, [isCollapsed, animationDuration])
+
+        // Hover animations for nav items
+        const handleItemHover = (element: HTMLElement, isHovering: boolean) => {
+          if (!element) return
+
+          gsap.to(element, {
+            scale: isHovering ? 1.02 : 1,
+            x: isHovering ? 4 : 0,
+            duration: animationDuration,
+            ease: "power2.out"
+          })
+        }
+
+        if (isHidden) {
+          return null
+        }
+
+        const renderNavItem = (item: NavItem, depth = 0) => (
+          <div key={item.label} className={cn("space-y-1", depth > 0 && "ml-6")}>
+            <div
+              className={cn(
+                "group relative flex items-center gap-3 rounded-lg cursor-pointer transition-all duration-200",
+                compactMode ? "px-2 py-1.5" : "px-4 py-2.5",
+                "hover:bg-accent",
+                item.isActive && "bg-primary text-primary-foreground hover:bg-primary/90",
+                depth > 0 && "text-sm"
+              )}
+              onMouseEnter={(e) => handleItemHover(e.currentTarget, true)}
+              onMouseLeave={(e) => handleItemHover(e.currentTarget, false)}
+            >
+              <div className="flex-shrink-0">
+                {item.icon}
+              </div>
+              
+              {!isCollapsed && (
+                <>
+                  <span className="nav-label flex-1 font-medium truncate">
+                    {item.label}
+                  </span>
+                  
+                  {item.badge && (
+                    <span className="nav-badge bg-destructive text-destructive-foreground text-xs px-1.5 py-0.5 rounded-full min-w-[1.25rem] text-center">
+                      {item.badge > 99 ? '99+' : item.badge}
+                    </span>
+                  )}
+
+                  {item.children && (
+                    <ChevronDown className="w-3 h-3 transition-transform" />
+                  )}
+                </>
+              )}
+
+              {/* Tooltip for collapsed state */}
+              {isCollapsed && (
+                <div className="absolute left-full ml-2 px-2 py-1 bg-popover text-popover-foreground text-sm rounded-md shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
+                  {item.label}
+                  {item.badge && (
+                    <span className="ml-2 bg-destructive text-destructive-foreground text-xs px-1.5 py-0.5 rounded-full">
+                      {item.badge > 99 ? '99+' : item.badge}
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Children items */}
+            {item.children && !isCollapsed && (
+              <div className="space-y-1">
+                {item.children.map(child => renderNavItem(child, depth + 1))}
+              </div>
+            )}
+          </div>
+        )
+
+        return (
+          <div
+            ref={ref}
+            className={cn(
+              "relative bg-card border-r border-border flex-shrink-0 transition-all duration-300",
+              "h-full overflow-hidden",
+              isPeek && "shadow-xl z-40",
+              compactMode && "text-sm"
+            )}
+            style={{ width: sidebarWidth }}
+            onMouseEnter={onMouseEnter}
+            onMouseLeave={onMouseLeave}
+          >
+            {/* Background blur effect for peek mode */}
+            {isPeek && (
+              <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" />
+            )}
+
+            <div 
+              ref={contentRef}
+              className={cn(
+                "relative z-10 h-full flex flex-col",
+                compactMode ? "p-3" : "p-4"
+              )}
+            >
+              {/* Navigation Sections */}
+              <div className="flex-1 overflow-y-auto overflow-x-hidden space-y-6 pt-4">
+                {navigationSections.map((section, sectionIndex) => {
+                  const isExpanded = expandedSections.has(section.title)
+                  
+                  return (
+                    <div 
+                      key={section.title}
+                      ref={el => sectionsRef.current[sectionIndex] = el}
+                      className="space-y-1"
+                    >
+                      {!isCollapsed && (
+                        <div 
+                          className={cn(
+                            "flex items-center justify-between px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider",
+                            section.collapsible && "cursor-pointer hover:text-foreground transition-colors"
+                          )}
+                          onClick={() => section.collapsible && toggleSection(section.title)}
+                        >
+                          <span className="section-title">{section.title}</span>
+                          {section.collapsible && (
+                            <ChevronDown 
+                              className={cn(
+                                "section-chevron w-3 h-3 transition-transform",
+                                isExpanded ? "rotate-0" : "-rotate-90"
+                              )} 
+                            />
+                          )}
+                        </div>
+                      )}
+                      
+                      {(!section.collapsible || isExpanded || isCollapsed) && (
+                        <nav className="space-y-1">
+                          {section.items.map(item => renderNavItem(item))}
+                        </nav>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+
+              {/* Bottom Navigation */}
+              <div className={cn("pt-4 border-t border-border", compactMode && "pt-3")}>
+                <nav className="space-y-1">
+                  {bottomNavItems.map((item) => renderNavItem(item))}
+                </nav>
+
+                {/* User Profile */}
+                {!isCollapsed && (
+                  <div className={cn("mt-6 p-3 bg-accent/50 rounded-xl", compactMode && "mt-4 p-2")}>
+                    <div className="flex items-center gap-3">
+                      <div className={cn("bg-primary rounded-full flex items-center justify-center", compactMode ? "w-8 h-8" : "w-10 h-10")}>
+                        <User className={cn("text-primary-foreground", compactMode ? "w-4 h-4" : "w-5 h-5")} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className={cn("font-medium truncate", compactMode ? "text-xs" : "text-sm")}>John Doe</p>
+                        <p className={cn("text-muted-foreground truncate", compactMode ? "text-xs" : "text-xs")}>john@example.com</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )
+      }
+    )
+
+    EnhancedSidebar.displayName = "EnhancedSidebar"
+  src/components/AppShell.tsx: |-
+    import { useRef, useEffect } from 'react'
+    import { gsap } from 'gsap'
+    import { cn } from '@/lib/utils'
+    import { EnhancedSidebar } from './EnhancedSidebar'
+    import { MainContent } from './MainContent'
+    import { TopBar } from './TopBar'
+    import { useAppStore } from '@/store/appStore'
+    import { SIDEBAR_STATES, BODY_STATES } from '@/lib/utils'
+
+    export function AppShell() {
+      const {
+        sidebarState,
+        bodyState,
+        sidebarWidth,
+        isDarkMode,
+        isResizing,
+        setSidebarState,
+        setIsResizing,
+        setSidebarWidth,
+        toggleSidebar,
+        peekSidebar,
+        toggleFullscreen,
+        toggleSidePane,
+        toggleDarkMode,
+        reducedMotion,
+        autoExpandSidebar
+      } = useAppStore()
+      
+      const appRef = useRef<HTMLDivElement>(null)
+      const sidebarRef = useRef<HTMLDivElement>(null)
+      const mainContentRef = useRef<HTMLDivElement>(null)
+      const resizeHandleRef = useRef<HTMLDivElement>(null)
+
+      // Animation duration based on reduced motion preference
+      const animationDuration = reducedMotion ? 0.1 : 0.4
+
+      // Resize functionality
+      useEffect(() => {
+        const handleMouseMove = (e: MouseEvent) => {
+          if (!isResizing) return
+          
+          const newWidth = Math.max(200, Math.min(500, e.clientX))
+          setSidebarWidth(newWidth)
+          
+          if (sidebarRef.current) {
+            gsap.set(sidebarRef.current, { width: newWidth })
+          }
+        }
+
+        const handleMouseUp = () => {
+          setIsResizing(false)
+          document.body.style.cursor = ''
+          document.body.style.userSelect = ''
+        }
+
+        if (isResizing) {
+          document.body.style.cursor = 'col-resize'
+          document.body.style.userSelect = 'none'
+          document.addEventListener('mousemove', handleMouseMove)
+          document.addEventListener('mouseup', handleMouseUp)
+        }
+
+        return () => {
+          document.removeEventListener('mousemove', handleMouseMove)
+          document.removeEventListener('mouseup', handleMouseUp)
+        }
+      }, [isResizing])
+
+      // GSAP animations for sidebar transitions
+      useEffect(() => {
+        if (!sidebarRef.current || !mainContentRef.current) return
+
+        const sidebar = sidebarRef.current
+        
+        let targetWidth = 0
+        let targetOpacity = 1
+        let targetX = 0
+
+        switch (sidebarState) {
+          case SIDEBAR_STATES.HIDDEN:
+            targetWidth = 0
+            targetOpacity = 0
+            targetX = -100
+            break
+          case SIDEBAR_STATES.COLLAPSED:
+            targetWidth = 64
+            targetOpacity = 1
+            targetX = 0
+            break
+          case SIDEBAR_STATES.EXPANDED:
+            targetWidth = sidebarWidth
+            targetOpacity = 1
+            targetX = 0
+            break
+          case SIDEBAR_STATES.PEEK:
+            targetWidth = sidebarWidth * 0.8
+            targetOpacity = 0.95
+            targetX = 0
+            break
+        }
+
+        const tl = gsap.timeline({ ease: "power3.out" })
+        
+        tl.to(sidebar, {
+          width: targetWidth,
+          opacity: targetOpacity,
+          x: `${targetX}%`,
+          duration: animationDuration,
+        })
+        // Don't animate margin in the new layout structure
+
+      }, [sidebarState, sidebarWidth, bodyState])
+
+      // GSAP animations for body state transitions
+      useEffect(() => {
+        if (!mainContentRef.current) return
+
+        switch (bodyState) {
+          case BODY_STATES.FULLSCREEN:
+            // In fullscreen, hide sidebar completely
+            if (sidebarRef.current) {
+              gsap.to(sidebarRef.current, {
+                x: '-100%',
+                duration: animationDuration,
+                ease: "power3.out"
+              })
+            }
+            break
+          case BODY_STATES.SIDE_PANE:
+            // In side pane, make sidebar narrower and content takes remaining space
+            if (sidebarRef.current) {
+              const narrowWidth = Math.min(sidebarWidth * 0.7, 200)
+              gsap.to(sidebarRef.current, {
+                width: narrowWidth,
+                x: 0,
+                duration: animationDuration,
+                ease: "power3.out"
+              })
+            }
+            break
+          default:
+            // Normal state - restore sidebar
+            if (sidebarRef.current) {
+              gsap.to(sidebarRef.current, {
+                x: 0,
+                duration: animationDuration,
+                ease: "power3.out"
+              })
+            }
+            break
+        }
+      }, [bodyState, sidebarState, sidebarWidth, animationDuration])
+
+      return (
+        <div 
+          ref={appRef}
+          className={cn(
+            "relative h-screen w-screen overflow-hidden bg-background transition-colors duration-300",
+            isDarkMode && "dark"
+          )}
+        >
+          <div className="flex h-screen overflow-hidden">
+            {/* Enhanced Sidebar */}
+            <EnhancedSidebar
+              ref={sidebarRef}
+              onMouseEnter={() => {
+                if (autoExpandSidebar && sidebarState === SIDEBAR_STATES.COLLAPSED) {
+                  peekSidebar()
+                }
+              }}
+              onMouseLeave={() => {
+                if (autoExpandSidebar && sidebarState === SIDEBAR_STATES.PEEK) {
+                  setSidebarState(SIDEBAR_STATES.COLLAPSED)
+                }
+              }}
+            />
+
+            {/* Resize Handle */}
+            {sidebarState !== SIDEBAR_STATES.HIDDEN && (
+              <div
+                ref={resizeHandleRef}
+                className={cn(
+                  "absolute top-0 w-1.5 h-full bg-transparent hover:bg-primary/20 cursor-col-resize z-50 transition-colors duration-200 group"
+                )}
+                style={{ 
+                  left: sidebarState === SIDEBAR_STATES.COLLAPSED ? 64 : sidebarWidth 
+                }}
+                onMouseDown={() => setIsResizing(true)}
+              >
+                <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200 mx-auto" />
+              </div>
+            )}
+
+            {/* Main Content Area */}
+            <div className="flex-1 flex flex-col overflow-hidden bg-background">
+              {/* Top Bar */}
+              <TopBar
+                bodyState={bodyState}
+                isDarkMode={isDarkMode}
+                onToggleSidebar={toggleSidebar}
+                onToggleFullscreen={toggleFullscreen}
+                onToggleSidePane={toggleSidePane}
+                onToggleDarkMode={toggleDarkMode}
+              />
+              
+              {/* Main Content */}
+              <MainContent
+                ref={mainContentRef}
+                bodyState={bodyState}
+              />
+            </div>
+          </div>
+        </div>
+      )
+    }
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: '2025-10-10T10:10:14.843Z'
+status: committed
+id: 10

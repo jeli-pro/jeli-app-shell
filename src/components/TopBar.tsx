@@ -27,9 +27,25 @@ export function TopBar({
   const { 
     bodyState, 
     isDarkMode, 
-    openSidePane, 
-    sidePaneContent 
+    openSidePane,
+    sidePaneContent,
+    activePage,
+    setActivePage,
   } = useAppStore()
+
+  const handleSettingsClick = () => {
+    const isSettingsInSidePane = bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === 'settings'
+
+    // If we're on the settings page and it's not in the side pane, treat this as a "minimize" action.
+    if (activePage === 'settings' && !isSettingsInSidePane) {
+      openSidePane('settings');
+      setActivePage('dashboard');
+    } else {
+      // In all other cases (on dashboard page, or settings already in pane),
+      // just toggle the settings side pane.
+      openSidePane('settings');
+    }
+  }
 
   return (
     <div className="h-20 bg-card/80 backdrop-blur-sm border-b border-border flex items-center justify-between px-6 z-50">
@@ -119,7 +135,7 @@ export function TopBar({
         </button>
 
         <button
-          onClick={() => openSidePane('settings')}
+          onClick={handleSettingsClick}
           className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
           title="Settings"
         >

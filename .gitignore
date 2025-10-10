@@ -65,4 +65,4 @@ storybook-static/
 # Bun lockfile
 bun.lockb
 # relay state
-/.relay/
+#/.relay/

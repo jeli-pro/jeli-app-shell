@@ -20,7 +20,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAppStore } from '@/store/appStore'
-import { SIDEBAR_STATES } from '@/lib/utils'
+import { SIDEBAR_STATES, BODY_STATES } from '@/lib/utils'
 
 interface NavItem {
   icon: React.ReactNode
@@ -42,7 +42,7 @@ const navigationSections: NavSection[] = [
   {
     title: "Main",
     items: [
-      { icon: <Home className="w-4 h-4" />, label: "Dashboard", href: "/", isActive: true },
+      { icon: <Home className="w-4 h-4" />, label: "Dashboard", href: "/" },
       { icon: <Search className="w-4 h-4" />, label: "Search", href: "/search" },
       { icon: <Bell className="w-4 h-4" />, label: "Notifications", href: "/notifications", badge: 3 },
     ]
@@ -92,7 +92,7 @@ interface SidebarProps {
 
 export const EnhancedSidebar = forwardRef<HTMLDivElement, SidebarProps>(
   ({ onMouseEnter, onMouseLeave }, ref) => {
-    const { sidebarState, sidebarWidth, reducedMotion, compactMode } = useAppStore()
+    const { sidebarState, sidebarWidth, reducedMotion, compactMode, activePage, setActivePage, openSidePane, bodyState, sidePaneContent } = useAppStore()
     const contentRef = useRef<HTMLDivElement>(null)
     const sectionsRef = useRef<(HTMLDivElement | null)[]>([])
     const [expandedSections, setExpandedSections] = React.useState<Set<string>>(
@@ -160,19 +160,46 @@ export const EnhancedSidebar = forwardRef<HTMLDivElement, SidebarProps>(
       return null
     }
 
-    const renderNavItem = (item: NavItem, depth = 0) => (
-      <div key={item.label} className={cn("space-y-1", depth > 0 && "ml-6")}>
-        <div
+    const renderNavItem = (item: NavItem, depth = 0) => {
+      const pageName = item.label.toLowerCase();
+      const isDashboard = pageName === 'dashboard';
+      const isSettings = pageName === 'settings';
+
+      const isDashboardActive = activePage === 'dashboard';
+      const isSettingsActive = activePage === 'settings' || (bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === 'settings');
+      const isPageActive = (isDashboard && isDashboardActive) || (isSettings && isSettingsActive);
+
+      const handleClick = () => {
+        if (isDashboard) {
+          setActivePage('dashboard');
+        } else if (isSettings) {
+          const isSettingsInSidePane = bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === 'settings'
+          // If we're on the settings page and it's not in the side pane, treat this as a "minimize" action.
+          if (activePage === 'settings' && !isSettingsInSidePane) {
+            openSidePane('settings');
+            setActivePage('dashboard');
+          } else {
+            // In all other cases (on dashboard page, or settings already in pane), just toggle the settings side pane.
+            openSidePane('settings');
+          }
+        }
+        // Could add logic for other links here if routing was implemented
+      };
+
+      return (
+        <div key={item.label} className={cn("space-y-1", depth > 0 && "ml-6")}>
+        <button
           className={cn(
-            "group relative flex items-center gap-3 rounded-lg cursor-pointer transition-all duration-200",
+            "group relative flex items-center gap-3 rounded-lg cursor-pointer transition-all duration-200 w-full text-left",
             compactMode ? "px-2 py-1.5" : "px-4 py-2.5",
             "hover:bg-accent",
-            item.isActive && "bg-primary text-primary-foreground hover:bg-primary/90",
+            (item.isActive || isPageActive) && "bg-primary text-primary-foreground hover:bg-primary/90",
             depth > 0 && "text-sm",
             isCollapsed && "justify-center"
           )}
           onMouseEnter={(e) => handleItemHover(e.currentTarget, true)}
           onMouseLeave={(e) => handleItemHover(e.currentTarget, false)}
+          onClick={handleClick}
         >
           <div className="flex-shrink-0">
             {item.icon}
@@ -207,7 +234,7 @@ export const EnhancedSidebar = forwardRef<HTMLDivElement, SidebarProps>(
               )}
             </div>
           )}
-        </div>
+        </button>
 
         {/* Children items */}
         {item.children && !isCollapsed && (
@@ -216,7 +243,8 @@ export const EnhancedSidebar = forwardRef<HTMLDivElement, SidebarProps>(
           </div>
         )}
       </div>
-    )
+      )
+    }
 
     return (
       <div

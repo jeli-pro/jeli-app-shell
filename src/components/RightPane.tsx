@@ -1,13 +1,24 @@
 import { forwardRef } from 'react'
-import { X, SlidersHorizontal, Settings, ChevronRight } from 'lucide-react'
+import { SlidersHorizontal, Settings, ChevronRight, LayoutDashboard, ChevronsLeftRight } from 'lucide-react'
 import { useAppStore } from '@/store/appStore'
 import { cn } from '@/lib/utils'
 import { SettingsContent } from './SettingsContent'
+import { DashboardContent } from './DashboardContent'
 
 export const RightPane = forwardRef<HTMLDivElement>((_props, ref) => {
-  const { closeSidePane, setIsResizingRightPane, sidePaneContent } = useAppStore()
+  const { closeSidePane, setIsResizingRightPane, sidePaneContent, setActivePage } = useAppStore()
 
   const isSettings = sidePaneContent === 'settings'
+  const isMain = sidePaneContent === 'main'
+
+  const handleMaximize = () => {
+    if (isMain) {
+      setActivePage('dashboard')
+    } else if (isSettings) {
+      setActivePage('settings')
+    }
+    closeSidePane()
+  }
 
   return (
     <aside ref={ref} className="bg-card border-l border-border flex flex-col h-full overflow-hidden fixed top-0 right-0 z-[60]">
@@ -31,17 +42,31 @@ export const RightPane = forwardRef<HTMLDivElement>((_props, ref) => {
       </div>
       <div className="flex items-center justify-between p-4 border-b border-border h-20 flex-shrink-0 pl-6">
         <div className="flex items-center gap-2">
-          {isSettings ? <Settings className="w-5 h-5" /> : <SlidersHorizontal className="w-5 h-5" />}
+          {isMain && <LayoutDashboard className="w-5 h-5" />}
+          {isSettings && <Settings className="w-5 h-5" />}
+          {!isMain && !isSettings && <SlidersHorizontal className="w-5 h-5" />}
           <h2 className="text-lg font-semibold whitespace-nowrap">
-            {isSettings ? 'Settings' : 'Details Panel'}
+            {isMain ? 'Dashboard' : isSettings ? 'Settings' : 'Details Panel'}
           </h2>
         </div>
+        
+        {(isMain || isSettings) && (
+          <button
+            onClick={handleMaximize}
+            className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors mr-2"
+            title="Move to Main View"
+          >
+            <ChevronsLeftRight className="w-5 h-5" />
+          </button>
+        )}
       </div>
-      <div className="flex-1 overflow-y-auto p-6">
-        {isSettings ? <SettingsContent /> : (
-          <p className="text-muted-foreground">
-            This is the side pane. It can be used to display contextual information, forms, or actions related to the main content.
-          </p>
+      <div className="flex-1 overflow-y-auto">
+        {isMain ? (
+          <div className="p-6 h-full"><DashboardContent isInSidePane={true} /></div>
+        ) : isSettings ? (
+          <div className="p-6"><SettingsContent /></div>
+        ) : (
+          <div className="p-6"><p className="text-muted-foreground">This is the side pane. It can be used to display contextual information, forms, or actions related to the main content.</p></div>
         )}
       </div>
     </aside>

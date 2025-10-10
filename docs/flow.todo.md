@@ -1,4 +1,18 @@
+
+
 ===
+
+mental model: every page main content body can be side pane able. reversible. so user can enjoy wether to minimize or maximize page to side pane or full page view
+
+===
+
+mental model: side pane is basically the minimalistic version of the main body content,,, so we need full body button to the sidepane. so now it triggered at full strect of resiable or trough button well actually it should basically transitioned to (example: setting page)
+
+so pay attention to aware of url, breadcrumbs etc
+
+so lets say when page pane with setting content get fullscreen pressed, it directly replace the dashboard main content view
+
+=== DONE
 
 1. fix broken layout of fullscreen mode
 2. side pane close button should not within pane, it should be outside of pane

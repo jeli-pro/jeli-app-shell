@@ -1,0 +1,1291 @@
+uuid: a6974d81-8e54-46c5-a461-8cc6064f2603
+projectId: amazing-app-shell
+createdAt: '2025-10-10T12:53:26.379Z'
+gitCommitMsg: >-
+  feat(layout): enable main content to be moved to side pane
+
+  Implemented a new feature allowing the main dashboard content to be
+  dynamically moved into the right-side pane and back.
+
+  - Extracted dashboard logic into a new `DashboardContent` component. - Updated
+  `appStore` to handle a new `'main'` content type for the side pane. -
+  Refactored `MainContent` to act as a container that displays either the
+  dashboard or a placeholder. - Enhanced `RightPane` to render
+  `DashboardContent` when active. - Added UI controls to trigger moving the
+  content between the main view and the side pane.
+promptSummary: >-
+  I want to make the main content area minimizable into a side pane, and be able
+  to restore it back to the main view.
+reasoning:
+  - >-
+    This is a great idea to enhance the flexibility of the application shell.
+    I'll implement the ability to move the main dashboard content into the side
+    pane, making it reversible, as you've described.
+  - 'Here is my plan:'
+  - >-
+    1.  **Extract Dashboard Content**: I'll move the current content of
+    `MainContent.tsx` into a new, reusable component called
+    `src/components/DashboardContent.tsx`.
+  - >-
+    2.  **Update State Management**: I'll modify the `appStore` to recognize
+    `'main'` as a possible content type for the side pane.
+  - >-
+    3.  **Refactor `MainContent`**: The `MainContent` component will become a
+    container that either displays the new `DashboardContent` or a placeholder
+    message if the dashboard has been moved to the side pane.
+  - >-
+    4.  **Enhance `RightPane`**: I'll update the `RightPane` to render the
+    `DashboardContent` when activated. It will also have a contextual header.
+  - >-
+    5.  **Add Controls**: I will add a new button in the `DashboardContent`
+    header to "minimize" it to the side pane. The placeholder in `MainContent`
+    will have a button to bring it back.
+  - Let's start with creating the new `DashboardContent` component.
+  - '### 1. Create `DashboardContent.tsx`'
+  - >-
+    I'll create a new file `src/components/DashboardContent.tsx` and move the UI
+    and logic from `MainContent.tsx` into it. This component will accept an
+    `isInSidePane` prop to conditionally hide the "move to side pane" button.
+  - '### 2. Refactor `MainContent.tsx`'
+  - Now, I'll update `MainContent.tsx` to be a smart container.
+  - '### 3. Update `appStore.ts`'
+  - >-
+    I'll expand the state to allow the main content to be shown in the side
+    pane.
+  - '### 4. Enhance `RightPane.tsx`'
+  - Finally, I'll update the `RightPane` to render the `DashboardContent`.
+  - >-
+    With these changes, the main content area is now reversibly "side
+    pane-able", adding a powerful new way to interact with the application
+    layout.
+operations:
+  - type: write
+    path: src/components/DashboardContent.tsx
+    content: >-
+      import { useRef, useEffect, useState } from 'react'
+
+      import { gsap } from 'gsap'
+
+      import { 
+        BarChart3, 
+        TrendingUp, 
+        Users, 
+        DollarSign, 
+        Activity,
+        Calendar,
+        Clock,
+        MessageSquare,
+        FileText,
+        Star,
+        ChevronRight,
+        Plus,
+        Filter,
+        Search,
+        MoreVertical,
+        ArrowDown,
+        PanelRight
+      } from 'lucide-react'
+
+      import { cn } from '@/lib/utils'
+
+      import { DemoContent } from './DemoContent'
+
+      import { useAppStore } from '@/store/appStore'
+
+      import { BODY_STATES } from '@/lib/utils'
+
+
+      interface StatsCard {
+        title: string
+        value: string
+        change: string
+        trend: 'up' | 'down'
+        icon: React.ReactNode
+      }
+
+
+      interface ActivityItem {
+        id: string
+        type: 'comment' | 'file' | 'meeting' | 'task'
+        title: string
+        description: string
+        time: string
+        user: string
+      }
+
+
+      const statsCards: StatsCard[] = [
+        {
+          title: "Total Revenue",
+          value: "$45,231.89",
+          change: "+20.1%",
+          trend: "up",
+          icon: <DollarSign className="w-5 h-5" />
+        },
+        {
+          title: "Active Users",
+          value: "2,350",
+          change: "+180.1%",
+          trend: "up",
+          icon: <Users className="w-5 h-5" />
+        },
+        {
+          title: "Conversion Rate",
+          value: "12.5%",
+          change: "+19%",
+          trend: "up",
+          icon: <TrendingUp className="w-5 h-5" />
+        },
+        {
+          title: "Performance",
+          value: "573ms",
+          change: "-5.3%",
+          trend: "down",
+          icon: <Activity className="w-5 h-5" />
+        }
+      ]
+
+
+      const recentActivity: ActivityItem[] = [
+        {
+          id: "1",
+          type: "comment",
+          title: "New comment on Project Alpha",
+          description: "Sarah Johnson added a comment to the design review",
+          time: "2 minutes ago",
+          user: "SJ"
+        },
+        {
+          id: "2",
+          type: "file",
+          title: "Document uploaded",
+          description: "quarterly-report.pdf was uploaded to Documents",
+          time: "15 minutes ago",
+          user: "MD"
+        },
+        {
+          id: "3",
+          type: "meeting",
+          title: "Meeting scheduled",
+          description: "Weekly standup meeting scheduled for tomorrow 9 AM",
+          time: "1 hour ago",
+          user: "RW"
+        },
+        {
+          id: "4",
+          type: "task",
+          title: "Task completed",
+          description: "UI wireframes for mobile app completed",
+          time: "2 hours ago",
+          user: "AL"
+        }
+      ]
+
+
+      interface DashboardContentProps {
+        isInSidePane?: boolean;
+      }
+
+
+      export function DashboardContent({ isInSidePane = false }:
+      DashboardContentProps) {
+          const contentRef = useRef<HTMLDivElement>(null)
+          const cardsRef = useRef<(HTMLDivElement | null)[]>([])
+          const [searchTerm, setSearchTerm] = useState("")
+          const [showScrollToBottom, setShowScrollToBottom] = useState(false)
+          const { bodyState, openSidePane } = useAppStore()
+
+          const handleScroll = () => {
+            if (!contentRef.current) return
+            const { scrollTop, scrollHeight, clientHeight } = contentRef.current
+            // Show if scrolled down and not at the bottom
+            setShowScrollToBottom(scrollTop > 200 && scrollTop < scrollHeight - clientHeight - 200)
+          }
+
+          useEffect(() => {
+            const contentEl = contentRef.current
+            if (contentEl) {
+              contentEl.addEventListener('scroll', handleScroll)
+              return () => contentEl.removeEventListener('scroll', handleScroll)
+            }
+          }, [])
+
+          const scrollToBottom = () => {
+            contentRef.current?.scrollTo({
+              top: contentRef.current.scrollHeight,
+              behavior: 'smooth'
+            })
+          }
+
+          // Animate content based on body state
+          useEffect(() => {
+            if (!contentRef.current) return
+
+            const content = contentRef.current
+            const cards = cardsRef.current.filter(Boolean)
+
+            switch (bodyState) {
+              case BODY_STATES.FULLSCREEN:
+                gsap.to(content, {
+                  scale: 1.02,
+                  duration: 0.4,
+                  ease: "power3.out"
+                })
+                break
+              default:
+                gsap.to(content, {
+                  scale: 1,
+                  duration: 0.4,
+                  ease: "power3.out"
+                })
+                break
+            }
+
+            // Stagger animation for cards
+            gsap.fromTo(cards, 
+              { y: 20, opacity: 0 },
+              { 
+                y: 0, 
+                opacity: 1, 
+                duration: 0.6,
+                stagger: 0.1,
+                ease: "power3.out"
+              }
+            )
+
+          }, [bodyState])
+
+          const getTypeIcon = (type: ActivityItem['type']) => {
+            switch (type) {
+              case 'comment':
+                return <MessageSquare className="w-4 h-4" />
+              case 'file':
+                return <FileText className="w-4 h-4" />
+              case 'meeting':
+                return <Calendar className="w-4 h-4" />
+              case 'task':
+                return <Star className="w-4 h-4" />
+              default:
+                return <Activity className="w-4 h-4" />
+            }
+          }
+
+          return (
+              <div className="h-full flex flex-col">
+                {/* Header */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+                    <p className="text-muted-foreground">
+                      Welcome to the amazing app shell demo! Explore all the features and customization options.
+                    </p>
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                      <input
+                        type="text"
+                        placeholder="Search..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="pl-9 pr-4 py-2 border-none rounded-lg bg-card focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                      />
+                    </div>
+                    <button className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors">
+                      <Filter className="w-5 h-5" />
+                    </button>
+                    <button className="bg-primary text-primary-foreground px-4 py-2 rounded-full hover:bg-primary/90 transition-colors flex items-center gap-2 h-10">
+                      <Plus className="w-5 h-5" />
+                      <span>New Project</span>
+                    </button>
+                    {!isInSidePane && (
+                      <button
+                        onClick={() => openSidePane('main')}
+                        className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors" title="Move to Side Pane">
+                        <PanelRight className="w-5 h-5" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              <div 
+                ref={contentRef}
+                className="flex-1 overflow-y-auto space-y-8 pt-8"
+              >
+                  {/* Stats Cards */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    {statsCards.map((stat, index) => (
+                      <div
+                      key={stat.title}
+                      ref={el => cardsRef.current[index] = el}
+                      className="bg-card p-6 rounded-2xl border border-border/50 hover:border-primary/30 transition-all duration-300 group cursor-pointer"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="p-3 bg-primary/10 rounded-full group-hover:bg-primary/20 transition-colors">
+                          {stat.icon}
+                        </div>
+                        <div className={cn(
+                          "text-sm font-medium",
+                          stat.trend === 'up' ? "text-green-600" : "text-red-600"
+                        )}>
+                          {stat.change}
+                        </div>
+                      </div>
+                      <div className="mt-4">
+                        <h3 className="text-2xl font-bold">{stat.value}</h3>
+                        <p className="text-sm text-muted-foreground mt-1">{stat.title}</p>
+                      </div>
+                    </div>
+                    ))}
+                  </div>
+
+                  {/* Demo Content */}
+                  <DemoContent />
+
+                  {/* Main Content Grid */}
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  {/* Chart Area */}
+                  <div className="lg:col-span-2 space-y-6">
+                    {/* Analytics Chart */}
+                    <div className="bg-card p-6 rounded-2xl border border-border/50">
+                      <div className="flex items-center justify-between mb-6">
+                        <h3 className="text-lg font-semibold">Analytics Overview</h3>
+                        <button className="h-8 w-8 flex items-center justify-center hover:bg-accent rounded-full transition-colors">
+                          <MoreVertical className="w-5 h-5" />
+                        </button>
+                      </div>
+                      
+                      {/* Mock Chart */}
+                      <div className="h-64 bg-gradient-to-br from-primary/10 to-transparent rounded-xl flex items-center justify-center border border-border/50">
+                        <div className="text-center">
+                          <BarChart3 className="w-12 h-12 text-primary mx-auto mb-2" />
+                          <p className="text-muted-foreground">Chart visualization would go here</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Recent Projects */}
+                    <div className="bg-card p-6 rounded-2xl border border-border/50">
+                      <div className="flex items-center justify-between mb-6">
+                        <h3 className="text-lg font-semibold">Recent Projects</h3>
+                        <button className="text-primary hover:text-primary/80 text-sm font-medium flex items-center gap-1">
+                          View All
+                          <ChevronRight className="w-4 h-4" />
+                        </button>
+                      </div>
+                      
+                      <div className="space-y-4">
+                        {[
+                          { name: "E-commerce Platform", progress: 75, team: 5, deadline: "Dec 15" },
+                          { name: "Mobile App Redesign", progress: 45, team: 3, deadline: "Jan 20" },
+                          { name: "Marketing Website", progress: 90, team: 4, deadline: "Dec 5" }
+                        ].map((project) => (
+                          <div key={project.name} className="p-4 bg-accent/30 rounded-xl hover:bg-accent/50 transition-colors cursor-pointer">
+                            <div className="flex items-center justify-between mb-2">
+                              <h4 className="font-medium">{project.name}</h4>
+                              <span className="text-sm text-muted-foreground">{project.progress}%</span>
+                            </div>
+                            <div className="w-full bg-muted rounded-full h-2 mb-3">
+                              <div 
+                                className="bg-primary h-2 rounded-full transition-all duration-500"
+                                style={{ width: `${project.progress}%` }}
+                              />
+                            </div>
+                            <div className="flex items-center justify-between text-sm text-muted-foreground">
+                              <span>{project.team} team members</span>
+                              <span>Due {project.deadline}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Sidebar Content */}
+                  <div className="space-y-6">
+                    {/* Quick Actions */}
+                    <div className="bg-card p-6 rounded-2xl border border-border/50">
+                      <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
+                      <div className="space-y-3">
+                        {[
+                          { icon: <FileText className="w-4 h-4" />, label: "Create Document", color: "bg-blue-500/10 text-blue-600" },
+                          { icon: <Calendar className="w-4 h-4" />, label: "Schedule Meeting", color: "bg-green-500/10 text-green-600" },
+                          { icon: <Users className="w-4 h-4" />, label: "Invite Team", color: "bg-purple-500/10 text-purple-600" },
+                          { icon: <BarChart3 className="w-4 h-4" />, label: "View Reports", color: "bg-orange-500/10 text-orange-600" }
+                        ].map((action) => (
+                          <button
+                            key={action.label}
+                            className="w-full flex items-center gap-3 p-3 hover:bg-accent rounded-lg transition-colors text-left"
+                          >
+                            <div className={cn("p-2 rounded-full", action.color)}>
+                              {action.icon}
+                            </div>
+                            <span className="font-medium">{action.label}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Recent Activity */}
+                    <div className="bg-card p-6 rounded-2xl border border-border/50">
+                      <h3 className="text-lg font-semibold mb-4">Recent Activity</h3>
+                      <div className="space-y-4">
+                        {recentActivity.map((activity) => (
+                          <div key={activity.id} className="flex items-start gap-3 p-3 hover:bg-accent/30 rounded-xl transition-colors cursor-pointer">
+                            <div className="p-2 bg-primary/10 rounded-full flex-shrink-0">
+                              {getTypeIcon(activity.type)}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h4 className="font-medium text-sm mb-1">{activity.title}</h4>
+                              <p className="text-xs text-muted-foreground mb-2">{activity.description}</p>
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                <Clock className="w-3 h-3" />
+                                <span>{activity.time}</span>
+                                <div className="w-5 h-5 bg-primary rounded-full flex items-center justify-center text-primary-foreground text-xs font-medium">
+                                  {activity.user}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                {showScrollToBottom && (
+                  <button
+                    onClick={scrollToBottom}
+                    className="fixed bottom-8 right-8 w-12 h-12 bg-primary text-primary-foreground rounded-full flex items-center justify-center shadow-lg hover:bg-primary/90 transition-all animate-fade-in z-50"
+                    style={{ animation: 'bounce 2s infinite' }}
+                    title="Scroll to bottom"
+                  >
+                    <ArrowDown className="w-6 h-6" />
+                  </button>
+                )}
+              </div>
+            </div>
+          )
+      }
+    patchStrategy: replace
+  - type: write
+    path: src/components/MainContent.tsx
+    content: |-
+      import { forwardRef } from 'react'
+      import { 
+        X,
+        LayoutDashboard,
+        ChevronsLeftRight,
+      } from 'lucide-react'
+      import { cn } from '@/lib/utils'
+      import { BODY_STATES, type BodyState } from '@/lib/utils'
+      import { DashboardContent } from './DashboardContent'
+      import { useAppStore } from '@/store/appStore'
+
+      interface MainContentProps {
+        bodyState: BodyState
+        onToggleFullscreen: () => void
+      }
+
+      export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
+        ({ bodyState, onToggleFullscreen }, ref) => {
+          const { sidePaneContent, openSidePane } = useAppStore()
+
+          const isDashboardInSidePane = sidePaneContent === 'main' && bodyState === BODY_STATES.SIDE_PANE
+
+          return (
+            <div
+              ref={ref}
+              className={cn(
+              "flex flex-col h-full overflow-hidden transition-all duration-300 p-6 pt-[calc(80px+1.5rem)]",
+              bodyState === BODY_STATES.FULLSCREEN && "absolute inset-0 z-40 bg-background !p-6"
+              )}
+            >
+              {bodyState === BODY_STATES.FULLSCREEN && !isDashboardInSidePane && (
+                <button
+                  onClick={onToggleFullscreen}
+                  className="fixed top-6 right-6 z-[100] h-12 w-12 flex items-center justify-center rounded-full bg-card/50 backdrop-blur-sm hover:bg-card/75 transition-colors group"
+                  title="Exit Fullscreen"
+                >
+                  <X className="w-6 h-6 group-hover:scale-110 group-hover:rotate-90 transition-all duration-300" />
+                </button>
+              )}
+
+              {isDashboardInSidePane ? (
+                <div className="flex-1 flex flex-col items-center justify-center text-center">
+                  <LayoutDashboard className="w-16 h-16 text-muted-foreground/50 mb-4" />
+                  <h2 className="text-2xl font-bold">Dashboard is in Side Pane</h2>
+                  <p className="text-muted-foreground mt-2 max-w-md">
+                    You've moved the main dashboard to the side pane for a focused view. You can continue to navigate or bring it back to the main view.
+                  </p>
+                  <button
+                    onClick={() => openSidePane('main')} // This will close it
+                    className="mt-6 bg-primary text-primary-foreground px-4 py-2 rounded-full hover:bg-primary/90 transition-colors flex items-center gap-2 h-10"
+                  >
+                    <ChevronsLeftRight className="w-5 h-5" />
+                    <span>Bring Dashboard Back</span>
+                  </button>
+                </div>
+              ) : (
+                <div className="dashboard-content-wrapper h-full">
+                  <DashboardContent />
+                </div>
+              )}
+            </div>
+          )
+        }
+      )
+    patchStrategy: replace
+  - type: write
+    path: src/store/appStore.ts
+    content: |+
+      --- src/store/appStore.ts
+      +++ src/store/appStore.ts
+      @@ -6,7 +6,7 @@
+         sidebarState: SidebarState
+         bodyState: BodyState
+         isDarkMode: boolean
+      -  sidePaneContent: 'details' | 'settings'
+      +  sidePaneContent: 'details' | 'settings' | 'main'
+         sidebarWidth: number
+         rightPaneWidth: number
+         isResizing: boolean
+      @@ -32,7 +32,7 @@
+         peekSidebar: () => void
+         toggleFullscreen: () => void
+      -  openSidePane: (content: 'details' | 'settings') => void
+      +  openSidePane: (content: 'details' | 'settings' | 'main') => void
+         closeSidePane: () => void
+         resetToDefaults: () => void
+       }
+      @@ -87,7 +87,7 @@
+               })
+             },
+             
+      -      openSidePane: (content: 'details' | 'settings') => {
+      +      openSidePane: (content) => {
+               const { bodyState, sidePaneContent } = get()
+               if (bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === content) {
+                 // If it's open with same content, close it.
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/components/RightPane.tsx
+    content: >+
+      --- src/components/RightPane.tsx
+
+      +++ src/components/RightPane.tsx
+
+      @@ -1,9 +1,10 @@
+       import { forwardRef } from 'react'
+      -import { X, SlidersHorizontal, Settings, ChevronRight } from
+      'lucide-react'
+
+      +import { SlidersHorizontal, Settings, ChevronRight, LayoutDashboard }
+      from 'lucide-react'
+       import { useAppStore } from '@/store/appStore'
+       import { cn } from '@/lib/utils'
+       import { SettingsContent } from './SettingsContent'
+      +import { DashboardContent } from './DashboardContent'
+       
+       export const RightPane = forwardRef<HTMLDivElement>((_props, ref) => {
+      -  const { closeSidePane, setIsResizingRightPane, sidePaneContent } =
+      useAppStore()
+
+      +  const { closeSidePane, setIsResizingRightPane, sidePaneContent,
+      openSidePane } = useAppStore()
+       
+         const isSettings = sidePaneContent === 'settings'
+       
+      @@ -28,21 +29,29 @@
+               <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200 mx-auto" />
+             </div>
+             <div className="flex items-center justify-between p-4 border-b border-border h-20 flex-shrink-0 pl-6">
+      -        <div className="flex items-center gap-2">
+
+      -          {isSettings ? <Settings className="w-5 h-5" /> :
+      <SlidersHorizontal className="w-5 h-5" />}
+
+      -          <h2 className="text-lg font-semibold whitespace-nowrap">
+
+      -            {isSettings ? 'Settings' : 'Details Panel'}
+
+      -          </h2>
+
+      -        </div>
+
+      +        {sidePaneContent === 'main' ? (
+
+      +          <div className="flex items-center gap-2">
+
+      +            <LayoutDashboard className="w-5 h-5" />
+
+      +            <h2 className="text-lg font-semibold
+      whitespace-nowrap">Dashboard</h2>
+
+      +          </div>
+
+      +        ) : (
+
+      +          <div className="flex items-center gap-2">
+
+      +            {isSettings ? <Settings className="w-5 h-5" /> :
+      <SlidersHorizontal className="w-5 h-5" />}
+
+      +            <h2 className="text-lg font-semibold whitespace-nowrap">
+
+      +              {isSettings ? 'Settings' : 'Details Panel'}
+
+      +            </h2>
+
+      +          </div>
+
+      +        )}
+             </div>
+      -      <div className="flex-1 overflow-y-auto p-6">
+
+      -        {isSettings ? <SettingsContent /> : (
+
+      -          <p className="text-muted-foreground">
+
+      -            This is the side pane. It can be used to display contextual
+      information, forms, or actions related to the main content.
+
+      -          </p>
+
+      +      <div className="flex-1 overflow-y-auto">
+
+      +        {sidePaneContent === 'main' ? (
+
+      +          <div className="p-6 h-full"><DashboardContent
+      isInSidePane={true} /></div>
+
+      +        ) : isSettings ? (
+
+      +          <div className="p-6"><SettingsContent /></div>
+
+      +        ) : (
+
+      +          <div className="p-6"><p className="text-muted-foreground">This
+      is the side pane. It can be used to display contextual information, forms,
+      or actions related to the main content.</p></div>
+               )}
+             </div>
+           </aside>
+
+    patchStrategy: standard-diff
+snapshot:
+  src/components/DashboardContent.tsx: null
+  src/components/MainContent.tsx: |-
+    import React, { forwardRef, useRef, useEffect, useState } from 'react'
+    import { gsap } from 'gsap'
+    import { 
+      BarChart3, 
+      TrendingUp, 
+      Users, 
+      DollarSign, 
+      Activity,
+      Calendar,
+      Clock,
+      MessageSquare,
+      FileText,
+      Star,
+      ChevronRight,
+      Plus,
+      Filter,
+      Search,
+      MoreVertical
+    ,  ArrowDown,
+      X} from 'lucide-react'
+    import { cn } from '@/lib/utils'
+    import { BODY_STATES, type BodyState } from '@/lib/utils'
+    import { DemoContent } from './DemoContent'
+
+    interface MainContentProps {
+      bodyState: BodyState
+      onToggleFullscreen: () => void
+    }
+
+    interface StatsCard {
+      title: string
+      value: string
+      change: string
+      trend: 'up' | 'down'
+      icon: React.ReactNode
+    }
+
+    interface ActivityItem {
+      id: string
+      type: 'comment' | 'file' | 'meeting' | 'task'
+      title: string
+      description: string
+      time: string
+      user: string
+    }
+
+    const statsCards: StatsCard[] = [
+      {
+        title: "Total Revenue",
+        value: "$45,231.89",
+        change: "+20.1%",
+        trend: "up",
+        icon: <DollarSign className="w-5 h-5" />
+      },
+      {
+        title: "Active Users",
+        value: "2,350",
+        change: "+180.1%",
+        trend: "up",
+        icon: <Users className="w-5 h-5" />
+      },
+      {
+        title: "Conversion Rate",
+        value: "12.5%",
+        change: "+19%",
+        trend: "up",
+        icon: <TrendingUp className="w-5 h-5" />
+      },
+      {
+        title: "Performance",
+        value: "573ms",
+        change: "-5.3%",
+        trend: "down",
+        icon: <Activity className="w-5 h-5" />
+      }
+    ]
+
+    const recentActivity: ActivityItem[] = [
+      {
+        id: "1",
+        type: "comment",
+        title: "New comment on Project Alpha",
+        description: "Sarah Johnson added a comment to the design review",
+        time: "2 minutes ago",
+        user: "SJ"
+      },
+      {
+        id: "2",
+        type: "file",
+        title: "Document uploaded",
+        description: "quarterly-report.pdf was uploaded to Documents",
+        time: "15 minutes ago",
+        user: "MD"
+      },
+      {
+        id: "3",
+        type: "meeting",
+        title: "Meeting scheduled",
+        description: "Weekly standup meeting scheduled for tomorrow 9 AM",
+        time: "1 hour ago",
+        user: "RW"
+      },
+      {
+        id: "4",
+        type: "task",
+        title: "Task completed",
+        description: "UI wireframes for mobile app completed",
+        time: "2 hours ago",
+        user: "AL"
+      }
+    ]
+
+    export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
+      ({ bodyState, onToggleFullscreen }, ref) => {
+        const contentRef = useRef<HTMLDivElement>(null)
+        const cardsRef = useRef<(HTMLDivElement | null)[]>([])
+        const [searchTerm, setSearchTerm] = useState("")
+        const [showScrollToBottom, setShowScrollToBottom] = useState(false)
+
+        const handleScroll = () => {
+          if (!contentRef.current) return
+          const { scrollTop, scrollHeight, clientHeight } = contentRef.current
+          // Show if scrolled down and not at the bottom
+          setShowScrollToBottom(scrollTop > 200 && scrollTop < scrollHeight - clientHeight - 200)
+        }
+
+        useEffect(() => {
+          const contentEl = contentRef.current
+          if (contentEl) {
+            contentEl.addEventListener('scroll', handleScroll)
+            return () => contentEl.removeEventListener('scroll', handleScroll)
+          }
+        }, [])
+
+        const scrollToBottom = () => {
+          contentRef.current?.scrollTo({
+            top: contentRef.current.scrollHeight,
+            behavior: 'smooth'
+          })
+        }
+
+        // Animate content based on body state
+        useEffect(() => {
+          if (!contentRef.current) return
+
+          const content = contentRef.current
+          const cards = cardsRef.current.filter(Boolean)
+
+          switch (bodyState) {
+            case BODY_STATES.FULLSCREEN:
+              gsap.to(content, {
+                scale: 1.02,
+                duration: 0.4,
+                ease: "power3.out"
+              })
+              break
+            default:
+              gsap.to(content, {
+                scale: 1,
+                duration: 0.4,
+                ease: "power3.out"
+              })
+              break
+          }
+
+          // Stagger animation for cards
+          gsap.fromTo(cards, 
+            { y: 20, opacity: 0 },
+            { 
+              y: 0, 
+              opacity: 1, 
+              duration: 0.6,
+              stagger: 0.1,
+              ease: "power3.out"
+            }
+          )
+
+        }, [bodyState])
+
+        const getTypeIcon = (type: ActivityItem['type']) => {
+          switch (type) {
+            case 'comment':
+              return <MessageSquare className="w-4 h-4" />
+            case 'file':
+              return <FileText className="w-4 h-4" />
+            case 'meeting':
+              return <Calendar className="w-4 h-4" />
+            case 'task':
+              return <Star className="w-4 h-4" />
+            default:
+              return <Activity className="w-4 h-4" />
+          }
+        }
+
+        return (
+          <div
+            ref={ref}
+            className={cn(
+            "flex flex-col h-full overflow-hidden transition-all duration-300 p-6 pt-[calc(80px+1.5rem)]",
+            bodyState === BODY_STATES.FULLSCREEN && "absolute inset-0 z-40 bg-background !p-6"
+            )}
+          >
+            {bodyState === BODY_STATES.FULLSCREEN && (
+              <button
+                onClick={onToggleFullscreen}
+                className="fixed top-6 right-6 z-[100] h-12 w-12 flex items-center justify-center rounded-full bg-card/50 backdrop-blur-sm hover:bg-card/75 transition-colors group"
+                title="Exit Fullscreen"
+              >
+                <X className="w-6 h-6 group-hover:scale-110 group-hover:rotate-90 transition-all duration-300" />
+              </button>
+            )}
+
+              {/* Header */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+                  <p className="text-muted-foreground">
+                    Welcome to the amazing app shell demo! Explore all the features and customization options.
+                  </p>
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                    <input
+                      type="text"
+                      placeholder="Search..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-9 pr-4 py-2 border-none rounded-lg bg-card focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                    />
+                  </div>
+                  <button className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors">
+                    <Filter className="w-5 h-5" />
+                  </button>
+                  <button className="bg-primary text-primary-foreground px-4 py-2 rounded-full hover:bg-primary/90 transition-colors flex items-center gap-2 h-10">
+                    <Plus className="w-5 h-5" />
+                    <span>New Project</span>
+                  </button>
+                </div>
+              </div>
+            <div 
+              ref={contentRef}
+              className="flex-1 overflow-y-auto space-y-8 pt-8"
+            >
+                {/* Stats Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  {statsCards.map((stat, index) => (
+                    <div
+                    key={stat.title}
+                    ref={el => cardsRef.current[index] = el}
+                    className="bg-card p-6 rounded-2xl border border-border/50 hover:border-primary/30 transition-all duration-300 group cursor-pointer"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="p-3 bg-primary/10 rounded-full group-hover:bg-primary/20 transition-colors">
+                        {stat.icon}
+                      </div>
+                      <div className={cn(
+                        "text-sm font-medium",
+                        stat.trend === 'up' ? "text-green-600" : "text-red-600"
+                      )}>
+                        {stat.change}
+                      </div>
+                    </div>
+                    <div className="mt-4">
+                      <h3 className="text-2xl font-bold">{stat.value}</h3>
+                      <p className="text-sm text-muted-foreground mt-1">{stat.title}</p>
+                    </div>
+                  </div>
+                  ))}
+                </div>
+
+                {/* Demo Content */}
+                <DemoContent />
+
+                {/* Main Content Grid */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Chart Area */}
+                <div className="lg:col-span-2 space-y-6">
+                  {/* Analytics Chart */}
+                  <div className="bg-card p-6 rounded-2xl border border-border/50">
+                    <div className="flex items-center justify-between mb-6">
+                      <h3 className="text-lg font-semibold">Analytics Overview</h3>
+                      <button className="h-8 w-8 flex items-center justify-center hover:bg-accent rounded-full transition-colors">
+                        <MoreVertical className="w-5 h-5" />
+                      </button>
+                    </div>
+                    
+                    {/* Mock Chart */}
+                    <div className="h-64 bg-gradient-to-br from-primary/10 to-transparent rounded-xl flex items-center justify-center border border-border/50">
+                      <div className="text-center">
+                        <BarChart3 className="w-12 h-12 text-primary mx-auto mb-2" />
+                        <p className="text-muted-foreground">Chart visualization would go here</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Recent Projects */}
+                  <div className="bg-card p-6 rounded-2xl border border-border/50">
+                    <div className="flex items-center justify-between mb-6">
+                      <h3 className="text-lg font-semibold">Recent Projects</h3>
+                      <button className="text-primary hover:text-primary/80 text-sm font-medium flex items-center gap-1">
+                        View All
+                        <ChevronRight className="w-4 h-4" />
+                      </button>
+                    </div>
+                    
+                    <div className="space-y-4">
+                      {[
+                        { name: "E-commerce Platform", progress: 75, team: 5, deadline: "Dec 15" },
+                        { name: "Mobile App Redesign", progress: 45, team: 3, deadline: "Jan 20" },
+                        { name: "Marketing Website", progress: 90, team: 4, deadline: "Dec 5" }
+                      ].map((project) => (
+                        <div key={project.name} className="p-4 bg-accent/30 rounded-xl hover:bg-accent/50 transition-colors cursor-pointer">
+                          <div className="flex items-center justify-between mb-2">
+                            <h4 className="font-medium">{project.name}</h4>
+                            <span className="text-sm text-muted-foreground">{project.progress}%</span>
+                          </div>
+                          <div className="w-full bg-muted rounded-full h-2 mb-3">
+                            <div 
+                              className="bg-primary h-2 rounded-full transition-all duration-500"
+                              style={{ width: `${project.progress}%` }}
+                            />
+                          </div>
+                          <div className="flex items-center justify-between text-sm text-muted-foreground">
+                            <span>{project.team} team members</span>
+                            <span>Due {project.deadline}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Sidebar Content */}
+                <div className="space-y-6">
+                  {/* Quick Actions */}
+                  <div className="bg-card p-6 rounded-2xl border border-border/50">
+                    <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
+                    <div className="space-y-3">
+                      {[
+                        { icon: <FileText className="w-4 h-4" />, label: "Create Document", color: "bg-blue-500/10 text-blue-600" },
+                        { icon: <Calendar className="w-4 h-4" />, label: "Schedule Meeting", color: "bg-green-500/10 text-green-600" },
+                        { icon: <Users className="w-4 h-4" />, label: "Invite Team", color: "bg-purple-500/10 text-purple-600" },
+                        { icon: <BarChart3 className="w-4 h-4" />, label: "View Reports", color: "bg-orange-500/10 text-orange-600" }
+                      ].map((action) => (
+                        <button
+                          key={action.label}
+                          className="w-full flex items-center gap-3 p-3 hover:bg-accent rounded-lg transition-colors text-left"
+                        >
+                          <div className={cn("p-2 rounded-full", action.color)}>
+                            {action.icon}
+                          </div>
+                          <span className="font-medium">{action.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Recent Activity */}
+                  <div className="bg-card p-6 rounded-2xl border border-border/50">
+                    <h3 className="text-lg font-semibold mb-4">Recent Activity</h3>
+                    <div className="space-y-4">
+                      {recentActivity.map((activity) => (
+                        <div key={activity.id} className="flex items-start gap-3 p-3 hover:bg-accent/30 rounded-xl transition-colors cursor-pointer">
+                          <div className="p-2 bg-primary/10 rounded-full flex-shrink-0">
+                            {getTypeIcon(activity.type)}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-medium text-sm mb-1">{activity.title}</h4>
+                            <p className="text-xs text-muted-foreground mb-2">{activity.description}</p>
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <Clock className="w-3 h-3" />
+                              <span>{activity.time}</span>
+                              <div className="w-5 h-5 bg-primary rounded-full flex items-center justify-center text-primary-foreground text-xs font-medium">
+                                {activity.user}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              {showScrollToBottom && (
+                <button
+                  onClick={scrollToBottom}
+                  className="fixed bottom-8 right-8 w-12 h-12 bg-primary text-primary-foreground rounded-full flex items-center justify-center shadow-lg hover:bg-primary/90 transition-all animate-fade-in z-50"
+                  style={{ animation: 'bounce 2s infinite' }}
+                  title="Scroll to bottom"
+                >
+                  <ArrowDown className="w-6 h-6" />
+                </button>
+              )}
+            </div>
+          </div>
+        )
+      }
+    )
+  src/components/RightPane.tsx: |-
+    import { forwardRef } from 'react'
+    import { X, SlidersHorizontal, Settings, ChevronRight } from 'lucide-react'
+    import { useAppStore } from '@/store/appStore'
+    import { cn } from '@/lib/utils'
+    import { SettingsContent } from './SettingsContent'
+
+    export const RightPane = forwardRef<HTMLDivElement>((_props, ref) => {
+      const { closeSidePane, setIsResizingRightPane, sidePaneContent } = useAppStore()
+
+      const isSettings = sidePaneContent === 'settings'
+
+      return (
+        <aside ref={ref} className="bg-card border-l border-border flex flex-col h-full overflow-hidden fixed top-0 right-0 z-[60]">
+          <button
+            onClick={closeSidePane}
+            className="absolute top-1/2 -left-px -translate-y-1/2 -translate-x-full w-8 h-16 bg-card border border-r-0 border-border rounded-l-lg flex items-center justify-center hover:bg-accent transition-colors group z-10"
+            title="Close pane"
+          >
+            <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-foreground transition-colors" />
+          </button>
+          <div 
+            className={cn(
+              "absolute top-0 left-0 w-2 h-full bg-transparent hover:bg-primary/20 cursor-col-resize z-50 transition-colors duration-200 group -translate-x-1/2"
+            )}
+            onMouseDown={(e) => {
+              e.preventDefault()
+              setIsResizingRightPane(true)
+            }}
+          >
+            <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200 mx-auto" />
+          </div>
+          <div className="flex items-center justify-between p-4 border-b border-border h-20 flex-shrink-0 pl-6">
+            <div className="flex items-center gap-2">
+              {isSettings ? <Settings className="w-5 h-5" /> : <SlidersHorizontal className="w-5 h-5" />}
+              <h2 className="text-lg font-semibold whitespace-nowrap">
+                {isSettings ? 'Settings' : 'Details Panel'}
+              </h2>
+            </div>
+          </div>
+          <div className="flex-1 overflow-y-auto p-6">
+            {isSettings ? <SettingsContent /> : (
+              <p className="text-muted-foreground">
+                This is the side pane. It can be used to display contextual information, forms, or actions related to the main content.
+              </p>
+            )}
+          </div>
+        </aside>
+      )
+    })
+
+    RightPane.displayName = "RightPane"
+  src/store/appStore.ts: >-
+    import { create } from 'zustand'
+
+    import { persist } from 'zustand/middleware'
+
+    import { SIDEBAR_STATES, BODY_STATES, type SidebarState, type BodyState }
+    from '@/lib/utils'
+
+
+    interface AppState {
+      // UI States
+      sidebarState: SidebarState
+      bodyState: BodyState
+      isDarkMode: boolean
+      sidePaneContent: 'details' | 'settings'
+      sidebarWidth: number
+      rightPaneWidth: number
+      isResizing: boolean
+      isResizingRightPane: boolean
+      
+      // User Preferences
+      autoExpandSidebar: boolean
+      reducedMotion: boolean
+      compactMode: boolean
+      
+      // Actions
+      setSidebarState: (state: SidebarState) => void
+      setBodyState: (state: BodyState) => void
+      toggleDarkMode: () => void
+      setSidebarWidth: (width: number) => void
+      setRightPaneWidth: (width: number) => void
+      setIsResizing: (resizing: boolean) => void
+      setIsResizingRightPane: (resizing: boolean) => void
+      setAutoExpandSidebar: (auto: boolean) => void
+      setReducedMotion: (reduced: boolean) => void
+      setCompactMode: (compact: boolean) => void
+      
+      // Composite Actions
+      toggleSidebar: () => void
+      hideSidebar: () => void
+      showSidebar: () => void
+      peekSidebar: () => void
+      toggleFullscreen: () => void
+      openSidePane: (content: 'details' | 'settings') => void
+      closeSidePane: () => void
+      resetToDefaults: () => void
+    }
+
+
+    const defaultState = {
+      sidebarState: SIDEBAR_STATES.EXPANDED as SidebarState,
+      bodyState: BODY_STATES.NORMAL as BodyState,
+      sidePaneContent: 'details' as const,
+      isDarkMode: false,
+      sidebarWidth: 280,
+      rightPaneWidth: typeof window !== 'undefined' ? Math.max(300, Math.round(window.innerWidth * 0.6)) : 400,
+      isResizing: false,
+      isResizingRightPane: false,
+      autoExpandSidebar: true,
+      reducedMotion: false,
+      compactMode: false,
+    }
+
+
+    export const useAppStore = create<AppState>()(
+      persist(
+        (set, get) => ({
+          ...defaultState,
+          
+          // Basic setters
+          sidePaneContent: 'details',
+          setSidebarState: (state) => set({ sidebarState: state }),
+          setBodyState: (state) => set({ bodyState: state }),
+          toggleDarkMode: () => {
+            const newMode = !get().isDarkMode
+            set({ isDarkMode: newMode })
+            document.documentElement.classList.toggle('dark', newMode)
+          },
+          setSidebarWidth: (width) => set({ sidebarWidth: Math.max(200, Math.min(500, width)) }),
+          setRightPaneWidth: (width) => set({ rightPaneWidth: Math.max(300, Math.min(window.innerWidth * 0.8, width)) }),
+          setIsResizing: (resizing) => set({ isResizing: resizing }),
+          setIsResizingRightPane: (resizing) => set({ isResizingRightPane: resizing }),
+          setAutoExpandSidebar: (auto) => set({ autoExpandSidebar: auto }),
+          setReducedMotion: (reduced) => set({ reducedMotion: reduced }),
+          setCompactMode: (compact) => set({ compactMode: compact }),
+          
+          // Composite actions
+          toggleSidebar: () => {
+            const current = get().sidebarState
+            if (current === SIDEBAR_STATES.HIDDEN) {
+              set({ sidebarState: SIDEBAR_STATES.COLLAPSED })
+            } else if (current === SIDEBAR_STATES.COLLAPSED) {
+              set({ sidebarState: SIDEBAR_STATES.EXPANDED })
+            } else if (current === SIDEBAR_STATES.EXPANDED) {
+              set({ sidebarState: SIDEBAR_STATES.COLLAPSED })
+            }
+          },
+          
+          hideSidebar: () => set({ sidebarState: SIDEBAR_STATES.HIDDEN }),
+          showSidebar: () => set({ sidebarState: SIDEBAR_STATES.EXPANDED }),
+          peekSidebar: () => set({ sidebarState: SIDEBAR_STATES.PEEK }),
+          
+          toggleFullscreen: () => {
+            const current = get().bodyState
+            set({ 
+              bodyState: current === BODY_STATES.FULLSCREEN ? BODY_STATES.NORMAL : BODY_STATES.FULLSCREEN 
+            })
+          },
+          
+          openSidePane: (content: 'details' | 'settings') => {
+            const { bodyState, sidePaneContent } = get()
+            if (bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === content) {
+              // If it's open with same content, close it.
+              set({ bodyState: BODY_STATES.NORMAL });
+            } else {
+              // If closed, or different content, open with new content.
+              set({ bodyState: BODY_STATES.SIDE_PANE, sidePaneContent: content });
+            }
+          },
+          closeSidePane: () => {
+            set({ bodyState: BODY_STATES.NORMAL })
+          },
+          
+          resetToDefaults: () => set(defaultState),
+        }),
+        {
+          name: 'app-preferences',
+          partialize: (state) => ({
+            sidebarState: state.sidebarState,
+            bodyState: state.bodyState,
+            sidePaneContent: state.sidePaneContent,
+            isDarkMode: state.isDarkMode,
+            sidebarWidth: state.sidebarWidth,
+            rightPaneWidth: state.rightPaneWidth,
+            autoExpandSidebar: state.autoExpandSidebar,
+            reducedMotion: state.reducedMotion,
+            compactMode: state.compactMode,
+          }),
+        }
+      )
+    )
+
+
+    // Initialize dark mode on load
+
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('app-preferences')
+      if (stored) {
+        const parsed = JSON.parse(stored)
+        if (parsed.state?.isDarkMode) {
+          document.documentElement.classList.add('dark')
+        }
+      }
+    }
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 34
