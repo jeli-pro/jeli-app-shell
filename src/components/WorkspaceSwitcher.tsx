@@ -186,8 +186,10 @@ function WorkspaceContent({
 	title = 'Workspaces',
 	searchable = false,
 	onSearch,
+	side = 'right',
 	align = 'start',
-	useTriggerWidth = true,
+	sideOffset = 8,
+	useTriggerWidth = false,
 	...props
 }: WorkspaceContentProps) {
 	const {
@@ -242,8 +244,9 @@ function WorkspaceContent({
 		<PopoverContent
 			className={cn('p-0', className)}
 			align={align}
+			sideOffset={sideOffset}
 			useTriggerWidth={useTriggerWidth}
-			{...props}
+			{...{ ...props, side }}
 		>
 			<div className="border-b px-4 py-3">
 				<h3 className="text-sm font-semibold text-foreground">{title}</h3>

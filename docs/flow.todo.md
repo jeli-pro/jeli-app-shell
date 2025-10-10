@@ -1,10 +1,54 @@
 ===
 
-workspace switcher should be as popover, never constrained by sidebar size
+top bar should show after hidden while scrolling stop
 
 ===
 
-this project is for creating UI library to be reuse to another project as deps... so please make everything production ready from pluggable architecture to final touch
+make codebase highly DRY for super less codebase without UI look regression
+
+===
+
+notification page
+
+===
+
+profile
+
+===
+
+workspace switcher should be as popover, never constrained by sidebar size
+
+=== DONE
+
+this project is for creating UI library to be reuse to another project as deps... so please make everything production ready from pluggable architecture to final touch...
+
+so the lib user can use it with ease, flexibility while also in minimal codebase
+
+maybe something like
+
+<SidebarMenuItem>
+  <SidebarMenuButton asChild>
+    <a href="#">
+      <Home />
+      <span>Home</span>
+    </a>
+  </SidebarMenuButton>
+  <DropdownMenu>
+    <DropdownMenuTrigger asChild>
+      <SidebarMenuAction>
+        <MoreHorizontal />
+      </SidebarMenuAction>
+    </DropdownMenuTrigger>
+    <DropdownMenuContent side="right" align="start">
+      <DropdownMenuItem>
+        <span>Edit Project</span>
+      </DropdownMenuItem>
+      <DropdownMenuItem>
+        <span>Delete Project</span>
+      </DropdownMenuItem>
+    </DropdownMenuContent>
+  </DropdownMenu>
+</SidebarMenuItem>
 
 === DONE
 
