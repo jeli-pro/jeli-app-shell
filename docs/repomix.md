@@ -28,41 +28,6 @@ vite.config.ts
 
 # Files
 
-## File: src/components/RightPane.tsx
-```typescript
-import { forwardRef } from 'react'
-import { X, SlidersHorizontal } from 'lucide-react'
-import { useAppStore } from '@/store/appStore'
-
-export const RightPane = forwardRef<HTMLDivElement>((_props, ref) => {
-  const { toggleSidePane } = useAppStore()
-
-  return (
-    <aside ref={ref} className="bg-card border-l border-border flex flex-col h-full overflow-hidden w-0">
-      <div className="flex items-center justify-between p-4 border-b border-border h-20 flex-shrink-0">
-        <div className="flex items-center gap-2">
-          <SlidersHorizontal className="w-5 h-5" />
-          <h2 className="text-lg font-semibold whitespace-nowrap">Details Panel</h2>
-        </div>
-        <button
-          onClick={toggleSidePane}
-          className="p-2 hover:bg-accent rounded-lg transition-colors"
-        >
-          <X className="w-4 h-4" />
-        </button>
-      </div>
-      <div className="flex-1 overflow-y-auto p-6">
-        <p className="text-muted-foreground">
-          This is the side pane. It can be used to display contextual information, forms, or actions related to the main content.
-        </p>
-      </div>
-    </aside>
-  )
-})
-
-RightPane.displayName = "RightPane"
-```
-
 ## File: src/lib/utils.ts
 ```typescript
 import { type ClassValue, clsx } from "clsx"
@@ -165,132 +130,51 @@ export default {
 }
 ```
 
-## File: src/store/appStore.ts
+## File: src/components/RightPane.tsx
 ```typescript
-import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
-import { SIDEBAR_STATES, BODY_STATES, type SidebarState, type BodyState } from '@/lib/utils'
+import { forwardRef } from 'react'
+import { X, SlidersHorizontal } from 'lucide-react'
+import { useAppStore } from '@/store/appStore'
+import { cn } from '@/lib/utils'
 
-interface AppState {
-  // UI States
-  sidebarState: SidebarState
-  bodyState: BodyState
-  isDarkMode: boolean
-  sidebarWidth: number
-  isResizing: boolean
-  
-  // User Preferences
-  autoExpandSidebar: boolean
-  reducedMotion: boolean
-  compactMode: boolean
-  
-  // Actions
-  setSidebarState: (state: SidebarState) => void
-  setBodyState: (state: BodyState) => void
-  toggleDarkMode: () => void
-  setSidebarWidth: (width: number) => void
-  setIsResizing: (resizing: boolean) => void
-  setAutoExpandSidebar: (auto: boolean) => void
-  setReducedMotion: (reduced: boolean) => void
-  setCompactMode: (compact: boolean) => void
-  
-  // Composite Actions
-  toggleSidebar: () => void
-  hideSidebar: () => void
-  showSidebar: () => void
-  peekSidebar: () => void
-  toggleFullscreen: () => void
-  toggleSidePane: () => void
-  resetToDefaults: () => void
-}
+export const RightPane = forwardRef<HTMLDivElement>((_props, ref) => {
+  const { toggleSidePane, setIsResizingRightPane } = useAppStore()
 
-const defaultState = {
-  sidebarState: SIDEBAR_STATES.EXPANDED as SidebarState,
-  bodyState: BODY_STATES.NORMAL as BodyState,
-  isDarkMode: false,
-  sidebarWidth: 300,
-  isResizing: false,
-  autoExpandSidebar: true,
-  reducedMotion: false,
-  compactMode: false,
-}
-
-export const useAppStore = create<AppState>()(
-  persist(
-    (set, get) => ({
-      ...defaultState,
-      
-      // Basic setters
-      setSidebarState: (state) => set({ sidebarState: state }),
-      setBodyState: (state) => set({ bodyState: state }),
-      toggleDarkMode: () => {
-        const newMode = !get().isDarkMode
-        set({ isDarkMode: newMode })
-        document.documentElement.classList.toggle('dark', newMode)
-      },
-      setSidebarWidth: (width) => set({ sidebarWidth: Math.max(200, Math.min(500, width)) }),
-      setIsResizing: (resizing) => set({ isResizing: resizing }),
-      setAutoExpandSidebar: (auto) => set({ autoExpandSidebar: auto }),
-      setReducedMotion: (reduced) => set({ reducedMotion: reduced }),
-      setCompactMode: (compact) => set({ compactMode: compact }),
-      
-      // Composite actions
-      toggleSidebar: () => {
-        const current = get().sidebarState
-        if (current === SIDEBAR_STATES.HIDDEN) {
-          set({ sidebarState: SIDEBAR_STATES.COLLAPSED })
-        } else if (current === SIDEBAR_STATES.COLLAPSED) {
-          set({ sidebarState: SIDEBAR_STATES.EXPANDED })
-        } else if (current === SIDEBAR_STATES.EXPANDED) {
-          set({ sidebarState: SIDEBAR_STATES.COLLAPSED })
-        }
-      },
-      
-      hideSidebar: () => set({ sidebarState: SIDEBAR_STATES.HIDDEN }),
-      showSidebar: () => set({ sidebarState: SIDEBAR_STATES.EXPANDED }),
-      peekSidebar: () => set({ sidebarState: SIDEBAR_STATES.PEEK }),
-      
-      toggleFullscreen: () => {
-        const current = get().bodyState
-        set({ 
-          bodyState: current === BODY_STATES.FULLSCREEN ? BODY_STATES.NORMAL : BODY_STATES.FULLSCREEN 
-        })
-      },
-      
-      toggleSidePane: () => {
-        const current = get().bodyState
-        set({ 
-          bodyState: current === BODY_STATES.SIDE_PANE ? BODY_STATES.NORMAL : BODY_STATES.SIDE_PANE 
-        })
-      },
-      
-      resetToDefaults: () => set(defaultState),
-    }),
-    {
-      name: 'app-preferences',
-      partialize: (state) => ({
-        sidebarState: state.sidebarState,
-        bodyState: state.bodyState,
-        isDarkMode: state.isDarkMode,
-        sidebarWidth: state.sidebarWidth,
-        autoExpandSidebar: state.autoExpandSidebar,
-        reducedMotion: state.reducedMotion,
-        compactMode: state.compactMode,
-      }),
-    }
+  return (
+    <aside ref={ref} className="bg-card border-l border-border flex flex-col h-full overflow-hidden fixed top-0 right-0 z-[60]">
+      <div 
+        className={cn(
+          "absolute top-0 left-0 w-2 h-full bg-transparent hover:bg-primary/20 cursor-col-resize z-50 transition-colors duration-200 group -translate-x-1/2"
+        )}
+        onMouseDown={(e) => {
+          e.preventDefault()
+          setIsResizingRightPane(true)
+        }}
+      >
+        <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200 mx-auto" />
+      </div>
+      <div className="flex items-center justify-between p-4 border-b border-border h-20 flex-shrink-0 pl-6">
+        <div className="flex items-center gap-2">
+          <SlidersHorizontal className="w-5 h-5" />
+          <h2 className="text-lg font-semibold whitespace-nowrap">Details Panel</h2>
+        </div>
+        <button
+          onClick={toggleSidePane}
+          className="p-2 hover:bg-accent rounded-lg transition-colors"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+      <div className="flex-1 overflow-y-auto p-6">
+        <p className="text-muted-foreground">
+          This is the side pane. It can be used to display contextual information, forms, or actions related to the main content.
+        </p>
+      </div>
+    </aside>
   )
-)
+})
 
-// Initialize dark mode on load
-if (typeof window !== 'undefined') {
-  const stored = localStorage.getItem('app-preferences')
-  if (stored) {
-    const parsed = JSON.parse(stored)
-    if (parsed.state?.isDarkMode) {
-      document.documentElement.classList.add('dark')
-    }
-  }
-}
+RightPane.displayName = "RightPane"
 ```
 
 ## File: src/App.tsx
@@ -725,6 +609,331 @@ export { MainContent } from './MainContent'
 export { RightPane } from './RightPane'
 ```
 
+## File: src/components/TopBar.tsx
+```typescript
+import { useState } from 'react'
+import { 
+  Menu, 
+  Maximize, 
+  Minimize, 
+  Moon, 
+  Sun,
+  Layout,
+  Settings,
+  Command,
+  Zap
+} from 'lucide-react'
+import { SettingsPanel } from './SettingsPanel'
+import { cn } from '@/lib/utils'
+import { BODY_STATES, type BodyState } from '@/lib/utils'
+
+interface TopBarProps {
+  bodyState: BodyState
+  isDarkMode: boolean
+  onToggleSidebar: () => void
+  onToggleFullscreen: () => void
+  onToggleSidePane: () => void
+  onToggleDarkMode: () => void
+}
+
+export function TopBar({
+  bodyState,
+  isDarkMode,
+  onToggleSidebar,
+  onToggleFullscreen,
+  onToggleSidePane,
+  onToggleDarkMode
+}: TopBarProps) {
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  return (
+    <div className="h-20 bg-card/80 backdrop-blur-sm border-b border-border flex items-center justify-between px-6 z-50">
+      {/* Left Section - Logo and Sidebar Controls */}
+      <div className="flex items-center gap-4">
+        {/* Logo */}
+        <div className="flex items-center gap-2">
+          <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary/60 rounded-full flex items-center justify-center">
+            <Layout className="w-5 h-5 text-primary-foreground" />
+          </div>
+          <span className="font-semibold text-xl text-foreground hidden sm:inline">AppShell</span>
+        </div>
+
+        {/* Sidebar Controls */}
+        <div className="flex items-center">
+          <button
+            onClick={onToggleSidebar}
+            className={cn(
+              "h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors"
+            )}
+            title="Toggle Sidebar"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+        </div>
+      </div>
+
+      {/* Right Section - View Controls */}
+      <div className="flex items-center gap-3">
+        {/* Quick Actions */}
+        <button
+          className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+          title="Command Palette (Ctrl+K)"
+        >
+          <Command className="w-5 h-5 group-hover:scale-110 transition-transform" />
+        </button>
+
+        <button
+          className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+          title="Quick Actions"
+        >
+          <Zap className="w-5 h-5 group-hover:scale-110 transition-transform" />
+        </button>
+
+        <div className="w-px h-6 bg-border mx-2" />
+
+        {/* Body State Controls */}
+        <button
+          onClick={onToggleSidePane}
+          className={cn(
+            "h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group",
+            bodyState === BODY_STATES.SIDE_PANE && "bg-accent"
+          )}
+          title="Toggle Side Pane"
+        >
+          <div className="w-5 h-5 flex group-hover:scale-110 transition-transform">
+            <div className="w-1/2 h-full bg-current opacity-60 rounded-l-sm" />
+            <div className="w-1/2 h-full bg-current rounded-r-sm" />
+          </div>
+        </button>
+
+        <button
+          onClick={onToggleFullscreen}
+          className={cn(
+            "h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group",
+            bodyState === BODY_STATES.FULLSCREEN && "bg-accent"
+          )}
+          title="Toggle Fullscreen"
+        >
+          {bodyState === BODY_STATES.FULLSCREEN ? (
+            <Minimize className="w-5 h-5 group-hover:scale-110 transition-transform" />
+          ) : (
+            <Maximize className="w-5 h-5 group-hover:scale-110 transition-transform" />
+          )}
+        </button>
+
+        <div className="w-px h-6 bg-border mx-2" />
+
+        {/* Theme and Settings */}
+        <button
+          onClick={onToggleDarkMode}
+          className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+          title="Toggle Dark Mode"
+        >
+          {isDarkMode ? (
+            <Sun className="w-5 h-5 group-hover:scale-110 transition-transform" />
+          ) : (
+            <Moon className="w-5 h-5 group-hover:scale-110 transition-transform" />
+          )}
+        </button>
+
+        <button
+          onClick={() => setIsSettingsOpen(true)}
+          className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+          title="Settings"
+        >
+          <Settings className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
+        </button>
+      </div>
+
+      {/* Settings Panel */}
+      <SettingsPanel 
+        isOpen={isSettingsOpen} 
+        onClose={() => setIsSettingsOpen(false)} 
+      />
+    </div>
+  )
+}
+```
+
+## File: src/store/appStore.ts
+```typescript
+import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
+import { SIDEBAR_STATES, BODY_STATES, type SidebarState, type BodyState } from '@/lib/utils'
+
+interface AppState {
+  // UI States
+  sidebarState: SidebarState
+  bodyState: BodyState
+  isDarkMode: boolean
+  sidebarWidth: number
+  rightPaneWidth: number
+  isResizing: boolean
+  isResizingRightPane: boolean
+  
+  // User Preferences
+  autoExpandSidebar: boolean
+  reducedMotion: boolean
+  compactMode: boolean
+  
+  // Actions
+  setSidebarState: (state: SidebarState) => void
+  setBodyState: (state: BodyState) => void
+  toggleDarkMode: () => void
+  setSidebarWidth: (width: number) => void
+  setRightPaneWidth: (width: number) => void
+  setIsResizing: (resizing: boolean) => void
+  setIsResizingRightPane: (resizing: boolean) => void
+  setAutoExpandSidebar: (auto: boolean) => void
+  setReducedMotion: (reduced: boolean) => void
+  setCompactMode: (compact: boolean) => void
+  
+  // Composite Actions
+  toggleSidebar: () => void
+  hideSidebar: () => void
+  showSidebar: () => void
+  peekSidebar: () => void
+  toggleFullscreen: () => void
+  toggleSidePane: () => void
+  resetToDefaults: () => void
+}
+
+const defaultState = {
+  sidebarState: SIDEBAR_STATES.EXPANDED as SidebarState,
+  bodyState: BODY_STATES.NORMAL as BodyState,
+  isDarkMode: false,
+  sidebarWidth: 280,
+  rightPaneWidth: typeof window !== 'undefined' ? Math.max(300, Math.round(window.innerWidth * 0.6)) : 400,
+  isResizing: false,
+  isResizingRightPane: false,
+  autoExpandSidebar: true,
+  reducedMotion: false,
+  compactMode: false,
+}
+
+export const useAppStore = create<AppState>()(
+  persist(
+    (set, get) => ({
+      ...defaultState,
+      
+      // Basic setters
+      setSidebarState: (state) => set({ sidebarState: state }),
+      setBodyState: (state) => set({ bodyState: state }),
+      toggleDarkMode: () => {
+        const newMode = !get().isDarkMode
+        set({ isDarkMode: newMode })
+        document.documentElement.classList.toggle('dark', newMode)
+      },
+      setSidebarWidth: (width) => set({ sidebarWidth: Math.max(200, Math.min(500, width)) }),
+      setRightPaneWidth: (width) => set({ rightPaneWidth: Math.max(300, Math.min(window.innerWidth * 0.8, width)) }),
+      setIsResizing: (resizing) => set({ isResizing: resizing }),
+      setIsResizingRightPane: (resizing) => set({ isResizingRightPane: resizing }),
+      setAutoExpandSidebar: (auto) => set({ autoExpandSidebar: auto }),
+      setReducedMotion: (reduced) => set({ reducedMotion: reduced }),
+      setCompactMode: (compact) => set({ compactMode: compact }),
+      
+      // Composite actions
+      toggleSidebar: () => {
+        const current = get().sidebarState
+        if (current === SIDEBAR_STATES.HIDDEN) {
+          set({ sidebarState: SIDEBAR_STATES.COLLAPSED })
+        } else if (current === SIDEBAR_STATES.COLLAPSED) {
+          set({ sidebarState: SIDEBAR_STATES.EXPANDED })
+        } else if (current === SIDEBAR_STATES.EXPANDED) {
+          set({ sidebarState: SIDEBAR_STATES.COLLAPSED })
+        }
+      },
+      
+      hideSidebar: () => set({ sidebarState: SIDEBAR_STATES.HIDDEN }),
+      showSidebar: () => set({ sidebarState: SIDEBAR_STATES.EXPANDED }),
+      peekSidebar: () => set({ sidebarState: SIDEBAR_STATES.PEEK }),
+      
+      toggleFullscreen: () => {
+        const current = get().bodyState
+        set({ 
+          bodyState: current === BODY_STATES.FULLSCREEN ? BODY_STATES.NORMAL : BODY_STATES.FULLSCREEN 
+        })
+      },
+      
+      toggleSidePane: () => {
+        const current = get().bodyState
+        set({ 
+          bodyState: current === BODY_STATES.SIDE_PANE ? BODY_STATES.NORMAL : BODY_STATES.SIDE_PANE 
+        })
+      },
+      
+      resetToDefaults: () => set(defaultState),
+    }),
+    {
+      name: 'app-preferences',
+      partialize: (state) => ({
+        sidebarState: state.sidebarState,
+        bodyState: state.bodyState,
+        isDarkMode: state.isDarkMode,
+        sidebarWidth: state.sidebarWidth,
+        rightPaneWidth: state.rightPaneWidth,
+        autoExpandSidebar: state.autoExpandSidebar,
+        reducedMotion: state.reducedMotion,
+        compactMode: state.compactMode,
+      }),
+    }
+  )
+)
+
+// Initialize dark mode on load
+if (typeof window !== 'undefined') {
+  const stored = localStorage.getItem('app-preferences')
+  if (stored) {
+    const parsed = JSON.parse(stored)
+    if (parsed.state?.isDarkMode) {
+      document.documentElement.classList.add('dark')
+    }
+  }
+}
+```
+
+## File: package.json
+```json
+{
+  "name": "amazing-app-shell",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "gsap": "^3.12.2",
+    "zustand": "^4.4.7",
+    "lucide-react": "^0.294.0",
+    "clsx": "^2.0.0",
+    "tailwind-merge": "^2.0.0",
+    "class-variance-authority": "^0.7.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@types/react": "^18.2.37",
+    "@types/react-dom": "^18.2.15",
+    "@typescript-eslint/eslint-plugin": "^6.10.0",
+    "@typescript-eslint/parser": "^6.10.0",
+    "@vitejs/plugin-react": "^4.1.1",
+    "autoprefixer": "^10.4.16",
+    "eslint": "^8.53.0",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint-plugin-react-refresh": "^0.4.4",
+    "postcss": "^8.4.31",
+    "tailwindcss": "^3.3.5",
+    "typescript": "^5.2.2",
+    "vite": "^4.5.0",
+    "tailwindcss-animate": "^1.0.7"
+  }
+}
+```
+
 ## File: src/components/MainContent.tsx
 ```typescript
 import React, { forwardRef, useRef, useEffect, useState } from 'react'
@@ -858,13 +1067,6 @@ export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
             ease: "power3.out"
           })
           break
-        case BODY_STATES.SIDE_PANE:
-          gsap.to(content, {
-            scale: 0.98,
-            duration: 0.4,
-            ease: "power3.out"
-          })
-          break
         default:
           gsap.to(content, {
             scale: 1,
@@ -908,8 +1110,7 @@ export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
         ref={ref}
         className={cn(
           "flex-1 h-[calc(100vh-80px)] overflow-hidden transition-all duration-300",
-          bodyState === BODY_STATES.FULLSCREEN && "bg-background",
-          bodyState === BODY_STATES.SIDE_PANE && "bg-muted/30"
+          bodyState === BODY_STATES.FULLSCREEN && "bg-background"
         )}
       >
         <div 
@@ -1093,194 +1294,6 @@ export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
 )
 ```
 
-## File: src/components/TopBar.tsx
-```typescript
-import { useState } from 'react'
-import { 
-  Menu, 
-  Maximize, 
-  Minimize, 
-  Moon, 
-  Sun,
-  Layout,
-  Settings,
-  Command,
-  Zap
-} from 'lucide-react'
-import { SettingsPanel } from './SettingsPanel'
-import { cn } from '@/lib/utils'
-import { BODY_STATES, type BodyState } from '@/lib/utils'
-
-interface TopBarProps {
-  bodyState: BodyState
-  isDarkMode: boolean
-  onToggleSidebar: () => void
-  onToggleFullscreen: () => void
-  onToggleSidePane: () => void
-  onToggleDarkMode: () => void
-}
-
-export function TopBar({
-  bodyState,
-  isDarkMode,
-  onToggleSidebar,
-  onToggleFullscreen,
-  onToggleSidePane,
-  onToggleDarkMode
-}: TopBarProps) {
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
-  return (
-    <div className="h-20 bg-card/80 backdrop-blur-sm border-b border-border flex items-center justify-between px-6 z-50">
-      {/* Left Section - Logo and Sidebar Controls */}
-      <div className="flex items-center gap-4">
-        {/* Logo */}
-        <div className="flex items-center gap-2">
-          <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary/60 rounded-full flex items-center justify-center">
-            <Layout className="w-5 h-5 text-primary-foreground" />
-          </div>
-          <span className="font-semibold text-xl text-foreground hidden sm:inline">AppShell</span>
-        </div>
-
-        {/* Sidebar Controls */}
-        <div className="flex items-center">
-          <button
-            onClick={onToggleSidebar}
-            className={cn(
-              "h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors"
-            )}
-            title="Toggle Sidebar"
-          >
-            <Menu className="w-5 h-5" />
-          </button>
-        </div>
-      </div>
-
-      {/* Right Section - View Controls */}
-      <div className="flex items-center gap-3">
-        {/* Quick Actions */}
-        <button
-          className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
-          title="Command Palette (Ctrl+K)"
-        >
-          <Command className="w-5 h-5 group-hover:scale-110 transition-transform" />
-        </button>
-
-        <button
-          className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
-          title="Quick Actions"
-        >
-          <Zap className="w-5 h-5 group-hover:scale-110 transition-transform" />
-        </button>
-
-        <div className="w-px h-6 bg-border mx-2" />
-
-        {/* Body State Controls */}
-        <button
-          onClick={onToggleSidePane}
-          className={cn(
-            "h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group",
-            bodyState === BODY_STATES.SIDE_PANE && "bg-accent"
-          )}
-          title="Toggle Side Pane"
-        >
-          <div className="w-5 h-5 flex group-hover:scale-110 transition-transform">
-            <div className="w-1/2 h-full bg-current opacity-60 rounded-l-sm" />
-            <div className="w-1/2 h-full bg-current rounded-r-sm" />
-          </div>
-        </button>
-
-        <button
-          onClick={onToggleFullscreen}
-          className={cn(
-            "h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group",
-            bodyState === BODY_STATES.FULLSCREEN && "bg-accent"
-          )}
-          title="Toggle Fullscreen"
-        >
-          {bodyState === BODY_STATES.FULLSCREEN ? (
-            <Minimize className="w-5 h-5 group-hover:scale-110 transition-transform" />
-          ) : (
-            <Maximize className="w-5 h-5 group-hover:scale-110 transition-transform" />
-          )}
-        </button>
-
-        <div className="w-px h-6 bg-border mx-2" />
-
-        {/* Theme and Settings */}
-        <button
-          onClick={onToggleDarkMode}
-          className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
-          title="Toggle Dark Mode"
-        >
-          {isDarkMode ? (
-            <Sun className="w-5 h-5 group-hover:scale-110 transition-transform" />
-          ) : (
-            <Moon className="w-5 h-5 group-hover:scale-110 transition-transform" />
-          )}
-        </button>
-
-        <button
-          onClick={() => setIsSettingsOpen(true)}
-          className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
-          title="Settings"
-        >
-          <Settings className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
-        </button>
-      </div>
-
-      {/* Settings Panel */}
-      <SettingsPanel 
-        isOpen={isSettingsOpen} 
-        onClose={() => setIsSettingsOpen(false)} 
-      />
-    </div>
-  )
-}
-```
-
-## File: package.json
-```json
-{
-  "name": "amazing-app-shell",
-  "private": true,
-  "version": "0.0.0",
-  "type": "module",
-  "scripts": {
-    "dev": "vite",
-    "build": "tsc && vite build",
-    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "preview": "vite preview"
-  },
-  "dependencies": {
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "gsap": "^3.12.2",
-    "zustand": "^4.4.7",
-    "lucide-react": "^0.294.0",
-    "clsx": "^2.0.0",
-    "tailwind-merge": "^2.0.0",
-    "class-variance-authority": "^0.7.0"
-  },
-  "devDependencies": {
-    "@types/node": "^20.10.0",
-    "@types/react": "^18.2.37",
-    "@types/react-dom": "^18.2.15",
-    "@typescript-eslint/eslint-plugin": "^6.10.0",
-    "@typescript-eslint/parser": "^6.10.0",
-    "@vitejs/plugin-react": "^4.1.1",
-    "autoprefixer": "^10.4.16",
-    "eslint": "^8.53.0",
-    "eslint-plugin-react-hooks": "^4.6.0",
-    "eslint-plugin-react-refresh": "^0.4.4",
-    "postcss": "^8.4.31",
-    "tailwindcss": "^3.3.5",
-    "typescript": "^5.2.2",
-    "vite": "^4.5.0",
-    "tailwindcss-animate": "^1.0.7"
-  }
-}
-```
-
 ## File: src/components/AppShell.tsx
 ```typescript
 import { useRef, useEffect } from 'react'
@@ -1300,6 +1313,9 @@ export function AppShell() {
     sidebarWidth,
     isDarkMode,
     isResizing,
+    rightPaneWidth,
+    isResizingRightPane,
+    setRightPaneWidth,
     setSidebarState,
     setIsResizing,
     setSidebarWidth,
@@ -1307,6 +1323,7 @@ export function AppShell() {
     peekSidebar,
     toggleFullscreen,
     toggleSidePane,
+    setIsResizingRightPane,
     toggleDarkMode,
     reducedMotion,
     autoExpandSidebar
@@ -1355,6 +1372,35 @@ export function AppShell() {
       document.removeEventListener('mouseup', handleMouseUp)
     }
   }, [isResizing, setIsResizing, setSidebarWidth])
+
+  // Resize functionality for Right Pane
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizingRightPane) return
+      
+      const newWidth = window.innerWidth - e.clientX
+      setRightPaneWidth(newWidth)
+    }
+
+    const handleMouseUp = () => {
+      setIsResizingRightPane(false)
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+    }
+
+    if (isResizingRightPane) {
+      document.body.style.cursor = 'col-resize'
+      document.body.style.userSelect = 'none'
+      document.addEventListener('mousemove', handleMouseMove)
+      document.addEventListener('mouseup', handleMouseUp)
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+      document.body.style.cursor = ''
+    }
+  }, [isResizingRightPane, setIsResizingRightPane, setRightPaneWidth])
 
   // GSAP animations for sidebar transitions
   useEffect(() => {
@@ -1422,11 +1468,28 @@ export function AppShell() {
 
     // Right pane animation
     gsap.to(rightPaneRef.current, {
-      width: isSidePane ? 320 : 0,
+      width: rightPaneWidth,
+      x: isSidePane ? 0 : rightPaneWidth + 5, // +5 to hide border
       duration: animationDuration,
       ease,
     })
-  }, [bodyState, animationDuration])
+    
+    // Add backdrop for side pane
+    const backdrop = document.querySelector('.app-backdrop')
+    if (isSidePane) {
+      if (!backdrop) {
+        const el = document.createElement('div')
+        el.className = 'app-backdrop fixed inset-0 bg-black/30 z-[55]'
+        appRef.current?.appendChild(el)
+        gsap.fromTo(el, { opacity: 0 }, { opacity: 1, duration: animationDuration })
+        el.onclick = () => toggleSidePane()
+      }
+    } else {
+      if (backdrop) {
+        gsap.to(backdrop, { opacity: 0, duration: animationDuration, onComplete: () => backdrop.remove() })
+      }
+    }
+  }, [bodyState, animationDuration, rightPaneWidth, toggleSidePane])
 
   return (
     <div 
@@ -1459,7 +1522,10 @@ export function AppShell() {
             className={cn(
               "absolute top-0 w-2 h-full bg-transparent hover:bg-primary/20 cursor-col-resize z-50 transition-colors duration-200 group -translate-x-1/2"
             )}
-            onMouseDown={() => setIsResizing(true)}
+            onMouseDown={(e) => {
+              e.preventDefault()
+              setIsResizing(true)
+            }}
           >
             <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200 mx-auto" />
           </div>
@@ -1483,9 +1549,8 @@ export function AppShell() {
             bodyState={bodyState}
           />
         </div>
-        
-        <RightPane ref={rightPaneRef} />
       </div>
+      <RightPane ref={rightPaneRef} />
     </div>
   )
 }
@@ -1791,8 +1856,8 @@ export const EnhancedSidebar = forwardRef<HTMLDivElement, SidebarProps>(
                     <User className={cn("text-primary-foreground", compactMode ? "w-4 h-4" : "w-5 h-5")} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className={cn("font-medium truncate", compactMode ? "text-xs" : "text-sm")}>John Doe</p>
-                    <p className={cn("text-muted-foreground truncate", compactMode ? "text-xs" : "text-xs")}>john@example.com</p>
+                    <p className={cn("font-medium truncate nav-label", compactMode ? "text-xs" : "text-sm")}>John Doe</p>
+                    <p className={cn("text-muted-foreground truncate nav-label", compactMode ? "text-[11px]" : "text-xs")}>john@example.com</p>
                   </div>
                 </div>
               </div>
@@ -1858,7 +1923,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
 
   return (
     <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-[100] animate-in fade-in-0 duration-300">
-      <div className="fixed right-4 top-4 bottom-4 w-full max-w-sm bg-card/95 backdrop-blur-lg border border-border shadow-2xl rounded-2xl animate-in slide-in-from-right-8 duration-300">
+      <div className="fixed right-4 top-4 bottom-4 w-full max-w-sm bg-card border border-border shadow-2xl rounded-2xl animate-in slide-in-from-right-8 duration-300">
         <div className="flex flex-col h-full">
           {/* Header */}
           <div className="flex items-center justify-between p-6 border-b border-border">

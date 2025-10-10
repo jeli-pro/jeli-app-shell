@@ -1,5 +1,12 @@
 ===
 
+1. collapsed sidebar icons should be horizontally centered
+2. also active icons should be horizontally centered
+3. add logo and logotext at sidebar header
+4. we dont need logo in top bar, we need breadcrumbs system
+
+=== DONE
+
 many broken estetic things like
 
 1. margin/padding unproperly set

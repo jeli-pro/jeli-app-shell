@@ -15,7 +15,8 @@ import {
   Download,
   Star,
   Trash2,
-  ChevronDown
+  ChevronDown,
+  Layout
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAppStore } from '@/store/appStore'
@@ -167,7 +168,8 @@ export const EnhancedSidebar = forwardRef<HTMLDivElement, SidebarProps>(
             compactMode ? "px-2 py-1.5" : "px-4 py-2.5",
             "hover:bg-accent",
             item.isActive && "bg-primary text-primary-foreground hover:bg-primary/90",
-            depth > 0 && "text-sm"
+            depth > 0 && "text-sm",
+            isCollapsed && "justify-center"
           )}
           onMouseEnter={(e) => handleItemHover(e.currentTarget, true)}
           onMouseLeave={(e) => handleItemHover(e.currentTarget, false)}
@@ -241,6 +243,24 @@ export const EnhancedSidebar = forwardRef<HTMLDivElement, SidebarProps>(
             compactMode ? "p-3" : "p-4"
           )}
         >
+          {/* Logo */}
+          <div
+            className={cn(
+              "flex items-center gap-3",
+              isCollapsed ? "justify-center" : "",
+              compactMode ? "h-10" : "h-16"
+            )}
+          >
+            <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary/60 rounded-full flex items-center justify-center flex-shrink-0">
+              <Layout className="w-5 h-5 text-primary-foreground" />
+            </div>
+            {!isCollapsed && (
+              <span className="font-semibold text-xl text-foreground nav-label truncate">
+                AppShell
+              </span>
+            )}
+          </div>
+
           {/* Navigation Sections */}
           <div className="flex-1 overflow-y-auto overflow-x-hidden space-y-6 pt-4">
             {navigationSections.map((section, sectionIndex) => {

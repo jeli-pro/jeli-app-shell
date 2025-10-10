@@ -5,10 +5,10 @@ import {
   Minimize, 
   Moon, 
   Sun,
-  Layout,
   Settings,
   Command,
-  Zap
+  Zap,
+  ChevronRight
 } from 'lucide-react'
 import { SettingsPanel } from './SettingsPanel'
 import { cn } from '@/lib/utils'
@@ -34,27 +34,24 @@ export function TopBar({
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   return (
     <div className="h-20 bg-card/80 backdrop-blur-sm border-b border-border flex items-center justify-between px-6 z-50">
-      {/* Left Section - Logo and Sidebar Controls */}
+      {/* Left Section - Sidebar Controls & Breadcrumbs */}
       <div className="flex items-center gap-4">
-        {/* Logo */}
-        <div className="flex items-center gap-2">
-          <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary/60 rounded-full flex items-center justify-center">
-            <Layout className="w-5 h-5 text-primary-foreground" />
-          </div>
-          <span className="font-semibold text-xl text-foreground hidden sm:inline">AppShell</span>
-        </div>
-
         {/* Sidebar Controls */}
-        <div className="flex items-center">
-          <button
-            onClick={onToggleSidebar}
-            className={cn(
-              "h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors"
-            )}
-            title="Toggle Sidebar"
-          >
-            <Menu className="w-5 h-5" />
-          </button>
+        <button
+          onClick={onToggleSidebar}
+          className={cn(
+            "h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors"
+          )}
+          title="Toggle Sidebar"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
+
+        {/* Breadcrumbs */}
+        <div className="hidden md:flex items-center gap-2 text-sm">
+          <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">Home</a>
+          <ChevronRight className="w-4 h-4 text-muted-foreground" />
+          <span className="font-medium text-foreground">Dashboard</span>
         </div>
       </div>
 
