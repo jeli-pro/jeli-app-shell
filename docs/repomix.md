@@ -6,6 +6,7 @@ src/
       avatar.tsx
       badge.tsx
       button.tsx
+      card.tsx
       command.tsx
       dialog.tsx
       dropdown-menu.tsx
@@ -13,14 +14,18 @@ src/
       toast.tsx
     AppShell.tsx
     CommandPalette.tsx
+    ContentInSidePanePlaceholder.tsx
     DashboardContent.tsx
     DemoContent.tsx
     EnhancedSidebar.tsx
     index.ts
     MainContent.tsx
+    PageHeader.tsx
     RightPane.tsx
     SettingsContent.tsx
     SettingsPage.tsx
+    SettingsSection.tsx
+    SettingsToggle.tsx
     Sidebar.tsx
     ToasterDemo.tsx
     TopBar.tsx
@@ -196,6 +201,89 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 Button.displayName = "Button"
 
 export { Button, buttonVariants }
+```
+
+## File: src/components/ui/card.tsx
+```typescript
+import * as React from "react"
+
+import { cn } from "@/lib/utils"
+
+const Card = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => (
+  <div
+    ref={ref}
+    className={cn(
+      "rounded-2xl border bg-card text-card-foreground",
+      className
+    )}
+    {...props}
+  />
+))
+Card.displayName = "Card"
+
+const CardHeader = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => (
+  <div
+    ref={ref}
+    className={cn("flex flex-col space-y-1.5 p-6", className)}
+    {...props}
+  />
+))
+CardHeader.displayName = "CardHeader"
+
+const CardTitle = React.forwardRef<
+  HTMLParagraphElement,
+  React.HTMLAttributes<HTMLHeadingElement>
+>(({ className, ...props }, ref) => (
+  <h3
+    ref={ref}
+    className={cn(
+      "text-lg font-semibold leading-none tracking-tight",
+      className
+    )}
+    {...props}
+  />
+))
+CardTitle.displayName = "CardTitle"
+
+const CardDescription = React.forwardRef<
+  HTMLParagraphElement,
+  React.HTMLAttributes<HTMLParagraphElement>
+>(({ className, ...props }, ref) => (
+  <p
+    ref={ref}
+    className={cn("text-sm text-muted-foreground", className)}
+    {...props}
+  />
+))
+CardDescription.displayName = "CardDescription"
+
+const CardContent = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => (
+  <div ref={ref} className={cn("p-6 pt-0", className)} {...props} />
+))
+CardContent.displayName = "CardContent"
+
+const CardFooter = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => (
+  <div
+    ref={ref}
+    className={cn("flex items-center p-6 pt-0", className)}
+    {...props}
+  />
+))
+CardFooter.displayName = "CardFooter"
+
+export { Card, CardHeader, CardFooter, CardTitle, CardDescription, CardContent }
 ```
 
 ## File: src/components/ui/command.tsx
@@ -821,6 +909,142 @@ export function CommandPalette() {
 }
 ```
 
+## File: src/components/ContentInSidePanePlaceholder.tsx
+```typescript
+import { ChevronsLeftRight } from 'lucide-react'
+
+interface ContentInSidePanePlaceholderProps {
+  icon: React.ElementType
+  title: string
+  pageName: string
+  onBringBack: () => void
+}
+
+export function ContentInSidePanePlaceholder({
+  icon: Icon,
+  title,
+  pageName,
+  onBringBack,
+}: ContentInSidePanePlaceholderProps) {
+  const capitalizedPageName = pageName
+    .split(' ')
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ')
+
+  return (
+    <div className="flex-1 flex flex-col items-center justify-center text-center p-4 h-full">
+      <Icon className="w-16 h-16 text-muted-foreground/50 mb-4" />
+      <h2 className="text-2xl font-bold">{title}</h2>
+      <p className="text-muted-foreground mt-2 max-w-md">
+        You've moved {pageName} to the side pane. You can bring it back or
+        continue to navigate.
+      </p>
+      <button
+        onClick={onBringBack}
+        className="mt-6 bg-primary text-primary-foreground px-4 py-2 rounded-full hover:bg-primary/90 transition-colors flex items-center gap-2 h-10"
+      >
+        <ChevronsLeftRight className="w-5 h-5" />
+        <span>Bring {capitalizedPageName} Back</span>
+      </button>
+    </div>
+  )
+}
+```
+
+## File: src/components/PageHeader.tsx
+```typescript
+import * as React from 'react';
+
+interface PageHeaderProps {
+  title: string;
+  description: React.ReactNode;
+  children?: React.ReactNode;
+}
+
+export function PageHeader({ title, description, children }: PageHeaderProps) {
+  return (
+    <div className="flex items-center justify-between">
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">{title}</h1>
+        <p className="text-muted-foreground">{description}</p>
+      </div>
+      {children}
+    </div>
+  );
+}
+```
+
+## File: src/components/SettingsSection.tsx
+```typescript
+import * as React from 'react'
+
+interface SettingsSectionProps {
+  icon: React.ReactElement
+  title: string
+  children: React.ReactNode
+}
+
+export function SettingsSection({ icon, title, children }: SettingsSectionProps) {
+  return (
+    <div className="space-y-4">
+      <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+        {React.cloneElement(icon, { className: 'w-4 h-4' })}
+        {title}
+      </h3>
+      {children}
+    </div>
+  )
+}
+```
+
+## File: src/components/SettingsToggle.tsx
+```typescript
+import * as React from 'react'
+import { cn } from '@/lib/utils'
+
+interface SettingsToggleProps {
+  icon: React.ReactNode
+  title: string
+  description: string
+  checked: boolean
+  onCheckedChange: (checked: boolean) => void
+}
+
+export function SettingsToggle({
+  icon,
+  title,
+  description,
+  checked,
+  onCheckedChange,
+}: SettingsToggleProps) {
+  return (
+    <div className="flex items-center justify-between">
+      <div className="flex items-center gap-3">
+        {icon}
+        <div>
+          <p className="font-medium">{title}</p>
+          <p className="text-sm text-muted-foreground">{description}</p>
+        </div>
+      </div>
+      <button
+        onClick={() => onCheckedChange(!checked)}
+        className={cn(
+          'relative inline-flex h-7 w-12 items-center rounded-full transition-colors',
+          checked ? 'bg-primary' : 'bg-muted'
+        )}
+      >
+        <span
+          className={cn(
+            'inline-block h-5 w-5 transform rounded-full bg-background transition-transform',
+            checked ? 'translate-x-6' : 'translate-x-1'
+          )}
+        />
+      </button>
+    </div>
+  )
+}
+```
+
 ## File: src/components/UserDropdown.tsx
 ```typescript
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -1376,150 +1600,6 @@ export { Popover, PopoverTrigger, PopoverContent }
 export type { PopoverContentProps }
 ```
 
-## File: src/components/ToasterDemo.tsx
-```typescript
-import { Button } from '@/components/ui/button';
-import { useToast } from '@/components/ui/toast';
-import { cn } from '@/lib/utils';
-
-type Variant = 'default' | 'success' | 'error' | 'warning';
-type Position =
-  | 'top-left'
-  | 'top-center'
-  | 'top-right'
-  | 'bottom-left'
-  | 'bottom-center'
-  | 'bottom-right';
-
-const variantColors = {
-  default: 'border-border text-foreground hover:bg-muted/10 dark:hover:bg-muted/20',
-  success: 'border-green-600 text-green-600 hover:bg-green-600/10 dark:hover:bg-green-400/20',
-  error: 'border-destructive text-destructive hover:bg-destructive/10 dark:hover:bg-destructive/20',
-  warning: 'border-amber-600 text-amber-600 hover:bg-amber-600/10 dark:hover:bg-amber-400/20',
-}
-
-export function ToasterDemo({ isInSidePane = false }: { isInSidePane?: boolean }) {
-  const toast = useToast();
-
-  const showToast = (variant: Variant, position: Position = 'bottom-right') => {
-    toast.show({
-      title: `${variant.charAt(0).toUpperCase() + variant.slice(1)} Notification`,
-      message: `This is a ${variant} toast notification.`,
-      variant,
-      position,
-      duration: 3000,
-      onDismiss: () =>
-        console.log(`${variant} toast at ${position} dismissed`),
-    });
-  };
-
-  const simulateApiCall = async () => {
-    toast.show({
-      title: 'Scheduling...',
-      message: 'Please wait while we schedule your meeting.',
-      variant: 'default',
-      position: 'bottom-right',
-    });
-
-    try {
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-
-      toast.show({
-        title: 'Meeting Scheduled',
-        message: 'Your meeting is scheduled for July 4, 2025, at 3:42 PM IST.',
-        variant: 'success',
-        position: 'bottom-right',
-        highlightTitle: true,
-        actions: {
-          label: 'Undo',
-          onClick: () => console.log('Undoing meeting schedule'),
-          variant: 'outline',
-        },
-      });
-    } catch (error) {
-      toast.show({
-        title: 'Error Scheduling Meeting',
-        message: 'Failed to schedule the meeting. Please try again.',
-        variant: 'error',
-        position: 'bottom-right',
-      });
-    }
-  };
-
-  return (
-    <div className={cn("overflow-y-auto p-6 lg:px-12 space-y-8", !isInSidePane && "h-full")}>
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Toaster</h1>
-          <p className="text-muted-foreground">
-            A customizable toast component for notifications.
-          </p>
-        </div>
-      </div>
-
-      <div className="space-y-6">
-        <div className="space-y-6">
-          <section>
-            <h2 className="text-lg font-semibold mb-2">Toast Variants</h2>
-            <div className="flex flex-wrap gap-4">
-              {(['default', 'success', 'error', 'warning'] as Variant[]).map((variantKey) => (
-                <Button
-                  key={variantKey}
-                  variant="outline"
-                  onClick={() => showToast(variantKey as Variant)}
-                  className={cn(variantColors[variantKey])}
-                >
-                  {variantKey.charAt(0).toUpperCase() + variantKey.slice(1)} Toast
-                </Button>
-              ))}
-            </div>
-          </section>
-
-          <section>
-            <h2 className="text-lg font-semibold mb-2">Toast Positions</h2>
-            <div className="flex flex-wrap gap-4">
-              {[
-                'top-left',
-                'top-center',
-                'top-right',
-                'bottom-left',
-                'bottom-center',
-                'bottom-right',
-              ].map((positionKey) => (
-                <Button
-                  key={positionKey}
-                  variant="outline"
-                  onClick={() =>
-                    showToast('default', positionKey as Position)
-                  }
-                  className="border-border text-foreground hover:bg-muted/10 dark:hover:bg-muted/20"
-                >
-                  {positionKey
-                    .replace('-', ' ')
-                    .replace(/\b\w/g, (char) => char.toUpperCase())}
-                </Button>
-              ))}
-            </div>
-          </section>
-
-          <section>
-            <h2 className="text-lg font-semibold mb-2">Real‑World Example</h2>
-            <Button
-              variant="outline"
-              onClick={simulateApiCall}
-              className="border-border text-foreground hover:bg-muted/10 dark:hover:bg-muted/20"
-            >
-              Schedule Meeting
-            </Button>
-          </section>
-        </div>
-      </div>
-    </div>
-  );
-}
-```
-
 ## File: src/App.tsx
 ```typescript
 import { AppShell } from './components/AppShell'
@@ -1678,545 +1758,12 @@ export default defineConfig({
 })
 ```
 
-## File: src/components/DemoContent.tsx
-```typescript
-import { useRef, useEffect } from 'react'
-import { gsap } from 'gsap'
-import { 
-  Sparkles, 
-  Zap, 
-  Rocket, 
-  Star, 
-  Heart,
-  Layers,
-  Code,
-  Palette,
-  Smartphone,
-  Monitor,
-  Settings
-} from 'lucide-react'
-import { cn } from '@/lib/utils'
-import { useAppStore } from '@/store/appStore'
-
-export function DemoContent() {
-  const { bodyState, sidebarState, isDarkMode, compactMode } = useAppStore()
-  const contentRef = useRef<HTMLDivElement>(null)
-  const cardsRef = useRef<(HTMLDivElement | null)[]>([])
-
-  useEffect(() => {
-    if (!contentRef.current) return
-
-    const cards = cardsRef.current.filter(Boolean)
-    
-    // Animate cards on mount
-    gsap.fromTo(cards, 
-      { y: 30, opacity: 0, scale: 0.95 },
-      { 
-        y: 0, 
-        opacity: 1, 
-        scale: 1,
-        duration: 0.6,
-        stagger: 0.1,
-        ease: "power3.out"
-      }
-    )
-  }, [])
-
-  const features = [
-    {
-      icon: <Sparkles className="w-6 h-6" />,
-      title: "Amazing Animations",
-      description: "Powered by GSAP for smooth, buttery animations",
-      color: "from-emerald-500 to-teal-500"
-    },
-    {
-      icon: <Zap className="w-6 h-6" />,
-      title: "Lightning Fast",
-      description: "Built with Vite and optimized for performance",
-      color: "from-amber-500 to-orange-500"
-    },
-    {
-      icon: <Layers className="w-6 h-6" />,
-      title: "Multiple States",
-      description: "Fullscreen, side pane, and normal viewing modes",
-      color: "from-emerald-500 to-green-500"
-    },
-    {
-      icon: <Code className="w-6 h-6" />,
-      title: "TypeScript",
-      description: "Fully typed with excellent developer experience",
-      color: "from-green-500 to-emerald-500"
-    },
-    {
-      icon: <Palette className="w-6 h-6" />,
-      title: "Beautiful Design",
-      description: "Shadcn/ui components with Tailwind CSS",
-      color: "from-teal-500 to-emerald-500"
-    },
-    {
-      icon: <Settings className="w-6 h-6" />,
-      title: "Customizable",
-      description: "Extensive settings and preferences panel",
-      color: "from-slate-500 to-gray-500"
-    }
-  ]
-
-  const stats = [
-    { label: "Components", value: "12+", color: "text-emerald-600" },
-    { label: "Animations", value: "25+", color: "text-teal-600" },
-    { label: "States", value: "7", color: "text-primary" },
-    { label: "Settings", value: "10+", color: "text-amber-600" }
-  ]
-
-  return (
-    <div ref={contentRef} className="p-8 space-y-12">
-      {/* Hero Section */}
-      <div className="text-center space-y-4">
-        <div className="flex items-center justify-center gap-2 mb-4">
-          <Rocket className="w-8 h-8 text-primary" />
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-            Amazing App Shell
-          </h1>
-        </div>
-        <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-          A super amazing application shell with resizable sidebar, multiple body states, 
-          smooth animations, and comprehensive settings - all built with modern web technologies.
-        </p>
-        
-        {/* Quick Stats */}
-        <div className="flex items-center justify-center gap-12 mt-8">
-          {stats.map((stat) => (
-            <div key={stat.label} className="text-center">
-              <div className={cn("text-2xl font-bold", stat.color)}>{stat.value}</div>
-              <div className="text-sm text-muted-foreground">{stat.label}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Feature Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {features.map((feature, index) => (
-          <div
-            key={feature.title}
-            ref={el => cardsRef.current[index] = el}
-            className="group relative overflow-hidden rounded-2xl bg-card border border-border/50 p-6 hover:border-primary/30 hover:bg-accent/30 transition-all duration-300 cursor-pointer"
-          >
-            <div className="relative z-10">
-              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-4 group-hover:scale-110 group-hover:bg-primary/20 transition-transform">
-                {feature.icon}
-              </div>
-              
-              <h3 className="text-lg font-semibold mb-2">{feature.title}</h3>
-              <p className="text-muted-foreground text-sm">{feature.description}</p>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Technology Stack */}
-      <div className="bg-card border border-border/50 rounded-2xl p-6">
-        <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
-          <Star className="w-6 h-6 text-yellow-500" />
-          Technology Stack
-        </h2>
-        
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {[
-            { name: "React 18", desc: "Latest React with hooks" },
-            { name: "TypeScript", desc: "Type-safe development" },
-            { name: "Vite", desc: "Lightning fast build tool" },
-            { name: "Tailwind CSS", desc: "Utility-first styling" },
-            { name: "GSAP", desc: "Professional animations" },
-            { name: "Zustand", desc: "Lightweight state management" },
-            { name: "Shadcn/ui", desc: "Beautiful components" },
-            { name: "Lucide Icons", desc: "Consistent iconography" }
-          ].map((tech) => (
-            <div key={tech.name} className="bg-background rounded-xl p-4 border border-border/50">
-              <h4 className="font-medium">{tech.name}</h4>
-              <p className="text-sm text-muted-foreground">{tech.desc}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Current State Display */}
-      <div className="bg-card border border-border/50 rounded-2xl p-6">
-        <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-          <Monitor className="w-5 h-5" />
-          Current App State
-        </h2>
-        
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="text-center p-3 bg-background rounded-xl">
-            <div className="text-sm text-muted-foreground">Sidebar</div>
-            <div className="font-medium capitalize">{sidebarState}</div>
-          </div>
-          <div className="text-center p-3 bg-background rounded-xl">
-            <div className="text-sm text-muted-foreground">Body State</div>
-            <div className="font-medium capitalize">{bodyState.replace('_', ' ')}</div>
-          </div>
-          <div className="text-center p-3 bg-background rounded-xl">
-            <div className="text-sm text-muted-foreground">Theme</div>
-            <div className="font-medium">{isDarkMode ? 'Dark' : 'Light'}</div>
-          </div>
-          <div className="text-center p-3 bg-background rounded-xl">
-            <div className="text-sm text-muted-foreground">Mode</div>
-            <div className="font-medium">{compactMode ? 'Compact' : 'Normal'}</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Interactive Demo */}
-      <div className="text-center space-y-4">
-        <h2 className="text-2xl font-bold flex items-center justify-center gap-2">
-          <Heart className="w-6 h-6 text-red-500" />
-          Try It Out!
-        </h2>
-        <p className="text-muted-foreground">
-          Use the controls in the top bar to explore different states, toggle the sidebar, 
-          or open settings to customize the experience. The sidebar is resizable by dragging the edge!
-        </p>
-        
-        <div className="flex items-center justify-center gap-4 pt-4">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Smartphone className="w-4 h-4" />
-            <span>Responsive</span>
-          </div>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Zap className="w-4 h-4" />
-            <span>Fast</span>
-          </div>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Star className="w-4 h-4" />
-            <span>Beautiful</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-```
-
 ## File: src/components/index.ts
 ```typescript
 export { AppShell } from './AppShell'
 export { TopBar } from './TopBar'
 export { MainContent } from './MainContent'
 export { RightPane } from './RightPane'
-```
-
-## File: src/components/SettingsContent.tsx
-```typescript
-import { useState } from 'react'
-import { 
-  Moon, 
-  Sun, 
-  Zap, 
-  Eye, 
-  Minimize2, 
-  RotateCcw,
-  Monitor,
-  Smartphone,
-  Palette,
-  Accessibility,
-  Check
-} from 'lucide-react'
-import { cn } from '@/lib/utils'
-import { useAppStore } from '@/store/appStore'
-
-const colorPresets = [
-  { name: 'Default Blue', value: '220 84% 60%' },
-  { name: 'Rose', value: '346.8 77.2% 49.8%' },
-  { name: 'Green', value: '142.1 76.2% 36.3%' },
-  { name: 'Orange', value: '24.6 95% 53.1%' },
-  { name: 'Violet', value: '262.1 83.3% 57.8%' },
-  { name: 'Slate', value: '215.3 20.3% 65.1%' }
-]
-
-export function SettingsContent() {
-  const {
-    isDarkMode,
-    reducedMotion,
-    compactMode,
-    autoExpandSidebar,
-    sidebarWidth,
-    primaryColor,
-    toggleDarkMode,
-    setReducedMotion,
-    setCompactMode,
-    setAutoExpandSidebar,
-    setPrimaryColor,
-    setSidebarWidth,
-    resetToDefaults
-  } = useAppStore()
-
-  const [tempSidebarWidth, setTempSidebarWidth] = useState(sidebarWidth)
-
-  const handleSidebarWidthChange = (width: number) => {
-    setTempSidebarWidth(width)
-    setSidebarWidth(width)
-  }
-
-  return (
-    <div className="space-y-10">
-      {/* Appearance */}
-      <div className="space-y-4">
-        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-          <Palette className="w-4 h-4" />
-          Appearance
-        </h3>
-        
-        {/* Dark Mode */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            {isDarkMode ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
-            <div>
-              <p className="font-medium">Dark Mode</p>
-              <p className="text-sm text-muted-foreground">Toggle dark theme</p>
-            </div>
-          </div>
-          <button
-            onClick={toggleDarkMode}
-            className={cn(
-              "relative inline-flex h-7 w-12 items-center rounded-full transition-colors",
-              isDarkMode ? "bg-primary" : "bg-muted"
-            )}
-          >
-            <span
-              className={cn(
-                "inline-block h-5 w-5 transform rounded-full bg-background transition-transform",
-                isDarkMode ? "translate-x-6" : "translate-x-1"
-              )}
-            />
-          </button>
-        </div>
-
-        {/* Compact Mode */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Minimize2 className="w-4 h-4" />
-            <div>
-              <p className="font-medium">Compact Mode</p>
-              <p className="text-sm text-muted-foreground">Reduce spacing and sizes</p>
-            </div>
-          </div>
-          <button
-            onClick={() => setCompactMode(!compactMode)}
-            className={cn(
-              "relative inline-flex h-7 w-12 items-center rounded-full transition-colors",
-              compactMode ? "bg-primary" : "bg-muted"
-            )}
-          >
-            <span
-              className={cn(
-                "inline-block h-5 w-5 transform rounded-full bg-background transition-transform",
-                compactMode ? "translate-x-6" : "translate-x-1"
-              )}
-            />
-          </button>
-        </div>
-
-        {/* Accent Color */}
-        <div className="space-y-3">
-          <div className="flex items-center gap-3">
-            <Palette className="w-4 h-4" />
-            <div>
-              <p className="font-medium">Accent Color</p>
-              <p className="text-sm text-muted-foreground">Customize the main theme color</p>
-            </div>
-          </div>
-          <div className="grid grid-cols-6 gap-2 pt-1">
-            {colorPresets.map(color => {
-              const isActive = color.value === primaryColor
-              return (
-                <button
-                  key={color.name}
-                  title={color.name}
-                  onClick={() => setPrimaryColor(color.value)}
-                  className={cn(
-                    "w-8 h-8 rounded-full border-2 transition-transform hover:scale-110 flex items-center justify-center",
-                    isActive ? 'border-primary' : 'border-transparent'
-                  )}
-                  style={{ backgroundColor: `hsl(${color.value})` }}
-                >{isActive && <Check className="w-5 h-5 text-primary-foreground" />}</button>
-              )
-            })}
-          </div>
-        </div>
-      </div>
-
-      {/* Behavior */}
-      <div className="space-y-4">
-        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-          <Zap className="w-4 h-4" />
-          Behavior
-        </h3>
-
-        {/* Auto Expand Sidebar */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Eye className="w-4 h-4" />
-            <div>
-              <p className="font-medium">Auto Expand Sidebar</p>
-              <p className="text-sm text-muted-foreground">Expand on hover when collapsed</p>
-            </div>
-          </div>
-          <button
-            onClick={() => setAutoExpandSidebar(!autoExpandSidebar)}
-            className={cn(
-              "relative inline-flex h-7 w-12 items-center rounded-full transition-colors",
-              autoExpandSidebar ? "bg-primary" : "bg-muted"
-            )}
-          >
-            <span
-              className={cn(
-                "inline-block h-5 w-5 transform rounded-full bg-background transition-transform",
-                autoExpandSidebar ? "translate-x-6" : "translate-x-1"
-              )}
-            />
-          </button>
-        </div>
-
-        {/* Sidebar Width */}
-        <div className="space-y-3">
-          <div className="flex items-center gap-3">
-            <Monitor className="w-4 h-4" />
-            <div>
-              <p className="font-medium">Sidebar Width</p>
-              <p className="text-sm text-muted-foreground">{tempSidebarWidth}px</p>
-            </div>
-          </div>
-          <div className="space-y-2">
-            <input
-              type="range"
-              min="200"
-              max="500"
-              step="10"
-              value={tempSidebarWidth}
-              onChange={(e) => handleSidebarWidthChange(Number(e.target.value))}
-              className="w-full h-1.5 bg-muted rounded-lg appearance-none cursor-pointer slider"
-            />
-            <div className="flex justify-between text-xs text-muted-foreground">
-              <span>200px</span>
-              <span>350px</span>
-              <span>500px</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Accessibility */}
-      <div className="space-y-4">
-        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-          <Accessibility className="w-4 h-4" />
-          Accessibility
-        </h3>
-
-        {/* Reduced Motion */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Zap className="w-4 h-4" />
-            <div>
-              <p className="font-medium">Reduced Motion</p>
-              <p className="text-sm text-muted-foreground">Minimize animations</p>
-            </div>
-          </div>
-          <button
-            onClick={() => setReducedMotion(!reducedMotion)}
-            className={cn(
-              "relative inline-flex h-7 w-12 items-center rounded-full transition-colors",
-              reducedMotion ? "bg-primary" : "bg-muted"
-            )}
-          >
-            <span
-              className={cn(
-                "inline-block h-5 w-5 transform rounded-full bg-background transition-transform",
-                reducedMotion ? "translate-x-6" : "translate-x-1"
-              )}
-            />
-          </button>
-        </div>
-      </div>
-
-      {/* Presets */}
-      <div className="space-y-4">
-        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-          Quick Presets
-        </h3>
-        
-        <div className="grid grid-cols-2 gap-3">
-          <button 
-            onClick={() => {
-              setCompactMode(false)
-              setReducedMotion(false)
-              setSidebarWidth(320)
-            }}
-            className="p-4 bg-accent/30 hover:bg-accent/50 rounded-xl transition-colors text-left"
-          >
-            <Monitor className="w-4 h-4 mb-2" />
-            <p className="font-medium text-sm">Desktop</p>
-            <p className="text-xs text-muted-foreground">Spacious layout</p>
-          </button>
-          
-          <button 
-            onClick={() => {
-              setCompactMode(true)
-              setReducedMotion(true)
-              setSidebarWidth(240)
-            }}
-            className="p-4 bg-accent/30 hover:bg-accent/50 rounded-xl transition-colors text-left"
-          >
-            <Smartphone className="w-4 h-4 mb-2" />
-            <p className="font-medium text-sm">Mobile</p>
-            <p className="text-xs text-muted-foreground">Compact layout</p>
-          </button>
-        </div>
-      </div>
-      <div className="pt-6 border-t border-border">
-        <button
-          onClick={resetToDefaults}
-          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-destructive/10 text-destructive hover:bg-destructive/20 rounded-lg transition-colors"
-        >
-          <RotateCcw className="w-4 h-4" />
-          Reset to Defaults
-        </button>
-      </div>
-    </div>
-  )
-}
-
-// Custom slider styles
-const sliderStyles = `
-.slider::-webkit-slider-thumb {
-  appearance: none;
-  height: 18px;
-  width: 18px;
-  border-radius: 50%;
-  background: hsl(var(--primary));
-  cursor: pointer;
-  border: 3px solid hsl(var(--background));
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  margin-top: -7px;
-}
-
-.slider::-moz-range-thumb {
-  height: 18px;
-  width: 18px;
-  border-radius: 50%;
-  background: hsl(var(--primary));
-  cursor: pointer;
-  border: 3px solid hsl(var(--background));
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-`
-
-// Inject styles
-if (typeof document !== 'undefined') {
-  const styleSheet = document.createElement('style')
-  styleSheet.textContent = sliderStyles
-  document.head.appendChild(styleSheet)
-}
 ```
 
 ## File: src/components/Sidebar.tsx
@@ -2573,6 +2120,153 @@ export {
 };
 ```
 
+## File: src/components/ToasterDemo.tsx
+```typescript
+import { Button } from '@/components/ui/button';
+import { useToast } from '@/components/ui/toast';
+import { PageHeader } from '@/components/PageHeader';
+import { cn } from '@/lib/utils';
+
+type Variant = 'default' | 'success' | 'error' | 'warning';
+type Position =
+  | 'top-left'
+  | 'top-center'
+  | 'top-right'
+  | 'bottom-left'
+  | 'bottom-center'
+  | 'bottom-right';
+
+const variantColors = {
+  default: 'border-border text-foreground hover:bg-muted/10 dark:hover:bg-muted/20',
+  success: 'border-green-600 text-green-600 hover:bg-green-600/10 dark:hover:bg-green-400/20',
+  error: 'border-destructive text-destructive hover:bg-destructive/10 dark:hover:bg-destructive/20',
+  warning: 'border-amber-600 text-amber-600 hover:bg-amber-600/10 dark:hover:bg-amber-400/20',
+}
+
+const DemoSection: React.FC<{ title: string; children: React.ReactNode }> = ({
+  title,
+  children,
+}) => (
+  <section>
+    <h2 className="text-lg font-semibold mb-2">{title}</h2>
+    {children}
+  </section>
+);
+
+export function ToasterDemo({ isInSidePane = false }: { isInSidePane?: boolean }) {
+  const toast = useToast();
+
+  const showToast = (variant: Variant, position: Position = 'bottom-right') => {
+    toast.show({
+      title: `${variant.charAt(0).toUpperCase() + variant.slice(1)} Notification`,
+      message: `This is a ${variant} toast notification.`,
+      variant,
+      position,
+      duration: 3000,
+      onDismiss: () =>
+        console.log(`${variant} toast at ${position} dismissed`),
+    });
+  };
+
+  const simulateApiCall = async () => {
+    toast.show({
+      title: 'Scheduling...',
+      message: 'Please wait while we schedule your meeting.',
+      variant: 'default',
+      position: 'bottom-right',
+    });
+
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+
+      toast.show({
+        title: 'Meeting Scheduled',
+        message: 'Your meeting is scheduled for July 4, 2025, at 3:42 PM IST.',
+        variant: 'success',
+        position: 'bottom-right',
+        highlightTitle: true,
+        actions: {
+          label: 'Undo',
+          onClick: () => console.log('Undoing meeting schedule'),
+          variant: 'outline',
+        },
+      });
+    } catch (error) {
+      toast.show({
+        title: 'Error Scheduling Meeting',
+        message: 'Failed to schedule the meeting. Please try again.',
+        variant: 'error',
+        position: 'bottom-right',
+      });
+    }
+  };
+
+  return (
+    <div className={cn("overflow-y-auto p-6 lg:px-12 space-y-8", !isInSidePane && "h-full")}>
+      {/* Header */}
+      <PageHeader
+        title="Toaster"
+        description="A customizable toast component for notifications."
+      />
+      <div className="space-y-6">
+        <div className="space-y-6">
+          <DemoSection title="Toast Variants">
+            <div className="flex flex-wrap gap-4">
+              {(['default', 'success', 'error', 'warning'] as Variant[]).map((variantKey) => (
+                <Button
+                  key={variantKey}
+                  variant="outline"
+                  onClick={() => showToast(variantKey as Variant)}
+                  className={cn(variantColors[variantKey])}
+                >
+                  {variantKey.charAt(0).toUpperCase() + variantKey.slice(1)} Toast
+                </Button>
+              ))}
+            </div>
+          </DemoSection>
+
+          <DemoSection title="Toast Positions">
+            <div className="flex flex-wrap gap-4">
+              {[
+                'top-left',
+                'top-center',
+                'top-right',
+                'bottom-left',
+                'bottom-center',
+                'bottom-right',
+              ].map((positionKey) => (
+                <Button
+                  key={positionKey}
+                  variant="outline"
+                  onClick={() =>
+                    showToast('default', positionKey as Position)
+                  }
+                  className="border-border text-foreground hover:bg-muted/10 dark:hover:bg-muted/20"
+                >
+                  {positionKey
+                    .replace('-', ' ')
+                    .replace(/\b\w/g, (char) => char.toUpperCase())}
+                </Button>
+              ))}
+            </div>
+          </DemoSection>
+
+          <DemoSection title="Real-World Example">
+            <Button
+              variant="outline"
+              onClick={simulateApiCall}
+              className="border-border text-foreground hover:bg-muted/10 dark:hover:bg-muted/20"
+            >
+              Schedule Meeting
+            </Button>
+          </DemoSection>
+        </div>
+      </div>
+    </div>
+  );
+}
+```
+
 ## File: src/components/WorkspaceSwitcher.tsx
 ```typescript
 import * as React from 'react';
@@ -2890,6 +2584,463 @@ function WorkspaceContent({
 export { WorkspaceProvider as Workspaces, WorkspaceTrigger, WorkspaceContent };
 ```
 
+## File: src/components/DemoContent.tsx
+```typescript
+import { useRef, useEffect } from 'react'
+import { gsap } from 'gsap'
+import { 
+  Sparkles, 
+  Zap, 
+  Rocket, 
+  Star, 
+  Heart,
+  Layers,
+  Code,
+  Palette,
+  Smartphone,
+  Monitor,
+  Settings
+} from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { useAppStore } from '@/store/appStore'
+import { Card } from '@/components/ui/card'
+
+export function DemoContent() {
+  const { bodyState, sidebarState, isDarkMode, compactMode } = useAppStore()
+  const contentRef = useRef<HTMLDivElement>(null)
+  const cardsRef = useRef<(HTMLDivElement | null)[]>([])
+
+  useEffect(() => {
+    if (!contentRef.current) return
+
+    const cards = cardsRef.current.filter(Boolean)
+    
+    // Animate cards on mount
+    gsap.fromTo(cards, 
+      { y: 30, opacity: 0, scale: 0.95 },
+      { 
+        y: 0, 
+        opacity: 1, 
+        scale: 1,
+        duration: 0.6,
+        stagger: 0.1,
+        ease: "power3.out"
+      }
+    )
+  }, [])
+
+  const features = [
+    {
+      icon: <Sparkles className="w-6 h-6" />,
+      title: "Amazing Animations",
+      description: "Powered by GSAP for smooth, buttery animations",
+      color: "from-emerald-500 to-teal-500"
+    },
+    {
+      icon: <Zap className="w-6 h-6" />,
+      title: "Lightning Fast",
+      description: "Built with Vite and optimized for performance",
+      color: "from-amber-500 to-orange-500"
+    },
+    {
+      icon: <Layers className="w-6 h-6" />,
+      title: "Multiple States",
+      description: "Fullscreen, side pane, and normal viewing modes",
+      color: "from-emerald-500 to-green-500"
+    },
+    {
+      icon: <Code className="w-6 h-6" />,
+      title: "TypeScript",
+      description: "Fully typed with excellent developer experience",
+      color: "from-green-500 to-emerald-500"
+    },
+    {
+      icon: <Palette className="w-6 h-6" />,
+      title: "Beautiful Design",
+      description: "Shadcn/ui components with Tailwind CSS",
+      color: "from-teal-500 to-emerald-500"
+    },
+    {
+      icon: <Settings className="w-6 h-6" />,
+      title: "Customizable",
+      description: "Extensive settings and preferences panel",
+      color: "from-slate-500 to-gray-500"
+    }
+  ]
+
+  const stats = [
+    { label: "Components", value: "12+", color: "text-emerald-600" },
+    { label: "Animations", value: "25+", color: "text-teal-600" },
+    { label: "States", value: "7", color: "text-primary" },
+    { label: "Settings", value: "10+", color: "text-amber-600" }
+  ]
+
+  return (
+    <div ref={contentRef} className="p-8 space-y-12">
+      {/* Hero Section */}
+      <div className="text-center space-y-4">
+        <div className="flex items-center justify-center gap-2 mb-4">
+          <Rocket className="w-8 h-8 text-primary" />
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+            Amazing App Shell
+          </h1>
+        </div>
+        <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+          A super amazing application shell with resizable sidebar, multiple body states, 
+          smooth animations, and comprehensive settings - all built with modern web technologies.
+        </p>
+        
+        {/* Quick Stats */}
+        <div className="flex items-center justify-center gap-12 mt-8">
+          {stats.map((stat) => (
+            <div key={stat.label} className="text-center">
+              <div className={cn("text-2xl font-bold", stat.color)}>{stat.value}</div>
+              <div className="text-sm text-muted-foreground">{stat.label}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Feature Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {features.map((feature, index) => (
+          <Card
+            key={feature.title}
+            ref={el => cardsRef.current[index] = el}
+            className="group relative overflow-hidden border-border/50 p-6 hover:border-primary/30 hover:bg-accent/30 transition-all duration-300 cursor-pointer"
+          >
+            <div className="relative z-10">
+              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-4 group-hover:scale-110 group-hover:bg-primary/20 transition-transform">
+                {feature.icon}
+              </div>
+              
+              <h3 className="text-lg font-semibold mb-2">{feature.title}</h3>
+              <p className="text-muted-foreground text-sm">{feature.description}</p>
+            </div>
+          </Card>
+        ))}
+      </div>
+
+      {/* Technology Stack */}
+      <Card className="border-border/50 p-6">
+        <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
+          <Star className="w-6 h-6 text-yellow-500" />
+          Technology Stack
+        </h2>
+        
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[
+            { name: "React 18", desc: "Latest React with hooks" },
+            { name: "TypeScript", desc: "Type-safe development" },
+            { name: "Vite", desc: "Lightning fast build tool" },
+            { name: "Tailwind CSS", desc: "Utility-first styling" },
+            { name: "GSAP", desc: "Professional animations" },
+            { name: "Zustand", desc: "Lightweight state management" },
+            { name: "Shadcn/ui", desc: "Beautiful components" },
+            { name: "Lucide Icons", desc: "Consistent iconography" }
+          ].map((tech) => (
+            <div key={tech.name} className="bg-background rounded-xl p-4 border border-border/50">
+              <h4 className="font-medium">{tech.name}</h4>
+              <p className="text-sm text-muted-foreground">{tech.desc}</p>
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      {/* Current State Display */}
+      <Card className="border-border/50 p-6">
+        <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+          <Monitor className="w-5 h-5" />
+          Current App State
+        </h2>
+        
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="text-center p-3 bg-background rounded-xl">
+            <div className="text-sm text-muted-foreground">Sidebar</div>
+            <div className="font-medium capitalize">{sidebarState}</div>
+          </div>
+          <div className="text-center p-3 bg-background rounded-xl">
+            <div className="text-sm text-muted-foreground">Body State</div>
+            <div className="font-medium capitalize">{bodyState.replace('_', ' ')}</div>
+          </div>
+          <div className="text-center p-3 bg-background rounded-xl">
+            <div className="text-sm text-muted-foreground">Theme</div>
+            <div className="font-medium">{isDarkMode ? 'Dark' : 'Light'}</div>
+          </div>
+          <div className="text-center p-3 bg-background rounded-xl">
+            <div className="text-sm text-muted-foreground">Mode</div>
+            <div className="font-medium">{compactMode ? 'Compact' : 'Normal'}</div>
+          </div>
+        </div>
+      </Card>
+
+      {/* Interactive Demo */}
+      <div className="text-center space-y-4">
+        <h2 className="text-2xl font-bold flex items-center justify-center gap-2">
+          <Heart className="w-6 h-6 text-red-500" />
+          Try It Out!
+        </h2>
+        <p className="text-muted-foreground">
+          Use the controls in the top bar to explore different states, toggle the sidebar, 
+          or open settings to customize the experience. The sidebar is resizable by dragging the edge!
+        </p>
+        
+        <div className="flex items-center justify-center gap-4 pt-4">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Smartphone className="w-4 h-4" />
+            <span>Responsive</span>
+          </div>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Zap className="w-4 h-4" />
+            <span>Fast</span>
+          </div>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Star className="w-4 h-4" />
+            <span>Beautiful</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+```
+
+## File: src/components/SettingsContent.tsx
+```typescript
+import { useState } from 'react'
+import { 
+  Moon, 
+  Sun, 
+  Zap, 
+  Eye, 
+  Minimize2, 
+  RotateCcw,
+  Monitor,
+  Smartphone,
+  Palette,
+  Accessibility,
+  Check
+} from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { useAppStore } from '@/store/appStore'
+import { SettingsToggle } from './SettingsToggle'
+import { SettingsSection } from './SettingsSection'
+
+const colorPresets = [
+  { name: 'Default Blue', value: '220 84% 60%' },
+  { name: 'Rose', value: '346.8 77.2% 49.8%' },
+  { name: 'Green', value: '142.1 76.2% 36.3%' },
+  { name: 'Orange', value: '24.6 95% 53.1%' },
+  { name: 'Violet', value: '262.1 83.3% 57.8%' },
+  { name: 'Slate', value: '215.3 20.3% 65.1%' }
+]
+
+export function SettingsContent() {
+  const {
+    isDarkMode,
+    reducedMotion,
+    compactMode,
+    autoExpandSidebar,
+    sidebarWidth,
+    primaryColor,
+    toggleDarkMode,
+    setReducedMotion,
+    setCompactMode,
+    setAutoExpandSidebar,
+    setPrimaryColor,
+    setSidebarWidth,
+    resetToDefaults
+  } = useAppStore()
+
+  const [tempSidebarWidth, setTempSidebarWidth] = useState(sidebarWidth)
+
+  const handleSidebarWidthChange = (width: number) => {
+    setTempSidebarWidth(width)
+    setSidebarWidth(width)
+  }
+
+  return (
+    <div className="space-y-10">
+      {/* Appearance */}
+      <SettingsSection icon={<Palette />} title="Appearance">
+        {/* Dark Mode */}
+        <SettingsToggle
+          icon={isDarkMode ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+          title="Dark Mode"
+          description="Toggle dark theme"
+          checked={isDarkMode}
+          onCheckedChange={toggleDarkMode}
+        />
+
+        {/* Compact Mode */}
+        <SettingsToggle
+          icon={<Minimize2 className="w-4 h-4" />}
+          title="Compact Mode"
+          description="Reduce spacing and sizes"
+          checked={compactMode}
+          onCheckedChange={setCompactMode}
+        />
+
+        {/* Accent Color */}
+        <div className="space-y-3">
+          <div className="flex items-center gap-3">
+            <Palette className="w-4 h-4" />
+            <div>
+              <p className="font-medium">Accent Color</p>
+              <p className="text-sm text-muted-foreground">Customize the main theme color</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-6 gap-2 pt-1">
+            {colorPresets.map(color => {
+              const isActive = color.value === primaryColor
+              return (
+                <button
+                  key={color.name}
+                  title={color.name}
+                  onClick={() => setPrimaryColor(color.value)}
+                  className={cn(
+                    "w-8 h-8 rounded-full border-2 transition-transform hover:scale-110 flex items-center justify-center",
+                    isActive ? 'border-primary' : 'border-transparent'
+                  )}
+                  style={{ backgroundColor: `hsl(${color.value})` }}
+                >{isActive && <Check className="w-5 h-5 text-primary-foreground" />}</button>
+              )
+            })}
+          </div>
+        </div>
+      </SettingsSection>
+
+      {/* Behavior */}
+      <SettingsSection icon={<Zap />} title="Behavior">
+        {/* Auto Expand Sidebar */}
+        <SettingsToggle
+          icon={<Eye className="w-4 h-4" />}
+          title="Auto Expand Sidebar"
+          description="Expand on hover when collapsed"
+          checked={autoExpandSidebar}
+          onCheckedChange={setAutoExpandSidebar}
+        />
+
+        {/* Sidebar Width */}
+        <div className="space-y-3">
+          <div className="flex items-center gap-3">
+            <Monitor className="w-4 h-4" />
+            <div>
+              <p className="font-medium">Sidebar Width</p>
+              <p className="text-sm text-muted-foreground">{tempSidebarWidth}px</p>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <input
+              type="range"
+              min="200"
+              max="500"
+              step="10"
+              value={tempSidebarWidth}
+              onChange={(e) => handleSidebarWidthChange(Number(e.target.value))}
+              className="w-full h-1.5 bg-muted rounded-lg appearance-none cursor-pointer slider"
+            />
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <span>200px</span>
+              <span>350px</span>
+              <span>500px</span>
+            </div>
+          </div>
+        </div>
+      </SettingsSection>
+
+      {/* Accessibility */}
+      <SettingsSection icon={<Accessibility />} title="Accessibility">
+        {/* Reduced Motion */}
+        <SettingsToggle
+          icon={<Zap className="w-4 h-4" />}
+          title="Reduced Motion"
+          description="Minimize animations"
+          checked={reducedMotion}
+          onCheckedChange={setReducedMotion}
+        />
+      </SettingsSection>
+
+      {/* Presets */}
+      <div className="space-y-4">
+        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+          Quick Presets
+        </h3>
+        
+        <div className="grid grid-cols-2 gap-3">
+          <button 
+            onClick={() => {
+              setCompactMode(false)
+              setReducedMotion(false)
+              setSidebarWidth(320)
+            }}
+            className="p-4 bg-accent/30 hover:bg-accent/50 rounded-xl transition-colors text-left"
+          >
+            <Monitor className="w-4 h-4 mb-2" />
+            <p className="font-medium text-sm">Desktop</p>
+            <p className="text-xs text-muted-foreground">Spacious layout</p>
+          </button>
+          
+          <button 
+            onClick={() => {
+              setCompactMode(true)
+              setReducedMotion(true)
+              setSidebarWidth(240)
+            }}
+            className="p-4 bg-accent/30 hover:bg-accent/50 rounded-xl transition-colors text-left"
+          >
+            <Smartphone className="w-4 h-4 mb-2" />
+            <p className="font-medium text-sm">Mobile</p>
+            <p className="text-xs text-muted-foreground">Compact layout</p>
+          </button>
+        </div>
+      </div>
+      <div className="pt-6 border-t border-border">
+        <button
+          onClick={resetToDefaults}
+          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-destructive/10 text-destructive hover:bg-destructive/20 rounded-lg transition-colors"
+        >
+          <RotateCcw className="w-4 h-4" />
+          Reset to Defaults
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// Custom slider styles
+const sliderStyles = `
+.slider::-webkit-slider-thumb {
+  appearance: none;
+  height: 18px;
+  width: 18px;
+  border-radius: 50%;
+  background: hsl(var(--primary));
+  cursor: pointer;
+  border: 3px solid hsl(var(--background));
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  margin-top: -7px;
+}
+
+.slider::-moz-range-thumb {
+  height: 18px;
+  width: 18px;
+  border-radius: 50%;
+  background: hsl(var(--primary));
+  cursor: pointer;
+  border: 3px solid hsl(var(--background));
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+`
+
+// Inject styles
+if (typeof document !== 'undefined') {
+  const styleSheet = document.createElement('style')
+  styleSheet.textContent = sliderStyles
+  document.head.appendChild(styleSheet)
+}
+```
+
 ## File: src/components/DashboardContent.tsx
 ```typescript
 import { useRef, useEffect, useState } from 'react'
@@ -2914,6 +3065,8 @@ import { DemoContent } from './DemoContent';
 import { useAppStore } from '@/store/appStore';
 import { BODY_STATES } from '@/lib/utils';
 import { useAutoAnimateTopBar } from '@/hooks/useAutoAnimateTopBar';
+import { PageHeader } from './PageHeader';
+import { Card } from '@/components/ui/card';
 
 interface StatsCard {
   title: string
@@ -3084,21 +3237,17 @@ export function DashboardContent({ isInSidePane = false }: DashboardContentProps
           onScroll={handleScroll}
         >
           {/* Header */}
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-              <p className="text-muted-foreground">
-                Welcome to the amazing app shell demo! Explore all the features and customization options.
-              </p>
-            </div>
-          </div>
+          <PageHeader
+            title="Dashboard"
+            description="Welcome to the amazing app shell demo! Explore all the features and customization options."
+          />
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {statsCards.map((stat, index) => (
-                <div
+                <Card
                 key={stat.title}
                 ref={el => cardsRef.current[index] = el}
-                className="bg-card p-6 rounded-2xl border border-border/50 hover:border-primary/30 transition-all duration-300 group cursor-pointer"
+                className="p-6 border-border/50 hover:border-primary/30 transition-all duration-300 group cursor-pointer"
               >
                 <div className="flex items-center justify-between">
                   <div className="p-3 bg-primary/10 rounded-full group-hover:bg-primary/20 transition-colors">
@@ -3115,7 +3264,7 @@ export function DashboardContent({ isInSidePane = false }: DashboardContentProps
                   <h3 className="text-2xl font-bold">{stat.value}</h3>
                   <p className="text-sm text-muted-foreground mt-1">{stat.title}</p>
                 </div>
-              </div>
+              </Card>
               ))}
             </div>
 
@@ -3127,7 +3276,7 @@ export function DashboardContent({ isInSidePane = false }: DashboardContentProps
             {/* Chart Area */}
             <div className="lg:col-span-2 space-y-6">
               {/* Analytics Chart */}
-              <div className="bg-card p-6 rounded-2xl border border-border/50">
+              <Card className="p-6 border-border/50">
                 <div className="flex items-center justify-between mb-6">
                   <h3 className="text-lg font-semibold">Analytics Overview</h3>
                   <button className="h-8 w-8 flex items-center justify-center hover:bg-accent rounded-full transition-colors">
@@ -3142,10 +3291,10 @@ export function DashboardContent({ isInSidePane = false }: DashboardContentProps
                     <p className="text-muted-foreground">Chart visualization would go here</p>
                   </div>
                 </div>
-              </div>
+              </Card>
 
               {/* Recent Projects */}
-              <div className="bg-card p-6 rounded-2xl border border-border/50">
+              <Card className="p-6 border-border/50">
                 <div className="flex items-center justify-between mb-6">
                   <h3 className="text-lg font-semibold">Recent Projects</h3>
                   <button className="text-primary hover:text-primary/80 text-sm font-medium flex items-center gap-1">
@@ -3178,13 +3327,13 @@ export function DashboardContent({ isInSidePane = false }: DashboardContentProps
                     </div>
                   ))}
                 </div>
-              </div>
+              </Card>
             </div>
 
             {/* Sidebar Content */}
             <div className="space-y-6">
               {/* Quick Actions */}
-              <div className="bg-card p-6 rounded-2xl border border-border/50">
+              <Card className="p-6 border-border/50">
                 <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
                 <div className="space-y-3">
                   {[
@@ -3204,10 +3353,10 @@ export function DashboardContent({ isInSidePane = false }: DashboardContentProps
                     </button>
                   ))}
                 </div>
-              </div>
+              </Card>
 
               {/* Recent Activity */}
-              <div className="bg-card p-6 rounded-2xl border border-border/50">
+              <Card className="p-6 border-border/50">
                 <h3 className="text-lg font-semibold mb-4">Recent Activity</h3>
                 <div className="space-y-4">
                   {recentActivity.map((activity) => (
@@ -3229,7 +3378,7 @@ export function DashboardContent({ isInSidePane = false }: DashboardContentProps
                     </div>
                   ))}
                 </div>
-              </div>
+              </Card>
             </div>
           </div>
           {showScrollToBottom && (
@@ -3251,6 +3400,7 @@ export function DashboardContent({ isInSidePane = false }: DashboardContentProps
 ```typescript
 import { SettingsContent } from './SettingsContent';
 import { useAutoAnimateTopBar } from '@/hooks/useAutoAnimateTopBar';
+import { PageHeader } from './PageHeader';
 
 export function SettingsPage() {
   const { onScroll } = useAutoAnimateTopBar();
@@ -3261,15 +3411,10 @@ export function SettingsPage() {
       onScroll={onScroll}
     >
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
-          <p className="text-muted-foreground">
-            Customize your experience. Changes are saved automatically.
-          </p>
-        </div>
-      </div>
-
+      <PageHeader
+        title="Settings"
+        description="Customize your experience. Changes are saved automatically."
+      />
       <SettingsContent />
     </div>
   )
@@ -3772,131 +3917,6 @@ export function AppShell() {
 }
 ```
 
-## File: src/components/MainContent.tsx
-```typescript
-import { forwardRef } from 'react'
-import { 
-  X,
-  LayoutDashboard,
-  ChevronsLeftRight,
-  Settings,
-  Component,
-} from 'lucide-react'
-import { cn } from '@/lib/utils'
-import { BODY_STATES, type BodyState } from '@/lib/utils'
-import { DashboardContent } from './DashboardContent'
-import { SettingsPage } from './SettingsPage'
-import { ToasterDemo } from './ToasterDemo'
-import { useAppStore } from '@/store/appStore'
-
-interface MainContentProps {
-  bodyState: BodyState
-  onToggleFullscreen: () => void
-}
-
-const ContentInSidePanePlaceholder = ({ icon: Icon, title, pageName, onBringBack }: { icon: React.ElementType, title: string, pageName: string, onBringBack: () => void }) => {
-  const capitalizedPageName = pageName.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-  return (
-    <div className="flex-1 flex flex-col items-center justify-center text-center p-4">
-      <Icon className="w-16 h-16 text-muted-foreground/50 mb-4" />
-      <h2 className="text-2xl font-bold">{title}</h2>
-      <p className="text-muted-foreground mt-2 max-w-md">
-        You've moved {pageName} to the side pane. You can bring it back or continue to navigate.
-      </p>
-      <button
-        onClick={onBringBack}
-        className="mt-6 bg-primary text-primary-foreground px-4 py-2 rounded-full hover:bg-primary/90 transition-colors flex items-center gap-2 h-10"
-      >
-        <ChevronsLeftRight className="w-5 h-5" />
-        <span>Bring {capitalizedPageName} Back</span>
-      </button>
-    </div>
-  );
-};
-
-export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
-  ({ bodyState, onToggleFullscreen }, ref) => {
-    const { sidePaneContent, openSidePane, activePage, setActivePage } = useAppStore()
-
-    const isDashboardInSidePane = sidePaneContent === 'main' && bodyState === BODY_STATES.SIDE_PANE
-    const isSettingsInSidePane = sidePaneContent === 'settings' && bodyState === BODY_STATES.SIDE_PANE
-    const isToasterInSidePane = sidePaneContent === 'toaster' && bodyState === BODY_STATES.SIDE_PANE
-
-    const renderContent = () => {
-      if (activePage === 'dashboard') {
-        if (isDashboardInSidePane) {
-          return <ContentInSidePanePlaceholder 
-            icon={LayoutDashboard} 
-            title="Dashboard is in Side Pane" 
-            pageName="dashboard"
-            onBringBack={() => openSidePane('main')} 
-          />;
-        }
-        return <DashboardContent />
-      }
-
-      if (activePage === 'settings') {
-        if (isSettingsInSidePane) {
-          return <ContentInSidePanePlaceholder 
-            icon={Settings} 
-            title="Settings are in Side Pane" 
-            pageName="settings"
-            onBringBack={() => {
-              openSidePane('settings'); 
-              setActivePage('settings');
-            }}
-          />;
-        }
-        return <SettingsPage />
-      }
-      if (activePage === 'toaster') {
-        if (isToasterInSidePane) {
-          return <ContentInSidePanePlaceholder
-            icon={Component}
-            title="Toaster Demo is in Side Pane"
-            pageName="toaster demo"
-            onBringBack={() => {
-              openSidePane('toaster');
-              setActivePage('toaster');
-            }}
-          />;
-        }
-        return <ToasterDemo />
-      }
-      return null;
-    }
-    
-    const isContentVisible = (activePage === 'dashboard' && !isDashboardInSidePane) || 
-                           (activePage === 'settings' && !isSettingsInSidePane) || 
-                           (activePage === 'toaster' && !isToasterInSidePane);
-
-    return (
-      <div
-        ref={ref}
-        className={cn(
-        "flex flex-col h-full overflow-hidden",
-        bodyState === BODY_STATES.FULLSCREEN && "absolute inset-0 z-40 bg-background"
-        )}
-      >
-        {bodyState === BODY_STATES.FULLSCREEN && isContentVisible && (
-          <button
-            onClick={onToggleFullscreen}
-            className="fixed top-6 right-6 lg:right-12 z-[100] h-12 w-12 flex items-center justify-center rounded-full bg-card/50 backdrop-blur-sm hover:bg-card/75 transition-colors group"
-            title="Exit Fullscreen"
-          >
-            <X className="w-6 h-6 group-hover:scale-110 group-hover:rotate-90 transition-all duration-300" />
-          </button>
-        )}
-
-        <div className="flex-1 min-h-0">
-          {renderContent()}
-        </div>
-      </div>
-    )
-  }
-)
-```
-
 ## File: src/components/EnhancedSidebar.tsx
 ```typescript
 import React from 'react';
@@ -4114,6 +4134,111 @@ const AppMenuItem: React.FC<AppMenuItemProps> = ({ icon: Icon, label, badge, has
     </div>
   );
 };
+```
+
+## File: src/components/MainContent.tsx
+```typescript
+import { forwardRef } from 'react'
+import { 
+  X,
+  LayoutDashboard,
+  Settings,
+  Component,
+} from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { BODY_STATES, type BodyState } from '@/lib/utils'
+import { DashboardContent } from './DashboardContent'
+import { SettingsPage } from './SettingsPage'
+import { ToasterDemo } from './ToasterDemo'
+import { useAppStore } from '@/store/appStore'
+import { ContentInSidePanePlaceholder } from './ContentInSidePanePlaceholder'
+
+interface MainContentProps {
+  bodyState: BodyState
+  onToggleFullscreen: () => void
+}
+
+export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
+  ({ bodyState, onToggleFullscreen }, ref) => {
+    const { sidePaneContent, openSidePane, activePage, setActivePage } = useAppStore()
+
+    const isDashboardInSidePane = sidePaneContent === 'main' && bodyState === BODY_STATES.SIDE_PANE
+    const isSettingsInSidePane = sidePaneContent === 'settings' && bodyState === BODY_STATES.SIDE_PANE
+    const isToasterInSidePane = sidePaneContent === 'toaster' && bodyState === BODY_STATES.SIDE_PANE
+
+    const renderContent = () => {
+      if (activePage === 'dashboard') {
+        if (isDashboardInSidePane) {
+          return <ContentInSidePanePlaceholder 
+            icon={LayoutDashboard} 
+            title="Dashboard is in Side Pane" 
+            pageName="dashboard"
+            onBringBack={() => openSidePane('main')} 
+          />;
+        }
+        return <DashboardContent />
+      }
+
+      if (activePage === 'settings') {
+        if (isSettingsInSidePane) {
+          return <ContentInSidePanePlaceholder 
+            icon={Settings} 
+            title="Settings are in Side Pane" 
+            pageName="settings"
+            onBringBack={() => {
+              openSidePane('settings'); 
+              setActivePage('settings');
+            }}
+          />;
+        }
+        return <SettingsPage />
+      }
+      if (activePage === 'toaster') {
+        if (isToasterInSidePane) {
+          return <ContentInSidePanePlaceholder
+            icon={Component}
+            title="Toaster Demo is in Side Pane"
+            pageName="toaster demo"
+            onBringBack={() => {
+              openSidePane('toaster');
+              setActivePage('toaster');
+            }}
+          />;
+        }
+        return <ToasterDemo />
+      }
+      return null;
+    }
+    
+    const isContentVisible = (activePage === 'dashboard' && !isDashboardInSidePane) || 
+                           (activePage === 'settings' && !isSettingsInSidePane) || 
+                           (activePage === 'toaster' && !isToasterInSidePane);
+
+    return (
+      <div
+        ref={ref}
+        className={cn(
+        "flex flex-col h-full overflow-hidden",
+        bodyState === BODY_STATES.FULLSCREEN && "absolute inset-0 z-40 bg-background"
+        )}
+      >
+        {bodyState === BODY_STATES.FULLSCREEN && isContentVisible && (
+          <button
+            onClick={onToggleFullscreen}
+            className="fixed top-6 right-6 lg:right-12 z-[100] h-12 w-12 flex items-center justify-center rounded-full bg-card/50 backdrop-blur-sm hover:bg-card/75 transition-colors group"
+            title="Exit Fullscreen"
+          >
+            <X className="w-6 h-6 group-hover:scale-110 group-hover:rotate-90 transition-all duration-300" />
+          </button>
+        )}
+
+        <div className="flex-1 min-h-0 flex flex-col">
+          {renderContent()}
+        </div>
+      </div>
+    )
+  }
+)
 ```
 
 ## File: src/components/TopBar.tsx

@@ -1,0 +1,146 @@
+uuid: c25cfb3f-1d2a-45c1-8408-013ac340d588
+projectId: amazing-app-shell
+createdAt: '2025-10-10T23:00:27.113Z'
+gitCommitMsg: >-
+  feat: show top bar on scroll stop
+
+  Updated the `useAutoAnimateTopBar` hook to make the top bar reappear when the
+  user stops scrolling. This improves user experience by ensuring the navigation
+  is easily accessible after scrolling through content.
+promptSummary: Modify the top bar to reappear when scrolling stops.
+reasoning:
+  - >-
+    Based on your request, I will modify the `useAutoAnimateTopBar` hook. The
+    current implementation hides the top bar on scroll down and shows it on
+    scroll up. I will add functionality to also show the top bar whenever
+    scrolling stops, ensuring it doesn't remain hidden. This will be achieved by
+    using a timeout within the scroll handler.
+  - '### Step 1: Modify `useAutoAnimateTopBar` hook'
+  - >-
+    I'll edit `src/hooks/useAutoAnimateTopBar.ts` to implement the new scroll
+    stop detection logic.
+  - 1.  I'll import `useEffect` from React.
+  - 2.  I'll add a `useRef` to hold the timeout ID for scroll stop detection.
+  - >-
+    3.  Inside the `onScroll` callback, I'll add `setTimeout` to show the top
+    bar after 250ms of inactivity.
+  - >-
+    4.  I will also clear any existing timeout at the start of the `onScroll`
+    event to reset the timer on each scroll movement.
+  - >-
+    5.  Finally, I'll add a `useEffect` hook to clean up the timeout when the
+    component unmounts.
+operations:
+  - type: write
+    path: src/hooks/useAutoAnimateTopBar.ts
+    content: >+
+      --- src/hooks/useAutoAnimateTopBar.ts
+
+      +++ src/hooks/useAutoAnimateTopBar.ts
+
+      @@ -1,23 +1,39 @@
+
+      -import { useRef, useCallback } from 'react';
+
+      +import { useRef, useCallback, useEffect } from 'react';
+       import { useAppStore } from '@/store/appStore';
+       
+       export function useAutoAnimateTopBar(isPane = false) {
+         const setTopBarVisible = useAppStore((state) => state.setTopBarVisible);
+         const lastScrollTop = useRef(0);
+      +  const scrollTimeout = useRef<ReturnType<typeof setTimeout> |
+      null>(null);
+       
+         const onScroll = useCallback((event: React.UIEvent<HTMLDivElement>) => {
+           if (isPane) return;
+       
+      +    // Clear previous timeout
+
+      +    if (scrollTimeout.current) {
+
+      +      clearTimeout(scrollTimeout.current);
+
+      +    }
+
+      +
+           const { scrollTop } = event.currentTarget;
+           
+           if (scrollTop > lastScrollTop.current && scrollTop > 200) {
+             setTopBarVisible(false);
+           } else if (scrollTop < lastScrollTop.current || scrollTop <= 0) {
+             setTopBarVisible(true);
+           }
+           
+           lastScrollTop.current = scrollTop <= 0 ? 0 : scrollTop;
+      +
+
+      +    // Set new timeout to show top bar when scrolling stops
+
+      +    scrollTimeout.current = setTimeout(() => {
+
+      +      // Don't hide, just ensure it's visible after scrolling stops
+
+      +      // and we are not at the top of the page.
+
+      +      if (scrollTop > 0) {
+
+      +        setTopBarVisible(true);
+
+      +      }
+
+      +    }, 250); // Adjust timeout as needed
+         }, [isPane, setTopBarVisible]);
+       
+      +  // Cleanup on unmount
+
+      +  useEffect(() => {
+
+      +    return () => {
+
+      +      if (scrollTimeout.current) {
+
+      +        clearTimeout(scrollTimeout.current);
+
+      +      }
+
+      +    };
+
+      +  }, []);
+
+      +
+         return { onScroll };
+       }
+
+    patchStrategy: standard-diff
+snapshot:
+  src/hooks/useAutoAnimateTopBar.ts: |-
+    import { useRef, useCallback } from 'react';
+    import { useAppStore } from '@/store/appStore';
+
+    export function useAutoAnimateTopBar(isPane = false) {
+      const setTopBarVisible = useAppStore((state) => state.setTopBarVisible);
+      const lastScrollTop = useRef(0);
+
+      const onScroll = useCallback((event: React.UIEvent<HTMLDivElement>) => {
+        if (isPane) return;
+
+        const { scrollTop } = event.currentTarget;
+        
+        if (scrollTop > lastScrollTop.current && scrollTop > 200) {
+          setTopBarVisible(false);
+        } else if (scrollTop < lastScrollTop.current || scrollTop <= 0) {
+          setTopBarVisible(true);
+        }
+        
+        lastScrollTop.current = scrollTop <= 0 ? 0 : scrollTop;
+      }, [isPane, setTopBarVisible]);
+
+      return { onScroll };
+    }
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 81
