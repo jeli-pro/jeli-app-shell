@@ -12,12 +12,8 @@ import {
   FileText,
   Star,
   ChevronRight,
-  Plus,
-  Filter,
-  Search,
   MoreVertical,
-  ArrowDown,
-  PanelRight
+  ArrowDown
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { DemoContent } from './DemoContent'
@@ -114,9 +110,8 @@ interface DashboardContentProps {
 export function DashboardContent({ isInSidePane = false }: DashboardContentProps) {
     const contentRef = useRef<HTMLDivElement>(null)
     const cardsRef = useRef<(HTMLDivElement | null)[]>([])
-    const [searchTerm, setSearchTerm] = useState("")
     const [showScrollToBottom, setShowScrollToBottom] = useState(false)
-    const { bodyState, openSidePane, setTopBarVisible } = useAppStore()
+    const { bodyState, setTopBarVisible } = useAppStore()
     const lastScrollTop = useRef(0);
 
     const handleScroll = () => {
@@ -210,33 +205,6 @@ export function DashboardContent({ isInSidePane = false }: DashboardContentProps
               <p className="text-muted-foreground">
                 Welcome to the amazing app shell demo! Explore all the features and customization options.
               </p>
-            </div>
-            
-            <div className="flex items-center gap-2">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                <input
-                  type="text"
-                  placeholder="Search..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-9 pr-4 py-2 border-none rounded-lg bg-card focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                />
-              </div>
-              <button className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors">
-                <Filter className="w-5 h-5" />
-              </button>
-              <button className="bg-primary text-primary-foreground px-4 py-2 rounded-full hover:bg-primary/90 transition-colors flex items-center gap-2 h-10">
-                <Plus className="w-5 h-5" />
-                <span>New Project</span>
-              </button>
-              {!isInSidePane && (
-                <button
-                  onClick={() => openSidePane('main')}
-                  className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors" title="Move to Side Pane">
-                  <PanelRight className="w-5 h-5" />
-                </button>
-              )}
             </div>
           </div>
             {/* Stats Cards */}

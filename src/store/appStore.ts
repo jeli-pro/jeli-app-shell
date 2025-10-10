@@ -16,6 +16,7 @@ interface AppState {
   isResizing: boolean
   isResizingRightPane: boolean
   isTopBarVisible: boolean
+  searchTerm: string
   
   // User Preferences
   autoExpandSidebar: boolean
@@ -37,6 +38,7 @@ interface AppState {
   setReducedMotion: (reduced: boolean) => void
   setCompactMode: (compact: boolean) => void
   setPrimaryColor: (color: string) => void
+  setSearchTerm: (term: string) => void
   
   // Composite Actions
   toggleSidebar: () => void
@@ -64,6 +66,7 @@ const defaultState = {
   reducedMotion: false,
   compactMode: false,
   primaryColor: '220 84% 60%',
+  searchTerm: '',
 }
 
 export const useAppStore = create<AppState>()(
@@ -90,6 +93,7 @@ export const useAppStore = create<AppState>()(
       setReducedMotion: (reduced) => set({ reducedMotion: reduced }),
       setCompactMode: (compact) => set({ compactMode: compact }),
       setPrimaryColor: (color) => set({ primaryColor: color }),
+      setSearchTerm: (term) => set({ searchTerm: term }),
       
       // Composite actions
       toggleSidebar: () => {
@@ -152,6 +156,7 @@ export const useAppStore = create<AppState>()(
         reducedMotion: state.reducedMotion,
         compactMode: state.compactMode,
         primaryColor: state.primaryColor,
+        // searchTerm is not persisted
       }),
     }
   )

@@ -1,6 +1,12 @@
+===
+
+page control like search, filter should be at top bar. when search focused, the form should expand full width replacing up to breadcrumbs
+
+=== DONE
+
 color accent should configurable trough setting page
 
-===
+=== DONE
 
 1. topbar should auto hide while on scroll down, show while scrolling up
 2. add scroll to bottom iconbutton
