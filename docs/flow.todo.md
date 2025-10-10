@@ -1,5 +1,9 @@
 ===
 
+this project is for creating UI library to be reuse to another project as deps... so please make everything production ready from pluggable architecture to final touch
+
+=== DONE
+
 on every create new page, the view mode should automatically available to maximize or minimize from/to side pane view or full page view.
 
 currenly, toast page has no that option, also toast page should be as side pane view by default

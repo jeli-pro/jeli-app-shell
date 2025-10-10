@@ -1,0 +1,142 @@
+uuid: c25cfb3f-1d57-4b72-a42e-13c2f1f50684
+projectId: amazing-app-shell
+createdAt: '2025-10-10T22:02:56.368Z'
+gitCommitMsg: >-
+  style(workspaces): update workspace switcher styling for consistency
+
+  Refined the visual appearance of the WorkspaceSwitcher and its associated
+  popover to align with the overall application design system.
+
+  - Updated the base PopoverContent component to use a larger border radius
+  (`rounded-xl`), a more prominent shadow (`shadow-xl`), and a slightly wider
+  width (`w-80`). - Restyled the WorkspaceContent popover header, search input,
+  and list items for a more polished and integrated look. - Added a search icon
+  to the search input field. - Ensured the workspace list items use a consistent
+  border radius (`rounded-md`). - Adjusted the default avatar size in the
+  WorkspaceTrigger for better consistency.
+promptSummary: >-
+  Update the styling of the workspace switcher to be more consistent with the
+  overall application design.
+reasoning:
+  - >-
+    Based on your request to make the workspace switcher's styling more
+    consistent with the overall application aesthetic, I'll make the following
+    adjustments:
+  - >-
+    1.  **`src/components/ui/popover.tsx`**: I will update the base
+    `PopoverContent` component to better match the app's theme. I'll increase
+    its width slightly, use a larger border-radius (`rounded-xl`), and apply a
+    more pronounced shadow (`shadow-xl`). This will give it a more modern and
+    integrated feel.
+  - >-
+    2.  **`src/components/WorkspaceSwitcher.tsx`**: I'll refine this component
+    to align with the new popover style and other UI elements.
+  - >-
+    *   The popover's header will be updated with better padding and font
+    weight.
+  - >-
+    *   A `Search` icon will be added to the search input, and its styling will
+    be improved to match the search bar in the `TopBar`.
+  - >-
+    *   The list of workspaces will have more padding, and each item will have a
+    larger border-radius to match the UI controls used throughout the app.
+  - >-
+    *   Finally, I'll adjust the default avatar size in the trigger to ensure
+    consistency.
+  - >-
+    These changes will make the workspace switcher feel less like a generic
+    component and more like a cohesive part of the application shell.
+  - First, I'll update the base popover component.
+  - >-
+    Next, I'll apply the specific styling updates to the `WorkspaceSwitcher`
+    component itself.
+operations:
+  - type: write
+    path: src/components/ui/popover.tsx
+    content: >+
+      --- src/components/ui/popover.tsx
+
+      +++ src/components/ui/popover.tsx
+
+      @@ -19,7 +19,7 @@
+             align={align}
+             sideOffset={sideOffset}
+             className={cn(
+      -        "z-50 w-72 rounded-md border bg-popover p-4
+      text-popover-foreground shadow-md outline-none
+      data-[state=open]:animate-in data-[state=closed]:animate-out
+      data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0
+      data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95
+      data-[side=bottom]:slide-in-from-top-2
+      data-[side=left]:slide-in-from-right-2
+      data-[side=right]:slide-in-from-left-2
+      data-[side=top]:slide-in-from-bottom-2",
+
+      +        "z-50 w-80 rounded-xl border bg-popover p-4
+      text-popover-foreground shadow-xl outline-none
+      data-[state=open]:animate-in data-[state=closed]:animate-out
+      data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0
+      data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95
+      data-[side=bottom]:slide-in-from-top-2
+      data-[side=left]:slide-in-from-right-2
+      data-[side=right]:slide-in-from-left-2
+      data-[side=top]:slide-in-from-bottom-2",
+               className
+             )}
+             {...props}
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/components/WorkspaceSwitcher.tsx
+    content: "--- src/components/WorkspaceSwitcher.tsx\n+++ src/components/WorkspaceSwitcher.tsx\n@@ -1,5 +1,5 @@\n import * as React from 'react';\n-import { CheckIcon, ChevronsUpDownIcon } from 'lucide-react';\n+import { CheckIcon, ChevronsUpDownIcon, Search } from 'lucide-react';\n import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';\n import { cn } from '@/lib/utils';\n import {\n@@ -148,7 +148,7 @@\n \t\t\t\t{...props}\n \t\t\t>\n \t\t\t\t<div className={cn(\"flex items-center gap-3\", collapsed ? \"w-full justify-center\" : \"min-w-0 flex-1\")}>\n-\t\t\t\t\t<Avatar className={cn(\"h-8 w-8\", avatarClassName)}>\n+\t\t\t\t\t<Avatar className={cn(avatarClassName)}>\n \t\t\t\t\t\t<AvatarImage\n \t\t\t\t\t\t\tsrc={(selectedWorkspace as any).logo}\n \t\t\t\t\t\t\talt={getWorkspaceName(selectedWorkspace)}\n@@ -236,25 +236,27 @@\n \t\t\talign={align || 'start'}\n \t\t\t{...props}\n \t\t>\n-\t\t\t<div className=\"border-b px-3 py-2\">\n-\t\t\t\t<p className=\"text-muted-foreground text-sm font-medium\">{title}</p>\n+\t\t\t<div className=\"border-b px-4 py-3\">\n+\t\t\t\t<h3 className=\"text-sm font-semibold text-foreground\">{title}</h3>\n \t\t\t</div>\n \n \t\t\t{searchable && (\n-\t\t\t\t<div className=\"border-b px-3 py-2\">\n-\t\t\t\t\t<input\n-\t\t\t\t\t\ttype=\"text\"\n-\t\t\t\t\t\tplaceholder=\"Search workspaces...\"\n-\t\t\t\t\t\tvalue={searchQuery}\n-\t\t\t\t\t\tonChange={(e) => setSearchQuery(e.target.value)}\n-\t\t\t\t\t\tclassName=\"placeholder:text-muted-foreground w-full border-none bg-transparent text-sm outline-none\"\n-\t\t\t\t\t/>\n+\t\t\t\t<div className=\"border-b p-2\">\n+\t\t\t\t\t<div className=\"relative\">\n+\t\t\t\t\t\t<Search className=\"absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground\" />\n+\t\t\t\t\t\t<input\n+\t\t\t\t\t\t\ttype=\"text\"\n+\t\t\t\t\t\t\tplaceholder=\"Search workspaces...\"\n+\t\t\t\t\t\t\tvalue={searchQuery}\n+\t\t\t\t\t\t\tonChange={(e) => setSearchQuery(e.target.value)}\n+\t\t\t\t\t\t\tclassName=\"h-9 w-full rounded-md bg-transparent pl-9 text-sm placeholder:text-muted-foreground focus:bg-accent focus:outline-none\"\n+\t\t\t\t\t\t/>\n+\t\t\t\t\t</div>\n \t\t\t\t</div>\n \t\t\t)}\n \n \t\t\t<div className=\"max-h-[300px] overflow-y-auto\">\n \t\t\t\t{filteredWorkspaces.length === 0 ? (\n \t\t\t\t\t<div className=\"text-muted-foreground px-3 py-2 text-center text-sm\">\n \t\t\t\t\t\tNo workspaces found\n \t\t\t\t\t</div>\n \t\t\t\t) : (\n-\t\t\t\t\t<div className=\"p-1\">\n+\t\t\t\t\t<div className=\"space-y-1 p-2\">\n \t\t\t\t\t\t{filteredWorkspaces.map((workspace) => {\n \t\t\t\t\t\t\tconst isSelected =\n \t\t\t\t\t\t\t\tselectedWorkspace &&\n@@ -265,7 +267,7 @@\n \t\t\t\t\t\t\t\t\tkey={getWorkspaceId(workspace)}\n \t\t\t\t\t\t\t\t\tonClick={() => onWorkspaceSelect(workspace)}\n \t\t\t\t\t\t\t\t\tclassName={cn(\n-\t\t\t\t\t\t\t\t\t\t'flex w-full items-center gap-2 rounded-sm px-2 py-2 text-left text-sm',\n+\t\t\t\t\t\t\t\t\t\t'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm',\n \t\t\t\t\t\t\t\t\t\t'hover:bg-accent hover:text-accent-foreground',\n \t\t\t\t\t\t\t\t\t\t'focus:outline-none',\n \t\t\t\t\t\t\t\t\t\tisSelected && 'bg-accent text-accent-foreground',\n\n"
+    patchStrategy: standard-diff
+snapshot:
+  src/components/WorkspaceSwitcher.tsx: "import * as React from 'react';\nimport { CheckIcon, ChevronsUpDownIcon } from 'lucide-react';\nimport { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';\nimport { cn } from '@/lib/utils';\nimport {\n\tPopover,\n\tPopoverTrigger,\n\tPopoverContent,\n\ttype PopoverContentProps,\n} from '@/components/ui/popover';\n\n// Generic workspace interface - can be extended\nexport interface Workspace {\n\tid: string;\n\tname: string;\n\t[key: string]: any; // Allow additional properties\n}\n\n// Context for workspace state management\ninterface WorkspaceContextValue<T extends Workspace> {\n\topen: boolean;\n\tsetOpen: (open: boolean) => void;\n\tselectedWorkspace: T | undefined;\n\tworkspaces: T[];\n\tonWorkspaceSelect: (workspace: T) => void;\n\tgetWorkspaceId: (workspace: T) => string;\n\tgetWorkspaceName: (workspace: T) => string;\n}\n\nconst WorkspaceContext = React.createContext<WorkspaceContextValue<any> | null>(\n\tnull,\n);\n\nfunction useWorkspaceContext<T extends Workspace>() {\n\tconst context = React.useContext(\n\t\tWorkspaceContext,\n\t) as WorkspaceContextValue<T> | null;\n\tif (!context) {\n\t\tthrow new Error(\n\t\t\t'Workspace components must be used within WorkspaceProvider',\n\t\t);\n\t}\n\treturn context;\n}\n\n// Main provider component\ninterface WorkspaceProviderProps<T extends Workspace> {\n\tchildren: React.ReactNode;\n\tworkspaces: T[];\n\tselectedWorkspaceId?: string;\n\tonWorkspaceChange?: (workspace: T) => void;\n\topen?: boolean;\n\tonOpenChange?: (open: boolean) => void;\n\tgetWorkspaceId?: (workspace: T) => string;\n\tgetWorkspaceName?: (workspace: T) => string;\n}\n\nfunction WorkspaceProvider<T extends Workspace>({\n\tchildren,\n\tworkspaces,\n\tselectedWorkspaceId,\n\tonWorkspaceChange,\n\topen: controlledOpen,\n\tonOpenChange,\n\tgetWorkspaceId = (workspace) => workspace.id,\n\tgetWorkspaceName = (workspace) => workspace.name,\n}: WorkspaceProviderProps<T>) {\n\tconst [internalOpen, setInternalOpen] = React.useState(false);\n\n\tconst open = controlledOpen ?? internalOpen;\n\tconst setOpen = onOpenChange ?? setInternalOpen;\n\n\tconst selectedWorkspace = React.useMemo(() => {\n\t\tif (!selectedWorkspaceId) return workspaces[0];\n\t\treturn (\n\t\t\tworkspaces.find((ws) => getWorkspaceId(ws) === selectedWorkspaceId) ||\n\t\t\tworkspaces[0]\n\t\t);\n\t}, [workspaces, selectedWorkspaceId, getWorkspaceId]);\n\n\tconst handleWorkspaceSelect = React.useCallback(\n\t\t(workspace: T) => {\n\t\t\tonWorkspaceChange?.(workspace);\n\t\t\tsetOpen(false);\n\t\t},\n\t\t[onWorkspaceChange, setOpen],\n\t);\n\n\tconst value: WorkspaceContextValue<T> = {\n\t\topen,\n\t\tsetOpen,\n\t\tselectedWorkspace,\n\t\tworkspaces,\n\t\tonWorkspaceSelect: handleWorkspaceSelect,\n\t\tgetWorkspaceId,\n\t\tgetWorkspaceName,\n\t};\n\n\treturn (\n\t\t<WorkspaceContext.Provider value={value}>\n\t\t\t<Popover open={open} onOpenChange={setOpen}>\n\t\t\t\t{children}\n\t\t\t</Popover>\n\t\t</WorkspaceContext.Provider>\n\t);\n}\n\n// Trigger component\ninterface WorkspaceTriggerProps extends React.ComponentProps<'button'> {\n\trenderTrigger?: (workspace: Workspace, isOpen: boolean) => React.ReactNode;\n  collapsed?: boolean;\n  avatarClassName?: string;\n}\n\nfunction WorkspaceTrigger({\n\tclassName,\n\trenderTrigger,\n  collapsed = false,\n  avatarClassName,\n\t...props\n}: WorkspaceTriggerProps) {\n\tconst { open, selectedWorkspace, getWorkspaceName } = useWorkspaceContext();\n\n\tif (!selectedWorkspace) return null;\n\n\tif (renderTrigger) {\n\t\treturn (\n\t\t\t<PopoverTrigger asChild>\n\t\t\t\t<button className={className} {...props}>\n\t\t\t\t\t{renderTrigger(selectedWorkspace, open)}\n\t\t\t\t</button>\n\t\t\t</PopoverTrigger>\n\t\t);\n\t}\n\n\treturn (\n\t\t<PopoverTrigger asChild>\n\t\t\t<button\n\t\t\t\tdata-state={open ? 'open' : 'closed'}\n\t\t\t\tclassName={cn(\n\t\t\t\t\t'flex w-full items-center justify-between text-sm',\n\t\t\t\t\t'focus:ring-ring focus:ring-2 focus:ring-offset-2 focus:outline-none',\n\t\t\t\t\tclassName,\n\t\t\t\t)}\n\t\t\t\t{...props}\n\t\t\t>\n\t\t\t\t<div className={cn(\"flex items-center gap-3\", collapsed ? \"w-full justify-center\" : \"min-w-0 flex-1\")}>\n\t\t\t\t\t<Avatar className={cn(\"h-8 w-8\", avatarClassName)}>\n\t\t\t\t\t\t<AvatarImage\n\t\t\t\t\t\t\tsrc={(selectedWorkspace as any).logo}\n\t\t\t\t\t\t\talt={getWorkspaceName(selectedWorkspace)}\n\t\t\t\t\t\t/>\n\t\t\t\t\t\t<AvatarFallback className=\"text-xs\">\n\t\t\t\t\t\t\t{getWorkspaceName(selectedWorkspace).charAt(0).toUpperCase()}\n\t\t\t\t\t\t</AvatarFallback>\n\t\t\t\t\t</Avatar>\n\t\t\t\t\t{!collapsed && (\n\t\t\t\t\t\t<div className=\"flex min-w-0 flex-1 flex-col items-start\">\n\t\t\t\t\t\t\t<span className=\"truncate font-medium\">{getWorkspaceName(selectedWorkspace)}</span>\n\t\t\t\t\t\t\t<span className=\"text-muted-foreground truncate text-xs\">{(selectedWorkspace as any).plan}</span>\n\t\t\t\t\t\t</div>\n\t\t\t\t\t)}\n\t\t\t\t</div>\n\t\t\t\t{!collapsed && <ChevronsUpDownIcon className=\"h-4 w-4 shrink-0 opacity-50\" />}\n\t\t\t</button>\n\t\t</PopoverTrigger>\n\t);\n}\n\n// Content component\ninterface WorkspaceContentProps\n\textends PopoverContentProps {\n\trenderWorkspace?: (\n\t\tworkspace: Workspace,\n\t\tisSelected: boolean,\n\t) => React.ReactNode;\n\ttitle?: string;\n\tsearchable?: boolean;\n\tonSearch?: (query: string) => void;\n}\n\nfunction WorkspaceContent({\n\tclassName,\n\tchildren,\n\trenderWorkspace,\n\ttitle = 'Workspaces',\n\tsearchable = false,\n\tonSearch,\n\talign,\n\t...props\n}: WorkspaceContentProps) {\n\tconst {\n\t\tworkspaces,\n\t\tselectedWorkspace,\n\t\tonWorkspaceSelect,\n\t\tgetWorkspaceId,\n\t\tgetWorkspaceName,\n\t} = useWorkspaceContext();\n\n\tconst [searchQuery, setSearchQuery] = React.useState('');\n\n\tconst filteredWorkspaces = React.useMemo(() => {\n\t\tif (!searchQuery) return workspaces;\n\t\treturn workspaces.filter((ws) =>\n\t\t\tgetWorkspaceName(ws).toLowerCase().includes(searchQuery.toLowerCase()),\n\t\t);\n\t}, [workspaces, searchQuery, getWorkspaceName]);\n\n\tReact.useEffect(() => {\n\t\tonSearch?.(searchQuery);\n\t}, [searchQuery, onSearch]);\n\n\tconst defaultRenderWorkspace = (\n\t\tworkspace: Workspace,\n\t\tisSelected: boolean,\n\t) => (\n\t\t<div className=\"flex min-w-0 flex-1 items-center gap-2\">\n\t\t\t<Avatar className=\"h-6 w-6\">\n\t\t\t\t<AvatarImage\n\t\t\t\t\tsrc={(workspace as any).logo}\n\t\t\t\t\talt={getWorkspaceName(workspace)}\n\t\t\t\t/>\n\t\t\t\t<AvatarFallback className=\"text-xs\">\n\t\t\t\t\t{getWorkspaceName(workspace).charAt(0).toUpperCase()}\n\t\t\t\t</AvatarFallback>\n\t\t\t</Avatar>\n\t\t\t<div className=\"flex min-w-0 flex-1 flex-col items-start\">\n\t\t\t\t<span className=\"truncate text-sm\">{getWorkspaceName(workspace)}</span>\n\t\t\t\t{(workspace as any).plan && (\n\t\t\t\t\t<span className=\"text-muted-foreground text-xs\">\n\t\t\t\t\t\t{(workspace as any).plan}\n\t\t\t\t\t</span>\n\t\t\t\t)}\n\t\t\t</div>\n\t\t\t{isSelected && <CheckIcon className=\"ml-auto h-4 w-4\" />}\n\t\t</div>\n\t);\n\n\treturn (\n\t\t<PopoverContent\n\t\t\tclassName={cn('p-0', className)}\n\t\t\talign={align || 'start'}\n\t\t\t{...props}\n\t\t>\n\t\t\t<div className=\"border-b px-3 py-2\">\n\t\t\t\t<p className=\"text-muted-foreground text-sm font-medium\">{title}</p>\n\t\t\t</div>\n\n\t\t\t{searchable && (\n\t\t\t\t<div className=\"border-b px-3 py-2\">\n\t\t\t\t\t<input\n\t\t\t\t\t\ttype=\"text\"\n\t\t\t\t\t\tplaceholder=\"Search workspaces...\"\n\t\t\t\t\t\tvalue={searchQuery}\n\t\t\t\t\t\tonChange={(e) => setSearchQuery(e.target.value)}\n\t\t\t\t\t\tclassName=\"placeholder:text-muted-foreground w-full border-none bg-transparent text-sm outline-none\"\n\t\t\t\t\t/>\n\t\t\t\t</div>\n\t\t\t)}\n\n\t\t\t<div className=\"max-h-[300px] overflow-y-auto\">\n\t\t\t\t{filteredWorkspaces.length === 0 ? (\n\t\t\t\t\t<div className=\"text-muted-foreground px-3 py-2 text-center text-sm\">\n\t\t\t\t\t\tNo workspaces found\n\t\t\t\t\t</div>\n\t\t\t\t) : (\n\t\t\t\t\t<div className=\"p-1\">\n\t\t\t\t\t\t{filteredWorkspaces.map((workspace) => {\n\t\t\t\t\t\t\tconst isSelected =\n\t\t\t\t\t\t\t\tselectedWorkspace &&\n\t\t\t\t\t\t\t\tgetWorkspaceId(selectedWorkspace) === getWorkspaceId(workspace);\n\n\t\t\t\t\t\t\treturn (\n\t\t\t\t\t\t\t\t<button\n\t\t\t\t\t\t\t\t\tkey={getWorkspaceId(workspace)}\n\t\t\t\t\t\t\t\t\tonClick={() => onWorkspaceSelect(workspace)}\n\t\t\t\t\t\t\t\t\tclassName={cn(\n\t\t\t\t\t\t\t\t\t\t'flex w-full items-center gap-2 rounded-sm px-2 py-2 text-left text-sm',\n\t\t\t\t\t\t\t\t\t\t'hover:bg-accent hover:text-accent-foreground',\n\t\t\t\t\t\t\t\t\t\t'focus:outline-none',\n\t\t\t\t\t\t\t\t\t\tisSelected && 'bg-accent text-accent-foreground',\n\t\t\t\t\t\t\t\t\t)}\n\t\t\t\t\t\t\t\t>\n\t\t\t\t\t\t\t\t\t{renderWorkspace\n\t\t\t\t\t\t\t\t\t\t? renderWorkspace(workspace, !!isSelected)\n\t\t\t\t\t\t\t\t\t\t: defaultRenderWorkspace(workspace, !!isSelected)}\n\t\t\t\t\t\t\t\t</button>\n\t\t\t\t\t\t\t);\n\t\t\t\t\t\t})}\n\t\t\t\t\t</div>\n\t\t\t\t)}\n\t\t\t</div>\n\n\t\t\t{children && (\n\t\t\t\t<>\n\t\t\t\t\t<div className=\"border-t\" />\n\t\t\t\t\t<div className=\"p-1\">{children}</div>\n\t\t\t\t</>\n\t\t\t)}\n\t\t</PopoverContent>\n\t);\n}\n\nexport { WorkspaceProvider as Workspaces, WorkspaceTrigger, WorkspaceContent };"
+  src/components/ui/popover.tsx: >-
+    import * as React from "react"
+
+    import * as PopoverPrimitive from "@radix-ui/react-popover"
+
+
+    import { cn } from "@/lib/utils"
+
+
+    const Popover = PopoverPrimitive.Root
+
+
+    const PopoverTrigger = PopoverPrimitive.Trigger
+
+
+    type PopoverContentProps = React.ComponentPropsWithoutRef<typeof
+    PopoverPrimitive.Content>
+
+
+    const PopoverContent = React.forwardRef<
+      React.ElementRef<typeof PopoverPrimitive.Content>,
+      PopoverContentProps
+    >(({ className, align = "center", sideOffset = 4, ...props }, ref) => (
+      <PopoverPrimitive.Portal>
+        <PopoverPrimitive.Content
+          ref={ref}
+          align={align}
+          sideOffset={sideOffset}
+          className={cn(
+            "z-50 w-72 rounded-md border bg-popover p-4 text-popover-foreground shadow-md outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
+            className
+          )}
+          {...props}
+        />
+      </PopoverPrimitive.Portal>
+    ))
+
+    PopoverContent.displayName = PopoverPrimitive.Content.displayName
+
+
+    export { Popover, PopoverTrigger, PopoverContent, type PopoverContentProps }
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 68

@@ -3,7 +3,9 @@
 src/
   components/
     ui/
+      avatar.tsx
       button.tsx
+      popover.tsx
       toast.tsx
     AppShell.tsx
     DashboardContent.tsx
@@ -16,6 +18,7 @@ src/
     SettingsPage.tsx
     ToasterDemo.tsx
     TopBar.tsx
+    WorkspaceSwitcher.tsx
   lib/
     utils.ts
   store/
@@ -33,6 +36,401 @@ vite.config.ts
 ```
 
 # Files
+
+## File: src/components/ui/avatar.tsx
+```typescript
+import * as React from "react"
+import * as AvatarPrimitive from "@radix-ui/react-avatar"
+
+import { cn } from "@/lib/utils"
+
+const Avatar = React.forwardRef<
+  React.ElementRef<typeof AvatarPrimitive.Root>,
+  React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Root>
+>(({ className, ...props }, ref) => (
+  <AvatarPrimitive.Root
+    ref={ref}
+    className={cn(
+      "relative flex h-10 w-10 shrink-0 overflow-hidden rounded-full",
+      className
+    )}
+    {...props}
+  />
+))
+Avatar.displayName = AvatarPrimitive.Root.displayName
+
+const AvatarImage = React.forwardRef<
+  React.ElementRef<typeof AvatarPrimitive.Image>,
+  React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Image>
+>(({ className, ...props }, ref) => (
+  <AvatarPrimitive.Image
+    ref={ref}
+    className={cn("aspect-square h-full w-full", className)}
+    {...props}
+  />
+))
+AvatarImage.displayName = AvatarPrimitive.Image.displayName
+
+const AvatarFallback = React.forwardRef<
+  React.ElementRef<typeof AvatarPrimitive.Fallback>,
+  React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Fallback>
+>(({ className, ...props }, ref) => (
+  <AvatarPrimitive.Fallback
+    ref={ref}
+    className={cn(
+      "flex h-full w-full items-center justify-center rounded-full bg-muted",
+      className
+    )}
+    {...props}
+  />
+))
+AvatarFallback.displayName = AvatarPrimitive.Fallback.displayName
+
+export { Avatar, AvatarImage, AvatarFallback }
+```
+
+## File: src/components/ui/popover.tsx
+```typescript
+import * as React from "react"
+import * as PopoverPrimitive from "@radix-ui/react-popover"
+
+import { cn } from "@/lib/utils"
+
+const Popover = PopoverPrimitive.Root
+
+const PopoverTrigger = PopoverPrimitive.Trigger
+
+type PopoverContentProps = React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Content>
+
+const PopoverContent = React.forwardRef<
+  React.ElementRef<typeof PopoverPrimitive.Content>,
+  PopoverContentProps
+>(({ className, align = "center", sideOffset = 4, ...props }, ref) => (
+  <PopoverPrimitive.Portal>
+    <PopoverPrimitive.Content
+      ref={ref}
+      align={align}
+      sideOffset={sideOffset}
+      className={cn(
+        "z-50 w-72 rounded-md border bg-popover p-4 text-popover-foreground shadow-md outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
+        className
+      )}
+      {...props}
+    />
+  </PopoverPrimitive.Portal>
+))
+PopoverContent.displayName = PopoverPrimitive.Content.displayName
+
+export { Popover, PopoverTrigger, PopoverContent, type PopoverContentProps }
+```
+
+## File: src/components/WorkspaceSwitcher.tsx
+```typescript
+import * as React from 'react';
+import { CheckIcon, ChevronsUpDownIcon } from 'lucide-react';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { cn } from '@/lib/utils';
+import {
+	Popover,
+	PopoverTrigger,
+	PopoverContent,
+	type PopoverContentProps,
+} from '@/components/ui/popover';
+
+// Generic workspace interface - can be extended
+export interface Workspace {
+	id: string;
+	name: string;
+	[key: string]: any; // Allow additional properties
+}
+
+// Context for workspace state management
+interface WorkspaceContextValue<T extends Workspace> {
+	open: boolean;
+	setOpen: (open: boolean) => void;
+	selectedWorkspace: T | undefined;
+	workspaces: T[];
+	onWorkspaceSelect: (workspace: T) => void;
+	getWorkspaceId: (workspace: T) => string;
+	getWorkspaceName: (workspace: T) => string;
+}
+
+const WorkspaceContext = React.createContext<WorkspaceContextValue<any> | null>(
+	null,
+);
+
+function useWorkspaceContext<T extends Workspace>() {
+	const context = React.useContext(
+		WorkspaceContext,
+	) as WorkspaceContextValue<T> | null;
+	if (!context) {
+		throw new Error(
+			'Workspace components must be used within WorkspaceProvider',
+		);
+	}
+	return context;
+}
+
+// Main provider component
+interface WorkspaceProviderProps<T extends Workspace> {
+	children: React.ReactNode;
+	workspaces: T[];
+	selectedWorkspaceId?: string;
+	onWorkspaceChange?: (workspace: T) => void;
+	open?: boolean;
+	onOpenChange?: (open: boolean) => void;
+	getWorkspaceId?: (workspace: T) => string;
+	getWorkspaceName?: (workspace: T) => string;
+}
+
+function WorkspaceProvider<T extends Workspace>({
+	children,
+	workspaces,
+	selectedWorkspaceId,
+	onWorkspaceChange,
+	open: controlledOpen,
+	onOpenChange,
+	getWorkspaceId = (workspace) => workspace.id,
+	getWorkspaceName = (workspace) => workspace.name,
+}: WorkspaceProviderProps<T>) {
+	const [internalOpen, setInternalOpen] = React.useState(false);
+
+	const open = controlledOpen ?? internalOpen;
+	const setOpen = onOpenChange ?? setInternalOpen;
+
+	const selectedWorkspace = React.useMemo(() => {
+		if (!selectedWorkspaceId) return workspaces[0];
+		return (
+			workspaces.find((ws) => getWorkspaceId(ws) === selectedWorkspaceId) ||
+			workspaces[0]
+		);
+	}, [workspaces, selectedWorkspaceId, getWorkspaceId]);
+
+	const handleWorkspaceSelect = React.useCallback(
+		(workspace: T) => {
+			onWorkspaceChange?.(workspace);
+			setOpen(false);
+		},
+		[onWorkspaceChange, setOpen],
+	);
+
+	const value: WorkspaceContextValue<T> = {
+		open,
+		setOpen,
+		selectedWorkspace,
+		workspaces,
+		onWorkspaceSelect: handleWorkspaceSelect,
+		getWorkspaceId,
+		getWorkspaceName,
+	};
+
+	return (
+		<WorkspaceContext.Provider value={value}>
+			<Popover open={open} onOpenChange={setOpen}>
+				{children}
+			</Popover>
+		</WorkspaceContext.Provider>
+	);
+}
+
+// Trigger component
+interface WorkspaceTriggerProps extends React.ComponentProps<'button'> {
+	renderTrigger?: (workspace: Workspace, isOpen: boolean) => React.ReactNode;
+  collapsed?: boolean;
+  avatarClassName?: string;
+}
+
+function WorkspaceTrigger({
+	className,
+	renderTrigger,
+  collapsed = false,
+  avatarClassName,
+	...props
+}: WorkspaceTriggerProps) {
+	const { open, selectedWorkspace, getWorkspaceName } = useWorkspaceContext();
+
+	if (!selectedWorkspace) return null;
+
+	if (renderTrigger) {
+		return (
+			<PopoverTrigger asChild>
+				<button className={className} {...props}>
+					{renderTrigger(selectedWorkspace, open)}
+				</button>
+			</PopoverTrigger>
+		);
+	}
+
+	return (
+		<PopoverTrigger asChild>
+			<button
+				data-state={open ? 'open' : 'closed'}
+				className={cn(
+					'flex w-full items-center justify-between text-sm',
+					'focus:ring-ring focus:ring-2 focus:ring-offset-2 focus:outline-none',
+					className,
+				)}
+				{...props}
+			>
+				<div className={cn("flex items-center gap-3", collapsed ? "w-full justify-center" : "min-w-0 flex-1")}>
+					<Avatar className={cn("h-8 w-8", avatarClassName)}>
+						<AvatarImage
+							src={(selectedWorkspace as any).logo}
+							alt={getWorkspaceName(selectedWorkspace)}
+						/>
+						<AvatarFallback className="text-xs">
+							{getWorkspaceName(selectedWorkspace).charAt(0).toUpperCase()}
+						</AvatarFallback>
+					</Avatar>
+					{!collapsed && (
+						<div className="flex min-w-0 flex-1 flex-col items-start">
+							<span className="truncate font-medium">{getWorkspaceName(selectedWorkspace)}</span>
+							<span className="text-muted-foreground truncate text-xs">{(selectedWorkspace as any).plan}</span>
+						</div>
+					)}
+				</div>
+				{!collapsed && <ChevronsUpDownIcon className="h-4 w-4 shrink-0 opacity-50" />}
+			</button>
+		</PopoverTrigger>
+	);
+}
+
+// Content component
+interface WorkspaceContentProps
+	extends PopoverContentProps {
+	renderWorkspace?: (
+		workspace: Workspace,
+		isSelected: boolean,
+	) => React.ReactNode;
+	title?: string;
+	searchable?: boolean;
+	onSearch?: (query: string) => void;
+}
+
+function WorkspaceContent({
+	className,
+	children,
+	renderWorkspace,
+	title = 'Workspaces',
+	searchable = false,
+	onSearch,
+	align,
+	...props
+}: WorkspaceContentProps) {
+	const {
+		workspaces,
+		selectedWorkspace,
+		onWorkspaceSelect,
+		getWorkspaceId,
+		getWorkspaceName,
+	} = useWorkspaceContext();
+
+	const [searchQuery, setSearchQuery] = React.useState('');
+
+	const filteredWorkspaces = React.useMemo(() => {
+		if (!searchQuery) return workspaces;
+		return workspaces.filter((ws) =>
+			getWorkspaceName(ws).toLowerCase().includes(searchQuery.toLowerCase()),
+		);
+	}, [workspaces, searchQuery, getWorkspaceName]);
+
+	React.useEffect(() => {
+		onSearch?.(searchQuery);
+	}, [searchQuery, onSearch]);
+
+	const defaultRenderWorkspace = (
+		workspace: Workspace,
+		isSelected: boolean,
+	) => (
+		<div className="flex min-w-0 flex-1 items-center gap-2">
+			<Avatar className="h-6 w-6">
+				<AvatarImage
+					src={(workspace as any).logo}
+					alt={getWorkspaceName(workspace)}
+				/>
+				<AvatarFallback className="text-xs">
+					{getWorkspaceName(workspace).charAt(0).toUpperCase()}
+				</AvatarFallback>
+			</Avatar>
+			<div className="flex min-w-0 flex-1 flex-col items-start">
+				<span className="truncate text-sm">{getWorkspaceName(workspace)}</span>
+				{(workspace as any).plan && (
+					<span className="text-muted-foreground text-xs">
+						{(workspace as any).plan}
+					</span>
+				)}
+			</div>
+			{isSelected && <CheckIcon className="ml-auto h-4 w-4" />}
+		</div>
+	);
+
+	return (
+		<PopoverContent
+			className={cn('p-0', className)}
+			align={align || 'start'}
+			{...props}
+		>
+			<div className="border-b px-3 py-2">
+				<p className="text-muted-foreground text-sm font-medium">{title}</p>
+			</div>
+
+			{searchable && (
+				<div className="border-b px-3 py-2">
+					<input
+						type="text"
+						placeholder="Search workspaces..."
+						value={searchQuery}
+						onChange={(e) => setSearchQuery(e.target.value)}
+						className="placeholder:text-muted-foreground w-full border-none bg-transparent text-sm outline-none"
+					/>
+				</div>
+			)}
+
+			<div className="max-h-[300px] overflow-y-auto">
+				{filteredWorkspaces.length === 0 ? (
+					<div className="text-muted-foreground px-3 py-2 text-center text-sm">
+						No workspaces found
+					</div>
+				) : (
+					<div className="p-1">
+						{filteredWorkspaces.map((workspace) => {
+							const isSelected =
+								selectedWorkspace &&
+								getWorkspaceId(selectedWorkspace) === getWorkspaceId(workspace);
+
+							return (
+								<button
+									key={getWorkspaceId(workspace)}
+									onClick={() => onWorkspaceSelect(workspace)}
+									className={cn(
+										'flex w-full items-center gap-2 rounded-sm px-2 py-2 text-left text-sm',
+										'hover:bg-accent hover:text-accent-foreground',
+										'focus:outline-none',
+										isSelected && 'bg-accent text-accent-foreground',
+									)}
+								>
+									{renderWorkspace
+										? renderWorkspace(workspace, !!isSelected)
+										: defaultRenderWorkspace(workspace, !!isSelected)}
+								</button>
+							);
+						})}
+					</div>
+				)}
+			</div>
+
+			{children && (
+				<>
+					<div className="border-t" />
+					<div className="p-1">{children}</div>
+				</>
+			)}
+		</PopoverContent>
+	);
+}
+
+export { WorkspaceProvider as Workspaces, WorkspaceTrigger, WorkspaceContent };
+```
 
 ## File: src/components/ui/button.tsx
 ```typescript
@@ -332,6 +730,77 @@ export const ToasterProvider = ({ children }: { children: ReactNode }) => {
 };
 ```
 
+## File: src/lib/utils.ts
+```typescript
+import { type ClassValue, clsx } from "clsx"
+import { twMerge } from "tailwind-merge"
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs))
+}
+
+export const SIDEBAR_STATES = {
+  HIDDEN: 'hidden',
+  COLLAPSED: 'collapsed', 
+  EXPANDED: 'expanded',
+  PEEK: 'peek'
+} as const
+
+export const BODY_STATES = {
+  NORMAL: 'normal',
+  FULLSCREEN: 'fullscreen',
+  SIDE_PANE: 'side_pane'
+} as const
+
+export type SidebarState = typeof SIDEBAR_STATES[keyof typeof SIDEBAR_STATES]
+export type BodyState = typeof BODY_STATES[keyof typeof BODY_STATES]
+```
+
+## File: postcss.config.js
+```javascript
+export default {
+  plugins: {
+    tailwindcss: {},
+    autoprefixer: {},
+  },
+}
+```
+
+## File: tsconfig.json
+```json
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "useDefineForClassFields": true,
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+
+    /* Bundler mode */
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+
+    /* Linting */
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+
+    /* Path mapping */
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": ["src"],
+  "references": [{ "path": "./tsconfig.node.json" }]
+}
+```
+
 ## File: src/components/ToasterDemo.tsx
 ```typescript
 import { Button } from '@/components/ui/button';
@@ -354,7 +823,7 @@ const variantColors = {
   warning: 'border-amber-600 text-amber-600 hover:bg-amber-600/10 dark:hover:bg-amber-400/20',
 }
 
-export function ToasterDemo() {
+export function ToasterDemo({ isInSidePane = false }: { isInSidePane?: boolean }) {
   const toast = useToast();
 
   const showToast = (variant: Variant, position: Position = 'bottom-right') => {
@@ -403,7 +872,7 @@ export function ToasterDemo() {
   };
 
   return (
-    <div className="h-full overflow-y-auto p-6 lg:px-12 space-y-8">
+    <div className={cn("overflow-y-auto p-6 lg:px-12 space-y-8", !isInSidePane && "h-full")}>
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -473,77 +942,6 @@ export function ToasterDemo() {
       </div>
     </div>
   );
-}
-```
-
-## File: src/lib/utils.ts
-```typescript
-import { type ClassValue, clsx } from "clsx"
-import { twMerge } from "tailwind-merge"
-
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
-}
-
-export const SIDEBAR_STATES = {
-  HIDDEN: 'hidden',
-  COLLAPSED: 'collapsed', 
-  EXPANDED: 'expanded',
-  PEEK: 'peek'
-} as const
-
-export const BODY_STATES = {
-  NORMAL: 'normal',
-  FULLSCREEN: 'fullscreen',
-  SIDE_PANE: 'side_pane'
-} as const
-
-export type SidebarState = typeof SIDEBAR_STATES[keyof typeof SIDEBAR_STATES]
-export type BodyState = typeof BODY_STATES[keyof typeof BODY_STATES]
-```
-
-## File: postcss.config.js
-```javascript
-export default {
-  plugins: {
-    tailwindcss: {},
-    autoprefixer: {},
-  },
-}
-```
-
-## File: tsconfig.json
-```json
-{
-  "compilerOptions": {
-    "target": "ES2020",
-    "useDefineForClassFields": true,
-    "lib": ["ES2020", "DOM", "DOM.Iterable"],
-    "module": "ESNext",
-    "skipLibCheck": true,
-
-    /* Bundler mode */
-    "moduleResolution": "bundler",
-    "allowImportingTsExtensions": true,
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "noEmit": true,
-    "jsx": "react-jsx",
-
-    /* Linting */
-    "strict": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noFallthroughCasesInSwitch": true,
-
-    /* Path mapping */
-    "baseUrl": ".",
-    "paths": {
-      "@/*": ["./src/*"]
-    }
-  },
-  "include": ["src"],
-  "references": [{ "path": "./tsconfig.node.json" }]
 }
 ```
 
@@ -1761,7 +2159,9 @@ export function SettingsPage() {
     "tailwind-merge": "^2.0.0",
     "class-variance-authority": "^0.7.0",
     "@radix-ui/react-slot": "^1.0.2",
-    "sonner": "^1.2.4"
+    "sonner": "^1.2.4",
+    "@radix-ui/react-avatar": "^1.0.4",
+    "@radix-ui/react-popover": "^1.0.7"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",
@@ -1786,23 +2186,27 @@ export function SettingsPage() {
 ## File: src/components/RightPane.tsx
 ```typescript
 import { forwardRef } from 'react'
-import { SlidersHorizontal, Settings, ChevronRight, LayoutDashboard, ChevronsLeftRight } from 'lucide-react'
+import { SlidersHorizontal, Settings, ChevronRight, LayoutDashboard, ChevronsLeftRight, Component } from 'lucide-react'
 import { useAppStore } from '@/store/appStore'
 import { cn } from '@/lib/utils'
 import { SettingsContent } from './SettingsContent'
 import { DashboardContent } from './DashboardContent'
+import { ToasterDemo } from './ToasterDemo'
 
 export const RightPane = forwardRef<HTMLDivElement>((_props, ref) => {
   const { closeSidePane, setIsResizingRightPane, sidePaneContent, setActivePage } = useAppStore()
 
   const isSettings = sidePaneContent === 'settings'
   const isMain = sidePaneContent === 'main'
+  const isToaster = sidePaneContent === 'toaster'
 
   const handleMaximize = () => {
     if (isMain) {
       setActivePage('dashboard')
     } else if (isSettings) {
       setActivePage('settings')
+    } else if (isToaster) {
+      setActivePage('toaster')
     }
     closeSidePane()
   }
@@ -1831,13 +2235,14 @@ export const RightPane = forwardRef<HTMLDivElement>((_props, ref) => {
         <div className="flex items-center gap-2">
           {isMain && <LayoutDashboard className="w-5 h-5" />}
           {isSettings && <Settings className="w-5 h-5" />}
-          {!isMain && !isSettings && <SlidersHorizontal className="w-5 h-5" />}
+          {isToaster && <Component className="w-5 h-5" />}
+          {!isMain && !isSettings && !isToaster && <SlidersHorizontal className="w-5 h-5" />}
           <h2 className="text-lg font-semibold whitespace-nowrap">
-            {isMain ? 'Dashboard' : isSettings ? 'Settings' : 'Details Panel'}
+            {isMain ? 'Dashboard' : isSettings ? 'Settings' : isToaster ? 'Toaster Demo' : 'Details Panel'}
           </h2>
         </div>
         
-        {(isMain || isSettings) && (
+        {(isMain || isSettings || isToaster) && (
           <button
             onClick={handleMaximize}
             className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors mr-2"
@@ -1852,6 +2257,8 @@ export const RightPane = forwardRef<HTMLDivElement>((_props, ref) => {
           <div className="px-8 py-6 h-full"><DashboardContent isInSidePane={true} /></div>
         ) : isSettings ? (
           <div className="px-8 py-6"><SettingsContent /></div>
+        ) : isToaster ? (
+          <div className="px-8 py-6 h-full"><ToasterDemo isInSidePane={true} /></div>
         ) : (
           <div className="px-8 py-6"><p className="text-muted-foreground">This is the side pane. It can be used to display contextual information, forms, or actions related to the main content.</p></div>
         )}
@@ -2145,7 +2552,7 @@ import {
   Home, 
   Search, 
   Bell, 
-  User, 
+  User,
   Settings, 
   HelpCircle, 
   FileText, 
@@ -2157,12 +2564,19 @@ import {
   Star,
   Trash2,
   ChevronDown,
-  Layout,
-  Component
+  Component,
+  Plus,
+  Rocket
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAppStore } from '@/store/appStore'
 import { SIDEBAR_STATES, BODY_STATES } from '@/lib/utils'
+import { 
+    Workspaces, 
+    WorkspaceTrigger, 
+    WorkspaceContent, 
+    type Workspace 
+} from './WorkspaceSwitcher';
 
 interface NavItem {
   icon: React.ReactNode
@@ -2179,6 +2593,17 @@ interface NavSection {
   collapsible?: boolean
   defaultExpanded?: boolean
 }
+
+interface MyWorkspace extends Workspace {
+    logo: string;
+    plan: string;
+}
+
+const mockWorkspaces: MyWorkspace[] = [
+    { id: 'ws1', name: 'Acme Inc.', logo: 'https://avatar.vercel.sh/acme.png', plan: 'Pro' },
+    { id: 'ws2', name: 'Monsters Inc.', logo: 'https://avatar.vercel.sh/monsters.png', plan: 'Free' },
+    { id: 'ws3', name: 'Stark Industries', logo: 'https://avatar.vercel.sh/stark.png', plan: 'Enterprise' },
+];
 
 const navigationSections: NavSection[] = [
   {
@@ -2249,6 +2674,7 @@ export const EnhancedSidebar = forwardRef<HTMLDivElement, SidebarProps>(
       new Set(navigationSections.filter(s => s.defaultExpanded).map(s => s.title))
     )
 
+    const [selectedWorkspace, setSelectedWorkspace] = React.useState(mockWorkspaces[0]);
     const isCollapsed = sidebarState === SIDEBAR_STATES.COLLAPSED
     const isHidden = sidebarState === SIDEBAR_STATES.HIDDEN
     const isPeek = sidebarState === SIDEBAR_STATES.PEEK
@@ -2318,7 +2744,7 @@ export const EnhancedSidebar = forwardRef<HTMLDivElement, SidebarProps>(
 
       const isDashboardActive = activePage === 'dashboard';
       const isSettingsActive = activePage === 'settings' || (bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === 'settings');
-      const isToasterActive = activePage === 'toaster';
+      const isToasterActive = activePage === 'toaster' || (bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === 'toaster');
       const isPageActive = (isDashboard && isDashboardActive) || (isSettings && isSettingsActive) || (isToaster && isToasterActive);
 
       const handleClick = () => {
@@ -2335,7 +2761,15 @@ export const EnhancedSidebar = forwardRef<HTMLDivElement, SidebarProps>(
             openSidePane('settings');
           }
         } else if (isToaster) {
-          setActivePage('toaster');
+          const isToasterInSidePane = bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === 'toaster'
+          // If we're on the toaster page and it's not in the side pane, treat this as a "minimize" action.
+          if (activePage === 'toaster' && !isToasterInSidePane) {
+            openSidePane('toaster');
+            setActivePage('dashboard');
+          } else {
+            // In all other cases (on dashboard page, or toaster already in pane), just toggle the toaster side pane.
+            openSidePane('toaster');
+          }
         }
         // Could add logic for other links here if routing was implemented
       };
@@ -2425,29 +2859,25 @@ export const EnhancedSidebar = forwardRef<HTMLDivElement, SidebarProps>(
             compactMode ? "p-3" : "p-4"
           )}
         >
-          {/* Logo */}
-          <div
+          {/* App Header */}
+          <div 
             className={cn(
               "flex items-center gap-3",
-              isCollapsed ? "justify-center" : "",
+              isCollapsed ? "justify-center" : "px-3",
               compactMode ? "h-10" : "h-16"
             )}
           >
-            <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary/60 rounded-full flex items-center justify-center flex-shrink-0">
-              <Layout className="w-5 h-5 text-primary-foreground" />
+            <div className="p-2 bg-primary/20 rounded-lg">
+              <Rocket className="w-5 h-5 text-primary" />
             </div>
-            {!isCollapsed && (
-              <span className="font-semibold text-xl text-foreground nav-label truncate">
-                AppShell
-              </span>
-            )}
+            {!isCollapsed && <h1 className="text-lg font-bold nav-label">Amazing App</h1>}
           </div>
 
           {/* Navigation Sections */}
           <div className="flex-1 overflow-y-auto overflow-x-hidden space-y-6 pt-4">
             {navigationSections.map((section, sectionIndex) => {
               const isExpanded = expandedSections.has(section.title)
-              
+
               return (
                 <div 
                   key={section.title}
@@ -2490,20 +2920,29 @@ export const EnhancedSidebar = forwardRef<HTMLDivElement, SidebarProps>(
               {bottomNavItems.map((item) => renderNavItem(item))}
             </nav>
 
-            {/* User Profile */}
-            {!isCollapsed && (
-              <div className={cn("mt-6 p-3 bg-accent/50 rounded-xl", compactMode && "mt-4 p-2")}>
-                <div className="flex items-center gap-3">
-                  <div className={cn("bg-primary rounded-full flex items-center justify-center", compactMode ? "w-8 h-8" : "w-10 h-10")}>
-                    <User className={cn("text-primary-foreground", compactMode ? "w-4 h-4" : "w-5 h-5")} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className={cn("font-medium truncate nav-label", compactMode ? "text-xs" : "text-sm")}>John Doe</p>
-                    <p className={cn("text-muted-foreground truncate nav-label", compactMode ? "text-[11px]" : "text-xs")}>john@example.com</p>
-                  </div>
-                </div>
-              </div>
-            )}
+            {/* Workspace Switcher */}
+            <div className={cn("mt-6", compactMode && "mt-4")}>
+              <Workspaces
+                workspaces={mockWorkspaces}
+                selectedWorkspaceId={selectedWorkspace.id}
+                onWorkspaceChange={setSelectedWorkspace}
+              >
+                <WorkspaceTrigger
+                  collapsed={isCollapsed}
+                  className={cn(
+                    "rounded-xl transition-colors hover:bg-accent/50 w-full",
+                    isCollapsed ? "p-2" : "p-3 bg-accent/50"
+                  )}
+                  avatarClassName={cn(compactMode ? "h-8 w-8" : "h-10 w-10")}
+                />
+                <WorkspaceContent>
+                  <button className="flex w-full items-center gap-2 rounded-sm px-2 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground focus:outline-none">
+                    <Plus className="h-4 w-4" />
+                    <span>Create Workspace</span>
+                  </button>
+                </WorkspaceContent>
+              </Workspaces>
+            </div>
           </div>
         </div>
       </div>
@@ -2583,6 +3022,11 @@ export function TopBar({
     setActivePage('dashboard');
   }
 
+  const handleToasterMoveToSidePane = () => {
+    openSidePane('toaster');
+    setActivePage('dashboard');
+  }
+
   return (
     <div className={cn(
       "h-20 bg-card/80 backdrop-blur-sm border-b border-border flex items-center justify-between px-6 z-50 gap-4",
@@ -2651,12 +3095,15 @@ export function TopBar({
           {activePage === 'settings' && (
             <button onClick={handleSettingsMoveToSidePane} className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors" title="Move to Side Pane"><PanelRight className="w-5 h-5" /></button>
           )}
+          {activePage === 'toaster' && (
+            <button onClick={handleToasterMoveToSidePane} className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors" title="Move to Side Pane"><PanelRight className="w-5 h-5" /></button>
+          )}
         </div>
 
         {/* Separator */}
         <div className={cn(
           'w-px h-6 bg-border mx-2', 
-          (activePage !== 'dashboard' && activePage !== 'settings') || (isSearchFocused && activePage === 'dashboard') ? 'hidden' : ''
+          (activePage !== 'dashboard' && activePage !== 'settings' && activePage !== 'toaster') || (isSearchFocused && activePage === 'dashboard') ? 'hidden' : ''
         )} />
 
         {/* Quick Actions */}
@@ -2743,6 +3190,7 @@ import {
   LayoutDashboard,
   ChevronsLeftRight,
   Settings,
+  Component,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { BODY_STATES, type BodyState } from '@/lib/utils'
@@ -2762,6 +3210,7 @@ export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
 
     const isDashboardInSidePane = sidePaneContent === 'main' && bodyState === BODY_STATES.SIDE_PANE
     const isSettingsInSidePane = sidePaneContent === 'settings' && bodyState === BODY_STATES.SIDE_PANE
+    const isToasterInSidePane = sidePaneContent === 'toaster' && bodyState === BODY_STATES.SIDE_PANE
 
     const renderContent = () => {
       if (activePage === 'dashboard') {
@@ -2811,12 +3260,35 @@ export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
         return <SettingsPage />
       }
       if (activePage === 'toaster') {
+        if (isToasterInSidePane) {
+          return (
+            <div className="flex-1 flex flex-col items-center justify-center text-center">
+              <Component className="w-16 h-16 text-muted-foreground/50 mb-4" />
+              <h2 className="text-2xl font-bold">Toaster Demo is in Side Pane</h2>
+              <p className="text-muted-foreground mt-2 max-w-md">
+                You've moved the toaster demo to the side pane. You can bring it back to the main view.
+              </p>
+              <button
+                onClick={() => {
+                  openSidePane('toaster'); // This will close it
+                  setActivePage('toaster');
+                }}
+                className="mt-6 bg-primary text-primary-foreground px-4 py-2 rounded-full hover:bg-primary/90 transition-colors flex items-center gap-2 h-10"
+              >
+                <ChevronsLeftRight className="w-5 h-5" />
+                <span>Bring Toaster Demo Back</span>
+              </button>
+            </div>
+          )
+        }
         return <ToasterDemo />
       }
       return null;
     }
     
-    const isContentVisible = (activePage === 'dashboard' && !isDashboardInSidePane) || (activePage === 'settings' && !isSettingsInSidePane) || activePage === 'toaster';
+    const isContentVisible = (activePage === 'dashboard' && !isDashboardInSidePane) || 
+                           (activePage === 'settings' && !isSettingsInSidePane) || 
+                           (activePage === 'toaster' && !isToasterInSidePane);
 
     return (
       <div
@@ -2858,7 +3330,7 @@ interface AppState {
   sidebarState: SidebarState
   bodyState: BodyState
   isDarkMode: boolean
-  sidePaneContent: 'details' | 'settings' | 'main'
+  sidePaneContent: 'details' | 'settings' | 'main' | 'toaster'
   activePage: ActivePage
   sidebarWidth: number
   rightPaneWidth: number
@@ -2895,7 +3367,7 @@ interface AppState {
   showSidebar: () => void
   peekSidebar: () => void
   toggleFullscreen: () => void
-  openSidePane: (content: 'details' | 'settings' | 'main') => void
+  openSidePane: (content: 'details' | 'settings' | 'main' | 'toaster') => void
   closeSidePane: () => void
   resetToDefaults: () => void
 }
@@ -2967,7 +3439,7 @@ export const useAppStore = create<AppState>()(
         })
       },
       
-      openSidePane: (content) => {
+      openSidePane: (content: 'details' | 'settings' | 'main' | 'toaster') => {
         const { bodyState, sidePaneContent } = get()
         if (bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === content) {
           // If it's open with same content, close it.

@@ -4,7 +4,7 @@ import {
   Home, 
   Search, 
   Bell, 
-  User, 
+  User,
   Settings, 
   HelpCircle, 
   FileText, 
@@ -16,12 +16,19 @@ import {
   Star,
   Trash2,
   ChevronDown,
-  Layout,
-  Component
+  Component,
+  Plus,
+  Rocket
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAppStore } from '@/store/appStore'
 import { SIDEBAR_STATES, BODY_STATES } from '@/lib/utils'
+import { 
+    Workspaces, 
+    WorkspaceTrigger, 
+    WorkspaceContent, 
+    type Workspace 
+} from './WorkspaceSwitcher';
 
 interface NavItem {
   icon: React.ReactNode
@@ -38,6 +45,17 @@ interface NavSection {
   collapsible?: boolean
   defaultExpanded?: boolean
 }
+
+interface MyWorkspace extends Workspace {
+    logo: string;
+    plan: string;
+}
+
+const mockWorkspaces: MyWorkspace[] = [
+    { id: 'ws1', name: 'Acme Inc.', logo: 'https://avatar.vercel.sh/acme.png', plan: 'Pro' },
+    { id: 'ws2', name: 'Monsters Inc.', logo: 'https://avatar.vercel.sh/monsters.png', plan: 'Free' },
+    { id: 'ws3', name: 'Stark Industries', logo: 'https://avatar.vercel.sh/stark.png', plan: 'Enterprise' },
+];
 
 const navigationSections: NavSection[] = [
   {
@@ -108,6 +126,7 @@ export const EnhancedSidebar = forwardRef<HTMLDivElement, SidebarProps>(
       new Set(navigationSections.filter(s => s.defaultExpanded).map(s => s.title))
     )
 
+    const [selectedWorkspace, setSelectedWorkspace] = React.useState(mockWorkspaces[0]);
     const isCollapsed = sidebarState === SIDEBAR_STATES.COLLAPSED
     const isHidden = sidebarState === SIDEBAR_STATES.HIDDEN
     const isPeek = sidebarState === SIDEBAR_STATES.PEEK
@@ -292,29 +311,25 @@ export const EnhancedSidebar = forwardRef<HTMLDivElement, SidebarProps>(
             compactMode ? "p-3" : "p-4"
           )}
         >
-          {/* Logo */}
-          <div
+          {/* App Header */}
+          <div 
             className={cn(
               "flex items-center gap-3",
-              isCollapsed ? "justify-center" : "",
+              isCollapsed ? "justify-center" : "px-3",
               compactMode ? "h-10" : "h-16"
             )}
           >
-            <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary/60 rounded-full flex items-center justify-center flex-shrink-0">
-              <Layout className="w-5 h-5 text-primary-foreground" />
+            <div className="p-2 bg-primary/20 rounded-lg">
+              <Rocket className="w-5 h-5 text-primary" />
             </div>
-            {!isCollapsed && (
-              <span className="font-semibold text-xl text-foreground nav-label truncate">
-                AppShell
-              </span>
-            )}
+            {!isCollapsed && <h1 className="text-lg font-bold nav-label">Amazing App</h1>}
           </div>
 
           {/* Navigation Sections */}
           <div className="flex-1 overflow-y-auto overflow-x-hidden space-y-6 pt-4">
             {navigationSections.map((section, sectionIndex) => {
               const isExpanded = expandedSections.has(section.title)
-              
+
               return (
                 <div 
                   key={section.title}
@@ -357,20 +372,29 @@ export const EnhancedSidebar = forwardRef<HTMLDivElement, SidebarProps>(
               {bottomNavItems.map((item) => renderNavItem(item))}
             </nav>
 
-            {/* User Profile */}
-            {!isCollapsed && (
-              <div className={cn("mt-6 p-3 bg-accent/50 rounded-xl", compactMode && "mt-4 p-2")}>
-                <div className="flex items-center gap-3">
-                  <div className={cn("bg-primary rounded-full flex items-center justify-center", compactMode ? "w-8 h-8" : "w-10 h-10")}>
-                    <User className={cn("text-primary-foreground", compactMode ? "w-4 h-4" : "w-5 h-5")} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className={cn("font-medium truncate nav-label", compactMode ? "text-xs" : "text-sm")}>John Doe</p>
-                    <p className={cn("text-muted-foreground truncate nav-label", compactMode ? "text-[11px]" : "text-xs")}>john@example.com</p>
-                  </div>
-                </div>
-              </div>
-            )}
+            {/* Workspace Switcher */}
+            <div className={cn("mt-6", compactMode && "mt-4")}>
+              <Workspaces
+                workspaces={mockWorkspaces}
+                selectedWorkspaceId={selectedWorkspace.id}
+                onWorkspaceChange={setSelectedWorkspace}
+              >
+                <WorkspaceTrigger
+                  collapsed={isCollapsed}
+                  className={cn(
+                    "rounded-xl transition-colors hover:bg-accent/50 w-full",
+                    isCollapsed ? "p-2" : "p-3 bg-accent/50"
+                  )}
+                  avatarClassName={cn(compactMode ? "h-8 w-8" : "h-10 w-10")}
+                />
+                <WorkspaceContent>
+                  <button className="flex w-full items-center gap-2 rounded-sm px-2 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground focus:outline-none">
+                    <Plus className="h-4 w-4" />
+                    <span>Create Workspace</span>
+                  </button>
+                </WorkspaceContent>
+              </Workspaces>
+            </div>
           </div>
         </div>
       </div>
