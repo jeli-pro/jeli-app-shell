@@ -9,10 +9,20 @@ import {
   Monitor,
   Smartphone,
   Palette,
-  Accessibility
+  Accessibility,
+  Check
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAppStore } from '@/store/appStore'
+
+const colorPresets = [
+  { name: 'Default Blue', value: '220 84% 60%' },
+  { name: 'Rose', value: '346.8 77.2% 49.8%' },
+  { name: 'Green', value: '142.1 76.2% 36.3%' },
+  { name: 'Orange', value: '24.6 95% 53.1%' },
+  { name: 'Violet', value: '262.1 83.3% 57.8%' },
+  { name: 'Slate', value: '215.3 20.3% 65.1%' }
+]
 
 export function SettingsContent() {
   const {
@@ -21,10 +31,12 @@ export function SettingsContent() {
     compactMode,
     autoExpandSidebar,
     sidebarWidth,
+    primaryColor,
     toggleDarkMode,
     setReducedMotion,
     setCompactMode,
     setAutoExpandSidebar,
+    setPrimaryColor,
     setSidebarWidth,
     resetToDefaults
   } = useAppStore()
@@ -93,6 +105,34 @@ export function SettingsContent() {
               )}
             />
           </button>
+        </div>
+
+        {/* Accent Color */}
+        <div className="space-y-3">
+          <div className="flex items-center gap-3">
+            <Palette className="w-4 h-4" />
+            <div>
+              <p className="font-medium">Accent Color</p>
+              <p className="text-sm text-muted-foreground">Customize the main theme color</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-6 gap-2 pt-1">
+            {colorPresets.map(color => {
+              const isActive = color.value === primaryColor
+              return (
+                <button
+                  key={color.name}
+                  title={color.name}
+                  onClick={() => setPrimaryColor(color.value)}
+                  className={cn(
+                    "w-8 h-8 rounded-full border-2 transition-transform hover:scale-110 flex items-center justify-center",
+                    isActive ? 'border-primary' : 'border-transparent'
+                  )}
+                  style={{ backgroundColor: `hsl(${color.value})` }}
+                >{isActive && <Check className="w-5 h-5 text-primary-foreground" />}</button>
+              )
+            })}
+          </div>
         </div>
       </div>
 

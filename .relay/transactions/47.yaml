@@ -1,0 +1,1088 @@
+uuid: 44558e65-98da-4b08-89c0-951a84f3df9b
+projectId: amazing-app-shell
+createdAt: '2025-10-10T13:39:39.628Z'
+gitCommitMsg: >-
+  feat: Add configurable accent color
+
+  This commit introduces the ability for users to customize the application's
+  primary accent color from the settings panel.
+
+  - Adds `primaryColor` state and `setPrimaryColor` action to the Zustand store.
+  - Refactors CSS to use a single `--primary-hsl` variable for easier dynamic
+  updates. - Adds a `useEffect` in `AppShell` to apply the selected color to the
+  root element. - Implements a color preset picker in the `SettingsContent`
+  component. - Includes a fix for the "Reset to Defaults" button to correctly
+  handle dark mode state.
+promptSummary: >-
+  The user wants to make the accent color configurable through the settings
+  page.
+reasoning:
+  - >-
+    Here are the changes to make the accent color configurable through the
+    settings page.
+  - '### 1. Update the Zustand Store'
+  - >-
+    First, I'll update the application state in `src/store/appStore.ts` to
+    include the new `primaryColor` state, a corresponding setter action, and
+    ensure it's persisted. I'll also add a small fix to `resetToDefaults` to
+    correctly handle dark mode.
+  - '### 2. Update CSS Variables'
+  - >-
+    Next, I'll refactor `src/index.css` to use a single CSS variable
+    (`--primary-hsl`) for the primary/accent color. This makes it easy to update
+    the theme color from one place in JavaScript.
+  - '### 3. Apply Color Dynamically'
+  - >-
+    In `src/components/AppShell.tsx`, I'll add a `useEffect` hook that listens
+    for changes to `primaryColor` in the store and dynamically applies it to the
+    document's root element.
+  - '### 4. Add Color Picker to Settings'
+  - >-
+    Finally, I'll add the UI for changing the accent color in
+    `src/components/SettingsContent.tsx`. This includes a new section with color
+    presets that dispatch the action to update the color in the store.
+  - >-
+    These changes introduce a customizable accent color, making the application
+    shell even more flexible and personalized.
+operations:
+  - type: write
+    path: src/store/appStore.ts
+    content: |
+      --- src/store/appStore.ts
+      +++ src/store/appStore.ts
+      @@ -19,6 +19,7 @@
+         autoExpandSidebar: boolean
+         reducedMotion: boolean
+         compactMode: boolean
+      +  primaryColor: string
+         
+         // Actions
+         setSidebarState: (state: SidebarState) => void
+      @@ -32,6 +33,7 @@
+         setAutoExpandSidebar: (auto: boolean) => void
+         setReducedMotion: (reduced: boolean) => void
+         setCompactMode: (compact: boolean) => void
+      +  setPrimaryColor: (color: string) => void
+         
+         // Composite Actions
+         toggleSidebar: () => void
+      @@ -55,6 +57,7 @@
+         autoExpandSidebar: true,
+         reducedMotion: false,
+         compactMode: false,
+      +  primaryColor: '220 84% 60%',
+       }
+       
+       export const useAppStore = create<AppState>()(
+      @@ -77,6 +80,7 @@
+             setAutoExpandSidebar: (auto) => set({ autoExpandSidebar: auto }),
+             setReducedMotion: (reduced) => set({ reducedMotion: reduced }),
+             setCompactMode: (compact) => set({ compactMode: compact }),
+      +      setPrimaryColor: (color) => set({ primaryColor: color }),
+             
+             // Composite actions
+             toggleSidebar: () => {
+      @@ -113,7 +117,14 @@
+               set({ bodyState: BODY_STATES.NORMAL })
+             },
+             
+      -      resetToDefaults: () => set(defaultState),
+      +      resetToDefaults: () => {
+      +        set(defaultState)
+      +        // Also reset dark mode class on html element
+      +        if (defaultState.isDarkMode) {
+      +          document.documentElement.classList.add('dark')
+      +        } else {
+      +          document.documentElement.classList.remove('dark')
+      +        }
+      +      },
+           }),
+           {
+             name: 'app-preferences',
+      @@ -128,6 +139,7 @@
+               autoExpandSidebar: state.autoExpandSidebar,
+               reducedMotion: state.reducedMotion,
+               compactMode: state.compactMode,
+      +        primaryColor: state.primaryColor,
+             }),
+           }
+         )
+    patchStrategy: standard-diff
+  - type: write
+    path: src/index.css
+    content: |
+      --- src/index.css
+      +++ src/index.css
+      @@ -4,12 +4,13 @@
+       
+       @layer base {
+         :root {
+      +    --primary-hsl: 220 84% 60%;
+           --background: 0 0% 100%;
+           --foreground: 222.2 84% 4.9%;
+           --card: 0 0% 100%;
+           --card-foreground: 222.2 84% 4.9%;
+           --popover: 0 0% 100%;
+           --popover-foreground: 222.2 84% 4.9%;
+      -    --primary: 220 84% 60%;
+      +    --primary: var(--primary-hsl);
+           --primary-foreground: 210 40% 98%;
+           --secondary: 210 40% 96%;
+           --secondary-foreground: 222.2 84% 4.9%;
+      @@ -21,7 +22,7 @@
+           --destructive-foreground: 210 40% 98%;
+           --border: 214.3 31.8% 91.4%;
+           --input: 214.3 31.8% 91.4%;
+      -    --ring: 220 84% 60%;
+      +    --ring: var(--primary-hsl);
+           --radius: 1rem;
+         }
+       
+      @@ -32,7 +33,8 @@
+           --card-foreground: 210 40% 98%;
+           --popover: 240 6% 14%;
+           --popover-foreground: 210 40% 98%;
+      -    --primary: 220 84% 60%;
+      +    --primary-hsl: 220 84% 60%;
+      +    --primary: var(--primary-hsl);
+           --primary-foreground: 210 40% 98%;
+           --secondary: 240 5% 20%;
+           --secondary-foreground: 210 40% 98%;
+      @@ -43,7 +45,7 @@
+           --destructive-foreground: 210 40% 98%;
+           --border: 240 5% 20%;
+           --input: 240 5% 20%;
+      -    --ring: 220 84% 60%;
+      +    --ring: var(--primary-hsl);
+         }
+       }
+    patchStrategy: standard-diff
+  - type: write
+    path: src/components/AppShell.tsx
+    content: >
+      --- src/components/AppShell.tsx
+
+      +++ src/components/AppShell.tsx
+
+      @@ -25,7 +25,8 @@
+           setIsResizingRightPane,
+           toggleDarkMode,
+           reducedMotion,
+      -    autoExpandSidebar
+
+      +    autoExpandSidebar,
+
+      +    primaryColor
+         } = useAppStore()
+         
+         const appRef = useRef<HTMLDivElement>(null)
+      @@ -37,6 +38,11 @@
+       
+         // Animation duration based on reduced motion preference
+         const animationDuration = reducedMotion ? 0.1 : 0.4
+      +
+
+      +  // Set primary color
+
+      +  useEffect(() => {
+
+      +    document.documentElement.style.setProperty('--primary-hsl',
+      primaryColor)
+
+      +  }, [primaryColor])
+       
+         // Resize functionality
+         useEffect(() => {
+           const handleMouseMove = (e: MouseEvent) => {
+    patchStrategy: standard-diff
+  - type: write
+    path: src/components/SettingsContent.tsx
+    content: >
+      --- src/components/SettingsContent.tsx
+
+      +++ src/components/SettingsContent.tsx
+
+      @@ -14,6 +14,15 @@
+       import { cn } from '@/lib/utils'
+       import { useAppStore } from '@/store/appStore'
+       
+      +const colorPresets = [
+
+      +  { name: 'Default Blue', value: '220 84% 60%' },
+
+      +  { name: 'Rose', value: '346.8 77.2% 49.8%' },
+
+      +  { name: 'Green', value: '142.1 76.2% 36.3%' },
+
+      +  { name: 'Orange', value: '24.6 95% 53.1%' },
+
+      +  { name: 'Violet', value: '262.1 83.3% 57.8%' },
+
+      +  { name: 'Slate', value: '215.3 20.3% 65.1%' }
+
+      +]
+
+      +
+       export function SettingsContent() {
+         const {
+           isDarkMode,
+      @@ -21,10 +31,12 @@
+           compactMode,
+           autoExpandSidebar,
+           sidebarWidth,
+      +    primaryColor,
+           toggleDarkMode,
+           setReducedMotion,
+           setCompactMode,
+           setAutoExpandSidebar,
+      +    setPrimaryColor,
+           setSidebarWidth,
+           resetToDefaults
+         } = useAppStore()
+      @@ -95,6 +107,30 @@
+                   />
+                 </button>
+               </div>
+      +
+
+      +        {/* Accent Color */}
+
+      +        <div className="space-y-3">
+
+      +          <div className="flex items-center gap-3">
+
+      +            <Palette className="w-4 h-4" />
+
+      +            <div>
+
+      +              <p className="font-medium">Accent Color</p>
+
+      +              <p className="text-sm text-muted-foreground">Customize the
+      main theme color</p>
+
+      +            </div>
+
+      +          </div>
+
+      +          <div className="grid grid-cols-6 gap-2 pt-1">
+
+      +            {colorPresets.map(color => (
+
+      +              <button
+
+      +                key={color.name}
+
+      +                title={color.name}
+
+      +                onClick={() => setPrimaryColor(color.value)}
+
+      +                className={cn(
+
+      +                  "w-8 h-8 rounded-full border-2 transition-transform
+      hover:scale-110",
+
+      +                  color.value === primaryColor ? 'border-primary' :
+      'border-transparent'
+
+      +                )}
+
+      +                style={{ backgroundColor: `hsl(${color.value})` }}
+
+      +              />
+
+      +            ))}
+
+      +          </div>
+
+      +        </div>
+             </div>
+       
+             {/* Behavior */}
+    patchStrategy: standard-diff
+snapshot:
+  src/store/appStore.ts: >-
+    import { create } from 'zustand'
+
+    import { persist } from 'zustand/middleware'
+
+    import { SIDEBAR_STATES, BODY_STATES, type SidebarState, type BodyState }
+    from '@/lib/utils'
+
+
+    export type ActivePage = 'dashboard' | 'settings';
+
+
+    interface AppState {
+      // UI States
+      sidebarState: SidebarState
+      bodyState: BodyState
+      isDarkMode: boolean
+      sidePaneContent: 'details' | 'settings' | 'main'
+      activePage: ActivePage
+      sidebarWidth: number
+      rightPaneWidth: number
+      isResizing: boolean
+      isResizingRightPane: boolean
+      isTopBarVisible: boolean
+      
+      // User Preferences
+      autoExpandSidebar: boolean
+      reducedMotion: boolean
+      compactMode: boolean
+      
+      // Actions
+      setSidebarState: (state: SidebarState) => void
+      setBodyState: (state: BodyState) => void
+      toggleDarkMode: () => void
+      setActivePage: (page: ActivePage) => void
+      setSidebarWidth: (width: number) => void
+      setRightPaneWidth: (width: number) => void
+      setIsResizing: (resizing: boolean) => void
+      setIsResizingRightPane: (resizing: boolean) => void
+      setTopBarVisible: (visible: boolean) => void
+      setAutoExpandSidebar: (auto: boolean) => void
+      setReducedMotion: (reduced: boolean) => void
+      setCompactMode: (compact: boolean) => void
+      
+      // Composite Actions
+      toggleSidebar: () => void
+      hideSidebar: () => void
+      showSidebar: () => void
+      peekSidebar: () => void
+      toggleFullscreen: () => void
+      openSidePane: (content: 'details' | 'settings' | 'main') => void
+      closeSidePane: () => void
+      resetToDefaults: () => void
+    }
+
+
+    const defaultState = {
+      sidebarState: SIDEBAR_STATES.EXPANDED as SidebarState,
+      bodyState: BODY_STATES.NORMAL as BodyState,
+      sidePaneContent: 'details' as const,
+      activePage: 'dashboard' as ActivePage,
+      isDarkMode: false,
+      sidebarWidth: 280,
+      rightPaneWidth: typeof window !== 'undefined' ? Math.max(300, Math.round(window.innerWidth * 0.6)) : 400,
+      isResizing: false,
+      isResizingRightPane: false,
+      isTopBarVisible: true,
+      autoExpandSidebar: true,
+      reducedMotion: false,
+      compactMode: false,
+    }
+
+
+    export const useAppStore = create<AppState>()(
+      persist(
+        (set, get) => ({
+          ...defaultState,
+          
+          // Basic setters
+          sidePaneContent: 'details',
+          setSidebarState: (state) => set({ sidebarState: state }),
+          setBodyState: (state) => set({ bodyState: state }),
+          setActivePage: (page) => set({ activePage: page }),
+          toggleDarkMode: () => {
+            const newMode = !get().isDarkMode
+            set({ isDarkMode: newMode })
+            document.documentElement.classList.toggle('dark', newMode)
+          },
+          setSidebarWidth: (width) => set({ sidebarWidth: Math.max(200, Math.min(500, width)) }),
+          setRightPaneWidth: (width) => set({ rightPaneWidth: Math.max(300, Math.min(window.innerWidth * 0.8, width)) }),
+          setIsResizing: (resizing) => set({ isResizing: resizing }),
+          setIsResizingRightPane: (resizing) => set({ isResizingRightPane: resizing }),
+          setTopBarVisible: (visible) => set({ isTopBarVisible: visible }),
+          setAutoExpandSidebar: (auto) => set({ autoExpandSidebar: auto }),
+          setReducedMotion: (reduced) => set({ reducedMotion: reduced }),
+          setCompactMode: (compact) => set({ compactMode: compact }),
+          
+          // Composite actions
+          toggleSidebar: () => {
+            const current = get().sidebarState
+            if (current === SIDEBAR_STATES.HIDDEN) {
+              set({ sidebarState: SIDEBAR_STATES.COLLAPSED })
+            } else if (current === SIDEBAR_STATES.COLLAPSED) {
+              set({ sidebarState: SIDEBAR_STATES.EXPANDED })
+            } else if (current === SIDEBAR_STATES.EXPANDED) {
+              set({ sidebarState: SIDEBAR_STATES.COLLAPSED })
+            }
+          },
+          
+          hideSidebar: () => set({ sidebarState: SIDEBAR_STATES.HIDDEN }),
+          showSidebar: () => set({ sidebarState: SIDEBAR_STATES.EXPANDED }),
+          peekSidebar: () => set({ sidebarState: SIDEBAR_STATES.PEEK }),
+          
+          toggleFullscreen: () => {
+            const current = get().bodyState
+            set({ 
+              bodyState: current === BODY_STATES.FULLSCREEN ? BODY_STATES.NORMAL : BODY_STATES.FULLSCREEN 
+            })
+          },
+          
+          openSidePane: (content) => {
+            const { bodyState, sidePaneContent } = get()
+            if (bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === content) {
+              // If it's open with same content, close it.
+              set({ bodyState: BODY_STATES.NORMAL });
+            } else {
+              // If closed, or different content, open with new content.
+              set({ bodyState: BODY_STATES.SIDE_PANE, sidePaneContent: content });
+            }
+          },
+          closeSidePane: () => {
+            set({ bodyState: BODY_STATES.NORMAL })
+          },
+          
+          resetToDefaults: () => set(defaultState),
+        }),
+        {
+          name: 'app-preferences',
+          partialize: (state) => ({
+            sidebarState: state.sidebarState,
+            bodyState: state.bodyState,
+            activePage: state.activePage,
+            sidePaneContent: state.sidePaneContent,
+            isDarkMode: state.isDarkMode,
+            sidebarWidth: state.sidebarWidth,
+            rightPaneWidth: state.rightPaneWidth,
+            autoExpandSidebar: state.autoExpandSidebar,
+            reducedMotion: state.reducedMotion,
+            compactMode: state.compactMode,
+          }),
+        }
+      )
+    )
+
+
+    // Initialize dark mode on load
+
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('app-preferences')
+      if (stored) {
+        const parsed = JSON.parse(stored)
+        if (parsed.state?.isDarkMode) {
+          document.documentElement.classList.add('dark')
+        }
+      }
+    }
+  src/index.css: |-
+    @import 'tailwindcss/base';
+    @import 'tailwindcss/components';
+    @import 'tailwindcss/utilities';
+
+    @layer base {
+      :root {
+        --background: 0 0% 100%;
+        --foreground: 222.2 84% 4.9%;
+        --card: 0 0% 100%;
+        --card-foreground: 222.2 84% 4.9%;
+        --popover: 0 0% 100%;
+        --popover-foreground: 222.2 84% 4.9%;
+        --primary: 220 84% 60%;
+        --primary-foreground: 210 40% 98%;
+        --secondary: 210 40% 96%;
+        --secondary-foreground: 222.2 84% 4.9%;
+        --muted: 210 40% 96%;
+        --muted-foreground: 215.4 16.3% 46.9%;
+        --accent: 210 40% 96%;
+        --accent-foreground: 222.2 84% 4.9%;
+        --destructive: 0 84.2% 60.2%;
+        --destructive-foreground: 210 40% 98%;
+        --border: 214.3 31.8% 91.4%;
+        --input: 214.3 31.8% 91.4%;
+        --ring: 220 84% 60%;
+        --radius: 1rem;
+      }
+
+      .dark {
+        --background: 240 6% 12%;
+        --foreground: 210 40% 98%;
+        --card: 240 6% 14%;
+        --card-foreground: 210 40% 98%;
+        --popover: 240 6% 14%;
+        --popover-foreground: 210 40% 98%;
+        --primary: 220 84% 60%;
+        --primary-foreground: 210 40% 98%;
+        --secondary: 240 5% 20%;
+        --secondary-foreground: 210 40% 98%;
+        --muted: 240 5% 20%;
+        --muted-foreground: 215 20.2% 65.1%;
+        --accent: 240 5% 20%;
+        --accent-foreground: 210 40% 98%;
+        --destructive: 0 62.8% 30.6%;
+        --destructive-foreground: 210 40% 98%;
+        --border: 240 5% 20%;
+        --input: 240 5% 20%;
+        --ring: 220 84% 60%;
+      }
+    }
+
+    @layer base {
+      * {
+        @apply border-border;
+      }
+      body {
+        @apply bg-background text-foreground;
+      }
+    }
+
+    /* Custom scrollbar styles */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      @apply bg-transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      @apply bg-border rounded-full;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      @apply bg-muted-foreground/50;
+    }
+  src/components/SettingsContent.tsx: |-
+    import { useState } from 'react'
+    import { 
+      Moon, 
+      Sun, 
+      Zap, 
+      Eye, 
+      Minimize2, 
+      RotateCcw,
+      Monitor,
+      Smartphone,
+      Palette,
+      Accessibility
+    } from 'lucide-react'
+    import { cn } from '@/lib/utils'
+    import { useAppStore } from '@/store/appStore'
+
+    export function SettingsContent() {
+      const {
+        isDarkMode,
+        reducedMotion,
+        compactMode,
+        autoExpandSidebar,
+        sidebarWidth,
+        toggleDarkMode,
+        setReducedMotion,
+        setCompactMode,
+        setAutoExpandSidebar,
+        setSidebarWidth,
+        resetToDefaults
+      } = useAppStore()
+
+      const [tempSidebarWidth, setTempSidebarWidth] = useState(sidebarWidth)
+
+      const handleSidebarWidthChange = (width: number) => {
+        setTempSidebarWidth(width)
+        setSidebarWidth(width)
+      }
+
+      return (
+        <div className="space-y-10">
+          {/* Appearance */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+              <Palette className="w-4 h-4" />
+              Appearance
+            </h3>
+            
+            {/* Dark Mode */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                {isDarkMode ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+                <div>
+                  <p className="font-medium">Dark Mode</p>
+                  <p className="text-sm text-muted-foreground">Toggle dark theme</p>
+                </div>
+              </div>
+              <button
+                onClick={toggleDarkMode}
+                className={cn(
+                  "relative inline-flex h-7 w-12 items-center rounded-full transition-colors",
+                  isDarkMode ? "bg-primary" : "bg-muted"
+                )}
+              >
+                <span
+                  className={cn(
+                    "inline-block h-5 w-5 transform rounded-full bg-background transition-transform",
+                    isDarkMode ? "translate-x-6" : "translate-x-1"
+                  )}
+                />
+              </button>
+            </div>
+
+            {/* Compact Mode */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Minimize2 className="w-4 h-4" />
+                <div>
+                  <p className="font-medium">Compact Mode</p>
+                  <p className="text-sm text-muted-foreground">Reduce spacing and sizes</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setCompactMode(!compactMode)}
+                className={cn(
+                  "relative inline-flex h-7 w-12 items-center rounded-full transition-colors",
+                  compactMode ? "bg-primary" : "bg-muted"
+                )}
+              >
+                <span
+                  className={cn(
+                    "inline-block h-5 w-5 transform rounded-full bg-background transition-transform",
+                    compactMode ? "translate-x-6" : "translate-x-1"
+                  )}
+                />
+              </button>
+            </div>
+          </div>
+
+          {/* Behavior */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+              <Zap className="w-4 h-4" />
+              Behavior
+            </h3>
+
+            {/* Auto Expand Sidebar */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Eye className="w-4 h-4" />
+                <div>
+                  <p className="font-medium">Auto Expand Sidebar</p>
+                  <p className="text-sm text-muted-foreground">Expand on hover when collapsed</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setAutoExpandSidebar(!autoExpandSidebar)}
+                className={cn(
+                  "relative inline-flex h-7 w-12 items-center rounded-full transition-colors",
+                  autoExpandSidebar ? "bg-primary" : "bg-muted"
+                )}
+              >
+                <span
+                  className={cn(
+                    "inline-block h-5 w-5 transform rounded-full bg-background transition-transform",
+                    autoExpandSidebar ? "translate-x-6" : "translate-x-1"
+                  )}
+                />
+              </button>
+            </div>
+
+            {/* Sidebar Width */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <Monitor className="w-4 h-4" />
+                <div>
+                  <p className="font-medium">Sidebar Width</p>
+                  <p className="text-sm text-muted-foreground">{tempSidebarWidth}px</p>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <input
+                  type="range"
+                  min="200"
+                  max="500"
+                  step="10"
+                  value={tempSidebarWidth}
+                  onChange={(e) => handleSidebarWidthChange(Number(e.target.value))}
+                  className="w-full h-1.5 bg-muted rounded-lg appearance-none cursor-pointer slider"
+                />
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>200px</span>
+                  <span>350px</span>
+                  <span>500px</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Accessibility */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+              <Accessibility className="w-4 h-4" />
+              Accessibility
+            </h3>
+
+            {/* Reduced Motion */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Zap className="w-4 h-4" />
+                <div>
+                  <p className="font-medium">Reduced Motion</p>
+                  <p className="text-sm text-muted-foreground">Minimize animations</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setReducedMotion(!reducedMotion)}
+                className={cn(
+                  "relative inline-flex h-7 w-12 items-center rounded-full transition-colors",
+                  reducedMotion ? "bg-primary" : "bg-muted"
+                )}
+              >
+                <span
+                  className={cn(
+                    "inline-block h-5 w-5 transform rounded-full bg-background transition-transform",
+                    reducedMotion ? "translate-x-6" : "translate-x-1"
+                  )}
+                />
+              </button>
+            </div>
+          </div>
+
+          {/* Presets */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+              Quick Presets
+            </h3>
+            
+            <div className="grid grid-cols-2 gap-3">
+              <button 
+                onClick={() => {
+                  setCompactMode(false)
+                  setReducedMotion(false)
+                  setSidebarWidth(320)
+                }}
+                className="p-4 bg-accent/30 hover:bg-accent/50 rounded-xl transition-colors text-left"
+              >
+                <Monitor className="w-4 h-4 mb-2" />
+                <p className="font-medium text-sm">Desktop</p>
+                <p className="text-xs text-muted-foreground">Spacious layout</p>
+              </button>
+              
+              <button 
+                onClick={() => {
+                  setCompactMode(true)
+                  setReducedMotion(true)
+                  setSidebarWidth(240)
+                }}
+                className="p-4 bg-accent/30 hover:bg-accent/50 rounded-xl transition-colors text-left"
+              >
+                <Smartphone className="w-4 h-4 mb-2" />
+                <p className="font-medium text-sm">Mobile</p>
+                <p className="text-xs text-muted-foreground">Compact layout</p>
+              </button>
+            </div>
+          </div>
+          <div className="pt-6 border-t border-border">
+            <button
+              onClick={resetToDefaults}
+              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-destructive/10 text-destructive hover:bg-destructive/20 rounded-lg transition-colors"
+            >
+              <RotateCcw className="w-4 h-4" />
+              Reset to Defaults
+            </button>
+          </div>
+        </div>
+      )
+    }
+
+    // Custom slider styles
+    const sliderStyles = `
+    .slider::-webkit-slider-thumb {
+      appearance: none;
+      height: 18px;
+      width: 18px;
+      border-radius: 50%;
+      background: hsl(var(--primary));
+      cursor: pointer;
+      border: 3px solid hsl(var(--background));
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      margin-top: -7px;
+    }
+
+    .slider::-moz-range-thumb {
+      height: 18px;
+      width: 18px;
+      border-radius: 50%;
+      background: hsl(var(--primary));
+      cursor: pointer;
+      border: 3px solid hsl(var(--background));
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    `
+
+    // Inject styles
+    if (typeof document !== 'undefined') {
+      const styleSheet = document.createElement('style')
+      styleSheet.textContent = sliderStyles
+      document.head.appendChild(styleSheet)
+    }
+  src/components/AppShell.tsx: |-
+    import { useRef, useEffect } from 'react'
+    import { gsap } from 'gsap'
+    import { cn } from '@/lib/utils'
+    import { EnhancedSidebar } from './EnhancedSidebar'
+    import { MainContent } from './MainContent'
+    import { RightPane } from './RightPane'
+    import { TopBar } from './TopBar'
+    import { useAppStore } from '@/store/appStore'
+    import { SIDEBAR_STATES, BODY_STATES } from '@/lib/utils'
+
+    export function AppShell() {
+      const {
+        sidebarState,
+        bodyState,
+        sidebarWidth,
+        isDarkMode,
+        isResizing,
+        rightPaneWidth,
+        isResizingRightPane,
+        setRightPaneWidth,
+        isTopBarVisible,
+        setSidebarState,
+        closeSidePane,
+        setIsResizing,
+        setSidebarWidth,
+        toggleSidebar,
+        peekSidebar,
+        toggleFullscreen,
+        setIsResizingRightPane,
+        toggleDarkMode,
+        reducedMotion,
+        autoExpandSidebar
+      } = useAppStore()
+      
+      const appRef = useRef<HTMLDivElement>(null)
+      const sidebarRef = useRef<HTMLDivElement>(null)
+      const mainContentRef = useRef<HTMLDivElement>(null)
+      const rightPaneRef = useRef<HTMLDivElement>(null)
+      const resizeHandleRef = useRef<HTMLDivElement>(null)
+      const topBarContainerRef = useRef<HTMLDivElement>(null)
+
+      // Animation duration based on reduced motion preference
+      const animationDuration = reducedMotion ? 0.1 : 0.4
+
+      // Resize functionality
+      useEffect(() => {
+        const handleMouseMove = (e: MouseEvent) => {
+          if (!isResizing) return
+          
+          const newWidth = Math.max(200, Math.min(500, e.clientX))
+          setSidebarWidth(newWidth)
+          
+          if (sidebarRef.current) {
+            gsap.set(sidebarRef.current, { width: newWidth })
+          }
+          if (resizeHandleRef.current) {
+            gsap.set(resizeHandleRef.current, { left: newWidth })
+          }
+        }
+
+        const handleMouseUp = () => {
+          setIsResizing(false)
+          document.body.style.cursor = ''
+          document.body.style.userSelect = ''
+        }
+
+        if (isResizing) {
+          document.body.style.cursor = 'col-resize'
+          document.body.style.userSelect = 'none'
+          document.addEventListener('mousemove', handleMouseMove)
+          document.addEventListener('mouseup', handleMouseUp)
+        }
+
+        return () => {
+          document.removeEventListener('mousemove', handleMouseMove)
+          document.removeEventListener('mouseup', handleMouseUp)
+        }
+      }, [isResizing, setIsResizing, setSidebarWidth])
+
+      // Resize functionality for Right Pane
+      useEffect(() => {
+        const handleMouseMove = (e: MouseEvent) => {
+          if (!isResizingRightPane) return
+          
+          const newWidth = window.innerWidth - e.clientX
+          setRightPaneWidth(newWidth)
+        }
+
+        const handleMouseUp = () => {
+          setIsResizingRightPane(false)
+          document.body.style.cursor = ''
+          document.body.style.userSelect = ''
+        }
+
+        if (isResizingRightPane) {
+          document.body.style.cursor = 'col-resize'
+          document.body.style.userSelect = 'none'
+          document.addEventListener('mousemove', handleMouseMove)
+          document.addEventListener('mouseup', handleMouseUp)
+        }
+
+        return () => {
+          document.removeEventListener('mousemove', handleMouseMove)
+          document.removeEventListener('mouseup', handleMouseUp)
+          document.body.style.cursor = ''
+        }
+      }, [isResizingRightPane, setIsResizingRightPane, setRightPaneWidth])
+
+      // GSAP animations for sidebar transitions
+      useEffect(() => {
+        if (!sidebarRef.current || !mainContentRef.current || !resizeHandleRef.current) return
+
+        const sidebar = sidebarRef.current
+        const handle = resizeHandleRef.current
+        
+        let targetWidth = 0
+        let targetOpacity = 1
+
+        if (bodyState === BODY_STATES.FULLSCREEN) {
+          targetWidth = 0;
+          targetOpacity = 0;
+        } else {
+          switch (sidebarState) {
+            case SIDEBAR_STATES.HIDDEN:
+              targetWidth = 0
+              targetOpacity = 0
+              break
+            case SIDEBAR_STATES.COLLAPSED:
+              targetWidth = 64
+              targetOpacity = 1
+              break
+            case SIDEBAR_STATES.EXPANDED:
+              targetWidth = sidebarWidth
+              targetOpacity = 1
+              break
+            case SIDEBAR_STATES.PEEK:
+              targetWidth = sidebarWidth * 0.8
+              targetOpacity = 0.95
+              break
+          }
+        }
+
+        const tl = gsap.timeline({ ease: "power3.out" })
+        
+        tl.to(sidebar, {
+          width: targetWidth,
+          opacity: targetOpacity,
+          duration: animationDuration,
+        })
+        tl.to(handle, {
+          left: targetWidth,
+          duration: animationDuration,
+        }, 0)
+
+      }, [sidebarState, sidebarWidth, bodyState, animationDuration])
+
+      // GSAP animations for body state transitions
+      useEffect(() => {
+        if (!mainContentRef.current || !sidebarRef.current || !rightPaneRef.current) return
+
+        const ease = "power3.out"
+        const isFullscreen = bodyState === BODY_STATES.FULLSCREEN
+
+        const isSidePane = bodyState === BODY_STATES.SIDE_PANE
+
+        // Right pane animation
+        gsap.to(rightPaneRef.current, {
+          width: rightPaneWidth,
+          x: isSidePane ? 0 : rightPaneWidth + 5, // +5 to hide border
+          duration: animationDuration,
+          ease,
+        })
+
+        gsap.to(mainContentRef.current, {
+          paddingTop: isFullscreen ? '0rem' : isTopBarVisible ? '5rem' : '0rem', // h-20 is 5rem
+          duration: animationDuration,
+          ease,
+        })
+
+        gsap.to(topBarContainerRef.current, {
+          y: (isFullscreen || !isTopBarVisible) ? '-100%' : '0%',
+          duration: animationDuration,
+          ease,
+        })
+        
+        // Add backdrop for side pane
+        const backdrop = document.querySelector('.app-backdrop')
+        if (isSidePane) {
+          if (!backdrop) {
+            const el = document.createElement('div')
+            el.className = 'app-backdrop fixed inset-0 bg-black/30 z-[55]'
+            appRef.current?.appendChild(el)
+            gsap.fromTo(el, { opacity: 0 }, { opacity: 1, duration: animationDuration })
+            el.onclick = () => closeSidePane()
+          }
+        } else {
+          if (backdrop) {
+            gsap.to(backdrop, { opacity: 0, duration: animationDuration, onComplete: () => backdrop.remove() })
+          }
+        }
+      }, [bodyState, animationDuration, rightPaneWidth, closeSidePane, isTopBarVisible])
+
+      return (
+        <div 
+          ref={appRef}
+          className={cn(
+            "relative h-screen w-screen overflow-hidden bg-background transition-colors duration-300",
+            isDarkMode && "dark"
+          )}
+        >
+          <div className="flex h-screen overflow-hidden">
+            {/* Enhanced Sidebar */}
+            <EnhancedSidebar
+              ref={sidebarRef}
+              onMouseEnter={() => {
+                if (autoExpandSidebar && sidebarState === SIDEBAR_STATES.COLLAPSED) {
+                  peekSidebar()
+                }
+              }}
+              onMouseLeave={() => {
+                if (autoExpandSidebar && sidebarState === SIDEBAR_STATES.PEEK) {
+                  setSidebarState(SIDEBAR_STATES.COLLAPSED)
+                }
+              }}
+            />
+
+            {/* Resize Handle */}
+            {sidebarState !== SIDEBAR_STATES.HIDDEN && (
+              <div
+                ref={resizeHandleRef}
+                className={cn(
+                  "absolute top-0 w-2 h-full bg-transparent hover:bg-primary/20 cursor-col-resize z-50 transition-colors duration-200 group -translate-x-1/2"
+                )}
+                onMouseDown={(e) => {
+                  e.preventDefault()
+                  setIsResizing(true)
+                }}
+              >
+                <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200 mx-auto" />
+              </div>
+            )}
+
+            {/* Main Content Area */}
+            <div className="relative flex-1 overflow-hidden bg-background">
+              <div ref={topBarContainerRef} className="absolute inset-x-0 top-0 z-30">
+                <TopBar
+                  onToggleSidebar={toggleSidebar}
+                  onToggleFullscreen={toggleFullscreen}
+                  onToggleDarkMode={toggleDarkMode}
+                />
+              </div>
+              
+              {/* Main Content */}
+              <MainContent
+                ref={mainContentRef}
+                bodyState={bodyState}
+                onToggleFullscreen={toggleFullscreen}
+              />
+            </div>
+          </div>
+          <RightPane ref={rightPaneRef} />
+        </div>
+      )
+    }
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 47

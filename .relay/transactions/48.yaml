@@ -1,0 +1,531 @@
+uuid: 44b7a0d4-72de-4e00-85f0-b0400d72f10b
+projectId: amazing-app-shell
+createdAt: '2025-10-10T13:42:35.870Z'
+gitCommitMsg: >-
+  fix(settings): Improve accent color customization
+
+  This commit addresses two issues with the accent color setting:
+
+  1.  The selected accent color now correctly applies in dark mode by removing
+  the overriding `--primary-hsl` variable from the `.dark` theme definition. 2. 
+  The UI for selecting a color preset has been improved. A checkmark icon is now
+  displayed on the active color, providing clear visual feedback to the user.
+promptSummary: >-
+  The user wants to fix the accent color customization. It doesn't work in dark
+  mode and the UI for selecting a color is not clear.
+reasoning:
+  - >-
+    I've analyzed your request and will make the necessary changes to fix the
+    accent color customization. Here's my plan:
+  - >-
+    1.  **Fix Dark Mode Accent Color**: I'll edit `src/index.css` to remove the
+    hardcoded `--primary-hsl` variable from the `.dark` theme definition. This
+    will allow the dynamically set accent color to apply correctly when dark
+    mode is enabled.
+  - >-
+    2.  **Improve Color Picker UI**: In `src/components/SettingsContent.tsx`,
+    I'll enhance the accent color selection UI. Instead of just a border, the
+    currently active color will now display a clear checkmark icon, making it
+    much easier to see which color is selected. I'll also import the `Check`
+    icon from `lucide-react` for this purpose.
+  - 'Here are the code modifications:'
+  - First, I'll fix the dark mode issue by updating the CSS file.
+  - Next, I'll improve the UI for the color picker in the settings.
+  - >-
+    These changes will address both issues you've pointed out, resulting in a
+    fully functional and more intuitive accent color setting.
+operations:
+  - type: write
+    path: src/index.css
+    content: |+
+      --- src/index.css
+      +++ src/index.css
+      @@ -27,7 +27,6 @@
+           --card-foreground: 210 40% 98%;
+           --popover: 240 6% 14%;
+           --popover-foreground: 210 40% 98%;
+      -    --primary-hsl: 220 84% 60%;
+           --primary: var(--primary-hsl);
+           --primary-foreground: 210 40% 98%;
+           --secondary: 240 5% 20%;
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/components/SettingsContent.tsx
+    content: >+
+      --- src/components/SettingsContent.tsx
+
+      +++ src/components/SettingsContent.tsx
+
+      @@ -7,7 +7,8 @@
+         Monitor,
+         Smartphone,
+         Palette,
+      -  Accessibility
+
+      +  Accessibility,
+
+      +  Check
+       } from 'lucide-react'
+       import { cn } from '@/lib/utils'
+       import { useAppStore } from '@/store/appStore'
+      @@ -102,17 +103,19 @@
+                   </div>
+                 </div>
+                 <div className="grid grid-cols-6 gap-2 pt-1">
+      -            {colorPresets.map(color => (
+
+      -              <button
+
+      -                key={color.name}
+
+      -                title={color.name}
+
+      -                onClick={() => setPrimaryColor(color.value)}
+
+      -                className={cn(
+
+      -                  "w-8 h-8 rounded-full border-2 transition-transform
+      hover:scale-110",
+
+      -                  color.value === primaryColor ? 'border-primary' :
+      'border-transparent'
+
+      -                )}
+
+      -                style={{ backgroundColor: `hsl(${color.value})` }}
+
+      -              />
+
+      -            ))}
+
+      +            {colorPresets.map(color => {
+
+      +              const isActive = color.value === primaryColor
+
+      +              return (
+
+      +                <button
+
+      +                  key={color.name}
+
+      +                  title={color.name}
+
+      +                  onClick={() => setPrimaryColor(color.value)}
+
+      +                  className={cn(
+
+      +                    "w-8 h-8 rounded-full border-2 transition-transform
+      hover:scale-110 flex items-center justify-center",
+
+      +                    isActive ? 'border-primary' : 'border-transparent'
+
+      +                  )}
+
+      +                  style={{ backgroundColor: `hsl(${color.value})` }}
+
+      +                >{isActive && <Check className="w-5 h-5
+      text-primary-foreground" />}</button>
+
+      +              )
+
+      +            })}
+                 </div>
+               </div>
+             </div>
+
+    patchStrategy: standard-diff
+snapshot:
+  src/index.css: |-
+    @import 'tailwindcss/base';
+    @import 'tailwindcss/components';
+    @import 'tailwindcss/utilities';
+
+    @layer base {
+      :root {
+        --primary-hsl: 220 84% 60%;
+        --background: 0 0% 100%;
+        --foreground: 222.2 84% 4.9%;
+        --card: 0 0% 100%;
+        --card-foreground: 222.2 84% 4.9%;
+        --popover: 0 0% 100%;
+        --popover-foreground: 222.2 84% 4.9%;
+        --primary: var(--primary-hsl);
+        --primary-foreground: 210 40% 98%;
+        --secondary: 210 40% 96%;
+        --secondary-foreground: 222.2 84% 4.9%;
+        --muted: 210 40% 96%;
+        --muted-foreground: 215.4 16.3% 46.9%;
+        --accent: 210 40% 96%;
+        --accent-foreground: 222.2 84% 4.9%;
+        --destructive: 0 84.2% 60.2%;
+        --destructive-foreground: 210 40% 98%;
+        --border: 214.3 31.8% 91.4%;
+        --input: 214.3 31.8% 91.4%;
+        --ring: var(--primary-hsl);
+        --radius: 1rem;
+      }
+
+      .dark {
+        --background: 240 6% 12%;
+        --foreground: 210 40% 98%;
+        --card: 240 6% 14%;
+        --card-foreground: 210 40% 98%;
+        --popover: 240 6% 14%;
+        --popover-foreground: 210 40% 98%;
+        --primary-hsl: 220 84% 60%;
+        --primary: var(--primary-hsl);
+        --primary-foreground: 210 40% 98%;
+        --secondary: 240 5% 20%;
+        --secondary-foreground: 210 40% 98%;
+        --muted: 240 5% 20%;
+        --muted-foreground: 215 20.2% 65.1%;
+        --accent: 240 5% 20%;
+        --accent-foreground: 210 40% 98%;
+        --destructive: 0 62.8% 30.6%;
+        --destructive-foreground: 210 40% 98%;
+        --border: 240 5% 20%;
+        --input: 240 5% 20%;
+        --ring: var(--primary-hsl);
+      }
+    }
+
+    @layer base {
+      * {
+        @apply border-border;
+      }
+      body {
+        @apply bg-background text-foreground;
+      }
+    }
+
+    /* Custom scrollbar styles */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      @apply bg-transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      @apply bg-border rounded-full;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      @apply bg-muted-foreground/50;
+    }
+  src/components/SettingsContent.tsx: |-
+    import { useState } from 'react'
+    import { 
+      Moon, 
+      Sun, 
+      Zap, 
+      Eye, 
+      Minimize2, 
+      RotateCcw,
+      Monitor,
+      Smartphone,
+      Palette,
+      Accessibility
+    } from 'lucide-react'
+    import { cn } from '@/lib/utils'
+    import { useAppStore } from '@/store/appStore'
+
+    const colorPresets = [
+      { name: 'Default Blue', value: '220 84% 60%' },
+      { name: 'Rose', value: '346.8 77.2% 49.8%' },
+      { name: 'Green', value: '142.1 76.2% 36.3%' },
+      { name: 'Orange', value: '24.6 95% 53.1%' },
+      { name: 'Violet', value: '262.1 83.3% 57.8%' },
+      { name: 'Slate', value: '215.3 20.3% 65.1%' }
+    ]
+
+    export function SettingsContent() {
+      const {
+        isDarkMode,
+        reducedMotion,
+        compactMode,
+        autoExpandSidebar,
+        sidebarWidth,
+        primaryColor,
+        toggleDarkMode,
+        setReducedMotion,
+        setCompactMode,
+        setAutoExpandSidebar,
+        setPrimaryColor,
+        setSidebarWidth,
+        resetToDefaults
+      } = useAppStore()
+
+      const [tempSidebarWidth, setTempSidebarWidth] = useState(sidebarWidth)
+
+      const handleSidebarWidthChange = (width: number) => {
+        setTempSidebarWidth(width)
+        setSidebarWidth(width)
+      }
+
+      return (
+        <div className="space-y-10">
+          {/* Appearance */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+              <Palette className="w-4 h-4" />
+              Appearance
+            </h3>
+            
+            {/* Dark Mode */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                {isDarkMode ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+                <div>
+                  <p className="font-medium">Dark Mode</p>
+                  <p className="text-sm text-muted-foreground">Toggle dark theme</p>
+                </div>
+              </div>
+              <button
+                onClick={toggleDarkMode}
+                className={cn(
+                  "relative inline-flex h-7 w-12 items-center rounded-full transition-colors",
+                  isDarkMode ? "bg-primary" : "bg-muted"
+                )}
+              >
+                <span
+                  className={cn(
+                    "inline-block h-5 w-5 transform rounded-full bg-background transition-transform",
+                    isDarkMode ? "translate-x-6" : "translate-x-1"
+                  )}
+                />
+              </button>
+            </div>
+
+            {/* Compact Mode */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Minimize2 className="w-4 h-4" />
+                <div>
+                  <p className="font-medium">Compact Mode</p>
+                  <p className="text-sm text-muted-foreground">Reduce spacing and sizes</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setCompactMode(!compactMode)}
+                className={cn(
+                  "relative inline-flex h-7 w-12 items-center rounded-full transition-colors",
+                  compactMode ? "bg-primary" : "bg-muted"
+                )}
+              >
+                <span
+                  className={cn(
+                    "inline-block h-5 w-5 transform rounded-full bg-background transition-transform",
+                    compactMode ? "translate-x-6" : "translate-x-1"
+                  )}
+                />
+              </button>
+            </div>
+
+            {/* Accent Color */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <Palette className="w-4 h-4" />
+                <div>
+                  <p className="font-medium">Accent Color</p>
+                  <p className="text-sm text-muted-foreground">Customize the main theme color</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-6 gap-2 pt-1">
+                {colorPresets.map(color => (
+                  <button
+                    key={color.name}
+                    title={color.name}
+                    onClick={() => setPrimaryColor(color.value)}
+                    className={cn(
+                      "w-8 h-8 rounded-full border-2 transition-transform hover:scale-110",
+                      color.value === primaryColor ? 'border-primary' : 'border-transparent'
+                    )}
+                    style={{ backgroundColor: `hsl(${color.value})` }}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Behavior */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+              <Zap className="w-4 h-4" />
+              Behavior
+            </h3>
+
+            {/* Auto Expand Sidebar */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Eye className="w-4 h-4" />
+                <div>
+                  <p className="font-medium">Auto Expand Sidebar</p>
+                  <p className="text-sm text-muted-foreground">Expand on hover when collapsed</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setAutoExpandSidebar(!autoExpandSidebar)}
+                className={cn(
+                  "relative inline-flex h-7 w-12 items-center rounded-full transition-colors",
+                  autoExpandSidebar ? "bg-primary" : "bg-muted"
+                )}
+              >
+                <span
+                  className={cn(
+                    "inline-block h-5 w-5 transform rounded-full bg-background transition-transform",
+                    autoExpandSidebar ? "translate-x-6" : "translate-x-1"
+                  )}
+                />
+              </button>
+            </div>
+
+            {/* Sidebar Width */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <Monitor className="w-4 h-4" />
+                <div>
+                  <p className="font-medium">Sidebar Width</p>
+                  <p className="text-sm text-muted-foreground">{tempSidebarWidth}px</p>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <input
+                  type="range"
+                  min="200"
+                  max="500"
+                  step="10"
+                  value={tempSidebarWidth}
+                  onChange={(e) => handleSidebarWidthChange(Number(e.target.value))}
+                  className="w-full h-1.5 bg-muted rounded-lg appearance-none cursor-pointer slider"
+                />
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>200px</span>
+                  <span>350px</span>
+                  <span>500px</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Accessibility */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+              <Accessibility className="w-4 h-4" />
+              Accessibility
+            </h3>
+
+            {/* Reduced Motion */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Zap className="w-4 h-4" />
+                <div>
+                  <p className="font-medium">Reduced Motion</p>
+                  <p className="text-sm text-muted-foreground">Minimize animations</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setReducedMotion(!reducedMotion)}
+                className={cn(
+                  "relative inline-flex h-7 w-12 items-center rounded-full transition-colors",
+                  reducedMotion ? "bg-primary" : "bg-muted"
+                )}
+              >
+                <span
+                  className={cn(
+                    "inline-block h-5 w-5 transform rounded-full bg-background transition-transform",
+                    reducedMotion ? "translate-x-6" : "translate-x-1"
+                  )}
+                />
+              </button>
+            </div>
+          </div>
+
+          {/* Presets */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+              Quick Presets
+            </h3>
+            
+            <div className="grid grid-cols-2 gap-3">
+              <button 
+                onClick={() => {
+                  setCompactMode(false)
+                  setReducedMotion(false)
+                  setSidebarWidth(320)
+                }}
+                className="p-4 bg-accent/30 hover:bg-accent/50 rounded-xl transition-colors text-left"
+              >
+                <Monitor className="w-4 h-4 mb-2" />
+                <p className="font-medium text-sm">Desktop</p>
+                <p className="text-xs text-muted-foreground">Spacious layout</p>
+              </button>
+              
+              <button 
+                onClick={() => {
+                  setCompactMode(true)
+                  setReducedMotion(true)
+                  setSidebarWidth(240)
+                }}
+                className="p-4 bg-accent/30 hover:bg-accent/50 rounded-xl transition-colors text-left"
+              >
+                <Smartphone className="w-4 h-4 mb-2" />
+                <p className="font-medium text-sm">Mobile</p>
+                <p className="text-xs text-muted-foreground">Compact layout</p>
+              </button>
+            </div>
+          </div>
+          <div className="pt-6 border-t border-border">
+            <button
+              onClick={resetToDefaults}
+              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-destructive/10 text-destructive hover:bg-destructive/20 rounded-lg transition-colors"
+            >
+              <RotateCcw className="w-4 h-4" />
+              Reset to Defaults
+            </button>
+          </div>
+        </div>
+      )
+    }
+
+    // Custom slider styles
+    const sliderStyles = `
+    .slider::-webkit-slider-thumb {
+      appearance: none;
+      height: 18px;
+      width: 18px;
+      border-radius: 50%;
+      background: hsl(var(--primary));
+      cursor: pointer;
+      border: 3px solid hsl(var(--background));
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      margin-top: -7px;
+    }
+
+    .slider::-moz-range-thumb {
+      height: 18px;
+      width: 18px;
+      border-radius: 50%;
+      background: hsl(var(--primary));
+      cursor: pointer;
+      border: 3px solid hsl(var(--background));
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    `
+
+    // Inject styles
+    if (typeof document !== 'undefined') {
+      const styleSheet = document.createElement('style')
+      styleSheet.textContent = sliderStyles
+      document.head.appendChild(styleSheet)
+    }
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 48

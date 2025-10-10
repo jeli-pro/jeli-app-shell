@@ -30,6 +30,108 @@ vite.config.ts
 
 # Files
 
+## File: src/lib/utils.ts
+```typescript
+import { type ClassValue, clsx } from "clsx"
+import { twMerge } from "tailwind-merge"
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs))
+}
+
+export const SIDEBAR_STATES = {
+  HIDDEN: 'hidden',
+  COLLAPSED: 'collapsed', 
+  EXPANDED: 'expanded',
+  PEEK: 'peek'
+} as const
+
+export const BODY_STATES = {
+  NORMAL: 'normal',
+  FULLSCREEN: 'fullscreen',
+  SIDE_PANE: 'side_pane'
+} as const
+
+export type SidebarState = typeof SIDEBAR_STATES[keyof typeof SIDEBAR_STATES]
+export type BodyState = typeof BODY_STATES[keyof typeof BODY_STATES]
+```
+
+## File: src/main.tsx
+```typescript
+import React from 'react'
+import ReactDOM from 'react-dom/client'
+import App from './App.tsx'
+import './index.css'
+
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>,
+)
+```
+
+## File: index.html
+```html
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Amazing App Shell</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+```
+
+## File: postcss.config.js
+```javascript
+export default {
+  plugins: {
+    tailwindcss: {},
+    autoprefixer: {},
+  },
+}
+```
+
+## File: tsconfig.json
+```json
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "useDefineForClassFields": true,
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+
+    /* Bundler mode */
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+
+    /* Linting */
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+
+    /* Path mapping */
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": ["src"],
+  "references": [{ "path": "./tsconfig.node.json" }]
+}
+```
+
 ## File: src/components/DashboardContent.tsx
 ```typescript
 import { useRef, useEffect, useState } from 'react'
@@ -432,8 +534,6 @@ export function DashboardContent({ isInSidePane = false }: DashboardContentProps
 ```typescript
 import { useState } from 'react'
 import { 
-  Settings, 
-  X, 
   Moon, 
   Sun, 
   Zap, 
@@ -448,6 +548,15 @@ import {
 import { cn } from '@/lib/utils'
 import { useAppStore } from '@/store/appStore'
 
+const colorPresets = [
+  { name: 'Default Blue', value: '220 84% 60%' },
+  { name: 'Rose', value: '346.8 77.2% 49.8%' },
+  { name: 'Green', value: '142.1 76.2% 36.3%' },
+  { name: 'Orange', value: '24.6 95% 53.1%' },
+  { name: 'Violet', value: '262.1 83.3% 57.8%' },
+  { name: 'Slate', value: '215.3 20.3% 65.1%' }
+]
+
 export function SettingsContent() {
   const {
     isDarkMode,
@@ -455,10 +564,12 @@ export function SettingsContent() {
     compactMode,
     autoExpandSidebar,
     sidebarWidth,
+    primaryColor,
     toggleDarkMode,
     setReducedMotion,
     setCompactMode,
     setAutoExpandSidebar,
+    setPrimaryColor,
     setSidebarWidth,
     resetToDefaults
   } = useAppStore()
@@ -527,6 +638,31 @@ export function SettingsContent() {
               )}
             />
           </button>
+        </div>
+
+        {/* Accent Color */}
+        <div className="space-y-3">
+          <div className="flex items-center gap-3">
+            <Palette className="w-4 h-4" />
+            <div>
+              <p className="font-medium">Accent Color</p>
+              <p className="text-sm text-muted-foreground">Customize the main theme color</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-6 gap-2 pt-1">
+            {colorPresets.map(color => (
+              <button
+                key={color.name}
+                title={color.name}
+                onClick={() => setPrimaryColor(color.value)}
+                className={cn(
+                  "w-8 h-8 rounded-full border-2 transition-transform hover:scale-110",
+                  color.value === primaryColor ? 'border-primary' : 'border-transparent'
+                )}
+                style={{ backgroundColor: `hsl(${color.value})` }}
+              />
+            ))}
+          </div>
         </div>
       </div>
 
@@ -761,108 +897,6 @@ export function SettingsPage() {
 }
 ```
 
-## File: src/lib/utils.ts
-```typescript
-import { type ClassValue, clsx } from "clsx"
-import { twMerge } from "tailwind-merge"
-
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
-}
-
-export const SIDEBAR_STATES = {
-  HIDDEN: 'hidden',
-  COLLAPSED: 'collapsed', 
-  EXPANDED: 'expanded',
-  PEEK: 'peek'
-} as const
-
-export const BODY_STATES = {
-  NORMAL: 'normal',
-  FULLSCREEN: 'fullscreen',
-  SIDE_PANE: 'side_pane'
-} as const
-
-export type SidebarState = typeof SIDEBAR_STATES[keyof typeof SIDEBAR_STATES]
-export type BodyState = typeof BODY_STATES[keyof typeof BODY_STATES]
-```
-
-## File: src/main.tsx
-```typescript
-import React from 'react'
-import ReactDOM from 'react-dom/client'
-import App from './App.tsx'
-import './index.css'
-
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>,
-)
-```
-
-## File: index.html
-```html
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Amazing App Shell</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
-</html>
-```
-
-## File: postcss.config.js
-```javascript
-export default {
-  plugins: {
-    tailwindcss: {},
-    autoprefixer: {},
-  },
-}
-```
-
-## File: tsconfig.json
-```json
-{
-  "compilerOptions": {
-    "target": "ES2020",
-    "useDefineForClassFields": true,
-    "lib": ["ES2020", "DOM", "DOM.Iterable"],
-    "module": "ESNext",
-    "skipLibCheck": true,
-
-    /* Bundler mode */
-    "moduleResolution": "bundler",
-    "allowImportingTsExtensions": true,
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "noEmit": true,
-    "jsx": "react-jsx",
-
-    /* Linting */
-    "strict": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noFallthroughCasesInSwitch": true,
-
-    /* Path mapping */
-    "baseUrl": ".",
-    "paths": {
-      "@/*": ["./src/*"]
-    }
-  },
-  "include": ["src"],
-  "references": [{ "path": "./tsconfig.node.json" }]
-}
-```
-
 ## File: src/App.tsx
 ```typescript
 import { AppShell } from './components/AppShell'
@@ -887,13 +921,14 @@ export default App
 
 @layer base {
   :root {
+    --primary-hsl: 220 84% 60%;
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
     --card: 0 0% 100%;
     --card-foreground: 222.2 84% 4.9%;
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
-    --primary: 220 84% 60%;
+    --primary: var(--primary-hsl);
     --primary-foreground: 210 40% 98%;
     --secondary: 210 40% 96%;
     --secondary-foreground: 222.2 84% 4.9%;
@@ -905,7 +940,7 @@ export default App
     --destructive-foreground: 210 40% 98%;
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 220 84% 60%;
+    --ring: var(--primary-hsl);
     --radius: 1rem;
   }
 
@@ -916,7 +951,8 @@ export default App
     --card-foreground: 210 40% 98%;
     --popover: 240 6% 14%;
     --popover-foreground: 210 40% 98%;
-    --primary: 220 84% 60%;
+    --primary-hsl: 220 84% 60%;
+    --primary: var(--primary-hsl);
     --primary-foreground: 210 40% 98%;
     --secondary: 240 5% 20%;
     --secondary-foreground: 210 40% 98%;
@@ -928,7 +964,7 @@ export default App
     --destructive-foreground: 210 40% 98%;
     --border: 240 5% 20%;
     --input: 240 5% 20%;
-    --ring: 220 84% 60%;
+    --ring: var(--primary-hsl);
   }
 }
 
@@ -1443,6 +1479,7 @@ interface AppState {
   autoExpandSidebar: boolean
   reducedMotion: boolean
   compactMode: boolean
+  primaryColor: string
   
   // Actions
   setSidebarState: (state: SidebarState) => void
@@ -1457,6 +1494,7 @@ interface AppState {
   setAutoExpandSidebar: (auto: boolean) => void
   setReducedMotion: (reduced: boolean) => void
   setCompactMode: (compact: boolean) => void
+  setPrimaryColor: (color: string) => void
   
   // Composite Actions
   toggleSidebar: () => void
@@ -1483,6 +1521,7 @@ const defaultState = {
   autoExpandSidebar: true,
   reducedMotion: false,
   compactMode: false,
+  primaryColor: '220 84% 60%',
 }
 
 export const useAppStore = create<AppState>()(
@@ -1508,6 +1547,7 @@ export const useAppStore = create<AppState>()(
       setAutoExpandSidebar: (auto) => set({ autoExpandSidebar: auto }),
       setReducedMotion: (reduced) => set({ reducedMotion: reduced }),
       setCompactMode: (compact) => set({ compactMode: compact }),
+      setPrimaryColor: (color) => set({ primaryColor: color }),
       
       // Composite actions
       toggleSidebar: () => {
@@ -1546,7 +1586,15 @@ export const useAppStore = create<AppState>()(
         set({ bodyState: BODY_STATES.NORMAL })
       },
       
-      resetToDefaults: () => set(defaultState),
+      resetToDefaults: () => {
+        set(defaultState)
+        // Also reset dark mode class on html element
+        if (defaultState.isDarkMode) {
+          document.documentElement.classList.add('dark')
+        } else {
+          document.documentElement.classList.remove('dark')
+        }
+      },
     }),
     {
       name: 'app-preferences',
@@ -1561,6 +1609,7 @@ export const useAppStore = create<AppState>()(
         autoExpandSidebar: state.autoExpandSidebar,
         reducedMotion: state.reducedMotion,
         compactMode: state.compactMode,
+        primaryColor: state.primaryColor,
       }),
     }
   )
@@ -1602,7 +1651,6 @@ export function AppShell() {
     setRightPaneWidth,
     isTopBarVisible,
     setSidebarState,
-    openSidePane,
     closeSidePane,
     setIsResizing,
     setSidebarWidth,
@@ -1612,7 +1660,8 @@ export function AppShell() {
     setIsResizingRightPane,
     toggleDarkMode,
     reducedMotion,
-    autoExpandSidebar
+    autoExpandSidebar,
+    primaryColor
   } = useAppStore()
   
   const appRef = useRef<HTMLDivElement>(null)
@@ -1624,6 +1673,11 @@ export function AppShell() {
 
   // Animation duration based on reduced motion preference
   const animationDuration = reducedMotion ? 0.1 : 0.4
+
+  // Set primary color
+  useEffect(() => {
+    document.documentElement.style.setProperty('--primary-hsl', primaryColor)
+  }, [primaryColor])
 
   // Resize functionality
   useEffect(() => {
@@ -1781,7 +1835,7 @@ export function AppShell() {
         gsap.to(backdrop, { opacity: 0, duration: animationDuration, onComplete: () => backdrop.remove() })
       }
     }
-  }, [bodyState, animationDuration, rightPaneWidth, closeSidePane, isTopBarVisible, isFullscreen])
+  }, [bodyState, animationDuration, rightPaneWidth, closeSidePane, isTopBarVisible])
 
   return (
     <div 
@@ -2211,112 +2265,6 @@ export const EnhancedSidebar = forwardRef<HTMLDivElement, SidebarProps>(
 EnhancedSidebar.displayName = "EnhancedSidebar"
 ```
 
-## File: src/components/MainContent.tsx
-```typescript
-import { forwardRef } from 'react'
-import { 
-  X,
-  LayoutDashboard,
-  ChevronsLeftRight,
-  Settings,
-} from 'lucide-react'
-import { cn } from '@/lib/utils'
-import { BODY_STATES, type BodyState } from '@/lib/utils'
-import { DashboardContent } from './DashboardContent'
-import { SettingsPage } from './SettingsPage'
-import { useAppStore } from '@/store/appStore'
-
-interface MainContentProps {
-  bodyState: BodyState
-  onToggleFullscreen: () => void
-}
-
-export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
-  ({ bodyState, onToggleFullscreen }, ref) => {
-    const { sidePaneContent, openSidePane, activePage, setActivePage } = useAppStore()
-
-    const isDashboardInSidePane = sidePaneContent === 'main' && bodyState === BODY_STATES.SIDE_PANE
-    const isSettingsInSidePane = sidePaneContent === 'settings' && bodyState === BODY_STATES.SIDE_PANE
-
-    const renderContent = () => {
-      if (activePage === 'dashboard') {
-        if (isDashboardInSidePane) {
-          return (
-            <div className="flex-1 flex flex-col items-center justify-center text-center">
-              <LayoutDashboard className="w-16 h-16 text-muted-foreground/50 mb-4" />
-              <h2 className="text-2xl font-bold">Dashboard is in Side Pane</h2>
-              <p className="text-muted-foreground mt-2 max-w-md">
-                You've moved the dashboard to the side pane. You can bring it back or continue to navigate.
-              </p>
-              <button
-                onClick={() => openSidePane('main')} // This will close it
-                className="mt-6 bg-primary text-primary-foreground px-4 py-2 rounded-full hover:bg-primary/90 transition-colors flex items-center gap-2 h-10"
-              >
-                <ChevronsLeftRight className="w-5 h-5" />
-                <span>Bring Dashboard Back</span>
-              </button>
-            </div>
-          )
-        }
-        return <DashboardContent />
-      }
-
-      if (activePage === 'settings') {
-        if (isSettingsInSidePane) {
-          return (
-            <div className="flex-1 flex flex-col items-center justify-center text-center">
-              <Settings className="w-16 h-16 text-muted-foreground/50 mb-4" />
-              <h2 className="text-2xl font-bold">Settings are in Side Pane</h2>
-              <p className="text-muted-foreground mt-2 max-w-md">
-                You've moved settings to the side pane. You can bring them back to the main view.
-              </p>
-              <button
-                onClick={() => {
-                  openSidePane('settings'); // This will close it
-                  setActivePage('settings');
-                }}
-                className="mt-6 bg-primary text-primary-foreground px-4 py-2 rounded-full hover:bg-primary/90 transition-colors flex items-center gap-2 h-10"
-              >
-                <ChevronsLeftRight className="w-5 h-5" />
-                <span>Bring Settings Back</span>
-              </button>
-            </div>
-          )
-        }
-        return <SettingsPage />
-      }
-      return null;
-    }
-    
-    const isContentVisible = (activePage === 'dashboard' && !isDashboardInSidePane) || (activePage === 'settings' && !isSettingsInSidePane);
-
-    return (
-      <div
-        ref={ref}
-        className={cn(
-        "flex flex-col h-full overflow-hidden",
-        bodyState === BODY_STATES.FULLSCREEN && "absolute inset-0 z-40 bg-background"
-        )}
-      >
-        {bodyState === BODY_STATES.FULLSCREEN && isContentVisible && (
-          <button
-            onClick={onToggleFullscreen}
-            className="fixed top-6 right-6 lg:right-12 z-[100] h-12 w-12 flex items-center justify-center rounded-full bg-card/50 backdrop-blur-sm hover:bg-card/75 transition-colors group"
-            title="Exit Fullscreen"
-          >
-            <X className="w-6 h-6 group-hover:scale-110 group-hover:rotate-90 transition-all duration-300" />
-          </button>
-        )}
-
-        <div className="flex-1 min-h-0">
-          {renderContent()}
-        </div>
-      </div>
-    )
-  }
-)
-```
-
 ## File: src/components/TopBar.tsx
 ```typescript
 import { 
@@ -2466,4 +2414,110 @@ export function TopBar({
     </div>
   )
 }
+```
+
+## File: src/components/MainContent.tsx
+```typescript
+import { forwardRef } from 'react'
+import { 
+  X,
+  LayoutDashboard,
+  ChevronsLeftRight,
+  Settings,
+} from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { BODY_STATES, type BodyState } from '@/lib/utils'
+import { DashboardContent } from './DashboardContent'
+import { SettingsPage } from './SettingsPage'
+import { useAppStore } from '@/store/appStore'
+
+interface MainContentProps {
+  bodyState: BodyState
+  onToggleFullscreen: () => void
+}
+
+export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
+  ({ bodyState, onToggleFullscreen }, ref) => {
+    const { sidePaneContent, openSidePane, activePage, setActivePage } = useAppStore()
+
+    const isDashboardInSidePane = sidePaneContent === 'main' && bodyState === BODY_STATES.SIDE_PANE
+    const isSettingsInSidePane = sidePaneContent === 'settings' && bodyState === BODY_STATES.SIDE_PANE
+
+    const renderContent = () => {
+      if (activePage === 'dashboard') {
+        if (isDashboardInSidePane) {
+          return (
+            <div className="flex-1 flex flex-col items-center justify-center text-center">
+              <LayoutDashboard className="w-16 h-16 text-muted-foreground/50 mb-4" />
+              <h2 className="text-2xl font-bold">Dashboard is in Side Pane</h2>
+              <p className="text-muted-foreground mt-2 max-w-md">
+                You've moved the dashboard to the side pane. You can bring it back or continue to navigate.
+              </p>
+              <button
+                onClick={() => openSidePane('main')} // This will close it
+                className="mt-6 bg-primary text-primary-foreground px-4 py-2 rounded-full hover:bg-primary/90 transition-colors flex items-center gap-2 h-10"
+              >
+                <ChevronsLeftRight className="w-5 h-5" />
+                <span>Bring Dashboard Back</span>
+              </button>
+            </div>
+          )
+        }
+        return <DashboardContent />
+      }
+
+      if (activePage === 'settings') {
+        if (isSettingsInSidePane) {
+          return (
+            <div className="flex-1 flex flex-col items-center justify-center text-center">
+              <Settings className="w-16 h-16 text-muted-foreground/50 mb-4" />
+              <h2 className="text-2xl font-bold">Settings are in Side Pane</h2>
+              <p className="text-muted-foreground mt-2 max-w-md">
+                You've moved settings to the side pane. You can bring them back to the main view.
+              </p>
+              <button
+                onClick={() => {
+                  openSidePane('settings'); // This will close it
+                  setActivePage('settings');
+                }}
+                className="mt-6 bg-primary text-primary-foreground px-4 py-2 rounded-full hover:bg-primary/90 transition-colors flex items-center gap-2 h-10"
+              >
+                <ChevronsLeftRight className="w-5 h-5" />
+                <span>Bring Settings Back</span>
+              </button>
+            </div>
+          )
+        }
+        return <SettingsPage />
+      }
+      return null;
+    }
+    
+    const isContentVisible = (activePage === 'dashboard' && !isDashboardInSidePane) || (activePage === 'settings' && !isSettingsInSidePane);
+
+    return (
+      <div
+        ref={ref}
+        className={cn(
+        "flex flex-col h-full overflow-hidden",
+        bodyState === BODY_STATES.FULLSCREEN && "absolute inset-0 z-40 bg-background"
+        )}
+      >
+        {bodyState === BODY_STATES.FULLSCREEN && isContentVisible && (
+          <button
+            onClick={onToggleFullscreen}
+            className="fixed top-6 right-6 lg:right-12 z-[100] h-12 w-12 flex items-center justify-center rounded-full bg-card/50 backdrop-blur-sm hover:bg-card/75 transition-colors group"
+            title="Exit Fullscreen"
+          >
+            <X className="w-6 h-6 group-hover:scale-110 group-hover:rotate-90 transition-all duration-300" />
+          </button>
+        )}
+
+        <div className="flex-1 min-h-0">
+          {renderContent()}
+        </div>
+      </div>
+    )
+  }
+)
 ```

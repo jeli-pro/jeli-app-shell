@@ -21,6 +21,7 @@ interface AppState {
   autoExpandSidebar: boolean
   reducedMotion: boolean
   compactMode: boolean
+  primaryColor: string
   
   // Actions
   setSidebarState: (state: SidebarState) => void
@@ -35,6 +36,7 @@ interface AppState {
   setAutoExpandSidebar: (auto: boolean) => void
   setReducedMotion: (reduced: boolean) => void
   setCompactMode: (compact: boolean) => void
+  setPrimaryColor: (color: string) => void
   
   // Composite Actions
   toggleSidebar: () => void
@@ -61,6 +63,7 @@ const defaultState = {
   autoExpandSidebar: true,
   reducedMotion: false,
   compactMode: false,
+  primaryColor: '220 84% 60%',
 }
 
 export const useAppStore = create<AppState>()(
@@ -86,6 +89,7 @@ export const useAppStore = create<AppState>()(
       setAutoExpandSidebar: (auto) => set({ autoExpandSidebar: auto }),
       setReducedMotion: (reduced) => set({ reducedMotion: reduced }),
       setCompactMode: (compact) => set({ compactMode: compact }),
+      setPrimaryColor: (color) => set({ primaryColor: color }),
       
       // Composite actions
       toggleSidebar: () => {
@@ -124,7 +128,15 @@ export const useAppStore = create<AppState>()(
         set({ bodyState: BODY_STATES.NORMAL })
       },
       
-      resetToDefaults: () => set(defaultState),
+      resetToDefaults: () => {
+        set(defaultState)
+        // Also reset dark mode class on html element
+        if (defaultState.isDarkMode) {
+          document.documentElement.classList.add('dark')
+        } else {
+          document.documentElement.classList.remove('dark')
+        }
+      },
     }),
     {
       name: 'app-preferences',
@@ -139,6 +151,7 @@ export const useAppStore = create<AppState>()(
         autoExpandSidebar: state.autoExpandSidebar,
         reducedMotion: state.reducedMotion,
         compactMode: state.compactMode,
+        primaryColor: state.primaryColor,
       }),
     }
   )

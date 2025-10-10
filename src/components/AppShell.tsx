@@ -29,7 +29,8 @@ export function AppShell() {
     setIsResizingRightPane,
     toggleDarkMode,
     reducedMotion,
-    autoExpandSidebar
+    autoExpandSidebar,
+    primaryColor
   } = useAppStore()
   
   const appRef = useRef<HTMLDivElement>(null)
@@ -41,6 +42,11 @@ export function AppShell() {
 
   // Animation duration based on reduced motion preference
   const animationDuration = reducedMotion ? 0.1 : 0.4
+
+  // Set primary color
+  useEffect(() => {
+    document.documentElement.style.setProperty('--primary-hsl', primaryColor)
+  }, [primaryColor])
 
   // Resize functionality
   useEffect(() => {
