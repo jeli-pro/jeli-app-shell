@@ -51,6 +51,8 @@ interface AppState {
   openSidePane: (content: 'details' | 'settings' | 'main' | 'toaster') => void
   closeSidePane: () => void
   resetToDefaults: () => void
+  handleNavigation: (page: ActivePage) => void
+  isPageActive: (page: ActivePage) => boolean
 }
 
 const defaultState = {
@@ -144,6 +146,18 @@ export const useAppStore = create<AppState>()(
         } else {
           document.documentElement.classList.remove('dark')
         }
+      },
+      handleNavigation: (page) => {
+        set({ activePage: page });
+      },
+      isPageActive: (page) => {
+        const { activePage, bodyState, sidePaneContent } = get();
+        const pageToSidePaneContent = {
+          dashboard: 'main',
+          settings: 'settings',
+          toaster: 'toaster',
+        };
+        return activePage === page || (bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === pageToSidePaneContent[page]);
       },
     }),
     {

@@ -58,19 +58,11 @@ export function TopBar({
     }
   }
 
-  const handleDashboardMoveToSidePane = () => {
-    openSidePane('main');
+  const handleMoveToSidePane = () => {
+    const mapping = { dashboard: 'main', settings: 'settings', toaster: 'toaster' } as const;
+    openSidePane(mapping[activePage]);
+    if (activePage !== 'dashboard') setActivePage('dashboard');
   };
-
-  const handleSettingsMoveToSidePane = () => {
-    openSidePane('settings');
-    setActivePage('dashboard');
-  }
-
-  const handleToasterMoveToSidePane = () => {
-    openSidePane('toaster');
-    setActivePage('dashboard');
-  }
 
   return (
     <div className={cn(
@@ -134,14 +126,8 @@ export function TopBar({
         
         {/* Page-specific: Move to side pane */}
         <div className={cn('flex items-center', isSearchFocused && activePage === 'dashboard' ? 'hidden md:flex' : '')}>
-          {activePage === 'dashboard' && (
-            <button onClick={handleDashboardMoveToSidePane} className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors" title="Move to Side Pane"><PanelRight className="w-5 h-5" /></button>
-          )}
-          {activePage === 'settings' && (
-            <button onClick={handleSettingsMoveToSidePane} className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors" title="Move to Side Pane"><PanelRight className="w-5 h-5" /></button>
-          )}
-          {activePage === 'toaster' && (
-            <button onClick={handleToasterMoveToSidePane} className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors" title="Move to Side Pane"><PanelRight className="w-5 h-5" /></button>
+          {['dashboard', 'settings', 'toaster'].includes(activePage) && (
+            <button onClick={handleMoveToSidePane} className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors" title="Move to Side Pane"><PanelRight className="w-5 h-5" /></button>
           )}
         </div>
 

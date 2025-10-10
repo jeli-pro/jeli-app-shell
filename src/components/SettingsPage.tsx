@@ -1,28 +1,13 @@
-import { useRef } from 'react'
-import { SettingsContent } from './SettingsContent'
-import { useAppStore } from '@/store/appStore'
+import { SettingsContent } from './SettingsContent';
+import { useAutoAnimateTopBar } from '@/hooks/useAutoAnimateTopBar';
 
 export function SettingsPage() {
-  const { setTopBarVisible } = useAppStore()
-  const scrollRef = useRef<HTMLDivElement>(null)
-  const lastScrollTop = useRef(0)
+  const { onScroll } = useAutoAnimateTopBar();
 
   return (
     <div
-      ref={scrollRef}
       className="h-full overflow-y-auto p-6 lg:px-12 space-y-8"
-      onScroll={() => {
-        if (!scrollRef.current) return
-        const { scrollTop } = scrollRef.current
-        
-        if (scrollTop > lastScrollTop.current && scrollTop > 200) {
-          setTopBarVisible(false);
-        } else if (scrollTop < lastScrollTop.current || scrollTop <= 0) {
-          setTopBarVisible(true);
-        }
-        
-        lastScrollTop.current = scrollTop <= 0 ? 0 : scrollTop;
-      }}
+      onScroll={onScroll}
     >
       {/* Header */}
       <div className="flex items-center justify-between">

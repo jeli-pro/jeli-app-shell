@@ -16,9 +16,10 @@ import {
   ArrowDown
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { DemoContent } from './DemoContent'
-import { useAppStore } from '@/store/appStore'
-import { BODY_STATES } from '@/lib/utils'
+import { DemoContent } from './DemoContent';
+import { useAppStore } from '@/store/appStore';
+import { BODY_STATES } from '@/lib/utils';
+import { useAutoAnimateTopBar } from '@/hooks/useAutoAnimateTopBar';
 
 interface StatsCard {
   title: string
@@ -110,27 +111,9 @@ interface DashboardContentProps {
 export function DashboardContent({ isInSidePane = false }: DashboardContentProps) {
     const contentRef = useRef<HTMLDivElement>(null)
     const cardsRef = useRef<(HTMLDivElement | null)[]>([])
-    const [showScrollToBottom, setShowScrollToBottom] = useState(false)
-    const { bodyState, setTopBarVisible } = useAppStore()
-    const lastScrollTop = useRef(0);
-
-    const handleScroll = () => {
-      if (!contentRef.current) return
-      const { scrollTop, scrollHeight, clientHeight } = contentRef.current
-      
-      // Auto-hide top bar logic
-      if (!isInSidePane) {
-        if (scrollTop > lastScrollTop.current && scrollTop > 200) {
-          setTopBarVisible(false);
-        } else if (scrollTop < lastScrollTop.current || scrollTop <= 0) {
-          setTopBarVisible(true);
-        }
-      }
-      lastScrollTop.current = scrollTop <= 0 ? 0 : scrollTop;
-
-      // Show if scrolled down and not at the bottom
-      setShowScrollToBottom(scrollTop > 200 && scrollTop < scrollHeight - clientHeight - 200)
-    }
+    const [showScrollToBottom, setShowScrollToBottom] = useState(false);
+    const { bodyState } = useAppStore();
+    const { onScroll: handleTopBarScroll } = useAutoAnimateTopBar(isInSidePane);
 
     const scrollToBottom = () => {
       contentRef.current?.scrollTo({
@@ -138,6 +121,14 @@ export function DashboardContent({ isInSidePane = false }: DashboardContentProps
         behavior: 'smooth'
       })
     }
+
+    const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+      handleTopBarScroll(e);
+      if (!contentRef.current) return;
+      const { scrollTop, scrollHeight, clientHeight } = contentRef.current;
+      // Show if scrolled down and not at the bottom
+      setShowScrollToBottom(scrollTop > 200 && scrollTop < scrollHeight - clientHeight - 200);
+    };
 
     // Animate content based on body state
     useEffect(() => {

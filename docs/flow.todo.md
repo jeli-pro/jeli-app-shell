@@ -2,9 +2,9 @@
 
 top bar should show after hidden while scrolling stop
 
-===
+=== DONE
 
-make codebase highly DRY for super less codebase without UI look regression
+make codebase highly DRY for super less codebase without UI look regression or degradation of consumer flexibility
 
 ===
 

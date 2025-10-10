@@ -7,19 +7,21 @@ import { DashboardContent } from './DashboardContent'
 import { ToasterDemo } from './ToasterDemo'
 
 export const RightPane = forwardRef<HTMLDivElement>((_props, ref) => {
-  const { closeSidePane, setIsResizingRightPane, sidePaneContent, setActivePage } = useAppStore()
+  const { closeSidePane, setIsResizingRightPane, sidePaneContent, setActivePage } = useAppStore();
 
-  const isSettings = sidePaneContent === 'settings'
-  const isMain = sidePaneContent === 'main'
-  const isToaster = sidePaneContent === 'toaster'
+  const contentMap = {
+    main: { title: 'Dashboard', icon: LayoutDashboard, page: 'dashboard', content: <DashboardContent isInSidePane={true} /> },
+    settings: { title: 'Settings', icon: Settings, page: 'settings', content: <SettingsContent /> },
+    toaster: { title: 'Toaster Demo', icon: Component, page: 'toaster', content: <ToasterDemo isInSidePane={true} /> },
+    details: { title: 'Details Panel', icon: SlidersHorizontal, content: <p className="text-muted-foreground">This is the side pane. It can be used to display contextual information, forms, or actions related to the main content.</p> }
+  };
+
+  const currentContent = contentMap[sidePaneContent as keyof typeof contentMap] || contentMap.details;
+  const CurrentIcon = currentContent.icon;
 
   const handleMaximize = () => {
-    if (isMain) {
-      setActivePage('dashboard')
-    } else if (isSettings) {
-      setActivePage('settings')
-    } else if (isToaster) {
-      setActivePage('toaster')
+    if (currentContent.page) {
+      setActivePage(currentContent.page as ActivePage);
     }
     closeSidePane()
   }
@@ -46,16 +48,13 @@ export const RightPane = forwardRef<HTMLDivElement>((_props, ref) => {
       </div>
       <div className="flex items-center justify-between p-4 border-b border-border h-20 flex-shrink-0 pl-6">
         <div className="flex items-center gap-2">
-          {isMain && <LayoutDashboard className="w-5 h-5" />}
-          {isSettings && <Settings className="w-5 h-5" />}
-          {isToaster && <Component className="w-5 h-5" />}
-          {!isMain && !isSettings && !isToaster && <SlidersHorizontal className="w-5 h-5" />}
+          <CurrentIcon className="w-5 h-5" />
           <h2 className="text-lg font-semibold whitespace-nowrap">
-            {isMain ? 'Dashboard' : isSettings ? 'Settings' : isToaster ? 'Toaster Demo' : 'Details Panel'}
+            {currentContent.title}
           </h2>
         </div>
         
-        {(isMain || isSettings || isToaster) && (
+        {currentContent.page && (
           <button
             onClick={handleMaximize}
             className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors mr-2"
@@ -65,16 +64,8 @@ export const RightPane = forwardRef<HTMLDivElement>((_props, ref) => {
           </button>
         )}
       </div>
-      <div className="flex-1 overflow-y-auto">
-        {isMain ? (
-          <div className="px-8 py-6 h-full"><DashboardContent isInSidePane={true} /></div>
-        ) : isSettings ? (
-          <div className="px-8 py-6"><SettingsContent /></div>
-        ) : isToaster ? (
-          <div className="px-8 py-6 h-full"><ToasterDemo isInSidePane={true} /></div>
-        ) : (
-          <div className="px-8 py-6"><p className="text-muted-foreground">This is the side pane. It can be used to display contextual information, forms, or actions related to the main content.</p></div>
-        )}
+      <div className="flex-1 overflow-y-auto px-8 py-6">
+        {currentContent.content}
       </div>
     </aside>
   )

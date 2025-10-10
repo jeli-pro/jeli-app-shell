@@ -12,7 +12,6 @@ import {
   Star,
   Trash2,
   FolderOpen,
-  Calendar,
   Mail,
   Bookmark,
   Download,
@@ -20,7 +19,6 @@ import {
   Plus
 } from 'lucide-react';
 import { useAppStore } from '@/store/appStore';
-import { BODY_STATES } from '@/lib/utils';
 import {
   Workspaces,
   WorkspaceTrigger,
@@ -63,63 +61,6 @@ const mockWorkspaces: MyWorkspace[] = [
   { id: 'ws3', name: 'Stark Industries', logo: 'https://avatar.vercel.sh/stark.png', plan: 'Enterprise' },
 ];
 
-interface SidebarProps {
-  onMouseEnter?: () => void;
-  onMouseLeave?: () => void;
-}
-
-// Helper to determine if a menu item should be active
-const useIsActive = (pageName: string) => {
-  const { activePage, bodyState, sidePaneContent } = useAppStore();
-  const lowerCasePageName = pageName.toLowerCase();
-
-  switch (lowerCasePageName) {
-    case 'dashboard':
-      return activePage === 'dashboard';
-    case 'settings':
-      return activePage === 'settings' || (bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === 'settings');
-    case 'toaster':
-      return activePage === 'toaster' || (bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === 'toaster');
-    default:
-      return false;
-  }
-};
-
-// Helper to handle navigation clicks
-const useHandleClick = (pageName: string) => {
-  const { setActivePage, openSidePane, activePage: currentPage, bodyState, sidePaneContent } = useAppStore();
-  const lowerCasePageName = pageName.toLowerCase();
-
-  return () => {
-    switch (lowerCasePageName) {
-      case 'dashboard':
-        setActivePage('dashboard');
-        break;
-      case 'settings': {
-        const isSettingsInSidePane = bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === 'settings';
-        if (currentPage === 'settings' && !isSettingsInSidePane) {
-          openSidePane('settings');
-          setActivePage('dashboard');
-        } else {
-          openSidePane('settings');
-        }
-        break;
-      }
-      case 'toaster': {
-        const isToasterInSidePane = bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === 'toaster';
-        if (currentPage === 'toaster' && !isToasterInSidePane) {
-          openSidePane('toaster');
-          setActivePage('dashboard');
-        } else {
-          openSidePane('toaster');
-        }
-        break;
-      }
-      // Handle other navigation items if routing is implemented
-    }
-  };
-};
-
 const SidebarWorkspaceTrigger = () => {
   const { isCollapsed, compactMode } = useSidebar();
 
@@ -134,6 +75,11 @@ const SidebarWorkspaceTrigger = () => {
     />
   );
 };
+
+interface SidebarProps {
+  onMouseEnter?: () => void;
+  onMouseLeave?: () => void;
+}
 
 export const EnhancedSidebar = React.forwardRef<HTMLDivElement, SidebarProps>(
   ({ onMouseEnter, onMouseLeave }, ref) => {
@@ -157,7 +103,7 @@ export const EnhancedSidebar = React.forwardRef<HTMLDivElement, SidebarProps>(
 
           <SidebarBody>
             <SidebarSection title="Main">
-              <AppMenuItem icon={Home} label="Dashboard" />
+              <AppMenuItem icon={Home} label="Dashboard" page="dashboard" />
               <AppMenuItem icon={Search} label="Search" />
               <AppMenuItem icon={Bell} label="Notifications" badge={3} />
             </SidebarSection>
@@ -169,7 +115,6 @@ export const EnhancedSidebar = React.forwardRef<HTMLDivElement, SidebarProps>(
                 <AppMenuItem icon={Trash2} label="Trash" isSubItem />
               </AppMenuItem>
               <AppMenuItem icon={FolderOpen} label="Projects" hasActions />
-              <AppMenuItem icon={Calendar} label="Calendar" />
               <AppMenuItem icon={Mail} label="Messages" badge={12} />
             </SidebarSection>
             
@@ -180,14 +125,14 @@ export const EnhancedSidebar = React.forwardRef<HTMLDivElement, SidebarProps>(
             </SidebarSection>
 
             <SidebarSection title="Components" collapsible defaultExpanded>
-              <AppMenuItem icon={Component} label="Toaster" />
+              <AppMenuItem icon={Component} label="Toaster" page="toaster" />
             </SidebarSection>
           </SidebarBody>
 
           <SidebarFooter>
             <SidebarSection>
               <AppMenuItem icon={User} label="Profile" />
-              <AppMenuItem icon={Settings} label="Settings" />
+              <AppMenuItem icon={Settings} label="Settings" page="settings" />
               <AppMenuItem icon={HelpCircle} label="Help" />
             </SidebarSection>
 
@@ -223,18 +168,19 @@ interface AppMenuItemProps {
   hasActions?: boolean;
   children?: React.ReactNode;
   isSubItem?: boolean;
+  page?: 'dashboard' | 'settings' | 'toaster';
 }
 
-const AppMenuItem: React.FC<AppMenuItemProps> = ({ icon: Icon, label, badge, hasActions, children, isSubItem = false }) => {
-  const isActive = useIsActive(label);
-  const handleClick = useHandleClick(label);
+const AppMenuItem: React.FC<AppMenuItemProps> = ({ icon: Icon, label, badge, hasActions, children, isSubItem = false, page }) => {
+  const { handleNavigation, isPageActive } = useAppStore();
+  const isActive = page ? isPageActive(page) : false;
   const { compactMode } = useAppStore();
   const { isCollapsed } = useSidebar();
 
   return (
     <div className={isSubItem ? (compactMode ? 'ml-4' : 'ml-6') : ''}>
       <SidebarMenuItem>
-        <SidebarMenuButton onClick={handleClick} isActive={isActive}>
+        <SidebarMenuButton onClick={() => page && handleNavigation(page)} isActive={isActive}>
           <SidebarIcon>
             <Icon className={isSubItem ? "w-3 h-3" : "w-4 h-4"}/>
           </SidebarIcon>
