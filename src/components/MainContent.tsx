@@ -18,12 +18,11 @@ import {
   MoreVertical
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { BODY_STATES, SIDEBAR_STATES, type BodyState, type SidebarState } from '@/lib/utils'
+import { BODY_STATES, type BodyState } from '@/lib/utils'
 import { DemoContent } from './DemoContent'
 
 interface MainContentProps {
   bodyState: BodyState
-  sidebarState: SidebarState
 }
 
 interface StatsCard {
@@ -110,7 +109,7 @@ const recentActivity: ActivityItem[] = [
 ]
 
 export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
-  ({ bodyState, sidebarState }, ref) => {
+  ({ bodyState }, ref) => {
     const contentRef = useRef<HTMLDivElement>(null)
     const cardsRef = useRef<(HTMLDivElement | null)[]>([])
     const [searchTerm, setSearchTerm] = useState("")
@@ -285,7 +284,7 @@ export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
                     { name: "E-commerce Platform", progress: 75, team: 5, deadline: "Dec 15" },
                     { name: "Mobile App Redesign", progress: 45, team: 3, deadline: "Jan 20" },
                     { name: "Marketing Website", progress: 90, team: 4, deadline: "Dec 5" }
-                  ].map((project, index) => (
+                  ].map((project) => (
                     <div key={project.name} className="p-4 bg-accent/30 rounded-lg hover:bg-accent/50 transition-colors cursor-pointer">
                       <div className="flex items-center justify-between mb-2">
                         <h4 className="font-medium">{project.name}</h4>

@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react'
+import { useRef, useEffect } from 'react'
 import { gsap } from 'gsap'
 import { cn } from '@/lib/utils'
 import { EnhancedSidebar } from './EnhancedSidebar'
@@ -72,7 +72,6 @@ export function AppShell() {
     if (!sidebarRef.current || !mainContentRef.current) return
 
     const sidebar = sidebarRef.current
-    const mainContent = mainContentRef.current
     
     let targetWidth = 0
     let targetOpacity = 1
@@ -117,8 +116,6 @@ export function AppShell() {
   useEffect(() => {
     if (!mainContentRef.current) return
 
-    const mainContent = mainContentRef.current
-    
     switch (bodyState) {
       case BODY_STATES.FULLSCREEN:
         // In fullscreen, hide sidebar completely
@@ -216,7 +213,6 @@ export function AppShell() {
           <MainContent
             ref={mainContentRef}
             bodyState={bodyState}
-            sidebarState={sidebarState}
           />
         </div>
       </div>

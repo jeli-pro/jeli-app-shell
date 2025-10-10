@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react'
+import { useRef, useEffect } from 'react'
 import { gsap } from 'gsap'
 import { 
   Sparkles, 
@@ -103,7 +103,7 @@ export function DemoContent() {
         
         {/* Quick Stats */}
         <div className="flex items-center justify-center gap-8 mt-8">
-          {stats.map((stat, index) => (
+          {stats.map((stat) => (
             <div key={stat.label} className="text-center">
               <div className={cn("text-2xl font-bold", stat.color)}>{stat.value}</div>
               <div className="text-sm text-muted-foreground">{stat.label}</div>
