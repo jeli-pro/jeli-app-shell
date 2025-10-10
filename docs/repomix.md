@@ -150,22 +150,26 @@ export function DashboardContent({ isInSidePane = false }: DashboardContentProps
     const cardsRef = useRef<(HTMLDivElement | null)[]>([])
     const [searchTerm, setSearchTerm] = useState("")
     const [showScrollToBottom, setShowScrollToBottom] = useState(false)
-    const { bodyState, openSidePane } = useAppStore()
+    const { bodyState, openSidePane, setTopBarVisible } = useAppStore()
+    const lastScrollTop = useRef(0);
 
     const handleScroll = () => {
       if (!contentRef.current) return
       const { scrollTop, scrollHeight, clientHeight } = contentRef.current
+      
+      // Auto-hide top bar logic
+      if (!isInSidePane) {
+        if (scrollTop > lastScrollTop.current && scrollTop > 200) {
+          setTopBarVisible(false);
+        } else if (scrollTop < lastScrollTop.current || scrollTop <= 0) {
+          setTopBarVisible(true);
+        }
+      }
+      lastScrollTop.current = scrollTop <= 0 ? 0 : scrollTop;
+
       // Show if scrolled down and not at the bottom
       setShowScrollToBottom(scrollTop > 200 && scrollTop < scrollHeight - clientHeight - 200)
     }
-
-    useEffect(() => {
-      const contentEl = contentRef.current
-      if (contentEl) {
-        contentEl.addEventListener('scroll', handleScroll)
-        return () => contentEl.removeEventListener('scroll', handleScroll)
-      }
-    }, [])
 
     const scrollToBottom = () => {
       contentRef.current?.scrollTo({
@@ -228,7 +232,11 @@ export function DashboardContent({ isInSidePane = false }: DashboardContentProps
     }
 
     return (
-        <div className="h-full flex flex-col">
+        <div 
+          ref={contentRef}
+          className="h-full overflow-y-auto space-y-8 p-6 lg:px-12"
+          onScroll={handleScroll}
+        >
           {/* Header */}
           <div className="flex items-center justify-between">
             <div>
@@ -265,10 +273,6 @@ export function DashboardContent({ isInSidePane = false }: DashboardContentProps
               )}
             </div>
           </div>
-        <div 
-          ref={contentRef}
-          className="flex-1 overflow-y-auto space-y-8 pt-8"
-        >
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {statsCards.map((stat, index) => (
@@ -412,14 +416,13 @@ export function DashboardContent({ isInSidePane = false }: DashboardContentProps
           {showScrollToBottom && (
             <button
               onClick={scrollToBottom}
-              className="fixed bottom-8 right-8 w-12 h-12 bg-primary text-primary-foreground rounded-full flex items-center justify-center shadow-lg hover:bg-primary/90 transition-all animate-fade-in z-50"
+              className="fixed bottom-8 right-8 w-12 h-12 bg-primary text-primary-foreground rounded-full flex items-center justify-center shadow-lg hover:bg-primary/90 transition-all animate-fade-in z-[51]"
               style={{ animation: 'bounce 2s infinite' }}
               title="Scroll to bottom"
             >
               <ArrowDown className="w-6 h-6" />
             </button>
           )}
-        </div>
       </div>
     )
 }
@@ -702,12 +705,15 @@ if (typeof document !== 'undefined') {
 
 ## File: src/components/SettingsPage.tsx
 ```typescript
+import { useRef } from 'react'
 import { PanelRight } from 'lucide-react'
 import { SettingsContent } from './SettingsContent'
 import { useAppStore } from '@/store/appStore'
 
 export function SettingsPage() {
-  const { openSidePane, setActivePage } = useAppStore()
+  const { openSidePane, setActivePage, setTopBarVisible } = useAppStore()
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const lastScrollTop = useRef(0)
 
   const handleMoveToSidePane = () => {
     openSidePane('settings');
@@ -715,7 +721,22 @@ export function SettingsPage() {
   }
 
   return (
-    <div className="h-full flex flex-col">
+    <div
+      ref={scrollRef}
+      className="h-full overflow-y-auto p-6 lg:px-12 space-y-8"
+      onScroll={() => {
+        if (!scrollRef.current) return
+        const { scrollTop } = scrollRef.current
+        
+        if (scrollTop > lastScrollTop.current && scrollTop > 200) {
+          setTopBarVisible(false);
+        } else if (scrollTop < lastScrollTop.current || scrollTop <= 0) {
+          setTopBarVisible(true);
+        }
+        
+        lastScrollTop.current = scrollTop <= 0 ? 0 : scrollTop;
+      }}
+    >
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -733,9 +754,8 @@ export function SettingsPage() {
             </button>
         </div>
       </div>
-      <div className="flex-1 overflow-y-auto pt-8">
-        <SettingsContent />
-      </div>
+
+      <SettingsContent />
     </div>
   )
 }
@@ -1384,11 +1404,11 @@ export const RightPane = forwardRef<HTMLDivElement>((_props, ref) => {
       </div>
       <div className="flex-1 overflow-y-auto">
         {isMain ? (
-          <div className="p-6 h-full"><DashboardContent isInSidePane={true} /></div>
+          <div className="px-8 py-6 h-full"><DashboardContent isInSidePane={true} /></div>
         ) : isSettings ? (
-          <div className="p-6"><SettingsContent /></div>
+          <div className="px-8 py-6"><SettingsContent /></div>
         ) : (
-          <div className="p-6"><p className="text-muted-foreground">This is the side pane. It can be used to display contextual information, forms, or actions related to the main content.</p></div>
+          <div className="px-8 py-6"><p className="text-muted-foreground">This is the side pane. It can be used to display contextual information, forms, or actions related to the main content.</p></div>
         )}
       </div>
     </aside>
@@ -1417,6 +1437,7 @@ interface AppState {
   rightPaneWidth: number
   isResizing: boolean
   isResizingRightPane: boolean
+  isTopBarVisible: boolean
   
   // User Preferences
   autoExpandSidebar: boolean
@@ -1432,6 +1453,7 @@ interface AppState {
   setRightPaneWidth: (width: number) => void
   setIsResizing: (resizing: boolean) => void
   setIsResizingRightPane: (resizing: boolean) => void
+  setTopBarVisible: (visible: boolean) => void
   setAutoExpandSidebar: (auto: boolean) => void
   setReducedMotion: (reduced: boolean) => void
   setCompactMode: (compact: boolean) => void
@@ -1457,6 +1479,7 @@ const defaultState = {
   rightPaneWidth: typeof window !== 'undefined' ? Math.max(300, Math.round(window.innerWidth * 0.6)) : 400,
   isResizing: false,
   isResizingRightPane: false,
+  isTopBarVisible: true,
   autoExpandSidebar: true,
   reducedMotion: false,
   compactMode: false,
@@ -1481,6 +1504,7 @@ export const useAppStore = create<AppState>()(
       setRightPaneWidth: (width) => set({ rightPaneWidth: Math.max(300, Math.min(window.innerWidth * 0.8, width)) }),
       setIsResizing: (resizing) => set({ isResizing: resizing }),
       setIsResizingRightPane: (resizing) => set({ isResizingRightPane: resizing }),
+      setTopBarVisible: (visible) => set({ isTopBarVisible: visible }),
       setAutoExpandSidebar: (auto) => set({ autoExpandSidebar: auto }),
       setReducedMotion: (reduced) => set({ reducedMotion: reduced }),
       setCompactMode: (compact) => set({ compactMode: compact }),
@@ -1576,6 +1600,7 @@ export function AppShell() {
     rightPaneWidth,
     isResizingRightPane,
     setRightPaneWidth,
+    isTopBarVisible,
     setSidebarState,
     openSidePane,
     closeSidePane,
@@ -1718,6 +1743,7 @@ export function AppShell() {
 
     const ease = "power3.out"
     const isFullscreen = bodyState === BODY_STATES.FULLSCREEN
+
     const isSidePane = bodyState === BODY_STATES.SIDE_PANE
 
     // Right pane animation
@@ -1728,8 +1754,14 @@ export function AppShell() {
       ease,
     })
 
+    gsap.to(mainContentRef.current, {
+      paddingTop: isFullscreen ? '0rem' : isTopBarVisible ? '5rem' : '0rem', // h-20 is 5rem
+      duration: animationDuration,
+      ease,
+    })
+
     gsap.to(topBarContainerRef.current, {
-      y: isFullscreen ? '-100%' : '0%',
+      y: (isFullscreen || !isTopBarVisible) ? '-100%' : '0%',
       duration: animationDuration,
       ease,
     })
@@ -1749,7 +1781,7 @@ export function AppShell() {
         gsap.to(backdrop, { opacity: 0, duration: animationDuration, onComplete: () => backdrop.remove() })
       }
     }
-  }, [bodyState, animationDuration, rightPaneWidth, closeSidePane])
+  }, [bodyState, animationDuration, rightPaneWidth, closeSidePane, isTopBarVisible, isFullscreen])
 
   return (
     <div 
@@ -1810,263 +1842,6 @@ export function AppShell() {
         </div>
       </div>
       <RightPane ref={rightPaneRef} />
-    </div>
-  )
-}
-```
-
-## File: src/components/MainContent.tsx
-```typescript
-import { forwardRef } from 'react'
-import { 
-  X,
-  LayoutDashboard,
-  ChevronsLeftRight,
-  Settings,
-} from 'lucide-react'
-import { cn } from '@/lib/utils'
-import { BODY_STATES, type BodyState } from '@/lib/utils'
-import { DashboardContent } from './DashboardContent'
-import { SettingsPage } from './SettingsPage'
-import { useAppStore } from '@/store/appStore'
-
-interface MainContentProps {
-  bodyState: BodyState
-  onToggleFullscreen: () => void
-}
-
-export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
-  ({ bodyState, onToggleFullscreen }, ref) => {
-    const { sidePaneContent, openSidePane, activePage, setActivePage } = useAppStore()
-
-    const isDashboardInSidePane = sidePaneContent === 'main' && bodyState === BODY_STATES.SIDE_PANE
-    const isSettingsInSidePane = sidePaneContent === 'settings' && bodyState === BODY_STATES.SIDE_PANE
-
-    const renderContent = () => {
-      if (activePage === 'dashboard') {
-        if (isDashboardInSidePane) {
-          return (
-            <div className="flex-1 flex flex-col items-center justify-center text-center">
-              <LayoutDashboard className="w-16 h-16 text-muted-foreground/50 mb-4" />
-              <h2 className="text-2xl font-bold">Dashboard is in Side Pane</h2>
-              <p className="text-muted-foreground mt-2 max-w-md">
-                You've moved the dashboard to the side pane. You can bring it back or continue to navigate.
-              </p>
-              <button
-                onClick={() => openSidePane('main')} // This will close it
-                className="mt-6 bg-primary text-primary-foreground px-4 py-2 rounded-full hover:bg-primary/90 transition-colors flex items-center gap-2 h-10"
-              >
-                <ChevronsLeftRight className="w-5 h-5" />
-                <span>Bring Dashboard Back</span>
-              </button>
-            </div>
-          )
-        }
-        return <DashboardContent />
-      }
-
-      if (activePage === 'settings') {
-        if (isSettingsInSidePane) {
-          return (
-            <div className="flex-1 flex flex-col items-center justify-center text-center">
-              <Settings className="w-16 h-16 text-muted-foreground/50 mb-4" />
-              <h2 className="text-2xl font-bold">Settings are in Side Pane</h2>
-              <p className="text-muted-foreground mt-2 max-w-md">
-                You've moved settings to the side pane. You can bring them back to the main view.
-              </p>
-              <button
-                onClick={() => {
-                  openSidePane('settings'); // This will close it
-                  setActivePage('settings');
-                }}
-                className="mt-6 bg-primary text-primary-foreground px-4 py-2 rounded-full hover:bg-primary/90 transition-colors flex items-center gap-2 h-10"
-              >
-                <ChevronsLeftRight className="w-5 h-5" />
-                <span>Bring Settings Back</span>
-              </button>
-            </div>
-          )
-        }
-        return <SettingsPage />
-      }
-      return null;
-    }
-    
-    const isContentVisible = (activePage === 'dashboard' && !isDashboardInSidePane) || (activePage === 'settings' && !isSettingsInSidePane);
-
-    return (
-      <div
-        ref={ref}
-        className={cn(
-        "flex flex-col h-full overflow-hidden transition-all duration-300 p-6 pt-[calc(80px+1.5rem)]",
-        bodyState === BODY_STATES.FULLSCREEN && "absolute inset-0 z-40 bg-background !p-6"
-        )}
-      >
-        {bodyState === BODY_STATES.FULLSCREEN && isContentVisible && (
-          <button
-            onClick={onToggleFullscreen}
-            className="fixed top-6 right-6 z-[100] h-12 w-12 flex items-center justify-center rounded-full bg-card/50 backdrop-blur-sm hover:bg-card/75 transition-colors group"
-            title="Exit Fullscreen"
-          >
-            <X className="w-6 h-6 group-hover:scale-110 group-hover:rotate-90 transition-all duration-300" />
-          </button>
-        )}
-
-        <div className="h-full">
-          {renderContent()}
-        </div>
-      </div>
-    )
-  }
-)
-```
-
-## File: src/components/TopBar.tsx
-```typescript
-import { 
-  Menu, 
-  Maximize, 
-  Minimize, 
-  Moon, 
-  Sun,
-  Settings,
-  Command,
-  Zap,
-  ChevronRight
-} from 'lucide-react'
-import { cn } from '@/lib/utils'
-import { BODY_STATES } from '@/lib/utils'
-import { useAppStore } from '@/store/appStore'
-
-interface TopBarProps {
-  onToggleSidebar: () => void
-  onToggleFullscreen: () => void
-  onToggleDarkMode: () => void
-}
-
-export function TopBar({
-  onToggleSidebar,
-  onToggleFullscreen,
-  onToggleDarkMode
-}: TopBarProps) {
-  const { 
-    bodyState, 
-    isDarkMode, 
-    openSidePane,
-    sidePaneContent,
-    activePage,
-    setActivePage,
-  } = useAppStore()
-
-  const handleSettingsClick = () => {
-    const isSettingsInSidePane = bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === 'settings'
-
-    // If we're on the settings page and it's not in the side pane, treat this as a "minimize" action.
-    if (activePage === 'settings' && !isSettingsInSidePane) {
-      openSidePane('settings');
-      setActivePage('dashboard');
-    } else {
-      // In all other cases (on dashboard page, or settings already in pane),
-      // just toggle the settings side pane.
-      openSidePane('settings');
-    }
-  }
-
-  return (
-    <div className="h-20 bg-card/80 backdrop-blur-sm border-b border-border flex items-center justify-between px-6 z-50">
-      {/* Left Section - Sidebar Controls & Breadcrumbs */}
-      <div className="flex items-center gap-4">
-        {/* Sidebar Controls */}
-        <button
-          onClick={onToggleSidebar}
-          className={cn(
-            "h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors"
-          )}
-          title="Toggle Sidebar"
-        >
-          <Menu className="w-5 h-5" />
-        </button>
-
-        {/* Breadcrumbs */}
-        <div className="hidden md:flex items-center gap-2 text-sm">
-          <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">Home</a>
-          <ChevronRight className="w-4 h-4 text-muted-foreground" />
-          <span className="font-medium text-foreground">Dashboard</span>
-        </div>
-      </div>
-
-      {/* Right Section - View Controls */}
-      <div className="flex items-center gap-3">
-        {/* Quick Actions */}
-        <button
-          className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
-          title="Command Palette (Ctrl+K)"
-        >
-          <Command className="w-5 h-5 group-hover:scale-110 transition-transform" />
-        </button>
-
-        <button
-          className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
-          title="Quick Actions"
-        >
-          <Zap className="w-5 h-5 group-hover:scale-110 transition-transform" />
-        </button>
-
-        <div className="w-px h-6 bg-border mx-2" />
-
-        {/* Body State Controls */}
-        <button
-          onClick={() => openSidePane('details')}
-          className={cn(
-            "h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group",
-            bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === 'details' && "bg-accent"
-          )}
-          title="Toggle Side Pane"
-        >
-          <div className="w-5 h-5 flex group-hover:scale-110 transition-transform">
-            <div className="w-1/2 h-full bg-current opacity-60 rounded-l-sm" />
-            <div className="w-1/2 h-full bg-current rounded-r-sm" />
-          </div>
-        </button>
-
-        <button
-          onClick={onToggleFullscreen}
-          className={cn(
-            "h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group",
-            bodyState === BODY_STATES.FULLSCREEN && "bg-accent"
-          )}
-          title="Toggle Fullscreen"
-        >
-          {bodyState === BODY_STATES.FULLSCREEN ? (
-            <Minimize className="w-5 h-5 group-hover:scale-110 transition-transform" />
-          ) : (
-            <Maximize className="w-5 h-5 group-hover:scale-110 transition-transform" />
-          )}
-        </button>
-
-        <div className="w-px h-6 bg-border mx-2" />
-
-        {/* Theme and Settings */}
-        <button
-          onClick={onToggleDarkMode}
-          className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
-          title="Toggle Dark Mode"
-        >
-          {isDarkMode ? (
-            <Sun className="w-5 h-5 group-hover:scale-110 transition-transform" />
-          ) : (
-            <Moon className="w-5 h-5 group-hover:scale-110 transition-transform" />
-          )}
-        </button>
-
-        <button
-          onClick={handleSettingsClick}
-          className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
-          title="Settings"
-        >
-          <Settings className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
-        </button>
-      </div>
     </div>
   )
 }
@@ -2434,4 +2209,261 @@ export const EnhancedSidebar = forwardRef<HTMLDivElement, SidebarProps>(
 )
 
 EnhancedSidebar.displayName = "EnhancedSidebar"
+```
+
+## File: src/components/MainContent.tsx
+```typescript
+import { forwardRef } from 'react'
+import { 
+  X,
+  LayoutDashboard,
+  ChevronsLeftRight,
+  Settings,
+} from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { BODY_STATES, type BodyState } from '@/lib/utils'
+import { DashboardContent } from './DashboardContent'
+import { SettingsPage } from './SettingsPage'
+import { useAppStore } from '@/store/appStore'
+
+interface MainContentProps {
+  bodyState: BodyState
+  onToggleFullscreen: () => void
+}
+
+export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
+  ({ bodyState, onToggleFullscreen }, ref) => {
+    const { sidePaneContent, openSidePane, activePage, setActivePage } = useAppStore()
+
+    const isDashboardInSidePane = sidePaneContent === 'main' && bodyState === BODY_STATES.SIDE_PANE
+    const isSettingsInSidePane = sidePaneContent === 'settings' && bodyState === BODY_STATES.SIDE_PANE
+
+    const renderContent = () => {
+      if (activePage === 'dashboard') {
+        if (isDashboardInSidePane) {
+          return (
+            <div className="flex-1 flex flex-col items-center justify-center text-center">
+              <LayoutDashboard className="w-16 h-16 text-muted-foreground/50 mb-4" />
+              <h2 className="text-2xl font-bold">Dashboard is in Side Pane</h2>
+              <p className="text-muted-foreground mt-2 max-w-md">
+                You've moved the dashboard to the side pane. You can bring it back or continue to navigate.
+              </p>
+              <button
+                onClick={() => openSidePane('main')} // This will close it
+                className="mt-6 bg-primary text-primary-foreground px-4 py-2 rounded-full hover:bg-primary/90 transition-colors flex items-center gap-2 h-10"
+              >
+                <ChevronsLeftRight className="w-5 h-5" />
+                <span>Bring Dashboard Back</span>
+              </button>
+            </div>
+          )
+        }
+        return <DashboardContent />
+      }
+
+      if (activePage === 'settings') {
+        if (isSettingsInSidePane) {
+          return (
+            <div className="flex-1 flex flex-col items-center justify-center text-center">
+              <Settings className="w-16 h-16 text-muted-foreground/50 mb-4" />
+              <h2 className="text-2xl font-bold">Settings are in Side Pane</h2>
+              <p className="text-muted-foreground mt-2 max-w-md">
+                You've moved settings to the side pane. You can bring them back to the main view.
+              </p>
+              <button
+                onClick={() => {
+                  openSidePane('settings'); // This will close it
+                  setActivePage('settings');
+                }}
+                className="mt-6 bg-primary text-primary-foreground px-4 py-2 rounded-full hover:bg-primary/90 transition-colors flex items-center gap-2 h-10"
+              >
+                <ChevronsLeftRight className="w-5 h-5" />
+                <span>Bring Settings Back</span>
+              </button>
+            </div>
+          )
+        }
+        return <SettingsPage />
+      }
+      return null;
+    }
+    
+    const isContentVisible = (activePage === 'dashboard' && !isDashboardInSidePane) || (activePage === 'settings' && !isSettingsInSidePane);
+
+    return (
+      <div
+        ref={ref}
+        className={cn(
+        "flex flex-col h-full overflow-hidden",
+        bodyState === BODY_STATES.FULLSCREEN && "absolute inset-0 z-40 bg-background"
+        )}
+      >
+        {bodyState === BODY_STATES.FULLSCREEN && isContentVisible && (
+          <button
+            onClick={onToggleFullscreen}
+            className="fixed top-6 right-6 lg:right-12 z-[100] h-12 w-12 flex items-center justify-center rounded-full bg-card/50 backdrop-blur-sm hover:bg-card/75 transition-colors group"
+            title="Exit Fullscreen"
+          >
+            <X className="w-6 h-6 group-hover:scale-110 group-hover:rotate-90 transition-all duration-300" />
+          </button>
+        )}
+
+        <div className="flex-1 min-h-0">
+          {renderContent()}
+        </div>
+      </div>
+    )
+  }
+)
+```
+
+## File: src/components/TopBar.tsx
+```typescript
+import { 
+  Menu, 
+  Maximize, 
+  Minimize, 
+  Moon, 
+  Sun,
+  Settings,
+  Command,
+  Zap,
+  ChevronRight
+} from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { BODY_STATES } from '@/lib/utils'
+import { useAppStore } from '@/store/appStore'
+
+interface TopBarProps {
+  onToggleSidebar: () => void
+  onToggleFullscreen: () => void
+  onToggleDarkMode: () => void
+}
+
+export function TopBar({
+  onToggleSidebar,
+  onToggleFullscreen,
+  onToggleDarkMode
+}: TopBarProps) {
+  const { 
+    bodyState, 
+    isDarkMode, 
+    openSidePane,
+    sidePaneContent,
+    activePage,
+    setActivePage,
+  } = useAppStore()
+
+  const handleSettingsClick = () => {
+    const isSettingsInSidePane = bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === 'settings'
+
+    // If we're on the settings page and it's not in the side pane, treat this as a "minimize" action.
+    if (activePage === 'settings' && !isSettingsInSidePane) {
+      openSidePane('settings');
+      setActivePage('dashboard');
+    } else {
+      // In all other cases (on dashboard page, or settings already in pane),
+      // just toggle the settings side pane.
+      openSidePane('settings');
+    }
+  }
+
+  return (
+    <div className="h-20 bg-card/80 backdrop-blur-sm border-b border-border flex items-center justify-between px-6 z-50">
+      {/* Left Section - Sidebar Controls & Breadcrumbs */}
+      <div className="flex items-center gap-4">
+        {/* Sidebar Controls */}
+        <button
+          onClick={onToggleSidebar}
+          className={cn(
+            "h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors"
+          )}
+          title="Toggle Sidebar"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
+
+        {/* Breadcrumbs */}
+        <div className="hidden md:flex items-center gap-2 text-sm">
+          <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">Home</a>
+          <ChevronRight className="w-4 h-4 text-muted-foreground" />
+          <span className="font-medium text-foreground capitalize">{activePage}</span>
+        </div>
+      </div>
+
+      {/* Right Section - View Controls */}
+      <div className="flex items-center gap-3">
+        {/* Quick Actions */}
+        <button
+          className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+          title="Command Palette (Ctrl+K)"
+        >
+          <Command className="w-5 h-5 group-hover:scale-110 transition-transform" />
+        </button>
+
+        <button
+          className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+          title="Quick Actions"
+        >
+          <Zap className="w-5 h-5 group-hover:scale-110 transition-transform" />
+        </button>
+
+        <div className="w-px h-6 bg-border mx-2" />
+
+        {/* Body State Controls */}
+        <button
+          onClick={() => openSidePane('details')}
+          className={cn(
+            "h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group",
+            bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === 'details' && "bg-accent"
+          )}
+          title="Toggle Side Pane"
+        >
+          <div className="w-5 h-5 flex group-hover:scale-110 transition-transform">
+            <div className="w-1/2 h-full bg-current opacity-60 rounded-l-sm" />
+            <div className="w-1/2 h-full bg-current rounded-r-sm" />
+          </div>
+        </button>
+
+        <button
+          onClick={onToggleFullscreen}
+          className={cn(
+            "h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group",
+            bodyState === BODY_STATES.FULLSCREEN && "bg-accent"
+          )}
+          title="Toggle Fullscreen"
+        >
+          {bodyState === BODY_STATES.FULLSCREEN ? (
+            <Minimize className="w-5 h-5 group-hover:scale-110 transition-transform" />
+          ) : (
+            <Maximize className="w-5 h-5 group-hover:scale-110 transition-transform" />
+          )}
+        </button>
+
+        <div className="w-px h-6 bg-border mx-2" />
+
+        {/* Theme and Settings */}
+        <button
+          onClick={onToggleDarkMode}
+          className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+          title="Toggle Dark Mode"
+        >
+          {isDarkMode ? (
+            <Sun className="w-5 h-5 group-hover:scale-110 transition-transform" />
+          ) : (
+            <Moon className="w-5 h-5 group-hover:scale-110 transition-transform" />
+          )}
+        </button>
+
+        <button
+          onClick={handleSettingsClick}
+          className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+          title="Settings"
+        >
+          <Settings className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
+        </button>
+      </div>
+    </div>
+  )
+}
 ```

@@ -79,21 +79,21 @@ export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
       <div
         ref={ref}
         className={cn(
-        "flex flex-col h-full overflow-hidden transition-all duration-300 p-6 lg:px-12 pt-[calc(80px+1.5rem)]",
-        bodyState === BODY_STATES.FULLSCREEN && "absolute inset-0 z-40 bg-background !p-6 lg:!px-12"
+        "flex flex-col h-full overflow-hidden",
+        bodyState === BODY_STATES.FULLSCREEN && "absolute inset-0 z-40 bg-background"
         )}
       >
         {bodyState === BODY_STATES.FULLSCREEN && isContentVisible && (
           <button
             onClick={onToggleFullscreen}
-            className="fixed top-6 right-6 z-[100] h-12 w-12 flex items-center justify-center rounded-full bg-card/50 backdrop-blur-sm hover:bg-card/75 transition-colors group"
+            className="fixed top-6 right-6 lg:right-12 z-[100] h-12 w-12 flex items-center justify-center rounded-full bg-card/50 backdrop-blur-sm hover:bg-card/75 transition-colors group"
             title="Exit Fullscreen"
           >
             <X className="w-6 h-6 group-hover:scale-110 group-hover:rotate-90 transition-all duration-300" />
           </button>
         )}
 
-        <div className="h-full">
+        <div className="flex-1 min-h-0">
           {renderContent()}
         </div>
       </div>

@@ -116,22 +116,26 @@ export function DashboardContent({ isInSidePane = false }: DashboardContentProps
     const cardsRef = useRef<(HTMLDivElement | null)[]>([])
     const [searchTerm, setSearchTerm] = useState("")
     const [showScrollToBottom, setShowScrollToBottom] = useState(false)
-    const { bodyState, openSidePane } = useAppStore()
+    const { bodyState, openSidePane, setTopBarVisible } = useAppStore()
+    const lastScrollTop = useRef(0);
 
     const handleScroll = () => {
       if (!contentRef.current) return
       const { scrollTop, scrollHeight, clientHeight } = contentRef.current
+      
+      // Auto-hide top bar logic
+      if (!isInSidePane) {
+        if (scrollTop > lastScrollTop.current && scrollTop > 200) {
+          setTopBarVisible(false);
+        } else if (scrollTop < lastScrollTop.current || scrollTop <= 0) {
+          setTopBarVisible(true);
+        }
+      }
+      lastScrollTop.current = scrollTop <= 0 ? 0 : scrollTop;
+
       // Show if scrolled down and not at the bottom
       setShowScrollToBottom(scrollTop > 200 && scrollTop < scrollHeight - clientHeight - 200)
     }
-
-    useEffect(() => {
-      const contentEl = contentRef.current
-      if (contentEl) {
-        contentEl.addEventListener('scroll', handleScroll)
-        return () => contentEl.removeEventListener('scroll', handleScroll)
-      }
-    }, [])
 
     const scrollToBottom = () => {
       contentRef.current?.scrollTo({
@@ -194,7 +198,11 @@ export function DashboardContent({ isInSidePane = false }: DashboardContentProps
     }
 
     return (
-        <div className="h-full flex flex-col">
+        <div 
+          ref={contentRef}
+          className="h-full overflow-y-auto space-y-8 p-6 lg:px-12"
+          onScroll={handleScroll}
+        >
           {/* Header */}
           <div className="flex items-center justify-between">
             <div>
@@ -231,10 +239,6 @@ export function DashboardContent({ isInSidePane = false }: DashboardContentProps
               )}
             </div>
           </div>
-        <div 
-          ref={contentRef}
-          className="flex-1 overflow-y-auto space-y-8 pt-8"
-        >
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {statsCards.map((stat, index) => (
@@ -378,14 +382,13 @@ export function DashboardContent({ isInSidePane = false }: DashboardContentProps
           {showScrollToBottom && (
             <button
               onClick={scrollToBottom}
-              className="fixed bottom-8 right-8 w-12 h-12 bg-primary text-primary-foreground rounded-full flex items-center justify-center shadow-lg hover:bg-primary/90 transition-all animate-fade-in z-50"
+              className="fixed bottom-8 right-8 w-12 h-12 bg-primary text-primary-foreground rounded-full flex items-center justify-center shadow-lg hover:bg-primary/90 transition-all animate-fade-in z-[51]"
               style={{ animation: 'bounce 2s infinite' }}
               title="Scroll to bottom"
             >
               <ArrowDown className="w-6 h-6" />
             </button>
           )}
-        </div>
       </div>
     )
 }

@@ -1,0 +1,626 @@
+uuid: 44b0253f-a388-4c86-8152-30113c1c5a75
+projectId: amazing-app-shell
+createdAt: '2025-10-10T13:36:23.450Z'
+gitCommitMsg: >-
+  fix(ts): Resolve compilation errors from previous commit
+
+  - Removed unused `openSidePane` import in `AppShell.tsx`. - Fixed `useEffect`
+  dependency array in `AppShell.tsx` by removing `isFullscreen`, which was out
+  of scope. - Removed unused `Settings` and `X` icon imports in
+  `SettingsContent.tsx`.
+
+  This commit cleans up the codebase and ensures the project compiles
+  successfully without errors.
+promptSummary: User reported TypeScript errors after the last fix.
+reasoning:
+  - >-
+    You've caught me! It seems my last fix, while functionally correct,
+    introduced a few TypeScript errors. My apologies. I'll clean those up right
+    now.
+  - 'Here is the plan:'
+  - '1.  **`src/components/AppShell.tsx`**:'
+  - >-
+    *   Remove the `openSidePane` variable, which was destructured from the
+    store but never used in this component.
+  - >-
+    *   Remove `isFullscreen` from a `useEffect` dependency array. This variable
+    was declared inside the effect and was not accessible in the dependency
+    array. The effect's logic is already correctly triggered by `bodyState`,
+    which is in the array.
+  - '2.  **`src/components/SettingsContent.tsx`**:'
+  - '*   Remove the unused `Settings` and `X` icon imports from `lucide-react`.'
+  - These changes will resolve all the compilation errors.
+  - '### 1. Fix `AppShell.tsx`'
+  - '### 2. Fix `SettingsContent.tsx`'
+  - This should clear up all the errors and get your app compiling again.
+operations:
+  - type: write
+    path: src/components/AppShell.tsx
+    content: >+
+      --- src/components/AppShell.tsx
+
+      +++ src/components/AppShell.tsx
+
+      @@ -20,7 +20,6 @@
+           setRightPaneWidth,
+           isTopBarVisible,
+           setSidebarState,
+      -    openSidePane,
+           closeSidePane,
+           setIsResizing,
+           setSidebarWidth,
+      @@ -198,7 +197,7 @@
+               gsap.to(backdrop, { opacity: 0, duration: animationDuration, onComplete: () => backdrop.remove() })
+             }
+           }
+      -  }, [bodyState, animationDuration, rightPaneWidth, closeSidePane,
+      isTopBarVisible, isFullscreen])
+
+      +  }, [bodyState, animationDuration, rightPaneWidth, closeSidePane,
+      isTopBarVisible])
+       
+         return (
+           <div 
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/components/SettingsContent.tsx
+    content: |+
+      --- src/components/SettingsContent.tsx
+      +++ src/components/SettingsContent.tsx
+      @@ -1,8 +1,6 @@
+       import { useState } from 'react'
+       import { 
+      -  Settings, 
+      -  X, 
+         Moon, 
+         Sun, 
+         Zap, 
+
+    patchStrategy: standard-diff
+snapshot:
+  src/components/AppShell.tsx: |-
+    import { useRef, useEffect } from 'react'
+    import { gsap } from 'gsap'
+    import { cn } from '@/lib/utils'
+    import { EnhancedSidebar } from './EnhancedSidebar'
+    import { MainContent } from './MainContent'
+    import { RightPane } from './RightPane'
+    import { TopBar } from './TopBar'
+    import { useAppStore } from '@/store/appStore'
+    import { SIDEBAR_STATES, BODY_STATES } from '@/lib/utils'
+
+    export function AppShell() {
+      const {
+        sidebarState,
+        bodyState,
+        sidebarWidth,
+        isDarkMode,
+        isResizing,
+        rightPaneWidth,
+        isResizingRightPane,
+        setRightPaneWidth,
+        isTopBarVisible,
+        setSidebarState,
+        openSidePane,
+        closeSidePane,
+        setIsResizing,
+        setSidebarWidth,
+        toggleSidebar,
+        peekSidebar,
+        toggleFullscreen,
+        setIsResizingRightPane,
+        toggleDarkMode,
+        reducedMotion,
+        autoExpandSidebar
+      } = useAppStore()
+      
+      const appRef = useRef<HTMLDivElement>(null)
+      const sidebarRef = useRef<HTMLDivElement>(null)
+      const mainContentRef = useRef<HTMLDivElement>(null)
+      const rightPaneRef = useRef<HTMLDivElement>(null)
+      const resizeHandleRef = useRef<HTMLDivElement>(null)
+      const topBarContainerRef = useRef<HTMLDivElement>(null)
+
+      // Animation duration based on reduced motion preference
+      const animationDuration = reducedMotion ? 0.1 : 0.4
+
+      // Resize functionality
+      useEffect(() => {
+        const handleMouseMove = (e: MouseEvent) => {
+          if (!isResizing) return
+          
+          const newWidth = Math.max(200, Math.min(500, e.clientX))
+          setSidebarWidth(newWidth)
+          
+          if (sidebarRef.current) {
+            gsap.set(sidebarRef.current, { width: newWidth })
+          }
+          if (resizeHandleRef.current) {
+            gsap.set(resizeHandleRef.current, { left: newWidth })
+          }
+        }
+
+        const handleMouseUp = () => {
+          setIsResizing(false)
+          document.body.style.cursor = ''
+          document.body.style.userSelect = ''
+        }
+
+        if (isResizing) {
+          document.body.style.cursor = 'col-resize'
+          document.body.style.userSelect = 'none'
+          document.addEventListener('mousemove', handleMouseMove)
+          document.addEventListener('mouseup', handleMouseUp)
+        }
+
+        return () => {
+          document.removeEventListener('mousemove', handleMouseMove)
+          document.removeEventListener('mouseup', handleMouseUp)
+        }
+      }, [isResizing, setIsResizing, setSidebarWidth])
+
+      // Resize functionality for Right Pane
+      useEffect(() => {
+        const handleMouseMove = (e: MouseEvent) => {
+          if (!isResizingRightPane) return
+          
+          const newWidth = window.innerWidth - e.clientX
+          setRightPaneWidth(newWidth)
+        }
+
+        const handleMouseUp = () => {
+          setIsResizingRightPane(false)
+          document.body.style.cursor = ''
+          document.body.style.userSelect = ''
+        }
+
+        if (isResizingRightPane) {
+          document.body.style.cursor = 'col-resize'
+          document.body.style.userSelect = 'none'
+          document.addEventListener('mousemove', handleMouseMove)
+          document.addEventListener('mouseup', handleMouseUp)
+        }
+
+        return () => {
+          document.removeEventListener('mousemove', handleMouseMove)
+          document.removeEventListener('mouseup', handleMouseUp)
+          document.body.style.cursor = ''
+        }
+      }, [isResizingRightPane, setIsResizingRightPane, setRightPaneWidth])
+
+      // GSAP animations for sidebar transitions
+      useEffect(() => {
+        if (!sidebarRef.current || !mainContentRef.current || !resizeHandleRef.current) return
+
+        const sidebar = sidebarRef.current
+        const handle = resizeHandleRef.current
+        
+        let targetWidth = 0
+        let targetOpacity = 1
+
+        if (bodyState === BODY_STATES.FULLSCREEN) {
+          targetWidth = 0;
+          targetOpacity = 0;
+        } else {
+          switch (sidebarState) {
+            case SIDEBAR_STATES.HIDDEN:
+              targetWidth = 0
+              targetOpacity = 0
+              break
+            case SIDEBAR_STATES.COLLAPSED:
+              targetWidth = 64
+              targetOpacity = 1
+              break
+            case SIDEBAR_STATES.EXPANDED:
+              targetWidth = sidebarWidth
+              targetOpacity = 1
+              break
+            case SIDEBAR_STATES.PEEK:
+              targetWidth = sidebarWidth * 0.8
+              targetOpacity = 0.95
+              break
+          }
+        }
+
+        const tl = gsap.timeline({ ease: "power3.out" })
+        
+        tl.to(sidebar, {
+          width: targetWidth,
+          opacity: targetOpacity,
+          duration: animationDuration,
+        })
+        tl.to(handle, {
+          left: targetWidth,
+          duration: animationDuration,
+        }, 0)
+
+      }, [sidebarState, sidebarWidth, bodyState, animationDuration])
+
+      // GSAP animations for body state transitions
+      useEffect(() => {
+        if (!mainContentRef.current || !sidebarRef.current || !rightPaneRef.current) return
+
+        const ease = "power3.out"
+        const isFullscreen = bodyState === BODY_STATES.FULLSCREEN
+
+        const isSidePane = bodyState === BODY_STATES.SIDE_PANE
+
+        // Right pane animation
+        gsap.to(rightPaneRef.current, {
+          width: rightPaneWidth,
+          x: isSidePane ? 0 : rightPaneWidth + 5, // +5 to hide border
+          duration: animationDuration,
+          ease,
+        })
+
+        gsap.to(mainContentRef.current, {
+          paddingTop: isFullscreen ? '0rem' : isTopBarVisible ? '5rem' : '0rem', // h-20 is 5rem
+          duration: animationDuration,
+          ease,
+        })
+
+        gsap.to(topBarContainerRef.current, {
+          y: (isFullscreen || !isTopBarVisible) ? '-100%' : '0%',
+          duration: animationDuration,
+          ease,
+        })
+        
+        // Add backdrop for side pane
+        const backdrop = document.querySelector('.app-backdrop')
+        if (isSidePane) {
+          if (!backdrop) {
+            const el = document.createElement('div')
+            el.className = 'app-backdrop fixed inset-0 bg-black/30 z-[55]'
+            appRef.current?.appendChild(el)
+            gsap.fromTo(el, { opacity: 0 }, { opacity: 1, duration: animationDuration })
+            el.onclick = () => closeSidePane()
+          }
+        } else {
+          if (backdrop) {
+            gsap.to(backdrop, { opacity: 0, duration: animationDuration, onComplete: () => backdrop.remove() })
+          }
+        }
+      }, [bodyState, animationDuration, rightPaneWidth, closeSidePane, isTopBarVisible, isFullscreen])
+
+      return (
+        <div 
+          ref={appRef}
+          className={cn(
+            "relative h-screen w-screen overflow-hidden bg-background transition-colors duration-300",
+            isDarkMode && "dark"
+          )}
+        >
+          <div className="flex h-screen overflow-hidden">
+            {/* Enhanced Sidebar */}
+            <EnhancedSidebar
+              ref={sidebarRef}
+              onMouseEnter={() => {
+                if (autoExpandSidebar && sidebarState === SIDEBAR_STATES.COLLAPSED) {
+                  peekSidebar()
+                }
+              }}
+              onMouseLeave={() => {
+                if (autoExpandSidebar && sidebarState === SIDEBAR_STATES.PEEK) {
+                  setSidebarState(SIDEBAR_STATES.COLLAPSED)
+                }
+              }}
+            />
+
+            {/* Resize Handle */}
+            {sidebarState !== SIDEBAR_STATES.HIDDEN && (
+              <div
+                ref={resizeHandleRef}
+                className={cn(
+                  "absolute top-0 w-2 h-full bg-transparent hover:bg-primary/20 cursor-col-resize z-50 transition-colors duration-200 group -translate-x-1/2"
+                )}
+                onMouseDown={(e) => {
+                  e.preventDefault()
+                  setIsResizing(true)
+                }}
+              >
+                <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200 mx-auto" />
+              </div>
+            )}
+
+            {/* Main Content Area */}
+            <div className="relative flex-1 overflow-hidden bg-background">
+              <div ref={topBarContainerRef} className="absolute inset-x-0 top-0 z-30">
+                <TopBar
+                  onToggleSidebar={toggleSidebar}
+                  onToggleFullscreen={toggleFullscreen}
+                  onToggleDarkMode={toggleDarkMode}
+                />
+              </div>
+              
+              {/* Main Content */}
+              <MainContent
+                ref={mainContentRef}
+                bodyState={bodyState}
+                onToggleFullscreen={toggleFullscreen}
+              />
+            </div>
+          </div>
+          <RightPane ref={rightPaneRef} />
+        </div>
+      )
+    }
+  src/components/SettingsContent.tsx: |-
+    import { useState } from 'react'
+    import { 
+      Settings, 
+      X, 
+      Moon, 
+      Sun, 
+      Zap, 
+      Eye, 
+      Minimize2, 
+      RotateCcw,
+      Monitor,
+      Smartphone,
+      Palette,
+      Accessibility
+    } from 'lucide-react'
+    import { cn } from '@/lib/utils'
+    import { useAppStore } from '@/store/appStore'
+
+    export function SettingsContent() {
+      const {
+        isDarkMode,
+        reducedMotion,
+        compactMode,
+        autoExpandSidebar,
+        sidebarWidth,
+        toggleDarkMode,
+        setReducedMotion,
+        setCompactMode,
+        setAutoExpandSidebar,
+        setSidebarWidth,
+        resetToDefaults
+      } = useAppStore()
+
+      const [tempSidebarWidth, setTempSidebarWidth] = useState(sidebarWidth)
+
+      const handleSidebarWidthChange = (width: number) => {
+        setTempSidebarWidth(width)
+        setSidebarWidth(width)
+      }
+
+      return (
+        <div className="space-y-10">
+          {/* Appearance */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+              <Palette className="w-4 h-4" />
+              Appearance
+            </h3>
+            
+            {/* Dark Mode */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                {isDarkMode ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+                <div>
+                  <p className="font-medium">Dark Mode</p>
+                  <p className="text-sm text-muted-foreground">Toggle dark theme</p>
+                </div>
+              </div>
+              <button
+                onClick={toggleDarkMode}
+                className={cn(
+                  "relative inline-flex h-7 w-12 items-center rounded-full transition-colors",
+                  isDarkMode ? "bg-primary" : "bg-muted"
+                )}
+              >
+                <span
+                  className={cn(
+                    "inline-block h-5 w-5 transform rounded-full bg-background transition-transform",
+                    isDarkMode ? "translate-x-6" : "translate-x-1"
+                  )}
+                />
+              </button>
+            </div>
+
+            {/* Compact Mode */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Minimize2 className="w-4 h-4" />
+                <div>
+                  <p className="font-medium">Compact Mode</p>
+                  <p className="text-sm text-muted-foreground">Reduce spacing and sizes</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setCompactMode(!compactMode)}
+                className={cn(
+                  "relative inline-flex h-7 w-12 items-center rounded-full transition-colors",
+                  compactMode ? "bg-primary" : "bg-muted"
+                )}
+              >
+                <span
+                  className={cn(
+                    "inline-block h-5 w-5 transform rounded-full bg-background transition-transform",
+                    compactMode ? "translate-x-6" : "translate-x-1"
+                  )}
+                />
+              </button>
+            </div>
+          </div>
+
+          {/* Behavior */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+              <Zap className="w-4 h-4" />
+              Behavior
+            </h3>
+
+            {/* Auto Expand Sidebar */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Eye className="w-4 h-4" />
+                <div>
+                  <p className="font-medium">Auto Expand Sidebar</p>
+                  <p className="text-sm text-muted-foreground">Expand on hover when collapsed</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setAutoExpandSidebar(!autoExpandSidebar)}
+                className={cn(
+                  "relative inline-flex h-7 w-12 items-center rounded-full transition-colors",
+                  autoExpandSidebar ? "bg-primary" : "bg-muted"
+                )}
+              >
+                <span
+                  className={cn(
+                    "inline-block h-5 w-5 transform rounded-full bg-background transition-transform",
+                    autoExpandSidebar ? "translate-x-6" : "translate-x-1"
+                  )}
+                />
+              </button>
+            </div>
+
+            {/* Sidebar Width */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <Monitor className="w-4 h-4" />
+                <div>
+                  <p className="font-medium">Sidebar Width</p>
+                  <p className="text-sm text-muted-foreground">{tempSidebarWidth}px</p>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <input
+                  type="range"
+                  min="200"
+                  max="500"
+                  step="10"
+                  value={tempSidebarWidth}
+                  onChange={(e) => handleSidebarWidthChange(Number(e.target.value))}
+                  className="w-full h-1.5 bg-muted rounded-lg appearance-none cursor-pointer slider"
+                />
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>200px</span>
+                  <span>350px</span>
+                  <span>500px</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Accessibility */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+              <Accessibility className="w-4 h-4" />
+              Accessibility
+            </h3>
+
+            {/* Reduced Motion */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Zap className="w-4 h-4" />
+                <div>
+                  <p className="font-medium">Reduced Motion</p>
+                  <p className="text-sm text-muted-foreground">Minimize animations</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setReducedMotion(!reducedMotion)}
+                className={cn(
+                  "relative inline-flex h-7 w-12 items-center rounded-full transition-colors",
+                  reducedMotion ? "bg-primary" : "bg-muted"
+                )}
+              >
+                <span
+                  className={cn(
+                    "inline-block h-5 w-5 transform rounded-full bg-background transition-transform",
+                    reducedMotion ? "translate-x-6" : "translate-x-1"
+                  )}
+                />
+              </button>
+            </div>
+          </div>
+
+          {/* Presets */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+              Quick Presets
+            </h3>
+            
+            <div className="grid grid-cols-2 gap-3">
+              <button 
+                onClick={() => {
+                  setCompactMode(false)
+                  setReducedMotion(false)
+                  setSidebarWidth(320)
+                }}
+                className="p-4 bg-accent/30 hover:bg-accent/50 rounded-xl transition-colors text-left"
+              >
+                <Monitor className="w-4 h-4 mb-2" />
+                <p className="font-medium text-sm">Desktop</p>
+                <p className="text-xs text-muted-foreground">Spacious layout</p>
+              </button>
+              
+              <button 
+                onClick={() => {
+                  setCompactMode(true)
+                  setReducedMotion(true)
+                  setSidebarWidth(240)
+                }}
+                className="p-4 bg-accent/30 hover:bg-accent/50 rounded-xl transition-colors text-left"
+              >
+                <Smartphone className="w-4 h-4 mb-2" />
+                <p className="font-medium text-sm">Mobile</p>
+                <p className="text-xs text-muted-foreground">Compact layout</p>
+              </button>
+            </div>
+          </div>
+          <div className="pt-6 border-t border-border">
+            <button
+              onClick={resetToDefaults}
+              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-destructive/10 text-destructive hover:bg-destructive/20 rounded-lg transition-colors"
+            >
+              <RotateCcw className="w-4 h-4" />
+              Reset to Defaults
+            </button>
+          </div>
+        </div>
+      )
+    }
+
+    // Custom slider styles
+    const sliderStyles = `
+    .slider::-webkit-slider-thumb {
+      appearance: none;
+      height: 18px;
+      width: 18px;
+      border-radius: 50%;
+      background: hsl(var(--primary));
+      cursor: pointer;
+      border: 3px solid hsl(var(--background));
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      margin-top: -7px;
+    }
+
+    .slider::-moz-range-thumb {
+      height: 18px;
+      width: 18px;
+      border-radius: 50%;
+      background: hsl(var(--primary));
+      cursor: pointer;
+      border: 3px solid hsl(var(--background));
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    `
+
+    // Inject styles
+    if (typeof document !== 'undefined') {
+      const styleSheet = document.createElement('style')
+      styleSheet.textContent = sliderStyles
+      document.head.appendChild(styleSheet)
+    }
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 46

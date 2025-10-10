@@ -1,0 +1,381 @@
+uuid: d8e02d60-dd49-4eb0-8804-03c683b51909
+projectId: amazing-app-shell
+createdAt: '2025-10-10T13:14:28.053Z'
+gitCommitMsg: >-
+  feat(ui): implement auto-hiding top bar and scroll-to-bottom button
+
+  - Added state to Zustand store (`isTopBarVisible`) to manage top bar
+  visibility. - Implemented scroll direction detection in `DashboardContent` and
+  `SettingsPage` to show/hide the top bar. - Added a "scroll to bottom" button
+  in `DashboardContent` that appears on scroll. - Positioned the button relative
+  to the main content area and added a bounce animation. - Updated `AppShell` to
+  animate the top bar based on the new global state for a smoother user
+  experience.
+promptSummary: >-
+  Implement an auto-hiding top bar that hides on scroll down and shows on scroll
+  up, and add a "scroll to bottom" button to the dashboard.
+reasoning:
+  - >-
+    Based on your request, I will implement an auto-hiding top bar that
+    disappears on scroll-down and reappears on scroll-up for a more immersive
+    experience. I will also add a "scroll to bottom" button on the dashboard for
+    easier navigation of long content.
+  - 'Here are the changes I''ll make:'
+  - >-
+    1.  **State Management (`appStore.ts`):** I'll introduce a new state
+    variable, `isTopBarVisible`, to track the visibility of the top navigation
+    bar. This state will be reset during major layout changes (like opening the
+    side pane or changing pages) to ensure predictable behavior.
+  - 2.  **Dashboard Content (`DashboardContent.tsx`):**
+  - >-
+    *   I'll enhance the existing scroll handler to detect the scroll direction.
+    When scrolling down, it will update the global state to hide the top bar;
+    when scrolling up, it will show it.
+  - >-
+    *   I'll implement the "scroll to bottom" button, making it appear when
+    you've scrolled down the page. I'll also adjust its positioning to be
+    relative to the main content area and add a subtle bounce animation to draw
+    attention to it.
+  - >-
+    3.  **Settings Page (`SettingsPage.tsx`):** To maintain a consistent user
+    experience, I'll apply the same auto-hiding top bar logic to the settings
+    page.
+  - >-
+    4.  **Animation (`tailwind.config.js`):** I'll define the keyframes for the
+    new bounce animation used by the "scroll to bottom" button.
+  - >-
+    5.  **App Shell (`AppShell.tsx`):** Finally, I'll connect the
+    `isTopBarVisible` state to the `TopBar` component's rendering logic, using
+    GSAP to smoothly animate it in and out of view.
+  - Let's start with the modifications.
+  - '### 1. Update Tailwind CSS Configuration'
+  - >-
+    I'll start by adding the `bounce` animation keyframes and utility class to
+    your Tailwind configuration.
+  - '### 2. Enhance the Global App Store'
+  - >-
+    Next, I'll modify the Zustand store to manage the top bar's visibility state
+    across the application.
+  - '### 3. Implement Scroll Behavior in Dashboard'
+  - >-
+    Here, I'll add the scroll detection logic to the dashboard content and
+    implement the "scroll to bottom" button.
+  - '### 4. Implement Scroll Behavior on Settings Page'
+  - >-
+    To ensure consistency, I'll add the same top bar hiding logic to the
+    settings page.
+  - '### 5. Animate the Top Bar in the App Shell'
+  - >-
+    Finally, I'll update the `AppShell` to consume the new state and animate the
+    top bar accordingly.
+  - >-
+    These changes will create a more dynamic and immersive user experience by
+    intelligently managing screen real estate.
+operations:
+  - type: write
+    path: 'tailwind.config.js {patchStrategy: standard-diff}'
+    content: |+
+      --- tailwind.config.js
+      +++ tailwind.config.js
+      @@ -43,6 +43,7 @@
+               "fade-in": "fadeIn 0.5s ease-in-out",
+               "slide-in": "slideIn 0.3s ease-out",
+               "scale-in": "scaleIn 0.2s ease-out",
+      +        "bounce": "bounce 2s infinite",
+             },
+             keyframes: {
+               fadeIn: {
+      @@ -56,6 +57,10 @@
+                 "0%": { transform: "scale(0.95)", opacity: "0" },
+                 "100%": { transform: "scale(1)", opacity: "1" },
+               },
+      +        bounce: {
+      +          "0%, 100%": { transform: "translateY(-15%)" },
+      +          "50%": { transform: "translateY(0)" },
+      +        }
+             },
+           },
+         },
+
+    patchStrategy: standard-diff
+  - type: write
+    path: 'src/store/appStore.ts {patchStrategy: standard-diff}'
+    content: >+
+      --- src/store/appStore.ts
+
+      +++ src/store/appStore.ts
+
+      @@ -7,6 +7,7 @@
+         bodyState: BodyState
+         isDarkMode: boolean
+         sidePaneContent: 'details' | 'settings' | 'main'
+         activePage: ActivePage
+         sidebarWidth: number
+         rightPaneWidth: number
+         isResizing: boolean
+         isResizingRightPane: boolean
+      +  isTopBarVisible: boolean
+         
+         // User Preferences
+         autoExpandSidebar: boolean
+      @@ -23,6 +24,7 @@
+         setAutoExpandSidebar: (auto: boolean) => void
+         setReducedMotion: (reduced: boolean) => void
+         setCompactMode: (compact: boolean) => void
+      +  setTopBarVisible: (visible: boolean) => void
+         
+         // Composite Actions
+         toggleSidebar: () => void
+      @@ -52,11 +54,11 @@
+           (set, get) => ({
+             ...defaultState,
+             
+      -      // Basic setters
+
+      -      sidePaneContent: 'details',
+
+      +      // Basic setters      
+
+      +      isTopBarVisible: true,
+             setSidebarState: (state) => set({ sidebarState: state }),
+             setBodyState: (state) => set({ bodyState: state }),
+      -      setActivePage: (page) => set({ activePage: page }),
+
+      +      setActivePage: (page) => set({ activePage: page, isTopBarVisible:
+      true }),
+             toggleDarkMode: () => {
+               const newMode = !get().isDarkMode
+               set({ isDarkMode: newMode })
+      @@ -69,6 +71,7 @@
+             setAutoExpandSidebar: (auto) => set({ autoExpandSidebar: auto }),
+             setReducedMotion: (reduced) => set({ reducedMotion: reduced }),
+             setCompactMode: (compact) => set({ compactMode: compact }),
+      +      setTopBarVisible: (visible) => set({ isTopBarVisible: visible }),
+             
+             // Composite actions
+             toggleSidebar: () => {
+      @@ -88,19 +91,19 @@
+             toggleFullscreen: () => {
+               const current = get().bodyState
+               set({ 
+      -          bodyState: current === BODY_STATES.FULLSCREEN ?
+      BODY_STATES.NORMAL : BODY_STATES.FULLSCREEN 
+
+      +          bodyState: current === BODY_STATES.FULLSCREEN ?
+      BODY_STATES.NORMAL : BODY_STATES.FULLSCREEN,
+
+      +          isTopBarVisible: true,
+               })
+             },
+             
+             openSidePane: (content) => {
+               const { bodyState, sidePaneContent } = get()
+               if (bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === content) {
+                 // If it's open with same content, close it.
+      -          set({ bodyState: BODY_STATES.NORMAL });
+
+      +          set({ bodyState: BODY_STATES.NORMAL, isTopBarVisible: true });
+               } else {
+                 // If closed, or different content, open with new content.
+      -          set({ bodyState: BODY_STATES.SIDE_PANE, sidePaneContent:
+      content });
+
+      +          set({ bodyState: BODY_STATES.SIDE_PANE, sidePaneContent:
+      content, isTopBarVisible: true });
+               }
+             },
+             closeSidePane: () => {
+      -        set({ bodyState: BODY_STATES.NORMAL })
+
+      +        set({ bodyState: BODY_STATES.NORMAL, isTopBarVisible: true })
+             },
+             
+             resetToDefaults: () => set(defaultState),
+
+    patchStrategy: standard-diff
+  - type: write
+    path: 'src/components/DashboardContent.tsx {patchStrategy: standard-diff}'
+    content: >+
+      --- src/components/DashboardContent.tsx
+
+      +++ src/components/DashboardContent.tsx
+
+      @@ -98,13 +98,24 @@
+           const cardsRef = useRef<(HTMLDivElement | null)[]>([])
+           const [searchTerm, setSearchTerm] = useState("")
+           const [showScrollToBottom, setShowScrollToBottom] = useState(false)
+      -    const { bodyState, openSidePane } = useAppStore()
+
+      +    const { bodyState, openSidePane, setTopBarVisible } = useAppStore()
+
+      +    const lastScrollTop = useRef(0)
+       
+           const handleScroll = () => {
+             if (!contentRef.current) return
+             const { scrollTop, scrollHeight, clientHeight } = contentRef.current
+      +
+
+      +      // Show/hide top bar on scroll
+
+      +      if (scrollTop > lastScrollTop.current && scrollTop > 200) {
+
+      +        setTopBarVisible(false) // Scrolling down
+
+      +      } else {
+
+      +        setTopBarVisible(true) // Scrolling up
+
+      +      }
+
+      +      lastScrollTop.current = scrollTop <= 0 ? 0 : scrollTop; // For
+      Mobile or negative scrolling
+
+      +
+             // Show if scrolled down and not at the bottom
+             setShowScrollToBottom(scrollTop > 200 && scrollTop < scrollHeight - clientHeight - 200)
+           }
+       
+      @@ -176,7 +187,7 @@
+           }
+       
+           return (
+      -        <div className="h-full flex flex-col">
+
+      +        <div className="h-full flex flex-col relative">
+                 {/* Header */}
+                 <div className="flex items-center justify-between">
+                   <div>
+      @@ -348,9 +359,8 @@
+                 {showScrollToBottom && (
+                   <button
+                     onClick={scrollToBottom}
+      -              className="fixed bottom-8 right-8 w-12 h-12 bg-primary
+      text-primary-foreground rounded-full flex items-center justify-center
+      shadow-lg hover:bg-primary/90 transition-all animate-fade-in z-50"
+
+      -              style={{ animation: 'bounce 2s infinite' }}
+
+      +              className="absolute bottom-8 right-8 w-12 h-12 bg-primary
+      text-primary-foreground rounded-full flex items-center justify-center
+      shadow-lg hover:bg-primary/90 transition-all animate-fade-in
+      animate-bounce z-50"
+                     title="Scroll to bottom"
+                   >
+                     <ArrowDown className="w-6 h-6" />
+
+    patchStrategy: standard-diff
+  - type: write
+    path: 'src/components/SettingsPage.tsx {patchStrategy: standard-diff}'
+    content: |+
+      --- src/components/SettingsPage.tsx
+      +++ src/components/SettingsPage.tsx
+      @@ -1,9 +1,29 @@
+      +import { useRef, useEffect } from 'react'
+       import { PanelRight } from 'lucide-react'
+       import { SettingsContent } from './SettingsContent'
+       import { useAppStore } from '@/store/appStore'
+       
+       export function SettingsPage() {
+      -  const { openSidePane, setActivePage } = useAppStore()
+      +  const { openSidePane, setActivePage, setTopBarVisible } = useAppStore()
+      +  const scrollRef = useRef<HTMLDivElement>(null)
+      +  const lastScrollTop = useRef(0)
+      +
+      +  useEffect(() => {
+      +    const scrollEl = scrollRef.current
+      +    if (!scrollEl) return
+      +
+      +    const handleScroll = () => {
+      +      const { scrollTop } = scrollEl
+      +      if (scrollTop > lastScrollTop.current && scrollTop > 200) {
+      +        setTopBarVisible(false) // Scrolling down
+      +      } else {
+      +        setTopBarVisible(true) // Scrolling up
+      +      }
+      +      lastScrollTop.current = scrollTop <= 0 ? 0 : scrollTop;
+      +    }
+      +
+      +    scrollEl.addEventListener('scroll', handleScroll)
+      +    return () => scrollEl.removeEventListener('scroll', handleScroll)
+      +  }, [setTopBarVisible])
+       
+         const handleMoveToSidePane = () => {
+           openSidePane('settings');
+      @@ -26,7 +46,7 @@
+                   </button>
+               </div>
+             </div>
+      -      <div className="flex-1 overflow-y-auto pt-8">
+      +      <div ref={scrollRef} className="flex-1 overflow-y-auto pt-8">
+               <SettingsContent />
+             </div>
+           </div>
+
+    patchStrategy: standard-diff
+  - type: write
+    path: 'src/components/AppShell.tsx {patchStrategy: standard-diff}'
+    content: >+
+      --- src/components/AppShell.tsx
+
+      +++ src/components/AppShell.tsx
+
+      @@ -20,7 +20,8 @@
+           setIsResizingRightPane,
+           toggleDarkMode,
+           reducedMotion,
+      -    autoExpandSidebar
+
+      +    autoExpandSidebar,
+
+      +    isTopBarVisible
+         } = useAppStore()
+         
+         const appRef = useRef<HTMLDivElement>(null)
+      @@ -151,14 +152,15 @@
+       
+           const ease = "power3.out"
+           const isFullscreen = bodyState === BODY_STATES.FULLSCREEN
+           const isSidePane = bodyState === BODY_STATES.SIDE_PANE
+      +    const isVisible = !isFullscreen && isTopBarVisible
+       
+           // Right pane animation
+           gsap.to(rightPaneRef.current, {
+             width: rightPaneWidth,
+             x: isSidePane ? 0 : rightPaneWidth + 5, // +5 to hide border
+             duration: animationDuration,
+             ease,
+           })
+       
+           gsap.to(topBarContainerRef.current, {
+      -      y: isFullscreen ? '-100%' : '0%',
+
+      +      y: isVisible ? '0%' : '-100%',
+             duration: animationDuration,
+             ease,
+           })
+      @@ -177,7 +179,7 @@
+               gsap.to(backdrop, { opacity: 0, duration: animationDuration, onComplete: () => backdrop.remove() })
+             }
+           }
+      -  }, [bodyState, animationDuration, rightPaneWidth, closeSidePane])
+
+      +  }, [bodyState, animationDuration, rightPaneWidth, closeSidePane,
+      isTopBarVisible])
+       
+         return (
+           <div 
+
+    patchStrategy: standard-diff
+snapshot:
+  'tailwind.config.js {patchStrategy: standard-diff}': null
+  'src/store/appStore.ts {patchStrategy: standard-diff}': null
+  'src/components/DashboardContent.tsx {patchStrategy: standard-diff}': null
+  'src/components/SettingsPage.tsx {patchStrategy: standard-diff}': null
+  'src/components/AppShell.tsx {patchStrategy: standard-diff}': null
+approved: false
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: undone
+id: 40

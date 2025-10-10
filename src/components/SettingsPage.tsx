@@ -1,9 +1,12 @@
+import { useRef } from 'react'
 import { PanelRight } from 'lucide-react'
 import { SettingsContent } from './SettingsContent'
 import { useAppStore } from '@/store/appStore'
 
 export function SettingsPage() {
-  const { openSidePane, setActivePage } = useAppStore()
+  const { openSidePane, setActivePage, setTopBarVisible } = useAppStore()
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const lastScrollTop = useRef(0)
 
   const handleMoveToSidePane = () => {
     openSidePane('settings');
@@ -11,7 +14,22 @@ export function SettingsPage() {
   }
 
   return (
-    <div className="h-full flex flex-col">
+    <div
+      ref={scrollRef}
+      className="h-full overflow-y-auto p-6 lg:px-12 space-y-8"
+      onScroll={() => {
+        if (!scrollRef.current) return
+        const { scrollTop } = scrollRef.current
+        
+        if (scrollTop > lastScrollTop.current && scrollTop > 200) {
+          setTopBarVisible(false);
+        } else if (scrollTop < lastScrollTop.current || scrollTop <= 0) {
+          setTopBarVisible(true);
+        }
+        
+        lastScrollTop.current = scrollTop <= 0 ? 0 : scrollTop;
+      }}
+    >
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -29,9 +47,8 @@ export function SettingsPage() {
             </button>
         </div>
       </div>
-      <div className="flex-1 overflow-y-auto pt-8">
-        <SettingsContent />
-      </div>
+
+      <SettingsContent />
     </div>
   )
 }

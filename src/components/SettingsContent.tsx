@@ -1,7 +1,5 @@
 import { useState } from 'react'
 import { 
-  Settings, 
-  X, 
   Moon, 
   Sun, 
   Zap, 

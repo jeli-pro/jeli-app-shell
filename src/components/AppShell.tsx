@@ -18,8 +18,8 @@ export function AppShell() {
     rightPaneWidth,
     isResizingRightPane,
     setRightPaneWidth,
+    isTopBarVisible,
     setSidebarState,
-    openSidePane,
     closeSidePane,
     setIsResizing,
     setSidebarWidth,
@@ -160,6 +160,7 @@ export function AppShell() {
 
     const ease = "power3.out"
     const isFullscreen = bodyState === BODY_STATES.FULLSCREEN
+
     const isSidePane = bodyState === BODY_STATES.SIDE_PANE
 
     // Right pane animation
@@ -170,8 +171,14 @@ export function AppShell() {
       ease,
     })
 
+    gsap.to(mainContentRef.current, {
+      paddingTop: isFullscreen ? '0rem' : isTopBarVisible ? '5rem' : '0rem', // h-20 is 5rem
+      duration: animationDuration,
+      ease,
+    })
+
     gsap.to(topBarContainerRef.current, {
-      y: isFullscreen ? '-100%' : '0%',
+      y: (isFullscreen || !isTopBarVisible) ? '-100%' : '0%',
       duration: animationDuration,
       ease,
     })
@@ -191,7 +198,7 @@ export function AppShell() {
         gsap.to(backdrop, { opacity: 0, duration: animationDuration, onComplete: () => backdrop.remove() })
       }
     }
-  }, [bodyState, animationDuration, rightPaneWidth, closeSidePane])
+  }, [bodyState, animationDuration, rightPaneWidth, closeSidePane, isTopBarVisible])
 
   return (
     <div 

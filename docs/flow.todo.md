@@ -1,7 +1,12 @@
-1. topbar should auto hide while on scroll down, show while scrolling up
-2. add scroll to bottom iconbutton
+color accent should configurable trough setting page
 
 ===
+
+1. topbar should auto hide while on scroll down, show while scrolling up
+2. add scroll to bottom iconbutton
+3. full page scroll indicator, should at right most viewport
+
+=== DONE
 
 1. breadcrumbs should aware of route changes like dashboard/setting page
 2. need more left right spacing for content while on side pane view or full page view

@@ -1,0 +1,1137 @@
+uuid: c32dd326-7883-49ca-96df-0097109a96e6
+projectId: amazing-app-shell
+createdAt: '2025-10-10T13:11:29.537Z'
+gitCommitMsg: >-
+  feat(ui): add enhanced scroll-based UI features
+
+  - Implemented an auto-hiding TopBar that slides out of view on scroll-down and
+  reappears on scroll-up. - Added a scroll-to-bottom button that appears when
+  scrolled down the page. - Added a full-height scroll progress indicator on the
+  right edge of the viewport. - Centralized scroll handling logic in AppShell
+  for better state management and performance. - The scroll-to-bottom button is
+  now aware of the right pane and repositions itself accordingly. - Bouncing
+  animations are disabled when reduced motion is enabled for accessibility.
+promptSummary: >-
+  Implement auto-hiding top bar, scroll-to-bottom button, and full-page scroll
+  indicator.
+reasoning:
+  - Here are the changes to implement the requested scroll-related features.
+  - '### Reasoning for Changes'
+  - >-
+    1.  **Centralized Scroll Handling in `AppShell.tsx`**: To manage the TopBar
+    visibility, a scroll-to-bottom button, and a full-page scroll indicator,
+    I've centralized all scroll-related logic within the main `AppShell`
+    component. This avoids prop-drilling or polluting the global state store
+    with transient UI state.
+  - >-
+    *   I've added a `useEffect` hook in `AppShell.tsx` that finds the primary
+    scrollable area (identified by a new `.main-scroll-area` class) within the
+    active page content (`DashboardContent` or `SettingsPage`).
+  - >-
+    *   This hook attaches a single `scroll` event listener to manage all three
+    features, which is efficient. It tracks scroll direction for the TopBar,
+    calculates scroll progress for the indicator, and determines when to show
+    the scroll-to-bottom button.
+  - '2.  **Auto-Hiding TopBar**:'
+  - >-
+    *   A new state variable, `isTopBarVisible`, is managed in `AppShell.tsx`.
+    It's updated based on scroll direction: the TopBar hides on scroll down and
+    reappears on scroll up or when near the top of the page.
+  - >-
+    *   The existing GSAP animation for the TopBar has been updated to
+    incorporate this new state, allowing it to slide smoothly out of view.
+  - '3.  **Scroll-to-Bottom Button**:'
+  - >-
+    *   The logic and JSX for the scroll-to-bottom button were moved from
+    `DashboardContent.tsx` to `AppShell.tsx`.
+  - >-
+    *   The button is now positioned relative to the viewport. Its `right`
+    offset is dynamically adjusted using a CSS variable (`--right-pane-width`)
+    to prevent it from overlapping with the right-side pane when it's open.
+  - >-
+    *   The button's bounce animation is disabled if the user has enabled the
+    `reducedMotion` setting, improving accessibility.
+  - '4.  **Full-Page Scroll Indicator**:'
+  - >-
+    *   A new, non-interactive element has been added to `AppShell.tsx`, fixed
+    to the right edge of the viewport.
+  - >-
+    *   Its height is bound to the `scrollProgress` state variable, providing a
+    clear visual indication of the user's position within the scrollable
+    content.
+  - >-
+    *   It's styled to be subtle and only appears when there is content to
+    scroll through.
+  - '5.  **Code Cleanup**:'
+  - >-
+    *   The now-redundant scroll handling logic, state, and JSX were removed
+    from `DashboardContent.tsx` to keep the codebase clean and maintain a single
+    source of truth for scroll behavior.
+  - >-
+    *   I added the `.main-scroll-area` class to the scrollable containers in
+    both `DashboardContent.tsx` and `SettingsPage.tsx` to make them discoverable
+    by the new logic in `AppShell.tsx`.
+  - >-
+    These changes create a more dynamic and user-friendly scrolling experience
+    while keeping the implementation organized and performant.
+  - '### File Modifications'
+  - >-
+    I will first update `DashboardContent.tsx` to remove the old scroll logic
+    and add the new class name.
+  - Next, I'll add the same class to `SettingsPage.tsx`.
+  - Finally, I'll implement all the new logic and UI elements in `AppShell.tsx`.
+operations:
+  - type: write
+    path: src/components/DashboardContent.tsx
+    content: >+
+      --- src/components/DashboardContent.tsx
+
+      +++ src/components/DashboardContent.tsx
+
+      @@ -13,7 +13,6 @@
+         Search,
+         MoreVertical,
+      -  ArrowDown,
+         PanelRight
+       } from 'lucide-react'
+       import { cn } from '@/lib/utils'
+      @@ -106,39 +105,9 @@
+       export function DashboardContent({ isInSidePane = false }: DashboardContentProps) {
+           const contentRef = useRef<HTMLDivElement>(null)
+           const cardsRef = useRef<(HTMLDivElement | null)[]>([])
+      -    const [searchTerm, setSearchTerm] = useState("")
+
+      -    const [showScrollToBottom, setShowScrollToBottom] = useState(false)
+
+      +    const [searchTerm, setSearchTerm] = useState("")
+           const { bodyState, openSidePane } = useAppStore()
+       
+      -    const handleScroll = () => {
+
+      -      if (!contentRef.current) return
+
+      -      const { scrollTop, scrollHeight, clientHeight } =
+      contentRef.current
+
+      -      // Show if scrolled down and not at the bottom
+
+      -      setShowScrollToBottom(scrollTop > 200 && scrollTop < scrollHeight -
+      clientHeight - 200)
+
+      -    }
+
+      -
+
+      -    useEffect(() => {
+
+      -      const contentEl = contentRef.current
+
+      -      if (contentEl) {
+
+      -        contentEl.addEventListener('scroll', handleScroll)
+
+      -        return () => contentEl.removeEventListener('scroll',
+      handleScroll)
+
+      -      }
+
+      -    }, [])
+
+      -
+
+      -    const scrollToBottom = () => {
+
+      -      contentRef.current?.scrollTo({
+
+      -        top: contentRef.current.scrollHeight,
+
+      -        behavior: 'smooth'
+
+      -      })
+
+      -    }
+
+      -
+           // Animate content based on body state
+           useEffect(() => {
+             if (!contentRef.current) return
+      @@ -230,7 +199,7 @@
+                 </div>
+               <div 
+                 ref={contentRef}
+      -          className="flex-1 overflow-y-auto space-y-8 pt-8"
+
+      +          className="flex-1 overflow-y-auto space-y-8 pt-8
+      main-scroll-area"
+               >
+                   {/* Stats Cards */}
+                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      @@ -386,17 +355,6 @@
+                     </div>
+                   </div>
+                 </div>
+      -          {showScrollToBottom && (
+
+      -            <button
+
+      -              onClick={scrollToBottom}
+
+      -              className="fixed bottom-8 right-8 w-12 h-12 bg-primary
+      text-primary-foreground rounded-full flex items-center justify-center
+      shadow-lg hover:bg-primary/90 transition-all animate-fade-in z-50"
+
+      -              style={{ animation: 'bounce 2s infinite' }}
+
+      -              title="Scroll to bottom"
+
+      -            >
+
+      -              <ArrowDown className="w-6 h-6" />
+
+      -            </button>
+
+      -          )}
+               </div>
+             </div>
+           )
+       }
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/components/SettingsPage.tsx
+    content: |+
+      --- src/components/SettingsPage.tsx
+      +++ src/components/SettingsPage.tsx
+      @@ -29,7 +29,7 @@
+                   </button>
+               </div>
+             </div>
+      -      <div className="flex-1 overflow-y-auto pt-8">
+      +      <div className="flex-1 overflow-y-auto pt-8 main-scroll-area">
+               <SettingsContent />
+             </div>
+           </div>
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/components/AppShell.tsx
+    content: >+
+      --- src/components/AppShell.tsx
+
+      +++ src/components/AppShell.tsx
+
+      @@ -1,5 +1,6 @@
+
+      -import { useRef, useEffect } from 'react'
+
+      +import { useRef, useEffect, useState } from 'react'
+       import { gsap } from 'gsap'
+      +import { ArrowDown } from 'lucide-react'
+       import { cn } from '@/lib/utils'
+       import { EnhancedSidebar } from './EnhancedSidebar'
+       import { MainContent } from './MainContent'
+      @@ -13,6 +14,7 @@
+         const {
+           sidebarState,
+           bodyState,
+      +    activePage,
+           sidebarWidth,
+           isDarkMode,
+           isResizing,
+      @@ -37,11 +39,48 @@
+         const rightPaneRef = useRef<HTMLDivElement>(null)
+         const resizeHandleRef = useRef<HTMLDivElement>(null)
+         const topBarContainerRef = useRef<HTMLDivElement>(null)
+      +  const scrollAreaRef = useRef<Element | null>(null)
+
+      +  const lastScrollY = useRef(0)
+
+      +
+
+      +  const [isTopBarVisible, setIsTopBarVisible] = useState(true)
+
+      +  const [scrollProgress, setScrollProgress] = useState(0)
+
+      +  const [showScrollToBottom, setShowScrollToBottom] = useState(false)
+       
+         // Animation duration based on reduced motion preference
+         const animationDuration = reducedMotion ? 0.1 : 0.4
+       
+      -  // Resize functionality
+
+      +  // Scroll handling
+
+      +  useEffect(() => {
+
+      +    const scrollArea =
+      mainContentRef.current?.querySelector('.main-scroll-area')
+
+      +    scrollAreaRef.current = scrollArea
+
+      +
+
+      +    if (!scrollArea) {
+
+      +      setScrollProgress(0)
+
+      +      setShowScrollToBottom(false)
+
+      +      return
+
+      +    }
+
+      +
+
+      +    const handleScroll = () => {
+
+      +      const currentScrollY = scrollArea.scrollTop
+
+      +
+
+      +      setIsTopBarVisible(currentScrollY < lastScrollY.current ||
+      currentScrollY < 100)
+
+      +      lastScrollY.current = currentScrollY
+
+      +
+
+      +      const { scrollHeight, clientHeight } = scrollArea
+
+      +      const totalScrollable = scrollHeight - clientHeight
+
+      +      setScrollProgress(totalScrollable > 0 ? (currentScrollY /
+      totalScrollable) * 100 : 0)
+
+      +      setShowScrollToBottom(currentScrollY > 200 && currentScrollY <
+      scrollHeight - clientHeight - 200)
+
+      +    }
+
+      +
+
+      +    scrollArea.addEventListener('scroll', handleScroll, { passive: true
+      })
+
+      +    handleScroll()
+
+      +
+
+      +    return () => scrollArea.removeEventListener('scroll', handleScroll)
+
+      +  }, [activePage, bodyState])
+
+      +
+
+      +  // Left sidebar resize functionality
+         useEffect(() => {
+           const handleMouseMove = (e: MouseEvent) => {
+             if (!isResizing) return
+      @@ -149,7 +188,7 @@
+           })
+       
+           gsap.to(topBarContainerRef.current, {
+      -      y: isFullscreen ? '-100%' : '0%',
+
+      +      y: isFullscreen ? '-100%' : (isTopBarVisible ? '0%' : '-100%'),
+             duration: animationDuration,
+             ease,
+           })
+      @@ -168,14 +207,26 @@
+               gsap.to(backdrop, { opacity: 0, duration: animationDuration, onComplete: () => backdrop.remove() })
+             }
+           }
+      -  }, [bodyState, animationDuration, rightPaneWidth, closeSidePane])
+
+      +  }, [bodyState, animationDuration, rightPaneWidth, closeSidePane,
+      isTopBarVisible])
+
+      +
+
+      +  const scrollToBottom = () => {
+
+      +    scrollAreaRef.current?.scrollTo({
+
+      +      top: scrollAreaRef.current.scrollHeight,
+
+      +      behavior: 'smooth'
+
+      +    })
+
+      +  }
+       
+         return (
+           <div 
+             ref={appRef}
+             className={cn(
+               "relative h-screen w-screen overflow-hidden bg-background transition-colors duration-300",
+               isDarkMode && "dark"
+             )}
+           >
+      +      <div className="fixed top-0 right-0 h-screen w-1 bg-primary/10
+      z-[100] pointer-events-none transition-opacity" style={{ opacity:
+      scrollProgress > 0 && scrollProgress < 100 ? 1 : 0 }}>
+
+      +        <div className="w-full bg-primary rounded-full" style={{ height:
+      `${scrollProgress}%` }} />
+
+      +      </div>
+
+      +
+             <div className="flex h-screen overflow-hidden">
+               {/* Enhanced Sidebar */}
+               <EnhancedSidebar
+      @@ -225,7 +276,23 @@
+                 />
+               </div>
+             </div>
+             <RightPane ref={rightPaneRef} />
+      +
+
+      +      {showScrollToBottom && (
+
+      +        <button
+
+      +          onClick={scrollToBottom}
+
+      +          className={cn(
+
+      +            "fixed bottom-8 w-12 h-12 bg-primary text-primary-foreground
+      rounded-full flex items-center justify-center shadow-lg
+      hover:bg-primary/90 transition-all animate-fade-in z-50",
+
+      +            bodyState === BODY_STATES.SIDE_PANE ?
+      "right-[calc(var(--right-pane-width)_+_2rem)]" : "right-8"
+
+      +          )}
+
+      +          style={{
+
+      +            '--right-pane-width': `${rightPaneWidth}px`,
+
+      +            animation: reducedMotion ? 'none' : 'bounce 2s infinite',
+
+      +          }}
+
+      +          title="Scroll to bottom"
+
+      +        >
+
+      +          <ArrowDown className="w-6 h-6" />
+
+      +        </button>
+
+      +      )}
+           </div>
+         )
+       }
+
+    patchStrategy: standard-diff
+snapshot:
+  src/components/DashboardContent.tsx: >-
+    import { useRef, useEffect, useState } from 'react'
+
+    import { gsap } from 'gsap'
+
+    import { 
+      BarChart3, 
+      TrendingUp, 
+      Users, 
+      DollarSign, 
+      Activity,
+      Calendar,
+      Clock,
+      MessageSquare,
+      FileText,
+      Star,
+      ChevronRight,
+      Plus,
+      Filter,
+      Search,
+      MoreVertical,
+      ArrowDown,
+      PanelRight
+    } from 'lucide-react'
+
+    import { cn } from '@/lib/utils'
+
+    import { DemoContent } from './DemoContent'
+
+    import { useAppStore } from '@/store/appStore'
+
+    import { BODY_STATES } from '@/lib/utils'
+
+
+    interface StatsCard {
+      title: string
+      value: string
+      change: string
+      trend: 'up' | 'down'
+      icon: React.ReactNode
+    }
+
+
+    interface ActivityItem {
+      id: string
+      type: 'comment' | 'file' | 'meeting' | 'task'
+      title: string
+      description: string
+      time: string
+      user: string
+    }
+
+
+    const statsCards: StatsCard[] = [
+      {
+        title: "Total Revenue",
+        value: "$45,231.89",
+        change: "+20.1%",
+        trend: "up",
+        icon: <DollarSign className="w-5 h-5" />
+      },
+      {
+        title: "Active Users",
+        value: "2,350",
+        change: "+180.1%",
+        trend: "up",
+        icon: <Users className="w-5 h-5" />
+      },
+      {
+        title: "Conversion Rate",
+        value: "12.5%",
+        change: "+19%",
+        trend: "up",
+        icon: <TrendingUp className="w-5 h-5" />
+      },
+      {
+        title: "Performance",
+        value: "573ms",
+        change: "-5.3%",
+        trend: "down",
+        icon: <Activity className="w-5 h-5" />
+      }
+    ]
+
+
+    const recentActivity: ActivityItem[] = [
+      {
+        id: "1",
+        type: "comment",
+        title: "New comment on Project Alpha",
+        description: "Sarah Johnson added a comment to the design review",
+        time: "2 minutes ago",
+        user: "SJ"
+      },
+      {
+        id: "2",
+        type: "file",
+        title: "Document uploaded",
+        description: "quarterly-report.pdf was uploaded to Documents",
+        time: "15 minutes ago",
+        user: "MD"
+      },
+      {
+        id: "3",
+        type: "meeting",
+        title: "Meeting scheduled",
+        description: "Weekly standup meeting scheduled for tomorrow 9 AM",
+        time: "1 hour ago",
+        user: "RW"
+      },
+      {
+        id: "4",
+        type: "task",
+        title: "Task completed",
+        description: "UI wireframes for mobile app completed",
+        time: "2 hours ago",
+        user: "AL"
+      }
+    ]
+
+
+    interface DashboardContentProps {
+      isInSidePane?: boolean;
+    }
+
+
+    export function DashboardContent({ isInSidePane = false }:
+    DashboardContentProps) {
+        const contentRef = useRef<HTMLDivElement>(null)
+        const cardsRef = useRef<(HTMLDivElement | null)[]>([])
+        const [searchTerm, setSearchTerm] = useState("")
+        const [showScrollToBottom, setShowScrollToBottom] = useState(false)
+        const { bodyState, openSidePane } = useAppStore()
+
+        const handleScroll = () => {
+          if (!contentRef.current) return
+          const { scrollTop, scrollHeight, clientHeight } = contentRef.current
+          // Show if scrolled down and not at the bottom
+          setShowScrollToBottom(scrollTop > 200 && scrollTop < scrollHeight - clientHeight - 200)
+        }
+
+        useEffect(() => {
+          const contentEl = contentRef.current
+          if (contentEl) {
+            contentEl.addEventListener('scroll', handleScroll)
+            return () => contentEl.removeEventListener('scroll', handleScroll)
+          }
+        }, [])
+
+        const scrollToBottom = () => {
+          contentRef.current?.scrollTo({
+            top: contentRef.current.scrollHeight,
+            behavior: 'smooth'
+          })
+        }
+
+        // Animate content based on body state
+        useEffect(() => {
+          if (!contentRef.current) return
+
+          const content = contentRef.current
+          const cards = cardsRef.current.filter(Boolean)
+
+          switch (bodyState) {
+            case BODY_STATES.FULLSCREEN:
+              gsap.to(content, {
+                scale: 1.02,
+                duration: 0.4,
+                ease: "power3.out"
+              })
+              break
+            default:
+              gsap.to(content, {
+                scale: 1,
+                duration: 0.4,
+                ease: "power3.out"
+              })
+              break
+          }
+
+          // Stagger animation for cards
+          gsap.fromTo(cards, 
+            { y: 20, opacity: 0 },
+            { 
+              y: 0, 
+              opacity: 1, 
+              duration: 0.6,
+              stagger: 0.1,
+              ease: "power3.out"
+            }
+          )
+
+        }, [bodyState])
+
+        const getTypeIcon = (type: ActivityItem['type']) => {
+          switch (type) {
+            case 'comment':
+              return <MessageSquare className="w-4 h-4" />
+            case 'file':
+              return <FileText className="w-4 h-4" />
+            case 'meeting':
+              return <Calendar className="w-4 h-4" />
+            case 'task':
+              return <Star className="w-4 h-4" />
+            default:
+              return <Activity className="w-4 h-4" />
+          }
+        }
+
+        return (
+            <div className="h-full flex flex-col">
+              {/* Header */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+                  <p className="text-muted-foreground">
+                    Welcome to the amazing app shell demo! Explore all the features and customization options.
+                  </p>
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                    <input
+                      type="text"
+                      placeholder="Search..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-9 pr-4 py-2 border-none rounded-lg bg-card focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                    />
+                  </div>
+                  <button className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors">
+                    <Filter className="w-5 h-5" />
+                  </button>
+                  <button className="bg-primary text-primary-foreground px-4 py-2 rounded-full hover:bg-primary/90 transition-colors flex items-center gap-2 h-10">
+                    <Plus className="w-5 h-5" />
+                    <span>New Project</span>
+                  </button>
+                  {!isInSidePane && (
+                    <button
+                      onClick={() => openSidePane('main')}
+                      className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors" title="Move to Side Pane">
+                      <PanelRight className="w-5 h-5" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            <div 
+              ref={contentRef}
+              className="flex-1 overflow-y-auto space-y-8 pt-8"
+            >
+                {/* Stats Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  {statsCards.map((stat, index) => (
+                    <div
+                    key={stat.title}
+                    ref={el => cardsRef.current[index] = el}
+                    className="bg-card p-6 rounded-2xl border border-border/50 hover:border-primary/30 transition-all duration-300 group cursor-pointer"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="p-3 bg-primary/10 rounded-full group-hover:bg-primary/20 transition-colors">
+                        {stat.icon}
+                      </div>
+                      <div className={cn(
+                        "text-sm font-medium",
+                        stat.trend === 'up' ? "text-green-600" : "text-red-600"
+                      )}>
+                        {stat.change}
+                      </div>
+                    </div>
+                    <div className="mt-4">
+                      <h3 className="text-2xl font-bold">{stat.value}</h3>
+                      <p className="text-sm text-muted-foreground mt-1">{stat.title}</p>
+                    </div>
+                  </div>
+                  ))}
+                </div>
+
+                {/* Demo Content */}
+                <DemoContent />
+
+                {/* Main Content Grid */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Chart Area */}
+                <div className="lg:col-span-2 space-y-6">
+                  {/* Analytics Chart */}
+                  <div className="bg-card p-6 rounded-2xl border border-border/50">
+                    <div className="flex items-center justify-between mb-6">
+                      <h3 className="text-lg font-semibold">Analytics Overview</h3>
+                      <button className="h-8 w-8 flex items-center justify-center hover:bg-accent rounded-full transition-colors">
+                        <MoreVertical className="w-5 h-5" />
+                      </button>
+                    </div>
+                    
+                    {/* Mock Chart */}
+                    <div className="h-64 bg-gradient-to-br from-primary/10 to-transparent rounded-xl flex items-center justify-center border border-border/50">
+                      <div className="text-center">
+                        <BarChart3 className="w-12 h-12 text-primary mx-auto mb-2" />
+                        <p className="text-muted-foreground">Chart visualization would go here</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Recent Projects */}
+                  <div className="bg-card p-6 rounded-2xl border border-border/50">
+                    <div className="flex items-center justify-between mb-6">
+                      <h3 className="text-lg font-semibold">Recent Projects</h3>
+                      <button className="text-primary hover:text-primary/80 text-sm font-medium flex items-center gap-1">
+                        View All
+                        <ChevronRight className="w-4 h-4" />
+                      </button>
+                    </div>
+                    
+                    <div className="space-y-4">
+                      {[
+                        { name: "E-commerce Platform", progress: 75, team: 5, deadline: "Dec 15" },
+                        { name: "Mobile App Redesign", progress: 45, team: 3, deadline: "Jan 20" },
+                        { name: "Marketing Website", progress: 90, team: 4, deadline: "Dec 5" }
+                      ].map((project) => (
+                        <div key={project.name} className="p-4 bg-accent/30 rounded-xl hover:bg-accent/50 transition-colors cursor-pointer">
+                          <div className="flex items-center justify-between mb-2">
+                            <h4 className="font-medium">{project.name}</h4>
+                            <span className="text-sm text-muted-foreground">{project.progress}%</span>
+                          </div>
+                          <div className="w-full bg-muted rounded-full h-2 mb-3">
+                            <div 
+                              className="bg-primary h-2 rounded-full transition-all duration-500"
+                              style={{ width: `${project.progress}%` }}
+                            />
+                          </div>
+                          <div className="flex items-center justify-between text-sm text-muted-foreground">
+                            <span>{project.team} team members</span>
+                            <span>Due {project.deadline}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Sidebar Content */}
+                <div className="space-y-6">
+                  {/* Quick Actions */}
+                  <div className="bg-card p-6 rounded-2xl border border-border/50">
+                    <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
+                    <div className="space-y-3">
+                      {[
+                        { icon: <FileText className="w-4 h-4" />, label: "Create Document", color: "bg-blue-500/10 text-blue-600" },
+                        { icon: <Calendar className="w-4 h-4" />, label: "Schedule Meeting", color: "bg-green-500/10 text-green-600" },
+                        { icon: <Users className="w-4 h-4" />, label: "Invite Team", color: "bg-purple-500/10 text-purple-600" },
+                        { icon: <BarChart3 className="w-4 h-4" />, label: "View Reports", color: "bg-orange-500/10 text-orange-600" }
+                      ].map((action) => (
+                        <button
+                          key={action.label}
+                          className="w-full flex items-center gap-3 p-3 hover:bg-accent rounded-lg transition-colors text-left"
+                        >
+                          <div className={cn("p-2 rounded-full", action.color)}>
+                            {action.icon}
+                          </div>
+                          <span className="font-medium">{action.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Recent Activity */}
+                  <div className="bg-card p-6 rounded-2xl border border-border/50">
+                    <h3 className="text-lg font-semibold mb-4">Recent Activity</h3>
+                    <div className="space-y-4">
+                      {recentActivity.map((activity) => (
+                        <div key={activity.id} className="flex items-start gap-3 p-3 hover:bg-accent/30 rounded-xl transition-colors cursor-pointer">
+                          <div className="p-2 bg-primary/10 rounded-full flex-shrink-0">
+                            {getTypeIcon(activity.type)}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-medium text-sm mb-1">{activity.title}</h4>
+                            <p className="text-xs text-muted-foreground mb-2">{activity.description}</p>
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <Clock className="w-3 h-3" />
+                              <span>{activity.time}</span>
+                              <div className="w-5 h-5 bg-primary rounded-full flex items-center justify-center text-primary-foreground text-xs font-medium">
+                                {activity.user}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              {showScrollToBottom && (
+                <button
+                  onClick={scrollToBottom}
+                  className="fixed bottom-8 right-8 w-12 h-12 bg-primary text-primary-foreground rounded-full flex items-center justify-center shadow-lg hover:bg-primary/90 transition-all animate-fade-in z-50"
+                  style={{ animation: 'bounce 2s infinite' }}
+                  title="Scroll to bottom"
+                >
+                  <ArrowDown className="w-6 h-6" />
+                </button>
+              )}
+            </div>
+          </div>
+        )
+    }
+  src/components/SettingsPage.tsx: |-
+    import { PanelRight } from 'lucide-react'
+    import { SettingsContent } from './SettingsContent'
+    import { useAppStore } from '@/store/appStore'
+
+    export function SettingsPage() {
+      const { openSidePane, setActivePage } = useAppStore()
+
+      const handleMoveToSidePane = () => {
+        openSidePane('settings');
+        setActivePage('dashboard');
+      }
+
+      return (
+        <div className="h-full flex flex-col">
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
+              <p className="text-muted-foreground">
+                Customize your experience. Changes are saved automatically.
+              </p>
+            </div>
+            
+            <div className="flex items-center gap-2">
+                <button
+                  onClick={handleMoveToSidePane}
+                  className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors" title="Move to Side Pane">
+                  <PanelRight className="w-5 h-5" />
+                </button>
+            </div>
+          </div>
+          <div className="flex-1 overflow-y-auto pt-8">
+            <SettingsContent />
+          </div>
+        </div>
+      )
+    }
+  src/components/AppShell.tsx: |-
+    import { useRef, useEffect } from 'react'
+    import { gsap } from 'gsap'
+    import { cn } from '@/lib/utils'
+    import { EnhancedSidebar } from './EnhancedSidebar'
+    import { MainContent } from './MainContent'
+    import { RightPane } from './RightPane'
+    import { TopBar } from './TopBar'
+    import { useAppStore } from '@/store/appStore'
+    import { SIDEBAR_STATES, BODY_STATES } from '@/lib/utils'
+
+    export function AppShell() {
+      const {
+        sidebarState,
+        bodyState,
+        sidebarWidth,
+        isDarkMode,
+        isResizing,
+        rightPaneWidth,
+        isResizingRightPane,
+        setRightPaneWidth,
+        setSidebarState,
+        openSidePane,
+        closeSidePane,
+        setIsResizing,
+        setSidebarWidth,
+        toggleSidebar,
+        peekSidebar,
+        toggleFullscreen,
+        setIsResizingRightPane,
+        toggleDarkMode,
+        reducedMotion,
+        autoExpandSidebar
+      } = useAppStore()
+      
+      const appRef = useRef<HTMLDivElement>(null)
+      const sidebarRef = useRef<HTMLDivElement>(null)
+      const mainContentRef = useRef<HTMLDivElement>(null)
+      const rightPaneRef = useRef<HTMLDivElement>(null)
+      const resizeHandleRef = useRef<HTMLDivElement>(null)
+      const topBarContainerRef = useRef<HTMLDivElement>(null)
+
+      // Animation duration based on reduced motion preference
+      const animationDuration = reducedMotion ? 0.1 : 0.4
+
+      // Resize functionality
+      useEffect(() => {
+        const handleMouseMove = (e: MouseEvent) => {
+          if (!isResizing) return
+          
+          const newWidth = Math.max(200, Math.min(500, e.clientX))
+          setSidebarWidth(newWidth)
+          
+          if (sidebarRef.current) {
+            gsap.set(sidebarRef.current, { width: newWidth })
+          }
+          if (resizeHandleRef.current) {
+            gsap.set(resizeHandleRef.current, { left: newWidth })
+          }
+        }
+
+        const handleMouseUp = () => {
+          setIsResizing(false)
+          document.body.style.cursor = ''
+          document.body.style.userSelect = ''
+        }
+
+        if (isResizing) {
+          document.body.style.cursor = 'col-resize'
+          document.body.style.userSelect = 'none'
+          document.addEventListener('mousemove', handleMouseMove)
+          document.addEventListener('mouseup', handleMouseUp)
+        }
+
+        return () => {
+          document.removeEventListener('mousemove', handleMouseMove)
+          document.removeEventListener('mouseup', handleMouseUp)
+        }
+      }, [isResizing, setIsResizing, setSidebarWidth])
+
+      // Resize functionality for Right Pane
+      useEffect(() => {
+        const handleMouseMove = (e: MouseEvent) => {
+          if (!isResizingRightPane) return
+          
+          const newWidth = window.innerWidth - e.clientX
+          setRightPaneWidth(newWidth)
+        }
+
+        const handleMouseUp = () => {
+          setIsResizingRightPane(false)
+          document.body.style.cursor = ''
+          document.body.style.userSelect = ''
+        }
+
+        if (isResizingRightPane) {
+          document.body.style.cursor = 'col-resize'
+          document.body.style.userSelect = 'none'
+          document.addEventListener('mousemove', handleMouseMove)
+          document.addEventListener('mouseup', handleMouseUp)
+        }
+
+        return () => {
+          document.removeEventListener('mousemove', handleMouseMove)
+          document.removeEventListener('mouseup', handleMouseUp)
+          document.body.style.cursor = ''
+        }
+      }, [isResizingRightPane, setIsResizingRightPane, setRightPaneWidth])
+
+      // GSAP animations for sidebar transitions
+      useEffect(() => {
+        if (!sidebarRef.current || !mainContentRef.current || !resizeHandleRef.current) return
+
+        const sidebar = sidebarRef.current
+        const handle = resizeHandleRef.current
+        
+        let targetWidth = 0
+        let targetOpacity = 1
+
+        if (bodyState === BODY_STATES.FULLSCREEN) {
+          targetWidth = 0;
+          targetOpacity = 0;
+        } else {
+          switch (sidebarState) {
+            case SIDEBAR_STATES.HIDDEN:
+              targetWidth = 0
+              targetOpacity = 0
+              break
+            case SIDEBAR_STATES.COLLAPSED:
+              targetWidth = 64
+              targetOpacity = 1
+              break
+            case SIDEBAR_STATES.EXPANDED:
+              targetWidth = sidebarWidth
+              targetOpacity = 1
+              break
+            case SIDEBAR_STATES.PEEK:
+              targetWidth = sidebarWidth * 0.8
+              targetOpacity = 0.95
+              break
+          }
+        }
+
+        const tl = gsap.timeline({ ease: "power3.out" })
+        
+        tl.to(sidebar, {
+          width: targetWidth,
+          opacity: targetOpacity,
+          duration: animationDuration,
+        })
+        tl.to(handle, {
+          left: targetWidth,
+          duration: animationDuration,
+        }, 0)
+
+      }, [sidebarState, sidebarWidth, bodyState, animationDuration])
+
+      // GSAP animations for body state transitions
+      useEffect(() => {
+        if (!mainContentRef.current || !sidebarRef.current || !rightPaneRef.current) return
+
+        const ease = "power3.out"
+        const isFullscreen = bodyState === BODY_STATES.FULLSCREEN
+        const isSidePane = bodyState === BODY_STATES.SIDE_PANE
+
+        // Right pane animation
+        gsap.to(rightPaneRef.current, {
+          width: rightPaneWidth,
+          x: isSidePane ? 0 : rightPaneWidth + 5, // +5 to hide border
+          duration: animationDuration,
+          ease,
+        })
+
+        gsap.to(topBarContainerRef.current, {
+          y: isFullscreen ? '-100%' : '0%',
+          duration: animationDuration,
+          ease,
+        })
+        
+        // Add backdrop for side pane
+        const backdrop = document.querySelector('.app-backdrop')
+        if (isSidePane) {
+          if (!backdrop) {
+            const el = document.createElement('div')
+            el.className = 'app-backdrop fixed inset-0 bg-black/30 z-[55]'
+            appRef.current?.appendChild(el)
+            gsap.fromTo(el, { opacity: 0 }, { opacity: 1, duration: animationDuration })
+            el.onclick = () => closeSidePane()
+          }
+        } else {
+          if (backdrop) {
+            gsap.to(backdrop, { opacity: 0, duration: animationDuration, onComplete: () => backdrop.remove() })
+          }
+        }
+      }, [bodyState, animationDuration, rightPaneWidth, closeSidePane])
+
+      return (
+        <div 
+          ref={appRef}
+          className={cn(
+            "relative h-screen w-screen overflow-hidden bg-background transition-colors duration-300",
+            isDarkMode && "dark"
+          )}
+        >
+          <div className="flex h-screen overflow-hidden">
+            {/* Enhanced Sidebar */}
+            <EnhancedSidebar
+              ref={sidebarRef}
+              onMouseEnter={() => {
+                if (autoExpandSidebar && sidebarState === SIDEBAR_STATES.COLLAPSED) {
+                  peekSidebar()
+                }
+              }}
+              onMouseLeave={() => {
+                if (autoExpandSidebar && sidebarState === SIDEBAR_STATES.PEEK) {
+                  setSidebarState(SIDEBAR_STATES.COLLAPSED)
+                }
+              }}
+            />
+
+            {/* Resize Handle */}
+            {sidebarState !== SIDEBAR_STATES.HIDDEN && (
+              <div
+                ref={resizeHandleRef}
+                className={cn(
+                  "absolute top-0 w-2 h-full bg-transparent hover:bg-primary/20 cursor-col-resize z-50 transition-colors duration-200 group -translate-x-1/2"
+                )}
+                onMouseDown={(e) => {
+                  e.preventDefault()
+                  setIsResizing(true)
+                }}
+              >
+                <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200 mx-auto" />
+              </div>
+            )}
+
+            {/* Main Content Area */}
+            <div className="relative flex-1 overflow-hidden bg-background">
+              <div ref={topBarContainerRef} className="absolute inset-x-0 top-0 z-30">
+                <TopBar
+                  onToggleSidebar={toggleSidebar}
+                  onToggleFullscreen={toggleFullscreen}
+                  onToggleDarkMode={toggleDarkMode}
+                />
+              </div>
+              
+              {/* Main Content */}
+              <MainContent
+                ref={mainContentRef}
+                bodyState={bodyState}
+                onToggleFullscreen={toggleFullscreen}
+              />
+            </div>
+          </div>
+          <RightPane ref={rightPaneRef} />
+        </div>
+      )
+    }
+approved: false
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: undone
+id: 39

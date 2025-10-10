@@ -15,6 +15,7 @@ interface AppState {
   rightPaneWidth: number
   isResizing: boolean
   isResizingRightPane: boolean
+  isTopBarVisible: boolean
   
   // User Preferences
   autoExpandSidebar: boolean
@@ -30,6 +31,7 @@ interface AppState {
   setRightPaneWidth: (width: number) => void
   setIsResizing: (resizing: boolean) => void
   setIsResizingRightPane: (resizing: boolean) => void
+  setTopBarVisible: (visible: boolean) => void
   setAutoExpandSidebar: (auto: boolean) => void
   setReducedMotion: (reduced: boolean) => void
   setCompactMode: (compact: boolean) => void
@@ -55,6 +57,7 @@ const defaultState = {
   rightPaneWidth: typeof window !== 'undefined' ? Math.max(300, Math.round(window.innerWidth * 0.6)) : 400,
   isResizing: false,
   isResizingRightPane: false,
+  isTopBarVisible: true,
   autoExpandSidebar: true,
   reducedMotion: false,
   compactMode: false,
@@ -79,6 +82,7 @@ export const useAppStore = create<AppState>()(
       setRightPaneWidth: (width) => set({ rightPaneWidth: Math.max(300, Math.min(window.innerWidth * 0.8, width)) }),
       setIsResizing: (resizing) => set({ isResizing: resizing }),
       setIsResizingRightPane: (resizing) => set({ isResizingRightPane: resizing }),
+      setTopBarVisible: (visible) => set({ isTopBarVisible: visible }),
       setAutoExpandSidebar: (auto) => set({ autoExpandSidebar: auto }),
       setReducedMotion: (reduced) => set({ reducedMotion: reduced }),
       setCompactMode: (compact) => set({ compactMode: compact }),
