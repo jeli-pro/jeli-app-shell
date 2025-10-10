@@ -1,0 +1,950 @@
+uuid: c86d8b02-5883-4a11-b0e5-79177a56113b
+projectId: amazing-app-shell
+createdAt: '2025-10-10T14:08:54.447Z'
+gitCommitMsg: >-
+  feat(toast): refactor toast component for global state and consistent UI
+
+  Refactored the toast component to address styling inconsistencies and layering
+  issues.
+
+  - Introduced a `ToasterProvider` and `useToast` hook to manage toast state
+  globally, ensuring toasts render at the application root and appear above all
+  other content. - Updated `main.tsx` to wrap the app with `ToasterProvider`. -
+  Overhauled the `CustomToast` component's styling to align with the
+  application's design system, including adjustments to padding, border-radius,
+  fonts, and shadows. - Simplified `ToasterDemo.tsx` to use the new `useToast`
+  hook, removing the local `Toaster` instance.
+promptSummary: >-
+  The user wanted to refactor the toast component to improve styling
+  consistency, fix layering issues (not showing on top), and ensure consistent
+  sizing.
+reasoning:
+  - >-
+    Based on your request to improve the toast component's styling, consistency,
+    and layering issues, I've identified that the primary problems are the
+    toast's styling inconsistencies with the application's design system and a
+    structural issue where the toast component is rendered within a container
+    that has `overflow: hidden`, causing it to be clipped.
+  - 'To address this, I will perform a comprehensive refactor:'
+  - >-
+    1.  **Isolate the Toast Container**: I will introduce a `ToasterProvider`
+    and a `useToast` hook. This allows me to move the `<Toaster />` component to
+    the root of your application in `main.tsx`. By doing so, the toasts will be
+    rendered in a portal outside of any clipping containers, solving any z-index
+    or overflow visibility problems.
+  - >-
+    2.  **Refine Toast Visuals**: I will update the `CustomToast` component with
+    improved and more consistent styling. This includes adjusting sizes,
+    padding, border radius, fonts, and shadows to better match the overall UI/UX
+    of the `amazing-app-shell`.
+  - >-
+    3.  **Update Usage**: Finally, I will refactor `ToasterDemo.tsx` to use the
+    new `useToast` hook, removing the local `<Toaster />` instance and
+    simplifying the logic for triggering notifications.
+  - >-
+    These changes will result in a more robust, visually consistent, and
+    correctly layered notification system.
+  - '### 1. Refactor Toast Component for Global State and Consistent Styling'
+  - >-
+    I'll start by overhauling `src/components/ui/toast.tsx`. I'm replacing the
+    entire file to introduce the `ToasterProvider` and `useToast` hook, export
+    necessary types, and apply the new, consistent styling to the `CustomToast`
+    component. The `Toaster` itself is also modified to remove a problematic CSS
+    class that was causing alignment issues.
+  - '### 2. Integrate ToasterProvider into the Application'
+  - >-
+    Next, I'll wrap the main `App` component with the new `ToasterProvider` in
+    `src/main.tsx`. This ensures that the toast container is rendered at the top
+    level, preventing any visibility issues.
+  - '### 3. Update Toaster Demo Page to Use the `useToast` Hook'
+  - >-
+    Finally, I'll update `src/components/ToasterDemo.tsx` to use the new
+    `useToast` hook. This simplifies the component by removing the need for a
+    local `useRef` and the manually placed `<Toaster />` component, which is now
+    handled globally.
+  - >-
+    This concludes the refactoring. Your toast notifications should now display
+    correctly on top of all other UI elements and have a look and feel that is
+    consistent with the rest of your application.
+operations:
+  - type: write
+    path: src/components/ui/toast.tsx
+    content: >-
+      import {
+        forwardRef,
+        useImperativeHandle,
+        useRef,
+        useEffect,
+        createContext,
+        useContext,
+        useCallback,
+        type ReactNode,
+      } from 'react';
+
+      import { gsap } from 'gsap';
+
+      import { Toaster as SonnerToaster, toast as sonnerToast } from 'sonner';
+
+      import {
+        CheckCircle,
+        AlertCircle,
+        Info,
+        AlertTriangle,
+        X,
+      } from 'lucide-react';
+
+
+      import { Button } from '@/components/ui/button';
+
+      import { cn } from '@/lib/utils';
+
+
+      type Variant = 'default' | 'success' | 'error' | 'warning';
+
+      type Position =
+        | 'top-left'
+        | 'top-center'
+        | 'top-right'
+        | 'bottom-left'
+        | 'bottom-center'
+        | 'bottom-right';
+
+      interface ActionButton {
+        label: string;
+        onClick: () => void;
+        variant?: 'default' | 'outline' | 'ghost';
+      }
+
+
+      export interface ToasterProps {
+        title?: string;
+        message: string;
+        variant?: Variant;
+        duration?: number;
+        position?: Position;
+        actions?: ActionButton;
+        onDismiss?: () => void;
+        highlightTitle?: boolean;
+      }
+
+
+      export interface ToasterRef {
+        show: (props: ToasterProps) => void;
+      }
+
+
+      const variantStyles: Record<Variant, string> = {
+        default: 'border-border',
+        success: 'border-green-600/50',
+        error: 'border-destructive/50',
+        warning: 'border-amber-600/50',
+      };
+
+
+      const titleColor: Record<Variant, string> = {
+        default: 'text-foreground',
+        success: 'text-green-600 dark:text-green-400',
+        error: 'text-destructive',
+        warning: 'text-amber-600 dark:text-amber-400',
+      };
+
+
+      const iconColor: Record<Variant, string> = {
+        default: 'text-muted-foreground',
+        success: 'text-green-600 dark:text-green-400',
+        error: 'text-destructive',
+        warning: 'text-amber-600 dark:text-amber-400',
+      };
+
+
+      const variantIcons: Record<
+        Variant,
+        React.ComponentType<{ className?: string }>
+      > = {
+        default: Info,
+        success: CheckCircle,
+        error: AlertCircle,
+        warning: AlertTriangle,
+      };
+
+
+      const CustomToast = ({
+        toastId,
+        title,
+        message,
+        variant = 'default',
+        duration = 4000,
+        actions,
+        onDismiss,
+        highlightTitle,
+      }: ToasterProps & { toastId: number | string }) => {
+        const toastRef = useRef<HTMLDivElement>(null);
+        const Icon = variantIcons[variant];
+
+        const handleDismiss = () => {
+          if (toastRef.current) {
+            gsap.to(toastRef.current, {
+              opacity: 0,
+              y: 50,
+              scale: 0.95,
+              duration: 0.3,
+              ease: 'easeOut',
+              onComplete: () => {
+                sonnerToast.dismiss(toastId);
+                onDismiss?.();
+              },
+            });
+          } else {
+            sonnerToast.dismiss(toastId);
+            onDismiss?.();
+          }
+        };
+
+        useEffect(() => {
+          if (toastRef.current) {
+            gsap.from(toastRef.current, {
+              opacity: 0,
+              y: 50,
+              scale: 0.95,
+              duration: 0.3,
+              ease: 'easeOut',
+            });
+          }
+
+          if (duration !== Infinity) {
+            const timer = setTimeout(handleDismiss, duration);
+            return () => clearTimeout(timer);
+          }
+        }, [duration]);
+
+        return (
+          <div
+            ref={toastRef}
+            className={cn(
+              'flex items-center justify-between w-full max-w-sm p-4 rounded-lg border shadow-lg bg-card text-foreground',
+              variantStyles[variant]
+            )}
+          >
+            <div className="flex items-start gap-3">
+              <Icon
+                className={cn('h-5 w-5 mt-0.5 flex-shrink-0', iconColor[variant])}
+              />
+              <div className="space-y-1">
+                {title && (
+                  <h3
+                    className={cn(
+                      'text-sm font-semibold leading-none',
+                      titleColor[variant],
+                      highlightTitle && titleColor['success']
+                    )}
+                  >
+                    {title}
+                  </h3>
+                )}
+                <p className="text-sm text-muted-foreground">{message}</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {actions?.label && (
+                <Button
+                  variant={actions.variant || 'outline'}
+                  size="sm"
+                  onClick={() => {
+                    actions.onClick();
+                    handleDismiss();
+                  }}
+                  className={cn(
+                    'h-8 px-3 text-xs cursor-pointer',
+                    variant === 'success'
+                      ? 'text-green-600 border-green-600 hover:bg-green-600/10 dark:hover:bg-green-400/20'
+                      : variant === 'error'
+                      ? 'text-destructive border-destructive hover:bg-destructive/10 dark:hover:bg-destructive/20'
+                      : variant === 'warning'
+                      ? 'text-amber-600 border-amber-600 hover:bg-amber-600/10 dark:hover:bg-amber-400/20'
+                      : 'text-foreground border-border hover:bg-muted/10 dark:hover:bg-muted/20'
+                  )}
+                >
+                  {actions.label}
+                </Button>
+              )}
+              <button
+                onClick={handleDismiss}
+                className="rounded-md p-1 hover:bg-muted/50 dark:hover:bg-muted/30 transition-colors focus:outline-none focus:ring-2 focus:ring-ring"
+                aria-label="Dismiss notification"
+              >
+                <X className="h-4 w-4 text-muted-foreground" />
+              </button>
+            </div>
+          </div>
+        );
+      };
+
+
+      const Toaster = forwardRef<ToasterRef, { defaultPosition?: Position }>(
+        ({ defaultPosition = 'bottom-right' }, ref) => {
+          useImperativeHandle(ref, () => ({
+            show({
+              title,
+              message,
+              variant = 'default',
+              duration = 4000,
+              position = defaultPosition,
+              actions,
+              onDismiss,
+              highlightTitle,
+            }) {
+              sonnerToast.custom(
+                (toastId) => (
+                  <CustomToast
+                    toastId={toastId}
+                    title={title}
+                    message={message}
+                    variant={variant}
+                    duration={duration}
+                    actions={actions}
+                    onDismiss={onDismiss}
+                    highlightTitle={highlightTitle}
+                  />
+                ),
+                {
+                  duration: Infinity, // Component handles its own lifecycle for animations
+                  position,
+                }
+              );
+            },
+          }));
+
+          return (
+            <SonnerToaster
+              position={defaultPosition}
+              toastOptions={{ unstyled: true }}
+            />
+          );
+        }
+      );
+
+      Toaster.displayName = 'Toaster';
+
+
+      const ToasterContext = createContext<((props: ToasterProps) => void) |
+      null>(
+        null
+      );
+
+
+      export const useToast = () => {
+        const context = useContext(ToasterContext);
+        if (!context) {
+          throw new Error('useToast must be used within a ToasterProvider');
+        }
+        return { show: context };
+      };
+
+
+      export const ToasterProvider = ({ children }: { children: ReactNode }) =>
+      {
+        const toasterRef = useRef<ToasterRef>(null);
+
+        const showToast = useCallback((props: ToasterProps) => {
+          toasterRef.current?.show(props);
+        }, []);
+        
+        return (
+          <ToasterContext.Provider value={showToast}>
+            {children}
+            <Toaster ref={toasterRef} />
+          </ToasterContext.Provider>
+        );
+      };
+    patchStrategy: replace
+  - type: write
+    path: src/main.tsx
+    content: |+
+      --- src/main.tsx
+      +++ src/main.tsx
+      @@ -1,11 +1,14 @@
+       import React from 'react'
+       import ReactDOM from 'react-dom/client'
+       import App from './App.tsx'
+      +import { ToasterProvider } from './components/ui/toast'
+       import './index.css'
+       
+       ReactDOM.createRoot(document.getElementById('root')!).render(
+         <React.StrictMode>
+      -    <App />
+      +    <ToasterProvider>
+      +      <App />
+      +    </ToasterProvider>
+         </React.StrictMode>,
+       )
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/components/ToasterDemo.tsx
+    content: |
+      <<<<<<< SEARCH
+      import { useRef } from 'react';
+      import { Button } from '@/components/ui/button';
+      import Toaster, { ToasterRef } from '@/components/ui/toast';
+      import { cn } from '@/lib/utils';
+      =======
+      import { Button } from '@/components/ui/button';
+      import { useToast } from '@/components/ui/toast';
+      import { cn } from '@/lib/utils';
+      >>>>>>> REPLACE
+      <<<<<<< SEARCH
+      export function ToasterDemo() {
+        const toasterRef = useRef<ToasterRef>(null);
+
+        const showToast = (variant: Variant, position: Position = 'bottom-right') => {
+          toasterRef.current?.show({
+            title: `${variant.charAt(0).toUpperCase() + variant.slice(1)} Notification`,
+      =======
+      export function ToasterDemo() {
+        const toast = useToast();
+
+        const showToast = (variant: Variant, position: Position = 'bottom-right') => {
+          toast.show({
+            title: `${variant.charAt(0).toUpperCase() + variant.slice(1)} Notification`,
+      >>>>>>> REPLACE
+      <<<<<<< SEARCH
+            message: `This is a ${variant} toast notification.`,
+            variant,
+            position,
+            duration: 3000,
+            onDismiss: () =>
+              console.log(`${variant} toast at ${position} dismissed`),
+          });
+        };
+
+        const simulateApiCall = async () => {
+          toasterRef.current?.show({
+            title: 'Scheduling...',
+            message: 'Please wait while we schedule your meeting.',
+      =======
+            message: `This is a ${variant} toast notification.`,
+            variant,
+            position,
+            duration: 3000,
+            onDismiss: () =>
+              console.log(`${variant} toast at ${position} dismissed`),
+          });
+        };
+
+        const simulateApiCall = async () => {
+          toast.show({
+            title: 'Scheduling...',
+            message: 'Please wait while we schedule your meeting.',
+      >>>>>>> REPLACE
+      <<<<<<< SEARCH
+            variant: 'default',
+            position: 'bottom-right',
+          });
+
+          try {
+            await new Promise((resolve) => setTimeout(resolve, 2000));
+
+            toasterRef.current?.show({
+              title: 'Meeting Scheduled',
+              message: 'Your meeting is scheduled for July 4, 2025, at 3:42 PM IST.',
+      =======
+            variant: 'default',
+            position: 'bottom-right',
+          });
+
+          try {
+            await new Promise((resolve) => setTimeout(resolve, 2000));
+
+            toast.show({
+              title: 'Meeting Scheduled',
+              message: 'Your meeting is scheduled for July 4, 2025, at 3:42 PM IST.',
+      >>>>>>> REPLACE
+      <<<<<<< SEARCH
+              variant: 'success',
+              position: 'bottom-right',
+              highlightTitle: true,
+              actions: {
+                label: 'Undo',
+                onClick: () => console.log('Undoing meeting schedule'),
+                variant: 'outline',
+              },
+            });
+          } catch (error) {
+            toasterRef.current?.show({
+              title: 'Error Scheduling Meeting',
+              message: 'Failed to schedule the meeting. Please try again.',
+      =======
+              variant: 'success',
+              position: 'bottom-right',
+              highlightTitle: true,
+              actions: {
+                label: 'Undo',
+                onClick: () => console.log('Undoing meeting schedule'),
+                variant: 'outline',
+              },
+            });
+          } catch (error) {
+            toast.show({
+              title: 'Error Scheduling Meeting',
+              message: 'Failed to schedule the meeting. Please try again.',
+      >>>>>>> REPLACE
+      <<<<<<< SEARCH
+              variant: 'error',
+              position: 'bottom-right',
+            });
+          }
+        };
+
+        return (
+          <div className="h-full overflow-y-auto p-6 lg:px-12 space-y-8">
+            {/* Header */}
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-3xl font-bold tracking-tight">Toaster</h1>
+                <p className="text-muted-foreground">
+                  A customizable toast component for notifications.
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-6">
+              <Toaster ref={toasterRef} />
+
+              <div className="space-y-6">
+                <section>
+                  <h2 className="text-lg font-semibold mb-2">Toast Variants</h2>
+      =======
+              variant: 'error',
+              position: 'bottom-right',
+            });
+          }
+        };
+
+        return (
+          <div className="h-full overflow-y-auto p-6 lg:px-12 space-y-8">
+            {/* Header */}
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-3xl font-bold tracking-tight">Toaster</h1>
+                <p className="text-muted-foreground">
+                  A customizable toast component for notifications.
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-6">
+              <div className="space-y-6">
+                <section>
+                  <h2 className="text-lg font-semibold mb-2">Toast Variants</h2>
+      >>>>>>> REPLACE
+    patchStrategy: search-replace
+snapshot:
+  src/components/ui/toast.tsx: >-
+    import { forwardRef, useImperativeHandle, useRef, useEffect } from 'react';
+
+    import { gsap } from 'gsap';
+
+    import {
+      Toaster as SonnerToaster,
+      toast as sonnerToast,
+    } from 'sonner';
+
+    import {
+      CheckCircle,
+      AlertCircle,
+      Info,
+      AlertTriangle,
+      X,
+    } from 'lucide-react';
+
+
+    import { Button } from '@/components/ui/button';
+
+    import { cn } from '@/lib/utils';
+
+
+    type Variant = 'default' | 'success' | 'error' | 'warning';
+
+    type Position =
+      | 'top-left'
+      | 'top-center'
+      | 'top-right'
+      | 'bottom-left'
+      | 'bottom-center'
+      | 'bottom-right';
+
+    interface ActionButton {
+      label: string;
+      onClick: () => void;
+      variant?: 'default' | 'outline' | 'ghost';
+    }
+
+
+    interface ToasterProps {
+      title?: string;
+      message: string;
+      variant?: Variant;
+      duration?: number;
+      position?: Position;
+      actions?: ActionButton;
+      onDismiss?: () => void;
+      highlightTitle?: boolean;
+    }
+
+
+    export interface ToasterRef {
+      show: (props: ToasterProps) => void;
+    }
+
+
+    const variantStyles: Record<Variant, string> = {
+      default: 'bg-card border-border text-foreground',
+      success: 'bg-card border-green-600/50',
+      error: 'bg-card border-destructive/50',
+      warning: 'bg-card border-amber-600/50',
+    };
+
+
+    const titleColor: Record<Variant, string> = {
+      default: 'text-foreground',
+      success: 'text-green-600 dark:text-green-400',
+      error: 'text-destructive',
+      warning: 'text-amber-600 dark:text-amber-400',
+    };
+
+
+    const iconColor: Record<Variant, string> = {
+      default: 'text-muted-foreground',
+      success: 'text-green-600 dark:text-green-400',
+      error: 'text-destructive',
+      warning: 'text-amber-600 dark:text-amber-400',
+    };
+
+
+    const variantIcons: Record<Variant, React.ComponentType<{ className?: string
+    }>> = {
+      default: Info,
+      success: CheckCircle,
+      error: AlertCircle,
+      warning: AlertTriangle,
+    };
+
+
+    const CustomToast = ({
+      toastId,
+      title,
+      message,
+      variant = 'default',
+      duration = 4000,
+      actions,
+      onDismiss,
+      highlightTitle,
+    }: ToasterProps & { toastId: number | string }) => {
+      const toastRef = useRef<HTMLDivElement>(null);
+      const Icon = variantIcons[variant];
+
+      const handleDismiss = () => {
+        if (toastRef.current) {
+          gsap.to(toastRef.current, {
+            opacity: 0,
+            y: 50,
+            scale: 0.95,
+            duration: 0.3,
+            ease: 'easeOut',
+            onComplete: () => {
+              sonnerToast.dismiss(toastId);
+              onDismiss?.();
+            },
+          });
+        } else {
+          sonnerToast.dismiss(toastId);
+          onDismiss?.();
+        }
+      };
+
+      useEffect(() => {
+        if (toastRef.current) {
+          gsap.from(toastRef.current, {
+            opacity: 0,
+            y: 50,
+            scale: 0.95,
+            duration: 0.3,
+            ease: 'easeOut',
+          });
+        }
+
+        if (duration !== Infinity) {
+          const timer = setTimeout(handleDismiss, duration);
+          return () => clearTimeout(timer);
+        }
+      }, [duration]);
+
+      return (
+        <div
+          ref={toastRef}
+          className={cn(
+            'flex items-center justify-between w-full max-w-xs p-3 rounded-xl border shadow-md',
+            variantStyles[variant]
+          )}
+        >
+          <div className="flex items-start gap-2">
+            <Icon className={cn('h-4 w-4 mt-0.5 flex-shrink-0', iconColor[variant])} />
+            <div className="space-y-0.5">
+              {title && (
+                <h3
+                  className={cn(
+                    'text-xs font-medium leading-none',
+                    titleColor[variant],
+                    highlightTitle && titleColor['success']
+                  )}
+                >
+                  {title}
+                </h3>
+              )}
+              <p className="text-xs text-muted-foreground">{message}</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {actions?.label && (
+              <Button
+                variant={actions.variant || 'outline'}
+                size="sm"
+                onClick={() => {
+                  actions.onClick();
+                  handleDismiss();
+                }}
+                className={cn(
+                  'cursor-pointer',
+                  variant === 'success' ? 'text-green-600 border-green-600 hover:bg-green-600/10 dark:hover:bg-green-400/20'
+                  : variant === 'error' ? 'text-destructive border-destructive hover:bg-destructive/10 dark:hover:bg-destructive/20'
+                  : variant === 'warning' ? 'text-amber-600 border-amber-600 hover:bg-amber-600/10 dark:hover:bg-amber-400/20'
+                  : 'text-foreground border-border hover:bg-muted/10 dark:hover:bg-muted/20'
+                )}
+              >
+                {actions.label}
+              </Button>
+            )}
+            <button
+              onClick={handleDismiss}
+              className="rounded-full p-1 hover:bg-muted/50 dark:hover:bg-muted/30 transition-colors focus:outline-none focus:ring-2 focus:ring-ring"
+              aria-label="Dismiss notification"
+            >
+              <X className="h-3 w-3 text-muted-foreground" />
+            </button>
+          </div>
+        </div>
+      );
+    };
+
+
+    const Toaster = forwardRef<ToasterRef, { defaultPosition?: Position }>(
+      ({ defaultPosition = 'bottom-right' }, ref) => {
+        useImperativeHandle(ref, () => ({
+          show({
+            title,
+            message,
+            variant = 'default',
+            duration = 4000,
+            position = defaultPosition,
+            actions,
+            onDismiss,
+            highlightTitle,
+          }) {
+            sonnerToast.custom(
+              (toastId) => (
+                <CustomToast
+                  toastId={toastId}
+                  title={title}
+                  message={message}
+                  variant={variant}
+                  duration={duration}
+                  actions={actions}
+                  onDismiss={onDismiss}
+                  highlightTitle={highlightTitle}
+                />
+              ),
+              {
+                duration: Infinity, // Component handles its own lifecycle for animations
+                position,
+              }
+            );
+          },
+        }));
+
+        return (
+          <SonnerToaster
+            position={defaultPosition}
+            toastOptions={{ unstyled: true, className: 'flex justify-end' }}
+          />
+        );
+      }
+    );
+
+    Toaster.displayName = "Toaster";
+
+
+    export default Toaster;
+  src/components/ToasterDemo.tsx: |-
+    import { useRef } from 'react';
+    import { Button } from '@/components/ui/button';
+    import Toaster, { ToasterRef } from '@/components/ui/toast';
+    import { cn } from '@/lib/utils';
+
+    type Variant = 'default' | 'success' | 'error' | 'warning';
+    type Position =
+      | 'top-left'
+      | 'top-center'
+      | 'top-right'
+      | 'bottom-left'
+      | 'bottom-center'
+      | 'bottom-right';
+
+    const variantColors = {
+      default: 'border-border text-foreground hover:bg-muted/10 dark:hover:bg-muted/20',
+      success: 'border-green-600 text-green-600 hover:bg-green-600/10 dark:hover:bg-green-400/20',
+      error: 'border-destructive text-destructive hover:bg-destructive/10 dark:hover:bg-destructive/20',
+      warning: 'border-amber-600 text-amber-600 hover:bg-amber-600/10 dark:hover:bg-amber-400/20',
+    }
+
+    export function ToasterDemo() {
+      const toasterRef = useRef<ToasterRef>(null);
+
+      const showToast = (variant: Variant, position: Position = 'bottom-right') => {
+        toasterRef.current?.show({
+          title: `${variant.charAt(0).toUpperCase() + variant.slice(1)} Notification`,
+          message: `This is a ${variant} toast notification.`,
+          variant,
+          position,
+          duration: 3000,
+          onDismiss: () =>
+            console.log(`${variant} toast at ${position} dismissed`),
+        });
+      };
+
+      const simulateApiCall = async () => {
+        toasterRef.current?.show({
+          title: 'Scheduling...',
+          message: 'Please wait while we schedule your meeting.',
+          variant: 'default',
+          position: 'bottom-right',
+        });
+
+        try {
+          await new Promise((resolve) => setTimeout(resolve, 2000));
+
+          toasterRef.current?.show({
+            title: 'Meeting Scheduled',
+            message: 'Your meeting is scheduled for July 4, 2025, at 3:42 PM IST.',
+            variant: 'success',
+            position: 'bottom-right',
+            highlightTitle: true,
+            actions: {
+              label: 'Undo',
+              onClick: () => console.log('Undoing meeting schedule'),
+              variant: 'outline',
+            },
+          });
+        } catch (error) {
+          toasterRef.current?.show({
+            title: 'Error Scheduling Meeting',
+            message: 'Failed to schedule the meeting. Please try again.',
+            variant: 'error',
+            position: 'bottom-right',
+          });
+        }
+      };
+
+      return (
+        <div className="h-full overflow-y-auto p-6 lg:px-12 space-y-8">
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight">Toaster</h1>
+              <p className="text-muted-foreground">
+                A customizable toast component for notifications.
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-6">
+            <Toaster ref={toasterRef} />
+
+            <div className="space-y-6">
+              <section>
+                <h2 className="text-lg font-semibold mb-2">Toast Variants</h2>
+                <div className="flex flex-wrap gap-4">
+                  {(['default', 'success', 'error', 'warning'] as Variant[]).map((variantKey) => (
+                    <Button
+                      key={variantKey}
+                      variant="outline"
+                      onClick={() => showToast(variantKey as Variant)}
+                      className={cn(variantColors[variantKey])}
+                    >
+                      {variantKey.charAt(0).toUpperCase() + variantKey.slice(1)} Toast
+                    </Button>
+                  ))}
+                </div>
+              </section>
+
+              <section>
+                <h2 className="text-lg font-semibold mb-2">Toast Positions</h2>
+                <div className="flex flex-wrap gap-4">
+                  {[
+                    'top-left',
+                    'top-center',
+                    'top-right',
+                    'bottom-left',
+                    'bottom-center',
+                    'bottom-right',
+                  ].map((positionKey) => (
+                    <Button
+                      key={positionKey}
+                      variant="outline"
+                      onClick={() =>
+                        showToast('default', positionKey as Position)
+                      }
+                      className="border-border text-foreground hover:bg-muted/10 dark:hover:bg-muted/20"
+                    >
+                      {positionKey
+                        .replace('-', ' ')
+                        .replace(/\b\w/g, (char) => char.toUpperCase())}
+                    </Button>
+                  ))}
+                </div>
+              </section>
+
+              <section>
+                <h2 className="text-lg font-semibold mb-2">Real‑World Example</h2>
+                <Button
+                  variant="outline"
+                  onClick={simulateApiCall}
+                  className="border-border text-foreground hover:bg-muted/10 dark:hover:bg-muted/20"
+                >
+                  Schedule Meeting
+                </Button>
+              </section>
+            </div>
+          </div>
+        </div>
+      );
+    }
+  src/main.tsx: |-
+    import React from 'react'
+    import ReactDOM from 'react-dom/client'
+    import App from './App.tsx'
+    import './index.css'
+
+    ReactDOM.createRoot(document.getElementById('root')!).render(
+      <React.StrictMode>
+        <App />
+      </React.StrictMode>,
+    )
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 56

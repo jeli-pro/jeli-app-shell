@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils'
 import { BODY_STATES, type BodyState } from '@/lib/utils'
 import { DashboardContent } from './DashboardContent'
 import { SettingsPage } from './SettingsPage'
+import { ToasterDemo } from './ToasterDemo'
 import { useAppStore } from '@/store/appStore'
 
 interface MainContentProps {
@@ -70,10 +71,13 @@ export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
         }
         return <SettingsPage />
       }
+      if (activePage === 'toaster') {
+        return <ToasterDemo />
+      }
       return null;
     }
     
-    const isContentVisible = (activePage === 'dashboard' && !isDashboardInSidePane) || (activePage === 'settings' && !isSettingsInSidePane);
+    const isContentVisible = (activePage === 'dashboard' && !isDashboardInSidePane) || (activePage === 'settings' && !isSettingsInSidePane) || activePage === 'toaster';
 
     return (
       <div

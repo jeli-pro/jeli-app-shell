@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { SIDEBAR_STATES, BODY_STATES, type SidebarState, type BodyState } from '@/lib/utils'
 
-export type ActivePage = 'dashboard' | 'settings';
+export type ActivePage = 'dashboard' | 'settings' | 'toaster';
 
 interface AppState {
   // UI States

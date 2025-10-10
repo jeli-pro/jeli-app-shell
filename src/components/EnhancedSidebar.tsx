@@ -16,7 +16,8 @@ import {
   Star,
   Trash2,
   ChevronDown,
-  Layout
+  Layout,
+  Component
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAppStore } from '@/store/appStore'
@@ -75,6 +76,14 @@ const navigationSections: NavSection[] = [
       { icon: <Bookmark className="w-4 h-4" />, label: "Bookmarks", href: "/bookmarks" },
       { icon: <Star className="w-4 h-4" />, label: "Favorites", href: "/favorites" },
       { icon: <Download className="w-4 h-4" />, label: "Downloads", href: "/downloads" },
+    ]
+  },
+  {
+    title: "Components",
+    collapsible: true,
+    defaultExpanded: true,
+    items: [
+      { icon: <Component className="w-4 h-4" />, label: "Toaster", href: "/toaster" }
     ]
   }
 ]
@@ -164,10 +173,12 @@ export const EnhancedSidebar = forwardRef<HTMLDivElement, SidebarProps>(
       const pageName = item.label.toLowerCase();
       const isDashboard = pageName === 'dashboard';
       const isSettings = pageName === 'settings';
+      const isToaster = pageName === 'toaster';
 
       const isDashboardActive = activePage === 'dashboard';
       const isSettingsActive = activePage === 'settings' || (bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === 'settings');
-      const isPageActive = (isDashboard && isDashboardActive) || (isSettings && isSettingsActive);
+      const isToasterActive = activePage === 'toaster';
+      const isPageActive = (isDashboard && isDashboardActive) || (isSettings && isSettingsActive) || (isToaster && isToasterActive);
 
       const handleClick = () => {
         if (isDashboard) {
@@ -182,6 +193,8 @@ export const EnhancedSidebar = forwardRef<HTMLDivElement, SidebarProps>(
             // In all other cases (on dashboard page, or settings already in pane), just toggle the settings side pane.
             openSidePane('settings');
           }
+        } else if (isToaster) {
+          setActivePage('toaster');
         }
         // Could add logic for other links here if routing was implemented
       };
