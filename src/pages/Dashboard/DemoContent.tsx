@@ -77,12 +77,10 @@ export function DemoContent() {
       <div className="text-center space-y-4">
         <div className="flex items-center justify-center gap-2 mb-4">
           <Rocket className="w-8 h-8 text-primary" />
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-            Amazing App Shell
-          </h1>
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">Jeli App Shell</h1>
         </div>
         <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-          A super amazing application shell with resizable sidebar, multiple body states, 
+          A super flexible application shell with resizable sidebar, multiple body states, 
           smooth animations, and comprehensive settings - all built with modern web technologies.
         </p>
         

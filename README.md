@@ -1,8 +1,8 @@
-# Amazing App Shell
+# Jeli App Shell
 
-[![npm version](https://img.shields.io/npm/v/amazing-app-shell.svg?style=flat)](https://www.npmjs.com/package/amazing-app-shell)
+[![npm version](https://img.shields.io/npm/v/jeli-app-shell.svg?style=flat)](https://www.npmjs.com/package/jeli-app-shell)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Build Status](https://img.shields.io/travis/com/your-username/amazing-app-shell.svg)](https://travis-ci.com/your-username/amazing-app-shell)
+[![Build Status](https://img.shields.io/travis/com/your-username/jeli-app-shell.svg)](https://travis-ci.com/your-username/jeli-app-shell)
 
 A fully-featured, animated, and customizable application shell for React, built with TypeScript, Tailwind CSS, and powered by GSAP for smooth animations. Provide a modern, desktop-grade user experience out of the box.
 
@@ -30,18 +30,18 @@ This library provides all the necessary components and hooks to build a complex 
 
 Install the package and its peer dependencies using your preferred package manager.
 ```bash
-npm install amazing-app-shell react react-dom tailwindcss gsap lucide-react tailwind-merge class-variance-authority clsx tailwindcss-animate
+npm install jeli-app-shell react react-dom tailwindcss gsap lucide-react tailwind-merge class-variance-authority clsx tailwindcss-animate
 ```
 
 or
 
 ```bash
-yarn add amazing-app-shell react react-dom tailwindcss gsap lucide-react tailwind-merge class-variance-authority clsx tailwindcss-animate
+yarn add jeli-app-shell react react-dom tailwindcss gsap lucide-react tailwind-merge class-variance-authority clsx tailwindcss-animate
 ```
 
 ## Getting Started
 
-Follow these steps to integrate Amazing App Shell into your project.
+Follow these steps to integrate Jeli App Shell into your project.
 
 ### 1. Configure Tailwind CSS
 
@@ -56,7 +56,7 @@ module.exports = {
   content: [
     './src/**/*.{js,ts,jsx,tsx}',
     // Add the path to the library's components
-    './node_modules/amazing-app-shell/dist/**/*.{js,ts,jsx,tsx}',
+    './node_modules/jeli-app-shell/dist/**/*.{js,ts,jsx,tsx}',
   ],
   theme: {
     // ...
@@ -76,7 +76,7 @@ You need to import the library's stylesheet. It contains all the necessary base 
 @import 'tailwindcss/utilities';
 
 /* Import the App Shell's stylesheet */
-@import 'amazing-app-shell/dist/style.css';
+@import 'jeli-app-shell/dist/style.css';
 ```
 
 ### 2. Set Up Providers
@@ -87,8 +87,8 @@ Wrap your application's root component with `AppShellProvider` and `ToasterProvi
 
 ```tsx
 import React from 'react';
-import { AppShellProvider } from 'amazing-app-shell';
-import { ToasterProvider } from 'amazing-app-shell'; // Re-exported for convenience
+import { AppShellProvider } from 'jeli-app-shell';
+import { ToasterProvider } from 'jeli-app-shell'; // Re-exported for convenience
 import { Rocket } from 'lucide-react';
 import { YourAppComponent } from './YourAppComponent';
 
@@ -140,7 +140,7 @@ import {
 
   // Hooks & Context
   useAppShell,
-} from 'amazing-app-shell';
+} from 'jeli-app-shell';
 import { Home, Settings, PanelRight } from 'lucide-react';
 
 // 1. Build your custom sidebar
@@ -246,7 +246,7 @@ The sidebar is built using a set of highly composable components.
 
 ### UI Primitives
 
-The library also exports a set of UI components (Button, Card, Badge, etc.) based on shadcn/ui. You can import them directly from `amazing-app-shell`.
+The library also exports a set of UI components (Button, Card, Badge, etc.) based on shadcn/ui. You can import them directly from `jeli-app-shell`.
 
 ## Hooks
 

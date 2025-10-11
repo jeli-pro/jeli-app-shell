@@ -1,0 +1,1316 @@
+uuid: d8e56037-f126-474c-83b0-6415f3e4e963
+projectId: amazing-app-shell
+createdAt: '2025-10-11T08:46:29.513Z'
+gitCommitMsg: >-
+  refactor: rename project to Jeli App Shell
+
+  This commit renames the project from "Amazing App Shell" to "Jeli App Shell".
+  The changes include updating: - package.json name and build output filenames -
+  Vite config library name - Titles and text content in UI components
+promptSummary: >-
+  The user requested to rename the project from "amazing app shell" to "jeli app
+  shell".
+reasoning:
+  - >-
+    I will update the project to rename "amazing app shell" to "jeli app shell".
+    This involves changing package names, titles, and text content across
+    multiple files.
+  - >-
+    First, I'll update the `package.json` with the new name and update the build
+    artifact names.
+  - Next, I'll update the Vite configuration to reflect the new library name.
+  - I will change the title in `index.html`.
+  - >-
+    Now, I'll update the branding within the application components, starting
+    with the `LoginPage`.
+  - The default app name in the `AppShellContext` will be updated.
+  - The `App.tsx` file, which uses the provider, also needs to be updated.
+  - I'll update the content on the dashboard page.
+  - And in the demo content within the dashboard.
+operations:
+  - type: write
+    path: package.json
+    content: |+
+      --- package.json
+      +++ package.json
+      @@ -1,19 +1,19 @@
+       {
+      -  "name": "amazing-app-shell",
+      +  "name": "jeli-app-shell",
+         "private": false,
+         "version": "1.0.1",
+         "type": "module",
+         "files": [
+           "dist"
+         ],
+      -  "main": "./dist/amazing-app-shell.umd.js",
+      -  "module": "./dist/amazing-app-shell.es.js",
+      +  "main": "./dist/jeli-app-shell.umd.js",
+      +  "module": "./dist/jeli-app-shell.es.js",
+         "types": "./dist/index.d.ts",
+         "exports": {
+           ".": {
+      -      "import": "./dist/amazing-app-shell.es.js",
+      -      "require": "./dist/amazing-app-shell.umd.js"
+      +      "import": "./dist/jeli-app-shell.es.js",
+      +      "require": "./dist/jeli-app-shell.umd.js"
+           },
+           "./dist/style.css": "./dist/style.css"
+         },
+
+    patchStrategy: standard-diff
+  - type: write
+    path: vite.config.ts
+    content: |+
+      --- vite.config.ts
+      +++ vite.config.ts
+      @@ -14,8 +14,8 @@
+         build: {
+           lib: {
+             entry: resolve(__dirname, 'src/index.ts'),
+      -      name: 'AmazingAppShell',
+      -      fileName: (format) => `amazing-app-shell.${format}.js`,
+      +      name: 'JeliAppShell',
+      +      fileName: (format) => `jeli-app-shell.${format}.js`,
+           },
+           rollupOptions: {
+             // make sure to externalize deps that shouldn't be bundled
+
+    patchStrategy: standard-diff
+  - type: write
+    path: index.html
+    content: |
+      <<<<<<< SEARCH
+          <title>Amazing App Shell</title>
+      =======
+          <title>Jeli App Shell</title>
+      >>>>>>> REPLACE
+    patchStrategy: search-replace
+  - type: write
+    path: src/components/auth/LoginPage.tsx
+    content: >
+      <<<<<<< SEARCH
+
+      const TechOrbitDisplay = memo(function TechOrbitDisplay({ text = 'Amazing
+      App Shell' }: { text?: string }) {
+
+      =======
+
+      const TechOrbitDisplay = memo(function TechOrbitDisplay({ text = 'Jeli App
+      Shell' }: { text?: string }) {
+
+      >>>>>>> REPLACE
+    patchStrategy: search-replace
+  - type: write
+    path: src/context/AppShellContext.tsx
+    content: |
+      <<<<<<< SEARCH
+        appName: 'Amazing App',
+      =======
+        appName: 'Jeli App',
+      >>>>>>> REPLACE
+    patchStrategy: search-replace
+  - type: write
+    path: src/App.tsx
+    content: |
+      <<<<<<< SEARCH
+              appName="Amazing App"
+      =======
+              appName="Jeli App"
+      >>>>>>> REPLACE
+    patchStrategy: search-replace
+  - type: write
+    path: src/pages/Dashboard/index.tsx
+    content: |
+      <<<<<<< SEARCH
+                  description="Welcome to the amazing app shell demo! Explore all the features and customization options."
+      =======
+                  description="Welcome to the Jeli App Shell demo! Explore all the features and customization options."
+      >>>>>>> REPLACE
+    patchStrategy: search-replace
+  - type: write
+    path: src/pages/Dashboard/DemoContent.tsx
+    content: >
+      --- src/pages/Dashboard/DemoContent.tsx
+
+      +++ src/pages/Dashboard/DemoContent.tsx
+
+      @@ -88,12 +88,12 @@
+             <div className="text-center space-y-4">
+               <div className="flex items-center justify-center gap-2 mb-4">
+                 <Rocket className="w-8 h-8 text-primary" />
+      -          <h1 className="text-4xl font-bold bg-gradient-to-r from-primary
+      to-primary/60 bg-clip-text text-transparent">
+
+      -            Amazing App Shell
+
+      -          </h1>
+
+      +          <h1 className="text-4xl font-bold bg-gradient-to-r from-primary
+      to-primary/60 bg-clip-text text-transparent">Jeli App Shell</h1>
+               </div>
+               <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+      -          A super amazing application shell with resizable sidebar,
+      multiple body states, 
+
+      +          A super flexible application shell with resizable sidebar,
+      multiple body states, 
+                 smooth animations, and comprehensive settings - all built with modern web technologies.
+               </p>
+               
+       
+    patchStrategy: standard-diff
+snapshot:
+  package.json: |
+    {
+      "name": "amazing-app-shell",
+      "private": false,
+      "version": "1.0.1",
+      "type": "module",
+      "files": [
+        "dist"
+      ],
+      "main": "./dist/amazing-app-shell.umd.js",
+      "module": "./dist/amazing-app-shell.es.js",
+      "types": "./dist/index.d.ts",
+      "exports": {
+        ".": {
+          "import": "./dist/amazing-app-shell.es.js",
+          "require": "./dist/amazing-app-shell.umd.js"
+        },
+        "./dist/style.css": "./dist/style.css"
+      },
+      "sideEffects": [
+        "**/*.css"
+      ],
+      "scripts": {
+        "dev": "vite",
+        "build": "tsc && vite build",
+        "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+        "preview": "vite preview"
+      },
+      "dependencies": {},
+      "peerDependencies": {
+        "@iconify/react": "^4.1.1",
+        "@radix-ui/react-avatar": "^1.0.4",
+        "@radix-ui/react-dialog": "^1.0.5",
+        "@radix-ui/react-dropdown-menu": "^2.0.6",
+        "@radix-ui/react-label": "^2.1.7",
+        "@radix-ui/react-popover": "^1.0.7",
+        "@radix-ui/react-slot": "^1.0.2",
+        "@radix-ui/react-tabs": "^1.0.4",
+        "class-variance-authority": "^0.7.0",
+        "clsx": "^2.0.0",
+        "cmdk": "^0.2.0",
+        "gsap": "^3.12.2",
+        "lucide-react": "^0.294.0",
+        "react": "^18.2.0",
+        "react-dom": "^18.2.0",
+        "sonner": "^1.2.4",
+        "tailwind-merge": "^2.0.0",
+        "tailwindcss": "^3.3.5",
+        "zustand": "^4.5.7"
+      },
+      "devDependencies": {
+        "@types/node": "^20.10.0",
+        "@types/react": "^18.2.37",
+        "@types/react-dom": "^18.2.15",
+        "@typescript-eslint/eslint-plugin": "^6.10.0",
+        "@typescript-eslint/parser": "^6.10.0",
+        "@vitejs/plugin-react": "^4.1.1",
+        "autoprefixer": "^10.4.16",
+        "eslint": "^8.53.0",
+        "eslint-plugin-react-hooks": "^4.6.0",
+        "eslint-plugin-react-refresh": "^0.4.4",
+        "postcss": "^8.4.31",
+        "tailwindcss": "^3.3.5",
+        "tailwindcss-animate": "^1.0.7",
+        "typescript": "^5.2.2",
+        "vite": "^4.5.0"
+      }
+    }
+  vite.config.ts: |-
+    import { defineConfig } from 'vite'
+    import react from '@vitejs/plugin-react'
+    import { fileURLToPath, URL } from 'url'
+    import { resolve } from 'path'
+    import pkg from './package.json' with { type: 'json' }
+
+    // https://vitejs.dev/config/
+    export default defineConfig({
+      plugins: [react()],
+      resolve: {
+        alias: {
+          "@": fileURLToPath(new URL('./src', import.meta.url)),
+        },
+      },
+      build: {
+        lib: {
+          entry: resolve(__dirname, 'src/index.ts'),
+          name: 'AmazingAppShell',
+          fileName: (format) => `amazing-app-shell.${format}.js`,
+        },
+        rollupOptions: {
+          // make sure to externalize deps that shouldn't be bundled
+          // into your library
+          external: Object.keys(pkg.peerDependencies || {}),
+          output: {
+            // Provide global variables to use in the UMD build
+            // for externalized deps
+            globals: {
+              react: 'React',
+              'react-dom': 'ReactDOM',
+              tailwindcss: 'tailwindcss',
+              gsap: 'gsap',
+              'lucide-react': 'lucide-react',
+              zustand: 'zustand',
+              sonner: 'sonner'
+            },
+          },
+        },
+      },
+    })
+  index.html: |-
+    <!DOCTYPE html>
+    <html lang="en">
+      <head>
+        <meta charset="UTF-8" />
+        <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Amazing App Shell</title>
+      </head>
+      <body>
+        <div id="root"></div>
+        <div id="toaster-container"></div>
+        <script type="module" src="/src/main.tsx"></script>
+      </body>
+    </html>
+  src/pages/Dashboard/DemoContent.tsx: >-
+    import { useRef } from 'react'
+
+    import { 
+      Sparkles, 
+      Zap, 
+      Rocket, 
+      Star, 
+      Heart,
+      Layers,
+      Code,
+      Palette,
+      Smartphone,
+      Monitor,
+      Settings
+    } from 'lucide-react'
+
+    import { cn } from '@/lib/utils'
+
+    import { useAppStore } from '@/store/appStore'
+
+    import { useAppShell } from '@/context/AppShellContext'
+
+    import { Card } from '@/components/ui/card'
+
+    import { useDemoContentAnimations } from
+    './hooks/useDemoContentAnimations.hook'
+
+
+    export function DemoContent() {
+      const { bodyState, sidebarState, compactMode } = useAppShell()
+      const { isDarkMode } = useAppStore()
+      const contentRef = useRef<HTMLDivElement>(null)
+      const cardsRef = useRef<(HTMLDivElement | null)[]>([])
+      useDemoContentAnimations(cardsRef);
+
+      const features = [
+        {
+          icon: <Sparkles className="w-6 h-6" />,
+          title: "Amazing Animations",
+          description: "Powered by GSAP for smooth, buttery animations",
+          color: "from-emerald-500 to-teal-500"
+        },
+        {
+          icon: <Zap className="w-6 h-6" />,
+          title: "Lightning Fast",
+          description: "Built with Vite and optimized for performance",
+          color: "from-amber-500 to-orange-500"
+        },
+        {
+          icon: <Layers className="w-6 h-6" />,
+          title: "Multiple States",
+          description: "Fullscreen, side pane, and normal viewing modes",
+          color: "from-emerald-500 to-green-500"
+        },
+        {
+          icon: <Code className="w-6 h-6" />,
+          title: "TypeScript",
+          description: "Fully typed with excellent developer experience",
+          color: "from-green-500 to-emerald-500"
+        },
+        {
+          icon: <Palette className="w-6 h-6" />,
+          title: "Beautiful Design",
+          description: "Shadcn/ui components with Tailwind CSS",
+          color: "from-teal-500 to-emerald-500"
+        },
+        {
+          icon: <Settings className="w-6 h-6" />,
+          title: "Customizable",
+          description: "Extensive settings and preferences panel",
+          color: "from-slate-500 to-gray-500"
+        }
+      ]
+
+      const stats = [
+        { label: "Components", value: "12+", color: "text-emerald-600" },
+        { label: "Animations", value: "25+", color: "text-teal-600" },
+        { label: "States", value: "7", color: "text-primary" },
+        { label: "Settings", value: "10+", color: "text-amber-600" }
+      ]
+
+      return (
+        <div ref={contentRef} className="p-8 space-y-12">
+          {/* Hero Section */}
+          <div className="text-center space-y-4">
+            <div className="flex items-center justify-center gap-2 mb-4">
+              <Rocket className="w-8 h-8 text-primary" />
+              <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+                Amazing App Shell
+              </h1>
+            </div>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+              A super amazing application shell with resizable sidebar, multiple body states, 
+              smooth animations, and comprehensive settings - all built with modern web technologies.
+            </p>
+            
+            {/* Quick Stats */}
+            <div className="flex items-center justify-center gap-12 mt-8">
+              {stats.map((stat) => (
+                <div key={stat.label} className="text-center">
+                  <div className={cn("text-2xl font-bold", stat.color)}>{stat.value}</div>
+                  <div className="text-sm text-muted-foreground">{stat.label}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Feature Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {features.map((feature, index) => (
+              <Card
+                key={feature.title}
+                ref={el => cardsRef.current[index] = el}
+                className="group relative overflow-hidden border-border/50 p-6 hover:border-primary/30 hover:bg-accent/30 transition-all duration-300 cursor-pointer"
+              >
+                <div className="relative z-10">
+                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-4 group-hover:scale-110 group-hover:bg-primary/20 transition-transform">
+                    {feature.icon}
+                  </div>
+                  
+                  <h3 className="text-lg font-semibold mb-2">{feature.title}</h3>
+                  <p className="text-muted-foreground text-sm">{feature.description}</p>
+                </div>
+              </Card>
+            ))}
+          </div>
+
+          {/* Technology Stack */}
+          <Card className="border-border/50 p-6">
+            <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
+              <Star className="w-6 h-6 text-yellow-500" />
+              Technology Stack
+            </h2>
+            
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {[
+                { name: "React 18", desc: "Latest React with hooks" },
+                { name: "TypeScript", desc: "Type-safe development" },
+                { name: "Vite", desc: "Lightning fast build tool" },
+                { name: "Tailwind CSS", desc: "Utility-first styling" },
+                { name: "GSAP", desc: "Professional animations" },
+                { name: "Zustand", desc: "Lightweight state management" },
+                { name: "Shadcn/ui", desc: "Beautiful components" },
+                { name: "Lucide Icons", desc: "Consistent iconography" }
+              ].map((tech) => (
+                <div key={tech.name} className="bg-background rounded-xl p-4 border border-border/50">
+                  <h4 className="font-medium">{tech.name}</h4>
+                  <p className="text-sm text-muted-foreground">{tech.desc}</p>
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          {/* Current State Display */}
+          <Card className="border-border/50 p-6">
+            <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+              <Monitor className="w-5 h-5" />
+              Current App State
+            </h2>
+            
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="text-center p-3 bg-background rounded-xl">
+                <div className="text-sm text-muted-foreground">Sidebar</div>
+                <div className="font-medium capitalize">{sidebarState}</div>
+              </div>
+              <div className="text-center p-3 bg-background rounded-xl">
+                <div className="text-sm text-muted-foreground">Body State</div>
+                <div className="font-medium capitalize">{bodyState.replace('_', ' ')}</div>
+              </div>
+              <div className="text-center p-3 bg-background rounded-xl">
+                <div className="text-sm text-muted-foreground">Theme</div>
+                <div className="font-medium">{isDarkMode ? 'Dark' : 'Light'}</div>
+              </div>
+              <div className="text-center p-3 bg-background rounded-xl">
+                <div className="text-sm text-muted-foreground">Mode</div>
+                <div className="font-medium">{compactMode ? 'Compact' : 'Normal'}</div>
+              </div>
+            </div>
+          </Card>
+
+          {/* Interactive Demo */}
+          <div className="text-center space-y-4">
+            <h2 className="text-2xl font-bold flex items-center justify-center gap-2">
+              <Heart className="w-6 h-6 text-red-500" />
+              Try It Out!
+            </h2>
+            <p className="text-muted-foreground">
+              Use the controls in the top bar to explore different states, toggle the sidebar, 
+              or open settings to customize the experience. The sidebar is resizable by dragging the edge!
+            </p>
+            
+            <div className="flex items-center justify-center gap-4 pt-4">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Smartphone className="w-4 h-4" />
+                <span>Responsive</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Zap className="w-4 h-4" />
+                <span>Fast</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Star className="w-4 h-4" />
+                <span>Beautiful</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )
+    }
+  src/App.tsx: >-
+    import React, { useEffect } from 'react'
+
+    import { AppShell } from './components/layout/AppShell'
+
+    import { AppShellProvider, useAppShell } from './context/AppShellContext'
+
+    import { useAppStore } from './store/appStore'
+
+    import { useAuthStore } from './store/authStore'
+
+    import './index.css'
+
+
+    // Import library components
+
+    import { EnhancedSidebar } from './components/layout/EnhancedSidebar'
+
+    import { MainContent } from './components/layout/MainContent'
+
+    import { RightPane } from './components/layout/RightPane'
+
+    import { TopBar } from './components/layout/TopBar'
+
+    import { CommandPalette } from './components/global/CommandPalette'
+
+
+    // Import page/content components
+
+    import { DashboardContent } from './pages/Dashboard'
+
+    import { SettingsPage } from './pages/Settings'
+
+    import { ToasterDemo } from './pages/ToasterDemo'
+
+    import { NotificationsPage } from './pages/Notifications'
+
+    import { ContentInSidePanePlaceholder } from
+    './components/shared/ContentInSidePanePlaceholder'
+
+    import { SettingsContent } from './features/settings/SettingsContent'
+
+    import { LoginPage } from './components/auth/LoginPage'
+
+
+    // Import icons
+
+    import { LayoutDashboard, Settings, Component, Bell, SlidersHorizontal,
+    ChevronsLeftRight, Search, Filter, Plus, PanelRight, ChevronRight, Rocket }
+    from 'lucide-react'
+
+    import { BODY_STATES } from './lib/utils'
+
+    import { cn } from './lib/utils'
+
+
+
+    // The content for the main area, with page routing logic
+
+    function AppContent() {
+      const { activePage, setActivePage } = useAppStore()
+      const { bodyState, sidePaneContent, openSidePane } = useAppShell()
+
+      const pageMap = {
+        dashboard: {
+          component: <DashboardContent />,
+          sidePaneContent: 'main',
+          icon: LayoutDashboard,
+          name: 'dashboard',
+        },
+        settings: {
+          component: <SettingsPage />,
+          sidePaneContent: 'settings',
+          icon: Settings,
+          name: 'settings',
+        },
+        toaster: {
+          component: <ToasterDemo />,
+          sidePaneContent: 'toaster',
+          icon: Component,
+          name: 'toaster demo',
+        },
+        notifications: {
+          component: <NotificationsPage />,
+          sidePaneContent: 'notifications',
+          icon: Bell,
+          name: 'notifications',
+        },
+      } as const;
+
+      const currentPage = pageMap[activePage];
+
+      if (sidePaneContent === currentPage.sidePaneContent && bodyState === BODY_STATES.SIDE_PANE) {
+        return (
+          <ContentInSidePanePlaceholder 
+            icon={currentPage.icon}
+            title={`${currentPage.name.charAt(0).toUpperCase() + currentPage.name.slice(1)} is in Side Pane`}
+            pageName={currentPage.name}
+            onBringBack={() => {
+              openSidePane(currentPage.sidePaneContent);
+              setActivePage(activePage);
+            }}
+          />
+        )
+      }
+
+      return currentPage.component;
+    }
+
+
+    // Content for the Top Bar
+
+    function AppTopBar() {
+      const { activePage, searchTerm, setSearchTerm } = useAppStore()
+      const { openSidePane } = useAppShell()
+      const [isSearchFocused, setIsSearchFocused] = React.useState(false);
+
+      const handleMoveToSidePane = () => {
+        const mapping = { dashboard: 'main', settings: 'settings', toaster: 'toaster', notifications: 'notifications' } as const;
+        if (mapping[activePage]) openSidePane(mapping[activePage]);
+      };
+
+      return (
+        <div className="flex items-center gap-3 flex-1">
+          <div className={cn("hidden md:flex items-center gap-2 text-sm transition-opacity", {
+              "opacity-0 pointer-events-none": isSearchFocused && activePage === 'dashboard'
+          })}>
+            <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">Home</a>
+            <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            <span className="font-medium text-foreground capitalize">{activePage}</span>
+          </div>
+          
+          <div className="flex-1" />
+
+          {/* Page-specific: Dashboard search and actions */}
+          {activePage === 'dashboard' && (
+          <div className="flex items-center gap-2 flex-1 justify-end">
+            <div className={cn("relative transition-all duration-300 ease-in-out", isSearchFocused ? 'flex-1 max-w-lg' : 'w-auto')}>
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4 pointer-events-none" />
+              <input
+                type="text"
+                placeholder="Search..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                onFocus={() => setIsSearchFocused(true)}
+                onBlur={() => setIsSearchFocused(false)}
+                className={cn(
+                  "pl-9 pr-4 py-2 h-10 border-none rounded-lg bg-card focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300 ease-in-out w-full",
+                  isSearchFocused ? 'bg-background' : 'w-48'
+                )}
+              />
+            </div>
+             <button className="h-10 w-10 flex-shrink-0 flex items-center justify-center hover:bg-accent rounded-full transition-colors">
+              <Filter className="w-5 h-5" />
+            </button>
+             <button className="bg-primary text-primary-foreground px-4 py-2 rounded-full hover:bg-primary/90 transition-colors flex items-center gap-2 h-10 flex-shrink-0">
+              <Plus className="w-5 h-5" />
+              <span className={cn(isSearchFocused ? 'hidden sm:inline' : 'inline')}>New Project</span>
+            </button>
+          </div>
+          )}
+
+          {/* Page-specific: Move to side pane */}
+          {['dashboard', 'settings', 'toaster', 'notifications'].includes(activePage) && (
+            <button onClick={handleMoveToSidePane} className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors" title="Move to Side Pane"><PanelRight className="w-5 h-5" /></button>
+          )}
+        </div>
+      )
+    }
+
+
+    // The main App component that composes the shell
+
+    function ComposedApp() {
+      const { sidePaneContent, closeSidePane } = useAppShell();
+      const { setActivePage } = useAppStore();
+
+      const contentMap = {
+        main: { title: 'Dashboard', icon: LayoutDashboard, page: 'dashboard', content: <DashboardContent isInSidePane /> },
+        settings: { title: 'Settings', icon: Settings, page: 'settings', content: <SettingsContent /> },
+        toaster: { title: 'Toaster Demo', icon: Component, page: 'toaster', content: <ToasterDemo isInSidePane /> },
+        notifications: { title: 'Notifications', icon: Bell, page: 'notifications', content: <NotificationsPage isInSidePane /> },
+        details: { title: 'Details Panel', icon: SlidersHorizontal, content: <p className="text-muted-foreground">This is the side pane. It can be used to display contextual information, forms, or actions related to the main content.</p> }
+      } as const;
+
+      const currentContent = contentMap[sidePaneContent as keyof typeof contentMap] || contentMap.details;
+      const CurrentIcon = currentContent.icon;
+
+      const handleMaximize = () => {
+        if ('page' in currentContent && currentContent.page) {
+          setActivePage(currentContent.page as any);
+        }
+        closeSidePane()
+      }
+
+      const rightPaneHeader = (
+          <>
+          <div className="flex items-center gap-2">
+            <CurrentIcon className="w-5 h-5" />
+            <h2 className="text-lg font-semibold whitespace-nowrap">
+              {currentContent.title}
+            </h2>
+          </div>
+          
+          {'page' in currentContent && currentContent.page && (
+            <button
+              onClick={handleMaximize}
+              className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors mr-2"
+              title="Move to Main View"
+            >
+              <ChevronsLeftRight className="w-5 h-5" />
+            </button>
+          )}
+          </>
+      );
+
+      return (
+        <AppShell
+          sidebar={<EnhancedSidebar />}
+          topBar={<TopBar><AppTopBar /></TopBar>}
+          mainContent={<MainContent><AppContent /></MainContent>}
+          rightPane={(
+            <RightPane header={rightPaneHeader}>{currentContent.content}</RightPane>
+          )}
+          commandPalette={<CommandPalette />}
+        />
+      );
+    }
+
+
+    function App() {
+      const isDarkMode = useAppStore((state) => state.isDarkMode)
+      const { isAuthenticated, login, forgotPassword } = useAuthStore()
+
+      useEffect(() => {
+        document.documentElement.classList.toggle('dark', isDarkMode);
+      }, [isDarkMode]);
+
+      const handleLogin = async (email: string, password: string) => {
+        try {
+          await login(email, password)
+        } catch (error) {
+          console.error('Login failed:', error)
+          // In a real app, you'd show an error message to the user
+        }
+      }
+
+      const handleForgotPassword = async (email: string) => {
+        try {
+          await forgotPassword(email)
+        } catch (error) {
+          console.error('Forgot password failed:', error)
+        }
+      }
+
+      const handleSignUp = () => {
+        // In a real app, navigate to sign up page
+        console.log('Navigate to sign up page')
+      }
+
+      if (!isAuthenticated) {
+        return (
+          <LoginPage
+            onLogin={handleLogin}
+            onForgotPassword={handleForgotPassword}
+            onSignUp={handleSignUp}
+          />
+        )
+      }
+
+      return (
+        <div className="h-screen w-screen overflow-hidden bg-background">
+          <AppShellProvider
+            appName="Amazing App"
+            appLogo={
+              <div className="p-2 bg-primary/20 rounded-lg">
+                <Rocket className="w-5 h-5 text-primary" />
+              </div>
+            }
+          >
+            <ComposedApp />
+          </AppShellProvider>
+        </div>
+      )
+    }
+
+
+    export default App
+  src/pages/Dashboard/index.tsx: >-
+    import { useRef } from 'react'
+
+    import { 
+      BarChart3, 
+      TrendingUp, 
+      Users, 
+      DollarSign, 
+      Activity,
+      Calendar,
+      Clock,
+      MessageSquare,
+      FileText,
+      Star,
+      ChevronRight,
+      MoreVertical,
+      ArrowDown
+    } from 'lucide-react'
+
+    import { cn } from '@/lib/utils'
+
+    import { DemoContent } from './DemoContent'
+
+    import { useDashboardAnimations } from './hooks/useDashboardAnimations.hook'
+
+    import { useDashboardScroll } from './hooks/useDashboardScroll.hook'
+
+    import { PageHeader } from '@/components/shared/PageHeader';
+
+    import { Card } from '@/components/ui/card';
+
+
+    interface StatsCard {
+      title: string
+      value: string
+      change: string
+      trend: 'up' | 'down'
+      icon: React.ReactNode
+    }
+
+
+    interface ActivityItem {
+      id: string
+      type: 'comment' | 'file' | 'meeting' | 'task'
+      title: string
+      description: string
+      time: string
+      user: string
+    }
+
+
+    const statsCards: StatsCard[] = [
+      {
+        title: "Total Revenue",
+        value: "$45,231.89",
+        change: "+20.1%",
+        trend: "up",
+        icon: <DollarSign className="w-5 h-5" />
+      },
+      {
+        title: "Active Users",
+        value: "2,350",
+        change: "+180.1%",
+        trend: "up",
+        icon: <Users className="w-5 h-5" />
+      },
+      {
+        title: "Conversion Rate",
+        value: "12.5%",
+        change: "+19%",
+        trend: "up",
+        icon: <TrendingUp className="w-5 h-5" />
+      },
+      {
+        title: "Performance",
+        value: "573ms",
+        change: "-5.3%",
+        trend: "down",
+        icon: <Activity className="w-5 h-5" />
+      }
+    ]
+
+
+    const recentActivity: ActivityItem[] = [
+      {
+        id: "1",
+        type: "comment",
+        title: "New comment on Project Alpha",
+        description: "Sarah Johnson added a comment to the design review",
+        time: "2 minutes ago",
+        user: "SJ"
+      },
+      {
+        id: "2",
+        type: "file",
+        title: "Document uploaded",
+        description: "quarterly-report.pdf was uploaded to Documents",
+        time: "15 minutes ago",
+        user: "MD"
+      },
+      {
+        id: "3",
+        type: "meeting",
+        title: "Meeting scheduled",
+        description: "Weekly standup meeting scheduled for tomorrow 9 AM",
+        time: "1 hour ago",
+        user: "RW"
+      },
+      {
+        id: "4",
+        type: "task",
+        title: "Task completed",
+        description: "UI wireframes for mobile app completed",
+        time: "2 hours ago",
+        user: "AL"
+      }
+    ]
+
+
+    interface DashboardContentProps {
+      isInSidePane?: boolean;
+    }
+
+
+    export function DashboardContent({ isInSidePane = false }:
+    DashboardContentProps) {
+        const contentRef = useRef<HTMLDivElement>(null)
+        const cardsRef = useRef<(HTMLDivElement | null)[]>([])
+        const { showScrollToBottom, handleScroll, scrollToBottom } = useDashboardScroll(contentRef, isInSidePane);
+
+        useDashboardAnimations(contentRef, cardsRef);
+
+        const getTypeIcon = (type: ActivityItem['type']) => {
+          switch (type) {
+            case 'comment':
+              return <MessageSquare className="w-4 h-4" />
+            case 'file':
+              return <FileText className="w-4 h-4" />
+            case 'meeting':
+              return <Calendar className="w-4 h-4" />
+            case 'task':
+              return <Star className="w-4 h-4" />
+            default:
+              return <Activity className="w-4 h-4" />
+          }
+        }
+
+        return (
+            <div 
+              ref={contentRef}
+              className="h-full overflow-y-auto space-y-8 p-6 lg:px-12"
+              onScroll={handleScroll}
+            >
+              {/* Header */}
+              <PageHeader
+                title="Dashboard"
+                description="Welcome to the amazing app shell demo! Explore all the features and customization options."
+              />
+                {/* Stats Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  {statsCards.map((stat, index) => (
+                    <Card
+                    key={stat.title}
+                    ref={el => cardsRef.current[index] = el}
+                    className="p-6 border-border/50 hover:border-primary/30 transition-all duration-300 group cursor-pointer"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="p-3 bg-primary/10 rounded-full group-hover:bg-primary/20 transition-colors">
+                        {stat.icon}
+                      </div>
+                      <div className={cn(
+                        "text-sm font-medium",
+                        stat.trend === 'up' ? "text-green-600" : "text-red-600"
+                      )}>
+                        {stat.change}
+                      </div>
+                    </div>
+                    <div className="mt-4">
+                      <h3 className="text-2xl font-bold">{stat.value}</h3>
+                      <p className="text-sm text-muted-foreground mt-1">{stat.title}</p>
+                    </div>
+                  </Card>
+                  ))}
+                </div>
+
+                {/* Demo Content */}
+                <DemoContent />
+
+                {/* Main Content Grid */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Chart Area */}
+                <div className="lg:col-span-2 space-y-6">
+                  {/* Analytics Chart */}
+                  <Card className="p-6 border-border/50">
+                    <div className="flex items-center justify-between mb-6">
+                      <h3 className="text-lg font-semibold">Analytics Overview</h3>
+                      <button className="h-8 w-8 flex items-center justify-center hover:bg-accent rounded-full transition-colors">
+                        <MoreVertical className="w-5 h-5" />
+                      </button>
+                    </div>
+                    
+                    {/* Mock Chart */}
+                    <div className="h-64 bg-gradient-to-br from-primary/10 to-transparent rounded-xl flex items-center justify-center border border-border/50">
+                      <div className="text-center">
+                        <BarChart3 className="w-12 h-12 text-primary mx-auto mb-2" />
+                        <p className="text-muted-foreground">Chart visualization would go here</p>
+                      </div>
+                    </div>
+                  </Card>
+
+                  {/* Recent Projects */}
+                  <Card className="p-6 border-border/50">
+                    <div className="flex items-center justify-between mb-6">
+                      <h3 className="text-lg font-semibold">Recent Projects</h3>
+                      <button className="text-primary hover:text-primary/80 text-sm font-medium flex items-center gap-1">
+                        View All
+                        <ChevronRight className="w-4 h-4" />
+                      </button>
+                    </div>
+                    
+                    <div className="space-y-4">
+                      {[
+                        { name: "E-commerce Platform", progress: 75, team: 5, deadline: "Dec 15" },
+                        { name: "Mobile App Redesign", progress: 45, team: 3, deadline: "Jan 20" },
+                        { name: "Marketing Website", progress: 90, team: 4, deadline: "Dec 5" }
+                      ].map((project) => (
+                        <div key={project.name} className="p-4 bg-accent/30 rounded-xl hover:bg-accent/50 transition-colors cursor-pointer">
+                          <div className="flex items-center justify-between mb-2">
+                            <h4 className="font-medium">{project.name}</h4>
+                            <span className="text-sm text-muted-foreground">{project.progress}%</span>
+                          </div>
+                          <div className="w-full bg-muted rounded-full h-2 mb-3">
+                            <div 
+                              className="bg-primary h-2 rounded-full transition-all duration-500"
+                              style={{ width: `${project.progress}%` }}
+                            />
+                          </div>
+                          <div className="flex items-center justify-between text-sm text-muted-foreground">
+                            <span>{project.team} team members</span>
+                            <span>Due {project.deadline}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </Card>
+                </div>
+
+                {/* Sidebar Content */}
+                <div className="space-y-6">
+                  {/* Quick Actions */}
+                  <Card className="p-6 border-border/50">
+                    <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
+                    <div className="space-y-3">
+                      {[
+                        { icon: <FileText className="w-4 h-4" />, label: "Create Document", color: "bg-blue-500/10 text-blue-600" },
+                        { icon: <Calendar className="w-4 h-4" />, label: "Schedule Meeting", color: "bg-green-500/10 text-green-600" },
+                        { icon: <Users className="w-4 h-4" />, label: "Invite Team", color: "bg-purple-500/10 text-purple-600" },
+                        { icon: <BarChart3 className="w-4 h-4" />, label: "View Reports", color: "bg-orange-500/10 text-orange-600" }
+                      ].map((action) => (
+                        <button
+                          key={action.label}
+                          className="w-full flex items-center gap-3 p-3 hover:bg-accent rounded-lg transition-colors text-left"
+                        >
+                          <div className={cn("p-2 rounded-full", action.color)}>
+                            {action.icon}
+                          </div>
+                          <span className="font-medium">{action.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </Card>
+
+                  {/* Recent Activity */}
+                  <Card className="p-6 border-border/50">
+                    <h3 className="text-lg font-semibold mb-4">Recent Activity</h3>
+                    <div className="space-y-4">
+                      {recentActivity.map((activity) => (
+                        <div key={activity.id} className="flex items-start gap-3 p-3 hover:bg-accent/30 rounded-xl transition-colors cursor-pointer">
+                          <div className="p-2 bg-primary/10 rounded-full flex-shrink-0">
+                            {getTypeIcon(activity.type)}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-medium text-sm mb-1">{activity.title}</h4>
+                            <p className="text-xs text-muted-foreground mb-2">{activity.description}</p>
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <Clock className="w-3 h-3" />
+                              <span>{activity.time}</span>
+                              <div className="w-5 h-5 bg-primary rounded-full flex items-center justify-center text-primary-foreground text-xs font-medium">
+                                {activity.user}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </Card>
+                </div>
+              </div>
+              {showScrollToBottom && (
+                <button
+                  onClick={scrollToBottom}
+                  className="fixed bottom-8 right-8 w-12 h-12 bg-primary text-primary-foreground rounded-full flex items-center justify-center shadow-lg hover:bg-primary/90 transition-all animate-fade-in z-[51]"
+                  style={{ animation: 'bounce 2s infinite' }}
+                  title="Scroll to bottom"
+                >
+                  <ArrowDown className="w-6 h-6" />
+                </button>
+              )}
+          </div>
+        )
+    }
+  src/context/AppShellContext.tsx: >-
+    import {
+      createContext,
+      useContext,
+      useReducer,
+      useEffect,
+      useMemo,
+      useCallback,
+      type ReactNode,
+      type ReactElement,
+      type Dispatch,
+    } from 'react';
+
+    import { SIDEBAR_STATES, BODY_STATES, type SidebarState, type BodyState }
+    from '@/lib/utils';
+
+
+    // --- State and Action Types ---
+
+
+    interface AppShellState {
+      sidebarState: SidebarState;
+      bodyState: BodyState;
+      sidePaneContent: 'details' | 'settings' | 'main' | 'toaster' | 'notifications';
+      sidebarWidth: number;
+      rightPaneWidth: number;
+      isResizing: boolean;
+      isResizingRightPane: boolean;
+      isTopBarVisible: boolean;
+      autoExpandSidebar: boolean;
+      reducedMotion: boolean;
+      compactMode: boolean;
+      primaryColor: string;
+      appName?: string;
+      appLogo?: ReactElement;
+    }
+
+
+    type AppShellAction =
+      | { type: 'SET_SIDEBAR_STATE'; payload: SidebarState }
+      | { type: 'SET_BODY_STATE'; payload: BodyState }
+      | { type: 'SET_SIDE_PANE_CONTENT'; payload: AppShellState['sidePaneContent'] }
+      | { type: 'SET_SIDEBAR_WIDTH'; payload: number }
+      | { type: 'SET_RIGHT_PANE_WIDTH'; payload: number }
+      | { type: 'SET_IS_RESIZING'; payload: boolean }
+      | { type: 'SET_IS_RESIZING_RIGHT_PANE'; payload: boolean }
+      | { type: 'SET_TOP_BAR_VISIBLE'; payload: boolean }
+      | { type: 'SET_AUTO_EXPAND_SIDEBAR'; payload: boolean }
+      | { type: 'SET_REDUCED_MOTION'; payload: boolean }
+      | { type: 'SET_COMPACT_MODE'; payload: boolean }
+      | { type: 'SET_PRIMARY_COLOR'; payload: string }
+      | { type: 'RESET_TO_DEFAULTS' };
+
+    // --- Reducer ---
+
+
+    const defaultState: AppShellState = {
+      sidebarState: SIDEBAR_STATES.EXPANDED,
+      bodyState: BODY_STATES.NORMAL,
+      sidePaneContent: 'details',
+      sidebarWidth: 280,
+      rightPaneWidth: typeof window !== 'undefined' ? Math.max(300, Math.round(window.innerWidth * 0.6)) : 400,
+      isResizing: false,
+      isResizingRightPane: false,
+      isTopBarVisible: true,
+      autoExpandSidebar: true,
+      reducedMotion: false,
+      compactMode: false,
+      primaryColor: '220 84% 60%',
+      appName: 'Amazing App',
+      appLogo: undefined,
+    };
+
+
+    function appShellReducer(state: AppShellState, action: AppShellAction):
+    AppShellState {
+      switch (action.type) {
+        case 'SET_SIDEBAR_STATE': return { ...state, sidebarState: action.payload };
+        case 'SET_BODY_STATE': return { ...state, bodyState: action.payload };
+        case 'SET_SIDE_PANE_CONTENT': return { ...state, sidePaneContent: action.payload };
+        case 'SET_SIDEBAR_WIDTH': return { ...state, sidebarWidth: Math.max(200, Math.min(500, action.payload)) };
+        case 'SET_RIGHT_PANE_WIDTH': return { ...state, rightPaneWidth: Math.max(300, Math.min(window.innerWidth * 0.8, action.payload)) };
+        case 'SET_IS_RESIZING': return { ...state, isResizing: action.payload };
+        case 'SET_IS_RESIZING_RIGHT_PANE': return { ...state, isResizingRightPane: action.payload };
+        case 'SET_TOP_BAR_VISIBLE': return { ...state, isTopBarVisible: action.payload };
+        case 'SET_AUTO_EXPAND_SIDEBAR': return { ...state, autoExpandSidebar: action.payload };
+        case 'SET_REDUCED_MOTION': return { ...state, reducedMotion: action.payload };
+        case 'SET_COMPACT_MODE': return { ...state, compactMode: action.payload };
+        case 'SET_PRIMARY_COLOR': return { ...state, primaryColor: action.payload };
+        case 'RESET_TO_DEFAULTS':
+          return {
+            ...defaultState,
+            appName: state.appName, // Preserve props passed to provider
+            appLogo: state.appLogo,   // Preserve props passed to provider
+          };
+        default: return state;
+      }
+    }
+
+
+    // --- Context and Provider ---
+
+
+    interface AppShellContextValue extends AppShellState {
+      dispatch: Dispatch<AppShellAction>;
+      // Composite actions for convenience
+      toggleSidebar: () => void;
+      hideSidebar: () => void;
+      showSidebar: () => void;
+      peekSidebar: () => void;
+      toggleFullscreen: () => void;
+      openSidePane: (content: AppShellState['sidePaneContent']) => void;
+      closeSidePane: () => void;
+      resetToDefaults: () => void;
+    }
+
+
+    const AppShellContext = createContext<AppShellContextValue | null>(null);
+
+
+    interface AppShellProviderProps {
+      children: ReactNode;
+      appName?: string;
+      appLogo?: ReactElement;
+    }
+
+
+    export function AppShellProvider({ children, appName, appLogo }:
+    AppShellProviderProps) {
+      const [state, dispatch] = useReducer(appShellReducer, {
+        ...defaultState,
+        ...(appName && { appName }),
+        ...(appLogo && { appLogo }),
+      });
+
+      // Side effect for primary color
+      useEffect(() => {
+        document.documentElement.style.setProperty('--primary-hsl', state.primaryColor);
+      }, [state.primaryColor]);
+
+      // Memoized composite actions using useCallback for stable function identities
+      const toggleSidebar = useCallback(() => {
+        const current = state.sidebarState;
+        if (current === SIDEBAR_STATES.HIDDEN) dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.COLLAPSED });
+        else if (current === SIDEBAR_STATES.COLLAPSED) dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.EXPANDED });
+        else if (current === SIDEBAR_STATES.EXPANDED) dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.COLLAPSED });
+      }, [state.sidebarState]);
+
+      const hideSidebar = useCallback(() => dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.HIDDEN }), []);
+      const showSidebar = useCallback(() => dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.EXPANDED }), []);
+      const peekSidebar = useCallback(() => dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.PEEK }), []);
+      
+      const toggleFullscreen = useCallback(() => {
+        const current = state.bodyState;
+        dispatch({ type: 'SET_BODY_STATE', payload: current === BODY_STATES.FULLSCREEN ? BODY_STATES.NORMAL : BODY_STATES.FULLSCREEN });
+      }, [state.bodyState]);
+
+      const openSidePane = useCallback((content: AppShellState['sidePaneContent']) => {
+        if (state.bodyState === BODY_STATES.SIDE_PANE && state.sidePaneContent === content) {
+          // If it's open with same content, close it.
+          dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.NORMAL });
+        } else {
+          // If closed, or different content, open with new content.
+          dispatch({ type: 'SET_SIDE_PANE_CONTENT', payload: content });
+          dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.SIDE_PANE });
+        }
+      }, [state.bodyState, state.sidePaneContent]);
+
+      const closeSidePane = useCallback(() => dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.NORMAL }), []);
+      const resetToDefaults = useCallback(() => dispatch({ type: 'RESET_TO_DEFAULTS' }), []);
+
+      const value = useMemo(() => ({ 
+        ...state, 
+        dispatch, 
+        toggleSidebar,
+        hideSidebar,
+        showSidebar,
+        peekSidebar,
+        toggleFullscreen,
+        openSidePane,
+        closeSidePane,
+        resetToDefaults,
+      }), [
+        state, 
+        toggleSidebar,
+        hideSidebar,
+        showSidebar,
+        peekSidebar,
+        toggleFullscreen,
+        openSidePane,
+        closeSidePane,
+        resetToDefaults
+      ]);
+
+      return (
+        <AppShellContext.Provider value={value}>
+          {children}
+        </AppShellContext.Provider>
+      );
+    }
+
+
+    // --- Hook ---
+
+
+    export function useAppShell() {
+      const context = useContext(AppShellContext);
+      if (!context) {
+        throw new Error('useAppShell must be used within an AppShellProvider');
+      }
+      return context;
+    }
+  src/components/auth/LoginPage.tsx: "import React, {\n\tuseState,\n\tChangeEvent,\n\tFormEvent,\n\tReactNode,\n\tuseEffect,\n\tuseRef,\n\tforwardRef,\n\tmemo,\n} from 'react';\nimport { Eye, EyeOff, Mail, ArrowLeft } from 'lucide-react';\nimport { gsap } from 'gsap';\nimport { cn } from '@/lib/utils';\n\n// ==================== Input Component ====================\nconst Input = memo(\n\tforwardRef(function Input(\n\t\t{ className, type, ...props }: React.InputHTMLAttributes<HTMLInputElement>,\n\t\tref: React.ForwardedRef<HTMLInputElement>,\n\t) {\n\t\tconst radius = 100;\n\t\tconst wrapperRef = useRef<HTMLDivElement>(null);\n\n\t\tuseEffect(() => {\n\t\t\tconst wrapper = wrapperRef.current;\n\t\t\tif (!wrapper) return;\n\n\t\t\tlet animationFrameId: number | null = null;\n\n\t\t\tconst handleMouseMove = (e: MouseEvent) => {\n\t\t\t\tif (animationFrameId) {\n\t\t\t\t\tcancelAnimationFrame(animationFrameId);\n\t\t\t\t}\n\n\t\t\t\tanimationFrameId = requestAnimationFrame(() => {\n\t\t\t\t\tif (!wrapper) return;\n\t\t\t\t\tconst { left, top } = wrapper.getBoundingClientRect();\n\t\t\t\t\tconst x = e.clientX - left;\n\t\t\t\t\tconst y = e.clientY - top;\n\t\t\t\t\twrapper.style.setProperty('--mouse-x', `${x}px`);\n\t\t\t\t\twrapper.style.setProperty('--mouse-y', `${y}px`);\n\t\t\t\t});\n\t\t\t};\n\n\t\t\tconst handleMouseEnter = () => {\n\t\t\t\tif (!wrapper) return;\n\t\t\t\twrapper.style.setProperty('--radius', `${radius}px`);\n\t\t\t};\n\n\t\t\tconst handleMouseLeave = () => {\n\t\t\t\tif (!wrapper) return;\n\t\t\t\twrapper.style.setProperty('--radius', '0px');\n\t\t\t\tif (animationFrameId) {\n\t\t\t\t\tcancelAnimationFrame(animationFrameId);\n\t\t\t\t\tanimationFrameId = null;\n\t\t\t\t}\n\t\t\t};\n\n\t\t\twrapper.addEventListener('mousemove', handleMouseMove);\n\t\t\twrapper.addEventListener('mouseenter', handleMouseEnter);\n\t\t\twrapper.addEventListener('mouseleave', handleMouseLeave);\n\n\t\t\treturn () => {\n\t\t\t\twrapper.removeEventListener('mousemove', handleMouseMove);\n\t\t\t\twrapper.removeEventListener('mouseenter', handleMouseEnter);\n\t\t\t\twrapper.removeEventListener('mouseleave', handleMouseLeave);\n\t\t\t\tif (animationFrameId) {\n\t\t\t\t\tcancelAnimationFrame(animationFrameId);\n\t\t\t\t}\n\t\t\t};\n\t\t}, [radius]);\n\n\t\treturn (\n\t\t\t<div\n\t\t\t\tref={wrapperRef}\n\t\t\t\tstyle={\n\t\t\t\t\t{\n\t\t\t\t\t\t'--radius': '0px',\n\t\t\t\t\t\t'--mouse-x': '0px',\n\t\t\t\t\t\t'--mouse-y': '0px',\n\t\t\t\t\t\tbackground: `radial-gradient(var(--radius) circle at var(--mouse-x) var(--mouse-y), #3b82f6, transparent 80%)`,\n\t\t\t\t\t} as React.CSSProperties\n\t\t\t\t}\n\t\t\t\tclassName=\"group/input rounded-lg p-[2px] transition duration-300\"\n\t\t\t>\n\t\t\t\t<input\n\t\t\t\t\ttype={type}\n\t\t\t\t\tclassName={cn(\n\t\t\t\t\t\t`shadow-input dark:placeholder-text-neutral-600 flex h-10 w-full rounded-md border-none bg-gray-50 px-3 py-2 text-sm text-black transition duration-400 group-hover/input:shadow-none file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-neutral-400 focus-visible:ring-[2px] focus-visible:ring-neutral-400 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 dark:bg-zinc-800 dark:text-white dark:shadow-[0px_0px_1px_1px_#404040] dark:focus-visible:ring-neutral-600`,\n\t\t\t\t\t\tclassName,\n\t\t\t\t\t)}\n\t\t\t\t\tref={ref}\n\t\t\t\t\t{...props}\n\t\t\t\t/>\n\t\t\t</div>\n\t\t);\n\t}),\n);\n\n// ==================== BoxReveal Component ====================\ntype BoxRevealProps = {\n\tchildren: ReactNode;\n\twidth?: string;\n\tboxColor?: string;\n\tduration?: number;\n\tclassName?: string;\n};\n\nconst BoxReveal = memo(function BoxReveal({\n\tchildren,\n\twidth = 'fit-content',\n\tboxColor,\n\tduration,\n\tclassName,\n}: BoxRevealProps) {\n\tconst sectionRef = useRef<HTMLDivElement>(null);\n\tconst boxRef = useRef<HTMLDivElement>(null);\n\tconst childRef = useRef<HTMLDivElement>(null);\n\n\tuseEffect(() => {\n\t\tconst section = sectionRef.current;\n\t\tif (!section) return;\n\n\t\tconst observer = new IntersectionObserver(\n\t\t\t(entries) => {\n\t\t\t\tentries.forEach((entry) => {\n\t\t\t\t\tif (entry.isIntersecting) {\n\t\t\t\t\t\tgsap.timeline()\n\t\t\t\t\t\t\t.set(childRef.current, { opacity: 0, y: 50 })\n\t\t\t\t\t\t\t.set(boxRef.current, { transformOrigin: 'right' })\n\t\t\t\t\t\t\t.to(boxRef.current, {\n\t\t\t\t\t\t\t\tscaleX: 0,\n\t\t\t\t\t\t\t\tduration: duration ?? 0.5,\n\t\t\t\t\t\t\t\tease: 'power3.inOut',\n\t\t\t\t\t\t\t})\n\t\t\t\t\t\t\t.to(\n\t\t\t\t\t\t\t\tchildRef.current,\n\t\t\t\t\t\t\t\t{ y: 0, opacity: 1, duration: duration ?? 0.5, ease: 'power3.out' },\n\t\t\t\t\t\t\t\t'-=0.3',\n\t\t\t\t\t\t\t);\n\t\t\t\t\t\tobserver.unobserve(section);\n\t\t\t\t\t}\n\t\t\t\t});\n\t\t\t},\n\t\t\t{ threshold: 0.1 },\n\t\t);\n\n\t\tobserver.observe(section);\n\n\t\treturn () => {\n\t\t\tif (section) {\n\t\t\t\tobserver.unobserve(section);\n\t\t\t}\n\t\t};\n\t}, [duration]);\n\n\treturn (\n\t\t<div ref={sectionRef} style={{ width }} className={cn('relative overflow-hidden', className)}>\n\t\t\t<div ref={childRef}>{children}</div>\n\t\t\t<div\n\t\t\t\tref={boxRef}\n\t\t\t\tstyle={{\n\t\t\t\t\tbackground: boxColor ?? 'hsl(var(--skeleton))',\n\t\t\t\t}}\n\t\t\t\tclassName=\"absolute top-1 bottom-1 left-0 right-0 z-20 rounded-sm\"\n\t\t\t/>\n\t\t</div>\n\t);\n});\n\n// ==================== Ripple Component ====================\ninterface RippleProps {\n\tmainCircleSize?: number;\n\tmainCircleOpacity?: number;\n\tnumCircles?: number;\n}\nconst Ripple = memo(function Ripple({\n\tmainCircleSize = 210,\n\tmainCircleOpacity = 0.24,\n\tnumCircles = 11,\n}: RippleProps) {\n\treturn (\n\t\t<div className=\"absolute inset-0 flex items-center justify-center [mask-image:linear-gradient(to_bottom,white,transparent)]\">\n\t\t\t{Array.from({ length: numCircles }, (_, i) => {\n\t\t\t\tconst size = mainCircleSize + i * 70;\n\t\t\t\tconst opacity = mainCircleOpacity - i * 0.03;\n\t\t\t\tconst animationDelay = `${i * 0.06}s`;\n\t\t\t\tconst borderStyle = i === numCircles - 1 ? 'dashed' : 'solid';\n\t\t\t\tconst borderOpacity = 5 + i * 5;\n\n\t\t\t\treturn (\n\t\t\t\t\t<div\n\t\t\t\t\t\tkey={i}\n\t\t\t\t\t\tclassName=\"absolute animate-ripple rounded-full border\"\n\t\t\t\t\t\tstyle={\n\t\t\t\t\t\t\t{\n\t\t\t\t\t\t\t\twidth: `${size}px`,\n\t\t\t\t\t\t\t\theight: `${size}px`,\n\t\t\t\t\t\t\t\topacity: opacity,\n\t\t\t\t\t\t\t\tanimationDelay: animationDelay,\n\t\t\t\t\t\t\t\tborderStyle: borderStyle,\n\t\t\t\t\t\t\t\tborderWidth: '1px',\n\t\t\t\t\t\t\t\tborderColor: `hsl(var(--foreground) / ${borderOpacity / 100})`,\n\t\t\t\t\t\t\t\ttop: '50%',\n\t\t\t\t\t\t\t\tleft: '50%',\n\t\t\t\t\t\t\t\ttransform: 'translate(-50%, -50%)',\n\t\t\t\t\t\t\t} as React.CSSProperties\n\t\t\t\t\t\t}\n\t\t\t\t\t/>\n\t\t\t\t);\n\t\t\t})}\n\t\t</div>\n\t);\n});\n\n// ==================== OrbitingCircles Component ====================\nconst OrbitingCircles = memo(function OrbitingCircles({\n\tclassName,\n\tchildren,\n\treverse = false,\n\tduration = 20,\n\tdelay = 10,\n\tradius = 50,\n\tpath = true,\n}: {\n\tclassName?: string;\n\tchildren?: React.ReactNode;\n\treverse?: boolean;\n\tduration?: number;\n\tdelay?: number;\n\tradius?: number;\n\tpath?: boolean;\n}) {\n\treturn (\n\t\t<>\n\t\t\t{path && (\n\t\t\t\t<svg\n\t\t\t\t\txmlns=\"http://www.w3.org/2000/svg\"\n\t\t\t\t\tversion=\"1.1\"\n\t\t\t\t\tclassName=\"pointer-events-none absolute inset-0 size-full\"\n\t\t\t\t>\n\t\t\t\t\t<circle\n\t\t\t\t\t\tclassName=\"stroke-black/10 stroke-1 dark:stroke-white/10\"\n\t\t\t\t\t\tcx=\"50%\"\n\t\t\t\t\t\tcy=\"50%\"\n\t\t\t\t\t\tr={radius}\n\t\t\t\t\t\tfill=\"none\"\n\t\t\t\t\t/>\n\t\t\t\t</svg>\n\t\t\t)}\n\t\t\t<div\n\t\t\t\tstyle={\n\t\t\t\t\t{\n\t\t\t\t\t\t'--duration': duration,\n\t\t\t\t\t\t'--radius': radius,\n\t\t\t\t\t\t'--delay': -delay,\n\t\t\t\t\t} as React.CSSProperties\n\t\t\t\t}\n\t\t\t\tclassName={cn(\n\t\t\t\t\t'absolute flex size-full transform-gpu animate-orbit items-center justify-center rounded-full border bg-black/10 [animation-delay:calc(var(--delay)*1s)] dark:bg-white/10',\n\t\t\t\t\t{ '[animation-direction:reverse]': reverse },\n\t\t\t\t\tclassName,\n\t\t\t\t)}\n\t\t\t>\n\t\t\t\t{children}\n\t\t\t</div>\n\t\t</>\n\t);\n});\n\n// ==================== TechOrbitDisplay Component ====================\ninterface OrbitIcon {\n\tcomponent: () => ReactNode;\n\tclassName: string;\n\tduration?: number;\n\tdelay?: number;\n\tradius?: number;\n\tpath?: boolean;\n\treverse?: boolean;\n}\n\nconst iconsArray: OrbitIcon[] = [\n\t{ component: () => <img width={30} height={30} src='https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/html5/html5-original.svg' alt='HTML5' />, className: 'size-[30px] border-none bg-transparent', duration: 20, delay: 20, radius: 100, path: false, reverse: false },\n\t{ component: () => <img width={30} height={30} src='https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/css3/css3-original.svg' alt='CSS3' />, className: 'size-[30px] border-none bg-transparent', duration: 20, delay: 10, radius: 100, path: false, reverse: false },\n\t{ component: () => <img width={50} height={50} src='https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/typescript/typescript-original.svg' alt='TypeScript' />, className: 'size-[50px] border-none bg-transparent', radius: 210, duration: 20, path: false, reverse: false },\n\t{ component: () => <img width={50} height={50} src='https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/javascript/javascript-original.svg' alt='JavaScript' />, className: 'size-[50px] border-none bg-transparent', radius: 210, duration: 20, delay: 20, path: false, reverse: false },\n\t{ component: () => <img width={30} height={30} src='https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/tailwindcss/tailwindcss-original.svg' alt='TailwindCSS' />, className: 'size-[30px] border-none bg-transparent', duration: 20, delay: 20, radius: 150, path: false, reverse: true },\n\t{ component: () => <img width={30} height={30} src='https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/nextjs/nextjs-original.svg' alt='Nextjs' />, className: 'size-[30px] border-none bg-transparent', duration: 20, delay: 10, radius: 150, path: false, reverse: true },\n\t{ component: () => <img width={50} height={50} src='https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/react/react-original.svg' alt='React' />, className: 'size-[50px] border-none bg-transparent', radius: 270, duration: 20, path: false, reverse: true },\n\t{ component: () => <img width={50} height={50} src='https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/figma/figma-original.svg' alt='Figma' />, className: 'size-[50px] border-none bg-transparent', radius: 270, duration: 20, delay: 60, path: false, reverse: true },\n\t{ component: () => <img width={50} height={50} src='https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/git/git-original.svg' alt='Git' />, className: 'size-[50px] border-none bg-transparent', radius: 320, duration: 20, delay: 20, path: false, reverse: false },\n];\n\nconst TechOrbitDisplay = memo(function TechOrbitDisplay({ text = 'Amazing App Shell' }: { text?: string }) {\n\treturn (\n\t\t<div className=\"relative flex size-full flex-col items-center justify-center overflow-hidden rounded-lg\">\n\t\t\t<span className=\"pointer-events-none whitespace-pre-wrap bg-gradient-to-b from-black to-gray-300/80 bg-clip-text text-center text-7xl font-semibold leading-none text-transparent dark:from-white dark:to-slate-900/10\">\n\t\t\t\t{text}\n\t\t\t</span>\n\t\t\t{iconsArray.map((icon, index) => (\n\t\t\t\t<OrbitingCircles key={index} {...icon}>\n\t\t\t\t\t{icon.component()}\n\t\t\t\t</OrbitingCircles>\n\t\t\t))}\n\t\t</div>\n\t);\n});\n\n// ==================== AnimatedForm Components ====================\nconst BottomGradient = () => (\n\t<>\n\t\t<span className=\"group-hover/btn:opacity-100 block transition duration-500 opacity-0 absolute h-px w-full -bottom-px inset-x-0 bg-gradient-to-r from-transparent via-cyan-500 to-transparent\" />\n\t\t<span className=\"group-hover/btn:opacity-100 blur-sm block transition duration-500 opacity-0 absolute h-px w-1/2 mx-auto -bottom-px inset-x-10 bg-gradient-to-r from-transparent via-indigo-500 to-transparent\" />\n\t</>\n);\n\nconst Label = memo(function Label({ className, ...props }: React.LabelHTMLAttributes<HTMLLabelElement>) {\n\treturn <label className={cn('text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70', className)} {...props} />;\n});\n\n// ==================== Main LoginPage Component ====================\ninterface LoginPageProps {\n\tonLogin?: (email: string, password: string) => void;\n\tonForgotPassword?: (email: string) => void;\n\tonSignUp?: () => void;\n}\n\ntype LoginState = 'login' | 'forgot-password' | 'reset-sent';\n\nexport function LoginPage({ onLogin, onForgotPassword }: LoginPageProps) {\n\tconst [state, setState] = useState<LoginState>('login');\n\tconst [email, setEmail] = useState('');\n\tconst [password, setPassword] = useState('');\n\tconst [isLoading, setIsLoading] = useState(false);\n\tconst [errors, setErrors] = useState<{ email?: string; password?: string }>({});\n\tconst [showPassword, setShowPassword] = useState(false);\n\n\tconst handleLoginSubmit = async (e: FormEvent) => {\n\t\te.preventDefault();\n\t\tsetErrors({});\n\t\tconst newErrors: typeof errors = {};\n\t\tif (!email) newErrors.email = 'Email is required';\n\t\tif (!password) newErrors.password = 'Password is required';\n\t\tif (Object.keys(newErrors).length > 0) {\n\t\t\tsetErrors(newErrors);\n\t\t\treturn;\n\t\t}\n\t\tsetIsLoading(true);\n\t\tawait onLogin?.(email, password);\n\t\tsetIsLoading(false);\n\t};\n\n\tconst handleForgotSubmit = async (e: FormEvent) => {\n\t\te.preventDefault();\n\t\tsetErrors({});\n\t\tif (!email) {\n\t\t\tsetErrors({ email: 'Email is required' });\n\t\t\treturn;\n\t\t}\n\t\tsetIsLoading(true);\n\t\tawait onForgotPassword?.(email);\n\t\tsetIsLoading(false);\n\t\tsetState('reset-sent');\n\t};\n\n\tconst renderContent = () => {\n\t\tif (state === 'reset-sent') {\n\t\t\treturn (\n\t\t\t\t<div className=\"w-full max-w-md mx-auto text-center flex flex-col gap-4\">\n\t\t\t\t\t<BoxReveal boxColor=\"hsl(var(--skeleton))\" duration={0.5}>\n\t\t\t\t\t\t<div className=\"w-16 h-16 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center mx-auto\">\n\t\t\t\t\t\t\t<Mail className=\"w-8 h-8 text-green-600 dark:text-green-400\" />\n\t\t\t\t\t\t</div>\n\t\t\t\t\t</BoxReveal>\n\t\t\t\t\t<BoxReveal boxColor=\"hsl(var(--skeleton))\" duration={0.5}>\n\t\t\t\t\t\t<h1 className=\"text-3xl font-bold tracking-tight\">Check your email</h1>\n\t\t\t\t\t</BoxReveal>\n\t\t\t\t\t<BoxReveal boxColor=\"hsl(var(--skeleton))\" duration={0.5}>\n\t\t\t\t\t\t<p className=\"text-muted-foreground\">We've sent a password reset link to <strong>{email}</strong></p>\n\t\t\t\t\t</BoxReveal>\n\t\t\t\t\t<BoxReveal width=\"100%\" boxColor=\"hsl(var(--skeleton))\" duration={0.5}>\n\t\t\t\t\t\t<button onClick={() => setState('login')} className=\"text-sm text-blue-500 hover:underline\">\n\t\t\t\t\t\t\t<div className=\"flex items-center justify-center gap-2\">\n\t\t\t\t\t\t\t\t<ArrowLeft className=\"w-4 h-4\" /> Back to login\n\t\t\t\t\t\t\t</div>\n\t\t\t\t\t\t</button>\n\t\t\t\t\t</BoxReveal>\n\t\t\t\t</div>\n\t\t\t);\n\t\t}\n\n\t\tconst isLogin = state === 'login';\n\t\tconst formFields = isLogin\n\t\t\t? [\n\t\t\t\t{ label: 'Email', required: true, type: 'email', placeholder: 'Enter your email address', onChange: (e: ChangeEvent<HTMLInputElement>) => setEmail(e.target.value) },\n\t\t\t\t{ label: 'Password', required: true, type: 'password', placeholder: 'Enter your password', onChange: (e: ChangeEvent<HTMLInputElement>) => setPassword(e.target.value) },\n\t\t\t]\n\t\t\t: [{ label: 'Email', required: true, type: 'email', placeholder: 'Enter your email address', onChange: (e: ChangeEvent<HTMLInputElement>) => setEmail(e.target.value) }];\n\n\t\treturn (\n\t\t\t<div className=\"w-full max-w-md mx-auto flex flex-col gap-4\">\n\t\t\t\t<BoxReveal boxColor=\"hsl(var(--skeleton))\" duration={0.3}>\n\t\t\t\t\t<h2 className=\"font-bold text-3xl text-neutral-800 dark:text-neutral-200\">{isLogin ? 'Welcome back' : 'Reset Password'}</h2>\n\t\t\t\t</BoxReveal>\n\t\t\t\t<BoxReveal boxColor=\"hsl(var(--skeleton))\" duration={0.3} className=\"pb-2\">\n\t\t\t\t\t<p className=\"text-neutral-600 text-sm max-w-sm dark:text-neutral-300\">{isLogin ? 'Sign in to your account to continue' : 'Enter your email to receive a reset link'}</p>\n\t\t\t\t</BoxReveal>\n\t\t\t\t{isLogin && (\n\t\t\t\t\t<BoxReveal boxColor=\"hsl(var(--skeleton))\" duration={0.3} width=\"100%\" className=\"overflow-visible\">\n\t\t\t\t\t\t<button className=\"g-button group/btn bg-transparent w-full rounded-md border h-10 font-medium outline-hidden hover:cursor-pointer\" type=\"button\">\n\t\t\t\t\t\t\t<span className=\"flex items-center justify-center w-full h-full gap-3\">\n\t\t\t\t\t\t\t\t<img src=\"https://cdn1.iconfinder.com/data/icons/google-s-logo/150/Google_Icons-09-512.png\" width={26} height={26} alt=\"Google Icon\" />\n\t\t\t\t\t\t\t\tSign in with Google\n\t\t\t\t\t\t\t</span>\n\t\t\t\t\t\t\t<BottomGradient />\n\t\t\t\t\t\t</button>\n\t\t\t\t\t</BoxReveal>\n\t\t\t\t)}\n\t\t\t\t{isLogin && (\n\t\t\t\t\t<BoxReveal boxColor=\"hsl(var(--skeleton))\" duration={0.3} width=\"100%\">\n\t\t\t\t\t\t<div className=\"flex items-center gap-4\">\n\t\t\t\t\t\t\t<hr className=\"flex-1 border-1 border-dashed border-neutral-300 dark:border-neutral-700\" />\n\t\t\t\t\t\t\t<p className=\"text-neutral-700 text-sm dark:text-neutral-300\">or</p>\n\t\t\t\t\t\t\t<hr className=\"flex-1 border-1 border-dashed border-neutral-300 dark:border-neutral-700\" />\n\t\t\t\t\t\t</div>\n\t\t\t\t\t</BoxReveal>\n\t\t\t\t)}\n\t\t\t\t<form onSubmit={isLogin ? handleLoginSubmit : handleForgotSubmit}>\n\t\t\t\t\t{formFields.map((field) => (\n\t\t\t\t\t\t<div key={field.label} className=\"flex flex-col gap-2 mb-4\">\n\t\t\t\t\t\t\t<BoxReveal boxColor=\"hsl(var(--skeleton))\" duration={0.3}>\n\t\t\t\t\t\t\t\t<Label htmlFor={field.label}>{field.label} <span className=\"text-red-500\">*</span></Label>\n\t\t\t\t\t\t\t</BoxReveal>\n\t\t\t\t\t\t\t<BoxReveal width=\"100%\" boxColor=\"hsl(var(--skeleton))\" duration={0.3} className=\"flex flex-col space-y-2 w-full\">\n\t\t\t\t\t\t\t\t<div className=\"relative\">\n\t\t\t\t\t\t\t\t\t<Input type={field.type === 'password' ? (showPassword ? 'text' : 'password') : field.type} id={field.label} placeholder={field.placeholder} onChange={field.onChange} />\n\t\t\t\t\t\t\t\t\t{field.type === 'password' && (\n\t\t\t\t\t\t\t\t\t\t<button type=\"button\" onClick={() => setShowPassword(!showPassword)} className=\"absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5\">\n\t\t\t\t\t\t\t\t\t\t\t{showPassword ? <EyeOff className=\"h-5 w-5 text-gray-500\" /> : <Eye className=\"h-5 w-5 text-gray-500\" />}\n\t\t\t\t\t\t\t\t\t\t</button>\n\t\t\t\t\t\t\t\t\t)}\n\t\t\t\t\t\t\t\t</div>\n\t\t\t\t\t\t\t\t<div className=\"h-4\">{errors[field.label as keyof typeof errors] && <p className=\"text-red-500 text-xs\">{errors[field.label as keyof typeof errors]}</p>}</div>\n\t\t\t\t\t\t\t</BoxReveal>\n\t\t\t\t\t\t</div>\n\t\t\t\t\t))}\n\n\t\t\t\t\t<BoxReveal width=\"100%\" boxColor=\"hsl(var(--skeleton))\" duration={0.3} className=\"overflow-visible\">\n\t\t\t\t\t\t<button\n\t\t\t\t\t\t\tclassName=\"bg-gradient-to-br relative group/btn from-zinc-200 dark:from-zinc-900 dark:to-zinc-900 to-zinc-200 block dark:bg-zinc-800 w-full text-black dark:text-white rounded-md h-10 font-medium shadow-[0px_1px_0px_0px_#ffffff40_inset,0px_-1px_0px_0px_#ffffff40_inset] dark:shadow-[0px_1px_0px_0px_var(--zinc-800)_inset,0px_-1px_0px_0px_var(--zinc-800)_inset] outline-hidden hover:cursor-pointer disabled:opacity-50\"\n\t\t\t\t\t\t\ttype=\"submit\" disabled={isLoading}\n\t\t\t\t\t\t>\n\t\t\t\t\t\t\t{isLoading ? (\n\t\t\t\t\t\t\t\t<div className=\"flex items-center justify-center gap-2\">\n\t\t\t\t\t\t\t\t\t<div className=\"w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin\" />\n\t\t\t\t\t\t\t\t\t<span>Processing...</span>\n\t\t\t\t\t\t\t\t</div>\n\t\t\t\t\t\t\t) : (\n\t\t\t\t\t\t\t\t<>{isLogin ? 'Sign in' : 'Send reset link'} &rarr;</>\n\t\t\t\t\t\t\t)}\n\t\t\t\t\t\t\t<BottomGradient />\n\t\t\t\t\t\t</button>\n\t\t\t\t\t</BoxReveal>\n\t\t\t\t\t<BoxReveal boxColor=\"hsl(var(--skeleton))\" duration={0.3}>\n\t\t\t\t\t\t<div className=\"mt-4 text-center\">\n\t\t\t\t\t\t\t<button type=\"button\" className=\"text-sm text-blue-500 hover:underline\" onClick={() => setState(isLogin ? 'forgot-password' : 'login')}>\n\t\t\t\t\t\t\t\t{isLogin ? 'Forgot password?' : 'Back to login'}\n\t\t\t\t\t\t\t</button>\n\t\t\t\t\t\t</div>\n\t\t\t\t\t</BoxReveal>\n\t\t\t\t</form>\n\t\t\t</div>\n\t\t);\n\t};\n\n\treturn (\n\t\t<section className=\"flex max-lg:justify-center min-h-screen w-full login-page-theme bg-background text-foreground\">\n\t\t\t{/* Left Side */}\n\t\t\t<div className=\"flex flex-col justify-center w-1/2 max-lg:hidden relative\">\n\t\t\t\t<Ripple />\n\t\t\t\t<TechOrbitDisplay />\n\t\t\t</div>\n\n\t\t\t{/* Right Side */}\n\t\t\t<div className=\"w-1/2 h-screen flex flex-col justify-center items-center max-lg:w-full max-lg:px-[10%]\">\n\t\t\t\t{renderContent()}\n\t\t\t</div>\n\t\t</section>\n\t);\n}"
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 120

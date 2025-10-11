@@ -291,7 +291,7 @@ const iconsArray: OrbitIcon[] = [
 	{ component: () => <img width={50} height={50} src='https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/git/git-original.svg' alt='Git' />, className: 'size-[50px] border-none bg-transparent', radius: 320, duration: 20, delay: 20, path: false, reverse: false },
 ];
 
-const TechOrbitDisplay = memo(function TechOrbitDisplay({ text = 'Amazing App Shell' }: { text?: string }) {
+const TechOrbitDisplay = memo(function TechOrbitDisplay({ text = 'Jeli App Shell' }: { text?: string }) {
 	return (
 		<div className="relative flex size-full flex-col items-center justify-center overflow-hidden rounded-lg">
 			<span className="pointer-events-none whitespace-pre-wrap bg-gradient-to-b from-black to-gray-300/80 bg-clip-text text-center text-7xl font-semibold leading-none text-transparent dark:from-white dark:to-slate-900/10">

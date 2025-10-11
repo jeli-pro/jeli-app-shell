@@ -139,7 +139,7 @@ export function DashboardContent({ isInSidePane = false }: DashboardContentProps
           {/* Header */}
           <PageHeader
             title="Dashboard"
-            description="Welcome to the amazing app shell demo! Explore all the features and customization options."
+            description="Welcome to the Jeli App Shell demo! Explore all the features and customization options."
           />
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

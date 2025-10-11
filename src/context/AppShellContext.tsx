@@ -60,7 +60,7 @@ const defaultState: AppShellState = {
   reducedMotion: false,
   compactMode: false,
   primaryColor: '220 84% 60%',
-  appName: 'Amazing App',
+  appName: 'Jeli App',
   appLogo: undefined,
 };
 

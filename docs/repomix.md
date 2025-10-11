@@ -4363,20 +4363,6 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
 }
 ````
 
-## File: tsconfig.node.json
-````json
-{
-  "compilerOptions": {
-    "composite": true,
-    "skipLibCheck": true,
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
-    "allowSyntheticDefaultImports": true
-  },
-  "include": ["vite.config.ts"]
-}
-````
-
 ## File: src/components/global/CommandPalette.tsx
 ````typescript
 import {
@@ -5488,43 +5474,19 @@ export default {
 }
 ````
 
-## File: vite.config.ts
-````typescript
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-import { fileURLToPath, URL } from 'url'
-import { resolve } from 'path'
-
-// https://vitejs.dev/config/
-export default defineConfig({
-  plugins: [react()],
-  resolve: {
-    alias: {
-      "@": fileURLToPath(new URL('./src', import.meta.url)),
-    },
+## File: tsconfig.node.json
+````json
+{
+  "compilerOptions": {
+    "composite": true,
+    "skipLibCheck": true,
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "allowSyntheticDefaultImports": true,
+    "resolveJsonModule": true
   },
-  build: {
-    lib: {
-      entry: resolve(__dirname, 'src/index.ts'),
-      name: 'AmazingAppShell',
-      fileName: (format) => `amazing-app-shell.${format}.js`,
-    },
-    rollupOptions: {
-      // make sure to externalize deps that shouldn't be bundled
-      // into your library
-      external: ['react', 'react-dom', 'tailwindcss'],
-      output: {
-        // Provide global variables to use in the UMD build
-        // for externalized deps
-        globals: {
-          react: 'React',
-          'react-dom': 'ReactDOM',
-          tailwindcss: 'tailwindcss',
-        },
-      },
-    },
-  },
-})
+  "include": ["vite.config.ts"]
+}
 ````
 
 ## File: src/components/layout/AppShell.tsx
@@ -5686,6 +5648,50 @@ export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
   }
 )
 MainContent.displayName = 'MainContent'
+````
+
+## File: vite.config.ts
+````typescript
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+import { fileURLToPath, URL } from 'url'
+import { resolve } from 'path'
+import pkg from './package.json' with { type: 'json' }
+
+// https://vitejs.dev/config/
+export default defineConfig({
+  plugins: [react()],
+  resolve: {
+    alias: {
+      "@": fileURLToPath(new URL('./src', import.meta.url)),
+    },
+  },
+  build: {
+    lib: {
+      entry: resolve(__dirname, 'src/index.ts'),
+      name: 'AmazingAppShell',
+      fileName: (format) => `amazing-app-shell.${format}.js`,
+    },
+    rollupOptions: {
+      // make sure to externalize deps that shouldn't be bundled
+      // into your library
+      external: Object.keys(pkg.peerDependencies || {}),
+      output: {
+        // Provide global variables to use in the UMD build
+        // for externalized deps
+        globals: {
+          react: 'React',
+          'react-dom': 'ReactDOM',
+          tailwindcss: 'tailwindcss',
+          gsap: 'gsap',
+          'lucide-react': 'lucide-react',
+          zustand: 'zustand',
+          sonner: 'sonner'
+        },
+      },
+    },
+  },
+})
 ````
 
 ## File: README.md
@@ -6364,78 +6370,6 @@ function App() {
 export default App
 ````
 
-## File: package.json
-````json
-{
-  "name": "amazing-app-shell",
-  "private": false,
-  "version": "1.0.1",
-  "type": "module",
-  "files": [
-    "dist"
-  ],
-  "main": "./dist/amazing-app-shell.umd.js",
-  "module": "./dist/amazing-app-shell.es.js",
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "import": "./dist/amazing-app-shell.es.js",
-      "require": "./dist/amazing-app-shell.umd.js"
-    },
-    "./dist/style.css": "./dist/style.css"
-  },
-  "sideEffects": [
-    "**/*.css"
-  ],
-  "scripts": {
-    "dev": "vite",
-    "build": "tsc && vite build",
-    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "preview": "vite preview"
-  },
-  "dependencies": {
-    "@iconify/react": "^4.1.1",
-    "@radix-ui/react-avatar": "^1.0.4",
-    "@radix-ui/react-dialog": "^1.0.5",
-    "@radix-ui/react-dropdown-menu": "^2.0.6",
-    "@radix-ui/react-label": "^2.1.7",
-    "@radix-ui/react-popover": "^1.0.7",
-    "@radix-ui/react-slot": "^1.0.2",
-    "@radix-ui/react-tabs": "^1.0.4",
-    "class-variance-authority": "^0.7.0",
-    "clsx": "^2.0.0",
-    "cmdk": "^0.2.0",
-    "gsap": "^3.12.2",
-    "lucide-react": "^0.294.0",
-    "sonner": "^1.2.4",
-    "tailwind-merge": "^2.0.0",
-    "zustand": "^4.5.7"
-  },
-  "peerDependencies": {
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "tailwindcss": "^3.3.5"
-  },
-  "devDependencies": {
-    "@types/node": "^20.10.0",
-    "@types/react": "^18.2.37",
-    "@types/react-dom": "^18.2.15",
-    "@typescript-eslint/eslint-plugin": "^6.10.0",
-    "@typescript-eslint/parser": "^6.10.0",
-    "@vitejs/plugin-react": "^4.1.1",
-    "autoprefixer": "^10.4.16",
-    "eslint": "^8.53.0",
-    "eslint-plugin-react-hooks": "^4.6.0",
-    "eslint-plugin-react-refresh": "^0.4.4",
-    "postcss": "^8.4.31",
-    "tailwindcss": "^3.3.5",
-    "tailwindcss-animate": "^1.0.7",
-    "typescript": "^5.2.2",
-    "vite": "^4.5.0"
-  }
-}
-````
-
 ## File: src/store/appStore.ts
 ````typescript
 import { create } from 'zustand'
@@ -6493,4 +6427,75 @@ export const useAppStore = create<AppState>()(
     }
   )
 )
+````
+
+## File: package.json
+````json
+{
+  "name": "amazing-app-shell",
+  "private": false,
+  "version": "1.0.1",
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "main": "./dist/amazing-app-shell.umd.js",
+  "module": "./dist/amazing-app-shell.es.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/amazing-app-shell.es.js",
+      "require": "./dist/amazing-app-shell.umd.js"
+    },
+    "./dist/style.css": "./dist/style.css"
+  },
+  "sideEffects": [
+    "**/*.css"
+  ],
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "preview": "vite preview"
+  },
+  "dependencies": {},
+  "peerDependencies": {
+    "@iconify/react": "^4.1.1",
+    "@radix-ui/react-avatar": "^1.0.4",
+    "@radix-ui/react-dialog": "^1.0.5",
+    "@radix-ui/react-dropdown-menu": "^2.0.6",
+    "@radix-ui/react-label": "^2.1.7",
+    "@radix-ui/react-popover": "^1.0.7",
+    "@radix-ui/react-slot": "^1.0.2",
+    "@radix-ui/react-tabs": "^1.0.4",
+    "class-variance-authority": "^0.7.0",
+    "clsx": "^2.0.0",
+    "cmdk": "^0.2.0",
+    "gsap": "^3.12.2",
+    "lucide-react": "^0.294.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "sonner": "^1.2.4",
+    "tailwind-merge": "^2.0.0",
+    "tailwindcss": "^3.3.5",
+    "zustand": "^4.5.7"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@types/react": "^18.2.37",
+    "@types/react-dom": "^18.2.15",
+    "@typescript-eslint/eslint-plugin": "^6.10.0",
+    "@typescript-eslint/parser": "^6.10.0",
+    "@vitejs/plugin-react": "^4.1.1",
+    "autoprefixer": "^10.4.16",
+    "eslint": "^8.53.0",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint-plugin-react-refresh": "^0.4.4",
+    "postcss": "^8.4.31",
+    "tailwindcss": "^3.3.5",
+    "tailwindcss-animate": "^1.0.7",
+    "typescript": "^5.2.2",
+    "vite": "^4.5.0"
+  }
+}
 ````

@@ -237,7 +237,7 @@ function App() {
   return (
     <div className="h-screen w-screen overflow-hidden bg-background">
       <AppShellProvider
-        appName="Amazing App"
+        appName="Jeli App"
         appLogo={
           <div className="p-2 bg-primary/20 rounded-lg">
             <Rocket className="w-5 h-5 text-primary" />

@@ -1,18 +1,18 @@
 {
-  "name": "amazing-app-shell",
+  "name": "jeli-app-shell",
   "private": false,
   "version": "1.0.1",
   "type": "module",
   "files": [
     "dist"
   ],
-  "main": "./dist/amazing-app-shell.umd.js",
-  "module": "./dist/amazing-app-shell.es.js",
+  "main": "./dist/jeli-app-shell.umd.js",
+  "module": "./dist/jeli-app-shell.es.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/amazing-app-shell.es.js",
-      "require": "./dist/amazing-app-shell.umd.js"
+      "import": "./dist/jeli-app-shell.es.js",
+      "require": "./dist/jeli-app-shell.umd.js"
     },
     "./dist/style.css": "./dist/style.css"
   },
