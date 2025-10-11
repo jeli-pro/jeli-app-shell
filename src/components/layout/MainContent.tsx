@@ -7,7 +7,7 @@ import {
   Bell,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { BODY_STATES, type BodyState } from '@/lib/utils'
+import { BODY_STATES } from '@/lib/utils'
 import { DashboardContent } from '@/pages/Dashboard'
 import { SettingsPage } from '@/pages/Settings'
 import { ToasterDemo } from '@/pages/ToasterDemo'
@@ -16,14 +16,13 @@ import { NotificationsPage } from '@/pages/Notifications'
 import { ContentInSidePanePlaceholder } from '@/components/shared/ContentInSidePanePlaceholder'
 
 interface MainContentProps {
-  bodyState: BodyState
   onToggleFullscreen: () => void
 }
 
 export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
-  ({ bodyState, onToggleFullscreen }, ref) => {
-    const { sidePaneContent, openSidePane, activePage, setActivePage } = useAppStore()
-
+  ({ onToggleFullscreen }, ref) => {
+    const { sidePaneContent, openSidePane, activePage, setActivePage, bodyState } = useAppStore()
+    
     const isDashboardInSidePane = sidePaneContent === 'main' && bodyState === BODY_STATES.SIDE_PANE
     const isSettingsInSidePane = sidePaneContent === 'settings' && bodyState === BODY_STATES.SIDE_PANE
     const isToasterInSidePane = sidePaneContent === 'toaster' && bodyState === BODY_STATES.SIDE_PANE

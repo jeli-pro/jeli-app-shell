@@ -1,0 +1,437 @@
+uuid: c32c5211-1647-4952-b88d-7a421b369c73
+projectId: amazing-app-shell
+createdAt: '2025-10-11T00:23:11.127Z'
+gitCommitMsg: >-
+  fix(tsc): remove unused variables and imports
+
+  This commit resolves TypeScript errors by removing declared but unused
+  variables and imports across several components.
+
+  - `CommandPalette.tsx`: Removed the unused `React` import. - `AppShell.tsx`:
+  Removed `setIsResizingRightPane` as it's no longer used directly in the
+  component. - `MainContent.tsx`: Removed the unused `BodyState` type import.
+promptSummary: >-
+  The user provided TypeScript errors related to unused variables and imports,
+  which needed to be fixed.
+reasoning:
+  - >-
+    I've identified and fixed the TypeScript errors you've encountered. Here are
+    the changes:
+  - >-
+    1.  **`CommandPalette.tsx`**: Removed the unused `React` import. Since
+    `useEffect` was moved to a custom hook, the component no longer requires the
+    `React` namespace directly.
+  - >-
+    2.  **`AppShell.tsx`**: Removed the `setIsResizingRightPane` variable from
+    the `useAppStore` destructuring. Its logic was moved into the
+    `useResizableRightPane` hook, making the direct call in this component
+    obsolete.
+  - >-
+    3.  **`MainContent.tsx`**: Removed the unused `BodyState` type import from
+    `@/lib/utils`. The component uses the `BODY_STATES` constant, but the type
+    itself was not needed.
+  - These small cleanups resolve all the reported TypeScript errors.
+operations:
+  - type: write
+    path: src/components/global/CommandPalette.tsx
+    content: |+
+      --- src/components/global/CommandPalette.tsx
+      +++ src/components/global/CommandPalette.tsx
+      @@ -1,4 +1,3 @@
+      -import * as React from 'react'
+       import {
+         CommandDialog,
+         CommandEmpty,
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/components/layout/AppShell.tsx
+    content: |+
+      --- src/components/layout/AppShell.tsx
+      +++ src/components/layout/AppShell.tsx
+      @@ -19,7 +19,6 @@
+           toggleSidebar,
+           peekSidebar,
+           toggleFullscreen,
+      -    setIsResizingRightPane,
+           toggleDarkMode,
+           autoExpandSidebar,
+         } = useAppStore()
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/components/layout/MainContent.tsx
+    content: |+
+      --- src/components/layout/MainContent.tsx
+      +++ src/components/layout/MainContent.tsx
+      @@ -7,7 +7,7 @@
+         Bell,
+       } from 'lucide-react'
+       import { cn } from '@/lib/utils'
+      -import { BODY_STATES, type BodyState } from '@/lib/utils'
+      +import { BODY_STATES } from '@/lib/utils'
+       import { DashboardContent } from '@/pages/Dashboard'
+       import { SettingsPage } from '@/pages/Settings'
+       import { ToasterDemo } from '@/pages/ToasterDemo'
+
+    patchStrategy: standard-diff
+snapshot:
+  src/components/global/CommandPalette.tsx: >-
+    import * as React from 'react'
+
+    import {
+      CommandDialog,
+      CommandEmpty,
+      CommandGroup,
+      CommandInput,
+      CommandItem,
+      CommandList,
+      CommandSeparator,
+      CommandShortcut,
+    } from '@/components/ui/command'
+
+    import { useAppStore, type ActivePage } from '@/store/appStore'
+
+    import { useCommandPaletteToggle } from
+    '@/hooks/useCommandPaletteToggle.hook'
+
+    import { Home, Settings, Moon, Sun, Monitor, Smartphone, PanelRight,
+    Maximize, Component, Bell } from 'lucide-react'
+
+
+    export function CommandPalette() {
+      const {
+        isCommandPaletteOpen,
+        setCommandPaletteOpen,
+        setActivePage,
+        toggleDarkMode,
+        isDarkMode,
+        setCompactMode,
+        toggleFullscreen,
+        openSidePane,
+      } = useAppStore()
+      useCommandPaletteToggle()
+      
+      const runCommand = (command: () => void) => {
+        setCommandPaletteOpen(false)
+        command()
+      }
+
+      return (
+        <CommandDialog open={isCommandPaletteOpen} onOpenChange={setCommandPaletteOpen}>
+          <CommandInput placeholder="Type a command or search..." />
+          <CommandList>
+            <CommandEmpty>No results found.</CommandEmpty>
+            <CommandGroup heading="Navigation">
+              <CommandItem onSelect={() => runCommand(() => setActivePage('dashboard'))}>
+                <Home className="mr-2 h-4 w-4" />
+                <span>Go to Dashboard</span>
+                <CommandShortcut>G D</CommandShortcut>
+              </CommandItem>
+              <CommandItem onSelect={() => runCommand(() => setActivePage('settings'))}>
+                <Settings className="mr-2 h-4 w-4" />
+                <span>Go to Settings</span>
+                <CommandShortcut>G S</CommandShortcut>
+              </CommandItem>
+              <CommandItem onSelect={() => runCommand(() => setActivePage('toaster'))}>
+                <Component className="mr-2 h-4 w-4" />
+                <span>Go to Toaster Demo</span>
+                <CommandShortcut>G T</CommandShortcut>
+              </CommandItem>
+              <CommandItem onSelect={() => runCommand(() => setActivePage('notifications' as ActivePage))}>
+                <Bell className="mr-2 h-4 w-4" />
+                <span>Go to Notifications</span>
+                <CommandShortcut>G N</CommandShortcut>
+              </CommandItem>
+            </CommandGroup>
+            <CommandSeparator />
+            <CommandGroup heading="Actions">
+              <CommandItem onSelect={() => runCommand(toggleDarkMode)}>
+                {isDarkMode ? <Sun className="mr-2 h-4 w-4" /> : <Moon className="mr-2 h-4 w-4" />}
+                <span>Toggle Theme</span>
+                <CommandShortcut>⌘T</CommandShortcut>
+              </CommandItem>
+              <CommandItem onSelect={() => runCommand(toggleFullscreen)}>
+                <Maximize className="mr-2 h-4 w-4" />
+                <span>Toggle Fullscreen</span>
+                <CommandShortcut>⌘F</CommandShortcut>
+              </CommandItem>
+              <CommandItem onSelect={() => runCommand(() => openSidePane('settings'))}>
+                <PanelRight className="mr-2 h-4 w-4" />
+                <span>Open Settings in Side Pane</span>
+                <CommandShortcut>⌥S</CommandShortcut>
+              </CommandItem>
+            </CommandGroup>
+            <CommandSeparator />
+            <CommandGroup heading="Preferences">
+              <CommandItem onSelect={() => runCommand(() => setCompactMode(true))}>
+                <Smartphone className="mr-2 h-4 w-4" />
+                <span>Enable Compact Mode</span>
+                <CommandShortcut>⌘C</CommandShortcut>
+              </CommandItem>
+              <CommandItem onSelect={() => runCommand(() => setCompactMode(false))}>
+                <Monitor className="mr-2 h-4 w-4" />
+                <span>Disable Compact Mode</span>
+                <CommandShortcut>⇧⌘C</CommandShortcut>
+              </CommandItem>
+            </CommandGroup>
+          </CommandList>
+        </CommandDialog>
+      )
+    }
+  src/components/layout/MainContent.tsx: >-
+    import { forwardRef } from 'react'
+
+    import { 
+      X,
+      LayoutDashboard,
+      Settings,
+      Component,
+      Bell,
+    } from 'lucide-react'
+
+    import { cn } from '@/lib/utils'
+
+    import { BODY_STATES, type BodyState } from '@/lib/utils'
+
+    import { DashboardContent } from '@/pages/Dashboard'
+
+    import { SettingsPage } from '@/pages/Settings'
+
+    import { ToasterDemo } from '@/pages/ToasterDemo'
+
+    import { useAppStore } from '@/store/appStore'
+
+    import { NotificationsPage } from '@/pages/Notifications'
+
+    import { ContentInSidePanePlaceholder } from
+    '@/components/shared/ContentInSidePanePlaceholder'
+
+
+    interface MainContentProps {
+      onToggleFullscreen: () => void
+    }
+
+
+    export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
+      ({ onToggleFullscreen }, ref) => {
+        const { sidePaneContent, openSidePane, activePage, setActivePage, bodyState } = useAppStore()
+        
+        const isDashboardInSidePane = sidePaneContent === 'main' && bodyState === BODY_STATES.SIDE_PANE
+        const isSettingsInSidePane = sidePaneContent === 'settings' && bodyState === BODY_STATES.SIDE_PANE
+        const isToasterInSidePane = sidePaneContent === 'toaster' && bodyState === BODY_STATES.SIDE_PANE
+        const isNotificationsInSidePane = sidePaneContent === 'notifications' && bodyState === BODY_STATES.SIDE_PANE
+
+        const renderContent = () => {
+          if (activePage === 'dashboard') {
+            if (isDashboardInSidePane) {
+              return <ContentInSidePanePlaceholder 
+                icon={LayoutDashboard} 
+                title="Dashboard is in Side Pane" 
+                pageName="dashboard"
+                onBringBack={() => openSidePane('main')} 
+              />;
+            }
+            return <DashboardContent />
+          }
+
+          if (activePage === 'settings') {
+            if (isSettingsInSidePane) {
+              return <ContentInSidePanePlaceholder 
+                icon={Settings} 
+                title="Settings are in Side Pane" 
+                pageName="settings"
+                onBringBack={() => {
+                  openSidePane('settings'); 
+                  setActivePage('settings');
+                }}
+              />;
+            }
+            return <SettingsPage />
+          }
+          if (activePage === 'toaster') {
+            if (isToasterInSidePane) {
+              return <ContentInSidePanePlaceholder
+                icon={Component}
+                title="Toaster Demo is in Side Pane"
+                pageName="toaster demo"
+                onBringBack={() => {
+                  openSidePane('toaster');
+                  setActivePage('toaster');
+                }}
+              />;
+            }
+            return <ToasterDemo />
+          }
+          if (activePage === 'notifications') {
+            if (isNotificationsInSidePane) {
+              return <ContentInSidePanePlaceholder
+                icon={Bell}
+                title="Notifications are in Side Pane"
+                pageName="notifications"
+                onBringBack={() => {
+                  openSidePane('notifications');
+                  setActivePage('notifications');
+                }}
+              />;
+            }
+            return <NotificationsPage />
+          }
+          return null;
+        }
+        
+        const isContentVisible = (activePage === 'dashboard' && !isDashboardInSidePane) || 
+                               (activePage === 'settings' && !isSettingsInSidePane) || 
+                               (activePage === 'toaster' && !isToasterInSidePane) ||
+                               (activePage === 'notifications' && !isNotificationsInSidePane);
+
+        return (
+          <div
+            ref={ref}
+            className={cn(
+            "flex flex-col h-full overflow-hidden",
+            bodyState === BODY_STATES.FULLSCREEN && "absolute inset-0 z-40 bg-background"
+            )}
+          >
+            {bodyState === BODY_STATES.FULLSCREEN && isContentVisible && (
+              <button
+                onClick={onToggleFullscreen}
+                className="fixed top-6 right-6 lg:right-12 z-[100] h-12 w-12 flex items-center justify-center rounded-full bg-card/50 backdrop-blur-sm hover:bg-card/75 transition-colors group"
+                title="Exit Fullscreen"
+              >
+                <X className="w-6 h-6 group-hover:scale-110 group-hover:rotate-90 transition-all duration-300" />
+              </button>
+            )}
+
+            <div className="flex-1 min-h-0 flex flex-col">
+              {renderContent()}
+            </div>
+          </div>
+        )
+      }
+    )
+  src/components/layout/AppShell.tsx: >-
+    import { useRef } from 'react'
+
+    import { cn } from '@/lib/utils'
+
+    import { EnhancedSidebar } from './EnhancedSidebar'
+
+    import { MainContent } from './MainContent'
+
+    import { RightPane } from './RightPane'
+
+    import { TopBar } from './TopBar'
+
+    import { CommandPalette } from '@/components/global/CommandPalette'
+
+    import { useAppStore } from '@/store/appStore'
+
+    import { SIDEBAR_STATES } from '@/lib/utils'
+
+    import { usePrimaryColor } from '@/hooks/usePrimaryColor.hook'
+
+    import { useResizableSidebar, useResizableRightPane } from
+    '@/hooks/useResizablePanes.hook'
+
+    import { useSidebarAnimations, useBodyStateAnimations } from
+    '@/hooks/useAppShellAnimations.hook'
+
+
+    export function AppShell() {
+      const {
+        sidebarState,
+        isDarkMode,
+        setSidebarState,
+        setIsResizing,
+        toggleSidebar,
+        peekSidebar,
+        toggleFullscreen,
+        setIsResizingRightPane,
+        toggleDarkMode,
+        autoExpandSidebar,
+      } = useAppStore()
+      
+      const appRef = useRef<HTMLDivElement>(null)
+      const sidebarRef = useRef<HTMLDivElement>(null)
+      const mainContentRef = useRef<HTMLDivElement>(null)
+      const rightPaneRef = useRef<HTMLDivElement>(null)
+      const resizeHandleRef = useRef<HTMLDivElement>(null)
+      const topBarContainerRef = useRef<HTMLDivElement>(null)
+
+      // Custom hooks for logic
+      usePrimaryColor();
+      useResizableSidebar(sidebarRef, resizeHandleRef);
+      useResizableRightPane();
+      useSidebarAnimations(sidebarRef, resizeHandleRef);
+      useBodyStateAnimations(appRef, mainContentRef, rightPaneRef, topBarContainerRef);
+
+      return (
+        <div 
+          ref={appRef}
+          className={cn(
+            "relative h-screen w-screen overflow-hidden bg-background transition-colors duration-300",
+            isDarkMode && "dark"
+          )}
+        >
+          <div className="flex h-screen overflow-hidden">
+            {/* Enhanced Sidebar */}
+            <EnhancedSidebar
+              ref={sidebarRef}
+              onMouseEnter={() => {
+                if (autoExpandSidebar && sidebarState === SIDEBAR_STATES.COLLAPSED) {
+                  peekSidebar()
+                }
+              }}
+              onMouseLeave={() => {
+                if (autoExpandSidebar && sidebarState === SIDEBAR_STATES.PEEK) {
+                  setSidebarState(SIDEBAR_STATES.COLLAPSED)
+                }
+              }}
+            />
+
+            {/* Resize Handle */}
+            {sidebarState !== SIDEBAR_STATES.HIDDEN && (
+              <div
+                ref={resizeHandleRef}
+                className={cn(
+                  "absolute top-0 w-2 h-full bg-transparent hover:bg-primary/20 cursor-col-resize z-50 transition-colors duration-200 group -translate-x-1/2"
+                )}
+                onMouseDown={(e) => {
+                  e.preventDefault()
+                  setIsResizing(true)
+                }}
+              >
+                <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200 mx-auto" />
+              </div>
+            )}
+
+            {/* Main Content Area */}
+            <div className="relative flex-1 overflow-hidden bg-background">
+              <div ref={topBarContainerRef} className="absolute inset-x-0 top-0 z-30">
+                <TopBar
+                  onToggleSidebar={toggleSidebar}
+                  onToggleFullscreen={toggleFullscreen}
+                  onToggleDarkMode={toggleDarkMode}
+                />
+              </div>
+              
+              {/* Main Content */}
+              <MainContent
+                ref={mainContentRef}
+                onToggleFullscreen={toggleFullscreen}
+              />
+            </div>
+          </div>
+          <RightPane ref={rightPaneRef} />
+          <CommandPalette />
+        </div>
+      )
+    }
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 92

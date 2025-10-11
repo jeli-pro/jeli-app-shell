@@ -1,5 +1,4 @@
-import { useRef, useEffect, useState } from 'react'
-import { gsap } from 'gsap'
+import { useRef } from 'react'
 import { 
   BarChart3, 
   TrendingUp, 
@@ -16,10 +15,9 @@ import {
   ArrowDown
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { DemoContent } from './DemoContent';
-import { useAppStore } from '@/store/appStore';
-import { BODY_STATES } from '@/lib/utils';
-import { useAutoAnimateTopBar } from '@/hooks/useAutoAnimateTopBar';
+import { DemoContent } from './DemoContent'
+import { useDashboardAnimations } from './hooks/useDashboardAnimations.hook'
+import { useDashboardScroll } from './hooks/useDashboardScroll.hook'
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Card } from '@/components/ui/card';
 
@@ -113,62 +111,9 @@ interface DashboardContentProps {
 export function DashboardContent({ isInSidePane = false }: DashboardContentProps) {
     const contentRef = useRef<HTMLDivElement>(null)
     const cardsRef = useRef<(HTMLDivElement | null)[]>([])
-    const [showScrollToBottom, setShowScrollToBottom] = useState(false);
-    const { bodyState } = useAppStore();
-    const { onScroll: handleTopBarScroll } = useAutoAnimateTopBar(isInSidePane);
+    const { showScrollToBottom, handleScroll, scrollToBottom } = useDashboardScroll(contentRef, isInSidePane);
 
-    const scrollToBottom = () => {
-      contentRef.current?.scrollTo({
-        top: contentRef.current.scrollHeight,
-        behavior: 'smooth'
-      })
-    }
-
-    const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
-      handleTopBarScroll(e);
-      if (!contentRef.current) return;
-      const { scrollTop, scrollHeight, clientHeight } = contentRef.current;
-      // Show if scrolled down and not at the bottom
-      setShowScrollToBottom(scrollTop > 200 && scrollTop < scrollHeight - clientHeight - 200);
-    };
-
-    // Animate content based on body state
-    useEffect(() => {
-      if (!contentRef.current) return
-
-      const content = contentRef.current
-      const cards = cardsRef.current.filter(Boolean)
-
-      switch (bodyState) {
-        case BODY_STATES.FULLSCREEN:
-          gsap.to(content, {
-            scale: 1.02,
-            duration: 0.4,
-            ease: "power3.out"
-          })
-          break
-        default:
-          gsap.to(content, {
-            scale: 1,
-            duration: 0.4,
-            ease: "power3.out"
-          })
-          break
-      }
-
-      // Stagger animation for cards
-      gsap.fromTo(cards, 
-        { y: 20, opacity: 0 },
-        { 
-          y: 0, 
-          opacity: 1, 
-          duration: 0.6,
-          stagger: 0.1,
-          ease: "power3.out"
-        }
-      )
-
-    }, [bodyState])
+    useDashboardAnimations(contentRef, cardsRef);
 
     const getTypeIcon = (type: ActivityItem['type']) => {
       switch (type) {

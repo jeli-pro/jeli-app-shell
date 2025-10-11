@@ -1,8 +1,8 @@
-===
+=== DONE
 
 tsx only for renders, so please extract out all hooks to *.hook.ts files
 
-===
+=== DONE
 
 fix project structure, naming and organization
 

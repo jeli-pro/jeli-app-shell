@@ -1,4 +1,3 @@
-import * as React from 'react'
 import {
   CommandDialog,
   CommandEmpty,
@@ -10,6 +9,7 @@ import {
   CommandShortcut,
 } from '@/components/ui/command'
 import { useAppStore, type ActivePage } from '@/store/appStore'
+import { useCommandPaletteToggle } from '@/hooks/useCommandPaletteToggle.hook'
 import { Home, Settings, Moon, Sun, Monitor, Smartphone, PanelRight, Maximize, Component, Bell } from 'lucide-react'
 
 export function CommandPalette() {
@@ -23,17 +23,7 @@ export function CommandPalette() {
     toggleFullscreen,
     openSidePane,
   } = useAppStore()
-
-  React.useEffect(() => {
-    const down = (e: KeyboardEvent) => {
-      if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
-        e.preventDefault()
-        setCommandPaletteOpen(!isCommandPaletteOpen)
-      }
-    }
-    document.addEventListener('keydown', down)
-    return () => document.removeEventListener('keydown', down)
-  }, [isCommandPaletteOpen, setCommandPaletteOpen])
+  useCommandPaletteToggle()
   
   const runCommand = (command: () => void) => {
     setCommandPaletteOpen(false)

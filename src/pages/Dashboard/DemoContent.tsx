@@ -1,5 +1,4 @@
-import { useRef, useEffect } from 'react'
-import { gsap } from 'gsap'
+import { useRef } from 'react'
 import { 
   Sparkles, 
   Zap, 
@@ -16,30 +15,13 @@ import {
 import { cn } from '@/lib/utils'
 import { useAppStore } from '@/store/appStore'
 import { Card } from '@/components/ui/card'
+import { useDemoContentAnimations } from './hooks/useDemoContentAnimations.hook'
 
 export function DemoContent() {
   const { bodyState, sidebarState, isDarkMode, compactMode } = useAppStore()
   const contentRef = useRef<HTMLDivElement>(null)
   const cardsRef = useRef<(HTMLDivElement | null)[]>([])
-
-  useEffect(() => {
-    if (!contentRef.current) return
-
-    const cards = cardsRef.current.filter(Boolean)
-    
-    // Animate cards on mount
-    gsap.fromTo(cards, 
-      { y: 30, opacity: 0, scale: 0.95 },
-      { 
-        y: 0, 
-        opacity: 1, 
-        scale: 1,
-        duration: 0.6,
-        stagger: 0.1,
-        ease: "power3.out"
-      }
-    )
-  }, [])
+  useDemoContentAnimations(cardsRef);
 
   const features = [
     {

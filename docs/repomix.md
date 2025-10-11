@@ -2,6 +2,20 @@
 ```
 src/
   components/
+    global/
+      CommandPalette.tsx
+    layout/
+      AppShell.tsx
+      EnhancedSidebar.tsx
+      MainContent.tsx
+      RightPane.tsx
+      Sidebar.tsx
+      TopBar.tsx
+      UserDropdown.tsx
+      WorkspaceSwitcher.tsx
+    shared/
+      ContentInSidePanePlaceholder.tsx
+      PageHeader.tsx
     ui/
       avatar.tsx
       badge.tsx
@@ -13,30 +27,25 @@ src/
       popover.tsx
       tabs.tsx
       toast.tsx
-    AppShell.tsx
-    CommandPalette.tsx
-    ContentInSidePanePlaceholder.tsx
-    DashboardContent.tsx
-    DemoContent.tsx
-    EnhancedSidebar.tsx
-    index.ts
-    MainContent.tsx
-    NotificationsPage.tsx
-    PageHeader.tsx
-    RightPane.tsx
-    SettingsContent.tsx
-    SettingsPage.tsx
-    SettingsSection.tsx
-    SettingsToggle.tsx
-    Sidebar.tsx
-    ToasterDemo.tsx
-    TopBar.tsx
-    UserDropdown.tsx
-    WorkspaceSwitcher.tsx
+  features/
+    settings/
+      SettingsContent.tsx
+      SettingsSection.tsx
+      SettingsToggle.tsx
   hooks/
     useAutoAnimateTopBar.ts
   lib/
     utils.ts
+  pages/
+    Dashboard/
+      DemoContent.tsx
+      index.tsx
+    Notifications/
+      index.tsx
+    Settings/
+      index.tsx
+    ToasterDemo/
+      index.tsx
   store/
     appStore.ts
   App.tsx
@@ -52,6 +61,1997 @@ vite.config.ts
 ```
 
 # Files
+
+## File: src/components/global/CommandPalette.tsx
+```typescript
+import * as React from 'react'
+import {
+  CommandDialog,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+  CommandSeparator,
+  CommandShortcut,
+} from '@/components/ui/command'
+import { useAppStore, type ActivePage } from '@/store/appStore'
+import { Home, Settings, Moon, Sun, Monitor, Smartphone, PanelRight, Maximize, Component, Bell } from 'lucide-react'
+
+export function CommandPalette() {
+  const {
+    isCommandPaletteOpen,
+    setCommandPaletteOpen,
+    setActivePage,
+    toggleDarkMode,
+    isDarkMode,
+    setCompactMode,
+    toggleFullscreen,
+    openSidePane,
+  } = useAppStore()
+
+  React.useEffect(() => {
+    const down = (e: KeyboardEvent) => {
+      if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault()
+        setCommandPaletteOpen(!isCommandPaletteOpen)
+      }
+    }
+    document.addEventListener('keydown', down)
+    return () => document.removeEventListener('keydown', down)
+  }, [isCommandPaletteOpen, setCommandPaletteOpen])
+  
+  const runCommand = (command: () => void) => {
+    setCommandPaletteOpen(false)
+    command()
+  }
+
+  return (
+    <CommandDialog open={isCommandPaletteOpen} onOpenChange={setCommandPaletteOpen}>
+      <CommandInput placeholder="Type a command or search..." />
+      <CommandList>
+        <CommandEmpty>No results found.</CommandEmpty>
+        <CommandGroup heading="Navigation">
+          <CommandItem onSelect={() => runCommand(() => setActivePage('dashboard'))}>
+            <Home className="mr-2 h-4 w-4" />
+            <span>Go to Dashboard</span>
+            <CommandShortcut>G D</CommandShortcut>
+          </CommandItem>
+          <CommandItem onSelect={() => runCommand(() => setActivePage('settings'))}>
+            <Settings className="mr-2 h-4 w-4" />
+            <span>Go to Settings</span>
+            <CommandShortcut>G S</CommandShortcut>
+          </CommandItem>
+          <CommandItem onSelect={() => runCommand(() => setActivePage('toaster'))}>
+            <Component className="mr-2 h-4 w-4" />
+            <span>Go to Toaster Demo</span>
+            <CommandShortcut>G T</CommandShortcut>
+          </CommandItem>
+          <CommandItem onSelect={() => runCommand(() => setActivePage('notifications' as ActivePage))}>
+            <Bell className="mr-2 h-4 w-4" />
+            <span>Go to Notifications</span>
+            <CommandShortcut>G N</CommandShortcut>
+          </CommandItem>
+        </CommandGroup>
+        <CommandSeparator />
+        <CommandGroup heading="Actions">
+          <CommandItem onSelect={() => runCommand(toggleDarkMode)}>
+            {isDarkMode ? <Sun className="mr-2 h-4 w-4" /> : <Moon className="mr-2 h-4 w-4" />}
+            <span>Toggle Theme</span>
+            <CommandShortcut>⌘T</CommandShortcut>
+          </CommandItem>
+          <CommandItem onSelect={() => runCommand(toggleFullscreen)}>
+            <Maximize className="mr-2 h-4 w-4" />
+            <span>Toggle Fullscreen</span>
+            <CommandShortcut>⌘F</CommandShortcut>
+          </CommandItem>
+          <CommandItem onSelect={() => runCommand(() => openSidePane('settings'))}>
+            <PanelRight className="mr-2 h-4 w-4" />
+            <span>Open Settings in Side Pane</span>
+            <CommandShortcut>⌥S</CommandShortcut>
+          </CommandItem>
+        </CommandGroup>
+        <CommandSeparator />
+        <CommandGroup heading="Preferences">
+          <CommandItem onSelect={() => runCommand(() => setCompactMode(true))}>
+            <Smartphone className="mr-2 h-4 w-4" />
+            <span>Enable Compact Mode</span>
+            <CommandShortcut>⌘C</CommandShortcut>
+          </CommandItem>
+          <CommandItem onSelect={() => runCommand(() => setCompactMode(false))}>
+            <Monitor className="mr-2 h-4 w-4" />
+            <span>Disable Compact Mode</span>
+            <CommandShortcut>⇧⌘C</CommandShortcut>
+          </CommandItem>
+        </CommandGroup>
+      </CommandList>
+    </CommandDialog>
+  )
+}
+```
+
+## File: src/components/layout/AppShell.tsx
+```typescript
+import { useRef, useEffect } from 'react'
+import { gsap } from 'gsap'
+import { cn } from '@/lib/utils'
+import { EnhancedSidebar } from './EnhancedSidebar'
+import { MainContent } from './MainContent'
+import { RightPane } from './RightPane'
+import { TopBar } from './TopBar'
+import { CommandPalette } from '@/components/global/CommandPalette'
+import { useAppStore } from '@/store/appStore'
+import { SIDEBAR_STATES, BODY_STATES } from '@/lib/utils'
+
+export function AppShell() {
+  const {
+    sidebarState,
+    bodyState,
+    sidebarWidth,
+    isDarkMode,
+    isResizing,
+    rightPaneWidth,
+    isResizingRightPane,
+    setRightPaneWidth,
+    isTopBarVisible,
+    setSidebarState,
+    closeSidePane,
+    setIsResizing,
+    setSidebarWidth,
+    toggleSidebar,
+    peekSidebar,
+    toggleFullscreen,
+    setIsResizingRightPane,
+    toggleDarkMode,
+    reducedMotion,
+    autoExpandSidebar,
+    primaryColor
+  } = useAppStore()
+  
+  const appRef = useRef<HTMLDivElement>(null)
+  const sidebarRef = useRef<HTMLDivElement>(null)
+  const mainContentRef = useRef<HTMLDivElement>(null)
+  const rightPaneRef = useRef<HTMLDivElement>(null)
+  const resizeHandleRef = useRef<HTMLDivElement>(null)
+  const topBarContainerRef = useRef<HTMLDivElement>(null)
+
+  // Animation duration based on reduced motion preference
+  const animationDuration = reducedMotion ? 0.1 : 0.4
+
+  // Set primary color
+  useEffect(() => {
+    document.documentElement.style.setProperty('--primary-hsl', primaryColor)
+  }, [primaryColor])
+
+  // Resize functionality
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizing) return
+      
+      const newWidth = Math.max(200, Math.min(500, e.clientX))
+      setSidebarWidth(newWidth)
+      
+      if (sidebarRef.current) {
+        gsap.set(sidebarRef.current, { width: newWidth })
+      }
+      if (resizeHandleRef.current) {
+        gsap.set(resizeHandleRef.current, { left: newWidth })
+      }
+    }
+
+    const handleMouseUp = () => {
+      setIsResizing(false)
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+    }
+
+    if (isResizing) {
+      document.body.style.cursor = 'col-resize'
+      document.body.style.userSelect = 'none'
+      document.addEventListener('mousemove', handleMouseMove)
+      document.addEventListener('mouseup', handleMouseUp)
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+    }
+  }, [isResizing, setIsResizing, setSidebarWidth])
+
+  // Resize functionality for Right Pane
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizingRightPane) return
+      
+      const newWidth = window.innerWidth - e.clientX
+      setRightPaneWidth(newWidth)
+    }
+
+    const handleMouseUp = () => {
+      setIsResizingRightPane(false)
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+    }
+
+    if (isResizingRightPane) {
+      document.body.style.cursor = 'col-resize'
+      document.body.style.userSelect = 'none'
+      document.addEventListener('mousemove', handleMouseMove)
+      document.addEventListener('mouseup', handleMouseUp)
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+      document.body.style.cursor = ''
+    }
+  }, [isResizingRightPane, setIsResizingRightPane, setRightPaneWidth])
+
+  // GSAP animations for sidebar transitions
+  useEffect(() => {
+    if (!sidebarRef.current || !mainContentRef.current || !resizeHandleRef.current) return
+
+    const sidebar = sidebarRef.current
+    const handle = resizeHandleRef.current
+    
+    let targetWidth = 0
+    let targetOpacity = 1
+
+    if (bodyState === BODY_STATES.FULLSCREEN) {
+      targetWidth = 0;
+      targetOpacity = 0;
+    } else {
+      switch (sidebarState) {
+        case SIDEBAR_STATES.HIDDEN:
+          targetWidth = 0
+          targetOpacity = 0
+          break
+        case SIDEBAR_STATES.COLLAPSED:
+          targetWidth = 64
+          targetOpacity = 1
+          break
+        case SIDEBAR_STATES.EXPANDED:
+          targetWidth = sidebarWidth
+          targetOpacity = 1
+          break
+        case SIDEBAR_STATES.PEEK:
+          targetWidth = sidebarWidth * 0.8
+          targetOpacity = 0.95
+          break
+      }
+    }
+
+    const tl = gsap.timeline({ ease: "power3.out" })
+    
+    tl.to(sidebar, {
+      width: targetWidth,
+      opacity: targetOpacity,
+      duration: animationDuration,
+    })
+    tl.to(handle, {
+      left: targetWidth,
+      duration: animationDuration,
+    }, 0)
+
+  }, [sidebarState, sidebarWidth, bodyState, animationDuration])
+
+  // GSAP animations for body state transitions
+  useEffect(() => {
+    if (!mainContentRef.current || !sidebarRef.current || !rightPaneRef.current) return
+
+    const ease = "power3.out"
+    const isFullscreen = bodyState === BODY_STATES.FULLSCREEN
+
+    const isSidePane = bodyState === BODY_STATES.SIDE_PANE
+
+    // Right pane animation
+    gsap.to(rightPaneRef.current, {
+      width: rightPaneWidth,
+      x: isSidePane ? 0 : rightPaneWidth + 5, // +5 to hide border
+      duration: animationDuration,
+      ease,
+    })
+
+    gsap.to(mainContentRef.current, {
+      paddingTop: isFullscreen ? '0rem' : isTopBarVisible ? '5rem' : '0rem', // h-20 is 5rem
+      duration: animationDuration,
+      ease,
+    })
+
+    gsap.to(topBarContainerRef.current, {
+      y: (isFullscreen || !isTopBarVisible) ? '-100%' : '0%',
+      duration: animationDuration,
+      ease,
+    })
+    
+    // Add backdrop for side pane
+    const backdrop = document.querySelector('.app-backdrop')
+    if (isSidePane) {
+      if (!backdrop) {
+        const el = document.createElement('div')
+        el.className = 'app-backdrop fixed inset-0 bg-black/30 z-[55]'
+        appRef.current?.appendChild(el)
+        gsap.fromTo(el, { opacity: 0 }, { opacity: 1, duration: animationDuration })
+        el.onclick = () => closeSidePane()
+      }
+    } else {
+      if (backdrop) {
+        gsap.to(backdrop, { opacity: 0, duration: animationDuration, onComplete: () => backdrop.remove() })
+      }
+    }
+  }, [bodyState, animationDuration, rightPaneWidth, closeSidePane, isTopBarVisible])
+
+  return (
+    <div 
+      ref={appRef}
+      className={cn(
+        "relative h-screen w-screen overflow-hidden bg-background transition-colors duration-300",
+        isDarkMode && "dark"
+      )}
+    >
+      <div className="flex h-screen overflow-hidden">
+        {/* Enhanced Sidebar */}
+        <EnhancedSidebar
+          ref={sidebarRef}
+          onMouseEnter={() => {
+            if (autoExpandSidebar && sidebarState === SIDEBAR_STATES.COLLAPSED) {
+              peekSidebar()
+            }
+          }}
+          onMouseLeave={() => {
+            if (autoExpandSidebar && sidebarState === SIDEBAR_STATES.PEEK) {
+              setSidebarState(SIDEBAR_STATES.COLLAPSED)
+            }
+          }}
+        />
+
+        {/* Resize Handle */}
+        {sidebarState !== SIDEBAR_STATES.HIDDEN && (
+          <div
+            ref={resizeHandleRef}
+            className={cn(
+              "absolute top-0 w-2 h-full bg-transparent hover:bg-primary/20 cursor-col-resize z-50 transition-colors duration-200 group -translate-x-1/2"
+            )}
+            onMouseDown={(e) => {
+              e.preventDefault()
+              setIsResizing(true)
+            }}
+          >
+            <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200 mx-auto" />
+          </div>
+        )}
+
+        {/* Main Content Area */}
+        <div className="relative flex-1 overflow-hidden bg-background">
+          <div ref={topBarContainerRef} className="absolute inset-x-0 top-0 z-30">
+            <TopBar
+              onToggleSidebar={toggleSidebar}
+              onToggleFullscreen={toggleFullscreen}
+              onToggleDarkMode={toggleDarkMode}
+            />
+          </div>
+          
+          {/* Main Content */}
+          <MainContent
+            ref={mainContentRef}
+            bodyState={bodyState}
+            onToggleFullscreen={toggleFullscreen}
+          />
+        </div>
+      </div>
+      <RightPane ref={rightPaneRef} />
+      <CommandPalette />
+    </div>
+  )
+}
+```
+
+## File: src/components/layout/EnhancedSidebar.tsx
+```typescript
+import React from 'react';
+import {
+  Home,
+  Settings,
+  HelpCircle,
+  Component,
+  Rocket,
+  MoreHorizontal,
+  Bell,
+  Search,
+  FileText,
+  Star,
+  Trash2,
+  FolderOpen,
+  Mail,
+  Bookmark,
+  Download,
+  User,
+  Plus
+} from 'lucide-react';
+import { useAppStore, type ActivePage } from '@/store/appStore';
+import {
+  Workspaces,
+  WorkspaceTrigger,
+  WorkspaceContent,
+  type Workspace,
+} from './WorkspaceSwitcher';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarHeader,
+  SidebarTitle,
+  SidebarBody,
+  SidebarFooter,
+  SidebarSection,
+  SidebarMenuItem,
+  SidebarMenuButton,
+  SidebarMenuAction,
+  SidebarLabel,
+  SidebarBadge,
+  SidebarTooltip,
+  SidebarIcon,
+  useSidebar,
+} from './Sidebar';
+import { cn } from '@/lib/utils';
+
+interface MyWorkspace extends Workspace {
+  logo: string;
+  plan: string;
+}
+
+const mockWorkspaces: MyWorkspace[] = [
+  { id: 'ws1', name: 'Acme Inc.', logo: 'https://avatar.vercel.sh/acme.png', plan: 'Pro' },
+  { id: 'ws2', name: 'Monsters Inc.', logo: 'https://avatar.vercel.sh/monsters.png', plan: 'Free' },
+  { id: 'ws3', name: 'Stark Industries', logo: 'https://avatar.vercel.sh/stark.png', plan: 'Enterprise' },
+];
+
+const SidebarWorkspaceTrigger = () => {
+  const { isCollapsed, compactMode } = useSidebar();
+
+  return (
+    <WorkspaceTrigger
+      collapsed={isCollapsed}
+      className={cn(
+        'rounded-xl transition-colors hover:bg-accent/50 w-full',
+        isCollapsed ? 'p-2' : 'p-3 bg-accent/50',
+      )}
+      avatarClassName={cn(compactMode ? 'h-8 w-8' : 'h-10 w-10')}
+    />
+  );
+};
+
+interface SidebarProps {
+  onMouseEnter?: () => void;
+  onMouseLeave?: () => void;
+}
+
+export const EnhancedSidebar = React.forwardRef<HTMLDivElement, SidebarProps>(
+  ({ onMouseEnter, onMouseLeave }, ref) => {
+    const { sidebarWidth, compactMode } = useAppStore();
+    const [selectedWorkspace, setSelectedWorkspace] = React.useState(mockWorkspaces[0]);
+
+    return (
+      <Sidebar
+        ref={ref}
+        style={{ width: sidebarWidth }}
+        onMouseEnter={onMouseEnter}
+        onMouseLeave={onMouseLeave}
+      >
+        <SidebarContent>
+          <SidebarHeader>
+            <div className="p-2 bg-primary/20 rounded-lg">
+              <Rocket className="w-5 h-5 text-primary" />
+            </div>
+            <SidebarTitle>Amazing App</SidebarTitle>
+          </SidebarHeader>
+
+          <SidebarBody>
+            <SidebarSection title="Main">
+              <AppMenuItem icon={Home} label="Dashboard" page="dashboard" />
+              <AppMenuItem icon={Search} label="Search" />
+              <AppMenuItem icon={Bell} label="Notifications" badge={3} page="notifications" opensInSidePane />
+            </SidebarSection>
+            
+            <SidebarSection title="Workspace" collapsible defaultExpanded>
+              <AppMenuItem icon={FileText} label="Documents" hasActions>
+                <AppMenuItem icon={FileText} label="Recent" isSubItem />
+                <AppMenuItem icon={Star} label="Starred" isSubItem />
+                <AppMenuItem icon={Trash2} label="Trash" isSubItem />
+              </AppMenuItem>
+              <AppMenuItem icon={FolderOpen} label="Projects" hasActions />
+              <AppMenuItem icon={Mail} label="Messages" badge={12} />
+            </SidebarSection>
+            
+            <SidebarSection title="Personal" collapsible>
+              <AppMenuItem icon={Bookmark} label="Bookmarks" />
+              <AppMenuItem icon={Star} label="Favorites" />
+              <AppMenuItem icon={Download} label="Downloads" />
+            </SidebarSection>
+
+            <SidebarSection title="Components" collapsible defaultExpanded>
+              <AppMenuItem icon={Component} label="Toaster" page="toaster" />
+            </SidebarSection>
+          </SidebarBody>
+
+          <SidebarFooter>
+            <SidebarSection>
+              <AppMenuItem icon={User} label="Profile" />
+              <AppMenuItem icon={Settings} label="Settings" page="settings" />
+              <AppMenuItem icon={HelpCircle} label="Help" />
+            </SidebarSection>
+
+            <div className={cn(compactMode ? 'mt-4' : 'mt-6')}>
+              <Workspaces
+                workspaces={mockWorkspaces}
+                selectedWorkspaceId={selectedWorkspace.id}
+                onWorkspaceChange={setSelectedWorkspace}
+              >
+                <SidebarWorkspaceTrigger />
+                <WorkspaceContent>
+                  <button className="flex w-full items-center gap-2 rounded-sm px-2 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground focus:outline-none">
+                    <Plus className="h-4 w-4" />
+                    <span>Create Workspace</span>
+                  </button>
+                </WorkspaceContent>
+              </Workspaces>
+            </div>
+          </SidebarFooter>
+        </SidebarContent>
+      </Sidebar>
+    );
+  },
+);
+EnhancedSidebar.displayName = 'EnhancedSidebar';
+
+
+// Example of a reusable menu item component built with the new Sidebar primitives
+interface AppMenuItemProps {
+  icon: React.ElementType;
+  label: string;
+  badge?: number;
+  hasActions?: boolean;
+  children?: React.ReactNode;
+  isSubItem?: boolean;
+  page?: ActivePage;
+  opensInSidePane?: boolean;
+}
+
+const AppMenuItem: React.FC<AppMenuItemProps> = ({ icon: Icon, label, badge, hasActions, children, isSubItem = false, page, opensInSidePane = false }) => {
+  const { handleNavigation, isPageActive, openSidePane } = useAppStore();
+  const isActive = page ? isPageActive(page) : false;
+  const { compactMode } = useAppStore();
+  const { isCollapsed } = useSidebar();
+
+  const handleClick = () => {
+    if (page) {
+      if (opensInSidePane) {
+        const pageToPaneMap: { [key in ActivePage]?: 'main' | 'settings' | 'toaster' | 'notifications' } = {
+          dashboard: 'main',
+          settings: 'settings',
+          toaster: 'toaster',
+          notifications: 'notifications',
+        };
+        if (pageToPaneMap[page]) openSidePane(pageToPaneMap[page]!);
+      } else {
+        handleNavigation(page);
+      }
+    }
+  };
+
+  return (
+    <div className={isSubItem ? (compactMode ? 'ml-4' : 'ml-6') : ''}>
+      <SidebarMenuItem>
+        <SidebarMenuButton onClick={handleClick} isActive={isActive}>
+          <SidebarIcon>
+            <Icon className={isSubItem ? "w-3 h-3" : "w-4 h-4"}/>
+          </SidebarIcon>
+          <SidebarLabel>{label}</SidebarLabel>
+          {badge && <SidebarBadge>{badge}</SidebarBadge>}
+          <SidebarTooltip label={label} badge={badge} />
+        </SidebarMenuButton>
+
+        {hasActions && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <SidebarMenuAction>
+                <MoreHorizontal className="h-4 w-4" />
+              </SidebarMenuAction>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent side="right" align="start">
+              <DropdownMenuItem>
+                <span>Edit {label}</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <span>Delete {label}</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+      </SidebarMenuItem>
+      {!isCollapsed && children && (
+        <div className="space-y-1 mt-1">{children}</div>
+      )}
+    </div>
+  );
+};
+```
+
+## File: src/components/layout/MainContent.tsx
+```typescript
+import { forwardRef } from 'react'
+import { 
+  X,
+  LayoutDashboard,
+  Settings,
+  Component,
+  Bell,
+} from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { BODY_STATES, type BodyState } from '@/lib/utils'
+import { DashboardContent } from '@/pages/Dashboard'
+import { SettingsPage } from '@/pages/Settings'
+import { ToasterDemo } from '@/pages/ToasterDemo'
+import { useAppStore } from '@/store/appStore'
+import { NotificationsPage } from '@/pages/Notifications'
+import { ContentInSidePanePlaceholder } from '@/components/shared/ContentInSidePanePlaceholder'
+
+interface MainContentProps {
+  bodyState: BodyState
+  onToggleFullscreen: () => void
+}
+
+export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
+  ({ bodyState, onToggleFullscreen }, ref) => {
+    const { sidePaneContent, openSidePane, activePage, setActivePage } = useAppStore()
+
+    const isDashboardInSidePane = sidePaneContent === 'main' && bodyState === BODY_STATES.SIDE_PANE
+    const isSettingsInSidePane = sidePaneContent === 'settings' && bodyState === BODY_STATES.SIDE_PANE
+    const isToasterInSidePane = sidePaneContent === 'toaster' && bodyState === BODY_STATES.SIDE_PANE
+    const isNotificationsInSidePane = sidePaneContent === 'notifications' && bodyState === BODY_STATES.SIDE_PANE
+
+    const renderContent = () => {
+      if (activePage === 'dashboard') {
+        if (isDashboardInSidePane) {
+          return <ContentInSidePanePlaceholder 
+            icon={LayoutDashboard} 
+            title="Dashboard is in Side Pane" 
+            pageName="dashboard"
+            onBringBack={() => openSidePane('main')} 
+          />;
+        }
+        return <DashboardContent />
+      }
+
+      if (activePage === 'settings') {
+        if (isSettingsInSidePane) {
+          return <ContentInSidePanePlaceholder 
+            icon={Settings} 
+            title="Settings are in Side Pane" 
+            pageName="settings"
+            onBringBack={() => {
+              openSidePane('settings'); 
+              setActivePage('settings');
+            }}
+          />;
+        }
+        return <SettingsPage />
+      }
+      if (activePage === 'toaster') {
+        if (isToasterInSidePane) {
+          return <ContentInSidePanePlaceholder
+            icon={Component}
+            title="Toaster Demo is in Side Pane"
+            pageName="toaster demo"
+            onBringBack={() => {
+              openSidePane('toaster');
+              setActivePage('toaster');
+            }}
+          />;
+        }
+        return <ToasterDemo />
+      }
+      if (activePage === 'notifications') {
+        if (isNotificationsInSidePane) {
+          return <ContentInSidePanePlaceholder
+            icon={Bell}
+            title="Notifications are in Side Pane"
+            pageName="notifications"
+            onBringBack={() => {
+              openSidePane('notifications');
+              setActivePage('notifications');
+            }}
+          />;
+        }
+        return <NotificationsPage />
+      }
+      return null;
+    }
+    
+    const isContentVisible = (activePage === 'dashboard' && !isDashboardInSidePane) || 
+                           (activePage === 'settings' && !isSettingsInSidePane) || 
+                           (activePage === 'toaster' && !isToasterInSidePane) ||
+                           (activePage === 'notifications' && !isNotificationsInSidePane);
+
+    return (
+      <div
+        ref={ref}
+        className={cn(
+        "flex flex-col h-full overflow-hidden",
+        bodyState === BODY_STATES.FULLSCREEN && "absolute inset-0 z-40 bg-background"
+        )}
+      >
+        {bodyState === BODY_STATES.FULLSCREEN && isContentVisible && (
+          <button
+            onClick={onToggleFullscreen}
+            className="fixed top-6 right-6 lg:right-12 z-[100] h-12 w-12 flex items-center justify-center rounded-full bg-card/50 backdrop-blur-sm hover:bg-card/75 transition-colors group"
+            title="Exit Fullscreen"
+          >
+            <X className="w-6 h-6 group-hover:scale-110 group-hover:rotate-90 transition-all duration-300" />
+          </button>
+        )}
+
+        <div className="flex-1 min-h-0 flex flex-col">
+          {renderContent()}
+        </div>
+      </div>
+    )
+  }
+)
+```
+
+## File: src/components/layout/RightPane.tsx
+```typescript
+import { forwardRef } from 'react'
+import { SlidersHorizontal, Settings, ChevronRight, LayoutDashboard, ChevronsLeftRight, Component, Bell } from 'lucide-react'
+import { useAppStore } from '@/store/appStore'
+import { cn } from '@/lib/utils'
+import { SettingsContent } from '@/features/settings/SettingsContent'
+import { DashboardContent } from '@/pages/Dashboard'
+import { ToasterDemo } from '@/pages/ToasterDemo'
+import { NotificationsPage } from '@/pages/Notifications'
+
+export const RightPane = forwardRef<HTMLDivElement>((_props, ref) => {
+  const { closeSidePane, setIsResizingRightPane, sidePaneContent, setActivePage } = useAppStore();
+
+  const contentMap = {
+    main: { title: 'Dashboard', icon: LayoutDashboard, page: 'dashboard', content: <DashboardContent isInSidePane /> },
+    settings: { title: 'Settings', icon: Settings, page: 'settings', content: <SettingsContent /> },
+    toaster: { title: 'Toaster Demo', icon: Component, page: 'toaster', content: <ToasterDemo isInSidePane /> },
+    notifications: { title: 'Notifications', icon: Bell, page: 'notifications', content: <NotificationsPage isInSidePane /> },
+    details: { title: 'Details Panel', icon: SlidersHorizontal, content: <p className="text-muted-foreground">This is the side pane. It can be used to display contextual information, forms, or actions related to the main content.</p> }
+  } as const;
+
+  const currentContent = contentMap[sidePaneContent as keyof typeof contentMap] || contentMap.details;
+  const CurrentIcon = currentContent.icon;
+
+  const handleMaximize = () => {
+    if ('page' in currentContent && currentContent.page) {
+      setActivePage(currentContent.page);
+    }
+    closeSidePane()
+  }
+
+  return (
+    <aside ref={ref} className="bg-card border-l border-border flex flex-col h-full overflow-hidden fixed top-0 right-0 z-[60]">
+      <button
+        onClick={closeSidePane}
+        className="absolute top-1/2 -left-px -translate-y-1/2 -translate-x-full w-8 h-16 bg-card border border-r-0 border-border rounded-l-lg flex items-center justify-center hover:bg-accent transition-colors group z-10"
+        title="Close pane"
+      >
+        <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-foreground transition-colors" />
+      </button>
+      <div 
+        className={cn(
+          "absolute top-0 left-0 w-2 h-full bg-transparent hover:bg-primary/20 cursor-col-resize z-50 transition-colors duration-200 group -translate-x-1/2"
+        )}
+        onMouseDown={(e) => {
+          e.preventDefault()
+          setIsResizingRightPane(true)
+        }}
+      >
+        <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200 mx-auto" />
+      </div>
+      <div className="flex items-center justify-between p-4 border-b border-border h-20 flex-shrink-0 pl-6">
+        <div className="flex items-center gap-2">
+          <CurrentIcon className="w-5 h-5" />
+          <h2 className="text-lg font-semibold whitespace-nowrap">
+            {currentContent.title}
+          </h2>
+        </div>
+        
+        {'page' in currentContent && currentContent.page && (
+          <button
+            onClick={handleMaximize}
+            className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors mr-2"
+            title="Move to Main View"
+          >
+            <ChevronsLeftRight className="w-5 h-5" />
+          </button>
+        )}
+      </div>
+      <div className="flex-1 overflow-y-auto px-8 py-6">
+        {currentContent.content}
+      </div>
+    </aside>
+  )
+})
+
+RightPane.displayName = "RightPane"
+```
+
+## File: src/components/layout/Sidebar.tsx
+```typescript
+import * as React from 'react';
+import { ChevronDown } from 'lucide-react';
+import { Slot } from '@radix-ui/react-slot';
+import { useAppStore } from '@/store/appStore';
+import { SIDEBAR_STATES } from '@/lib/utils';
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+
+// --- Context ---
+interface SidebarContextValue {
+  isCollapsed: boolean;
+  isPeek: boolean;
+  compactMode: boolean;
+}
+
+const SidebarContext = React.createContext<SidebarContextValue | null>(null);
+
+export const useSidebar = () => {
+  const context = React.useContext(SidebarContext);
+  if (!context) {
+    throw new Error('useSidebar must be used within a Sidebar component');
+  }
+  return context;
+};
+
+// --- Main Sidebar Component ---
+interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
+  children: React.ReactNode;
+}
+
+const Sidebar = React.forwardRef<HTMLDivElement, SidebarProps>(
+  ({ children, className, ...props }, ref) => {
+    const { sidebarState, compactMode } = useAppStore();
+    const isCollapsed = sidebarState === SIDEBAR_STATES.COLLAPSED;
+    const isPeek = sidebarState === SIDEBAR_STATES.PEEK;
+
+    return (
+      <SidebarContext.Provider value={{ isCollapsed, isPeek, compactMode }}>
+        <div
+          ref={ref}
+          className={cn(
+            'relative bg-card flex-shrink-0',
+            'h-full',
+            isPeek && 'shadow-xl z-40',
+            compactMode && 'text-sm',
+            className,
+          )}
+          {...props}
+        >
+          {isPeek && <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" />}
+          {children}
+        </div>
+      </SidebarContext.Provider>
+    );
+  },
+);
+Sidebar.displayName = 'Sidebar';
+
+// --- Sidebar Content Wrapper ---
+const SidebarContent = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => {
+  const { compactMode } = useSidebar();
+  return (
+    <div
+      ref={ref}
+      className={cn(
+        'relative z-10 h-full flex flex-col',
+        compactMode ? 'p-3' : 'p-4',
+        className,
+      )}
+      {...props}
+    />
+  );
+});
+SidebarContent.displayName = 'SidebarContent';
+
+// --- Sidebar Header ---
+const SidebarHeader = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => {
+  const { isCollapsed } = useSidebar();
+  return (
+    <div
+      ref={ref}
+      className={cn(
+        'flex items-center gap-3',
+        isCollapsed ? 'justify-center' : 'px-3',
+        'h-16',
+        className,
+      )}
+      {...props}
+    />
+  );
+});
+SidebarHeader.displayName = 'SidebarHeader';
+
+const SidebarTitle = React.forwardRef<
+  HTMLParagraphElement,
+  React.HTMLAttributes<HTMLParagraphElement>
+>(({ className, ...props }, ref) => {
+  const { isCollapsed } = useSidebar();
+  if (isCollapsed) return null;
+  return (
+    <h1
+      ref={ref}
+      className={cn('text-lg font-bold nav-label', className)}
+      {...props}
+    />
+  );
+});
+SidebarTitle.displayName = 'SidebarTitle';
+
+// --- Sidebar Body ---
+const SidebarBody = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => (
+  <div
+    ref={ref}
+    className={cn(
+      'flex-1 overflow-y-auto space-y-6 pt-4',
+      className,
+    )}
+    {...props}
+  />
+));
+SidebarBody.displayName = 'SidebarBody';
+
+// --- Sidebar Footer ---
+const SidebarFooter = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => {
+  const { compactMode } = useSidebar();
+  return (
+    <div
+      ref={ref}
+      className={cn('pt-4 border-t border-border', compactMode && 'pt-3', className)}
+      {...props}
+    />
+  );
+});
+SidebarFooter.displayName = 'SidebarFooter';
+
+// --- Sidebar Section ---
+const SidebarSection = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement> & {
+    title?: string;
+    collapsible?: boolean;
+    defaultExpanded?: boolean;
+  }
+>(({ title, collapsible = false, defaultExpanded = true, children, ...props }, ref) => {
+  const { isCollapsed } = useSidebar();
+  const [isExpanded, setIsExpanded] = React.useState(defaultExpanded);
+
+  const handleToggle = () => {
+    if (collapsible) {
+      setIsExpanded(!isExpanded);
+    }
+  };
+
+  return (
+    <div ref={ref} className="space-y-1" {...props}>
+      {!isCollapsed && title && (
+        <div
+          className={cn(
+            'flex items-center justify-between px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider',
+            collapsible && 'cursor-pointer hover:text-foreground transition-colors',
+          )}
+          onClick={handleToggle}
+        >
+          <span className="section-title">{title}</span>
+          {collapsible && (
+            <ChevronDown
+              className={cn(
+                'section-chevron w-3 h-3 transition-transform',
+                isExpanded ? 'rotate-0' : '-rotate-90',
+              )}
+            />
+          )}
+        </div>
+      )}
+      {(!collapsible || isExpanded || isCollapsed) && (
+        <nav className="space-y-1">{children}</nav>
+      )}
+    </div>
+  );
+});
+SidebarSection.displayName = 'SidebarSection';
+
+// --- Sidebar Menu Item ---
+const SidebarMenuItem = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => {
+  return <div ref={ref} className={cn('group/item relative flex items-stretch', className)} {...props} />;
+});
+SidebarMenuItem.displayName = 'SidebarMenuItem';
+
+
+// --- Sidebar Menu Button ---
+interface SidebarMenuButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  asChild?: boolean;
+  isActive?: boolean;
+}
+const SidebarMenuButton = React.forwardRef<HTMLButtonElement, SidebarMenuButtonProps>(
+  ({ className, asChild = false, isActive, ...props }, ref) => {
+    const { isCollapsed, compactMode } = useSidebar();
+    const Comp = asChild ? Slot : 'button';
+
+    return (
+      <Comp
+        ref={ref}
+        className={cn(
+          'group flex items-center gap-3 rounded-lg cursor-pointer transition-all duration-200 w-full text-left flex-1',
+          compactMode ? 'px-2 py-1.5' : 'px-4 py-2.5',
+          'hover:bg-accent',
+          isActive && 'bg-primary text-primary-foreground hover:bg-primary/90',
+          isCollapsed && 'justify-center',
+          className
+        )}
+        {...props}
+      />
+    );
+  }
+);
+SidebarMenuButton.displayName = 'SidebarMenuButton';
+
+// --- Sidebar Menu Action ---
+const SidebarMenuAction = React.forwardRef<
+  HTMLButtonElement,
+  React.ButtonHTMLAttributes<HTMLButtonElement>
+>(({ className, ...props }, ref) => {
+  const { isCollapsed } = useSidebar();
+  if (isCollapsed) return null;
+  return (
+    <Button
+      ref={ref}
+      variant="ghost"
+      size="icon"
+      className={cn(
+        'h-full w-8 rounded-l-none opacity-0 group-hover/item:opacity-100 transition-opacity',
+        'focus:opacity-100', // show on focus for accessibility
+        className
+      )}
+      {...props}
+    />
+  );
+});
+SidebarMenuAction.displayName = 'SidebarMenuAction';
+
+// --- Sidebar Menu Label ---
+const SidebarLabel = React.forwardRef<
+  HTMLSpanElement,
+  React.HTMLAttributes<HTMLSpanElement>
+>(({ className, ...props }, ref) => {
+  const { isCollapsed } = useSidebar();
+  if (isCollapsed) return null;
+  return (
+    <span
+      ref={ref}
+      className={cn('nav-label flex-1 font-medium truncate', className)}
+      {...props}
+    />
+  );
+});
+SidebarLabel.displayName = 'SidebarLabel';
+
+
+// --- Sidebar Menu Badge ---
+const SidebarBadge = React.forwardRef<
+  HTMLSpanElement,
+  React.HTMLAttributes<HTMLSpanElement>
+>(({ className, children, ...props }, ref) => {
+  const { isCollapsed } = useSidebar();
+  if (isCollapsed) return null;
+  const badgeContent = typeof children === 'number' && children > 99 ? '99+' : children;
+  return (
+    <span
+      ref={ref}
+      className={cn(
+        'nav-badge bg-destructive text-destructive-foreground text-xs px-1.5 py-0.5 rounded-full min-w-[1.25rem] text-center',
+        className
+      )}
+      {...props}
+    >
+      {badgeContent}
+    </span>
+  );
+});
+SidebarBadge.displayName = 'SidebarBadge';
+
+
+// --- Sidebar Tooltip ---
+interface SidebarTooltipProps extends React.HTMLAttributes<HTMLDivElement> {
+  label: string;
+  badge?: number | string;
+}
+const SidebarTooltip = ({ label, badge, className, ...props }: SidebarTooltipProps) => {
+  const { isCollapsed } = useSidebar();
+  if (!isCollapsed) return null;
+  return (
+    <div
+      className={cn(
+        'absolute left-full ml-2 px-2 py-1 bg-popover text-popover-foreground text-sm rounded-md shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50',
+        className
+      )}
+      {...props}
+    >
+      {label}
+      {badge && (
+        <span className="ml-2 bg-destructive text-destructive-foreground text-xs px-1.5 py-0.5 rounded-full">
+          {typeof badge === 'number' && badge > 99 ? '99+' : badge}
+        </span>
+      )}
+    </div>
+  );
+};
+SidebarTooltip.displayName = 'SidebarTooltip';
+
+
+// --- Icon Wrapper for consistent sizing ---
+const SidebarIcon = ({ children, className }: { children: React.ReactNode, className?: string }) => {
+  return (
+    <div className={cn("flex-shrink-0 w-4 h-4", className)}>
+      {children}
+    </div>
+  )
+}
+
+export {
+  Sidebar,
+  SidebarContent,
+  SidebarHeader,
+  SidebarTitle,
+  SidebarBody,
+  SidebarFooter,
+  SidebarSection,
+  SidebarMenuItem,
+  SidebarMenuButton,
+  SidebarMenuAction,
+  SidebarLabel,
+  SidebarBadge,
+  SidebarTooltip,
+  SidebarIcon
+};
+```
+
+## File: src/components/layout/TopBar.tsx
+```typescript
+import { useState } from 'react'
+import {
+  Menu, 
+  Maximize, 
+  Minimize, 
+  Moon, 
+  Sun,
+  Settings,
+  Command,
+  Zap,
+  ChevronRight,
+  Search,
+  Filter,
+  Plus,
+  PanelRight,
+} from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { BODY_STATES } from '@/lib/utils'
+import { useAppStore } from '@/store/appStore'
+import { UserDropdown } from './UserDropdown'
+
+interface TopBarProps {
+  onToggleSidebar: () => void
+  onToggleFullscreen: () => void
+  onToggleDarkMode: () => void
+}
+
+export function TopBar({
+  onToggleSidebar,
+  onToggleFullscreen,
+  onToggleDarkMode
+}: TopBarProps) {
+  const { 
+    bodyState, 
+    isDarkMode, 
+    openSidePane,
+    sidePaneContent,
+    activePage,
+    setActivePage,
+    searchTerm,
+    setCommandPaletteOpen,
+    setSearchTerm,
+  } = useAppStore()
+
+  const [isSearchFocused, setIsSearchFocused] = useState(false)
+
+  const handleSettingsClick = () => {
+    const isSettingsInSidePane = bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === 'settings'
+
+    // If we're on the settings page and it's not in the side pane, treat this as a "minimize" action.
+    if (activePage === 'settings' && !isSettingsInSidePane) {
+      openSidePane('settings');
+      setActivePage('dashboard');
+    } else {
+      // In all other cases (on dashboard page, or settings already in pane),
+      // just toggle the settings side pane.
+      openSidePane('settings');
+    }
+  }
+
+  const handleMoveToSidePane = () => {
+    const mapping = { dashboard: 'main', settings: 'settings', toaster: 'toaster', notifications: 'notifications' } as const;
+    openSidePane(mapping[activePage]);
+    if (activePage !== 'dashboard') setActivePage('dashboard');
+  };
+
+  return (
+    <div className={cn(
+      "h-20 bg-background border-b border-border flex items-center justify-between px-6 z-50 gap-4",
+      {
+        'transition-all duration-300 ease-in-out': activePage === 'dashboard',
+      }
+    )}>
+      {/* Left Section - Sidebar Controls & Breadcrumbs */}
+      <div className="flex items-center gap-4">
+        {/* Sidebar Controls */}
+        <button
+          onClick={onToggleSidebar}
+          className={cn(
+            "h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors"
+          )}
+          title="Toggle Sidebar"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
+
+        {/* Breadcrumbs */}
+        <div className={cn("hidden md:flex items-center gap-2 text-sm transition-opacity", {
+          "opacity-0 pointer-events-none": isSearchFocused && activePage === 'dashboard'
+        })}>
+          <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">Home</a>
+          <ChevronRight className="w-4 h-4 text-muted-foreground" />
+          <span className="font-medium text-foreground capitalize">{activePage}</span>
+        </div>
+      </div>
+
+      {/* Right Section - Search, page controls, and global controls */}
+      <div className={cn("flex items-center gap-3", isSearchFocused && activePage === 'dashboard' ? 'flex-1' : '')}>
+        {/* Page-specific: Dashboard search and actions */}
+        {activePage === 'dashboard' && (
+          <div className="flex items-center gap-2 flex-1 justify-end">
+            <div className={cn("relative transition-all duration-300 ease-in-out", isSearchFocused ? 'flex-1 max-w-lg' : 'w-auto')}>
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4 pointer-events-none" />
+              <input
+                type="text"
+                placeholder="Search..."
+                value={searchTerm}
+                onFocus={() => setIsSearchFocused(true)}
+                onBlur={() => setIsSearchFocused(false)}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className={cn(
+                  "pl-9 pr-4 py-2 h-10 border-none rounded-lg bg-card focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300 ease-in-out w-full",
+                  isSearchFocused ? 'bg-background' : 'w-48'
+                )}
+              />
+            </div>
+             <button className="h-10 w-10 flex-shrink-0 flex items-center justify-center hover:bg-accent rounded-full transition-colors">
+              <Filter className="w-5 h-5" />
+            </button>
+             <button className="bg-primary text-primary-foreground px-4 py-2 rounded-full hover:bg-primary/90 transition-colors flex items-center gap-2 h-10 flex-shrink-0">
+              <Plus className="w-5 h-5" />
+              <span className={cn(isSearchFocused ? 'hidden sm:inline' : 'inline')}>New Project</span>
+            </button>
+          </div>
+        )}
+        
+        {/* Page-specific: Move to side pane */}
+        <div className={cn('flex items-center', isSearchFocused && activePage === 'dashboard' ? 'hidden md:flex' : '')}>
+          {['dashboard', 'settings', 'toaster', 'notifications'].includes(activePage) && (
+            <button onClick={handleMoveToSidePane} className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors" title="Move to Side Pane"><PanelRight className="w-5 h-5" /></button>
+          )}
+        </div>
+
+        {/* Separator */}
+        <div className={cn(
+          'w-px h-6 bg-border mx-2', 
+          !['dashboard', 'settings', 'toaster', 'notifications'].includes(activePage) || (isSearchFocused && activePage === 'dashboard') ? 'hidden' : ''
+        )} />
+
+        {/* Quick Actions */}
+        <div className={cn('flex items-center gap-3', isSearchFocused && activePage === 'dashboard' ? 'hidden lg:flex' : '')}>
+
+          <button
+            onClick={() => setCommandPaletteOpen(true)}
+            className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+            title="Command Palette (Ctrl+K)"
+          >
+            <Command className="w-5 h-5 group-hover:scale-110 transition-transform" />
+          </button>
+
+        <button
+          className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+          title="Quick Actions"
+        >
+          <Zap className="w-5 h-5 group-hover:scale-110 transition-transform" />
+        </button>
+
+        {/* Body State Controls */}
+        <button
+          onClick={() => openSidePane('details')}
+          className={cn(
+            "h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group",
+            bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === 'details' && "bg-accent"
+          )}
+          title="Toggle Side Pane"
+        >
+          <div className="w-5 h-5 flex group-hover:scale-110 transition-transform">
+            <div className="w-1/2 h-full bg-current opacity-60 rounded-l-sm" />
+            <div className="w-1/2 h-full bg-current rounded-r-sm" />
+          </div>
+        </button>
+
+        <button
+          onClick={onToggleFullscreen}
+          className={cn(
+            "h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group",
+            bodyState === BODY_STATES.FULLSCREEN && "bg-accent"
+          )}
+          title="Toggle Fullscreen"
+        >
+          {bodyState === BODY_STATES.FULLSCREEN ? (
+            <Minimize className="w-5 h-5 group-hover:scale-110 transition-transform" />
+          ) : (
+            <Maximize className="w-5 h-5 group-hover:scale-110 transition-transform" />
+          )}
+        </button>
+
+        <div className="w-px h-6 bg-border mx-2" />
+
+        {/* Theme and Settings */}
+        <button
+          onClick={onToggleDarkMode}
+          className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+          title="Toggle Dark Mode"
+        >
+          {isDarkMode ? (
+            <Sun className="w-5 h-5 group-hover:scale-110 transition-transform" />
+          ) : (
+            <Moon className="w-5 h-5 group-hover:scale-110 transition-transform" />
+          )}
+        </button>
+
+        <button
+          onClick={handleSettingsClick}
+          className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+          title="Settings"
+        >
+          <Settings className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
+        </button>
+        <UserDropdown />
+        </div>
+      </div>
+    </div>
+  )
+}
+```
+
+## File: src/components/layout/UserDropdown.tsx
+```typescript
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuPortal,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { cn } from "@/lib/utils"
+import { Icon } from "@iconify/react";
+
+const MENU_ITEMS = {
+  status: [
+    { value: "focus", icon: "solar:emoji-funny-circle-line-duotone", label: "Focus" },
+    { value: "offline", icon: "solar:moon-sleep-line-duotone", label: "Appear Offline" }
+  ],
+  profile: [
+    { icon: "solar:user-circle-line-duotone", label: "Your profile", action: "profile" },
+    { icon: "solar:sun-line-duotone", label: "Appearance", action: "appearance" },
+    { icon: "solar:settings-line-duotone", label: "Settings", action: "settings" },
+    { icon: "solar:bell-line-duotone", label: "Notifications", action: "notifications" }
+  ],
+  premium: [
+    { 
+      icon: "solar:star-bold", 
+      label: "Upgrade to Pro", 
+      action: "upgrade",
+      iconClass: "text-amber-500",
+      badge: { text: "20% off", className: "bg-amber-500 text-white text-[11px]" }
+    },
+    { icon: "solar:gift-line-duotone", label: "Referrals", action: "referrals" }
+  ],
+  support: [
+    { icon: "solar:download-line-duotone", label: "Download app", action: "download" },
+    { 
+      icon: "solar:letter-unread-line-duotone", 
+      label: "What's new?", 
+      action: "whats-new",
+      rightIcon: "solar:square-top-down-line-duotone"
+    },
+    { 
+      icon: "solar:question-circle-line-duotone", 
+      label: "Get help?", 
+      action: "help",
+      rightIcon: "solar:square-top-down-line-duotone"
+    }
+  ],
+  account: [
+    { 
+      icon: "solar:users-group-rounded-bold-duotone", 
+      label: "Switch account", 
+      action: "switch",
+      showAvatar: false
+    },
+    { icon: "solar:logout-2-bold-duotone", label: "Log out", action: "logout" }
+  ]
+};
+
+// Interface for menu item for better type safety
+interface MenuItem {
+  value?: string;
+  icon: string;
+  label: string;
+  action?: string;
+  iconClass?: string;
+  badge?: { text: string; className: string };
+  rightIcon?: string;
+  showAvatar?: boolean;
+}
+
+export const UserDropdown = ({ 
+  user = {
+    name: "Ayman Echakar",
+    username: "@aymanch-03",
+    avatar: "https://avatars.githubusercontent.com/u/126724835?v=4",
+    initials: "AE",
+    status: "online"
+  },
+  onAction = (_action?: string) => {},
+  onStatusChange = () => {},
+  selectedStatus = "online",
+  promoDiscount = "20% off",
+}) => {
+  const renderMenuItem = (item: MenuItem, index: number) => (
+    <DropdownMenuItem 
+      key={index}
+      className={cn(
+        "px-3 py-2", // Consistent with base component
+        item.badge || item.showAvatar || item.rightIcon ? "justify-between" : ""
+      )}
+      onClick={() => item.action && onAction(item.action)}
+    >
+      <span className="flex items-center gap-2 font-medium">
+        <Icon
+          icon={item.icon}
+          className={cn("h-5 w-5 text-muted-foreground", item.iconClass)}
+        />
+        {item.label}
+      </span>
+      {item.badge && (
+        <Badge className={item.badge.className}>
+          {promoDiscount || item.badge.text}
+        </Badge>
+      )}
+      {item.rightIcon && (
+        <Icon
+          icon={item.rightIcon}
+          className="h-4 w-4 text-muted-foreground"
+        />
+      )}
+      {item.showAvatar && (
+        <Avatar className="cursor-pointer h-6 w-6 shadow border-2 border-background">
+          <AvatarImage src={user.avatar} alt={user.name} />
+          <AvatarFallback>{user.initials}</AvatarFallback>
+        </Avatar>
+      )}
+    </DropdownMenuItem>
+  );
+
+  const getStatusColor = (status: string) => {
+    const colors = {
+      online: "text-green-600 bg-green-100 border-green-300 dark:text-green-400 dark:bg-green-900/30 dark:border-green-500/50",
+      offline: "text-muted-foreground bg-muted border-border",
+      busy: "text-destructive bg-destructive/20 border-destructive/30"
+    };
+    return colors[status.toLowerCase() as keyof typeof colors] || colors.online;
+  };
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Avatar className="cursor-pointer h-10 w-10 border-2 border-transparent hover:border-primary transition-colors">
+          <AvatarImage src={user.avatar} alt={user.name} />
+          <AvatarFallback>{user.initials}</AvatarFallback>
+        </Avatar>
+      </DropdownMenuTrigger>
+
+      <DropdownMenuContent className="no-scrollbar w-[310px] p-2" align="end">
+        <div className="flex items-center">
+          <div className="flex-1 flex items-center gap-3">
+            <Avatar className="cursor-pointer h-10 w-10">
+              <AvatarImage src={user.avatar} alt={user.name} />
+              <AvatarFallback>{user.initials}</AvatarFallback>
+            </Avatar>
+            <div>
+              <h3 className="font-semibold">{user.name}</h3>
+              <p className="text-muted-foreground text-sm">{user.username}</p>
+            </div>
+          </div>
+          <Badge variant="outline" className={cn("border-[0.5px] text-xs font-normal rounded-md capitalize", getStatusColor(user.status))}>
+            {user.status}
+          </Badge>
+        </div>
+        
+        <DropdownMenuSeparator className="my-2" />
+        
+        <DropdownMenuGroup>
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger className="w-full">
+              <span className="flex items-center gap-2 font-medium">
+                <Icon icon="solar:smile-circle-line-duotone" className="h-5 w-5" />
+                Update status
+              </span>
+            </DropdownMenuSubTrigger>
+            <DropdownMenuPortal>
+              <DropdownMenuSubContent>
+                <DropdownMenuRadioGroup value={selectedStatus} onValueChange={onStatusChange}>
+                  {MENU_ITEMS.status.map((status, index) => (
+                    <DropdownMenuRadioItem className="gap-2" key={index} value={status.value}>
+                      <Icon icon={status.icon} className="h-5 w-5 text-muted-foreground" />
+                      {status.label}
+                    </DropdownMenuRadioItem>
+                  ))}
+                </DropdownMenuRadioGroup>
+              </DropdownMenuSubContent>
+            </DropdownMenuPortal>
+          </DropdownMenuSub>
+        </DropdownMenuGroup>
+
+        <DropdownMenuSeparator className="my-2" />
+        <DropdownMenuGroup>
+          {MENU_ITEMS.profile.map(renderMenuItem)}
+        </DropdownMenuGroup>
+
+        <DropdownMenuSeparator className="my-2" />
+        <DropdownMenuGroup>
+          {MENU_ITEMS.premium.map(renderMenuItem)}
+        </DropdownMenuGroup>
+
+        <DropdownMenuSeparator className="my-2" />
+        <DropdownMenuGroup>
+          {MENU_ITEMS.support.map(renderMenuItem)}
+        </DropdownMenuGroup>
+     
+        <DropdownMenuSeparator className="my-2" />
+        <DropdownMenuGroup>
+          {MENU_ITEMS.account.map(renderMenuItem)}
+        </DropdownMenuGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+};
+```
+
+## File: src/components/layout/WorkspaceSwitcher.tsx
+```typescript
+import * as React from 'react';
+import { CheckIcon, ChevronsUpDownIcon, Search } from 'lucide-react';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { cn } from '@/lib/utils';
+import {
+	Popover,
+	PopoverTrigger,
+	PopoverContent,
+	type PopoverContentProps,
+} from '@/components/ui/popover';
+
+// Generic workspace interface - can be extended
+export interface Workspace {
+	id: string;
+	name: string;
+	[key: string]: any; // Allow additional properties
+}
+
+// Context for workspace state management
+interface WorkspaceContextValue<T extends Workspace> {
+	open: boolean;
+	setOpen: (open: boolean) => void;
+	selectedWorkspace: T | undefined;
+	workspaces: T[];
+	onWorkspaceSelect: (workspace: T) => void;
+	getWorkspaceId: (workspace: T) => string;
+	getWorkspaceName: (workspace: T) => string;
+}
+
+const WorkspaceContext = React.createContext<WorkspaceContextValue<any> | null>(
+	null,
+);
+
+function useWorkspaceContext<T extends Workspace>() {
+	const context = React.useContext(
+		WorkspaceContext,
+	) as WorkspaceContextValue<T> | null;
+	if (!context) {
+		throw new Error(
+			'Workspace components must be used within WorkspaceProvider',
+		);
+	}
+	return context;
+}
+
+// Main provider component
+interface WorkspaceProviderProps<T extends Workspace> {
+	children: React.ReactNode;
+	workspaces: T[];
+	selectedWorkspaceId?: string;
+	onWorkspaceChange?: (workspace: T) => void;
+	open?: boolean;
+	onOpenChange?: (open: boolean) => void;
+	getWorkspaceId?: (workspace: T) => string;
+	getWorkspaceName?: (workspace: T) => string;
+}
+
+function WorkspaceProvider<T extends Workspace>({
+	children,
+	workspaces,
+	selectedWorkspaceId,
+	onWorkspaceChange,
+	open: controlledOpen,
+	onOpenChange,
+	getWorkspaceId = (workspace) => workspace.id,
+	getWorkspaceName = (workspace) => workspace.name,
+}: WorkspaceProviderProps<T>) {
+	const [internalOpen, setInternalOpen] = React.useState(false);
+
+	const open = controlledOpen ?? internalOpen;
+	const setOpen = onOpenChange ?? setInternalOpen;
+
+	const selectedWorkspace = React.useMemo(() => {
+		if (!selectedWorkspaceId) return workspaces[0];
+		return (
+			workspaces.find((ws) => getWorkspaceId(ws) === selectedWorkspaceId) ||
+			workspaces[0]
+		);
+	}, [workspaces, selectedWorkspaceId, getWorkspaceId]);
+
+	const handleWorkspaceSelect = React.useCallback(
+		(workspace: T) => {
+			onWorkspaceChange?.(workspace);
+			setOpen(false);
+		},
+		[onWorkspaceChange, setOpen],
+	);
+
+	const value: WorkspaceContextValue<T> = {
+		open,
+		setOpen,
+		selectedWorkspace,
+		workspaces,
+		onWorkspaceSelect: handleWorkspaceSelect,
+		getWorkspaceId,
+		getWorkspaceName,
+	};
+
+	return (
+		<WorkspaceContext.Provider value={value}>
+			<Popover open={open} onOpenChange={setOpen}>
+				{children}
+			</Popover>
+		</WorkspaceContext.Provider>
+	);
+}
+
+// Trigger component
+interface WorkspaceTriggerProps extends React.ComponentProps<'button'> {
+	renderTrigger?: (workspace: Workspace, isOpen: boolean) => React.ReactNode;
+  collapsed?: boolean;
+  avatarClassName?: string;
+}
+
+function WorkspaceTrigger({
+	className,
+	renderTrigger,
+  collapsed = false,
+  avatarClassName,
+	...props
+}: WorkspaceTriggerProps) {
+	const { open, selectedWorkspace, getWorkspaceName } = useWorkspaceContext();
+
+	if (!selectedWorkspace) return null;
+
+	if (renderTrigger) {
+		return (
+			<PopoverTrigger asChild>
+				<button className={className} {...props}>
+					{renderTrigger(selectedWorkspace, open)}
+				</button>
+			</PopoverTrigger>
+		);
+	}
+
+	return (
+		<PopoverTrigger asChild>
+			<button
+				data-state={open ? 'open' : 'closed'}
+				className={cn(
+					'flex w-full items-center justify-between text-sm',
+					'focus:ring-ring focus:ring-2 focus:ring-offset-2 focus:outline-none',
+					className,
+				)}
+				{...props}
+			>
+				<div className={cn("flex items-center gap-3", collapsed ? "w-full justify-center" : "min-w-0 flex-1")}>
+					<Avatar className={cn(avatarClassName)}>
+						<AvatarImage
+							src={(selectedWorkspace as any).logo}
+							alt={getWorkspaceName(selectedWorkspace)}
+						/>
+						<AvatarFallback className="text-xs">
+							{getWorkspaceName(selectedWorkspace).charAt(0).toUpperCase()}
+						</AvatarFallback>
+					</Avatar>
+					{!collapsed && (
+						<div className="flex min-w-0 flex-1 flex-col items-start">
+							<span className="truncate font-medium">{getWorkspaceName(selectedWorkspace)}</span>
+							<span className="text-muted-foreground truncate text-xs">{(selectedWorkspace as any).plan}</span>
+						</div>
+					)}
+				</div>
+				{!collapsed && <ChevronsUpDownIcon className="h-4 w-4 shrink-0 opacity-50" />}
+			</button>
+		</PopoverTrigger>
+	);
+}
+
+// Content component
+interface WorkspaceContentProps
+	extends PopoverContentProps {
+	renderWorkspace?: (
+		workspace: Workspace,
+		isSelected: boolean,
+	) => React.ReactNode;
+	title?: string;
+	searchable?: boolean;
+	onSearch?: (query: string) => void;
+}
+
+function WorkspaceContent({
+	className,
+	children,
+	renderWorkspace,
+	title = 'Workspaces',
+	searchable = false,
+	onSearch,
+	side = 'right',
+	align = 'start',
+	sideOffset = 8,
+	useTriggerWidth = false,
+	...props
+}: WorkspaceContentProps) {
+	const {
+		workspaces,
+		selectedWorkspace,
+		onWorkspaceSelect,
+		getWorkspaceId,
+		getWorkspaceName,
+	} = useWorkspaceContext();
+
+	const [searchQuery, setSearchQuery] = React.useState('');
+
+	const filteredWorkspaces = React.useMemo(() => {
+		if (!searchQuery) return workspaces;
+		return workspaces.filter((ws) =>
+			getWorkspaceName(ws).toLowerCase().includes(searchQuery.toLowerCase()),
+		);
+	}, [workspaces, searchQuery, getWorkspaceName]);
+
+	React.useEffect(() => {
+		onSearch?.(searchQuery);
+	}, [searchQuery, onSearch]);
+
+	const defaultRenderWorkspace = (
+		workspace: Workspace,
+		isSelected: boolean,
+	) => (
+		<div className="flex min-w-0 flex-1 items-center gap-2">
+			<Avatar className="h-6 w-6">
+				<AvatarImage
+					src={(workspace as any).logo}
+					alt={getWorkspaceName(workspace)}
+				/>
+				<AvatarFallback className="text-xs">
+					{getWorkspaceName(workspace).charAt(0).toUpperCase()}
+				</AvatarFallback>
+			</Avatar>
+			<div className="flex min-w-0 flex-1 flex-col items-start">
+				<span className="truncate text-sm">{getWorkspaceName(workspace)}</span>
+				{(workspace as any).plan && (
+					<span className="text-muted-foreground text-xs">
+						{(workspace as any).plan}
+					</span>
+				)}
+			</div>
+			{isSelected && <CheckIcon className="ml-auto h-4 w-4" />}
+		</div>
+	);
+
+	return (
+		<PopoverContent
+			className={cn('p-0', className)}
+			align={align}
+			sideOffset={sideOffset}
+			useTriggerWidth={useTriggerWidth}
+			{...{ ...props, side }}
+		>
+			<div className="border-b px-4 py-3">
+				<h3 className="text-sm font-semibold text-foreground">{title}</h3>
+			</div>
+
+			{searchable && (
+				<div className="border-b p-2">
+					<div className="relative">
+						<Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+						<input
+							type="text"
+							placeholder="Search workspaces..."
+							value={searchQuery}
+							onChange={(e) => setSearchQuery(e.target.value)}
+							className="h-9 w-full rounded-md bg-transparent pl-9 text-sm placeholder:text-muted-foreground focus:bg-accent focus:outline-none"
+						/>
+					</div>
+				</div>
+			)}
+
+			<div className="max-h-[300px] overflow-y-auto">
+				{filteredWorkspaces.length === 0 ? (
+					<div className="text-muted-foreground px-3 py-2 text-center text-sm">
+						No workspaces found
+					</div>
+				) : (
+					<div className="space-y-1 p-2">
+						{filteredWorkspaces.map((workspace) => {
+							const isSelected =
+								selectedWorkspace &&
+								getWorkspaceId(selectedWorkspace) === getWorkspaceId(workspace);
+
+							return (
+								<button
+									key={getWorkspaceId(workspace)}
+									onClick={() => onWorkspaceSelect(workspace)}
+									className={cn(
+										'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm',
+										'hover:bg-accent hover:text-accent-foreground',
+										'focus:outline-none',
+										isSelected && 'bg-accent text-accent-foreground',
+									)}
+								>
+									{renderWorkspace
+										? renderWorkspace(workspace, !!isSelected)
+										: defaultRenderWorkspace(workspace, !!isSelected)}
+								</button>
+							);
+						})}
+					</div>
+				)}
+			</div>
+
+			{children && (
+				<>
+					<div className="border-t" />
+					<div className="p-1">{children}</div>
+				</>
+			)}
+		</PopoverContent>
+	);
+}
+
+export { WorkspaceProvider as Workspaces, WorkspaceTrigger, WorkspaceContent };
+```
+
+## File: src/components/shared/ContentInSidePanePlaceholder.tsx
+```typescript
+import { ChevronsLeftRight } from 'lucide-react'
+
+interface ContentInSidePanePlaceholderProps {
+  icon: React.ElementType
+  title: string
+  pageName: string
+  onBringBack: () => void
+}
+
+export function ContentInSidePanePlaceholder({
+  icon: Icon,
+  title,
+  pageName,
+  onBringBack,
+}: ContentInSidePanePlaceholderProps) {
+  const capitalizedPageName = pageName
+    .split(' ')
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ')
+
+  return (
+    <div className="flex-1 flex flex-col items-center justify-center text-center p-4 h-full">
+      <Icon className="w-16 h-16 text-muted-foreground/50 mb-4" />
+      <h2 className="text-2xl font-bold">{title}</h2>
+      <p className="text-muted-foreground mt-2 max-w-md">
+        You've moved {pageName} to the side pane. You can bring it back or
+        continue to navigate.
+      </p>
+      <button
+        onClick={onBringBack}
+        className="mt-6 bg-primary text-primary-foreground px-4 py-2 rounded-full hover:bg-primary/90 transition-colors flex items-center gap-2 h-10"
+      >
+        <ChevronsLeftRight className="w-5 h-5" />
+        <span>Bring {capitalizedPageName} Back</span>
+      </button>
+    </div>
+  )
+}
+```
+
+## File: src/components/shared/PageHeader.tsx
+```typescript
+import * as React from 'react';
+
+interface PageHeaderProps {
+  title: string;
+  description: React.ReactNode;
+  children?: React.ReactNode;
+}
+
+export function PageHeader({ title, description, children }: PageHeaderProps) {
+  return (
+    <div className="flex items-center justify-between">
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">{title}</h1>
+        <p className="text-muted-foreground">{description}</p>
+      </div>
+      {children}
+    </div>
+  );
+}
+```
 
 ## File: src/components/ui/avatar.tsx
 ```typescript
@@ -865,49 +2865,916 @@ export const ToasterProvider = ({ children }: { children: ReactNode }) => {
 };
 ```
 
-## File: src/components/ContentInSidePanePlaceholder.tsx
+## File: src/features/settings/SettingsContent.tsx
 ```typescript
-import { ChevronsLeftRight } from 'lucide-react'
+import { useState } from 'react'
+import { 
+  Moon, 
+  Sun, 
+  Zap, 
+  Eye, 
+  Minimize2, 
+  RotateCcw,
+  Monitor,
+  Smartphone,
+  Palette,
+  Accessibility,
+  Check
+} from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { useAppStore } from '@/store/appStore'
+import { SettingsToggle } from './SettingsToggle'
+import { SettingsSection } from './SettingsSection'
 
-interface ContentInSidePanePlaceholderProps {
-  icon: React.ElementType
-  title: string
-  pageName: string
-  onBringBack: () => void
-}
+const colorPresets = [
+  { name: 'Default Blue', value: '220 84% 60%' },
+  { name: 'Rose', value: '346.8 77.2% 49.8%' },
+  { name: 'Green', value: '142.1 76.2% 36.3%' },
+  { name: 'Orange', value: '24.6 95% 53.1%' },
+  { name: 'Violet', value: '262.1 83.3% 57.8%' },
+  { name: 'Slate', value: '215.3 20.3% 65.1%' }
+]
 
-export function ContentInSidePanePlaceholder({
-  icon: Icon,
-  title,
-  pageName,
-  onBringBack,
-}: ContentInSidePanePlaceholderProps) {
-  const capitalizedPageName = pageName
-    .split(' ')
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-    .join(' ')
+export function SettingsContent() {
+  const {
+    isDarkMode,
+    reducedMotion,
+    compactMode,
+    autoExpandSidebar,
+    sidebarWidth,
+    primaryColor,
+    toggleDarkMode,
+    setReducedMotion,
+    setCompactMode,
+    setAutoExpandSidebar,
+    setPrimaryColor,
+    setSidebarWidth,
+    resetToDefaults
+  } = useAppStore()
+
+  const [tempSidebarWidth, setTempSidebarWidth] = useState(sidebarWidth)
+
+  const handleSidebarWidthChange = (width: number) => {
+    setTempSidebarWidth(width)
+    setSidebarWidth(width)
+  }
 
   return (
-    <div className="flex-1 flex flex-col items-center justify-center text-center p-4 h-full">
-      <Icon className="w-16 h-16 text-muted-foreground/50 mb-4" />
-      <h2 className="text-2xl font-bold">{title}</h2>
-      <p className="text-muted-foreground mt-2 max-w-md">
-        You've moved {pageName} to the side pane. You can bring it back or
-        continue to navigate.
-      </p>
+    <div className="space-y-10">
+      {/* Appearance */}
+      <SettingsSection icon={<Palette />} title="Appearance">
+        {/* Dark Mode */}
+        <SettingsToggle
+          icon={isDarkMode ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+          title="Dark Mode"
+          description="Toggle dark theme"
+          checked={isDarkMode}
+          onCheckedChange={toggleDarkMode}
+        />
+
+        {/* Compact Mode */}
+        <SettingsToggle
+          icon={<Minimize2 className="w-4 h-4" />}
+          title="Compact Mode"
+          description="Reduce spacing and sizes"
+          checked={compactMode}
+          onCheckedChange={setCompactMode}
+        />
+
+        {/* Accent Color */}
+        <div className="space-y-3">
+          <div className="flex items-center gap-3">
+            <Palette className="w-4 h-4" />
+            <div>
+              <p className="font-medium">Accent Color</p>
+              <p className="text-sm text-muted-foreground">Customize the main theme color</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-6 gap-2 pt-1">
+            {colorPresets.map(color => {
+              const isActive = color.value === primaryColor
+              return (
+                <button
+                  key={color.name}
+                  title={color.name}
+                  onClick={() => setPrimaryColor(color.value)}
+                  className={cn(
+                    "w-8 h-8 rounded-full border-2 transition-transform hover:scale-110 flex items-center justify-center",
+                    isActive ? 'border-primary' : 'border-transparent'
+                  )}
+                  style={{ backgroundColor: `hsl(${color.value})` }}
+                >{isActive && <Check className="w-5 h-5 text-primary-foreground" />}</button>
+              )
+            })}
+          </div>
+        </div>
+      </SettingsSection>
+
+      {/* Behavior */}
+      <SettingsSection icon={<Zap />} title="Behavior">
+        {/* Auto Expand Sidebar */}
+        <SettingsToggle
+          icon={<Eye className="w-4 h-4" />}
+          title="Auto Expand Sidebar"
+          description="Expand on hover when collapsed"
+          checked={autoExpandSidebar}
+          onCheckedChange={setAutoExpandSidebar}
+        />
+
+        {/* Sidebar Width */}
+        <div className="space-y-3">
+          <div className="flex items-center gap-3">
+            <Monitor className="w-4 h-4" />
+            <div>
+              <p className="font-medium">Sidebar Width</p>
+              <p className="text-sm text-muted-foreground">{tempSidebarWidth}px</p>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <input
+              type="range"
+              min="200"
+              max="500"
+              step="10"
+              value={tempSidebarWidth}
+              onChange={(e) => handleSidebarWidthChange(Number(e.target.value))}
+              className="w-full h-1.5 bg-muted rounded-lg appearance-none cursor-pointer slider"
+            />
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <span>200px</span>
+              <span>350px</span>
+              <span>500px</span>
+            </div>
+          </div>
+        </div>
+      </SettingsSection>
+
+      {/* Accessibility */}
+      <SettingsSection icon={<Accessibility />} title="Accessibility">
+        {/* Reduced Motion */}
+        <SettingsToggle
+          icon={<Zap className="w-4 h-4" />}
+          title="Reduced Motion"
+          description="Minimize animations"
+          checked={reducedMotion}
+          onCheckedChange={setReducedMotion}
+        />
+      </SettingsSection>
+
+      {/* Presets */}
+      <div className="space-y-4">
+        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+          Quick Presets
+        </h3>
+        
+        <div className="grid grid-cols-2 gap-3">
+          <button 
+            onClick={() => {
+              setCompactMode(false)
+              setReducedMotion(false)
+              setSidebarWidth(320)
+            }}
+            className="p-4 bg-accent/30 hover:bg-accent/50 rounded-xl transition-colors text-left"
+          >
+            <Monitor className="w-4 h-4 mb-2" />
+            <p className="font-medium text-sm">Desktop</p>
+            <p className="text-xs text-muted-foreground">Spacious layout</p>
+          </button>
+          
+          <button 
+            onClick={() => {
+              setCompactMode(true)
+              setReducedMotion(true)
+              setSidebarWidth(240)
+            }}
+            className="p-4 bg-accent/30 hover:bg-accent/50 rounded-xl transition-colors text-left"
+          >
+            <Smartphone className="w-4 h-4 mb-2" />
+            <p className="font-medium text-sm">Mobile</p>
+            <p className="text-xs text-muted-foreground">Compact layout</p>
+          </button>
+        </div>
+      </div>
+      <div className="pt-6 border-t border-border">
+        <button
+          onClick={resetToDefaults}
+          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-destructive/10 text-destructive hover:bg-destructive/20 rounded-lg transition-colors"
+        >
+          <RotateCcw className="w-4 h-4" />
+          Reset to Defaults
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// Custom slider styles
+const sliderStyles = `
+.slider::-webkit-slider-thumb {
+  appearance: none;
+  height: 18px;
+  width: 18px;
+  border-radius: 50%;
+  background: hsl(var(--primary));
+  cursor: pointer;
+  border: 3px solid hsl(var(--background));
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  margin-top: -7px;
+}
+
+.slider::-moz-range-thumb {
+  height: 18px;
+  width: 18px;
+  border-radius: 50%;
+  background: hsl(var(--primary));
+  cursor: pointer;
+  border: 3px solid hsl(var(--background));
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+`
+
+// Inject styles
+if (typeof document !== 'undefined') {
+  const styleSheet = document.createElement('style')
+  styleSheet.textContent = sliderStyles
+  document.head.appendChild(styleSheet)
+}
+```
+
+## File: src/features/settings/SettingsSection.tsx
+```typescript
+import * as React from 'react'
+
+interface SettingsSectionProps {
+  icon: React.ReactElement
+  title: string
+  children: React.ReactNode
+}
+
+export function SettingsSection({ icon, title, children }: SettingsSectionProps) {
+  return (
+    <div className="space-y-4">
+      <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+        {React.cloneElement(icon, { className: 'w-4 h-4' })}
+        {title}
+      </h3>
+      {children}
+    </div>
+  )
+}
+```
+
+## File: src/features/settings/SettingsToggle.tsx
+```typescript
+import * as React from 'react'
+import { cn } from '@/lib/utils'
+
+interface SettingsToggleProps {
+  icon: React.ReactNode
+  title: string
+  description: string
+  checked: boolean
+  onCheckedChange: (checked: boolean) => void
+}
+
+export function SettingsToggle({
+  icon,
+  title,
+  description,
+  checked,
+  onCheckedChange,
+}: SettingsToggleProps) {
+  return (
+    <div className="flex items-center justify-between">
+      <div className="flex items-center gap-3">
+        {icon}
+        <div>
+          <p className="font-medium">{title}</p>
+          <p className="text-sm text-muted-foreground">{description}</p>
+        </div>
+      </div>
       <button
-        onClick={onBringBack}
-        className="mt-6 bg-primary text-primary-foreground px-4 py-2 rounded-full hover:bg-primary/90 transition-colors flex items-center gap-2 h-10"
+        onClick={() => onCheckedChange(!checked)}
+        className={cn(
+          'relative inline-flex h-7 w-12 items-center rounded-full transition-colors',
+          checked ? 'bg-primary' : 'bg-muted'
+        )}
       >
-        <ChevronsLeftRight className="w-5 h-5" />
-        <span>Bring {capitalizedPageName} Back</span>
+        <span
+          className={cn(
+            'inline-block h-5 w-5 transform rounded-full bg-background transition-transform',
+            checked ? 'translate-x-6' : 'translate-x-1'
+          )}
+        />
       </button>
     </div>
   )
 }
 ```
 
-## File: src/components/NotificationsPage.tsx
+## File: src/lib/utils.ts
+```typescript
+import { type ClassValue, clsx } from "clsx"
+import { twMerge } from "tailwind-merge"
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs))
+}
+
+export const SIDEBAR_STATES = {
+  HIDDEN: 'hidden',
+  COLLAPSED: 'collapsed', 
+  EXPANDED: 'expanded',
+  PEEK: 'peek'
+} as const
+
+export const BODY_STATES = {
+  NORMAL: 'normal',
+  FULLSCREEN: 'fullscreen',
+  SIDE_PANE: 'side_pane'
+} as const
+
+export type SidebarState = typeof SIDEBAR_STATES[keyof typeof SIDEBAR_STATES]
+export type BodyState = typeof BODY_STATES[keyof typeof BODY_STATES]
+```
+
+## File: src/pages/Dashboard/DemoContent.tsx
+```typescript
+import { useRef, useEffect } from 'react'
+import { gsap } from 'gsap'
+import { 
+  Sparkles, 
+  Zap, 
+  Rocket, 
+  Star, 
+  Heart,
+  Layers,
+  Code,
+  Palette,
+  Smartphone,
+  Monitor,
+  Settings
+} from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { useAppStore } from '@/store/appStore'
+import { Card } from '@/components/ui/card'
+
+export function DemoContent() {
+  const { bodyState, sidebarState, isDarkMode, compactMode } = useAppStore()
+  const contentRef = useRef<HTMLDivElement>(null)
+  const cardsRef = useRef<(HTMLDivElement | null)[]>([])
+
+  useEffect(() => {
+    if (!contentRef.current) return
+
+    const cards = cardsRef.current.filter(Boolean)
+    
+    // Animate cards on mount
+    gsap.fromTo(cards, 
+      { y: 30, opacity: 0, scale: 0.95 },
+      { 
+        y: 0, 
+        opacity: 1, 
+        scale: 1,
+        duration: 0.6,
+        stagger: 0.1,
+        ease: "power3.out"
+      }
+    )
+  }, [])
+
+  const features = [
+    {
+      icon: <Sparkles className="w-6 h-6" />,
+      title: "Amazing Animations",
+      description: "Powered by GSAP for smooth, buttery animations",
+      color: "from-emerald-500 to-teal-500"
+    },
+    {
+      icon: <Zap className="w-6 h-6" />,
+      title: "Lightning Fast",
+      description: "Built with Vite and optimized for performance",
+      color: "from-amber-500 to-orange-500"
+    },
+    {
+      icon: <Layers className="w-6 h-6" />,
+      title: "Multiple States",
+      description: "Fullscreen, side pane, and normal viewing modes",
+      color: "from-emerald-500 to-green-500"
+    },
+    {
+      icon: <Code className="w-6 h-6" />,
+      title: "TypeScript",
+      description: "Fully typed with excellent developer experience",
+      color: "from-green-500 to-emerald-500"
+    },
+    {
+      icon: <Palette className="w-6 h-6" />,
+      title: "Beautiful Design",
+      description: "Shadcn/ui components with Tailwind CSS",
+      color: "from-teal-500 to-emerald-500"
+    },
+    {
+      icon: <Settings className="w-6 h-6" />,
+      title: "Customizable",
+      description: "Extensive settings and preferences panel",
+      color: "from-slate-500 to-gray-500"
+    }
+  ]
+
+  const stats = [
+    { label: "Components", value: "12+", color: "text-emerald-600" },
+    { label: "Animations", value: "25+", color: "text-teal-600" },
+    { label: "States", value: "7", color: "text-primary" },
+    { label: "Settings", value: "10+", color: "text-amber-600" }
+  ]
+
+  return (
+    <div ref={contentRef} className="p-8 space-y-12">
+      {/* Hero Section */}
+      <div className="text-center space-y-4">
+        <div className="flex items-center justify-center gap-2 mb-4">
+          <Rocket className="w-8 h-8 text-primary" />
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+            Amazing App Shell
+          </h1>
+        </div>
+        <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+          A super amazing application shell with resizable sidebar, multiple body states, 
+          smooth animations, and comprehensive settings - all built with modern web technologies.
+        </p>
+        
+        {/* Quick Stats */}
+        <div className="flex items-center justify-center gap-12 mt-8">
+          {stats.map((stat) => (
+            <div key={stat.label} className="text-center">
+              <div className={cn("text-2xl font-bold", stat.color)}>{stat.value}</div>
+              <div className="text-sm text-muted-foreground">{stat.label}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Feature Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {features.map((feature, index) => (
+          <Card
+            key={feature.title}
+            ref={el => cardsRef.current[index] = el}
+            className="group relative overflow-hidden border-border/50 p-6 hover:border-primary/30 hover:bg-accent/30 transition-all duration-300 cursor-pointer"
+          >
+            <div className="relative z-10">
+              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-4 group-hover:scale-110 group-hover:bg-primary/20 transition-transform">
+                {feature.icon}
+              </div>
+              
+              <h3 className="text-lg font-semibold mb-2">{feature.title}</h3>
+              <p className="text-muted-foreground text-sm">{feature.description}</p>
+            </div>
+          </Card>
+        ))}
+      </div>
+
+      {/* Technology Stack */}
+      <Card className="border-border/50 p-6">
+        <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
+          <Star className="w-6 h-6 text-yellow-500" />
+          Technology Stack
+        </h2>
+        
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[
+            { name: "React 18", desc: "Latest React with hooks" },
+            { name: "TypeScript", desc: "Type-safe development" },
+            { name: "Vite", desc: "Lightning fast build tool" },
+            { name: "Tailwind CSS", desc: "Utility-first styling" },
+            { name: "GSAP", desc: "Professional animations" },
+            { name: "Zustand", desc: "Lightweight state management" },
+            { name: "Shadcn/ui", desc: "Beautiful components" },
+            { name: "Lucide Icons", desc: "Consistent iconography" }
+          ].map((tech) => (
+            <div key={tech.name} className="bg-background rounded-xl p-4 border border-border/50">
+              <h4 className="font-medium">{tech.name}</h4>
+              <p className="text-sm text-muted-foreground">{tech.desc}</p>
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      {/* Current State Display */}
+      <Card className="border-border/50 p-6">
+        <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+          <Monitor className="w-5 h-5" />
+          Current App State
+        </h2>
+        
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="text-center p-3 bg-background rounded-xl">
+            <div className="text-sm text-muted-foreground">Sidebar</div>
+            <div className="font-medium capitalize">{sidebarState}</div>
+          </div>
+          <div className="text-center p-3 bg-background rounded-xl">
+            <div className="text-sm text-muted-foreground">Body State</div>
+            <div className="font-medium capitalize">{bodyState.replace('_', ' ')}</div>
+          </div>
+          <div className="text-center p-3 bg-background rounded-xl">
+            <div className="text-sm text-muted-foreground">Theme</div>
+            <div className="font-medium">{isDarkMode ? 'Dark' : 'Light'}</div>
+          </div>
+          <div className="text-center p-3 bg-background rounded-xl">
+            <div className="text-sm text-muted-foreground">Mode</div>
+            <div className="font-medium">{compactMode ? 'Compact' : 'Normal'}</div>
+          </div>
+        </div>
+      </Card>
+
+      {/* Interactive Demo */}
+      <div className="text-center space-y-4">
+        <h2 className="text-2xl font-bold flex items-center justify-center gap-2">
+          <Heart className="w-6 h-6 text-red-500" />
+          Try It Out!
+        </h2>
+        <p className="text-muted-foreground">
+          Use the controls in the top bar to explore different states, toggle the sidebar, 
+          or open settings to customize the experience. The sidebar is resizable by dragging the edge!
+        </p>
+        
+        <div className="flex items-center justify-center gap-4 pt-4">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Smartphone className="w-4 h-4" />
+            <span>Responsive</span>
+          </div>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Zap className="w-4 h-4" />
+            <span>Fast</span>
+          </div>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Star className="w-4 h-4" />
+            <span>Beautiful</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+```
+
+## File: src/pages/Dashboard/index.tsx
+```typescript
+import { useRef, useEffect, useState } from 'react'
+import { gsap } from 'gsap'
+import { 
+  BarChart3, 
+  TrendingUp, 
+  Users, 
+  DollarSign, 
+  Activity,
+  Calendar,
+  Clock,
+  MessageSquare,
+  FileText,
+  Star,
+  ChevronRight,
+  MoreVertical,
+  ArrowDown
+} from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { DemoContent } from './DemoContent';
+import { useAppStore } from '@/store/appStore';
+import { BODY_STATES } from '@/lib/utils';
+import { useAutoAnimateTopBar } from '@/hooks/useAutoAnimateTopBar';
+import { PageHeader } from '@/components/shared/PageHeader';
+import { Card } from '@/components/ui/card';
+
+interface StatsCard {
+  title: string
+  value: string
+  change: string
+  trend: 'up' | 'down'
+  icon: React.ReactNode
+}
+
+interface ActivityItem {
+  id: string
+  type: 'comment' | 'file' | 'meeting' | 'task'
+  title: string
+  description: string
+  time: string
+  user: string
+}
+
+const statsCards: StatsCard[] = [
+  {
+    title: "Total Revenue",
+    value: "$45,231.89",
+    change: "+20.1%",
+    trend: "up",
+    icon: <DollarSign className="w-5 h-5" />
+  },
+  {
+    title: "Active Users",
+    value: "2,350",
+    change: "+180.1%",
+    trend: "up",
+    icon: <Users className="w-5 h-5" />
+  },
+  {
+    title: "Conversion Rate",
+    value: "12.5%",
+    change: "+19%",
+    trend: "up",
+    icon: <TrendingUp className="w-5 h-5" />
+  },
+  {
+    title: "Performance",
+    value: "573ms",
+    change: "-5.3%",
+    trend: "down",
+    icon: <Activity className="w-5 h-5" />
+  }
+]
+
+const recentActivity: ActivityItem[] = [
+  {
+    id: "1",
+    type: "comment",
+    title: "New comment on Project Alpha",
+    description: "Sarah Johnson added a comment to the design review",
+    time: "2 minutes ago",
+    user: "SJ"
+  },
+  {
+    id: "2",
+    type: "file",
+    title: "Document uploaded",
+    description: "quarterly-report.pdf was uploaded to Documents",
+    time: "15 minutes ago",
+    user: "MD"
+  },
+  {
+    id: "3",
+    type: "meeting",
+    title: "Meeting scheduled",
+    description: "Weekly standup meeting scheduled for tomorrow 9 AM",
+    time: "1 hour ago",
+    user: "RW"
+  },
+  {
+    id: "4",
+    type: "task",
+    title: "Task completed",
+    description: "UI wireframes for mobile app completed",
+    time: "2 hours ago",
+    user: "AL"
+  }
+]
+
+interface DashboardContentProps {
+  isInSidePane?: boolean;
+}
+
+export function DashboardContent({ isInSidePane = false }: DashboardContentProps) {
+    const contentRef = useRef<HTMLDivElement>(null)
+    const cardsRef = useRef<(HTMLDivElement | null)[]>([])
+    const [showScrollToBottom, setShowScrollToBottom] = useState(false);
+    const { bodyState } = useAppStore();
+    const { onScroll: handleTopBarScroll } = useAutoAnimateTopBar(isInSidePane);
+
+    const scrollToBottom = () => {
+      contentRef.current?.scrollTo({
+        top: contentRef.current.scrollHeight,
+        behavior: 'smooth'
+      })
+    }
+
+    const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+      handleTopBarScroll(e);
+      if (!contentRef.current) return;
+      const { scrollTop, scrollHeight, clientHeight } = contentRef.current;
+      // Show if scrolled down and not at the bottom
+      setShowScrollToBottom(scrollTop > 200 && scrollTop < scrollHeight - clientHeight - 200);
+    };
+
+    // Animate content based on body state
+    useEffect(() => {
+      if (!contentRef.current) return
+
+      const content = contentRef.current
+      const cards = cardsRef.current.filter(Boolean)
+
+      switch (bodyState) {
+        case BODY_STATES.FULLSCREEN:
+          gsap.to(content, {
+            scale: 1.02,
+            duration: 0.4,
+            ease: "power3.out"
+          })
+          break
+        default:
+          gsap.to(content, {
+            scale: 1,
+            duration: 0.4,
+            ease: "power3.out"
+          })
+          break
+      }
+
+      // Stagger animation for cards
+      gsap.fromTo(cards, 
+        { y: 20, opacity: 0 },
+        { 
+          y: 0, 
+          opacity: 1, 
+          duration: 0.6,
+          stagger: 0.1,
+          ease: "power3.out"
+        }
+      )
+
+    }, [bodyState])
+
+    const getTypeIcon = (type: ActivityItem['type']) => {
+      switch (type) {
+        case 'comment':
+          return <MessageSquare className="w-4 h-4" />
+        case 'file':
+          return <FileText className="w-4 h-4" />
+        case 'meeting':
+          return <Calendar className="w-4 h-4" />
+        case 'task':
+          return <Star className="w-4 h-4" />
+        default:
+          return <Activity className="w-4 h-4" />
+      }
+    }
+
+    return (
+        <div 
+          ref={contentRef}
+          className="h-full overflow-y-auto space-y-8 p-6 lg:px-12"
+          onScroll={handleScroll}
+        >
+          {/* Header */}
+          <PageHeader
+            title="Dashboard"
+            description="Welcome to the amazing app shell demo! Explore all the features and customization options."
+          />
+            {/* Stats Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {statsCards.map((stat, index) => (
+                <Card
+                key={stat.title}
+                ref={el => cardsRef.current[index] = el}
+                className="p-6 border-border/50 hover:border-primary/30 transition-all duration-300 group cursor-pointer"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="p-3 bg-primary/10 rounded-full group-hover:bg-primary/20 transition-colors">
+                    {stat.icon}
+                  </div>
+                  <div className={cn(
+                    "text-sm font-medium",
+                    stat.trend === 'up' ? "text-green-600" : "text-red-600"
+                  )}>
+                    {stat.change}
+                  </div>
+                </div>
+                <div className="mt-4">
+                  <h3 className="text-2xl font-bold">{stat.value}</h3>
+                  <p className="text-sm text-muted-foreground mt-1">{stat.title}</p>
+                </div>
+              </Card>
+              ))}
+            </div>
+
+            {/* Demo Content */}
+            <DemoContent />
+
+            {/* Main Content Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Chart Area */}
+            <div className="lg:col-span-2 space-y-6">
+              {/* Analytics Chart */}
+              <Card className="p-6 border-border/50">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-lg font-semibold">Analytics Overview</h3>
+                  <button className="h-8 w-8 flex items-center justify-center hover:bg-accent rounded-full transition-colors">
+                    <MoreVertical className="w-5 h-5" />
+                  </button>
+                </div>
+                
+                {/* Mock Chart */}
+                <div className="h-64 bg-gradient-to-br from-primary/10 to-transparent rounded-xl flex items-center justify-center border border-border/50">
+                  <div className="text-center">
+                    <BarChart3 className="w-12 h-12 text-primary mx-auto mb-2" />
+                    <p className="text-muted-foreground">Chart visualization would go here</p>
+                  </div>
+                </div>
+              </Card>
+
+              {/* Recent Projects */}
+              <Card className="p-6 border-border/50">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-lg font-semibold">Recent Projects</h3>
+                  <button className="text-primary hover:text-primary/80 text-sm font-medium flex items-center gap-1">
+                    View All
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+                
+                <div className="space-y-4">
+                  {[
+                    { name: "E-commerce Platform", progress: 75, team: 5, deadline: "Dec 15" },
+                    { name: "Mobile App Redesign", progress: 45, team: 3, deadline: "Jan 20" },
+                    { name: "Marketing Website", progress: 90, team: 4, deadline: "Dec 5" }
+                  ].map((project) => (
+                    <div key={project.name} className="p-4 bg-accent/30 rounded-xl hover:bg-accent/50 transition-colors cursor-pointer">
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="font-medium">{project.name}</h4>
+                        <span className="text-sm text-muted-foreground">{project.progress}%</span>
+                      </div>
+                      <div className="w-full bg-muted rounded-full h-2 mb-3">
+                        <div 
+                          className="bg-primary h-2 rounded-full transition-all duration-500"
+                          style={{ width: `${project.progress}%` }}
+                        />
+                      </div>
+                      <div className="flex items-center justify-between text-sm text-muted-foreground">
+                        <span>{project.team} team members</span>
+                        <span>Due {project.deadline}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            </div>
+
+            {/* Sidebar Content */}
+            <div className="space-y-6">
+              {/* Quick Actions */}
+              <Card className="p-6 border-border/50">
+                <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
+                <div className="space-y-3">
+                  {[
+                    { icon: <FileText className="w-4 h-4" />, label: "Create Document", color: "bg-blue-500/10 text-blue-600" },
+                    { icon: <Calendar className="w-4 h-4" />, label: "Schedule Meeting", color: "bg-green-500/10 text-green-600" },
+                    { icon: <Users className="w-4 h-4" />, label: "Invite Team", color: "bg-purple-500/10 text-purple-600" },
+                    { icon: <BarChart3 className="w-4 h-4" />, label: "View Reports", color: "bg-orange-500/10 text-orange-600" }
+                  ].map((action) => (
+                    <button
+                      key={action.label}
+                      className="w-full flex items-center gap-3 p-3 hover:bg-accent rounded-lg transition-colors text-left"
+                    >
+                      <div className={cn("p-2 rounded-full", action.color)}>
+                        {action.icon}
+                      </div>
+                      <span className="font-medium">{action.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </Card>
+
+              {/* Recent Activity */}
+              <Card className="p-6 border-border/50">
+                <h3 className="text-lg font-semibold mb-4">Recent Activity</h3>
+                <div className="space-y-4">
+                  {recentActivity.map((activity) => (
+                    <div key={activity.id} className="flex items-start gap-3 p-3 hover:bg-accent/30 rounded-xl transition-colors cursor-pointer">
+                      <div className="p-2 bg-primary/10 rounded-full flex-shrink-0">
+                        {getTypeIcon(activity.type)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-medium text-sm mb-1">{activity.title}</h4>
+                        <p className="text-xs text-muted-foreground mb-2">{activity.description}</p>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <Clock className="w-3 h-3" />
+                          <span>{activity.time}</span>
+                          <div className="w-5 h-5 bg-primary rounded-full flex items-center justify-center text-primary-foreground text-xs font-medium">
+                            {activity.user}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            </div>
+          </div>
+          {showScrollToBottom && (
+            <button
+              onClick={scrollToBottom}
+              className="fixed bottom-8 right-8 w-12 h-12 bg-primary text-primary-foreground rounded-full flex items-center justify-center shadow-lg hover:bg-primary/90 transition-all animate-fade-in z-[51]"
+              style={{ animation: 'bounce 2s infinite' }}
+              title="Scroll to bottom"
+            >
+              <ArrowDown className="w-6 h-6" />
+            </button>
+          )}
+      </div>
+    )
+}
+```
+
+## File: src/pages/Notifications/index.tsx
 ```typescript
 import React from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -915,8 +3782,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { PageHeader } from "./PageHeader";
-import { useToast } from "./ui/toast";
+import { PageHeader } from "@/components/shared/PageHeader";
+import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import { 
   CheckCheck, 
@@ -1255,124 +4122,176 @@ export function NotificationsPage({ isInSidePane = false }: { isInSidePane?: boo
 };
 ```
 
-## File: src/components/PageHeader.tsx
+## File: src/pages/Settings/index.tsx
 ```typescript
-import * as React from 'react';
+import { SettingsContent } from '@/features/settings/SettingsContent';
+import { useAutoAnimateTopBar } from '@/hooks/useAutoAnimateTopBar';
+import { PageHeader } from '@/components/shared/PageHeader';
 
-interface PageHeaderProps {
-  title: string;
-  description: React.ReactNode;
-  children?: React.ReactNode;
+export function SettingsPage() {
+  const { onScroll } = useAutoAnimateTopBar();
+
+  return (
+    <div
+      className="h-full overflow-y-auto p-6 lg:px-12 space-y-8"
+      onScroll={onScroll}
+    >
+      {/* Header */}
+      <PageHeader
+        title="Settings"
+        description="Customize your experience. Changes are saved automatically."
+      />
+      <SettingsContent />
+    </div>
+  )
+}
+```
+
+## File: src/pages/ToasterDemo/index.tsx
+```typescript
+import { Button } from '@/components/ui/button';
+import { useToast } from '@/components/ui/toast';
+import { PageHeader } from '@/components/shared/PageHeader';
+import { cn } from '@/lib/utils';
+
+type Variant = 'default' | 'success' | 'error' | 'warning';
+type Position =
+  | 'top-left'
+  | 'top-center'
+  | 'top-right'
+  | 'bottom-left'
+  | 'bottom-center'
+  | 'bottom-right';
+
+const variantColors = {
+  default: 'border-border text-foreground hover:bg-muted/10 dark:hover:bg-muted/20',
+  success: 'border-green-600 text-green-600 hover:bg-green-600/10 dark:hover:bg-green-400/20',
+  error: 'border-destructive text-destructive hover:bg-destructive/10 dark:hover:bg-destructive/20',
+  warning: 'border-amber-600 text-amber-600 hover:bg-amber-600/10 dark:hover:bg-amber-400/20',
 }
 
-export function PageHeader({ title, description, children }: PageHeaderProps) {
+const DemoSection: React.FC<{ title: string; children: React.ReactNode }> = ({
+  title,
+  children,
+}) => (
+  <section>
+    <h2 className="text-lg font-semibold mb-2">{title}</h2>
+    {children}
+  </section>
+);
+
+export function ToasterDemo({ isInSidePane = false }: { isInSidePane?: boolean }) {
+  const toast = useToast();
+
+  const showToast = (variant: Variant, position: Position = 'bottom-right') => {
+    toast.show({
+      title: `${variant.charAt(0).toUpperCase() + variant.slice(1)} Notification`,
+      message: `This is a ${variant} toast notification.`,
+      variant,
+      position,
+      duration: 3000,
+      onDismiss: () =>
+        console.log(`${variant} toast at ${position} dismissed`),
+    });
+  };
+
+  const simulateApiCall = async () => {
+    toast.show({
+      title: 'Scheduling...',
+      message: 'Please wait while we schedule your meeting.',
+      variant: 'default',
+      position: 'bottom-right',
+    });
+
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+
+      toast.show({
+        title: 'Meeting Scheduled',
+        message: 'Your meeting is scheduled for July 4, 2025, at 3:42 PM IST.',
+        variant: 'success',
+        position: 'bottom-right',
+        highlightTitle: true,
+        actions: {
+          label: 'Undo',
+          onClick: () => console.log('Undoing meeting schedule'),
+          variant: 'outline',
+        },
+      });
+    } catch (error) {
+      toast.show({
+        title: 'Error Scheduling Meeting',
+        message: 'Failed to schedule the meeting. Please try again.',
+        variant: 'error',
+        position: 'bottom-right',
+      });
+    }
+  };
+
   return (
-    <div className="flex items-center justify-between">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">{title}</h1>
-        <p className="text-muted-foreground">{description}</p>
+    <div className={cn("overflow-y-auto p-6 lg:px-12 space-y-8", !isInSidePane && "h-full")}>
+      {/* Header */}
+      <PageHeader
+        title="Toaster"
+        description="A customizable toast component for notifications."
+      />
+      <div className="space-y-6">
+        <div className="space-y-6">
+          <DemoSection title="Toast Variants">
+            <div className="flex flex-wrap gap-4">
+              {(['default', 'success', 'error', 'warning'] as Variant[]).map((variantKey) => (
+                <Button
+                  key={variantKey}
+                  variant="outline"
+                  onClick={() => showToast(variantKey as Variant)}
+                  className={cn(variantColors[variantKey])}
+                >
+                  {variantKey.charAt(0).toUpperCase() + variantKey.slice(1)} Toast
+                </Button>
+              ))}
+            </div>
+          </DemoSection>
+
+          <DemoSection title="Toast Positions">
+            <div className="flex flex-wrap gap-4">
+              {[
+                'top-left',
+                'top-center',
+                'top-right',
+                'bottom-left',
+                'bottom-center',
+                'bottom-right',
+              ].map((positionKey) => (
+                <Button
+                  key={positionKey}
+                  variant="outline"
+                  onClick={() =>
+                    showToast('default', positionKey as Position)
+                  }
+                  className="border-border text-foreground hover:bg-muted/10 dark:hover:bg-muted/20"
+                >
+                  {positionKey
+                    .replace('-', ' ')
+                    .replace(/\b\w/g, (char) => char.toUpperCase())}
+                </Button>
+              ))}
+            </div>
+          </DemoSection>
+
+          <DemoSection title="Real-World Example">
+            <Button
+              variant="outline"
+              onClick={simulateApiCall}
+              className="border-border text-foreground hover:bg-muted/10 dark:hover:bg-muted/20"
+            >
+              Schedule Meeting
+            </Button>
+          </DemoSection>
+        </div>
       </div>
-      {children}
     </div>
   );
 }
-```
-
-## File: src/components/SettingsSection.tsx
-```typescript
-import * as React from 'react'
-
-interface SettingsSectionProps {
-  icon: React.ReactElement
-  title: string
-  children: React.ReactNode
-}
-
-export function SettingsSection({ icon, title, children }: SettingsSectionProps) {
-  return (
-    <div className="space-y-4">
-      <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-        {React.cloneElement(icon, { className: 'w-4 h-4' })}
-        {title}
-      </h3>
-      {children}
-    </div>
-  )
-}
-```
-
-## File: src/components/SettingsToggle.tsx
-```typescript
-import * as React from 'react'
-import { cn } from '@/lib/utils'
-
-interface SettingsToggleProps {
-  icon: React.ReactNode
-  title: string
-  description: string
-  checked: boolean
-  onCheckedChange: (checked: boolean) => void
-}
-
-export function SettingsToggle({
-  icon,
-  title,
-  description,
-  checked,
-  onCheckedChange,
-}: SettingsToggleProps) {
-  return (
-    <div className="flex items-center justify-between">
-      <div className="flex items-center gap-3">
-        {icon}
-        <div>
-          <p className="font-medium">{title}</p>
-          <p className="text-sm text-muted-foreground">{description}</p>
-        </div>
-      </div>
-      <button
-        onClick={() => onCheckedChange(!checked)}
-        className={cn(
-          'relative inline-flex h-7 w-12 items-center rounded-full transition-colors',
-          checked ? 'bg-primary' : 'bg-muted'
-        )}
-      >
-        <span
-          className={cn(
-            'inline-block h-5 w-5 transform rounded-full bg-background transition-transform',
-            checked ? 'translate-x-6' : 'translate-x-1'
-          )}
-        />
-      </button>
-    </div>
-  )
-}
-```
-
-## File: src/lib/utils.ts
-```typescript
-import { type ClassValue, clsx } from "clsx"
-import { twMerge } from "tailwind-merge"
-
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
-}
-
-export const SIDEBAR_STATES = {
-  HIDDEN: 'hidden',
-  COLLAPSED: 'collapsed', 
-  EXPANDED: 'expanded',
-  PEEK: 'peek'
-} as const
-
-export const BODY_STATES = {
-  NORMAL: 'normal',
-  FULLSCREEN: 'fullscreen',
-  SIDE_PANE: 'side_pane'
-} as const
-
-export type SidebarState = typeof SIDEBAR_STATES[keyof typeof SIDEBAR_STATES]
-export type BodyState = typeof BODY_STATES[keyof typeof BODY_STATES]
 ```
 
 ## File: postcss.config.js
@@ -1663,328 +4582,6 @@ export { Popover, PopoverTrigger, PopoverContent }
 export type { PopoverContentProps }
 ```
 
-## File: src/components/CommandPalette.tsx
-```typescript
-import * as React from 'react'
-import {
-  CommandDialog,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-  CommandSeparator,
-  CommandShortcut,
-} from '@/components/ui/command'
-import { useAppStore, type ActivePage } from '@/store/appStore'
-import { Home, Settings, Moon, Sun, Monitor, Smartphone, PanelRight, Maximize, Component, Bell } from 'lucide-react'
-
-export function CommandPalette() {
-  const {
-    isCommandPaletteOpen,
-    setCommandPaletteOpen,
-    setActivePage,
-    toggleDarkMode,
-    isDarkMode,
-    setCompactMode,
-    toggleFullscreen,
-    openSidePane,
-  } = useAppStore()
-
-  React.useEffect(() => {
-    const down = (e: KeyboardEvent) => {
-      if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
-        e.preventDefault()
-        setCommandPaletteOpen(!isCommandPaletteOpen)
-      }
-    }
-    document.addEventListener('keydown', down)
-    return () => document.removeEventListener('keydown', down)
-  }, [isCommandPaletteOpen, setCommandPaletteOpen])
-  
-  const runCommand = (command: () => void) => {
-    setCommandPaletteOpen(false)
-    command()
-  }
-
-  return (
-    <CommandDialog open={isCommandPaletteOpen} onOpenChange={setCommandPaletteOpen}>
-      <CommandInput placeholder="Type a command or search..." />
-      <CommandList>
-        <CommandEmpty>No results found.</CommandEmpty>
-        <CommandGroup heading="Navigation">
-          <CommandItem onSelect={() => runCommand(() => setActivePage('dashboard'))}>
-            <Home className="mr-2 h-4 w-4" />
-            <span>Go to Dashboard</span>
-            <CommandShortcut>G D</CommandShortcut>
-          </CommandItem>
-          <CommandItem onSelect={() => runCommand(() => setActivePage('settings'))}>
-            <Settings className="mr-2 h-4 w-4" />
-            <span>Go to Settings</span>
-            <CommandShortcut>G S</CommandShortcut>
-          </CommandItem>
-          <CommandItem onSelect={() => runCommand(() => setActivePage('toaster'))}>
-            <Component className="mr-2 h-4 w-4" />
-            <span>Go to Toaster Demo</span>
-            <CommandShortcut>G T</CommandShortcut>
-          </CommandItem>
-          <CommandItem onSelect={() => runCommand(() => setActivePage('notifications' as ActivePage))}>
-            <Bell className="mr-2 h-4 w-4" />
-            <span>Go to Notifications</span>
-            <CommandShortcut>G N</CommandShortcut>
-          </CommandItem>
-        </CommandGroup>
-        <CommandSeparator />
-        <CommandGroup heading="Actions">
-          <CommandItem onSelect={() => runCommand(toggleDarkMode)}>
-            {isDarkMode ? <Sun className="mr-2 h-4 w-4" /> : <Moon className="mr-2 h-4 w-4" />}
-            <span>Toggle Theme</span>
-            <CommandShortcut>⌘T</CommandShortcut>
-          </CommandItem>
-          <CommandItem onSelect={() => runCommand(toggleFullscreen)}>
-            <Maximize className="mr-2 h-4 w-4" />
-            <span>Toggle Fullscreen</span>
-            <CommandShortcut>⌘F</CommandShortcut>
-          </CommandItem>
-          <CommandItem onSelect={() => runCommand(() => openSidePane('settings'))}>
-            <PanelRight className="mr-2 h-4 w-4" />
-            <span>Open Settings in Side Pane</span>
-            <CommandShortcut>⌥S</CommandShortcut>
-          </CommandItem>
-        </CommandGroup>
-        <CommandSeparator />
-        <CommandGroup heading="Preferences">
-          <CommandItem onSelect={() => runCommand(() => setCompactMode(true))}>
-            <Smartphone className="mr-2 h-4 w-4" />
-            <span>Enable Compact Mode</span>
-            <CommandShortcut>⌘C</CommandShortcut>
-          </CommandItem>
-          <CommandItem onSelect={() => runCommand(() => setCompactMode(false))}>
-            <Monitor className="mr-2 h-4 w-4" />
-            <span>Disable Compact Mode</span>
-            <CommandShortcut>⇧⌘C</CommandShortcut>
-          </CommandItem>
-        </CommandGroup>
-      </CommandList>
-    </CommandDialog>
-  )
-}
-```
-
-## File: src/components/UserDropdown.tsx
-```typescript
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuPortal,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { cn } from "@/lib/utils"
-import { Icon } from "@iconify/react";
-
-const MENU_ITEMS = {
-  status: [
-    { value: "focus", icon: "solar:emoji-funny-circle-line-duotone", label: "Focus" },
-    { value: "offline", icon: "solar:moon-sleep-line-duotone", label: "Appear Offline" }
-  ],
-  profile: [
-    { icon: "solar:user-circle-line-duotone", label: "Your profile", action: "profile" },
-    { icon: "solar:sun-line-duotone", label: "Appearance", action: "appearance" },
-    { icon: "solar:settings-line-duotone", label: "Settings", action: "settings" },
-    { icon: "solar:bell-line-duotone", label: "Notifications", action: "notifications" }
-  ],
-  premium: [
-    { 
-      icon: "solar:star-bold", 
-      label: "Upgrade to Pro", 
-      action: "upgrade",
-      iconClass: "text-amber-500",
-      badge: { text: "20% off", className: "bg-amber-500 text-white text-[11px]" }
-    },
-    { icon: "solar:gift-line-duotone", label: "Referrals", action: "referrals" }
-  ],
-  support: [
-    { icon: "solar:download-line-duotone", label: "Download app", action: "download" },
-    { 
-      icon: "solar:letter-unread-line-duotone", 
-      label: "What's new?", 
-      action: "whats-new",
-      rightIcon: "solar:square-top-down-line-duotone"
-    },
-    { 
-      icon: "solar:question-circle-line-duotone", 
-      label: "Get help?", 
-      action: "help",
-      rightIcon: "solar:square-top-down-line-duotone"
-    }
-  ],
-  account: [
-    { 
-      icon: "solar:users-group-rounded-bold-duotone", 
-      label: "Switch account", 
-      action: "switch",
-      showAvatar: false
-    },
-    { icon: "solar:logout-2-bold-duotone", label: "Log out", action: "logout" }
-  ]
-};
-
-// Interface for menu item for better type safety
-interface MenuItem {
-  value?: string;
-  icon: string;
-  label: string;
-  action?: string;
-  iconClass?: string;
-  badge?: { text: string; className: string };
-  rightIcon?: string;
-  showAvatar?: boolean;
-}
-
-export const UserDropdown = ({ 
-  user = {
-    name: "Ayman Echakar",
-    username: "@aymanch-03",
-    avatar: "https://avatars.githubusercontent.com/u/126724835?v=4",
-    initials: "AE",
-    status: "online"
-  },
-  onAction = (_action?: string) => {},
-  onStatusChange = () => {},
-  selectedStatus = "online",
-  promoDiscount = "20% off",
-}) => {
-  const renderMenuItem = (item: MenuItem, index: number) => (
-    <DropdownMenuItem 
-      key={index}
-      className={cn(
-        "px-3 py-2", // Consistent with base component
-        item.badge || item.showAvatar || item.rightIcon ? "justify-between" : ""
-      )}
-      onClick={() => item.action && onAction(item.action)}
-    >
-      <span className="flex items-center gap-2 font-medium">
-        <Icon
-          icon={item.icon}
-          className={cn("h-5 w-5 text-muted-foreground", item.iconClass)}
-        />
-        {item.label}
-      </span>
-      {item.badge && (
-        <Badge className={item.badge.className}>
-          {promoDiscount || item.badge.text}
-        </Badge>
-      )}
-      {item.rightIcon && (
-        <Icon
-          icon={item.rightIcon}
-          className="h-4 w-4 text-muted-foreground"
-        />
-      )}
-      {item.showAvatar && (
-        <Avatar className="cursor-pointer h-6 w-6 shadow border-2 border-background">
-          <AvatarImage src={user.avatar} alt={user.name} />
-          <AvatarFallback>{user.initials}</AvatarFallback>
-        </Avatar>
-      )}
-    </DropdownMenuItem>
-  );
-
-  const getStatusColor = (status: string) => {
-    const colors = {
-      online: "text-green-600 bg-green-100 border-green-300 dark:text-green-400 dark:bg-green-900/30 dark:border-green-500/50",
-      offline: "text-muted-foreground bg-muted border-border",
-      busy: "text-destructive bg-destructive/20 border-destructive/30"
-    };
-    return colors[status.toLowerCase() as keyof typeof colors] || colors.online;
-  };
-
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Avatar className="cursor-pointer h-10 w-10 border-2 border-transparent hover:border-primary transition-colors">
-          <AvatarImage src={user.avatar} alt={user.name} />
-          <AvatarFallback>{user.initials}</AvatarFallback>
-        </Avatar>
-      </DropdownMenuTrigger>
-
-      <DropdownMenuContent className="no-scrollbar w-[310px] p-2" align="end">
-        <div className="flex items-center">
-          <div className="flex-1 flex items-center gap-3">
-            <Avatar className="cursor-pointer h-10 w-10">
-              <AvatarImage src={user.avatar} alt={user.name} />
-              <AvatarFallback>{user.initials}</AvatarFallback>
-            </Avatar>
-            <div>
-              <h3 className="font-semibold">{user.name}</h3>
-              <p className="text-muted-foreground text-sm">{user.username}</p>
-            </div>
-          </div>
-          <Badge variant="outline" className={cn("border-[0.5px] text-xs font-normal rounded-md capitalize", getStatusColor(user.status))}>
-            {user.status}
-          </Badge>
-        </div>
-        
-        <DropdownMenuSeparator className="my-2" />
-        
-        <DropdownMenuGroup>
-          <DropdownMenuSub>
-            <DropdownMenuSubTrigger className="w-full">
-              <span className="flex items-center gap-2 font-medium">
-                <Icon icon="solar:smile-circle-line-duotone" className="h-5 w-5" />
-                Update status
-              </span>
-            </DropdownMenuSubTrigger>
-            <DropdownMenuPortal>
-              <DropdownMenuSubContent>
-                <DropdownMenuRadioGroup value={selectedStatus} onValueChange={onStatusChange}>
-                  {MENU_ITEMS.status.map((status, index) => (
-                    <DropdownMenuRadioItem className="gap-2" key={index} value={status.value}>
-                      <Icon icon={status.icon} className="h-5 w-5 text-muted-foreground" />
-                      {status.label}
-                    </DropdownMenuRadioItem>
-                  ))}
-                </DropdownMenuRadioGroup>
-              </DropdownMenuSubContent>
-            </DropdownMenuPortal>
-          </DropdownMenuSub>
-        </DropdownMenuGroup>
-
-        <DropdownMenuSeparator className="my-2" />
-        <DropdownMenuGroup>
-          {MENU_ITEMS.profile.map(renderMenuItem)}
-        </DropdownMenuGroup>
-
-        <DropdownMenuSeparator className="my-2" />
-        <DropdownMenuGroup>
-          {MENU_ITEMS.premium.map(renderMenuItem)}
-        </DropdownMenuGroup>
-
-        <DropdownMenuSeparator className="my-2" />
-        <DropdownMenuGroup>
-          {MENU_ITEMS.support.map(renderMenuItem)}
-        </DropdownMenuGroup>
-     
-        <DropdownMenuSeparator className="my-2" />
-        <DropdownMenuGroup>
-          {MENU_ITEMS.account.map(renderMenuItem)}
-        </DropdownMenuGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-};
-```
-
 ## File: src/hooks/useAutoAnimateTopBar.ts
 ```typescript
 import { useRef, useCallback, useEffect } from 'react';
@@ -2034,22 +4631,6 @@ export function useAutoAnimateTopBar(isPane = false) {
 
   return { onScroll };
 }
-```
-
-## File: src/App.tsx
-```typescript
-import { AppShell } from './components/AppShell'
-import './index.css'
-
-function App() {
-  return (
-    <div className="h-screen w-screen overflow-hidden bg-background">
-      <AppShell />
-    </div>
-  )
-}
-
-export default App
 ```
 
 ## File: src/main.tsx
@@ -2194,1666 +4775,20 @@ export default defineConfig({
 })
 ```
 
-## File: src/components/index.ts
+## File: src/App.tsx
 ```typescript
-export { AppShell } from './AppShell'
-export { TopBar } from './TopBar'
-export { MainContent } from './MainContent'
-export { RightPane } from './RightPane'
-```
+import { AppShell } from './components/layout/AppShell'
+import './index.css'
 
-## File: src/components/ToasterDemo.tsx
-```typescript
-import { Button } from '@/components/ui/button';
-import { useToast } from '@/components/ui/toast';
-import { PageHeader } from '@/components/PageHeader';
-import { cn } from '@/lib/utils';
-
-type Variant = 'default' | 'success' | 'error' | 'warning';
-type Position =
-  | 'top-left'
-  | 'top-center'
-  | 'top-right'
-  | 'bottom-left'
-  | 'bottom-center'
-  | 'bottom-right';
-
-const variantColors = {
-  default: 'border-border text-foreground hover:bg-muted/10 dark:hover:bg-muted/20',
-  success: 'border-green-600 text-green-600 hover:bg-green-600/10 dark:hover:bg-green-400/20',
-  error: 'border-destructive text-destructive hover:bg-destructive/10 dark:hover:bg-destructive/20',
-  warning: 'border-amber-600 text-amber-600 hover:bg-amber-600/10 dark:hover:bg-amber-400/20',
-}
-
-const DemoSection: React.FC<{ title: string; children: React.ReactNode }> = ({
-  title,
-  children,
-}) => (
-  <section>
-    <h2 className="text-lg font-semibold mb-2">{title}</h2>
-    {children}
-  </section>
-);
-
-export function ToasterDemo({ isInSidePane = false }: { isInSidePane?: boolean }) {
-  const toast = useToast();
-
-  const showToast = (variant: Variant, position: Position = 'bottom-right') => {
-    toast.show({
-      title: `${variant.charAt(0).toUpperCase() + variant.slice(1)} Notification`,
-      message: `This is a ${variant} toast notification.`,
-      variant,
-      position,
-      duration: 3000,
-      onDismiss: () =>
-        console.log(`${variant} toast at ${position} dismissed`),
-    });
-  };
-
-  const simulateApiCall = async () => {
-    toast.show({
-      title: 'Scheduling...',
-      message: 'Please wait while we schedule your meeting.',
-      variant: 'default',
-      position: 'bottom-right',
-    });
-
-    try {
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-
-      toast.show({
-        title: 'Meeting Scheduled',
-        message: 'Your meeting is scheduled for July 4, 2025, at 3:42 PM IST.',
-        variant: 'success',
-        position: 'bottom-right',
-        highlightTitle: true,
-        actions: {
-          label: 'Undo',
-          onClick: () => console.log('Undoing meeting schedule'),
-          variant: 'outline',
-        },
-      });
-    } catch (error) {
-      toast.show({
-        title: 'Error Scheduling Meeting',
-        message: 'Failed to schedule the meeting. Please try again.',
-        variant: 'error',
-        position: 'bottom-right',
-      });
-    }
-  };
-
+function App() {
   return (
-    <div className={cn("overflow-y-auto p-6 lg:px-12 space-y-8", !isInSidePane && "h-full")}>
-      {/* Header */}
-      <PageHeader
-        title="Toaster"
-        description="A customizable toast component for notifications."
-      />
-      <div className="space-y-6">
-        <div className="space-y-6">
-          <DemoSection title="Toast Variants">
-            <div className="flex flex-wrap gap-4">
-              {(['default', 'success', 'error', 'warning'] as Variant[]).map((variantKey) => (
-                <Button
-                  key={variantKey}
-                  variant="outline"
-                  onClick={() => showToast(variantKey as Variant)}
-                  className={cn(variantColors[variantKey])}
-                >
-                  {variantKey.charAt(0).toUpperCase() + variantKey.slice(1)} Toast
-                </Button>
-              ))}
-            </div>
-          </DemoSection>
-
-          <DemoSection title="Toast Positions">
-            <div className="flex flex-wrap gap-4">
-              {[
-                'top-left',
-                'top-center',
-                'top-right',
-                'bottom-left',
-                'bottom-center',
-                'bottom-right',
-              ].map((positionKey) => (
-                <Button
-                  key={positionKey}
-                  variant="outline"
-                  onClick={() =>
-                    showToast('default', positionKey as Position)
-                  }
-                  className="border-border text-foreground hover:bg-muted/10 dark:hover:bg-muted/20"
-                >
-                  {positionKey
-                    .replace('-', ' ')
-                    .replace(/\b\w/g, (char) => char.toUpperCase())}
-                </Button>
-              ))}
-            </div>
-          </DemoSection>
-
-          <DemoSection title="Real-World Example">
-            <Button
-              variant="outline"
-              onClick={simulateApiCall}
-              className="border-border text-foreground hover:bg-muted/10 dark:hover:bg-muted/20"
-            >
-              Schedule Meeting
-            </Button>
-          </DemoSection>
-        </div>
-      </div>
-    </div>
-  );
-}
-```
-
-## File: src/components/DemoContent.tsx
-```typescript
-import { useRef, useEffect } from 'react'
-import { gsap } from 'gsap'
-import { 
-  Sparkles, 
-  Zap, 
-  Rocket, 
-  Star, 
-  Heart,
-  Layers,
-  Code,
-  Palette,
-  Smartphone,
-  Monitor,
-  Settings
-} from 'lucide-react'
-import { cn } from '@/lib/utils'
-import { useAppStore } from '@/store/appStore'
-import { Card } from '@/components/ui/card'
-
-export function DemoContent() {
-  const { bodyState, sidebarState, isDarkMode, compactMode } = useAppStore()
-  const contentRef = useRef<HTMLDivElement>(null)
-  const cardsRef = useRef<(HTMLDivElement | null)[]>([])
-
-  useEffect(() => {
-    if (!contentRef.current) return
-
-    const cards = cardsRef.current.filter(Boolean)
-    
-    // Animate cards on mount
-    gsap.fromTo(cards, 
-      { y: 30, opacity: 0, scale: 0.95 },
-      { 
-        y: 0, 
-        opacity: 1, 
-        scale: 1,
-        duration: 0.6,
-        stagger: 0.1,
-        ease: "power3.out"
-      }
-    )
-  }, [])
-
-  const features = [
-    {
-      icon: <Sparkles className="w-6 h-6" />,
-      title: "Amazing Animations",
-      description: "Powered by GSAP for smooth, buttery animations",
-      color: "from-emerald-500 to-teal-500"
-    },
-    {
-      icon: <Zap className="w-6 h-6" />,
-      title: "Lightning Fast",
-      description: "Built with Vite and optimized for performance",
-      color: "from-amber-500 to-orange-500"
-    },
-    {
-      icon: <Layers className="w-6 h-6" />,
-      title: "Multiple States",
-      description: "Fullscreen, side pane, and normal viewing modes",
-      color: "from-emerald-500 to-green-500"
-    },
-    {
-      icon: <Code className="w-6 h-6" />,
-      title: "TypeScript",
-      description: "Fully typed with excellent developer experience",
-      color: "from-green-500 to-emerald-500"
-    },
-    {
-      icon: <Palette className="w-6 h-6" />,
-      title: "Beautiful Design",
-      description: "Shadcn/ui components with Tailwind CSS",
-      color: "from-teal-500 to-emerald-500"
-    },
-    {
-      icon: <Settings className="w-6 h-6" />,
-      title: "Customizable",
-      description: "Extensive settings and preferences panel",
-      color: "from-slate-500 to-gray-500"
-    }
-  ]
-
-  const stats = [
-    { label: "Components", value: "12+", color: "text-emerald-600" },
-    { label: "Animations", value: "25+", color: "text-teal-600" },
-    { label: "States", value: "7", color: "text-primary" },
-    { label: "Settings", value: "10+", color: "text-amber-600" }
-  ]
-
-  return (
-    <div ref={contentRef} className="p-8 space-y-12">
-      {/* Hero Section */}
-      <div className="text-center space-y-4">
-        <div className="flex items-center justify-center gap-2 mb-4">
-          <Rocket className="w-8 h-8 text-primary" />
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-            Amazing App Shell
-          </h1>
-        </div>
-        <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-          A super amazing application shell with resizable sidebar, multiple body states, 
-          smooth animations, and comprehensive settings - all built with modern web technologies.
-        </p>
-        
-        {/* Quick Stats */}
-        <div className="flex items-center justify-center gap-12 mt-8">
-          {stats.map((stat) => (
-            <div key={stat.label} className="text-center">
-              <div className={cn("text-2xl font-bold", stat.color)}>{stat.value}</div>
-              <div className="text-sm text-muted-foreground">{stat.label}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Feature Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {features.map((feature, index) => (
-          <Card
-            key={feature.title}
-            ref={el => cardsRef.current[index] = el}
-            className="group relative overflow-hidden border-border/50 p-6 hover:border-primary/30 hover:bg-accent/30 transition-all duration-300 cursor-pointer"
-          >
-            <div className="relative z-10">
-              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-4 group-hover:scale-110 group-hover:bg-primary/20 transition-transform">
-                {feature.icon}
-              </div>
-              
-              <h3 className="text-lg font-semibold mb-2">{feature.title}</h3>
-              <p className="text-muted-foreground text-sm">{feature.description}</p>
-            </div>
-          </Card>
-        ))}
-      </div>
-
-      {/* Technology Stack */}
-      <Card className="border-border/50 p-6">
-        <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
-          <Star className="w-6 h-6 text-yellow-500" />
-          Technology Stack
-        </h2>
-        
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {[
-            { name: "React 18", desc: "Latest React with hooks" },
-            { name: "TypeScript", desc: "Type-safe development" },
-            { name: "Vite", desc: "Lightning fast build tool" },
-            { name: "Tailwind CSS", desc: "Utility-first styling" },
-            { name: "GSAP", desc: "Professional animations" },
-            { name: "Zustand", desc: "Lightweight state management" },
-            { name: "Shadcn/ui", desc: "Beautiful components" },
-            { name: "Lucide Icons", desc: "Consistent iconography" }
-          ].map((tech) => (
-            <div key={tech.name} className="bg-background rounded-xl p-4 border border-border/50">
-              <h4 className="font-medium">{tech.name}</h4>
-              <p className="text-sm text-muted-foreground">{tech.desc}</p>
-            </div>
-          ))}
-        </div>
-      </Card>
-
-      {/* Current State Display */}
-      <Card className="border-border/50 p-6">
-        <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-          <Monitor className="w-5 h-5" />
-          Current App State
-        </h2>
-        
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="text-center p-3 bg-background rounded-xl">
-            <div className="text-sm text-muted-foreground">Sidebar</div>
-            <div className="font-medium capitalize">{sidebarState}</div>
-          </div>
-          <div className="text-center p-3 bg-background rounded-xl">
-            <div className="text-sm text-muted-foreground">Body State</div>
-            <div className="font-medium capitalize">{bodyState.replace('_', ' ')}</div>
-          </div>
-          <div className="text-center p-3 bg-background rounded-xl">
-            <div className="text-sm text-muted-foreground">Theme</div>
-            <div className="font-medium">{isDarkMode ? 'Dark' : 'Light'}</div>
-          </div>
-          <div className="text-center p-3 bg-background rounded-xl">
-            <div className="text-sm text-muted-foreground">Mode</div>
-            <div className="font-medium">{compactMode ? 'Compact' : 'Normal'}</div>
-          </div>
-        </div>
-      </Card>
-
-      {/* Interactive Demo */}
-      <div className="text-center space-y-4">
-        <h2 className="text-2xl font-bold flex items-center justify-center gap-2">
-          <Heart className="w-6 h-6 text-red-500" />
-          Try It Out!
-        </h2>
-        <p className="text-muted-foreground">
-          Use the controls in the top bar to explore different states, toggle the sidebar, 
-          or open settings to customize the experience. The sidebar is resizable by dragging the edge!
-        </p>
-        
-        <div className="flex items-center justify-center gap-4 pt-4">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Smartphone className="w-4 h-4" />
-            <span>Responsive</span>
-          </div>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Zap className="w-4 h-4" />
-            <span>Fast</span>
-          </div>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Star className="w-4 h-4" />
-            <span>Beautiful</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-```
-
-## File: src/components/SettingsContent.tsx
-```typescript
-import { useState } from 'react'
-import { 
-  Moon, 
-  Sun, 
-  Zap, 
-  Eye, 
-  Minimize2, 
-  RotateCcw,
-  Monitor,
-  Smartphone,
-  Palette,
-  Accessibility,
-  Check
-} from 'lucide-react'
-import { cn } from '@/lib/utils'
-import { useAppStore } from '@/store/appStore'
-import { SettingsToggle } from './SettingsToggle'
-import { SettingsSection } from './SettingsSection'
-
-const colorPresets = [
-  { name: 'Default Blue', value: '220 84% 60%' },
-  { name: 'Rose', value: '346.8 77.2% 49.8%' },
-  { name: 'Green', value: '142.1 76.2% 36.3%' },
-  { name: 'Orange', value: '24.6 95% 53.1%' },
-  { name: 'Violet', value: '262.1 83.3% 57.8%' },
-  { name: 'Slate', value: '215.3 20.3% 65.1%' }
-]
-
-export function SettingsContent() {
-  const {
-    isDarkMode,
-    reducedMotion,
-    compactMode,
-    autoExpandSidebar,
-    sidebarWidth,
-    primaryColor,
-    toggleDarkMode,
-    setReducedMotion,
-    setCompactMode,
-    setAutoExpandSidebar,
-    setPrimaryColor,
-    setSidebarWidth,
-    resetToDefaults
-  } = useAppStore()
-
-  const [tempSidebarWidth, setTempSidebarWidth] = useState(sidebarWidth)
-
-  const handleSidebarWidthChange = (width: number) => {
-    setTempSidebarWidth(width)
-    setSidebarWidth(width)
-  }
-
-  return (
-    <div className="space-y-10">
-      {/* Appearance */}
-      <SettingsSection icon={<Palette />} title="Appearance">
-        {/* Dark Mode */}
-        <SettingsToggle
-          icon={isDarkMode ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
-          title="Dark Mode"
-          description="Toggle dark theme"
-          checked={isDarkMode}
-          onCheckedChange={toggleDarkMode}
-        />
-
-        {/* Compact Mode */}
-        <SettingsToggle
-          icon={<Minimize2 className="w-4 h-4" />}
-          title="Compact Mode"
-          description="Reduce spacing and sizes"
-          checked={compactMode}
-          onCheckedChange={setCompactMode}
-        />
-
-        {/* Accent Color */}
-        <div className="space-y-3">
-          <div className="flex items-center gap-3">
-            <Palette className="w-4 h-4" />
-            <div>
-              <p className="font-medium">Accent Color</p>
-              <p className="text-sm text-muted-foreground">Customize the main theme color</p>
-            </div>
-          </div>
-          <div className="grid grid-cols-6 gap-2 pt-1">
-            {colorPresets.map(color => {
-              const isActive = color.value === primaryColor
-              return (
-                <button
-                  key={color.name}
-                  title={color.name}
-                  onClick={() => setPrimaryColor(color.value)}
-                  className={cn(
-                    "w-8 h-8 rounded-full border-2 transition-transform hover:scale-110 flex items-center justify-center",
-                    isActive ? 'border-primary' : 'border-transparent'
-                  )}
-                  style={{ backgroundColor: `hsl(${color.value})` }}
-                >{isActive && <Check className="w-5 h-5 text-primary-foreground" />}</button>
-              )
-            })}
-          </div>
-        </div>
-      </SettingsSection>
-
-      {/* Behavior */}
-      <SettingsSection icon={<Zap />} title="Behavior">
-        {/* Auto Expand Sidebar */}
-        <SettingsToggle
-          icon={<Eye className="w-4 h-4" />}
-          title="Auto Expand Sidebar"
-          description="Expand on hover when collapsed"
-          checked={autoExpandSidebar}
-          onCheckedChange={setAutoExpandSidebar}
-        />
-
-        {/* Sidebar Width */}
-        <div className="space-y-3">
-          <div className="flex items-center gap-3">
-            <Monitor className="w-4 h-4" />
-            <div>
-              <p className="font-medium">Sidebar Width</p>
-              <p className="text-sm text-muted-foreground">{tempSidebarWidth}px</p>
-            </div>
-          </div>
-          <div className="space-y-2">
-            <input
-              type="range"
-              min="200"
-              max="500"
-              step="10"
-              value={tempSidebarWidth}
-              onChange={(e) => handleSidebarWidthChange(Number(e.target.value))}
-              className="w-full h-1.5 bg-muted rounded-lg appearance-none cursor-pointer slider"
-            />
-            <div className="flex justify-between text-xs text-muted-foreground">
-              <span>200px</span>
-              <span>350px</span>
-              <span>500px</span>
-            </div>
-          </div>
-        </div>
-      </SettingsSection>
-
-      {/* Accessibility */}
-      <SettingsSection icon={<Accessibility />} title="Accessibility">
-        {/* Reduced Motion */}
-        <SettingsToggle
-          icon={<Zap className="w-4 h-4" />}
-          title="Reduced Motion"
-          description="Minimize animations"
-          checked={reducedMotion}
-          onCheckedChange={setReducedMotion}
-        />
-      </SettingsSection>
-
-      {/* Presets */}
-      <div className="space-y-4">
-        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-          Quick Presets
-        </h3>
-        
-        <div className="grid grid-cols-2 gap-3">
-          <button 
-            onClick={() => {
-              setCompactMode(false)
-              setReducedMotion(false)
-              setSidebarWidth(320)
-            }}
-            className="p-4 bg-accent/30 hover:bg-accent/50 rounded-xl transition-colors text-left"
-          >
-            <Monitor className="w-4 h-4 mb-2" />
-            <p className="font-medium text-sm">Desktop</p>
-            <p className="text-xs text-muted-foreground">Spacious layout</p>
-          </button>
-          
-          <button 
-            onClick={() => {
-              setCompactMode(true)
-              setReducedMotion(true)
-              setSidebarWidth(240)
-            }}
-            className="p-4 bg-accent/30 hover:bg-accent/50 rounded-xl transition-colors text-left"
-          >
-            <Smartphone className="w-4 h-4 mb-2" />
-            <p className="font-medium text-sm">Mobile</p>
-            <p className="text-xs text-muted-foreground">Compact layout</p>
-          </button>
-        </div>
-      </div>
-      <div className="pt-6 border-t border-border">
-        <button
-          onClick={resetToDefaults}
-          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-destructive/10 text-destructive hover:bg-destructive/20 rounded-lg transition-colors"
-        >
-          <RotateCcw className="w-4 h-4" />
-          Reset to Defaults
-        </button>
-      </div>
+    <div className="h-screen w-screen overflow-hidden bg-background">
+      <AppShell />
     </div>
   )
 }
 
-// Custom slider styles
-const sliderStyles = `
-.slider::-webkit-slider-thumb {
-  appearance: none;
-  height: 18px;
-  width: 18px;
-  border-radius: 50%;
-  background: hsl(var(--primary));
-  cursor: pointer;
-  border: 3px solid hsl(var(--background));
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  margin-top: -7px;
-}
-
-.slider::-moz-range-thumb {
-  height: 18px;
-  width: 18px;
-  border-radius: 50%;
-  background: hsl(var(--primary));
-  cursor: pointer;
-  border: 3px solid hsl(var(--background));
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-`
-
-// Inject styles
-if (typeof document !== 'undefined') {
-  const styleSheet = document.createElement('style')
-  styleSheet.textContent = sliderStyles
-  document.head.appendChild(styleSheet)
-}
-```
-
-## File: src/components/Sidebar.tsx
-```typescript
-import * as React from 'react';
-import { ChevronDown } from 'lucide-react';
-import { Slot } from '@radix-ui/react-slot';
-import { useAppStore } from '@/store/appStore';
-import { SIDEBAR_STATES } from '@/lib/utils';
-import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
-
-// --- Context ---
-interface SidebarContextValue {
-  isCollapsed: boolean;
-  isPeek: boolean;
-  compactMode: boolean;
-}
-
-const SidebarContext = React.createContext<SidebarContextValue | null>(null);
-
-export const useSidebar = () => {
-  const context = React.useContext(SidebarContext);
-  if (!context) {
-    throw new Error('useSidebar must be used within a Sidebar component');
-  }
-  return context;
-};
-
-// --- Main Sidebar Component ---
-interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
-  children: React.ReactNode;
-}
-
-const Sidebar = React.forwardRef<HTMLDivElement, SidebarProps>(
-  ({ children, className, ...props }, ref) => {
-    const { sidebarState, compactMode } = useAppStore();
-    const isCollapsed = sidebarState === SIDEBAR_STATES.COLLAPSED;
-    const isPeek = sidebarState === SIDEBAR_STATES.PEEK;
-
-    return (
-      <SidebarContext.Provider value={{ isCollapsed, isPeek, compactMode }}>
-        <div
-          ref={ref}
-          className={cn(
-            'relative bg-card flex-shrink-0',
-            'h-full',
-            isPeek && 'shadow-xl z-40',
-            compactMode && 'text-sm',
-            className,
-          )}
-          {...props}
-        >
-          {isPeek && <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" />}
-          {children}
-        </div>
-      </SidebarContext.Provider>
-    );
-  },
-);
-Sidebar.displayName = 'Sidebar';
-
-// --- Sidebar Content Wrapper ---
-const SidebarContent = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => {
-  const { compactMode } = useSidebar();
-  return (
-    <div
-      ref={ref}
-      className={cn(
-        'relative z-10 h-full flex flex-col',
-        compactMode ? 'p-3' : 'p-4',
-        className,
-      )}
-      {...props}
-    />
-  );
-});
-SidebarContent.displayName = 'SidebarContent';
-
-// --- Sidebar Header ---
-const SidebarHeader = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => {
-  const { isCollapsed } = useSidebar();
-  return (
-    <div
-      ref={ref}
-      className={cn(
-        'flex items-center gap-3',
-        isCollapsed ? 'justify-center' : 'px-3',
-        'h-16',
-        className,
-      )}
-      {...props}
-    />
-  );
-});
-SidebarHeader.displayName = 'SidebarHeader';
-
-const SidebarTitle = React.forwardRef<
-  HTMLParagraphElement,
-  React.HTMLAttributes<HTMLParagraphElement>
->(({ className, ...props }, ref) => {
-  const { isCollapsed } = useSidebar();
-  if (isCollapsed) return null;
-  return (
-    <h1
-      ref={ref}
-      className={cn('text-lg font-bold nav-label', className)}
-      {...props}
-    />
-  );
-});
-SidebarTitle.displayName = 'SidebarTitle';
-
-// --- Sidebar Body ---
-const SidebarBody = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn(
-      'flex-1 overflow-y-auto space-y-6 pt-4',
-      className,
-    )}
-    {...props}
-  />
-));
-SidebarBody.displayName = 'SidebarBody';
-
-// --- Sidebar Footer ---
-const SidebarFooter = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => {
-  const { compactMode } = useSidebar();
-  return (
-    <div
-      ref={ref}
-      className={cn('pt-4 border-t border-border', compactMode && 'pt-3', className)}
-      {...props}
-    />
-  );
-});
-SidebarFooter.displayName = 'SidebarFooter';
-
-// --- Sidebar Section ---
-const SidebarSection = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement> & {
-    title?: string;
-    collapsible?: boolean;
-    defaultExpanded?: boolean;
-  }
->(({ title, collapsible = false, defaultExpanded = true, children, ...props }, ref) => {
-  const { isCollapsed } = useSidebar();
-  const [isExpanded, setIsExpanded] = React.useState(defaultExpanded);
-
-  const handleToggle = () => {
-    if (collapsible) {
-      setIsExpanded(!isExpanded);
-    }
-  };
-
-  return (
-    <div ref={ref} className="space-y-1" {...props}>
-      {!isCollapsed && title && (
-        <div
-          className={cn(
-            'flex items-center justify-between px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider',
-            collapsible && 'cursor-pointer hover:text-foreground transition-colors',
-          )}
-          onClick={handleToggle}
-        >
-          <span className="section-title">{title}</span>
-          {collapsible && (
-            <ChevronDown
-              className={cn(
-                'section-chevron w-3 h-3 transition-transform',
-                isExpanded ? 'rotate-0' : '-rotate-90',
-              )}
-            />
-          )}
-        </div>
-      )}
-      {(!collapsible || isExpanded || isCollapsed) && (
-        <nav className="space-y-1">{children}</nav>
-      )}
-    </div>
-  );
-});
-SidebarSection.displayName = 'SidebarSection';
-
-// --- Sidebar Menu Item ---
-const SidebarMenuItem = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => {
-  return <div ref={ref} className={cn('group/item relative flex items-stretch', className)} {...props} />;
-});
-SidebarMenuItem.displayName = 'SidebarMenuItem';
-
-
-// --- Sidebar Menu Button ---
-interface SidebarMenuButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  asChild?: boolean;
-  isActive?: boolean;
-}
-const SidebarMenuButton = React.forwardRef<HTMLButtonElement, SidebarMenuButtonProps>(
-  ({ className, asChild = false, isActive, ...props }, ref) => {
-    const { isCollapsed, compactMode } = useSidebar();
-    const Comp = asChild ? Slot : 'button';
-
-    return (
-      <Comp
-        ref={ref}
-        className={cn(
-          'group flex items-center gap-3 rounded-lg cursor-pointer transition-all duration-200 w-full text-left flex-1',
-          compactMode ? 'px-2 py-1.5' : 'px-4 py-2.5',
-          'hover:bg-accent',
-          isActive && 'bg-primary text-primary-foreground hover:bg-primary/90',
-          isCollapsed && 'justify-center',
-          className
-        )}
-        {...props}
-      />
-    );
-  }
-);
-SidebarMenuButton.displayName = 'SidebarMenuButton';
-
-// --- Sidebar Menu Action ---
-const SidebarMenuAction = React.forwardRef<
-  HTMLButtonElement,
-  React.ButtonHTMLAttributes<HTMLButtonElement>
->(({ className, ...props }, ref) => {
-  const { isCollapsed } = useSidebar();
-  if (isCollapsed) return null;
-  return (
-    <Button
-      ref={ref}
-      variant="ghost"
-      size="icon"
-      className={cn(
-        'h-full w-8 rounded-l-none opacity-0 group-hover/item:opacity-100 transition-opacity',
-        'focus:opacity-100', // show on focus for accessibility
-        className
-      )}
-      {...props}
-    />
-  );
-});
-SidebarMenuAction.displayName = 'SidebarMenuAction';
-
-// --- Sidebar Menu Label ---
-const SidebarLabel = React.forwardRef<
-  HTMLSpanElement,
-  React.HTMLAttributes<HTMLSpanElement>
->(({ className, ...props }, ref) => {
-  const { isCollapsed } = useSidebar();
-  if (isCollapsed) return null;
-  return (
-    <span
-      ref={ref}
-      className={cn('nav-label flex-1 font-medium truncate', className)}
-      {...props}
-    />
-  );
-});
-SidebarLabel.displayName = 'SidebarLabel';
-
-
-// --- Sidebar Menu Badge ---
-const SidebarBadge = React.forwardRef<
-  HTMLSpanElement,
-  React.HTMLAttributes<HTMLSpanElement>
->(({ className, children, ...props }, ref) => {
-  const { isCollapsed } = useSidebar();
-  if (isCollapsed) return null;
-  const badgeContent = typeof children === 'number' && children > 99 ? '99+' : children;
-  return (
-    <span
-      ref={ref}
-      className={cn(
-        'nav-badge bg-destructive text-destructive-foreground text-xs px-1.5 py-0.5 rounded-full min-w-[1.25rem] text-center',
-        className
-      )}
-      {...props}
-    >
-      {badgeContent}
-    </span>
-  );
-});
-SidebarBadge.displayName = 'SidebarBadge';
-
-
-// --- Sidebar Tooltip ---
-interface SidebarTooltipProps extends React.HTMLAttributes<HTMLDivElement> {
-  label: string;
-  badge?: number | string;
-}
-const SidebarTooltip = ({ label, badge, className, ...props }: SidebarTooltipProps) => {
-  const { isCollapsed } = useSidebar();
-  if (!isCollapsed) return null;
-  return (
-    <div
-      className={cn(
-        'absolute left-full ml-2 px-2 py-1 bg-popover text-popover-foreground text-sm rounded-md shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50',
-        className
-      )}
-      {...props}
-    >
-      {label}
-      {badge && (
-        <span className="ml-2 bg-destructive text-destructive-foreground text-xs px-1.5 py-0.5 rounded-full">
-          {typeof badge === 'number' && badge > 99 ? '99+' : badge}
-        </span>
-      )}
-    </div>
-  );
-};
-SidebarTooltip.displayName = 'SidebarTooltip';
-
-
-// --- Icon Wrapper for consistent sizing ---
-const SidebarIcon = ({ children, className }: { children: React.ReactNode, className?: string }) => {
-  return (
-    <div className={cn("flex-shrink-0 w-4 h-4", className)}>
-      {children}
-    </div>
-  )
-}
-
-export {
-  Sidebar,
-  SidebarContent,
-  SidebarHeader,
-  SidebarTitle,
-  SidebarBody,
-  SidebarFooter,
-  SidebarSection,
-  SidebarMenuItem,
-  SidebarMenuButton,
-  SidebarMenuAction,
-  SidebarLabel,
-  SidebarBadge,
-  SidebarTooltip,
-  SidebarIcon
-};
-```
-
-## File: src/components/WorkspaceSwitcher.tsx
-```typescript
-import * as React from 'react';
-import { CheckIcon, ChevronsUpDownIcon, Search } from 'lucide-react';
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { cn } from '@/lib/utils';
-import {
-	Popover,
-	PopoverTrigger,
-	PopoverContent,
-	type PopoverContentProps,
-} from '@/components/ui/popover';
-
-// Generic workspace interface - can be extended
-export interface Workspace {
-	id: string;
-	name: string;
-	[key: string]: any; // Allow additional properties
-}
-
-// Context for workspace state management
-interface WorkspaceContextValue<T extends Workspace> {
-	open: boolean;
-	setOpen: (open: boolean) => void;
-	selectedWorkspace: T | undefined;
-	workspaces: T[];
-	onWorkspaceSelect: (workspace: T) => void;
-	getWorkspaceId: (workspace: T) => string;
-	getWorkspaceName: (workspace: T) => string;
-}
-
-const WorkspaceContext = React.createContext<WorkspaceContextValue<any> | null>(
-	null,
-);
-
-function useWorkspaceContext<T extends Workspace>() {
-	const context = React.useContext(
-		WorkspaceContext,
-	) as WorkspaceContextValue<T> | null;
-	if (!context) {
-		throw new Error(
-			'Workspace components must be used within WorkspaceProvider',
-		);
-	}
-	return context;
-}
-
-// Main provider component
-interface WorkspaceProviderProps<T extends Workspace> {
-	children: React.ReactNode;
-	workspaces: T[];
-	selectedWorkspaceId?: string;
-	onWorkspaceChange?: (workspace: T) => void;
-	open?: boolean;
-	onOpenChange?: (open: boolean) => void;
-	getWorkspaceId?: (workspace: T) => string;
-	getWorkspaceName?: (workspace: T) => string;
-}
-
-function WorkspaceProvider<T extends Workspace>({
-	children,
-	workspaces,
-	selectedWorkspaceId,
-	onWorkspaceChange,
-	open: controlledOpen,
-	onOpenChange,
-	getWorkspaceId = (workspace) => workspace.id,
-	getWorkspaceName = (workspace) => workspace.name,
-}: WorkspaceProviderProps<T>) {
-	const [internalOpen, setInternalOpen] = React.useState(false);
-
-	const open = controlledOpen ?? internalOpen;
-	const setOpen = onOpenChange ?? setInternalOpen;
-
-	const selectedWorkspace = React.useMemo(() => {
-		if (!selectedWorkspaceId) return workspaces[0];
-		return (
-			workspaces.find((ws) => getWorkspaceId(ws) === selectedWorkspaceId) ||
-			workspaces[0]
-		);
-	}, [workspaces, selectedWorkspaceId, getWorkspaceId]);
-
-	const handleWorkspaceSelect = React.useCallback(
-		(workspace: T) => {
-			onWorkspaceChange?.(workspace);
-			setOpen(false);
-		},
-		[onWorkspaceChange, setOpen],
-	);
-
-	const value: WorkspaceContextValue<T> = {
-		open,
-		setOpen,
-		selectedWorkspace,
-		workspaces,
-		onWorkspaceSelect: handleWorkspaceSelect,
-		getWorkspaceId,
-		getWorkspaceName,
-	};
-
-	return (
-		<WorkspaceContext.Provider value={value}>
-			<Popover open={open} onOpenChange={setOpen}>
-				{children}
-			</Popover>
-		</WorkspaceContext.Provider>
-	);
-}
-
-// Trigger component
-interface WorkspaceTriggerProps extends React.ComponentProps<'button'> {
-	renderTrigger?: (workspace: Workspace, isOpen: boolean) => React.ReactNode;
-  collapsed?: boolean;
-  avatarClassName?: string;
-}
-
-function WorkspaceTrigger({
-	className,
-	renderTrigger,
-  collapsed = false,
-  avatarClassName,
-	...props
-}: WorkspaceTriggerProps) {
-	const { open, selectedWorkspace, getWorkspaceName } = useWorkspaceContext();
-
-	if (!selectedWorkspace) return null;
-
-	if (renderTrigger) {
-		return (
-			<PopoverTrigger asChild>
-				<button className={className} {...props}>
-					{renderTrigger(selectedWorkspace, open)}
-				</button>
-			</PopoverTrigger>
-		);
-	}
-
-	return (
-		<PopoverTrigger asChild>
-			<button
-				data-state={open ? 'open' : 'closed'}
-				className={cn(
-					'flex w-full items-center justify-between text-sm',
-					'focus:ring-ring focus:ring-2 focus:ring-offset-2 focus:outline-none',
-					className,
-				)}
-				{...props}
-			>
-				<div className={cn("flex items-center gap-3", collapsed ? "w-full justify-center" : "min-w-0 flex-1")}>
-					<Avatar className={cn(avatarClassName)}>
-						<AvatarImage
-							src={(selectedWorkspace as any).logo}
-							alt={getWorkspaceName(selectedWorkspace)}
-						/>
-						<AvatarFallback className="text-xs">
-							{getWorkspaceName(selectedWorkspace).charAt(0).toUpperCase()}
-						</AvatarFallback>
-					</Avatar>
-					{!collapsed && (
-						<div className="flex min-w-0 flex-1 flex-col items-start">
-							<span className="truncate font-medium">{getWorkspaceName(selectedWorkspace)}</span>
-							<span className="text-muted-foreground truncate text-xs">{(selectedWorkspace as any).plan}</span>
-						</div>
-					)}
-				</div>
-				{!collapsed && <ChevronsUpDownIcon className="h-4 w-4 shrink-0 opacity-50" />}
-			</button>
-		</PopoverTrigger>
-	);
-}
-
-// Content component
-interface WorkspaceContentProps
-	extends PopoverContentProps {
-	renderWorkspace?: (
-		workspace: Workspace,
-		isSelected: boolean,
-	) => React.ReactNode;
-	title?: string;
-	searchable?: boolean;
-	onSearch?: (query: string) => void;
-}
-
-function WorkspaceContent({
-	className,
-	children,
-	renderWorkspace,
-	title = 'Workspaces',
-	searchable = false,
-	onSearch,
-	side = 'right',
-	align = 'start',
-	sideOffset = 8,
-	useTriggerWidth = false,
-	...props
-}: WorkspaceContentProps) {
-	const {
-		workspaces,
-		selectedWorkspace,
-		onWorkspaceSelect,
-		getWorkspaceId,
-		getWorkspaceName,
-	} = useWorkspaceContext();
-
-	const [searchQuery, setSearchQuery] = React.useState('');
-
-	const filteredWorkspaces = React.useMemo(() => {
-		if (!searchQuery) return workspaces;
-		return workspaces.filter((ws) =>
-			getWorkspaceName(ws).toLowerCase().includes(searchQuery.toLowerCase()),
-		);
-	}, [workspaces, searchQuery, getWorkspaceName]);
-
-	React.useEffect(() => {
-		onSearch?.(searchQuery);
-	}, [searchQuery, onSearch]);
-
-	const defaultRenderWorkspace = (
-		workspace: Workspace,
-		isSelected: boolean,
-	) => (
-		<div className="flex min-w-0 flex-1 items-center gap-2">
-			<Avatar className="h-6 w-6">
-				<AvatarImage
-					src={(workspace as any).logo}
-					alt={getWorkspaceName(workspace)}
-				/>
-				<AvatarFallback className="text-xs">
-					{getWorkspaceName(workspace).charAt(0).toUpperCase()}
-				</AvatarFallback>
-			</Avatar>
-			<div className="flex min-w-0 flex-1 flex-col items-start">
-				<span className="truncate text-sm">{getWorkspaceName(workspace)}</span>
-				{(workspace as any).plan && (
-					<span className="text-muted-foreground text-xs">
-						{(workspace as any).plan}
-					</span>
-				)}
-			</div>
-			{isSelected && <CheckIcon className="ml-auto h-4 w-4" />}
-		</div>
-	);
-
-	return (
-		<PopoverContent
-			className={cn('p-0', className)}
-			align={align}
-			sideOffset={sideOffset}
-			useTriggerWidth={useTriggerWidth}
-			{...{ ...props, side }}
-		>
-			<div className="border-b px-4 py-3">
-				<h3 className="text-sm font-semibold text-foreground">{title}</h3>
-			</div>
-
-			{searchable && (
-				<div className="border-b p-2">
-					<div className="relative">
-						<Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-						<input
-							type="text"
-							placeholder="Search workspaces..."
-							value={searchQuery}
-							onChange={(e) => setSearchQuery(e.target.value)}
-							className="h-9 w-full rounded-md bg-transparent pl-9 text-sm placeholder:text-muted-foreground focus:bg-accent focus:outline-none"
-						/>
-					</div>
-				</div>
-			)}
-
-			<div className="max-h-[300px] overflow-y-auto">
-				{filteredWorkspaces.length === 0 ? (
-					<div className="text-muted-foreground px-3 py-2 text-center text-sm">
-						No workspaces found
-					</div>
-				) : (
-					<div className="space-y-1 p-2">
-						{filteredWorkspaces.map((workspace) => {
-							const isSelected =
-								selectedWorkspace &&
-								getWorkspaceId(selectedWorkspace) === getWorkspaceId(workspace);
-
-							return (
-								<button
-									key={getWorkspaceId(workspace)}
-									onClick={() => onWorkspaceSelect(workspace)}
-									className={cn(
-										'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm',
-										'hover:bg-accent hover:text-accent-foreground',
-										'focus:outline-none',
-										isSelected && 'bg-accent text-accent-foreground',
-									)}
-								>
-									{renderWorkspace
-										? renderWorkspace(workspace, !!isSelected)
-										: defaultRenderWorkspace(workspace, !!isSelected)}
-								</button>
-							);
-						})}
-					</div>
-				)}
-			</div>
-
-			{children && (
-				<>
-					<div className="border-t" />
-					<div className="p-1">{children}</div>
-				</>
-			)}
-		</PopoverContent>
-	);
-}
-
-export { WorkspaceProvider as Workspaces, WorkspaceTrigger, WorkspaceContent };
-```
-
-## File: src/components/DashboardContent.tsx
-```typescript
-import { useRef, useEffect, useState } from 'react'
-import { gsap } from 'gsap'
-import { 
-  BarChart3, 
-  TrendingUp, 
-  Users, 
-  DollarSign, 
-  Activity,
-  Calendar,
-  Clock,
-  MessageSquare,
-  FileText,
-  Star,
-  ChevronRight,
-  MoreVertical,
-  ArrowDown
-} from 'lucide-react'
-import { cn } from '@/lib/utils'
-import { DemoContent } from './DemoContent';
-import { useAppStore } from '@/store/appStore';
-import { BODY_STATES } from '@/lib/utils';
-import { useAutoAnimateTopBar } from '@/hooks/useAutoAnimateTopBar';
-import { PageHeader } from './PageHeader';
-import { Card } from '@/components/ui/card';
-
-interface StatsCard {
-  title: string
-  value: string
-  change: string
-  trend: 'up' | 'down'
-  icon: React.ReactNode
-}
-
-interface ActivityItem {
-  id: string
-  type: 'comment' | 'file' | 'meeting' | 'task'
-  title: string
-  description: string
-  time: string
-  user: string
-}
-
-const statsCards: StatsCard[] = [
-  {
-    title: "Total Revenue",
-    value: "$45,231.89",
-    change: "+20.1%",
-    trend: "up",
-    icon: <DollarSign className="w-5 h-5" />
-  },
-  {
-    title: "Active Users",
-    value: "2,350",
-    change: "+180.1%",
-    trend: "up",
-    icon: <Users className="w-5 h-5" />
-  },
-  {
-    title: "Conversion Rate",
-    value: "12.5%",
-    change: "+19%",
-    trend: "up",
-    icon: <TrendingUp className="w-5 h-5" />
-  },
-  {
-    title: "Performance",
-    value: "573ms",
-    change: "-5.3%",
-    trend: "down",
-    icon: <Activity className="w-5 h-5" />
-  }
-]
-
-const recentActivity: ActivityItem[] = [
-  {
-    id: "1",
-    type: "comment",
-    title: "New comment on Project Alpha",
-    description: "Sarah Johnson added a comment to the design review",
-    time: "2 minutes ago",
-    user: "SJ"
-  },
-  {
-    id: "2",
-    type: "file",
-    title: "Document uploaded",
-    description: "quarterly-report.pdf was uploaded to Documents",
-    time: "15 minutes ago",
-    user: "MD"
-  },
-  {
-    id: "3",
-    type: "meeting",
-    title: "Meeting scheduled",
-    description: "Weekly standup meeting scheduled for tomorrow 9 AM",
-    time: "1 hour ago",
-    user: "RW"
-  },
-  {
-    id: "4",
-    type: "task",
-    title: "Task completed",
-    description: "UI wireframes for mobile app completed",
-    time: "2 hours ago",
-    user: "AL"
-  }
-]
-
-interface DashboardContentProps {
-  isInSidePane?: boolean;
-}
-
-export function DashboardContent({ isInSidePane = false }: DashboardContentProps) {
-    const contentRef = useRef<HTMLDivElement>(null)
-    const cardsRef = useRef<(HTMLDivElement | null)[]>([])
-    const [showScrollToBottom, setShowScrollToBottom] = useState(false);
-    const { bodyState } = useAppStore();
-    const { onScroll: handleTopBarScroll } = useAutoAnimateTopBar(isInSidePane);
-
-    const scrollToBottom = () => {
-      contentRef.current?.scrollTo({
-        top: contentRef.current.scrollHeight,
-        behavior: 'smooth'
-      })
-    }
-
-    const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
-      handleTopBarScroll(e);
-      if (!contentRef.current) return;
-      const { scrollTop, scrollHeight, clientHeight } = contentRef.current;
-      // Show if scrolled down and not at the bottom
-      setShowScrollToBottom(scrollTop > 200 && scrollTop < scrollHeight - clientHeight - 200);
-    };
-
-    // Animate content based on body state
-    useEffect(() => {
-      if (!contentRef.current) return
-
-      const content = contentRef.current
-      const cards = cardsRef.current.filter(Boolean)
-
-      switch (bodyState) {
-        case BODY_STATES.FULLSCREEN:
-          gsap.to(content, {
-            scale: 1.02,
-            duration: 0.4,
-            ease: "power3.out"
-          })
-          break
-        default:
-          gsap.to(content, {
-            scale: 1,
-            duration: 0.4,
-            ease: "power3.out"
-          })
-          break
-      }
-
-      // Stagger animation for cards
-      gsap.fromTo(cards, 
-        { y: 20, opacity: 0 },
-        { 
-          y: 0, 
-          opacity: 1, 
-          duration: 0.6,
-          stagger: 0.1,
-          ease: "power3.out"
-        }
-      )
-
-    }, [bodyState])
-
-    const getTypeIcon = (type: ActivityItem['type']) => {
-      switch (type) {
-        case 'comment':
-          return <MessageSquare className="w-4 h-4" />
-        case 'file':
-          return <FileText className="w-4 h-4" />
-        case 'meeting':
-          return <Calendar className="w-4 h-4" />
-        case 'task':
-          return <Star className="w-4 h-4" />
-        default:
-          return <Activity className="w-4 h-4" />
-      }
-    }
-
-    return (
-        <div 
-          ref={contentRef}
-          className="h-full overflow-y-auto space-y-8 p-6 lg:px-12"
-          onScroll={handleScroll}
-        >
-          {/* Header */}
-          <PageHeader
-            title="Dashboard"
-            description="Welcome to the amazing app shell demo! Explore all the features and customization options."
-          />
-            {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {statsCards.map((stat, index) => (
-                <Card
-                key={stat.title}
-                ref={el => cardsRef.current[index] = el}
-                className="p-6 border-border/50 hover:border-primary/30 transition-all duration-300 group cursor-pointer"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="p-3 bg-primary/10 rounded-full group-hover:bg-primary/20 transition-colors">
-                    {stat.icon}
-                  </div>
-                  <div className={cn(
-                    "text-sm font-medium",
-                    stat.trend === 'up' ? "text-green-600" : "text-red-600"
-                  )}>
-                    {stat.change}
-                  </div>
-                </div>
-                <div className="mt-4">
-                  <h3 className="text-2xl font-bold">{stat.value}</h3>
-                  <p className="text-sm text-muted-foreground mt-1">{stat.title}</p>
-                </div>
-              </Card>
-              ))}
-            </div>
-
-            {/* Demo Content */}
-            <DemoContent />
-
-            {/* Main Content Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Chart Area */}
-            <div className="lg:col-span-2 space-y-6">
-              {/* Analytics Chart */}
-              <Card className="p-6 border-border/50">
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-lg font-semibold">Analytics Overview</h3>
-                  <button className="h-8 w-8 flex items-center justify-center hover:bg-accent rounded-full transition-colors">
-                    <MoreVertical className="w-5 h-5" />
-                  </button>
-                </div>
-                
-                {/* Mock Chart */}
-                <div className="h-64 bg-gradient-to-br from-primary/10 to-transparent rounded-xl flex items-center justify-center border border-border/50">
-                  <div className="text-center">
-                    <BarChart3 className="w-12 h-12 text-primary mx-auto mb-2" />
-                    <p className="text-muted-foreground">Chart visualization would go here</p>
-                  </div>
-                </div>
-              </Card>
-
-              {/* Recent Projects */}
-              <Card className="p-6 border-border/50">
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-lg font-semibold">Recent Projects</h3>
-                  <button className="text-primary hover:text-primary/80 text-sm font-medium flex items-center gap-1">
-                    View All
-                    <ChevronRight className="w-4 h-4" />
-                  </button>
-                </div>
-                
-                <div className="space-y-4">
-                  {[
-                    { name: "E-commerce Platform", progress: 75, team: 5, deadline: "Dec 15" },
-                    { name: "Mobile App Redesign", progress: 45, team: 3, deadline: "Jan 20" },
-                    { name: "Marketing Website", progress: 90, team: 4, deadline: "Dec 5" }
-                  ].map((project) => (
-                    <div key={project.name} className="p-4 bg-accent/30 rounded-xl hover:bg-accent/50 transition-colors cursor-pointer">
-                      <div className="flex items-center justify-between mb-2">
-                        <h4 className="font-medium">{project.name}</h4>
-                        <span className="text-sm text-muted-foreground">{project.progress}%</span>
-                      </div>
-                      <div className="w-full bg-muted rounded-full h-2 mb-3">
-                        <div 
-                          className="bg-primary h-2 rounded-full transition-all duration-500"
-                          style={{ width: `${project.progress}%` }}
-                        />
-                      </div>
-                      <div className="flex items-center justify-between text-sm text-muted-foreground">
-                        <span>{project.team} team members</span>
-                        <span>Due {project.deadline}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </Card>
-            </div>
-
-            {/* Sidebar Content */}
-            <div className="space-y-6">
-              {/* Quick Actions */}
-              <Card className="p-6 border-border/50">
-                <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
-                <div className="space-y-3">
-                  {[
-                    { icon: <FileText className="w-4 h-4" />, label: "Create Document", color: "bg-blue-500/10 text-blue-600" },
-                    { icon: <Calendar className="w-4 h-4" />, label: "Schedule Meeting", color: "bg-green-500/10 text-green-600" },
-                    { icon: <Users className="w-4 h-4" />, label: "Invite Team", color: "bg-purple-500/10 text-purple-600" },
-                    { icon: <BarChart3 className="w-4 h-4" />, label: "View Reports", color: "bg-orange-500/10 text-orange-600" }
-                  ].map((action) => (
-                    <button
-                      key={action.label}
-                      className="w-full flex items-center gap-3 p-3 hover:bg-accent rounded-lg transition-colors text-left"
-                    >
-                      <div className={cn("p-2 rounded-full", action.color)}>
-                        {action.icon}
-                      </div>
-                      <span className="font-medium">{action.label}</span>
-                    </button>
-                  ))}
-                </div>
-              </Card>
-
-              {/* Recent Activity */}
-              <Card className="p-6 border-border/50">
-                <h3 className="text-lg font-semibold mb-4">Recent Activity</h3>
-                <div className="space-y-4">
-                  {recentActivity.map((activity) => (
-                    <div key={activity.id} className="flex items-start gap-3 p-3 hover:bg-accent/30 rounded-xl transition-colors cursor-pointer">
-                      <div className="p-2 bg-primary/10 rounded-full flex-shrink-0">
-                        {getTypeIcon(activity.type)}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h4 className="font-medium text-sm mb-1">{activity.title}</h4>
-                        <p className="text-xs text-muted-foreground mb-2">{activity.description}</p>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <Clock className="w-3 h-3" />
-                          <span>{activity.time}</span>
-                          <div className="w-5 h-5 bg-primary rounded-full flex items-center justify-center text-primary-foreground text-xs font-medium">
-                            {activity.user}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </Card>
-            </div>
-          </div>
-          {showScrollToBottom && (
-            <button
-              onClick={scrollToBottom}
-              className="fixed bottom-8 right-8 w-12 h-12 bg-primary text-primary-foreground rounded-full flex items-center justify-center shadow-lg hover:bg-primary/90 transition-all animate-fade-in z-[51]"
-              style={{ animation: 'bounce 2s infinite' }}
-              title="Scroll to bottom"
-            >
-              <ArrowDown className="w-6 h-6" />
-            </button>
-          )}
-      </div>
-    )
-}
-```
-
-## File: src/components/SettingsPage.tsx
-```typescript
-import { SettingsContent } from './SettingsContent';
-import { useAutoAnimateTopBar } from '@/hooks/useAutoAnimateTopBar';
-import { PageHeader } from './PageHeader';
-
-export function SettingsPage() {
-  const { onScroll } = useAutoAnimateTopBar();
-
-  return (
-    <div
-      className="h-full overflow-y-auto p-6 lg:px-12 space-y-8"
-      onScroll={onScroll}
-    >
-      {/* Header */}
-      <PageHeader
-        title="Settings"
-        description="Customize your experience. Changes are saved automatically."
-      />
-      <SettingsContent />
-    </div>
-  )
-}
+export default App
 ```
 
 ## File: src/index.css
@@ -3947,362 +4882,6 @@ export function SettingsPage() {
 }
 ```
 
-## File: src/components/RightPane.tsx
-```typescript
-import { forwardRef } from 'react'
-import { SlidersHorizontal, Settings, ChevronRight, LayoutDashboard, ChevronsLeftRight, Component, Bell } from 'lucide-react'
-import { useAppStore } from '@/store/appStore'
-import { cn } from '@/lib/utils'
-import { SettingsContent } from './SettingsContent'
-import { DashboardContent } from './DashboardContent'
-import { ToasterDemo } from './ToasterDemo'
-import { NotificationsPage } from './NotificationsPage'
-
-export const RightPane = forwardRef<HTMLDivElement>((_props, ref) => {
-  const { closeSidePane, setIsResizingRightPane, sidePaneContent, setActivePage } = useAppStore();
-
-  const contentMap = {
-    main: { title: 'Dashboard', icon: LayoutDashboard, page: 'dashboard', content: <DashboardContent isInSidePane={true} /> },
-    settings: { title: 'Settings', icon: Settings, page: 'settings', content: <SettingsContent /> },
-    toaster: { title: 'Toaster Demo', icon: Component, page: 'toaster', content: <ToasterDemo isInSidePane={true} /> },
-    notifications: { title: 'Notifications', icon: Bell, page: 'notifications', content: <NotificationsPage isInSidePane={true} /> },
-    details: { title: 'Details Panel', icon: SlidersHorizontal, content: <p className="text-muted-foreground">This is the side pane. It can be used to display contextual information, forms, or actions related to the main content.</p> }
-  } as const;
-
-  const currentContent = contentMap[sidePaneContent as keyof typeof contentMap] || contentMap.details;
-  const CurrentIcon = currentContent.icon;
-
-  const handleMaximize = () => {
-    if ('page' in currentContent && currentContent.page) {
-      setActivePage(currentContent.page);
-    }
-    closeSidePane()
-  }
-
-  return (
-    <aside ref={ref} className="bg-card border-l border-border flex flex-col h-full overflow-hidden fixed top-0 right-0 z-[60]">
-      <button
-        onClick={closeSidePane}
-        className="absolute top-1/2 -left-px -translate-y-1/2 -translate-x-full w-8 h-16 bg-card border border-r-0 border-border rounded-l-lg flex items-center justify-center hover:bg-accent transition-colors group z-10"
-        title="Close pane"
-      >
-        <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-foreground transition-colors" />
-      </button>
-      <div 
-        className={cn(
-          "absolute top-0 left-0 w-2 h-full bg-transparent hover:bg-primary/20 cursor-col-resize z-50 transition-colors duration-200 group -translate-x-1/2"
-        )}
-        onMouseDown={(e) => {
-          e.preventDefault()
-          setIsResizingRightPane(true)
-        }}
-      >
-        <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200 mx-auto" />
-      </div>
-      <div className="flex items-center justify-between p-4 border-b border-border h-20 flex-shrink-0 pl-6">
-        <div className="flex items-center gap-2">
-          <CurrentIcon className="w-5 h-5" />
-          <h2 className="text-lg font-semibold whitespace-nowrap">
-            {currentContent.title}
-          </h2>
-        </div>
-        
-        {'page' in currentContent && currentContent.page && (
-          <button
-            onClick={handleMaximize}
-            className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors mr-2"
-            title="Move to Main View"
-          >
-            <ChevronsLeftRight className="w-5 h-5" />
-          </button>
-        )}
-      </div>
-      <div className="flex-1 overflow-y-auto px-8 py-6">
-        {currentContent.content}
-      </div>
-    </aside>
-  )
-})
-
-RightPane.displayName = "RightPane"
-```
-
-## File: src/components/AppShell.tsx
-```typescript
-import { useRef, useEffect } from 'react'
-import { gsap } from 'gsap'
-import { cn } from '@/lib/utils'
-import { EnhancedSidebar } from './EnhancedSidebar'
-import { MainContent } from './MainContent'
-import { RightPane } from './RightPane'
-import { TopBar } from './TopBar'
-import { CommandPalette } from './CommandPalette'
-import { useAppStore } from '@/store/appStore'
-import { SIDEBAR_STATES, BODY_STATES } from '@/lib/utils'
-
-export function AppShell() {
-  const {
-    sidebarState,
-    bodyState,
-    sidebarWidth,
-    isDarkMode,
-    isResizing,
-    rightPaneWidth,
-    isResizingRightPane,
-    setRightPaneWidth,
-    isTopBarVisible,
-    setSidebarState,
-    closeSidePane,
-    setIsResizing,
-    setSidebarWidth,
-    toggleSidebar,
-    peekSidebar,
-    toggleFullscreen,
-    setIsResizingRightPane,
-    toggleDarkMode,
-    reducedMotion,
-    autoExpandSidebar,
-    primaryColor
-  } = useAppStore()
-  
-  const appRef = useRef<HTMLDivElement>(null)
-  const sidebarRef = useRef<HTMLDivElement>(null)
-  const mainContentRef = useRef<HTMLDivElement>(null)
-  const rightPaneRef = useRef<HTMLDivElement>(null)
-  const resizeHandleRef = useRef<HTMLDivElement>(null)
-  const topBarContainerRef = useRef<HTMLDivElement>(null)
-
-  // Animation duration based on reduced motion preference
-  const animationDuration = reducedMotion ? 0.1 : 0.4
-
-  // Set primary color
-  useEffect(() => {
-    document.documentElement.style.setProperty('--primary-hsl', primaryColor)
-  }, [primaryColor])
-
-  // Resize functionality
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!isResizing) return
-      
-      const newWidth = Math.max(200, Math.min(500, e.clientX))
-      setSidebarWidth(newWidth)
-      
-      if (sidebarRef.current) {
-        gsap.set(sidebarRef.current, { width: newWidth })
-      }
-      if (resizeHandleRef.current) {
-        gsap.set(resizeHandleRef.current, { left: newWidth })
-      }
-    }
-
-    const handleMouseUp = () => {
-      setIsResizing(false)
-      document.body.style.cursor = ''
-      document.body.style.userSelect = ''
-    }
-
-    if (isResizing) {
-      document.body.style.cursor = 'col-resize'
-      document.body.style.userSelect = 'none'
-      document.addEventListener('mousemove', handleMouseMove)
-      document.addEventListener('mouseup', handleMouseUp)
-    }
-
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove)
-      document.removeEventListener('mouseup', handleMouseUp)
-    }
-  }, [isResizing, setIsResizing, setSidebarWidth])
-
-  // Resize functionality for Right Pane
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!isResizingRightPane) return
-      
-      const newWidth = window.innerWidth - e.clientX
-      setRightPaneWidth(newWidth)
-    }
-
-    const handleMouseUp = () => {
-      setIsResizingRightPane(false)
-      document.body.style.cursor = ''
-      document.body.style.userSelect = ''
-    }
-
-    if (isResizingRightPane) {
-      document.body.style.cursor = 'col-resize'
-      document.body.style.userSelect = 'none'
-      document.addEventListener('mousemove', handleMouseMove)
-      document.addEventListener('mouseup', handleMouseUp)
-    }
-
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove)
-      document.removeEventListener('mouseup', handleMouseUp)
-      document.body.style.cursor = ''
-    }
-  }, [isResizingRightPane, setIsResizingRightPane, setRightPaneWidth])
-
-  // GSAP animations for sidebar transitions
-  useEffect(() => {
-    if (!sidebarRef.current || !mainContentRef.current || !resizeHandleRef.current) return
-
-    const sidebar = sidebarRef.current
-    const handle = resizeHandleRef.current
-    
-    let targetWidth = 0
-    let targetOpacity = 1
-
-    if (bodyState === BODY_STATES.FULLSCREEN) {
-      targetWidth = 0;
-      targetOpacity = 0;
-    } else {
-      switch (sidebarState) {
-        case SIDEBAR_STATES.HIDDEN:
-          targetWidth = 0
-          targetOpacity = 0
-          break
-        case SIDEBAR_STATES.COLLAPSED:
-          targetWidth = 64
-          targetOpacity = 1
-          break
-        case SIDEBAR_STATES.EXPANDED:
-          targetWidth = sidebarWidth
-          targetOpacity = 1
-          break
-        case SIDEBAR_STATES.PEEK:
-          targetWidth = sidebarWidth * 0.8
-          targetOpacity = 0.95
-          break
-      }
-    }
-
-    const tl = gsap.timeline({ ease: "power3.out" })
-    
-    tl.to(sidebar, {
-      width: targetWidth,
-      opacity: targetOpacity,
-      duration: animationDuration,
-    })
-    tl.to(handle, {
-      left: targetWidth,
-      duration: animationDuration,
-    }, 0)
-
-  }, [sidebarState, sidebarWidth, bodyState, animationDuration])
-
-  // GSAP animations for body state transitions
-  useEffect(() => {
-    if (!mainContentRef.current || !sidebarRef.current || !rightPaneRef.current) return
-
-    const ease = "power3.out"
-    const isFullscreen = bodyState === BODY_STATES.FULLSCREEN
-
-    const isSidePane = bodyState === BODY_STATES.SIDE_PANE
-
-    // Right pane animation
-    gsap.to(rightPaneRef.current, {
-      width: rightPaneWidth,
-      x: isSidePane ? 0 : rightPaneWidth + 5, // +5 to hide border
-      duration: animationDuration,
-      ease,
-    })
-
-    gsap.to(mainContentRef.current, {
-      paddingTop: isFullscreen ? '0rem' : isTopBarVisible ? '5rem' : '0rem', // h-20 is 5rem
-      duration: animationDuration,
-      ease,
-    })
-
-    gsap.to(topBarContainerRef.current, {
-      y: (isFullscreen || !isTopBarVisible) ? '-100%' : '0%',
-      duration: animationDuration,
-      ease,
-    })
-    
-    // Add backdrop for side pane
-    const backdrop = document.querySelector('.app-backdrop')
-    if (isSidePane) {
-      if (!backdrop) {
-        const el = document.createElement('div')
-        el.className = 'app-backdrop fixed inset-0 bg-black/30 z-[55]'
-        appRef.current?.appendChild(el)
-        gsap.fromTo(el, { opacity: 0 }, { opacity: 1, duration: animationDuration })
-        el.onclick = () => closeSidePane()
-      }
-    } else {
-      if (backdrop) {
-        gsap.to(backdrop, { opacity: 0, duration: animationDuration, onComplete: () => backdrop.remove() })
-      }
-    }
-  }, [bodyState, animationDuration, rightPaneWidth, closeSidePane, isTopBarVisible])
-
-  return (
-    <div 
-      ref={appRef}
-      className={cn(
-        "relative h-screen w-screen overflow-hidden bg-background transition-colors duration-300",
-        isDarkMode && "dark"
-      )}
-    >
-      <div className="flex h-screen overflow-hidden">
-        {/* Enhanced Sidebar */}
-        <EnhancedSidebar
-          ref={sidebarRef}
-          onMouseEnter={() => {
-            if (autoExpandSidebar && sidebarState === SIDEBAR_STATES.COLLAPSED) {
-              peekSidebar()
-            }
-          }}
-          onMouseLeave={() => {
-            if (autoExpandSidebar && sidebarState === SIDEBAR_STATES.PEEK) {
-              setSidebarState(SIDEBAR_STATES.COLLAPSED)
-            }
-          }}
-        />
-
-        {/* Resize Handle */}
-        {sidebarState !== SIDEBAR_STATES.HIDDEN && (
-          <div
-            ref={resizeHandleRef}
-            className={cn(
-              "absolute top-0 w-2 h-full bg-transparent hover:bg-primary/20 cursor-col-resize z-50 transition-colors duration-200 group -translate-x-1/2"
-            )}
-            onMouseDown={(e) => {
-              e.preventDefault()
-              setIsResizing(true)
-            }}
-          >
-            <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200 mx-auto" />
-          </div>
-        )}
-
-        {/* Main Content Area */}
-        <div className="relative flex-1 overflow-hidden bg-background">
-          <div ref={topBarContainerRef} className="absolute inset-x-0 top-0 z-30">
-            <TopBar
-              onToggleSidebar={toggleSidebar}
-              onToggleFullscreen={toggleFullscreen}
-              onToggleDarkMode={toggleDarkMode}
-            />
-          </div>
-          
-          {/* Main Content */}
-          <MainContent
-            ref={mainContentRef}
-            bodyState={bodyState}
-            onToggleFullscreen={toggleFullscreen}
-          />
-        </div>
-      </div>
-      <RightPane ref={rightPaneRef} />
-      <CommandPalette />
-    </div>
-  )
-}
-```
-
 ## File: package.json
 ```json
 {
@@ -4352,584 +4931,6 @@ export function AppShell() {
     "vite": "^4.5.0",
     "tailwindcss-animate": "^1.0.7"
   }
-}
-```
-
-## File: src/components/EnhancedSidebar.tsx
-```typescript
-import React from 'react';
-import {
-  Home,
-  Settings,
-  HelpCircle,
-  Component,
-  Rocket,
-  MoreHorizontal,
-  Bell,
-  Search,
-  FileText,
-  Star,
-  Trash2,
-  FolderOpen,
-  Mail,
-  Bookmark,
-  Download,
-  User,
-  Plus
-} from 'lucide-react';
-import { useAppStore, type ActivePage } from '@/store/appStore';
-import {
-  Workspaces,
-  WorkspaceTrigger,
-  WorkspaceContent,
-  type Workspace,
-} from './WorkspaceSwitcher';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarHeader,
-  SidebarTitle,
-  SidebarBody,
-  SidebarFooter,
-  SidebarSection,
-  SidebarMenuItem,
-  SidebarMenuButton,
-  SidebarMenuAction,
-  SidebarLabel,
-  SidebarBadge,
-  SidebarTooltip,
-  SidebarIcon,
-  useSidebar,
-} from './Sidebar';
-import { cn } from '@/lib/utils';
-
-interface MyWorkspace extends Workspace {
-  logo: string;
-  plan: string;
-}
-
-const mockWorkspaces: MyWorkspace[] = [
-  { id: 'ws1', name: 'Acme Inc.', logo: 'https://avatar.vercel.sh/acme.png', plan: 'Pro' },
-  { id: 'ws2', name: 'Monsters Inc.', logo: 'https://avatar.vercel.sh/monsters.png', plan: 'Free' },
-  { id: 'ws3', name: 'Stark Industries', logo: 'https://avatar.vercel.sh/stark.png', plan: 'Enterprise' },
-];
-
-const SidebarWorkspaceTrigger = () => {
-  const { isCollapsed, compactMode } = useSidebar();
-
-  return (
-    <WorkspaceTrigger
-      collapsed={isCollapsed}
-      className={cn(
-        'rounded-xl transition-colors hover:bg-accent/50 w-full',
-        isCollapsed ? 'p-2' : 'p-3 bg-accent/50',
-      )}
-      avatarClassName={cn(compactMode ? 'h-8 w-8' : 'h-10 w-10')}
-    />
-  );
-};
-
-interface SidebarProps {
-  onMouseEnter?: () => void;
-  onMouseLeave?: () => void;
-}
-
-export const EnhancedSidebar = React.forwardRef<HTMLDivElement, SidebarProps>(
-  ({ onMouseEnter, onMouseLeave }, ref) => {
-    const { sidebarWidth, compactMode } = useAppStore();
-    const [selectedWorkspace, setSelectedWorkspace] = React.useState(mockWorkspaces[0]);
-
-    return (
-      <Sidebar
-        ref={ref}
-        style={{ width: sidebarWidth }}
-        onMouseEnter={onMouseEnter}
-        onMouseLeave={onMouseLeave}
-      >
-        <SidebarContent>
-          <SidebarHeader>
-            <div className="p-2 bg-primary/20 rounded-lg">
-              <Rocket className="w-5 h-5 text-primary" />
-            </div>
-            <SidebarTitle>Amazing App</SidebarTitle>
-          </SidebarHeader>
-
-          <SidebarBody>
-            <SidebarSection title="Main">
-              <AppMenuItem icon={Home} label="Dashboard" page="dashboard" />
-              <AppMenuItem icon={Search} label="Search" />
-              <AppMenuItem icon={Bell} label="Notifications" badge={3} page="notifications" opensInSidePane />
-            </SidebarSection>
-            
-            <SidebarSection title="Workspace" collapsible defaultExpanded>
-              <AppMenuItem icon={FileText} label="Documents" hasActions>
-                <AppMenuItem icon={FileText} label="Recent" isSubItem />
-                <AppMenuItem icon={Star} label="Starred" isSubItem />
-                <AppMenuItem icon={Trash2} label="Trash" isSubItem />
-              </AppMenuItem>
-              <AppMenuItem icon={FolderOpen} label="Projects" hasActions />
-              <AppMenuItem icon={Mail} label="Messages" badge={12} />
-            </SidebarSection>
-            
-            <SidebarSection title="Personal" collapsible>
-              <AppMenuItem icon={Bookmark} label="Bookmarks" />
-              <AppMenuItem icon={Star} label="Favorites" />
-              <AppMenuItem icon={Download} label="Downloads" />
-            </SidebarSection>
-
-            <SidebarSection title="Components" collapsible defaultExpanded>
-              <AppMenuItem icon={Component} label="Toaster" page="toaster" />
-            </SidebarSection>
-          </SidebarBody>
-
-          <SidebarFooter>
-            <SidebarSection>
-              <AppMenuItem icon={User} label="Profile" />
-              <AppMenuItem icon={Settings} label="Settings" page="settings" />
-              <AppMenuItem icon={HelpCircle} label="Help" />
-            </SidebarSection>
-
-            <div className={cn(compactMode ? 'mt-4' : 'mt-6')}>
-              <Workspaces
-                workspaces={mockWorkspaces}
-                selectedWorkspaceId={selectedWorkspace.id}
-                onWorkspaceChange={setSelectedWorkspace}
-              >
-                <SidebarWorkspaceTrigger />
-                <WorkspaceContent>
-                  <button className="flex w-full items-center gap-2 rounded-sm px-2 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground focus:outline-none">
-                    <Plus className="h-4 w-4" />
-                    <span>Create Workspace</span>
-                  </button>
-                </WorkspaceContent>
-              </Workspaces>
-            </div>
-          </SidebarFooter>
-        </SidebarContent>
-      </Sidebar>
-    );
-  },
-);
-EnhancedSidebar.displayName = 'EnhancedSidebar';
-
-
-// Example of a reusable menu item component built with the new Sidebar primitives
-interface AppMenuItemProps {
-  icon: React.ElementType;
-  label: string;
-  badge?: number;
-  hasActions?: boolean;
-  children?: React.ReactNode;
-  isSubItem?: boolean;
-  page?: ActivePage;
-  opensInSidePane?: boolean;
-}
-
-const AppMenuItem: React.FC<AppMenuItemProps> = ({ icon: Icon, label, badge, hasActions, children, isSubItem = false, page, opensInSidePane = false }) => {
-  const { handleNavigation, isPageActive, openSidePane } = useAppStore();
-  const isActive = page ? isPageActive(page) : false;
-  const { compactMode } = useAppStore();
-  const { isCollapsed } = useSidebar();
-
-  const handleClick = () => {
-    if (page) {
-      if (opensInSidePane) {
-        const pageToPaneMap: { [key in ActivePage]?: 'main' | 'settings' | 'toaster' | 'notifications' } = {
-          dashboard: 'main',
-          settings: 'settings',
-          toaster: 'toaster',
-          notifications: 'notifications',
-        };
-        if (pageToPaneMap[page]) openSidePane(pageToPaneMap[page]!);
-      } else {
-        handleNavigation(page);
-      }
-    }
-  };
-
-  return (
-    <div className={isSubItem ? (compactMode ? 'ml-4' : 'ml-6') : ''}>
-      <SidebarMenuItem>
-        <SidebarMenuButton onClick={handleClick} isActive={isActive}>
-          <SidebarIcon>
-            <Icon className={isSubItem ? "w-3 h-3" : "w-4 h-4"}/>
-          </SidebarIcon>
-          <SidebarLabel>{label}</SidebarLabel>
-          {badge && <SidebarBadge>{badge}</SidebarBadge>}
-          <SidebarTooltip label={label} badge={badge} />
-        </SidebarMenuButton>
-
-        {hasActions && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <SidebarMenuAction>
-                <MoreHorizontal className="h-4 w-4" />
-              </SidebarMenuAction>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent side="right" align="start">
-              <DropdownMenuItem>
-                <span>Edit {label}</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <span>Delete {label}</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
-      </SidebarMenuItem>
-      {!isCollapsed && children && (
-        <div className="space-y-1 mt-1">{children}</div>
-      )}
-    </div>
-  );
-};
-```
-
-## File: src/components/MainContent.tsx
-```typescript
-import { forwardRef } from 'react'
-import { 
-  X,
-  LayoutDashboard,
-  Settings,
-  Component,
-  Bell,
-} from 'lucide-react'
-import { cn } from '@/lib/utils'
-import { BODY_STATES, type BodyState } from '@/lib/utils'
-import { DashboardContent } from './DashboardContent'
-import { SettingsPage } from './SettingsPage'
-import { ToasterDemo } from './ToasterDemo'
-import { useAppStore } from '@/store/appStore'
-import { NotificationsPage } from './NotificationsPage'
-import { ContentInSidePanePlaceholder } from './ContentInSidePanePlaceholder'
-
-interface MainContentProps {
-  bodyState: BodyState
-  onToggleFullscreen: () => void
-}
-
-export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
-  ({ bodyState, onToggleFullscreen }, ref) => {
-    const { sidePaneContent, openSidePane, activePage, setActivePage } = useAppStore()
-
-    const isDashboardInSidePane = sidePaneContent === 'main' && bodyState === BODY_STATES.SIDE_PANE
-    const isSettingsInSidePane = sidePaneContent === 'settings' && bodyState === BODY_STATES.SIDE_PANE
-    const isToasterInSidePane = sidePaneContent === 'toaster' && bodyState === BODY_STATES.SIDE_PANE
-    const isNotificationsInSidePane = sidePaneContent === 'notifications' && bodyState === BODY_STATES.SIDE_PANE
-
-    const renderContent = () => {
-      if (activePage === 'dashboard') {
-        if (isDashboardInSidePane) {
-          return <ContentInSidePanePlaceholder 
-            icon={LayoutDashboard} 
-            title="Dashboard is in Side Pane" 
-            pageName="dashboard"
-            onBringBack={() => openSidePane('main')} 
-          />;
-        }
-        return <DashboardContent />
-      }
-
-      if (activePage === 'settings') {
-        if (isSettingsInSidePane) {
-          return <ContentInSidePanePlaceholder 
-            icon={Settings} 
-            title="Settings are in Side Pane" 
-            pageName="settings"
-            onBringBack={() => {
-              openSidePane('settings'); 
-              setActivePage('settings');
-            }}
-          />;
-        }
-        return <SettingsPage />
-      }
-      if (activePage === 'toaster') {
-        if (isToasterInSidePane) {
-          return <ContentInSidePanePlaceholder
-            icon={Component}
-            title="Toaster Demo is in Side Pane"
-            pageName="toaster demo"
-            onBringBack={() => {
-              openSidePane('toaster');
-              setActivePage('toaster');
-            }}
-          />;
-        }
-        return <ToasterDemo />
-      }
-      if (activePage === 'notifications') {
-        if (isNotificationsInSidePane) {
-          return <ContentInSidePanePlaceholder
-            icon={Bell}
-            title="Notifications are in Side Pane"
-            pageName="notifications"
-            onBringBack={() => {
-              openSidePane('notifications');
-              setActivePage('notifications');
-            }}
-          />;
-        }
-        return <NotificationsPage />
-      }
-      return null;
-    }
-    
-    const isContentVisible = (activePage === 'dashboard' && !isDashboardInSidePane) || 
-                           (activePage === 'settings' && !isSettingsInSidePane) || 
-                           (activePage === 'toaster' && !isToasterInSidePane) ||
-                           (activePage === 'notifications' && !isNotificationsInSidePane);
-
-    return (
-      <div
-        ref={ref}
-        className={cn(
-        "flex flex-col h-full overflow-hidden",
-        bodyState === BODY_STATES.FULLSCREEN && "absolute inset-0 z-40 bg-background"
-        )}
-      >
-        {bodyState === BODY_STATES.FULLSCREEN && isContentVisible && (
-          <button
-            onClick={onToggleFullscreen}
-            className="fixed top-6 right-6 lg:right-12 z-[100] h-12 w-12 flex items-center justify-center rounded-full bg-card/50 backdrop-blur-sm hover:bg-card/75 transition-colors group"
-            title="Exit Fullscreen"
-          >
-            <X className="w-6 h-6 group-hover:scale-110 group-hover:rotate-90 transition-all duration-300" />
-          </button>
-        )}
-
-        <div className="flex-1 min-h-0 flex flex-col">
-          {renderContent()}
-        </div>
-      </div>
-    )
-  }
-)
-```
-
-## File: src/components/TopBar.tsx
-```typescript
-import { useState } from 'react'
-import {
-  Menu, 
-  Maximize, 
-  Minimize, 
-  Moon, 
-  Sun,
-  Settings,
-  Command,
-  Zap,
-  ChevronRight,
-  Search,
-  Filter,
-  Plus,
-  PanelRight,
-} from 'lucide-react'
-import { cn } from '@/lib/utils'
-import { BODY_STATES } from '@/lib/utils'
-import { useAppStore } from '@/store/appStore'
-import { UserDropdown } from './UserDropdown'
-
-interface TopBarProps {
-  onToggleSidebar: () => void
-  onToggleFullscreen: () => void
-  onToggleDarkMode: () => void
-}
-
-export function TopBar({
-  onToggleSidebar,
-  onToggleFullscreen,
-  onToggleDarkMode
-}: TopBarProps) {
-  const { 
-    bodyState, 
-    isDarkMode, 
-    openSidePane,
-    sidePaneContent,
-    activePage,
-    setActivePage,
-    searchTerm,
-    setCommandPaletteOpen,
-    setSearchTerm,
-  } = useAppStore()
-
-  const [isSearchFocused, setIsSearchFocused] = useState(false)
-
-  const handleSettingsClick = () => {
-    const isSettingsInSidePane = bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === 'settings'
-
-    // If we're on the settings page and it's not in the side pane, treat this as a "minimize" action.
-    if (activePage === 'settings' && !isSettingsInSidePane) {
-      openSidePane('settings');
-      setActivePage('dashboard');
-    } else {
-      // In all other cases (on dashboard page, or settings already in pane),
-      // just toggle the settings side pane.
-      openSidePane('settings');
-    }
-  }
-
-  const handleMoveToSidePane = () => {
-    const mapping = { dashboard: 'main', settings: 'settings', toaster: 'toaster', notifications: 'notifications' } as const;
-    openSidePane(mapping[activePage]);
-    if (activePage !== 'dashboard') setActivePage('dashboard');
-  };
-
-  return (
-    <div className={cn(
-      "h-20 bg-background border-b border-border flex items-center justify-between px-6 z-50 gap-4",
-      {
-        'transition-all duration-300 ease-in-out': activePage === 'dashboard',
-      }
-    )}>
-      {/* Left Section - Sidebar Controls & Breadcrumbs */}
-      <div className="flex items-center gap-4">
-        {/* Sidebar Controls */}
-        <button
-          onClick={onToggleSidebar}
-          className={cn(
-            "h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors"
-          )}
-          title="Toggle Sidebar"
-        >
-          <Menu className="w-5 h-5" />
-        </button>
-
-        {/* Breadcrumbs */}
-        <div className={cn("hidden md:flex items-center gap-2 text-sm transition-opacity", {
-          "opacity-0 pointer-events-none": isSearchFocused && activePage === 'dashboard'
-        })}>
-          <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">Home</a>
-          <ChevronRight className="w-4 h-4 text-muted-foreground" />
-          <span className="font-medium text-foreground capitalize">{activePage}</span>
-        </div>
-      </div>
-
-      {/* Right Section - Search, page controls, and global controls */}
-      <div className={cn("flex items-center gap-3", isSearchFocused && activePage === 'dashboard' ? 'flex-1' : '')}>
-        {/* Page-specific: Dashboard search and actions */}
-        {activePage === 'dashboard' && (
-          <div className="flex items-center gap-2 flex-1 justify-end">
-            <div className={cn("relative transition-all duration-300 ease-in-out", isSearchFocused ? 'flex-1 max-w-lg' : 'w-auto')}>
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4 pointer-events-none" />
-              <input
-                type="text"
-                placeholder="Search..."
-                value={searchTerm}
-                onFocus={() => setIsSearchFocused(true)}
-                onBlur={() => setIsSearchFocused(false)}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className={cn(
-                  "pl-9 pr-4 py-2 h-10 border-none rounded-lg bg-card focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300 ease-in-out w-full",
-                  isSearchFocused ? 'bg-background' : 'w-48'
-                )}
-              />
-            </div>
-             <button className="h-10 w-10 flex-shrink-0 flex items-center justify-center hover:bg-accent rounded-full transition-colors">
-              <Filter className="w-5 h-5" />
-            </button>
-             <button className="bg-primary text-primary-foreground px-4 py-2 rounded-full hover:bg-primary/90 transition-colors flex items-center gap-2 h-10 flex-shrink-0">
-              <Plus className="w-5 h-5" />
-              <span className={cn(isSearchFocused ? 'hidden sm:inline' : 'inline')}>New Project</span>
-            </button>
-          </div>
-        )}
-        
-        {/* Page-specific: Move to side pane */}
-        <div className={cn('flex items-center', isSearchFocused && activePage === 'dashboard' ? 'hidden md:flex' : '')}>
-          {['dashboard', 'settings', 'toaster', 'notifications'].includes(activePage) && (
-            <button onClick={handleMoveToSidePane} className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors" title="Move to Side Pane"><PanelRight className="w-5 h-5" /></button>
-          )}
-        </div>
-
-        {/* Separator */}
-        <div className={cn(
-          'w-px h-6 bg-border mx-2', 
-          !['dashboard', 'settings', 'toaster', 'notifications'].includes(activePage) || (isSearchFocused && activePage === 'dashboard') ? 'hidden' : ''
-        )} />
-
-        {/* Quick Actions */}
-        <div className={cn('flex items-center gap-3', isSearchFocused && activePage === 'dashboard' ? 'hidden lg:flex' : '')}>
-
-          <button
-            onClick={() => setCommandPaletteOpen(true)}
-            className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
-            title="Command Palette (Ctrl+K)"
-          >
-            <Command className="w-5 h-5 group-hover:scale-110 transition-transform" />
-          </button>
-
-        <button
-          className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
-          title="Quick Actions"
-        >
-          <Zap className="w-5 h-5 group-hover:scale-110 transition-transform" />
-        </button>
-
-        {/* Body State Controls */}
-        <button
-          onClick={() => openSidePane('details')}
-          className={cn(
-            "h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group",
-            bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === 'details' && "bg-accent"
-          )}
-          title="Toggle Side Pane"
-        >
-          <div className="w-5 h-5 flex group-hover:scale-110 transition-transform">
-            <div className="w-1/2 h-full bg-current opacity-60 rounded-l-sm" />
-            <div className="w-1/2 h-full bg-current rounded-r-sm" />
-          </div>
-        </button>
-
-        <button
-          onClick={onToggleFullscreen}
-          className={cn(
-            "h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group",
-            bodyState === BODY_STATES.FULLSCREEN && "bg-accent"
-          )}
-          title="Toggle Fullscreen"
-        >
-          {bodyState === BODY_STATES.FULLSCREEN ? (
-            <Minimize className="w-5 h-5 group-hover:scale-110 transition-transform" />
-          ) : (
-            <Maximize className="w-5 h-5 group-hover:scale-110 transition-transform" />
-          )}
-        </button>
-
-        <div className="w-px h-6 bg-border mx-2" />
-
-        {/* Theme and Settings */}
-        <button
-          onClick={onToggleDarkMode}
-          className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
-          title="Toggle Dark Mode"
-        >
-          {isDarkMode ? (
-            <Sun className="w-5 h-5 group-hover:scale-110 transition-transform" />
-          ) : (
-            <Moon className="w-5 h-5 group-hover:scale-110 transition-transform" />
-          )}
-        </button>
-
-        <button
-          onClick={handleSettingsClick}
-          className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
-          title="Settings"
-        >
-          <Settings className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
-        </button>
-        <UserDropdown />
-        </div>
-      </div>
-    </div>
-  )
 }
 ```
 
