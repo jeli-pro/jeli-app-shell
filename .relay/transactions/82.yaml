@@ -1,0 +1,1709 @@
+uuid: 4d2847a9-25f0-4bb5-9a84-7a3eb0f93798
+projectId: amazing-app-shell
+createdAt: '2025-10-10T23:07:08.248Z'
+gitCommitMsg: >-
+  feat: add notifications page and integration
+
+  - Creates a new `NotificationsPage` component with tabs for filtering
+  notifications. - Adds a new `Tabs` UI component. - Integrates the
+  notifications page into the global state, main content area, right pane, and
+  command palette. - Updates the sidebar so that clicking the notifications icon
+  opens the page in the side pane by default. - Ensures consistent styling and
+  behavior with the rest of the application shell.
+promptSummary: >-
+  Create a new notifications page and integrate it into the application shell,
+  with the default view being in the side pane.
+reasoning:
+  - >-
+    Excellent! As an expert AI programmer, I will create the new notifications
+    page, ensure its styling is consistent with your application's design
+    system, and integrate it seamlessly into the existing app shell
+    architecture. The default behavior will be to open notifications in the side
+    pane, as you requested.
+  - 'Here are the step-by-step changes:'
+  - '### 1. Create `Tabs` UI Component'
+  - >-
+    First, I'll create the `Tabs` component, which is used in the notifications
+    page but is not yet part of your UI library. This is a standard
+    implementation based on Radix UI.
+  - '### 2. Create `NotificationsPage` Component'
+  - >-
+    Next, I'll create the `NotificationsPage` component. I've adapted your
+    provided code, replacing SVGs with `lucide-react` icons for consistency and
+    adjusting the layout and styling to match the existing application.
+  - '### 3. Update Global State Store'
+  - >-
+    I'll update the Zustand store to recognize `'notifications'` as a valid page
+    and side pane content type.
+  - '### 4. Update Sidebar Navigation'
+  - >-
+    Now, I'll modify the `EnhancedSidebar` to open the notifications in the side
+    pane when the bell icon is clicked. I'll also add a new prop to
+    `AppMenuItem` to handle this specific interaction.
+  - '### 5. Update Main Content Rendering Logic'
+  - >-
+    I'll update `MainContent` to correctly render the `NotificationsPage` or its
+    placeholder depending on the application state.
+  - '### 6. Update Right Pane Content Map'
+  - >-
+    The `RightPane` needs to know how to render the `NotificationsPage` when its
+    content is selected.
+  - '### 7. Update Top Bar Logic'
+  - >-
+    I'll update the `TopBar` to ensure the "Move to Side Pane" button works
+    correctly for the new notifications page.
+  - '### 8. Add Command Palette Entry'
+  - >-
+    Finally, I'll add a command to the `CommandPalette` to allow users to
+    navigate to the notifications page from anywhere.
+  - >-
+    These changes fully integrate your new notifications page into the
+    application, following the specified requirements and maintaining
+    architectural and stylistic consistency.
+operations:
+  - type: write
+    path: src/components/ui/tabs.tsx
+    content: |-
+      import * as React from "react"
+      import * as TabsPrimitive from "@radix-ui/react-tabs"
+
+      import { cn } from "@/lib/utils"
+
+      const Tabs = TabsPrimitive.Root
+
+      const TabsList = React.forwardRef<
+        React.ElementRef<typeof TabsPrimitive.List>,
+        React.ComponentPropsWithoutRef<typeof TabsPrimitive.List>
+      >(({ className, ...props }, ref) => (
+        <TabsPrimitive.List
+          ref={ref}
+          className={cn(
+            "inline-flex h-10 items-center justify-center rounded-lg bg-muted p-1 text-muted-foreground",
+            className
+          )}
+          {...props}
+        />
+      ))
+      TabsList.displayName = TabsPrimitive.List.displayName
+
+      const TabsTrigger = React.forwardRef<
+        React.ElementRef<typeof TabsPrimitive.Trigger>,
+        React.ComponentPropsWithoutRef<typeof TabsPrimitive.Trigger>
+      >(({ className, ...props }, ref) => (
+        <TabsPrimitive.Trigger
+          ref={ref}
+          className={cn(
+            "inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm",
+            className
+          )}
+          {...props}
+        />
+      ))
+      TabsTrigger.displayName = TabsPrimitive.Trigger.displayName
+
+      const TabsContent = React.forwardRef<
+        React.ElementRef<typeof TabsPrimitive.Content>,
+        React.ComponentPropsWithoutRef<typeof TabsPrimitive.Content>
+      >(({ className, ...props }, ref) => (
+        <TabsPrimitive.Content
+          ref={ref}
+          className={cn(
+            "mt-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+            className
+          )}
+          {...props}
+        />
+      ))
+      TabsContent.displayName = TabsPrimitive.Content.displayName
+
+      export { Tabs, TabsList, TabsTrigger, TabsContent }
+    patchStrategy: replace
+  - type: write
+    path: src/components/NotificationsPage.tsx
+    content: >-
+      import React from "react";
+
+      import { Avatar, AvatarFallback, AvatarImage } from
+      "@/components/ui/avatar";
+
+      import { Badge } from "@/components/ui/badge";
+
+      import { Button } from "@/components/ui/button";
+
+      import { Card, CardContent, CardHeader } from "@/components/ui/card";
+
+      import { Tabs, TabsList, TabsTrigger, TabsContent } from
+      "@/components/ui/tabs";
+
+      import { PageHeader } from "./PageHeader";
+
+      import { cn } from "@/lib/utils";
+
+      import { CheckCheck, Download, Settings, Bell } from "lucide-react";
+
+
+
+      type Notification = {
+        id: number;
+        type: string;
+        user: {
+          name: string;
+          avatar: string;
+          fallback: string;
+        };
+        action: string;
+        target?: string;
+        content?: string;
+        timestamp: string;
+        timeAgo: string;
+        isRead: boolean;
+        hasActions?: boolean;
+        file?: {
+          name: string;
+          size: string;
+          type: string;
+        };
+      };
+
+
+      const notifications: Array<Notification> = [
+        {
+          id: 1,
+          type: "comment",
+          user: { name: "Amélie", avatar: "https://api.dicebear.com/7.x/notionists/svg?seed=Amélie", fallback: "A" },
+          action: "commented in",
+          target: "Dashboard 2.0",
+          content: "Really love this approach. I think this is the best solution for the document sync UX issue.",
+          timestamp: "Friday 3:12 PM",
+          timeAgo: "2 hours ago",
+          isRead: false,
+        },
+        {
+          id: 2,
+          type: "follow",
+          user: { name: "Sienna", avatar: "https://api.dicebear.com/7.x/notionists/svg?seed=Sienna", fallback: "S" },
+          action: "followed you",
+          timestamp: "Friday 3:04 PM",
+          timeAgo: "2 hours ago",
+          isRead: false,
+        },
+        {
+          id: 3,
+          type: "invitation",
+          user: { name: "Ammar", avatar: "https://api.dicebear.com/7.x/notionists/svg?seed=Ammar", fallback: "A" },
+          action: "invited you to",
+          target: "Blog design",
+          timestamp: "Friday 2:22 PM",
+          timeAgo: "3 hours ago",
+          isRead: true,
+          hasActions: true,
+        },
+        {
+          id: 4,
+          type: "file_share",
+          user: { name: "Mathilde", avatar: "https://api.dicebear.com/7.x/notionists/svg?seed=Mathilde", fallback: "M" },
+          action: "shared a file in",
+          target: "Dashboard 2.0",
+          file: { name: "Prototype recording 01.mp4", size: "14 MB", type: "MP4" },
+          timestamp: "Friday 1:40 PM",
+          timeAgo: "4 hours ago",
+          isRead: true,
+        },
+        {
+          id: 5,
+          type: "mention",
+          user: { name: "James", avatar: "https://api.dicebear.com/7.x/notionists/svg?seed=James", fallback: "J" },
+          action: "mentioned you in",
+          target: "Project Alpha",
+          content: "Hey @you, can you review the latest designs when you get a chance?",
+          timestamp: "Thursday 11:30 AM",
+          timeAgo: "1 day ago",
+          isRead: true,
+        },
+        {
+          id: 6,
+          type: "like",
+          user: { name: "Sofia", avatar: "https://api.dicebear.com/7.x/notionists/svg?seed=Sofia", fallback: "S" },
+          action: "liked your comment in",
+          target: "Team Meeting Notes",
+          timestamp: "Thursday 9:15 AM",
+          timeAgo: "1 day ago",
+          isRead: true,
+        },
+      ];
+
+
+      function NotificationItem({ notification }: { notification: Notification
+      }) {
+        return (
+          <div className="w-full py-4 first:pt-0 last:pb-0">
+            <div className="flex gap-3">
+              <Avatar className="size-11">
+                <AvatarImage src={notification.user.avatar} alt={`${notification.user.name}'s profile picture`} />
+                <AvatarFallback>{notification.user.fallback}</AvatarFallback>
+              </Avatar>
+
+              <div className="flex flex-1 flex-col space-y-2">
+                <div className="flex items-start justify-between">
+                  <div className="text-sm">
+                    <span className="font-semibold">{notification.user.name}</span>
+                    <span className="text-muted-foreground"> {notification.action} </span>
+                    {notification.target && <span className="font-semibold">{notification.target}</span>}
+                    <div className="mt-0.5 text-xs text-muted-foreground">{notification.timeAgo}</div>
+                  </div>
+                  {!notification.isRead && <div className="size-2 rounded-full bg-primary mt-1 shrink-0"></div>}
+                </div>
+
+                {notification.content && <div className="rounded-lg bg-muted p-3 text-sm">{notification.content}</div>}
+
+                {notification.file && (
+                  <div className="flex items-center gap-2 rounded-lg bg-muted p-2 border border-border">
+                    <div className="relative shrink-0 w-10 h-10 flex items-center justify-center bg-background rounded-md border border-border">
+                      <span className="absolute bottom-0.5 text-[10px] leading-none font-semibold text-primary-foreground bg-primary px-1 rounded-sm">{notification.file.type}</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium truncate">{notification.file.name}</div>
+                      <div className="text-xs text-muted-foreground">{notification.file.type} • {notification.file.size}</div>
+                    </div>
+                    <Button variant="ghost" size="icon" className="size-8 shrink-0">
+                      <Download className="w-4 h-4" />
+                    </Button>
+                  </div>
+                )}
+
+                {notification.hasActions && (
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm">Decline</Button>
+                    <Button size="sm">Accept</Button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+
+      export function NotificationsPage({ isInSidePane = false }: {
+      isInSidePane?: boolean }) {
+        const [activeTab, setActiveTab] = React.useState<string>("all");
+
+        const verifiedCount = notifications.filter((n) => n.type === "follow" || n.type === "like").length;
+        const mentionCount = notifications.filter((n) => n.type === "mention").length;
+
+        const getFilteredNotifications = () => {
+          switch (activeTab) {
+            case "verified": return notifications.filter((n) => n.type === "follow" || n.type === "like");
+            case "mentions": return notifications.filter((n) => n.type === "mention");
+            default: return notifications;
+          }
+        };
+
+        const filteredNotifications = getFilteredNotifications();
+
+        const content = (
+          <Card className={cn("flex w-full flex-col shadow-none", isInSidePane ? "border-none" : "p-6 lg:p-8")}>
+            <CardHeader className="p-0">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold">
+                  Your notifications
+                </h3>
+                <div className="flex items-center gap-1">
+                  <Button variant="ghost" size="icon" className="size-8">
+                    <CheckCheck className="size-4 text-muted-foreground" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="size-8">
+                    <Settings className="size-4 text-muted-foreground" />
+                  </Button>
+                </div>
+              </div>
+
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex-col justify-start mt-4">
+                <TabsList className="gap-1.5">
+                  <TabsTrigger value="all" className="gap-1.5">
+                    View all <Badge variant="secondary" className="rounded-full">{notifications.length}</Badge>
+                  </TabsTrigger>
+                  <TabsTrigger value="verified" className="gap-1.5">
+                    Verified <Badge variant="secondary" className="rounded-full">{verifiedCount}</Badge>
+                  </TabsTrigger>
+                  <TabsTrigger value="mentions" className="gap-1.5">
+                    Mentions <Badge variant="secondary" className="rounded-full">{mentionCount}</Badge>
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </CardHeader>
+
+            <CardContent className="h-full p-0 mt-6">
+              <div className="space-y-0 divide-y divide-dashed divide-border">
+                {filteredNotifications.length > 0 ? (
+                  filteredNotifications.map((notification) => (
+                    <NotificationItem key={notification.id} notification={notification} />
+                  ))
+                ) : (
+                  <div className="flex flex-col items-center justify-center space-y-2.5 py-12 text-center">
+                    <div className="rounded-full bg-muted p-4">
+                      <Bell className="text-muted-foreground" />
+                    </div>
+                    <p className="text-sm font-medium text-muted-foreground">No notifications yet.</p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        );
+
+        return (
+          <div className={cn("overflow-y-auto", !isInSidePane ? "h-full p-6 lg:px-12 space-y-8" : "h-full")}>
+            {!isInSidePane && (
+              <PageHeader
+                title="Notifications"
+                description="Manage your notifications and stay up-to-date."
+              />
+            )}
+            {content}
+          </div>
+        );
+      };
+    patchStrategy: replace
+  - type: write
+    path: src/store/appStore.ts
+    content: >+
+      --- src/store/appStore.ts
+
+      +++ src/store/appStore.ts
+
+      @@ -2,14 +2,14 @@
+       import { persist } from 'zustand/middleware'
+       import { SIDEBAR_STATES, BODY_STATES, type SidebarState, type BodyState } from '@/lib/utils'
+       
+      -export type ActivePage = 'dashboard' | 'settings' | 'toaster';
+
+      +export type ActivePage = 'dashboard' | 'settings' | 'toaster' |
+      'notifications';
+       
+       interface AppState {
+         // UI States
+         sidebarState: SidebarState
+         bodyState: BodyState
+         isDarkMode: boolean
+      -  sidePaneContent: 'details' | 'settings' | 'main' | 'toaster'
+
+      +  sidePaneContent: 'details' | 'settings' | 'main' | 'toaster' |
+      'notifications'
+         activePage: ActivePage
+         sidebarWidth: number
+         rightPaneWidth: number
+      @@ -40,7 +40,7 @@
+         showSidebar: () => void
+         peekSidebar: () => void
+         toggleFullscreen: () => void
+      -  openSidePane: (content: 'details' | 'settings' | 'main' | 'toaster') =>
+      void
+
+      +  openSidePane: (content: 'details' | 'settings' | 'main' | 'toaster' |
+      'notifications') => void
+         closeSidePane: () => void
+         resetToDefaults: () => void
+         handleNavigation: (page: ActivePage) => void
+      @@ -118,7 +118,7 @@
+               })
+             },
+             
+      -      openSidePane: (content: 'details' | 'settings' | 'main' |
+      'toaster') => {
+
+      +      openSidePane: (content) => {
+               const { bodyState, sidePaneContent } = get()
+               if (bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === content) {
+                 // If it's open with same content, close it.
+      @@ -144,6 +144,7 @@
+                 dashboard: 'main',
+                 settings: 'settings',
+                 toaster: 'toaster',
+      +          notifications: 'notifications',
+               };
+               return activePage === page || (bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === pageToSidePaneContent[page]);
+             },
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/components/EnhancedSidebar.tsx
+    content: >+
+      --- src/components/EnhancedSidebar.tsx
+
+      +++ src/components/EnhancedSidebar.tsx
+
+      @@ -23,7 +23,7 @@
+         User,
+         Plus
+       } from 'lucide-react';
+      -import { useAppStore } from '@/store/appStore';
+
+      +import { useAppStore, type ActivePage } from '@/store/appStore';
+       import {
+         Workspaces,
+         WorkspaceTrigger,
+      @@ -83,7 +83,7 @@
+                 <SidebarBody>
+                   <SidebarSection title="Main">
+                     <AppMenuItem icon={Home} label="Dashboard" page="dashboard" />
+                     <AppMenuItem icon={Search} label="Search" />
+      -              <AppMenuItem icon={Bell} label="Notifications" badge={3} />
+
+      +              <AppMenuItem icon={Bell} label="Notifications" badge={3}
+      page="notifications" opensInSidePane />
+                   </SidebarSection>
+                   
+                   <SidebarSection title="Workspace" collapsible defaultExpanded>
+      @@ -141,16 +141,31 @@
+         hasActions?: boolean;
+         children?: React.ReactNode;
+         isSubItem?: boolean;
+      -  page?: 'dashboard' | 'settings' | 'toaster';
+
+      +  page?: ActivePage;
+
+      +  opensInSidePane?: boolean;
+       }
+       
+      -const AppMenuItem: React.FC<AppMenuItemProps> = ({ icon: Icon, label,
+      badge, hasActions, children, isSubItem = false, page }) => {
+
+      -  const { handleNavigation, isPageActive } = useAppStore();
+
+      +const AppMenuItem: React.FC<AppMenuItemProps> = ({ icon: Icon, label,
+      badge, hasActions, children, isSubItem = false, page, opensInSidePane =
+      false }) => {
+
+      +  const { handleNavigation, isPageActive, openSidePane, activePage } =
+      useAppStore();
+         const isActive = page ? isPageActive(page) : false;
+         const { compactMode } = useAppStore();
+         const { isCollapsed } = useSidebar();
+       
+      +  const handleClick = () => {
+
+      +    if (page) {
+
+      +      if (opensInSidePane) {
+
+      +        const pageToPaneMap: { [key in ActivePage]?: 'main' | 'settings'
+      | 'toaster' | 'notifications' } = {
+
+      +          dashboard: 'main',
+
+      +          settings: 'settings',
+
+      +          toaster: 'toaster',
+
+      +          notifications: 'notifications',
+
+      +        };
+
+      +        if (pageToPaneMap[page]) openSidePane(pageToPaneMap[page]!);
+
+      +      } else {
+
+      +        handleNavigation(page);
+
+      +      }
+
+      +    }
+
+      +  };
+
+      +
+         return (
+           <div className={isSubItem ? (compactMode ? 'ml-4' : 'ml-6') : ''}>
+             <SidebarMenuItem>
+      -        <SidebarMenuButton onClick={() => page && handleNavigation(page)}
+      isActive={isActive}>
+
+      +        <SidebarMenuButton onClick={handleClick} isActive={isActive}>
+                 <SidebarIcon>
+                   <Icon className={isSubItem ? "w-3 h-3" : "w-4 h-4"}/>
+                 </SidebarIcon>
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/components/MainContent.tsx
+    content: >+
+      --- src/components/MainContent.tsx
+
+      +++ src/components/MainContent.tsx
+
+      @@ -5,6 +5,7 @@
+         LayoutDashboard,
+         Settings,
+         Component,
+      +  Bell,
+       } from 'lucide-react'
+       import { cn } from '@/lib/utils'
+       import { BODY_STATES, type BodyState } from '@/lib/utils'
+      @@ -12,6 +13,7 @@
+       import { SettingsPage } from './SettingsPage'
+       import { ToasterDemo } from './ToasterDemo'
+       import { useAppStore } from '@/store/appStore'
+      +import { NotificationsPage } from './NotificationsPage'
+       import { ContentInSidePanePlaceholder } from './ContentInSidePanePlaceholder'
+       
+       interface MainContentProps {
+      @@ -25,6 +27,7 @@
+           const isDashboardInSidePane = sidePaneContent === 'main' && bodyState === BODY_STATES.SIDE_PANE
+           const isSettingsInSidePane = sidePaneContent === 'settings' && bodyState === BODY_STATES.SIDE_PANE
+           const isToasterInSidePane = sidePaneContent === 'toaster' && bodyState === BODY_STATES.SIDE_PANE
+      +    const isNotificationsInSidePane = sidePaneContent === 'notifications'
+      && bodyState === BODY_STATES.SIDE_PANE
+       
+           const renderContent = () => {
+             if (activePage === 'dashboard') {
+      @@ -62,12 +65,27 @@
+               }
+               return <ToasterDemo />
+             }
+      +      if (activePage === 'notifications') {
+
+      +        if (isNotificationsInSidePane) {
+
+      +          return <ContentInSidePanePlaceholder
+
+      +            icon={Bell}
+
+      +            title="Notifications are in Side Pane"
+
+      +            pageName="notifications"
+
+      +            onBringBack={() => {
+
+      +              openSidePane('notifications');
+
+      +              setActivePage('notifications');
+
+      +            }}
+
+      +          />;
+
+      +        }
+
+      +        return <NotificationsPage />
+
+      +      }
+             return null;
+           }
+           
+           const isContentVisible = (activePage === 'dashboard' && !isDashboardInSidePane) || 
+                                  (activePage === 'settings' && !isSettingsInSidePane) || 
+      -                           (activePage === 'toaster' &&
+      !isToasterInSidePane);
+
+      +                           (activePage === 'toaster' &&
+      !isToasterInSidePane) ||
+
+      +                           (activePage === 'notifications' &&
+      !isNotificationsInSidePane);
+       
+           return (
+             <div
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/components/RightPane.tsx
+    content: >+
+      --- src/components/RightPane.tsx
+
+      +++ src/components/RightPane.tsx
+
+      @@ -1,9 +1,10 @@
+       import { forwardRef } from 'react'
+      -import { SlidersHorizontal, Settings, ChevronRight, LayoutDashboard,
+      ChevronsLeftRight, Component } from 'lucide-react'
+
+      +import { SlidersHorizontal, Settings, ChevronRight, LayoutDashboard,
+      ChevronsLeftRight, Component, Bell } from 'lucide-react'
+       import { useAppStore } from '@/store/appStore'
+       import { cn } from '@/lib/utils'
+       import { SettingsContent } from './SettingsContent'
+       import { DashboardContent } from './DashboardContent'
+       import { ToasterDemo } from './ToasterDemo'
+      +import { NotificationsPage } from './NotificationsPage'
+       
+       export const RightPane = forwardRef<HTMLDivElement>((_props, ref) => {
+         const { closeSidePane, setIsResizingRightPane, sidePaneContent, setActivePage } = useAppStore();
+      @@ -12,6 +13,7 @@
+           main: { title: 'Dashboard', icon: LayoutDashboard, page: 'dashboard', content: <DashboardContent isInSidePane={true} /> },
+           settings: { title: 'Settings', icon: Settings, page: 'settings', content: <SettingsContent /> },
+           toaster: { title: 'Toaster Demo', icon: Component, page: 'toaster', content: <ToasterDemo isInSidePane={true} /> },
+      +    notifications: { title: 'Notifications', icon: Bell, page:
+      'notifications', content: <NotificationsPage isInSidePane={true} /> },
+           details: { title: 'Details Panel', icon: SlidersHorizontal, content: <p className="text-muted-foreground">This is the side pane. It can be used to display contextual information, forms, or actions related to the main content.</p> }
+         };
+       
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/components/TopBar.tsx
+    content: >+
+      --- src/components/TopBar.tsx
+
+      +++ src/components/TopBar.tsx
+
+      @@ -48,22 +48,22 @@
+         }
+       
+         const handleMoveToSidePane = () => {
+      -    const mapping = { dashboard: 'main', settings: 'settings', toaster:
+      'toaster' } as const;
+
+      +    const mapping = { dashboard: 'main', settings: 'settings', toaster:
+      'toaster', notifications: 'notifications' } as const;
+           openSidePane(mapping[activePage]);
+           if (activePage !== 'dashboard') setActivePage('dashboard');
+         };
+       
+         return (
+           <div className={cn(
+             "h-20 bg-card/80 backdrop-blur-sm border-b border-border flex items-center justify-between px-6 z-50 gap-4",
+             {
+               'transition-all duration-300 ease-in-out': activePage === 'dashboard',
+             }
+           )}>
+             {/* Left Section - Sidebar Controls & Breadcrumbs */}
+             <div className="flex items-center gap-4">
+               {/* Sidebar Controls */}
+               <button
+                 onClick={onToggleSidebar}
+                 className={cn(
+                   "h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors"
+      @@ -107,13 +107,13 @@
+               
+               {/* Page-specific: Move to side pane */}
+               <div className={cn('flex items-center', isSearchFocused && activePage === 'dashboard' ? 'hidden md:flex' : '')}>
+      -          {['dashboard', 'settings', 'toaster'].includes(activePage) && (
+
+      +          {['dashboard', 'settings', 'toaster',
+      'notifications'].includes(activePage) && (
+                   <button onClick={handleMoveToSidePane} className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors" title="Move to Side Pane"><PanelRight className="w-5 h-5" /></button>
+                 )}
+               </div>
+       
+               {/* Separator */}
+               <div className={cn(
+                 'w-px h-6 bg-border mx-2', 
+      -          (activePage !== 'dashboard' && activePage !== 'settings' &&
+      activePage !== 'toaster') || (isSearchFocused && activePage ===
+      'dashboard') ? 'hidden' : ''
+
+      +          !['dashboard', 'settings', 'toaster',
+      'notifications'].includes(activePage) || (isSearchFocused && activePage
+      === 'dashboard') ? 'hidden' : ''
+               )} />
+       
+               {/* Quick Actions */}
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/components/CommandPalette.tsx
+    content: >+
+      --- src/components/CommandPalette.tsx
+
+      +++ src/components/CommandPalette.tsx
+
+      @@ -6,7 +6,7 @@
+         CommandSeparator,
+         CommandShortcut,
+       } from '@/components/ui/command'
+      -import { useAppStore } from '@/store/appStore'
+
+      -import { Home, Settings, Moon, Sun, Monitor, Smartphone, PanelRight,
+      Maximize, Component } from 'lucide-react'
+
+      +import { useAppStore, type ActivePage } from '@/store/appStore'
+
+      +import { Home, Settings, Moon, Sun, Monitor, Smartphone, PanelRight,
+      Maximize, Component, Bell } from 'lucide-react'
+       
+       export function CommandPalette() {
+         const {
+      @@ -48,6 +48,11 @@
+                   <Component className="mr-2 h-4 w-4" />
+                   <span>Go to Toaster Demo</span>
+                   <CommandShortcut>G T</CommandShortcut>
+      +          </CommandItem>
+
+      +          <CommandItem onSelect={() => runCommand(() =>
+      setActivePage('notifications' as ActivePage))}>
+
+      +            <Bell className="mr-2 h-4 w-4" />
+
+      +            <span>Go to Notifications</span>
+
+      +            <CommandShortcut>G N</CommandShortcut>
+                 </CommandItem>
+               </CommandGroup>
+               <CommandSeparator />
+
+    patchStrategy: standard-diff
+snapshot:
+  src/components/ui/tabs.tsx: null
+  src/components/NotificationsPage.tsx: null
+  src/store/appStore.ts: >-
+    import { create } from 'zustand'
+
+    import { persist } from 'zustand/middleware'
+
+    import { SIDEBAR_STATES, BODY_STATES, type SidebarState, type BodyState }
+    from '@/lib/utils'
+
+
+    export type ActivePage = 'dashboard' | 'settings' | 'toaster';
+
+
+    interface AppState {
+      // UI States
+      sidebarState: SidebarState
+      bodyState: BodyState
+      isDarkMode: boolean
+      sidePaneContent: 'details' | 'settings' | 'main' | 'toaster'
+      activePage: ActivePage
+      sidebarWidth: number
+      rightPaneWidth: number
+      isResizing: boolean
+      isResizingRightPane: boolean
+      isTopBarVisible: boolean
+      isCommandPaletteOpen: boolean
+      searchTerm: string
+      
+      // User Preferences
+      autoExpandSidebar: boolean
+      reducedMotion: boolean
+      compactMode: boolean
+      primaryColor: string
+      
+      // Actions
+      setSidebarState: (state: SidebarState) => void
+      setBodyState: (state: BodyState) => void
+      toggleDarkMode: () => void
+      setActivePage: (page: ActivePage) => void
+      setSidebarWidth: (width: number) => void
+      setRightPaneWidth: (width: number) => void
+      setIsResizing: (resizing: boolean) => void
+      setIsResizingRightPane: (resizing: boolean) => void
+      setTopBarVisible: (visible: boolean) => void
+      setAutoExpandSidebar: (auto: boolean) => void
+      setReducedMotion: (reduced: boolean) => void
+      setCompactMode: (compact: boolean) => void
+      setPrimaryColor: (color: string) => void
+      setCommandPaletteOpen: (open: boolean) => void
+      setSearchTerm: (term: string) => void
+      
+      // Composite Actions
+      toggleSidebar: () => void
+      hideSidebar: () => void
+      showSidebar: () => void
+      peekSidebar: () => void
+      toggleFullscreen: () => void
+      openSidePane: (content: 'details' | 'settings' | 'main' | 'toaster') => void
+      closeSidePane: () => void
+      resetToDefaults: () => void
+      handleNavigation: (page: ActivePage) => void
+      isPageActive: (page: ActivePage) => boolean
+    }
+
+
+    const defaultState = {
+      sidebarState: SIDEBAR_STATES.EXPANDED as SidebarState,
+      bodyState: BODY_STATES.NORMAL as BodyState,
+      sidePaneContent: 'details' as const,
+      activePage: 'dashboard' as ActivePage,
+      isDarkMode: false,
+      sidebarWidth: 280,
+      rightPaneWidth: typeof window !== 'undefined' ? Math.max(300, Math.round(window.innerWidth * 0.6)) : 400,
+      isResizing: false,
+      isResizingRightPane: false,
+      isTopBarVisible: true,
+      isCommandPaletteOpen: false,
+      autoExpandSidebar: true,
+      reducedMotion: false,
+      compactMode: false,
+      primaryColor: '220 84% 60%',
+      searchTerm: '',
+    }
+
+
+    export const useAppStore = create<AppState>()(
+      persist(
+        (set, get) => ({
+          ...defaultState,
+          
+          // Basic setters
+          sidePaneContent: 'details',
+          setSidebarState: (state) => set({ sidebarState: state }),
+          setBodyState: (state) => set({ bodyState: state }),
+          setActivePage: (page) => set({ activePage: page }),
+          toggleDarkMode: () => {
+            const newMode = !get().isDarkMode
+            set({ isDarkMode: newMode })
+            document.documentElement.classList.toggle('dark', newMode)
+          },
+          setSidebarWidth: (width) => set({ sidebarWidth: Math.max(200, Math.min(500, width)) }),
+          setRightPaneWidth: (width) => set({ rightPaneWidth: Math.max(300, Math.min(window.innerWidth * 0.8, width)) }),
+          setIsResizing: (resizing) => set({ isResizing: resizing }),
+          setIsResizingRightPane: (resizing) => set({ isResizingRightPane: resizing }),
+          setTopBarVisible: (visible) => set({ isTopBarVisible: visible }),
+          setAutoExpandSidebar: (auto) => set({ autoExpandSidebar: auto }),
+          setReducedMotion: (reduced) => set({ reducedMotion: reduced }),
+          setCompactMode: (compact) => set({ compactMode: compact }),
+          setPrimaryColor: (color) => set({ primaryColor: color }),
+          setCommandPaletteOpen: (open) => set({ isCommandPaletteOpen: open }),
+          setSearchTerm: (term) => set({ searchTerm: term }),
+          
+          // Composite actions
+          toggleSidebar: () => {
+            const current = get().sidebarState
+            if (current === SIDEBAR_STATES.HIDDEN) {
+              set({ sidebarState: SIDEBAR_STATES.COLLAPSED })
+            } else if (current === SIDEBAR_STATES.COLLAPSED) {
+              set({ sidebarState: SIDEBAR_STATES.EXPANDED })
+            } else if (current === SIDEBAR_STATES.EXPANDED) {
+              set({ sidebarState: SIDEBAR_STATES.COLLAPSED })
+            }
+          },
+          
+          hideSidebar: () => set({ sidebarState: SIDEBAR_STATES.HIDDEN }),
+          showSidebar: () => set({ sidebarState: SIDEBAR_STATES.EXPANDED }),
+          peekSidebar: () => set({ sidebarState: SIDEBAR_STATES.PEEK }),
+          
+          toggleFullscreen: () => {
+            const current = get().bodyState
+            set({ 
+              bodyState: current === BODY_STATES.FULLSCREEN ? BODY_STATES.NORMAL : BODY_STATES.FULLSCREEN 
+            })
+          },
+          
+          openSidePane: (content: 'details' | 'settings' | 'main' | 'toaster') => {
+            const { bodyState, sidePaneContent } = get()
+            if (bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === content) {
+              // If it's open with same content, close it.
+              set({ bodyState: BODY_STATES.NORMAL });
+            } else {
+              // If closed, or different content, open with new content.
+              set({ bodyState: BODY_STATES.SIDE_PANE, sidePaneContent: content });
+            }
+          },
+          closeSidePane: () => {
+            set({ bodyState: BODY_STATES.NORMAL })
+          },
+          
+          resetToDefaults: () => {
+            set(defaultState)
+            // Also reset dark mode class on html element
+            if (defaultState.isDarkMode) {
+              document.documentElement.classList.add('dark')
+            } else {
+              document.documentElement.classList.remove('dark')
+            }
+          },
+          handleNavigation: (page) => {
+            set({ activePage: page });
+          },
+          isPageActive: (page) => {
+            const { activePage, bodyState, sidePaneContent } = get();
+            const pageToSidePaneContent = {
+              dashboard: 'main',
+              settings: 'settings',
+              toaster: 'toaster',
+            };
+            return activePage === page || (bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === pageToSidePaneContent[page]);
+          },
+        }),
+        {
+          name: 'app-preferences',
+          partialize: (state) => ({
+            sidebarState: state.sidebarState,
+            bodyState: state.bodyState,
+            activePage: state.activePage,
+            sidePaneContent: state.sidePaneContent,
+            isDarkMode: state.isDarkMode,
+            sidebarWidth: state.sidebarWidth,
+            rightPaneWidth: state.rightPaneWidth,
+            autoExpandSidebar: state.autoExpandSidebar,
+            reducedMotion: state.reducedMotion,
+            compactMode: state.compactMode,
+            primaryColor: state.primaryColor,
+            // searchTerm is not persisted
+          }),
+        }
+      )
+    )
+
+
+    // Initialize dark mode on load
+
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('app-preferences')
+      if (stored) {
+        const parsed = JSON.parse(stored)
+        if (parsed.state?.isDarkMode) {
+          document.documentElement.classList.add('dark')
+        }
+      }
+    }
+  src/components/RightPane.tsx: >-
+    import { forwardRef } from 'react'
+
+    import { SlidersHorizontal, Settings, ChevronRight, LayoutDashboard,
+    ChevronsLeftRight, Component } from 'lucide-react'
+
+    import { useAppStore } from '@/store/appStore'
+
+    import { cn } from '@/lib/utils'
+
+    import { SettingsContent } from './SettingsContent'
+
+    import { DashboardContent } from './DashboardContent'
+
+    import { ToasterDemo } from './ToasterDemo'
+
+
+    export const RightPane = forwardRef<HTMLDivElement>((_props, ref) => {
+      const { closeSidePane, setIsResizingRightPane, sidePaneContent, setActivePage } = useAppStore();
+
+      const contentMap = {
+        main: { title: 'Dashboard', icon: LayoutDashboard, page: 'dashboard', content: <DashboardContent isInSidePane={true} /> },
+        settings: { title: 'Settings', icon: Settings, page: 'settings', content: <SettingsContent /> },
+        toaster: { title: 'Toaster Demo', icon: Component, page: 'toaster', content: <ToasterDemo isInSidePane={true} /> },
+        details: { title: 'Details Panel', icon: SlidersHorizontal, content: <p className="text-muted-foreground">This is the side pane. It can be used to display contextual information, forms, or actions related to the main content.</p> }
+      };
+
+      const currentContent = contentMap[sidePaneContent as keyof typeof contentMap] || contentMap.details;
+      const CurrentIcon = currentContent.icon;
+
+      const handleMaximize = () => {
+        if (currentContent.page) {
+          setActivePage(currentContent.page as ActivePage);
+        }
+        closeSidePane()
+      }
+
+      return (
+        <aside ref={ref} className="bg-card border-l border-border flex flex-col h-full overflow-hidden fixed top-0 right-0 z-[60]">
+          <button
+            onClick={closeSidePane}
+            className="absolute top-1/2 -left-px -translate-y-1/2 -translate-x-full w-8 h-16 bg-card border border-r-0 border-border rounded-l-lg flex items-center justify-center hover:bg-accent transition-colors group z-10"
+            title="Close pane"
+          >
+            <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-foreground transition-colors" />
+          </button>
+          <div 
+            className={cn(
+              "absolute top-0 left-0 w-2 h-full bg-transparent hover:bg-primary/20 cursor-col-resize z-50 transition-colors duration-200 group -translate-x-1/2"
+            )}
+            onMouseDown={(e) => {
+              e.preventDefault()
+              setIsResizingRightPane(true)
+            }}
+          >
+            <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200 mx-auto" />
+          </div>
+          <div className="flex items-center justify-between p-4 border-b border-border h-20 flex-shrink-0 pl-6">
+            <div className="flex items-center gap-2">
+              <CurrentIcon className="w-5 h-5" />
+              <h2 className="text-lg font-semibold whitespace-nowrap">
+                {currentContent.title}
+              </h2>
+            </div>
+            
+            {currentContent.page && (
+              <button
+                onClick={handleMaximize}
+                className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors mr-2"
+                title="Move to Main View"
+              >
+                <ChevronsLeftRight className="w-5 h-5" />
+              </button>
+            )}
+          </div>
+          <div className="flex-1 overflow-y-auto px-8 py-6">
+            {currentContent.content}
+          </div>
+        </aside>
+      )
+    })
+
+
+    RightPane.displayName = "RightPane"
+  src/components/MainContent.tsx: >-
+    import { forwardRef } from 'react'
+
+    import { 
+      X,
+      LayoutDashboard,
+      Settings,
+      Component,
+    } from 'lucide-react'
+
+    import { cn } from '@/lib/utils'
+
+    import { BODY_STATES, type BodyState } from '@/lib/utils'
+
+    import { DashboardContent } from './DashboardContent'
+
+    import { SettingsPage } from './SettingsPage'
+
+    import { ToasterDemo } from './ToasterDemo'
+
+    import { useAppStore } from '@/store/appStore'
+
+    import { ContentInSidePanePlaceholder } from
+    './ContentInSidePanePlaceholder'
+
+
+    interface MainContentProps {
+      bodyState: BodyState
+      onToggleFullscreen: () => void
+    }
+
+
+    export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
+      ({ bodyState, onToggleFullscreen }, ref) => {
+        const { sidePaneContent, openSidePane, activePage, setActivePage } = useAppStore()
+
+        const isDashboardInSidePane = sidePaneContent === 'main' && bodyState === BODY_STATES.SIDE_PANE
+        const isSettingsInSidePane = sidePaneContent === 'settings' && bodyState === BODY_STATES.SIDE_PANE
+        const isToasterInSidePane = sidePaneContent === 'toaster' && bodyState === BODY_STATES.SIDE_PANE
+
+        const renderContent = () => {
+          if (activePage === 'dashboard') {
+            if (isDashboardInSidePane) {
+              return <ContentInSidePanePlaceholder 
+                icon={LayoutDashboard} 
+                title="Dashboard is in Side Pane" 
+                pageName="dashboard"
+                onBringBack={() => openSidePane('main')} 
+              />;
+            }
+            return <DashboardContent />
+          }
+
+          if (activePage === 'settings') {
+            if (isSettingsInSidePane) {
+              return <ContentInSidePanePlaceholder 
+                icon={Settings} 
+                title="Settings are in Side Pane" 
+                pageName="settings"
+                onBringBack={() => {
+                  openSidePane('settings'); 
+                  setActivePage('settings');
+                }}
+              />;
+            }
+            return <SettingsPage />
+          }
+          if (activePage === 'toaster') {
+            if (isToasterInSidePane) {
+              return <ContentInSidePanePlaceholder
+                icon={Component}
+                title="Toaster Demo is in Side Pane"
+                pageName="toaster demo"
+                onBringBack={() => {
+                  openSidePane('toaster');
+                  setActivePage('toaster');
+                }}
+              />;
+            }
+            return <ToasterDemo />
+          }
+          return null;
+        }
+        
+        const isContentVisible = (activePage === 'dashboard' && !isDashboardInSidePane) || 
+                               (activePage === 'settings' && !isSettingsInSidePane) || 
+                               (activePage === 'toaster' && !isToasterInSidePane);
+
+        return (
+          <div
+            ref={ref}
+            className={cn(
+            "flex flex-col h-full overflow-hidden",
+            bodyState === BODY_STATES.FULLSCREEN && "absolute inset-0 z-40 bg-background"
+            )}
+          >
+            {bodyState === BODY_STATES.FULLSCREEN && isContentVisible && (
+              <button
+                onClick={onToggleFullscreen}
+                className="fixed top-6 right-6 lg:right-12 z-[100] h-12 w-12 flex items-center justify-center rounded-full bg-card/50 backdrop-blur-sm hover:bg-card/75 transition-colors group"
+                title="Exit Fullscreen"
+              >
+                <X className="w-6 h-6 group-hover:scale-110 group-hover:rotate-90 transition-all duration-300" />
+              </button>
+            )}
+
+            <div className="flex-1 min-h-0 flex flex-col">
+              {renderContent()}
+            </div>
+          </div>
+        )
+      }
+    )
+  src/components/CommandPalette.tsx: >-
+    import * as React from 'react'
+
+    import {
+      CommandDialog,
+      CommandEmpty,
+      CommandGroup,
+      CommandInput,
+      CommandItem,
+      CommandList,
+      CommandSeparator,
+      CommandShortcut,
+    } from '@/components/ui/command'
+
+    import { useAppStore } from '@/store/appStore'
+
+    import { Home, Settings, Moon, Sun, Monitor, Smartphone, PanelRight,
+    Maximize, Component } from 'lucide-react'
+
+
+    export function CommandPalette() {
+      const {
+        isCommandPaletteOpen,
+        setCommandPaletteOpen,
+        setActivePage,
+        toggleDarkMode,
+        isDarkMode,
+        setCompactMode,
+        toggleFullscreen,
+        openSidePane,
+      } = useAppStore()
+
+      React.useEffect(() => {
+        const down = (e: KeyboardEvent) => {
+          if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
+            e.preventDefault()
+            setCommandPaletteOpen(!isCommandPaletteOpen)
+          }
+        }
+        document.addEventListener('keydown', down)
+        return () => document.removeEventListener('keydown', down)
+      }, [isCommandPaletteOpen, setCommandPaletteOpen])
+      
+      const runCommand = (command: () => void) => {
+        setCommandPaletteOpen(false)
+        command()
+      }
+
+      return (
+        <CommandDialog open={isCommandPaletteOpen} onOpenChange={setCommandPaletteOpen}>
+          <CommandInput placeholder="Type a command or search..." />
+          <CommandList>
+            <CommandEmpty>No results found.</CommandEmpty>
+            <CommandGroup heading="Navigation">
+              <CommandItem onSelect={() => runCommand(() => setActivePage('dashboard'))}>
+                <Home className="mr-2 h-4 w-4" />
+                <span>Go to Dashboard</span>
+                <CommandShortcut>G D</CommandShortcut>
+              </CommandItem>
+              <CommandItem onSelect={() => runCommand(() => setActivePage('settings'))}>
+                <Settings className="mr-2 h-4 w-4" />
+                <span>Go to Settings</span>
+                <CommandShortcut>G S</CommandShortcut>
+              </CommandItem>
+              <CommandItem onSelect={() => runCommand(() => setActivePage('toaster'))}>
+                <Component className="mr-2 h-4 w-4" />
+                <span>Go to Toaster Demo</span>
+                <CommandShortcut>G T</CommandShortcut>
+              </CommandItem>
+            </CommandGroup>
+            <CommandSeparator />
+            <CommandGroup heading="Actions">
+              <CommandItem onSelect={() => runCommand(toggleDarkMode)}>
+                {isDarkMode ? <Sun className="mr-2 h-4 w-4" /> : <Moon className="mr-2 h-4 w-4" />}
+                <span>Toggle Theme</span>
+                <CommandShortcut>⌘T</CommandShortcut>
+              </CommandItem>
+              <CommandItem onSelect={() => runCommand(toggleFullscreen)}>
+                <Maximize className="mr-2 h-4 w-4" />
+                <span>Toggle Fullscreen</span>
+                <CommandShortcut>⌘F</CommandShortcut>
+              </CommandItem>
+              <CommandItem onSelect={() => runCommand(() => openSidePane('settings'))}>
+                <PanelRight className="mr-2 h-4 w-4" />
+                <span>Open Settings in Side Pane</span>
+                <CommandShortcut>⌥S</CommandShortcut>
+              </CommandItem>
+            </CommandGroup>
+            <CommandSeparator />
+            <CommandGroup heading="Preferences">
+              <CommandItem onSelect={() => runCommand(() => setCompactMode(true))}>
+                <Smartphone className="mr-2 h-4 w-4" />
+                <span>Enable Compact Mode</span>
+                <CommandShortcut>⌘C</CommandShortcut>
+              </CommandItem>
+              <CommandItem onSelect={() => runCommand(() => setCompactMode(false))}>
+                <Monitor className="mr-2 h-4 w-4" />
+                <span>Disable Compact Mode</span>
+                <CommandShortcut>⇧⌘C</CommandShortcut>
+              </CommandItem>
+            </CommandGroup>
+          </CommandList>
+        </CommandDialog>
+      )
+    }
+  src/components/EnhancedSidebar.tsx: >-
+    import React from 'react';
+
+    import {
+      Home,
+      Settings,
+      HelpCircle,
+      Component,
+      Rocket,
+      MoreHorizontal,
+      Bell,
+      Search,
+      FileText,
+      Star,
+      Trash2,
+      FolderOpen,
+      Mail,
+      Bookmark,
+      Download,
+      User,
+      Plus
+    } from 'lucide-react';
+
+    import { useAppStore } from '@/store/appStore';
+
+    import {
+      Workspaces,
+      WorkspaceTrigger,
+      WorkspaceContent,
+      type Workspace,
+    } from './WorkspaceSwitcher';
+
+    import {
+      DropdownMenu,
+      DropdownMenuContent,
+      DropdownMenuItem,
+      DropdownMenuTrigger,
+    } from '@/components/ui/dropdown-menu';
+
+    import {
+      Sidebar,
+      SidebarContent,
+      SidebarHeader,
+      SidebarTitle,
+      SidebarBody,
+      SidebarFooter,
+      SidebarSection,
+      SidebarMenuItem,
+      SidebarMenuButton,
+      SidebarMenuAction,
+      SidebarLabel,
+      SidebarBadge,
+      SidebarTooltip,
+      SidebarIcon,
+      useSidebar,
+    } from './Sidebar';
+
+    import { cn } from '@/lib/utils';
+
+
+    interface MyWorkspace extends Workspace {
+      logo: string;
+      plan: string;
+    }
+
+
+    const mockWorkspaces: MyWorkspace[] = [
+      { id: 'ws1', name: 'Acme Inc.', logo: 'https://avatar.vercel.sh/acme.png', plan: 'Pro' },
+      { id: 'ws2', name: 'Monsters Inc.', logo: 'https://avatar.vercel.sh/monsters.png', plan: 'Free' },
+      { id: 'ws3', name: 'Stark Industries', logo: 'https://avatar.vercel.sh/stark.png', plan: 'Enterprise' },
+    ];
+
+
+    const SidebarWorkspaceTrigger = () => {
+      const { isCollapsed, compactMode } = useSidebar();
+
+      return (
+        <WorkspaceTrigger
+          collapsed={isCollapsed}
+          className={cn(
+            'rounded-xl transition-colors hover:bg-accent/50 w-full',
+            isCollapsed ? 'p-2' : 'p-3 bg-accent/50',
+          )}
+          avatarClassName={cn(compactMode ? 'h-8 w-8' : 'h-10 w-10')}
+        />
+      );
+    };
+
+
+    interface SidebarProps {
+      onMouseEnter?: () => void;
+      onMouseLeave?: () => void;
+    }
+
+
+    export const EnhancedSidebar = React.forwardRef<HTMLDivElement,
+    SidebarProps>(
+      ({ onMouseEnter, onMouseLeave }, ref) => {
+        const { sidebarWidth, compactMode } = useAppStore();
+        const [selectedWorkspace, setSelectedWorkspace] = React.useState(mockWorkspaces[0]);
+
+        return (
+          <Sidebar
+            ref={ref}
+            style={{ width: sidebarWidth }}
+            onMouseEnter={onMouseEnter}
+            onMouseLeave={onMouseLeave}
+          >
+            <SidebarContent>
+              <SidebarHeader>
+                <div className="p-2 bg-primary/20 rounded-lg">
+                  <Rocket className="w-5 h-5 text-primary" />
+                </div>
+                <SidebarTitle>Amazing App</SidebarTitle>
+              </SidebarHeader>
+
+              <SidebarBody>
+                <SidebarSection title="Main">
+                  <AppMenuItem icon={Home} label="Dashboard" page="dashboard" />
+                  <AppMenuItem icon={Search} label="Search" />
+                  <AppMenuItem icon={Bell} label="Notifications" badge={3} />
+                </SidebarSection>
+                
+                <SidebarSection title="Workspace" collapsible defaultExpanded>
+                  <AppMenuItem icon={FileText} label="Documents" hasActions>
+                    <AppMenuItem icon={FileText} label="Recent" isSubItem />
+                    <AppMenuItem icon={Star} label="Starred" isSubItem />
+                    <AppMenuItem icon={Trash2} label="Trash" isSubItem />
+                  </AppMenuItem>
+                  <AppMenuItem icon={FolderOpen} label="Projects" hasActions />
+                  <AppMenuItem icon={Mail} label="Messages" badge={12} />
+                </SidebarSection>
+                
+                <SidebarSection title="Personal" collapsible>
+                  <AppMenuItem icon={Bookmark} label="Bookmarks" />
+                  <AppMenuItem icon={Star} label="Favorites" />
+                  <AppMenuItem icon={Download} label="Downloads" />
+                </SidebarSection>
+
+                <SidebarSection title="Components" collapsible defaultExpanded>
+                  <AppMenuItem icon={Component} label="Toaster" page="toaster" />
+                </SidebarSection>
+              </SidebarBody>
+
+              <SidebarFooter>
+                <SidebarSection>
+                  <AppMenuItem icon={User} label="Profile" />
+                  <AppMenuItem icon={Settings} label="Settings" page="settings" />
+                  <AppMenuItem icon={HelpCircle} label="Help" />
+                </SidebarSection>
+
+                <div className={cn(compactMode ? 'mt-4' : 'mt-6')}>
+                  <Workspaces
+                    workspaces={mockWorkspaces}
+                    selectedWorkspaceId={selectedWorkspace.id}
+                    onWorkspaceChange={setSelectedWorkspace}
+                  >
+                    <SidebarWorkspaceTrigger />
+                    <WorkspaceContent>
+                      <button className="flex w-full items-center gap-2 rounded-sm px-2 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground focus:outline-none">
+                        <Plus className="h-4 w-4" />
+                        <span>Create Workspace</span>
+                      </button>
+                    </WorkspaceContent>
+                  </Workspaces>
+                </div>
+              </SidebarFooter>
+            </SidebarContent>
+          </Sidebar>
+        );
+      },
+    );
+
+    EnhancedSidebar.displayName = 'EnhancedSidebar';
+
+
+
+    // Example of a reusable menu item component built with the new Sidebar
+    primitives
+
+    interface AppMenuItemProps {
+      icon: React.ElementType;
+      label: string;
+      badge?: number;
+      hasActions?: boolean;
+      children?: React.ReactNode;
+      isSubItem?: boolean;
+      page?: 'dashboard' | 'settings' | 'toaster';
+    }
+
+
+    const AppMenuItem: React.FC<AppMenuItemProps> = ({ icon: Icon, label, badge,
+    hasActions, children, isSubItem = false, page }) => {
+      const { handleNavigation, isPageActive } = useAppStore();
+      const isActive = page ? isPageActive(page) : false;
+      const { compactMode } = useAppStore();
+      const { isCollapsed } = useSidebar();
+
+      return (
+        <div className={isSubItem ? (compactMode ? 'ml-4' : 'ml-6') : ''}>
+          <SidebarMenuItem>
+            <SidebarMenuButton onClick={() => page && handleNavigation(page)} isActive={isActive}>
+              <SidebarIcon>
+                <Icon className={isSubItem ? "w-3 h-3" : "w-4 h-4"}/>
+              </SidebarIcon>
+              <SidebarLabel>{label}</SidebarLabel>
+              {badge && <SidebarBadge>{badge}</SidebarBadge>}
+              <SidebarTooltip label={label} badge={badge} />
+            </SidebarMenuButton>
+
+            {hasActions && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <SidebarMenuAction>
+                    <MoreHorizontal className="h-4 w-4" />
+                  </SidebarMenuAction>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent side="right" align="start">
+                  <DropdownMenuItem>
+                    <span>Edit {label}</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem>
+                    <span>Delete {label}</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </SidebarMenuItem>
+          {!isCollapsed && children && (
+            <div className="space-y-1 mt-1">{children}</div>
+          )}
+        </div>
+      );
+    };
+  src/components/TopBar.tsx: |-
+    import { useState } from 'react'
+    import {
+      Menu, 
+      Maximize, 
+      Minimize, 
+      Moon, 
+      Sun,
+      Settings,
+      Command,
+      Zap,
+      ChevronRight,
+      Search,
+      Filter,
+      Plus,
+      PanelRight,
+    } from 'lucide-react'
+    import { cn } from '@/lib/utils'
+    import { BODY_STATES } from '@/lib/utils'
+    import { useAppStore } from '@/store/appStore'
+    import { UserDropdown } from './UserDropdown'
+
+    interface TopBarProps {
+      onToggleSidebar: () => void
+      onToggleFullscreen: () => void
+      onToggleDarkMode: () => void
+    }
+
+    export function TopBar({
+      onToggleSidebar,
+      onToggleFullscreen,
+      onToggleDarkMode
+    }: TopBarProps) {
+      const { 
+        bodyState, 
+        isDarkMode, 
+        openSidePane,
+        sidePaneContent,
+        activePage,
+        setActivePage,
+        searchTerm,
+        setCommandPaletteOpen,
+        setSearchTerm,
+      } = useAppStore()
+
+      const [isSearchFocused, setIsSearchFocused] = useState(false)
+
+      const handleSettingsClick = () => {
+        const isSettingsInSidePane = bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === 'settings'
+
+        // If we're on the settings page and it's not in the side pane, treat this as a "minimize" action.
+        if (activePage === 'settings' && !isSettingsInSidePane) {
+          openSidePane('settings');
+          setActivePage('dashboard');
+        } else {
+          // In all other cases (on dashboard page, or settings already in pane),
+          // just toggle the settings side pane.
+          openSidePane('settings');
+        }
+      }
+
+      const handleMoveToSidePane = () => {
+        const mapping = { dashboard: 'main', settings: 'settings', toaster: 'toaster' } as const;
+        openSidePane(mapping[activePage]);
+        if (activePage !== 'dashboard') setActivePage('dashboard');
+      };
+
+      return (
+        <div className={cn(
+          "h-20 bg-card/80 backdrop-blur-sm border-b border-border flex items-center justify-between px-6 z-50 gap-4",
+          {
+            'transition-all duration-300 ease-in-out': activePage === 'dashboard',
+          }
+        )}>
+          {/* Left Section - Sidebar Controls & Breadcrumbs */}
+          <div className="flex items-center gap-4">
+            {/* Sidebar Controls */}
+            <button
+              onClick={onToggleSidebar}
+              className={cn(
+                "h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors"
+              )}
+              title="Toggle Sidebar"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+
+            {/* Breadcrumbs */}
+            <div className={cn("hidden md:flex items-center gap-2 text-sm transition-opacity", {
+              "opacity-0 pointer-events-none": isSearchFocused && activePage === 'dashboard'
+            })}>
+              <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">Home</a>
+              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+              <span className="font-medium text-foreground capitalize">{activePage}</span>
+            </div>
+          </div>
+
+          {/* Right Section - Search, page controls, and global controls */}
+          <div className={cn("flex items-center gap-3", isSearchFocused && activePage === 'dashboard' ? 'flex-1' : '')}>
+            {/* Page-specific: Dashboard search and actions */}
+            {activePage === 'dashboard' && (
+              <div className="flex items-center gap-2 flex-1 justify-end">
+                <div className={cn("relative transition-all duration-300 ease-in-out", isSearchFocused ? 'flex-1 max-w-lg' : 'w-auto')}>
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4 pointer-events-none" />
+                  <input
+                    type="text"
+                    placeholder="Search..."
+                    value={searchTerm}
+                    onFocus={() => setIsSearchFocused(true)}
+                    onBlur={() => setIsSearchFocused(false)}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className={cn(
+                      "pl-9 pr-4 py-2 h-10 border-none rounded-lg bg-card focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300 ease-in-out w-full",
+                      isSearchFocused ? 'bg-background' : 'w-48'
+                    )}
+                  />
+                </div>
+                 <button className="h-10 w-10 flex-shrink-0 flex items-center justify-center hover:bg-accent rounded-full transition-colors">
+                  <Filter className="w-5 h-5" />
+                </button>
+                 <button className="bg-primary text-primary-foreground px-4 py-2 rounded-full hover:bg-primary/90 transition-colors flex items-center gap-2 h-10 flex-shrink-0">
+                  <Plus className="w-5 h-5" />
+                  <span className={cn(isSearchFocused ? 'hidden sm:inline' : 'inline')}>New Project</span>
+                </button>
+              </div>
+            )}
+            
+            {/* Page-specific: Move to side pane */}
+            <div className={cn('flex items-center', isSearchFocused && activePage === 'dashboard' ? 'hidden md:flex' : '')}>
+              {['dashboard', 'settings', 'toaster'].includes(activePage) && (
+                <button onClick={handleMoveToSidePane} className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors" title="Move to Side Pane"><PanelRight className="w-5 h-5" /></button>
+              )}
+            </div>
+
+            {/* Separator */}
+            <div className={cn(
+              'w-px h-6 bg-border mx-2', 
+              (activePage !== 'dashboard' && activePage !== 'settings' && activePage !== 'toaster') || (isSearchFocused && activePage === 'dashboard') ? 'hidden' : ''
+            )} />
+
+            {/* Quick Actions */}
+            <div className={cn('flex items-center gap-3', isSearchFocused && activePage === 'dashboard' ? 'hidden lg:flex' : '')}>
+
+              <button
+                onClick={() => setCommandPaletteOpen(true)}
+                className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+                title="Command Palette (Ctrl+K)"
+              >
+                <Command className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              </button>
+
+            <button
+              className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+              title="Quick Actions"
+            >
+              <Zap className="w-5 h-5 group-hover:scale-110 transition-transform" />
+            </button>
+
+            {/* Body State Controls */}
+            <button
+              onClick={() => openSidePane('details')}
+              className={cn(
+                "h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group",
+                bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === 'details' && "bg-accent"
+              )}
+              title="Toggle Side Pane"
+            >
+              <div className="w-5 h-5 flex group-hover:scale-110 transition-transform">
+                <div className="w-1/2 h-full bg-current opacity-60 rounded-l-sm" />
+                <div className="w-1/2 h-full bg-current rounded-r-sm" />
+              </div>
+            </button>
+
+            <button
+              onClick={onToggleFullscreen}
+              className={cn(
+                "h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group",
+                bodyState === BODY_STATES.FULLSCREEN && "bg-accent"
+              )}
+              title="Toggle Fullscreen"
+            >
+              {bodyState === BODY_STATES.FULLSCREEN ? (
+                <Minimize className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              ) : (
+                <Maximize className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              )}
+            </button>
+
+            <div className="w-px h-6 bg-border mx-2" />
+
+            {/* Theme and Settings */}
+            <button
+              onClick={onToggleDarkMode}
+              className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+              title="Toggle Dark Mode"
+            >
+              {isDarkMode ? (
+                <Sun className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              ) : (
+                <Moon className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              )}
+            </button>
+
+            <button
+              onClick={handleSettingsClick}
+              className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+              title="Settings"
+            >
+              <Settings className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
+            </button>
+            <UserDropdown />
+            </div>
+          </div>
+        </div>
+      )
+    }
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 82

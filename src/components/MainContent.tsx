@@ -4,6 +4,7 @@ import {
   LayoutDashboard,
   Settings,
   Component,
+  Bell,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { BODY_STATES, type BodyState } from '@/lib/utils'
@@ -11,6 +12,7 @@ import { DashboardContent } from './DashboardContent'
 import { SettingsPage } from './SettingsPage'
 import { ToasterDemo } from './ToasterDemo'
 import { useAppStore } from '@/store/appStore'
+import { NotificationsPage } from './NotificationsPage'
 import { ContentInSidePanePlaceholder } from './ContentInSidePanePlaceholder'
 
 interface MainContentProps {
@@ -25,6 +27,7 @@ export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
     const isDashboardInSidePane = sidePaneContent === 'main' && bodyState === BODY_STATES.SIDE_PANE
     const isSettingsInSidePane = sidePaneContent === 'settings' && bodyState === BODY_STATES.SIDE_PANE
     const isToasterInSidePane = sidePaneContent === 'toaster' && bodyState === BODY_STATES.SIDE_PANE
+    const isNotificationsInSidePane = sidePaneContent === 'notifications' && bodyState === BODY_STATES.SIDE_PANE
 
     const renderContent = () => {
       if (activePage === 'dashboard') {
@@ -67,12 +70,27 @@ export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
         }
         return <ToasterDemo />
       }
+      if (activePage === 'notifications') {
+        if (isNotificationsInSidePane) {
+          return <ContentInSidePanePlaceholder
+            icon={Bell}
+            title="Notifications are in Side Pane"
+            pageName="notifications"
+            onBringBack={() => {
+              openSidePane('notifications');
+              setActivePage('notifications');
+            }}
+          />;
+        }
+        return <NotificationsPage />
+      }
       return null;
     }
     
     const isContentVisible = (activePage === 'dashboard' && !isDashboardInSidePane) || 
                            (activePage === 'settings' && !isSettingsInSidePane) || 
-                           (activePage === 'toaster' && !isToasterInSidePane);
+                           (activePage === 'toaster' && !isToasterInSidePane) ||
+                           (activePage === 'notifications' && !isNotificationsInSidePane);
 
     return (
       <div

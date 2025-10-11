@@ -59,7 +59,7 @@ export function TopBar({
   }
 
   const handleMoveToSidePane = () => {
-    const mapping = { dashboard: 'main', settings: 'settings', toaster: 'toaster' } as const;
+    const mapping = { dashboard: 'main', settings: 'settings', toaster: 'toaster', notifications: 'notifications' } as const;
     openSidePane(mapping[activePage]);
     if (activePage !== 'dashboard') setActivePage('dashboard');
   };
@@ -126,7 +126,7 @@ export function TopBar({
         
         {/* Page-specific: Move to side pane */}
         <div className={cn('flex items-center', isSearchFocused && activePage === 'dashboard' ? 'hidden md:flex' : '')}>
-          {['dashboard', 'settings', 'toaster'].includes(activePage) && (
+          {['dashboard', 'settings', 'toaster', 'notifications'].includes(activePage) && (
             <button onClick={handleMoveToSidePane} className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors" title="Move to Side Pane"><PanelRight className="w-5 h-5" /></button>
           )}
         </div>
@@ -134,7 +134,7 @@ export function TopBar({
         {/* Separator */}
         <div className={cn(
           'w-px h-6 bg-border mx-2', 
-          (activePage !== 'dashboard' && activePage !== 'settings' && activePage !== 'toaster') || (isSearchFocused && activePage === 'dashboard') ? 'hidden' : ''
+          !['dashboard', 'settings', 'toaster', 'notifications'].includes(activePage) || (isSearchFocused && activePage === 'dashboard') ? 'hidden' : ''
         )} />
 
         {/* Quick Actions */}

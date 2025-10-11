@@ -194,7 +194,6 @@ function WorkspaceContent({
 }: WorkspaceContentProps) {
 	const {
 		workspaces,
-		open,
 		selectedWorkspace,
 		onWorkspaceSelect,
 		getWorkspaceId,

@@ -1,10 +1,11 @@
 import { forwardRef } from 'react'
-import { SlidersHorizontal, Settings, ChevronRight, LayoutDashboard, ChevronsLeftRight, Component } from 'lucide-react'
+import { SlidersHorizontal, Settings, ChevronRight, LayoutDashboard, ChevronsLeftRight, Component, Bell } from 'lucide-react'
 import { useAppStore } from '@/store/appStore'
 import { cn } from '@/lib/utils'
 import { SettingsContent } from './SettingsContent'
 import { DashboardContent } from './DashboardContent'
 import { ToasterDemo } from './ToasterDemo'
+import { NotificationsPage } from './NotificationsPage'
 
 export const RightPane = forwardRef<HTMLDivElement>((_props, ref) => {
   const { closeSidePane, setIsResizingRightPane, sidePaneContent, setActivePage } = useAppStore();
@@ -13,15 +14,16 @@ export const RightPane = forwardRef<HTMLDivElement>((_props, ref) => {
     main: { title: 'Dashboard', icon: LayoutDashboard, page: 'dashboard', content: <DashboardContent isInSidePane={true} /> },
     settings: { title: 'Settings', icon: Settings, page: 'settings', content: <SettingsContent /> },
     toaster: { title: 'Toaster Demo', icon: Component, page: 'toaster', content: <ToasterDemo isInSidePane={true} /> },
+    notifications: { title: 'Notifications', icon: Bell, page: 'notifications', content: <NotificationsPage isInSidePane={true} /> },
     details: { title: 'Details Panel', icon: SlidersHorizontal, content: <p className="text-muted-foreground">This is the side pane. It can be used to display contextual information, forms, or actions related to the main content.</p> }
-  };
+  } as const;
 
   const currentContent = contentMap[sidePaneContent as keyof typeof contentMap] || contentMap.details;
   const CurrentIcon = currentContent.icon;
 
   const handleMaximize = () => {
-    if (currentContent.page) {
-      setActivePage(currentContent.page as ActivePage);
+    if ('page' in currentContent && currentContent.page) {
+      setActivePage(currentContent.page);
     }
     closeSidePane()
   }
@@ -54,7 +56,7 @@ export const RightPane = forwardRef<HTMLDivElement>((_props, ref) => {
           </h2>
         </div>
         
-        {currentContent.page && (
+        {'page' in currentContent && currentContent.page && (
           <button
             onClick={handleMaximize}
             className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors mr-2"

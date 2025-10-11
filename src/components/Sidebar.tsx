@@ -314,7 +314,7 @@ const SidebarTooltip = ({ label, badge, className, ...props }: SidebarTooltipPro
       {label}
       {badge && (
         <span className="ml-2 bg-destructive text-destructive-foreground text-xs px-1.5 py-0.5 rounded-full">
-          {badge > 99 ? '99+' : badge}
+          {typeof badge === 'number' && badge > 99 ? '99+' : badge}
         </span>
       )}
     </div>

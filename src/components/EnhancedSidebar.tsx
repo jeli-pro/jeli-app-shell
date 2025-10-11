@@ -18,7 +18,7 @@ import {
   User,
   Plus
 } from 'lucide-react';
-import { useAppStore } from '@/store/appStore';
+import { useAppStore, type ActivePage } from '@/store/appStore';
 import {
   Workspaces,
   WorkspaceTrigger,
@@ -105,7 +105,7 @@ export const EnhancedSidebar = React.forwardRef<HTMLDivElement, SidebarProps>(
             <SidebarSection title="Main">
               <AppMenuItem icon={Home} label="Dashboard" page="dashboard" />
               <AppMenuItem icon={Search} label="Search" />
-              <AppMenuItem icon={Bell} label="Notifications" badge={3} />
+              <AppMenuItem icon={Bell} label="Notifications" badge={3} page="notifications" opensInSidePane />
             </SidebarSection>
             
             <SidebarSection title="Workspace" collapsible defaultExpanded>
@@ -168,19 +168,36 @@ interface AppMenuItemProps {
   hasActions?: boolean;
   children?: React.ReactNode;
   isSubItem?: boolean;
-  page?: 'dashboard' | 'settings' | 'toaster';
+  page?: ActivePage;
+  opensInSidePane?: boolean;
 }
 
-const AppMenuItem: React.FC<AppMenuItemProps> = ({ icon: Icon, label, badge, hasActions, children, isSubItem = false, page }) => {
-  const { handleNavigation, isPageActive } = useAppStore();
+const AppMenuItem: React.FC<AppMenuItemProps> = ({ icon: Icon, label, badge, hasActions, children, isSubItem = false, page, opensInSidePane = false }) => {
+  const { handleNavigation, isPageActive, openSidePane } = useAppStore();
   const isActive = page ? isPageActive(page) : false;
   const { compactMode } = useAppStore();
   const { isCollapsed } = useSidebar();
 
+  const handleClick = () => {
+    if (page) {
+      if (opensInSidePane) {
+        const pageToPaneMap: { [key in ActivePage]?: 'main' | 'settings' | 'toaster' | 'notifications' } = {
+          dashboard: 'main',
+          settings: 'settings',
+          toaster: 'toaster',
+          notifications: 'notifications',
+        };
+        if (pageToPaneMap[page]) openSidePane(pageToPaneMap[page]!);
+      } else {
+        handleNavigation(page);
+      }
+    }
+  };
+
   return (
     <div className={isSubItem ? (compactMode ? 'ml-4' : 'ml-6') : ''}>
       <SidebarMenuItem>
-        <SidebarMenuButton onClick={() => page && handleNavigation(page)} isActive={isActive}>
+        <SidebarMenuButton onClick={handleClick} isActive={isActive}>
           <SidebarIcon>
             <Icon className={isSubItem ? "w-3 h-3" : "w-4 h-4"}/>
           </SidebarIcon>

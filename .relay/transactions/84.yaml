@@ -1,0 +1,438 @@
+uuid: c25732bb-7690-449e-8c38-89c565d38c62
+projectId: amazing-app-shell
+createdAt: '2025-10-10T23:38:31.901Z'
+gitCommitMsg: >-
+  fix(notifications): Align avatar size and fix TypeScript errors
+
+  - Adjusted the avatar size in the NotificationsPage to be consistent with the
+  standard h-10 w-10 used across the application. - Resolved TypeScript errors
+  in RightPane.tsx by using a const assertion on the contentMap. This ensures
+  correct type inference for page routes and removes an unused type import.
+promptSummary: >-
+  Update notification page styling for consistency and fix two TypeScript errors
+  in RightPane.tsx.
+reasoning:
+  - >-
+    I'll address the requested changes by first ensuring the notification
+    styling is consistent and then fixing the TypeScript errors you've pointed
+    out.
+  - '### Step 1: Fix Styling Inconsistencies'
+  - >-
+    To make the styling in `NotificationsPage.tsx` more consistent with the rest
+    of the application, I'll adjust the `Avatar` component's size. The current
+    `size-11` is non-standard. I will change it to `h-10 w-10`, which matches
+    the default avatar size used elsewhere in the app (like in the
+    `UserDropdown`).
+  - '### Step 2: Resolve TypeScript Errors'
+  - Next, I'll fix the two TypeScript errors in `src/components/RightPane.tsx`.
+  - 1.  `'ActivePage' is declared but its value is never read.`
+  - >-
+    2.  `Argument of type 'string' is not assignable to parameter of type
+    'ActivePage'.`
+  - >-
+    Both errors stem from how the `contentMap` object is typed. TypeScript
+    infers the `page` property as a generic `string`, not the specific literal
+    types required by `ActivePage`.
+  - >-
+    To fix this, I will add `as const` to the `contentMap` object. This tells
+    TypeScript to infer the most specific type possible, treating properties
+    like `page: 'dashboard'` as readonly literals instead of widening them to
+    `string`. This makes the type compatible with the `setActivePage` function's
+    expected `ActivePage` parameter and allows me to remove the now-unnecessary
+    `ActivePage` type import, resolving both errors.
+  - >-
+    These changes will resolve the styling inconsistency and fix the
+    build-blocking TypeScript errors.
+operations:
+  - type: write
+    path: src/components/NotificationsPage.tsx
+    content: |+
+      --- src/components/NotificationsPage.tsx
+      +++ src/components/NotificationsPage.tsx
+      @@ -86,7 +86,7 @@
+         return (
+           <div className="w-full py-4 first:pt-0 last:pb-0">
+             <div className="flex gap-3">
+      -        <Avatar className="size-11">
+      +        <Avatar className="h-10 w-10">
+                 <AvatarImage src={notification.user.avatar} alt={`${notification.user.name}'s profile picture`} />
+                 <AvatarFallback>{notification.user.fallback}</AvatarFallback>
+               </Avatar>
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/components/RightPane.tsx
+    content: >+
+      --- src/components/RightPane.tsx
+
+      +++ src/components/RightPane.tsx
+
+      @@ -1,6 +1,6 @@
+       import { forwardRef } from 'react'
+       import { SlidersHorizontal, Settings, ChevronRight, LayoutDashboard, ChevronsLeftRight, Component, Bell } from 'lucide-react'
+      -import { useAppStore, type ActivePage } from '@/store/appStore'
+
+      +import { useAppStore } from '@/store/appStore'
+       import { cn } from '@/lib/utils'
+       import { SettingsContent } from './SettingsContent'
+       import { DashboardContent } from './DashboardContent'
+      @@ -15,8 +15,8 @@
+           settings: { title: 'Settings', icon: Settings, page: 'settings', content: <SettingsContent /> },
+           toaster: { title: 'Toaster Demo', icon: Component, page: 'toaster', content: <ToasterDemo isInSidePane={true} /> },
+           notifications: { title: 'Notifications', icon: Bell, page: 'notifications', content: <NotificationsPage isInSidePane={true} /> },
+      -    details: { title: 'Details Panel', icon: SlidersHorizontal, content:
+      <p className="text-muted-foreground">This is the side pane. It can be used
+      to display contextual information, forms, or actions related to the main
+      content.</p> }
+
+      -  };
+
+      +    details: { title: 'Details Panel', icon: SlidersHorizontal, content:
+      <p className="text-muted-foreground">This is the side pane. It can be used
+      to display contextual information, forms, or actions related to the main
+      content.</p> }
+
+      +  } as const;
+       
+         const currentContent = contentMap[sidePaneContent as keyof typeof contentMap] || contentMap.details;
+         const CurrentIcon = currentContent.icon;
+
+    patchStrategy: standard-diff
+snapshot:
+  src/components/NotificationsPage.tsx: >-
+    import React from "react";
+
+    import { Avatar, AvatarFallback, AvatarImage } from
+    "@/components/ui/avatar";
+
+    import { Badge } from "@/components/ui/badge";
+
+    import { Button } from "@/components/ui/button";
+
+    import { Card, CardContent, CardHeader } from "@/components/ui/card";
+
+    import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
+    import { PageHeader } from "./PageHeader";
+
+    import { cn } from "@/lib/utils";
+
+    import { CheckCheck, Download, Settings, Bell } from "lucide-react";
+
+
+
+    type Notification = {
+      id: number;
+      type: string;
+      user: {
+        name: string;
+        avatar: string;
+        fallback: string;
+      };
+      action: string;
+      target?: string;
+      content?: string;
+      timestamp: string;
+      timeAgo: string;
+      isRead: boolean;
+      hasActions?: boolean;
+      file?: {
+        name: string;
+        size: string;
+        type: string;
+      };
+    };
+
+
+    const notifications: Array<Notification> = [
+      {
+        id: 1,
+        type: "comment",
+        user: { name: "Amélie", avatar: "https://api.dicebear.com/7.x/notionists/svg?seed=Amélie", fallback: "A" },
+        action: "commented in",
+        target: "Dashboard 2.0",
+        content: "Really love this approach. I think this is the best solution for the document sync UX issue.",
+        timestamp: "Friday 3:12 PM",
+        timeAgo: "2 hours ago",
+        isRead: false,
+      },
+      {
+        id: 2,
+        type: "follow",
+        user: { name: "Sienna", avatar: "https://api.dicebear.com/7.x/notionists/svg?seed=Sienna", fallback: "S" },
+        action: "followed you",
+        timestamp: "Friday 3:04 PM",
+        timeAgo: "2 hours ago",
+        isRead: false,
+      },
+      {
+        id: 3,
+        type: "invitation",
+        user: { name: "Ammar", avatar: "https://api.dicebear.com/7.x/notionists/svg?seed=Ammar", fallback: "A" },
+        action: "invited you to",
+        target: "Blog design",
+        timestamp: "Friday 2:22 PM",
+        timeAgo: "3 hours ago",
+        isRead: true,
+        hasActions: true,
+      },
+      {
+        id: 4,
+        type: "file_share",
+        user: { name: "Mathilde", avatar: "https://api.dicebear.com/7.x/notionists/svg?seed=Mathilde", fallback: "M" },
+        action: "shared a file in",
+        target: "Dashboard 2.0",
+        file: { name: "Prototype recording 01.mp4", size: "14 MB", type: "MP4" },
+        timestamp: "Friday 1:40 PM",
+        timeAgo: "4 hours ago",
+        isRead: true,
+      },
+      {
+        id: 5,
+        type: "mention",
+        user: { name: "James", avatar: "https://api.dicebear.com/7.x/notionists/svg?seed=James", fallback: "J" },
+        action: "mentioned you in",
+        target: "Project Alpha",
+        content: "Hey @you, can you review the latest designs when you get a chance?",
+        timestamp: "Thursday 11:30 AM",
+        timeAgo: "1 day ago",
+        isRead: true,
+      },
+      {
+        id: 6,
+        type: "like",
+        user: { name: "Sofia", avatar: "https://api.dicebear.com/7.x/notionists/svg?seed=Sofia", fallback: "S" },
+        action: "liked your comment in",
+        target: "Team Meeting Notes",
+        timestamp: "Thursday 9:15 AM",
+        timeAgo: "1 day ago",
+        isRead: true,
+      },
+    ];
+
+
+    function NotificationItem({ notification }: { notification: Notification })
+    {
+      return (
+        <div className="w-full py-4 first:pt-0 last:pb-0">
+          <div className="flex gap-3">
+            <Avatar className="size-11">
+              <AvatarImage src={notification.user.avatar} alt={`${notification.user.name}'s profile picture`} />
+              <AvatarFallback>{notification.user.fallback}</AvatarFallback>
+            </Avatar>
+
+            <div className="flex flex-1 flex-col space-y-2">
+              <div className="flex items-start justify-between">
+                <div className="text-sm">
+                  <span className="font-semibold">{notification.user.name}</span>
+                  <span className="text-muted-foreground"> {notification.action} </span>
+                  {notification.target && <span className="font-semibold">{notification.target}</span>}
+                  <div className="mt-0.5 text-xs text-muted-foreground">{notification.timeAgo}</div>
+                </div>
+                {!notification.isRead && <div className="size-2 rounded-full bg-primary mt-1 shrink-0"></div>}
+              </div>
+
+              {notification.content && <div className="rounded-lg bg-muted p-3 text-sm">{notification.content}</div>}
+
+              {notification.file && (
+                <div className="flex items-center gap-2 rounded-lg bg-muted p-2 border border-border">
+                  <div className="relative shrink-0 w-10 h-10 flex items-center justify-center bg-background rounded-md border border-border">
+                    <span className="absolute bottom-0.5 text-[10px] leading-none font-semibold text-primary-foreground bg-primary px-1 rounded-sm">{notification.file.type}</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium truncate">{notification.file.name}</div>
+                    <div className="text-xs text-muted-foreground">{notification.file.type} • {notification.file.size}</div>
+                  </div>
+                  <Button variant="ghost" size="icon" className="size-8 shrink-0">
+                    <Download className="w-4 h-4" />
+                  </Button>
+                </div>
+              )}
+
+              {notification.hasActions && (
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm">Decline</Button>
+                  <Button size="sm">Accept</Button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+
+    export function NotificationsPage({ isInSidePane = false }: { isInSidePane?:
+    boolean }) {
+      const [activeTab, setActiveTab] = React.useState<string>("all");
+
+      const verifiedCount = notifications.filter((n) => n.type === "follow" || n.type === "like").length;
+      const mentionCount = notifications.filter((n) => n.type === "mention").length;
+
+      const getFilteredNotifications = () => {
+        switch (activeTab) {
+          case "verified": return notifications.filter((n) => n.type === "follow" || n.type === "like");
+          case "mentions": return notifications.filter((n) => n.type === "mention");
+          default: return notifications;
+        }
+      };
+
+      const filteredNotifications = getFilteredNotifications();
+
+      const content = (
+        <Card className={cn("flex w-full flex-col shadow-none", isInSidePane ? "border-none" : "p-6 lg:p-8")}>
+          <CardHeader className="p-0">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold">
+                Your notifications
+              </h3>
+              <div className="flex items-center gap-1">
+                <Button variant="ghost" size="icon" className="size-8">
+                  <CheckCheck className="size-4 text-muted-foreground" />
+                </Button>
+                <Button variant="ghost" size="icon" className="size-8">
+                  <Settings className="size-4 text-muted-foreground" />
+                </Button>
+              </div>
+            </div>
+
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex-col justify-start mt-4">
+              <TabsList className="gap-1.5">
+                <TabsTrigger value="all" className="gap-1.5">
+                  View all <Badge variant="secondary" className="rounded-full">{notifications.length}</Badge>
+                </TabsTrigger>
+                <TabsTrigger value="verified" className="gap-1.5">
+                  Verified <Badge variant="secondary" className="rounded-full">{verifiedCount}</Badge>
+                </TabsTrigger>
+                <TabsTrigger value="mentions" className="gap-1.5">
+                  Mentions <Badge variant="secondary" className="rounded-full">{mentionCount}</Badge>
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </CardHeader>
+
+          <CardContent className="h-full p-0 mt-6">
+            <div className="space-y-0 divide-y divide-dashed divide-border">
+              {filteredNotifications.length > 0 ? (
+                filteredNotifications.map((notification) => (
+                  <NotificationItem key={notification.id} notification={notification} />
+                ))
+              ) : (
+                <div className="flex flex-col items-center justify-center space-y-2.5 py-12 text-center">
+                  <div className="rounded-full bg-muted p-4">
+                    <Bell className="text-muted-foreground" />
+                  </div>
+                  <p className="text-sm font-medium text-muted-foreground">No notifications yet.</p>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      );
+
+      return (
+        <div className={cn("overflow-y-auto", !isInSidePane ? "h-full p-6 lg:px-12 space-y-8" : "h-full")}>
+          {!isInSidePane && (
+            <PageHeader
+              title="Notifications"
+              description="Manage your notifications and stay up-to-date."
+            />
+          )}
+          {content}
+        </div>
+      );
+    };
+  src/components/RightPane.tsx: >-
+    import { forwardRef } from 'react'
+
+    import { SlidersHorizontal, Settings, ChevronRight, LayoutDashboard,
+    ChevronsLeftRight, Component, Bell } from 'lucide-react'
+
+    import { useAppStore, type ActivePage } from '@/store/appStore'
+
+    import { cn } from '@/lib/utils'
+
+    import { SettingsContent } from './SettingsContent'
+
+    import { DashboardContent } from './DashboardContent'
+
+    import { ToasterDemo } from './ToasterDemo'
+
+    import { NotificationsPage } from './NotificationsPage'
+
+
+    export const RightPane = forwardRef<HTMLDivElement>((_props, ref) => {
+      const { closeSidePane, setIsResizingRightPane, sidePaneContent, setActivePage } = useAppStore();
+
+      const contentMap = {
+        main: { title: 'Dashboard', icon: LayoutDashboard, page: 'dashboard', content: <DashboardContent isInSidePane={true} /> },
+        settings: { title: 'Settings', icon: Settings, page: 'settings', content: <SettingsContent /> },
+        toaster: { title: 'Toaster Demo', icon: Component, page: 'toaster', content: <ToasterDemo isInSidePane={true} /> },
+        notifications: { title: 'Notifications', icon: Bell, page: 'notifications', content: <NotificationsPage isInSidePane={true} /> },
+        details: { title: 'Details Panel', icon: SlidersHorizontal, content: <p className="text-muted-foreground">This is the side pane. It can be used to display contextual information, forms, or actions related to the main content.</p> }
+      };
+
+      const currentContent = contentMap[sidePaneContent as keyof typeof contentMap] || contentMap.details;
+      const CurrentIcon = currentContent.icon;
+
+      const handleMaximize = () => {
+        if ('page' in currentContent && currentContent.page) {
+          setActivePage(currentContent.page);
+        }
+        closeSidePane()
+      }
+
+      return (
+        <aside ref={ref} className="bg-card border-l border-border flex flex-col h-full overflow-hidden fixed top-0 right-0 z-[60]">
+          <button
+            onClick={closeSidePane}
+            className="absolute top-1/2 -left-px -translate-y-1/2 -translate-x-full w-8 h-16 bg-card border border-r-0 border-border rounded-l-lg flex items-center justify-center hover:bg-accent transition-colors group z-10"
+            title="Close pane"
+          >
+            <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-foreground transition-colors" />
+          </button>
+          <div 
+            className={cn(
+              "absolute top-0 left-0 w-2 h-full bg-transparent hover:bg-primary/20 cursor-col-resize z-50 transition-colors duration-200 group -translate-x-1/2"
+            )}
+            onMouseDown={(e) => {
+              e.preventDefault()
+              setIsResizingRightPane(true)
+            }}
+          >
+            <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200 mx-auto" />
+          </div>
+          <div className="flex items-center justify-between p-4 border-b border-border h-20 flex-shrink-0 pl-6">
+            <div className="flex items-center gap-2">
+              <CurrentIcon className="w-5 h-5" />
+              <h2 className="text-lg font-semibold whitespace-nowrap">
+                {currentContent.title}
+              </h2>
+            </div>
+            
+            {'page' in currentContent && currentContent.page && (
+              <button
+                onClick={handleMaximize}
+                className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors mr-2"
+                title="Move to Main View"
+              >
+                <ChevronsLeftRight className="w-5 h-5" />
+              </button>
+            )}
+          </div>
+          <div className="flex-1 overflow-y-auto px-8 py-6">
+            {currentContent.content}
+          </div>
+        </aside>
+      )
+    })
+
+
+    RightPane.displayName = "RightPane"
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 84

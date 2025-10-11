@@ -9,8 +9,8 @@ import {
   CommandSeparator,
   CommandShortcut,
 } from '@/components/ui/command'
-import { useAppStore } from '@/store/appStore'
-import { Home, Settings, Moon, Sun, Monitor, Smartphone, PanelRight, Maximize, Component } from 'lucide-react'
+import { useAppStore, type ActivePage } from '@/store/appStore'
+import { Home, Settings, Moon, Sun, Monitor, Smartphone, PanelRight, Maximize, Component, Bell } from 'lucide-react'
 
 export function CommandPalette() {
   const {
@@ -60,6 +60,11 @@ export function CommandPalette() {
             <Component className="mr-2 h-4 w-4" />
             <span>Go to Toaster Demo</span>
             <CommandShortcut>G T</CommandShortcut>
+          </CommandItem>
+          <CommandItem onSelect={() => runCommand(() => setActivePage('notifications' as ActivePage))}>
+            <Bell className="mr-2 h-4 w-4" />
+            <span>Go to Notifications</span>
+            <CommandShortcut>G N</CommandShortcut>
           </CommandItem>
         </CommandGroup>
         <CommandSeparator />

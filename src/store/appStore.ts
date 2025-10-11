@@ -2,14 +2,14 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { SIDEBAR_STATES, BODY_STATES, type SidebarState, type BodyState } from '@/lib/utils'
 
-export type ActivePage = 'dashboard' | 'settings' | 'toaster';
+export type ActivePage = 'dashboard' | 'settings' | 'toaster' | 'notifications';
 
 interface AppState {
   // UI States
   sidebarState: SidebarState
   bodyState: BodyState
   isDarkMode: boolean
-  sidePaneContent: 'details' | 'settings' | 'main' | 'toaster'
+  sidePaneContent: 'details' | 'settings' | 'main' | 'toaster' | 'notifications'
   activePage: ActivePage
   sidebarWidth: number
   rightPaneWidth: number
@@ -48,7 +48,7 @@ interface AppState {
   showSidebar: () => void
   peekSidebar: () => void
   toggleFullscreen: () => void
-  openSidePane: (content: 'details' | 'settings' | 'main' | 'toaster') => void
+  openSidePane: (content: 'details' | 'settings' | 'main' | 'toaster' | 'notifications') => void
   closeSidePane: () => void
   resetToDefaults: () => void
   handleNavigation: (page: ActivePage) => void
@@ -124,7 +124,7 @@ export const useAppStore = create<AppState>()(
         })
       },
       
-      openSidePane: (content: 'details' | 'settings' | 'main' | 'toaster') => {
+      openSidePane: (content) => {
         const { bodyState, sidePaneContent } = get()
         if (bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === content) {
           // If it's open with same content, close it.
@@ -156,6 +156,7 @@ export const useAppStore = create<AppState>()(
           dashboard: 'main',
           settings: 'settings',
           toaster: 'toaster',
+          notifications: 'notifications',
         };
         return activePage === page || (bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === pageToSidePaneContent[page]);
       },

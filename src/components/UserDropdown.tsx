@@ -84,7 +84,7 @@ export const UserDropdown = ({
     initials: "AE",
     status: "online"
   },
-  onAction = () => {},
+  onAction = (_action?: string) => {},
   onStatusChange = () => {},
   selectedStatus = "online",
   promoDiscount = "20% off",

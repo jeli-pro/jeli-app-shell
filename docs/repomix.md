@@ -11,6 +11,7 @@ src/
       dialog.tsx
       dropdown-menu.tsx
       popover.tsx
+      tabs.tsx
       toast.tsx
     AppShell.tsx
     CommandPalette.tsx
@@ -20,6 +21,7 @@ src/
     EnhancedSidebar.tsx
     index.ts
     MainContent.tsx
+    NotificationsPage.tsx
     PageHeader.tsx
     RightPane.tsx
     SettingsContent.tsx
@@ -50,6 +52,408 @@ vite.config.ts
 ```
 
 # Files
+
+## File: src/components/ui/tabs.tsx
+```typescript
+import * as React from "react"
+import * as TabsPrimitive from "@radix-ui/react-tabs"
+
+import { cn } from "@/lib/utils"
+
+const Tabs = TabsPrimitive.Root
+
+const TabsList = React.forwardRef<
+  React.ElementRef<typeof TabsPrimitive.List>,
+  React.ComponentPropsWithoutRef<typeof TabsPrimitive.List>
+>(({ className, ...props }, ref) => (
+  <TabsPrimitive.List
+    ref={ref}
+    className={cn(
+      "inline-flex h-10 items-center justify-center rounded-lg bg-muted p-1 text-muted-foreground",
+      className
+    )}
+    {...props}
+  />
+))
+TabsList.displayName = TabsPrimitive.List.displayName
+
+const TabsTrigger = React.forwardRef<
+  React.ElementRef<typeof TabsPrimitive.Trigger>,
+  React.ComponentPropsWithoutRef<typeof TabsPrimitive.Trigger>
+>(({ className, ...props }, ref) => (
+  <TabsPrimitive.Trigger
+    ref={ref}
+    className={cn(
+      "inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm",
+      className
+    )}
+    {...props}
+  />
+))
+TabsTrigger.displayName = TabsPrimitive.Trigger.displayName
+
+const TabsContent = React.forwardRef<
+  React.ElementRef<typeof TabsPrimitive.Content>,
+  React.ComponentPropsWithoutRef<typeof TabsPrimitive.Content>
+>(({ className, ...props }, ref) => (
+  <TabsPrimitive.Content
+    ref={ref}
+    className={cn(
+      "mt-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+      className
+    )}
+    {...props}
+  />
+))
+TabsContent.displayName = TabsPrimitive.Content.displayName
+
+export { Tabs, TabsList, TabsTrigger, TabsContent }
+```
+
+## File: src/components/NotificationsPage.tsx
+```typescript
+import React from "react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PageHeader } from "./PageHeader";
+import { useToast } from "./ui/toast";
+import { cn } from "@/lib/utils";
+import { 
+  CheckCheck, 
+  Download, 
+  Settings, 
+  Bell,
+  MessageSquare,
+  UserPlus,
+  Mail,
+  File as FileIcon,
+  Heart,
+  AtSign,
+  ClipboardCheck,
+  ShieldCheck,
+} from "lucide-react";
+
+
+type Notification = {
+  id: number;
+  type: string;
+  user: {
+    name: string;
+    avatar: string;
+    fallback: string;
+  };
+  action: string;
+  target?: string;
+  content?: string;
+  timestamp: string;
+  timeAgo: string;
+  isRead: boolean;
+  hasActions?: boolean;
+  file?: {
+    name: string;
+    size: string;
+    type: string;
+  };
+};
+
+const initialNotifications: Array<Notification> = [
+  {
+    id: 1,
+    type: "comment",
+    user: { name: "Amélie", avatar: "https://api.dicebear.com/7.x/notionists/svg?seed=Amélie", fallback: "A" },
+    action: "commented in",
+    target: "Dashboard 2.0",
+    content: "Really love this approach. I think this is the best solution for the document sync UX issue.",
+    timestamp: "Friday 3:12 PM",
+    timeAgo: "2 hours ago",
+    isRead: false,
+  },
+  {
+    id: 2,
+    type: "follow",
+    user: { name: "Sienna", avatar: "https://api.dicebear.com/7.x/notionists/svg?seed=Sienna", fallback: "S" },
+    action: "followed you",
+    timestamp: "Friday 3:04 PM",
+    timeAgo: "2 hours ago",
+    isRead: false,
+  },
+  {
+    id: 3,
+    type: "invitation",
+    user: { name: "Ammar", avatar: "https://api.dicebear.com/7.x/notionists/svg?seed=Ammar", fallback: "A" },
+    action: "invited you to",
+    target: "Blog design",
+    timestamp: "Friday 2:22 PM",
+    timeAgo: "3 hours ago",
+    isRead: true,
+    hasActions: true,
+  },
+  {
+    id: 4,
+    type: "file_share",
+    user: { name: "Mathilde", avatar: "https://api.dicebear.com/7.x/notionists/svg?seed=Mathilde", fallback: "M" },
+    action: "shared a file in",
+    target: "Dashboard 2.0",
+    file: { name: "Prototype recording 01.mp4", size: "14 MB", type: "MP4" },
+    timestamp: "Friday 1:40 PM",
+    timeAgo: "4 hours ago",
+    isRead: true,
+  },
+  {
+    id: 5,
+    type: "mention",
+    user: { name: "James", avatar: "https://api.dicebear.com/7.x/notionists/svg?seed=James", fallback: "J" },
+    action: "mentioned you in",
+    target: "Project Alpha",
+    content: "Hey @you, can you review the latest designs when you get a chance?",
+    timestamp: "Thursday 11:30 AM",
+    timeAgo: "1 day ago",
+    isRead: true,
+  },
+  {
+    id: 6,
+    type: "like",
+    user: { name: "Sofia", avatar: "https://api.dicebear.com/7.x/notionists/svg?seed=Sofia", fallback: "S" },
+    action: "liked your comment in",
+    target: "Team Meeting Notes",
+    timestamp: "Thursday 9:15 AM",
+    timeAgo: "1 day ago",
+    isRead: true,
+  },
+  {
+    id: 7,
+    type: "task_assignment",
+    user: { name: "Admin", avatar: "https://api.dicebear.com/7.x/bottts/svg?seed=Admin", fallback: "AD" },
+    action: "assigned you a new task in",
+    target: "Q3 Marketing",
+    content: "Finalize the social media campaign assets.",
+    timestamp: "Wednesday 5:00 PM",
+    timeAgo: "2 days ago",
+    isRead: true,
+  },
+  {
+    id: 8,
+    type: "system_update",
+    user: { name: "System", avatar: "https://api.dicebear.com/7.x/shapes/svg?seed=System", fallback: "SYS" },
+    action: "pushed a new update",
+    content: "Version 2.1.0 is now live with improved performance and new features. Check out the release notes for more details.",
+    timestamp: "Wednesday 9:00 AM",
+    timeAgo: "2 days ago",
+    isRead: true,
+  },
+  {
+    id: 9,
+    type: 'comment',
+    user: { name: 'Elena', avatar: 'https://api.dicebear.com/7.x/notionists/svg?seed=Elena', fallback: 'E' },
+    action: 'replied to your comment in',
+    target: 'Dashboard 2.0',
+    content: 'Thanks for the feedback! I\'ve updated the prototype.',
+    timestamp: 'Tuesday 4:30 PM',
+    timeAgo: '3 days ago',
+    isRead: false,
+  },
+  {
+    id: 10,
+    type: 'invitation',
+    user: { name: 'Carlos', avatar: 'https://api.dicebear.com/7.x/notionists/svg?seed=Carlos', fallback: 'C' },
+    action: 'invited you to',
+    target: 'API Integration',
+    timestamp: 'Tuesday 10:00 AM',
+    timeAgo: '3 days ago',
+    isRead: true,
+    hasActions: true,
+  },
+];
+
+const iconMap: { [key: string]: React.ElementType } = {
+  comment: MessageSquare,
+  follow: UserPlus,
+  invitation: Mail,
+  file_share: FileIcon,
+  mention: AtSign,
+  like: Heart,
+  task_assignment: ClipboardCheck,
+  system_update: ShieldCheck,
+};
+
+function NotificationItem({ notification, onMarkAsRead }: { notification: Notification; onMarkAsRead: (id: number) => void }) {
+  const Icon = iconMap[notification.type];
+
+  return (
+    <div className="group w-full -mx-4 px-4 py-4 rounded-xl hover:bg-accent/50 transition-colors duration-200">
+      <div className="flex gap-3">
+        <div className="relative h-10 w-10 shrink-0">
+          <Avatar className="h-10 w-10">
+            <AvatarImage src={notification.user.avatar} alt={`${notification.user.name}'s profile picture`} />
+            <AvatarFallback>{notification.user.fallback}</AvatarFallback>
+          </Avatar>
+          {Icon && (
+            <div className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full border-2 border-card bg-background">
+              <Icon className={cn("h-3 w-3", notification.type === 'like' ? 'text-red-500 fill-current' : 'text-muted-foreground')} />
+            </div>
+          )}
+        </div>
+
+        <div className="flex flex-1 flex-col space-y-2">
+          <div className="flex items-start justify-between">
+            <div className="text-sm">
+              <span className="font-semibold">{notification.user.name}</span>
+              <span className="text-muted-foreground"> {notification.action} </span>
+              {notification.target && <span className="font-semibold">{notification.target}</span>}
+              <div className="mt-0.5 text-xs text-muted-foreground">{notification.timeAgo}</div>
+            </div>
+            <button
+              onClick={() => !notification.isRead && onMarkAsRead(notification.id)}
+              title={notification.isRead ? "Read" : "Mark as read"}
+              className={cn("size-2.5 rounded-full mt-1 shrink-0 transition-all duration-300",
+                notification.isRead ? 'bg-transparent' : 'bg-primary hover:scale-125 cursor-pointer'
+              )}
+            ></button>
+          </div>
+
+          {notification.content && <div className="rounded-lg border bg-muted/50 p-3 text-sm">{notification.content}</div>}
+
+          {notification.file && (
+            <div className="flex items-center gap-2 rounded-lg bg-muted/50 p-2 border border-border">
+              <div className="shrink-0 w-10 h-10 flex items-center justify-center bg-background rounded-md border border-border">
+                <FileIcon className="w-5 h-5 text-muted-foreground" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-medium truncate">{notification.file.name}</div>
+                <div className="text-xs text-muted-foreground">{notification.file.type} • {notification.file.size}</div>
+              </div>
+              <Button variant="ghost" size="icon" className="size-8 shrink-0">
+                <Download className="w-4 h-4" />
+              </Button>
+            </div>
+          )}
+
+          {notification.hasActions && (
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm">Decline</Button>
+              <Button size="sm">Accept</Button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function NotificationsPage({ isInSidePane = false }: { isInSidePane?: boolean }) {
+  const [notifications, setNotifications] = React.useState<Notification[]>(initialNotifications);
+  const [activeTab, setActiveTab] = React.useState<string>("all");
+  const { show } = useToast();
+
+  const handleMarkAsRead = (id: number) => {
+    setNotifications(prev =>
+      prev.map(n => (n.id === id ? { ...n, isRead: true } : n))
+    );
+  };
+
+  const handleMarkAllAsRead = () => {
+    const unreadCount = notifications.filter(n => !n.isRead).length;
+    if (unreadCount === 0) {
+      show({
+        title: "Already up to date!",
+        message: "You have no unread notifications.",
+        variant: "default",
+      });
+      return;
+    }
+    setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+    show({
+        title: "All Caught Up!",
+        message: "All notifications have been marked as read.",
+        variant: "success",
+    });
+  };
+
+  const unreadCount = notifications.filter(n => !n.isRead).length;
+
+  const verifiedNotifications = notifications.filter((n) => n.type === "follow" || n.type === "like");
+  const mentionNotifications = notifications.filter((n) => n.type === "mention");
+
+  const verifiedCount = verifiedNotifications.filter(n => !n.isRead).length;
+  const mentionCount = mentionNotifications.filter(n => !n.isRead).length;
+
+  const getFilteredNotifications = () => {
+    switch (activeTab) {
+      case "verified": return verifiedNotifications;
+      case "mentions": return mentionNotifications;
+      default: return notifications;
+    }
+  };
+
+  const filteredNotifications = getFilteredNotifications();
+
+  const content = (
+    <Card className={cn("flex w-full flex-col shadow-none", isInSidePane ? "border-none" : "p-6 lg:p-8")}>
+      <CardHeader className="p-0">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold">
+            Your notifications
+          </h3>
+          <div className="flex items-center gap-1">
+            <Button variant="ghost" size="icon" className="size-8" onClick={handleMarkAllAsRead} title="Mark all as read">
+              <CheckCheck className="size-4 text-muted-foreground" />
+            </Button>
+            <Button variant="ghost" size="icon" className="size-8">
+              <Settings className="size-4 text-muted-foreground" />
+            </Button>
+          </div>
+        </div>
+
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex-col justify-start mt-4">
+          <TabsList className="gap-1.5">
+            <TabsTrigger value="all" className="gap-1.5">
+              View all {unreadCount > 0 && <Badge variant="secondary" className="rounded-full">{unreadCount}</Badge>}
+            </TabsTrigger>
+            <TabsTrigger value="verified" className="gap-1.5">
+              Verified {verifiedCount > 0 && <Badge variant="secondary" className="rounded-full">{verifiedCount}</Badge>}
+            </TabsTrigger>
+            <TabsTrigger value="mentions" className="gap-1.5">
+              Mentions {mentionCount > 0 && <Badge variant="secondary" className="rounded-full">{mentionCount}</Badge>}
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </CardHeader>
+
+      <CardContent className="h-full p-0 mt-6">
+        <div className="space-y-0 divide-y divide-border">
+          {filteredNotifications.length > 0 ? (
+            filteredNotifications.map((notification) => (
+              <NotificationItem key={notification.id} notification={notification} onMarkAsRead={handleMarkAsRead} />
+            ))
+          ) : (
+            <div className="flex flex-col items-center justify-center space-y-2.5 py-12 text-center">
+              <div className="rounded-full bg-muted p-4">
+                <Bell className="text-muted-foreground" />
+              </div>
+              <p className="text-sm font-medium text-muted-foreground">No notifications yet.</p>
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  return (
+    <div className={cn("overflow-y-auto", !isInSidePane ? "h-full p-6 lg:px-12 space-y-8" : "h-full")}>
+      {!isInSidePane && (
+        <PageHeader
+          title="Notifications"
+          description="Manage your notifications and stay up-to-date."
+        />
+      )}
+      {content}
+    </div>
+  );
+};
+```
 
 ## File: src/components/ui/avatar.tsx
 ```typescript
@@ -819,8 +1223,8 @@ import {
   CommandSeparator,
   CommandShortcut,
 } from '@/components/ui/command'
-import { useAppStore } from '@/store/appStore'
-import { Home, Settings, Moon, Sun, Monitor, Smartphone, PanelRight, Maximize, Component } from 'lucide-react'
+import { useAppStore, type ActivePage } from '@/store/appStore'
+import { Home, Settings, Moon, Sun, Monitor, Smartphone, PanelRight, Maximize, Component, Bell } from 'lucide-react'
 
 export function CommandPalette() {
   const {
@@ -870,6 +1274,11 @@ export function CommandPalette() {
             <Component className="mr-2 h-4 w-4" />
             <span>Go to Toaster Demo</span>
             <CommandShortcut>G T</CommandShortcut>
+          </CommandItem>
+          <CommandItem onSelect={() => runCommand(() => setActivePage('notifications' as ActivePage))}>
+            <Bell className="mr-2 h-4 w-4" />
+            <span>Go to Notifications</span>
+            <CommandShortcut>G N</CommandShortcut>
           </CommandItem>
         </CommandGroup>
         <CommandSeparator />
@@ -1133,7 +1542,7 @@ export const UserDropdown = ({
     initials: "AE",
     status: "online"
   },
-  onAction = () => {},
+  onAction = (_action?: string) => {},
   onStatusChange = () => {},
   selectedStatus = "online",
   promoDiscount = "20% off",
@@ -1257,33 +1666,6 @@ export const UserDropdown = ({
     </DropdownMenu>
   );
 };
-```
-
-## File: src/hooks/useAutoAnimateTopBar.ts
-```typescript
-import { useRef, useCallback } from 'react';
-import { useAppStore } from '@/store/appStore';
-
-export function useAutoAnimateTopBar(isPane = false) {
-  const setTopBarVisible = useAppStore((state) => state.setTopBarVisible);
-  const lastScrollTop = useRef(0);
-
-  const onScroll = useCallback((event: React.UIEvent<HTMLDivElement>) => {
-    if (isPane) return;
-
-    const { scrollTop } = event.currentTarget;
-    
-    if (scrollTop > lastScrollTop.current && scrollTop > 200) {
-      setTopBarVisible(false);
-    } else if (scrollTop < lastScrollTop.current || scrollTop <= 0) {
-      setTopBarVisible(true);
-    }
-    
-    lastScrollTop.current = scrollTop <= 0 ? 0 : scrollTop;
-  }, [isPane, setTopBarVisible]);
-
-  return { onScroll };
-}
 ```
 
 ## File: src/lib/utils.ts
@@ -1598,6 +1980,57 @@ PopoverContent.displayName = PopoverPrimitive.Content.displayName
 
 export { Popover, PopoverTrigger, PopoverContent }
 export type { PopoverContentProps }
+```
+
+## File: src/hooks/useAutoAnimateTopBar.ts
+```typescript
+import { useRef, useCallback, useEffect } from 'react';
+import { useAppStore } from '@/store/appStore';
+
+export function useAutoAnimateTopBar(isPane = false) {
+  const setTopBarVisible = useAppStore((state) => state.setTopBarVisible);
+  const lastScrollTop = useRef(0);
+  const scrollTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const onScroll = useCallback((event: React.UIEvent<HTMLDivElement>) => {
+    if (isPane) return;
+
+    // Clear previous timeout
+    if (scrollTimeout.current) {
+      clearTimeout(scrollTimeout.current);
+    }
+
+    const { scrollTop } = event.currentTarget;
+    
+    if (scrollTop > lastScrollTop.current && scrollTop > 200) {
+      setTopBarVisible(false);
+    } else if (scrollTop < lastScrollTop.current || scrollTop <= 0) {
+      setTopBarVisible(true);
+    }
+    
+    lastScrollTop.current = scrollTop <= 0 ? 0 : scrollTop;
+
+    // Set new timeout to show top bar when scrolling stops
+    scrollTimeout.current = setTimeout(() => {
+      // Don't hide, just ensure it's visible after scrolling stops
+      // and we are not at the top of the page.
+      if (scrollTop > 0) {
+        setTopBarVisible(true);
+      }
+    }, 250); // Adjust timeout as needed
+  }, [isPane, setTopBarVisible]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (scrollTimeout.current) {
+        clearTimeout(scrollTimeout.current);
+      }
+    };
+  }, []);
+
+  return { onScroll };
+}
 ```
 
 ## File: src/App.tsx
@@ -2084,7 +2517,7 @@ const SidebarTooltip = ({ label, badge, className, ...props }: SidebarTooltipPro
       {label}
       {badge && (
         <span className="ml-2 bg-destructive text-destructive-foreground text-xs px-1.5 py-0.5 rounded-full">
-          {badge > 99 ? '99+' : badge}
+          {typeof badge === 'number' && badge > 99 ? '99+' : badge}
         </span>
       )}
     </div>
@@ -2465,7 +2898,6 @@ function WorkspaceContent({
 }: WorkspaceContentProps) {
 	const {
 		workspaces,
-		open,
 		selectedWorkspace,
 		onWorkspaceSelect,
 		getWorkspaceId,
@@ -3515,12 +3947,13 @@ export function SettingsPage() {
 ## File: src/components/RightPane.tsx
 ```typescript
 import { forwardRef } from 'react'
-import { SlidersHorizontal, Settings, ChevronRight, LayoutDashboard, ChevronsLeftRight, Component } from 'lucide-react'
+import { SlidersHorizontal, Settings, ChevronRight, LayoutDashboard, ChevronsLeftRight, Component, Bell } from 'lucide-react'
 import { useAppStore } from '@/store/appStore'
 import { cn } from '@/lib/utils'
 import { SettingsContent } from './SettingsContent'
 import { DashboardContent } from './DashboardContent'
 import { ToasterDemo } from './ToasterDemo'
+import { NotificationsPage } from './NotificationsPage'
 
 export const RightPane = forwardRef<HTMLDivElement>((_props, ref) => {
   const { closeSidePane, setIsResizingRightPane, sidePaneContent, setActivePage } = useAppStore();
@@ -3529,15 +3962,16 @@ export const RightPane = forwardRef<HTMLDivElement>((_props, ref) => {
     main: { title: 'Dashboard', icon: LayoutDashboard, page: 'dashboard', content: <DashboardContent isInSidePane={true} /> },
     settings: { title: 'Settings', icon: Settings, page: 'settings', content: <SettingsContent /> },
     toaster: { title: 'Toaster Demo', icon: Component, page: 'toaster', content: <ToasterDemo isInSidePane={true} /> },
+    notifications: { title: 'Notifications', icon: Bell, page: 'notifications', content: <NotificationsPage isInSidePane={true} /> },
     details: { title: 'Details Panel', icon: SlidersHorizontal, content: <p className="text-muted-foreground">This is the side pane. It can be used to display contextual information, forms, or actions related to the main content.</p> }
-  };
+  } as const;
 
   const currentContent = contentMap[sidePaneContent as keyof typeof contentMap] || contentMap.details;
   const CurrentIcon = currentContent.icon;
 
   const handleMaximize = () => {
-    if (currentContent.page) {
-      setActivePage(currentContent.page as ActivePage);
+    if ('page' in currentContent && currentContent.page) {
+      setActivePage(currentContent.page);
     }
     closeSidePane()
   }
@@ -3570,7 +4004,7 @@ export const RightPane = forwardRef<HTMLDivElement>((_props, ref) => {
           </h2>
         </div>
         
-        {currentContent.page && (
+        {'page' in currentContent && currentContent.page && (
           <button
             onClick={handleMaximize}
             className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors mr-2"
@@ -3619,7 +4053,8 @@ RightPane.displayName = "RightPane"
     "@radix-ui/react-dialog": "^1.0.5",
     "cmdk": "^0.2.0",
     "@radix-ui/react-dropdown-menu": "^2.0.6",
-    "@iconify/react": "^4.1.1"
+    "@iconify/react": "^4.1.1",
+    "@radix-ui/react-tabs": "^1.0.4"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",
@@ -3939,7 +4374,7 @@ import {
   User,
   Plus
 } from 'lucide-react';
-import { useAppStore } from '@/store/appStore';
+import { useAppStore, type ActivePage } from '@/store/appStore';
 import {
   Workspaces,
   WorkspaceTrigger,
@@ -4026,7 +4461,7 @@ export const EnhancedSidebar = React.forwardRef<HTMLDivElement, SidebarProps>(
             <SidebarSection title="Main">
               <AppMenuItem icon={Home} label="Dashboard" page="dashboard" />
               <AppMenuItem icon={Search} label="Search" />
-              <AppMenuItem icon={Bell} label="Notifications" badge={3} />
+              <AppMenuItem icon={Bell} label="Notifications" badge={3} page="notifications" opensInSidePane />
             </SidebarSection>
             
             <SidebarSection title="Workspace" collapsible defaultExpanded>
@@ -4089,19 +4524,36 @@ interface AppMenuItemProps {
   hasActions?: boolean;
   children?: React.ReactNode;
   isSubItem?: boolean;
-  page?: 'dashboard' | 'settings' | 'toaster';
+  page?: ActivePage;
+  opensInSidePane?: boolean;
 }
 
-const AppMenuItem: React.FC<AppMenuItemProps> = ({ icon: Icon, label, badge, hasActions, children, isSubItem = false, page }) => {
-  const { handleNavigation, isPageActive } = useAppStore();
+const AppMenuItem: React.FC<AppMenuItemProps> = ({ icon: Icon, label, badge, hasActions, children, isSubItem = false, page, opensInSidePane = false }) => {
+  const { handleNavigation, isPageActive, openSidePane } = useAppStore();
   const isActive = page ? isPageActive(page) : false;
   const { compactMode } = useAppStore();
   const { isCollapsed } = useSidebar();
 
+  const handleClick = () => {
+    if (page) {
+      if (opensInSidePane) {
+        const pageToPaneMap: { [key in ActivePage]?: 'main' | 'settings' | 'toaster' | 'notifications' } = {
+          dashboard: 'main',
+          settings: 'settings',
+          toaster: 'toaster',
+          notifications: 'notifications',
+        };
+        if (pageToPaneMap[page]) openSidePane(pageToPaneMap[page]!);
+      } else {
+        handleNavigation(page);
+      }
+    }
+  };
+
   return (
     <div className={isSubItem ? (compactMode ? 'ml-4' : 'ml-6') : ''}>
       <SidebarMenuItem>
-        <SidebarMenuButton onClick={() => page && handleNavigation(page)} isActive={isActive}>
+        <SidebarMenuButton onClick={handleClick} isActive={isActive}>
           <SidebarIcon>
             <Icon className={isSubItem ? "w-3 h-3" : "w-4 h-4"}/>
           </SidebarIcon>
@@ -4144,6 +4596,7 @@ import {
   LayoutDashboard,
   Settings,
   Component,
+  Bell,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { BODY_STATES, type BodyState } from '@/lib/utils'
@@ -4151,6 +4604,7 @@ import { DashboardContent } from './DashboardContent'
 import { SettingsPage } from './SettingsPage'
 import { ToasterDemo } from './ToasterDemo'
 import { useAppStore } from '@/store/appStore'
+import { NotificationsPage } from './NotificationsPage'
 import { ContentInSidePanePlaceholder } from './ContentInSidePanePlaceholder'
 
 interface MainContentProps {
@@ -4165,6 +4619,7 @@ export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
     const isDashboardInSidePane = sidePaneContent === 'main' && bodyState === BODY_STATES.SIDE_PANE
     const isSettingsInSidePane = sidePaneContent === 'settings' && bodyState === BODY_STATES.SIDE_PANE
     const isToasterInSidePane = sidePaneContent === 'toaster' && bodyState === BODY_STATES.SIDE_PANE
+    const isNotificationsInSidePane = sidePaneContent === 'notifications' && bodyState === BODY_STATES.SIDE_PANE
 
     const renderContent = () => {
       if (activePage === 'dashboard') {
@@ -4207,12 +4662,27 @@ export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
         }
         return <ToasterDemo />
       }
+      if (activePage === 'notifications') {
+        if (isNotificationsInSidePane) {
+          return <ContentInSidePanePlaceholder
+            icon={Bell}
+            title="Notifications are in Side Pane"
+            pageName="notifications"
+            onBringBack={() => {
+              openSidePane('notifications');
+              setActivePage('notifications');
+            }}
+          />;
+        }
+        return <NotificationsPage />
+      }
       return null;
     }
     
     const isContentVisible = (activePage === 'dashboard' && !isDashboardInSidePane) || 
                            (activePage === 'settings' && !isSettingsInSidePane) || 
-                           (activePage === 'toaster' && !isToasterInSidePane);
+                           (activePage === 'toaster' && !isToasterInSidePane) ||
+                           (activePage === 'notifications' && !isNotificationsInSidePane);
 
     return (
       <div
@@ -4304,7 +4774,7 @@ export function TopBar({
   }
 
   const handleMoveToSidePane = () => {
-    const mapping = { dashboard: 'main', settings: 'settings', toaster: 'toaster' } as const;
+    const mapping = { dashboard: 'main', settings: 'settings', toaster: 'toaster', notifications: 'notifications' } as const;
     openSidePane(mapping[activePage]);
     if (activePage !== 'dashboard') setActivePage('dashboard');
   };
@@ -4371,7 +4841,7 @@ export function TopBar({
         
         {/* Page-specific: Move to side pane */}
         <div className={cn('flex items-center', isSearchFocused && activePage === 'dashboard' ? 'hidden md:flex' : '')}>
-          {['dashboard', 'settings', 'toaster'].includes(activePage) && (
+          {['dashboard', 'settings', 'toaster', 'notifications'].includes(activePage) && (
             <button onClick={handleMoveToSidePane} className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors" title="Move to Side Pane"><PanelRight className="w-5 h-5" /></button>
           )}
         </div>
@@ -4379,7 +4849,7 @@ export function TopBar({
         {/* Separator */}
         <div className={cn(
           'w-px h-6 bg-border mx-2', 
-          (activePage !== 'dashboard' && activePage !== 'settings' && activePage !== 'toaster') || (isSearchFocused && activePage === 'dashboard') ? 'hidden' : ''
+          !['dashboard', 'settings', 'toaster', 'notifications'].includes(activePage) || (isSearchFocused && activePage === 'dashboard') ? 'hidden' : ''
         )} />
 
         {/* Quick Actions */}
@@ -4466,14 +4936,14 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { SIDEBAR_STATES, BODY_STATES, type SidebarState, type BodyState } from '@/lib/utils'
 
-export type ActivePage = 'dashboard' | 'settings' | 'toaster';
+export type ActivePage = 'dashboard' | 'settings' | 'toaster' | 'notifications';
 
 interface AppState {
   // UI States
   sidebarState: SidebarState
   bodyState: BodyState
   isDarkMode: boolean
-  sidePaneContent: 'details' | 'settings' | 'main' | 'toaster'
+  sidePaneContent: 'details' | 'settings' | 'main' | 'toaster' | 'notifications'
   activePage: ActivePage
   sidebarWidth: number
   rightPaneWidth: number
@@ -4512,7 +4982,7 @@ interface AppState {
   showSidebar: () => void
   peekSidebar: () => void
   toggleFullscreen: () => void
-  openSidePane: (content: 'details' | 'settings' | 'main' | 'toaster') => void
+  openSidePane: (content: 'details' | 'settings' | 'main' | 'toaster' | 'notifications') => void
   closeSidePane: () => void
   resetToDefaults: () => void
   handleNavigation: (page: ActivePage) => void
@@ -4588,7 +5058,7 @@ export const useAppStore = create<AppState>()(
         })
       },
       
-      openSidePane: (content: 'details' | 'settings' | 'main' | 'toaster') => {
+      openSidePane: (content) => {
         const { bodyState, sidePaneContent } = get()
         if (bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === content) {
           // If it's open with same content, close it.
@@ -4620,6 +5090,7 @@ export const useAppStore = create<AppState>()(
           dashboard: 'main',
           settings: 'settings',
           toaster: 'toaster',
+          notifications: 'notifications',
         };
         return activePage === page || (bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === pageToSidePaneContent[page]);
       },
