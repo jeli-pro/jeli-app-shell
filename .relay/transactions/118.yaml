@@ -1,0 +1,83 @@
+uuid: 4f177891-b371-4b13-9118-2e1189edeb22
+projectId: amazing-app-shell
+createdAt: '2025-10-11T08:35:50.772Z'
+gitCommitMsg: >-
+  fix(vite): update JSON import syntax to use 'with' attribute
+
+  Replaces the deprecated `assert` keyword with the standardized `with` keyword
+  for import attributes. This resolves TypeScript error TS2880 and aligns the
+  configuration with the latest ECMAScript module standards.
+promptSummary: >-
+  The user is reporting a TypeScript error (TS2880) indicating that `assert` for
+  JSON imports is deprecated and should be replaced with `with`.
+reasoning:
+  - >-
+    You are absolutely right. My apologies, the syntax for import attributes has
+    indeed been updated. The `assert` keyword was part of an earlier proposal,
+    and the standard has now settled on using the `with` keyword.
+  - >-
+    I will correct the import syntax in `vite.config.ts` to use `with` instead
+    of `assert`, which will resolve the `TS2880` error.
+  - >-
+    This change updates the code to use the correct, standardized syntax for
+    import attributes, ensuring it's compatible with the latest TypeScript and
+    Node.js module resolution rules.
+operations:
+  - type: write
+    path: vite.config.ts
+    content: |
+      <<<<<<< SEARCH
+      import pkg from './package.json' assert { type: 'json' }
+      =======
+      import pkg from './package.json' with { type: 'json' }
+      >>>>>>> REPLACE
+    patchStrategy: search-replace
+snapshot:
+  vite.config.ts: |-
+    import { defineConfig } from 'vite'
+    import react from '@vitejs/plugin-react'
+    import { fileURLToPath, URL } from 'url'
+    import { resolve } from 'path'
+    import pkg from './package.json' assert { type: 'json' }
+
+    // https://vitejs.dev/config/
+    export default defineConfig({
+      plugins: [react()],
+      resolve: {
+        alias: {
+          "@": fileURLToPath(new URL('./src', import.meta.url)),
+        },
+      },
+      build: {
+        lib: {
+          entry: resolve(__dirname, 'src/index.ts'),
+          name: 'AmazingAppShell',
+          fileName: (format) => `amazing-app-shell.${format}.js`,
+        },
+        rollupOptions: {
+          // make sure to externalize deps that shouldn't be bundled
+          // into your library
+          external: Object.keys(pkg.peerDependencies || {}),
+          output: {
+            // Provide global variables to use in the UMD build
+            // for externalized deps
+            globals: {
+              react: 'React',
+              'react-dom': 'ReactDOM',
+              tailwindcss: 'tailwindcss',
+              gsap: 'gsap',
+              'lucide-react': 'lucide-react',
+              zustand: 'zustand',
+              sonner: 'sonner'
+            },
+          },
+        },
+      },
+    })
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 118

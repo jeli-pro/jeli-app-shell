@@ -1,0 +1,295 @@
+uuid: c683505d-e59e-4e5c-a55e-04c92b950c05
+projectId: amazing-app-shell
+createdAt: '2025-10-11T08:33:53.748Z'
+gitCommitMsg: >-
+  chore: configure project for library distribution
+
+  This commit prepares the Amazing App Shell for distribution as an NPM package.
+
+  - Moves all runtime dependencies to `peerDependencies` in `package.json` to
+  avoid version conflicts and reduce bundle size in consuming applications. -
+  Updates `vite.config.ts` to dynamically read peer dependencies and mark them
+  as external in the Rollup build configuration. This makes the build process
+  more robust and maintainable. - Enables `resolveJsonModule` in
+  `tsconfig.node.json` to allow importing `package.json` in the Vite config.
+promptSummary: >-
+  The user wants to prepare their application shell to be distributed as a
+  library. This involves updating build configurations and dependency
+  management.
+reasoning:
+  - >-
+    To prepare your application shell for distribution as a library, I will make
+    the following configuration changes:
+  - >-
+    1.  **`package.json`**: I will move all dependencies to `peerDependencies`.
+    For a UI library, this is crucial to prevent version conflicts and
+    unnecessary bloat in consumer applications. The consuming application will
+    be responsible for installing these peer dependencies.
+  - >-
+    2.  **`tsconfig.node.json`**: I will enable `resolveJsonModule` to allow
+    importing `package.json` directly within our Vite configuration file.
+  - >-
+    3.  **`vite.config.ts`**: I will update the build configuration to
+    dynamically read the `peerDependencies` from `package.json` and
+    automatically mark them as external. This ensures they are not bundled into
+    the library output, which is the correct behavior. I will also expand the
+    `globals` configuration for better UMD build compatibility.
+  - >-
+    These changes will correctly package your components, hooks, and styles for
+    use as an external npm package, without including the demo application pages
+    in the final bundle.
+  - '### 1. Update `package.json` for correct dependency handling'
+  - >-
+    I'll start by restructuring your dependencies. By moving them to
+    `peerDependencies`, we ensure that the consumer of your library provides
+    these packages, which is standard practice for React component libraries.
+  - '### 2. Update Node TSConfig for JSON imports'
+  - >-
+    To dynamically read `package.json` in `vite.config.ts`, I'll enable JSON
+    module resolution in the TypeScript configuration for Node.
+  - '### 3. Update Vite config for robust library build'
+  - >-
+    Finally, I'll update the Vite configuration to read the peer dependencies
+    from `package.json` and automatically configure them as external for the
+    Rollup build. This makes the build process more maintainable.
+  - >-
+    These changes correctly configure your project to be built and published as
+    a reusable library.
+operations:
+  - type: write
+    path: package.json
+    content: |
+      <<<<<<< SEARCH
+        "dependencies": {
+          "@iconify/react": "^4.1.1",
+          "@radix-ui/react-avatar": "^1.0.4",
+          "@radix-ui/react-dialog": "^1.0.5",
+          "@radix-ui/react-dropdown-menu": "^2.0.6",
+          "@radix-ui/react-label": "^2.1.7",
+          "@radix-ui/react-popover": "^1.0.7",
+          "@radix-ui/react-slot": "^1.0.2",
+          "@radix-ui/react-tabs": "^1.0.4",
+          "class-variance-authority": "^0.7.0",
+          "clsx": "^2.0.0",
+          "cmdk": "^0.2.0",
+          "gsap": "^3.12.2",
+          "lucide-react": "^0.294.0",
+          "sonner": "^1.2.4",
+          "tailwind-merge": "^2.0.0",
+          "zustand": "^4.5.7"
+        },
+        "peerDependencies": {
+          "react": "^18.2.0",
+          "react-dom": "^18.2.0",
+          "tailwindcss": "^3.3.5"
+        },
+      =======
+        "dependencies": {},
+        "peerDependencies": {
+          "@iconify/react": "^4.1.1",
+          "@radix-ui/react-avatar": "^1.0.4",
+          "@radix-ui/react-dialog": "^1.0.5",
+          "@radix-ui/react-dropdown-menu": "^2.0.6",
+          "@radix-ui/react-label": "^2.1.7",
+          "@radix-ui/react-popover": "^1.0.7",
+          "@radix-ui/react-slot": "^1.0.2",
+          "@radix-ui/react-tabs": "^1.0.4",
+          "class-variance-authority": "^0.7.0",
+          "clsx": "^2.0.0",
+          "cmdk": "^0.2.0",
+          "gsap": "^3.12.2",
+          "lucide-react": "^0.294.0",
+          "react": "^18.2.0",
+          "react-dom": "^18.2.0",
+          "sonner": "^1.2.4",
+          "tailwind-merge": "^2.0.0",
+          "tailwindcss": "^3.3.5",
+          "zustand": "^4.5.7"
+        },
+      >>>>>>> REPLACE
+    patchStrategy: search-replace
+  - type: write
+    path: tsconfig.node.json
+    content: |+
+      --- tsconfig.node.json
+      +++ tsconfig.node.json
+      @@ -4,7 +4,8 @@
+           "skipLibCheck": true,
+           "module": "NodeNext",
+           "moduleResolution": "NodeNext",
+      -    "allowSyntheticDefaultImports": true
+      +    "allowSyntheticDefaultImports": true,
+      +    "resolveJsonModule": true
+         },
+         "include": ["vite.config.ts"]
+       }
+
+    patchStrategy: standard-diff
+  - type: write
+    path: vite.config.ts
+    content: |-
+      import { defineConfig } from 'vite'
+      import react from '@vitejs/plugin-react'
+      import { fileURLToPath, URL } from 'url'
+      import { resolve } from 'path'
+      import pkg from './package.json'
+
+      // https://vitejs.dev/config/
+      export default defineConfig({
+        plugins: [react()],
+        resolve: {
+          alias: {
+            "@": fileURLToPath(new URL('./src', import.meta.url)),
+          },
+        },
+        build: {
+          lib: {
+            entry: resolve(__dirname, 'src/index.ts'),
+            name: 'AmazingAppShell',
+            fileName: (format) => `amazing-app-shell.${format}.js`,
+          },
+          rollupOptions: {
+            // make sure to externalize deps that shouldn't be bundled
+            // into your library
+            external: Object.keys(pkg.peerDependencies || {}),
+            output: {
+              // Provide global variables to use in the UMD build
+              // for externalized deps
+              globals: {
+                react: 'React',
+                'react-dom': 'ReactDOM',
+                tailwindcss: 'tailwindcss',
+                gsap: 'gsap',
+                'lucide-react': 'lucide-react',
+                zustand: 'zustand',
+                sonner: 'sonner'
+              },
+            },
+          },
+        },
+      })
+    patchStrategy: replace
+snapshot:
+  package.json: |
+    {
+      "name": "amazing-app-shell",
+      "private": false,
+      "version": "1.0.1",
+      "type": "module",
+      "files": [
+        "dist"
+      ],
+      "main": "./dist/amazing-app-shell.umd.js",
+      "module": "./dist/amazing-app-shell.es.js",
+      "types": "./dist/index.d.ts",
+      "exports": {
+        ".": {
+          "import": "./dist/amazing-app-shell.es.js",
+          "require": "./dist/amazing-app-shell.umd.js"
+        },
+        "./dist/style.css": "./dist/style.css"
+      },
+      "sideEffects": [
+        "**/*.css"
+      ],
+      "scripts": {
+        "dev": "vite",
+        "build": "tsc && vite build",
+        "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+        "preview": "vite preview"
+      },
+      "dependencies": {
+        "@iconify/react": "^4.1.1",
+        "@radix-ui/react-avatar": "^1.0.4",
+        "@radix-ui/react-dialog": "^1.0.5",
+        "@radix-ui/react-dropdown-menu": "^2.0.6",
+        "@radix-ui/react-label": "^2.1.7",
+        "@radix-ui/react-popover": "^1.0.7",
+        "@radix-ui/react-slot": "^1.0.2",
+        "@radix-ui/react-tabs": "^1.0.4",
+        "class-variance-authority": "^0.7.0",
+        "clsx": "^2.0.0",
+        "cmdk": "^0.2.0",
+        "gsap": "^3.12.2",
+        "lucide-react": "^0.294.0",
+        "sonner": "^1.2.4",
+        "tailwind-merge": "^2.0.0",
+        "zustand": "^4.5.7"
+      },
+      "peerDependencies": {
+        "react": "^18.2.0",
+        "react-dom": "^18.2.0",
+        "tailwindcss": "^3.3.5"
+      },
+      "devDependencies": {
+        "@types/node": "^20.10.0",
+        "@types/react": "^18.2.37",
+        "@types/react-dom": "^18.2.15",
+        "@typescript-eslint/eslint-plugin": "^6.10.0",
+        "@typescript-eslint/parser": "^6.10.0",
+        "@vitejs/plugin-react": "^4.1.1",
+        "autoprefixer": "^10.4.16",
+        "eslint": "^8.53.0",
+        "eslint-plugin-react-hooks": "^4.6.0",
+        "eslint-plugin-react-refresh": "^0.4.4",
+        "postcss": "^8.4.31",
+        "tailwindcss": "^3.3.5",
+        "tailwindcss-animate": "^1.0.7",
+        "typescript": "^5.2.2",
+        "vite": "^4.5.0"
+      }
+    }
+  tsconfig.node.json: |-
+    {
+      "compilerOptions": {
+        "composite": true,
+        "skipLibCheck": true,
+        "module": "NodeNext",
+        "moduleResolution": "NodeNext",
+        "allowSyntheticDefaultImports": true
+      },
+      "include": ["vite.config.ts"]
+    }
+  vite.config.ts: |-
+    import { defineConfig } from 'vite'
+    import react from '@vitejs/plugin-react'
+    import { fileURLToPath, URL } from 'url'
+    import { resolve } from 'path'
+
+    // https://vitejs.dev/config/
+    export default defineConfig({
+      plugins: [react()],
+      resolve: {
+        alias: {
+          "@": fileURLToPath(new URL('./src', import.meta.url)),
+        },
+      },
+      build: {
+        lib: {
+          entry: resolve(__dirname, 'src/index.ts'),
+          name: 'AmazingAppShell',
+          fileName: (format) => `amazing-app-shell.${format}.js`,
+        },
+        rollupOptions: {
+          // make sure to externalize deps that shouldn't be bundled
+          // into your library
+          external: ['react', 'react-dom', 'tailwindcss'],
+          output: {
+            // Provide global variables to use in the UMD build
+            // for externalized deps
+            globals: {
+              react: 'React',
+              'react-dom': 'ReactDOM',
+              tailwindcss: 'tailwindcss',
+            },
+          },
+        },
+      },
+    })
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 116

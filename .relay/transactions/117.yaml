@@ -1,0 +1,87 @@
+uuid: 489d892d-4530-4e4f-b639-66c5d19a4a75
+projectId: amazing-app-shell
+createdAt: '2025-10-11T08:35:04.738Z'
+gitCommitMsg: >-
+  fix(vite): add import assertion for JSON import
+
+  Resolves TypeScript error TS1543 which occurs when importing a JSON file with
+  `module: "NodeNext"`.
+
+  The `assert { type: 'json' }` syntax is now required to explicitly declare the
+  module type, aligning with modern ECMAScript standards for module resolution.
+promptSummary: >-
+  The user is reporting a TypeScript error (TS1543) related to importing a JSON
+  file in `vite.config.ts`.
+reasoning:
+  - >-
+    You've encountered a TypeScript error because modern versions of Node.js and
+    TypeScript (when using `module: "NodeNext"`) require an explicit instruction
+    to import JSON files. This is a security and correctness feature to ensure
+    that the module loader knows how to handle the file type.
+  - >-
+    To fix this, I will add an import assertion (`assert { type: 'json' }`) to
+    the JSON import statement in `vite.config.ts`. This tells TypeScript and the
+    underlying JavaScript engine that we are intentionally loading a JSON
+    module.
+  - >-
+    This small change resolves the TypeScript compilation error and aligns the
+    code with modern ECMAScript module standards.
+operations:
+  - type: write
+    path: vite.config.ts
+    content: |
+      <<<<<<< SEARCH
+      import pkg from './package.json'
+      =======
+      import pkg from './package.json' assert { type: 'json' }
+      >>>>>>> REPLACE
+    patchStrategy: search-replace
+snapshot:
+  vite.config.ts: |-
+    import { defineConfig } from 'vite'
+    import react from '@vitejs/plugin-react'
+    import { fileURLToPath, URL } from 'url'
+    import { resolve } from 'path'
+    import pkg from './package.json'
+
+    // https://vitejs.dev/config/
+    export default defineConfig({
+      plugins: [react()],
+      resolve: {
+        alias: {
+          "@": fileURLToPath(new URL('./src', import.meta.url)),
+        },
+      },
+      build: {
+        lib: {
+          entry: resolve(__dirname, 'src/index.ts'),
+          name: 'AmazingAppShell',
+          fileName: (format) => `amazing-app-shell.${format}.js`,
+        },
+        rollupOptions: {
+          // make sure to externalize deps that shouldn't be bundled
+          // into your library
+          external: Object.keys(pkg.peerDependencies || {}),
+          output: {
+            // Provide global variables to use in the UMD build
+            // for externalized deps
+            globals: {
+              react: 'React',
+              'react-dom': 'ReactDOM',
+              tailwindcss: 'tailwindcss',
+              gsap: 'gsap',
+              'lucide-react': 'lucide-react',
+              zustand: 'zustand',
+              sonner: 'sonner'
+            },
+          },
+        },
+      },
+    })
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 117
