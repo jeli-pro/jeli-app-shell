@@ -23,7 +23,7 @@
     }
   },
   "include": [
-    "README.md",
+    // "README.md",
     "package.json",
     "vite.config.ts",
     "tsconfig.json",
@@ -36,7 +36,13 @@
   "ignore": {
     "useGitignore": true,
     "useDefaultPatterns": true,
-    "customPatterns": []
+    "customPatterns": [
+      "src/features/settings",
+      // "src/pages/Dashboard",
+      "src/pages/ToasterDemo",
+      "src/pages/Notifications",
+      "src/components/ui"
+    ]
   },
   "security": {
     "enableSecurityCheck": true
