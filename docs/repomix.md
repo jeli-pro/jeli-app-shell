@@ -546,405 +546,6 @@ export function useDemoContentAnimations(
 }
 ```
 
-## File: src/pages/Login/index.tsx
-```typescript
-import React, { useState, useEffect } from 'react'
-import { Eye, EyeOff, ArrowLeft, Mail, Lock, User, Sparkles } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardHeader } from '@/components/ui/card'
-import { cn } from '@/lib/utils'
-import { gsap } from 'gsap'
-
-interface LoginPageProps {
-  onLogin?: (email: string, password: string) => void
-  onForgotPassword?: (email: string) => void
-  onSignUp?: () => void
-}
-
-type LoginState = 'login' | 'forgot-password' | 'reset-sent'
-
-export function LoginPage({ onLogin, onForgotPassword, onSignUp }: LoginPageProps) {
-  const [state, setState] = useState<LoginState>('login')
-  const [showPassword, setShowPassword] = useState(false)
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
-  const [errors, setErrors] = useState<{ email?: string; password?: string }>({})
-
-  const cardRef = React.useRef<HTMLDivElement>(null)
-  const backgroundRef = React.useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    // Initial animations
-    if (cardRef.current && backgroundRef.current) {
-      gsap.fromTo(cardRef.current, 
-        { 
-          opacity: 0, 
-          y: 50, 
-          scale: 0.95 
-        },
-        { 
-          opacity: 1, 
-          y: 0, 
-          scale: 1, 
-          duration: 0.8, 
-          ease: "power3.out" 
-        }
-      )
-
-      gsap.fromTo(backgroundRef.current,
-        { opacity: 0 },
-        { opacity: 1, duration: 1.2, ease: "power2.out" }
-      )
-    }
-  }, [])
-
-  useEffect(() => {
-    // Animate state transitions
-    if (cardRef.current) {
-      gsap.fromTo(cardRef.current.querySelector('.card-content'),
-        { opacity: 0, x: state === 'login' ? -20 : 20 },
-        { opacity: 1, x: 0, duration: 0.5, ease: "power2.out" }
-      )
-    }
-  }, [state])
-
-  const validateEmail = (email: string) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    return emailRegex.test(email)
-  }
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setErrors({})
-
-    if (state === 'login') {
-      const newErrors: typeof errors = {}
-      
-      if (!email) {
-        newErrors.email = 'Email is required'
-      } else if (!validateEmail(email)) {
-        newErrors.email = 'Please enter a valid email'
-      }
-      
-      if (!password) {
-        newErrors.password = 'Password is required'
-      } else if (password.length < 6) {
-        newErrors.password = 'Password must be at least 6 characters'
-      }
-
-      if (Object.keys(newErrors).length > 0) {
-        setErrors(newErrors)
-        return
-      }
-
-      setIsLoading(true)
-      
-      // Simulate API call
-      setTimeout(() => {
-        setIsLoading(false)
-        onLogin?.(email, password)
-      }, 1500)
-      
-    } else if (state === 'forgot-password') {
-      if (!email) {
-        setErrors({ email: 'Email is required' })
-        return
-      }
-      
-      if (!validateEmail(email)) {
-        setErrors({ email: 'Please enter a valid email' })
-        return
-      }
-
-      setIsLoading(true)
-      
-      // Simulate API call
-      setTimeout(() => {
-        setIsLoading(false)
-        onForgotPassword?.(email)
-        setState('reset-sent')
-      }, 1500)
-    }
-  }
-
-  const renderLoginForm = () => (
-    <div className="card-content space-y-6">
-      <div className="space-y-2 text-center">
-        <h1 className="text-3xl font-bold tracking-tight">Welcome back</h1>
-        <p className="text-muted-foreground">
-          Sign in to your account to continue
-        </p>
-      </div>
-
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="email">Email</Label>
-          <div className="relative">
-            <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-            <Input
-              id="email"
-              type="email"
-              placeholder="Enter your email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className={cn("pl-10", errors.email && "border-destructive")}
-              disabled={isLoading}
-            />
-          </div>
-          {errors.email && (
-            <p className="text-sm text-destructive">{errors.email}</p>
-          )}
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="password">Password</Label>
-          <div className="relative">
-            <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-            <Input
-              id="password"
-              type={showPassword ? 'text' : 'password'}
-              placeholder="Enter your password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className={cn("pl-10 pr-10", errors.password && "border-destructive")}
-              disabled={isLoading}
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-              disabled={isLoading}
-            >
-              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-            </button>
-          </div>
-          {errors.password && (
-            <p className="text-sm text-destructive">{errors.password}</p>
-          )}
-        </div>
-
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <input
-              id="remember"
-              type="checkbox"
-              className="w-4 h-4 rounded border border-input"
-              disabled={isLoading}
-            />
-            <Label htmlFor="remember" className="text-sm">
-              Remember me
-            </Label>
-          </div>
-          <button
-            type="button"
-            onClick={() => setState('forgot-password')}
-            className="text-sm text-primary hover:underline"
-            disabled={isLoading}
-          >
-            Forgot password?
-          </button>
-        </div>
-
-        <Button 
-          type="submit" 
-          className="w-full" 
-          disabled={isLoading}
-        >
-          {isLoading ? (
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-              Signing in...
-            </div>
-          ) : (
-            'Sign in'
-          )}
-        </Button>
-      </form>
-
-      <div className="relative">
-        <div className="absolute inset-0 flex items-center">
-          <span className="w-full border-t" />
-        </div>
-        <div className="relative flex justify-center text-xs uppercase">
-          <span className="bg-background px-2 text-muted-foreground">
-            Or continue with
-          </span>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <Button variant="outline" disabled={isLoading}>
-          <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24">
-            <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-            <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-            <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-            <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-          </svg>
-          Google
-        </Button>
-        <Button variant="outline" disabled={isLoading}>
-          <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-          </svg>
-          Facebook
-        </Button>
-      </div>
-
-      <p className="text-center text-sm text-muted-foreground">
-        Don't have an account?{' '}
-        <button
-          onClick={onSignUp}
-          className="text-primary hover:underline font-medium"
-          disabled={isLoading}
-        >
-          Sign up
-        </button>
-      </p>
-    </div>
-  )
-
-  const renderForgotPasswordForm = () => (
-    <div className="card-content space-y-6">
-      <button
-        onClick={() => setState('login')}
-        className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-        disabled={isLoading}
-      >
-        <ArrowLeft className="w-4 h-4" />
-        Back to login
-      </button>
-
-      <div className="space-y-2 text-center">
-        <h1 className="text-3xl font-bold tracking-tight">Reset your password</h1>
-        <p className="text-muted-foreground">
-          Enter your email address and we'll send you a link to reset your password
-        </p>
-      </div>
-
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="email">Email</Label>
-          <div className="relative">
-            <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-            <Input
-              id="email"
-              type="email"
-              placeholder="Enter your email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className={cn("pl-10", errors.email && "border-destructive")}
-              disabled={isLoading}
-            />
-          </div>
-          {errors.email && (
-            <p className="text-sm text-destructive">{errors.email}</p>
-          )}
-        </div>
-
-        <Button 
-          type="submit" 
-          className="w-full" 
-          disabled={isLoading}
-        >
-          {isLoading ? (
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-              Sending reset link...
-            </div>
-          ) : (
-            'Send reset link'
-          )}
-        </Button>
-      </form>
-    </div>
-  )
-
-  const renderResetSentForm = () => (
-    <div className="card-content space-y-6 text-center">
-      <div className="w-16 h-16 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center mx-auto">
-        <Mail className="w-8 h-8 text-green-600 dark:text-green-400" />
-      </div>
-
-      <div className="space-y-2">
-        <h1 className="text-3xl font-bold tracking-tight">Check your email</h1>
-        <p className="text-muted-foreground">
-          We've sent a password reset link to <strong>{email}</strong>
-        </p>
-      </div>
-
-      <div className="space-y-4">
-        <p className="text-sm text-muted-foreground">
-          Didn't receive the email? Check your spam folder or try again.
-        </p>
-
-        <div className="flex flex-col gap-2">
-          <Button
-            onClick={() => setState('forgot-password')}
-            variant="outline"
-          >
-            Try again
-          </Button>
-          <Button
-            onClick={() => setState('login')}
-            variant="ghost"
-          >
-            Back to login
-          </Button>
-        </div>
-      </div>
-    </div>
-  )
-
-  return (
-    <div 
-      ref={backgroundRef}
-      className="min-h-screen w-full flex items-center justify-center p-4 relative overflow-hidden bg-gradient-to-br from-background via-background to-accent/5"
-    >
-      {/* Animated background elements */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-primary/5 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-accent/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-primary/3 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '4s' }} />
-      </div>
-
-      {/* Floating elements */}
-      <div className="absolute top-20 left-20 opacity-20">
-        <Sparkles className="w-6 h-6 text-primary animate-pulse" />
-      </div>
-      <div className="absolute top-40 right-32 opacity-20">
-        <User className="w-8 h-8 text-accent animate-pulse" style={{ animationDelay: '1s' }} />
-      </div>
-      <div className="absolute bottom-32 left-40 opacity-20">
-        <Lock className="w-5 h-5 text-primary animate-pulse" style={{ animationDelay: '3s' }} />
-      </div>
-
-      <Card 
-        ref={cardRef}
-        className="w-full max-w-md shadow-2xl border-0 bg-card/95 backdrop-blur-sm"
-      >
-        <CardHeader className="space-y-0 pb-6">
-          <div className="flex items-center justify-center mb-4">
-            <div className="w-12 h-12 bg-primary rounded-2xl flex items-center justify-center">
-              <Sparkles className="w-6 h-6 text-primary-foreground" />
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="px-6 pb-6">
-          {state === 'login' && renderLoginForm()}
-          {state === 'forgot-password' && renderForgotPasswordForm()}
-          {state === 'reset-sent' && renderResetSentForm()}
-        </CardContent>
-      </Card>
-    </div>
-  )
-}
-
-export default LoginPage
-```
-
 ## File: src/pages/Settings/index.tsx
 ```typescript
 import { SettingsContent } from '@/features/settings/SettingsContent';
@@ -2701,6 +2302,487 @@ export function DashboardContent({ isInSidePane = false }: DashboardContentProps
 }
 ```
 
+## File: src/pages/Login/index.tsx
+```typescript
+import React, {
+	useState,
+	ChangeEvent,
+	FormEvent,
+	ReactNode,
+	useEffect,
+	useRef,
+	forwardRef,
+	memo,
+} from 'react';
+import { Eye, EyeOff, Mail, ArrowLeft } from 'lucide-react';
+import { gsap } from 'gsap';
+import { cn } from '@/lib/utils';
+
+// ==================== Input Component ====================
+const Input = memo(
+	forwardRef(function Input(
+		{ className, type, ...props }: React.InputHTMLAttributes<HTMLInputElement>,
+		ref: React.ForwardedRef<HTMLInputElement>,
+	) {
+		const radius = 100;
+		const wrapperRef = useRef<HTMLDivElement>(null);
+
+		useEffect(() => {
+			const wrapper = wrapperRef.current;
+			if (!wrapper) return;
+
+			const handleMouseMove = (e: MouseEvent) => {
+				if (!wrapper) return;
+				const { left, top } = wrapper.getBoundingClientRect();
+				const x = e.clientX - left;
+				const y = e.clientY - top;
+				wrapper.style.setProperty('--mouse-x', `${x}px`);
+				wrapper.style.setProperty('--mouse-y', `${y}px`);
+			};
+
+			const handleMouseEnter = () => {
+				if (!wrapper) return;
+				wrapper.style.setProperty('--radius', `${radius}px`);
+			};
+
+			const handleMouseLeave = () => {
+				if (!wrapper) return;
+				wrapper.style.setProperty('--radius', '0px');
+			};
+
+			wrapper.addEventListener('mousemove', handleMouseMove);
+			wrapper.addEventListener('mouseenter', handleMouseEnter);
+			wrapper.addEventListener('mouseleave', handleMouseLeave);
+
+			return () => {
+				wrapper.removeEventListener('mousemove', handleMouseMove);
+				wrapper.removeEventListener('mouseenter', handleMouseEnter);
+				wrapper.removeEventListener('mouseleave', handleMouseLeave);
+			};
+		}, [radius]);
+
+		return (
+			<div
+				ref={wrapperRef}
+				style={
+					{
+						'--radius': '0px',
+						'--mouse-x': '0px',
+						'--mouse-y': '0px',
+						background: `radial-gradient(var(--radius) circle at var(--mouse-x) var(--mouse-y), #3b82f6, transparent 80%)`,
+					} as React.CSSProperties
+				}
+				className="group/input rounded-lg p-[2px] transition duration-300"
+			>
+				<input
+					type={type}
+					className={cn(
+						`shadow-input dark:placeholder-text-neutral-600 flex h-10 w-full rounded-md border-none bg-gray-50 px-3 py-2 text-sm text-black transition duration-400 group-hover/input:shadow-none file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-neutral-400 focus-visible:ring-[2px] focus-visible:ring-neutral-400 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 dark:bg-zinc-800 dark:text-white dark:shadow-[0px_0px_1px_1px_#404040] dark:focus-visible:ring-neutral-600`,
+						className,
+					)}
+					ref={ref}
+					{...props}
+				/>
+			</div>
+		);
+	}),
+);
+
+// ==================== BoxReveal Component ====================
+type BoxRevealProps = {
+	children: ReactNode;
+	width?: string;
+	boxColor?: string;
+	duration?: number;
+	className?: string;
+};
+
+const BoxReveal = memo(function BoxReveal({
+	children,
+	width = 'fit-content',
+	boxColor,
+	duration,
+	className,
+}: BoxRevealProps) {
+	const sectionRef = useRef<HTMLDivElement>(null);
+	const boxRef = useRef<HTMLDivElement>(null);
+	const childRef = useRef<HTMLDivElement>(null);
+
+	useEffect(() => {
+		const section = sectionRef.current;
+		if (!section) return;
+
+		const observer = new IntersectionObserver(
+			(entries) => {
+				entries.forEach((entry) => {
+					if (entry.isIntersecting) {
+						gsap.timeline()
+							.set(childRef.current, { opacity: 0 })
+							.to(boxRef.current, {
+								left: '100%',
+								duration: duration ?? 0.5,
+								ease: 'power3.inOut',
+							})
+							.fromTo(
+								childRef.current,
+								{ y: 50, opacity: 0 },
+								{ y: 0, opacity: 1, duration: duration ?? 0.5, ease: 'power3.out' },
+								'-=0.3',
+							);
+						observer.unobserve(section);
+					}
+				});
+			},
+			{ threshold: 0.1 },
+		);
+
+		observer.observe(section);
+
+		return () => {
+			if (section) {
+				observer.unobserve(section);
+			}
+		};
+	}, [duration]);
+
+	return (
+		<div ref={sectionRef} style={{ width }} className={cn('relative overflow-hidden', className)}>
+			<div ref={childRef}>{children}</div>
+			<div
+				ref={boxRef}
+				style={{
+					background: boxColor ?? 'hsl(var(--skeleton))',
+				}}
+				className="absolute top-1 bottom-1 left-0 right-0 z-20 rounded-sm"
+			/>
+		</div>
+	);
+});
+
+// ==================== Ripple Component ====================
+interface RippleProps {
+	mainCircleSize?: number;
+	mainCircleOpacity?: number;
+	numCircles?: number;
+}
+const Ripple = memo(function Ripple({
+	mainCircleSize = 210,
+	mainCircleOpacity = 0.24,
+	numCircles = 11,
+}: RippleProps) {
+	return (
+		<div className="absolute inset-0 flex items-center justify-center [mask-image:linear-gradient(to_bottom,white,transparent)]">
+			{Array.from({ length: numCircles }, (_, i) => {
+				const size = mainCircleSize + i * 70;
+				const opacity = mainCircleOpacity - i * 0.03;
+				const animationDelay = `${i * 0.06}s`;
+				const borderStyle = i === numCircles - 1 ? 'dashed' : 'solid';
+				const borderOpacity = 5 + i * 5;
+
+				return (
+					<div
+						key={i}
+						className="absolute animate-ripple rounded-full border"
+						style={
+							{
+								width: `${size}px`,
+								height: `${size}px`,
+								opacity: opacity,
+								animationDelay: animationDelay,
+								borderStyle: borderStyle,
+								borderWidth: '1px',
+								borderColor: `hsl(var(--foreground) / ${borderOpacity / 100})`,
+								top: '50%',
+								left: '50%',
+								transform: 'translate(-50%, -50%)',
+							} as React.CSSProperties
+						}
+					/>
+				);
+			})}
+		</div>
+	);
+});
+
+// ==================== OrbitingCircles Component ====================
+const OrbitingCircles = memo(function OrbitingCircles({
+	className,
+	children,
+	reverse = false,
+	duration = 20,
+	delay = 10,
+	radius = 50,
+	path = true,
+}: {
+	className?: string;
+	children?: React.ReactNode;
+	reverse?: boolean;
+	duration?: number;
+	delay?: number;
+	radius?: number;
+	path?: boolean;
+}) {
+	return (
+		<>
+			{path && (
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					version="1.1"
+					className="pointer-events-none absolute inset-0 size-full"
+				>
+					<circle
+						className="stroke-black/10 stroke-1 dark:stroke-white/10"
+						cx="50%"
+						cy="50%"
+						r={radius}
+						fill="none"
+					/>
+				</svg>
+			)}
+			<div
+				style={
+					{
+						'--duration': duration,
+						'--radius': radius,
+						'--delay': -delay,
+					} as React.CSSProperties
+				}
+				className={cn(
+					'absolute flex size-full transform-gpu animate-orbit items-center justify-center rounded-full border bg-black/10 [animation-delay:calc(var(--delay)*1s)] dark:bg-white/10',
+					{ '[animation-direction:reverse]': reverse },
+					className,
+				)}
+			>
+				{children}
+			</div>
+		</>
+	);
+});
+
+// ==================== TechOrbitDisplay Component ====================
+interface OrbitIcon {
+	component: () => ReactNode;
+	className: string;
+	duration?: number;
+	delay?: number;
+	radius?: number;
+	path?: boolean;
+	reverse?: boolean;
+}
+
+const iconsArray: OrbitIcon[] = [
+	{ component: () => <img width={30} height={30} src='https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/html5/html5-original.svg' alt='HTML5' />, className: 'size-[30px] border-none bg-transparent', duration: 20, delay: 20, radius: 100, path: false, reverse: false },
+	{ component: () => <img width={30} height={30} src='https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/css3/css3-original.svg' alt='CSS3' />, className: 'size-[30px] border-none bg-transparent', duration: 20, delay: 10, radius: 100, path: false, reverse: false },
+	{ component: () => <img width={50} height={50} src='https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/typescript/typescript-original.svg' alt='TypeScript' />, className: 'size-[50px] border-none bg-transparent', radius: 210, duration: 20, path: false, reverse: false },
+	{ component: () => <img width={50} height={50} src='https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/javascript/javascript-original.svg' alt='JavaScript' />, className: 'size-[50px] border-none bg-transparent', radius: 210, duration: 20, delay: 20, path: false, reverse: false },
+	{ component: () => <img width={30} height={30} src='https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/tailwindcss/tailwindcss-original.svg' alt='TailwindCSS' />, className: 'size-[30px] border-none bg-transparent', duration: 20, delay: 20, radius: 150, path: false, reverse: true },
+	{ component: () => <img width={30} height={30} src='https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/nextjs/nextjs-original.svg' alt='Nextjs' />, className: 'size-[30px] border-none bg-transparent', duration: 20, delay: 10, radius: 150, path: false, reverse: true },
+	{ component: () => <img width={50} height={50} src='https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/react/react-original.svg' alt='React' />, className: 'size-[50px] border-none bg-transparent', radius: 270, duration: 20, path: false, reverse: true },
+	{ component: () => <img width={50} height={50} src='https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/figma/figma-original.svg' alt='Figma' />, className: 'size-[50px] border-none bg-transparent', radius: 270, duration: 20, delay: 60, path: false, reverse: true },
+	{ component: () => <img width={50} height={50} src='https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/git/git-original.svg' alt='Git' />, className: 'size-[50px] border-none bg-transparent', radius: 320, duration: 20, delay: 20, path: false, reverse: false },
+];
+
+const TechOrbitDisplay = memo(function TechOrbitDisplay({ text = 'Amazing App Shell' }: { text?: string }) {
+	return (
+		<div className="relative flex size-full flex-col items-center justify-center overflow-hidden rounded-lg">
+			<span className="pointer-events-none whitespace-pre-wrap bg-gradient-to-b from-black to-gray-300/80 bg-clip-text text-center text-7xl font-semibold leading-none text-transparent dark:from-white dark:to-slate-900/10">
+				{text}
+			</span>
+			{iconsArray.map((icon, index) => (
+				<OrbitingCircles key={index} {...icon}>
+					{icon.component()}
+				</OrbitingCircles>
+			))}
+		</div>
+	);
+});
+
+// ==================== AnimatedForm Components ====================
+const BottomGradient = () => (
+	<>
+		<span className="group-hover/btn:opacity-100 block transition duration-500 opacity-0 absolute h-px w-full -bottom-px inset-x-0 bg-gradient-to-r from-transparent via-cyan-500 to-transparent" />
+		<span className="group-hover/btn:opacity-100 blur-sm block transition duration-500 opacity-0 absolute h-px w-1/2 mx-auto -bottom-px inset-x-10 bg-gradient-to-r from-transparent via-indigo-500 to-transparent" />
+	</>
+);
+
+const Label = memo(function Label({ className, ...props }: React.LabelHTMLAttributes<HTMLLabelElement>) {
+	return <label className={cn('text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70', className)} {...props} />;
+});
+
+// ==================== Main LoginPage Component ====================
+interface LoginPageProps {
+	onLogin?: (email: string, password: string) => void;
+	onForgotPassword?: (email: string) => void;
+	onSignUp?: () => void;
+}
+
+type LoginState = 'login' | 'forgot-password' | 'reset-sent';
+
+export function LoginPage({ onLogin, onForgotPassword }: LoginPageProps) {
+	const [state, setState] = useState<LoginState>('login');
+	const [email, setEmail] = useState('');
+	const [password, setPassword] = useState('');
+	const [isLoading, setIsLoading] = useState(false);
+	const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
+	const [showPassword, setShowPassword] = useState(false);
+
+	const handleLoginSubmit = async (e: FormEvent) => {
+		e.preventDefault();
+		setErrors({});
+		const newErrors: typeof errors = {};
+		if (!email) newErrors.email = 'Email is required';
+		if (!password) newErrors.password = 'Password is required';
+		if (Object.keys(newErrors).length > 0) {
+			setErrors(newErrors);
+			return;
+		}
+		setIsLoading(true);
+		await onLogin?.(email, password);
+		setIsLoading(false);
+	};
+
+	const handleForgotSubmit = async (e: FormEvent) => {
+		e.preventDefault();
+		setErrors({});
+		if (!email) {
+			setErrors({ email: 'Email is required' });
+			return;
+		}
+		setIsLoading(true);
+		await onForgotPassword?.(email);
+		setIsLoading(false);
+		setState('reset-sent');
+	};
+
+	const renderContent = () => {
+		if (state === 'reset-sent') {
+			return (
+				<div className="w-full max-w-md mx-auto text-center flex flex-col gap-4">
+					<BoxReveal boxColor="hsl(var(--skeleton))" duration={0.5}>
+						<div className="w-16 h-16 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center mx-auto">
+							<Mail className="w-8 h-8 text-green-600 dark:text-green-400" />
+						</div>
+					</BoxReveal>
+					<BoxReveal boxColor="hsl(var(--skeleton))" duration={0.5}>
+						<h1 className="text-3xl font-bold tracking-tight">Check your email</h1>
+					</BoxReveal>
+					<BoxReveal boxColor="hsl(var(--skeleton))" duration={0.5}>
+						<p className="text-muted-foreground">We've sent a password reset link to <strong>{email}</strong></p>
+					</BoxReveal>
+					<BoxReveal width="100%" boxColor="hsl(var(--skeleton))" duration={0.5}>
+						<button onClick={() => setState('login')} className="text-sm text-blue-500 hover:underline">
+							<div className="flex items-center justify-center gap-2">
+								<ArrowLeft className="w-4 h-4" /> Back to login
+							</div>
+						</button>
+					</BoxReveal>
+				</div>
+			);
+		}
+
+		const isLogin = state === 'login';
+		const formFields = isLogin
+			? [
+				{ label: 'Email', required: true, type: 'email', placeholder: 'Enter your email address', onChange: (e: ChangeEvent<HTMLInputElement>) => setEmail(e.target.value) },
+				{ label: 'Password', required: true, type: 'password', placeholder: 'Enter your password', onChange: (e: ChangeEvent<HTMLInputElement>) => setPassword(e.target.value) },
+			]
+			: [{ label: 'Email', required: true, type: 'email', placeholder: 'Enter your email address', onChange: (e: ChangeEvent<HTMLInputElement>) => setEmail(e.target.value) }];
+
+		return (
+			<div className="w-full max-w-md mx-auto flex flex-col gap-4">
+				<BoxReveal boxColor="hsl(var(--skeleton))" duration={0.3}>
+					<h2 className="font-bold text-3xl text-neutral-800 dark:text-neutral-200">{isLogin ? 'Welcome back' : 'Reset Password'}</h2>
+				</BoxReveal>
+				<BoxReveal boxColor="hsl(var(--skeleton))" duration={0.3} className="pb-2">
+					<p className="text-neutral-600 text-sm max-w-sm dark:text-neutral-300">{isLogin ? 'Sign in to your account to continue' : 'Enter your email to receive a reset link'}</p>
+				</BoxReveal>
+				{isLogin && (
+					<BoxReveal boxColor="hsl(var(--skeleton))" duration={0.3} width="100%" className="overflow-visible">
+						<button className="g-button group/btn bg-transparent w-full rounded-md border h-10 font-medium outline-hidden hover:cursor-pointer" type="button">
+							<span className="flex items-center justify-center w-full h-full gap-3">
+								<img src="https://cdn1.iconfinder.com/data/icons/google-s-logo/150/Google_Icons-09-512.png" width={26} height={26} alt="Google Icon" />
+								Sign in with Google
+							</span>
+							<BottomGradient />
+						</button>
+					</BoxReveal>
+				)}
+				{isLogin && (
+					<BoxReveal boxColor="hsl(var(--skeleton))" duration={0.3} width="100%">
+						<div className="flex items-center gap-4">
+							<hr className="flex-1 border-1 border-dashed border-neutral-300 dark:border-neutral-700" />
+							<p className="text-neutral-700 text-sm dark:text-neutral-300">or</p>
+							<hr className="flex-1 border-1 border-dashed border-neutral-300 dark:border-neutral-700" />
+						</div>
+					</BoxReveal>
+				)}
+				<form onSubmit={isLogin ? handleLoginSubmit : handleForgotSubmit}>
+					{formFields.map((field) => (
+						<div key={field.label} className="flex flex-col gap-2 mb-4">
+							<BoxReveal boxColor="hsl(var(--skeleton))" duration={0.3}>
+								<Label htmlFor={field.label}>{field.label} <span className="text-red-500">*</span></Label>
+							</BoxReveal>
+							<BoxReveal width="100%" boxColor="hsl(var(--skeleton))" duration={0.3} className="flex flex-col space-y-2 w-full">
+								<div className="relative">
+									<Input type={field.type === 'password' ? (showPassword ? 'text' : 'password') : field.type} id={field.label} placeholder={field.placeholder} onChange={field.onChange} />
+									{field.type === 'password' && (
+										<button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5">
+											{showPassword ? <EyeOff className="h-5 w-5 text-gray-500" /> : <Eye className="h-5 w-5 text-gray-500" />}
+										</button>
+									)}
+								</div>
+								<div className="h-4">{errors[field.label as keyof typeof errors] && <p className="text-red-500 text-xs">{errors[field.label as keyof typeof errors]}</p>}</div>
+							</BoxReveal>
+						</div>
+					))}
+
+					<BoxReveal width="100%" boxColor="hsl(var(--skeleton))" duration={0.3} className="overflow-visible">
+						<button
+							className="bg-gradient-to-br relative group/btn from-zinc-200 dark:from-zinc-900 dark:to-zinc-900 to-zinc-200 block dark:bg-zinc-800 w-full text-black dark:text-white rounded-md h-10 font-medium shadow-[0px_1px_0px_0px_#ffffff40_inset,0px_-1px_0px_0px_#ffffff40_inset] dark:shadow-[0px_1px_0px_0px_var(--zinc-800)_inset,0px_-1px_0px_0px_var(--zinc-800)_inset] outline-hidden hover:cursor-pointer disabled:opacity-50"
+							type="submit" disabled={isLoading}
+						>
+							{isLoading ? (
+								<div className="flex items-center justify-center gap-2">
+									<div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+									<span>Processing...</span>
+								</div>
+							) : (
+								<>{isLogin ? 'Sign in' : 'Send reset link'} &rarr;</>
+							)}
+							<BottomGradient />
+						</button>
+					</BoxReveal>
+					<BoxReveal boxColor="hsl(var(--skeleton))" duration={0.3}>
+						<div className="mt-4 text-center">
+							<button type="button" className="text-sm text-blue-500 hover:underline" onClick={() => setState(isLogin ? 'forgot-password' : 'login')}>
+								{isLogin ? 'Forgot password?' : 'Back to login'}
+							</button>
+						</div>
+					</BoxReveal>
+				</form>
+			</div>
+		);
+	};
+
+	return (
+		<section className="flex max-lg:justify-center min-h-screen w-full login-page-theme bg-background text-foreground">
+			{/* Left Side */}
+			<div className="flex flex-col justify-center w-1/2 max-lg:hidden relative">
+				<Ripple />
+				<TechOrbitDisplay />
+			</div>
+
+			{/* Right Side */}
+			<div className="w-1/2 h-screen flex flex-col justify-center items-center max-lg:w-full max-lg:px-[10%]">
+				{renderContent()}
+			</div>
+		</section>
+	);
+}
+
+export default LoginPage;
+```
+
 ## File: src/main.tsx
 ```typescript
 import React from 'react'
@@ -2734,82 +2816,6 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
-```
-
-## File: tailwind.config.js
-```javascript
-/** @type {import('tailwindcss').Config} */
-export default {
-  content: [
-    "./index.html",
-    "./src/**/*.{js,ts,jsx,tsx}",
-  ],
-  darkMode: "class",
-  theme: {
-    extend: {
-      colors: {
-        border: "hsl(var(--border))",
-        input: "hsl(var(--input))",
-        ring: "hsl(var(--ring))",
-        background: "hsl(var(--background))",
-        foreground: "hsl(var(--foreground))",
-        primary: {
-          DEFAULT: "hsl(var(--primary))",
-          foreground: "hsl(var(--primary-foreground))",
-        },
-        secondary: {
-          DEFAULT: "hsl(var(--secondary))",
-          foreground: "hsl(var(--secondary-foreground))",
-        },
-        destructive: {
-          DEFAULT: "hsl(var(--destructive))",
-          foreground: "hsl(var(--destructive-foreground))",
-        },
-        muted: {
-          DEFAULT: "hsl(var(--muted))",
-          foreground: "hsl(var(--muted-foreground))",
-        },
-        accent: {
-          DEFAULT: "hsl(var(--accent))",
-          foreground: "hsl(var(--accent-foreground))",
-        },
-        popover: {
-          DEFAULT: "hsl(var(--popover))",
-          foreground: "hsl(var(--popover-foreground))",
-        },
-        card: {
-          DEFAULT: "hsl(var(--card))",
-          foreground: "hsl(var(--card-foreground))",
-        },
-      },
-      borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 4px)",
-        sm: "calc(var(--radius) - 8px)",
-      },
-      animation: {
-        "fade-in": "fadeIn 0.5s ease-in-out",
-        "slide-in": "slideIn 0.3s ease-out",
-        "scale-in": "scaleIn 0.2s ease-out",
-      },
-      keyframes: {
-        fadeIn: {
-          "0%": { opacity: "0" },
-          "100%": { opacity: "1" },
-        },
-        slideIn: {
-          "0%": { transform: "translateX(-100%)" },
-          "100%": { transform: "translateX(0)" },
-        },
-        scaleIn: {
-          "0%": { transform: "scale(0.95)", opacity: "0" },
-          "100%": { transform: "scale(1)", opacity: "1" },
-        },
-      },
-    },
-  },
-  plugins: [require("tailwindcss-animate")],
-}
 ```
 
 ## File: tsconfig.node.json
@@ -3404,6 +3410,106 @@ export function DemoContent() {
 }
 ```
 
+## File: tailwind.config.js
+```javascript
+/** @type {import('tailwindcss').Config} */
+export default {
+  content: [
+    "./index.html",
+    "./src/**/*.{js,ts,jsx,tsx}",
+  ],
+  darkMode: "class",
+  theme: {
+    extend: {
+      colors: {
+        border: "hsl(var(--border))",
+        input: "hsl(var(--input))",
+        ring: "hsl(var(--ring))",
+        background: "hsl(var(--background))",
+        foreground: "hsl(var(--foreground))",
+        primary: {
+          DEFAULT: "hsl(var(--primary))",
+          foreground: "hsl(var(--primary-foreground))",
+        },
+        secondary: {
+          DEFAULT: "hsl(var(--secondary))",
+          foreground: "hsl(var(--secondary-foreground))",
+        },
+        destructive: {
+          DEFAULT: "hsl(var(--destructive))",
+          foreground: "hsl(var(--destructive-foreground))",
+        },
+        muted: {
+          DEFAULT: "hsl(var(--muted))",
+          foreground: "hsl(var(--muted-foreground))",
+        },
+        accent: {
+          DEFAULT: "hsl(var(--accent))",
+          foreground: "hsl(var(--accent-foreground))",
+        },
+        popover: {
+          DEFAULT: "hsl(var(--popover))",
+          foreground: "hsl(var(--popover-foreground))",
+        },
+        card: {
+          DEFAULT: "hsl(var(--card))",
+          foreground: "hsl(var(--card-foreground))",
+        },
+      },
+      borderRadius: {
+        lg: "var(--radius)",
+        md: "calc(var(--radius) - 4px)",
+        sm: "calc(var(--radius) - 8px)",
+        DEFAULT: "0.5rem",
+      },
+      boxShadow: {
+        input: [
+          "0px 2px 3px -1px rgba(0, 0, 0, 0.1)",
+          "0px 1px 0px 0px rgba(25, 28, 33, 0.02)",
+          "0px 0px 0px 1px rgba(25, 28, 33, 0.08)",
+        ].join(", "),
+      },
+      animation: {
+        "fade-in": "fadeIn 0.5s ease-in-out",
+        "slide-in": "slideIn 0.3s ease-out",
+        "scale-in": "scaleIn 0.2s ease-out",
+        ripple: "ripple 2s ease calc(var(--i, 0) * 0.2s) infinite",
+        orbit: "orbit calc(var(--duration) * 1s) linear infinite",
+      },
+      keyframes: {
+        fadeIn: {
+          "0%": { opacity: "0" },
+          "100%": { opacity: "1" },
+        },
+        slideIn: {
+          "0%": { transform: "translateX(-100%)" },
+          "100%": { transform: "translateX(0)" },
+        },
+        scaleIn: {
+          "0%": { transform: "scale(0.95)", opacity: "0" },
+          "100%": { transform: "scale(1)", opacity: "1" },
+        },
+        ripple: {
+          "0%, 100%": { transform: "translate(-50%, -50%) scale(1)" },
+          "50%": { transform: "translate(-50%, -50%) scale(0.9)" },
+        },
+        orbit: {
+          "0%": {
+            transform:
+              "rotate(0deg) translateY(calc(var(--radius) * 1px)) rotate(0deg)",
+          },
+          "100%": {
+            transform:
+              "rotate(360deg) translateY(calc(var(--radius) * 1px)) rotate(-360deg)",
+          },
+        }
+      },
+    },
+  },
+  plugins: [require("tailwindcss-animate")],
+}
+```
+
 ## File: src/components/layout/AppShell.tsx
 ```typescript
 import React, { useRef, type ReactElement } from 'react'
@@ -3563,97 +3669,6 @@ export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
   }
 )
 MainContent.displayName = 'MainContent'
-```
-
-## File: src/index.css
-```css
-@import 'tailwindcss/base';
-@import 'tailwindcss/components';
-@import 'tailwindcss/utilities';
-
-@layer base {
-  :root {
-    --primary-hsl: 220 84% 60%;
-    --background: 210 40% 96.1%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: var(--primary-hsl);
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 222.2 84% 4.9%;
-    --muted: 210 40% 96%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96%;
-    --accent-foreground: 222.2 84% 4.9%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: var(--primary-hsl);
-    --radius: 1rem;
-  }
-
-  .dark {
-    --background: 240 6% 9%;
-    --foreground: 210 40% 98%;
-    --card: 240 6% 14%;
-    --card-foreground: 210 40% 98%;
-    --popover: 240 6% 12%;
-    --popover-foreground: 210 40% 98%;
-    --primary: var(--primary-hsl);
-    --primary-foreground: 210 40% 98%;
-    --secondary: 240 5% 20%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 240 5% 20%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 240 5% 20%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 240 5% 20%;
-    --input: 240 5% 20%;
-    --ring: var(--primary-hsl);
-  }
-}
-
-@layer base {
-  * {
-    @apply border-border;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
-}
-
-/* Custom scrollbar styles */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-
-::-webkit-scrollbar-track {
-  @apply bg-transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  @apply bg-border rounded-full;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  @apply bg-muted-foreground/50;
-}
-
-/* For UserDropdown */
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-.no-scrollbar {
-  -ms-overflow-style: none; /* IE and Edge */
-  scrollbar-width: none; /* Firefox */
-}
 ```
 
 ## File: src/App.tsx
@@ -3904,6 +3919,126 @@ function App() {
 }
 
 export default App
+```
+
+## File: src/index.css
+```css
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import 'tailwindcss/utilities';
+
+@layer base {
+  :root {
+    --primary-hsl: 220 84% 60%;
+    --background: 210 40% 96.1%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: var(--primary-hsl);
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222.2 84% 4.9%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96%;
+    --accent-foreground: 222.2 84% 4.9%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: var(--primary-hsl);
+    --radius: 1rem;
+  }
+
+  .dark {
+    --background: 240 6% 9%;
+    --foreground: 210 40% 98%;
+    --card: 240 6% 14%;
+    --card-foreground: 210 40% 98%;
+    --popover: 240 6% 12%;
+    --popover-foreground: 210 40% 98%;
+    --primary: var(--primary-hsl);
+    --primary-foreground: 210 40% 98%;
+    --secondary: 240 5% 20%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 240 5% 20%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 240 5% 20%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 240 5% 20%;
+    --input: 240 5% 20%;
+    --ring: var(--primary-hsl);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Custom scrollbar styles */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-border rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-muted-foreground/50;
+}
+
+/* For UserDropdown */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
+
+@layer base {
+  .login-page-theme {
+    --background: hsl(0 0% 100%);
+    --foreground: hsl(0 0% 0%);
+    --skeleton: hsl(0 0% 90%);
+    --border: hsl(220 20% 90%);
+    --btn-border: hsl(214.3 31.8% 91.4%);
+    --input: hsl(220 20% 90%);
+    --radius: 0.5rem;
+  }
+ 
+  .dark .login-page-theme {
+    --background: hsl(222 94% 5%);
+    --foreground: hsl(0 0% 100%);
+    --skeleton: hsl(218 36% 16%);
+    --border: hsl(220 20% 90%);
+    --btn-border: hsl(217 32.6% 17.5%);
+    --input: hsl(219 63% 16%);
+    --radius: 0.5rem;
+  }
+}
+
+@layer components {
+  .g-button {
+    @apply rounded-[var(--radius)] border;
+    border-color: var(--btn-border);
+  }
+}
 ```
 
 ## File: package.json

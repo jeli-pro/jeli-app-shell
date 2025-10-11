@@ -25,13 +25,21 @@ const Input = memo(
 			const wrapper = wrapperRef.current;
 			if (!wrapper) return;
 
+			let animationFrameId: number | null = null;
+
 			const handleMouseMove = (e: MouseEvent) => {
-				if (!wrapper) return;
-				const { left, top } = wrapper.getBoundingClientRect();
-				const x = e.clientX - left;
-				const y = e.clientY - top;
-				wrapper.style.setProperty('--mouse-x', `${x}px`);
-				wrapper.style.setProperty('--mouse-y', `${y}px`);
+				if (animationFrameId) {
+					cancelAnimationFrame(animationFrameId);
+				}
+
+				animationFrameId = requestAnimationFrame(() => {
+					if (!wrapper) return;
+					const { left, top } = wrapper.getBoundingClientRect();
+					const x = e.clientX - left;
+					const y = e.clientY - top;
+					wrapper.style.setProperty('--mouse-x', `${x}px`);
+					wrapper.style.setProperty('--mouse-y', `${y}px`);
+				});
 			};
 
 			const handleMouseEnter = () => {
@@ -42,6 +50,10 @@ const Input = memo(
 			const handleMouseLeave = () => {
 				if (!wrapper) return;
 				wrapper.style.setProperty('--radius', '0px');
+				if (animationFrameId) {
+					cancelAnimationFrame(animationFrameId);
+					animationFrameId = null;
+				}
 			};
 
 			wrapper.addEventListener('mousemove', handleMouseMove);
@@ -52,6 +64,9 @@ const Input = memo(
 				wrapper.removeEventListener('mousemove', handleMouseMove);
 				wrapper.removeEventListener('mouseenter', handleMouseEnter);
 				wrapper.removeEventListener('mouseleave', handleMouseLeave);
+				if (animationFrameId) {
+					cancelAnimationFrame(animationFrameId);
+				}
 			};
 		}, [radius]);
 
@@ -111,15 +126,15 @@ const BoxReveal = memo(function BoxReveal({
 				entries.forEach((entry) => {
 					if (entry.isIntersecting) {
 						gsap.timeline()
-							.set(childRef.current, { opacity: 0 })
+							.set(childRef.current, { opacity: 0, y: 50 })
+							.set(boxRef.current, { transformOrigin: 'right' })
 							.to(boxRef.current, {
-								left: '100%',
+								scaleX: 0,
 								duration: duration ?? 0.5,
 								ease: 'power3.inOut',
 							})
-							.fromTo(
+							.to(
 								childRef.current,
-								{ y: 50, opacity: 0 },
 								{ y: 0, opacity: 1, duration: duration ?? 0.5, ease: 'power3.out' },
 								'-=0.3',
 							);
