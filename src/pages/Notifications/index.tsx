@@ -4,8 +4,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { PageHeader } from "./PageHeader";
-import { useToast } from "./ui/toast";
+import { PageHeader } from "@/components/shared/PageHeader";
+import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import { 
   CheckCheck, 

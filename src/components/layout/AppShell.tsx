@@ -5,7 +5,7 @@ import { EnhancedSidebar } from './EnhancedSidebar'
 import { MainContent } from './MainContent'
 import { RightPane } from './RightPane'
 import { TopBar } from './TopBar'
-import { CommandPalette } from './CommandPalette'
+import { CommandPalette } from '@/components/global/CommandPalette'
 import { useAppStore } from '@/store/appStore'
 import { SIDEBAR_STATES, BODY_STATES } from '@/lib/utils'
 

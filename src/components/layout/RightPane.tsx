@@ -2,19 +2,19 @@ import { forwardRef } from 'react'
 import { SlidersHorizontal, Settings, ChevronRight, LayoutDashboard, ChevronsLeftRight, Component, Bell } from 'lucide-react'
 import { useAppStore } from '@/store/appStore'
 import { cn } from '@/lib/utils'
-import { SettingsContent } from './SettingsContent'
-import { DashboardContent } from './DashboardContent'
-import { ToasterDemo } from './ToasterDemo'
-import { NotificationsPage } from './NotificationsPage'
+import { SettingsContent } from '@/features/settings/SettingsContent'
+import { DashboardContent } from '@/pages/Dashboard'
+import { ToasterDemo } from '@/pages/ToasterDemo'
+import { NotificationsPage } from '@/pages/Notifications'
 
 export const RightPane = forwardRef<HTMLDivElement>((_props, ref) => {
   const { closeSidePane, setIsResizingRightPane, sidePaneContent, setActivePage } = useAppStore();
 
   const contentMap = {
-    main: { title: 'Dashboard', icon: LayoutDashboard, page: 'dashboard', content: <DashboardContent isInSidePane={true} /> },
+    main: { title: 'Dashboard', icon: LayoutDashboard, page: 'dashboard', content: <DashboardContent isInSidePane /> },
     settings: { title: 'Settings', icon: Settings, page: 'settings', content: <SettingsContent /> },
-    toaster: { title: 'Toaster Demo', icon: Component, page: 'toaster', content: <ToasterDemo isInSidePane={true} /> },
-    notifications: { title: 'Notifications', icon: Bell, page: 'notifications', content: <NotificationsPage isInSidePane={true} /> },
+    toaster: { title: 'Toaster Demo', icon: Component, page: 'toaster', content: <ToasterDemo isInSidePane /> },
+    notifications: { title: 'Notifications', icon: Bell, page: 'notifications', content: <NotificationsPage isInSidePane /> },
     details: { title: 'Details Panel', icon: SlidersHorizontal, content: <p className="text-muted-foreground">This is the side pane. It can be used to display contextual information, forms, or actions related to the main content.</p> }
   } as const;
 

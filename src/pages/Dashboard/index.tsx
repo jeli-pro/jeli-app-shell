@@ -20,7 +20,7 @@ import { DemoContent } from './DemoContent';
 import { useAppStore } from '@/store/appStore';
 import { BODY_STATES } from '@/lib/utils';
 import { useAutoAnimateTopBar } from '@/hooks/useAutoAnimateTopBar';
-import { PageHeader } from './PageHeader';
+import { PageHeader } from '@/components/shared/PageHeader';
 import { Card } from '@/components/ui/card';
 
 interface StatsCard {

@@ -8,12 +8,12 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { BODY_STATES, type BodyState } from '@/lib/utils'
-import { DashboardContent } from './DashboardContent'
-import { SettingsPage } from './SettingsPage'
-import { ToasterDemo } from './ToasterDemo'
+import { DashboardContent } from '@/pages/Dashboard'
+import { SettingsPage } from '@/pages/Settings'
+import { ToasterDemo } from '@/pages/ToasterDemo'
 import { useAppStore } from '@/store/appStore'
-import { NotificationsPage } from './NotificationsPage'
-import { ContentInSidePanePlaceholder } from './ContentInSidePanePlaceholder'
+import { NotificationsPage } from '@/pages/Notifications'
+import { ContentInSidePanePlaceholder } from '@/components/shared/ContentInSidePanePlaceholder'
 
 interface MainContentProps {
   bodyState: BodyState

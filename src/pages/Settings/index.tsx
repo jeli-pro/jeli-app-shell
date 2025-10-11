@@ -1,6 +1,6 @@
-import { SettingsContent } from './SettingsContent';
+import { SettingsContent } from '@/features/settings/SettingsContent';
 import { useAutoAnimateTopBar } from '@/hooks/useAutoAnimateTopBar';
-import { PageHeader } from './PageHeader';
+import { PageHeader } from '@/components/shared/PageHeader';
 
 export function SettingsPage() {
   const { onScroll } = useAutoAnimateTopBar();
