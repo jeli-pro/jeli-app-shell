@@ -14,11 +14,13 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAppStore } from '@/store/appStore'
+import { useAppShell } from '@/context/AppShellContext'
 import { Card } from '@/components/ui/card'
 import { useDemoContentAnimations } from './hooks/useDemoContentAnimations.hook'
 
 export function DemoContent() {
-  const { bodyState, sidebarState, isDarkMode, compactMode } = useAppStore()
+  const { bodyState, sidebarState, compactMode } = useAppShell()
+  const { isDarkMode } = useAppStore()
   const contentRef = useRef<HTMLDivElement>(null)
   const cardsRef = useRef<(HTMLDivElement | null)[]>([])
   useDemoContentAnimations(cardsRef);

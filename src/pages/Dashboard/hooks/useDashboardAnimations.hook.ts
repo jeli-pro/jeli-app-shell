@@ -1,13 +1,13 @@
 import { useEffect } from 'react';
 import { gsap } from 'gsap';
-import { useAppStore } from '@/store/appStore';
+import { useAppShell } from '@/context/AppShellContext';
 import { BODY_STATES } from '@/lib/utils';
 
 export function useDashboardAnimations(
   contentRef: React.RefObject<HTMLDivElement>,
   cardsRef: React.MutableRefObject<(HTMLDivElement | null)[]>
 ) {
-  const bodyState = useAppStore((state) => state.bodyState);
+  const { bodyState } = useAppShell();
 
   useEffect(() => {
     if (!contentRef.current) return;

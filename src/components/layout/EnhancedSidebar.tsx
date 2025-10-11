@@ -19,6 +19,8 @@ import {
   Plus
 } from 'lucide-react';
 import { useAppStore, type ActivePage } from '@/store/appStore';
+import { useAppShell } from '@/context/AppShellContext';
+import { BODY_STATES } from '@/lib/utils';
 import {
   Workspaces,
   WorkspaceTrigger,
@@ -83,7 +85,7 @@ interface SidebarProps {
 
 export const EnhancedSidebar = React.forwardRef<HTMLDivElement, SidebarProps>(
   ({ onMouseEnter, onMouseLeave }, ref) => {
-    const { sidebarWidth, compactMode } = useAppStore();
+    const { sidebarWidth, compactMode } = useAppShell();
     const [selectedWorkspace, setSelectedWorkspace] = React.useState(mockWorkspaces[0]);
 
     return (
@@ -173,10 +175,21 @@ interface AppMenuItemProps {
 }
 
 const AppMenuItem: React.FC<AppMenuItemProps> = ({ icon: Icon, label, badge, hasActions, children, isSubItem = false, page, opensInSidePane = false }) => {
-  const { handleNavigation, isPageActive, openSidePane } = useAppStore();
-  const isActive = page ? isPageActive(page) : false;
-  const { compactMode } = useAppStore();
+  const { handleNavigation, activePage } = useAppStore()
+  const { compactMode, bodyState, sidePaneContent, openSidePane } = useAppShell()
   const { isCollapsed } = useSidebar();
+
+  const isPageActive = (page: ActivePage) => {
+    const pageToSidePaneContent: { [key in ActivePage]?: 'main' | 'settings' | 'toaster' | 'notifications' } = {
+      dashboard: 'main',
+      settings: 'settings',
+      toaster: 'toaster',
+      notifications: 'notifications',
+    };
+    return activePage === page || (bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === pageToSidePaneContent[page]);
+  };
+  
+  const isActive = page ? isPageActive(page) : false;
 
   const handleClick = () => {
     if (page) {
@@ -187,7 +200,7 @@ const AppMenuItem: React.FC<AppMenuItemProps> = ({ icon: Icon, label, badge, has
           toaster: 'toaster',
           notifications: 'notifications',
         };
-        if (pageToPaneMap[page]) openSidePane(pageToPaneMap[page]!);
+        if (pageToPaneMap[page]) openSidePane(pageToPaneMap[page]!)
       } else {
         handleNavigation(page);
       }

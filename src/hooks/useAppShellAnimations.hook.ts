@@ -1,20 +1,13 @@
 import { useEffect } from 'react';
 import { gsap } from 'gsap';
-import { useAppStore } from '@/store/appStore';
+import { useAppShell } from '@/context/AppShellContext';
 import { SIDEBAR_STATES, BODY_STATES } from '@/lib/utils';
 
 export function useSidebarAnimations(
   sidebarRef: React.RefObject<HTMLDivElement>,
   resizeHandleRef: React.RefObject<HTMLDivElement>
 ) {
-  const { sidebarState, sidebarWidth, bodyState, reducedMotion } = useAppStore(
-    (state) => ({
-      sidebarState: state.sidebarState,
-      sidebarWidth: state.sidebarWidth,
-      bodyState: state.bodyState,
-      reducedMotion: state.reducedMotion,
-    })
-  );
+  const { sidebarState, sidebarWidth, bodyState, reducedMotion } = useAppShell();
   const animationDuration = reducedMotion ? 0.1 : 0.4;
 
   useEffect(() => {
@@ -71,19 +64,7 @@ export function useBodyStateAnimations(
   rightPaneRef: React.RefObject<HTMLDivElement>,
   topBarContainerRef: React.RefObject<HTMLDivElement>
 ) {
-  const {
-    bodyState,
-    reducedMotion,
-    rightPaneWidth,
-    closeSidePane,
-    isTopBarVisible,
-  } = useAppStore((state) => ({
-    bodyState: state.bodyState,
-    reducedMotion: state.reducedMotion,
-    rightPaneWidth: state.rightPaneWidth,
-    closeSidePane: state.closeSidePane,
-    isTopBarVisible: state.isTopBarVisible,
-  }));
+  const { bodyState, reducedMotion, rightPaneWidth, isTopBarVisible, closeSidePane } = useAppShell();
   const animationDuration = reducedMotion ? 0.1 : 0.4;
 
   useEffect(() => {

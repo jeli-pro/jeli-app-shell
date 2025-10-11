@@ -1,25 +1,19 @@
 import { useEffect } from 'react';
 import { gsap } from 'gsap';
-import { useAppStore } from '@/store/appStore';
+import { useAppShell } from '@/context/AppShellContext';
 
 export function useResizableSidebar(
   sidebarRef: React.RefObject<HTMLDivElement>,
   resizeHandleRef: React.RefObject<HTMLDivElement>
 ) {
-  const { isResizing, setIsResizing, setSidebarWidth } = useAppStore(
-    (state) => ({
-      isResizing: state.isResizing,
-      setIsResizing: state.setIsResizing,
-      setSidebarWidth: state.setSidebarWidth,
-    })
-  );
+  const { isResizing, dispatch } = useAppShell();
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (!isResizing) return;
 
       const newWidth = Math.max(200, Math.min(500, e.clientX));
-      setSidebarWidth(newWidth);
+      dispatch({ type: 'SET_SIDEBAR_WIDTH', payload: newWidth });
 
       if (sidebarRef.current) {
         gsap.set(sidebarRef.current, { width: newWidth });
@@ -30,7 +24,7 @@ export function useResizableSidebar(
     };
 
     const handleMouseUp = () => {
-      setIsResizing(false);
+      dispatch({ type: 'SET_IS_RESIZING', payload: false });
       document.body.style.cursor = '';
       document.body.style.userSelect = '';
     };
@@ -46,30 +40,22 @@ export function useResizableSidebar(
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isResizing, setIsResizing, setSidebarWidth, sidebarRef, resizeHandleRef]);
+  }, [isResizing, dispatch, sidebarRef, resizeHandleRef]);
 }
 
 export function useResizableRightPane() {
-  const {
-    isResizingRightPane,
-    setIsResizingRightPane,
-    setRightPaneWidth,
-  } = useAppStore((state) => ({
-    isResizingRightPane: state.isResizingRightPane,
-    setIsResizingRightPane: state.setIsResizingRightPane,
-    setRightPaneWidth: state.setRightPaneWidth,
-  }));
+  const { isResizingRightPane, dispatch } = useAppShell();
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (!isResizingRightPane) return;
 
       const newWidth = window.innerWidth - e.clientX;
-      setRightPaneWidth(newWidth);
+      dispatch({ type: 'SET_RIGHT_PANE_WIDTH', payload: newWidth });
     };
 
     const handleMouseUp = () => {
-      setIsResizingRightPane(false);
+      dispatch({ type: 'SET_IS_RESIZING_RIGHT_PANE', payload: false });
       document.body.style.cursor = '';
       document.body.style.userSelect = '';
     };
@@ -86,5 +72,5 @@ export function useResizableRightPane() {
       document.removeEventListener('mouseup', handleMouseUp);
       document.body.style.cursor = '';
     };
-  }, [isResizingRightPane, setIsResizingRightPane, setRightPaneWidth]);
+  }, [isResizingRightPane, dispatch]);
 }

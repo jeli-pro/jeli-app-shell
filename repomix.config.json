@@ -23,6 +23,7 @@
     }
   },
   "include": [
+    "README.md",
     "package.json",
     "vite.config.ts",
     "tsconfig.json",

@@ -12,6 +12,7 @@ import { DashboardContent } from '@/pages/Dashboard'
 import { SettingsPage } from '@/pages/Settings'
 import { ToasterDemo } from '@/pages/ToasterDemo'
 import { useAppStore } from '@/store/appStore'
+import { useAppShell } from '@/context/AppShellContext'
 import { NotificationsPage } from '@/pages/Notifications'
 import { ContentInSidePanePlaceholder } from '@/components/shared/ContentInSidePanePlaceholder'
 
@@ -21,7 +22,8 @@ interface MainContentProps {
 
 export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
   ({ onToggleFullscreen }, ref) => {
-    const { sidePaneContent, openSidePane, activePage, setActivePage, bodyState } = useAppStore()
+    const { activePage, setActivePage } = useAppStore()
+    const { bodyState, sidePaneContent, openSidePane } = useAppShell();
     
     const isDashboardInSidePane = sidePaneContent === 'main' && bodyState === BODY_STATES.SIDE_PANE
     const isSettingsInSidePane = sidePaneContent === 'settings' && bodyState === BODY_STATES.SIDE_PANE

@@ -32,7 +32,7 @@ workspace switcher should be as popover, never constrained by sidebar size
 
 === DONE
 
-this project is for creating UI library to be reuse to another project as deps... so please make everything production ready from pluggable architecture to final touch...
+this project is for creating UI library to be reuse to another project as deps... so please make everything production ready from pluggable architecture to readme...
 
 so the lib user can use it with ease, flexibility while also in minimal codebase
 

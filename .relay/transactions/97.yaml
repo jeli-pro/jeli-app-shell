@@ -1,0 +1,1487 @@
+uuid: 18b6287e-e5fd-4188-b7ab-ff70d85a6a58
+projectId: amazing-app-shell
+createdAt: '2025-10-11T00:41:04.287Z'
+gitCommitMsg: >-
+  feat(state): Persist dark mode preference
+
+  Moves the `isDarkMode` state and its toggle logic from `AppShellContext` to
+  the persisted Zustand `appStore`. This ensures that the user's selected theme
+  (dark or light mode) is saved in local storage and restored on subsequent
+  visits.
+
+  - Adds `isDarkMode` and `toggleDarkMode` to `appStore`. - Removes dark mode
+  logic from `AppShellContext`. - Applies the dark mode class to the `<html>`
+  element from a global `useEffect` in `App.tsx`. - Updates all relevant
+  components (`TopBar`, `SettingsContent`, `CommandPalette`, etc.) to source
+  dark mode state from `useAppStore` instead of `useAppShell`.
+promptSummary: >-
+  The user requested that the dark/light mode setting be persisted across
+  browser sessions.
+reasoning:
+  - >-
+    You've got it. Persisting UI state like dark mode is a crucial feature for a
+    good user experience. The current implementation keeps the dark mode state
+    in a React context, which resets on every page load.
+  - >-
+    To fix this, I'll move the `isDarkMode` state and its corresponding toggle
+    function from the `AppShellContext` into the Zustand-based `appStore`, which
+    is already configured with persistence middleware. This ensures the user's
+    theme preference is saved and restored across sessions.
+  - 'Here are the step-by-step changes:'
+  - '### 1. Update Zustand Store for Dark Mode'
+  - >-
+    First, I'll add `isDarkMode` state and a `toggleDarkMode` action to
+    `appStore.ts` and ensure it's included in the persisted state.
+  - '### 2. Remove Dark Mode from AppShell Context'
+  - >-
+    Next, I'll remove all `isDarkMode` logic from `AppShellContext.tsx` since
+    the Zustand store will now manage it.
+  - '### 3. Apply Dark Mode Side Effect Globally'
+  - >-
+    I'll add a `useEffect` to `App.tsx` to watch for changes in the `isDarkMode`
+    state from the store and apply the `.dark` class to the `<html>` element
+    accordingly.
+  - '### 4. Update Components to Use the New State'
+  - >-
+    Finally, I'll refactor all components that previously used `isDarkMode` from
+    the context to get it from the Zustand store instead.
+  - >-
+    With these changes, your dark mode setting will now be persisted, providing
+    a seamless experience for your users.
+operations:
+  - type: write
+    path: src/store/appStore.ts
+    content: >+
+      --- src/store/appStore.ts
+
+      +++ src/store/appStore.ts
+
+      @@ -7,11 +7,13 @@
+         activePage: ActivePage
+         isCommandPaletteOpen: boolean
+         searchTerm: string
+      +  isDarkMode: boolean
+         
+         // Actions
+         setActivePage: (page: ActivePage) => void
+         setCommandPaletteOpen: (open: boolean) => void
+         setSearchTerm: (term: string) => void
+      +  toggleDarkMode: () => void
+         
+         // Composite Actions
+         handleNavigation: (page: ActivePage) => void
+      @@ -21,6 +23,7 @@
+         activePage: 'dashboard' as ActivePage,
+         isCommandPaletteOpen: false,
+         searchTerm: '',
+      +  isDarkMode: false,
+       }
+       
+       export const useAppStore = create<AppState>()(
+      @@ -32,6 +35,7 @@
+             setActivePage: (page) => set({ activePage: page }),
+             setCommandPaletteOpen: (open) => set({ isCommandPaletteOpen: open }),
+             setSearchTerm: (term) => set({ searchTerm: term }),
+      +      toggleDarkMode: () => set((state) => ({ isDarkMode:
+      !state.isDarkMode })),
+             
+             // Composite actions
+             handleNavigation: (page) => {
+      @@ -42,6 +46,7 @@
+             name: 'app-preferences',
+             partialize: (state) => ({
+               activePage: state.activePage,
+      +        isDarkMode: state.isDarkMode,
+               // searchTerm is not persisted
+             }),
+           }
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/context/AppShellContext.tsx
+    content: >+
+      --- src/context/AppShellContext.tsx
+
+      +++ src/context/AppShellContext.tsx
+
+      @@ -17,7 +17,6 @@
+         sidebarState: SidebarState;
+         bodyState: BodyState;
+         sidePaneContent: 'details' | 'settings' | 'main' | 'toaster' | 'notifications';
+      -  isDarkMode: boolean;
+         sidebarWidth: number;
+         rightPaneWidth: number;
+         isResizing: boolean;
+      @@ -32,7 +31,6 @@
+         | { type: 'SET_SIDEBAR_STATE'; payload: SidebarState }
+         | { type: 'SET_BODY_STATE'; payload: BodyState }
+         | { type: 'SET_SIDE_PANE_CONTENT'; payload: AppShellState['sidePaneContent'] }
+      -  | { type: 'TOGGLE_DARK_MODE' }
+         | { type: 'SET_SIDEBAR_WIDTH'; payload: number }
+         | { type: 'SET_RIGHT_PANE_WIDTH'; payload: number }
+         | { type: 'SET_IS_RESIZING'; payload: boolean }
+      @@ -48,7 +46,6 @@
+         sidebarState: SIDEBAR_STATES.EXPANDED,
+         bodyState: BODY_STATES.NORMAL,
+         sidePaneContent: 'details',
+      -  isDarkMode: false,
+         sidebarWidth: 280,
+         rightPaneWidth: typeof window !== 'undefined' ? Math.max(300, Math.round(window.innerWidth * 0.6)) : 400,
+         isResizing: false,
+      @@ -64,7 +61,6 @@
+           case 'SET_SIDEBAR_STATE': return { ...state, sidebarState: action.payload };
+           case 'SET_BODY_STATE': return { ...state, bodyState: action.payload };
+           case 'SET_SIDE_PANE_CONTENT': return { ...state, sidePaneContent: action.payload };
+      -    case 'TOGGLE_DARK_MODE': return { ...state, isDarkMode:
+      !state.isDarkMode };
+           case 'SET_SIDEBAR_WIDTH': return { ...state, sidebarWidth: Math.max(200, Math.min(500, action.payload)) };
+           case 'SET_RIGHT_PANE_WIDTH': return { ...state, rightPaneWidth: Math.max(300, Math.min(window.innerWidth * 0.8, action.payload)) };
+           case 'SET_IS_RESIZING': return { ...state, isResizing: action.payload };
+      @@ -95,11 +91,6 @@
+       export function AppShellProvider({ children }: { children: ReactNode }) {
+         const [state, dispatch] = useReducer(appShellReducer, defaultState);
+       
+      -  // Side effect for dark mode
+
+      -  useEffect(() => {
+
+      -    document.documentElement.classList.toggle('dark', state.isDarkMode);
+
+      -  }, [state.isDarkMode]);
+
+      -
+         // Side effect for primary color
+         useEffect(() => {
+           document.documentElement.style.setProperty('--primary-hsl', state.primaryColor);
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/App.tsx
+    content: |+
+      --- src/App.tsx
+      +++ src/App.tsx
+      @@ -1,8 +1,16 @@
+      +import { useEffect } from 'react'
+       import { AppShell } from './components/layout/AppShell'
+       import { AppShellProvider } from './context/AppShellContext'
+      +import { useAppStore } from './store/appStore'
+       import './index.css'
+       
+       function App() {
+      +  const isDarkMode = useAppStore((state) => state.isDarkMode)
+      +
+      +  useEffect(() => {
+      +    document.documentElement.classList.toggle('dark', isDarkMode);
+      +  }, [isDarkMode]);
+      +
+         return (
+           <div className="h-screen w-screen overflow-hidden bg-background">
+             <AppShellProvider>
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/components/layout/AppShell.tsx
+    content: >+
+      --- src/components/layout/AppShell.tsx
+
+      +++ src/components/layout/AppShell.tsx
+
+      @@ -3,20 +3,21 @@
+       import { MainContent } from './MainContent'
+       import { RightPane } from './RightPane'
+       import { TopBar } from './TopBar'
+       import { CommandPalette } from '@/components/global/CommandPalette';
+      +import { useAppStore } from '@/store/appStore';
+       import { useAppShell } from '@/context/AppShellContext';
+       import { SIDEBAR_STATES } from '@/lib/utils'
+       import { useResizableSidebar, useResizableRightPane } from '@/hooks/useResizablePanes.hook'
+       import { useSidebarAnimations, useBodyStateAnimations } from '@/hooks/useAppShellAnimations.hook'
+       
+       export function AppShell() {
+         const {
+           sidebarState,
+      -    isDarkMode,
+           dispatch,
+           autoExpandSidebar,
+           toggleSidebar,
+           peekSidebar,
+           toggleFullscreen,
+         } = useAppShell();
+         
+      +  const { isDarkMode, toggleDarkMode } = useAppStore();
+         const appRef = useRef<HTMLDivElement>(null)
+         const sidebarRef = useRef<HTMLDivElement>(null)
+         const mainContentRef = useRef<HTMLDivElement>(null)
+      @@ -58,7 +59,7 @@
+                 <div ref={topBarContainerRef} className="absolute inset-x-0 top-0 z-30">
+                   <TopBar
+                     onToggleSidebar={toggleSidebar}
+                     onToggleFullscreen={toggleFullscreen}
+      -              onToggleDarkMode={() => dispatch({ type: 'TOGGLE_DARK_MODE'
+      })}
+
+      +              onToggleDarkMode={toggleDarkMode}
+                   />
+                 </div>
+                 
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/components/layout/TopBar.tsx
+    content: >+
+      --- src/components/layout/TopBar.tsx
+
+      +++ src/components/layout/TopBar.tsx
+
+      @@ -29,12 +29,13 @@
+         onToggleFullscreen,
+         onToggleDarkMode
+       }: TopBarProps) {
+      -  const { bodyState, isDarkMode, openSidePane, sidePaneContent } =
+      useAppShell();
+
+      +  const { bodyState, openSidePane, sidePaneContent } = useAppShell();
+         const { 
+           activePage,
+           setActivePage,
+           searchTerm,
+           setCommandPaletteOpen,
+           setSearchTerm,
+      +    isDarkMode,
+         } = useAppStore()
+       
+         const [isSearchFocused, setIsSearchFocused] = useState(false)
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/features/settings/SettingsContent.tsx
+    content: >+
+      --- src/features/settings/SettingsContent.tsx
+
+      +++ src/features/settings/SettingsContent.tsx
+
+      @@ -14,6 +14,7 @@
+       } from 'lucide-react'
+       import { cn } from '@/lib/utils'
+       import { useAppShell } from '@/context/AppShellContext'
+      +import { useAppStore } from '@/store/appStore'
+       import { SettingsToggle } from './SettingsToggle'
+       import { SettingsSection } from './SettingsSection'
+       
+      @@ -28,6 +29,7 @@
+       export function SettingsContent() {
+         const shell = useAppShell()
+         const dispatch = shell.dispatch
+      +  const { isDarkMode, toggleDarkMode } = useAppStore()
+       
+         const [tempSidebarWidth, setTempSidebarWidth] = useState(shell.sidebarWidth)
+       
+      @@ -51,11 +53,11 @@
+             <SettingsSection icon={<Palette />} title="Appearance">
+               {/* Dark Mode */}
+               <SettingsToggle
+      -          icon={shell.isDarkMode ? <Moon className="w-4 h-4" /> : <Sun
+      className="w-4 h-4" />}
+
+      +          icon={isDarkMode ? <Moon className="w-4 h-4" /> : <Sun
+      className="w-4 h-4" />}
+                 title="Dark Mode"
+                 description="Toggle dark theme"
+      -          checked={shell.isDarkMode}
+
+      -          onCheckedChange={() => dispatch({ type: 'TOGGLE_DARK_MODE' })}
+
+      +          checked={isDarkMode}
+
+      +          onCheckedChange={toggleDarkMode}
+               />
+       
+               {/* Compact Mode */}
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/components/global/CommandPalette.tsx
+    content: >+
+      --- src/components/global/CommandPalette.tsx
+
+      +++ src/components/global/CommandPalette.tsx
+
+      @@ -10,12 +10,14 @@
+       import { Home, Settings, Moon, Sun, Monitor, Smartphone, PanelRight, Maximize, Component, Bell } from 'lucide-react'
+       
+       export function CommandPalette() {
+      -  const { isDarkMode, dispatch, toggleFullscreen, openSidePane } =
+      useAppShell();
+
+      +  const { dispatch, toggleFullscreen, openSidePane } = useAppShell();
+         const {
+           isCommandPaletteOpen,
+           setCommandPaletteOpen,
+           setActivePage,
+      +    isDarkMode,
+
+      +    toggleDarkMode,
+         } = useAppStore()
+         useCommandPaletteToggle()
+         
+      @@ -48,7 +50,7 @@
+               </CommandGroup>
+               <CommandSeparator />
+               <CommandGroup heading="Actions">
+      -          <CommandItem onSelect={() => runCommand(() => dispatch({ type:
+      'TOGGLE_DARK_MODE' }))}>
+
+      +          <CommandItem onSelect={() => runCommand(toggleDarkMode)}>
+                   {isDarkMode ? <Sun className="mr-2 h-4 w-4" /> : <Moon className="mr-2 h-4 w-4" />}
+                   <span>Toggle Theme</span>
+                   <CommandShortcut>⌘T</CommandShortcut>
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/Dashboard/DemoContent.tsx
+    content: >+
+      --- src/pages/Dashboard/DemoContent.tsx
+
+      +++ src/pages/Dashboard/DemoContent.tsx
+
+      @@ -13,12 +13,13 @@
+         Settings
+       } from 'lucide-react'
+       import { cn } from '@/lib/utils'
+      +import { useAppStore } from '@/store/appStore'
+       import { useAppShell } from '@/context/AppShellContext'
+       import { Card } from '@/components/ui/card'
+       import { useDemoContentAnimations } from './hooks/useDemoContentAnimations.hook'
+       
+       export function DemoContent() {
+      -  const { bodyState, sidebarState, isDarkMode, compactMode } =
+      useAppShell()
+
+      +  const { bodyState, sidebarState, compactMode } = useAppShell()
+
+      +  const { isDarkMode } = useAppStore()
+         const contentRef = useRef<HTMLDivElement>(null)
+         const cardsRef = useRef<(HTMLDivElement | null)[]>([])
+         useDemoContentAnimations(cardsRef);
+
+    patchStrategy: standard-diff
+snapshot:
+  src/store/appStore.ts: >-
+    import { create } from 'zustand'
+
+    import { persist } from 'zustand/middleware'
+
+
+    export type ActivePage = 'dashboard' | 'settings' | 'toaster' |
+    'notifications';
+
+
+    interface AppState {
+      // UI States
+      activePage: ActivePage
+      isCommandPaletteOpen: boolean
+      searchTerm: string
+      
+      // Actions
+      setActivePage: (page: ActivePage) => void
+      setCommandPaletteOpen: (open: boolean) => void
+      setSearchTerm: (term: string) => void
+      
+      // Composite Actions
+      handleNavigation: (page: ActivePage) => void
+    }
+
+
+    const defaultState = {
+      activePage: 'dashboard' as ActivePage,
+      isCommandPaletteOpen: false,
+      searchTerm: '',
+    }
+
+
+    export const useAppStore = create<AppState>()(
+      persist(
+        (set) => ({
+          ...defaultState,
+          
+          // Basic setters
+          setActivePage: (page) => set({ activePage: page }),
+          setCommandPaletteOpen: (open) => set({ isCommandPaletteOpen: open }),
+          setSearchTerm: (term) => set({ searchTerm: term }),
+          
+          // Composite actions
+          handleNavigation: (page) => {
+            set({ activePage: page });
+          },
+        }),
+        {
+          name: 'app-preferences',
+          partialize: (state) => ({
+            activePage: state.activePage,
+            // searchTerm is not persisted
+          }),
+        }
+      )
+    )
+  src/App.tsx: |-
+    import { AppShell } from './components/layout/AppShell'
+    import { AppShellProvider } from './context/AppShellContext'
+    import './index.css'
+
+    function App() {
+      return (
+        <div className="h-screen w-screen overflow-hidden bg-background">
+          <AppShellProvider>
+            <AppShell />
+          </AppShellProvider>
+        </div>
+      )
+    }
+
+    export default App
+  src/context/AppShellContext.tsx: >-
+    import {
+      createContext,
+      useContext,
+      useReducer,
+      useEffect,
+      useMemo,
+      type ReactNode,
+      type Dispatch,
+    } from 'react';
+
+    import { SIDEBAR_STATES, BODY_STATES, type SidebarState, type BodyState }
+    from '@/lib/utils';
+
+
+    // --- State and Action Types ---
+
+
+    interface AppShellState {
+      sidebarState: SidebarState;
+      bodyState: BodyState;
+      sidePaneContent: 'details' | 'settings' | 'main' | 'toaster' | 'notifications';
+      isDarkMode: boolean;
+      sidebarWidth: number;
+      rightPaneWidth: number;
+      isResizing: boolean;
+      isResizingRightPane: boolean;
+      isTopBarVisible: boolean;
+      autoExpandSidebar: boolean;
+      reducedMotion: boolean;
+      compactMode: boolean;
+      primaryColor: string;
+    }
+
+
+    type AppShellAction =
+      | { type: 'SET_SIDEBAR_STATE'; payload: SidebarState }
+      | { type: 'SET_BODY_STATE'; payload: BodyState }
+      | { type: 'SET_SIDE_PANE_CONTENT'; payload: AppShellState['sidePaneContent'] }
+      | { type: 'TOGGLE_DARK_MODE' }
+      | { type: 'SET_SIDEBAR_WIDTH'; payload: number }
+      | { type: 'SET_RIGHT_PANE_WIDTH'; payload: number }
+      | { type: 'SET_IS_RESIZING'; payload: boolean }
+      | { type: 'SET_IS_RESIZING_RIGHT_PANE'; payload: boolean }
+      | { type: 'SET_TOP_BAR_VISIBLE'; payload: boolean }
+      | { type: 'SET_AUTO_EXPAND_SIDEBAR'; payload: boolean }
+      | { type: 'SET_REDUCED_MOTION'; payload: boolean }
+      | { type: 'SET_COMPACT_MODE'; payload: boolean }
+      | { type: 'SET_PRIMARY_COLOR'; payload: string }
+      | { type: 'RESET_TO_DEFAULTS' };
+
+    // --- Reducer ---
+
+
+    const defaultState: AppShellState = {
+      sidebarState: SIDEBAR_STATES.EXPANDED,
+      bodyState: BODY_STATES.NORMAL,
+      sidePaneContent: 'details',
+      isDarkMode: false,
+      sidebarWidth: 280,
+      rightPaneWidth: typeof window !== 'undefined' ? Math.max(300, Math.round(window.innerWidth * 0.6)) : 400,
+      isResizing: false,
+      isResizingRightPane: false,
+      isTopBarVisible: true,
+      autoExpandSidebar: true,
+      reducedMotion: false,
+      compactMode: false,
+      primaryColor: '220 84% 60%',
+    };
+
+
+    function appShellReducer(state: AppShellState, action: AppShellAction):
+    AppShellState {
+      switch (action.type) {
+        case 'SET_SIDEBAR_STATE': return { ...state, sidebarState: action.payload };
+        case 'SET_BODY_STATE': return { ...state, bodyState: action.payload };
+        case 'SET_SIDE_PANE_CONTENT': return { ...state, sidePaneContent: action.payload };
+        case 'TOGGLE_DARK_MODE': return { ...state, isDarkMode: !state.isDarkMode };
+        case 'SET_SIDEBAR_WIDTH': return { ...state, sidebarWidth: Math.max(200, Math.min(500, action.payload)) };
+        case 'SET_RIGHT_PANE_WIDTH': return { ...state, rightPaneWidth: Math.max(300, Math.min(window.innerWidth * 0.8, action.payload)) };
+        case 'SET_IS_RESIZING': return { ...state, isResizing: action.payload };
+        case 'SET_IS_RESIZING_RIGHT_PANE': return { ...state, isResizingRightPane: action.payload };
+        case 'SET_TOP_BAR_VISIBLE': return { ...state, isTopBarVisible: action.payload };
+        case 'SET_AUTO_EXPAND_SIDEBAR': return { ...state, autoExpandSidebar: action.payload };
+        case 'SET_REDUCED_MOTION': return { ...state, reducedMotion: action.payload };
+        case 'SET_COMPACT_MODE': return { ...state, compactMode: action.payload };
+        case 'SET_PRIMARY_COLOR': return { ...state, primaryColor: action.payload };
+        case 'RESET_TO_DEFAULTS': return defaultState;
+        default: return state;
+      }
+    }
+
+
+    // --- Context and Provider ---
+
+
+    interface AppShellContextValue extends AppShellState {
+      dispatch: Dispatch<AppShellAction>;
+      // Composite actions for convenience
+      toggleSidebar: () => void;
+      hideSidebar: () => void;
+      showSidebar: () => void;
+      peekSidebar: () => void;
+      toggleFullscreen: () => void;
+      openSidePane: (content: AppShellState['sidePaneContent']) => void;
+      closeSidePane: () => void;
+      resetToDefaults: () => void;
+    }
+
+
+    const AppShellContext = createContext<AppShellContextValue | null>(null);
+
+
+    export function AppShellProvider({ children }: { children: ReactNode }) {
+      const [state, dispatch] = useReducer(appShellReducer, defaultState);
+
+      // Side effect for dark mode
+      useEffect(() => {
+        document.documentElement.classList.toggle('dark', state.isDarkMode);
+      }, [state.isDarkMode]);
+
+      // Side effect for primary color
+      useEffect(() => {
+        document.documentElement.style.setProperty('--primary-hsl', state.primaryColor);
+      }, [state.primaryColor]);
+
+      // Memoized composite actions
+      const actions = useMemo(() => ({
+        toggleSidebar: () => {
+          const current = state.sidebarState;
+          if (current === SIDEBAR_STATES.HIDDEN) dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.COLLAPSED });
+          else if (current === SIDEBAR_STATES.COLLAPSED) dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.EXPANDED });
+          else if (current === SIDEBAR_STATES.EXPANDED) dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.COLLAPSED });
+        },
+        hideSidebar: () => dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.HIDDEN }),
+        showSidebar: () => dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.EXPANDED }),
+        peekSidebar: () => dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.PEEK }),
+        toggleFullscreen: () => {
+          const current = state.bodyState;
+          dispatch({ type: 'SET_BODY_STATE', payload: current === BODY_STATES.FULLSCREEN ? BODY_STATES.NORMAL : BODY_STATES.FULLSCREEN });
+        },
+        openSidePane: (content: AppShellState['sidePaneContent']) => {
+          if (state.bodyState === BODY_STATES.SIDE_PANE && state.sidePaneContent === content) {
+            // If it's open with same content, close it.
+            dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.NORMAL });
+          } else {
+            // If closed, or different content, open with new content.
+            dispatch({ type: 'SET_SIDE_PANE_CONTENT', payload: content });
+            dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.SIDE_PANE });
+          }
+        },
+        closeSidePane: () => dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.NORMAL }),
+        resetToDefaults: () => dispatch({ type: 'RESET_TO_DEFAULTS' }),
+      }), [state.sidebarState, state.bodyState]);
+
+      const value = useMemo(() => ({ ...state, dispatch, ...actions }), [state, actions]);
+
+      return (
+        <AppShellContext.Provider value={value}>
+          {children}
+        </AppShellContext.Provider>
+      );
+    }
+
+
+    // --- Hook ---
+
+
+    export function useAppShell() {
+      const context = useContext(AppShellContext);
+      if (!context) {
+        throw new Error('useAppShell must be used within an AppShellProvider');
+      }
+      return context;
+    }
+  src/components/global/CommandPalette.tsx: >-
+    import {
+      CommandDialog,
+      CommandEmpty,
+      CommandGroup,
+      CommandInput,
+      CommandItem,
+      CommandList,
+      CommandSeparator,
+      CommandShortcut,
+    } from '@/components/ui/command'
+
+    import { useAppStore, type ActivePage } from '@/store/appStore'
+
+    import { useAppShell } from '@/context/AppShellContext'
+
+    import { useCommandPaletteToggle } from
+    '@/hooks/useCommandPaletteToggle.hook'
+
+    import { Home, Settings, Moon, Sun, Monitor, Smartphone, PanelRight,
+    Maximize, Component, Bell } from 'lucide-react'
+
+
+    export function CommandPalette() {
+      const { isDarkMode, dispatch, toggleFullscreen, openSidePane } = useAppShell();
+      const {
+        isCommandPaletteOpen,
+        setCommandPaletteOpen,
+        setActivePage,
+      } = useAppStore()
+      useCommandPaletteToggle()
+      
+      const runCommand = (command: () => void) => {
+        setCommandPaletteOpen(false)
+        command()
+      }
+
+      return (
+        <CommandDialog open={isCommandPaletteOpen} onOpenChange={setCommandPaletteOpen}>
+          <CommandInput placeholder="Type a command or search..." />
+          <CommandList>
+            <CommandEmpty>No results found.</CommandEmpty>
+            <CommandGroup heading="Navigation">
+              <CommandItem onSelect={() => runCommand(() => setActivePage('dashboard'))}>
+                <Home className="mr-2 h-4 w-4" />
+                <span>Go to Dashboard</span>
+                <CommandShortcut>G D</CommandShortcut>
+              </CommandItem>
+              <CommandItem onSelect={() => runCommand(() => setActivePage('settings'))}>
+                <Settings className="mr-2 h-4 w-4" />
+                <span>Go to Settings</span>
+                <CommandShortcut>G S</CommandShortcut>
+              </CommandItem>
+              <CommandItem onSelect={() => runCommand(() => setActivePage('toaster'))}>
+                <Component className="mr-2 h-4 w-4" />
+                <span>Go to Toaster Demo</span>
+                <CommandShortcut>G T</CommandShortcut>
+              </CommandItem>
+              <CommandItem onSelect={() => runCommand(() => setActivePage('notifications' as ActivePage))}>
+                <Bell className="mr-2 h-4 w-4" />
+                <span>Go to Notifications</span>
+                <CommandShortcut>G N</CommandShortcut>
+              </CommandItem>
+            </CommandGroup>
+            <CommandSeparator />
+            <CommandGroup heading="Actions">
+              <CommandItem onSelect={() => runCommand(() => dispatch({ type: 'TOGGLE_DARK_MODE' }))}>
+                {isDarkMode ? <Sun className="mr-2 h-4 w-4" /> : <Moon className="mr-2 h-4 w-4" />}
+                <span>Toggle Theme</span>
+                <CommandShortcut>⌘T</CommandShortcut>
+              </CommandItem>
+              <CommandItem onSelect={() => runCommand(toggleFullscreen)}>
+                <Maximize className="mr-2 h-4 w-4" />
+                <span>Toggle Fullscreen</span>
+                <CommandShortcut>⌘F</CommandShortcut>
+              </CommandItem>
+              <CommandItem onSelect={() => runCommand(() => openSidePane('settings'))}>
+                <PanelRight className="mr-2 h-4 w-4" />
+                <span>Open Settings in Side Pane</span>
+                <CommandShortcut>⌥S</CommandShortcut>
+              </CommandItem>
+            </CommandGroup>
+            <CommandSeparator />
+            <CommandGroup heading="Preferences">
+              <CommandItem onSelect={() => runCommand(() => dispatch({ type: 'SET_COMPACT_MODE', payload: true }))}>
+                <Smartphone className="mr-2 h-4 w-4" />
+                <span>Enable Compact Mode</span>
+                <CommandShortcut>⌘C</CommandShortcut>
+              </CommandItem>
+              <CommandItem onSelect={() => runCommand(() => dispatch({ type: 'SET_COMPACT_MODE', payload: false }))}>
+                <Monitor className="mr-2 h-4 w-4" />
+                <span>Disable Compact Mode</span>
+                <CommandShortcut>⇧⌘C</CommandShortcut>
+              </CommandItem>
+            </CommandGroup>
+          </CommandList>
+        </CommandDialog>
+      )
+    }
+  src/components/layout/TopBar.tsx: |-
+    import { useState } from 'react'
+    import {
+      Menu, 
+      Maximize, 
+      Minimize, 
+      Moon, 
+      Sun,
+      Settings,
+      Command,
+      Zap,
+      ChevronRight,
+      Search,
+      Filter,
+      Plus,
+      PanelRight,
+    } from 'lucide-react'
+    import { cn } from '@/lib/utils'
+    import { BODY_STATES } from '@/lib/utils'
+    import { useAppStore } from '@/store/appStore'
+    import { useAppShell } from '@/context/AppShellContext'
+    import { UserDropdown } from './UserDropdown'
+
+    interface TopBarProps {
+      onToggleSidebar: () => void
+      onToggleFullscreen: () => void
+      onToggleDarkMode: () => void
+    }
+
+    export function TopBar({
+      onToggleSidebar,
+      onToggleFullscreen,
+      onToggleDarkMode
+    }: TopBarProps) {
+      const { bodyState, isDarkMode, openSidePane, sidePaneContent } = useAppShell();
+      const { 
+        activePage,
+        setActivePage,
+        searchTerm,
+        setCommandPaletteOpen,
+        setSearchTerm,
+      } = useAppStore()
+
+      const [isSearchFocused, setIsSearchFocused] = useState(false)
+
+      const handleSettingsClick = () => {
+        const isSettingsInSidePane = bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === 'settings'
+
+        // If we're on the settings page and it's not in the side pane, treat this as a "minimize" action.
+        if (activePage === 'settings' && !isSettingsInSidePane) {
+          openSidePane('settings')
+          setActivePage('dashboard');
+        } else {
+          // In all other cases (on dashboard page, or settings already in pane),
+          // just toggle the settings side pane.
+          openSidePane('settings')
+        }
+      }
+
+      const handleMoveToSidePane = () => {
+        const mapping = { dashboard: 'main', settings: 'settings', toaster: 'toaster', notifications: 'notifications' } as const;
+        openSidePane(mapping[activePage]);
+        if (activePage !== 'dashboard') setActivePage('dashboard');
+      };
+
+      return (
+        <div className={cn(
+          "h-20 bg-background border-b border-border flex items-center justify-between px-6 z-50 gap-4",
+          {
+            'transition-all duration-300 ease-in-out': activePage === 'dashboard',
+          }
+        )}>
+          {/* Left Section - Sidebar Controls & Breadcrumbs */}
+          <div className="flex items-center gap-4">
+            {/* Sidebar Controls */}
+            <button
+              onClick={onToggleSidebar}
+              className={cn(
+                "h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors"
+              )}
+              title="Toggle Sidebar"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+
+            {/* Breadcrumbs */}
+            <div className={cn("hidden md:flex items-center gap-2 text-sm transition-opacity", {
+              "opacity-0 pointer-events-none": isSearchFocused && activePage === 'dashboard'
+            })}>
+              <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">Home</a>
+              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+              <span className="font-medium text-foreground capitalize">{activePage}</span>
+            </div>
+          </div>
+
+          {/* Right Section - Search, page controls, and global controls */}
+          <div className={cn("flex items-center gap-3", isSearchFocused && activePage === 'dashboard' ? 'flex-1' : '')}>
+            {/* Page-specific: Dashboard search and actions */}
+            {activePage === 'dashboard' && (
+              <div className="flex items-center gap-2 flex-1 justify-end">
+                <div className={cn("relative transition-all duration-300 ease-in-out", isSearchFocused ? 'flex-1 max-w-lg' : 'w-auto')}>
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4 pointer-events-none" />
+                  <input
+                    type="text"
+                    placeholder="Search..."
+                    value={searchTerm}
+                    onFocus={() => setIsSearchFocused(true)}
+                    onBlur={() => setIsSearchFocused(false)}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className={cn(
+                      "pl-9 pr-4 py-2 h-10 border-none rounded-lg bg-card focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300 ease-in-out w-full",
+                      isSearchFocused ? 'bg-background' : 'w-48'
+                    )}
+                  />
+                </div>
+                 <button className="h-10 w-10 flex-shrink-0 flex items-center justify-center hover:bg-accent rounded-full transition-colors">
+                  <Filter className="w-5 h-5" />
+                </button>
+                 <button className="bg-primary text-primary-foreground px-4 py-2 rounded-full hover:bg-primary/90 transition-colors flex items-center gap-2 h-10 flex-shrink-0">
+                  <Plus className="w-5 h-5" />
+                  <span className={cn(isSearchFocused ? 'hidden sm:inline' : 'inline')}>New Project</span>
+                </button>
+              </div>
+            )}
+            
+            {/* Page-specific: Move to side pane */}
+            <div className={cn('flex items-center', isSearchFocused && activePage === 'dashboard' ? 'hidden md:flex' : '')}>
+              {['dashboard', 'settings', 'toaster', 'notifications'].includes(activePage) && (
+                <button onClick={handleMoveToSidePane} className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors" title="Move to Side Pane"><PanelRight className="w-5 h-5" /></button>
+              )}
+            </div>
+
+            {/* Separator */}
+            <div className={cn(
+              'w-px h-6 bg-border mx-2', 
+              !['dashboard', 'settings', 'toaster', 'notifications'].includes(activePage) || (isSearchFocused && activePage === 'dashboard') ? 'hidden' : ''
+            )} />
+
+            {/* Quick Actions */}
+            <div className={cn('flex items-center gap-3', isSearchFocused && activePage === 'dashboard' ? 'hidden lg:flex' : '')}>
+
+              <button
+                onClick={() => setCommandPaletteOpen(true)}
+                className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+                title="Command Palette (Ctrl+K)"
+              >
+                <Command className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              </button>
+
+            <button
+              className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+              title="Quick Actions"
+            >
+              <Zap className="w-5 h-5 group-hover:scale-110 transition-transform" />
+            </button>
+
+            {/* Body State Controls */}
+            <button
+              onClick={() => openSidePane('details')}
+              className={cn(
+                "h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group",
+                bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === 'details' && "bg-accent"
+              )}
+              title="Toggle Side Pane"
+            >
+              <div className="w-5 h-5 flex group-hover:scale-110 transition-transform">
+                <div className="w-1/2 h-full bg-current opacity-60 rounded-l-sm" />
+                <div className="w-1/2 h-full bg-current rounded-r-sm" />
+              </div>
+            </button>
+
+            <button
+              onClick={onToggleFullscreen}
+              className={cn(
+                "h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group",
+                bodyState === BODY_STATES.FULLSCREEN && "bg-accent"
+              )}
+              title="Toggle Fullscreen"
+            >
+              {bodyState === BODY_STATES.FULLSCREEN ? (
+                <Minimize className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              ) : (
+                <Maximize className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              )}
+            </button>
+
+            <div className="w-px h-6 bg-border mx-2" />
+
+            {/* Theme and Settings */}
+            <button
+              onClick={onToggleDarkMode}
+              className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+              title="Toggle Dark Mode"
+            >
+              {isDarkMode ? (
+                <Sun className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              ) : (
+                <Moon className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              )}
+            </button>
+
+            <button
+              onClick={handleSettingsClick}
+              className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+              title="Settings"
+            >
+              <Settings className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
+            </button>
+            <UserDropdown />
+            </div>
+          </div>
+        </div>
+      )
+    }
+  src/components/layout/AppShell.tsx: >-
+    import { useRef } from 'react'
+
+    import { cn } from '@/lib/utils'
+
+    import { EnhancedSidebar } from './EnhancedSidebar'
+
+    import { MainContent } from './MainContent'
+
+    import { RightPane } from './RightPane'
+
+    import { TopBar } from './TopBar'
+
+    import { CommandPalette } from '@/components/global/CommandPalette';
+
+    import { useAppShell } from '@/context/AppShellContext';
+
+    import { SIDEBAR_STATES } from '@/lib/utils'
+
+    import { useResizableSidebar, useResizableRightPane } from
+    '@/hooks/useResizablePanes.hook'
+
+    import { useSidebarAnimations, useBodyStateAnimations } from
+    '@/hooks/useAppShellAnimations.hook'
+
+
+    export function AppShell() {
+      const {
+        sidebarState,
+        isDarkMode,
+        dispatch,
+        autoExpandSidebar,
+        toggleSidebar,
+        peekSidebar,
+        toggleFullscreen,
+      } = useAppShell();
+      
+      const appRef = useRef<HTMLDivElement>(null)
+      const sidebarRef = useRef<HTMLDivElement>(null)
+      const mainContentRef = useRef<HTMLDivElement>(null)
+      const rightPaneRef = useRef<HTMLDivElement>(null)
+      const resizeHandleRef = useRef<HTMLDivElement>(null)
+      const topBarContainerRef = useRef<HTMLDivElement>(null)
+
+      // Custom hooks for logic
+      useResizableSidebar(sidebarRef, resizeHandleRef);
+      useResizableRightPane();
+      useSidebarAnimations(sidebarRef, resizeHandleRef);
+      useBodyStateAnimations(appRef, mainContentRef, rightPaneRef, topBarContainerRef);
+
+      return (
+        <div 
+          ref={appRef}
+          className={cn(
+            "relative h-screen w-screen overflow-hidden bg-background transition-colors duration-300",
+            isDarkMode && "dark"
+          )}
+        >
+          <div className="flex h-screen overflow-hidden">
+            {/* Enhanced Sidebar */}
+            <EnhancedSidebar
+              ref={sidebarRef}
+              onMouseEnter={() => {
+                if (autoExpandSidebar && sidebarState === SIDEBAR_STATES.COLLAPSED) {
+                  peekSidebar()
+                }
+              }}
+              onMouseLeave={() => {
+                if (autoExpandSidebar && sidebarState === SIDEBAR_STATES.PEEK) {
+                  dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.COLLAPSED });
+                }
+              }}
+            />
+
+            {/* Resize Handle */}
+            {sidebarState !== SIDEBAR_STATES.HIDDEN && (
+              <div
+                ref={resizeHandleRef}
+                className={cn(
+                  "absolute top-0 w-2 h-full bg-transparent hover:bg-primary/20 cursor-col-resize z-50 transition-colors duration-200 group -translate-x-1/2"
+                )}
+                onMouseDown={(e) => {
+                  e.preventDefault()
+                  dispatch({ type: 'SET_IS_RESIZING', payload: true });
+                }}
+              >
+                <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200 mx-auto" />
+              </div>
+            )}
+
+            {/* Main Content Area */}
+            <div className="relative flex-1 overflow-hidden bg-background">
+              <div ref={topBarContainerRef} className="absolute inset-x-0 top-0 z-30">
+                <TopBar
+                  onToggleSidebar={toggleSidebar}
+                  onToggleFullscreen={toggleFullscreen}
+                  onToggleDarkMode={() => dispatch({ type: 'TOGGLE_DARK_MODE' })}
+                />
+              </div>
+              
+              {/* Main Content */}
+              <MainContent
+                ref={mainContentRef}
+                onToggleFullscreen={toggleFullscreen}
+              />
+            </div>
+          </div>
+          <RightPane ref={rightPaneRef} />
+          <CommandPalette />
+        </div>
+      )
+    }
+  src/features/settings/SettingsContent.tsx: |-
+    import { useState } from 'react'
+    import { 
+      Moon, 
+      Sun, 
+      Zap, 
+      Eye, 
+      Minimize2, 
+      RotateCcw,
+      Monitor,
+      Smartphone,
+      Palette,
+      Accessibility,
+      Check
+    } from 'lucide-react'
+    import { cn } from '@/lib/utils'
+    import { useAppShell } from '@/context/AppShellContext'
+    import { SettingsToggle } from './SettingsToggle'
+    import { SettingsSection } from './SettingsSection'
+
+    const colorPresets = [
+      { name: 'Default Blue', value: '220 84% 60%' },
+      { name: 'Rose', value: '346.8 77.2% 49.8%' },
+      { name: 'Green', value: '142.1 76.2% 36.3%' },
+      { name: 'Orange', value: '24.6 95% 53.1%' },
+      { name: 'Violet', value: '262.1 83.3% 57.8%' },
+      { name: 'Slate', value: '215.3 20.3% 65.1%' }
+    ]
+
+    export function SettingsContent() {
+      const shell = useAppShell()
+      const dispatch = shell.dispatch
+
+      const [tempSidebarWidth, setTempSidebarWidth] = useState(shell.sidebarWidth)
+
+      const handleSidebarWidthChange = (width: number) => {
+        setTempSidebarWidth(width)
+        dispatch({ type: 'SET_SIDEBAR_WIDTH', payload: width });
+      }
+
+      const handleReset = () => {
+        shell.resetToDefaults();
+        setTempSidebarWidth(280); // Reset temp state as well
+      }
+
+      const setCompactMode = (payload: boolean) => dispatch({ type: 'SET_COMPACT_MODE', payload });
+      const setReducedMotion = (payload: boolean) => dispatch({ type: 'SET_REDUCED_MOTION', payload });
+      const setSidebarWidth = (payload: number) => {
+        dispatch({ type: 'SET_SIDEBAR_WIDTH', payload });
+        setTempSidebarWidth(payload);
+      };
+
+      return (
+        <div className="space-y-10">
+          {/* Appearance */}
+          <SettingsSection icon={<Palette />} title="Appearance">
+            {/* Dark Mode */}
+            <SettingsToggle
+              icon={shell.isDarkMode ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+              title="Dark Mode"
+              description="Toggle dark theme"
+              checked={shell.isDarkMode}
+              onCheckedChange={() => dispatch({ type: 'TOGGLE_DARK_MODE' })}
+            />
+
+            {/* Compact Mode */}
+            <SettingsToggle
+              icon={<Minimize2 className="w-4 h-4" />}
+              title="Compact Mode"
+              description="Reduce spacing and sizes"
+              checked={shell.compactMode}
+              onCheckedChange={(payload) => dispatch({ type: 'SET_COMPACT_MODE', payload })}
+            />
+
+            {/* Accent Color */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <Palette className="w-4 h-4" />
+                <div>
+                  <p className="font-medium">Accent Color</p>
+                  <p className="text-sm text-muted-foreground">Customize the main theme color</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-6 gap-2 pt-1">
+                {colorPresets.map(color => {
+                  const isActive = color.value === shell.primaryColor
+                  return (
+                    <button
+                      key={color.name}
+                      title={color.name}
+                      onClick={() => dispatch({ type: 'SET_PRIMARY_COLOR', payload: color.value })}
+                      className={cn(
+                        "w-8 h-8 rounded-full border-2 transition-transform hover:scale-110 flex items-center justify-center",
+                        isActive ? 'border-primary' : 'border-transparent'
+                      )}
+                      style={{ backgroundColor: `hsl(${color.value})` }}
+                    >{isActive && <Check className="w-5 h-5 text-primary-foreground" />}</button>
+                  )
+                })}
+              </div>
+            </div>
+          </SettingsSection>
+
+          {/* Behavior */}
+          <SettingsSection icon={<Zap />} title="Behavior">
+            {/* Auto Expand Sidebar */}
+            <SettingsToggle
+              icon={<Eye className="w-4 h-4" />}
+              title="Auto Expand Sidebar"
+              description="Expand on hover when collapsed"
+              checked={shell.autoExpandSidebar}
+              onCheckedChange={(payload) => dispatch({ type: 'SET_AUTO_EXPAND_SIDEBAR', payload })}
+            />
+
+            {/* Sidebar Width */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <Monitor className="w-4 h-4" />
+                <div>
+                  <p className="font-medium">Sidebar Width</p>
+                  <p className="text-sm text-muted-foreground">{tempSidebarWidth}px</p>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <input
+                  type="range"
+                  min="200"
+                  max="500"
+                  step="10"
+                  value={tempSidebarWidth}
+                  onChange={(e) => handleSidebarWidthChange(Number(e.target.value))}
+                  className="w-full h-1.5 bg-muted rounded-lg appearance-none cursor-pointer slider"
+                />
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>200px</span>
+                  <span>350px</span>
+                  <span>500px</span>
+                </div>
+              </div>
+            </div>
+          </SettingsSection>
+
+          {/* Accessibility */}
+          <SettingsSection icon={<Accessibility />} title="Accessibility">
+            {/* Reduced Motion */}
+            <SettingsToggle
+              icon={<Zap className="w-4 h-4" />}
+              title="Reduced Motion"
+              description="Minimize animations"
+              checked={shell.reducedMotion}
+              onCheckedChange={(payload) => dispatch({ type: 'SET_REDUCED_MOTION', payload })}
+            />
+          </SettingsSection>
+
+          {/* Presets */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+              Quick Presets
+            </h3>
+            
+            <div className="grid grid-cols-2 gap-3">
+              <button 
+                onClick={() => {
+                  setCompactMode(false)
+                  setReducedMotion(false)
+                  setSidebarWidth(320)
+                }}
+                className="p-4 bg-accent/30 hover:bg-accent/50 rounded-xl transition-colors text-left"
+              >
+                <Monitor className="w-4 h-4 mb-2" />
+                <p className="font-medium text-sm">Desktop</p>
+                <p className="text-xs text-muted-foreground">Spacious layout</p>
+              </button>
+              
+              <button 
+                onClick={() => {
+                  setCompactMode(true)
+                  setReducedMotion(true)
+                  setSidebarWidth(240)
+                }}
+                className="p-4 bg-accent/30 hover:bg-accent/50 rounded-xl transition-colors text-left"
+              >
+                <Smartphone className="w-4 h-4 mb-2" />
+                <p className="font-medium text-sm">Mobile</p>
+                <p className="text-xs text-muted-foreground">Compact layout</p>
+              </button>
+            </div>
+          </div>
+          <div className="pt-6 border-t border-border">
+            <button
+              onClick={handleReset}
+              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-destructive/10 text-destructive hover:bg-destructive/20 rounded-lg transition-colors"
+            >
+              <RotateCcw className="w-4 h-4" />
+              Reset to Defaults
+            </button>
+          </div>
+        </div>
+      )
+    }
+
+    // Custom slider styles
+    const sliderStyles = `
+    .slider::-webkit-slider-thumb {
+      appearance: none;
+      height: 18px;
+      width: 18px;
+      border-radius: 50%;
+      background: hsl(var(--primary));
+      cursor: pointer;
+      border: 3px solid hsl(var(--background));
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      margin-top: -7px;
+    }
+
+    .slider::-moz-range-thumb {
+      height: 18px;
+      width: 18px;
+      border-radius: 50%;
+      background: hsl(var(--primary));
+      cursor: pointer;
+      border: 3px solid hsl(var(--background));
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    `
+
+    // Inject styles
+    if (typeof document !== 'undefined') {
+      const styleSheet = document.createElement('style')
+      styleSheet.textContent = sliderStyles
+      document.head.appendChild(styleSheet)
+    }
+  src/pages/Dashboard/DemoContent.tsx: >-
+    import { useRef } from 'react'
+
+    import { 
+      Sparkles, 
+      Zap, 
+      Rocket, 
+      Star, 
+      Heart,
+      Layers,
+      Code,
+      Palette,
+      Smartphone,
+      Monitor,
+      Settings
+    } from 'lucide-react'
+
+    import { cn } from '@/lib/utils'
+
+    import { useAppShell } from '@/context/AppShellContext'
+
+    import { Card } from '@/components/ui/card'
+
+    import { useDemoContentAnimations } from
+    './hooks/useDemoContentAnimations.hook'
+
+
+    export function DemoContent() {
+      const { bodyState, sidebarState, isDarkMode, compactMode } = useAppShell()
+      const contentRef = useRef<HTMLDivElement>(null)
+      const cardsRef = useRef<(HTMLDivElement | null)[]>([])
+      useDemoContentAnimations(cardsRef);
+
+      const features = [
+        {
+          icon: <Sparkles className="w-6 h-6" />,
+          title: "Amazing Animations",
+          description: "Powered by GSAP for smooth, buttery animations",
+          color: "from-emerald-500 to-teal-500"
+        },
+        {
+          icon: <Zap className="w-6 h-6" />,
+          title: "Lightning Fast",
+          description: "Built with Vite and optimized for performance",
+          color: "from-amber-500 to-orange-500"
+        },
+        {
+          icon: <Layers className="w-6 h-6" />,
+          title: "Multiple States",
+          description: "Fullscreen, side pane, and normal viewing modes",
+          color: "from-emerald-500 to-green-500"
+        },
+        {
+          icon: <Code className="w-6 h-6" />,
+          title: "TypeScript",
+          description: "Fully typed with excellent developer experience",
+          color: "from-green-500 to-emerald-500"
+        },
+        {
+          icon: <Palette className="w-6 h-6" />,
+          title: "Beautiful Design",
+          description: "Shadcn/ui components with Tailwind CSS",
+          color: "from-teal-500 to-emerald-500"
+        },
+        {
+          icon: <Settings className="w-6 h-6" />,
+          title: "Customizable",
+          description: "Extensive settings and preferences panel",
+          color: "from-slate-500 to-gray-500"
+        }
+      ]
+
+      const stats = [
+        { label: "Components", value: "12+", color: "text-emerald-600" },
+        { label: "Animations", value: "25+", color: "text-teal-600" },
+        { label: "States", value: "7", color: "text-primary" },
+        { label: "Settings", value: "10+", color: "text-amber-600" }
+      ]
+
+      return (
+        <div ref={contentRef} className="p-8 space-y-12">
+          {/* Hero Section */}
+          <div className="text-center space-y-4">
+            <div className="flex items-center justify-center gap-2 mb-4">
+              <Rocket className="w-8 h-8 text-primary" />
+              <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+                Amazing App Shell
+              </h1>
+            </div>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+              A super amazing application shell with resizable sidebar, multiple body states, 
+              smooth animations, and comprehensive settings - all built with modern web technologies.
+            </p>
+            
+            {/* Quick Stats */}
+            <div className="flex items-center justify-center gap-12 mt-8">
+              {stats.map((stat) => (
+                <div key={stat.label} className="text-center">
+                  <div className={cn("text-2xl font-bold", stat.color)}>{stat.value}</div>
+                  <div className="text-sm text-muted-foreground">{stat.label}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Feature Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {features.map((feature, index) => (
+              <Card
+                key={feature.title}
+                ref={el => cardsRef.current[index] = el}
+                className="group relative overflow-hidden border-border/50 p-6 hover:border-primary/30 hover:bg-accent/30 transition-all duration-300 cursor-pointer"
+              >
+                <div className="relative z-10">
+                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-4 group-hover:scale-110 group-hover:bg-primary/20 transition-transform">
+                    {feature.icon}
+                  </div>
+                  
+                  <h3 className="text-lg font-semibold mb-2">{feature.title}</h3>
+                  <p className="text-muted-foreground text-sm">{feature.description}</p>
+                </div>
+              </Card>
+            ))}
+          </div>
+
+          {/* Technology Stack */}
+          <Card className="border-border/50 p-6">
+            <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
+              <Star className="w-6 h-6 text-yellow-500" />
+              Technology Stack
+            </h2>
+            
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {[
+                { name: "React 18", desc: "Latest React with hooks" },
+                { name: "TypeScript", desc: "Type-safe development" },
+                { name: "Vite", desc: "Lightning fast build tool" },
+                { name: "Tailwind CSS", desc: "Utility-first styling" },
+                { name: "GSAP", desc: "Professional animations" },
+                { name: "Zustand", desc: "Lightweight state management" },
+                { name: "Shadcn/ui", desc: "Beautiful components" },
+                { name: "Lucide Icons", desc: "Consistent iconography" }
+              ].map((tech) => (
+                <div key={tech.name} className="bg-background rounded-xl p-4 border border-border/50">
+                  <h4 className="font-medium">{tech.name}</h4>
+                  <p className="text-sm text-muted-foreground">{tech.desc}</p>
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          {/* Current State Display */}
+          <Card className="border-border/50 p-6">
+            <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+              <Monitor className="w-5 h-5" />
+              Current App State
+            </h2>
+            
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="text-center p-3 bg-background rounded-xl">
+                <div className="text-sm text-muted-foreground">Sidebar</div>
+                <div className="font-medium capitalize">{sidebarState}</div>
+              </div>
+              <div className="text-center p-3 bg-background rounded-xl">
+                <div className="text-sm text-muted-foreground">Body State</div>
+                <div className="font-medium capitalize">{bodyState.replace('_', ' ')}</div>
+              </div>
+              <div className="text-center p-3 bg-background rounded-xl">
+                <div className="text-sm text-muted-foreground">Theme</div>
+                <div className="font-medium">{isDarkMode ? 'Dark' : 'Light'}</div>
+              </div>
+              <div className="text-center p-3 bg-background rounded-xl">
+                <div className="text-sm text-muted-foreground">Mode</div>
+                <div className="font-medium">{compactMode ? 'Compact' : 'Normal'}</div>
+              </div>
+            </div>
+          </Card>
+
+          {/* Interactive Demo */}
+          <div className="text-center space-y-4">
+            <h2 className="text-2xl font-bold flex items-center justify-center gap-2">
+              <Heart className="w-6 h-6 text-red-500" />
+              Try It Out!
+            </h2>
+            <p className="text-muted-foreground">
+              Use the controls in the top bar to explore different states, toggle the sidebar, 
+              or open settings to customize the experience. The sidebar is resizable by dragging the edge!
+            </p>
+            
+            <div className="flex items-center justify-center gap-4 pt-4">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Smartphone className="w-4 h-4" />
+                <span>Responsive</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Zap className="w-4 h-4" />
+                <span>Fast</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Star className="w-4 h-4" />
+                <span>Beautiful</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )
+    }
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 97

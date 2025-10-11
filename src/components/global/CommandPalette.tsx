@@ -9,19 +9,18 @@ import {
   CommandShortcut,
 } from '@/components/ui/command'
 import { useAppStore, type ActivePage } from '@/store/appStore'
+import { useAppShell } from '@/context/AppShellContext'
 import { useCommandPaletteToggle } from '@/hooks/useCommandPaletteToggle.hook'
 import { Home, Settings, Moon, Sun, Monitor, Smartphone, PanelRight, Maximize, Component, Bell } from 'lucide-react'
 
 export function CommandPalette() {
+  const { dispatch, toggleFullscreen, openSidePane } = useAppShell();
   const {
     isCommandPaletteOpen,
     setCommandPaletteOpen,
     setActivePage,
-    toggleDarkMode,
     isDarkMode,
-    setCompactMode,
-    toggleFullscreen,
-    openSidePane,
+    toggleDarkMode,
   } = useAppStore()
   useCommandPaletteToggle()
   
@@ -77,12 +76,12 @@ export function CommandPalette() {
         </CommandGroup>
         <CommandSeparator />
         <CommandGroup heading="Preferences">
-          <CommandItem onSelect={() => runCommand(() => setCompactMode(true))}>
+          <CommandItem onSelect={() => runCommand(() => dispatch({ type: 'SET_COMPACT_MODE', payload: true }))}>
             <Smartphone className="mr-2 h-4 w-4" />
             <span>Enable Compact Mode</span>
             <CommandShortcut>⌘C</CommandShortcut>
           </CommandItem>
-          <CommandItem onSelect={() => runCommand(() => setCompactMode(false))}>
+          <CommandItem onSelect={() => runCommand(() => dispatch({ type: 'SET_COMPACT_MODE', payload: false }))}>
             <Monitor className="mr-2 h-4 w-4" />
             <span>Disable Compact Mode</span>
             <CommandShortcut>⇧⌘C</CommandShortcut>

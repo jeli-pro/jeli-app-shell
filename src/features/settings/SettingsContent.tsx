@@ -13,6 +13,7 @@ import {
   Check
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useAppShell } from '@/context/AppShellContext'
 import { useAppStore } from '@/store/appStore'
 import { SettingsToggle } from './SettingsToggle'
 import { SettingsSection } from './SettingsSection'
@@ -27,28 +28,28 @@ const colorPresets = [
 ]
 
 export function SettingsContent() {
-  const {
-    isDarkMode,
-    reducedMotion,
-    compactMode,
-    autoExpandSidebar,
-    sidebarWidth,
-    primaryColor,
-    toggleDarkMode,
-    setReducedMotion,
-    setCompactMode,
-    setAutoExpandSidebar,
-    setPrimaryColor,
-    setSidebarWidth,
-    resetToDefaults
-  } = useAppStore()
+  const shell = useAppShell()
+  const dispatch = shell.dispatch
+  const { isDarkMode, toggleDarkMode } = useAppStore()
 
-  const [tempSidebarWidth, setTempSidebarWidth] = useState(sidebarWidth)
+  const [tempSidebarWidth, setTempSidebarWidth] = useState(shell.sidebarWidth)
 
   const handleSidebarWidthChange = (width: number) => {
     setTempSidebarWidth(width)
-    setSidebarWidth(width)
+    dispatch({ type: 'SET_SIDEBAR_WIDTH', payload: width });
   }
+
+  const handleReset = () => {
+    shell.resetToDefaults();
+    setTempSidebarWidth(280); // Reset temp state as well
+  }
+
+  const setCompactMode = (payload: boolean) => dispatch({ type: 'SET_COMPACT_MODE', payload });
+  const setReducedMotion = (payload: boolean) => dispatch({ type: 'SET_REDUCED_MOTION', payload });
+  const setSidebarWidth = (payload: number) => {
+    dispatch({ type: 'SET_SIDEBAR_WIDTH', payload });
+    setTempSidebarWidth(payload);
+  };
 
   return (
     <div className="space-y-10">
@@ -68,8 +69,8 @@ export function SettingsContent() {
           icon={<Minimize2 className="w-4 h-4" />}
           title="Compact Mode"
           description="Reduce spacing and sizes"
-          checked={compactMode}
-          onCheckedChange={setCompactMode}
+          checked={shell.compactMode}
+          onCheckedChange={(payload) => dispatch({ type: 'SET_COMPACT_MODE', payload })}
         />
 
         {/* Accent Color */}
@@ -83,12 +84,12 @@ export function SettingsContent() {
           </div>
           <div className="grid grid-cols-6 gap-2 pt-1">
             {colorPresets.map(color => {
-              const isActive = color.value === primaryColor
+              const isActive = color.value === shell.primaryColor
               return (
                 <button
                   key={color.name}
                   title={color.name}
-                  onClick={() => setPrimaryColor(color.value)}
+                  onClick={() => dispatch({ type: 'SET_PRIMARY_COLOR', payload: color.value })}
                   className={cn(
                     "w-8 h-8 rounded-full border-2 transition-transform hover:scale-110 flex items-center justify-center",
                     isActive ? 'border-primary' : 'border-transparent'
@@ -108,8 +109,8 @@ export function SettingsContent() {
           icon={<Eye className="w-4 h-4" />}
           title="Auto Expand Sidebar"
           description="Expand on hover when collapsed"
-          checked={autoExpandSidebar}
-          onCheckedChange={setAutoExpandSidebar}
+          checked={shell.autoExpandSidebar}
+          onCheckedChange={(payload) => dispatch({ type: 'SET_AUTO_EXPAND_SIDEBAR', payload })}
         />
 
         {/* Sidebar Width */}
@@ -147,8 +148,8 @@ export function SettingsContent() {
           icon={<Zap className="w-4 h-4" />}
           title="Reduced Motion"
           description="Minimize animations"
-          checked={reducedMotion}
-          onCheckedChange={setReducedMotion}
+          checked={shell.reducedMotion}
+          onCheckedChange={(payload) => dispatch({ type: 'SET_REDUCED_MOTION', payload })}
         />
       </SettingsSection>
 
@@ -188,7 +189,7 @@ export function SettingsContent() {
       </div>
       <div className="pt-6 border-t border-border">
         <button
-          onClick={resetToDefaults}
+          onClick={handleReset}
           className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-destructive/10 text-destructive hover:bg-destructive/20 rounded-lg transition-colors"
         >
           <RotateCcw className="w-4 h-4" />

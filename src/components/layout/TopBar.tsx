@@ -17,6 +17,7 @@ import {
 import { cn } from '@/lib/utils'
 import { BODY_STATES } from '@/lib/utils'
 import { useAppStore } from '@/store/appStore'
+import { useAppShell } from '@/context/AppShellContext'
 import { UserDropdown } from './UserDropdown'
 
 interface TopBarProps {
@@ -30,16 +31,14 @@ export function TopBar({
   onToggleFullscreen,
   onToggleDarkMode
 }: TopBarProps) {
+  const { bodyState, openSidePane, sidePaneContent } = useAppShell();
   const { 
-    bodyState, 
-    isDarkMode, 
-    openSidePane,
-    sidePaneContent,
     activePage,
     setActivePage,
     searchTerm,
     setCommandPaletteOpen,
     setSearchTerm,
+    isDarkMode,
   } = useAppStore()
 
   const [isSearchFocused, setIsSearchFocused] = useState(false)
@@ -49,12 +48,12 @@ export function TopBar({
 
     // If we're on the settings page and it's not in the side pane, treat this as a "minimize" action.
     if (activePage === 'settings' && !isSettingsInSidePane) {
-      openSidePane('settings');
+      openSidePane('settings')
       setActivePage('dashboard');
     } else {
       // In all other cases (on dashboard page, or settings already in pane),
       // just toggle the settings side pane.
-      openSidePane('settings');
+      openSidePane('settings')
     }
   }
 

@@ -4,26 +4,24 @@ import { EnhancedSidebar } from './EnhancedSidebar'
 import { MainContent } from './MainContent'
 import { RightPane } from './RightPane'
 import { TopBar } from './TopBar'
-import { CommandPalette } from '@/components/global/CommandPalette'
-import { useAppStore } from '@/store/appStore'
+import { CommandPalette } from '@/components/global/CommandPalette';
+import { useAppStore } from '@/store/appStore';
+import { useAppShell } from '@/context/AppShellContext';
 import { SIDEBAR_STATES } from '@/lib/utils'
-import { usePrimaryColor } from '@/hooks/usePrimaryColor.hook'
 import { useResizableSidebar, useResizableRightPane } from '@/hooks/useResizablePanes.hook'
 import { useSidebarAnimations, useBodyStateAnimations } from '@/hooks/useAppShellAnimations.hook'
 
 export function AppShell() {
   const {
     sidebarState,
-    isDarkMode,
-    setSidebarState,
-    setIsResizing,
+    dispatch,
+    autoExpandSidebar,
     toggleSidebar,
     peekSidebar,
     toggleFullscreen,
-    toggleDarkMode,
-    autoExpandSidebar,
-  } = useAppStore()
+  } = useAppShell();
   
+  const { isDarkMode, toggleDarkMode } = useAppStore();
   const appRef = useRef<HTMLDivElement>(null)
   const sidebarRef = useRef<HTMLDivElement>(null)
   const mainContentRef = useRef<HTMLDivElement>(null)
@@ -32,7 +30,6 @@ export function AppShell() {
   const topBarContainerRef = useRef<HTMLDivElement>(null)
 
   // Custom hooks for logic
-  usePrimaryColor();
   useResizableSidebar(sidebarRef, resizeHandleRef);
   useResizableRightPane();
   useSidebarAnimations(sidebarRef, resizeHandleRef);
@@ -57,7 +54,7 @@ export function AppShell() {
           }}
           onMouseLeave={() => {
             if (autoExpandSidebar && sidebarState === SIDEBAR_STATES.PEEK) {
-              setSidebarState(SIDEBAR_STATES.COLLAPSED)
+              dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.COLLAPSED });
             }
           }}
         />
@@ -71,7 +68,7 @@ export function AppShell() {
             )}
             onMouseDown={(e) => {
               e.preventDefault()
-              setIsResizing(true)
+              dispatch({ type: 'SET_IS_RESIZING', payload: true });
             }}
           >
             <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200 mx-auto" />

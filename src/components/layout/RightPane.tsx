@@ -2,13 +2,15 @@ import { forwardRef } from 'react'
 import { SlidersHorizontal, Settings, ChevronRight, LayoutDashboard, ChevronsLeftRight, Component, Bell } from 'lucide-react'
 import { useAppStore } from '@/store/appStore'
 import { cn } from '@/lib/utils'
+import { useAppShell } from '@/context/AppShellContext'
 import { SettingsContent } from '@/features/settings/SettingsContent'
 import { DashboardContent } from '@/pages/Dashboard'
 import { ToasterDemo } from '@/pages/ToasterDemo'
 import { NotificationsPage } from '@/pages/Notifications'
 
 export const RightPane = forwardRef<HTMLDivElement>((_props, ref) => {
-  const { closeSidePane, setIsResizingRightPane, sidePaneContent, setActivePage } = useAppStore();
+  const { setActivePage } = useAppStore();
+  const { sidePaneContent, closeSidePane, dispatch } = useAppShell();
 
   const contentMap = {
     main: { title: 'Dashboard', icon: LayoutDashboard, page: 'dashboard', content: <DashboardContent isInSidePane /> },
@@ -43,7 +45,7 @@ export const RightPane = forwardRef<HTMLDivElement>((_props, ref) => {
         )}
         onMouseDown={(e) => {
           e.preventDefault()
-          setIsResizingRightPane(true)
+          dispatch({ type: 'SET_IS_RESIZING_RIGHT_PANE', payload: true });
         }}
       >
         <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200 mx-auto" />

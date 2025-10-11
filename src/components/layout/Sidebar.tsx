@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { ChevronDown } from 'lucide-react';
 import { Slot } from '@radix-ui/react-slot';
-import { useAppStore } from '@/store/appStore';
+import { useAppShell } from '@/context/AppShellContext';
 import { SIDEBAR_STATES } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -30,7 +30,7 @@ interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
 
 const Sidebar = React.forwardRef<HTMLDivElement, SidebarProps>(
   ({ children, className, ...props }, ref) => {
-    const { sidebarState, compactMode } = useAppStore();
+    const { sidebarState, compactMode } = useAppShell();
     const isCollapsed = sidebarState === SIDEBAR_STATES.COLLAPSED;
     const isPeek = sidebarState === SIDEBAR_STATES.PEEK;
 
