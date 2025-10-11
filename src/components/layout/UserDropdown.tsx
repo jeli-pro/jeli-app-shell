@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils"
 import { Icon } from "@iconify/react";
+import { useAuthStore } from "@/store/authStore";
 
 const MENU_ITEMS = {
   status: [
@@ -76,19 +77,46 @@ interface MenuItem {
   showAvatar?: boolean;
 }
 
+interface User {
+  name: string;
+  username: string;
+  avatar: string;
+  initials: string;
+  status: string;
+}
+
+interface UserDropdownProps {
+  user?: User;
+  onAction?: (action?: string) => void;
+  onStatusChange?: (status: string) => void;
+  selectedStatus?: string;
+  promoDiscount?: string;
+}
+
 export const UserDropdown = ({ 
-  user = {
-    name: "Ayman Echakar",
-    username: "@aymanch-03",
-    avatar: "https://avatars.githubusercontent.com/u/126724835?v=4",
-    initials: "AE",
-    status: "online"
-  },
+  user: propUser,
   onAction = (_action?: string) => {},
-  onStatusChange = () => {},
+  onStatusChange = (_status: string) => {},
   selectedStatus = "online",
   promoDiscount = "20% off",
-}) => {
+}: UserDropdownProps) => {
+  const { user: authUser, logout } = useAuthStore();
+  
+  const user = propUser || {
+    name: authUser?.name || "User",
+    username: `@${authUser?.name?.toLowerCase() || "user"}`,
+    avatar: `https://ui-avatars.com/api/?name=${authUser?.name || "User"}&background=0ea5e9&color=fff`,
+    initials: authUser?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || "U",
+    status: "online"
+  };
+  const handleAction = (action?: string) => {
+    if (action === 'logout') {
+      logout();
+    } else {
+      onAction(action);
+    }
+  };
+
   const renderMenuItem = (item: MenuItem, index: number) => (
     <DropdownMenuItem 
       key={index}
@@ -96,7 +124,7 @@ export const UserDropdown = ({
         "px-3 py-2", // Consistent with base component
         item.badge || item.showAvatar || item.rightIcon ? "justify-between" : ""
       )}
-      onClick={() => item.action && onAction(item.action)}
+      onClick={() => item.action && handleAction(item.action)}
     >
       <span className="flex items-center gap-2 font-medium">
         <Icon

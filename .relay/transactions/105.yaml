@@ -1,0 +1,1050 @@
+uuid: b07a3c3f-c567-4e68-912b-2e975b9f8482
+projectId: amazing-app-shell
+createdAt: '2025-10-11T02:44:37.817Z'
+gitCommitMsg: >-
+  fix(types): Resolve TypeScript errors
+
+  This commit resolves all outstanding TypeScript errors by: - Removing an
+  unused `logout` variable from `App.tsx`. - Adding explicit prop types to
+  `UserDropdown.tsx` to fix an optional prop issue and an implicit any type
+  error. - Removing unused `CardTitle` and `CardDescription` imports from
+  `LoginPage`.
+promptSummary: >-
+  I need to fix several TypeScript errors in my project. The errors are related
+  to unused variables/imports and incorrect component prop types.
+reasoning:
+  - >-
+    I will fix the TypeScript errors reported by `tsc`. The errors include
+    unused imports, an unused variable, and incorrect/missing prop types for a
+    component.
+  - >-
+    First, I'll address the unused variable in `src/App.tsx`. The `logout`
+    function is destructured from the `useAuthStore` hook but is not used in
+    this file. The logout logic is handled within the `UserDropdown` component,
+    so I'll remove the unused variable here.
+  - >-
+    Next, I'll fix the prop typing issues in `UserDropdown`. The component was
+    missing explicit prop types, causing TypeScript to infer the `user` prop as
+    required and other props as having an `any` type. I'll add a
+    `UserDropdownProps` interface to correctly type the props, making `user`
+    optional as the component can fetch user data from the `authStore`. I will
+    also correct the signature of the `onStatusChange` default value. This will
+    resolve the errors in both `UserDropdown.tsx` and `TopBar.tsx` where it's
+    used.
+  - >-
+    Finally, I'll remove the unused imports in `src/pages/Login/index.tsx`. The
+    `CardDescription` and `CardTitle` components are imported but never used in
+    the component, so I'll remove them to clean up the code.
+  - These changes will resolve all the reported TypeScript errors.
+operations:
+  - type: write
+    path: src/App.tsx
+    content: >+
+      --- src/App.tsx
+
+      +++ src/App.tsx
+
+      @@ -196,7 +196,7 @@
+       
+       function App() {
+         const isDarkMode = useAppStore((state) => state.isDarkMode)
+      -  const { isAuthenticated, login, logout, forgotPassword } =
+      useAuthStore()
+
+      +  const { isAuthenticated, login, forgotPassword } = useAuthStore()
+       
+         useEffect(() => {
+           document.documentElement.classList.toggle('dark', isDarkMode);
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/components/layout/UserDropdown.tsx
+    content: |+
+      --- src/components/layout/UserDropdown.tsx
+      +++ src/components/layout/UserDropdown.tsx
+      @@ -70,14 +70,29 @@
+         showAvatar?: boolean;
+       }
+       
+      +interface User {
+      +  name: string;
+      +  username: string;
+      +  avatar: string;
+      +  initials: string;
+      +  status: string;
+      +}
+      +
+      +interface UserDropdownProps {
+      +  user?: User;
+      +  onAction?: (action?: string) => void;
+      +  onStatusChange?: (status: string) => void;
+      +  selectedStatus?: string;
+      +  promoDiscount?: string;
+      +}
+      +
+       export const UserDropdown = ({ 
+         user: propUser,
+         onAction = (_action?: string) => {},
+      -  onStatusChange = () => {},
+      +  onStatusChange = (_status: string) => {},
+         selectedStatus = "online",
+         promoDiscount = "20% off",
+      -}) => {
+      +}: UserDropdownProps) => {
+         const { user: authUser, logout } = useAuthStore();
+         
+         const user = propUser || {
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/Login/index.tsx
+    content: >+
+      --- src/pages/Login/index.tsx
+
+      +++ src/pages/Login/index.tsx
+
+      @@ -3,7 +3,7 @@
+       import { Button } from '@/components/ui/button'
+       import { Input } from '@/components/ui/input'
+       import { Label } from '@/components/ui/label'
+      -import { Card, CardContent, CardDescription, CardHeader, CardTitle } from
+      '@/components/ui/card'
+
+      +import { Card, CardContent, CardHeader } from '@/components/ui/card'
+       import { cn } from '@/lib/utils'
+       import { gsap } from 'gsap'
+       
+
+    patchStrategy: standard-diff
+snapshot:
+  src/App.tsx: >-
+    import React, { useEffect } from 'react'
+
+    import { AppShell } from './components/layout/AppShell'
+
+    import { AppShellProvider, useAppShell } from './context/AppShellContext'
+
+    import { useAppStore } from './store/appStore'
+
+    import { useAuthStore } from './store/authStore'
+
+    import './index.css'
+
+
+    // Import library components
+
+    import { EnhancedSidebar } from './components/layout/EnhancedSidebar'
+
+    import { MainContent } from './components/layout/MainContent'
+
+    import { RightPane } from './components/layout/RightPane'
+
+    import { TopBar } from './components/layout/TopBar'
+
+    import { CommandPalette } from './components/global/CommandPalette'
+
+
+    // Import page/content components
+
+    import { DashboardContent } from './pages/Dashboard'
+
+    import { SettingsPage } from './pages/Settings'
+
+    import { ToasterDemo } from './pages/ToasterDemo'
+
+    import { NotificationsPage } from './pages/Notifications'
+
+    import { ContentInSidePanePlaceholder } from
+    './components/shared/ContentInSidePanePlaceholder'
+
+    import { SettingsContent } from './features/settings/SettingsContent'
+
+    import LoginPage from './pages/Login'
+
+
+    // Import icons
+
+    import { LayoutDashboard, Settings, Component, Bell, SlidersHorizontal,
+    ChevronsLeftRight, Search, Filter, Plus, PanelRight, ChevronRight } from
+    'lucide-react'
+
+    import { BODY_STATES } from './lib/utils'
+
+    import { cn } from './lib/utils'
+
+
+
+    // The content for the main area, with page routing logic
+
+    function AppContent() {
+      const { activePage, setActivePage } = useAppStore()
+      const { bodyState, sidePaneContent, openSidePane } = useAppShell()
+
+      const pageMap = {
+        dashboard: {
+          component: <DashboardContent />,
+          sidePaneContent: 'main',
+          icon: LayoutDashboard,
+          name: 'dashboard',
+        },
+        settings: {
+          component: <SettingsPage />,
+          sidePaneContent: 'settings',
+          icon: Settings,
+          name: 'settings',
+        },
+        toaster: {
+          component: <ToasterDemo />,
+          sidePaneContent: 'toaster',
+          icon: Component,
+          name: 'toaster demo',
+        },
+        notifications: {
+          component: <NotificationsPage />,
+          sidePaneContent: 'notifications',
+          icon: Bell,
+          name: 'notifications',
+        },
+      } as const;
+
+      const currentPage = pageMap[activePage];
+
+      if (sidePaneContent === currentPage.sidePaneContent && bodyState === BODY_STATES.SIDE_PANE) {
+        return (
+          <ContentInSidePanePlaceholder 
+            icon={currentPage.icon}
+            title={`${currentPage.name.charAt(0).toUpperCase() + currentPage.name.slice(1)} is in Side Pane`}
+            pageName={currentPage.name}
+            onBringBack={() => {
+              openSidePane(currentPage.sidePaneContent);
+              setActivePage(activePage);
+            }}
+          />
+        )
+      }
+
+      return currentPage.component;
+    }
+
+
+    // Content for the Top Bar
+
+    function AppTopBar() {
+      const { activePage, searchTerm, setSearchTerm } = useAppStore()
+      const { openSidePane } = useAppShell()
+      const [isSearchFocused, setIsSearchFocused] = React.useState(false);
+
+      const handleMoveToSidePane = () => {
+        const mapping = { dashboard: 'main', settings: 'settings', toaster: 'toaster', notifications: 'notifications' } as const;
+        if (mapping[activePage]) openSidePane(mapping[activePage]);
+      };
+
+      return (
+        <div className="flex items-center gap-3 flex-1">
+          <div className={cn("hidden md:flex items-center gap-2 text-sm transition-opacity", {
+              "opacity-0 pointer-events-none": isSearchFocused && activePage === 'dashboard'
+          })}>
+            <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">Home</a>
+            <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            <span className="font-medium text-foreground capitalize">{activePage}</span>
+          </div>
+          
+          <div className="flex-1" />
+
+          {/* Page-specific: Dashboard search and actions */}
+          {activePage === 'dashboard' && (
+          <div className="flex items-center gap-2 flex-1 justify-end">
+            <div className={cn("relative transition-all duration-300 ease-in-out", isSearchFocused ? 'flex-1 max-w-lg' : 'w-auto')}>
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4 pointer-events-none" />
+              <input
+                type="text"
+                placeholder="Search..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                onFocus={() => setIsSearchFocused(true)}
+                onBlur={() => setIsSearchFocused(false)}
+                className={cn(
+                  "pl-9 pr-4 py-2 h-10 border-none rounded-lg bg-card focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300 ease-in-out w-full",
+                  isSearchFocused ? 'bg-background' : 'w-48'
+                )}
+              />
+            </div>
+             <button className="h-10 w-10 flex-shrink-0 flex items-center justify-center hover:bg-accent rounded-full transition-colors">
+              <Filter className="w-5 h-5" />
+            </button>
+             <button className="bg-primary text-primary-foreground px-4 py-2 rounded-full hover:bg-primary/90 transition-colors flex items-center gap-2 h-10 flex-shrink-0">
+              <Plus className="w-5 h-5" />
+              <span className={cn(isSearchFocused ? 'hidden sm:inline' : 'inline')}>New Project</span>
+            </button>
+          </div>
+          )}
+
+          {/* Page-specific: Move to side pane */}
+          {['dashboard', 'settings', 'toaster', 'notifications'].includes(activePage) && (
+            <button onClick={handleMoveToSidePane} className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors" title="Move to Side Pane"><PanelRight className="w-5 h-5" /></button>
+          )}
+        </div>
+      )
+    }
+
+
+    // The main App component that composes the shell
+
+    function ComposedApp() {
+      const { sidePaneContent, closeSidePane } = useAppShell();
+      const { setActivePage } = useAppStore();
+
+      const contentMap = {
+        main: { title: 'Dashboard', icon: LayoutDashboard, page: 'dashboard', content: <DashboardContent isInSidePane /> },
+        settings: { title: 'Settings', icon: Settings, page: 'settings', content: <SettingsContent /> },
+        toaster: { title: 'Toaster Demo', icon: Component, page: 'toaster', content: <ToasterDemo isInSidePane /> },
+        notifications: { title: 'Notifications', icon: Bell, page: 'notifications', content: <NotificationsPage isInSidePane /> },
+        details: { title: 'Details Panel', icon: SlidersHorizontal, content: <p className="text-muted-foreground">This is the side pane. It can be used to display contextual information, forms, or actions related to the main content.</p> }
+      } as const;
+
+      const currentContent = contentMap[sidePaneContent as keyof typeof contentMap] || contentMap.details;
+      const CurrentIcon = currentContent.icon;
+
+      const handleMaximize = () => {
+        if ('page' in currentContent && currentContent.page) {
+          setActivePage(currentContent.page as any);
+        }
+        closeSidePane()
+      }
+
+      const rightPaneHeader = (
+          <>
+          <div className="flex items-center gap-2">
+            <CurrentIcon className="w-5 h-5" />
+            <h2 className="text-lg font-semibold whitespace-nowrap">
+              {currentContent.title}
+            </h2>
+          </div>
+          
+          {'page' in currentContent && currentContent.page && (
+            <button
+              onClick={handleMaximize}
+              className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors mr-2"
+              title="Move to Main View"
+            >
+              <ChevronsLeftRight className="w-5 h-5" />
+            </button>
+          )}
+          </>
+      );
+
+      return (
+        <AppShell
+          sidebar={<EnhancedSidebar />}
+          topBar={<TopBar><AppTopBar /></TopBar>}
+          mainContent={<MainContent><AppContent /></MainContent>}
+          rightPane={(
+            <RightPane header={rightPaneHeader}>{currentContent.content}</RightPane>
+          )}
+          commandPalette={<CommandPalette />}
+        />
+      );
+    }
+
+
+    function App() {
+      const isDarkMode = useAppStore((state) => state.isDarkMode)
+      const { isAuthenticated, login, logout, forgotPassword } = useAuthStore()
+
+      useEffect(() => {
+        document.documentElement.classList.toggle('dark', isDarkMode);
+      }, [isDarkMode]);
+
+      const handleLogin = async (email: string, password: string) => {
+        try {
+          await login(email, password)
+        } catch (error) {
+          console.error('Login failed:', error)
+          // In a real app, you'd show an error message to the user
+        }
+      }
+
+      const handleForgotPassword = async (email: string) => {
+        try {
+          await forgotPassword(email)
+        } catch (error) {
+          console.error('Forgot password failed:', error)
+        }
+      }
+
+      const handleSignUp = () => {
+        // In a real app, navigate to sign up page
+        console.log('Navigate to sign up page')
+      }
+
+      if (!isAuthenticated) {
+        return (
+          <LoginPage
+            onLogin={handleLogin}
+            onForgotPassword={handleForgotPassword}
+            onSignUp={handleSignUp}
+          />
+        )
+      }
+
+      return (
+        <div className="h-screen w-screen overflow-hidden bg-background">
+          <AppShellProvider>
+            <ComposedApp />
+          </AppShellProvider>
+        </div>
+      )
+    }
+
+
+    export default App
+  src/pages/Login/index.tsx: >-
+    import React, { useState, useEffect } from 'react'
+
+    import { Eye, EyeOff, ArrowLeft, Mail, Lock, User, Sparkles } from
+    'lucide-react'
+
+    import { Button } from '@/components/ui/button'
+
+    import { Input } from '@/components/ui/input'
+
+    import { Label } from '@/components/ui/label'
+
+    import { Card, CardContent, CardDescription, CardHeader, CardTitle } from
+    '@/components/ui/card'
+
+    import { cn } from '@/lib/utils'
+
+    import { gsap } from 'gsap'
+
+
+    interface LoginPageProps {
+      onLogin?: (email: string, password: string) => void
+      onForgotPassword?: (email: string) => void
+      onSignUp?: () => void
+    }
+
+
+    type LoginState = 'login' | 'forgot-password' | 'reset-sent'
+
+
+    export function LoginPage({ onLogin, onForgotPassword, onSignUp }:
+    LoginPageProps) {
+      const [state, setState] = useState<LoginState>('login')
+      const [showPassword, setShowPassword] = useState(false)
+      const [email, setEmail] = useState('')
+      const [password, setPassword] = useState('')
+      const [isLoading, setIsLoading] = useState(false)
+      const [errors, setErrors] = useState<{ email?: string; password?: string }>({})
+
+      const cardRef = React.useRef<HTMLDivElement>(null)
+      const backgroundRef = React.useRef<HTMLDivElement>(null)
+
+      useEffect(() => {
+        // Initial animations
+        if (cardRef.current && backgroundRef.current) {
+          gsap.fromTo(cardRef.current, 
+            { 
+              opacity: 0, 
+              y: 50, 
+              scale: 0.95 
+            },
+            { 
+              opacity: 1, 
+              y: 0, 
+              scale: 1, 
+              duration: 0.8, 
+              ease: "power3.out" 
+            }
+          )
+
+          gsap.fromTo(backgroundRef.current,
+            { opacity: 0 },
+            { opacity: 1, duration: 1.2, ease: "power2.out" }
+          )
+        }
+      }, [])
+
+      useEffect(() => {
+        // Animate state transitions
+        if (cardRef.current) {
+          gsap.fromTo(cardRef.current.querySelector('.card-content'),
+            { opacity: 0, x: state === 'login' ? -20 : 20 },
+            { opacity: 1, x: 0, duration: 0.5, ease: "power2.out" }
+          )
+        }
+      }, [state])
+
+      const validateEmail = (email: string) => {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+        return emailRegex.test(email)
+      }
+
+      const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault()
+        setErrors({})
+
+        if (state === 'login') {
+          const newErrors: typeof errors = {}
+          
+          if (!email) {
+            newErrors.email = 'Email is required'
+          } else if (!validateEmail(email)) {
+            newErrors.email = 'Please enter a valid email'
+          }
+          
+          if (!password) {
+            newErrors.password = 'Password is required'
+          } else if (password.length < 6) {
+            newErrors.password = 'Password must be at least 6 characters'
+          }
+
+          if (Object.keys(newErrors).length > 0) {
+            setErrors(newErrors)
+            return
+          }
+
+          setIsLoading(true)
+          
+          // Simulate API call
+          setTimeout(() => {
+            setIsLoading(false)
+            onLogin?.(email, password)
+          }, 1500)
+          
+        } else if (state === 'forgot-password') {
+          if (!email) {
+            setErrors({ email: 'Email is required' })
+            return
+          }
+          
+          if (!validateEmail(email)) {
+            setErrors({ email: 'Please enter a valid email' })
+            return
+          }
+
+          setIsLoading(true)
+          
+          // Simulate API call
+          setTimeout(() => {
+            setIsLoading(false)
+            onForgotPassword?.(email)
+            setState('reset-sent')
+          }, 1500)
+        }
+      }
+
+      const renderLoginForm = () => (
+        <div className="card-content space-y-6">
+          <div className="space-y-2 text-center">
+            <h1 className="text-3xl font-bold tracking-tight">Welcome back</h1>
+            <p className="text-muted-foreground">
+              Sign in to your account to continue
+            </p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="Enter your email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className={cn("pl-10", errors.email && "border-destructive")}
+                  disabled={isLoading}
+                />
+              </div>
+              {errors.email && (
+                <p className="text-sm text-destructive">{errors.email}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                <Input
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="Enter your password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className={cn("pl-10 pr-10", errors.password && "border-destructive")}
+                  disabled={isLoading}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  disabled={isLoading}
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+              {errors.password && (
+                <p className="text-sm text-destructive">{errors.password}</p>
+              )}
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <input
+                  id="remember"
+                  type="checkbox"
+                  className="w-4 h-4 rounded border border-input"
+                  disabled={isLoading}
+                />
+                <Label htmlFor="remember" className="text-sm">
+                  Remember me
+                </Label>
+              </div>
+              <button
+                type="button"
+                onClick={() => setState('forgot-password')}
+                className="text-sm text-primary hover:underline"
+                disabled={isLoading}
+              >
+                Forgot password?
+              </button>
+            </div>
+
+            <Button 
+              type="submit" 
+              className="w-full" 
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                  Signing in...
+                </div>
+              ) : (
+                'Sign in'
+              )}
+            </Button>
+          </form>
+
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-background px-2 text-muted-foreground">
+                Or continue with
+              </span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <Button variant="outline" disabled={isLoading}>
+              <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24">
+                <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+              </svg>
+              Google
+            </Button>
+            <Button variant="outline" disabled={isLoading}>
+              <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+              </svg>
+              Facebook
+            </Button>
+          </div>
+
+          <p className="text-center text-sm text-muted-foreground">
+            Don't have an account?{' '}
+            <button
+              onClick={onSignUp}
+              className="text-primary hover:underline font-medium"
+              disabled={isLoading}
+            >
+              Sign up
+            </button>
+          </p>
+        </div>
+      )
+
+      const renderForgotPasswordForm = () => (
+        <div className="card-content space-y-6">
+          <button
+            onClick={() => setState('login')}
+            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            disabled={isLoading}
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to login
+          </button>
+
+          <div className="space-y-2 text-center">
+            <h1 className="text-3xl font-bold tracking-tight">Reset your password</h1>
+            <p className="text-muted-foreground">
+              Enter your email address and we'll send you a link to reset your password
+            </p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="Enter your email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className={cn("pl-10", errors.email && "border-destructive")}
+                  disabled={isLoading}
+                />
+              </div>
+              {errors.email && (
+                <p className="text-sm text-destructive">{errors.email}</p>
+              )}
+            </div>
+
+            <Button 
+              type="submit" 
+              className="w-full" 
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                  Sending reset link...
+                </div>
+              ) : (
+                'Send reset link'
+              )}
+            </Button>
+          </form>
+        </div>
+      )
+
+      const renderResetSentForm = () => (
+        <div className="card-content space-y-6 text-center">
+          <div className="w-16 h-16 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center mx-auto">
+            <Mail className="w-8 h-8 text-green-600 dark:text-green-400" />
+          </div>
+
+          <div className="space-y-2">
+            <h1 className="text-3xl font-bold tracking-tight">Check your email</h1>
+            <p className="text-muted-foreground">
+              We've sent a password reset link to <strong>{email}</strong>
+            </p>
+          </div>
+
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Didn't receive the email? Check your spam folder or try again.
+            </p>
+
+            <div className="flex flex-col gap-2">
+              <Button
+                onClick={() => setState('forgot-password')}
+                variant="outline"
+              >
+                Try again
+              </Button>
+              <Button
+                onClick={() => setState('login')}
+                variant="ghost"
+              >
+                Back to login
+              </Button>
+            </div>
+          </div>
+        </div>
+      )
+
+      return (
+        <div 
+          ref={backgroundRef}
+          className="min-h-screen w-full flex items-center justify-center p-4 relative overflow-hidden bg-gradient-to-br from-background via-background to-accent/5"
+        >
+          {/* Animated background elements */}
+          <div className="absolute inset-0 overflow-hidden">
+            <div className="absolute -top-40 -right-40 w-80 h-80 bg-primary/5 rounded-full blur-3xl animate-pulse" />
+            <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-accent/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-primary/3 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '4s' }} />
+          </div>
+
+          {/* Floating elements */}
+          <div className="absolute top-20 left-20 opacity-20">
+            <Sparkles className="w-6 h-6 text-primary animate-pulse" />
+          </div>
+          <div className="absolute top-40 right-32 opacity-20">
+            <User className="w-8 h-8 text-accent animate-pulse" style={{ animationDelay: '1s' }} />
+          </div>
+          <div className="absolute bottom-32 left-40 opacity-20">
+            <Lock className="w-5 h-5 text-primary animate-pulse" style={{ animationDelay: '3s' }} />
+          </div>
+
+          <Card 
+            ref={cardRef}
+            className="w-full max-w-md shadow-2xl border-0 bg-card/95 backdrop-blur-sm"
+          >
+            <CardHeader className="space-y-0 pb-6">
+              <div className="flex items-center justify-center mb-4">
+                <div className="w-12 h-12 bg-primary rounded-2xl flex items-center justify-center">
+                  <Sparkles className="w-6 h-6 text-primary-foreground" />
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="px-6 pb-6">
+              {state === 'login' && renderLoginForm()}
+              {state === 'forgot-password' && renderForgotPasswordForm()}
+              {state === 'reset-sent' && renderResetSentForm()}
+            </CardContent>
+          </Card>
+        </div>
+      )
+    }
+
+
+    export default LoginPage
+  src/components/layout/UserDropdown.tsx: >-
+    import { Avatar, AvatarFallback, AvatarImage } from
+    "@/components/ui/avatar";
+
+    import { Badge } from "@/components/ui/badge";
+
+    import {
+      DropdownMenu,
+      DropdownMenuContent,
+      DropdownMenuGroup,
+      DropdownMenuItem,
+      DropdownMenuPortal,
+      DropdownMenuRadioGroup,
+      DropdownMenuRadioItem,
+      DropdownMenuSeparator,
+      DropdownMenuSub,
+      DropdownMenuSubContent,
+      DropdownMenuSubTrigger,
+      DropdownMenuTrigger,
+    } from "@/components/ui/dropdown-menu";
+
+    import { cn } from "@/lib/utils"
+
+    import { Icon } from "@iconify/react";
+
+    import { useAuthStore } from "@/store/authStore";
+
+
+    const MENU_ITEMS = {
+      status: [
+        { value: "focus", icon: "solar:emoji-funny-circle-line-duotone", label: "Focus" },
+        { value: "offline", icon: "solar:moon-sleep-line-duotone", label: "Appear Offline" }
+      ],
+      profile: [
+        { icon: "solar:user-circle-line-duotone", label: "Your profile", action: "profile" },
+        { icon: "solar:sun-line-duotone", label: "Appearance", action: "appearance" },
+        { icon: "solar:settings-line-duotone", label: "Settings", action: "settings" },
+        { icon: "solar:bell-line-duotone", label: "Notifications", action: "notifications" }
+      ],
+      premium: [
+        { 
+          icon: "solar:star-bold", 
+          label: "Upgrade to Pro", 
+          action: "upgrade",
+          iconClass: "text-amber-500",
+          badge: { text: "20% off", className: "bg-amber-500 text-white text-[11px]" }
+        },
+        { icon: "solar:gift-line-duotone", label: "Referrals", action: "referrals" }
+      ],
+      support: [
+        { icon: "solar:download-line-duotone", label: "Download app", action: "download" },
+        { 
+          icon: "solar:letter-unread-line-duotone", 
+          label: "What's new?", 
+          action: "whats-new",
+          rightIcon: "solar:square-top-down-line-duotone"
+        },
+        { 
+          icon: "solar:question-circle-line-duotone", 
+          label: "Get help?", 
+          action: "help",
+          rightIcon: "solar:square-top-down-line-duotone"
+        }
+      ],
+      account: [
+        { 
+          icon: "solar:users-group-rounded-bold-duotone", 
+          label: "Switch account", 
+          action: "switch",
+          showAvatar: false
+        },
+        { icon: "solar:logout-2-bold-duotone", label: "Log out", action: "logout" }
+      ]
+    };
+
+
+    // Interface for menu item for better type safety
+
+    interface MenuItem {
+      value?: string;
+      icon: string;
+      label: string;
+      action?: string;
+      iconClass?: string;
+      badge?: { text: string; className: string };
+      rightIcon?: string;
+      showAvatar?: boolean;
+    }
+
+
+    export const UserDropdown = ({ 
+      user: propUser,
+      onAction = (_action?: string) => {},
+      onStatusChange = () => {},
+      selectedStatus = "online",
+      promoDiscount = "20% off",
+    }) => {
+      const { user: authUser, logout } = useAuthStore();
+      
+      const user = propUser || {
+        name: authUser?.name || "User",
+        username: `@${authUser?.name?.toLowerCase() || "user"}`,
+        avatar: `https://ui-avatars.com/api/?name=${authUser?.name || "User"}&background=0ea5e9&color=fff`,
+        initials: authUser?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || "U",
+        status: "online"
+      };
+      const handleAction = (action?: string) => {
+        if (action === 'logout') {
+          logout();
+        } else {
+          onAction(action);
+        }
+      };
+
+      const renderMenuItem = (item: MenuItem, index: number) => (
+        <DropdownMenuItem 
+          key={index}
+          className={cn(
+            "px-3 py-2", // Consistent with base component
+            item.badge || item.showAvatar || item.rightIcon ? "justify-between" : ""
+          )}
+          onClick={() => item.action && handleAction(item.action)}
+        >
+          <span className="flex items-center gap-2 font-medium">
+            <Icon
+              icon={item.icon}
+              className={cn("h-5 w-5 text-muted-foreground", item.iconClass)}
+            />
+            {item.label}
+          </span>
+          {item.badge && (
+            <Badge className={item.badge.className}>
+              {promoDiscount || item.badge.text}
+            </Badge>
+          )}
+          {item.rightIcon && (
+            <Icon
+              icon={item.rightIcon}
+              className="h-4 w-4 text-muted-foreground"
+            />
+          )}
+          {item.showAvatar && (
+            <Avatar className="cursor-pointer h-6 w-6 shadow border-2 border-background">
+              <AvatarImage src={user.avatar} alt={user.name} />
+              <AvatarFallback>{user.initials}</AvatarFallback>
+            </Avatar>
+          )}
+        </DropdownMenuItem>
+      );
+
+      const getStatusColor = (status: string) => {
+        const colors = {
+          online: "text-green-600 bg-green-100 border-green-300 dark:text-green-400 dark:bg-green-900/30 dark:border-green-500/50",
+          offline: "text-muted-foreground bg-muted border-border",
+          busy: "text-destructive bg-destructive/20 border-destructive/30"
+        };
+        return colors[status.toLowerCase() as keyof typeof colors] || colors.online;
+      };
+
+      return (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Avatar className="cursor-pointer h-10 w-10 border-2 border-transparent hover:border-primary transition-colors">
+              <AvatarImage src={user.avatar} alt={user.name} />
+              <AvatarFallback>{user.initials}</AvatarFallback>
+            </Avatar>
+          </DropdownMenuTrigger>
+
+          <DropdownMenuContent className="no-scrollbar w-[310px] p-2" align="end">
+            <div className="flex items-center">
+              <div className="flex-1 flex items-center gap-3">
+                <Avatar className="cursor-pointer h-10 w-10">
+                  <AvatarImage src={user.avatar} alt={user.name} />
+                  <AvatarFallback>{user.initials}</AvatarFallback>
+                </Avatar>
+                <div>
+                  <h3 className="font-semibold">{user.name}</h3>
+                  <p className="text-muted-foreground text-sm">{user.username}</p>
+                </div>
+              </div>
+              <Badge variant="outline" className={cn("border-[0.5px] text-xs font-normal rounded-md capitalize", getStatusColor(user.status))}>
+                {user.status}
+              </Badge>
+            </div>
+            
+            <DropdownMenuSeparator className="my-2" />
+            
+            <DropdownMenuGroup>
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger className="w-full">
+                  <span className="flex items-center gap-2 font-medium">
+                    <Icon icon="solar:smile-circle-line-duotone" className="h-5 w-5" />
+                    Update status
+                  </span>
+                </DropdownMenuSubTrigger>
+                <DropdownMenuPortal>
+                  <DropdownMenuSubContent>
+                    <DropdownMenuRadioGroup value={selectedStatus} onValueChange={onStatusChange}>
+                      {MENU_ITEMS.status.map((status, index) => (
+                        <DropdownMenuRadioItem className="gap-2" key={index} value={status.value}>
+                          <Icon icon={status.icon} className="h-5 w-5 text-muted-foreground" />
+                          {status.label}
+                        </DropdownMenuRadioItem>
+                      ))}
+                    </DropdownMenuRadioGroup>
+                  </DropdownMenuSubContent>
+                </DropdownMenuPortal>
+              </DropdownMenuSub>
+            </DropdownMenuGroup>
+
+            <DropdownMenuSeparator className="my-2" />
+            <DropdownMenuGroup>
+              {MENU_ITEMS.profile.map(renderMenuItem)}
+            </DropdownMenuGroup>
+
+            <DropdownMenuSeparator className="my-2" />
+            <DropdownMenuGroup>
+              {MENU_ITEMS.premium.map(renderMenuItem)}
+            </DropdownMenuGroup>
+
+            <DropdownMenuSeparator className="my-2" />
+            <DropdownMenuGroup>
+              {MENU_ITEMS.support.map(renderMenuItem)}
+            </DropdownMenuGroup>
+         
+            <DropdownMenuSeparator className="my-2" />
+            <DropdownMenuGroup>
+              {MENU_ITEMS.account.map(renderMenuItem)}
+            </DropdownMenuGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      );
+    };
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 105

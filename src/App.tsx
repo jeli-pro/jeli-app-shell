@@ -2,6 +2,7 @@ import React, { useEffect } from 'react'
 import { AppShell } from './components/layout/AppShell'
 import { AppShellProvider, useAppShell } from './context/AppShellContext'
 import { useAppStore } from './store/appStore'
+import { useAuthStore } from './store/authStore'
 import './index.css'
 
 // Import library components
@@ -18,6 +19,7 @@ import { ToasterDemo } from './pages/ToasterDemo'
 import { NotificationsPage } from './pages/Notifications'
 import { ContentInSidePanePlaceholder } from './components/shared/ContentInSidePanePlaceholder'
 import { SettingsContent } from './features/settings/SettingsContent'
+import LoginPage from './pages/Login'
 
 // Import icons
 import { LayoutDashboard, Settings, Component, Bell, SlidersHorizontal, ChevronsLeftRight, Search, Filter, Plus, PanelRight, ChevronRight } from 'lucide-react'
@@ -194,10 +196,43 @@ function ComposedApp() {
 
 function App() {
   const isDarkMode = useAppStore((state) => state.isDarkMode)
+  const { isAuthenticated, login, forgotPassword } = useAuthStore()
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', isDarkMode);
   }, [isDarkMode]);
+
+  const handleLogin = async (email: string, password: string) => {
+    try {
+      await login(email, password)
+    } catch (error) {
+      console.error('Login failed:', error)
+      // In a real app, you'd show an error message to the user
+    }
+  }
+
+  const handleForgotPassword = async (email: string) => {
+    try {
+      await forgotPassword(email)
+    } catch (error) {
+      console.error('Forgot password failed:', error)
+    }
+  }
+
+  const handleSignUp = () => {
+    // In a real app, navigate to sign up page
+    console.log('Navigate to sign up page')
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <LoginPage
+        onLogin={handleLogin}
+        onForgotPassword={handleForgotPassword}
+        onSignUp={handleSignUp}
+      />
+    )
+  }
 
   return (
     <div className="h-screen w-screen overflow-hidden bg-background">
