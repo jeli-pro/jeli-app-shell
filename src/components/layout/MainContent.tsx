@@ -1,97 +1,17 @@
 import { forwardRef } from 'react'
-import { 
-  X,
-  LayoutDashboard,
-  Settings,
-  Component,
-  Bell,
-} from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { X } from 'lucide-react'
+import { cn } from '@/lib/utils';
 import { BODY_STATES } from '@/lib/utils'
-import { DashboardContent } from '@/pages/Dashboard'
-import { SettingsPage } from '@/pages/Settings'
-import { ToasterDemo } from '@/pages/ToasterDemo'
-import { useAppStore } from '@/store/appStore'
 import { useAppShell } from '@/context/AppShellContext'
-import { NotificationsPage } from '@/pages/Notifications'
-import { ContentInSidePanePlaceholder } from '@/components/shared/ContentInSidePanePlaceholder'
 
 interface MainContentProps {
-  onToggleFullscreen: () => void
+  onToggleFullscreen?: () => void
+  children?: React.ReactNode;
 }
 
 export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
-  ({ onToggleFullscreen }, ref) => {
-    const { activePage, setActivePage } = useAppStore()
-    const { bodyState, sidePaneContent, openSidePane } = useAppShell();
-    
-    const isDashboardInSidePane = sidePaneContent === 'main' && bodyState === BODY_STATES.SIDE_PANE
-    const isSettingsInSidePane = sidePaneContent === 'settings' && bodyState === BODY_STATES.SIDE_PANE
-    const isToasterInSidePane = sidePaneContent === 'toaster' && bodyState === BODY_STATES.SIDE_PANE
-    const isNotificationsInSidePane = sidePaneContent === 'notifications' && bodyState === BODY_STATES.SIDE_PANE
-
-    const renderContent = () => {
-      if (activePage === 'dashboard') {
-        if (isDashboardInSidePane) {
-          return <ContentInSidePanePlaceholder 
-            icon={LayoutDashboard} 
-            title="Dashboard is in Side Pane" 
-            pageName="dashboard"
-            onBringBack={() => openSidePane('main')} 
-          />;
-        }
-        return <DashboardContent />
-      }
-
-      if (activePage === 'settings') {
-        if (isSettingsInSidePane) {
-          return <ContentInSidePanePlaceholder 
-            icon={Settings} 
-            title="Settings are in Side Pane" 
-            pageName="settings"
-            onBringBack={() => {
-              openSidePane('settings'); 
-              setActivePage('settings');
-            }}
-          />;
-        }
-        return <SettingsPage />
-      }
-      if (activePage === 'toaster') {
-        if (isToasterInSidePane) {
-          return <ContentInSidePanePlaceholder
-            icon={Component}
-            title="Toaster Demo is in Side Pane"
-            pageName="toaster demo"
-            onBringBack={() => {
-              openSidePane('toaster');
-              setActivePage('toaster');
-            }}
-          />;
-        }
-        return <ToasterDemo />
-      }
-      if (activePage === 'notifications') {
-        if (isNotificationsInSidePane) {
-          return <ContentInSidePanePlaceholder
-            icon={Bell}
-            title="Notifications are in Side Pane"
-            pageName="notifications"
-            onBringBack={() => {
-              openSidePane('notifications');
-              setActivePage('notifications');
-            }}
-          />;
-        }
-        return <NotificationsPage />
-      }
-      return null;
-    }
-    
-    const isContentVisible = (activePage === 'dashboard' && !isDashboardInSidePane) || 
-                           (activePage === 'settings' && !isSettingsInSidePane) || 
-                           (activePage === 'toaster' && !isToasterInSidePane) ||
-                           (activePage === 'notifications' && !isNotificationsInSidePane);
+  ({ onToggleFullscreen, children }, ref) => {
+    const { bodyState } = useAppShell();
 
     return (
       <div
@@ -101,9 +21,9 @@ export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
         bodyState === BODY_STATES.FULLSCREEN && "absolute inset-0 z-40 bg-background"
         )}
       >
-        {bodyState === BODY_STATES.FULLSCREEN && isContentVisible && (
+        {bodyState === BODY_STATES.FULLSCREEN && (
           <button
-            onClick={onToggleFullscreen}
+            onClick={() => onToggleFullscreen?.()}
             className="fixed top-6 right-6 lg:right-12 z-[100] h-12 w-12 flex items-center justify-center rounded-full bg-card/50 backdrop-blur-sm hover:bg-card/75 transition-colors group"
             title="Exit Fullscreen"
           >
@@ -112,9 +32,10 @@ export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
         )}
 
         <div className="flex-1 min-h-0 flex flex-col">
-          {renderContent()}
+          {children}
         </div>
       </div>
     )
   }
 )
+MainContent.displayName = 'MainContent'

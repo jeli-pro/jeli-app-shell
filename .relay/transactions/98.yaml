@@ -1,0 +1,638 @@
+uuid: c8635848-18e4-4d87-9878-a28a2a1da603
+projectId: amazing-app-shell
+createdAt: '2025-10-11T00:44:50.497Z'
+gitCommitMsg: >-
+  docs: create comprehensive README and refactor AppShell
+
+  - Creates a detailed README.md file covering installation, architecture, API
+  usage, theming, and contribution guidelines. - Refactors the `AppShell`
+  component to accept a `sidebar` prop, making the architecture more pluggable
+  and modular. - Updates `App.tsx` to align with the new `AppShell` API. - This
+  enhances the project's reusability and makes it ready for distribution as a UI
+  library.
+promptSummary: >-
+  Update the README.md to be production-ready for a UI library, including
+  explanations of its pluggable architecture and usage instructions.
+reasoning:
+  - >-
+    Of course! Creating a production-ready, pluggable UI library requires not
+    only excellent documentation but also a flexible architecture. I'll first
+    refactor the `AppShell` to be more modular by allowing a custom sidebar to
+    be passed in, and then I'll write a comprehensive `README.md` to guide
+    library users.
+  - '### Step 1: Make the `AppShell` Component Pluggable'
+  - >-
+    I'll modify `AppShell.tsx` to accept a `sidebar` prop. This allows consumers
+    of your library to inject their own sidebar implementation, making the
+    architecture more flexible and reusable. I'll use `React.cloneElement` to
+    pass down the necessary internal props (like `ref` and event handlers) to
+    the custom sidebar component.
+  - '### Step 2: Update `App.tsx` to Use the New `AppShell` API'
+  - >-
+    Now that `AppShell` requires a `sidebar` prop, I'll update the main
+    `App.tsx` to pass the `EnhancedSidebar` component, which will serve as the
+    default implementation for the demo.
+  - '### Step 3: Create a Comprehensive `README.md`'
+  - >-
+    Finally, I'll replace the placeholder `README.md` with detailed
+    documentation covering architecture, installation, usage, and customization.
+    This will make your library professional and easy to adopt.
+  - bash
+  - npm install amazing-app-shell
+  - '# or'
+  - yarn add amazing-app-shell
+  - '# or'
+  - pnpm add amazing-app-shell
+  - typescript
+  - import 'amazing-app-shell/dist/style.css';
+  - tsx // src/App.tsx
+  - >-
+    import { AppShellProvider, AppShell, EnhancedSidebar } from
+    'amazing-app-shell';
+  - >-
+    import { ToasterProvider } from
+    'amazing-app-shell/dist/components/ui/toast'; // Adjust path based on
+    package structure
+  - function App() {
+  - return (
+  - <AppShellProvider>
+  - <ToasterProvider>
+  - <AppShell sidebar={<EnhancedSidebar />}>
+  - >-
+    {/* Your application's routes and content would go here, managed by
+    MainContent */}
+  - </AppShell>
+  - </ToasterProvider>
+  - </AppShellProvider>
+  - );
+  - '}'
+  - export default App;
+  - tsx
+  - import { useAppShell } from 'amazing-app-shell';
+  - function MyComponent() {
+  - const { toggleSidebar, openSidePane, sidebarState } = useAppShell();
+  - return (
+  - <div>
+  - '<p>Current sidebar state: {sidebarState}</p>'
+  - <button onClick={toggleSidebar}>Toggle Sidebar</button>
+  - <button onClick={() => openSidePane('settings')}>Open Settings</button>
+  - </div>
+  - );
+  - '}'
+  - tsx
+  - import { useAppStore } from 'amazing-app-shell';
+  - function ThemeToggle() {
+  - const { isDarkMode, toggleDarkMode } = useAppStore();
+  - return (
+  - <button onClick={toggleDarkMode}>
+  - '{isDarkMode ? ''Switch to Light Mode'' : ''Switch to Dark Mode''}'
+  - </button>
+  - );
+  - '}'
+  - tsx
+  - import {
+  - SidebarMenuItem,
+  - SidebarMenuButton,
+  - SidebarIcon,
+  - SidebarLabel,
+  - SidebarTooltip,
+  - '} from ''amazing-app-shell/dist/components/layout/Sidebar''; // Adjust path'
+  - import { Home } from 'lucide-react';
+  - export const MyCustomMenuItem = ({ isActive, onClick }) => {
+  - return (
+  - <SidebarMenuItem>
+  - <SidebarMenuButton onClick={onClick} isActive={isActive}>
+  - <SidebarIcon>
+  - <Home className="w-4 h-4" />
+  - </SidebarIcon>
+  - <SidebarLabel>Dashboard</SidebarLabel>
+  - <SidebarTooltip label="Dashboard" />
+  - </SidebarMenuButton>
+  - </SidebarMenuItem>
+  - );
+  - '};'
+  - tsx
+  - >-
+    import { useToast } from 'amazing-app-shell/dist/components/ui/toast'; //
+    Adjust path
+  - import { Button } from 'amazing-app-shell/dist/components/ui/button';
+  - export function ToastDemo() {
+  - const { show } = useToast();
+  - return (
+  - <Button
+  - onClick={() =>
+  - show({
+  - 'title: ''Meeting Scheduled'','
+  - 'message: ''Your meeting has been successfully scheduled.'','
+  - 'variant: ''success'','
+  - 'actions: {'
+  - 'label: ''Undo'','
+  - 'onClick: () => console.log(''Undo action''),'
+  - '},'
+  - '})'
+  - '}'
+  - '>'
+  - Show Success Toast
+  - </Button>
+  - );
+  - '}'
+  - ts
+  - import { useAppShell } from 'amazing-app-shell';
+  - const { dispatch } = useAppShell();
+  - // Set primary color to a nice shade of green
+  - dispatch({
+  - 'type: ''SET_PRIMARY_COLOR'','
+  - 'payload: ''142.1 76.2% 36.3%'', // HSL value as a string'
+  - '});'
+  - css
+  - ':root {'
+  - '--background: 210 40% 96.1%;'
+  - '--foreground: 222.2 84% 4.9%;'
+  - '--card: 0 0% 100%;'
+  - /* ...and so on */
+  - '--primary-hsl: 220 84% 60%; /* This is the one you can change dynamically */'
+  - '--primary: var(--primary-hsl);'
+  - '}'
+  - .dark {
+  - /* Dark theme variables... */
+  - '}'
+  - '---'
+  - yaml
+operations:
+  - type: write
+    path: src/components/layout/AppShell.tsx
+    content: >+
+      --- src/components/layout/AppShell.tsx
+
+      +++ src/components/layout/AppShell.tsx
+
+      @@ -1,6 +1,5 @@
+
+      -import { useRef } from 'react'
+
+      +import { useRef, cloneElement, type ReactElement } from 'react'
+       import { cn } from '@/lib/utils'
+      -import { EnhancedSidebar } from './EnhancedSidebar'
+       import { MainContent } from './MainContent'
+       import { RightPane } from './RightPane'
+       import { TopBar } from './TopBar'
+      @@ -11,7 +10,11 @@
+       import { useResizableSidebar, useResizableRightPane } from '@/hooks/useResizablePanes.hook'
+       import { useSidebarAnimations, useBodyStateAnimations } from '@/hooks/useAppShellAnimations.hook'
+       
+      -export function AppShell() {
+
+      +interface AppShellProps {
+
+      +  sidebar: ReactElement;
+
+      +}
+
+      +
+
+      +export function AppShell({ sidebar }: AppShellProps) {
+         const {
+           sidebarState,
+           dispatch,
+      @@ -32,23 +35,25 @@
+         useResizableRightPane();
+         useSidebarAnimations(sidebarRef, resizeHandleRef);
+         useBodyStateAnimations(appRef, mainContentRef, rightPaneRef, topBarContainerRef);
+      +
+
+      +  const sidebarWithProps = cloneElement(sidebar, {
+
+      +    ref: sidebarRef,
+
+      +    onMouseEnter: () => {
+
+      +      if (autoExpandSidebar && sidebarState === SIDEBAR_STATES.COLLAPSED)
+      {
+
+      +        peekSidebar()
+
+      +      }
+
+      +    },
+
+      +    onMouseLeave: () => {
+
+      +      if (autoExpandSidebar && sidebarState === SIDEBAR_STATES.PEEK) {
+
+      +        dispatch({ type: 'SET_SIDEBAR_STATE', payload:
+      SIDEBAR_STATES.COLLAPSED });
+
+      +      }
+
+      +    },
+
+      +  });
+       
+         return (
+           <div 
+             ref={appRef}
+      @@ -58,21 +63,7 @@
+             )}
+           >
+             <div className="flex h-screen overflow-hidden">
+      -        {/* Enhanced Sidebar */}
+
+      -        <EnhancedSidebar
+
+      -          ref={sidebarRef}
+
+      -          onMouseEnter={() => {
+
+      -            if (autoExpandSidebar && sidebarState ===
+      SIDEBAR_STATES.COLLAPSED) {
+
+      -              peekSidebar()
+
+      -            }
+
+      -          }}
+
+      -          onMouseLeave={() => {
+
+      -            if (autoExpandSidebar && sidebarState ===
+      SIDEBAR_STATES.PEEK) {
+
+      -              dispatch({ type: 'SET_SIDEBAR_STATE', payload:
+      SIDEBAR_STATES.COLLAPSED });
+
+      -            }
+
+      -          }}
+
+      -        />
+
+      +        {sidebarWithProps}
+       
+               {/* Resize Handle */}
+               {sidebarState !== SIDEBAR_STATES.HIDDEN && (
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/App.tsx
+    content: |+
+      --- src/App.tsx
+      +++ src/App.tsx
+      @@ -1,6 +1,7 @@
+       import { useEffect } from 'react'
+       import { AppShell } from './components/layout/AppShell'
+       import { AppShellProvider } from './context/AppShellContext'
+      +import { EnhancedSidebar } from './components/layout/EnhancedSidebar'
+       import { useAppStore } from './store/appStore'
+       import './index.css'
+       
+      @@ -13,7 +14,7 @@
+         return (
+           <div className="h-screen w-screen overflow-hidden bg-background">
+             <AppShellProvider>
+      -        <AppShell />
+      +        <AppShell sidebar={<EnhancedSidebar />} />
+             </AppShellProvider>
+           </div>
+         )
+
+    patchStrategy: standard-diff
+  - type: write
+    path: README.md
+    content: >
+      # Amazing App Shell
+
+
+      [![License:
+      MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+
+      [![TypeScript](https://img.shields.io/badge/%3C%2F%3E-TypeScript-%230074c1.svg)](http://www.typescriptlang.org/)
+
+      [![React](https://img.shields.io/badge/React-18.2.0-blue)](https://reactjs.org/)
+
+      [![Tailwind
+      CSS](https://img.shields.io/badge/Tailwind_CSS-3.3.5-38B2AC?logo=tailwind-css)](https://tailwindcss.com/)
+
+
+      An unopinionated, highly customizable, and feature-rich application shell
+      for modern React projects. Built with TypeScript, Tailwind CSS, and
+      powered by GSAP for smooth animations. It provides a solid foundation for
+      building complex dashboards and applications with minimal setup.
+
+
+      **[➡️ View Live Demo](https://amazing-app-shell.vercel.app/)**
+      (Placeholder)
+
+
+      *(Note: To display a demo image, add a screenshot named
+      `app-shell-demo.png` to a `public` directory if you have one, and adjust
+      the path below.)*
+
+      <!-- ![App Shell Demo](./public/app-shell-demo.png) -->
+
+
+
+      ## ✨ Key Features
+
+
+      -   **🔌 Pluggable Architecture**: Easily swap out the default sidebar
+      with your own custom implementation.
+
+      -   **↔️ Resizable Sidebar**: With multiple states: `expanded`,
+      `collapsed`, `peek`, and `hidden`.
+
+      -   **📑 Multiple Body Layouts**: Seamlessly switch between `normal`,
+      `fullscreen`, and `side pane` views.
+
+      -   **🚀 Buttery-smooth Animations**: Powered by GSAP for a premium user
+      experience.
+
+      -   **🎨 Customizable Theming**: Uses CSS variables for easy theme
+      customization, compatible with shadcn/ui. Includes a settings panel for
+      live theme changes.
+
+      -   **🌙 Dark Mode**: Built-in, persistent dark mode support.
+
+      -   **⌨️ Command Palette**: Quick navigation and actions with `Ctrl/Cmd +
+      K`.
+
+      -   **🍞 Toast Notifications**: A simple and powerful toast system via the
+      `useToast` hook.
+
+      -   **🧱 Component Primitives**: Build your own sidebar and other
+      components with flexible, reusable primitives.
+
+      -   **Modern Tech Stack**: React, TypeScript, Tailwind CSS, Zustand, Radix
+      UI.
+
+
+      ## 🚀 Installation
+    patchStrategy: replace
+  - type: write
+    path: '## ⚙️ Getting Started'
+    content: >-
+      1.  **CSS Setup**: Import the CSS file into your main application file
+      (e.g., `main.tsx` or `App.tsx`).
+
+          
+    patchStrategy: replace
+  - type: write
+    path: >-
+      2.  **Wrap your application**: Use the `AppShellProvider` and `AppShell`
+      components to form the foundation of your app. Create your custom sidebar
+      and pass it to the `AppShell` component.
+    content: '    '
+    patchStrategy: replace
+  - type: write
+    path: >-
+      *Note: The example above assumes `EnhancedSidebar` is exported from the
+      library. You can build your own using the provided primitives.*
+    content: >
+      ## 🏛️ Architecture & Core Concepts
+
+
+      The shell is managed by two distinct state managers, providing a clear
+      separation of concerns.
+
+
+      ### `AppShellProvider` & `useAppShell` Hook
+
+
+      This React Context (`AppShellContext`) manages the shell's **layout and
+      structural state**. This state is volatile and not persisted.
+
+
+      -   **State Managed**: `sidebarState`, `bodyState`, `sidebarWidth`,
+      `isResizing`, etc.
+
+      -   **`useAppShell()` Hook**: Provides access to this state and methods to
+      control the shell's layout.
+    patchStrategy: replace
+  - type: write
+    path: '### `useAppStore` (Zustand)'
+    content: >
+      This global store manages **user preferences and application state**. This
+      state is persisted to `localStorage`.
+
+
+      -   **State Managed**: `activePage`, `isDarkMode`, `searchTerm`, etc.
+
+      -   **`useAppStore()` Hook**: Provides access to global state and actions.
+    patchStrategy: replace
+  - type: write
+    path: '## 🧩 Component API'
+    content: >
+      ### Customizing the Sidebar
+
+
+      The `AppShell` component accepts a `sidebar` prop, allowing you to provide
+      your own custom sidebar component. For full functionality (resizing,
+      animations), your custom sidebar should be a `React.forwardRef` component.
+
+
+      We also provide a set of headless primitives to build your own accessible
+      and consistent sidebar with ease.
+
+
+      **Example of a custom sidebar menu item:**
+    patchStrategy: replace
+  - type: write
+    path: '### Displaying Toasts'
+    content: |
+      Use the `useToast` hook anywhere inside the `ToasterProvider`.
+    patchStrategy: replace
+  - type: write
+    path: '## 🎨 Theming'
+    content: >
+      Theming is handled via CSS variables, following the same convention as
+      shadcn/ui. You can customize the theme by overriding these variables in
+      your global CSS file.
+
+
+      **Primary Color Customization:**
+
+
+      The primary color can be changed dynamically from the settings panel or
+      programmatically.
+    patchStrategy: replace
+  - type: write
+    path: 'The core theme variables are defined in `src/index.css`:'
+    content: ''
+    patchStrategy: replace
+  - type: write
+    path: '## 📜 Scripts'
+    content: |-
+      -   `npm run dev`: Starts the development server.
+      -   `npm run build`: Builds the project for production.
+      -   `npm run lint`: Lints the codebase.
+
+      ## 🤝 Contributing
+
+      Contributions are welcome! Please feel free to submit a pull request.
+
+      1.  Fork the repository.
+      2.  Create your feature branch (`git checkout -b feature/AmazingFeature`).
+      3.  Commit your changes (`git commit -m 'Add some AmazingFeature'`).
+      4.  Push to the branch (`git push origin feature/AmazingFeature`).
+      5.  Open a Pull Request.
+
+      ## 📄 License
+
+      This project is licensed under the MIT License.
+    patchStrategy: replace
+snapshot:
+  '## ⚙️ Getting Started': null
+  '2.  **Wrap your application**: Use the `AppShellProvider` and `AppShell` components to form the foundation of your app. Create your custom sidebar and pass it to the `AppShell` component.': null
+  '*Note: The example above assumes `EnhancedSidebar` is exported from the library. You can build your own using the provided primitives.*': null
+  '### `useAppStore` (Zustand)': null
+  '## 🧩 Component API': null
+  '### Displaying Toasts': null
+  '## 🎨 Theming': null
+  'The core theme variables are defined in `src/index.css`:': null
+  '## 📜 Scripts': null
+  src/App.tsx: |-
+    import { useEffect } from 'react'
+    import { AppShell } from './components/layout/AppShell'
+    import { AppShellProvider } from './context/AppShellContext'
+    import { useAppStore } from './store/appStore'
+    import './index.css'
+
+    function App() {
+      const isDarkMode = useAppStore((state) => state.isDarkMode)
+
+      useEffect(() => {
+        document.documentElement.classList.toggle('dark', isDarkMode);
+      }, [isDarkMode]);
+
+      return (
+        <div className="h-screen w-screen overflow-hidden bg-background">
+          <AppShellProvider>
+            <AppShell />
+          </AppShellProvider>
+        </div>
+      )
+    }
+
+    export default App
+  src/components/layout/AppShell.tsx: >-
+    import { useRef } from 'react'
+
+    import { cn } from '@/lib/utils'
+
+    import { EnhancedSidebar } from './EnhancedSidebar'
+
+    import { MainContent } from './MainContent'
+
+    import { RightPane } from './RightPane'
+
+    import { TopBar } from './TopBar'
+
+    import { CommandPalette } from '@/components/global/CommandPalette';
+
+    import { useAppStore } from '@/store/appStore';
+
+    import { useAppShell } from '@/context/AppShellContext';
+
+    import { SIDEBAR_STATES } from '@/lib/utils'
+
+    import { useResizableSidebar, useResizableRightPane } from
+    '@/hooks/useResizablePanes.hook'
+
+    import { useSidebarAnimations, useBodyStateAnimations } from
+    '@/hooks/useAppShellAnimations.hook'
+
+
+    export function AppShell() {
+      const {
+        sidebarState,
+        dispatch,
+        autoExpandSidebar,
+        toggleSidebar,
+        peekSidebar,
+        toggleFullscreen,
+      } = useAppShell();
+      
+      const { isDarkMode, toggleDarkMode } = useAppStore();
+      const appRef = useRef<HTMLDivElement>(null)
+      const sidebarRef = useRef<HTMLDivElement>(null)
+      const mainContentRef = useRef<HTMLDivElement>(null)
+      const rightPaneRef = useRef<HTMLDivElement>(null)
+      const resizeHandleRef = useRef<HTMLDivElement>(null)
+      const topBarContainerRef = useRef<HTMLDivElement>(null)
+
+      // Custom hooks for logic
+      useResizableSidebar(sidebarRef, resizeHandleRef);
+      useResizableRightPane();
+      useSidebarAnimations(sidebarRef, resizeHandleRef);
+      useBodyStateAnimations(appRef, mainContentRef, rightPaneRef, topBarContainerRef);
+
+      return (
+        <div 
+          ref={appRef}
+          className={cn(
+            "relative h-screen w-screen overflow-hidden bg-background transition-colors duration-300",
+            isDarkMode && "dark"
+          )}
+        >
+          <div className="flex h-screen overflow-hidden">
+            {/* Enhanced Sidebar */}
+            <EnhancedSidebar
+              ref={sidebarRef}
+              onMouseEnter={() => {
+                if (autoExpandSidebar && sidebarState === SIDEBAR_STATES.COLLAPSED) {
+                  peekSidebar()
+                }
+              }}
+              onMouseLeave={() => {
+                if (autoExpandSidebar && sidebarState === SIDEBAR_STATES.PEEK) {
+                  dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.COLLAPSED });
+                }
+              }}
+            />
+
+            {/* Resize Handle */}
+            {sidebarState !== SIDEBAR_STATES.HIDDEN && (
+              <div
+                ref={resizeHandleRef}
+                className={cn(
+                  "absolute top-0 w-2 h-full bg-transparent hover:bg-primary/20 cursor-col-resize z-50 transition-colors duration-200 group -translate-x-1/2"
+                )}
+                onMouseDown={(e) => {
+                  e.preventDefault()
+                  dispatch({ type: 'SET_IS_RESIZING', payload: true });
+                }}
+              >
+                <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200 mx-auto" />
+              </div>
+            )}
+
+            {/* Main Content Area */}
+            <div className="relative flex-1 overflow-hidden bg-background">
+              <div ref={topBarContainerRef} className="absolute inset-x-0 top-0 z-30">
+                <TopBar
+                  onToggleSidebar={toggleSidebar}
+                  onToggleFullscreen={toggleFullscreen}
+                  onToggleDarkMode={toggleDarkMode}
+                />
+              </div>
+              
+              {/* Main Content */}
+              <MainContent
+                ref={mainContentRef}
+                onToggleFullscreen={toggleFullscreen}
+              />
+            </div>
+          </div>
+          <RightPane ref={rightPaneRef} />
+          <CommandPalette />
+        </div>
+      )
+    }
+  README.md: |
+    // TODO
+approved: false
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: undone
+id: 98

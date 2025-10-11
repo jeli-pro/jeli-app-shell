@@ -1,0 +1,998 @@
+uuid: a6977717-b956-4c4f-9e63-c7e6c4331070
+projectId: amazing-app-shell
+createdAt: '2025-10-11T01:15:37.511Z'
+gitCommitMsg: >-
+  fix(ts): Resolve compilation errors by refactoring AppShell composition
+
+  Corrects several TypeScript errors that arose from an unfriendly component
+  composition pattern. The `AppShell` component is refactored to instantiate its
+  core layout children (`TopBar`, `MainContent`) directly, accepting their
+  dynamic content via props. This ensures props are correctly typed and resolves
+  the TS2739 and TS2741 errors.
+
+  Additionally, this commit cleans up several components by removing unused
+  variables and imports, fixing the remaining TS6133 errors.
+promptSummary: >-
+  The user provided a list of TypeScript compilation errors. I have fixed them
+  by refactoring the `AppShell` component's composition model to be more
+  type-safe and by cleaning up several other components to remove unused
+  variables and imports.
+reasoning:
+  - >-
+    I've analyzed the TypeScript errors and they primarily stem from a component
+    composition pattern that is unfriendly to static analysis. I will refactor
+    the `AppShell` to instantiate its main layout children directly, passing
+    content via props. This will resolve the prop-drilling errors. The other
+    errors are minor cleanups of unused variables and imports, which I will
+    address as well.
+  - '### Step 1: Fix `TopBar` Component'
+  - >-
+    I'll start by cleaning up `TopBar.tsx`. The component was refactored to be
+    generic, but still contained leftover state (`isSearchFocused`) and complex
+    conditional classes related to application-specific logic. I'm removing this
+    state and simplifying the component to be a pure layout container.
+  - '### Step 2: Fix `RightPane` Component'
+  - >-
+    I'll remove the unused `sidePaneContent` variable from the `useAppShell`
+    hook destructuring.
+  - '### Step 3: Fix `MainContent` Component'
+  - >-
+    This component had leftover icon imports from before it was refactored. I am
+    removing them to fix the "declared but not used" errors.
+  - '### Step 4: Refactor `AppShell` Composition'
+  - >-
+    This is the core fix. I'm changing `AppShell.tsx` to no longer use
+    `React.cloneElement` for the `TopBar` and `MainContent` components, which
+    was causing the type errors. Instead, it will render them directly and
+    accept their children as props (`topBarContent` and `mainContentChildren`).
+    This makes the component composition type-safe and easier to understand.
+  - '### Step 5: Update `App.tsx` for New `AppShell` Props'
+  - >-
+    Finally, I'll update `App.tsx` to use the new prop structure for `AppShell`,
+    passing `topBarContent` and `mainContentChildren` instead of fully rendered
+    elements. This resolves the final TypeScript errors.
+operations:
+  - type: write
+    path: src/components/layout/TopBar.tsx
+    content: >
+      --- src/components/layout/TopBar.tsx
+
+      +++ src/components/layout/TopBar.tsx
+
+      @@ -1,4 +1,4 @@
+
+      -import { useState } from 'react'
+
+      +import React from 'react'
+       import {
+         Menu, 
+         Maximize, 
+      @@ -9,9 +9,6 @@
+         Command,
+         Zap,
+         ChevronRight,
+      -  Search,
+
+      -  Filter,
+
+      -  Plus,
+         PanelRight,
+       } from 'lucide-react'
+       import { cn } from '@/lib/utils'
+      @@ -28,21 +25,18 @@
+         onToggleDarkMode,
+         children
+       }: TopBarProps) {
+      -  const { bodyState, openSidePane, sidePaneContent } = useAppShell();
+         const { 
+           activePage,
+      -    setActivePage,
+
+      -    searchTerm,
+           setCommandPaletteOpen,
+      -    setSearchTerm,
+           isDarkMode,
+         } = useAppStore()
+       
+      -  const [isSearchFocused, setIsSearchFocused] = useState(false)
+
+      +  const { bodyState, openSidePane, sidePaneContent } = useAppShell();
+       
+         const handleSettingsClick = () => {
+           const isSettingsInSidePane = bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === 'settings'
+       
+           // If we're on the settings page and it's not in the side pane, treat this as a "minimize" action.
+           if (activePage === 'settings' && !isSettingsInSidePane) {
+      -      openSidePane('settings')
+
+      -      setActivePage('dashboard');
+
+      +      openSidePane('settings');
+           } else {
+             // In all other cases (on dashboard page, or settings already in pane),
+             // just toggle the settings side pane.
+      @@ -52,8 +46,7 @@
+       
+         const handleMoveToSidePane = () => {
+           const mapping = { dashboard: 'main', settings: 'settings', toaster: 'toaster', notifications: 'notifications' } as const;
+      -    openSidePane(mapping[activePage]);
+
+      -    if (activePage !== 'dashboard') setActivePage('dashboard');
+
+      +    if (mapping[activePage]) openSidePane(mapping[activePage]);
+         };
+       
+         return (
+      @@ -75,27 +68,23 @@
+               </button>
+       
+               {/* Breadcrumbs */}
+      -        <div className={cn("hidden md:flex items-center gap-2 text-sm
+      transition-opacity", {
+
+      -          "opacity-0 pointer-events-none": isSearchFocused && activePage
+      === 'dashboard'
+
+      -        })}>
+
+      +        <div className="hidden md:flex items-center gap-2 text-sm">
+                 <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">Home</a>
+                 <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                 <span className="font-medium text-foreground capitalize">{activePage}</span>
+               </div>
+             </div>
+       
+      -      {/* Right Section - page controls, and global controls */}
+
+      -      <div className={cn("flex items-center gap-3", isSearchFocused &&
+      activePage === 'dashboard' ? 'flex-1' : '')}>
+
+      -        {/* Page-specific: Move to side pane */}
+
+      -        <div className={cn('flex items-center', isSearchFocused &&
+      activePage === 'dashboard' ? 'hidden md:flex' : '')}>
+
+      +      {/* Right Section - page controls and global controls */}
+
+      +      <div className="flex items-center gap-3">
+
+      +        {children}
+
+      +        <div className="flex items-center">
+                 {['dashboard', 'settings', 'toaster', 'notifications'].includes(activePage) && (
+                   <button onClick={handleMoveToSidePane} className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors" title="Move to Side Pane"><PanelRight className="w-5 h-5" /></button>
+                 )}
+               </div>
+       
+               {/* Separator */}
+      -        <div className={cn(
+
+      -          'w-px h-6 bg-border mx-2', 
+
+      -          !['dashboard', 'settings', 'toaster',
+      'notifications'].includes(activePage) || (isSearchFocused && activePage
+      === 'dashboard') ? 'hidden' : ''
+
+      -        )} />
+
+      +        <div className={cn('w-px h-6 bg-border mx-2', !['dashboard',
+      'settings', 'toaster', 'notifications'].includes(activePage) && 'hidden')}
+      />
+       
+               {/* Quick Actions */}
+      -        <div className={cn('flex items-center gap-3', isSearchFocused &&
+      activePage === 'dashboard' ? 'hidden lg:flex' : '')}>
+
+      +        <div className="flex items-center gap-3">
+       
+                 <button
+                   onClick={() => setCommandPaletteOpen(true)}
+    patchStrategy: standard-diff
+  - type: write
+    path: src/components/layout/RightPane.tsx
+    content: |
+      --- src/components/layout/RightPane.tsx
+      +++ src/components/layout/RightPane.tsx
+      @@ -9,7 +9,7 @@
+       }
+       
+       export const RightPane = forwardRef<HTMLDivElement, RightPaneProps>(({ children, header, className }, ref) => {
+      -  const { sidePaneContent, closeSidePane, dispatch } = useAppShell();
+      +  const { closeSidePane, dispatch } = useAppShell();
+       
+         return (
+           <aside
+    patchStrategy: standard-diff
+  - type: write
+    path: src/components/layout/MainContent.tsx
+    content: |
+      --- src/components/layout/MainContent.tsx
+      +++ src/components/layout/MainContent.tsx
+      @@ -1,13 +1,5 @@
+       import { forwardRef } from 'react'
+      -import { 
+      -  X,
+      -  LayoutDashboard,
+      -  Settings,
+      -  Component,
+      -  Bell,
+      -} from 'lucide-react'
+      +import { X } from 'lucide-react'
+       import { cn } from '@/lib/utils';
+       import { BODY_STATES } from '@/lib/utils'
+       import { useAppShell } from '@/context/AppShellContext'
+    patchStrategy: standard-diff
+  - type: write
+    path: src/components/layout/AppShell.tsx
+    content: >
+      --- src/components/layout/AppShell.tsx
+
+      +++ src/components/layout/AppShell.tsx
+
+      @@ -1,19 +1,22 @@
+
+      -import React, { useRef, type ReactElement } from 'react'
+
+      +import React, { useRef, type ReactElement, type ReactNode } from 'react'
+       import { cn } from '@/lib/utils'
+       import { CommandPalette } from '@/components/global/CommandPalette';
+       import { useAppStore } from '@/store/appStore';
+       import { useAppShell } from '@/context/AppShellContext';
+       import { SIDEBAR_STATES } from '@/lib/utils'
+       import { useResizableSidebar, useResizableRightPane } from '@/hooks/useResizablePanes.hook'
+       import { useSidebarAnimations, useBodyStateAnimations } from '@/hooks/useAppShellAnimations.hook'
+      +import { TopBar } from './TopBar';
+
+      +import { MainContent } from './MainContent';
+       
+       interface AppShellProps {
+         sidebar: ReactElement;
+      -  topBar: ReactElement;
+
+      -  mainContent: ReactElement;
+
+      +  topBarContent?: ReactNode;
+
+      +  mainContentChildren: ReactNode;
+         rightPane: ReactElement;
+         commandPalette?: ReactElement;
+       }
+       
+      -
+
+      -export function AppShell({ sidebar, topBar, mainContent, rightPane,
+      commandPalette }: AppShellProps) {
+
+      +export function AppShell({ sidebar, topBarContent, mainContentChildren,
+      rightPane, commandPalette }: AppShellProps) {
+         const {
+           sidebarState,
+           dispatch,
+      @@ -50,18 +53,7 @@
+           }
+         });
+       
+      -  const topBarWithProps = React.cloneElement(topBar, {
+
+      -    onToggleSidebar: toggleSidebar,
+
+      -    onToggleFullscreen: toggleFullscreen,
+
+      -    onToggleDarkMode: toggleDarkMode,
+
+      -  });
+
+      -
+
+      -  const mainContentWithProps = React.cloneElement(mainContent, {
+
+      -    ref: mainContentRef,
+
+      -    onToggleFullscreen: toggleFullscreen,
+
+      -  });
+
+      -
+         const rightPaneWithProps = React.cloneElement(rightPane, { ref: rightPaneRef });
+       
+         return (
+      @@ -100,14 +92,19 @@
+               {/* Main Content Area */}
+               <div className="relative flex-1 overflow-hidden bg-background">
+                 <div ref={topBarContainerRef} className="absolute inset-x-0 top-0 z-30">
+      -            {topBarWithProps}
+
+      +            <TopBar
+
+      +              onToggleSidebar={toggleSidebar}
+
+      +              onToggleFullscreen={toggleFullscreen}
+
+      +              onToggleDarkMode={toggleDarkMode}
+
+      +            >
+
+      +              {topBarContent}
+
+      +            </TopBar>
+                 </div>
+                 
+                 {/* Main Content */}
+      -          {mainContentWithProps}
+
+      +          <MainContent ref={mainContentRef}
+      onToggleFullscreen={toggleFullscreen}>
+
+      +            {mainContentChildren}
+
+      +          </MainContent>
+               </div>
+             </div>
+             {rightPaneWithProps}
+    patchStrategy: standard-diff
+  - type: write
+    path: src/App.tsx
+    content: |
+      --- src/App.tsx
+      +++ src/App.tsx
+      @@ -165,9 +165,9 @@
+       function ComposedApp() {
+         return (
+           <AppShell
+             sidebar={<EnhancedSidebar />}
+      -      topBar={<TopBar><AppTopBar /></TopBar>}
+      -      mainContent={<MainContent><AppContent /></MainContent>}
+      +      topBarContent={<AppTopBar />}
+      +      mainContentChildren={<AppContent />}
+             rightPane={<AppRightPane />}
+             commandPalette={<CommandPalette />}
+           />
+    patchStrategy: standard-diff
+snapshot:
+  src/components/layout/RightPane.tsx: >-
+    import { forwardRef, type ReactNode } from 'react'
+
+    import { ChevronRight } from 'lucide-react'
+
+    import { cn } from '@/lib/utils'
+
+    import { useAppShell } from '@/context/AppShellContext'
+
+
+    interface RightPaneProps {
+      children?: ReactNode
+      header?: ReactNode
+      className?: string
+    }
+
+
+    export const RightPane = forwardRef<HTMLDivElement, RightPaneProps>(({
+    children, header, className }, ref) => {
+      const { sidePaneContent, closeSidePane, dispatch } = useAppShell();
+
+      return (
+        <aside
+          ref={ref}
+          className={cn("bg-card border-l border-border flex flex-col h-full overflow-hidden fixed top-0 right-0 z-[60]", className)}
+        >
+          <button
+            onClick={closeSidePane}
+            className="absolute top-1/2 -left-px -translate-y-1/2 -translate-x-full w-8 h-16 bg-card border border-r-0 border-border rounded-l-lg flex items-center justify-center hover:bg-accent transition-colors group z-10"
+            title="Close pane"
+          >
+            <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-foreground transition-colors" />
+          </button>
+          <div 
+            className={cn(
+              "absolute top-0 left-0 w-2 h-full bg-transparent hover:bg-primary/20 cursor-col-resize z-50 transition-colors duration-200 group -translate-x-1/2"
+            )}
+            onMouseDown={(e) => {
+              e.preventDefault()
+              dispatch({ type: 'SET_IS_RESIZING_RIGHT_PANE', payload: true });
+            }}
+          >
+            <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200 mx-auto" />
+          </div>
+          {header && (
+            <div className="flex items-center justify-between p-4 border-b border-border h-20 flex-shrink-0 pl-6">
+              {header}
+            </div>
+          )}
+          <div className="flex-1 overflow-y-auto px-8 py-6">
+            {children}
+          </div>
+        </aside>
+      )
+    })
+
+    RightPane.displayName = "RightPane"
+  src/components/layout/MainContent.tsx: |-
+    import { forwardRef } from 'react'
+    import { 
+      X,
+      LayoutDashboard,
+      Settings,
+      Component,
+      Bell,
+    } from 'lucide-react'
+    import { cn } from '@/lib/utils';
+    import { BODY_STATES } from '@/lib/utils'
+    import { useAppShell } from '@/context/AppShellContext'
+
+    interface MainContentProps {
+      onToggleFullscreen: () => void
+      children?: React.ReactNode;
+    }
+
+    export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
+      ({ onToggleFullscreen, children }, ref) => {
+        const { bodyState } = useAppShell();
+
+        return (
+          <div
+            ref={ref}
+            className={cn(
+            "flex flex-col h-full overflow-hidden",
+            bodyState === BODY_STATES.FULLSCREEN && "absolute inset-0 z-40 bg-background"
+            )}
+          >
+            {bodyState === BODY_STATES.FULLSCREEN && (
+              <button
+                onClick={onToggleFullscreen}
+                className="fixed top-6 right-6 lg:right-12 z-[100] h-12 w-12 flex items-center justify-center rounded-full bg-card/50 backdrop-blur-sm hover:bg-card/75 transition-colors group"
+                title="Exit Fullscreen"
+              >
+                <X className="w-6 h-6 group-hover:scale-110 group-hover:rotate-90 transition-all duration-300" />
+              </button>
+            )}
+
+            <div className="flex-1 min-h-0 flex flex-col">
+              {children}
+            </div>
+          </div>
+        )
+      }
+    )
+    MainContent.displayName = 'MainContent'
+  src/components/layout/AppShell.tsx: >-
+    import React, { useRef, type ReactElement } from 'react'
+
+    import { cn } from '@/lib/utils'
+
+    import { CommandPalette } from '@/components/global/CommandPalette';
+
+    import { useAppStore } from '@/store/appStore';
+
+    import { useAppShell } from '@/context/AppShellContext';
+
+    import { SIDEBAR_STATES } from '@/lib/utils'
+
+    import { useResizableSidebar, useResizableRightPane } from
+    '@/hooks/useResizablePanes.hook'
+
+    import { useSidebarAnimations, useBodyStateAnimations } from
+    '@/hooks/useAppShellAnimations.hook'
+
+
+    interface AppShellProps {
+      sidebar: ReactElement;
+      topBar: ReactElement;
+      mainContent: ReactElement;
+      rightPane: ReactElement;
+      commandPalette?: ReactElement;
+    }
+
+
+
+    export function AppShell({ sidebar, topBar, mainContent, rightPane,
+    commandPalette }: AppShellProps) {
+      const {
+        sidebarState,
+        dispatch,
+        autoExpandSidebar,
+        toggleSidebar,
+        peekSidebar,
+        toggleFullscreen,
+      } = useAppShell();
+      
+      const { isDarkMode, toggleDarkMode } = useAppStore();
+      const appRef = useRef<HTMLDivElement>(null)
+      const sidebarRef = useRef<HTMLDivElement>(null)
+      const mainContentRef = useRef<HTMLDivElement>(null)
+      const rightPaneRef = useRef<HTMLDivElement>(null)
+      const resizeHandleRef = useRef<HTMLDivElement>(null)
+      const topBarContainerRef = useRef<HTMLDivElement>(null)
+
+      // Custom hooks for logic
+      useResizableSidebar(sidebarRef, resizeHandleRef);
+      useResizableRightPane();
+      useSidebarAnimations(sidebarRef, resizeHandleRef);
+      useBodyStateAnimations(appRef, mainContentRef, rightPaneRef, topBarContainerRef);
+      
+      const sidebarWithProps = React.cloneElement(sidebar, { 
+        ref: sidebarRef,
+        onMouseEnter: () => {
+          if (autoExpandSidebar && sidebarState === SIDEBAR_STATES.COLLAPSED) {
+            peekSidebar()
+          }
+        },
+        onMouseLeave: () => {
+          if (autoExpandSidebar && sidebarState === SIDEBAR_STATES.PEEK) {
+            dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.COLLAPSED });
+          }
+        }
+      });
+
+      const topBarWithProps = React.cloneElement(topBar, {
+        onToggleSidebar: toggleSidebar,
+        onToggleFullscreen: toggleFullscreen,
+        onToggleDarkMode: toggleDarkMode,
+      });
+
+      const mainContentWithProps = React.cloneElement(mainContent, {
+        ref: mainContentRef,
+        onToggleFullscreen: toggleFullscreen,
+      });
+
+      const rightPaneWithProps = React.cloneElement(rightPane, { ref: rightPaneRef });
+
+      return (
+        <div 
+          ref={appRef}
+          className={cn(
+            "relative h-screen w-screen overflow-hidden bg-background transition-colors duration-300",
+            isDarkMode && "dark"
+          )}
+        >
+          <div className="flex h-screen overflow-hidden">
+            {/* Enhanced Sidebar */}
+            {sidebarWithProps}
+
+            {/* Resize Handle */}
+            {sidebarState !== SIDEBAR_STATES.HIDDEN && (
+              <div
+                ref={resizeHandleRef}
+                className={cn(
+                  "absolute top-0 w-2 h-full bg-transparent hover:bg-primary/20 cursor-col-resize z-50 transition-colors duration-200 group -translate-x-1/2"
+                )}
+                onMouseDown={(e) => {
+                  e.preventDefault()
+                  dispatch({ type: 'SET_IS_RESIZING', payload: true });
+                }}
+              >
+                <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200 mx-auto" />
+              </div>
+            )}
+
+            {/* Main Content Area */}
+            <div className="relative flex-1 overflow-hidden bg-background">
+              <div ref={topBarContainerRef} className="absolute inset-x-0 top-0 z-30">
+                {topBarWithProps}
+              </div>
+              
+              {/* Main Content */}
+              {mainContentWithProps}
+            </div>
+          </div>
+          {rightPaneWithProps}
+          {commandPalette || <CommandPalette />}
+        </div>
+      )
+    }
+  src/components/layout/TopBar.tsx: |-
+    import { useState } from 'react'
+    import {
+      Menu, 
+      Maximize, 
+      Minimize, 
+      Moon, 
+      Sun,
+      Settings,
+      Command,
+      Zap,
+      ChevronRight,
+      PanelRight,
+    } from 'lucide-react'
+    import { cn } from '@/lib/utils'
+    import { BODY_STATES } from '@/lib/utils'
+    import { useAppStore } from '@/store/appStore'
+    import { useAppShell } from '@/context/AppShellContext'
+    import { UserDropdown } from './UserDropdown'
+
+    interface TopBarProps {
+      onToggleSidebar: () => void
+      onToggleFullscreen: () => void
+      onToggleDarkMode: () => void
+      children?: React.ReactNode
+    }
+
+    export function TopBar({
+      onToggleSidebar,
+      onToggleFullscreen,
+      onToggleDarkMode,
+      children
+    }: TopBarProps) {
+      const { bodyState, openSidePane, sidePaneContent } = useAppShell();
+      const { 
+        activePage,
+        setCommandPaletteOpen,
+        isDarkMode,
+      } = useAppStore()
+
+      const [isSearchFocused, setIsSearchFocused] = useState(false)
+
+      const handleSettingsClick = () => {
+        const isSettingsInSidePane = bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === 'settings'
+
+        // If we're on the settings page and it's not in the side pane, treat this as a "minimize" action.
+        if (activePage === 'settings' && !isSettingsInSidePane) {
+          openSidePane('settings');
+        } else {
+          // In all other cases (on dashboard page, or settings already in pane),
+          // just toggle the settings side pane.
+          openSidePane('settings')
+        }
+      };
+
+      const handleMoveToSidePane = () => {
+        const mapping = { dashboard: 'main', settings: 'settings', toaster: 'toaster', notifications: 'notifications' } as const;
+        if (mapping[activePage]) openSidePane(mapping[activePage]);
+      };
+
+      return (
+        <div className={cn(
+          "h-20 bg-background border-b border-border flex items-center justify-between px-6 z-50 gap-4",
+          {
+            'transition-all duration-300 ease-in-out': activePage === 'dashboard',
+          }
+        )}>
+          {/* Left Section - Sidebar Controls & Breadcrumbs */}
+          <div className="flex items-center gap-4">
+            {/* Sidebar Controls */}
+            <button
+              onClick={onToggleSidebar}
+              className={cn(
+                "h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors"
+              )}
+              title="Toggle Sidebar"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+
+            {/* Breadcrumbs */}
+            <div className={cn("hidden md:flex items-center gap-2 text-sm transition-opacity", {
+              "opacity-0 pointer-events-none": isSearchFocused && activePage === 'dashboard'
+            })}>
+              <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">Home</a>
+              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+              <span className="font-medium text-foreground capitalize">{activePage}</span>
+            </div>
+          </div>
+
+          {/* Right Section - page controls, and global controls */}
+          <div className={cn("flex items-center gap-3", isSearchFocused && activePage === 'dashboard' ? 'flex-1' : '')}>
+            {children}
+            <div className={cn('flex items-center', isSearchFocused && activePage === 'dashboard' ? 'hidden md:flex' : '')}>
+              {['dashboard', 'settings', 'toaster', 'notifications'].includes(activePage) && (
+                <button onClick={handleMoveToSidePane} className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors" title="Move to Side Pane"><PanelRight className="w-5 h-5" /></button>
+              )}
+            </div>
+
+            {/* Separator */}
+            <div className={cn(
+              'w-px h-6 bg-border mx-2', 
+              !['dashboard', 'settings', 'toaster', 'notifications'].includes(activePage) || (isSearchFocused && activePage === 'dashboard') ? 'hidden' : ''
+            )} />
+
+            {/* Quick Actions */}
+            <div className={cn('flex items-center gap-3', isSearchFocused && activePage === 'dashboard' ? 'hidden lg:flex' : '')}>
+
+              <button
+                onClick={() => setCommandPaletteOpen(true)}
+                className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+                title="Command Palette (Ctrl+K)"
+              >
+                <Command className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              </button>
+
+            <button
+              className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+              title="Quick Actions"
+            >
+              <Zap className="w-5 h-5 group-hover:scale-110 transition-transform" />
+            </button>
+
+            {/* Body State Controls */}
+            <button
+              onClick={() => openSidePane('details')}
+              className={cn(
+                "h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group",
+                bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === 'details' && "bg-accent"
+              )}
+              title="Toggle Side Pane"
+            >
+              <div className="w-5 h-5 flex group-hover:scale-110 transition-transform">
+                <div className="w-1/2 h-full bg-current opacity-60 rounded-l-sm" />
+                <div className="w-1/2 h-full bg-current rounded-r-sm" />
+              </div>
+            </button>
+
+            <button
+              onClick={onToggleFullscreen}
+              className={cn(
+                "h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group",
+                bodyState === BODY_STATES.FULLSCREEN && "bg-accent"
+              )}
+              title="Toggle Fullscreen"
+            >
+              {bodyState === BODY_STATES.FULLSCREEN ? (
+                <Minimize className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              ) : (
+                <Maximize className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              )}
+            </button>
+
+            <div className="w-px h-6 bg-border mx-2" />
+
+            {/* Theme and Settings */}
+            <button
+              onClick={onToggleDarkMode}
+              className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+              title="Toggle Dark Mode"
+            >
+              {isDarkMode ? (
+                <Sun className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              ) : (
+                <Moon className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              )}
+            </button>
+
+            <button
+              onClick={handleSettingsClick}
+              className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+              title="Settings"
+            >
+              <Settings className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
+            </button>
+            <UserDropdown />
+            </div>
+          </div>
+        </div>
+      )
+    }
+  src/App.tsx: >-
+    import React, { useEffect } from 'react'
+
+    import { AppShell } from './components/layout/AppShell'
+
+    import { AppShellProvider, useAppShell } from './context/AppShellContext'
+
+    import { useAppStore } from './store/appStore'
+
+    import './index.css'
+
+
+    // Import library components
+
+    import { EnhancedSidebar } from './components/layout/EnhancedSidebar'
+
+    import { MainContent } from './components/layout/MainContent'
+
+    import { RightPane } from './components/layout/RightPane'
+
+    import { TopBar } from './components/layout/TopBar'
+
+    import { CommandPalette } from './components/global/CommandPalette'
+
+
+    // Import page/content components
+
+    import { DashboardContent } from './pages/Dashboard'
+
+    import { SettingsPage } from './pages/Settings'
+
+    import { ToasterDemo } from './pages/ToasterDemo'
+
+    import { NotificationsPage } from './pages/Notifications'
+
+    import { ContentInSidePanePlaceholder } from
+    './components/shared/ContentInSidePanePlaceholder'
+
+    import { SettingsContent } from './features/settings/SettingsContent'
+
+
+    // Import icons
+
+    import { LayoutDashboard, Settings, Component, Bell, SlidersHorizontal,
+    ChevronsLeftRight, Search, Filter, Plus } from 'lucide-react'
+
+    import { BODY_STATES } from './lib/utils'
+
+    import { cn } from './lib/utils'
+
+
+
+    // The content for the main area, with page routing logic
+
+    function AppContent() {
+      const { activePage, setActivePage } = useAppStore()
+      const { bodyState, sidePaneContent, openSidePane } = useAppShell()
+
+      const pageMap = {
+        dashboard: {
+          component: <DashboardContent />,
+          sidePaneContent: 'main',
+          icon: LayoutDashboard,
+          name: 'dashboard',
+        },
+        settings: {
+          component: <SettingsPage />,
+          sidePaneContent: 'settings',
+          icon: Settings,
+          name: 'settings',
+        },
+        toaster: {
+          component: <ToasterDemo />,
+          sidePaneContent: 'toaster',
+          icon: Component,
+          name: 'toaster demo',
+        },
+        notifications: {
+          component: <NotificationsPage />,
+          sidePaneContent: 'notifications',
+          icon: Bell,
+          name: 'notifications',
+        },
+      } as const;
+
+      const currentPage = pageMap[activePage];
+
+      if (sidePaneContent === currentPage.sidePaneContent && bodyState === BODY_STATES.SIDE_PANE) {
+        return (
+          <ContentInSidePanePlaceholder 
+            icon={currentPage.icon}
+            title={`${currentPage.name.charAt(0).toUpperCase() + currentPage.name.slice(1)} is in Side Pane`}
+            pageName={currentPage.name}
+            onBringBack={() => {
+              openSidePane(currentPage.sidePaneContent);
+              setActivePage(activePage);
+            }}
+          />
+        )
+      }
+
+      return currentPage.component;
+    }
+
+
+    // Content for the Right Pane
+
+    function AppRightPane() {
+        const { sidePaneContent, closeSidePane } = useAppShell();
+        const { setActivePage } = useAppStore();
+
+        const contentMap = {
+          main: { title: 'Dashboard', icon: LayoutDashboard, page: 'dashboard', content: <DashboardContent isInSidePane /> },
+          settings: { title: 'Settings', icon: Settings, page: 'settings', content: <SettingsContent /> },
+          toaster: { title: 'Toaster Demo', icon: Component, page: 'toaster', content: <ToasterDemo isInSidePane /> },
+          notifications: { title: 'Notifications', icon: Bell, page: 'notifications', content: <NotificationsPage isInSidePane /> },
+          details: { title: 'Details Panel', icon: SlidersHorizontal, content: <p className="text-muted-foreground">This is the side pane. It can be used to display contextual information, forms, or actions related to the main content.</p> }
+        } as const;
+      
+        const currentContent = contentMap[sidePaneContent as keyof typeof contentMap] || contentMap.details;
+        const CurrentIcon = currentContent.icon;
+      
+        const handleMaximize = () => {
+          if ('page' in currentContent && currentContent.page) {
+            setActivePage(currentContent.page as any);
+          }
+          closeSidePane()
+        }
+
+        const header = (
+            <>
+            <div className="flex items-center gap-2">
+              <CurrentIcon className="w-5 h-5" />
+              <h2 className="text-lg font-semibold whitespace-nowrap">
+                {currentContent.title}
+              </h2>
+            </div>
+            
+            {'page' in currentContent && currentContent.page && (
+              <button
+                onClick={handleMaximize}
+                className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors mr-2"
+                title="Move to Main View"
+              >
+                <ChevronsLeftRight className="w-5 h-5" />
+              </button>
+            )}
+            </>
+        );
+
+        return (
+            <RightPane header={header}>
+                {currentContent.content}
+            </RightPane>
+        )
+    }
+
+
+    // Content for the Top Bar
+
+    function AppTopBar() {
+      const { activePage, searchTerm, setSearchTerm } = useAppStore();
+      const [isSearchFocused, setIsSearchFocused] = React.useState(false);
+
+      if (activePage === 'dashboard') {
+        return (
+          <div className="flex items-center gap-2 flex-1 justify-end">
+            <div className={cn("relative transition-all duration-300 ease-in-out", isSearchFocused ? 'flex-1 max-w-lg' : 'w-auto')}>
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4 pointer-events-none" />
+              <input
+                type="text"
+                placeholder="Search..."
+                value={searchTerm}
+                onFocus={() => setIsSearchFocused(true)}
+                onBlur={() => setIsSearchFocused(false)}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className={cn(
+                  "pl-9 pr-4 py-2 h-10 border-none rounded-lg bg-card focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300 ease-in-out w-full",
+                  isSearchFocused ? 'bg-background' : 'w-48'
+                )}
+              />
+            </div>
+             <button className="h-10 w-10 flex-shrink-0 flex items-center justify-center hover:bg-accent rounded-full transition-colors">
+              <Filter className="w-5 h-5" />
+            </button>
+             <button className="bg-primary text-primary-foreground px-4 py-2 rounded-full hover:bg-primary/90 transition-colors flex items-center gap-2 h-10 flex-shrink-0">
+              <Plus className="w-5 h-5" />
+              <span className={cn(isSearchFocused ? 'hidden sm:inline' : 'inline')}>New Project</span>
+            </button>
+          </div>
+        );
+      }
+      return null;
+    }
+
+
+    // The main App component that composes the shell
+
+    function ComposedApp() {
+      return (
+        <AppShell
+          sidebar={<EnhancedSidebar />}
+          topBar={<TopBar><AppTopBar /></TopBar>}
+          mainContent={<MainContent><AppContent /></MainContent>}
+          rightPane={<AppRightPane />}
+          commandPalette={<CommandPalette />}
+        />
+      );
+    }
+
+
+    function App() {
+      const isDarkMode = useAppStore((state) => state.isDarkMode)
+
+      useEffect(() => {
+        document.documentElement.classList.toggle('dark', isDarkMode);
+      }, [isDarkMode]);
+
+      return (
+        <div className="h-screen w-screen overflow-hidden bg-background">
+          <AppShellProvider>
+            <ComposedApp />
+          </AppShellProvider>
+        </div>
+      )
+    }
+
+
+    export default App
+approved: false
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: undone
+id: 100

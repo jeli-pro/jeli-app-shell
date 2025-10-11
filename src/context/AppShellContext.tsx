@@ -4,6 +4,7 @@ import {
   useReducer,
   useEffect,
   useMemo,
+  useCallback,
   type ReactNode,
   type Dispatch,
 } from 'react';
@@ -102,36 +103,59 @@ export function AppShellProvider({ children }: { children: ReactNode }) {
     document.documentElement.style.setProperty('--primary-hsl', state.primaryColor);
   }, [state.primaryColor]);
 
-  // Memoized composite actions
-  const actions = useMemo(() => ({
-    toggleSidebar: () => {
-      const current = state.sidebarState;
-      if (current === SIDEBAR_STATES.HIDDEN) dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.COLLAPSED });
-      else if (current === SIDEBAR_STATES.COLLAPSED) dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.EXPANDED });
-      else if (current === SIDEBAR_STATES.EXPANDED) dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.COLLAPSED });
-    },
-    hideSidebar: () => dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.HIDDEN }),
-    showSidebar: () => dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.EXPANDED }),
-    peekSidebar: () => dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.PEEK }),
-    toggleFullscreen: () => {
-      const current = state.bodyState;
-      dispatch({ type: 'SET_BODY_STATE', payload: current === BODY_STATES.FULLSCREEN ? BODY_STATES.NORMAL : BODY_STATES.FULLSCREEN });
-    },
-    openSidePane: (content: AppShellState['sidePaneContent']) => {
-      if (state.bodyState === BODY_STATES.SIDE_PANE && state.sidePaneContent === content) {
-        // If it's open with same content, close it.
-        dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.NORMAL });
-      } else {
-        // If closed, or different content, open with new content.
-        dispatch({ type: 'SET_SIDE_PANE_CONTENT', payload: content });
-        dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.SIDE_PANE });
-      }
-    },
-    closeSidePane: () => dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.NORMAL }),
-    resetToDefaults: () => dispatch({ type: 'RESET_TO_DEFAULTS' }),
-  }), [state.sidebarState, state.bodyState]);
+  // Memoized composite actions using useCallback for stable function identities
+  const toggleSidebar = useCallback(() => {
+    const current = state.sidebarState;
+    if (current === SIDEBAR_STATES.HIDDEN) dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.COLLAPSED });
+    else if (current === SIDEBAR_STATES.COLLAPSED) dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.EXPANDED });
+    else if (current === SIDEBAR_STATES.EXPANDED) dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.COLLAPSED });
+  }, [state.sidebarState]);
 
-  const value = useMemo(() => ({ ...state, dispatch, ...actions }), [state, actions]);
+  const hideSidebar = useCallback(() => dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.HIDDEN }), []);
+  const showSidebar = useCallback(() => dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.EXPANDED }), []);
+  const peekSidebar = useCallback(() => dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.PEEK }), []);
+  
+  const toggleFullscreen = useCallback(() => {
+    const current = state.bodyState;
+    dispatch({ type: 'SET_BODY_STATE', payload: current === BODY_STATES.FULLSCREEN ? BODY_STATES.NORMAL : BODY_STATES.FULLSCREEN });
+  }, [state.bodyState]);
+
+  const openSidePane = useCallback((content: AppShellState['sidePaneContent']) => {
+    if (state.bodyState === BODY_STATES.SIDE_PANE && state.sidePaneContent === content) {
+      // If it's open with same content, close it.
+      dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.NORMAL });
+    } else {
+      // If closed, or different content, open with new content.
+      dispatch({ type: 'SET_SIDE_PANE_CONTENT', payload: content });
+      dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.SIDE_PANE });
+    }
+  }, [state.bodyState, state.sidePaneContent]);
+
+  const closeSidePane = useCallback(() => dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.NORMAL }), []);
+  const resetToDefaults = useCallback(() => dispatch({ type: 'RESET_TO_DEFAULTS' }), []);
+
+  const value = useMemo(() => ({ 
+    ...state, 
+    dispatch, 
+    toggleSidebar,
+    hideSidebar,
+    showSidebar,
+    peekSidebar,
+    toggleFullscreen,
+    openSidePane,
+    closeSidePane,
+    resetToDefaults,
+  }), [
+    state, 
+    toggleSidebar,
+    hideSidebar,
+    showSidebar,
+    peekSidebar,
+    toggleFullscreen,
+    openSidePane,
+    closeSidePane,
+    resetToDefaults
+  ]);
 
   return (
     <AppShellContext.Provider value={value}>

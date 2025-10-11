@@ -1,9 +1,5 @@
-import { useRef } from 'react'
+import React, { useRef, type ReactElement } from 'react'
 import { cn } from '@/lib/utils'
-import { EnhancedSidebar } from './EnhancedSidebar'
-import { MainContent } from './MainContent'
-import { RightPane } from './RightPane'
-import { TopBar } from './TopBar'
 import { CommandPalette } from '@/components/global/CommandPalette';
 import { useAppStore } from '@/store/appStore';
 import { useAppShell } from '@/context/AppShellContext';
@@ -11,7 +7,16 @@ import { SIDEBAR_STATES } from '@/lib/utils'
 import { useResizableSidebar, useResizableRightPane } from '@/hooks/useResizablePanes.hook'
 import { useSidebarAnimations, useBodyStateAnimations } from '@/hooks/useAppShellAnimations.hook'
 
-export function AppShell() {
+interface AppShellProps {
+  sidebar: ReactElement;
+  topBar: ReactElement;
+  mainContent: ReactElement;
+  rightPane: ReactElement;
+  commandPalette?: ReactElement;
+}
+
+
+export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalette }: AppShellProps) {
   const {
     sidebarState,
     dispatch,
@@ -34,6 +39,33 @@ export function AppShell() {
   useResizableRightPane();
   useSidebarAnimations(sidebarRef, resizeHandleRef);
   useBodyStateAnimations(appRef, mainContentRef, rightPaneRef, topBarContainerRef);
+  
+  const sidebarWithProps = React.cloneElement(sidebar, { 
+    ref: sidebarRef,
+    onMouseEnter: () => {
+      if (autoExpandSidebar && sidebarState === SIDEBAR_STATES.COLLAPSED) {
+        peekSidebar()
+      }
+    },
+    onMouseLeave: () => {
+      if (autoExpandSidebar && sidebarState === SIDEBAR_STATES.PEEK) {
+        dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.COLLAPSED });
+      }
+    }
+  });
+
+  const topBarWithProps = React.cloneElement(topBar, {
+    onToggleSidebar: toggleSidebar,
+    onToggleFullscreen: toggleFullscreen,
+    onToggleDarkMode: toggleDarkMode,
+  });
+
+  const mainContentWithProps = React.cloneElement(mainContent, {
+    ref: mainContentRef,
+    onToggleFullscreen: toggleFullscreen,
+  });
+
+  const rightPaneWithProps = React.cloneElement(rightPane, { ref: rightPaneRef });
 
   return (
     <div 
@@ -45,19 +77,7 @@ export function AppShell() {
     >
       <div className="flex h-screen overflow-hidden">
         {/* Enhanced Sidebar */}
-        <EnhancedSidebar
-          ref={sidebarRef}
-          onMouseEnter={() => {
-            if (autoExpandSidebar && sidebarState === SIDEBAR_STATES.COLLAPSED) {
-              peekSidebar()
-            }
-          }}
-          onMouseLeave={() => {
-            if (autoExpandSidebar && sidebarState === SIDEBAR_STATES.PEEK) {
-              dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.COLLAPSED });
-            }
-          }}
-        />
+        {sidebarWithProps}
 
         {/* Resize Handle */}
         {sidebarState !== SIDEBAR_STATES.HIDDEN && (
@@ -78,22 +98,15 @@ export function AppShell() {
         {/* Main Content Area */}
         <div className="relative flex-1 overflow-hidden bg-background">
           <div ref={topBarContainerRef} className="absolute inset-x-0 top-0 z-30">
-            <TopBar
-              onToggleSidebar={toggleSidebar}
-              onToggleFullscreen={toggleFullscreen}
-              onToggleDarkMode={toggleDarkMode}
-            />
+            {topBarWithProps}
           </div>
           
           {/* Main Content */}
-          <MainContent
-            ref={mainContentRef}
-            onToggleFullscreen={toggleFullscreen}
-          />
+          {mainContentWithProps}
         </div>
       </div>
-      <RightPane ref={rightPaneRef} />
-      <CommandPalette />
+      {rightPaneWithProps}
+      {commandPalette || <CommandPalette />}
     </div>
   )
 }
