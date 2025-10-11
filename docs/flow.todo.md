@@ -6,7 +6,7 @@ tsx only for renders, so please extract out all hooks to *.hook.ts files
 
 fix project structure, naming and organization
 
-===
+=== DONE
 
 top bar background color should be same as main content background color so seen as minimalist
 
@@ -18,7 +18,7 @@ top bar should show after hidden while scrolling stop
 
 make codebase highly DRY for super less codebase without UI look regression or degradation of consumer flexibility
 
-===
+=== DONE
 
 notification page
 

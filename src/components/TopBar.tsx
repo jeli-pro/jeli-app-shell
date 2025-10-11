@@ -66,7 +66,7 @@ export function TopBar({
 
   return (
     <div className={cn(
-      "h-20 bg-card/80 backdrop-blur-sm border-b border-border flex items-center justify-between px-6 z-50 gap-4",
+      "h-20 bg-background border-b border-border flex items-center justify-between px-6 z-50 gap-4",
       {
         'transition-all duration-300 ease-in-out': activePage === 'dashboard',
       }

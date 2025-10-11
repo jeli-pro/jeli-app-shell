@@ -53,408 +53,6 @@ vite.config.ts
 
 # Files
 
-## File: src/components/ui/tabs.tsx
-```typescript
-import * as React from "react"
-import * as TabsPrimitive from "@radix-ui/react-tabs"
-
-import { cn } from "@/lib/utils"
-
-const Tabs = TabsPrimitive.Root
-
-const TabsList = React.forwardRef<
-  React.ElementRef<typeof TabsPrimitive.List>,
-  React.ComponentPropsWithoutRef<typeof TabsPrimitive.List>
->(({ className, ...props }, ref) => (
-  <TabsPrimitive.List
-    ref={ref}
-    className={cn(
-      "inline-flex h-10 items-center justify-center rounded-lg bg-muted p-1 text-muted-foreground",
-      className
-    )}
-    {...props}
-  />
-))
-TabsList.displayName = TabsPrimitive.List.displayName
-
-const TabsTrigger = React.forwardRef<
-  React.ElementRef<typeof TabsPrimitive.Trigger>,
-  React.ComponentPropsWithoutRef<typeof TabsPrimitive.Trigger>
->(({ className, ...props }, ref) => (
-  <TabsPrimitive.Trigger
-    ref={ref}
-    className={cn(
-      "inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm",
-      className
-    )}
-    {...props}
-  />
-))
-TabsTrigger.displayName = TabsPrimitive.Trigger.displayName
-
-const TabsContent = React.forwardRef<
-  React.ElementRef<typeof TabsPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof TabsPrimitive.Content>
->(({ className, ...props }, ref) => (
-  <TabsPrimitive.Content
-    ref={ref}
-    className={cn(
-      "mt-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-      className
-    )}
-    {...props}
-  />
-))
-TabsContent.displayName = TabsPrimitive.Content.displayName
-
-export { Tabs, TabsList, TabsTrigger, TabsContent }
-```
-
-## File: src/components/NotificationsPage.tsx
-```typescript
-import React from "react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { PageHeader } from "./PageHeader";
-import { useToast } from "./ui/toast";
-import { cn } from "@/lib/utils";
-import { 
-  CheckCheck, 
-  Download, 
-  Settings, 
-  Bell,
-  MessageSquare,
-  UserPlus,
-  Mail,
-  File as FileIcon,
-  Heart,
-  AtSign,
-  ClipboardCheck,
-  ShieldCheck,
-} from "lucide-react";
-
-
-type Notification = {
-  id: number;
-  type: string;
-  user: {
-    name: string;
-    avatar: string;
-    fallback: string;
-  };
-  action: string;
-  target?: string;
-  content?: string;
-  timestamp: string;
-  timeAgo: string;
-  isRead: boolean;
-  hasActions?: boolean;
-  file?: {
-    name: string;
-    size: string;
-    type: string;
-  };
-};
-
-const initialNotifications: Array<Notification> = [
-  {
-    id: 1,
-    type: "comment",
-    user: { name: "Amélie", avatar: "https://api.dicebear.com/7.x/notionists/svg?seed=Amélie", fallback: "A" },
-    action: "commented in",
-    target: "Dashboard 2.0",
-    content: "Really love this approach. I think this is the best solution for the document sync UX issue.",
-    timestamp: "Friday 3:12 PM",
-    timeAgo: "2 hours ago",
-    isRead: false,
-  },
-  {
-    id: 2,
-    type: "follow",
-    user: { name: "Sienna", avatar: "https://api.dicebear.com/7.x/notionists/svg?seed=Sienna", fallback: "S" },
-    action: "followed you",
-    timestamp: "Friday 3:04 PM",
-    timeAgo: "2 hours ago",
-    isRead: false,
-  },
-  {
-    id: 3,
-    type: "invitation",
-    user: { name: "Ammar", avatar: "https://api.dicebear.com/7.x/notionists/svg?seed=Ammar", fallback: "A" },
-    action: "invited you to",
-    target: "Blog design",
-    timestamp: "Friday 2:22 PM",
-    timeAgo: "3 hours ago",
-    isRead: true,
-    hasActions: true,
-  },
-  {
-    id: 4,
-    type: "file_share",
-    user: { name: "Mathilde", avatar: "https://api.dicebear.com/7.x/notionists/svg?seed=Mathilde", fallback: "M" },
-    action: "shared a file in",
-    target: "Dashboard 2.0",
-    file: { name: "Prototype recording 01.mp4", size: "14 MB", type: "MP4" },
-    timestamp: "Friday 1:40 PM",
-    timeAgo: "4 hours ago",
-    isRead: true,
-  },
-  {
-    id: 5,
-    type: "mention",
-    user: { name: "James", avatar: "https://api.dicebear.com/7.x/notionists/svg?seed=James", fallback: "J" },
-    action: "mentioned you in",
-    target: "Project Alpha",
-    content: "Hey @you, can you review the latest designs when you get a chance?",
-    timestamp: "Thursday 11:30 AM",
-    timeAgo: "1 day ago",
-    isRead: true,
-  },
-  {
-    id: 6,
-    type: "like",
-    user: { name: "Sofia", avatar: "https://api.dicebear.com/7.x/notionists/svg?seed=Sofia", fallback: "S" },
-    action: "liked your comment in",
-    target: "Team Meeting Notes",
-    timestamp: "Thursday 9:15 AM",
-    timeAgo: "1 day ago",
-    isRead: true,
-  },
-  {
-    id: 7,
-    type: "task_assignment",
-    user: { name: "Admin", avatar: "https://api.dicebear.com/7.x/bottts/svg?seed=Admin", fallback: "AD" },
-    action: "assigned you a new task in",
-    target: "Q3 Marketing",
-    content: "Finalize the social media campaign assets.",
-    timestamp: "Wednesday 5:00 PM",
-    timeAgo: "2 days ago",
-    isRead: true,
-  },
-  {
-    id: 8,
-    type: "system_update",
-    user: { name: "System", avatar: "https://api.dicebear.com/7.x/shapes/svg?seed=System", fallback: "SYS" },
-    action: "pushed a new update",
-    content: "Version 2.1.0 is now live with improved performance and new features. Check out the release notes for more details.",
-    timestamp: "Wednesday 9:00 AM",
-    timeAgo: "2 days ago",
-    isRead: true,
-  },
-  {
-    id: 9,
-    type: 'comment',
-    user: { name: 'Elena', avatar: 'https://api.dicebear.com/7.x/notionists/svg?seed=Elena', fallback: 'E' },
-    action: 'replied to your comment in',
-    target: 'Dashboard 2.0',
-    content: 'Thanks for the feedback! I\'ve updated the prototype.',
-    timestamp: 'Tuesday 4:30 PM',
-    timeAgo: '3 days ago',
-    isRead: false,
-  },
-  {
-    id: 10,
-    type: 'invitation',
-    user: { name: 'Carlos', avatar: 'https://api.dicebear.com/7.x/notionists/svg?seed=Carlos', fallback: 'C' },
-    action: 'invited you to',
-    target: 'API Integration',
-    timestamp: 'Tuesday 10:00 AM',
-    timeAgo: '3 days ago',
-    isRead: true,
-    hasActions: true,
-  },
-];
-
-const iconMap: { [key: string]: React.ElementType } = {
-  comment: MessageSquare,
-  follow: UserPlus,
-  invitation: Mail,
-  file_share: FileIcon,
-  mention: AtSign,
-  like: Heart,
-  task_assignment: ClipboardCheck,
-  system_update: ShieldCheck,
-};
-
-function NotificationItem({ notification, onMarkAsRead }: { notification: Notification; onMarkAsRead: (id: number) => void }) {
-  const Icon = iconMap[notification.type];
-
-  return (
-    <div className="group w-full -mx-4 px-4 py-4 rounded-xl hover:bg-accent/50 transition-colors duration-200">
-      <div className="flex gap-3">
-        <div className="relative h-10 w-10 shrink-0">
-          <Avatar className="h-10 w-10">
-            <AvatarImage src={notification.user.avatar} alt={`${notification.user.name}'s profile picture`} />
-            <AvatarFallback>{notification.user.fallback}</AvatarFallback>
-          </Avatar>
-          {Icon && (
-            <div className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full border-2 border-card bg-background">
-              <Icon className={cn("h-3 w-3", notification.type === 'like' ? 'text-red-500 fill-current' : 'text-muted-foreground')} />
-            </div>
-          )}
-        </div>
-
-        <div className="flex flex-1 flex-col space-y-2">
-          <div className="flex items-start justify-between">
-            <div className="text-sm">
-              <span className="font-semibold">{notification.user.name}</span>
-              <span className="text-muted-foreground"> {notification.action} </span>
-              {notification.target && <span className="font-semibold">{notification.target}</span>}
-              <div className="mt-0.5 text-xs text-muted-foreground">{notification.timeAgo}</div>
-            </div>
-            <button
-              onClick={() => !notification.isRead && onMarkAsRead(notification.id)}
-              title={notification.isRead ? "Read" : "Mark as read"}
-              className={cn("size-2.5 rounded-full mt-1 shrink-0 transition-all duration-300",
-                notification.isRead ? 'bg-transparent' : 'bg-primary hover:scale-125 cursor-pointer'
-              )}
-            ></button>
-          </div>
-
-          {notification.content && <div className="rounded-lg border bg-muted/50 p-3 text-sm">{notification.content}</div>}
-
-          {notification.file && (
-            <div className="flex items-center gap-2 rounded-lg bg-muted/50 p-2 border border-border">
-              <div className="shrink-0 w-10 h-10 flex items-center justify-center bg-background rounded-md border border-border">
-                <FileIcon className="w-5 h-5 text-muted-foreground" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium truncate">{notification.file.name}</div>
-                <div className="text-xs text-muted-foreground">{notification.file.type} • {notification.file.size}</div>
-              </div>
-              <Button variant="ghost" size="icon" className="size-8 shrink-0">
-                <Download className="w-4 h-4" />
-              </Button>
-            </div>
-          )}
-
-          {notification.hasActions && (
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm">Decline</Button>
-              <Button size="sm">Accept</Button>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-export function NotificationsPage({ isInSidePane = false }: { isInSidePane?: boolean }) {
-  const [notifications, setNotifications] = React.useState<Notification[]>(initialNotifications);
-  const [activeTab, setActiveTab] = React.useState<string>("all");
-  const { show } = useToast();
-
-  const handleMarkAsRead = (id: number) => {
-    setNotifications(prev =>
-      prev.map(n => (n.id === id ? { ...n, isRead: true } : n))
-    );
-  };
-
-  const handleMarkAllAsRead = () => {
-    const unreadCount = notifications.filter(n => !n.isRead).length;
-    if (unreadCount === 0) {
-      show({
-        title: "Already up to date!",
-        message: "You have no unread notifications.",
-        variant: "default",
-      });
-      return;
-    }
-    setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
-    show({
-        title: "All Caught Up!",
-        message: "All notifications have been marked as read.",
-        variant: "success",
-    });
-  };
-
-  const unreadCount = notifications.filter(n => !n.isRead).length;
-
-  const verifiedNotifications = notifications.filter((n) => n.type === "follow" || n.type === "like");
-  const mentionNotifications = notifications.filter((n) => n.type === "mention");
-
-  const verifiedCount = verifiedNotifications.filter(n => !n.isRead).length;
-  const mentionCount = mentionNotifications.filter(n => !n.isRead).length;
-
-  const getFilteredNotifications = () => {
-    switch (activeTab) {
-      case "verified": return verifiedNotifications;
-      case "mentions": return mentionNotifications;
-      default: return notifications;
-    }
-  };
-
-  const filteredNotifications = getFilteredNotifications();
-
-  const content = (
-    <Card className={cn("flex w-full flex-col shadow-none", isInSidePane ? "border-none" : "p-6 lg:p-8")}>
-      <CardHeader className="p-0">
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold">
-            Your notifications
-          </h3>
-          <div className="flex items-center gap-1">
-            <Button variant="ghost" size="icon" className="size-8" onClick={handleMarkAllAsRead} title="Mark all as read">
-              <CheckCheck className="size-4 text-muted-foreground" />
-            </Button>
-            <Button variant="ghost" size="icon" className="size-8">
-              <Settings className="size-4 text-muted-foreground" />
-            </Button>
-          </div>
-        </div>
-
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex-col justify-start mt-4">
-          <TabsList className="gap-1.5">
-            <TabsTrigger value="all" className="gap-1.5">
-              View all {unreadCount > 0 && <Badge variant="secondary" className="rounded-full">{unreadCount}</Badge>}
-            </TabsTrigger>
-            <TabsTrigger value="verified" className="gap-1.5">
-              Verified {verifiedCount > 0 && <Badge variant="secondary" className="rounded-full">{verifiedCount}</Badge>}
-            </TabsTrigger>
-            <TabsTrigger value="mentions" className="gap-1.5">
-              Mentions {mentionCount > 0 && <Badge variant="secondary" className="rounded-full">{mentionCount}</Badge>}
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
-      </CardHeader>
-
-      <CardContent className="h-full p-0 mt-6">
-        <div className="space-y-0 divide-y divide-border">
-          {filteredNotifications.length > 0 ? (
-            filteredNotifications.map((notification) => (
-              <NotificationItem key={notification.id} notification={notification} onMarkAsRead={handleMarkAsRead} />
-            ))
-          ) : (
-            <div className="flex flex-col items-center justify-center space-y-2.5 py-12 text-center">
-              <div className="rounded-full bg-muted p-4">
-                <Bell className="text-muted-foreground" />
-              </div>
-              <p className="text-sm font-medium text-muted-foreground">No notifications yet.</p>
-            </div>
-          )}
-        </div>
-      </CardContent>
-    </Card>
-  );
-
-  return (
-    <div className={cn("overflow-y-auto", !isInSidePane ? "h-full p-6 lg:px-12 space-y-8" : "h-full")}>
-      {!isInSidePane && (
-        <PageHeader
-          title="Notifications"
-          description="Manage your notifications and stay up-to-date."
-        />
-      )}
-      {content}
-    </div>
-  );
-};
-```
-
 ## File: src/components/ui/avatar.tsx
 ```typescript
 import * as React from "react"
@@ -972,6 +570,63 @@ export {
 }
 ```
 
+## File: src/components/ui/tabs.tsx
+```typescript
+import * as React from "react"
+import * as TabsPrimitive from "@radix-ui/react-tabs"
+
+import { cn } from "@/lib/utils"
+
+const Tabs = TabsPrimitive.Root
+
+const TabsList = React.forwardRef<
+  React.ElementRef<typeof TabsPrimitive.List>,
+  React.ComponentPropsWithoutRef<typeof TabsPrimitive.List>
+>(({ className, ...props }, ref) => (
+  <TabsPrimitive.List
+    ref={ref}
+    className={cn(
+      "inline-flex h-10 items-center justify-center rounded-lg bg-muted p-1 text-muted-foreground",
+      className
+    )}
+    {...props}
+  />
+))
+TabsList.displayName = TabsPrimitive.List.displayName
+
+const TabsTrigger = React.forwardRef<
+  React.ElementRef<typeof TabsPrimitive.Trigger>,
+  React.ComponentPropsWithoutRef<typeof TabsPrimitive.Trigger>
+>(({ className, ...props }, ref) => (
+  <TabsPrimitive.Trigger
+    ref={ref}
+    className={cn(
+      "inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm",
+      className
+    )}
+    {...props}
+  />
+))
+TabsTrigger.displayName = TabsPrimitive.Trigger.displayName
+
+const TabsContent = React.forwardRef<
+  React.ElementRef<typeof TabsPrimitive.Content>,
+  React.ComponentPropsWithoutRef<typeof TabsPrimitive.Content>
+>(({ className, ...props }, ref) => (
+  <TabsPrimitive.Content
+    ref={ref}
+    className={cn(
+      "mt-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+      className
+    )}
+    {...props}
+  />
+))
+TabsContent.displayName = TabsPrimitive.Content.displayName
+
+export { Tabs, TabsList, TabsTrigger, TabsContent }
+```
+
 ## File: src/components/ui/toast.tsx
 ```typescript
 import {
@@ -1210,114 +865,6 @@ export const ToasterProvider = ({ children }: { children: ReactNode }) => {
 };
 ```
 
-## File: src/components/CommandPalette.tsx
-```typescript
-import * as React from 'react'
-import {
-  CommandDialog,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-  CommandSeparator,
-  CommandShortcut,
-} from '@/components/ui/command'
-import { useAppStore, type ActivePage } from '@/store/appStore'
-import { Home, Settings, Moon, Sun, Monitor, Smartphone, PanelRight, Maximize, Component, Bell } from 'lucide-react'
-
-export function CommandPalette() {
-  const {
-    isCommandPaletteOpen,
-    setCommandPaletteOpen,
-    setActivePage,
-    toggleDarkMode,
-    isDarkMode,
-    setCompactMode,
-    toggleFullscreen,
-    openSidePane,
-  } = useAppStore()
-
-  React.useEffect(() => {
-    const down = (e: KeyboardEvent) => {
-      if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
-        e.preventDefault()
-        setCommandPaletteOpen(!isCommandPaletteOpen)
-      }
-    }
-    document.addEventListener('keydown', down)
-    return () => document.removeEventListener('keydown', down)
-  }, [isCommandPaletteOpen, setCommandPaletteOpen])
-  
-  const runCommand = (command: () => void) => {
-    setCommandPaletteOpen(false)
-    command()
-  }
-
-  return (
-    <CommandDialog open={isCommandPaletteOpen} onOpenChange={setCommandPaletteOpen}>
-      <CommandInput placeholder="Type a command or search..." />
-      <CommandList>
-        <CommandEmpty>No results found.</CommandEmpty>
-        <CommandGroup heading="Navigation">
-          <CommandItem onSelect={() => runCommand(() => setActivePage('dashboard'))}>
-            <Home className="mr-2 h-4 w-4" />
-            <span>Go to Dashboard</span>
-            <CommandShortcut>G D</CommandShortcut>
-          </CommandItem>
-          <CommandItem onSelect={() => runCommand(() => setActivePage('settings'))}>
-            <Settings className="mr-2 h-4 w-4" />
-            <span>Go to Settings</span>
-            <CommandShortcut>G S</CommandShortcut>
-          </CommandItem>
-          <CommandItem onSelect={() => runCommand(() => setActivePage('toaster'))}>
-            <Component className="mr-2 h-4 w-4" />
-            <span>Go to Toaster Demo</span>
-            <CommandShortcut>G T</CommandShortcut>
-          </CommandItem>
-          <CommandItem onSelect={() => runCommand(() => setActivePage('notifications' as ActivePage))}>
-            <Bell className="mr-2 h-4 w-4" />
-            <span>Go to Notifications</span>
-            <CommandShortcut>G N</CommandShortcut>
-          </CommandItem>
-        </CommandGroup>
-        <CommandSeparator />
-        <CommandGroup heading="Actions">
-          <CommandItem onSelect={() => runCommand(toggleDarkMode)}>
-            {isDarkMode ? <Sun className="mr-2 h-4 w-4" /> : <Moon className="mr-2 h-4 w-4" />}
-            <span>Toggle Theme</span>
-            <CommandShortcut>⌘T</CommandShortcut>
-          </CommandItem>
-          <CommandItem onSelect={() => runCommand(toggleFullscreen)}>
-            <Maximize className="mr-2 h-4 w-4" />
-            <span>Toggle Fullscreen</span>
-            <CommandShortcut>⌘F</CommandShortcut>
-          </CommandItem>
-          <CommandItem onSelect={() => runCommand(() => openSidePane('settings'))}>
-            <PanelRight className="mr-2 h-4 w-4" />
-            <span>Open Settings in Side Pane</span>
-            <CommandShortcut>⌥S</CommandShortcut>
-          </CommandItem>
-        </CommandGroup>
-        <CommandSeparator />
-        <CommandGroup heading="Preferences">
-          <CommandItem onSelect={() => runCommand(() => setCompactMode(true))}>
-            <Smartphone className="mr-2 h-4 w-4" />
-            <span>Enable Compact Mode</span>
-            <CommandShortcut>⌘C</CommandShortcut>
-          </CommandItem>
-          <CommandItem onSelect={() => runCommand(() => setCompactMode(false))}>
-            <Monitor className="mr-2 h-4 w-4" />
-            <span>Disable Compact Mode</span>
-            <CommandShortcut>⇧⌘C</CommandShortcut>
-          </CommandItem>
-        </CommandGroup>
-      </CommandList>
-    </CommandDialog>
-  )
-}
-```
-
 ## File: src/components/ContentInSidePanePlaceholder.tsx
 ```typescript
 import { ChevronsLeftRight } from 'lucide-react'
@@ -1358,6 +905,354 @@ export function ContentInSidePanePlaceholder({
     </div>
   )
 }
+```
+
+## File: src/components/NotificationsPage.tsx
+```typescript
+import React from "react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PageHeader } from "./PageHeader";
+import { useToast } from "./ui/toast";
+import { cn } from "@/lib/utils";
+import { 
+  CheckCheck, 
+  Download, 
+  Settings, 
+  Bell,
+  MessageSquare,
+  UserPlus,
+  Mail,
+  File as FileIcon,
+  Heart,
+  AtSign,
+  ClipboardCheck,
+  ShieldCheck,
+} from "lucide-react";
+
+
+type Notification = {
+  id: number;
+  type: string;
+  user: {
+    name: string;
+    avatar: string;
+    fallback: string;
+  };
+  action: string;
+  target?: string;
+  content?: string;
+  timestamp: string;
+  timeAgo: string;
+  isRead: boolean;
+  hasActions?: boolean;
+  file?: {
+    name: string;
+    size: string;
+    type: string;
+  };
+};
+
+const initialNotifications: Array<Notification> = [
+  {
+    id: 1,
+    type: "comment",
+    user: { name: "Amélie", avatar: "https://api.dicebear.com/7.x/notionists/svg?seed=Amélie", fallback: "A" },
+    action: "commented in",
+    target: "Dashboard 2.0",
+    content: "Really love this approach. I think this is the best solution for the document sync UX issue.",
+    timestamp: "Friday 3:12 PM",
+    timeAgo: "2 hours ago",
+    isRead: false,
+  },
+  {
+    id: 2,
+    type: "follow",
+    user: { name: "Sienna", avatar: "https://api.dicebear.com/7.x/notionists/svg?seed=Sienna", fallback: "S" },
+    action: "followed you",
+    timestamp: "Friday 3:04 PM",
+    timeAgo: "2 hours ago",
+    isRead: false,
+  },
+  {
+    id: 3,
+    type: "invitation",
+    user: { name: "Ammar", avatar: "https://api.dicebear.com/7.x/notionists/svg?seed=Ammar", fallback: "A" },
+    action: "invited you to",
+    target: "Blog design",
+    timestamp: "Friday 2:22 PM",
+    timeAgo: "3 hours ago",
+    isRead: true,
+    hasActions: true,
+  },
+  {
+    id: 4,
+    type: "file_share",
+    user: { name: "Mathilde", avatar: "https://api.dicebear.com/7.x/notionists/svg?seed=Mathilde", fallback: "M" },
+    action: "shared a file in",
+    target: "Dashboard 2.0",
+    file: { name: "Prototype recording 01.mp4", size: "14 MB", type: "MP4" },
+    timestamp: "Friday 1:40 PM",
+    timeAgo: "4 hours ago",
+    isRead: true,
+  },
+  {
+    id: 5,
+    type: "mention",
+    user: { name: "James", avatar: "https://api.dicebear.com/7.x/notionists/svg?seed=James", fallback: "J" },
+    action: "mentioned you in",
+    target: "Project Alpha",
+    content: "Hey @you, can you review the latest designs when you get a chance?",
+    timestamp: "Thursday 11:30 AM",
+    timeAgo: "1 day ago",
+    isRead: true,
+  },
+  {
+    id: 6,
+    type: "like",
+    user: { name: "Sofia", avatar: "https://api.dicebear.com/7.x/notionists/svg?seed=Sofia", fallback: "S" },
+    action: "liked your comment in",
+    target: "Team Meeting Notes",
+    timestamp: "Thursday 9:15 AM",
+    timeAgo: "1 day ago",
+    isRead: true,
+  },
+  {
+    id: 7,
+    type: "task_assignment",
+    user: { name: "Admin", avatar: "https://api.dicebear.com/7.x/bottts/svg?seed=Admin", fallback: "AD" },
+    action: "assigned you a new task in",
+    target: "Q3 Marketing",
+    content: "Finalize the social media campaign assets.",
+    timestamp: "Wednesday 5:00 PM",
+    timeAgo: "2 days ago",
+    isRead: true,
+  },
+  {
+    id: 8,
+    type: "system_update",
+    user: { name: "System", avatar: "https://api.dicebear.com/7.x/shapes/svg?seed=System", fallback: "SYS" },
+    action: "pushed a new update",
+    content: "Version 2.1.0 is now live with improved performance and new features. Check out the release notes for more details.",
+    timestamp: "Wednesday 9:00 AM",
+    timeAgo: "2 days ago",
+    isRead: true,
+  },
+  {
+    id: 9,
+    type: 'comment',
+    user: { name: 'Elena', avatar: 'https://api.dicebear.com/7.x/notionists/svg?seed=Elena', fallback: 'E' },
+    action: 'replied to your comment in',
+    target: 'Dashboard 2.0',
+    content: 'Thanks for the feedback! I\'ve updated the prototype.',
+    timestamp: 'Tuesday 4:30 PM',
+    timeAgo: '3 days ago',
+    isRead: false,
+  },
+  {
+    id: 10,
+    type: 'invitation',
+    user: { name: 'Carlos', avatar: 'https://api.dicebear.com/7.x/notionists/svg?seed=Carlos', fallback: 'C' },
+    action: 'invited you to',
+    target: 'API Integration',
+    timestamp: 'Tuesday 10:00 AM',
+    timeAgo: '3 days ago',
+    isRead: true,
+    hasActions: true,
+  },
+];
+
+const iconMap: { [key: string]: React.ElementType } = {
+  comment: MessageSquare,
+  follow: UserPlus,
+  invitation: Mail,
+  file_share: FileIcon,
+  mention: AtSign,
+  like: Heart,
+  task_assignment: ClipboardCheck,
+  system_update: ShieldCheck,
+};
+
+function NotificationItem({ notification, onMarkAsRead, isInSidePane }: { notification: Notification; onMarkAsRead: (id: number) => void; isInSidePane?: boolean; }) {
+  const Icon = iconMap[notification.type];
+
+  return (
+    <div className={cn(
+      "group w-full py-4 rounded-xl hover:bg-accent/50 transition-colors duration-200",
+      isInSidePane ? "" : "-mx-4 px-4"
+    )}>
+      <div className="flex gap-3">
+        <div className="relative h-10 w-10 shrink-0">
+          <Avatar className="h-10 w-10">
+            <AvatarImage src={notification.user.avatar} alt={`${notification.user.name}'s profile picture`} />
+            <AvatarFallback>{notification.user.fallback}</AvatarFallback>
+          </Avatar>
+          {Icon && (
+            <div className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full border-2 border-card bg-background">
+              <Icon className={cn("h-3 w-3", notification.type === 'like' ? 'text-red-500 fill-current' : 'text-muted-foreground')} />
+            </div>
+          )}
+        </div>
+
+        <div className="flex flex-1 flex-col space-y-2">
+          <div className="flex items-start justify-between">
+            <div className="text-sm">
+              <span className="font-semibold">{notification.user.name}</span>
+              <span className="text-muted-foreground"> {notification.action} </span>
+              {notification.target && <span className="font-semibold">{notification.target}</span>}
+              <div className="mt-0.5 text-xs text-muted-foreground">{notification.timeAgo}</div>
+            </div>
+            <button
+              onClick={() => !notification.isRead && onMarkAsRead(notification.id)}
+              title={notification.isRead ? "Read" : "Mark as read"}
+              className={cn("size-2.5 rounded-full mt-1 shrink-0 transition-all duration-300",
+                notification.isRead ? 'bg-transparent' : 'bg-primary hover:scale-125 cursor-pointer'
+              )}
+            ></button>
+          </div>
+
+          {notification.content && <div className="rounded-lg border bg-muted/50 p-3 text-sm">{notification.content}</div>}
+
+          {notification.file && (
+            <div className="flex items-center gap-2 rounded-lg bg-muted/50 p-2 border border-border">
+              <div className="shrink-0 w-10 h-10 flex items-center justify-center bg-background rounded-md border border-border">
+                <FileIcon className="w-5 h-5 text-muted-foreground" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-medium truncate">{notification.file.name}</div>
+                <div className="text-xs text-muted-foreground">{notification.file.type} • {notification.file.size}</div>
+              </div>
+              <Button variant="ghost" size="icon" className="size-8 shrink-0">
+                <Download className="w-4 h-4" />
+              </Button>
+            </div>
+          )}
+
+          {notification.hasActions && (
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm">Decline</Button>
+              <Button size="sm">Accept</Button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function NotificationsPage({ isInSidePane = false }: { isInSidePane?: boolean }) {
+  const [notifications, setNotifications] = React.useState<Notification[]>(initialNotifications);
+  const [activeTab, setActiveTab] = React.useState<string>("all");
+  const { show: showToast } = useToast();
+
+  const handleMarkAsRead = (id: number) => {
+    setNotifications(prev =>
+      prev.map(n => (n.id === id ? { ...n, isRead: true } : n))
+    );
+  };
+
+  const handleMarkAllAsRead = () => {
+    const unreadCount = notifications.filter(n => !n.isRead).length;
+    if (unreadCount === 0) {
+      showToast({
+        title: "Already up to date!",
+        message: "You have no unread notifications.",
+        variant: "default",
+      });
+      return;
+    }
+    setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+    showToast({
+        title: "All Caught Up!",
+        message: "All notifications have been marked as read.",
+        variant: "success",
+    });
+  };
+
+  const unreadCount = notifications.filter(n => !n.isRead).length;
+
+  const verifiedNotifications = notifications.filter((n) => n.type === "follow" || n.type === "like");
+  const mentionNotifications = notifications.filter((n) => n.type === "mention");
+
+  const verifiedCount = verifiedNotifications.filter(n => !n.isRead).length;
+  const mentionCount = mentionNotifications.filter(n => !n.isRead).length;
+
+  const getFilteredNotifications = () => {
+    switch (activeTab) {
+      case "verified": return verifiedNotifications;
+      case "mentions": return mentionNotifications;
+      default: return notifications;
+    }
+  };
+
+  const filteredNotifications = getFilteredNotifications();
+
+  const content = (
+    <Card className={cn("flex w-full flex-col shadow-none", isInSidePane ? "border-none" : "p-6 lg:p-8")}>
+      <CardHeader className="p-0">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold">
+            Your notifications
+          </h3>
+          <div className="flex items-center gap-1">
+            <Button variant="ghost" size="icon" className="size-8" onClick={handleMarkAllAsRead} title="Mark all as read">
+              <CheckCheck className="size-4 text-muted-foreground" />
+            </Button>
+            <Button variant="ghost" size="icon" className="size-8">
+              <Settings className="size-4 text-muted-foreground" />
+            </Button>
+          </div>
+        </div>
+
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex-col justify-start mt-4">
+          <TabsList className="gap-1.5">
+            <TabsTrigger value="all" className="gap-1.5">
+              View all {unreadCount > 0 && <Badge variant="secondary" className="rounded-full">{unreadCount}</Badge>}
+            </TabsTrigger>
+            <TabsTrigger value="verified" className="gap-1.5">
+              Verified {verifiedCount > 0 && <Badge variant="secondary" className="rounded-full">{verifiedCount}</Badge>}
+            </TabsTrigger>
+            <TabsTrigger value="mentions" className="gap-1.5">
+              Mentions {mentionCount > 0 && <Badge variant="secondary" className="rounded-full">{mentionCount}</Badge>}
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </CardHeader>
+
+      <CardContent className="h-full p-0 mt-6">
+        <div className="space-y-0 divide-y divide-border">
+          {filteredNotifications.length > 0 ? (
+            filteredNotifications.map((notification) => (
+              <NotificationItem key={notification.id} notification={notification} onMarkAsRead={handleMarkAsRead} isInSidePane={isInSidePane} />
+            ))
+          ) : (
+            <div className="flex flex-col items-center justify-center space-y-2.5 py-12 text-center">
+              <div className="rounded-full bg-muted p-4">
+                <Bell className="text-muted-foreground" />
+              </div>
+              <p className="text-sm font-medium text-muted-foreground">No notifications yet.</p>
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  return (
+    <div className={cn("overflow-y-auto", !isInSidePane ? "h-full p-6 lg:px-12 space-y-8" : "h-full")}>
+      {!isInSidePane && (
+        <PageHeader
+          title="Notifications"
+          description="Manage your notifications and stay up-to-date."
+        />
+      )}
+      {content}
+    </div>
+  );
+};
 ```
 
 ## File: src/components/PageHeader.tsx
@@ -1452,220 +1347,6 @@ export function SettingsToggle({
     </div>
   )
 }
-```
-
-## File: src/components/UserDropdown.tsx
-```typescript
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuPortal,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { cn } from "@/lib/utils"
-import { Icon } from "@iconify/react";
-
-const MENU_ITEMS = {
-  status: [
-    { value: "focus", icon: "solar:emoji-funny-circle-line-duotone", label: "Focus" },
-    { value: "offline", icon: "solar:moon-sleep-line-duotone", label: "Appear Offline" }
-  ],
-  profile: [
-    { icon: "solar:user-circle-line-duotone", label: "Your profile", action: "profile" },
-    { icon: "solar:sun-line-duotone", label: "Appearance", action: "appearance" },
-    { icon: "solar:settings-line-duotone", label: "Settings", action: "settings" },
-    { icon: "solar:bell-line-duotone", label: "Notifications", action: "notifications" }
-  ],
-  premium: [
-    { 
-      icon: "solar:star-bold", 
-      label: "Upgrade to Pro", 
-      action: "upgrade",
-      iconClass: "text-amber-500",
-      badge: { text: "20% off", className: "bg-amber-500 text-white text-[11px]" }
-    },
-    { icon: "solar:gift-line-duotone", label: "Referrals", action: "referrals" }
-  ],
-  support: [
-    { icon: "solar:download-line-duotone", label: "Download app", action: "download" },
-    { 
-      icon: "solar:letter-unread-line-duotone", 
-      label: "What's new?", 
-      action: "whats-new",
-      rightIcon: "solar:square-top-down-line-duotone"
-    },
-    { 
-      icon: "solar:question-circle-line-duotone", 
-      label: "Get help?", 
-      action: "help",
-      rightIcon: "solar:square-top-down-line-duotone"
-    }
-  ],
-  account: [
-    { 
-      icon: "solar:users-group-rounded-bold-duotone", 
-      label: "Switch account", 
-      action: "switch",
-      showAvatar: false
-    },
-    { icon: "solar:logout-2-bold-duotone", label: "Log out", action: "logout" }
-  ]
-};
-
-// Interface for menu item for better type safety
-interface MenuItem {
-  value?: string;
-  icon: string;
-  label: string;
-  action?: string;
-  iconClass?: string;
-  badge?: { text: string; className: string };
-  rightIcon?: string;
-  showAvatar?: boolean;
-}
-
-export const UserDropdown = ({ 
-  user = {
-    name: "Ayman Echakar",
-    username: "@aymanch-03",
-    avatar: "https://avatars.githubusercontent.com/u/126724835?v=4",
-    initials: "AE",
-    status: "online"
-  },
-  onAction = (_action?: string) => {},
-  onStatusChange = () => {},
-  selectedStatus = "online",
-  promoDiscount = "20% off",
-}) => {
-  const renderMenuItem = (item: MenuItem, index: number) => (
-    <DropdownMenuItem 
-      key={index}
-      className={cn(
-        "px-3 py-2", // Consistent with base component
-        item.badge || item.showAvatar || item.rightIcon ? "justify-between" : ""
-      )}
-      onClick={() => item.action && onAction(item.action)}
-    >
-      <span className="flex items-center gap-2 font-medium">
-        <Icon
-          icon={item.icon}
-          className={cn("h-5 w-5 text-muted-foreground", item.iconClass)}
-        />
-        {item.label}
-      </span>
-      {item.badge && (
-        <Badge className={item.badge.className}>
-          {promoDiscount || item.badge.text}
-        </Badge>
-      )}
-      {item.rightIcon && (
-        <Icon
-          icon={item.rightIcon}
-          className="h-4 w-4 text-muted-foreground"
-        />
-      )}
-      {item.showAvatar && (
-        <Avatar className="cursor-pointer h-6 w-6 shadow border-2 border-background">
-          <AvatarImage src={user.avatar} alt={user.name} />
-          <AvatarFallback>{user.initials}</AvatarFallback>
-        </Avatar>
-      )}
-    </DropdownMenuItem>
-  );
-
-  const getStatusColor = (status: string) => {
-    const colors = {
-      online: "text-green-600 bg-green-100 border-green-300 dark:text-green-400 dark:bg-green-900/30 dark:border-green-500/50",
-      offline: "text-muted-foreground bg-muted border-border",
-      busy: "text-destructive bg-destructive/20 border-destructive/30"
-    };
-    return colors[status.toLowerCase() as keyof typeof colors] || colors.online;
-  };
-
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Avatar className="cursor-pointer h-10 w-10 border-2 border-transparent hover:border-primary transition-colors">
-          <AvatarImage src={user.avatar} alt={user.name} />
-          <AvatarFallback>{user.initials}</AvatarFallback>
-        </Avatar>
-      </DropdownMenuTrigger>
-
-      <DropdownMenuContent className="no-scrollbar w-[310px] p-2" align="end">
-        <div className="flex items-center">
-          <div className="flex-1 flex items-center gap-3">
-            <Avatar className="cursor-pointer h-10 w-10">
-              <AvatarImage src={user.avatar} alt={user.name} />
-              <AvatarFallback>{user.initials}</AvatarFallback>
-            </Avatar>
-            <div>
-              <h3 className="font-semibold">{user.name}</h3>
-              <p className="text-muted-foreground text-sm">{user.username}</p>
-            </div>
-          </div>
-          <Badge variant="outline" className={cn("border-[0.5px] text-xs font-normal rounded-md capitalize", getStatusColor(user.status))}>
-            {user.status}
-          </Badge>
-        </div>
-        
-        <DropdownMenuSeparator className="my-2" />
-        
-        <DropdownMenuGroup>
-          <DropdownMenuSub>
-            <DropdownMenuSubTrigger className="w-full">
-              <span className="flex items-center gap-2 font-medium">
-                <Icon icon="solar:smile-circle-line-duotone" className="h-5 w-5" />
-                Update status
-              </span>
-            </DropdownMenuSubTrigger>
-            <DropdownMenuPortal>
-              <DropdownMenuSubContent>
-                <DropdownMenuRadioGroup value={selectedStatus} onValueChange={onStatusChange}>
-                  {MENU_ITEMS.status.map((status, index) => (
-                    <DropdownMenuRadioItem className="gap-2" key={index} value={status.value}>
-                      <Icon icon={status.icon} className="h-5 w-5 text-muted-foreground" />
-                      {status.label}
-                    </DropdownMenuRadioItem>
-                  ))}
-                </DropdownMenuRadioGroup>
-              </DropdownMenuSubContent>
-            </DropdownMenuPortal>
-          </DropdownMenuSub>
-        </DropdownMenuGroup>
-
-        <DropdownMenuSeparator className="my-2" />
-        <DropdownMenuGroup>
-          {MENU_ITEMS.profile.map(renderMenuItem)}
-        </DropdownMenuGroup>
-
-        <DropdownMenuSeparator className="my-2" />
-        <DropdownMenuGroup>
-          {MENU_ITEMS.premium.map(renderMenuItem)}
-        </DropdownMenuGroup>
-
-        <DropdownMenuSeparator className="my-2" />
-        <DropdownMenuGroup>
-          {MENU_ITEMS.support.map(renderMenuItem)}
-        </DropdownMenuGroup>
-     
-        <DropdownMenuSeparator className="my-2" />
-        <DropdownMenuGroup>
-          {MENU_ITEMS.account.map(renderMenuItem)}
-        </DropdownMenuGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-};
 ```
 
 ## File: src/lib/utils.ts
@@ -1982,6 +1663,328 @@ export { Popover, PopoverTrigger, PopoverContent }
 export type { PopoverContentProps }
 ```
 
+## File: src/components/CommandPalette.tsx
+```typescript
+import * as React from 'react'
+import {
+  CommandDialog,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+  CommandSeparator,
+  CommandShortcut,
+} from '@/components/ui/command'
+import { useAppStore, type ActivePage } from '@/store/appStore'
+import { Home, Settings, Moon, Sun, Monitor, Smartphone, PanelRight, Maximize, Component, Bell } from 'lucide-react'
+
+export function CommandPalette() {
+  const {
+    isCommandPaletteOpen,
+    setCommandPaletteOpen,
+    setActivePage,
+    toggleDarkMode,
+    isDarkMode,
+    setCompactMode,
+    toggleFullscreen,
+    openSidePane,
+  } = useAppStore()
+
+  React.useEffect(() => {
+    const down = (e: KeyboardEvent) => {
+      if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault()
+        setCommandPaletteOpen(!isCommandPaletteOpen)
+      }
+    }
+    document.addEventListener('keydown', down)
+    return () => document.removeEventListener('keydown', down)
+  }, [isCommandPaletteOpen, setCommandPaletteOpen])
+  
+  const runCommand = (command: () => void) => {
+    setCommandPaletteOpen(false)
+    command()
+  }
+
+  return (
+    <CommandDialog open={isCommandPaletteOpen} onOpenChange={setCommandPaletteOpen}>
+      <CommandInput placeholder="Type a command or search..." />
+      <CommandList>
+        <CommandEmpty>No results found.</CommandEmpty>
+        <CommandGroup heading="Navigation">
+          <CommandItem onSelect={() => runCommand(() => setActivePage('dashboard'))}>
+            <Home className="mr-2 h-4 w-4" />
+            <span>Go to Dashboard</span>
+            <CommandShortcut>G D</CommandShortcut>
+          </CommandItem>
+          <CommandItem onSelect={() => runCommand(() => setActivePage('settings'))}>
+            <Settings className="mr-2 h-4 w-4" />
+            <span>Go to Settings</span>
+            <CommandShortcut>G S</CommandShortcut>
+          </CommandItem>
+          <CommandItem onSelect={() => runCommand(() => setActivePage('toaster'))}>
+            <Component className="mr-2 h-4 w-4" />
+            <span>Go to Toaster Demo</span>
+            <CommandShortcut>G T</CommandShortcut>
+          </CommandItem>
+          <CommandItem onSelect={() => runCommand(() => setActivePage('notifications' as ActivePage))}>
+            <Bell className="mr-2 h-4 w-4" />
+            <span>Go to Notifications</span>
+            <CommandShortcut>G N</CommandShortcut>
+          </CommandItem>
+        </CommandGroup>
+        <CommandSeparator />
+        <CommandGroup heading="Actions">
+          <CommandItem onSelect={() => runCommand(toggleDarkMode)}>
+            {isDarkMode ? <Sun className="mr-2 h-4 w-4" /> : <Moon className="mr-2 h-4 w-4" />}
+            <span>Toggle Theme</span>
+            <CommandShortcut>⌘T</CommandShortcut>
+          </CommandItem>
+          <CommandItem onSelect={() => runCommand(toggleFullscreen)}>
+            <Maximize className="mr-2 h-4 w-4" />
+            <span>Toggle Fullscreen</span>
+            <CommandShortcut>⌘F</CommandShortcut>
+          </CommandItem>
+          <CommandItem onSelect={() => runCommand(() => openSidePane('settings'))}>
+            <PanelRight className="mr-2 h-4 w-4" />
+            <span>Open Settings in Side Pane</span>
+            <CommandShortcut>⌥S</CommandShortcut>
+          </CommandItem>
+        </CommandGroup>
+        <CommandSeparator />
+        <CommandGroup heading="Preferences">
+          <CommandItem onSelect={() => runCommand(() => setCompactMode(true))}>
+            <Smartphone className="mr-2 h-4 w-4" />
+            <span>Enable Compact Mode</span>
+            <CommandShortcut>⌘C</CommandShortcut>
+          </CommandItem>
+          <CommandItem onSelect={() => runCommand(() => setCompactMode(false))}>
+            <Monitor className="mr-2 h-4 w-4" />
+            <span>Disable Compact Mode</span>
+            <CommandShortcut>⇧⌘C</CommandShortcut>
+          </CommandItem>
+        </CommandGroup>
+      </CommandList>
+    </CommandDialog>
+  )
+}
+```
+
+## File: src/components/UserDropdown.tsx
+```typescript
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuPortal,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { cn } from "@/lib/utils"
+import { Icon } from "@iconify/react";
+
+const MENU_ITEMS = {
+  status: [
+    { value: "focus", icon: "solar:emoji-funny-circle-line-duotone", label: "Focus" },
+    { value: "offline", icon: "solar:moon-sleep-line-duotone", label: "Appear Offline" }
+  ],
+  profile: [
+    { icon: "solar:user-circle-line-duotone", label: "Your profile", action: "profile" },
+    { icon: "solar:sun-line-duotone", label: "Appearance", action: "appearance" },
+    { icon: "solar:settings-line-duotone", label: "Settings", action: "settings" },
+    { icon: "solar:bell-line-duotone", label: "Notifications", action: "notifications" }
+  ],
+  premium: [
+    { 
+      icon: "solar:star-bold", 
+      label: "Upgrade to Pro", 
+      action: "upgrade",
+      iconClass: "text-amber-500",
+      badge: { text: "20% off", className: "bg-amber-500 text-white text-[11px]" }
+    },
+    { icon: "solar:gift-line-duotone", label: "Referrals", action: "referrals" }
+  ],
+  support: [
+    { icon: "solar:download-line-duotone", label: "Download app", action: "download" },
+    { 
+      icon: "solar:letter-unread-line-duotone", 
+      label: "What's new?", 
+      action: "whats-new",
+      rightIcon: "solar:square-top-down-line-duotone"
+    },
+    { 
+      icon: "solar:question-circle-line-duotone", 
+      label: "Get help?", 
+      action: "help",
+      rightIcon: "solar:square-top-down-line-duotone"
+    }
+  ],
+  account: [
+    { 
+      icon: "solar:users-group-rounded-bold-duotone", 
+      label: "Switch account", 
+      action: "switch",
+      showAvatar: false
+    },
+    { icon: "solar:logout-2-bold-duotone", label: "Log out", action: "logout" }
+  ]
+};
+
+// Interface for menu item for better type safety
+interface MenuItem {
+  value?: string;
+  icon: string;
+  label: string;
+  action?: string;
+  iconClass?: string;
+  badge?: { text: string; className: string };
+  rightIcon?: string;
+  showAvatar?: boolean;
+}
+
+export const UserDropdown = ({ 
+  user = {
+    name: "Ayman Echakar",
+    username: "@aymanch-03",
+    avatar: "https://avatars.githubusercontent.com/u/126724835?v=4",
+    initials: "AE",
+    status: "online"
+  },
+  onAction = (_action?: string) => {},
+  onStatusChange = () => {},
+  selectedStatus = "online",
+  promoDiscount = "20% off",
+}) => {
+  const renderMenuItem = (item: MenuItem, index: number) => (
+    <DropdownMenuItem 
+      key={index}
+      className={cn(
+        "px-3 py-2", // Consistent with base component
+        item.badge || item.showAvatar || item.rightIcon ? "justify-between" : ""
+      )}
+      onClick={() => item.action && onAction(item.action)}
+    >
+      <span className="flex items-center gap-2 font-medium">
+        <Icon
+          icon={item.icon}
+          className={cn("h-5 w-5 text-muted-foreground", item.iconClass)}
+        />
+        {item.label}
+      </span>
+      {item.badge && (
+        <Badge className={item.badge.className}>
+          {promoDiscount || item.badge.text}
+        </Badge>
+      )}
+      {item.rightIcon && (
+        <Icon
+          icon={item.rightIcon}
+          className="h-4 w-4 text-muted-foreground"
+        />
+      )}
+      {item.showAvatar && (
+        <Avatar className="cursor-pointer h-6 w-6 shadow border-2 border-background">
+          <AvatarImage src={user.avatar} alt={user.name} />
+          <AvatarFallback>{user.initials}</AvatarFallback>
+        </Avatar>
+      )}
+    </DropdownMenuItem>
+  );
+
+  const getStatusColor = (status: string) => {
+    const colors = {
+      online: "text-green-600 bg-green-100 border-green-300 dark:text-green-400 dark:bg-green-900/30 dark:border-green-500/50",
+      offline: "text-muted-foreground bg-muted border-border",
+      busy: "text-destructive bg-destructive/20 border-destructive/30"
+    };
+    return colors[status.toLowerCase() as keyof typeof colors] || colors.online;
+  };
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Avatar className="cursor-pointer h-10 w-10 border-2 border-transparent hover:border-primary transition-colors">
+          <AvatarImage src={user.avatar} alt={user.name} />
+          <AvatarFallback>{user.initials}</AvatarFallback>
+        </Avatar>
+      </DropdownMenuTrigger>
+
+      <DropdownMenuContent className="no-scrollbar w-[310px] p-2" align="end">
+        <div className="flex items-center">
+          <div className="flex-1 flex items-center gap-3">
+            <Avatar className="cursor-pointer h-10 w-10">
+              <AvatarImage src={user.avatar} alt={user.name} />
+              <AvatarFallback>{user.initials}</AvatarFallback>
+            </Avatar>
+            <div>
+              <h3 className="font-semibold">{user.name}</h3>
+              <p className="text-muted-foreground text-sm">{user.username}</p>
+            </div>
+          </div>
+          <Badge variant="outline" className={cn("border-[0.5px] text-xs font-normal rounded-md capitalize", getStatusColor(user.status))}>
+            {user.status}
+          </Badge>
+        </div>
+        
+        <DropdownMenuSeparator className="my-2" />
+        
+        <DropdownMenuGroup>
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger className="w-full">
+              <span className="flex items-center gap-2 font-medium">
+                <Icon icon="solar:smile-circle-line-duotone" className="h-5 w-5" />
+                Update status
+              </span>
+            </DropdownMenuSubTrigger>
+            <DropdownMenuPortal>
+              <DropdownMenuSubContent>
+                <DropdownMenuRadioGroup value={selectedStatus} onValueChange={onStatusChange}>
+                  {MENU_ITEMS.status.map((status, index) => (
+                    <DropdownMenuRadioItem className="gap-2" key={index} value={status.value}>
+                      <Icon icon={status.icon} className="h-5 w-5 text-muted-foreground" />
+                      {status.label}
+                    </DropdownMenuRadioItem>
+                  ))}
+                </DropdownMenuRadioGroup>
+              </DropdownMenuSubContent>
+            </DropdownMenuPortal>
+          </DropdownMenuSub>
+        </DropdownMenuGroup>
+
+        <DropdownMenuSeparator className="my-2" />
+        <DropdownMenuGroup>
+          {MENU_ITEMS.profile.map(renderMenuItem)}
+        </DropdownMenuGroup>
+
+        <DropdownMenuSeparator className="my-2" />
+        <DropdownMenuGroup>
+          {MENU_ITEMS.premium.map(renderMenuItem)}
+        </DropdownMenuGroup>
+
+        <DropdownMenuSeparator className="my-2" />
+        <DropdownMenuGroup>
+          {MENU_ITEMS.support.map(renderMenuItem)}
+        </DropdownMenuGroup>
+     
+        <DropdownMenuSeparator className="my-2" />
+        <DropdownMenuGroup>
+          {MENU_ITEMS.account.map(renderMenuItem)}
+        </DropdownMenuGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+};
+```
+
 ## File: src/hooks/useAutoAnimateTopBar.ts
 ```typescript
 import { useRef, useCallback, useEffect } from 'react';
@@ -2199,360 +2202,6 @@ export { MainContent } from './MainContent'
 export { RightPane } from './RightPane'
 ```
 
-## File: src/components/Sidebar.tsx
-```typescript
-import * as React from 'react';
-import { ChevronDown } from 'lucide-react';
-import { Slot } from '@radix-ui/react-slot';
-import { useAppStore } from '@/store/appStore';
-import { SIDEBAR_STATES } from '@/lib/utils';
-import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
-
-// --- Context ---
-interface SidebarContextValue {
-  isCollapsed: boolean;
-  isPeek: boolean;
-  compactMode: boolean;
-}
-
-const SidebarContext = React.createContext<SidebarContextValue | null>(null);
-
-export const useSidebar = () => {
-  const context = React.useContext(SidebarContext);
-  if (!context) {
-    throw new Error('useSidebar must be used within a Sidebar component');
-  }
-  return context;
-};
-
-// --- Main Sidebar Component ---
-interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
-  children: React.ReactNode;
-}
-
-const Sidebar = React.forwardRef<HTMLDivElement, SidebarProps>(
-  ({ children, className, ...props }, ref) => {
-    const { sidebarState, compactMode } = useAppStore();
-    const isCollapsed = sidebarState === SIDEBAR_STATES.COLLAPSED;
-    const isPeek = sidebarState === SIDEBAR_STATES.PEEK;
-
-    return (
-      <SidebarContext.Provider value={{ isCollapsed, isPeek, compactMode }}>
-        <div
-          ref={ref}
-          className={cn(
-            'relative bg-card flex-shrink-0',
-            'h-full',
-            isPeek && 'shadow-xl z-40',
-            compactMode && 'text-sm',
-            className,
-          )}
-          {...props}
-        >
-          {isPeek && <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" />}
-          {children}
-        </div>
-      </SidebarContext.Provider>
-    );
-  },
-);
-Sidebar.displayName = 'Sidebar';
-
-// --- Sidebar Content Wrapper ---
-const SidebarContent = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => {
-  const { compactMode } = useSidebar();
-  return (
-    <div
-      ref={ref}
-      className={cn(
-        'relative z-10 h-full flex flex-col',
-        compactMode ? 'p-3' : 'p-4',
-        className,
-      )}
-      {...props}
-    />
-  );
-});
-SidebarContent.displayName = 'SidebarContent';
-
-// --- Sidebar Header ---
-const SidebarHeader = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => {
-  const { isCollapsed } = useSidebar();
-  return (
-    <div
-      ref={ref}
-      className={cn(
-        'flex items-center gap-3',
-        isCollapsed ? 'justify-center' : 'px-3',
-        'h-16',
-        className,
-      )}
-      {...props}
-    />
-  );
-});
-SidebarHeader.displayName = 'SidebarHeader';
-
-const SidebarTitle = React.forwardRef<
-  HTMLParagraphElement,
-  React.HTMLAttributes<HTMLParagraphElement>
->(({ className, ...props }, ref) => {
-  const { isCollapsed } = useSidebar();
-  if (isCollapsed) return null;
-  return (
-    <h1
-      ref={ref}
-      className={cn('text-lg font-bold nav-label', className)}
-      {...props}
-    />
-  );
-});
-SidebarTitle.displayName = 'SidebarTitle';
-
-// --- Sidebar Body ---
-const SidebarBody = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn(
-      'flex-1 overflow-y-auto space-y-6 pt-4',
-      className,
-    )}
-    {...props}
-  />
-));
-SidebarBody.displayName = 'SidebarBody';
-
-// --- Sidebar Footer ---
-const SidebarFooter = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => {
-  const { compactMode } = useSidebar();
-  return (
-    <div
-      ref={ref}
-      className={cn('pt-4 border-t border-border', compactMode && 'pt-3', className)}
-      {...props}
-    />
-  );
-});
-SidebarFooter.displayName = 'SidebarFooter';
-
-// --- Sidebar Section ---
-const SidebarSection = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement> & {
-    title?: string;
-    collapsible?: boolean;
-    defaultExpanded?: boolean;
-  }
->(({ title, collapsible = false, defaultExpanded = true, children, ...props }, ref) => {
-  const { isCollapsed } = useSidebar();
-  const [isExpanded, setIsExpanded] = React.useState(defaultExpanded);
-
-  const handleToggle = () => {
-    if (collapsible) {
-      setIsExpanded(!isExpanded);
-    }
-  };
-
-  return (
-    <div ref={ref} className="space-y-1" {...props}>
-      {!isCollapsed && title && (
-        <div
-          className={cn(
-            'flex items-center justify-between px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider',
-            collapsible && 'cursor-pointer hover:text-foreground transition-colors',
-          )}
-          onClick={handleToggle}
-        >
-          <span className="section-title">{title}</span>
-          {collapsible && (
-            <ChevronDown
-              className={cn(
-                'section-chevron w-3 h-3 transition-transform',
-                isExpanded ? 'rotate-0' : '-rotate-90',
-              )}
-            />
-          )}
-        </div>
-      )}
-      {(!collapsible || isExpanded || isCollapsed) && (
-        <nav className="space-y-1">{children}</nav>
-      )}
-    </div>
-  );
-});
-SidebarSection.displayName = 'SidebarSection';
-
-// --- Sidebar Menu Item ---
-const SidebarMenuItem = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => {
-  return <div ref={ref} className={cn('group/item relative flex items-stretch', className)} {...props} />;
-});
-SidebarMenuItem.displayName = 'SidebarMenuItem';
-
-
-// --- Sidebar Menu Button ---
-interface SidebarMenuButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  asChild?: boolean;
-  isActive?: boolean;
-}
-const SidebarMenuButton = React.forwardRef<HTMLButtonElement, SidebarMenuButtonProps>(
-  ({ className, asChild = false, isActive, ...props }, ref) => {
-    const { isCollapsed, compactMode } = useSidebar();
-    const Comp = asChild ? Slot : 'button';
-
-    return (
-      <Comp
-        ref={ref}
-        className={cn(
-          'group flex items-center gap-3 rounded-lg cursor-pointer transition-all duration-200 w-full text-left flex-1',
-          compactMode ? 'px-2 py-1.5' : 'px-4 py-2.5',
-          'hover:bg-accent',
-          isActive && 'bg-primary text-primary-foreground hover:bg-primary/90',
-          isCollapsed && 'justify-center',
-          className
-        )}
-        {...props}
-      />
-    );
-  }
-);
-SidebarMenuButton.displayName = 'SidebarMenuButton';
-
-// --- Sidebar Menu Action ---
-const SidebarMenuAction = React.forwardRef<
-  HTMLButtonElement,
-  React.ButtonHTMLAttributes<HTMLButtonElement>
->(({ className, ...props }, ref) => {
-  const { isCollapsed } = useSidebar();
-  if (isCollapsed) return null;
-  return (
-    <Button
-      ref={ref}
-      variant="ghost"
-      size="icon"
-      className={cn(
-        'h-full w-8 rounded-l-none opacity-0 group-hover/item:opacity-100 transition-opacity',
-        'focus:opacity-100', // show on focus for accessibility
-        className
-      )}
-      {...props}
-    />
-  );
-});
-SidebarMenuAction.displayName = 'SidebarMenuAction';
-
-// --- Sidebar Menu Label ---
-const SidebarLabel = React.forwardRef<
-  HTMLSpanElement,
-  React.HTMLAttributes<HTMLSpanElement>
->(({ className, ...props }, ref) => {
-  const { isCollapsed } = useSidebar();
-  if (isCollapsed) return null;
-  return (
-    <span
-      ref={ref}
-      className={cn('nav-label flex-1 font-medium truncate', className)}
-      {...props}
-    />
-  );
-});
-SidebarLabel.displayName = 'SidebarLabel';
-
-
-// --- Sidebar Menu Badge ---
-const SidebarBadge = React.forwardRef<
-  HTMLSpanElement,
-  React.HTMLAttributes<HTMLSpanElement>
->(({ className, children, ...props }, ref) => {
-  const { isCollapsed } = useSidebar();
-  if (isCollapsed) return null;
-  const badgeContent = typeof children === 'number' && children > 99 ? '99+' : children;
-  return (
-    <span
-      ref={ref}
-      className={cn(
-        'nav-badge bg-destructive text-destructive-foreground text-xs px-1.5 py-0.5 rounded-full min-w-[1.25rem] text-center',
-        className
-      )}
-      {...props}
-    >
-      {badgeContent}
-    </span>
-  );
-});
-SidebarBadge.displayName = 'SidebarBadge';
-
-
-// --- Sidebar Tooltip ---
-interface SidebarTooltipProps extends React.HTMLAttributes<HTMLDivElement> {
-  label: string;
-  badge?: number | string;
-}
-const SidebarTooltip = ({ label, badge, className, ...props }: SidebarTooltipProps) => {
-  const { isCollapsed } = useSidebar();
-  if (!isCollapsed) return null;
-  return (
-    <div
-      className={cn(
-        'absolute left-full ml-2 px-2 py-1 bg-popover text-popover-foreground text-sm rounded-md shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50',
-        className
-      )}
-      {...props}
-    >
-      {label}
-      {badge && (
-        <span className="ml-2 bg-destructive text-destructive-foreground text-xs px-1.5 py-0.5 rounded-full">
-          {typeof badge === 'number' && badge > 99 ? '99+' : badge}
-        </span>
-      )}
-    </div>
-  );
-};
-SidebarTooltip.displayName = 'SidebarTooltip';
-
-
-// --- Icon Wrapper for consistent sizing ---
-const SidebarIcon = ({ children, className }: { children: React.ReactNode, className?: string }) => {
-  return (
-    <div className={cn("flex-shrink-0 w-4 h-4", className)}>
-      {children}
-    </div>
-  )
-}
-
-export {
-  Sidebar,
-  SidebarContent,
-  SidebarHeader,
-  SidebarTitle,
-  SidebarBody,
-  SidebarFooter,
-  SidebarSection,
-  SidebarMenuItem,
-  SidebarMenuButton,
-  SidebarMenuAction,
-  SidebarLabel,
-  SidebarBadge,
-  SidebarTooltip,
-  SidebarIcon
-};
-```
-
 ## File: src/components/ToasterDemo.tsx
 ```typescript
 import { Button } from '@/components/ui/button';
@@ -2698,322 +2347,6 @@ export function ToasterDemo({ isInSidePane = false }: { isInSidePane?: boolean }
     </div>
   );
 }
-```
-
-## File: src/components/WorkspaceSwitcher.tsx
-```typescript
-import * as React from 'react';
-import { CheckIcon, ChevronsUpDownIcon, Search } from 'lucide-react';
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { cn } from '@/lib/utils';
-import {
-	Popover,
-	PopoverTrigger,
-	PopoverContent,
-	type PopoverContentProps,
-} from '@/components/ui/popover';
-
-// Generic workspace interface - can be extended
-export interface Workspace {
-	id: string;
-	name: string;
-	[key: string]: any; // Allow additional properties
-}
-
-// Context for workspace state management
-interface WorkspaceContextValue<T extends Workspace> {
-	open: boolean;
-	setOpen: (open: boolean) => void;
-	selectedWorkspace: T | undefined;
-	workspaces: T[];
-	onWorkspaceSelect: (workspace: T) => void;
-	getWorkspaceId: (workspace: T) => string;
-	getWorkspaceName: (workspace: T) => string;
-}
-
-const WorkspaceContext = React.createContext<WorkspaceContextValue<any> | null>(
-	null,
-);
-
-function useWorkspaceContext<T extends Workspace>() {
-	const context = React.useContext(
-		WorkspaceContext,
-	) as WorkspaceContextValue<T> | null;
-	if (!context) {
-		throw new Error(
-			'Workspace components must be used within WorkspaceProvider',
-		);
-	}
-	return context;
-}
-
-// Main provider component
-interface WorkspaceProviderProps<T extends Workspace> {
-	children: React.ReactNode;
-	workspaces: T[];
-	selectedWorkspaceId?: string;
-	onWorkspaceChange?: (workspace: T) => void;
-	open?: boolean;
-	onOpenChange?: (open: boolean) => void;
-	getWorkspaceId?: (workspace: T) => string;
-	getWorkspaceName?: (workspace: T) => string;
-}
-
-function WorkspaceProvider<T extends Workspace>({
-	children,
-	workspaces,
-	selectedWorkspaceId,
-	onWorkspaceChange,
-	open: controlledOpen,
-	onOpenChange,
-	getWorkspaceId = (workspace) => workspace.id,
-	getWorkspaceName = (workspace) => workspace.name,
-}: WorkspaceProviderProps<T>) {
-	const [internalOpen, setInternalOpen] = React.useState(false);
-
-	const open = controlledOpen ?? internalOpen;
-	const setOpen = onOpenChange ?? setInternalOpen;
-
-	const selectedWorkspace = React.useMemo(() => {
-		if (!selectedWorkspaceId) return workspaces[0];
-		return (
-			workspaces.find((ws) => getWorkspaceId(ws) === selectedWorkspaceId) ||
-			workspaces[0]
-		);
-	}, [workspaces, selectedWorkspaceId, getWorkspaceId]);
-
-	const handleWorkspaceSelect = React.useCallback(
-		(workspace: T) => {
-			onWorkspaceChange?.(workspace);
-			setOpen(false);
-		},
-		[onWorkspaceChange, setOpen],
-	);
-
-	const value: WorkspaceContextValue<T> = {
-		open,
-		setOpen,
-		selectedWorkspace,
-		workspaces,
-		onWorkspaceSelect: handleWorkspaceSelect,
-		getWorkspaceId,
-		getWorkspaceName,
-	};
-
-	return (
-		<WorkspaceContext.Provider value={value}>
-			<Popover open={open} onOpenChange={setOpen}>
-				{children}
-			</Popover>
-		</WorkspaceContext.Provider>
-	);
-}
-
-// Trigger component
-interface WorkspaceTriggerProps extends React.ComponentProps<'button'> {
-	renderTrigger?: (workspace: Workspace, isOpen: boolean) => React.ReactNode;
-  collapsed?: boolean;
-  avatarClassName?: string;
-}
-
-function WorkspaceTrigger({
-	className,
-	renderTrigger,
-  collapsed = false,
-  avatarClassName,
-	...props
-}: WorkspaceTriggerProps) {
-	const { open, selectedWorkspace, getWorkspaceName } = useWorkspaceContext();
-
-	if (!selectedWorkspace) return null;
-
-	if (renderTrigger) {
-		return (
-			<PopoverTrigger asChild>
-				<button className={className} {...props}>
-					{renderTrigger(selectedWorkspace, open)}
-				</button>
-			</PopoverTrigger>
-		);
-	}
-
-	return (
-		<PopoverTrigger asChild>
-			<button
-				data-state={open ? 'open' : 'closed'}
-				className={cn(
-					'flex w-full items-center justify-between text-sm',
-					'focus:ring-ring focus:ring-2 focus:ring-offset-2 focus:outline-none',
-					className,
-				)}
-				{...props}
-			>
-				<div className={cn("flex items-center gap-3", collapsed ? "w-full justify-center" : "min-w-0 flex-1")}>
-					<Avatar className={cn(avatarClassName)}>
-						<AvatarImage
-							src={(selectedWorkspace as any).logo}
-							alt={getWorkspaceName(selectedWorkspace)}
-						/>
-						<AvatarFallback className="text-xs">
-							{getWorkspaceName(selectedWorkspace).charAt(0).toUpperCase()}
-						</AvatarFallback>
-					</Avatar>
-					{!collapsed && (
-						<div className="flex min-w-0 flex-1 flex-col items-start">
-							<span className="truncate font-medium">{getWorkspaceName(selectedWorkspace)}</span>
-							<span className="text-muted-foreground truncate text-xs">{(selectedWorkspace as any).plan}</span>
-						</div>
-					)}
-				</div>
-				{!collapsed && <ChevronsUpDownIcon className="h-4 w-4 shrink-0 opacity-50" />}
-			</button>
-		</PopoverTrigger>
-	);
-}
-
-// Content component
-interface WorkspaceContentProps
-	extends PopoverContentProps {
-	renderWorkspace?: (
-		workspace: Workspace,
-		isSelected: boolean,
-	) => React.ReactNode;
-	title?: string;
-	searchable?: boolean;
-	onSearch?: (query: string) => void;
-}
-
-function WorkspaceContent({
-	className,
-	children,
-	renderWorkspace,
-	title = 'Workspaces',
-	searchable = false,
-	onSearch,
-	side = 'right',
-	align = 'start',
-	sideOffset = 8,
-	useTriggerWidth = false,
-	...props
-}: WorkspaceContentProps) {
-	const {
-		workspaces,
-		selectedWorkspace,
-		onWorkspaceSelect,
-		getWorkspaceId,
-		getWorkspaceName,
-	} = useWorkspaceContext();
-
-	const [searchQuery, setSearchQuery] = React.useState('');
-
-	const filteredWorkspaces = React.useMemo(() => {
-		if (!searchQuery) return workspaces;
-		return workspaces.filter((ws) =>
-			getWorkspaceName(ws).toLowerCase().includes(searchQuery.toLowerCase()),
-		);
-	}, [workspaces, searchQuery, getWorkspaceName]);
-
-	React.useEffect(() => {
-		onSearch?.(searchQuery);
-	}, [searchQuery, onSearch]);
-
-	const defaultRenderWorkspace = (
-		workspace: Workspace,
-		isSelected: boolean,
-	) => (
-		<div className="flex min-w-0 flex-1 items-center gap-2">
-			<Avatar className="h-6 w-6">
-				<AvatarImage
-					src={(workspace as any).logo}
-					alt={getWorkspaceName(workspace)}
-				/>
-				<AvatarFallback className="text-xs">
-					{getWorkspaceName(workspace).charAt(0).toUpperCase()}
-				</AvatarFallback>
-			</Avatar>
-			<div className="flex min-w-0 flex-1 flex-col items-start">
-				<span className="truncate text-sm">{getWorkspaceName(workspace)}</span>
-				{(workspace as any).plan && (
-					<span className="text-muted-foreground text-xs">
-						{(workspace as any).plan}
-					</span>
-				)}
-			</div>
-			{isSelected && <CheckIcon className="ml-auto h-4 w-4" />}
-		</div>
-	);
-
-	return (
-		<PopoverContent
-			className={cn('p-0', className)}
-			align={align}
-			sideOffset={sideOffset}
-			useTriggerWidth={useTriggerWidth}
-			{...{ ...props, side }}
-		>
-			<div className="border-b px-4 py-3">
-				<h3 className="text-sm font-semibold text-foreground">{title}</h3>
-			</div>
-
-			{searchable && (
-				<div className="border-b p-2">
-					<div className="relative">
-						<Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-						<input
-							type="text"
-							placeholder="Search workspaces..."
-							value={searchQuery}
-							onChange={(e) => setSearchQuery(e.target.value)}
-							className="h-9 w-full rounded-md bg-transparent pl-9 text-sm placeholder:text-muted-foreground focus:bg-accent focus:outline-none"
-						/>
-					</div>
-				</div>
-			)}
-
-			<div className="max-h-[300px] overflow-y-auto">
-				{filteredWorkspaces.length === 0 ? (
-					<div className="text-muted-foreground px-3 py-2 text-center text-sm">
-						No workspaces found
-					</div>
-				) : (
-					<div className="space-y-1 p-2">
-						{filteredWorkspaces.map((workspace) => {
-							const isSelected =
-								selectedWorkspace &&
-								getWorkspaceId(selectedWorkspace) === getWorkspaceId(workspace);
-
-							return (
-								<button
-									key={getWorkspaceId(workspace)}
-									onClick={() => onWorkspaceSelect(workspace)}
-									className={cn(
-										'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm',
-										'hover:bg-accent hover:text-accent-foreground',
-										'focus:outline-none',
-										isSelected && 'bg-accent text-accent-foreground',
-									)}
-								>
-									{renderWorkspace
-										? renderWorkspace(workspace, !!isSelected)
-										: defaultRenderWorkspace(workspace, !!isSelected)}
-								</button>
-							);
-						})}
-					</div>
-				)}
-			</div>
-
-			{children && (
-				<>
-					<div className="border-t" />
-					<div className="p-1">{children}</div>
-				</>
-			)}
-		</PopoverContent>
-	);
-}
-
-export { WorkspaceProvider as Workspaces, WorkspaceTrigger, WorkspaceContent };
 ```
 
 ## File: src/components/DemoContent.tsx
@@ -3471,6 +2804,676 @@ if (typeof document !== 'undefined') {
   styleSheet.textContent = sliderStyles
   document.head.appendChild(styleSheet)
 }
+```
+
+## File: src/components/Sidebar.tsx
+```typescript
+import * as React from 'react';
+import { ChevronDown } from 'lucide-react';
+import { Slot } from '@radix-ui/react-slot';
+import { useAppStore } from '@/store/appStore';
+import { SIDEBAR_STATES } from '@/lib/utils';
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+
+// --- Context ---
+interface SidebarContextValue {
+  isCollapsed: boolean;
+  isPeek: boolean;
+  compactMode: boolean;
+}
+
+const SidebarContext = React.createContext<SidebarContextValue | null>(null);
+
+export const useSidebar = () => {
+  const context = React.useContext(SidebarContext);
+  if (!context) {
+    throw new Error('useSidebar must be used within a Sidebar component');
+  }
+  return context;
+};
+
+// --- Main Sidebar Component ---
+interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
+  children: React.ReactNode;
+}
+
+const Sidebar = React.forwardRef<HTMLDivElement, SidebarProps>(
+  ({ children, className, ...props }, ref) => {
+    const { sidebarState, compactMode } = useAppStore();
+    const isCollapsed = sidebarState === SIDEBAR_STATES.COLLAPSED;
+    const isPeek = sidebarState === SIDEBAR_STATES.PEEK;
+
+    return (
+      <SidebarContext.Provider value={{ isCollapsed, isPeek, compactMode }}>
+        <div
+          ref={ref}
+          className={cn(
+            'relative bg-card flex-shrink-0',
+            'h-full',
+            isPeek && 'shadow-xl z-40',
+            compactMode && 'text-sm',
+            className,
+          )}
+          {...props}
+        >
+          {isPeek && <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" />}
+          {children}
+        </div>
+      </SidebarContext.Provider>
+    );
+  },
+);
+Sidebar.displayName = 'Sidebar';
+
+// --- Sidebar Content Wrapper ---
+const SidebarContent = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => {
+  const { compactMode } = useSidebar();
+  return (
+    <div
+      ref={ref}
+      className={cn(
+        'relative z-10 h-full flex flex-col',
+        compactMode ? 'p-3' : 'p-4',
+        className,
+      )}
+      {...props}
+    />
+  );
+});
+SidebarContent.displayName = 'SidebarContent';
+
+// --- Sidebar Header ---
+const SidebarHeader = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => {
+  const { isCollapsed } = useSidebar();
+  return (
+    <div
+      ref={ref}
+      className={cn(
+        'flex items-center gap-3',
+        isCollapsed ? 'justify-center' : 'px-3',
+        'h-16',
+        className,
+      )}
+      {...props}
+    />
+  );
+});
+SidebarHeader.displayName = 'SidebarHeader';
+
+const SidebarTitle = React.forwardRef<
+  HTMLParagraphElement,
+  React.HTMLAttributes<HTMLParagraphElement>
+>(({ className, ...props }, ref) => {
+  const { isCollapsed } = useSidebar();
+  if (isCollapsed) return null;
+  return (
+    <h1
+      ref={ref}
+      className={cn('text-lg font-bold nav-label', className)}
+      {...props}
+    />
+  );
+});
+SidebarTitle.displayName = 'SidebarTitle';
+
+// --- Sidebar Body ---
+const SidebarBody = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => (
+  <div
+    ref={ref}
+    className={cn(
+      'flex-1 overflow-y-auto space-y-6 pt-4',
+      className,
+    )}
+    {...props}
+  />
+));
+SidebarBody.displayName = 'SidebarBody';
+
+// --- Sidebar Footer ---
+const SidebarFooter = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => {
+  const { compactMode } = useSidebar();
+  return (
+    <div
+      ref={ref}
+      className={cn('pt-4 border-t border-border', compactMode && 'pt-3', className)}
+      {...props}
+    />
+  );
+});
+SidebarFooter.displayName = 'SidebarFooter';
+
+// --- Sidebar Section ---
+const SidebarSection = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement> & {
+    title?: string;
+    collapsible?: boolean;
+    defaultExpanded?: boolean;
+  }
+>(({ title, collapsible = false, defaultExpanded = true, children, ...props }, ref) => {
+  const { isCollapsed } = useSidebar();
+  const [isExpanded, setIsExpanded] = React.useState(defaultExpanded);
+
+  const handleToggle = () => {
+    if (collapsible) {
+      setIsExpanded(!isExpanded);
+    }
+  };
+
+  return (
+    <div ref={ref} className="space-y-1" {...props}>
+      {!isCollapsed && title && (
+        <div
+          className={cn(
+            'flex items-center justify-between px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider',
+            collapsible && 'cursor-pointer hover:text-foreground transition-colors',
+          )}
+          onClick={handleToggle}
+        >
+          <span className="section-title">{title}</span>
+          {collapsible && (
+            <ChevronDown
+              className={cn(
+                'section-chevron w-3 h-3 transition-transform',
+                isExpanded ? 'rotate-0' : '-rotate-90',
+              )}
+            />
+          )}
+        </div>
+      )}
+      {(!collapsible || isExpanded || isCollapsed) && (
+        <nav className="space-y-1">{children}</nav>
+      )}
+    </div>
+  );
+});
+SidebarSection.displayName = 'SidebarSection';
+
+// --- Sidebar Menu Item ---
+const SidebarMenuItem = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => {
+  return <div ref={ref} className={cn('group/item relative flex items-stretch', className)} {...props} />;
+});
+SidebarMenuItem.displayName = 'SidebarMenuItem';
+
+
+// --- Sidebar Menu Button ---
+interface SidebarMenuButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  asChild?: boolean;
+  isActive?: boolean;
+}
+const SidebarMenuButton = React.forwardRef<HTMLButtonElement, SidebarMenuButtonProps>(
+  ({ className, asChild = false, isActive, ...props }, ref) => {
+    const { isCollapsed, compactMode } = useSidebar();
+    const Comp = asChild ? Slot : 'button';
+
+    return (
+      <Comp
+        ref={ref}
+        className={cn(
+          'group flex items-center gap-3 rounded-lg cursor-pointer transition-all duration-200 w-full text-left flex-1',
+          compactMode ? 'px-2 py-1.5' : 'px-4 py-2.5',
+          'hover:bg-accent',
+          isActive && 'bg-primary text-primary-foreground hover:bg-primary/90',
+          isCollapsed && 'justify-center',
+          className
+        )}
+        {...props}
+      />
+    );
+  }
+);
+SidebarMenuButton.displayName = 'SidebarMenuButton';
+
+// --- Sidebar Menu Action ---
+const SidebarMenuAction = React.forwardRef<
+  HTMLButtonElement,
+  React.ButtonHTMLAttributes<HTMLButtonElement>
+>(({ className, ...props }, ref) => {
+  const { isCollapsed } = useSidebar();
+  if (isCollapsed) return null;
+  return (
+    <Button
+      ref={ref}
+      variant="ghost"
+      size="icon"
+      className={cn(
+        'h-full w-8 rounded-l-none opacity-0 group-hover/item:opacity-100 transition-opacity',
+        'focus:opacity-100', // show on focus for accessibility
+        className
+      )}
+      {...props}
+    />
+  );
+});
+SidebarMenuAction.displayName = 'SidebarMenuAction';
+
+// --- Sidebar Menu Label ---
+const SidebarLabel = React.forwardRef<
+  HTMLSpanElement,
+  React.HTMLAttributes<HTMLSpanElement>
+>(({ className, ...props }, ref) => {
+  const { isCollapsed } = useSidebar();
+  if (isCollapsed) return null;
+  return (
+    <span
+      ref={ref}
+      className={cn('nav-label flex-1 font-medium truncate', className)}
+      {...props}
+    />
+  );
+});
+SidebarLabel.displayName = 'SidebarLabel';
+
+
+// --- Sidebar Menu Badge ---
+const SidebarBadge = React.forwardRef<
+  HTMLSpanElement,
+  React.HTMLAttributes<HTMLSpanElement>
+>(({ className, children, ...props }, ref) => {
+  const { isCollapsed } = useSidebar();
+  if (isCollapsed) return null;
+  const badgeContent = typeof children === 'number' && children > 99 ? '99+' : children;
+  return (
+    <span
+      ref={ref}
+      className={cn(
+        'nav-badge bg-destructive text-destructive-foreground text-xs px-1.5 py-0.5 rounded-full min-w-[1.25rem] text-center',
+        className
+      )}
+      {...props}
+    >
+      {badgeContent}
+    </span>
+  );
+});
+SidebarBadge.displayName = 'SidebarBadge';
+
+
+// --- Sidebar Tooltip ---
+interface SidebarTooltipProps extends React.HTMLAttributes<HTMLDivElement> {
+  label: string;
+  badge?: number | string;
+}
+const SidebarTooltip = ({ label, badge, className, ...props }: SidebarTooltipProps) => {
+  const { isCollapsed } = useSidebar();
+  if (!isCollapsed) return null;
+  return (
+    <div
+      className={cn(
+        'absolute left-full ml-2 px-2 py-1 bg-popover text-popover-foreground text-sm rounded-md shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50',
+        className
+      )}
+      {...props}
+    >
+      {label}
+      {badge && (
+        <span className="ml-2 bg-destructive text-destructive-foreground text-xs px-1.5 py-0.5 rounded-full">
+          {typeof badge === 'number' && badge > 99 ? '99+' : badge}
+        </span>
+      )}
+    </div>
+  );
+};
+SidebarTooltip.displayName = 'SidebarTooltip';
+
+
+// --- Icon Wrapper for consistent sizing ---
+const SidebarIcon = ({ children, className }: { children: React.ReactNode, className?: string }) => {
+  return (
+    <div className={cn("flex-shrink-0 w-4 h-4", className)}>
+      {children}
+    </div>
+  )
+}
+
+export {
+  Sidebar,
+  SidebarContent,
+  SidebarHeader,
+  SidebarTitle,
+  SidebarBody,
+  SidebarFooter,
+  SidebarSection,
+  SidebarMenuItem,
+  SidebarMenuButton,
+  SidebarMenuAction,
+  SidebarLabel,
+  SidebarBadge,
+  SidebarTooltip,
+  SidebarIcon
+};
+```
+
+## File: src/components/WorkspaceSwitcher.tsx
+```typescript
+import * as React from 'react';
+import { CheckIcon, ChevronsUpDownIcon, Search } from 'lucide-react';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { cn } from '@/lib/utils';
+import {
+	Popover,
+	PopoverTrigger,
+	PopoverContent,
+	type PopoverContentProps,
+} from '@/components/ui/popover';
+
+// Generic workspace interface - can be extended
+export interface Workspace {
+	id: string;
+	name: string;
+	[key: string]: any; // Allow additional properties
+}
+
+// Context for workspace state management
+interface WorkspaceContextValue<T extends Workspace> {
+	open: boolean;
+	setOpen: (open: boolean) => void;
+	selectedWorkspace: T | undefined;
+	workspaces: T[];
+	onWorkspaceSelect: (workspace: T) => void;
+	getWorkspaceId: (workspace: T) => string;
+	getWorkspaceName: (workspace: T) => string;
+}
+
+const WorkspaceContext = React.createContext<WorkspaceContextValue<any> | null>(
+	null,
+);
+
+function useWorkspaceContext<T extends Workspace>() {
+	const context = React.useContext(
+		WorkspaceContext,
+	) as WorkspaceContextValue<T> | null;
+	if (!context) {
+		throw new Error(
+			'Workspace components must be used within WorkspaceProvider',
+		);
+	}
+	return context;
+}
+
+// Main provider component
+interface WorkspaceProviderProps<T extends Workspace> {
+	children: React.ReactNode;
+	workspaces: T[];
+	selectedWorkspaceId?: string;
+	onWorkspaceChange?: (workspace: T) => void;
+	open?: boolean;
+	onOpenChange?: (open: boolean) => void;
+	getWorkspaceId?: (workspace: T) => string;
+	getWorkspaceName?: (workspace: T) => string;
+}
+
+function WorkspaceProvider<T extends Workspace>({
+	children,
+	workspaces,
+	selectedWorkspaceId,
+	onWorkspaceChange,
+	open: controlledOpen,
+	onOpenChange,
+	getWorkspaceId = (workspace) => workspace.id,
+	getWorkspaceName = (workspace) => workspace.name,
+}: WorkspaceProviderProps<T>) {
+	const [internalOpen, setInternalOpen] = React.useState(false);
+
+	const open = controlledOpen ?? internalOpen;
+	const setOpen = onOpenChange ?? setInternalOpen;
+
+	const selectedWorkspace = React.useMemo(() => {
+		if (!selectedWorkspaceId) return workspaces[0];
+		return (
+			workspaces.find((ws) => getWorkspaceId(ws) === selectedWorkspaceId) ||
+			workspaces[0]
+		);
+	}, [workspaces, selectedWorkspaceId, getWorkspaceId]);
+
+	const handleWorkspaceSelect = React.useCallback(
+		(workspace: T) => {
+			onWorkspaceChange?.(workspace);
+			setOpen(false);
+		},
+		[onWorkspaceChange, setOpen],
+	);
+
+	const value: WorkspaceContextValue<T> = {
+		open,
+		setOpen,
+		selectedWorkspace,
+		workspaces,
+		onWorkspaceSelect: handleWorkspaceSelect,
+		getWorkspaceId,
+		getWorkspaceName,
+	};
+
+	return (
+		<WorkspaceContext.Provider value={value}>
+			<Popover open={open} onOpenChange={setOpen}>
+				{children}
+			</Popover>
+		</WorkspaceContext.Provider>
+	);
+}
+
+// Trigger component
+interface WorkspaceTriggerProps extends React.ComponentProps<'button'> {
+	renderTrigger?: (workspace: Workspace, isOpen: boolean) => React.ReactNode;
+  collapsed?: boolean;
+  avatarClassName?: string;
+}
+
+function WorkspaceTrigger({
+	className,
+	renderTrigger,
+  collapsed = false,
+  avatarClassName,
+	...props
+}: WorkspaceTriggerProps) {
+	const { open, selectedWorkspace, getWorkspaceName } = useWorkspaceContext();
+
+	if (!selectedWorkspace) return null;
+
+	if (renderTrigger) {
+		return (
+			<PopoverTrigger asChild>
+				<button className={className} {...props}>
+					{renderTrigger(selectedWorkspace, open)}
+				</button>
+			</PopoverTrigger>
+		);
+	}
+
+	return (
+		<PopoverTrigger asChild>
+			<button
+				data-state={open ? 'open' : 'closed'}
+				className={cn(
+					'flex w-full items-center justify-between text-sm',
+					'focus:ring-ring focus:ring-2 focus:ring-offset-2 focus:outline-none',
+					className,
+				)}
+				{...props}
+			>
+				<div className={cn("flex items-center gap-3", collapsed ? "w-full justify-center" : "min-w-0 flex-1")}>
+					<Avatar className={cn(avatarClassName)}>
+						<AvatarImage
+							src={(selectedWorkspace as any).logo}
+							alt={getWorkspaceName(selectedWorkspace)}
+						/>
+						<AvatarFallback className="text-xs">
+							{getWorkspaceName(selectedWorkspace).charAt(0).toUpperCase()}
+						</AvatarFallback>
+					</Avatar>
+					{!collapsed && (
+						<div className="flex min-w-0 flex-1 flex-col items-start">
+							<span className="truncate font-medium">{getWorkspaceName(selectedWorkspace)}</span>
+							<span className="text-muted-foreground truncate text-xs">{(selectedWorkspace as any).plan}</span>
+						</div>
+					)}
+				</div>
+				{!collapsed && <ChevronsUpDownIcon className="h-4 w-4 shrink-0 opacity-50" />}
+			</button>
+		</PopoverTrigger>
+	);
+}
+
+// Content component
+interface WorkspaceContentProps
+	extends PopoverContentProps {
+	renderWorkspace?: (
+		workspace: Workspace,
+		isSelected: boolean,
+	) => React.ReactNode;
+	title?: string;
+	searchable?: boolean;
+	onSearch?: (query: string) => void;
+}
+
+function WorkspaceContent({
+	className,
+	children,
+	renderWorkspace,
+	title = 'Workspaces',
+	searchable = false,
+	onSearch,
+	side = 'right',
+	align = 'start',
+	sideOffset = 8,
+	useTriggerWidth = false,
+	...props
+}: WorkspaceContentProps) {
+	const {
+		workspaces,
+		selectedWorkspace,
+		onWorkspaceSelect,
+		getWorkspaceId,
+		getWorkspaceName,
+	} = useWorkspaceContext();
+
+	const [searchQuery, setSearchQuery] = React.useState('');
+
+	const filteredWorkspaces = React.useMemo(() => {
+		if (!searchQuery) return workspaces;
+		return workspaces.filter((ws) =>
+			getWorkspaceName(ws).toLowerCase().includes(searchQuery.toLowerCase()),
+		);
+	}, [workspaces, searchQuery, getWorkspaceName]);
+
+	React.useEffect(() => {
+		onSearch?.(searchQuery);
+	}, [searchQuery, onSearch]);
+
+	const defaultRenderWorkspace = (
+		workspace: Workspace,
+		isSelected: boolean,
+	) => (
+		<div className="flex min-w-0 flex-1 items-center gap-2">
+			<Avatar className="h-6 w-6">
+				<AvatarImage
+					src={(workspace as any).logo}
+					alt={getWorkspaceName(workspace)}
+				/>
+				<AvatarFallback className="text-xs">
+					{getWorkspaceName(workspace).charAt(0).toUpperCase()}
+				</AvatarFallback>
+			</Avatar>
+			<div className="flex min-w-0 flex-1 flex-col items-start">
+				<span className="truncate text-sm">{getWorkspaceName(workspace)}</span>
+				{(workspace as any).plan && (
+					<span className="text-muted-foreground text-xs">
+						{(workspace as any).plan}
+					</span>
+				)}
+			</div>
+			{isSelected && <CheckIcon className="ml-auto h-4 w-4" />}
+		</div>
+	);
+
+	return (
+		<PopoverContent
+			className={cn('p-0', className)}
+			align={align}
+			sideOffset={sideOffset}
+			useTriggerWidth={useTriggerWidth}
+			{...{ ...props, side }}
+		>
+			<div className="border-b px-4 py-3">
+				<h3 className="text-sm font-semibold text-foreground">{title}</h3>
+			</div>
+
+			{searchable && (
+				<div className="border-b p-2">
+					<div className="relative">
+						<Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+						<input
+							type="text"
+							placeholder="Search workspaces..."
+							value={searchQuery}
+							onChange={(e) => setSearchQuery(e.target.value)}
+							className="h-9 w-full rounded-md bg-transparent pl-9 text-sm placeholder:text-muted-foreground focus:bg-accent focus:outline-none"
+						/>
+					</div>
+				</div>
+			)}
+
+			<div className="max-h-[300px] overflow-y-auto">
+				{filteredWorkspaces.length === 0 ? (
+					<div className="text-muted-foreground px-3 py-2 text-center text-sm">
+						No workspaces found
+					</div>
+				) : (
+					<div className="space-y-1 p-2">
+						{filteredWorkspaces.map((workspace) => {
+							const isSelected =
+								selectedWorkspace &&
+								getWorkspaceId(selectedWorkspace) === getWorkspaceId(workspace);
+
+							return (
+								<button
+									key={getWorkspaceId(workspace)}
+									onClick={() => onWorkspaceSelect(workspace)}
+									className={cn(
+										'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm',
+										'hover:bg-accent hover:text-accent-foreground',
+										'focus:outline-none',
+										isSelected && 'bg-accent text-accent-foreground',
+									)}
+								>
+									{renderWorkspace
+										? renderWorkspace(workspace, !!isSelected)
+										: defaultRenderWorkspace(workspace, !!isSelected)}
+								</button>
+							);
+						})}
+					</div>
+				)}
+			</div>
+
+			{children && (
+				<>
+					<div className="border-t" />
+					<div className="p-1">{children}</div>
+				</>
+			)}
+		</PopoverContent>
+	);
+}
+
+export { WorkspaceProvider as Workspaces, WorkspaceTrigger, WorkspaceContent };
 ```
 
 ## File: src/components/DashboardContent.tsx
@@ -4024,58 +4027,6 @@ export const RightPane = forwardRef<HTMLDivElement>((_props, ref) => {
 RightPane.displayName = "RightPane"
 ```
 
-## File: package.json
-```json
-{
-  "name": "amazing-app-shell",
-  "private": true,
-  "version": "0.0.0",
-  "type": "module",
-  "scripts": {
-    "dev": "vite",
-    "build": "tsc && vite build",
-    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "preview": "vite preview"
-  },
-  "dependencies": {
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "gsap": "^3.12.2",
-    "zustand": "^4.4.7",
-    "lucide-react": "^0.294.0",
-    "clsx": "^2.0.0",
-    "tailwind-merge": "^2.0.0",
-    "class-variance-authority": "^0.7.0",
-    "@radix-ui/react-slot": "^1.0.2",
-    "sonner": "^1.2.4",
-    "@radix-ui/react-avatar": "^1.0.4",
-    "@radix-ui/react-popover": "^1.0.7",
-    "@radix-ui/react-dialog": "^1.0.5",
-    "cmdk": "^0.2.0",
-    "@radix-ui/react-dropdown-menu": "^2.0.6",
-    "@iconify/react": "^4.1.1",
-    "@radix-ui/react-tabs": "^1.0.4"
-  },
-  "devDependencies": {
-    "@types/node": "^20.10.0",
-    "@types/react": "^18.2.37",
-    "@types/react-dom": "^18.2.15",
-    "@typescript-eslint/eslint-plugin": "^6.10.0",
-    "@typescript-eslint/parser": "^6.10.0",
-    "@vitejs/plugin-react": "^4.1.1",
-    "autoprefixer": "^10.4.16",
-    "eslint": "^8.53.0",
-    "eslint-plugin-react-hooks": "^4.6.0",
-    "eslint-plugin-react-refresh": "^0.4.4",
-    "postcss": "^8.4.31",
-    "tailwindcss": "^3.3.5",
-    "typescript": "^5.2.2",
-    "vite": "^4.5.0",
-    "tailwindcss-animate": "^1.0.7"
-  }
-}
-```
-
 ## File: src/components/AppShell.tsx
 ```typescript
 import { useRef, useEffect } from 'react'
@@ -4349,6 +4300,58 @@ export function AppShell() {
       <CommandPalette />
     </div>
   )
+}
+```
+
+## File: package.json
+```json
+{
+  "name": "amazing-app-shell",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "gsap": "^3.12.2",
+    "zustand": "^4.4.7",
+    "lucide-react": "^0.294.0",
+    "clsx": "^2.0.0",
+    "tailwind-merge": "^2.0.0",
+    "class-variance-authority": "^0.7.0",
+    "@radix-ui/react-slot": "^1.0.2",
+    "sonner": "^1.2.4",
+    "@radix-ui/react-avatar": "^1.0.4",
+    "@radix-ui/react-popover": "^1.0.7",
+    "@radix-ui/react-dialog": "^1.0.5",
+    "cmdk": "^0.2.0",
+    "@radix-ui/react-dropdown-menu": "^2.0.6",
+    "@iconify/react": "^4.1.1",
+    "@radix-ui/react-tabs": "^1.0.4"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@types/react": "^18.2.37",
+    "@types/react-dom": "^18.2.15",
+    "@typescript-eslint/eslint-plugin": "^6.10.0",
+    "@typescript-eslint/parser": "^6.10.0",
+    "@vitejs/plugin-react": "^4.1.1",
+    "autoprefixer": "^10.4.16",
+    "eslint": "^8.53.0",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint-plugin-react-refresh": "^0.4.4",
+    "postcss": "^8.4.31",
+    "tailwindcss": "^3.3.5",
+    "typescript": "^5.2.2",
+    "vite": "^4.5.0",
+    "tailwindcss-animate": "^1.0.7"
+  }
 }
 ```
 
@@ -4781,7 +4784,7 @@ export function TopBar({
 
   return (
     <div className={cn(
-      "h-20 bg-card/80 backdrop-blur-sm border-b border-border flex items-center justify-between px-6 z-50 gap-4",
+      "h-20 bg-background border-b border-border flex items-center justify-between px-6 z-50 gap-4",
       {
         'transition-all duration-300 ease-in-out': activePage === 'dashboard',
       }
