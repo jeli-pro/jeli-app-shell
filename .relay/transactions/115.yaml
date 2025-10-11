@@ -1,0 +1,1050 @@
+uuid: d82098d6-1bb5-4309-9189-dd9e2f4ed1f2
+projectId: amazing-app-shell
+createdAt: '2025-10-11T07:44:21.450Z'
+gitCommitMsg: >-
+  refactor: prepare app shell for library distribution
+
+  This commit refactors the project to make it distributable as an NPM package.
+
+  - Moves the LoginPage component from `pages` to `components/auth` to include
+  it in the library build. - Converts LoginPage to a named export for better
+  library practices. - Exports LoginPage from the main entry file
+  `src/index.ts`. - Adds `sideEffects: ["**/*.css"]` to `package.json` to enable
+  better tree-shaking for consumers. - Updates the README to include LoginPage
+  in the component API documentation.
+promptSummary: >-
+  The user wants to prepare the application shell to be distributed as a
+  library. This includes restructuring files, updating package configurations,
+  and ensuring the documentation is accurate for library consumers.
+reasoning:
+  - >-
+    To prepare your "Amazing App Shell" for distribution as a library, I'll make
+    the following changes:
+  - >-
+    1.  **Restructure for Reusability**: The `LoginPage` component is a great
+    feature to include in the library. I will move it from the `src/pages`
+    directory (which is excluded from the build) to a new `src/components/auth`
+    directory to include it in the library bundle.
+  - >-
+    2.  **Standardize Exports**: I'll convert the `LoginPage` from a default
+    export to a named export, which is better practice for libraries and
+    improves tree-shaking.
+  - >-
+    3.  **Update Entry Point**: I will export the newly relocated `LoginPage`
+    from the main `src/index.ts` file, making it part of the library's public
+    API.
+  - >-
+    4.  **Optimize for Bundlers**: I'll add a `sideEffects` flag to
+    `package.json`. This tells bundlers like Webpack or Vite that they can
+    safely tree-shake unused code from your library, except for CSS files,
+    leading to smaller bundle sizes for consumers.
+  - >-
+    5.  **Update Documentation**: I'll update the `README.md` file to include
+    the `LoginPage` in the list of available components.
+  - >-
+    These changes will package your components into a consumable library while
+    keeping the demo application functional for development and showcasing
+    features.
+  - First, I'll move the `LoginPage` component to its new home.
+  - >-
+    Next, I'll update the `LoginPage` component to use a named export instead of
+    a default export. This is a best practice for libraries.
+  - >-
+    Now I'll update the demo application to import `LoginPage` from its new
+    location using a named import.
+  - >-
+    To make the `LoginPage` available to library consumers, I'll export it from
+    the main entry point, `src/index.ts`.
+  - >-
+    I'll add the `sideEffects` field to `package.json` to help with tree-shaking
+    for consumers of the library.
+  - >-
+    Finally, I'll update the documentation to list the `LoginPage` as one of the
+    ready-to-use components.
+operations:
+  - type: rename
+    from: src/pages/Login/index.tsx
+    to: src/components/auth/LoginPage.tsx
+  - type: write
+    path: src/components/auth/LoginPage.tsx
+    content: "--- \"src/components/auth/LoginPage.tsx\"\n+++ \"src/components/auth/LoginPage.tsx\"\n@@ -536,5 +536,3 @@\n \t\t</section>\n \t);\n }\n-\n-export default LoginPage;\n\n"
+    patchStrategy: standard-diff
+  - type: write
+    path: src/App.tsx
+    content: |+
+      --- src/App.tsx
+      +++ src/App.tsx
+      @@ -16,7 +16,7 @@
+       import { NotificationsPage } from './pages/Notifications'
+       import { ContentInSidePanePlaceholder } from './components/shared/ContentInSidePanePlaceholder'
+       import { SettingsContent } from './features/settings/SettingsContent'
+      -import LoginPage from './pages/Login'
+      +import { LoginPage } from './components/auth/LoginPage'
+       
+       // Import icons
+       import { LayoutDashboard, Settings, Component, Bell, SlidersHorizontal, ChevronsLeftRight, Search, Filter, Plus, PanelRight, ChevronRight, Rocket } from 'lucide-react'
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/index.ts
+    content: |+
+      --- src/index.ts
+      +++ src/index.ts
+      @@ -29,6 +29,7 @@
+       export { SettingsContent } from './features/settings/SettingsContent';
+       export { SettingsSection } from './features/settings/SettingsSection';
+       export { SettingsToggle } from './features/settings/SettingsToggle';
+      +export { LoginPage } from './components/auth/LoginPage';
+       
+       // UI Components
+       export * from './components/ui/avatar';
+
+    patchStrategy: standard-diff
+  - type: write
+    path: package.json
+    content: |+
+      --- package.json
+      +++ package.json
+      @@ -16,6 +16,9 @@
+           },
+           "./dist/style.css": "./dist/style.css"
+         },
+      +  "sideEffects": [
+      +    "**/*.css"
+      +  ],
+         "scripts": {
+           "dev": "vite",
+           "build": "tsc && vite build",
+
+    patchStrategy: standard-diff
+  - type: write
+    path: README.md
+    content: |+
+      --- README.md
+      +++ README.md
+      @@ -158,6 +158,7 @@
+       -   `<UserDropdown>`: A pre-styled user profile dropdown menu.
+       -   `<WorkspaceSwitcher>`: A complete workspace/tenant switcher component.
+       -   `<PageHeader>`: A standardized header for your main content pages.
+      +-   `<LoginPage>`: A beautiful, animated login page component.
+       -   `<CommandPalette>`: A powerful command palette for your application.
+       
+       ### UI Primitives
+
+    patchStrategy: standard-diff
+snapshot:
+  src/components/auth/LoginPage.tsx: null
+  src/pages/Login/index.tsx: "import React, {\n\tuseState,\n\tChangeEvent,\n\tFormEvent,\n\tReactNode,\n\tuseEffect,\n\tuseRef,\n\tforwardRef,\n\tmemo,\n} from 'react';\nimport { Eye, EyeOff, Mail, ArrowLeft } from 'lucide-react';\nimport { gsap } from 'gsap';\nimport { cn } from '@/lib/utils';\n\n// ==================== Input Component ====================\nconst Input = memo(\n\tforwardRef(function Input(\n\t\t{ className, type, ...props }: React.InputHTMLAttributes<HTMLInputElement>,\n\t\tref: React.ForwardedRef<HTMLInputElement>,\n\t) {\n\t\tconst radius = 100;\n\t\tconst wrapperRef = useRef<HTMLDivElement>(null);\n\n\t\tuseEffect(() => {\n\t\t\tconst wrapper = wrapperRef.current;\n\t\t\tif (!wrapper) return;\n\n\t\t\tlet animationFrameId: number | null = null;\n\n\t\t\tconst handleMouseMove = (e: MouseEvent) => {\n\t\t\t\tif (animationFrameId) {\n\t\t\t\t\tcancelAnimationFrame(animationFrameId);\n\t\t\t\t}\n\n\t\t\t\tanimationFrameId = requestAnimationFrame(() => {\n\t\t\t\t\tif (!wrapper) return;\n\t\t\t\t\tconst { left, top } = wrapper.getBoundingClientRect();\n\t\t\t\t\tconst x = e.clientX - left;\n\t\t\t\t\tconst y = e.clientY - top;\n\t\t\t\t\twrapper.style.setProperty('--mouse-x', `${x}px`);\n\t\t\t\t\twrapper.style.setProperty('--mouse-y', `${y}px`);\n\t\t\t\t});\n\t\t\t};\n\n\t\t\tconst handleMouseEnter = () => {\n\t\t\t\tif (!wrapper) return;\n\t\t\t\twrapper.style.setProperty('--radius', `${radius}px`);\n\t\t\t};\n\n\t\t\tconst handleMouseLeave = () => {\n\t\t\t\tif (!wrapper) return;\n\t\t\t\twrapper.style.setProperty('--radius', '0px');\n\t\t\t\tif (animationFrameId) {\n\t\t\t\t\tcancelAnimationFrame(animationFrameId);\n\t\t\t\t\tanimationFrameId = null;\n\t\t\t\t}\n\t\t\t};\n\n\t\t\twrapper.addEventListener('mousemove', handleMouseMove);\n\t\t\twrapper.addEventListener('mouseenter', handleMouseEnter);\n\t\t\twrapper.addEventListener('mouseleave', handleMouseLeave);\n\n\t\t\treturn () => {\n\t\t\t\twrapper.removeEventListener('mousemove', handleMouseMove);\n\t\t\t\twrapper.removeEventListener('mouseenter', handleMouseEnter);\n\t\t\t\twrapper.removeEventListener('mouseleave', handleMouseLeave);\n\t\t\t\tif (animationFrameId) {\n\t\t\t\t\tcancelAnimationFrame(animationFrameId);\n\t\t\t\t}\n\t\t\t};\n\t\t}, [radius]);\n\n\t\treturn (\n\t\t\t<div\n\t\t\t\tref={wrapperRef}\n\t\t\t\tstyle={\n\t\t\t\t\t{\n\t\t\t\t\t\t'--radius': '0px',\n\t\t\t\t\t\t'--mouse-x': '0px',\n\t\t\t\t\t\t'--mouse-y': '0px',\n\t\t\t\t\t\tbackground: `radial-gradient(var(--radius) circle at var(--mouse-x) var(--mouse-y), #3b82f6, transparent 80%)`,\n\t\t\t\t\t} as React.CSSProperties\n\t\t\t\t}\n\t\t\t\tclassName=\"group/input rounded-lg p-[2px] transition duration-300\"\n\t\t\t>\n\t\t\t\t<input\n\t\t\t\t\ttype={type}\n\t\t\t\t\tclassName={cn(\n\t\t\t\t\t\t`shadow-input dark:placeholder-text-neutral-600 flex h-10 w-full rounded-md border-none bg-gray-50 px-3 py-2 text-sm text-black transition duration-400 group-hover/input:shadow-none file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-neutral-400 focus-visible:ring-[2px] focus-visible:ring-neutral-400 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 dark:bg-zinc-800 dark:text-white dark:shadow-[0px_0px_1px_1px_#404040] dark:focus-visible:ring-neutral-600`,\n\t\t\t\t\t\tclassName,\n\t\t\t\t\t)}\n\t\t\t\t\tref={ref}\n\t\t\t\t\t{...props}\n\t\t\t\t/>\n\t\t\t</div>\n\t\t);\n\t}),\n);\n\n// ==================== BoxReveal Component ====================\ntype BoxRevealProps = {\n\tchildren: ReactNode;\n\twidth?: string;\n\tboxColor?: string;\n\tduration?: number;\n\tclassName?: string;\n};\n\nconst BoxReveal = memo(function BoxReveal({\n\tchildren,\n\twidth = 'fit-content',\n\tboxColor,\n\tduration,\n\tclassName,\n}: BoxRevealProps) {\n\tconst sectionRef = useRef<HTMLDivElement>(null);\n\tconst boxRef = useRef<HTMLDivElement>(null);\n\tconst childRef = useRef<HTMLDivElement>(null);\n\n\tuseEffect(() => {\n\t\tconst section = sectionRef.current;\n\t\tif (!section) return;\n\n\t\tconst observer = new IntersectionObserver(\n\t\t\t(entries) => {\n\t\t\t\tentries.forEach((entry) => {\n\t\t\t\t\tif (entry.isIntersecting) {\n\t\t\t\t\t\tgsap.timeline()\n\t\t\t\t\t\t\t.set(childRef.current, { opacity: 0, y: 50 })\n\t\t\t\t\t\t\t.set(boxRef.current, { transformOrigin: 'right' })\n\t\t\t\t\t\t\t.to(boxRef.current, {\n\t\t\t\t\t\t\t\tscaleX: 0,\n\t\t\t\t\t\t\t\tduration: duration ?? 0.5,\n\t\t\t\t\t\t\t\tease: 'power3.inOut',\n\t\t\t\t\t\t\t})\n\t\t\t\t\t\t\t.to(\n\t\t\t\t\t\t\t\tchildRef.current,\n\t\t\t\t\t\t\t\t{ y: 0, opacity: 1, duration: duration ?? 0.5, ease: 'power3.out' },\n\t\t\t\t\t\t\t\t'-=0.3',\n\t\t\t\t\t\t\t);\n\t\t\t\t\t\tobserver.unobserve(section);\n\t\t\t\t\t}\n\t\t\t\t});\n\t\t\t},\n\t\t\t{ threshold: 0.1 },\n\t\t);\n\n\t\tobserver.observe(section);\n\n\t\treturn () => {\n\t\t\tif (section) {\n\t\t\t\tobserver.unobserve(section);\n\t\t\t}\n\t\t};\n\t}, [duration]);\n\n\treturn (\n\t\t<div ref={sectionRef} style={{ width }} className={cn('relative overflow-hidden', className)}>\n\t\t\t<div ref={childRef}>{children}</div>\n\t\t\t<div\n\t\t\t\tref={boxRef}\n\t\t\t\tstyle={{\n\t\t\t\t\tbackground: boxColor ?? 'hsl(var(--skeleton))',\n\t\t\t\t}}\n\t\t\t\tclassName=\"absolute top-1 bottom-1 left-0 right-0 z-20 rounded-sm\"\n\t\t\t/>\n\t\t</div>\n\t);\n});\n\n// ==================== Ripple Component ====================\ninterface RippleProps {\n\tmainCircleSize?: number;\n\tmainCircleOpacity?: number;\n\tnumCircles?: number;\n}\nconst Ripple = memo(function Ripple({\n\tmainCircleSize = 210,\n\tmainCircleOpacity = 0.24,\n\tnumCircles = 11,\n}: RippleProps) {\n\treturn (\n\t\t<div className=\"absolute inset-0 flex items-center justify-center [mask-image:linear-gradient(to_bottom,white,transparent)]\">\n\t\t\t{Array.from({ length: numCircles }, (_, i) => {\n\t\t\t\tconst size = mainCircleSize + i * 70;\n\t\t\t\tconst opacity = mainCircleOpacity - i * 0.03;\n\t\t\t\tconst animationDelay = `${i * 0.06}s`;\n\t\t\t\tconst borderStyle = i === numCircles - 1 ? 'dashed' : 'solid';\n\t\t\t\tconst borderOpacity = 5 + i * 5;\n\n\t\t\t\treturn (\n\t\t\t\t\t<div\n\t\t\t\t\t\tkey={i}\n\t\t\t\t\t\tclassName=\"absolute animate-ripple rounded-full border\"\n\t\t\t\t\t\tstyle={\n\t\t\t\t\t\t\t{\n\t\t\t\t\t\t\t\twidth: `${size}px`,\n\t\t\t\t\t\t\t\theight: `${size}px`,\n\t\t\t\t\t\t\t\topacity: opacity,\n\t\t\t\t\t\t\t\tanimationDelay: animationDelay,\n\t\t\t\t\t\t\t\tborderStyle: borderStyle,\n\t\t\t\t\t\t\t\tborderWidth: '1px',\n\t\t\t\t\t\t\t\tborderColor: `hsl(var(--foreground) / ${borderOpacity / 100})`,\n\t\t\t\t\t\t\t\ttop: '50%',\n\t\t\t\t\t\t\t\tleft: '50%',\n\t\t\t\t\t\t\t\ttransform: 'translate(-50%, -50%)',\n\t\t\t\t\t\t\t} as React.CSSProperties\n\t\t\t\t\t\t}\n\t\t\t\t\t/>\n\t\t\t\t);\n\t\t\t})}\n\t\t</div>\n\t);\n});\n\n// ==================== OrbitingCircles Component ====================\nconst OrbitingCircles = memo(function OrbitingCircles({\n\tclassName,\n\tchildren,\n\treverse = false,\n\tduration = 20,\n\tdelay = 10,\n\tradius = 50,\n\tpath = true,\n}: {\n\tclassName?: string;\n\tchildren?: React.ReactNode;\n\treverse?: boolean;\n\tduration?: number;\n\tdelay?: number;\n\tradius?: number;\n\tpath?: boolean;\n}) {\n\treturn (\n\t\t<>\n\t\t\t{path && (\n\t\t\t\t<svg\n\t\t\t\t\txmlns=\"http://www.w3.org/2000/svg\"\n\t\t\t\t\tversion=\"1.1\"\n\t\t\t\t\tclassName=\"pointer-events-none absolute inset-0 size-full\"\n\t\t\t\t>\n\t\t\t\t\t<circle\n\t\t\t\t\t\tclassName=\"stroke-black/10 stroke-1 dark:stroke-white/10\"\n\t\t\t\t\t\tcx=\"50%\"\n\t\t\t\t\t\tcy=\"50%\"\n\t\t\t\t\t\tr={radius}\n\t\t\t\t\t\tfill=\"none\"\n\t\t\t\t\t/>\n\t\t\t\t</svg>\n\t\t\t)}\n\t\t\t<div\n\t\t\t\tstyle={\n\t\t\t\t\t{\n\t\t\t\t\t\t'--duration': duration,\n\t\t\t\t\t\t'--radius': radius,\n\t\t\t\t\t\t'--delay': -delay,\n\t\t\t\t\t} as React.CSSProperties\n\t\t\t\t}\n\t\t\t\tclassName={cn(\n\t\t\t\t\t'absolute flex size-full transform-gpu animate-orbit items-center justify-center rounded-full border bg-black/10 [animation-delay:calc(var(--delay)*1s)] dark:bg-white/10',\n\t\t\t\t\t{ '[animation-direction:reverse]': reverse },\n\t\t\t\t\tclassName,\n\t\t\t\t)}\n\t\t\t>\n\t\t\t\t{children}\n\t\t\t</div>\n\t\t</>\n\t);\n});\n\n// ==================== TechOrbitDisplay Component ====================\ninterface OrbitIcon {\n\tcomponent: () => ReactNode;\n\tclassName: string;\n\tduration?: number;\n\tdelay?: number;\n\tradius?: number;\n\tpath?: boolean;\n\treverse?: boolean;\n}\n\nconst iconsArray: OrbitIcon[] = [\n\t{ component: () => <img width={30} height={30} src='https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/html5/html5-original.svg' alt='HTML5' />, className: 'size-[30px] border-none bg-transparent', duration: 20, delay: 20, radius: 100, path: false, reverse: false },\n\t{ component: () => <img width={30} height={30} src='https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/css3/css3-original.svg' alt='CSS3' />, className: 'size-[30px] border-none bg-transparent', duration: 20, delay: 10, radius: 100, path: false, reverse: false },\n\t{ component: () => <img width={50} height={50} src='https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/typescript/typescript-original.svg' alt='TypeScript' />, className: 'size-[50px] border-none bg-transparent', radius: 210, duration: 20, path: false, reverse: false },\n\t{ component: () => <img width={50} height={50} src='https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/javascript/javascript-original.svg' alt='JavaScript' />, className: 'size-[50px] border-none bg-transparent', radius: 210, duration: 20, delay: 20, path: false, reverse: false },\n\t{ component: () => <img width={30} height={30} src='https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/tailwindcss/tailwindcss-original.svg' alt='TailwindCSS' />, className: 'size-[30px] border-none bg-transparent', duration: 20, delay: 20, radius: 150, path: false, reverse: true },\n\t{ component: () => <img width={30} height={30} src='https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/nextjs/nextjs-original.svg' alt='Nextjs' />, className: 'size-[30px] border-none bg-transparent', duration: 20, delay: 10, radius: 150, path: false, reverse: true },\n\t{ component: () => <img width={50} height={50} src='https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/react/react-original.svg' alt='React' />, className: 'size-[50px] border-none bg-transparent', radius: 270, duration: 20, path: false, reverse: true },\n\t{ component: () => <img width={50} height={50} src='https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/figma/figma-original.svg' alt='Figma' />, className: 'size-[50px] border-none bg-transparent', radius: 270, duration: 20, delay: 60, path: false, reverse: true },\n\t{ component: () => <img width={50} height={50} src='https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/git/git-original.svg' alt='Git' />, className: 'size-[50px] border-none bg-transparent', radius: 320, duration: 20, delay: 20, path: false, reverse: false },\n];\n\nconst TechOrbitDisplay = memo(function TechOrbitDisplay({ text = 'Amazing App Shell' }: { text?: string }) {\n\treturn (\n\t\t<div className=\"relative flex size-full flex-col items-center justify-center overflow-hidden rounded-lg\">\n\t\t\t<span className=\"pointer-events-none whitespace-pre-wrap bg-gradient-to-b from-black to-gray-300/80 bg-clip-text text-center text-7xl font-semibold leading-none text-transparent dark:from-white dark:to-slate-900/10\">\n\t\t\t\t{text}\n\t\t\t</span>\n\t\t\t{iconsArray.map((icon, index) => (\n\t\t\t\t<OrbitingCircles key={index} {...icon}>\n\t\t\t\t\t{icon.component()}\n\t\t\t\t</OrbitingCircles>\n\t\t\t))}\n\t\t</div>\n\t);\n});\n\n// ==================== AnimatedForm Components ====================\nconst BottomGradient = () => (\n\t<>\n\t\t<span className=\"group-hover/btn:opacity-100 block transition duration-500 opacity-0 absolute h-px w-full -bottom-px inset-x-0 bg-gradient-to-r from-transparent via-cyan-500 to-transparent\" />\n\t\t<span className=\"group-hover/btn:opacity-100 blur-sm block transition duration-500 opacity-0 absolute h-px w-1/2 mx-auto -bottom-px inset-x-10 bg-gradient-to-r from-transparent via-indigo-500 to-transparent\" />\n\t</>\n);\n\nconst Label = memo(function Label({ className, ...props }: React.LabelHTMLAttributes<HTMLLabelElement>) {\n\treturn <label className={cn('text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70', className)} {...props} />;\n});\n\n// ==================== Main LoginPage Component ====================\ninterface LoginPageProps {\n\tonLogin?: (email: string, password: string) => void;\n\tonForgotPassword?: (email: string) => void;\n\tonSignUp?: () => void;\n}\n\ntype LoginState = 'login' | 'forgot-password' | 'reset-sent';\n\nexport function LoginPage({ onLogin, onForgotPassword }: LoginPageProps) {\n\tconst [state, setState] = useState<LoginState>('login');\n\tconst [email, setEmail] = useState('');\n\tconst [password, setPassword] = useState('');\n\tconst [isLoading, setIsLoading] = useState(false);\n\tconst [errors, setErrors] = useState<{ email?: string; password?: string }>({});\n\tconst [showPassword, setShowPassword] = useState(false);\n\n\tconst handleLoginSubmit = async (e: FormEvent) => {\n\t\te.preventDefault();\n\t\tsetErrors({});\n\t\tconst newErrors: typeof errors = {};\n\t\tif (!email) newErrors.email = 'Email is required';\n\t\tif (!password) newErrors.password = 'Password is required';\n\t\tif (Object.keys(newErrors).length > 0) {\n\t\t\tsetErrors(newErrors);\n\t\t\treturn;\n\t\t}\n\t\tsetIsLoading(true);\n\t\tawait onLogin?.(email, password);\n\t\tsetIsLoading(false);\n\t};\n\n\tconst handleForgotSubmit = async (e: FormEvent) => {\n\t\te.preventDefault();\n\t\tsetErrors({});\n\t\tif (!email) {\n\t\t\tsetErrors({ email: 'Email is required' });\n\t\t\treturn;\n\t\t}\n\t\tsetIsLoading(true);\n\t\tawait onForgotPassword?.(email);\n\t\tsetIsLoading(false);\n\t\tsetState('reset-sent');\n\t};\n\n\tconst renderContent = () => {\n\t\tif (state === 'reset-sent') {\n\t\t\treturn (\n\t\t\t\t<div className=\"w-full max-w-md mx-auto text-center flex flex-col gap-4\">\n\t\t\t\t\t<BoxReveal boxColor=\"hsl(var(--skeleton))\" duration={0.5}>\n\t\t\t\t\t\t<div className=\"w-16 h-16 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center mx-auto\">\n\t\t\t\t\t\t\t<Mail className=\"w-8 h-8 text-green-600 dark:text-green-400\" />\n\t\t\t\t\t\t</div>\n\t\t\t\t\t</BoxReveal>\n\t\t\t\t\t<BoxReveal boxColor=\"hsl(var(--skeleton))\" duration={0.5}>\n\t\t\t\t\t\t<h1 className=\"text-3xl font-bold tracking-tight\">Check your email</h1>\n\t\t\t\t\t</BoxReveal>\n\t\t\t\t\t<BoxReveal boxColor=\"hsl(var(--skeleton))\" duration={0.5}>\n\t\t\t\t\t\t<p className=\"text-muted-foreground\">We've sent a password reset link to <strong>{email}</strong></p>\n\t\t\t\t\t</BoxReveal>\n\t\t\t\t\t<BoxReveal width=\"100%\" boxColor=\"hsl(var(--skeleton))\" duration={0.5}>\n\t\t\t\t\t\t<button onClick={() => setState('login')} className=\"text-sm text-blue-500 hover:underline\">\n\t\t\t\t\t\t\t<div className=\"flex items-center justify-center gap-2\">\n\t\t\t\t\t\t\t\t<ArrowLeft className=\"w-4 h-4\" /> Back to login\n\t\t\t\t\t\t\t</div>\n\t\t\t\t\t\t</button>\n\t\t\t\t\t</BoxReveal>\n\t\t\t\t</div>\n\t\t\t);\n\t\t}\n\n\t\tconst isLogin = state === 'login';\n\t\tconst formFields = isLogin\n\t\t\t? [\n\t\t\t\t{ label: 'Email', required: true, type: 'email', placeholder: 'Enter your email address', onChange: (e: ChangeEvent<HTMLInputElement>) => setEmail(e.target.value) },\n\t\t\t\t{ label: 'Password', required: true, type: 'password', placeholder: 'Enter your password', onChange: (e: ChangeEvent<HTMLInputElement>) => setPassword(e.target.value) },\n\t\t\t]\n\t\t\t: [{ label: 'Email', required: true, type: 'email', placeholder: 'Enter your email address', onChange: (e: ChangeEvent<HTMLInputElement>) => setEmail(e.target.value) }];\n\n\t\treturn (\n\t\t\t<div className=\"w-full max-w-md mx-auto flex flex-col gap-4\">\n\t\t\t\t<BoxReveal boxColor=\"hsl(var(--skeleton))\" duration={0.3}>\n\t\t\t\t\t<h2 className=\"font-bold text-3xl text-neutral-800 dark:text-neutral-200\">{isLogin ? 'Welcome back' : 'Reset Password'}</h2>\n\t\t\t\t</BoxReveal>\n\t\t\t\t<BoxReveal boxColor=\"hsl(var(--skeleton))\" duration={0.3} className=\"pb-2\">\n\t\t\t\t\t<p className=\"text-neutral-600 text-sm max-w-sm dark:text-neutral-300\">{isLogin ? 'Sign in to your account to continue' : 'Enter your email to receive a reset link'}</p>\n\t\t\t\t</BoxReveal>\n\t\t\t\t{isLogin && (\n\t\t\t\t\t<BoxReveal boxColor=\"hsl(var(--skeleton))\" duration={0.3} width=\"100%\" className=\"overflow-visible\">\n\t\t\t\t\t\t<button className=\"g-button group/btn bg-transparent w-full rounded-md border h-10 font-medium outline-hidden hover:cursor-pointer\" type=\"button\">\n\t\t\t\t\t\t\t<span className=\"flex items-center justify-center w-full h-full gap-3\">\n\t\t\t\t\t\t\t\t<img src=\"https://cdn1.iconfinder.com/data/icons/google-s-logo/150/Google_Icons-09-512.png\" width={26} height={26} alt=\"Google Icon\" />\n\t\t\t\t\t\t\t\tSign in with Google\n\t\t\t\t\t\t\t</span>\n\t\t\t\t\t\t\t<BottomGradient />\n\t\t\t\t\t\t</button>\n\t\t\t\t\t</BoxReveal>\n\t\t\t\t)}\n\t\t\t\t{isLogin && (\n\t\t\t\t\t<BoxReveal boxColor=\"hsl(var(--skeleton))\" duration={0.3} width=\"100%\">\n\t\t\t\t\t\t<div className=\"flex items-center gap-4\">\n\t\t\t\t\t\t\t<hr className=\"flex-1 border-1 border-dashed border-neutral-300 dark:border-neutral-700\" />\n\t\t\t\t\t\t\t<p className=\"text-neutral-700 text-sm dark:text-neutral-300\">or</p>\n\t\t\t\t\t\t\t<hr className=\"flex-1 border-1 border-dashed border-neutral-300 dark:border-neutral-700\" />\n\t\t\t\t\t\t</div>\n\t\t\t\t\t</BoxReveal>\n\t\t\t\t)}\n\t\t\t\t<form onSubmit={isLogin ? handleLoginSubmit : handleForgotSubmit}>\n\t\t\t\t\t{formFields.map((field) => (\n\t\t\t\t\t\t<div key={field.label} className=\"flex flex-col gap-2 mb-4\">\n\t\t\t\t\t\t\t<BoxReveal boxColor=\"hsl(var(--skeleton))\" duration={0.3}>\n\t\t\t\t\t\t\t\t<Label htmlFor={field.label}>{field.label} <span className=\"text-red-500\">*</span></Label>\n\t\t\t\t\t\t\t</BoxReveal>\n\t\t\t\t\t\t\t<BoxReveal width=\"100%\" boxColor=\"hsl(var(--skeleton))\" duration={0.3} className=\"flex flex-col space-y-2 w-full\">\n\t\t\t\t\t\t\t\t<div className=\"relative\">\n\t\t\t\t\t\t\t\t\t<Input type={field.type === 'password' ? (showPassword ? 'text' : 'password') : field.type} id={field.label} placeholder={field.placeholder} onChange={field.onChange} />\n\t\t\t\t\t\t\t\t\t{field.type === 'password' && (\n\t\t\t\t\t\t\t\t\t\t<button type=\"button\" onClick={() => setShowPassword(!showPassword)} className=\"absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5\">\n\t\t\t\t\t\t\t\t\t\t\t{showPassword ? <EyeOff className=\"h-5 w-5 text-gray-500\" /> : <Eye className=\"h-5 w-5 text-gray-500\" />}\n\t\t\t\t\t\t\t\t\t\t</button>\n\t\t\t\t\t\t\t\t\t)}\n\t\t\t\t\t\t\t\t</div>\n\t\t\t\t\t\t\t\t<div className=\"h-4\">{errors[field.label as keyof typeof errors] && <p className=\"text-red-500 text-xs\">{errors[field.label as keyof typeof errors]}</p>}</div>\n\t\t\t\t\t\t\t</BoxReveal>\n\t\t\t\t\t\t</div>\n\t\t\t\t\t))}\n\n\t\t\t\t\t<BoxReveal width=\"100%\" boxColor=\"hsl(var(--skeleton))\" duration={0.3} className=\"overflow-visible\">\n\t\t\t\t\t\t<button\n\t\t\t\t\t\t\tclassName=\"bg-gradient-to-br relative group/btn from-zinc-200 dark:from-zinc-900 dark:to-zinc-900 to-zinc-200 block dark:bg-zinc-800 w-full text-black dark:text-white rounded-md h-10 font-medium shadow-[0px_1px_0px_0px_#ffffff40_inset,0px_-1px_0px_0px_#ffffff40_inset] dark:shadow-[0px_1px_0px_0px_var(--zinc-800)_inset,0px_-1px_0px_0px_var(--zinc-800)_inset] outline-hidden hover:cursor-pointer disabled:opacity-50\"\n\t\t\t\t\t\t\ttype=\"submit\" disabled={isLoading}\n\t\t\t\t\t\t>\n\t\t\t\t\t\t\t{isLoading ? (\n\t\t\t\t\t\t\t\t<div className=\"flex items-center justify-center gap-2\">\n\t\t\t\t\t\t\t\t\t<div className=\"w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin\" />\n\t\t\t\t\t\t\t\t\t<span>Processing...</span>\n\t\t\t\t\t\t\t\t</div>\n\t\t\t\t\t\t\t) : (\n\t\t\t\t\t\t\t\t<>{isLogin ? 'Sign in' : 'Send reset link'} &rarr;</>\n\t\t\t\t\t\t\t)}\n\t\t\t\t\t\t\t<BottomGradient />\n\t\t\t\t\t\t</button>\n\t\t\t\t\t</BoxReveal>\n\t\t\t\t\t<BoxReveal boxColor=\"hsl(var(--skeleton))\" duration={0.3}>\n\t\t\t\t\t\t<div className=\"mt-4 text-center\">\n\t\t\t\t\t\t\t<button type=\"button\" className=\"text-sm text-blue-500 hover:underline\" onClick={() => setState(isLogin ? 'forgot-password' : 'login')}>\n\t\t\t\t\t\t\t\t{isLogin ? 'Forgot password?' : 'Back to login'}\n\t\t\t\t\t\t\t</button>\n\t\t\t\t\t\t</div>\n\t\t\t\t\t</BoxReveal>\n\t\t\t\t</form>\n\t\t\t</div>\n\t\t);\n\t};\n\n\treturn (\n\t\t<section className=\"flex max-lg:justify-center min-h-screen w-full login-page-theme bg-background text-foreground\">\n\t\t\t{/* Left Side */}\n\t\t\t<div className=\"flex flex-col justify-center w-1/2 max-lg:hidden relative\">\n\t\t\t\t<Ripple />\n\t\t\t\t<TechOrbitDisplay />\n\t\t\t</div>\n\n\t\t\t{/* Right Side */}\n\t\t\t<div className=\"w-1/2 h-screen flex flex-col justify-center items-center max-lg:w-full max-lg:px-[10%]\">\n\t\t\t\t{renderContent()}\n\t\t\t</div>\n\t\t</section>\n\t);\n}\n\nexport default LoginPage;"
+  src/index.ts: >-
+    // Context
+
+    export { AppShellProvider, useAppShell } from './context/AppShellContext';
+
+
+    // Layout Components
+
+    export { AppShell } from './components/layout/AppShell';
+
+    export { MainContent } from './components/layout/MainContent';
+
+    export { RightPane } from './components/layout/RightPane';
+
+    export { TopBar } from './components/layout/TopBar';
+
+    export { UserDropdown } from './components/layout/UserDropdown';
+
+    export { Workspaces as WorkspaceProvider, WorkspaceTrigger, WorkspaceContent
+    } from './components/layout/WorkspaceSwitcher';
+
+
+    // Sidebar Primitives
+
+    export {
+      Sidebar,
+      SidebarBody,
+      SidebarContent,
+      SidebarFooter,
+      SidebarHeader,
+      SidebarSection,
+      SidebarTitle,
+      SidebarMenuItem,
+      SidebarMenuButton,
+      SidebarMenuAction,
+      SidebarLabel,
+      SidebarBadge,
+      SidebarTooltip,
+      SidebarIcon,
+      useSidebar,
+    } from './components/layout/Sidebar';
+
+
+    // Shared Components
+
+    export { ContentInSidePanePlaceholder } from
+    './components/shared/ContentInSidePanePlaceholder';
+
+    export { PageHeader } from './components/shared/PageHeader';
+
+
+    // Feature Components
+
+    export { SettingsContent } from './features/settings/SettingsContent';
+
+    export { SettingsSection } from './features/settings/SettingsSection';
+
+    export { SettingsToggle } from './features/settings/SettingsToggle';
+
+
+    // UI Components
+
+    export * from './components/ui/avatar';
+
+    export * from './components/ui/badge';
+
+    export * from './components/ui/button';
+
+    export * from './components/ui/card';
+
+    export * from './components/ui/command';
+
+    export * from './components/ui/dialog';
+
+    export * from './components/ui/dropdown-menu';
+
+    export * from './components/ui/input';
+
+    export * from './components/ui/label';
+
+    export * from './components/ui/popover';
+
+    export * from './components/ui/tabs';
+
+    export * from './components/ui/toast';
+
+
+    // Global Components
+
+    export { CommandPalette } from './components/global/CommandPalette';
+
+
+    // Hooks
+
+    export { useAutoAnimateTopBar } from './hooks/useAutoAnimateTopBar';
+
+    export { useCommandPaletteToggle } from
+    './hooks/useCommandPaletteToggle.hook';
+
+
+    // Lib
+
+    export * from './lib/utils';
+
+
+    // Store
+
+    export { useAppStore, type ActivePage } from './store/appStore';
+
+    export { useAuthStore } from './store/authStore';
+  src/App.tsx: >-
+    import React, { useEffect } from 'react'
+
+    import { AppShell } from './components/layout/AppShell'
+
+    import { AppShellProvider, useAppShell } from './context/AppShellContext'
+
+    import { useAppStore } from './store/appStore'
+
+    import { useAuthStore } from './store/authStore'
+
+    import './index.css'
+
+
+    // Import library components
+
+    import { EnhancedSidebar } from './components/layout/EnhancedSidebar'
+
+    import { MainContent } from './components/layout/MainContent'
+
+    import { RightPane } from './components/layout/RightPane'
+
+    import { TopBar } from './components/layout/TopBar'
+
+    import { CommandPalette } from './components/global/CommandPalette'
+
+
+    // Import page/content components
+
+    import { DashboardContent } from './pages/Dashboard'
+
+    import { SettingsPage } from './pages/Settings'
+
+    import { ToasterDemo } from './pages/ToasterDemo'
+
+    import { NotificationsPage } from './pages/Notifications'
+
+    import { ContentInSidePanePlaceholder } from
+    './components/shared/ContentInSidePanePlaceholder'
+
+    import { SettingsContent } from './features/settings/SettingsContent'
+
+    import LoginPage from './pages/Login'
+
+
+    // Import icons
+
+    import { LayoutDashboard, Settings, Component, Bell, SlidersHorizontal,
+    ChevronsLeftRight, Search, Filter, Plus, PanelRight, ChevronRight, Rocket }
+    from 'lucide-react'
+
+    import { BODY_STATES } from './lib/utils'
+
+    import { cn } from './lib/utils'
+
+
+
+    // The content for the main area, with page routing logic
+
+    function AppContent() {
+      const { activePage, setActivePage } = useAppStore()
+      const { bodyState, sidePaneContent, openSidePane } = useAppShell()
+
+      const pageMap = {
+        dashboard: {
+          component: <DashboardContent />,
+          sidePaneContent: 'main',
+          icon: LayoutDashboard,
+          name: 'dashboard',
+        },
+        settings: {
+          component: <SettingsPage />,
+          sidePaneContent: 'settings',
+          icon: Settings,
+          name: 'settings',
+        },
+        toaster: {
+          component: <ToasterDemo />,
+          sidePaneContent: 'toaster',
+          icon: Component,
+          name: 'toaster demo',
+        },
+        notifications: {
+          component: <NotificationsPage />,
+          sidePaneContent: 'notifications',
+          icon: Bell,
+          name: 'notifications',
+        },
+      } as const;
+
+      const currentPage = pageMap[activePage];
+
+      if (sidePaneContent === currentPage.sidePaneContent && bodyState === BODY_STATES.SIDE_PANE) {
+        return (
+          <ContentInSidePanePlaceholder 
+            icon={currentPage.icon}
+            title={`${currentPage.name.charAt(0).toUpperCase() + currentPage.name.slice(1)} is in Side Pane`}
+            pageName={currentPage.name}
+            onBringBack={() => {
+              openSidePane(currentPage.sidePaneContent);
+              setActivePage(activePage);
+            }}
+          />
+        )
+      }
+
+      return currentPage.component;
+    }
+
+
+    // Content for the Top Bar
+
+    function AppTopBar() {
+      const { activePage, searchTerm, setSearchTerm } = useAppStore()
+      const { openSidePane } = useAppShell()
+      const [isSearchFocused, setIsSearchFocused] = React.useState(false);
+
+      const handleMoveToSidePane = () => {
+        const mapping = { dashboard: 'main', settings: 'settings', toaster: 'toaster', notifications: 'notifications' } as const;
+        if (mapping[activePage]) openSidePane(mapping[activePage]);
+      };
+
+      return (
+        <div className="flex items-center gap-3 flex-1">
+          <div className={cn("hidden md:flex items-center gap-2 text-sm transition-opacity", {
+              "opacity-0 pointer-events-none": isSearchFocused && activePage === 'dashboard'
+          })}>
+            <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">Home</a>
+            <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            <span className="font-medium text-foreground capitalize">{activePage}</span>
+          </div>
+          
+          <div className="flex-1" />
+
+          {/* Page-specific: Dashboard search and actions */}
+          {activePage === 'dashboard' && (
+          <div className="flex items-center gap-2 flex-1 justify-end">
+            <div className={cn("relative transition-all duration-300 ease-in-out", isSearchFocused ? 'flex-1 max-w-lg' : 'w-auto')}>
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4 pointer-events-none" />
+              <input
+                type="text"
+                placeholder="Search..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                onFocus={() => setIsSearchFocused(true)}
+                onBlur={() => setIsSearchFocused(false)}
+                className={cn(
+                  "pl-9 pr-4 py-2 h-10 border-none rounded-lg bg-card focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300 ease-in-out w-full",
+                  isSearchFocused ? 'bg-background' : 'w-48'
+                )}
+              />
+            </div>
+             <button className="h-10 w-10 flex-shrink-0 flex items-center justify-center hover:bg-accent rounded-full transition-colors">
+              <Filter className="w-5 h-5" />
+            </button>
+             <button className="bg-primary text-primary-foreground px-4 py-2 rounded-full hover:bg-primary/90 transition-colors flex items-center gap-2 h-10 flex-shrink-0">
+              <Plus className="w-5 h-5" />
+              <span className={cn(isSearchFocused ? 'hidden sm:inline' : 'inline')}>New Project</span>
+            </button>
+          </div>
+          )}
+
+          {/* Page-specific: Move to side pane */}
+          {['dashboard', 'settings', 'toaster', 'notifications'].includes(activePage) && (
+            <button onClick={handleMoveToSidePane} className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors" title="Move to Side Pane"><PanelRight className="w-5 h-5" /></button>
+          )}
+        </div>
+      )
+    }
+
+
+    // The main App component that composes the shell
+
+    function ComposedApp() {
+      const { sidePaneContent, closeSidePane } = useAppShell();
+      const { setActivePage } = useAppStore();
+
+      const contentMap = {
+        main: { title: 'Dashboard', icon: LayoutDashboard, page: 'dashboard', content: <DashboardContent isInSidePane /> },
+        settings: { title: 'Settings', icon: Settings, page: 'settings', content: <SettingsContent /> },
+        toaster: { title: 'Toaster Demo', icon: Component, page: 'toaster', content: <ToasterDemo isInSidePane /> },
+        notifications: { title: 'Notifications', icon: Bell, page: 'notifications', content: <NotificationsPage isInSidePane /> },
+        details: { title: 'Details Panel', icon: SlidersHorizontal, content: <p className="text-muted-foreground">This is the side pane. It can be used to display contextual information, forms, or actions related to the main content.</p> }
+      } as const;
+
+      const currentContent = contentMap[sidePaneContent as keyof typeof contentMap] || contentMap.details;
+      const CurrentIcon = currentContent.icon;
+
+      const handleMaximize = () => {
+        if ('page' in currentContent && currentContent.page) {
+          setActivePage(currentContent.page as any);
+        }
+        closeSidePane()
+      }
+
+      const rightPaneHeader = (
+          <>
+          <div className="flex items-center gap-2">
+            <CurrentIcon className="w-5 h-5" />
+            <h2 className="text-lg font-semibold whitespace-nowrap">
+              {currentContent.title}
+            </h2>
+          </div>
+          
+          {'page' in currentContent && currentContent.page && (
+            <button
+              onClick={handleMaximize}
+              className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors mr-2"
+              title="Move to Main View"
+            >
+              <ChevronsLeftRight className="w-5 h-5" />
+            </button>
+          )}
+          </>
+      );
+
+      return (
+        <AppShell
+          sidebar={<EnhancedSidebar />}
+          topBar={<TopBar><AppTopBar /></TopBar>}
+          mainContent={<MainContent><AppContent /></MainContent>}
+          rightPane={(
+            <RightPane header={rightPaneHeader}>{currentContent.content}</RightPane>
+          )}
+          commandPalette={<CommandPalette />}
+        />
+      );
+    }
+
+
+    function App() {
+      const isDarkMode = useAppStore((state) => state.isDarkMode)
+      const { isAuthenticated, login, forgotPassword } = useAuthStore()
+
+      useEffect(() => {
+        document.documentElement.classList.toggle('dark', isDarkMode);
+      }, [isDarkMode]);
+
+      const handleLogin = async (email: string, password: string) => {
+        try {
+          await login(email, password)
+        } catch (error) {
+          console.error('Login failed:', error)
+          // In a real app, you'd show an error message to the user
+        }
+      }
+
+      const handleForgotPassword = async (email: string) => {
+        try {
+          await forgotPassword(email)
+        } catch (error) {
+          console.error('Forgot password failed:', error)
+        }
+      }
+
+      const handleSignUp = () => {
+        // In a real app, navigate to sign up page
+        console.log('Navigate to sign up page')
+      }
+
+      if (!isAuthenticated) {
+        return (
+          <LoginPage
+            onLogin={handleLogin}
+            onForgotPassword={handleForgotPassword}
+            onSignUp={handleSignUp}
+          />
+        )
+      }
+
+      return (
+        <div className="h-screen w-screen overflow-hidden bg-background">
+          <AppShellProvider
+            appName="Amazing App"
+            appLogo={
+              <div className="p-2 bg-primary/20 rounded-lg">
+                <Rocket className="w-5 h-5 text-primary" />
+              </div>
+            }
+          >
+            <ComposedApp />
+          </AppShellProvider>
+        </div>
+      )
+    }
+
+
+    export default App
+  package.json: |
+    {
+      "name": "amazing-app-shell",
+      "private": false,
+      "version": "1.0.1",
+      "type": "module",
+      "files": [
+        "dist"
+      ],
+      "main": "./dist/amazing-app-shell.umd.js",
+      "module": "./dist/amazing-app-shell.es.js",
+      "types": "./dist/index.d.ts",
+      "exports": {
+        ".": {
+          "import": "./dist/amazing-app-shell.es.js",
+          "require": "./dist/amazing-app-shell.umd.js"
+        },
+        "./dist/style.css": "./dist/style.css"
+      },
+      "scripts": {
+        "dev": "vite",
+        "build": "tsc && vite build",
+        "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+        "preview": "vite preview"
+      },
+      "dependencies": {
+        "@iconify/react": "^4.1.1",
+        "@radix-ui/react-avatar": "^1.0.4",
+        "@radix-ui/react-dialog": "^1.0.5",
+        "@radix-ui/react-dropdown-menu": "^2.0.6",
+        "@radix-ui/react-label": "^2.1.7",
+        "@radix-ui/react-popover": "^1.0.7",
+        "@radix-ui/react-slot": "^1.0.2",
+        "@radix-ui/react-tabs": "^1.0.4",
+        "class-variance-authority": "^0.7.0",
+        "clsx": "^2.0.0",
+        "cmdk": "^0.2.0",
+        "gsap": "^3.12.2",
+        "lucide-react": "^0.294.0",
+        "sonner": "^1.2.4",
+        "tailwind-merge": "^2.0.0",
+        "zustand": "^4.5.7"
+      },
+      "peerDependencies": {
+        "react": "^18.2.0",
+        "react-dom": "^18.2.0",
+        "tailwindcss": "^3.3.5"
+      },
+      "devDependencies": {
+        "@types/node": "^20.10.0",
+        "@types/react": "^18.2.37",
+        "@types/react-dom": "^18.2.15",
+        "@typescript-eslint/eslint-plugin": "^6.10.0",
+        "@typescript-eslint/parser": "^6.10.0",
+        "@vitejs/plugin-react": "^4.1.1",
+        "autoprefixer": "^10.4.16",
+        "eslint": "^8.53.0",
+        "eslint-plugin-react-hooks": "^4.6.0",
+        "eslint-plugin-react-refresh": "^0.4.4",
+        "postcss": "^8.4.31",
+        "tailwindcss": "^3.3.5",
+        "tailwindcss-animate": "^1.0.7",
+        "typescript": "^5.2.2",
+        "vite": "^4.5.0"
+      }
+    }
+  README.md: >
+    # Amazing App Shell
+
+
+    [![npm
+    version](https://img.shields.io/npm/v/amazing-app-shell.svg?style=flat)](https://www.npmjs.com/package/amazing-app-shell)
+
+    [![License:
+    MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+    [![Build
+    Status](https://img.shields.io/travis/com/your-username/amazing-app-shell.svg)](https://travis-ci.com/your-username/amazing-app-shell)
+
+
+    A fully-featured, animated, and customizable application shell for React,
+    built with TypeScript, Tailwind CSS, and powered by GSAP for smooth
+    animations. Provide a modern, desktop-grade user experience out of the box.
+
+
+    This library provides all the necessary components and hooks to build a
+    complex application layout with a resizable sidebar, a dynamic main content
+    area, a contextual side pane, and more.
+
+
+    [**Live Demo (Storybook) →**](https://your-demo-link.com)
+
+     <!-- TODO: Add a real preview image -->
+
+    ---
+
+
+    ## Key Features
+
+
+    -   **Component-Based Architecture**: Build your shell by composing flexible
+    and powerful React components.
+
+    -   **Resizable Sidebar**: Draggable resizing with multiple states:
+    `Expanded`, `Collapsed`, `Hidden`, and `Peek` (on hover).
+
+    -   **Dynamic Body States**: Seamlessly switch between `Normal`,
+    `Fullscreen`, and `Side Pane` views.
+
+    -   **Smooth Animations**: Fluid transitions powered by GSAP for a premium
+    feel.
+
+    -   **Dark Mode Support**: First-class dark mode support, easily toggled.
+
+    -   **Customizable Theming**: Easily theme your application using CSS
+    variables, just like shadcn/ui.
+
+    -   **State Management Included**: Simple and powerful state management via
+    React Context and Zustand.
+
+    -   **Command Palette**: Built-in command palette for quick navigation and
+    actions.
+
+    -   **TypeScript & Modern Tools**: Built with TypeScript, React, Vite, and
+    Tailwind CSS for a great developer experience.
+
+
+    ## Installation
+
+
+    Install the package and its peer dependencies using your preferred package
+    manager.
+
+    ```bash
+
+    npm install amazing-app-shell react react-dom tailwindcss gsap lucide-react
+    tailwind-merge class-variance-authority clsx tailwindcss-animate
+
+    ```
+
+
+    or
+
+
+    ```bash
+
+    yarn add amazing-app-shell react react-dom tailwindcss gsap lucide-react
+    tailwind-merge class-variance-authority clsx tailwindcss-animate
+
+    ```
+
+
+    ## Getting Started
+
+
+    Follow these steps to integrate Amazing App Shell into your project.
+
+
+    ### 1. Configure Tailwind CSS
+
+
+    You need to configure Tailwind CSS to correctly process the styles from the
+    library.
+
+
+    **`tailwind.config.js`**
+
+
+    ```javascript
+
+    /** @type {import('tailwindcss').Config} */
+
+    module.exports = {
+      // ... your other config
+      content: [
+        './src/**/*.{js,ts,jsx,tsx}',
+        // Add the path to the library's components
+        './node_modules/amazing-app-shell/dist/**/*.{js,ts,jsx,tsx}',
+      ],
+      theme: {
+        // ...
+      },
+      plugins: [require('tailwindcss-animate')],
+    };
+
+    ```
+
+
+    **`index.css` (or your main CSS file)**
+
+
+    You need to import the library's stylesheet. It contains all the necessary
+    base styles and CSS variables for theming.
+
+
+    ```css
+
+    /* Import Tailwind's base, components, and utilities */
+
+    @import 'tailwindcss/base';
+
+    @import 'tailwindcss/components';
+
+    @import 'tailwindcss/utilities';
+
+
+    /* Import the App Shell's stylesheet */
+
+    @import 'amazing-app-shell/dist/style.css';
+
+    ```
+
+
+    ### 2. Set Up Providers
+
+
+    Wrap your application's root component with `AppShellProvider` and
+    `ToasterProvider`.
+
+
+    **`App.tsx`**
+
+
+    ```tsx
+
+    import React from 'react';
+
+    import { AppShellProvider } from 'amazing-app-shell';
+
+    import { ToasterProvider } from 'amazing-app-shell'; // Re-exported for
+    convenience
+
+    import { Rocket } from 'lucide-react';
+
+    import { YourAppComponent } from './YourAppComponent';
+
+
+    function App() {
+      const myLogo = (
+        <div className="p-2 bg-primary/20 rounded-lg">
+          <Rocket className="w-5 h-5 text-primary" />
+        </div>
+      );
+
+      return (
+        <AppShellProvider appName="My Awesome App" appLogo={myLogo}>
+          <ToasterProvider>
+            <YourAppComponent />
+          </ToasterProvider>
+        </AppShellProvider>
+      );
+    }
+
+
+    export default App;
+
+    ```
+
+
+    ### 3. Compose Your Shell
+
+
+    The `<AppShell>` component is the heart of the library. You compose your
+    layout by passing the `sidebar`, `topBar`, `mainContent`, and `rightPane`
+    components as props.
+
+
+    Here's a complete example:
+
+
+    **`YourAppComponent.tsx`**
+
+
+    ```tsx
+
+    import {
+      // Main Layout
+      AppShell,
+      MainContent,
+      RightPane,
+      TopBar,
+
+      // Sidebar Primitives
+      Sidebar,
+      SidebarBody,
+      SidebarContent,
+      SidebarHeader,
+      SidebarTitle,
+      SidebarMenuItem,
+      SidebarMenuButton,
+      SidebarIcon,
+      SidebarLabel,
+
+      // Hooks & Context
+      useAppShell,
+    } from 'amazing-app-shell';
+
+    import { Home, Settings, PanelRight } from 'lucide-react';
+
+
+    // 1. Build your custom sidebar
+
+    const MySidebar = () => {
+      return (
+        <Sidebar>
+          <SidebarContent>
+            <SidebarHeader>
+              <SidebarTitle>My App</SidebarTitle>
+            </SidebarHeader>
+            <SidebarBody>
+              <SidebarMenuItem>
+                <SidebarMenuButton>
+                  <SidebarIcon><Home /></SidebarIcon>
+                  <SidebarLabel>Dashboard</SidebarLabel>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton>
+                  <SidebarIcon><Settings /></SidebarIcon>
+                  <SidebarLabel>Settings</SidebarLabel>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarBody>
+          </SidebarContent>
+        </Sidebar>
+      );
+    };
+
+
+    // 2. Build your custom top bar content
+
+    const MyTopBarContent = () => {
+      const { openSidePane } = useAppShell();
+      return (
+        <button onClick={() => openSidePane('details')} title="Open Details">
+          <PanelRight />
+        </button>
+      );
+    };
+
+
+    // 3. Build your main content
+
+    const MyMainContent = () => {
+      return (
+        <div>
+          <h1>Welcome to your Dashboard!</h1>
+          <p>This is the main content area.</p>
+        </div>
+      );
+    };
+
+
+    // 4. Build your right pane
+
+    const MyRightPane = () => {
+      return (
+        <div>
+          <h3>Details Panel</h3>
+          <p>Contextual information goes here.</p>
+        </div>
+      );
+    };
+
+
+    // 5. Assemble the App Shell
+
+    export function YourAppComponent() {
+      return (
+        <AppShell
+          sidebar={<MySidebar />}
+          topBar={<TopBar><MyTopBarContent /></TopBar>}
+          mainContent={<MainContent><MyMainContent /></MainContent>}
+          rightPane={<RightPane>{<MyRightPane />}</RightPane>}
+        />
+      );
+    }
+
+    ```
+
+
+    ## Component API
+
+
+    ### Layout Components
+
+
+    -   `<AppShellProvider>`: Wraps your app and provides the context for all
+    hooks and components.
+
+    -   `<AppShell>`: The main container that orchestrates the layout. Requires
+    `sidebar`, `topBar`, `mainContent`, and `rightPane` props.
+
+    -   `<TopBar>`: The header component. It's a container for your own controls
+    and branding.
+
+    -   `<MainContent>`: The primary content area of your application.
+
+    -   `<RightPane>`: A panel that slides in from the right, perfect for
+    details, forms, or secondary information.
+
+
+    ### Sidebar Primitives
+
+
+    The sidebar is built using a set of highly composable components.
+
+
+    -   `<Sidebar>`: The root sidebar component.
+
+    -   `<SidebarContent>`: Wrapper for all sidebar content.
+
+    -   `<SidebarHeader>`, `<SidebarBody>`, `<SidebarFooter>`: Structural
+    components to organize sidebar content.
+
+    -   `<SidebarTitle>`: The title of your app, automatically hidden when the
+    sidebar is collapsed.
+
+    -   `<SidebarSection>`: A component to group menu items with an optional
+    title.
+
+    -   `<SidebarMenuItem>`: A wrapper for a single menu item, including the
+    button and potential actions.
+
+    -   `<SidebarMenuButton>`: The main clickable button for a menu item.
+
+    -   `<SidebarIcon>`, `<SidebarLabel>`, `<SidebarBadge>`, `<SidebarTooltip>`:
+    Atomic parts of a menu item.
+
+
+    ### Ready-to-use Components
+
+
+    -   `<UserDropdown>`: A pre-styled user profile dropdown menu.
+
+    -   `<WorkspaceSwitcher>`: A complete workspace/tenant switcher component.
+
+    -   `<PageHeader>`: A standardized header for your main content pages.
+
+    -   `<CommandPalette>`: A powerful command palette for your application.
+
+
+    ### UI Primitives
+
+
+    The library also exports a set of UI components (Button, Card, Badge, etc.)
+    based on shadcn/ui. You can import them directly from `amazing-app-shell`.
+
+
+    ## Hooks
+
+
+    -   `useAppShell()`: The primary hook to control the shell's state.
+        -   `sidebarState`: Current state of the sidebar (`expanded`, `collapsed`, etc.).
+        -   `bodyState`: Current body state (`normal`, `fullscreen`, `side_pane`).
+        -   `toggleSidebar()`: Toggles the sidebar between expanded and collapsed.
+        -   `openSidePane(content: string)`: Opens the right-hand pane.
+        -   `closeSidePane()`: Closes the right-hand pane.
+        -   `toggleFullscreen()`: Toggles fullscreen mode.
+        -   `dispatch`: For more granular state control.
+    -   `useToast()`: A hook to display toast notifications.
+        -   `show({ title, message, variant, ... })`
+
+    ## Theming
+
+
+    Customizing the look and feel is straightforward. The library uses CSS
+    variables for colors, border radius, etc., which you can override in your
+    global CSS file.
+
+
+    **`index.css`**
+
+
+    ```css
+
+    @layer base {
+      :root {
+        --background: 0 0% 100%;
+        --foreground: 222.2 84% 4.9%;
+        --primary: 262.1 83.3% 57.8%; /* New primary color: Violet */
+        --primary-foreground: 210 40% 98%;
+        --radius: 0.75rem; /* New border radius */
+      }
+
+      .dark {
+        --background: 222.2 84% 4.9%;
+        --foreground: 210 40% 98%;
+        --primary: 262.1 83.3% 57.8%;
+        --primary-foreground: 210 40% 98%;
+      }
+    }
+
+    ```
+
+
+    ## Contributing
+
+
+    Contributions are welcome! Please read our [contributing
+    guidelines](./CONTRIBUTING.md) to get started.
+
+
+    ## License
+
+
+    This project is licensed under the **MIT License**. See the
+    [LICENSE](./LICENSE) file for details.
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 115

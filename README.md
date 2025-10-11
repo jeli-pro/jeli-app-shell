@@ -241,6 +241,7 @@ The sidebar is built using a set of highly composable components.
 -   `<UserDropdown>`: A pre-styled user profile dropdown menu.
 -   `<WorkspaceSwitcher>`: A complete workspace/tenant switcher component.
 -   `<PageHeader>`: A standardized header for your main content pages.
+-   `<LoginPage>`: A beautiful, animated login page component.
 -   `<CommandPalette>`: A powerful command palette for your application.
 
 ### UI Primitives

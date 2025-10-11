@@ -1,0 +1,304 @@
+uuid: 44b76e82-2d12-4211-9a74-d4ff28f646b9
+projectId: amazing-app-shell
+createdAt: '2025-10-11T07:39:31.119Z'
+gitCommitMsg: >-
+  feat: Configure project for library distribution
+
+  This commit prepares the Amazing App Shell to be published as a consumable npm
+  package.
+
+  - Updates `tsconfig.json` to generate TypeScript declaration files for the
+  library build. It now excludes demo application files from the type generation
+  process. - Expands the public API in `src/index.ts` to export all necessary
+  components, hooks, and stores, including UI primitives, feature components,
+  and state management utilities.
+promptSummary: >-
+  The user wants to prepare the application to be distributed as a library. This
+  requires updating the TypeScript configuration to generate declaration files
+  and ensuring the library's public API is correctly defined in the main entry
+  file.
+reasoning:
+  - >-
+    To prepare the "Amazing App Shell" for distribution as a consumable library,
+    I will make the necessary configuration changes. This involves updating the
+    TypeScript configuration to generate type definitions for the library and
+    ensuring the main entry point exports all the necessary components, hooks,
+    and types for consumers.
+  - '### Step 1: Update TypeScript Configuration for Library Build'
+  - >-
+    First, I'll modify `tsconfig.json` to correctly generate TypeScript
+    declaration files (`.d.ts`). This involves removing the `"noEmit": true`
+    option, which is suitable for applications but not libraries, and adding
+    options to control the output of declaration files. I will also exclude the
+    demo application files (`App.tsx`, `main.tsx`, and the `pages` directory)
+    from the library's type generation process.
+  - '### Step 2: Define the Public API in the Library Entry Point'
+  - >-
+    Next, I'll update `src/index.ts` to serve as the main entry point for the
+    library. I will export all the public components, hooks, stores, and types
+    that a consumer of this library would need. This includes UI primitives like
+    `Input` and `Label`, feature components like `SettingsContent`, and the
+    Zustand stores for state management.
+  - >-
+    These changes, combined with the existing library-ready `package.json` and
+    `vite.config.ts`, will make the "Amazing App Shell" a fully distributable
+    and consumable npm package.
+operations:
+  - type: write
+    path: tsconfig.json
+    content: |
+      --- tsconfig.json
+      +++ tsconfig.json
+      @@ -9,7 +9,6 @@
+           "allowImportingTsExtensions": true,
+           "resolveJsonModule": true,
+           "isolatedModules": true,
+      -    "noEmit": true,
+           "jsx": "react-jsx",
+       
+           /* Linting */
+      @@ -18,6 +17,11 @@
+           "noUnusedParameters": true,
+           "noFallthroughCasesInSwitch": true,
+       
+      +    /* Library Build */
+      +    "declaration": true,
+      +    "emitDeclarationOnly": true,
+      +    "declarationDir": "dist",
+      +
+           /* Path mapping */
+           "baseUrl": ".",
+           "paths": {
+      @@ -25,5 +29,11 @@
+           }
+         },
+      -  "include": ["src"],
+      +  "include": ["src"],
+      +  "exclude": [
+      +    "dist",
+      +    "src/App.tsx",
+      +    "src/main.tsx",
+      +    "src/pages"
+      +  ],
+         "references": [{ "path": "./tsconfig.node.json" }]
+       }
+    patchStrategy: standard-diff
+  - type: write
+    path: src/index.ts
+    content: >
+      <<<<<<< SEARCH
+
+      // Shared Components
+
+      export { ContentInSidePanePlaceholder } from
+      './components/shared/ContentInSidePanePlaceholder';
+
+      export { PageHeader } from './components/shared/PageHeader';
+
+
+      // UI Components
+
+      export * from './components/ui/avatar';
+
+      =======
+
+      // Shared Components
+
+      export { ContentInSidePanePlaceholder } from
+      './components/shared/ContentInSidePanePlaceholder';
+
+      export { PageHeader } from './components/shared/PageHeader';
+
+
+      // Feature Components
+
+      export { SettingsContent } from './features/settings/SettingsContent';
+
+      export { SettingsSection } from './features/settings/SettingsSection';
+
+      export { SettingsToggle } from './features/settings/SettingsToggle';
+
+
+      // UI Components
+
+      export * from './components/ui/avatar';
+
+      >>>>>>> REPLACE
+
+      <<<<<<< SEARCH
+
+      export * from './components/ui/dropdown-menu';
+
+      export * from './components/ui/popover';
+
+      export * from './components/ui/tabs';
+
+      export * from './components/ui/toast';
+
+      =======
+
+      export * from './components/ui/dropdown-menu';
+
+      export * from './components/ui/input';
+
+      export * from './components/ui/label';
+
+      export * from './components/ui/popover';
+
+      export * from './components/ui/tabs';
+
+      export * from './components/ui/toast';
+
+      >>>>>>> REPLACE
+
+      <<<<<<< SEARCH
+
+      // Lib
+
+      export * from './lib/utils';
+
+      =======
+
+      // Lib
+
+      export * from './lib/utils';
+
+
+      // Store
+
+      export { useAppStore, type ActivePage } from './store/appStore';
+
+      export { useAuthStore } from './store/authStore';
+
+      >>>>>>> REPLACE
+    patchStrategy: search-replace
+snapshot:
+  tsconfig.json: |-
+    {
+      "compilerOptions": {
+        "target": "ES2020",
+        "useDefineForClassFields": true,
+        "lib": ["ES2020", "DOM", "DOM.Iterable"],
+        "module": "ESNext",
+        "skipLibCheck": true,
+
+        /* Bundler mode */
+        "moduleResolution": "bundler",
+        "allowImportingTsExtensions": true,
+        "resolveJsonModule": true,
+        "isolatedModules": true,
+        "noEmit": true,
+        "jsx": "react-jsx",
+
+        /* Linting */
+        "strict": true,
+        "noUnusedLocals": true,
+        "noUnusedParameters": true,
+        "noFallthroughCasesInSwitch": true,
+
+        /* Path mapping */
+        "baseUrl": ".",
+        "paths": {
+          "@/*": ["./src/*"]
+        }
+      },
+      "include": ["src"],
+      "references": [{ "path": "./tsconfig.node.json" }]
+    }
+  src/index.ts: >-
+    // Context
+
+    export { AppShellProvider, useAppShell } from './context/AppShellContext';
+
+
+    // Layout Components
+
+    export { AppShell } from './components/layout/AppShell';
+
+    export { MainContent } from './components/layout/MainContent';
+
+    export { RightPane } from './components/layout/RightPane';
+
+    export { TopBar } from './components/layout/TopBar';
+
+    export { UserDropdown } from './components/layout/UserDropdown';
+
+    export { Workspaces as WorkspaceProvider, WorkspaceTrigger, WorkspaceContent
+    } from './components/layout/WorkspaceSwitcher';
+
+
+    // Sidebar Primitives
+
+    export {
+      Sidebar,
+      SidebarBody,
+      SidebarContent,
+      SidebarFooter,
+      SidebarHeader,
+      SidebarSection,
+      SidebarTitle,
+      SidebarMenuItem,
+      SidebarMenuButton,
+      SidebarMenuAction,
+      SidebarLabel,
+      SidebarBadge,
+      SidebarTooltip,
+      SidebarIcon,
+      useSidebar,
+    } from './components/layout/Sidebar';
+
+
+    // Shared Components
+
+    export { ContentInSidePanePlaceholder } from
+    './components/shared/ContentInSidePanePlaceholder';
+
+    export { PageHeader } from './components/shared/PageHeader';
+
+
+    // UI Components
+
+    export * from './components/ui/avatar';
+
+    export * from './components/ui/badge';
+
+    export * from './components/ui/button';
+
+    export * from './components/ui/card';
+
+    export * from './components/ui/command';
+
+    export * from './components/ui/dialog';
+
+    export * from './components/ui/dropdown-menu';
+
+    export * from './components/ui/popover';
+
+    export * from './components/ui/tabs';
+
+    export * from './components/ui/toast';
+
+
+    // Global Components
+
+    export { CommandPalette } from './components/global/CommandPalette';
+
+
+    // Hooks
+
+    export { useAutoAnimateTopBar } from './hooks/useAutoAnimateTopBar';
+
+    export { useCommandPaletteToggle } from
+    './hooks/useCommandPaletteToggle.hook';
+
+
+    // Lib
+
+    export * from './lib/utils';
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 114

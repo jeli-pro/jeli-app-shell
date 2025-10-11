@@ -488,5 +488,3 @@ export function LoginPage({ onLogin, onForgotPassword }: LoginPageProps) {
 		</section>
 	);
 }
-
-export default LoginPage;

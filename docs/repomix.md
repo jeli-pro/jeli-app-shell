@@ -2119,6 +2119,11 @@ export {
 export { ContentInSidePanePlaceholder } from './components/shared/ContentInSidePanePlaceholder';
 export { PageHeader } from './components/shared/PageHeader';
 
+// Feature Components
+export { SettingsContent } from './features/settings/SettingsContent';
+export { SettingsSection } from './features/settings/SettingsSection';
+export { SettingsToggle } from './features/settings/SettingsToggle';
+
 // UI Components
 export * from './components/ui/avatar';
 export * from './components/ui/badge';
@@ -2127,6 +2132,8 @@ export * from './components/ui/card';
 export * from './components/ui/command';
 export * from './components/ui/dialog';
 export * from './components/ui/dropdown-menu';
+export * from './components/ui/input';
+export * from './components/ui/label';
 export * from './components/ui/popover';
 export * from './components/ui/tabs';
 export * from './components/ui/toast';
@@ -2140,6 +2147,10 @@ export { useCommandPaletteToggle } from './hooks/useCommandPaletteToggle.hook';
 
 // Lib
 export * from './lib/utils';
+
+// Store
+export { useAppStore, type ActivePage } from './store/appStore';
+export { useAuthStore } from './store/authStore';
 ````
 
 ## File: postcss.config.js
@@ -2167,7 +2178,6 @@ export default {
     "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "noEmit": true,
     "jsx": "react-jsx",
 
     /* Linting */
@@ -2176,6 +2186,11 @@ export default {
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
 
+    /* Library Build */
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "declarationDir": "dist",
+
     /* Path mapping */
     "baseUrl": ".",
     "paths": {
@@ -2183,257 +2198,14 @@ export default {
     }
   },
   "include": ["src"],
+  "exclude": [
+    "dist",
+    "src/App.tsx",
+    "src/main.tsx",
+    "src/pages"
+  ],
   "references": [{ "path": "./tsconfig.node.json" }]
 }
-````
-
-## File: src/components/layout/EnhancedSidebar.tsx
-````typescript
-import React from 'react';
-import {
-  Home,
-  Settings,
-  HelpCircle,
-  Component,
-  Rocket,
-  MoreHorizontal,
-  Bell,
-  Search,
-  FileText,
-  Star,
-  Trash2,
-  FolderOpen,
-  Mail,
-  Bookmark,
-  Download,
-  User,
-  Plus
-} from 'lucide-react';
-import { useAppStore, type ActivePage } from '@/store/appStore';
-import { useAppShell } from '@/context/AppShellContext';
-import { BODY_STATES } from '@/lib/utils';
-import {
-  Workspaces,
-  WorkspaceTrigger,
-  WorkspaceContent,
-  type Workspace,
-} from './WorkspaceSwitcher';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarHeader,
-  SidebarTitle,
-  SidebarBody,
-  SidebarFooter,
-  SidebarSection,
-  SidebarMenuItem,
-  SidebarMenuButton,
-  SidebarMenuAction,
-  SidebarLabel,
-  SidebarBadge,
-  SidebarTooltip,
-  SidebarIcon,
-  useSidebar,
-} from './Sidebar';
-import { cn } from '@/lib/utils';
-
-interface MyWorkspace extends Workspace {
-  logo: string;
-  plan: string;
-}
-
-const mockWorkspaces: MyWorkspace[] = [
-  { id: 'ws1', name: 'Acme Inc.', logo: 'https://avatar.vercel.sh/acme.png', plan: 'Pro' },
-  { id: 'ws2', name: 'Monsters Inc.', logo: 'https://avatar.vercel.sh/monsters.png', plan: 'Free' },
-  { id: 'ws3', name: 'Stark Industries', logo: 'https://avatar.vercel.sh/stark.png', plan: 'Enterprise' },
-];
-
-const SidebarWorkspaceTrigger = () => {
-  const { isCollapsed, compactMode } = useSidebar();
-
-  return (
-    <WorkspaceTrigger
-      collapsed={isCollapsed}
-      className={cn(
-        'rounded-xl transition-colors hover:bg-accent/50 w-full',
-        isCollapsed ? 'p-2' : 'p-3 bg-accent/50',
-      )}
-      avatarClassName={cn(compactMode ? 'h-8 w-8' : 'h-10 w-10')}
-    />
-  );
-};
-
-interface SidebarProps {
-  onMouseEnter?: () => void;
-  onMouseLeave?: () => void;
-}
-
-export const EnhancedSidebar = React.forwardRef<HTMLDivElement, SidebarProps>(
-  ({ onMouseEnter, onMouseLeave }, ref) => {
-    const { sidebarWidth, compactMode } = useAppShell();
-    const [selectedWorkspace, setSelectedWorkspace] = React.useState(mockWorkspaces[0]);
-
-    return (
-      <Sidebar
-        ref={ref}
-        style={{ width: sidebarWidth }}
-        onMouseEnter={onMouseEnter}
-        onMouseLeave={onMouseLeave}
-      >
-        <SidebarContent>
-          <SidebarHeader>
-            <div className="p-2 bg-primary/20 rounded-lg">
-              <Rocket className="w-5 h-5 text-primary" />
-            </div>
-            <SidebarTitle>Amazing App</SidebarTitle>
-          </SidebarHeader>
-
-          <SidebarBody>
-            <SidebarSection title="Main">
-              <AppMenuItem icon={Home} label="Dashboard" page="dashboard" />
-              <AppMenuItem icon={Search} label="Search" />
-              <AppMenuItem icon={Bell} label="Notifications" badge={3} page="notifications" opensInSidePane />
-            </SidebarSection>
-            
-            <SidebarSection title="Workspace" collapsible defaultExpanded>
-              <AppMenuItem icon={FileText} label="Documents" hasActions>
-                <AppMenuItem icon={FileText} label="Recent" isSubItem />
-                <AppMenuItem icon={Star} label="Starred" isSubItem />
-                <AppMenuItem icon={Trash2} label="Trash" isSubItem />
-              </AppMenuItem>
-              <AppMenuItem icon={FolderOpen} label="Projects" hasActions />
-              <AppMenuItem icon={Mail} label="Messages" badge={12} />
-            </SidebarSection>
-            
-            <SidebarSection title="Personal" collapsible>
-              <AppMenuItem icon={Bookmark} label="Bookmarks" />
-              <AppMenuItem icon={Star} label="Favorites" />
-              <AppMenuItem icon={Download} label="Downloads" />
-            </SidebarSection>
-
-            <SidebarSection title="Components" collapsible defaultExpanded>
-              <AppMenuItem icon={Component} label="Toaster" page="toaster" />
-            </SidebarSection>
-          </SidebarBody>
-
-          <SidebarFooter>
-            <SidebarSection>
-              <AppMenuItem icon={User} label="Profile" />
-              <AppMenuItem icon={Settings} label="Settings" page="settings" />
-              <AppMenuItem icon={HelpCircle} label="Help" />
-            </SidebarSection>
-
-            <div className={cn(compactMode ? 'mt-4' : 'mt-6')}>
-              <Workspaces
-                workspaces={mockWorkspaces}
-                selectedWorkspaceId={selectedWorkspace.id}
-                onWorkspaceChange={setSelectedWorkspace}
-              >
-                <SidebarWorkspaceTrigger />
-                <WorkspaceContent>
-                  <button className="flex w-full items-center gap-2 rounded-sm px-2 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground focus:outline-none">
-                    <Plus className="h-4 w-4" />
-                    <span>Create Workspace</span>
-                  </button>
-                </WorkspaceContent>
-              </Workspaces>
-            </div>
-          </SidebarFooter>
-        </SidebarContent>
-      </Sidebar>
-    );
-  },
-);
-EnhancedSidebar.displayName = 'EnhancedSidebar';
-
-
-// Example of a reusable menu item component built with the new Sidebar primitives
-interface AppMenuItemProps {
-  icon: React.ElementType;
-  label: string;
-  badge?: number;
-  hasActions?: boolean;
-  children?: React.ReactNode;
-  isSubItem?: boolean;
-  page?: ActivePage;
-  opensInSidePane?: boolean;
-}
-
-const AppMenuItem: React.FC<AppMenuItemProps> = ({ icon: Icon, label, badge, hasActions, children, isSubItem = false, page, opensInSidePane = false }) => {
-  const { handleNavigation, activePage } = useAppStore()
-  const { compactMode, bodyState, sidePaneContent, openSidePane } = useAppShell()
-  const { isCollapsed } = useSidebar();
-
-  const isPageActive = (page: ActivePage) => {
-    const pageToSidePaneContent: { [key in ActivePage]?: 'main' | 'settings' | 'toaster' | 'notifications' } = {
-      dashboard: 'main',
-      settings: 'settings',
-      toaster: 'toaster',
-      notifications: 'notifications',
-    };
-    return activePage === page || (bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === pageToSidePaneContent[page]);
-  };
-  
-  const isActive = page ? isPageActive(page) : false;
-
-  const handleClick = () => {
-    if (page) {
-      if (opensInSidePane) {
-        const pageToPaneMap: { [key in ActivePage]?: 'main' | 'settings' | 'toaster' | 'notifications' } = {
-          dashboard: 'main',
-          settings: 'settings',
-          toaster: 'toaster',
-          notifications: 'notifications',
-        };
-        if (pageToPaneMap[page]) openSidePane(pageToPaneMap[page]!)
-      } else {
-        handleNavigation(page);
-      }
-    }
-  };
-
-  return (
-    <div className={isSubItem ? (compactMode ? 'ml-4' : 'ml-6') : ''}>
-      <SidebarMenuItem>
-        <SidebarMenuButton onClick={handleClick} isActive={isActive}>
-          <SidebarIcon>
-            <Icon className={isSubItem ? "w-3 h-3" : "w-4 h-4"}/>
-          </SidebarIcon>
-          <SidebarLabel>{label}</SidebarLabel>
-          {badge && <SidebarBadge>{badge}</SidebarBadge>}
-          <SidebarTooltip label={label} badge={badge} />
-        </SidebarMenuButton>
-
-        {hasActions && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <SidebarMenuAction>
-                <MoreHorizontal className="h-4 w-4" />
-              </SidebarMenuAction>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent side="right" align="start">
-              <DropdownMenuItem>
-                <span>Edit {label}</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <span>Delete {label}</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
-      </SidebarMenuItem>
-      {!isCollapsed && children && (
-        <div className="space-y-1 mt-1">{children}</div>
-      )}
-    </div>
-  );
-};
 ````
 
 ## File: src/components/layout/Sidebar.tsx
@@ -3275,185 +3047,6 @@ export { Popover, PopoverTrigger, PopoverContent }
 export type { PopoverContentProps }
 ````
 
-## File: src/context/AppShellContext.tsx
-````typescript
-import {
-  createContext,
-  useContext,
-  useReducer,
-  useEffect,
-  useMemo,
-  useCallback,
-  type ReactNode,
-  type Dispatch,
-} from 'react';
-import { SIDEBAR_STATES, BODY_STATES, type SidebarState, type BodyState } from '@/lib/utils';
-
-// --- State and Action Types ---
-
-interface AppShellState {
-  sidebarState: SidebarState;
-  bodyState: BodyState;
-  sidePaneContent: 'details' | 'settings' | 'main' | 'toaster' | 'notifications';
-  sidebarWidth: number;
-  rightPaneWidth: number;
-  isResizing: boolean;
-  isResizingRightPane: boolean;
-  isTopBarVisible: boolean;
-  autoExpandSidebar: boolean;
-  reducedMotion: boolean;
-  compactMode: boolean;
-  primaryColor: string;
-}
-
-type AppShellAction =
-  | { type: 'SET_SIDEBAR_STATE'; payload: SidebarState }
-  | { type: 'SET_BODY_STATE'; payload: BodyState }
-  | { type: 'SET_SIDE_PANE_CONTENT'; payload: AppShellState['sidePaneContent'] }
-  | { type: 'SET_SIDEBAR_WIDTH'; payload: number }
-  | { type: 'SET_RIGHT_PANE_WIDTH'; payload: number }
-  | { type: 'SET_IS_RESIZING'; payload: boolean }
-  | { type: 'SET_IS_RESIZING_RIGHT_PANE'; payload: boolean }
-  | { type: 'SET_TOP_BAR_VISIBLE'; payload: boolean }
-  | { type: 'SET_AUTO_EXPAND_SIDEBAR'; payload: boolean }
-  | { type: 'SET_REDUCED_MOTION'; payload: boolean }
-  | { type: 'SET_COMPACT_MODE'; payload: boolean }
-  | { type: 'SET_PRIMARY_COLOR'; payload: string }
-  | { type: 'RESET_TO_DEFAULTS' };
-
-// --- Reducer ---
-
-const defaultState: AppShellState = {
-  sidebarState: SIDEBAR_STATES.EXPANDED,
-  bodyState: BODY_STATES.NORMAL,
-  sidePaneContent: 'details',
-  sidebarWidth: 280,
-  rightPaneWidth: typeof window !== 'undefined' ? Math.max(300, Math.round(window.innerWidth * 0.6)) : 400,
-  isResizing: false,
-  isResizingRightPane: false,
-  isTopBarVisible: true,
-  autoExpandSidebar: true,
-  reducedMotion: false,
-  compactMode: false,
-  primaryColor: '220 84% 60%',
-};
-
-function appShellReducer(state: AppShellState, action: AppShellAction): AppShellState {
-  switch (action.type) {
-    case 'SET_SIDEBAR_STATE': return { ...state, sidebarState: action.payload };
-    case 'SET_BODY_STATE': return { ...state, bodyState: action.payload };
-    case 'SET_SIDE_PANE_CONTENT': return { ...state, sidePaneContent: action.payload };
-    case 'SET_SIDEBAR_WIDTH': return { ...state, sidebarWidth: Math.max(200, Math.min(500, action.payload)) };
-    case 'SET_RIGHT_PANE_WIDTH': return { ...state, rightPaneWidth: Math.max(300, Math.min(window.innerWidth * 0.8, action.payload)) };
-    case 'SET_IS_RESIZING': return { ...state, isResizing: action.payload };
-    case 'SET_IS_RESIZING_RIGHT_PANE': return { ...state, isResizingRightPane: action.payload };
-    case 'SET_TOP_BAR_VISIBLE': return { ...state, isTopBarVisible: action.payload };
-    case 'SET_AUTO_EXPAND_SIDEBAR': return { ...state, autoExpandSidebar: action.payload };
-    case 'SET_REDUCED_MOTION': return { ...state, reducedMotion: action.payload };
-    case 'SET_COMPACT_MODE': return { ...state, compactMode: action.payload };
-    case 'SET_PRIMARY_COLOR': return { ...state, primaryColor: action.payload };
-    case 'RESET_TO_DEFAULTS': return defaultState;
-    default: return state;
-  }
-}
-
-// --- Context and Provider ---
-
-interface AppShellContextValue extends AppShellState {
-  dispatch: Dispatch<AppShellAction>;
-  // Composite actions for convenience
-  toggleSidebar: () => void;
-  hideSidebar: () => void;
-  showSidebar: () => void;
-  peekSidebar: () => void;
-  toggleFullscreen: () => void;
-  openSidePane: (content: AppShellState['sidePaneContent']) => void;
-  closeSidePane: () => void;
-  resetToDefaults: () => void;
-}
-
-const AppShellContext = createContext<AppShellContextValue | null>(null);
-
-export function AppShellProvider({ children }: { children: ReactNode }) {
-  const [state, dispatch] = useReducer(appShellReducer, defaultState);
-
-  // Side effect for primary color
-  useEffect(() => {
-    document.documentElement.style.setProperty('--primary-hsl', state.primaryColor);
-  }, [state.primaryColor]);
-
-  // Memoized composite actions using useCallback for stable function identities
-  const toggleSidebar = useCallback(() => {
-    const current = state.sidebarState;
-    if (current === SIDEBAR_STATES.HIDDEN) dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.COLLAPSED });
-    else if (current === SIDEBAR_STATES.COLLAPSED) dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.EXPANDED });
-    else if (current === SIDEBAR_STATES.EXPANDED) dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.COLLAPSED });
-  }, [state.sidebarState]);
-
-  const hideSidebar = useCallback(() => dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.HIDDEN }), []);
-  const showSidebar = useCallback(() => dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.EXPANDED }), []);
-  const peekSidebar = useCallback(() => dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.PEEK }), []);
-  
-  const toggleFullscreen = useCallback(() => {
-    const current = state.bodyState;
-    dispatch({ type: 'SET_BODY_STATE', payload: current === BODY_STATES.FULLSCREEN ? BODY_STATES.NORMAL : BODY_STATES.FULLSCREEN });
-  }, [state.bodyState]);
-
-  const openSidePane = useCallback((content: AppShellState['sidePaneContent']) => {
-    if (state.bodyState === BODY_STATES.SIDE_PANE && state.sidePaneContent === content) {
-      // If it's open with same content, close it.
-      dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.NORMAL });
-    } else {
-      // If closed, or different content, open with new content.
-      dispatch({ type: 'SET_SIDE_PANE_CONTENT', payload: content });
-      dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.SIDE_PANE });
-    }
-  }, [state.bodyState, state.sidePaneContent]);
-
-  const closeSidePane = useCallback(() => dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.NORMAL }), []);
-  const resetToDefaults = useCallback(() => dispatch({ type: 'RESET_TO_DEFAULTS' }), []);
-
-  const value = useMemo(() => ({ 
-    ...state, 
-    dispatch, 
-    toggleSidebar,
-    hideSidebar,
-    showSidebar,
-    peekSidebar,
-    toggleFullscreen,
-    openSidePane,
-    closeSidePane,
-    resetToDefaults,
-  }), [
-    state, 
-    toggleSidebar,
-    hideSidebar,
-    showSidebar,
-    peekSidebar,
-    toggleFullscreen,
-    openSidePane,
-    closeSidePane,
-    resetToDefaults
-  ]);
-
-  return (
-    <AppShellContext.Provider value={value}>
-      {children}
-    </AppShellContext.Provider>
-  );
-}
-
-// --- Hook ---
-
-export function useAppShell() {
-  const context = useContext(AppShellContext);
-  if (!context) {
-    throw new Error('useAppShell must be used within an AppShellProvider');
-  }
-  return context;
-}
-````
-
 ## File: src/features/settings/SettingsContent.tsx
 ````typescript
 import { useState } from 'react'
@@ -4289,23 +3882,6 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
 }
 ````
 
-## File: vite.config.ts
-````typescript
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-import { fileURLToPath, URL } from 'url'
-
-// https://vitejs.dev/config/
-export default defineConfig({
-  plugins: [react()],
-  resolve: {
-    alias: {
-      "@": fileURLToPath(new URL('./src', import.meta.url)),
-    },
-  },
-})
-````
-
 ## File: src/components/global/CommandPalette.tsx
 ````typescript
 import {
@@ -4401,6 +3977,257 @@ export function CommandPalette() {
     </CommandDialog>
   )
 }
+````
+
+## File: src/components/layout/EnhancedSidebar.tsx
+````typescript
+import React from 'react';
+import {
+  Home,
+  Settings,
+  HelpCircle,
+  Component,
+  Rocket,
+  MoreHorizontal,
+  Bell,
+  Search,
+  FileText,
+  Star,
+  Trash2,
+  FolderOpen,
+  Mail,
+  Bookmark,
+  Download,
+  User,
+  Plus
+} from 'lucide-react';
+import { useAppStore, type ActivePage } from '@/store/appStore';
+import { useAppShell } from '@/context/AppShellContext';
+import { BODY_STATES } from '@/lib/utils';
+import {
+  Workspaces,
+  WorkspaceTrigger,
+  WorkspaceContent,
+  type Workspace,
+} from './WorkspaceSwitcher';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarHeader,
+  SidebarTitle,
+  SidebarBody,
+  SidebarFooter,
+  SidebarSection,
+  SidebarMenuItem,
+  SidebarMenuButton,
+  SidebarMenuAction,
+  SidebarLabel,
+  SidebarBadge,
+  SidebarTooltip,
+  SidebarIcon,
+  useSidebar,
+} from './Sidebar';
+import { cn } from '@/lib/utils';
+
+interface MyWorkspace extends Workspace {
+  logo: string;
+  plan: string;
+}
+
+const mockWorkspaces: MyWorkspace[] = [
+  { id: 'ws1', name: 'Acme Inc.', logo: 'https://avatar.vercel.sh/acme.png', plan: 'Pro' },
+  { id: 'ws2', name: 'Monsters Inc.', logo: 'https://avatar.vercel.sh/monsters.png', plan: 'Free' },
+  { id: 'ws3', name: 'Stark Industries', logo: 'https://avatar.vercel.sh/stark.png', plan: 'Enterprise' },
+];
+
+const SidebarWorkspaceTrigger = () => {
+  const { isCollapsed, compactMode } = useSidebar();
+
+  return (
+    <WorkspaceTrigger
+      collapsed={isCollapsed}
+      className={cn(
+        'rounded-xl transition-colors hover:bg-accent/50 w-full',
+        isCollapsed ? 'p-2' : 'p-3 bg-accent/50',
+      )}
+      avatarClassName={cn(compactMode ? 'h-8 w-8' : 'h-10 w-10')}
+    />
+  );
+};
+
+interface SidebarProps {
+  onMouseEnter?: () => void;
+  onMouseLeave?: () => void;
+}
+
+export const EnhancedSidebar = React.forwardRef<HTMLDivElement, SidebarProps>(
+  ({ onMouseEnter, onMouseLeave }, ref) => {
+    const { sidebarWidth, compactMode, appName, appLogo } = useAppShell();
+    const [selectedWorkspace, setSelectedWorkspace] = React.useState(mockWorkspaces[0]);
+
+    return (
+      <Sidebar
+        ref={ref}
+        style={{ width: sidebarWidth }}
+        onMouseEnter={onMouseEnter}
+        onMouseLeave={onMouseLeave}
+      >
+        <SidebarContent>
+          <SidebarHeader>
+            {appLogo || (
+              <div className="p-2 bg-primary/20 rounded-lg">
+                <Rocket className="w-5 h-5 text-primary" />
+              </div>
+            )}
+            <SidebarTitle>{appName}</SidebarTitle>
+          </SidebarHeader>
+
+          <SidebarBody>
+            <SidebarSection title="Main">
+              <AppMenuItem icon={Home} label="Dashboard" page="dashboard" />
+              <AppMenuItem icon={Search} label="Search" />
+              <AppMenuItem icon={Bell} label="Notifications" badge={3} page="notifications" opensInSidePane />
+            </SidebarSection>
+            
+            <SidebarSection title="Workspace" collapsible defaultExpanded>
+              <AppMenuItem icon={FileText} label="Documents" hasActions>
+                <AppMenuItem icon={FileText} label="Recent" isSubItem />
+                <AppMenuItem icon={Star} label="Starred" isSubItem />
+                <AppMenuItem icon={Trash2} label="Trash" isSubItem />
+              </AppMenuItem>
+              <AppMenuItem icon={FolderOpen} label="Projects" hasActions />
+              <AppMenuItem icon={Mail} label="Messages" badge={12} />
+            </SidebarSection>
+            
+            <SidebarSection title="Personal" collapsible>
+              <AppMenuItem icon={Bookmark} label="Bookmarks" />
+              <AppMenuItem icon={Star} label="Favorites" />
+              <AppMenuItem icon={Download} label="Downloads" />
+            </SidebarSection>
+
+            <SidebarSection title="Components" collapsible defaultExpanded>
+              <AppMenuItem icon={Component} label="Toaster" page="toaster" />
+            </SidebarSection>
+          </SidebarBody>
+
+          <SidebarFooter>
+            <SidebarSection>
+              <AppMenuItem icon={User} label="Profile" />
+              <AppMenuItem icon={Settings} label="Settings" page="settings" />
+              <AppMenuItem icon={HelpCircle} label="Help" />
+            </SidebarSection>
+
+            <div className={cn(compactMode ? 'mt-4' : 'mt-6')}>
+              <Workspaces
+                workspaces={mockWorkspaces}
+                selectedWorkspaceId={selectedWorkspace.id}
+                onWorkspaceChange={setSelectedWorkspace}
+              >
+                <SidebarWorkspaceTrigger />
+                <WorkspaceContent>
+                  <button className="flex w-full items-center gap-2 rounded-sm px-2 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground focus:outline-none">
+                    <Plus className="h-4 w-4" />
+                    <span>Create Workspace</span>
+                  </button>
+                </WorkspaceContent>
+              </Workspaces>
+            </div>
+          </SidebarFooter>
+        </SidebarContent>
+      </Sidebar>
+    );
+  },
+);
+EnhancedSidebar.displayName = 'EnhancedSidebar';
+
+
+// Example of a reusable menu item component built with the new Sidebar primitives
+interface AppMenuItemProps {
+  icon: React.ElementType;
+  label: string;
+  badge?: number;
+  hasActions?: boolean;
+  children?: React.ReactNode;
+  isSubItem?: boolean;
+  page?: ActivePage;
+  opensInSidePane?: boolean;
+}
+
+const AppMenuItem: React.FC<AppMenuItemProps> = ({ icon: Icon, label, badge, hasActions, children, isSubItem = false, page, opensInSidePane = false }) => {
+  const { handleNavigation, activePage } = useAppStore()
+  const { compactMode, bodyState, sidePaneContent, openSidePane } = useAppShell()
+  const { isCollapsed } = useSidebar();
+
+  const isPageActive = (page: ActivePage) => {
+    const pageToSidePaneContent: { [key in ActivePage]?: 'main' | 'settings' | 'toaster' | 'notifications' } = {
+      dashboard: 'main',
+      settings: 'settings',
+      toaster: 'toaster',
+      notifications: 'notifications',
+    };
+    return activePage === page || (bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === pageToSidePaneContent[page]);
+  };
+  
+  const isActive = page ? isPageActive(page) : false;
+
+  const handleClick = () => {
+    if (page) {
+      if (opensInSidePane) {
+        const pageToPaneMap: { [key in ActivePage]?: 'main' | 'settings' | 'toaster' | 'notifications' } = {
+          dashboard: 'main',
+          settings: 'settings',
+          toaster: 'toaster',
+          notifications: 'notifications',
+        };
+        if (pageToPaneMap[page]) openSidePane(pageToPaneMap[page]!)
+      } else {
+        handleNavigation(page);
+      }
+    }
+  };
+
+  return (
+    <div className={isSubItem ? (compactMode ? 'ml-4' : 'ml-6') : ''}>
+      <SidebarMenuItem>
+        <SidebarMenuButton onClick={handleClick} isActive={isActive}>
+          <SidebarIcon>
+            <Icon className={isSubItem ? "w-3 h-3" : "w-4 h-4"}/>
+          </SidebarIcon>
+          <SidebarLabel>{label}</SidebarLabel>
+          {badge && <SidebarBadge>{badge}</SidebarBadge>}
+          <SidebarTooltip label={label} badge={badge} />
+        </SidebarMenuButton>
+
+        {hasActions && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <SidebarMenuAction>
+                <MoreHorizontal className="h-4 w-4" />
+              </SidebarMenuAction>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent side="right" align="start">
+              <DropdownMenuItem>
+                <span>Edit {label}</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <span>Delete {label}</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+      </SidebarMenuItem>
+      {!isCollapsed && children && (
+        <div className="space-y-1 mt-1">{children}</div>
+      )}
+    </div>
+  );
+};
 ````
 
 ## File: src/components/layout/RightPane.tsx
@@ -4608,6 +4435,205 @@ export function TopBar({
       </div>
     </div>
   )
+}
+````
+
+## File: src/context/AppShellContext.tsx
+````typescript
+import {
+  createContext,
+  useContext,
+  useReducer,
+  useEffect,
+  useMemo,
+  useCallback,
+  type ReactNode,
+  type ReactElement,
+  type Dispatch,
+} from 'react';
+import { SIDEBAR_STATES, BODY_STATES, type SidebarState, type BodyState } from '@/lib/utils';
+
+// --- State and Action Types ---
+
+interface AppShellState {
+  sidebarState: SidebarState;
+  bodyState: BodyState;
+  sidePaneContent: 'details' | 'settings' | 'main' | 'toaster' | 'notifications';
+  sidebarWidth: number;
+  rightPaneWidth: number;
+  isResizing: boolean;
+  isResizingRightPane: boolean;
+  isTopBarVisible: boolean;
+  autoExpandSidebar: boolean;
+  reducedMotion: boolean;
+  compactMode: boolean;
+  primaryColor: string;
+  appName?: string;
+  appLogo?: ReactElement;
+}
+
+type AppShellAction =
+  | { type: 'SET_SIDEBAR_STATE'; payload: SidebarState }
+  | { type: 'SET_BODY_STATE'; payload: BodyState }
+  | { type: 'SET_SIDE_PANE_CONTENT'; payload: AppShellState['sidePaneContent'] }
+  | { type: 'SET_SIDEBAR_WIDTH'; payload: number }
+  | { type: 'SET_RIGHT_PANE_WIDTH'; payload: number }
+  | { type: 'SET_IS_RESIZING'; payload: boolean }
+  | { type: 'SET_IS_RESIZING_RIGHT_PANE'; payload: boolean }
+  | { type: 'SET_TOP_BAR_VISIBLE'; payload: boolean }
+  | { type: 'SET_AUTO_EXPAND_SIDEBAR'; payload: boolean }
+  | { type: 'SET_REDUCED_MOTION'; payload: boolean }
+  | { type: 'SET_COMPACT_MODE'; payload: boolean }
+  | { type: 'SET_PRIMARY_COLOR'; payload: string }
+  | { type: 'RESET_TO_DEFAULTS' };
+
+// --- Reducer ---
+
+const defaultState: AppShellState = {
+  sidebarState: SIDEBAR_STATES.EXPANDED,
+  bodyState: BODY_STATES.NORMAL,
+  sidePaneContent: 'details',
+  sidebarWidth: 280,
+  rightPaneWidth: typeof window !== 'undefined' ? Math.max(300, Math.round(window.innerWidth * 0.6)) : 400,
+  isResizing: false,
+  isResizingRightPane: false,
+  isTopBarVisible: true,
+  autoExpandSidebar: true,
+  reducedMotion: false,
+  compactMode: false,
+  primaryColor: '220 84% 60%',
+  appName: 'Amazing App',
+  appLogo: undefined,
+};
+
+function appShellReducer(state: AppShellState, action: AppShellAction): AppShellState {
+  switch (action.type) {
+    case 'SET_SIDEBAR_STATE': return { ...state, sidebarState: action.payload };
+    case 'SET_BODY_STATE': return { ...state, bodyState: action.payload };
+    case 'SET_SIDE_PANE_CONTENT': return { ...state, sidePaneContent: action.payload };
+    case 'SET_SIDEBAR_WIDTH': return { ...state, sidebarWidth: Math.max(200, Math.min(500, action.payload)) };
+    case 'SET_RIGHT_PANE_WIDTH': return { ...state, rightPaneWidth: Math.max(300, Math.min(window.innerWidth * 0.8, action.payload)) };
+    case 'SET_IS_RESIZING': return { ...state, isResizing: action.payload };
+    case 'SET_IS_RESIZING_RIGHT_PANE': return { ...state, isResizingRightPane: action.payload };
+    case 'SET_TOP_BAR_VISIBLE': return { ...state, isTopBarVisible: action.payload };
+    case 'SET_AUTO_EXPAND_SIDEBAR': return { ...state, autoExpandSidebar: action.payload };
+    case 'SET_REDUCED_MOTION': return { ...state, reducedMotion: action.payload };
+    case 'SET_COMPACT_MODE': return { ...state, compactMode: action.payload };
+    case 'SET_PRIMARY_COLOR': return { ...state, primaryColor: action.payload };
+    case 'RESET_TO_DEFAULTS':
+      return {
+        ...defaultState,
+        appName: state.appName, // Preserve props passed to provider
+        appLogo: state.appLogo,   // Preserve props passed to provider
+      };
+    default: return state;
+  }
+}
+
+// --- Context and Provider ---
+
+interface AppShellContextValue extends AppShellState {
+  dispatch: Dispatch<AppShellAction>;
+  // Composite actions for convenience
+  toggleSidebar: () => void;
+  hideSidebar: () => void;
+  showSidebar: () => void;
+  peekSidebar: () => void;
+  toggleFullscreen: () => void;
+  openSidePane: (content: AppShellState['sidePaneContent']) => void;
+  closeSidePane: () => void;
+  resetToDefaults: () => void;
+}
+
+const AppShellContext = createContext<AppShellContextValue | null>(null);
+
+interface AppShellProviderProps {
+  children: ReactNode;
+  appName?: string;
+  appLogo?: ReactElement;
+}
+
+export function AppShellProvider({ children, appName, appLogo }: AppShellProviderProps) {
+  const [state, dispatch] = useReducer(appShellReducer, {
+    ...defaultState,
+    ...(appName && { appName }),
+    ...(appLogo && { appLogo }),
+  });
+
+  // Side effect for primary color
+  useEffect(() => {
+    document.documentElement.style.setProperty('--primary-hsl', state.primaryColor);
+  }, [state.primaryColor]);
+
+  // Memoized composite actions using useCallback for stable function identities
+  const toggleSidebar = useCallback(() => {
+    const current = state.sidebarState;
+    if (current === SIDEBAR_STATES.HIDDEN) dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.COLLAPSED });
+    else if (current === SIDEBAR_STATES.COLLAPSED) dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.EXPANDED });
+    else if (current === SIDEBAR_STATES.EXPANDED) dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.COLLAPSED });
+  }, [state.sidebarState]);
+
+  const hideSidebar = useCallback(() => dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.HIDDEN }), []);
+  const showSidebar = useCallback(() => dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.EXPANDED }), []);
+  const peekSidebar = useCallback(() => dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.PEEK }), []);
+  
+  const toggleFullscreen = useCallback(() => {
+    const current = state.bodyState;
+    dispatch({ type: 'SET_BODY_STATE', payload: current === BODY_STATES.FULLSCREEN ? BODY_STATES.NORMAL : BODY_STATES.FULLSCREEN });
+  }, [state.bodyState]);
+
+  const openSidePane = useCallback((content: AppShellState['sidePaneContent']) => {
+    if (state.bodyState === BODY_STATES.SIDE_PANE && state.sidePaneContent === content) {
+      // If it's open with same content, close it.
+      dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.NORMAL });
+    } else {
+      // If closed, or different content, open with new content.
+      dispatch({ type: 'SET_SIDE_PANE_CONTENT', payload: content });
+      dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.SIDE_PANE });
+    }
+  }, [state.bodyState, state.sidePaneContent]);
+
+  const closeSidePane = useCallback(() => dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.NORMAL }), []);
+  const resetToDefaults = useCallback(() => dispatch({ type: 'RESET_TO_DEFAULTS' }), []);
+
+  const value = useMemo(() => ({ 
+    ...state, 
+    dispatch, 
+    toggleSidebar,
+    hideSidebar,
+    showSidebar,
+    peekSidebar,
+    toggleFullscreen,
+    openSidePane,
+    closeSidePane,
+    resetToDefaults,
+  }), [
+    state, 
+    toggleSidebar,
+    hideSidebar,
+    showSidebar,
+    peekSidebar,
+    toggleFullscreen,
+    openSidePane,
+    closeSidePane,
+    resetToDefaults
+  ]);
+
+  return (
+    <AppShellContext.Provider value={value}>
+      {children}
+    </AppShellContext.Provider>
+  );
+}
+
+// --- Hook ---
+
+export function useAppShell() {
+  const context = useContext(AppShellContext);
+  if (!context) {
+    throw new Error('useAppShell must be used within an AppShellProvider');
+  }
+  return context;
 }
 ````
 
@@ -5363,6 +5389,306 @@ export function LoginPage({ onLogin, onForgotPassword }: LoginPageProps) {
 export default LoginPage;
 ````
 
+## File: tailwind.config.js
+````javascript
+/** @type {import('tailwindcss').Config} */
+export default {
+  content: [
+    "./index.html",
+    "./src/**/*.{js,ts,jsx,tsx}",
+  ],
+  darkMode: "class",
+  theme: {
+    extend: {
+      colors: {
+        border: "hsl(var(--border))",
+        input: "hsl(var(--input))",
+        ring: "hsl(var(--ring))",
+        background: "hsl(var(--background))",
+        foreground: "hsl(var(--foreground))",
+        primary: {
+          DEFAULT: "hsl(var(--primary))",
+          foreground: "hsl(var(--primary-foreground))",
+        },
+        secondary: {
+          DEFAULT: "hsl(var(--secondary))",
+          foreground: "hsl(var(--secondary-foreground))",
+        },
+        destructive: {
+          DEFAULT: "hsl(var(--destructive))",
+          foreground: "hsl(var(--destructive-foreground))",
+        },
+        muted: {
+          DEFAULT: "hsl(var(--muted))",
+          foreground: "hsl(var(--muted-foreground))",
+        },
+        accent: {
+          DEFAULT: "hsl(var(--accent))",
+          foreground: "hsl(var(--accent-foreground))",
+        },
+        popover: {
+          DEFAULT: "hsl(var(--popover))",
+          foreground: "hsl(var(--popover-foreground))",
+        },
+        card: {
+          DEFAULT: "hsl(var(--card))",
+          foreground: "hsl(var(--card-foreground))",
+        },
+      },
+      borderRadius: {
+        lg: "var(--radius)",
+        md: "calc(var(--radius) - 4px)",
+        sm: "calc(var(--radius) - 8px)",
+        DEFAULT: "0.5rem",
+      },
+      boxShadow: {
+        input: [
+          "0px 2px 3px -1px rgba(0, 0, 0, 0.1)",
+          "0px 1px 0px 0px rgba(25, 28, 33, 0.02)",
+          "0px 0px 0px 1px rgba(25, 28, 33, 0.08)",
+        ].join(", "),
+      },
+      animation: {
+        "fade-in": "fadeIn 0.5s ease-in-out",
+        "slide-in": "slideIn 0.3s ease-out",
+        "scale-in": "scaleIn 0.2s ease-out",
+        ripple: "ripple 2s ease calc(var(--i, 0) * 0.2s) infinite",
+        orbit: "orbit calc(var(--duration) * 1s) linear infinite",
+      },
+      keyframes: {
+        fadeIn: {
+          "0%": { opacity: "0" },
+          "100%": { opacity: "1" },
+        },
+        slideIn: {
+          "0%": { transform: "translateX(-100%)" },
+          "100%": { transform: "translateX(0)" },
+        },
+        scaleIn: {
+          "0%": { transform: "scale(0.95)", opacity: "0" },
+          "100%": { transform: "scale(1)", opacity: "1" },
+        },
+        ripple: {
+          "0%, 100%": { transform: "translate(-50%, -50%) scale(1)" },
+          "50%": { transform: "translate(-50%, -50%) scale(0.9)" },
+        },
+        orbit: {
+          "0%": {
+            transform:
+              "rotate(0deg) translateY(calc(var(--radius) * 1px)) rotate(0deg)",
+          },
+          "100%": {
+            transform:
+              "rotate(360deg) translateY(calc(var(--radius) * 1px)) rotate(-360deg)",
+          },
+        }
+      },
+    },
+  },
+  plugins: [require("tailwindcss-animate")],
+}
+````
+
+## File: vite.config.ts
+````typescript
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+import { fileURLToPath, URL } from 'url'
+import { resolve } from 'path'
+
+// https://vitejs.dev/config/
+export default defineConfig({
+  plugins: [react()],
+  resolve: {
+    alias: {
+      "@": fileURLToPath(new URL('./src', import.meta.url)),
+    },
+  },
+  build: {
+    lib: {
+      entry: resolve(__dirname, 'src/index.ts'),
+      name: 'AmazingAppShell',
+      fileName: (format) => `amazing-app-shell.${format}.js`,
+    },
+    rollupOptions: {
+      // make sure to externalize deps that shouldn't be bundled
+      // into your library
+      external: ['react', 'react-dom', 'tailwindcss'],
+      output: {
+        // Provide global variables to use in the UMD build
+        // for externalized deps
+        globals: {
+          react: 'React',
+          'react-dom': 'ReactDOM',
+          tailwindcss: 'tailwindcss',
+        },
+      },
+    },
+  },
+})
+````
+
+## File: src/components/layout/AppShell.tsx
+````typescript
+import React, { useRef, type ReactElement } from 'react'
+import { cn } from '@/lib/utils'
+import { CommandPalette } from '@/components/global/CommandPalette';
+import { useAppStore } from '@/store/appStore';
+import { useAppShell } from '@/context/AppShellContext';
+import { SIDEBAR_STATES } from '@/lib/utils'
+import { useResizableSidebar, useResizableRightPane } from '@/hooks/useResizablePanes.hook'
+import { useSidebarAnimations, useBodyStateAnimations } from '@/hooks/useAppShellAnimations.hook'
+
+interface AppShellProps {
+  sidebar: ReactElement;
+  topBar: ReactElement;
+  mainContent: ReactElement;
+  rightPane: ReactElement;
+  commandPalette?: ReactElement;
+}
+
+
+export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalette }: AppShellProps) {
+  const {
+    sidebarState,
+    dispatch,
+    autoExpandSidebar,
+    toggleSidebar,
+    peekSidebar,
+    toggleFullscreen,
+  } = useAppShell();
+  
+  const { isDarkMode, toggleDarkMode } = useAppStore();
+  const appRef = useRef<HTMLDivElement>(null)
+  const sidebarRef = useRef<HTMLDivElement>(null)
+  const mainContentRef = useRef<HTMLDivElement>(null)
+  const rightPaneRef = useRef<HTMLDivElement>(null)
+  const resizeHandleRef = useRef<HTMLDivElement>(null)
+  const topBarContainerRef = useRef<HTMLDivElement>(null)
+
+  // Custom hooks for logic
+  useResizableSidebar(sidebarRef, resizeHandleRef);
+  useResizableRightPane();
+  useSidebarAnimations(sidebarRef, resizeHandleRef);
+  useBodyStateAnimations(appRef, mainContentRef, rightPaneRef, topBarContainerRef);
+  
+  const sidebarWithProps = React.cloneElement(sidebar, { 
+    ref: sidebarRef,
+    onMouseEnter: () => {
+      if (autoExpandSidebar && sidebarState === SIDEBAR_STATES.COLLAPSED) {
+        peekSidebar()
+      }
+    },
+    onMouseLeave: () => {
+      if (autoExpandSidebar && sidebarState === SIDEBAR_STATES.PEEK) {
+        dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.COLLAPSED });
+      }
+    }
+  });
+
+  const topBarWithProps = React.cloneElement(topBar, {
+    onToggleSidebar: toggleSidebar,
+    onToggleFullscreen: toggleFullscreen,
+    onToggleDarkMode: toggleDarkMode,
+  });
+
+  const mainContentWithProps = React.cloneElement(mainContent, {
+    ref: mainContentRef,
+    onToggleFullscreen: toggleFullscreen,
+  });
+
+  const rightPaneWithProps = React.cloneElement(rightPane, { ref: rightPaneRef });
+
+  return (
+    <div 
+      ref={appRef}
+      className={cn(
+        "relative h-screen w-screen overflow-hidden bg-background transition-colors duration-300",
+        isDarkMode && "dark"
+      )}
+    >
+      <div className="flex h-screen overflow-hidden">
+        {/* Enhanced Sidebar */}
+        {sidebarWithProps}
+
+        {/* Resize Handle */}
+        {sidebarState !== SIDEBAR_STATES.HIDDEN && (
+          <div
+            ref={resizeHandleRef}
+            className={cn(
+              "absolute top-0 w-2 h-full bg-transparent hover:bg-primary/20 cursor-col-resize z-50 transition-colors duration-200 group -translate-x-1/2"
+            )}
+            onMouseDown={(e) => {
+              e.preventDefault()
+              dispatch({ type: 'SET_IS_RESIZING', payload: true });
+            }}
+          >
+            <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200 mx-auto" />
+          </div>
+        )}
+
+        {/* Main Content Area */}
+        <div className="relative flex-1 overflow-hidden bg-background">
+          <div ref={topBarContainerRef} className="absolute inset-x-0 top-0 z-30">
+            {topBarWithProps}
+          </div>
+          
+          {/* Main Content */}
+          {mainContentWithProps}
+        </div>
+      </div>
+      {rightPaneWithProps}
+      {commandPalette || <CommandPalette />}
+    </div>
+  )
+}
+````
+
+## File: src/components/layout/MainContent.tsx
+````typescript
+import { forwardRef } from 'react'
+import { X } from 'lucide-react'
+import { cn } from '@/lib/utils';
+import { BODY_STATES } from '@/lib/utils'
+import { useAppShell } from '@/context/AppShellContext'
+
+interface MainContentProps {
+  onToggleFullscreen?: () => void
+  children?: React.ReactNode;
+}
+
+export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
+  ({ onToggleFullscreen, children }, ref) => {
+    const { bodyState } = useAppShell();
+
+    return (
+      <div
+        ref={ref}
+        className={cn(
+        "flex flex-col h-full overflow-hidden",
+        bodyState === BODY_STATES.FULLSCREEN && "absolute inset-0 z-40 bg-background"
+        )}
+      >
+        {bodyState === BODY_STATES.FULLSCREEN && (
+          <button
+            onClick={() => onToggleFullscreen?.()}
+            className="fixed top-6 right-6 lg:right-12 z-[100] h-12 w-12 flex items-center justify-center rounded-full bg-card/50 backdrop-blur-sm hover:bg-card/75 transition-colors group"
+            title="Exit Fullscreen"
+          >
+            <X className="w-6 h-6 group-hover:scale-110 group-hover:rotate-90 transition-all duration-300" />
+          </button>
+        )}
+
+        <div className="flex-1 min-h-0 flex flex-col">
+          {children}
+        </div>
+      </div>
+    )
+  }
+)
+MainContent.displayName = 'MainContent'
+````
+
 ## File: README.md
 ````markdown
 # Amazing App Shell
@@ -5396,15 +5722,14 @@ This library provides all the necessary components and hooks to build a complex 
 ## Installation
 
 Install the package and its peer dependencies using your preferred package manager.
-
 ```bash
-npm install amazing-app-shell react react-dom gsap lucide-react tailwind-merge class-variance-authority clsx
+npm install amazing-app-shell react react-dom tailwindcss gsap lucide-react tailwind-merge class-variance-authority clsx tailwindcss-animate
 ```
 
 or
 
 ```bash
-yarn add amazing-app-shell react react-dom gsap lucide-react tailwind-merge class-variance-authority clsx
+yarn add amazing-app-shell react react-dom tailwindcss gsap lucide-react tailwind-merge class-variance-authority clsx tailwindcss-animate
 ```
 
 ## Getting Started
@@ -5419,14 +5744,17 @@ You need to configure Tailwind CSS to correctly process the styles from the libr
 
 ```javascript
 /** @type {import('tailwindcss').Config} */
-module.tole = {
+module.exports = {
   // ... your other config
   content: [
     './src/**/*.{js,ts,jsx,tsx}',
     // Add the path to the library's components
     './node_modules/amazing-app-shell/dist/**/*.{js,ts,jsx,tsx}',
   ],
-  // ...
+  theme: {
+    // ...
+  },
+  plugins: [require('tailwindcss-animate')],
 };
 ```
 
@@ -5454,11 +5782,18 @@ Wrap your application's root component with `AppShellProvider` and `ToasterProvi
 import React from 'react';
 import { AppShellProvider } from 'amazing-app-shell';
 import { ToasterProvider } from 'amazing-app-shell'; // Re-exported for convenience
+import { Rocket } from 'lucide-react';
 import { YourAppComponent } from './YourAppComponent';
 
 function App() {
+  const myLogo = (
+    <div className="p-2 bg-primary/20 rounded-lg">
+      <Rocket className="w-5 h-5 text-primary" />
+    </div>
+  );
+
   return (
-    <AppShellProvider>
+    <AppShellProvider appName="My Awesome App" appLogo={myLogo}>
       <ToasterProvider>
         <YourAppComponent />
       </ToasterProvider>
@@ -5652,265 +5987,124 @@ Contributions are welcome! Please read our [contributing guidelines](./CONTRIBUT
 This project is licensed under the **MIT License**. See the [LICENSE](./LICENSE) file for details.
 ````
 
-## File: tailwind.config.js
-````javascript
-/** @type {import('tailwindcss').Config} */
-export default {
-  content: [
-    "./index.html",
-    "./src/**/*.{js,ts,jsx,tsx}",
-  ],
-  darkMode: "class",
-  theme: {
-    extend: {
-      colors: {
-        border: "hsl(var(--border))",
-        input: "hsl(var(--input))",
-        ring: "hsl(var(--ring))",
-        background: "hsl(var(--background))",
-        foreground: "hsl(var(--foreground))",
-        primary: {
-          DEFAULT: "hsl(var(--primary))",
-          foreground: "hsl(var(--primary-foreground))",
-        },
-        secondary: {
-          DEFAULT: "hsl(var(--secondary))",
-          foreground: "hsl(var(--secondary-foreground))",
-        },
-        destructive: {
-          DEFAULT: "hsl(var(--destructive))",
-          foreground: "hsl(var(--destructive-foreground))",
-        },
-        muted: {
-          DEFAULT: "hsl(var(--muted))",
-          foreground: "hsl(var(--muted-foreground))",
-        },
-        accent: {
-          DEFAULT: "hsl(var(--accent))",
-          foreground: "hsl(var(--accent-foreground))",
-        },
-        popover: {
-          DEFAULT: "hsl(var(--popover))",
-          foreground: "hsl(var(--popover-foreground))",
-        },
-        card: {
-          DEFAULT: "hsl(var(--card))",
-          foreground: "hsl(var(--card-foreground))",
-        },
-      },
-      borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 4px)",
-        sm: "calc(var(--radius) - 8px)",
-        DEFAULT: "0.5rem",
-      },
-      boxShadow: {
-        input: [
-          "0px 2px 3px -1px rgba(0, 0, 0, 0.1)",
-          "0px 1px 0px 0px rgba(25, 28, 33, 0.02)",
-          "0px 0px 0px 1px rgba(25, 28, 33, 0.08)",
-        ].join(", "),
-      },
-      animation: {
-        "fade-in": "fadeIn 0.5s ease-in-out",
-        "slide-in": "slideIn 0.3s ease-out",
-        "scale-in": "scaleIn 0.2s ease-out",
-        ripple: "ripple 2s ease calc(var(--i, 0) * 0.2s) infinite",
-        orbit: "orbit calc(var(--duration) * 1s) linear infinite",
-      },
-      keyframes: {
-        fadeIn: {
-          "0%": { opacity: "0" },
-          "100%": { opacity: "1" },
-        },
-        slideIn: {
-          "0%": { transform: "translateX(-100%)" },
-          "100%": { transform: "translateX(0)" },
-        },
-        scaleIn: {
-          "0%": { transform: "scale(0.95)", opacity: "0" },
-          "100%": { transform: "scale(1)", opacity: "1" },
-        },
-        ripple: {
-          "0%, 100%": { transform: "translate(-50%, -50%) scale(1)" },
-          "50%": { transform: "translate(-50%, -50%) scale(0.9)" },
-        },
-        orbit: {
-          "0%": {
-            transform:
-              "rotate(0deg) translateY(calc(var(--radius) * 1px)) rotate(0deg)",
-          },
-          "100%": {
-            transform:
-              "rotate(360deg) translateY(calc(var(--radius) * 1px)) rotate(-360deg)",
-          },
-        }
-      },
-    },
-  },
-  plugins: [require("tailwindcss-animate")],
-}
-````
+## File: src/index.css
+````css
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import 'tailwindcss/utilities';
 
-## File: src/components/layout/AppShell.tsx
-````typescript
-import React, { useRef, type ReactElement } from 'react'
-import { cn } from '@/lib/utils'
-import { CommandPalette } from '@/components/global/CommandPalette';
-import { useAppStore } from '@/store/appStore';
-import { useAppShell } from '@/context/AppShellContext';
-import { SIDEBAR_STATES } from '@/lib/utils'
-import { useResizableSidebar, useResizableRightPane } from '@/hooks/useResizablePanes.hook'
-import { useSidebarAnimations, useBodyStateAnimations } from '@/hooks/useAppShellAnimations.hook'
-
-interface AppShellProps {
-  sidebar: ReactElement;
-  topBar: ReactElement;
-  mainContent: ReactElement;
-  rightPane: ReactElement;
-  commandPalette?: ReactElement;
-}
-
-
-export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalette }: AppShellProps) {
-  const {
-    sidebarState,
-    dispatch,
-    autoExpandSidebar,
-    toggleSidebar,
-    peekSidebar,
-    toggleFullscreen,
-  } = useAppShell();
-  
-  const { isDarkMode, toggleDarkMode } = useAppStore();
-  const appRef = useRef<HTMLDivElement>(null)
-  const sidebarRef = useRef<HTMLDivElement>(null)
-  const mainContentRef = useRef<HTMLDivElement>(null)
-  const rightPaneRef = useRef<HTMLDivElement>(null)
-  const resizeHandleRef = useRef<HTMLDivElement>(null)
-  const topBarContainerRef = useRef<HTMLDivElement>(null)
-
-  // Custom hooks for logic
-  useResizableSidebar(sidebarRef, resizeHandleRef);
-  useResizableRightPane();
-  useSidebarAnimations(sidebarRef, resizeHandleRef);
-  useBodyStateAnimations(appRef, mainContentRef, rightPaneRef, topBarContainerRef);
-  
-  const sidebarWithProps = React.cloneElement(sidebar, { 
-    ref: sidebarRef,
-    onMouseEnter: () => {
-      if (autoExpandSidebar && sidebarState === SIDEBAR_STATES.COLLAPSED) {
-        peekSidebar()
-      }
-    },
-    onMouseLeave: () => {
-      if (autoExpandSidebar && sidebarState === SIDEBAR_STATES.PEEK) {
-        dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.COLLAPSED });
-      }
-    }
-  });
-
-  const topBarWithProps = React.cloneElement(topBar, {
-    onToggleSidebar: toggleSidebar,
-    onToggleFullscreen: toggleFullscreen,
-    onToggleDarkMode: toggleDarkMode,
-  });
-
-  const mainContentWithProps = React.cloneElement(mainContent, {
-    ref: mainContentRef,
-    onToggleFullscreen: toggleFullscreen,
-  });
-
-  const rightPaneWithProps = React.cloneElement(rightPane, { ref: rightPaneRef });
-
-  return (
-    <div 
-      ref={appRef}
-      className={cn(
-        "relative h-screen w-screen overflow-hidden bg-background transition-colors duration-300",
-        isDarkMode && "dark"
-      )}
-    >
-      <div className="flex h-screen overflow-hidden">
-        {/* Enhanced Sidebar */}
-        {sidebarWithProps}
-
-        {/* Resize Handle */}
-        {sidebarState !== SIDEBAR_STATES.HIDDEN && (
-          <div
-            ref={resizeHandleRef}
-            className={cn(
-              "absolute top-0 w-2 h-full bg-transparent hover:bg-primary/20 cursor-col-resize z-50 transition-colors duration-200 group -translate-x-1/2"
-            )}
-            onMouseDown={(e) => {
-              e.preventDefault()
-              dispatch({ type: 'SET_IS_RESIZING', payload: true });
-            }}
-          >
-            <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200 mx-auto" />
-          </div>
-        )}
-
-        {/* Main Content Area */}
-        <div className="relative flex-1 overflow-hidden bg-background">
-          <div ref={topBarContainerRef} className="absolute inset-x-0 top-0 z-30">
-            {topBarWithProps}
-          </div>
-          
-          {/* Main Content */}
-          {mainContentWithProps}
-        </div>
-      </div>
-      {rightPaneWithProps}
-      {commandPalette || <CommandPalette />}
-    </div>
-  )
-}
-````
-
-## File: src/components/layout/MainContent.tsx
-````typescript
-import { forwardRef } from 'react'
-import { X } from 'lucide-react'
-import { cn } from '@/lib/utils';
-import { BODY_STATES } from '@/lib/utils'
-import { useAppShell } from '@/context/AppShellContext'
-
-interface MainContentProps {
-  onToggleFullscreen?: () => void
-  children?: React.ReactNode;
-}
-
-export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
-  ({ onToggleFullscreen, children }, ref) => {
-    const { bodyState } = useAppShell();
-
-    return (
-      <div
-        ref={ref}
-        className={cn(
-        "flex flex-col h-full overflow-hidden",
-        bodyState === BODY_STATES.FULLSCREEN && "absolute inset-0 z-40 bg-background"
-        )}
-      >
-        {bodyState === BODY_STATES.FULLSCREEN && (
-          <button
-            onClick={() => onToggleFullscreen?.()}
-            className="fixed top-6 right-6 lg:right-12 z-[100] h-12 w-12 flex items-center justify-center rounded-full bg-card/50 backdrop-blur-sm hover:bg-card/75 transition-colors group"
-            title="Exit Fullscreen"
-          >
-            <X className="w-6 h-6 group-hover:scale-110 group-hover:rotate-90 transition-all duration-300" />
-          </button>
-        )}
-
-        <div className="flex-1 min-h-0 flex flex-col">
-          {children}
-        </div>
-      </div>
-    )
+@layer base {
+  :root {
+    --primary-hsl: 220 84% 60%;
+    --background: 210 40% 96.1%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: var(--primary-hsl);
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222.2 84% 4.9%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96%;
+    --accent-foreground: 222.2 84% 4.9%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: var(--primary-hsl);
+    --radius: 1rem;
   }
-)
-MainContent.displayName = 'MainContent'
+
+  .dark {
+    --background: 240 6% 9%;
+    --foreground: 210 40% 98%;
+    --card: 240 6% 14%;
+    --card-foreground: 210 40% 98%;
+    --popover: 240 6% 12%;
+    --popover-foreground: 210 40% 98%;
+    --primary: var(--primary-hsl);
+    --primary-foreground: 210 40% 98%;
+    --secondary: 240 5% 20%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 240 5% 20%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 240 5% 20%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 240 5% 20%;
+    --input: 240 5% 20%;
+    --ring: var(--primary-hsl);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Custom scrollbar styles */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-border rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-muted-foreground/50;
+}
+
+/* For UserDropdown */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
+
+@layer base {
+  .login-page-theme {
+    --background: hsl(0 0% 100%);
+    --foreground: hsl(0 0% 0%);
+    --skeleton: hsl(0 0% 90%);
+    --border: hsl(220 20% 90%);
+    --btn-border: hsl(214.3 31.8% 91.4%);
+    --input: hsl(220 20% 90%);
+    --radius: 0.5rem;
+  }
+ 
+  .dark .login-page-theme {
+    --background: hsl(222 94% 5%);
+    --foreground: hsl(0 0% 100%);
+    --skeleton: hsl(218 36% 16%);
+    --border: hsl(220 20% 90%);
+    --btn-border: hsl(217 32.6% 17.5%);
+    --input: hsl(219 63% 16%);
+    --radius: 0.5rem;
+  }
+}
+
+@layer components {
+  .g-button {
+    @apply rounded-[var(--radius)] border;
+    border-color: var(--btn-border);
+  }
+}
 ````
 
 ## File: src/App.tsx
@@ -5939,7 +6133,7 @@ import { SettingsContent } from './features/settings/SettingsContent'
 import LoginPage from './pages/Login'
 
 // Import icons
-import { LayoutDashboard, Settings, Component, Bell, SlidersHorizontal, ChevronsLeftRight, Search, Filter, Plus, PanelRight, ChevronRight } from 'lucide-react'
+import { LayoutDashboard, Settings, Component, Bell, SlidersHorizontal, ChevronsLeftRight, Search, Filter, Plus, PanelRight, ChevronRight, Rocket } from 'lucide-react'
 import { BODY_STATES } from './lib/utils'
 import { cn } from './lib/utils'
 
@@ -6153,7 +6347,14 @@ function App() {
 
   return (
     <div className="h-screen w-screen overflow-hidden bg-background">
-      <AppShellProvider>
+      <AppShellProvider
+        appName="Amazing App"
+        appLogo={
+          <div className="p-2 bg-primary/20 rounded-lg">
+            <Rocket className="w-5 h-5 text-primary" />
+          </div>
+        }
+      >
         <ComposedApp />
       </AppShellProvider>
     </div>
@@ -6163,132 +6364,12 @@ function App() {
 export default App
 ````
 
-## File: src/index.css
-````css
-@import 'tailwindcss/base';
-@import 'tailwindcss/components';
-@import 'tailwindcss/utilities';
-
-@layer base {
-  :root {
-    --primary-hsl: 220 84% 60%;
-    --background: 210 40% 96.1%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: var(--primary-hsl);
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 222.2 84% 4.9%;
-    --muted: 210 40% 96%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96%;
-    --accent-foreground: 222.2 84% 4.9%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: var(--primary-hsl);
-    --radius: 1rem;
-  }
-
-  .dark {
-    --background: 240 6% 9%;
-    --foreground: 210 40% 98%;
-    --card: 240 6% 14%;
-    --card-foreground: 210 40% 98%;
-    --popover: 240 6% 12%;
-    --popover-foreground: 210 40% 98%;
-    --primary: var(--primary-hsl);
-    --primary-foreground: 210 40% 98%;
-    --secondary: 240 5% 20%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 240 5% 20%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 240 5% 20%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 240 5% 20%;
-    --input: 240 5% 20%;
-    --ring: var(--primary-hsl);
-  }
-}
-
-@layer base {
-  * {
-    @apply border-border;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
-}
-
-/* Custom scrollbar styles */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-
-::-webkit-scrollbar-track {
-  @apply bg-transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  @apply bg-border rounded-full;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  @apply bg-muted-foreground/50;
-}
-
-/* For UserDropdown */
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-.no-scrollbar {
-  -ms-overflow-style: none; /* IE and Edge */
-  scrollbar-width: none; /* Firefox */
-}
-
-@layer base {
-  .login-page-theme {
-    --background: hsl(0 0% 100%);
-    --foreground: hsl(0 0% 0%);
-    --skeleton: hsl(0 0% 90%);
-    --border: hsl(220 20% 90%);
-    --btn-border: hsl(214.3 31.8% 91.4%);
-    --input: hsl(220 20% 90%);
-    --radius: 0.5rem;
-  }
- 
-  .dark .login-page-theme {
-    --background: hsl(222 94% 5%);
-    --foreground: hsl(0 0% 100%);
-    --skeleton: hsl(218 36% 16%);
-    --border: hsl(220 20% 90%);
-    --btn-border: hsl(217 32.6% 17.5%);
-    --input: hsl(219 63% 16%);
-    --radius: 0.5rem;
-  }
-}
-
-@layer components {
-  .g-button {
-    @apply rounded-[var(--radius)] border;
-    border-color: var(--btn-border);
-  }
-}
-````
-
 ## File: package.json
 ````json
 {
   "name": "amazing-app-shell",
   "private": false,
-  "version": "1.0.0",
+  "version": "1.0.1",
   "type": "module",
   "files": [
     "dist"
@@ -6323,11 +6404,14 @@ export default App
     "cmdk": "^0.2.0",
     "gsap": "^3.12.2",
     "lucide-react": "^0.294.0",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
     "sonner": "^1.2.4",
     "tailwind-merge": "^2.0.0",
     "zustand": "^4.5.7"
+  },
+  "peerDependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "tailwindcss": "^3.3.5"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",

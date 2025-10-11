@@ -19,7 +19,7 @@ import { ToasterDemo } from './pages/ToasterDemo'
 import { NotificationsPage } from './pages/Notifications'
 import { ContentInSidePanePlaceholder } from './components/shared/ContentInSidePanePlaceholder'
 import { SettingsContent } from './features/settings/SettingsContent'
-import LoginPage from './pages/Login'
+import { LoginPage } from './components/auth/LoginPage'
 
 // Import icons
 import { LayoutDashboard, Settings, Component, Bell, SlidersHorizontal, ChevronsLeftRight, Search, Filter, Plus, PanelRight, ChevronRight, Rocket } from 'lucide-react'
