@@ -22,7 +22,7 @@ import { SettingsContent } from './features/settings/SettingsContent'
 import LoginPage from './pages/Login'
 
 // Import icons
-import { LayoutDashboard, Settings, Component, Bell, SlidersHorizontal, ChevronsLeftRight, Search, Filter, Plus, PanelRight, ChevronRight } from 'lucide-react'
+import { LayoutDashboard, Settings, Component, Bell, SlidersHorizontal, ChevronsLeftRight, Search, Filter, Plus, PanelRight, ChevronRight, Rocket } from 'lucide-react'
 import { BODY_STATES } from './lib/utils'
 import { cn } from './lib/utils'
 
@@ -236,7 +236,14 @@ function App() {
 
   return (
     <div className="h-screen w-screen overflow-hidden bg-background">
-      <AppShellProvider>
+      <AppShellProvider
+        appName="Amazing App"
+        appLogo={
+          <div className="p-2 bg-primary/20 rounded-lg">
+            <Rocket className="w-5 h-5 text-primary" />
+          </div>
+        }
+      >
         <ComposedApp />
       </AppShellProvider>
     </div>

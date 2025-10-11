@@ -6,6 +6,7 @@ import {
   useMemo,
   useCallback,
   type ReactNode,
+  type ReactElement,
   type Dispatch,
 } from 'react';
 import { SIDEBAR_STATES, BODY_STATES, type SidebarState, type BodyState } from '@/lib/utils';
@@ -25,6 +26,8 @@ interface AppShellState {
   reducedMotion: boolean;
   compactMode: boolean;
   primaryColor: string;
+  appName?: string;
+  appLogo?: ReactElement;
 }
 
 type AppShellAction =
@@ -57,6 +60,8 @@ const defaultState: AppShellState = {
   reducedMotion: false,
   compactMode: false,
   primaryColor: '220 84% 60%',
+  appName: 'Amazing App',
+  appLogo: undefined,
 };
 
 function appShellReducer(state: AppShellState, action: AppShellAction): AppShellState {
@@ -73,7 +78,12 @@ function appShellReducer(state: AppShellState, action: AppShellAction): AppShell
     case 'SET_REDUCED_MOTION': return { ...state, reducedMotion: action.payload };
     case 'SET_COMPACT_MODE': return { ...state, compactMode: action.payload };
     case 'SET_PRIMARY_COLOR': return { ...state, primaryColor: action.payload };
-    case 'RESET_TO_DEFAULTS': return defaultState;
+    case 'RESET_TO_DEFAULTS':
+      return {
+        ...defaultState,
+        appName: state.appName, // Preserve props passed to provider
+        appLogo: state.appLogo,   // Preserve props passed to provider
+      };
     default: return state;
   }
 }
@@ -95,8 +105,18 @@ interface AppShellContextValue extends AppShellState {
 
 const AppShellContext = createContext<AppShellContextValue | null>(null);
 
-export function AppShellProvider({ children }: { children: ReactNode }) {
-  const [state, dispatch] = useReducer(appShellReducer, defaultState);
+interface AppShellProviderProps {
+  children: ReactNode;
+  appName?: string;
+  appLogo?: ReactElement;
+}
+
+export function AppShellProvider({ children, appName, appLogo }: AppShellProviderProps) {
+  const [state, dispatch] = useReducer(appShellReducer, {
+    ...defaultState,
+    ...(appName && { appName }),
+    ...(appLogo && { appLogo }),
+  });
 
   // Side effect for primary color
   useEffect(() => {

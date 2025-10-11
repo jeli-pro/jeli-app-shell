@@ -29,15 +29,14 @@ This library provides all the necessary components and hooks to build a complex 
 ## Installation
 
 Install the package and its peer dependencies using your preferred package manager.
-
 ```bash
-npm install amazing-app-shell react react-dom gsap lucide-react tailwind-merge class-variance-authority clsx
+npm install amazing-app-shell react react-dom tailwindcss gsap lucide-react tailwind-merge class-variance-authority clsx tailwindcss-animate
 ```
 
 or
 
 ```bash
-yarn add amazing-app-shell react react-dom gsap lucide-react tailwind-merge class-variance-authority clsx
+yarn add amazing-app-shell react react-dom tailwindcss gsap lucide-react tailwind-merge class-variance-authority clsx tailwindcss-animate
 ```
 
 ## Getting Started
@@ -52,14 +51,17 @@ You need to configure Tailwind CSS to correctly process the styles from the libr
 
 ```javascript
 /** @type {import('tailwindcss').Config} */
-module.tole = {
+module.exports = {
   // ... your other config
   content: [
     './src/**/*.{js,ts,jsx,tsx}',
     // Add the path to the library's components
     './node_modules/amazing-app-shell/dist/**/*.{js,ts,jsx,tsx}',
   ],
-  // ...
+  theme: {
+    // ...
+  },
+  plugins: [require('tailwindcss-animate')],
 };
 ```
 
@@ -87,11 +89,18 @@ Wrap your application's root component with `AppShellProvider` and `ToasterProvi
 import React from 'react';
 import { AppShellProvider } from 'amazing-app-shell';
 import { ToasterProvider } from 'amazing-app-shell'; // Re-exported for convenience
+import { Rocket } from 'lucide-react';
 import { YourAppComponent } from './YourAppComponent';
 
 function App() {
+  const myLogo = (
+    <div className="p-2 bg-primary/20 rounded-lg">
+      <Rocket className="w-5 h-5 text-primary" />
+    </div>
+  );
+
   return (
-    <AppShellProvider>
+    <AppShellProvider appName="My Awesome App" appLogo={myLogo}>
       <ToasterProvider>
         <YourAppComponent />
       </ToasterProvider>

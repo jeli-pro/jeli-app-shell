@@ -85,7 +85,7 @@ interface SidebarProps {
 
 export const EnhancedSidebar = React.forwardRef<HTMLDivElement, SidebarProps>(
   ({ onMouseEnter, onMouseLeave }, ref) => {
-    const { sidebarWidth, compactMode } = useAppShell();
+    const { sidebarWidth, compactMode, appName, appLogo } = useAppShell();
     const [selectedWorkspace, setSelectedWorkspace] = React.useState(mockWorkspaces[0]);
 
     return (
@@ -97,10 +97,12 @@ export const EnhancedSidebar = React.forwardRef<HTMLDivElement, SidebarProps>(
       >
         <SidebarContent>
           <SidebarHeader>
-            <div className="p-2 bg-primary/20 rounded-lg">
-              <Rocket className="w-5 h-5 text-primary" />
-            </div>
-            <SidebarTitle>Amazing App</SidebarTitle>
+            {appLogo || (
+              <div className="p-2 bg-primary/20 rounded-lg">
+                <Rocket className="w-5 h-5 text-primary" />
+              </div>
+            )}
+            <SidebarTitle>{appName}</SidebarTitle>
           </SidebarHeader>
 
           <SidebarBody>
