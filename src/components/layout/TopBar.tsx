@@ -88,8 +88,7 @@ export function TopBar({
           <Zap className="w-5 h-5 group-hover:scale-110 transition-transform" />
         </button>
 
-        {/* View Mode Controls */}
-        <ViewModeSwitcher />
+        {bodyState !== BODY_STATES.SPLIT_VIEW && <ViewModeSwitcher />}
 
         <div className="w-px h-6 bg-border mx-2" />
 

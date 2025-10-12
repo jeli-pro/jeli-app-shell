@@ -1,0 +1,899 @@
+uuid: d03b2929-e5a0-410a-accd-a040b2a757e2
+projectId: jeli-app-shell
+createdAt: '2025-10-12T03:49:56.789Z'
+gitCommitMsg: >-
+  feat(split-view): make ViewModeSwitcher context-aware
+
+  This commit introduces a context-aware ViewModeSwitcher for the split-view
+  layout.
+
+  - The global ViewModeSwitcher in the TopBar is now hidden when in split-view
+  mode to avoid redundancy. - A new `hoveredPane` state has been added to
+  `AppShellContext` to track mouse position over the left and right panes. - In
+  split-view, the ViewModeSwitcher now appears dynamically in the top-right
+  corner of the pane that the user is hovering over. - This functionality is
+  disabled during drag-and-drop operations to prevent UI conflicts.
+promptSummary: >-
+  Make the ViewModeSwitcher context-aware in split-view mode, hiding it from the
+  TopBar and showing it on hover within the active pane (left or right).
+reasoning:
+  - >-
+    This is an excellent feature request that will enhance the user experience
+    in split-view mode by making the `ViewModeSwitcher` context-aware. Here is
+    my plan to implement this:
+  - >-
+    1.  **Modify `AppShellContext`**: I'll introduce a new state variable,
+    `hoveredPane`, to track whether the mouse cursor is over the left or right
+    pane in split-view mode.
+  - >-
+    2.  **Update `TopBar`**: The global `ViewModeSwitcher` in the top bar is not
+    needed in split view, as context-specific switchers will be available. I
+    will hide it when `bodyState` is `SPLIT_VIEW`.
+  - '3.  **Enhance `AppShell`**: This is where the core logic will reside.'
+  - >-
+    *   I will add `onMouseEnter` and `onMouseLeave` event handlers to the main
+    content area and the right pane wrapper. These handlers will update the
+    `hoveredPane` state in the context.
+  - >-
+    *   When `bodyState` is `SPLIT_VIEW` and a pane is hovered, a
+    `ViewModeSwitcher` will be rendered within that pane, positioned at the
+    top-right corner.
+  - >-
+    *   To avoid conflicts with the drag-and-drop functionality, the contextual
+    `ViewModeSwitcher` will be hidden while a component is being dragged.
+  - >-
+    This approach will provide a more intuitive and powerful interface for
+    managing views when in split mode.
+  - 'Here are the changes:'
+  - First, I'll update the `AppShellContext` to manage the hover state.
+  - >-
+    Next, I'll update the `TopBar` to hide the `ViewModeSwitcher` when in
+    split-view mode.
+  - >-
+    Finally, I'll implement the logic in the main `AppShell` component to
+    display the `ViewModeSwitcher` on hover within the appropriate pane.
+operations:
+  - type: write
+    path: src/context/AppShellContext.tsx
+    content: >+
+      --- src/context/AppShellContext.tsx
+
+      +++ src/context/AppShellContext.tsx
+
+      @@ -18,6 +18,7 @@
+         appLogo?: ReactElement;
+        draggedPage: 'dashboard' | 'settings' | 'toaster' | 'notifications' | null;
+        dragHoverTarget: 'left' | 'right' | null;
+      + hoveredPane: 'left' | 'right' | null;
+       }
+       
+       type AppShellAction =
+      @@ -34,6 +35,7 @@
+         | { type: 'SET_PRIMARY_COLOR'; payload: string }
+         | { type: 'SET_DRAGGED_PAGE'; payload: 'dashboard' | 'settings' | 'toaster' | 'notifications' | null }
+         | { type: 'SET_DRAG_HOVER_TARGET'; payload: 'left' | 'right' | null }
+      +  | { type: 'SET_HOVERED_PANE'; payload: 'left' | 'right' | null }
+         | { type: 'RESET_TO_DEFAULTS' };
+       
+       // --- Reducer ---
+      @@ -53,6 +55,7 @@
+         appLogo: undefined,
+         draggedPage: null,
+         dragHoverTarget: null,
+      +  hoveredPane: null,
+       };
+       
+       function appShellReducer(state: AppShellState, action: AppShellAction): AppShellState {
+      @@ -70,6 +73,7 @@
+           case 'SET_PRIMARY_COLOR': return { ...state, primaryColor: action.payload };
+           case 'SET_DRAGGED_PAGE': return { ...state, draggedPage: action.payload };
+           case 'SET_DRAG_HOVER_TARGET': return { ...state, dragHoverTarget: action.payload };
+      +    case 'SET_HOVERED_PANE': return { ...state, hoveredPane:
+      action.payload };
+           case 'RESET_TO_DEFAULTS':
+             return {
+               ...defaultState,
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/components/layout/TopBar.tsx
+    content: |+
+      --- src/components/layout/TopBar.tsx
+      +++ src/components/layout/TopBar.tsx
+      @@ -74,8 +74,7 @@
+                 <Zap className="w-5 h-5 group-hover:scale-110 transition-transform" />
+               </button>
+       
+      -        {/* View Mode Controls */}
+      -        <ViewModeSwitcher />
+      +        {bodyState !== BODY_STATES.SPLIT_VIEW && <ViewModeSwitcher />}
+       
+               <div className="w-px h-6 bg-border mx-2" />
+       
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/components/layout/AppShell.tsx
+    content: >+
+      --- src/components/layout/AppShell.tsx
+
+      +++ src/components/layout/AppShell.tsx
+
+      @@ -1,11 +1,12 @@
+       import React, { useRef, type ReactElement, useCallback } from 'react'
+       import { cn } from '@/lib/utils'
+       import { CommandPalette } from '@/components/global/CommandPalette';
+       import { useAppStore } from '@/store/appStore';
+       import { useAppShell } from '@/context/AppShellContext';
+       import { SIDEBAR_STATES, BODY_STATES } from '@/lib/utils'
+       import { useResizableSidebar, useResizableRightPane } from '@/hooks/useResizablePanes.hook'
+       import { useSidebarAnimations, useBodyStateAnimations } from '@/hooks/useAppShellAnimations.hook'
+      +import { ViewModeSwitcher } from './ViewModeSwitcher';
+       
+       interface AppShellProps {
+         sidebar: ReactElement;
+      @@ -26,6 +27,7 @@
+           dispatch,
+           autoExpandSidebar,
+           toggleSidebar,
+      +    hoveredPane,
+           peekSidebar,
+           draggedPage,
+           dragHoverTarget,
+      @@ -172,13 +174,22 @@
+       
+               {/* Main area wrapper */}
+               <div className="flex-1 flex flex-col overflow-hidden">
+      -          <div ref={topBarContainerRef} className="relative z-30">
+
+      +          <div
+
+      +            ref={topBarContainerRef}
+
+      +            className="relative z-30"
+
+      +            onMouseEnter={() => { if (isSplitView) dispatch({ type:
+      'SET_HOVERED_PANE', payload: null }); }}
+
+      +          >
+                   {topBarWithProps}
+                 </div>
+       
+                 <div className="flex flex-1 min-h-0">
+      -            <div ref={mainAreaRef} className="relative flex-1
+      overflow-hidden bg-background">
+
+      +            <div
+
+      +              ref={mainAreaRef}
+
+      +              className="relative flex-1 overflow-hidden bg-background"
+
+      +              onMouseEnter={() => { if (isSplitView && !draggedPage)
+      dispatch({ type: 'SET_HOVERED_PANE', payload: 'left' }); }}
+
+      +              onMouseLeave={() => { if (isSplitView && !draggedPage)
+      dispatch({ type: 'SET_HOVERED_PANE', payload: null }); }}
+
+      +            >
+                     {/* Left drop overlay */}
+                     <div
+                       className={cn(
+      @@ -201,6 +212,11 @@
+                       )}
+                     </div>
+                     {mainContentWithProps}
+      +              {isSplitView && hoveredPane === 'left' && !draggedPage && (
+
+      +                <div className="absolute top-4 right-4 z-50">
+
+      +                  <ViewModeSwitcher />
+
+      +                </div>
+
+      +              )}
+                     {/* Right drop overlay (over main area, ONLY when NOT in split view) */}
+                     {!isSplitView && (
+                       <div
+      @@ -224,6 +240,8 @@
+                   {isSplitView ? (
+                     <div
+                       className="relative"
+      +                onMouseEnter={() => { if (isSplitView && !draggedPage)
+      dispatch({ type: 'SET_HOVERED_PANE', payload: 'right' }); }}
+
+      +                onMouseLeave={() => { if (isSplitView && !draggedPage)
+      dispatch({ type: 'SET_HOVERED_PANE', payload: null }); }}
+                       onDragOver={handleDragOverRight}
+                     >
+                       {rightPaneWithProps}
+      @@ -250,6 +268,11 @@
+                           )}
+                         </div>
+                       )}
+      +                {hoveredPane === 'right' && !draggedPage && (
+
+      +                  <div className="absolute top-4 right-4 z-[70]">
+
+      +                    <ViewModeSwitcher />
+
+      +                  </div>
+
+      +                )}
+                     </div>
+                   ) : rightPaneWithProps}
+                 </div>
+
+    patchStrategy: standard-diff
+snapshot:
+  src/components/layout/TopBar.tsx: |-
+    import {
+      Menu, 
+      Moon, 
+      Sun,
+      Settings,
+      Command,
+      Zap,
+    } from 'lucide-react'
+    import { cn } from '@/lib/utils'
+    import { BODY_STATES } from '@/lib/utils'
+    import { useAppStore } from '@/store/appStore'
+    import { useAppShell } from '@/context/AppShellContext'
+    import { UserDropdown } from './UserDropdown'
+    import { ViewModeSwitcher } from './ViewModeSwitcher'
+
+    interface TopBarProps {
+      onToggleSidebar?: () => void
+      onToggleDarkMode?: () => void
+      children?: React.ReactNode
+    }
+
+    export function TopBar({
+      onToggleSidebar,
+      onToggleDarkMode,
+      children,
+    }: TopBarProps) {
+      const { bodyState, openSidePane, sidePaneContent } = useAppShell();
+      const { 
+        setCommandPaletteOpen,
+        isDarkMode,
+      } = useAppStore()
+
+      const handleSettingsClick = () => {
+        const isSettingsInSidePane = bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === 'settings'
+
+        // If we're on the settings page and it's not in the side pane, treat this as a "minimize" action.
+        if (!isSettingsInSidePane) {
+          openSidePane('settings');
+        } else {
+          // In all other cases (on dashboard page, or settings already in pane),
+          // just toggle the settings side pane.
+          openSidePane('settings')
+        }
+      };
+
+      return (
+        <div className={cn(
+          "h-20 bg-background border-b border-border flex items-center justify-between px-6 z-50 gap-4",
+          'transition-all duration-300 ease-in-out'
+        )}>
+          {/* Left Section - Sidebar Controls & Breadcrumbs */}
+          <div className="flex items-center gap-4">
+            {/* Sidebar Controls */}
+            <button
+              onClick={() => onToggleSidebar?.()}
+              className={cn(
+                "h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors"
+              )}
+              title="Toggle Sidebar"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+
+          </div>
+
+          {/* Right Section - page controls, and global controls */}
+          <div className="flex items-center gap-3">
+            {children}
+
+            {/* Separator */}
+            <div className="w-px h-6 bg-border mx-2" />
+
+            {/* Quick Actions */}
+            <div className="flex items-center gap-3">
+
+              <button
+                onClick={() => setCommandPaletteOpen(true)}
+                className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+                title="Command Palette (Ctrl+K)"
+              >
+                <Command className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              </button>
+
+            <button
+              className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+              title="Quick Actions"
+            >
+              <Zap className="w-5 h-5 group-hover:scale-110 transition-transform" />
+            </button>
+
+            {/* View Mode Controls */}
+            <ViewModeSwitcher />
+
+            <div className="w-px h-6 bg-border mx-2" />
+
+            {/* Theme and Settings */}
+            <button
+              onClick={() => onToggleDarkMode?.()}
+              className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+              title="Toggle Dark Mode"
+            >
+              {isDarkMode ? (
+                <Sun className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              ) : (
+                <Moon className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              )}
+            </button>
+
+            <button
+              onClick={handleSettingsClick}
+              className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+              title="Settings"
+            >
+              <Settings className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
+            </button>
+            <UserDropdown />
+            </div>
+          </div>
+        </div>
+      )
+    }
+  src/context/AppShellContext.tsx: >-
+    import {
+      createContext,
+      useContext,
+      useReducer,
+      useEffect,
+      useMemo,
+      useCallback,
+      type ReactNode,
+      type ReactElement,
+      type Dispatch,
+    } from 'react';
+
+    import { SIDEBAR_STATES, BODY_STATES, type SidebarState, type BodyState }
+    from '@/lib/utils';
+
+
+    // --- State and Action Types ---
+
+
+    export interface AppShellState {
+      sidebarState: SidebarState;
+      bodyState: BodyState;
+      sidePaneContent: 'details' | 'settings' | 'main' | 'toaster' | 'notifications';
+      sidebarWidth: number;
+      sidePaneWidth: number;
+      splitPaneWidth: number;
+      isResizing: boolean;
+      isResizingRightPane: boolean;
+      isTopBarVisible: boolean;
+      autoExpandSidebar: boolean;
+      reducedMotion: boolean;
+      compactMode: boolean;
+      primaryColor: string;
+      appName?: string;
+      appLogo?: ReactElement;
+     draggedPage: 'dashboard' | 'settings' | 'toaster' | 'notifications' | null;
+     dragHoverTarget: 'left' | 'right' | null;
+    }
+
+
+    type AppShellAction =
+      | { type: 'SET_SIDEBAR_STATE'; payload: SidebarState }
+      | { type: 'SET_BODY_STATE'; payload: BodyState }
+      | { type: 'SET_SIDE_PANE_CONTENT'; payload: AppShellState['sidePaneContent'] }
+      | { type: 'SET_SIDEBAR_WIDTH'; payload: number }
+      | { type: 'SET_SIDE_PANE_WIDTH'; payload: number }
+      | { type: 'SET_SPLIT_PANE_WIDTH'; payload: number }
+      | { type: 'SET_IS_RESIZING'; payload: boolean }
+      | { type: 'SET_IS_RESIZING_RIGHT_PANE'; payload: boolean }
+      | { type: 'SET_TOP_BAR_VISIBLE'; payload: boolean }
+      | { type: 'SET_AUTO_EXPAND_SIDEBAR'; payload: boolean }
+      | { type: 'SET_REDUCED_MOTION'; payload: boolean }
+      | { type: 'SET_COMPACT_MODE'; payload: boolean }
+      | { type: 'SET_PRIMARY_COLOR'; payload: string }
+      | { type: 'SET_DRAGGED_PAGE'; payload: 'dashboard' | 'settings' | 'toaster' | 'notifications' | null }
+      | { type: 'SET_DRAG_HOVER_TARGET'; payload: 'left' | 'right' | null }
+      | { type: 'RESET_TO_DEFAULTS' };
+
+    // --- Reducer ---
+
+
+    const defaultState: AppShellState = {
+      sidebarState: SIDEBAR_STATES.EXPANDED,
+      bodyState: BODY_STATES.NORMAL,
+      sidePaneContent: 'details',
+      sidebarWidth: 280,
+      sidePaneWidth: typeof window !== 'undefined' ? Math.max(300, Math.round(window.innerWidth * 0.6)) : 400,
+      splitPaneWidth: typeof window !== 'undefined' ? Math.max(300, Math.round(window.innerWidth * 0.35)) : 400,
+      isResizing: false,
+      isResizingRightPane: false,
+      isTopBarVisible: true,
+      autoExpandSidebar: true,
+      reducedMotion: false,
+      compactMode: false,
+      primaryColor: '220 84% 60%',
+      appName: 'Jeli App',
+      appLogo: undefined,
+      draggedPage: null,
+      dragHoverTarget: null,
+    };
+
+
+    function appShellReducer(state: AppShellState, action: AppShellAction):
+    AppShellState {
+      switch (action.type) {
+        case 'SET_SIDEBAR_STATE': return { ...state, sidebarState: action.payload };
+        case 'SET_BODY_STATE': return { ...state, bodyState: action.payload };
+        case 'SET_SIDE_PANE_CONTENT': return { ...state, sidePaneContent: action.payload };
+        case 'SET_SIDEBAR_WIDTH': return { ...state, sidebarWidth: Math.max(200, Math.min(500, action.payload)) };
+        case 'SET_SIDE_PANE_WIDTH': return { ...state, sidePaneWidth: Math.max(300, Math.min(window.innerWidth * 0.8, action.payload)) };
+        case 'SET_SPLIT_PANE_WIDTH': return { ...state, splitPaneWidth: Math.max(300, Math.min(window.innerWidth * 0.8, action.payload)) };
+        case 'SET_IS_RESIZING': return { ...state, isResizing: action.payload };
+        case 'SET_IS_RESIZING_RIGHT_PANE': return { ...state, isResizingRightPane: action.payload };
+        case 'SET_TOP_BAR_VISIBLE': return { ...state, isTopBarVisible: action.payload };
+        case 'SET_AUTO_EXPAND_SIDEBAR': return { ...state, autoExpandSidebar: action.payload };
+        case 'SET_REDUCED_MOTION': return { ...state, reducedMotion: action.payload };
+        case 'SET_COMPACT_MODE': return { ...state, compactMode: action.payload };
+        case 'SET_PRIMARY_COLOR': return { ...state, primaryColor: action.payload };
+        case 'SET_DRAGGED_PAGE': return { ...state, draggedPage: action.payload };
+        case 'SET_DRAG_HOVER_TARGET': return { ...state, dragHoverTarget: action.payload };
+        case 'RESET_TO_DEFAULTS':
+          return {
+            ...defaultState,
+            appName: state.appName, // Preserve props passed to provider
+            appLogo: state.appLogo,   // Preserve props passed to provider
+          };
+        default: return state;
+      }
+    }
+
+
+    // --- Context and Provider ---
+
+
+    interface AppShellContextValue extends AppShellState {
+      dispatch: Dispatch<AppShellAction>;
+      rightPaneWidth: number;
+      // Composite actions for convenience
+      toggleSidebar: () => void;
+      hideSidebar: () => void;
+      showSidebar: () => void;
+      peekSidebar: () => void;
+      toggleFullscreen: () => void;
+      toggleSplitView: (content?: AppShellState['sidePaneContent']) => void;
+      openSidePane: (content: AppShellState['sidePaneContent']) => void;
+      closeSidePane: () => void;
+      resetToDefaults: () => void;
+    }
+
+
+    const AppShellContext = createContext<AppShellContextValue | null>(null);
+
+
+    interface AppShellProviderProps {
+      children: ReactNode;
+      appName?: string;
+      appLogo?: ReactElement;
+      defaultSplitPaneWidth?: number;
+    }
+
+
+    export function AppShellProvider({ children, appName, appLogo,
+    defaultSplitPaneWidth }: AppShellProviderProps) {
+      const [state, dispatch] = useReducer(appShellReducer, {
+        ...defaultState,
+        ...(appName && { appName }),
+        ...(appLogo && { appLogo }),
+        ...(defaultSplitPaneWidth && { splitPaneWidth: defaultSplitPaneWidth }),
+      });
+
+      // Side effect for primary color
+      useEffect(() => {
+        document.documentElement.style.setProperty('--primary-hsl', state.primaryColor);
+      }, [state.primaryColor]);
+
+      // Memoized composite actions using useCallback for stable function identities
+      const toggleSidebar = useCallback(() => {
+        const current = state.sidebarState;
+        if (current === SIDEBAR_STATES.HIDDEN) dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.COLLAPSED });
+        else if (current === SIDEBAR_STATES.COLLAPSED) dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.EXPANDED });
+        else if (current === SIDEBAR_STATES.EXPANDED) dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.COLLAPSED });
+      }, [state.sidebarState]);
+
+      const hideSidebar = useCallback(() => dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.HIDDEN }), []);
+      const showSidebar = useCallback(() => dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.EXPANDED }), []);
+      const peekSidebar = useCallback(() => dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.PEEK }), []);
+      
+      const toggleFullscreen = useCallback(() => {
+        const current = state.bodyState;
+        dispatch({ type: 'SET_BODY_STATE', payload: current === BODY_STATES.FULLSCREEN ? BODY_STATES.NORMAL : BODY_STATES.FULLSCREEN });
+      }, [state.bodyState]);
+
+      const toggleSplitView = useCallback((content?: AppShellState['sidePaneContent']) => {
+        const current = state.bodyState;
+        if (current === BODY_STATES.SIDE_PANE) {
+          dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.SPLIT_VIEW });
+          if (state.sidebarState === SIDEBAR_STATES.EXPANDED) {
+            dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.COLLAPSED });
+          }
+        } else if (current === BODY_STATES.SPLIT_VIEW) {
+          dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.SIDE_PANE });
+        } else if (current === BODY_STATES.NORMAL && content) {
+          // If we're in normal view, open the pane and switch to split view
+          dispatch({ type: 'SET_SIDE_PANE_CONTENT', payload: content });
+          dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.SPLIT_VIEW });
+        }
+      }, [state.bodyState, state.sidebarState]);
+
+      const openSidePane = useCallback((content: AppShellState['sidePaneContent']) => {
+        if (state.bodyState === BODY_STATES.SIDE_PANE && state.sidePaneContent === content) {
+          // If it's open with same content, close it.
+          dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.NORMAL });
+        } else {
+          // If closed, or different content, open with new content.
+          dispatch({ type: 'SET_SIDE_PANE_CONTENT', payload: content });
+          dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.SIDE_PANE });
+        }
+      }, [state.bodyState, state.sidePaneContent]);
+
+      const closeSidePane = useCallback(() => dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.NORMAL }), []);
+      const resetToDefaults = useCallback(() => dispatch({ type: 'RESET_TO_DEFAULTS' }), []);
+
+      const rightPaneWidth = useMemo(() => (
+        state.bodyState === BODY_STATES.SPLIT_VIEW ? state.splitPaneWidth : state.sidePaneWidth
+      ), [state.bodyState, state.splitPaneWidth, state.sidePaneWidth]);
+
+      const value = useMemo(() => ({ 
+        ...state, 
+        dispatch,
+        rightPaneWidth,
+        toggleSidebar,
+        hideSidebar,
+        showSidebar,
+        peekSidebar,
+        toggleFullscreen,
+        toggleSplitView,
+        openSidePane,
+        closeSidePane,
+        resetToDefaults,
+      }), [
+        state, 
+        rightPaneWidth,
+        toggleSidebar,
+        hideSidebar,
+        showSidebar,
+        peekSidebar,
+        toggleFullscreen,
+        toggleSplitView,
+        openSidePane,
+        closeSidePane,
+        resetToDefaults
+      ]);
+
+      return (
+        <AppShellContext.Provider value={value}>
+          {children}
+        </AppShellContext.Provider>
+      );
+    }
+
+
+    // --- Hook ---
+
+
+    export function useAppShell() {
+      const context = useContext(AppShellContext);
+      if (!context) {
+        throw new Error('useAppShell must be used within an AppShellProvider');
+      }
+      return context;
+    }
+  src/components/layout/AppShell.tsx: >-
+    import React, { useRef, type ReactElement, useCallback } from 'react'
+
+    import { cn } from '@/lib/utils'
+
+    import { CommandPalette } from '@/components/global/CommandPalette';
+
+    import { useAppStore } from '@/store/appStore';
+
+    import { useAppShell } from '@/context/AppShellContext';
+
+    import { SIDEBAR_STATES, BODY_STATES } from '@/lib/utils'
+
+    import { useResizableSidebar, useResizableRightPane } from
+    '@/hooks/useResizablePanes.hook'
+
+    import { useSidebarAnimations, useBodyStateAnimations } from
+    '@/hooks/useAppShellAnimations.hook'
+
+
+    interface AppShellProps {
+      sidebar: ReactElement;
+      topBar: ReactElement;
+      mainContent: ReactElement;
+      rightPane: ReactElement;
+      commandPalette?: ReactElement;
+    }
+
+
+    const pageToPaneMap: Record<string, 'main' | 'settings' | 'toaster' |
+    'notifications'> = {
+      dashboard: 'main',
+      settings: 'settings',
+      toaster: 'toaster',
+      notifications: 'notifications',
+    };
+
+
+
+    export function AppShell({ sidebar, topBar, mainContent, rightPane,
+    commandPalette }: AppShellProps) {
+      const {
+        sidebarState,
+        dispatch,
+        autoExpandSidebar,
+        toggleSidebar,
+        peekSidebar,
+        draggedPage,
+        dragHoverTarget,
+        toggleSplitView,
+        openSidePane,
+        bodyState,
+        rightPaneWidth,
+        sidePaneContent,
+        closeSidePane,
+      } = useAppShell();
+      
+      const { isDarkMode, toggleDarkMode, handleNavigation, activePage } = useAppStore();
+      const appRef = useRef<HTMLDivElement>(null)
+      const sidebarRef = useRef<HTMLDivElement>(null)
+      const mainContentRef = useRef<HTMLDivElement>(null)
+      const rightPaneRef = useRef<HTMLDivElement>(null)
+      const resizeHandleRef = useRef<HTMLDivElement>(null)
+      const topBarContainerRef = useRef<HTMLDivElement>(null)
+      const mainAreaRef = useRef<HTMLDivElement>(null)
+
+      const isSplitView = bodyState === BODY_STATES.SPLIT_VIEW;
+
+      // Custom hooks for logic
+      useResizableSidebar(sidebarRef, resizeHandleRef);
+      useResizableRightPane();
+      useSidebarAnimations(sidebarRef, resizeHandleRef);
+      useBodyStateAnimations(appRef, mainContentRef, rightPaneRef, topBarContainerRef, mainAreaRef);
+      
+      const sidebarWithProps = React.cloneElement(sidebar, { 
+        ref: sidebarRef,
+        onMouseEnter: () => {
+          if (autoExpandSidebar && sidebarState === SIDEBAR_STATES.COLLAPSED) {
+            peekSidebar()
+          }
+        },
+        onMouseLeave: () => {
+          if (autoExpandSidebar && sidebarState === SIDEBAR_STATES.PEEK) {
+            dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.COLLAPSED });
+          }
+        }
+      });
+
+      const topBarWithProps = React.cloneElement(topBar, {
+        onToggleSidebar: toggleSidebar,
+        onToggleDarkMode: toggleDarkMode,
+      });
+
+      const mainContentWithProps = React.cloneElement(mainContent, {
+        ref: mainContentRef,
+      });
+
+      const rightPaneWithProps = React.cloneElement(rightPane, { ref: rightPaneRef });
+
+      // Drag and drop handlers for docking
+      const handleDragOverLeft = useCallback((e: React.DragEvent) => {
+        if (!draggedPage) return;
+        e.preventDefault();
+        if (dragHoverTarget !== 'left') {
+          dispatch({ type: 'SET_DRAG_HOVER_TARGET', payload: 'left' });
+        }
+      }, [draggedPage, dragHoverTarget, dispatch]);
+
+      const handleDropLeft = useCallback(() => {
+        if (!draggedPage) return;
+        
+        const originalActivePage = activePage;
+        const originalActivePagePaneContent = pageToPaneMap[originalActivePage];
+
+        // If we drop the page that's already in the side pane, just make it the main view.
+        const paneContentOfDraggedPage = pageToPaneMap[draggedPage];
+        if (paneContentOfDraggedPage === sidePaneContent && (bodyState === BODY_STATES.SIDE_PANE || bodyState === BODY_STATES.SPLIT_VIEW)) {
+          closeSidePane();
+          handleNavigation(draggedPage);
+        } 
+        // New context-aware logic: if we are in normal view and drop a NEW page on the left
+        else if (bodyState === BODY_STATES.NORMAL && draggedPage !== originalActivePage) {
+            if (originalActivePagePaneContent) {
+                // 1. Set the right pane content to be the original page
+                dispatch({ type: 'SET_SIDE_PANE_CONTENT', payload: originalActivePagePaneContent });
+                // 2. Set the main page to be the new dragged page
+                handleNavigation(draggedPage);
+                // 3. Switch to split view
+                dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.SPLIT_VIEW });
+            } else {
+                // Fallback for pages that can't be in a pane
+                handleNavigation(draggedPage);
+            }
+        } else { // Default behavior: just make the dropped page the main one
+          handleNavigation(draggedPage);
+        }
+        
+        dispatch({ type: 'SET_DRAGGED_PAGE', payload: null });
+        dispatch({ type: 'SET_DRAG_HOVER_TARGET', payload: null });
+      }, [draggedPage, activePage, bodyState, sidePaneContent, handleNavigation, dispatch, closeSidePane]);
+
+      const handleDragOverRight = useCallback((e: React.DragEvent) => {
+        if (!draggedPage) return;
+        e.preventDefault();
+        if (dragHoverTarget !== 'right') {
+          dispatch({ type: 'SET_DRAG_HOVER_TARGET', payload: 'right' });
+        }
+      }, [draggedPage, dragHoverTarget, dispatch]);
+
+      const handleDropRight = useCallback(() => {
+        if (!draggedPage) return;
+        const pane = pageToPaneMap[draggedPage as keyof typeof pageToPaneMap];
+        if (pane) {
+          // If dropping the currently active page to the right,
+          // set a default page (e.g., dashboard) as the new active page.
+          if (draggedPage === activePage) {
+            handleNavigation('dashboard');
+          }
+
+          // Set the right pane content and ensure split view
+          dispatch({ type: 'SET_SIDE_PANE_CONTENT', payload: pane });
+          if (bodyState === BODY_STATES.NORMAL) {
+            toggleSplitView(pane);
+          } else if (bodyState === BODY_STATES.SIDE_PANE) {
+            toggleSplitView();
+          }
+        }
+        dispatch({ type: 'SET_DRAGGED_PAGE', payload: null });
+        dispatch({ type: 'SET_DRAG_HOVER_TARGET', payload: null });
+      }, [draggedPage, toggleSplitView, dispatch, bodyState, activePage, handleNavigation]);
+
+      return (
+        <div 
+          ref={appRef}
+          className={cn(
+            "relative h-screen w-screen overflow-hidden bg-background transition-colors duration-300",
+            isDarkMode && "dark"
+          )}
+        >
+          <div className="flex h-screen overflow-hidden">
+            {/* Enhanced Sidebar */}
+            {sidebarWithProps}
+
+            {/* Resize Handle */}
+            {sidebarState !== SIDEBAR_STATES.HIDDEN && (
+              <div
+                ref={resizeHandleRef}
+                className={cn(
+                  "absolute top-0 w-2 h-full bg-transparent hover:bg-primary/20 cursor-col-resize z-50 transition-colors duration-200 group -translate-x-1/2"
+                )}
+                onMouseDown={(e) => {
+                  e.preventDefault()
+                  dispatch({ type: 'SET_IS_RESIZING', payload: true });
+                }}
+              >
+                <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200 mx-auto" />
+              </div>
+            )}
+
+            {/* Main area wrapper */}
+            <div className="flex-1 flex flex-col overflow-hidden">
+              <div ref={topBarContainerRef} className="relative z-30">
+                {topBarWithProps}
+              </div>
+
+              <div className="flex flex-1 min-h-0">
+                <div ref={mainAreaRef} className="relative flex-1 overflow-hidden bg-background">
+                  {/* Left drop overlay */}
+                  <div
+                    className={cn(
+                      "absolute inset-y-0 left-0 z-40 border-2 border-transparent transition-all",
+                      draggedPage
+                        ? cn("pointer-events-auto", isSplitView ? 'w-full' : 'w-1/2')
+                        : "pointer-events-none w-0",
+                      dragHoverTarget === 'left' && "bg-primary/10 border-primary"
+                    )}
+                    onDragOver={handleDragOverLeft}
+                    onDrop={handleDropLeft}
+                    onDragLeave={() => {
+                      if (dragHoverTarget === 'left') dispatch({ type: 'SET_DRAG_HOVER_TARGET', payload: null });
+                    }}
+                  >
+                    {draggedPage && dragHoverTarget === 'left' && (
+                      <div className="absolute inset-0 flex items-center justify-center text-sm font-medium text-primary-foreground/80 pointer-events-none">
+                        <span className="px-3 py-1 rounded-md bg-primary/70">{isSplitView ? 'Drop to Replace' : 'Drop to Left'}</span>
+                      </div>
+                    )}
+                  </div>
+                  {mainContentWithProps}
+                  {/* Right drop overlay (over main area, ONLY when NOT in split view) */}
+                  {!isSplitView && (
+                    <div
+                      className={cn(
+                        "absolute inset-y-0 right-0 z-40 border-2 border-transparent",
+                        draggedPage ? "pointer-events-auto w-1/2" : "pointer-events-none",
+                        dragHoverTarget === 'right' && "bg-primary/10 border-primary"
+                      )}
+                      onDragOver={handleDragOverRight}
+                      onDrop={handleDropRight}
+                      onDragLeave={() => {
+                        if (dragHoverTarget === 'right') dispatch({ type: 'SET_DRAG_HOVER_TARGET', payload: null });
+                      }}
+                    >
+                      {draggedPage && dragHoverTarget === 'right' && (
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                          <span className="px-3 py-1 rounded-md bg-primary/70 text-sm font-medium text-primary-foreground/80">Drop to Right</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+                {isSplitView ? (
+                  <div
+                    className="relative"
+                    onDragOver={handleDragOverRight}
+                  >
+                    {rightPaneWithProps}
+                    {draggedPage && (
+                      <div
+                        className={cn(
+                          'absolute inset-0 z-50 transition-all',
+                          dragHoverTarget === 'right'
+                            ? 'bg-primary/10 border-2 border-primary'
+                            : 'pointer-events-none'
+                        )}
+                        onDragLeave={() => {
+                          if (dragHoverTarget === 'right')
+                            dispatch({ type: 'SET_DRAG_HOVER_TARGET', payload: null });
+                        }}
+                        onDrop={handleDropRight}
+                        onDragOver={(e) => e.preventDefault()}
+                      >
+                        {dragHoverTarget === 'right' && (
+                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                            <span className="px-3 py-1 rounded-md bg-primary/70 text-sm font-medium text-primary-foreground/80">
+                              Drop to Replace
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ) : rightPaneWithProps}
+              </div>
+            </div>
+          </div>
+          {commandPalette || <CommandPalette />}
+        </div>
+      )
+    }
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 140

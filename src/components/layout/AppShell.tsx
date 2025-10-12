@@ -6,6 +6,7 @@ import { useAppShell } from '@/context/AppShellContext';
 import { SIDEBAR_STATES, BODY_STATES } from '@/lib/utils'
 import { useResizableSidebar, useResizableRightPane } from '@/hooks/useResizablePanes.hook'
 import { useSidebarAnimations, useBodyStateAnimations } from '@/hooks/useAppShellAnimations.hook'
+import { ViewModeSwitcher } from './ViewModeSwitcher';
 
 interface AppShellProps {
   sidebar: ReactElement;
@@ -29,6 +30,7 @@ export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalet
     dispatch,
     autoExpandSidebar,
     toggleSidebar,
+    hoveredPane,
     peekSidebar,
     draggedPage,
     dragHoverTarget,
@@ -184,12 +186,21 @@ export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalet
 
         {/* Main area wrapper */}
         <div className="flex-1 flex flex-col overflow-hidden">
-          <div ref={topBarContainerRef} className="relative z-30">
+          <div
+            ref={topBarContainerRef}
+            className="relative z-30"
+            onMouseEnter={() => { if (isSplitView) dispatch({ type: 'SET_HOVERED_PANE', payload: null }); }}
+          >
             {topBarWithProps}
           </div>
 
           <div className="flex flex-1 min-h-0">
-            <div ref={mainAreaRef} className="relative flex-1 overflow-hidden bg-background">
+            <div
+              ref={mainAreaRef}
+              className="relative flex-1 overflow-hidden bg-background"
+              onMouseEnter={() => { if (isSplitView && !draggedPage) dispatch({ type: 'SET_HOVERED_PANE', payload: 'left' }); }}
+              onMouseLeave={() => { if (isSplitView && !draggedPage) dispatch({ type: 'SET_HOVERED_PANE', payload: null }); }}
+            >
               {/* Left drop overlay */}
               <div
                 className={cn(
@@ -212,6 +223,11 @@ export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalet
                 )}
               </div>
               {mainContentWithProps}
+              {isSplitView && hoveredPane === 'left' && !draggedPage && (
+                <div className="absolute top-4 right-4 z-50">
+                  <ViewModeSwitcher />
+                </div>
+              )}
               {/* Right drop overlay (over main area, ONLY when NOT in split view) */}
               {!isSplitView && (
                 <div
@@ -237,6 +253,8 @@ export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalet
             {isSplitView ? (
               <div
                 className="relative"
+                onMouseEnter={() => { if (isSplitView && !draggedPage) dispatch({ type: 'SET_HOVERED_PANE', payload: 'right' }); }}
+                onMouseLeave={() => { if (isSplitView && !draggedPage) dispatch({ type: 'SET_HOVERED_PANE', payload: null }); }}
                 onDragOver={handleDragOverRight}
               >
                 {rightPaneWithProps}
@@ -262,6 +280,11 @@ export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalet
                         </span>
                       </div>
                     )}
+                  </div>
+                )}
+                {hoveredPane === 'right' && !draggedPage && (
+                  <div className="absolute top-4 right-4 z-[70]">
+                    <ViewModeSwitcher />
                   </div>
                 )}
               </div>
