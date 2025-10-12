@@ -4,6 +4,8 @@ src/
   components/
     shared/
       PageLayout.tsx
+  lib/
+    utils.ts
   pages/
     DataDemo/
       components/
@@ -11,8 +13,11 @@ src/
         DataDetailPanel.tsx
         DataListView.tsx
         DataTableView.tsx
+        DataViewModeSelector.tsx
+        EmptyState.tsx
       index.tsx
       types.ts
+      utils.ts
 index.html
 package.json
 postcss.config.js
@@ -25,62 +30,119 @@ vite.config.ts
 
 # Files
 
+## File: src/pages/DataDemo/components/EmptyState.tsx
+````typescript
+import { Eye } from 'lucide-react'
+
+export function EmptyState() {
+  return (
+    <div className="flex flex-col items-center justify-center py-20 text-center">
+      <div className="w-24 h-24 bg-muted rounded-full flex items-center justify-center mb-6">
+        <Eye className="w-10 h-10 text-muted-foreground" />
+      </div>
+      <h3 className="text-lg font-semibold mb-2">No items found</h3>
+      <p className="text-muted-foreground">Try adjusting your search criteria</p>
+    </div>
+  )
+}
+````
+
+## File: src/pages/DataDemo/utils.ts
+````typescript
+export const getStatusColor = (status: string) => {
+  switch (status) {
+    case 'active': return 'bg-green-500/20 text-green-700 border-green-500/30'
+    case 'pending': return 'bg-yellow-500/20 text-yellow-700 border-yellow-500/30'
+    case 'completed': return 'bg-blue-500/20 text-blue-700 border-blue-500/30'
+    case 'archived': return 'bg-gray-500/20 text-gray-700 border-gray-500/30'
+    default: return 'bg-gray-500/20 text-gray-700 border-gray-500/30'
+  }
+}
+
+export const getPriorityColor = (priority: string) => {
+  switch (priority) {
+    case 'critical': return 'bg-red-500/20 text-red-700 border-red-500/30'
+    case 'high': return 'bg-orange-500/20 text-orange-700 border-orange-500/30'
+    case 'medium': return 'bg-blue-500/20 text-blue-700 border-blue-500/30'
+    case 'low': return 'bg-green-500/20 text-green-700 border-green-500/30'
+    default: return 'bg-gray-500/20 text-gray-700 border-gray-500/30'
+  }
+}
+````
+
+## File: src/components/shared/PageLayout.tsx
+````typescript
+import React from 'react';
+import { cn } from '@/lib/utils';
+import { useAppShell } from '@/context/AppShellContext';
+
+interface PageLayoutProps extends React.HTMLAttributes<HTMLDivElement> {
+  children: React.ReactNode;
+  scrollRef?: React.RefObject<HTMLDivElement>;
+  isInSidePane?: boolean;
+}
+
+export const PageLayout = React.forwardRef<HTMLDivElement, PageLayoutProps>(
+  ({ children, onScroll, scrollRef, className, isInSidePane = false, ...props }, ref) => {
+    const { isTopBarVisible, bodyState } = useAppShell();
+    const isFullscreen = bodyState === 'fullscreen';
+
+    return (
+      <div
+        ref={scrollRef}
+        className={cn("h-full overflow-y-auto", className)}
+        onScroll={onScroll}
+      >
+        <div ref={ref} className={cn(
+          "space-y-8 transition-all duration-300",
+          !isInSidePane ? "px-6 lg:px-12 pb-6" : "px-6 pb-6",
+          isTopBarVisible && !isFullscreen ? "pt-24" : "pt-6"
+        )}
+        {...props}
+        >
+          {children}
+        </div>
+      </div>
+    );
+  }
+);
+
+PageLayout.displayName = 'PageLayout';
+````
+
 ## File: src/pages/DataDemo/components/DataCardView.tsx
 ````typescript
-import { useRef, useEffect } from 'react'
+import { useRef, useLayoutEffect } from 'react'
 import { gsap } from 'gsap'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { Avatar } from '@/components/ui/avatar'
-import { Calendar, Clock, Eye, Heart, Share, ArrowUpRight, Tag } from 'lucide-react'
+import { Calendar, Eye, Heart, Share, ArrowUpRight, Tag } from 'lucide-react'
 import type { ViewProps } from '../types'
+import { getStatusColor, getPriorityColor } from '../utils'
+import { EmptyState } from './EmptyState'
 
 export function DataCardView({ data, onItemSelect, selectedItem, isGrid = false }: ViewProps) {
   const containerRef = useRef<HTMLDivElement>(null)
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (containerRef.current) {
-      gsap.from(containerRef.current.children, {
-        duration: 0.6,
-        y: 40,
-        opacity: 0,
-        stagger: 0.1,
-        ease: "power2.out",
-        scale: 0.95
-      })
+      gsap.fromTo(containerRef.current.children, 
+        { y: 40, opacity: 0, scale: 0.95 },
+        {
+          duration: 0.6,
+          y: 0,
+          opacity: 1,
+          scale: 1,
+          stagger: 0.1,
+          ease: "power2.out",
+        }
+      )
     }
   }, [data])
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'active': return 'bg-green-500/20 text-green-700 border-green-500/30'
-      case 'pending': return 'bg-yellow-500/20 text-yellow-700 border-yellow-500/30'
-      case 'completed': return 'bg-blue-500/20 text-blue-700 border-blue-500/30'
-      case 'archived': return 'bg-gray-500/20 text-gray-700 border-gray-500/30'
-      default: return 'bg-gray-500/20 text-gray-700 border-gray-500/30'
-    }
-  }
-
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'critical': return 'bg-red-500/20 text-red-700 border-red-500/30'
-      case 'high': return 'bg-orange-500/20 text-orange-700 border-orange-500/30'
-      case 'medium': return 'bg-blue-500/20 text-blue-700 border-blue-500/30'
-      case 'low': return 'bg-green-500/20 text-green-700 border-green-500/30'
-      default: return 'bg-gray-500/20 text-gray-700 border-gray-500/30'
-    }
-  }
-
   if (data.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center py-20 text-center">
-        <div className="w-24 h-24 bg-muted rounded-full flex items-center justify-center mb-6">
-          <Eye className="w-10 h-10 text-muted-foreground" />
-        </div>
-        <h3 className="text-lg font-semibold mb-2">No items found</h3>
-        <p className="text-muted-foreground">Try adjusting your search criteria</p>
-      </div>
-    )
+    return <EmptyState />
   }
 
   return (
@@ -235,7 +297,7 @@ export function DataCardView({ data, onItemSelect, selectedItem, isGrid = false 
 
 ## File: src/pages/DataDemo/components/DataDetailPanel.tsx
 ````typescript
-import React, { useEffect, useRef } from 'react'
+import React, { useLayoutEffect, useRef } from 'react'
 import { gsap } from 'gsap'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
@@ -263,6 +325,7 @@ import {
 } from 'lucide-react'
 import { useAppShell } from '@/context/AppShellContext'
 import type { DataItem } from '../types'
+import { getStatusColor, getPriorityColor } from '../utils'
 
 interface DataDetailPanelProps {
   item: DataItem | null
@@ -273,40 +336,23 @@ export function DataDetailPanel({ item, onClose }: DataDetailPanelProps) {
   const { bodyState, sidePaneContent } = useAppShell()
   const contentRef = useRef<HTMLDivElement>(null)
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (item && contentRef.current && sidePaneContent === 'data-details') {
-      gsap.from(contentRef.current.children, {
-        duration: 0.6,
-        y: 30,
-        opacity: 0,
-        stagger: 0.1,
-        ease: "power2.out"
-      })
+      gsap.fromTo(contentRef.current.children,
+        { y: 30, opacity: 0 },
+        {
+          duration: 0.6,
+          y: 0,
+          opacity: 1,
+          stagger: 0.1,
+          ease: "power2.out"
+        }
+      )
     }
   }, [item, sidePaneContent])
 
   if (!item || sidePaneContent !== 'data-details') {
     return null
-  }
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'active': return 'bg-green-500/20 text-green-700 border-green-500/30'
-      case 'pending': return 'bg-yellow-500/20 text-yellow-700 border-yellow-500/30'
-      case 'completed': return 'bg-blue-500/20 text-blue-700 border-blue-500/30'
-      case 'archived': return 'bg-gray-500/20 text-gray-700 border-gray-500/30'
-      default: return 'bg-gray-500/20 text-gray-700 border-gray-500/30'
-    }
-  }
-
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'critical': return 'bg-red-500/20 text-red-700 border-red-500/30'
-      case 'high': return 'bg-orange-500/20 text-orange-700 border-orange-500/30'
-      case 'medium': return 'bg-blue-500/20 text-blue-700 border-blue-500/30'
-      case 'low': return 'bg-green-500/20 text-green-700 border-green-500/30'
-      default: return 'bg-gray-500/20 text-gray-700 border-gray-500/30'
-    }
   }
 
   const getFileIcon = (type: string) => {
@@ -566,59 +612,36 @@ export function DataDetailPanel({ item, onClose }: DataDetailPanelProps) {
 
 ## File: src/pages/DataDemo/components/DataListView.tsx
 ````typescript
-import { useRef, useEffect } from 'react'
+import { useRef, useLayoutEffect } from 'react'
 import { gsap } from 'gsap'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { Avatar } from '@/components/ui/avatar'
-import { Calendar, Clock, Eye, Heart, Share, ArrowRight } from 'lucide-react'
+import { Calendar, Eye, Heart, Share, ArrowRight } from 'lucide-react'
 import type { ViewProps } from '../types'
+import { getStatusColor, getPriorityColor } from '../utils'
+import { EmptyState } from './EmptyState'
 
 export function DataListView({ data, onItemSelect, selectedItem }: ViewProps) {
   const listRef = useRef<HTMLDivElement>(null)
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (listRef.current) {
-      gsap.from(listRef.current.children, {
-        duration: 0.5,
-        y: 30,
-        opacity: 0,
-        stagger: 0.08,
-        ease: "power2.out"
-      })
+      gsap.fromTo(listRef.current.children,
+        { y: 30, opacity: 0 },
+        {
+          duration: 0.5,
+          y: 0,
+          opacity: 1,
+          stagger: 0.08,
+          ease: "power2.out"
+        }
+      )
     }
   }, [data])
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'active': return 'bg-green-500/20 text-green-700 border-green-500/30'
-      case 'pending': return 'bg-yellow-500/20 text-yellow-700 border-yellow-500/30'
-      case 'completed': return 'bg-blue-500/20 text-blue-700 border-blue-500/30'
-      case 'archived': return 'bg-gray-500/20 text-gray-700 border-gray-500/30'
-      default: return 'bg-gray-500/20 text-gray-700 border-gray-500/30'
-    }
-  }
-
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'critical': return 'bg-red-500/20 text-red-700 border-red-500/30'
-      case 'high': return 'bg-orange-500/20 text-orange-700 border-orange-500/30'
-      case 'medium': return 'bg-blue-500/20 text-blue-700 border-blue-500/30'
-      case 'low': return 'bg-green-500/20 text-green-700 border-green-500/30'
-      default: return 'bg-gray-500/20 text-gray-700 border-gray-500/30'
-    }
-  }
-
   if (data.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center py-20 text-center">
-        <div className="w-24 h-24 bg-muted rounded-full flex items-center justify-center mb-6">
-          <Eye className="w-10 h-10 text-muted-foreground" />
-        </div>
-        <h3 className="text-lg font-semibold mb-2">No items found</h3>
-        <p className="text-muted-foreground">Try adjusting your search criteria</p>
-      </div>
-    )
+    return <EmptyState />
   }
 
   return (
@@ -739,7 +762,7 @@ export function DataListView({ data, onItemSelect, selectedItem }: ViewProps) {
 
 ## File: src/pages/DataDemo/components/DataTableView.tsx
 ````typescript
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useLayoutEffect } from 'react'
 import { gsap } from 'gsap'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
@@ -756,6 +779,8 @@ import {
   ExternalLink
 } from 'lucide-react'
 import type { ViewProps, DataItem } from '../types'
+import { getStatusColor, getPriorityColor } from '../utils'
+import { EmptyState } from './EmptyState'
 
 type SortField = keyof DataItem | 'assignee.name' | 'metrics.views' | 'metrics.completion'
 type SortDirection = 'asc' | 'desc' | null
@@ -765,15 +790,18 @@ export function DataTableView({ data, onItemSelect, selectedItem }: ViewProps) {
   const [sortDirection, setSortDirection] = useState<SortDirection>(null)
   const tableRef = useRef<HTMLTableElement>(null)
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (tableRef.current) {
-      gsap.from(tableRef.current.querySelectorAll('tbody tr'), {
-        duration: 0.5,
-        y: 20,
-        opacity: 0,
-        stagger: 0.05,
-        ease: "power2.out"
-      })
+      gsap.fromTo(tableRef.current.querySelectorAll('tbody tr'),
+        { y: 20, opacity: 0 },
+        {
+          duration: 0.5,
+          y: 0,
+          opacity: 1,
+          stagger: 0.05,
+          ease: "power2.out"
+        }
+      )
     }
   }, [data])
 
@@ -826,26 +854,6 @@ export function DataTableView({ data, onItemSelect, selectedItem }: ViewProps) {
     })
   }
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'active': return 'bg-green-500/20 text-green-700 border-green-500/30'
-      case 'pending': return 'bg-yellow-500/20 text-yellow-700 border-yellow-500/30'
-      case 'completed': return 'bg-blue-500/20 text-blue-700 border-blue-500/30'
-      case 'archived': return 'bg-gray-500/20 text-gray-700 border-gray-500/30'
-      default: return 'bg-gray-500/20 text-gray-700 border-gray-500/30'
-    }
-  }
-
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'critical': return 'bg-red-500/20 text-red-700 border-red-500/30'
-      case 'high': return 'bg-orange-500/20 text-orange-700 border-orange-500/30'
-      case 'medium': return 'bg-blue-500/20 text-blue-700 border-blue-500/30'
-      case 'low': return 'bg-green-500/20 text-green-700 border-green-500/30'
-      default: return 'bg-gray-500/20 text-gray-700 border-gray-500/30'
-    }
-  }
-
   const SortIcon = ({ field }: { field: SortField }) => {
     if (sortField !== field) {
       return <ArrowUpDown className="w-4 h-4 opacity-50" />
@@ -862,15 +870,7 @@ export function DataTableView({ data, onItemSelect, selectedItem }: ViewProps) {
   const sortedData = getSortedData()
 
   if (data.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center py-20 text-center">
-        <div className="w-24 h-24 bg-muted rounded-full flex items-center justify-center mb-6">
-          <Eye className="w-10 h-10 text-muted-foreground" />
-        </div>
-        <h3 className="text-lg font-semibold mb-2">No items found</h3>
-        <p className="text-muted-foreground">Try adjusting your search criteria</p>
-      </div>
-    )
+    return <EmptyState />
   }
 
   return (
@@ -1063,12 +1063,113 @@ export function DataTableView({ data, onItemSelect, selectedItem }: ViewProps) {
 }
 ````
 
+## File: src/pages/DataDemo/components/DataViewModeSelector.tsx
+````typescript
+import { useEffect, useRef } from 'react'
+import { gsap } from 'gsap'
+import { cn } from '@/lib/utils'
+import { List, Grid3X3, LayoutGrid, Table } from 'lucide-react'
+import type { ViewMode } from '../types'
+
+interface DataViewModeSelectorProps {
+  viewMode: ViewMode
+  onChange: (mode: ViewMode) => void
+}
+
+const viewModes = [
+  { id: 'list' as ViewMode, label: 'List', icon: List, description: 'Compact list with details' },
+  { id: 'cards' as ViewMode, label: 'Cards', icon: LayoutGrid, description: 'Rich card layout' },
+  { id: 'grid' as ViewMode, label: 'Grid', icon: Grid3X3, description: 'Masonry grid view' },
+  { id: 'table' as ViewMode, label: 'Table', icon: Table, description: 'Structured data table' }
+]
+
+export function DataViewModeSelector({ viewMode, onChange }: DataViewModeSelectorProps) {
+  const indicatorRef = useRef<HTMLDivElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!indicatorRef.current || !containerRef.current) return
+
+    const activeButton = containerRef.current.querySelector(`[data-mode="${viewMode}"]`) as HTMLElement
+    if (!activeButton) return
+
+    const containerRect = containerRef.current.getBoundingClientRect()
+    const buttonRect = activeButton.getBoundingClientRect()
+    
+    const left = buttonRect.left - containerRect.left
+    const width = buttonRect.width
+
+    gsap.to(indicatorRef.current, {
+      duration: 0.3,
+      x: left,
+      width: width,
+      ease: "power2.out"
+    })
+  }, [viewMode])
+
+  return (
+    <div className="relative">
+      {/* Background container */}
+      <div 
+        ref={containerRef}
+        className="relative flex items-center bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-1.5 shadow-lg"
+      >
+        {/* Animated indicator */}
+        <div
+          ref={indicatorRef}
+          className="absolute inset-y-1.5 bg-gradient-to-r from-primary/20 to-primary/10 border border-primary/20 rounded-xl transition-all duration-300"
+          style={{ left: 0, width: 0 }}
+        />
+        
+        {/* Mode buttons */}
+        {viewModes.map((mode) => {
+          const IconComponent = mode.icon
+          const isActive = viewMode === mode.id
+          
+          return (
+            <button
+              key={mode.id}
+              data-mode={mode.id}
+              onClick={() => onChange(mode.id)}
+              className={cn(
+                "relative flex items-center gap-3 px-6 py-3 rounded-xl transition-all duration-300 group min-w-[120px]",
+                "hover:bg-accent/20 active:scale-95",
+                isActive && "text-primary"
+              )}
+              title={mode.description}
+            >
+              <IconComponent className={cn(
+                "w-5 h-5 transition-all duration-300",
+                isActive && "scale-110",
+                "group-hover:scale-105"
+              )} />
+              <span className={cn(
+                "font-medium transition-all duration-300",
+                isActive ? "text-primary" : "text-muted-foreground",
+                "group-hover:text-foreground"
+              )}>
+                {mode.label}
+              </span>
+            </button>
+          )
+        })}
+      </div>
+
+      {/* Description tooltip */}
+      <div className="mt-3 text-center">
+        <p className="text-sm text-muted-foreground">
+          {viewModes.find(m => m.id === viewMode)?.description}
+        </p>
+      </div>
+    </div>
+  )
+}
+````
+
 ## File: src/pages/DataDemo/index.tsx
 ````typescript
-import { useState, useRef, useEffect } from 'react'
-import { gsap } from 'gsap'
+import { useState, useRef } from 'react'
 import { PageLayout } from '@/components/shared/PageLayout'
-import { ViewModeSwitcher } from '@/components/layout/ViewModeSwitcher'
 import { DataViewModeSelector } from './components/DataViewModeSelector'
 import { DataListView } from './components/DataListView'
 import { DataCardView } from './components/DataCardView'
@@ -1098,19 +1199,6 @@ export default function DataDemoPage() {
     openSidePane('data-details')
   }
 
-  // Animate content on view mode change
-  useEffect(() => {
-    if (contentRef.current) {
-      gsap.from(contentRef.current.children, {
-        duration: 0.6,
-        y: 20,
-        opacity: 0,
-        stagger: 0.05,
-        ease: "power2.out"
-      })
-    }
-  }, [viewMode, filteredData])
-
   const renderView = () => {
     const commonProps = {
       data: filteredData,
@@ -1134,31 +1222,27 @@ export default function DataDemoPage() {
 
   return (
     <PageLayout
-      title="Data Showcase"
-      subtitle="Explore data with immersive view modes and seamless interactions"
-      rightContent={<ViewModeSwitcher />}
-      searchValue={searchTerm}
-      onSearchChange={setSearchTerm}
-      searchPlaceholder="Search data items..."
+      // Note: Search functionality is handled by a separate SearchBar in the TopBar
     >
-      <div className="space-y-6">
-        {/* View Mode Selector */}
-        <div className="flex justify-center">
+      <div className="space-y-8">
+        {/* Header */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Data Showcase</h1>
+            <p className="text-muted-foreground">
+              Showing {filteredData.length} of {mockDataItems.length} items
+            </p>
+          </div>
           <DataViewModeSelector 
             viewMode={viewMode} 
             onChange={setViewMode}
           />
         </div>
 
-        {/* Data Content */}
         <div ref={contentRef} className="min-h-[500px]">
           {renderView()}
         </div>
 
-        {/* Results Counter */}
-        <div className="text-center text-sm text-muted-foreground">
-          Showing {filteredData.length} of {mockDataItems.length} items
-        </div>
       </div>
 
       {/* Detail Panel */}
@@ -1218,46 +1302,6 @@ export interface ViewProps {
 }
 ````
 
-## File: src/components/shared/PageLayout.tsx
-````typescript
-import React from 'react';
-import { cn } from '@/lib/utils';
-import { useAppShell } from '@/context/AppShellContext';
-
-interface PageLayoutProps extends React.HTMLAttributes<HTMLDivElement> {
-  children: React.ReactNode;
-  scrollRef?: React.RefObject<HTMLDivElement>;
-  isInSidePane?: boolean;
-}
-
-export const PageLayout = React.forwardRef<HTMLDivElement, PageLayoutProps>(
-  ({ children, onScroll, scrollRef, className, isInSidePane = false, ...props }, ref) => {
-    const { isTopBarVisible, bodyState } = useAppShell();
-    const isFullscreen = bodyState === 'fullscreen';
-
-    return (
-      <div
-        ref={scrollRef}
-        className={cn("h-full overflow-y-auto", className)}
-        onScroll={onScroll}
-      >
-        <div ref={ref} className={cn(
-          "space-y-8 transition-all duration-300",
-          !isInSidePane ? "px-6 lg:px-12 pb-6" : "px-6 pb-6",
-          isTopBarVisible && !isFullscreen ? "pt-24" : "pt-6"
-        )}
-        {...props}
-        >
-          {children}
-        </div>
-      </div>
-    );
-  }
-);
-
-PageLayout.displayName = 'PageLayout';
-````
-
 ## File: postcss.config.js
 ````javascript
 export default {
@@ -1266,6 +1310,33 @@ export default {
     autoprefixer: {},
   },
 }
+````
+
+## File: src/lib/utils.ts
+````typescript
+import { type ClassValue, clsx } from "clsx"
+import { twMerge } from "tailwind-merge"
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs))
+}
+
+export const SIDEBAR_STATES = {
+  HIDDEN: 'hidden',
+  COLLAPSED: 'collapsed', 
+  EXPANDED: 'expanded',
+  PEEK: 'peek'
+} as const
+
+export const BODY_STATES = {
+  NORMAL: 'normal',
+  FULLSCREEN: 'fullscreen',
+  SIDE_PANE: 'side_pane',
+  SPLIT_VIEW: 'split_view'
+} as const
+
+export type SidebarState = typeof SIDEBAR_STATES[keyof typeof SIDEBAR_STATES]
+export type BodyState = typeof BODY_STATES[keyof typeof BODY_STATES]
 ````
 
 ## File: tsconfig.json

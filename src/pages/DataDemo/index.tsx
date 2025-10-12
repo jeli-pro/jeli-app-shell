@@ -1,6 +1,5 @@
 import { useState, useRef } from 'react'
 import { PageLayout } from '@/components/shared/PageLayout'
-import { ViewModeSwitcher } from '@/components/layout/ViewModeSwitcher'
 import { DataViewModeSelector } from './components/DataViewModeSelector'
 import { DataListView } from './components/DataListView'
 import { DataCardView } from './components/DataCardView'
@@ -53,31 +52,27 @@ export default function DataDemoPage() {
 
   return (
     <PageLayout
-      title="Data Showcase"
-      subtitle="Explore data with immersive view modes and seamless interactions"
-      rightContent={<ViewModeSwitcher />}
-      searchValue={searchTerm}
-      onSearchChange={setSearchTerm}
-      searchPlaceholder="Search data items..."
+      // Note: Search functionality is handled by a separate SearchBar in the TopBar
     >
-      <div className="space-y-6">
-        {/* View Mode Selector */}
-        <div className="flex justify-center">
+      <div className="space-y-8">
+        {/* Header */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Data Showcase</h1>
+            <p className="text-muted-foreground">
+              Showing {filteredData.length} of {mockDataItems.length} items
+            </p>
+          </div>
           <DataViewModeSelector 
             viewMode={viewMode} 
             onChange={setViewMode}
           />
         </div>
 
-        {/* Data Content */}
         <div ref={contentRef} className="min-h-[500px]">
           {renderView()}
         </div>
 
-        {/* Results Counter */}
-        <div className="text-center text-sm text-muted-foreground">
-          Showing {filteredData.length} of {mockDataItems.length} items
-        </div>
       </div>
 
       {/* Detail Panel */}

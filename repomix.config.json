@@ -38,7 +38,11 @@
     "src/pages/DataDemo/components/DataListView.tsx",
     "src/pages/DataDemo/components/DataTableView.tsx",
     "src/pages/DataDemo/index.tsx",
-    "src/pages/DataDemo/types.ts"
+    "src/pages/DataDemo/types.ts",
+    "src/lib/utils.ts",
+    "src/pages/DataDemo/utils.ts",
+    "src/pages/DataDemo/components/EmptyState.tsx",
+    "src/pages/DataDemo/components/DataViewModeSelector.tsx"
     // "src/App.tsx",
     // "src/components/layout/AppShell.tsx",
     // "src/components/layout/EnhancedSidebar.tsx",

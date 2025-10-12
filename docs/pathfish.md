@@ -1,146 +1,144 @@
-Here's the master plan to refactor the UI animations and fix visibility glitches.
+Ah, a classic case of UI entropy. Components drifting apart, logic getting copy-pasted all over the place. We're gonna tighten this ship up, nuke the boilerplate, and ship a layout that actually makes sense.
+
+Right now, the `DataDemoPage` feels like a garage sale—stuff is just kinda... there. The view switcher is floating in the middle, the results count is hiding at the bottom, and we've got color-logic spaghetti smeared across four different files. Not on my watch.
+
+The plan is simple but effective. First, we'll refactor the blatant code duplication. We'll extract all that color-picking logic and the "empty state" view into their own modules. DRY principle, people. Then, the main event: we'll forge a proper, cohesive header for the `DataDemoPage`. Title, stats, and view controls, all lined up in one clean, responsive block. No more disconnected UI elements. We're turning this disjointed page into a unified, professional-looking dashboard. Let's get it done.
 
 ```yaml
 plan:
-  uuid: '9b1d8f3a-6e4b-4f9e-8c7a-1b2d3c4f5e6a'
+  uuid: 'c8a2b1f3-9d4e-4f6a-8b1c-7e3d0f5a9b21'
   status: 'todo'
-  title: 'Refactor Data Demo Animations to Eliminate Initial Render Glitches'
+  title: 'Refactor DataDemo UI for Cohesion and Cleanliness'
   introduction: |
-    Alright, here's the deal. The data demo page has some jank on initial load. We're seeing a flash of content before the `gsap` animations kick in. This is a classic FOUC-style problem caused by using `gsap.from()` inside a `useEffect`. The browser paints the final state, then JS runs, GSAP sets the 'from' state (e.g., `opacity: 0`), and then animates back. Flicker city.
+    This plan aims to refactor the `DataDemoPage` to create a more cohesive and professional user interface. The current implementation suffers from scattered UI elements and significant code duplication across its view components.
 
-    The fix is two-fold. First, we'll swap out `useEffect` for `useLayoutEffect` and replace `gsap.from()` with `gsap.fromTo()`. This is the canonical way to handle this. `useLayoutEffect` runs synchronously before the paint, so we can set up our 'from' state without the user ever seeing the un-animated version. `fromTo` gives us bulletproof control.
+    Our strategy is twofold. First, we'll apply the DRY (Don't Repeat Yourself) principle by extracting duplicated logic and JSX into shared modules. This includes centralizing the status/priority color helpers and creating a reusable `EmptyState` component. This will clean up the codebase and make future maintenance a breeze.
 
-    Second, there's a redundant animation in the main `DataDemoPage` component that's wrapping the view components. It's animating the container while the components inside animate their own items. This is unnecessary and probably hurts perf when filtering. We're gonna axe it. This will clean up the code and make the animations snappier and more reliable.
+    Second, we'll overhaul the layout of the `DataDemoPage` itself. We will construct a unified header section that consolidates the page title, results count, and view mode selector into a single, responsive block. This will replace the current disjointed layout, providing users with a clear, organized, and intuitive control area right above the data content.
   parts:
-    - uuid: 'c4e5f6a7-8b9c-4d1e-af2g-3h4i5j6k7l8m'
+    - uuid: 'a1b3c4d5-e6f7-8a9b-0c1d-2e3f4a5b6c7d'
       status: 'todo'
-      name: 'Part 1: Harden Component Entry Animations'
+      name: 'Part 1: Nuke Boilerplate and Centralize Shared Logic'
       reason: |
-        The core issue is that `useEffect` runs after the initial paint, causing a visual flicker when `gsap.from()` sets the initial animation state. By switching to `useLayoutEffect` and `gsap.fromTo()`, we take full control of the element's state before the browser renders it, guaranteeing a smooth, flicker-free entrance animation.
+        Currently, multiple view components (`DataCardView`, `DataListView`, etc.) contain duplicated helper functions for determining status/priority colors and identical JSX for the "empty state". This violates the DRY principle, making the code harder to maintain and prone to inconsistencies. This part will consolidate that shared code.
       steps:
-        - uuid: 'd1e2f3a4-b5c6-4d7e-8f9a-0b1c2d3e4f5g'
+        - uuid: 'f1e2d3c4-b5a6-9878-6f5e-4d3c2b1a0987'
           status: 'todo'
-          name: '1. Refactor DataCardView Animation'
+          name: '1. Extract Color Utility Functions'
           reason: |
-            To fix the initial flicker for the card view by ensuring GSAP controls the component's styles before the first paint.
+            The `getStatusColor` and `getPriorityColor` functions are copy-pasted across four different components. They should live in a single utility file to be imported where needed.
           files:
-            - src/pages/DataDemo/components/DataCardView.tsx
+            - 'src/pages/DataDemo/utils.ts' # new file
+            - 'src/pages/DataDemo/components/DataCardView.tsx'
+            - 'src/pages/DataDemo/components/DataDetailPanel.tsx'
+            - 'src/pages/DataDemo/components/DataListView.tsx'
+            - 'src/pages/DataDemo/components/DataTableView.tsx'
           operations:
-            - 'Import `useLayoutEffect` instead of `useEffect` from React.'
-            - 'Replace the `useEffect` hook with `useLayoutEffect`.'
-            - 'Convert the `gsap.from()` call to a `gsap.fromTo()` call.'
-            - 'Define the "from" properties (`opacity: 0`, `y: 40`, `scale: 0.95`) in the first argument of `fromTo`.'
-            - 'Define the "to" properties (`opacity: 1`, `y: 0`, `scale: 1`) and animation parameters in the second argument.'
-        - uuid: 'h6i7j8k9-l0m1-4n2o-3p4q-5r6s7t8u9v0w'
+            - 'Create a new file at `src/pages/DataDemo/utils.ts`.'
+            - 'Cut the `getStatusColor` and `getPriorityColor` functions from `DataCardView.tsx` and paste them into `utils.ts`.'
+            - 'Export both functions from `utils.ts`.'
+            - 'In `DataCardView.tsx`, `DataDetailPanel.tsx`, `DataListView.tsx`, and `DataTableView.tsx`, remove the local definitions of these functions.'
+            - 'Import `{ getStatusColor, getPriorityColor }` from `../utils` in `DataCardView.tsx`, `DataListView.tsx`, and `DataTableView.tsx`.'
+            - 'Import `{ getStatusColor, getPriorityColor }` from `../utils` in `DataDetailPanel.tsx` (adjust path if needed, should be `../utils`).'
+        - uuid: 'a0b9c8d7-e6f5-a4b3-c2d1-e0f9a8b7c6d5'
           status: 'todo'
-          name: '2. Refactor DataListView Animation'
+          name: '2. Create a Shared EmptyState Component'
           reason: |
-            To apply the same flicker-fix to the list view, creating a consistent and smooth loading experience across view modes.
+            The "No items found" view is duplicated in `DataCardView`, `DataListView`, and `DataTableView`. This should be a reusable component.
           files:
-            - src/pages/DataDemo/components/DataListView.tsx
+            - 'src/pages/DataDemo/components/EmptyState.tsx' # new file
+            - 'src/pages/DataDemo/components/DataCardView.tsx'
+            - 'src/pages/DataDemo/components/DataListView.tsx'
+            - 'src/pages/DataDemo/components/DataTableView.tsx'
           operations:
-            - 'Import `useLayoutEffect` instead of `useEffect`.'
-            - 'Replace the `useEffect` hook with `useLayoutEffect`.'
-            - 'Convert `gsap.from()` to `gsap.fromTo()`.'
-            - 'Set "from" state: `{ opacity: 0, y: 30 }`.'
-            - 'Set "to" state and parameters, including `opacity: 1` and `y: 0`.'
-        - uuid: 'x1y2z3a4-b5c6-4d7e-8f9a-0b1c2d3e4f5g'
-          status: 'todo'
-          name: '3. Refactor DataTableView Animation'
-          reason: |
-            To fix the initial render flicker for the table view, ensuring all data representations are robust.
-          files:
-            - src/pages/DataDemo/components/DataTableView.tsx
-          operations:
-            - 'Import `useLayoutEffect` from React, replacing `useEffect` if it becomes unused by other logic.'
-            - 'Replace the animation `useEffect` with `useLayoutEffect`.'
-            - 'Convert the `gsap.from()` targeting `tbody tr` to a `gsap.fromTo()` call.'
-            - 'Set "from" state: `{ opacity: 0, y: 20 }`.'
-            - 'Set "to" state and parameters, including `opacity: 1` and `y: 0`.'
-        - uuid: 'a9b8c7d6-e5f4-4g3h-2i1j-0k9l8m7n6o5p'
-          status: 'todo'
-          name: '4. Refactor DataDetailPanel Animation'
-          reason: |
-            To ensure the detail panel also animates in smoothly without any flicker when it appears.
-          files:
-            - src/pages/DataDemo/components/DataDetailPanel.tsx
-          operations:
-            - 'Import `useLayoutEffect` instead of `useEffect`.'
-            - 'Replace the `useEffect` hook with `useLayoutEffect`.'
-            - 'Convert the `gsap.from()` call to `gsap.fromTo()`.'
-            - 'Set "from" state: `{ opacity: 0, y: 30 }`.'
-            - 'Set "to" state and parameters, including `opacity: 1` and `y: 0`.'
+            - 'Create a new file at `src/pages/DataDemo/components/EmptyState.tsx`.'
+            - 'Copy the "No items found" JSX block from `DataCardView.tsx` and create a React component `EmptyState` in the new file.'
+            - 'Import `Eye` from `lucide-react` in `EmptyState.tsx`.'
+            - 'In `DataCardView.tsx`, `DataListView.tsx`, and `DataTableView.tsx`, replace the entire "No items found" `div` with `<EmptyState />` and import the new component.'
       context_files:
         compact:
-          - src/pages/DataDemo/components/DataCardView.tsx
-          - src/pages/DataDemo/components/DataListView.tsx
-          - src/pages/DataDemo/components/DataTableView.tsx
-          - src/pages/DataDemo/components/DataDetailPanel.tsx
+          - 'src/pages/DataDemo/components/DataCardView.tsx'
+          - 'src/pages/DataDemo/components/DataDetailPanel.tsx'
+          - 'src/pages/DataDemo/components/DataListView.tsx'
+          - 'src/pages/DataDemo/components/DataTableView.tsx'
         medium:
-          - src/pages/DataDemo/components/DataCardView.tsx
-          - src/pages/DataDemo/components/DataListView.tsx
-          - src/pages/DataDemo/components/DataTableView.tsx
-          - src/pages/DataDemo/components/DataDetailPanel.tsx
-          - src/pages/DataDemo/index.tsx
+          - 'src/pages/DataDemo/components/DataCardView.tsx'
+          - 'src/pages/DataDemo/components/DataDetailPanel.tsx'
+          - 'src/pages/DataDemo/components/DataListView.tsx'
+          - 'src/pages/DataDemo/components/DataTableView.tsx'
+          - 'src/pages/DataDemo/types.ts'
         extended:
-          - src/pages/DataDemo/components/DataCardView.tsx
-          - src/pages/DataDemo/components/DataListView.tsx
-          - src/pages/DataDemo/components/DataTableView.tsx
-          - src/pages/DataDemo/components/DataDetailPanel.tsx
-          - src/pages/DataDemo/index.tsx
-          - src/pages/DataDemo/types.ts
-    - uuid: 'q4r5s6t7-u8v9-4w0x-1y2z-3a4b5c6d7e8f'
+          - 'src/pages/DataDemo/components/DataCardView.tsx'
+          - 'src/pages/DataDemo/components/DataDetailPanel.tsx'
+          - 'src/pages/DataDemo/components/DataListView.tsx'
+          - 'src/pages/DataDemo/components/DataTableView.tsx'
+          - 'src/pages/DataDemo/types.ts'
+          - 'src/pages/DataDemo/index.tsx'
+    - uuid: 'b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d7e'
       status: 'todo'
-      name: 'Part 2: Simplify and Centralize Animation Logic'
+      name: 'Part 2: Forge a Cohesive Page Header'
       reason: |
-        The parent component `DataDemoPage` currently applies its own animation to the view container, which is redundant since each child view component now handles its own entry animation. Removing this parent animation simplifies the code, prevents potential animation conflicts, and improves performance, especially during filtering operations.
+        The `DataDemoPage` layout is fragmented. The view controls, page context (like item count), and title are not grouped together, leading to a poor user experience. This part will restructure the page to create a unified and responsive header.
       steps:
-        - uuid: 'g1h2i3j4-k5l6-4m7n-8o9p-0q1r2s3t4u5v'
+        - uuid: 'c3d4e5f6-a7b8-c9d0-e1f2-a3b4c5d6e7f8'
           status: 'todo'
-          name: '1. Remove Redundant Animation from DataDemoPage'
+          name: '1. Clean Up Extraneous PageLayout Props'
           reason: |
-            To eliminate the unnecessary container-level animation, making the child components the single source of truth for their entry animations.
+            The `<PageLayout>` component in `DataDemoPage` is being called with several props (`title`, `subtitle`, `rightContent`, etc.) that are not defined in the actual `PageLayout.tsx` component. This is dead code and should be removed.
           files:
-            - src/pages/DataDemo/index.tsx
+            - 'src/pages/DataDemo/index.tsx'
           operations:
-            - 'Remove the `useEffect` hook that targets `contentRef.current.children`.'
-            - 'Remove `useEffect` from the React import statement if it is no longer used.'
+            - 'In the `DataDemoPage` component, remove the following props from the `<PageLayout>` element: `title`, `subtitle`, `rightContent`, `searchValue`, `onSearchChange`, `searchPlaceholder`.'
+        - uuid: 'd4e5f6a7-b8c9-d0e1-f2a3-b4c5d6e7f8a9'
+          status: 'todo'
+          name: '2. Implement the New Unified Header Layout'
+          reason: |
+            To improve cohesion, the page title, results count, and view mode selector will be grouped into a single header element at the top of the content area.
+          files:
+            - 'src/pages/DataDemo/index.tsx'
+          operations:
+            - "Inside the `<PageLayout>` component, replace the direct child `div`'s `space-y-6` with `space-y-8` for better separation."
+            - 'Create a new header `div` above the `DataViewModeSelector` wrapper.'
+            - 'Give the new header `div` the following classes: `className="flex flex-col md:flex-row md:items-center md:justify-between gap-4"`.'
+            - 'Inside this header, create a `div` for the text content on the left.'
+            - 'Add `<h1 className="text-2xl font-bold tracking-tight">Data Showcase</h1>` inside the text `div`.'
+            - 'Add `<p className="text-muted-foreground">Showing {filteredData.length} of {mockDataItems.length} items</p>` below the `h1`.'
+            - 'Move the `<DataViewModeSelector ... />` component into the right side of the main header `div`.'
+            - 'Remove the now-empty `<div className="flex justify-center">` that used to wrap the selector.'
+            - 'Remove the `<div className="text-center text-sm text-muted-foreground">` block from the bottom of the page that shows the results count.'
       context_files:
         compact:
-          - src/pages/DataDemo/index.tsx
+          - 'src/pages/DataDemo/index.tsx'
         medium:
-          - src/pages/DataDemo/index.tsx
-          - src/pages/DataDemo/components/DataCardView.tsx
-          - src/pages/DataDemo/components/DataListView.tsx
-          - src/pages/DataDemo/components/DataTableView.tsx
+          - 'src/pages/DataDemo/index.tsx'
+          - 'src/components/shared/PageLayout.tsx'
         extended:
-          - src/pages/DataDemo/index.tsx
-          - src/pages/DataDemo/components/DataCardView.tsx
-          - src/pages/DataDemo/components/DataListView.tsx
-          - src/pages/DataDemo/components/DataTableView.tsx
-          - src/components/shared/PageLayout.tsx
+          - 'src/pages/DataDemo/index.tsx'
+          - 'src/components/shared/PageLayout.tsx'
+          - 'src/pages/DataDemo/components/DataCardView.tsx'
   conclusion: |
-    By executing this plan, we'll squash the initial rendering bugs in the Data Demo. The animations will be rock-solid and flicker-free, providing a much smoother user experience. We'll also have cleaner, more efficient code by removing redundant animation logic. It's a win for both UX and maintainability.
+    Upon completion, this refactor will yield significant improvements. The codebase will be cleaner, more maintainable, and less prone to bugs thanks to the removal of duplicated logic.
+
+    Most importantly, the user experience on the `DataDemoPage` will be markedly improved. The new, cohesive header will provide a clear and organized control center for the user, making the interface feel more intuitive and professional. This lays a stronger foundation for any future features to be added to this page.
   context_files:
     compact:
-      - src/pages/DataDemo/components/DataCardView.tsx
-      - src/pages/DataDemo/components/DataListView.tsx
-      - src/pages/DataDemo/components/DataTableView.tsx
-      - src/pages/DataDemo/components/DataDetailPanel.tsx
-      - src/pages/DataDemo/index.tsx
+      - 'src/pages/DataDemo/index.tsx'
+      - 'src/pages/DataDemo/components/DataCardView.tsx'
+      - 'src/pages/DataDemo/components/DataListView.tsx'
+      - 'src/pages/DataDemo/components/DataTableView.tsx'
     medium:
-      - src/pages/DataDemo/components/DataCardView.tsx
-      - src/pages/DataDemo/components/DataListView.tsx
-      - src/pages/DataDemo/components/DataTableView.tsx
-      - src/pages/DataDemo/components/DataDetailPanel.tsx
-      - src/pages/DataDemo/index.tsx
-      - src/pages/DataDemo/types.ts
+      - 'src/pages/DataDemo/index.tsx'
+      - 'src/pages/DataDemo/components/DataCardView.tsx'
+      - 'src/pages/DataDemo/components/DataListView.tsx'
+      - 'src/pages/DataDemo/components/DataTableView.tsx'
+      - 'src/pages/DataDemo/components/DataDetailPanel.tsx'
+      - 'src/components/shared/PageLayout.tsx'
     extended:
-      - src/pages/DataDemo/components/DataCardView.tsx
-      - src/pages/DataDemo/components/DataListView.tsx
-      - src/pages/DataDemo/components/DataTableView.tsx
-      - src/pages/DataDemo/components/DataDetailPanel.tsx
-      - src/pages/DataDemo/index.tsx
-      - src/pages/DataDemo/types.ts
-      - src/components/shared/PageLayout.tsx
+      - 'src/pages/DataDemo/index.tsx'
+      - 'src/pages/DataDemo/components/DataCardView.tsx'
+      - 'src/pages/DataDemo/components/DataListView.tsx'
+      - 'src/pages/DataDemo/components/DataTableView.tsx'
+      - 'src/pages/DataDemo/components/DataDetailPanel.tsx'
+      - 'src/components/shared/PageLayout.tsx'
+      - 'src/pages/DataDemo/types.ts'
 ```
