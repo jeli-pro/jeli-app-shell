@@ -1,47 +1,27 @@
-uuid: c255b083-d3d6-44ec-b4c4-7548a3d6d062
+uuid: 18b0660a-7e15-46b5-94ac-0de0f0b4d445
 projectId: jeli-app-shell
-createdAt: '2025-10-12T03:09:28.747Z'
+createdAt: '2025-10-12T03:19:49.350Z'
 gitCommitMsg: >-
-  feat(dnd): Implement context-aware split view on drop
+  fix(dnd): resolve dropzone visual flickering
 
-  This commit enhances the drag-and-drop functionality to be context-aware,
-  creating a more intuitive split-view experience.
-
-  When in a normal, single-pane view, dragging a new page from the sidebar and
-  dropping it onto the main content area will now automatically create a split
-  view. The original main content is shifted to the right pane, and the newly
-  dropped page becomes the main content on the left.
-
-  This improves user workflow by allowing for dynamic creation of split views
-  without needing to explicitly open a side pane first.
-promptSummary: >-
-  The user wants to improve the drag-and-drop split view feature to be
-  "context-aware".
+  Applied `pointer-events-none` to the text labels within the drag-and-drop
+  zones. This prevents child elements from interfering with the parent's
+  `onDragLeave` event, which was causing the visual cues to flicker rapidly
+  during a drag operation. This change stabilizes the UI feedback and removes
+  the perceived race condition.
+promptSummary: The drag and drop visual cues are glitching.
 reasoning:
   - >-
-    Of course. You're looking for a more "context-aware" split-view feature.
-    When a user drags a new page onto the main view, it should intelligently
-    create a split view, moving the existing main content to the side pane. I
-    understand and can implement that enhancement.
-  - 'Here''s the plan:'
+    You're right, that "glitching" is a classic sign of a race condition with
+    drag-and-drop events, specifically `onDragLeave` firing when the cursor
+    moves over child elements within the drop zone. This causes the visual cue
+    to flicker rapidly.
   - >-
-    1.  **Modify `handleDropLeft` in `AppShell.tsx`:** I will update the logic
-    for when a user drops a page on the left (main content) area.
-  - >-
-    *   If the application is in a normal single-pane view and the user drops a
-    *different* page, it will trigger the new split-view behavior.
-  - >-
-    *   The page that was originally in the main view will be moved to the right
-    pane.
-  - '*   The newly dropped page will become the main content on the left.'
-  - '*   The application will transition into `SPLIT_VIEW`.'
-  - >-
-    2.  **Maintain Existing Logic:** All other drag-and-drop behaviors (like
-    dropping on the right or bringing a page back from the side pane) will
-    continue to function as they did before.
-  - >-
-    This change will make the split view feature much more intuitive and
-    powerful. I'll now apply the necessary code modification.
+    I'll fix this by adding `pointer-events-none` to the text labels inside the
+    drop zones. This ensures that the parent drop zone is the only element that
+    registers drag events, preventing its children from accidentally triggering
+    an `onDragLeave` event and creating that flicker.
+  - 'Here''s the patch for `src/components/layout/AppShell.tsx`:'
 operations:
   - type: write
     path: src/components/layout/AppShell.tsx
@@ -50,87 +30,47 @@ operations:
 
       +++ src/components/layout/AppShell.tsx
 
-      @@ -71,19 +71,30 @@
-       
-         const handleDropLeft = useCallback(() => {
-           if (!draggedPage) return;
-           
-      -    const paneContent = pageToPaneMap[draggedPage];
+      @@ -156,7 +156,7 @@
+                       }}
+                     >
+                       {draggedPage && dragHoverTarget === 'left' && (
+      -                  <div className="absolute inset-0 flex items-center
+      justify-center text-sm font-medium text-primary-foreground/80">
 
-      -    // If the dropped page is currently in the side pane, close it.
+      +                  <div className="absolute inset-0 flex items-center
+      justify-center text-sm font-medium text-primary-foreground/80
+      pointer-events-none">
+                           <span className="px-3 py-1 rounded-md bg-primary/70">{isSplitView ? 'Drop to Replace' : 'Drop to Left'}</span>
+                         </div>
+                       )}
+      @@ -176,8 +176,8 @@
+                         }}
+                       >
+                         {draggedPage && dragHoverTarget === 'right' && (
+      -                    <div className="absolute inset-0 flex items-center
+      justify-center">
 
-      -    if (paneContent === sidePaneContent && (bodyState ===
-      BODY_STATES.SIDE_PANE || bodyState === BODY_STATES.SPLIT_VIEW)) {
+      +                    <div className="absolute inset-0 flex items-center
+      justify-center pointer-events-none">
+                             <span className="px-3 py-1 rounded-md bg-primary/70 text-sm font-medium text-primary-foreground/80">Drop to Right</span>
+                           </div>
+                         )}
+      @@ -186,7 +186,7 @@
+                   </div>
+                   {isSplitView ? (
+                     <div className={cn("relative transition-all", draggedPage && "pointer-events-auto", dragHoverTarget === 'right' && "bg-primary/10 border-2 border-primary")} onDragOver={handleDragOverRight} onDrop={handleDropRight} onDragLeave={() => { if (dragHoverTarget === 'right') dispatch({ type: 'SET_DRAG_HOVER_TARGET', payload: null }); }}>
+      -                {draggedPage && dragHoverTarget === 'right' && (
 
-      -      closeSidePane();
+      -                  <div className="absolute inset-0 flex items-center
+      justify-center z-50">
 
-      +    const originalActivePage = activePage;
+      +                {draggedPage && dragHoverTarget === 'right' && (
 
-      +    const originalActivePagePaneContent =
-      pageToPaneMap[originalActivePage];
-
-      +
-
-      +    // If we drop the page that's already in the side pane, just make it
-      the main view.
-
-      +    const paneContentOfDraggedPage = pageToPaneMap[draggedPage];
-
-      +    if (paneContentOfDraggedPage === sidePaneContent && (bodyState ===
-      BODY_STATES.SIDE_PANE || bodyState === BODY_STATES.SPLIT_VIEW)) {
-
-      +      closeSidePane();
-
-      +      handleNavigation(draggedPage);
-
-      +    } 
-
-      +    // New context-aware logic: if we are in normal view and drop a NEW
-      page on the left
-
-      +    else if (bodyState === BODY_STATES.NORMAL && draggedPage !==
-      originalActivePage) {
-
-      +        if (originalActivePagePaneContent) {
-
-      +            // 1. Set the right pane content to be the original page
-
-      +            dispatch({ type: 'SET_SIDE_PANE_CONTENT', payload:
-      originalActivePagePaneContent });
-
-      +            // 2. Set the main page to be the new dragged page
-
-      +            handleNavigation(draggedPage);
-
-      +            // 3. Switch to split view
-
-      +            dispatch({ type: 'SET_BODY_STATE', payload:
-      BODY_STATES.SPLIT_VIEW });
-
-      +        } else {
-
-      +            // Fallback for pages that can't be in a pane
-
-      +            handleNavigation(draggedPage);
-
-      +        }
-
-      +    } else { // Default behavior: just make the dropped page the main one
-
-      +      handleNavigation(draggedPage);
-           }
-           
-      -    handleNavigation(draggedPage);
-           dispatch({ type: 'SET_DRAGGED_PAGE', payload: null });
-           dispatch({ type: 'SET_DRAG_HOVER_TARGET', payload: null });
-      -  }, [draggedPage, handleNavigation, dispatch, sidePaneContent,
-      bodyState, closeSidePane]);
-
-      +  }, [draggedPage, activePage, bodyState, sidePaneContent,
-      handleNavigation, dispatch, closeSidePane]);
-       
-         const handleDragOverRight = useCallback((e: React.DragEvent) => {
-           if (!draggedPage) return;
+      +                  <div className="absolute inset-0 flex items-center
+      justify-center z-50 pointer-events-none">
+                           <span className="px-3 py-1 rounded-md bg-primary/70 text-sm font-medium text-primary-foreground/80">Drop to Replace</span>
+                         </div>
+                       )}
 
     patchStrategy: standard-diff
 snapshot:
@@ -200,6 +140,8 @@ snapshot:
       const topBarContainerRef = useRef<HTMLDivElement>(null)
       const mainAreaRef = useRef<HTMLDivElement>(null)
 
+      const isSplitView = bodyState === BODY_STATES.SPLIT_VIEW;
+
       // Custom hooks for logic
       useResizableSidebar(sidebarRef, resizeHandleRef);
       useResizableRightPane();
@@ -243,16 +185,35 @@ snapshot:
       const handleDropLeft = useCallback(() => {
         if (!draggedPage) return;
         
-        const paneContent = pageToPaneMap[draggedPage];
-        // If the dropped page is currently in the side pane, close it.
-        if (paneContent === sidePaneContent && (bodyState === BODY_STATES.SIDE_PANE || bodyState === BODY_STATES.SPLIT_VIEW)) {
+        const originalActivePage = activePage;
+        const originalActivePagePaneContent = pageToPaneMap[originalActivePage];
+
+        // If we drop the page that's already in the side pane, just make it the main view.
+        const paneContentOfDraggedPage = pageToPaneMap[draggedPage];
+        if (paneContentOfDraggedPage === sidePaneContent && (bodyState === BODY_STATES.SIDE_PANE || bodyState === BODY_STATES.SPLIT_VIEW)) {
           closeSidePane();
+          handleNavigation(draggedPage);
+        } 
+        // New context-aware logic: if we are in normal view and drop a NEW page on the left
+        else if (bodyState === BODY_STATES.NORMAL && draggedPage !== originalActivePage) {
+            if (originalActivePagePaneContent) {
+                // 1. Set the right pane content to be the original page
+                dispatch({ type: 'SET_SIDE_PANE_CONTENT', payload: originalActivePagePaneContent });
+                // 2. Set the main page to be the new dragged page
+                handleNavigation(draggedPage);
+                // 3. Switch to split view
+                dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.SPLIT_VIEW });
+            } else {
+                // Fallback for pages that can't be in a pane
+                handleNavigation(draggedPage);
+            }
+        } else { // Default behavior: just make the dropped page the main one
+          handleNavigation(draggedPage);
         }
         
-        handleNavigation(draggedPage);
         dispatch({ type: 'SET_DRAGGED_PAGE', payload: null });
         dispatch({ type: 'SET_DRAG_HOVER_TARGET', payload: null });
-      }, [draggedPage, handleNavigation, dispatch, sidePaneContent, bodyState, closeSidePane]);
+      }, [draggedPage, activePage, bodyState, sidePaneContent, handleNavigation, dispatch, closeSidePane]);
 
       const handleDragOverRight = useCallback((e: React.DragEvent) => {
         if (!draggedPage) return;
@@ -323,8 +284,10 @@ snapshot:
                   {/* Left drop overlay */}
                   <div
                     className={cn(
-                      "absolute inset-y-0 left-0 z-40 border-2 border-transparent",
-                      draggedPage ? "pointer-events-auto w-1/2" : "pointer-events-none w-0",
+                      "absolute inset-y-0 left-0 z-40 border-2 border-transparent transition-all",
+                      draggedPage
+                        ? cn("pointer-events-auto", isSplitView ? 'w-full' : 'w-1/2')
+                        : "pointer-events-none w-0",
                       dragHoverTarget === 'left' && "bg-primary/10 border-primary"
                     )}
                     onDragOver={handleDragOverLeft}
@@ -333,34 +296,45 @@ snapshot:
                       if (dragHoverTarget === 'left') dispatch({ type: 'SET_DRAG_HOVER_TARGET', payload: null });
                     }}
                   >
-                    {draggedPage && (
+                    {draggedPage && dragHoverTarget === 'left' && (
                       <div className="absolute inset-0 flex items-center justify-center text-sm font-medium text-primary-foreground/80">
-                        <span className="px-3 py-1 rounded-md bg-primary/70">Drop to Left</span>
+                        <span className="px-3 py-1 rounded-md bg-primary/70">{isSplitView ? 'Drop to Replace' : 'Drop to Left'}</span>
                       </div>
                     )}
                   </div>
                   {mainContentWithProps}
-                  {/* Right drop overlay (over main area to allow docking even if pane hidden) */}
-                  <div
-                    className={cn(
-                      "absolute inset-y-0 right-0 z-40 border-2 border-transparent",
-                      draggedPage ? "pointer-events-auto w-1/2" : "pointer-events-none",
-                      dragHoverTarget === 'right' && "bg-primary/10 border-primary"
-                    )}
-                    onDragOver={handleDragOverRight}
-                    onDrop={handleDropRight}
-                    onDragLeave={() => {
-                      if (dragHoverTarget === 'right') dispatch({ type: 'SET_DRAG_HOVER_TARGET', payload: null });
-                    }}
-                  >
-                    {draggedPage && (
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <span className="px-3 py-1 rounded-md bg-primary/70 text-sm font-medium text-primary-foreground/80">Drop to Right</span>
+                  {/* Right drop overlay (over main area, ONLY when NOT in split view) */}
+                  {!isSplitView && (
+                    <div
+                      className={cn(
+                        "absolute inset-y-0 right-0 z-40 border-2 border-transparent",
+                        draggedPage ? "pointer-events-auto w-1/2" : "pointer-events-none",
+                        dragHoverTarget === 'right' && "bg-primary/10 border-primary"
+                      )}
+                      onDragOver={handleDragOverRight}
+                      onDrop={handleDropRight}
+                      onDragLeave={() => {
+                        if (dragHoverTarget === 'right') dispatch({ type: 'SET_DRAG_HOVER_TARGET', payload: null });
+                      }}
+                    >
+                      {draggedPage && dragHoverTarget === 'right' && (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <span className="px-3 py-1 rounded-md bg-primary/70 text-sm font-medium text-primary-foreground/80">Drop to Right</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+                {isSplitView ? (
+                  <div className={cn("relative transition-all", draggedPage && "pointer-events-auto", dragHoverTarget === 'right' && "bg-primary/10 border-2 border-primary")} onDragOver={handleDragOverRight} onDrop={handleDropRight} onDragLeave={() => { if (dragHoverTarget === 'right') dispatch({ type: 'SET_DRAG_HOVER_TARGET', payload: null }); }}>
+                    {draggedPage && dragHoverTarget === 'right' && (
+                      <div className="absolute inset-0 flex items-center justify-center z-50">
+                        <span className="px-3 py-1 rounded-md bg-primary/70 text-sm font-medium text-primary-foreground/80">Drop to Replace</span>
                       </div>
                     )}
+                    {rightPaneWithProps}
                   </div>
-                </div>
-                {rightPaneWithProps}
+                ) : rightPaneWithProps}
               </div>
             </div>
           </div>
@@ -372,6 +346,6 @@ approved: true
 linesAdded: null
 linesRemoved: null
 linesDifference: null
-gitCommittedAt: '2025-10-12T03:10:27.627Z'
+gitCommittedAt: null
 status: committed
-id: 136
+id: 138

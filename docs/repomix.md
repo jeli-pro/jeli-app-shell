@@ -3980,6 +3980,211 @@ export function CommandPalette() {
 }
 ````
 
+## File: src/index.ts
+````typescript
+// Context
+export { AppShellProvider, useAppShell } from './context/AppShellContext';
+
+// Layout Components
+export { AppShell } from './components/layout/AppShell';
+export { MainContent } from './components/layout/MainContent';
+export { ViewModeSwitcher } from './components/layout/ViewModeSwitcher';
+export { RightPane } from './components/layout/RightPane';
+export { TopBar } from './components/layout/TopBar';
+export { UserDropdown } from './components/layout/UserDropdown';
+export { Workspaces as WorkspaceProvider, WorkspaceTrigger, WorkspaceContent } from './components/layout/WorkspaceSwitcher';
+
+// Sidebar Primitives
+export {
+  Sidebar,
+  SidebarBody,
+  SidebarContent,
+  SidebarFooter,
+  SidebarHeader,
+  SidebarSection,
+  SidebarTitle,
+  SidebarMenuItem,
+  SidebarMenuButton,
+  SidebarMenuAction,
+  SidebarLabel,
+  SidebarBadge,
+  SidebarTooltip,
+  SidebarIcon,
+  useSidebar,
+} from './components/layout/Sidebar';
+
+// Shared Components
+export { ContentInSidePanePlaceholder } from './components/shared/ContentInSidePanePlaceholder';
+export { PageHeader } from './components/shared/PageHeader';
+
+// Feature Components
+export { SettingsContent } from './features/settings/SettingsContent';
+export { SettingsSection } from './features/settings/SettingsSection';
+export { SettingsToggle } from './features/settings/SettingsToggle';
+export { LoginPage } from './components/auth/LoginPage';
+
+// UI Components
+export * from './components/ui/avatar';
+export * from './components/ui/badge';
+export * from './components/ui/button';
+export * from './components/ui/card';
+export * from './components/ui/command';
+export * from './components/ui/dialog';
+export * from './components/ui/dropdown-menu';
+export * from './components/ui/input';
+export * from './components/ui/label';
+export * from './components/ui/popover';
+export * from './components/ui/tabs';
+export * from './components/ui/toast';
+
+// Global Components
+export { CommandPalette } from './components/global/CommandPalette';
+
+// Hooks
+export { useAutoAnimateTopBar } from './hooks/useAutoAnimateTopBar';
+export { useCommandPaletteToggle } from './hooks/useCommandPaletteToggle.hook';
+
+// Lib
+export * from './lib/utils';
+
+// Store
+export { useAppStore, type ActivePage } from './store/appStore';
+export { useAuthStore } from './store/authStore';
+````
+
+## File: index.html
+````html
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Jeli App Shell</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <div id="toaster-container"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+````
+
+## File: tailwind.config.js
+````javascript
+/** @type {import('tailwindcss').Config} */
+export default {
+  content: [
+    "./index.html",
+    "./src/**/*.{js,ts,jsx,tsx}",
+  ],
+  darkMode: "class",
+  theme: {
+    extend: {
+      colors: {
+        border: "hsl(var(--border))",
+        input: "hsl(var(--input))",
+        ring: "hsl(var(--ring))",
+        background: "hsl(var(--background))",
+        foreground: "hsl(var(--foreground))",
+        primary: {
+          DEFAULT: "hsl(var(--primary))",
+          foreground: "hsl(var(--primary-foreground))",
+        },
+        secondary: {
+          DEFAULT: "hsl(var(--secondary))",
+          foreground: "hsl(var(--secondary-foreground))",
+        },
+        destructive: {
+          DEFAULT: "hsl(var(--destructive))",
+          foreground: "hsl(var(--destructive-foreground))",
+        },
+        muted: {
+          DEFAULT: "hsl(var(--muted))",
+          foreground: "hsl(var(--muted-foreground))",
+        },
+        accent: {
+          DEFAULT: "hsl(var(--accent))",
+          foreground: "hsl(var(--accent-foreground))",
+        },
+        popover: {
+          DEFAULT: "hsl(var(--popover))",
+          foreground: "hsl(var(--popover-foreground))",
+        },
+        card: {
+          DEFAULT: "hsl(var(--card))",
+          foreground: "hsl(var(--card-foreground))",
+        },
+      },
+      borderRadius: {
+        lg: "var(--radius)",
+        md: "calc(var(--radius) - 4px)",
+        sm: "calc(var(--radius) - 8px)",
+        DEFAULT: "0.5rem",
+      },
+      boxShadow: {
+        input: [
+          "0px 2px 3px -1px rgba(0, 0, 0, 0.1)",
+          "0px 1px 0px 0px rgba(25, 28, 33, 0.02)",
+          "0px 0px 0px 1px rgba(25, 28, 33, 0.08)",
+        ].join(", "),
+      },
+      animation: {
+        "fade-in": "fadeIn 0.5s ease-in-out",
+        "slide-in": "slideIn 0.3s ease-out",
+        "scale-in": "scaleIn 0.2s ease-out",
+        ripple: "ripple 2s ease calc(var(--i, 0) * 0.2s) infinite",
+        orbit: "orbit calc(var(--duration) * 1s) linear infinite",
+      },
+      keyframes: {
+        fadeIn: {
+          "0%": { opacity: "0" },
+          "100%": { opacity: "1" },
+        },
+        slideIn: {
+          "0%": { transform: "translateX(-100%)" },
+          "100%": { transform: "translateX(0)" },
+        },
+        scaleIn: {
+          "0%": { transform: "scale(0.95)", opacity: "0" },
+          "100%": { transform: "scale(1)", opacity: "1" },
+        },
+        ripple: {
+          "0%, 100%": { transform: "translate(-50%, -50%) scale(1)" },
+          "50%": { transform: "translate(-50%, -50%) scale(0.9)" },
+        },
+        orbit: {
+          "0%": {
+            transform:
+              "rotate(0deg) translateY(calc(var(--radius) * 1px)) rotate(0deg)",
+          },
+          "100%": {
+            transform:
+              "rotate(360deg) translateY(calc(var(--radius) * 1px)) rotate(-360deg)",
+          },
+        }
+      },
+    },
+  },
+  plugins: [require("tailwindcss-animate")],
+}
+````
+
+## File: tsconfig.node.json
+````json
+{
+  "compilerOptions": {
+    "composite": true,
+    "skipLibCheck": true,
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "allowSyntheticDefaultImports": true,
+    "resolveJsonModule": true
+  },
+  "include": ["vite.config.ts"]
+}
+````
+
 ## File: src/components/layout/EnhancedSidebar.tsx
 ````typescript
 import React from 'react';
@@ -4243,211 +4448,6 @@ const AppMenuItem: React.FC<AppMenuItemProps> = ({ icon: Icon, label, badge, has
     </div>
   );
 };
-````
-
-## File: src/index.ts
-````typescript
-// Context
-export { AppShellProvider, useAppShell } from './context/AppShellContext';
-
-// Layout Components
-export { AppShell } from './components/layout/AppShell';
-export { MainContent } from './components/layout/MainContent';
-export { ViewModeSwitcher } from './components/layout/ViewModeSwitcher';
-export { RightPane } from './components/layout/RightPane';
-export { TopBar } from './components/layout/TopBar';
-export { UserDropdown } from './components/layout/UserDropdown';
-export { Workspaces as WorkspaceProvider, WorkspaceTrigger, WorkspaceContent } from './components/layout/WorkspaceSwitcher';
-
-// Sidebar Primitives
-export {
-  Sidebar,
-  SidebarBody,
-  SidebarContent,
-  SidebarFooter,
-  SidebarHeader,
-  SidebarSection,
-  SidebarTitle,
-  SidebarMenuItem,
-  SidebarMenuButton,
-  SidebarMenuAction,
-  SidebarLabel,
-  SidebarBadge,
-  SidebarTooltip,
-  SidebarIcon,
-  useSidebar,
-} from './components/layout/Sidebar';
-
-// Shared Components
-export { ContentInSidePanePlaceholder } from './components/shared/ContentInSidePanePlaceholder';
-export { PageHeader } from './components/shared/PageHeader';
-
-// Feature Components
-export { SettingsContent } from './features/settings/SettingsContent';
-export { SettingsSection } from './features/settings/SettingsSection';
-export { SettingsToggle } from './features/settings/SettingsToggle';
-export { LoginPage } from './components/auth/LoginPage';
-
-// UI Components
-export * from './components/ui/avatar';
-export * from './components/ui/badge';
-export * from './components/ui/button';
-export * from './components/ui/card';
-export * from './components/ui/command';
-export * from './components/ui/dialog';
-export * from './components/ui/dropdown-menu';
-export * from './components/ui/input';
-export * from './components/ui/label';
-export * from './components/ui/popover';
-export * from './components/ui/tabs';
-export * from './components/ui/toast';
-
-// Global Components
-export { CommandPalette } from './components/global/CommandPalette';
-
-// Hooks
-export { useAutoAnimateTopBar } from './hooks/useAutoAnimateTopBar';
-export { useCommandPaletteToggle } from './hooks/useCommandPaletteToggle.hook';
-
-// Lib
-export * from './lib/utils';
-
-// Store
-export { useAppStore, type ActivePage } from './store/appStore';
-export { useAuthStore } from './store/authStore';
-````
-
-## File: index.html
-````html
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Jeli App Shell</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <div id="toaster-container"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
-</html>
-````
-
-## File: tailwind.config.js
-````javascript
-/** @type {import('tailwindcss').Config} */
-export default {
-  content: [
-    "./index.html",
-    "./src/**/*.{js,ts,jsx,tsx}",
-  ],
-  darkMode: "class",
-  theme: {
-    extend: {
-      colors: {
-        border: "hsl(var(--border))",
-        input: "hsl(var(--input))",
-        ring: "hsl(var(--ring))",
-        background: "hsl(var(--background))",
-        foreground: "hsl(var(--foreground))",
-        primary: {
-          DEFAULT: "hsl(var(--primary))",
-          foreground: "hsl(var(--primary-foreground))",
-        },
-        secondary: {
-          DEFAULT: "hsl(var(--secondary))",
-          foreground: "hsl(var(--secondary-foreground))",
-        },
-        destructive: {
-          DEFAULT: "hsl(var(--destructive))",
-          foreground: "hsl(var(--destructive-foreground))",
-        },
-        muted: {
-          DEFAULT: "hsl(var(--muted))",
-          foreground: "hsl(var(--muted-foreground))",
-        },
-        accent: {
-          DEFAULT: "hsl(var(--accent))",
-          foreground: "hsl(var(--accent-foreground))",
-        },
-        popover: {
-          DEFAULT: "hsl(var(--popover))",
-          foreground: "hsl(var(--popover-foreground))",
-        },
-        card: {
-          DEFAULT: "hsl(var(--card))",
-          foreground: "hsl(var(--card-foreground))",
-        },
-      },
-      borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 4px)",
-        sm: "calc(var(--radius) - 8px)",
-        DEFAULT: "0.5rem",
-      },
-      boxShadow: {
-        input: [
-          "0px 2px 3px -1px rgba(0, 0, 0, 0.1)",
-          "0px 1px 0px 0px rgba(25, 28, 33, 0.02)",
-          "0px 0px 0px 1px rgba(25, 28, 33, 0.08)",
-        ].join(", "),
-      },
-      animation: {
-        "fade-in": "fadeIn 0.5s ease-in-out",
-        "slide-in": "slideIn 0.3s ease-out",
-        "scale-in": "scaleIn 0.2s ease-out",
-        ripple: "ripple 2s ease calc(var(--i, 0) * 0.2s) infinite",
-        orbit: "orbit calc(var(--duration) * 1s) linear infinite",
-      },
-      keyframes: {
-        fadeIn: {
-          "0%": { opacity: "0" },
-          "100%": { opacity: "1" },
-        },
-        slideIn: {
-          "0%": { transform: "translateX(-100%)" },
-          "100%": { transform: "translateX(0)" },
-        },
-        scaleIn: {
-          "0%": { transform: "scale(0.95)", opacity: "0" },
-          "100%": { transform: "scale(1)", opacity: "1" },
-        },
-        ripple: {
-          "0%, 100%": { transform: "translate(-50%, -50%) scale(1)" },
-          "50%": { transform: "translate(-50%, -50%) scale(0.9)" },
-        },
-        orbit: {
-          "0%": {
-            transform:
-              "rotate(0deg) translateY(calc(var(--radius) * 1px)) rotate(0deg)",
-          },
-          "100%": {
-            transform:
-              "rotate(360deg) translateY(calc(var(--radius) * 1px)) rotate(-360deg)",
-          },
-        }
-      },
-    },
-  },
-  plugins: [require("tailwindcss-animate")],
-}
-````
-
-## File: tsconfig.node.json
-````json
-{
-  "compilerOptions": {
-    "composite": true,
-    "skipLibCheck": true,
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
-    "allowSyntheticDefaultImports": true,
-    "resolveJsonModule": true
-  },
-  "include": ["vite.config.ts"]
-}
 ````
 
 ## File: src/components/layout/MainContent.tsx
@@ -5959,6 +5959,8 @@ export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalet
   const topBarContainerRef = useRef<HTMLDivElement>(null)
   const mainAreaRef = useRef<HTMLDivElement>(null)
 
+  const isSplitView = bodyState === BODY_STATES.SPLIT_VIEW;
+
   // Custom hooks for logic
   useResizableSidebar(sidebarRef, resizeHandleRef);
   useResizableRightPane();
@@ -6002,16 +6004,35 @@ export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalet
   const handleDropLeft = useCallback(() => {
     if (!draggedPage) return;
     
-    const paneContent = pageToPaneMap[draggedPage];
-    // If the dropped page is currently in the side pane, close it.
-    if (paneContent === sidePaneContent && (bodyState === BODY_STATES.SIDE_PANE || bodyState === BODY_STATES.SPLIT_VIEW)) {
+    const originalActivePage = activePage;
+    const originalActivePagePaneContent = pageToPaneMap[originalActivePage];
+
+    // If we drop the page that's already in the side pane, just make it the main view.
+    const paneContentOfDraggedPage = pageToPaneMap[draggedPage];
+    if (paneContentOfDraggedPage === sidePaneContent && (bodyState === BODY_STATES.SIDE_PANE || bodyState === BODY_STATES.SPLIT_VIEW)) {
       closeSidePane();
+      handleNavigation(draggedPage);
+    } 
+    // New context-aware logic: if we are in normal view and drop a NEW page on the left
+    else if (bodyState === BODY_STATES.NORMAL && draggedPage !== originalActivePage) {
+        if (originalActivePagePaneContent) {
+            // 1. Set the right pane content to be the original page
+            dispatch({ type: 'SET_SIDE_PANE_CONTENT', payload: originalActivePagePaneContent });
+            // 2. Set the main page to be the new dragged page
+            handleNavigation(draggedPage);
+            // 3. Switch to split view
+            dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.SPLIT_VIEW });
+        } else {
+            // Fallback for pages that can't be in a pane
+            handleNavigation(draggedPage);
+        }
+    } else { // Default behavior: just make the dropped page the main one
+      handleNavigation(draggedPage);
     }
     
-    handleNavigation(draggedPage);
     dispatch({ type: 'SET_DRAGGED_PAGE', payload: null });
     dispatch({ type: 'SET_DRAG_HOVER_TARGET', payload: null });
-  }, [draggedPage, handleNavigation, dispatch, sidePaneContent, bodyState, closeSidePane]);
+  }, [draggedPage, activePage, bodyState, sidePaneContent, handleNavigation, dispatch, closeSidePane]);
 
   const handleDragOverRight = useCallback((e: React.DragEvent) => {
     if (!draggedPage) return;
@@ -6082,8 +6103,10 @@ export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalet
               {/* Left drop overlay */}
               <div
                 className={cn(
-                  "absolute inset-y-0 left-0 z-40 border-2 border-transparent",
-                  draggedPage ? "pointer-events-auto w-1/2" : "pointer-events-none w-0",
+                  "absolute inset-y-0 left-0 z-40 border-2 border-transparent transition-all",
+                  draggedPage
+                    ? cn("pointer-events-auto", isSplitView ? 'w-full' : 'w-1/2')
+                    : "pointer-events-none w-0",
                   dragHoverTarget === 'left' && "bg-primary/10 border-primary"
                 )}
                 onDragOver={handleDragOverLeft}
@@ -6092,34 +6115,45 @@ export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalet
                   if (dragHoverTarget === 'left') dispatch({ type: 'SET_DRAG_HOVER_TARGET', payload: null });
                 }}
               >
-                {draggedPage && (
-                  <div className="absolute inset-0 flex items-center justify-center text-sm font-medium text-primary-foreground/80">
-                    <span className="px-3 py-1 rounded-md bg-primary/70">Drop to Left</span>
+                {draggedPage && dragHoverTarget === 'left' && (
+                  <div className="absolute inset-0 flex items-center justify-center text-sm font-medium text-primary-foreground/80 pointer-events-none">
+                    <span className="px-3 py-1 rounded-md bg-primary/70">{isSplitView ? 'Drop to Replace' : 'Drop to Left'}</span>
                   </div>
                 )}
               </div>
               {mainContentWithProps}
-              {/* Right drop overlay (over main area to allow docking even if pane hidden) */}
-              <div
-                className={cn(
-                  "absolute inset-y-0 right-0 z-40 border-2 border-transparent",
-                  draggedPage ? "pointer-events-auto w-1/2" : "pointer-events-none",
-                  dragHoverTarget === 'right' && "bg-primary/10 border-primary"
-                )}
-                onDragOver={handleDragOverRight}
-                onDrop={handleDropRight}
-                onDragLeave={() => {
-                  if (dragHoverTarget === 'right') dispatch({ type: 'SET_DRAG_HOVER_TARGET', payload: null });
-                }}
-              >
-                {draggedPage && (
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="px-3 py-1 rounded-md bg-primary/70 text-sm font-medium text-primary-foreground/80">Drop to Right</span>
+              {/* Right drop overlay (over main area, ONLY when NOT in split view) */}
+              {!isSplitView && (
+                <div
+                  className={cn(
+                    "absolute inset-y-0 right-0 z-40 border-2 border-transparent",
+                    draggedPage ? "pointer-events-auto w-1/2" : "pointer-events-none",
+                    dragHoverTarget === 'right' && "bg-primary/10 border-primary"
+                  )}
+                  onDragOver={handleDragOverRight}
+                  onDrop={handleDropRight}
+                  onDragLeave={() => {
+                    if (dragHoverTarget === 'right') dispatch({ type: 'SET_DRAG_HOVER_TARGET', payload: null });
+                  }}
+                >
+                  {draggedPage && dragHoverTarget === 'right' && (
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                      <span className="px-3 py-1 rounded-md bg-primary/70 text-sm font-medium text-primary-foreground/80">Drop to Right</span>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+            {isSplitView ? (
+              <div className={cn("relative transition-all", draggedPage && "pointer-events-auto", dragHoverTarget === 'right' && "bg-primary/10 border-2 border-primary")} onDragOver={handleDragOverRight} onDrop={handleDropRight} onDragLeave={() => { if (dragHoverTarget === 'right') dispatch({ type: 'SET_DRAG_HOVER_TARGET', payload: null }); }}>
+                {draggedPage && dragHoverTarget === 'right' && (
+                  <div className="absolute inset-0 flex items-center justify-center z-50 pointer-events-none">
+                    <span className="px-3 py-1 rounded-md bg-primary/70 text-sm font-medium text-primary-foreground/80">Drop to Replace</span>
                   </div>
                 )}
+                {rightPaneWithProps}
               </div>
-            </div>
-            {rightPaneWithProps}
+            ) : rightPaneWithProps}
           </div>
         </div>
       </div>

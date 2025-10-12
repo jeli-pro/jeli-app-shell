@@ -49,6 +49,8 @@ export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalet
   const topBarContainerRef = useRef<HTMLDivElement>(null)
   const mainAreaRef = useRef<HTMLDivElement>(null)
 
+  const isSplitView = bodyState === BODY_STATES.SPLIT_VIEW;
+
   // Custom hooks for logic
   useResizableSidebar(sidebarRef, resizeHandleRef);
   useResizableRightPane();
@@ -191,8 +193,10 @@ export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalet
               {/* Left drop overlay */}
               <div
                 className={cn(
-                  "absolute inset-y-0 left-0 z-40 border-2 border-transparent",
-                  draggedPage ? "pointer-events-auto w-1/2" : "pointer-events-none w-0",
+                  "absolute inset-y-0 left-0 z-40 border-2 border-transparent transition-all",
+                  draggedPage
+                    ? cn("pointer-events-auto", isSplitView ? 'w-full' : 'w-1/2')
+                    : "pointer-events-none w-0",
                   dragHoverTarget === 'left' && "bg-primary/10 border-primary"
                 )}
                 onDragOver={handleDragOverLeft}
@@ -201,34 +205,67 @@ export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalet
                   if (dragHoverTarget === 'left') dispatch({ type: 'SET_DRAG_HOVER_TARGET', payload: null });
                 }}
               >
-                {draggedPage && (
-                  <div className="absolute inset-0 flex items-center justify-center text-sm font-medium text-primary-foreground/80">
-                    <span className="px-3 py-1 rounded-md bg-primary/70">Drop to Left</span>
+                {draggedPage && dragHoverTarget === 'left' && (
+                  <div className="absolute inset-0 flex items-center justify-center text-sm font-medium text-primary-foreground/80 pointer-events-none">
+                    <span className="px-3 py-1 rounded-md bg-primary/70">{isSplitView ? 'Drop to Replace' : 'Drop to Left'}</span>
                   </div>
                 )}
               </div>
               {mainContentWithProps}
-              {/* Right drop overlay (over main area to allow docking even if pane hidden) */}
+              {/* Right drop overlay (over main area, ONLY when NOT in split view) */}
+              {!isSplitView && (
+                <div
+                  className={cn(
+                    "absolute inset-y-0 right-0 z-40 border-2 border-transparent",
+                    draggedPage ? "pointer-events-auto w-1/2" : "pointer-events-none",
+                    dragHoverTarget === 'right' && "bg-primary/10 border-primary"
+                  )}
+                  onDragOver={handleDragOverRight}
+                  onDrop={handleDropRight}
+                  onDragLeave={() => {
+                    if (dragHoverTarget === 'right') dispatch({ type: 'SET_DRAG_HOVER_TARGET', payload: null });
+                  }}
+                >
+                  {draggedPage && dragHoverTarget === 'right' && (
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                      <span className="px-3 py-1 rounded-md bg-primary/70 text-sm font-medium text-primary-foreground/80">Drop to Right</span>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+            {isSplitView ? (
               <div
-                className={cn(
-                  "absolute inset-y-0 right-0 z-40 border-2 border-transparent",
-                  draggedPage ? "pointer-events-auto w-1/2" : "pointer-events-none",
-                  dragHoverTarget === 'right' && "bg-primary/10 border-primary"
-                )}
+                className="relative"
                 onDragOver={handleDragOverRight}
-                onDrop={handleDropRight}
-                onDragLeave={() => {
-                  if (dragHoverTarget === 'right') dispatch({ type: 'SET_DRAG_HOVER_TARGET', payload: null });
-                }}
               >
+                {rightPaneWithProps}
                 {draggedPage && (
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="px-3 py-1 rounded-md bg-primary/70 text-sm font-medium text-primary-foreground/80">Drop to Right</span>
+                  <div
+                    className={cn(
+                      'absolute inset-0 z-50 transition-all',
+                      dragHoverTarget === 'right'
+                        ? 'bg-primary/10 border-2 border-primary'
+                        : 'pointer-events-none'
+                    )}
+                    onDragLeave={() => {
+                      if (dragHoverTarget === 'right')
+                        dispatch({ type: 'SET_DRAG_HOVER_TARGET', payload: null });
+                    }}
+                    onDrop={handleDropRight}
+                    onDragOver={(e) => e.preventDefault()}
+                  >
+                    {dragHoverTarget === 'right' && (
+                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <span className="px-3 py-1 rounded-md bg-primary/70 text-sm font-medium text-primary-foreground/80">
+                          Drop to Replace
+                        </span>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
-            </div>
-            {rightPaneWithProps}
+            ) : rightPaneWithProps}
           </div>
         </div>
       </div>
