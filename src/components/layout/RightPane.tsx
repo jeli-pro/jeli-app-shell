@@ -1,5 +1,5 @@
 import { forwardRef, type ReactNode } from 'react'
-import { ChevronRight } from 'lucide-react'
+import { ChevronRight, X } from 'lucide-react'
 import { cn, BODY_STATES } from '@/lib/utils'
 import { useAppShell } from '@/context/AppShellContext'
 
@@ -10,21 +10,35 @@ interface RightPaneProps {
 }
 
 export const RightPane = forwardRef<HTMLDivElement, RightPaneProps>(({ children, header, className }, ref) => {
-  const { closeSidePane, dispatch, bodyState } = useAppShell();
+  const { closeSidePane, dispatch, bodyState, fullscreenTarget, toggleFullscreen } = useAppShell();
   const isSplitView = bodyState === BODY_STATES.SPLIT_VIEW;
+  const isFullscreen = bodyState === BODY_STATES.FULLSCREEN;
+
+  if (isFullscreen && fullscreenTarget !== 'right') {
+    return null;
+  }
 
   return (
     <aside
       ref={ref}
       className={cn(
         "border-l border-border flex flex-col h-full overflow-hidden",
-        isSplitView
-          ? "relative bg-background"
-          : "fixed top-0 right-0 z-[60] bg-card",
+        isSplitView && "relative bg-background",
+        !isSplitView && !isFullscreen && "fixed top-0 right-0 z-[60] bg-card",
+        isFullscreen && fullscreenTarget === 'right' && "absolute inset-0 z-50 bg-card",
         className,
       )}
     >
-      {bodyState !== BODY_STATES.SPLIT_VIEW && (
+      {isFullscreen && fullscreenTarget === 'right' && (
+        <button
+          onClick={() => toggleFullscreen()}
+          className="fixed top-6 right-6 lg:right-12 z-[100] h-12 w-12 flex items-center justify-center rounded-full bg-card/50 backdrop-blur-sm hover:bg-card/75 transition-colors group"
+          title="Exit Fullscreen"
+        >
+          <X className="w-6 h-6 group-hover:scale-110 group-hover:rotate-90 transition-all duration-300" />
+        </button>
+      )}
+      {bodyState !== BODY_STATES.SPLIT_VIEW && !isFullscreen && (
         <button
           onClick={closeSidePane}
           className="absolute top-1/2 -left-px -translate-y-1/2 -translate-x-full w-8 h-16 bg-card border border-r-0 border-border rounded-l-lg flex items-center justify-center hover:bg-accent transition-colors group z-10"

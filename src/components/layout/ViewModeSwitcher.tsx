@@ -19,7 +19,7 @@ const pageToPaneMap: Record<ActivePage, AppShellState['sidePaneContent']> = {
   notifications: 'notifications',
 };
 
-export function ViewModeSwitcher() {
+export function ViewModeSwitcher({ pane }: { pane?: 'main' | 'right' }) {
   const {
     bodyState,
     sidePaneContent,
@@ -27,11 +27,20 @@ export function ViewModeSwitcher() {
     closeSidePane,
     toggleFullscreen,
     toggleSplitView,
+    fullscreenTarget,
   } = useAppShell()
   const { activePage } = useAppStore()
 
+  const isFullscreen = bodyState === BODY_STATES.FULLSCREEN;
+  const isThisPaneFullscreen = isFullscreen && (
+    (pane === 'main' && fullscreenTarget !== 'right') ||
+    (pane === 'right' && fullscreenTarget === 'right') ||
+    (!pane && !fullscreenTarget) // Global switcher, global fullscreen
+  );
+
   const handleSidePaneClick = () => {
     const paneContent = pageToPaneMap[activePage] || 'details';
+    if (pane === 'right') return; // Don't allow opening a side pane from a side pane
     // If side pane is already open with the current page's content, clicking again should close it.
     if (bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === paneContent) {
       closeSidePane();
@@ -42,6 +51,7 @@ export function ViewModeSwitcher() {
   
   const handleSplitViewClick = () => {
       const paneContent = pageToPaneMap[activePage] || 'details';
+      if (pane === 'right') return; // Don't allow splitting from a side pane in this simple case
       toggleSplitView(paneContent);
   }
 
@@ -49,7 +59,14 @@ export function ViewModeSwitcher() {
     <div className="flex items-center gap-1 p-1 bg-card rounded-full border border-border">
       <button
         onClick={() => {
-            if (bodyState !== BODY_STATES.NORMAL) closeSidePane();
+            // "Normal view" button should always just close any open panes.
+            if (bodyState === BODY_STATES.SIDE_PANE || bodyState === BODY_STATES.SPLIT_VIEW) {
+              closeSidePane();
+            }
+            // This button is hidden in fullscreen, but as a fallback, it should exit.
+            if (isFullscreen) {
+              toggleFullscreen();
+            }
         }}
         className={cn(
           'h-8 w-8 flex items-center justify-center rounded-full hover:bg-accent transition-colors group',
@@ -80,14 +97,14 @@ export function ViewModeSwitcher() {
         {bodyState === BODY_STATES.SPLIT_VIEW ? <Layers className="w-4 h-4" /> : <SplitSquareHorizontal className="w-4 h-4" />}
       </button>
       <button
-        onClick={toggleFullscreen}
+        onClick={() => toggleFullscreen(pane)}
         className={cn(
           'h-8 w-8 flex items-center justify-center rounded-full hover:bg-accent transition-colors group',
-          bodyState === BODY_STATES.FULLSCREEN && 'bg-accent text-accent-foreground'
+          isThisPaneFullscreen && 'bg-accent text-accent-foreground'
         )}
         title="Toggle Fullscreen"
       >
-        {bodyState === BODY_STATES.FULLSCREEN ? (
+        {isThisPaneFullscreen ? (
           <Minimize className="w-4 h-4" />
         ) : (
           <Maximize className="w-4 h-4" />

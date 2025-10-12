@@ -20,6 +20,8 @@ export interface AppShellState {
   sidebarWidth: number;
   sidePaneWidth: number;
   splitPaneWidth: number;
+  previousBodyState: BodyState;
+  fullscreenTarget: 'main' | 'right' | null;
   isResizing: boolean;
   isResizingRightPane: boolean;
   isTopBarVisible: boolean;
@@ -42,6 +44,8 @@ type AppShellAction =
   | { type: 'SET_SIDE_PANE_WIDTH'; payload: number }
   | { type: 'SET_SPLIT_PANE_WIDTH'; payload: number }
   | { type: 'SET_IS_RESIZING'; payload: boolean }
+  | { type: 'SET_PREVIOUS_BODY_STATE'; payload: BodyState }
+  | { type: 'SET_FULLSCREEN_TARGET'; payload: 'main' | 'right' | null }
   | { type: 'SET_IS_RESIZING_RIGHT_PANE'; payload: boolean }
   | { type: 'SET_TOP_BAR_VISIBLE'; payload: boolean }
   | { type: 'SET_AUTO_EXPAND_SIDEBAR'; payload: boolean }
@@ -62,6 +66,8 @@ const defaultState: AppShellState = {
   sidebarWidth: 280,
   sidePaneWidth: typeof window !== 'undefined' ? Math.max(300, Math.round(window.innerWidth * 0.6)) : 400,
   splitPaneWidth: typeof window !== 'undefined' ? Math.max(300, Math.round(window.innerWidth * 0.35)) : 400,
+  previousBodyState: BODY_STATES.NORMAL,
+  fullscreenTarget: null,
   isResizing: false,
   isResizingRightPane: false,
   isTopBarVisible: true,
@@ -79,12 +85,19 @@ const defaultState: AppShellState = {
 function appShellReducer(state: AppShellState, action: AppShellAction): AppShellState {
   switch (action.type) {
     case 'SET_SIDEBAR_STATE': return { ...state, sidebarState: action.payload };
-    case 'SET_BODY_STATE': return { ...state, bodyState: action.payload };
+    case 'SET_BODY_STATE':
+      // If we're leaving fullscreen, reset the target and previous state
+      if (state.bodyState === BODY_STATES.FULLSCREEN && action.payload !== BODY_STATES.FULLSCREEN) {
+        return { ...state, bodyState: action.payload, fullscreenTarget: null, previousBodyState: BODY_STATES.NORMAL };
+      }
+      return { ...state, bodyState: action.payload };
     case 'SET_SIDE_PANE_CONTENT': return { ...state, sidePaneContent: action.payload };
     case 'SET_SIDEBAR_WIDTH': return { ...state, sidebarWidth: Math.max(200, Math.min(500, action.payload)) };
     case 'SET_SIDE_PANE_WIDTH': return { ...state, sidePaneWidth: Math.max(300, Math.min(window.innerWidth * 0.8, action.payload)) };
     case 'SET_SPLIT_PANE_WIDTH': return { ...state, splitPaneWidth: Math.max(300, Math.min(window.innerWidth * 0.8, action.payload)) };
     case 'SET_IS_RESIZING': return { ...state, isResizing: action.payload };
+    case 'SET_PREVIOUS_BODY_STATE': return { ...state, previousBodyState: action.payload };
+    case 'SET_FULLSCREEN_TARGET': return { ...state, fullscreenTarget: action.payload };
     case 'SET_IS_RESIZING_RIGHT_PANE': return { ...state, isResizingRightPane: action.payload };
     case 'SET_TOP_BAR_VISIBLE': return { ...state, isTopBarVisible: action.payload };
     case 'SET_AUTO_EXPAND_SIDEBAR': return { ...state, autoExpandSidebar: action.payload };
@@ -114,7 +127,7 @@ interface AppShellContextValue extends AppShellState {
   hideSidebar: () => void;
   showSidebar: () => void;
   peekSidebar: () => void;
-  toggleFullscreen: () => void;
+  toggleFullscreen: (target?: 'main' | 'right' | null) => void;
   toggleSplitView: (content?: AppShellState['sidePaneContent']) => void;
   openSidePane: (content: AppShellState['sidePaneContent']) => void;
   closeSidePane: () => void;
@@ -155,10 +168,18 @@ export function AppShellProvider({ children, appName, appLogo, defaultSplitPaneW
   const showSidebar = useCallback(() => dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.EXPANDED }), []);
   const peekSidebar = useCallback(() => dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.PEEK }), []);
   
-  const toggleFullscreen = useCallback(() => {
+  const toggleFullscreen = useCallback((target: 'main' | 'right' | null = null) => {
     const current = state.bodyState;
-    dispatch({ type: 'SET_BODY_STATE', payload: current === BODY_STATES.FULLSCREEN ? BODY_STATES.NORMAL : BODY_STATES.FULLSCREEN });
-  }, [state.bodyState]);
+    if (current === BODY_STATES.FULLSCREEN) {
+      // Exiting fullscreen, go back to the previous state
+      dispatch({ type: 'SET_BODY_STATE', payload: state.previousBodyState || BODY_STATES.NORMAL });
+    } else {
+      // Entering fullscreen
+      dispatch({ type: 'SET_PREVIOUS_BODY_STATE', payload: current });
+      dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.FULLSCREEN });
+      dispatch({ type: 'SET_FULLSCREEN_TARGET', payload: target });
+    }
+  }, [state.bodyState, state.previousBodyState]);
 
   const toggleSplitView = useCallback((content?: AppShellState['sidePaneContent']) => {
     const current = state.bodyState;

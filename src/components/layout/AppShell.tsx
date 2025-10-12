@@ -223,9 +223,9 @@ export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalet
                 )}
               </div>
               {mainContentWithProps}
-              {isSplitView && hoveredPane === 'left' && !draggedPage && (
+              {isSplitView && hoveredPane === 'left' && !draggedPage && bodyState !== BODY_STATES.FULLSCREEN && (
                 <div className="absolute top-4 right-4 z-50">
-                  <ViewModeSwitcher />
+                  <ViewModeSwitcher pane="main" />
                 </div>
               )}
               {/* Right drop overlay (over main area, ONLY when NOT in split view) */}
@@ -282,9 +282,9 @@ export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalet
                     )}
                   </div>
                 )}
-                {hoveredPane === 'right' && !draggedPage && (
+                {hoveredPane === 'right' && !draggedPage && bodyState !== BODY_STATES.FULLSCREEN && (
                   <div className="absolute top-4 right-4 z-[70]">
-                    <ViewModeSwitcher />
+                    <ViewModeSwitcher pane="right" />
                   </div>
                 )}
               </div>

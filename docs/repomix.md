@@ -102,7 +102,7 @@ const pageToPaneMap: Record<ActivePage, AppShellState['sidePaneContent']> = {
   notifications: 'notifications',
 };
 
-export function ViewModeSwitcher() {
+export function ViewModeSwitcher({ pane }: { pane?: 'main' | 'right' }) {
   const {
     bodyState,
     sidePaneContent,
@@ -110,11 +110,20 @@ export function ViewModeSwitcher() {
     closeSidePane,
     toggleFullscreen,
     toggleSplitView,
+    fullscreenTarget,
   } = useAppShell()
   const { activePage } = useAppStore()
 
+  const isFullscreen = bodyState === BODY_STATES.FULLSCREEN;
+  const isThisPaneFullscreen = isFullscreen && (
+    (pane === 'main' && fullscreenTarget !== 'right') ||
+    (pane === 'right' && fullscreenTarget === 'right') ||
+    (!pane && !fullscreenTarget) // Global switcher, global fullscreen
+  );
+
   const handleSidePaneClick = () => {
     const paneContent = pageToPaneMap[activePage] || 'details';
+    if (pane === 'right') return; // Don't allow opening a side pane from a side pane
     // If side pane is already open with the current page's content, clicking again should close it.
     if (bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === paneContent) {
       closeSidePane();
@@ -125,6 +134,7 @@ export function ViewModeSwitcher() {
   
   const handleSplitViewClick = () => {
       const paneContent = pageToPaneMap[activePage] || 'details';
+      if (pane === 'right') return; // Don't allow splitting from a side pane in this simple case
       toggleSplitView(paneContent);
   }
 
@@ -132,7 +142,14 @@ export function ViewModeSwitcher() {
     <div className="flex items-center gap-1 p-1 bg-card rounded-full border border-border">
       <button
         onClick={() => {
-            if (bodyState !== BODY_STATES.NORMAL) closeSidePane();
+            // "Normal view" button should always just close any open panes.
+            if (bodyState === BODY_STATES.SIDE_PANE || bodyState === BODY_STATES.SPLIT_VIEW) {
+              closeSidePane();
+            }
+            // This button is hidden in fullscreen, but as a fallback, it should exit.
+            if (isFullscreen) {
+              toggleFullscreen();
+            }
         }}
         className={cn(
           'h-8 w-8 flex items-center justify-center rounded-full hover:bg-accent transition-colors group',
@@ -163,14 +180,14 @@ export function ViewModeSwitcher() {
         {bodyState === BODY_STATES.SPLIT_VIEW ? <Layers className="w-4 h-4" /> : <SplitSquareHorizontal className="w-4 h-4" />}
       </button>
       <button
-        onClick={toggleFullscreen}
+        onClick={() => toggleFullscreen(pane)}
         className={cn(
           'h-8 w-8 flex items-center justify-center rounded-full hover:bg-accent transition-colors group',
-          bodyState === BODY_STATES.FULLSCREEN && 'bg-accent text-accent-foreground'
+          isThisPaneFullscreen && 'bg-accent text-accent-foreground'
         )}
         title="Toggle Fullscreen"
       >
-        {bodyState === BODY_STATES.FULLSCREEN ? (
+        {isThisPaneFullscreen ? (
           <Minimize className="w-4 h-4" />
         ) : (
           <Maximize className="w-4 h-4" />
@@ -4465,19 +4482,24 @@ interface MainContentProps {
 
 export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
   ({ onToggleFullscreen, children }, ref) => {
-    const { bodyState } = useAppShell();
+    const { bodyState, fullscreenTarget, toggleFullscreen } = useAppShell();
+    const isFullscreen = bodyState === BODY_STATES.FULLSCREEN;
+
+    if (isFullscreen && fullscreenTarget === 'right') {
+      return null;
+    }
 
     return (
       <div
         ref={ref}
         className={cn(
         "flex flex-col h-full overflow-hidden",
-        bodyState === BODY_STATES.FULLSCREEN && "absolute inset-0 z-40 bg-background"
+        isFullscreen && "absolute inset-0 z-40 bg-background"
         )}
       >
-        {bodyState === BODY_STATES.FULLSCREEN && (
+        {isFullscreen && (
           <button
-            onClick={() => onToggleFullscreen?.()}
+            onClick={() => toggleFullscreen()}
             className="fixed top-6 right-6 lg:right-12 z-[100] h-12 w-12 flex items-center justify-center rounded-full bg-card/50 backdrop-blur-sm hover:bg-card/75 transition-colors group"
             title="Exit Fullscreen"
           >
@@ -4493,130 +4515,6 @@ export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
   }
 )
 MainContent.displayName = 'MainContent'
-````
-
-## File: src/components/layout/TopBar.tsx
-````typescript
-import {
-  Menu, 
-  Moon, 
-  Sun,
-  Settings,
-  Command,
-  Zap,
-} from 'lucide-react'
-import { cn } from '@/lib/utils'
-import { BODY_STATES } from '@/lib/utils'
-import { useAppStore } from '@/store/appStore'
-import { useAppShell } from '@/context/AppShellContext'
-import { UserDropdown } from './UserDropdown'
-import { ViewModeSwitcher } from './ViewModeSwitcher'
-
-interface TopBarProps {
-  onToggleSidebar?: () => void
-  onToggleDarkMode?: () => void
-  children?: React.ReactNode
-}
-
-export function TopBar({
-  onToggleSidebar,
-  onToggleDarkMode,
-  children,
-}: TopBarProps) {
-  const { bodyState, openSidePane, sidePaneContent } = useAppShell();
-  const { 
-    setCommandPaletteOpen,
-    isDarkMode,
-  } = useAppStore()
-
-  const handleSettingsClick = () => {
-    const isSettingsInSidePane = bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === 'settings'
-
-    // If we're on the settings page and it's not in the side pane, treat this as a "minimize" action.
-    if (!isSettingsInSidePane) {
-      openSidePane('settings');
-    } else {
-      // In all other cases (on dashboard page, or settings already in pane),
-      // just toggle the settings side pane.
-      openSidePane('settings')
-    }
-  };
-
-  return (
-    <div className={cn(
-      "h-20 bg-background border-b border-border flex items-center justify-between px-6 z-50 gap-4",
-      'transition-all duration-300 ease-in-out'
-    )}>
-      {/* Left Section - Sidebar Controls & Breadcrumbs */}
-      <div className="flex items-center gap-4">
-        {/* Sidebar Controls */}
-        <button
-          onClick={() => onToggleSidebar?.()}
-          className={cn(
-            "h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors"
-          )}
-          title="Toggle Sidebar"
-        >
-          <Menu className="w-5 h-5" />
-        </button>
-
-      </div>
-
-      {/* Right Section - page controls, and global controls */}
-      <div className="flex items-center gap-3">
-        {children}
-
-        {/* Separator */}
-        <div className="w-px h-6 bg-border mx-2" />
-
-        {/* Quick Actions */}
-        <div className="flex items-center gap-3">
-
-          <button
-            onClick={() => setCommandPaletteOpen(true)}
-            className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
-            title="Command Palette (Ctrl+K)"
-          >
-            <Command className="w-5 h-5 group-hover:scale-110 transition-transform" />
-          </button>
-
-        <button
-          className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
-          title="Quick Actions"
-        >
-          <Zap className="w-5 h-5 group-hover:scale-110 transition-transform" />
-        </button>
-
-        {bodyState !== BODY_STATES.SPLIT_VIEW && <ViewModeSwitcher />}
-
-        <div className="w-px h-6 bg-border mx-2" />
-
-        {/* Theme and Settings */}
-        <button
-          onClick={() => onToggleDarkMode?.()}
-          className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
-          title="Toggle Dark Mode"
-        >
-          {isDarkMode ? (
-            <Sun className="w-5 h-5 group-hover:scale-110 transition-transform" />
-          ) : (
-            <Moon className="w-5 h-5 group-hover:scale-110 transition-transform" />
-          )}
-        </button>
-
-        <button
-          onClick={handleSettingsClick}
-          className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
-          title="Settings"
-        >
-          <Settings className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
-        </button>
-        <UserDropdown />
-        </div>
-      </div>
-    </div>
-  )
-}
 ````
 
 ## File: src/hooks/useAppShellAnimations.hook.ts
@@ -5383,7 +5281,7 @@ export function DashboardContent({ isInSidePane = false }: DashboardContentProps
 ## File: src/components/layout/RightPane.tsx
 ````typescript
 import { forwardRef, type ReactNode } from 'react'
-import { ChevronRight } from 'lucide-react'
+import { ChevronRight, X } from 'lucide-react'
 import { cn, BODY_STATES } from '@/lib/utils'
 import { useAppShell } from '@/context/AppShellContext'
 
@@ -5394,21 +5292,35 @@ interface RightPaneProps {
 }
 
 export const RightPane = forwardRef<HTMLDivElement, RightPaneProps>(({ children, header, className }, ref) => {
-  const { closeSidePane, dispatch, bodyState } = useAppShell();
+  const { closeSidePane, dispatch, bodyState, fullscreenTarget, toggleFullscreen } = useAppShell();
   const isSplitView = bodyState === BODY_STATES.SPLIT_VIEW;
+  const isFullscreen = bodyState === BODY_STATES.FULLSCREEN;
+
+  if (isFullscreen && fullscreenTarget !== 'right') {
+    return null;
+  }
 
   return (
     <aside
       ref={ref}
       className={cn(
         "border-l border-border flex flex-col h-full overflow-hidden",
-        isSplitView
-          ? "relative bg-background"
-          : "fixed top-0 right-0 z-[60] bg-card",
+        isSplitView && "relative bg-background",
+        !isSplitView && !isFullscreen && "fixed top-0 right-0 z-[60] bg-card",
+        isFullscreen && fullscreenTarget === 'right' && "absolute inset-0 z-50 bg-card",
         className,
       )}
     >
-      {bodyState !== BODY_STATES.SPLIT_VIEW && (
+      {isFullscreen && fullscreenTarget === 'right' && (
+        <button
+          onClick={() => toggleFullscreen()}
+          className="fixed top-6 right-6 lg:right-12 z-[100] h-12 w-12 flex items-center justify-center rounded-full bg-card/50 backdrop-blur-sm hover:bg-card/75 transition-colors group"
+          title="Exit Fullscreen"
+        >
+          <X className="w-6 h-6 group-hover:scale-110 group-hover:rotate-90 transition-all duration-300" />
+        </button>
+      )}
+      {bodyState !== BODY_STATES.SPLIT_VIEW && !isFullscreen && (
         <button
           onClick={closeSidePane}
           className="absolute top-1/2 -left-px -translate-y-1/2 -translate-x-full w-8 h-16 bg-card border border-r-0 border-border rounded-l-lg flex items-center justify-center hover:bg-accent transition-colors group z-10"
@@ -5440,6 +5352,130 @@ export const RightPane = forwardRef<HTMLDivElement, RightPaneProps>(({ children,
   )
 })
 RightPane.displayName = "RightPane"
+````
+
+## File: src/components/layout/TopBar.tsx
+````typescript
+import {
+  Menu, 
+  Moon, 
+  Sun,
+  Settings,
+  Command,
+  Zap,
+} from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { BODY_STATES } from '@/lib/utils'
+import { useAppStore } from '@/store/appStore'
+import { useAppShell } from '@/context/AppShellContext'
+import { UserDropdown } from './UserDropdown'
+import { ViewModeSwitcher } from './ViewModeSwitcher'
+
+interface TopBarProps {
+  onToggleSidebar?: () => void
+  onToggleDarkMode?: () => void
+  children?: React.ReactNode
+}
+
+export function TopBar({
+  onToggleSidebar,
+  onToggleDarkMode,
+  children,
+}: TopBarProps) {
+  const { bodyState, openSidePane, sidePaneContent } = useAppShell();
+  const { 
+    setCommandPaletteOpen,
+    isDarkMode,
+  } = useAppStore()
+
+  const handleSettingsClick = () => {
+    const isSettingsInSidePane = bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === 'settings'
+
+    // If we're on the settings page and it's not in the side pane, treat this as a "minimize" action.
+    if (!isSettingsInSidePane) {
+      openSidePane('settings');
+    } else {
+      // In all other cases (on dashboard page, or settings already in pane),
+      // just toggle the settings side pane.
+      openSidePane('settings')
+    }
+  };
+
+  return (
+    <div className={cn(
+      "h-20 bg-background border-b border-border flex items-center justify-between px-6 z-50 gap-4",
+      'transition-all duration-300 ease-in-out'
+    )}>
+      {/* Left Section - Sidebar Controls & Breadcrumbs */}
+      <div className="flex items-center gap-4">
+        {/* Sidebar Controls */}
+        <button
+          onClick={() => onToggleSidebar?.()}
+          className={cn(
+            "h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors"
+          )}
+          title="Toggle Sidebar"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
+
+      </div>
+
+      {/* Right Section - page controls, and global controls */}
+      <div className="flex items-center gap-3">
+        {children}
+
+        {/* Separator */}
+        <div className="w-px h-6 bg-border mx-2" />
+
+        {/* Quick Actions */}
+        <div className="flex items-center gap-3">
+
+          <button
+            onClick={() => setCommandPaletteOpen(true)}
+            className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+            title="Command Palette (Ctrl+K)"
+          >
+            <Command className="w-5 h-5 group-hover:scale-110 transition-transform" />
+          </button>
+
+        <button
+          className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+          title="Quick Actions"
+        >
+          <Zap className="w-5 h-5 group-hover:scale-110 transition-transform" />
+        </button>
+
+        {bodyState !== BODY_STATES.SPLIT_VIEW && <ViewModeSwitcher />}
+
+        <div className="w-px h-6 bg-border mx-2" />
+
+        {/* Theme and Settings */}
+        <button
+          onClick={() => onToggleDarkMode?.()}
+          className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+          title="Toggle Dark Mode"
+        >
+          {isDarkMode ? (
+            <Sun className="w-5 h-5 group-hover:scale-110 transition-transform" />
+          ) : (
+            <Moon className="w-5 h-5 group-hover:scale-110 transition-transform" />
+          )}
+        </button>
+
+        <button
+          onClick={handleSettingsClick}
+          className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+          title="Settings"
+        >
+          <Settings className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
+        </button>
+        <UserDropdown />
+        </div>
+      </div>
+    </div>
+  )
+}
 ````
 
 ## File: vite.config.ts
@@ -5929,6 +5965,8 @@ export interface AppShellState {
   sidebarWidth: number;
   sidePaneWidth: number;
   splitPaneWidth: number;
+  previousBodyState: BodyState;
+  fullscreenTarget: 'main' | 'right' | null;
   isResizing: boolean;
   isResizingRightPane: boolean;
   isTopBarVisible: boolean;
@@ -5951,6 +5989,8 @@ type AppShellAction =
   | { type: 'SET_SIDE_PANE_WIDTH'; payload: number }
   | { type: 'SET_SPLIT_PANE_WIDTH'; payload: number }
   | { type: 'SET_IS_RESIZING'; payload: boolean }
+  | { type: 'SET_PREVIOUS_BODY_STATE'; payload: BodyState }
+  | { type: 'SET_FULLSCREEN_TARGET'; payload: 'main' | 'right' | null }
   | { type: 'SET_IS_RESIZING_RIGHT_PANE'; payload: boolean }
   | { type: 'SET_TOP_BAR_VISIBLE'; payload: boolean }
   | { type: 'SET_AUTO_EXPAND_SIDEBAR'; payload: boolean }
@@ -5971,6 +6011,8 @@ const defaultState: AppShellState = {
   sidebarWidth: 280,
   sidePaneWidth: typeof window !== 'undefined' ? Math.max(300, Math.round(window.innerWidth * 0.6)) : 400,
   splitPaneWidth: typeof window !== 'undefined' ? Math.max(300, Math.round(window.innerWidth * 0.35)) : 400,
+  previousBodyState: BODY_STATES.NORMAL,
+  fullscreenTarget: null,
   isResizing: false,
   isResizingRightPane: false,
   isTopBarVisible: true,
@@ -5988,12 +6030,19 @@ const defaultState: AppShellState = {
 function appShellReducer(state: AppShellState, action: AppShellAction): AppShellState {
   switch (action.type) {
     case 'SET_SIDEBAR_STATE': return { ...state, sidebarState: action.payload };
-    case 'SET_BODY_STATE': return { ...state, bodyState: action.payload };
+    case 'SET_BODY_STATE':
+      // If we're leaving fullscreen, reset the target and previous state
+      if (state.bodyState === BODY_STATES.FULLSCREEN && action.payload !== BODY_STATES.FULLSCREEN) {
+        return { ...state, bodyState: action.payload, fullscreenTarget: null, previousBodyState: BODY_STATES.NORMAL };
+      }
+      return { ...state, bodyState: action.payload };
     case 'SET_SIDE_PANE_CONTENT': return { ...state, sidePaneContent: action.payload };
     case 'SET_SIDEBAR_WIDTH': return { ...state, sidebarWidth: Math.max(200, Math.min(500, action.payload)) };
     case 'SET_SIDE_PANE_WIDTH': return { ...state, sidePaneWidth: Math.max(300, Math.min(window.innerWidth * 0.8, action.payload)) };
     case 'SET_SPLIT_PANE_WIDTH': return { ...state, splitPaneWidth: Math.max(300, Math.min(window.innerWidth * 0.8, action.payload)) };
     case 'SET_IS_RESIZING': return { ...state, isResizing: action.payload };
+    case 'SET_PREVIOUS_BODY_STATE': return { ...state, previousBodyState: action.payload };
+    case 'SET_FULLSCREEN_TARGET': return { ...state, fullscreenTarget: action.payload };
     case 'SET_IS_RESIZING_RIGHT_PANE': return { ...state, isResizingRightPane: action.payload };
     case 'SET_TOP_BAR_VISIBLE': return { ...state, isTopBarVisible: action.payload };
     case 'SET_AUTO_EXPAND_SIDEBAR': return { ...state, autoExpandSidebar: action.payload };
@@ -6023,7 +6072,7 @@ interface AppShellContextValue extends AppShellState {
   hideSidebar: () => void;
   showSidebar: () => void;
   peekSidebar: () => void;
-  toggleFullscreen: () => void;
+  toggleFullscreen: (target?: 'main' | 'right' | null) => void;
   toggleSplitView: (content?: AppShellState['sidePaneContent']) => void;
   openSidePane: (content: AppShellState['sidePaneContent']) => void;
   closeSidePane: () => void;
@@ -6064,10 +6113,18 @@ export function AppShellProvider({ children, appName, appLogo, defaultSplitPaneW
   const showSidebar = useCallback(() => dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.EXPANDED }), []);
   const peekSidebar = useCallback(() => dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.PEEK }), []);
   
-  const toggleFullscreen = useCallback(() => {
+  const toggleFullscreen = useCallback((target: 'main' | 'right' | null = null) => {
     const current = state.bodyState;
-    dispatch({ type: 'SET_BODY_STATE', payload: current === BODY_STATES.FULLSCREEN ? BODY_STATES.NORMAL : BODY_STATES.FULLSCREEN });
-  }, [state.bodyState]);
+    if (current === BODY_STATES.FULLSCREEN) {
+      // Exiting fullscreen, go back to the previous state
+      dispatch({ type: 'SET_BODY_STATE', payload: state.previousBodyState || BODY_STATES.NORMAL });
+    } else {
+      // Entering fullscreen
+      dispatch({ type: 'SET_PREVIOUS_BODY_STATE', payload: current });
+      dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.FULLSCREEN });
+      dispatch({ type: 'SET_FULLSCREEN_TARGET', payload: target });
+    }
+  }, [state.bodyState, state.previousBodyState]);
 
   const toggleSplitView = useCallback((content?: AppShellState['sidePaneContent']) => {
     const current = state.bodyState;
@@ -6375,9 +6432,9 @@ export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalet
                 )}
               </div>
               {mainContentWithProps}
-              {isSplitView && hoveredPane === 'left' && !draggedPage && (
+              {isSplitView && hoveredPane === 'left' && !draggedPage && bodyState !== BODY_STATES.FULLSCREEN && (
                 <div className="absolute top-4 right-4 z-50">
-                  <ViewModeSwitcher />
+                  <ViewModeSwitcher pane="main" />
                 </div>
               )}
               {/* Right drop overlay (over main area, ONLY when NOT in split view) */}
@@ -6434,9 +6491,9 @@ export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalet
                     )}
                   </div>
                 )}
-                {hoveredPane === 'right' && !draggedPage && (
+                {hoveredPane === 'right' && !draggedPage && bodyState !== BODY_STATES.FULLSCREEN && (
                   <div className="absolute top-4 right-4 z-[70]">
-                    <ViewModeSwitcher />
+                    <ViewModeSwitcher pane="right" />
                   </div>
                 )}
               </div>

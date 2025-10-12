@@ -11,19 +11,24 @@ interface MainContentProps {
 
 export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
   ({ onToggleFullscreen, children }, ref) => {
-    const { bodyState } = useAppShell();
+    const { bodyState, fullscreenTarget, toggleFullscreen } = useAppShell();
+    const isFullscreen = bodyState === BODY_STATES.FULLSCREEN;
+
+    if (isFullscreen && fullscreenTarget === 'right') {
+      return null;
+    }
 
     return (
       <div
         ref={ref}
         className={cn(
         "flex flex-col h-full overflow-hidden",
-        bodyState === BODY_STATES.FULLSCREEN && "absolute inset-0 z-40 bg-background"
+        isFullscreen && "absolute inset-0 z-40 bg-background"
         )}
       >
-        {bodyState === BODY_STATES.FULLSCREEN && (
+        {isFullscreen && (
           <button
-            onClick={() => onToggleFullscreen?.()}
+            onClick={() => toggleFullscreen()}
             className="fixed top-6 right-6 lg:right-12 z-[100] h-12 w-12 flex items-center justify-center rounded-full bg-card/50 backdrop-blur-sm hover:bg-card/75 transition-colors group"
             title="Exit Fullscreen"
           >

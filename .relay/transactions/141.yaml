@@ -1,0 +1,1264 @@
+uuid: b85de62a-0490-4a87-af9b-029471d28331
+projectId: jeli-app-shell
+createdAt: '2025-10-12T03:58:37.222Z'
+gitCommitMsg: >-
+  feat(fullscreen): enable contextual actions and fix exit behavior
+
+  This commit implements two major improvements to the App Shell's state
+  management:
+
+  1.  **Context-Aware ViewModeSwitcher Actions**: The `ViewModeSwitcher` is now
+  fully context-aware. When displayed within a pane in split-view mode, its
+  actions (like fullscreen) apply specifically to that pane. This is achieved by
+  introducing a `fullscreenTarget` state.
+
+  2.  **Robust Fullscreen Exit**: The application now remembers the state it was
+  in before entering fullscreen. The exit fullscreen button will correctly
+  return the user to their previous layout, whether it was the normal view or a
+  split-view configuration. This is managed via a new `previousBodyState` in the
+  AppShell context.
+
+  These changes make the split-view and fullscreen features more intuitive and
+  powerful.
+promptSummary: >-
+  The user wanted to make ViewModeSwitcher actions context-aware for split-view
+  mode and fix the fullscreen exit button to return to the previous view (e.g.,
+  split view).
+reasoning:
+  - >-
+    Of course. I understand the nuances you're pointing out. My previous
+    implementation correctly placed the `ViewModeSwitcher` contextually, but the
+    actions it triggered were still global. Additionally, the fullscreen exit
+    behavior needs to be more robust.
+  - 'Here''s my refined plan to address your feedback:'
+  - >-
+    1.  **Fix Fullscreen Exit**: I'll enhance the `AppShell` state to remember
+    the `bodyState` *before* entering fullscreen. This will allow the exit
+    button to correctly return to the previous state, whether it was `NORMAL` or
+    `SPLIT_VIEW`.
+  - '2.  **Context-Aware Actions**:'
+  - >-
+    *   I'll introduce a new state variable, `fullscreenTarget`, to track which
+    pane (`'main'` or `'right'`) is currently in fullscreen.
+  - '*   The `toggleFullscreen` action will be updated to accept a target.'
+  - >-
+    *   The `ViewModeSwitcher` component will receive a `pane` prop to identify
+    its location. When its fullscreen button is clicked, it will pass its
+    context to the `toggleFullscreen` action.
+  - >-
+    *   The `MainContent` and `RightPane` components will be updated to check
+    `fullscreenTarget`. The non-targeted pane will hide itself when the other
+    enters fullscreen, and each will have its own exit button when fullscreen.
+  - >-
+    These changes will ensure that the controls in each pane act upon that
+    specific pane and that the application state is managed correctly.
+  - 'Here are the code modifications:'
+  - >-
+    First, I'll update the `AppShellContext` to be more intelligent about
+    fullscreen states.
+  - >-
+    Next, I'll update `ViewModeSwitcher` to be context-aware and trigger
+    targeted actions.
+  - >-
+    Now, `MainContent` will respect the `fullscreenTarget` and handle its own
+    exit button correctly.
+  - Similarly, `RightPane` will become fullscreen-aware.
+  - >-
+    Finally, I'll update `AppShell` to pass the correct `pane` prop to the
+    contextual switchers.
+operations:
+  - type: write
+    path: src/context/AppShellContext.tsx
+    content: >+
+      --- src/context/AppShellContext.tsx
+
+      +++ src/context/AppShellContext.tsx
+
+      @@ -10,6 +10,8 @@
+         sidePaneContent: 'details' | 'settings' | 'main' | 'toaster' | 'notifications';
+         sidebarWidth: number;
+         sidePaneWidth: number;
+         splitPaneWidth: number;
+      +  previousBodyState: BodyState;
+
+      +  fullscreenTarget: 'main' | 'right' | null;
+         isResizing: boolean;
+         isResizingRightPane: boolean;
+         isTopBarVisible: boolean;
+      @@ -29,6 +31,8 @@
+         | { type: 'SET_SIDE_PANE_WIDTH'; payload: number }
+         | { type: 'SET_SPLIT_PANE_WIDTH'; payload: number }
+         | { type: 'SET_IS_RESIZING'; payload: boolean }
+      +  | { type: 'SET_PREVIOUS_BODY_STATE'; payload: BodyState }
+
+      +  | { type: 'SET_FULLSCREEN_TARGET'; payload: 'main' | 'right' | null }
+         | { type: 'SET_IS_RESIZING_RIGHT_PANE'; payload: boolean }
+         | { type: 'SET_TOP_BAR_VISIBLE'; payload: boolean }
+         | { type: 'SET_AUTO_EXPAND_SIDEBAR'; payload: boolean }
+      @@ -46,6 +50,8 @@
+         sidePaneContent: 'details',
+         sidebarWidth: 280,
+         sidePaneWidth: typeof window !== 'undefined' ? Math.max(300, Math.round(window.innerWidth * 0.6)) : 400,
+         splitPaneWidth: typeof window !== 'undefined' ? Math.max(300, Math.round(window.innerWidth * 0.35)) : 400,
+      +  previousBodyState: BODY_STATES.NORMAL,
+
+      +  fullscreenTarget: null,
+         isResizing: false,
+         isResizingRightPane: false,
+         isTopBarVisible: true,
+      @@ -60,11 +66,19 @@
+       
+       function appShellReducer(state: AppShellState, action: AppShellAction): AppShellState {
+         switch (action.type) {
+           case 'SET_SIDEBAR_STATE': return { ...state, sidebarState: action.payload };
+      -    case 'SET_BODY_STATE': return { ...state, bodyState: action.payload
+      };
+
+      +    case 'SET_BODY_STATE':
+
+      +      // If we're leaving fullscreen, reset the target and previous state
+
+      +      if (state.bodyState === BODY_STATES.FULLSCREEN && action.payload
+      !== BODY_STATES.FULLSCREEN) {
+
+      +        return { ...state, bodyState: action.payload, fullscreenTarget:
+      null, previousBodyState: BODY_STATES.NORMAL };
+
+      +      }
+
+      +      return { ...state, bodyState: action.payload };
+           case 'SET_SIDE_PANE_CONTENT': return { ...state, sidePaneContent: action.payload };
+           case 'SET_SIDEBAR_WIDTH': return { ...state, sidebarWidth: Math.max(200, Math.min(500, action.payload)) };
+           case 'SET_SIDE_PANE_WIDTH': return { ...state, sidePaneWidth: Math.max(300, Math.min(window.innerWidth * 0.8, action.payload)) };
+           case 'SET_SPLIT_PANE_WIDTH': return { ...state, splitPaneWidth: Math.max(300, Math.min(window.innerWidth * 0.8, action.payload)) };
+           case 'SET_IS_RESIZING': return { ...state, isResizing: action.payload };
+      +    case 'SET_PREVIOUS_BODY_STATE': return { ...state, previousBodyState:
+      action.payload };
+
+      +    case 'SET_FULLSCREEN_TARGET': return { ...state, fullscreenTarget:
+      action.payload };
+           case 'SET_IS_RESIZING_RIGHT_PANE': return { ...state, isResizingRightPane: action.payload };
+           case 'SET_TOP_BAR_VISIBLE': return { ...state, isTopBarVisible: action.payload };
+           case 'SET_AUTO_EXPAND_SIDEBAR': return { ...state, autoExpandSidebar: action.payload };
+      @@ -91,7 +105,7 @@
+         hideSidebar: () => void;
+         showSidebar: () => void;
+         peekSidebar: () => void;
+      -  toggleFullscreen: () => void;
+
+      +  toggleFullscreen: (target?: 'main' | 'right' | null) => void;
+         toggleSplitView: (content?: AppShellState['sidePaneContent']) => void;
+         openSidePane: (content: AppShellState['sidePaneContent']) => void;
+         closeSidePane: () => void;
+      @@ -124,10 +138,16 @@
+         const showSidebar = useCallback(() => dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.EXPANDED }), []);
+         const peekSidebar = useCallback(() => dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.PEEK }), []);
+         
+      -  const toggleFullscreen = useCallback(() => {
+
+      +  const toggleFullscreen = useCallback((target: 'main' | 'right' | null =
+      null) => {
+           const current = state.bodyState;
+      -    dispatch({ type: 'SET_BODY_STATE', payload: current ===
+      BODY_STATES.FULLSCREEN ? BODY_STATES.NORMAL : BODY_STATES.FULLSCREEN });
+
+      -  }, [state.bodyState]);
+
+      +    if (current === BODY_STATES.FULLSCREEN) {
+
+      +      // Exiting fullscreen, go back to the previous state
+
+      +      dispatch({ type: 'SET_BODY_STATE', payload: state.previousBodyState
+      || BODY_STATES.NORMAL });
+
+      +    } else {
+
+      +      // Entering fullscreen
+
+      +      dispatch({ type: 'SET_PREVIOUS_BODY_STATE', payload: current });
+
+      +      dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.FULLSCREEN
+      });
+
+      +      dispatch({ type: 'SET_FULLSCREEN_TARGET', payload: target });
+
+      +    }
+
+      +  }, [state.bodyState, state.previousBodyState]);
+       
+         const toggleSplitView = useCallback((content?: AppShellState['sidePaneContent']) => {
+           const current = state.bodyState;
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/components/layout/ViewModeSwitcher.tsx
+    content: >+
+      --- src/components/layout/ViewModeSwitcher.tsx
+
+      +++ src/components/layout/ViewModeSwitcher.tsx
+
+      @@ -15,19 +15,28 @@
+         notifications: 'notifications',
+       };
+       
+      -export function ViewModeSwitcher() {
+
+      +export function ViewModeSwitcher({ pane }: { pane?: 'main' | 'right' }) {
+         const {
+           bodyState,
+           sidePaneContent,
+           openSidePane,
+           closeSidePane,
+           toggleFullscreen,
+           toggleSplitView,
+      +    fullscreenTarget,
+         } = useAppShell()
+         const { activePage } = useAppStore()
+       
+      +  const isFullscreen = bodyState === BODY_STATES.FULLSCREEN;
+
+      +  const isThisPaneFullscreen = isFullscreen && (
+
+      +    (pane === 'main' && fullscreenTarget !== 'right') ||
+
+      +    (pane === 'right' && fullscreenTarget === 'right') ||
+
+      +    (!pane && !fullscreenTarget) // Global switcher, global fullscreen
+
+      +  );
+
+      +
+         const handleSidePaneClick = () => {
+           const paneContent = pageToPaneMap[activePage] || 'details';
+      +    if (pane === 'right') return; // Don't allow opening a side pane from
+      a side pane
+           // If side pane is already open with the current page's content, clicking again should close it.
+           if (bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === paneContent) {
+             closeSidePane();
+      @@ -38,13 +47,21 @@
+         
+         const handleSplitViewClick = () => {
+             const paneContent = pageToPaneMap[activePage] || 'details';
+      +      if (pane === 'right') return; // Don't allow splitting from a side
+      pane in this simple case
+             toggleSplitView(paneContent);
+         }
+       
+         return (
+           <div className="flex items-center gap-1 p-1 bg-card rounded-full border border-border">
+             <button
+               onClick={() => {
+      -            if (bodyState !== BODY_STATES.NORMAL) closeSidePane();
+
+      +            // "Normal view" button should always just close any open
+      panes.
+
+      +            if (bodyState === BODY_STATES.SIDE_PANE || bodyState ===
+      BODY_STATES.SPLIT_VIEW) {
+
+      +              closeSidePane();
+
+      +            }
+
+      +            // This button is hidden in fullscreen, but as a fallback, it
+      should exit.
+
+      +            if (isFullscreen) {
+
+      +              toggleFullscreen();
+
+      +            }
+               }}
+               className={cn(
+                 'h-8 w-8 flex items-center justify-center rounded-full hover:bg-accent transition-colors group',
+      @@ -72,15 +89,15 @@
+               {bodyState === BODY_STATES.SPLIT_VIEW ? <Layers className="w-4 h-4" /> : <SplitSquareHorizontal className="w-4 h-4" />}
+             </button>
+             <button
+      -        onClick={toggleFullscreen}
+
+      +        onClick={() => toggleFullscreen(pane)}
+               className={cn(
+                 'h-8 w-8 flex items-center justify-center rounded-full hover:bg-accent transition-colors group',
+      -          bodyState === BODY_STATES.FULLSCREEN && 'bg-accent
+      text-accent-foreground'
+
+      +          isThisPaneFullscreen && 'bg-accent text-accent-foreground'
+               )}
+               title="Toggle Fullscreen"
+             >
+      -        {bodyState === BODY_STATES.FULLSCREEN ? (
+
+      +        {isThisPaneFullscreen ? (
+                 <Minimize className="w-4 h-4" />
+               ) : (
+                 <Maximize className="w-4 h-4" />
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/components/layout/MainContent.tsx
+    content: >+
+      --- src/components/layout/MainContent.tsx
+
+      +++ src/components/layout/MainContent.tsx
+
+      @@ -9,16 +9,22 @@
+       
+       export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
+         ({ onToggleFullscreen, children }, ref) => {
+      -    const { bodyState } = useAppShell();
+
+      +    const { bodyState, fullscreenTarget, toggleFullscreen } =
+      useAppShell();
+
+      +    const isFullscreen = bodyState === BODY_STATES.FULLSCREEN;
+
+      +
+
+      +    if (isFullscreen && fullscreenTarget === 'right') {
+
+      +      return null;
+
+      +    }
+       
+           return (
+             <div
+               ref={ref}
+               className={cn(
+               "flex flex-col h-full overflow-hidden",
+      -        bodyState === BODY_STATES.FULLSCREEN && "absolute inset-0 z-40
+      bg-background"
+
+      +        isFullscreen && "absolute inset-0 z-40 bg-background"
+               )}
+             >
+      -        {bodyState === BODY_STATES.FULLSCREEN && (
+
+      +        {isFullscreen && (
+                 <button
+      -            onClick={() => onToggleFullscreen?.()}
+
+      +            onClick={() => toggleFullscreen()}
+                   className="fixed top-6 right-6 lg:right-12 z-[100] h-12 w-12 flex items-center justify-center rounded-full bg-card/50 backdrop-blur-sm hover:bg-card/75 transition-colors group"
+                   title="Exit Fullscreen"
+                 >
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/components/layout/RightPane.tsx
+    content: >+
+      --- src/components/layout/RightPane.tsx
+
+      +++ src/components/layout/RightPane.tsx
+
+      @@ -1,5 +1,5 @@
+       import { forwardRef, type ReactNode } from 'react'
+      -import { ChevronRight } from 'lucide-react'
+
+      +import { ChevronRight, X } from 'lucide-react'
+       import { cn, BODY_STATES } from '@/lib/utils'
+       import { useAppShell } from '@/context/AppShellContext'
+       
+      @@ -9,22 +9,35 @@
+         className?: string
+       }
+       
+       export const RightPane = forwardRef<HTMLDivElement, RightPaneProps>(({ children, header, className }, ref) => {
+      -  const { closeSidePane, dispatch, bodyState } = useAppShell();
+
+      +  const { closeSidePane, dispatch, bodyState, fullscreenTarget,
+      toggleFullscreen } = useAppShell();
+         const isSplitView = bodyState === BODY_STATES.SPLIT_VIEW;
+      +  const isFullscreen = bodyState === BODY_STATES.FULLSCREEN;
+
+      +
+
+      +  if (isFullscreen && fullscreenTarget !== 'right') {
+
+      +    return null;
+
+      +  }
+       
+         return (
+           <aside
+             ref={ref}
+             className={cn(
+               "border-l border-border flex flex-col h-full overflow-hidden",
+      -        isSplitView
+
+      -          ? "relative bg-background"
+
+      -          : "fixed top-0 right-0 z-[60] bg-card",
+
+      +        isSplitView && "relative bg-background",
+
+      +        !isSplitView && !isFullscreen && "fixed top-0 right-0 z-[60]
+      bg-card",
+
+      +        isFullscreen && fullscreenTarget === 'right' && "absolute inset-0
+      z-50 bg-card",
+               className,
+             )}
+           >
+      -      {bodyState !== BODY_STATES.SPLIT_VIEW && (
+
+      +      {isFullscreen && fullscreenTarget === 'right' && (
+
+      +        <button
+
+      +          onClick={() => toggleFullscreen()}
+
+      +          className="fixed top-6 right-6 lg:right-12 z-[100] h-12 w-12
+      flex items-center justify-center rounded-full bg-card/50 backdrop-blur-sm
+      hover:bg-card/75 transition-colors group"
+
+      +          title="Exit Fullscreen"
+
+      +        >
+
+      +          <X className="w-6 h-6 group-hover:scale-110
+      group-hover:rotate-90 transition-all duration-300" />
+
+      +        </button>
+
+      +      )}
+
+      +      {bodyState !== BODY_STATES.SPLIT_VIEW && !isFullscreen && (
+               <button
+                 onClick={closeSidePane}
+                 className="absolute top-1/2 -left-px -translate-y-1/2 -translate-x-full w-8 h-16 bg-card border border-r-0 border-border rounded-l-lg flex items-center justify-center hover:bg-accent transition-colors group z-10"
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/components/layout/AppShell.tsx
+    content: >+
+      --- src/components/layout/AppShell.tsx
+
+      +++ src/components/layout/AppShell.tsx
+
+      @@ -201,11 +201,11 @@
+                       )}
+                     </div>
+                     {mainContentWithProps}
+      -              {isSplitView && hoveredPane === 'left' && !draggedPage && (
+
+      +              {isSplitView && hoveredPane === 'left' && !draggedPage &&
+      bodyState !== BODY_STATES.FULLSCREEN && (
+                       <div className="absolute top-4 right-4 z-50">
+      -                  <ViewModeSwitcher />
+
+      +                  <ViewModeSwitcher pane="main" />
+                       </div>
+                     )}
+                     {/* Right drop overlay (over main area, ONLY when NOT in split view) */}
+                     {!isSplitView && (
+      @@ -254,9 +254,9 @@
+                           )}
+                         </div>
+                       )}
+      -                {hoveredPane === 'right' && !draggedPage && (
+
+      +                {hoveredPane === 'right' && !draggedPage && bodyState !==
+      BODY_STATES.FULLSCREEN && (
+                         <div className="absolute top-4 right-4 z-[70]">
+      -                    <ViewModeSwitcher />
+
+      +                    <ViewModeSwitcher pane="right" />
+                         </div>
+                       )}
+                     </div>
+
+    patchStrategy: standard-diff
+snapshot:
+  src/context/AppShellContext.tsx: >-
+    import {
+      createContext,
+      useContext,
+      useReducer,
+      useEffect,
+      useMemo,
+      useCallback,
+      type ReactNode,
+      type ReactElement,
+      type Dispatch,
+    } from 'react';
+
+    import { SIDEBAR_STATES, BODY_STATES, type SidebarState, type BodyState }
+    from '@/lib/utils';
+
+
+    // --- State and Action Types ---
+
+
+    export interface AppShellState {
+      sidebarState: SidebarState;
+      bodyState: BodyState;
+      sidePaneContent: 'details' | 'settings' | 'main' | 'toaster' | 'notifications';
+      sidebarWidth: number;
+      sidePaneWidth: number;
+      splitPaneWidth: number;
+      isResizing: boolean;
+      isResizingRightPane: boolean;
+      isTopBarVisible: boolean;
+      autoExpandSidebar: boolean;
+      reducedMotion: boolean;
+      compactMode: boolean;
+      primaryColor: string;
+      appName?: string;
+      appLogo?: ReactElement;
+     draggedPage: 'dashboard' | 'settings' | 'toaster' | 'notifications' | null;
+     dragHoverTarget: 'left' | 'right' | null;
+     hoveredPane: 'left' | 'right' | null;
+    }
+
+
+    type AppShellAction =
+      | { type: 'SET_SIDEBAR_STATE'; payload: SidebarState }
+      | { type: 'SET_BODY_STATE'; payload: BodyState }
+      | { type: 'SET_SIDE_PANE_CONTENT'; payload: AppShellState['sidePaneContent'] }
+      | { type: 'SET_SIDEBAR_WIDTH'; payload: number }
+      | { type: 'SET_SIDE_PANE_WIDTH'; payload: number }
+      | { type: 'SET_SPLIT_PANE_WIDTH'; payload: number }
+      | { type: 'SET_IS_RESIZING'; payload: boolean }
+      | { type: 'SET_IS_RESIZING_RIGHT_PANE'; payload: boolean }
+      | { type: 'SET_TOP_BAR_VISIBLE'; payload: boolean }
+      | { type: 'SET_AUTO_EXPAND_SIDEBAR'; payload: boolean }
+      | { type: 'SET_REDUCED_MOTION'; payload: boolean }
+      | { type: 'SET_COMPACT_MODE'; payload: boolean }
+      | { type: 'SET_PRIMARY_COLOR'; payload: string }
+      | { type: 'SET_DRAGGED_PAGE'; payload: 'dashboard' | 'settings' | 'toaster' | 'notifications' | null }
+      | { type: 'SET_DRAG_HOVER_TARGET'; payload: 'left' | 'right' | null }
+      | { type: 'SET_HOVERED_PANE'; payload: 'left' | 'right' | null }
+      | { type: 'RESET_TO_DEFAULTS' };
+
+    // --- Reducer ---
+
+
+    const defaultState: AppShellState = {
+      sidebarState: SIDEBAR_STATES.EXPANDED,
+      bodyState: BODY_STATES.NORMAL,
+      sidePaneContent: 'details',
+      sidebarWidth: 280,
+      sidePaneWidth: typeof window !== 'undefined' ? Math.max(300, Math.round(window.innerWidth * 0.6)) : 400,
+      splitPaneWidth: typeof window !== 'undefined' ? Math.max(300, Math.round(window.innerWidth * 0.35)) : 400,
+      isResizing: false,
+      isResizingRightPane: false,
+      isTopBarVisible: true,
+      autoExpandSidebar: true,
+      reducedMotion: false,
+      compactMode: false,
+      primaryColor: '220 84% 60%',
+      appName: 'Jeli App',
+      appLogo: undefined,
+      draggedPage: null,
+      dragHoverTarget: null,
+      hoveredPane: null,
+    };
+
+
+    function appShellReducer(state: AppShellState, action: AppShellAction):
+    AppShellState {
+      switch (action.type) {
+        case 'SET_SIDEBAR_STATE': return { ...state, sidebarState: action.payload };
+        case 'SET_BODY_STATE': return { ...state, bodyState: action.payload };
+        case 'SET_SIDE_PANE_CONTENT': return { ...state, sidePaneContent: action.payload };
+        case 'SET_SIDEBAR_WIDTH': return { ...state, sidebarWidth: Math.max(200, Math.min(500, action.payload)) };
+        case 'SET_SIDE_PANE_WIDTH': return { ...state, sidePaneWidth: Math.max(300, Math.min(window.innerWidth * 0.8, action.payload)) };
+        case 'SET_SPLIT_PANE_WIDTH': return { ...state, splitPaneWidth: Math.max(300, Math.min(window.innerWidth * 0.8, action.payload)) };
+        case 'SET_IS_RESIZING': return { ...state, isResizing: action.payload };
+        case 'SET_IS_RESIZING_RIGHT_PANE': return { ...state, isResizingRightPane: action.payload };
+        case 'SET_TOP_BAR_VISIBLE': return { ...state, isTopBarVisible: action.payload };
+        case 'SET_AUTO_EXPAND_SIDEBAR': return { ...state, autoExpandSidebar: action.payload };
+        case 'SET_REDUCED_MOTION': return { ...state, reducedMotion: action.payload };
+        case 'SET_COMPACT_MODE': return { ...state, compactMode: action.payload };
+        case 'SET_PRIMARY_COLOR': return { ...state, primaryColor: action.payload };
+        case 'SET_DRAGGED_PAGE': return { ...state, draggedPage: action.payload };
+        case 'SET_DRAG_HOVER_TARGET': return { ...state, dragHoverTarget: action.payload };
+        case 'SET_HOVERED_PANE': return { ...state, hoveredPane: action.payload };
+        case 'RESET_TO_DEFAULTS':
+          return {
+            ...defaultState,
+            appName: state.appName, // Preserve props passed to provider
+            appLogo: state.appLogo,   // Preserve props passed to provider
+          };
+        default: return state;
+      }
+    }
+
+
+    // --- Context and Provider ---
+
+
+    interface AppShellContextValue extends AppShellState {
+      dispatch: Dispatch<AppShellAction>;
+      rightPaneWidth: number;
+      // Composite actions for convenience
+      toggleSidebar: () => void;
+      hideSidebar: () => void;
+      showSidebar: () => void;
+      peekSidebar: () => void;
+      toggleFullscreen: () => void;
+      toggleSplitView: (content?: AppShellState['sidePaneContent']) => void;
+      openSidePane: (content: AppShellState['sidePaneContent']) => void;
+      closeSidePane: () => void;
+      resetToDefaults: () => void;
+    }
+
+
+    const AppShellContext = createContext<AppShellContextValue | null>(null);
+
+
+    interface AppShellProviderProps {
+      children: ReactNode;
+      appName?: string;
+      appLogo?: ReactElement;
+      defaultSplitPaneWidth?: number;
+    }
+
+
+    export function AppShellProvider({ children, appName, appLogo,
+    defaultSplitPaneWidth }: AppShellProviderProps) {
+      const [state, dispatch] = useReducer(appShellReducer, {
+        ...defaultState,
+        ...(appName && { appName }),
+        ...(appLogo && { appLogo }),
+        ...(defaultSplitPaneWidth && { splitPaneWidth: defaultSplitPaneWidth }),
+      });
+
+      // Side effect for primary color
+      useEffect(() => {
+        document.documentElement.style.setProperty('--primary-hsl', state.primaryColor);
+      }, [state.primaryColor]);
+
+      // Memoized composite actions using useCallback for stable function identities
+      const toggleSidebar = useCallback(() => {
+        const current = state.sidebarState;
+        if (current === SIDEBAR_STATES.HIDDEN) dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.COLLAPSED });
+        else if (current === SIDEBAR_STATES.COLLAPSED) dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.EXPANDED });
+        else if (current === SIDEBAR_STATES.EXPANDED) dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.COLLAPSED });
+      }, [state.sidebarState]);
+
+      const hideSidebar = useCallback(() => dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.HIDDEN }), []);
+      const showSidebar = useCallback(() => dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.EXPANDED }), []);
+      const peekSidebar = useCallback(() => dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.PEEK }), []);
+      
+      const toggleFullscreen = useCallback(() => {
+        const current = state.bodyState;
+        dispatch({ type: 'SET_BODY_STATE', payload: current === BODY_STATES.FULLSCREEN ? BODY_STATES.NORMAL : BODY_STATES.FULLSCREEN });
+      }, [state.bodyState]);
+
+      const toggleSplitView = useCallback((content?: AppShellState['sidePaneContent']) => {
+        const current = state.bodyState;
+        if (current === BODY_STATES.SIDE_PANE) {
+          dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.SPLIT_VIEW });
+          if (state.sidebarState === SIDEBAR_STATES.EXPANDED) {
+            dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.COLLAPSED });
+          }
+        } else if (current === BODY_STATES.SPLIT_VIEW) {
+          dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.SIDE_PANE });
+        } else if (current === BODY_STATES.NORMAL && content) {
+          // If we're in normal view, open the pane and switch to split view
+          dispatch({ type: 'SET_SIDE_PANE_CONTENT', payload: content });
+          dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.SPLIT_VIEW });
+        }
+      }, [state.bodyState, state.sidebarState]);
+
+      const openSidePane = useCallback((content: AppShellState['sidePaneContent']) => {
+        if (state.bodyState === BODY_STATES.SIDE_PANE && state.sidePaneContent === content) {
+          // If it's open with same content, close it.
+          dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.NORMAL });
+        } else {
+          // If closed, or different content, open with new content.
+          dispatch({ type: 'SET_SIDE_PANE_CONTENT', payload: content });
+          dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.SIDE_PANE });
+        }
+      }, [state.bodyState, state.sidePaneContent]);
+
+      const closeSidePane = useCallback(() => dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.NORMAL }), []);
+      const resetToDefaults = useCallback(() => dispatch({ type: 'RESET_TO_DEFAULTS' }), []);
+
+      const rightPaneWidth = useMemo(() => (
+        state.bodyState === BODY_STATES.SPLIT_VIEW ? state.splitPaneWidth : state.sidePaneWidth
+      ), [state.bodyState, state.splitPaneWidth, state.sidePaneWidth]);
+
+      const value = useMemo(() => ({ 
+        ...state, 
+        dispatch,
+        rightPaneWidth,
+        toggleSidebar,
+        hideSidebar,
+        showSidebar,
+        peekSidebar,
+        toggleFullscreen,
+        toggleSplitView,
+        openSidePane,
+        closeSidePane,
+        resetToDefaults,
+      }), [
+        state, 
+        rightPaneWidth,
+        toggleSidebar,
+        hideSidebar,
+        showSidebar,
+        peekSidebar,
+        toggleFullscreen,
+        toggleSplitView,
+        openSidePane,
+        closeSidePane,
+        resetToDefaults
+      ]);
+
+      return (
+        <AppShellContext.Provider value={value}>
+          {children}
+        </AppShellContext.Provider>
+      );
+    }
+
+
+    // --- Hook ---
+
+
+    export function useAppShell() {
+      const context = useContext(AppShellContext);
+      if (!context) {
+        throw new Error('useAppShell must be used within an AppShellProvider');
+      }
+      return context;
+    }
+  src/components/layout/ViewModeSwitcher.tsx: >-
+    import { cn } from '@/lib/utils'
+
+    import { useAppShell } from '@/context/AppShellContext'
+
+    import { useAppStore, type ActivePage } from '@/store/appStore'
+
+    import { BODY_STATES } from '@/lib/utils'
+
+    import { type AppShellState } from '@/context/AppShellContext'
+
+    import {
+      Columns,
+      PanelRightOpen,
+      SplitSquareHorizontal,
+      Maximize,
+      Minimize,
+      Layers
+    } from 'lucide-react'
+
+
+    const pageToPaneMap: Record<ActivePage, AppShellState['sidePaneContent']> =
+    {
+      dashboard: 'main',
+      settings: 'settings',
+      toaster: 'toaster',
+      notifications: 'notifications',
+    };
+
+
+    export function ViewModeSwitcher() {
+      const {
+        bodyState,
+        sidePaneContent,
+        openSidePane,
+        closeSidePane,
+        toggleFullscreen,
+        toggleSplitView,
+      } = useAppShell()
+      const { activePage } = useAppStore()
+
+      const handleSidePaneClick = () => {
+        const paneContent = pageToPaneMap[activePage] || 'details';
+        // If side pane is already open with the current page's content, clicking again should close it.
+        if (bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === paneContent) {
+          closeSidePane();
+        } else {
+          openSidePane(paneContent);
+        }
+      };
+      
+      const handleSplitViewClick = () => {
+          const paneContent = pageToPaneMap[activePage] || 'details';
+          toggleSplitView(paneContent);
+      }
+
+      return (
+        <div className="flex items-center gap-1 p-1 bg-card rounded-full border border-border">
+          <button
+            onClick={() => {
+                if (bodyState !== BODY_STATES.NORMAL) closeSidePane();
+            }}
+            className={cn(
+              'h-8 w-8 flex items-center justify-center rounded-full hover:bg-accent transition-colors group',
+              bodyState === BODY_STATES.NORMAL && 'bg-accent text-accent-foreground'
+            )}
+            title="Normal View"
+          >
+            <Columns className="w-4 h-4" />
+          </button>
+          <button
+            onClick={handleSidePaneClick}
+            className={cn(
+              'h-8 w-8 flex items-center justify-center rounded-full hover:bg-accent transition-colors group',
+              bodyState === BODY_STATES.SIDE_PANE && 'bg-accent text-accent-foreground'
+            )}
+            title="Side Pane View"
+          >
+            <PanelRightOpen className="w-4 h-4" />
+          </button>
+          <button
+            onClick={handleSplitViewClick}
+            className={cn(
+              'h-8 w-8 flex items-center justify-center rounded-full hover:bg-accent transition-colors group',
+              bodyState === BODY_STATES.SPLIT_VIEW && 'bg-accent text-accent-foreground'
+            )}
+            title={bodyState === BODY_STATES.SPLIT_VIEW ? 'Switch to Overlay View' : 'Switch to Split View'}
+          >
+            {bodyState === BODY_STATES.SPLIT_VIEW ? <Layers className="w-4 h-4" /> : <SplitSquareHorizontal className="w-4 h-4" />}
+          </button>
+          <button
+            onClick={toggleFullscreen}
+            className={cn(
+              'h-8 w-8 flex items-center justify-center rounded-full hover:bg-accent transition-colors group',
+              bodyState === BODY_STATES.FULLSCREEN && 'bg-accent text-accent-foreground'
+            )}
+            title="Toggle Fullscreen"
+          >
+            {bodyState === BODY_STATES.FULLSCREEN ? (
+              <Minimize className="w-4 h-4" />
+            ) : (
+              <Maximize className="w-4 h-4" />
+            )}
+          </button>
+        </div>
+      )
+    }
+  src/components/layout/MainContent.tsx: |-
+    import { forwardRef } from 'react'
+    import { X } from 'lucide-react'
+    import { cn } from '@/lib/utils';
+    import { BODY_STATES } from '@/lib/utils'
+    import { useAppShell } from '@/context/AppShellContext'
+
+    interface MainContentProps {
+      onToggleFullscreen?: () => void
+      children?: React.ReactNode;
+    }
+
+    export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
+      ({ onToggleFullscreen, children }, ref) => {
+        const { bodyState } = useAppShell();
+
+        return (
+          <div
+            ref={ref}
+            className={cn(
+            "flex flex-col h-full overflow-hidden",
+            bodyState === BODY_STATES.FULLSCREEN && "absolute inset-0 z-40 bg-background"
+            )}
+          >
+            {bodyState === BODY_STATES.FULLSCREEN && (
+              <button
+                onClick={() => onToggleFullscreen?.()}
+                className="fixed top-6 right-6 lg:right-12 z-[100] h-12 w-12 flex items-center justify-center rounded-full bg-card/50 backdrop-blur-sm hover:bg-card/75 transition-colors group"
+                title="Exit Fullscreen"
+              >
+                <X className="w-6 h-6 group-hover:scale-110 group-hover:rotate-90 transition-all duration-300" />
+              </button>
+            )}
+
+            <div className="flex-1 min-h-0 flex flex-col">
+              {children}
+            </div>
+          </div>
+        )
+      }
+    )
+    MainContent.displayName = 'MainContent'
+  src/components/layout/RightPane.tsx: >-
+    import { forwardRef, type ReactNode } from 'react'
+
+    import { ChevronRight } from 'lucide-react'
+
+    import { cn, BODY_STATES } from '@/lib/utils'
+
+    import { useAppShell } from '@/context/AppShellContext'
+
+
+    interface RightPaneProps {
+      children?: ReactNode
+      header?: ReactNode
+      className?: string
+    }
+
+
+    export const RightPane = forwardRef<HTMLDivElement, RightPaneProps>(({
+    children, header, className }, ref) => {
+      const { closeSidePane, dispatch, bodyState } = useAppShell();
+      const isSplitView = bodyState === BODY_STATES.SPLIT_VIEW;
+
+      return (
+        <aside
+          ref={ref}
+          className={cn(
+            "border-l border-border flex flex-col h-full overflow-hidden",
+            isSplitView
+              ? "relative bg-background"
+              : "fixed top-0 right-0 z-[60] bg-card",
+            className,
+          )}
+        >
+          {bodyState !== BODY_STATES.SPLIT_VIEW && (
+            <button
+              onClick={closeSidePane}
+              className="absolute top-1/2 -left-px -translate-y-1/2 -translate-x-full w-8 h-16 bg-card border border-r-0 border-border rounded-l-lg flex items-center justify-center hover:bg-accent transition-colors group z-10"
+              title="Close pane"
+            >
+              <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-foreground transition-colors" />
+            </button>
+          )}
+          <div 
+            className={cn(
+              "absolute top-0 left-0 w-2 h-full bg-transparent hover:bg-primary/20 cursor-col-resize z-50 transition-colors duration-200 group -translate-x-1/2"
+            )}
+            onMouseDown={(e) => {
+              e.preventDefault()
+              dispatch({ type: 'SET_IS_RESIZING_RIGHT_PANE', payload: true });
+            }}
+          >
+            <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200 mx-auto" />
+          </div>
+          {header && (
+            <div className="flex items-center justify-between p-4 border-b border-border h-20 flex-shrink-0 pl-6">
+              {header}
+            </div>
+          )}
+          <div className={cn("flex-1 overflow-y-auto", bodyState === BODY_STATES.SIDE_PANE && "px-8 py-6")}>
+            {children}
+          </div>
+        </aside>
+      )
+    })
+
+    RightPane.displayName = "RightPane"
+  src/components/layout/AppShell.tsx: >-
+    import React, { useRef, type ReactElement, useCallback } from 'react'
+
+    import { cn } from '@/lib/utils'
+
+    import { CommandPalette } from '@/components/global/CommandPalette';
+
+    import { useAppStore } from '@/store/appStore';
+
+    import { useAppShell } from '@/context/AppShellContext';
+
+    import { SIDEBAR_STATES, BODY_STATES } from '@/lib/utils'
+
+    import { useResizableSidebar, useResizableRightPane } from
+    '@/hooks/useResizablePanes.hook'
+
+    import { useSidebarAnimations, useBodyStateAnimations } from
+    '@/hooks/useAppShellAnimations.hook'
+
+    import { ViewModeSwitcher } from './ViewModeSwitcher';
+
+
+    interface AppShellProps {
+      sidebar: ReactElement;
+      topBar: ReactElement;
+      mainContent: ReactElement;
+      rightPane: ReactElement;
+      commandPalette?: ReactElement;
+    }
+
+
+    const pageToPaneMap: Record<string, 'main' | 'settings' | 'toaster' |
+    'notifications'> = {
+      dashboard: 'main',
+      settings: 'settings',
+      toaster: 'toaster',
+      notifications: 'notifications',
+    };
+
+
+
+    export function AppShell({ sidebar, topBar, mainContent, rightPane,
+    commandPalette }: AppShellProps) {
+      const {
+        sidebarState,
+        dispatch,
+        autoExpandSidebar,
+        toggleSidebar,
+        hoveredPane,
+        peekSidebar,
+        draggedPage,
+        dragHoverTarget,
+        toggleSplitView,
+        openSidePane,
+        bodyState,
+        rightPaneWidth,
+        sidePaneContent,
+        closeSidePane,
+      } = useAppShell();
+      
+      const { isDarkMode, toggleDarkMode, handleNavigation, activePage } = useAppStore();
+      const appRef = useRef<HTMLDivElement>(null)
+      const sidebarRef = useRef<HTMLDivElement>(null)
+      const mainContentRef = useRef<HTMLDivElement>(null)
+      const rightPaneRef = useRef<HTMLDivElement>(null)
+      const resizeHandleRef = useRef<HTMLDivElement>(null)
+      const topBarContainerRef = useRef<HTMLDivElement>(null)
+      const mainAreaRef = useRef<HTMLDivElement>(null)
+
+      const isSplitView = bodyState === BODY_STATES.SPLIT_VIEW;
+
+      // Custom hooks for logic
+      useResizableSidebar(sidebarRef, resizeHandleRef);
+      useResizableRightPane();
+      useSidebarAnimations(sidebarRef, resizeHandleRef);
+      useBodyStateAnimations(appRef, mainContentRef, rightPaneRef, topBarContainerRef, mainAreaRef);
+      
+      const sidebarWithProps = React.cloneElement(sidebar, { 
+        ref: sidebarRef,
+        onMouseEnter: () => {
+          if (autoExpandSidebar && sidebarState === SIDEBAR_STATES.COLLAPSED) {
+            peekSidebar()
+          }
+        },
+        onMouseLeave: () => {
+          if (autoExpandSidebar && sidebarState === SIDEBAR_STATES.PEEK) {
+            dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.COLLAPSED });
+          }
+        }
+      });
+
+      const topBarWithProps = React.cloneElement(topBar, {
+        onToggleSidebar: toggleSidebar,
+        onToggleDarkMode: toggleDarkMode,
+      });
+
+      const mainContentWithProps = React.cloneElement(mainContent, {
+        ref: mainContentRef,
+      });
+
+      const rightPaneWithProps = React.cloneElement(rightPane, { ref: rightPaneRef });
+
+      // Drag and drop handlers for docking
+      const handleDragOverLeft = useCallback((e: React.DragEvent) => {
+        if (!draggedPage) return;
+        e.preventDefault();
+        if (dragHoverTarget !== 'left') {
+          dispatch({ type: 'SET_DRAG_HOVER_TARGET', payload: 'left' });
+        }
+      }, [draggedPage, dragHoverTarget, dispatch]);
+
+      const handleDropLeft = useCallback(() => {
+        if (!draggedPage) return;
+        
+        const originalActivePage = activePage;
+        const originalActivePagePaneContent = pageToPaneMap[originalActivePage];
+
+        // If we drop the page that's already in the side pane, just make it the main view.
+        const paneContentOfDraggedPage = pageToPaneMap[draggedPage];
+        if (paneContentOfDraggedPage === sidePaneContent && (bodyState === BODY_STATES.SIDE_PANE || bodyState === BODY_STATES.SPLIT_VIEW)) {
+          closeSidePane();
+          handleNavigation(draggedPage);
+        } 
+        // New context-aware logic: if we are in normal view and drop a NEW page on the left
+        else if (bodyState === BODY_STATES.NORMAL && draggedPage !== originalActivePage) {
+            if (originalActivePagePaneContent) {
+                // 1. Set the right pane content to be the original page
+                dispatch({ type: 'SET_SIDE_PANE_CONTENT', payload: originalActivePagePaneContent });
+                // 2. Set the main page to be the new dragged page
+                handleNavigation(draggedPage);
+                // 3. Switch to split view
+                dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.SPLIT_VIEW });
+            } else {
+                // Fallback for pages that can't be in a pane
+                handleNavigation(draggedPage);
+            }
+        } else { // Default behavior: just make the dropped page the main one
+          handleNavigation(draggedPage);
+        }
+        
+        dispatch({ type: 'SET_DRAGGED_PAGE', payload: null });
+        dispatch({ type: 'SET_DRAG_HOVER_TARGET', payload: null });
+      }, [draggedPage, activePage, bodyState, sidePaneContent, handleNavigation, dispatch, closeSidePane]);
+
+      const handleDragOverRight = useCallback((e: React.DragEvent) => {
+        if (!draggedPage) return;
+        e.preventDefault();
+        if (dragHoverTarget !== 'right') {
+          dispatch({ type: 'SET_DRAG_HOVER_TARGET', payload: 'right' });
+        }
+      }, [draggedPage, dragHoverTarget, dispatch]);
+
+      const handleDropRight = useCallback(() => {
+        if (!draggedPage) return;
+        const pane = pageToPaneMap[draggedPage as keyof typeof pageToPaneMap];
+        if (pane) {
+          // If dropping the currently active page to the right,
+          // set a default page (e.g., dashboard) as the new active page.
+          if (draggedPage === activePage) {
+            handleNavigation('dashboard');
+          }
+
+          // Set the right pane content and ensure split view
+          dispatch({ type: 'SET_SIDE_PANE_CONTENT', payload: pane });
+          if (bodyState === BODY_STATES.NORMAL) {
+            toggleSplitView(pane);
+          } else if (bodyState === BODY_STATES.SIDE_PANE) {
+            toggleSplitView();
+          }
+        }
+        dispatch({ type: 'SET_DRAGGED_PAGE', payload: null });
+        dispatch({ type: 'SET_DRAG_HOVER_TARGET', payload: null });
+      }, [draggedPage, toggleSplitView, dispatch, bodyState, activePage, handleNavigation]);
+
+      return (
+        <div 
+          ref={appRef}
+          className={cn(
+            "relative h-screen w-screen overflow-hidden bg-background transition-colors duration-300",
+            isDarkMode && "dark"
+          )}
+        >
+          <div className="flex h-screen overflow-hidden">
+            {/* Enhanced Sidebar */}
+            {sidebarWithProps}
+
+            {/* Resize Handle */}
+            {sidebarState !== SIDEBAR_STATES.HIDDEN && (
+              <div
+                ref={resizeHandleRef}
+                className={cn(
+                  "absolute top-0 w-2 h-full bg-transparent hover:bg-primary/20 cursor-col-resize z-50 transition-colors duration-200 group -translate-x-1/2"
+                )}
+                onMouseDown={(e) => {
+                  e.preventDefault()
+                  dispatch({ type: 'SET_IS_RESIZING', payload: true });
+                }}
+              >
+                <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200 mx-auto" />
+              </div>
+            )}
+
+            {/* Main area wrapper */}
+            <div className="flex-1 flex flex-col overflow-hidden">
+              <div
+                ref={topBarContainerRef}
+                className="relative z-30"
+                onMouseEnter={() => { if (isSplitView) dispatch({ type: 'SET_HOVERED_PANE', payload: null }); }}
+              >
+                {topBarWithProps}
+              </div>
+
+              <div className="flex flex-1 min-h-0">
+                <div
+                  ref={mainAreaRef}
+                  className="relative flex-1 overflow-hidden bg-background"
+                  onMouseEnter={() => { if (isSplitView && !draggedPage) dispatch({ type: 'SET_HOVERED_PANE', payload: 'left' }); }}
+                  onMouseLeave={() => { if (isSplitView && !draggedPage) dispatch({ type: 'SET_HOVERED_PANE', payload: null }); }}
+                >
+                  {/* Left drop overlay */}
+                  <div
+                    className={cn(
+                      "absolute inset-y-0 left-0 z-40 border-2 border-transparent transition-all",
+                      draggedPage
+                        ? cn("pointer-events-auto", isSplitView ? 'w-full' : 'w-1/2')
+                        : "pointer-events-none w-0",
+                      dragHoverTarget === 'left' && "bg-primary/10 border-primary"
+                    )}
+                    onDragOver={handleDragOverLeft}
+                    onDrop={handleDropLeft}
+                    onDragLeave={() => {
+                      if (dragHoverTarget === 'left') dispatch({ type: 'SET_DRAG_HOVER_TARGET', payload: null });
+                    }}
+                  >
+                    {draggedPage && dragHoverTarget === 'left' && (
+                      <div className="absolute inset-0 flex items-center justify-center text-sm font-medium text-primary-foreground/80 pointer-events-none">
+                        <span className="px-3 py-1 rounded-md bg-primary/70">{isSplitView ? 'Drop to Replace' : 'Drop to Left'}</span>
+                      </div>
+                    )}
+                  </div>
+                  {mainContentWithProps}
+                  {isSplitView && hoveredPane === 'left' && !draggedPage && (
+                    <div className="absolute top-4 right-4 z-50">
+                      <ViewModeSwitcher />
+                    </div>
+                  )}
+                  {/* Right drop overlay (over main area, ONLY when NOT in split view) */}
+                  {!isSplitView && (
+                    <div
+                      className={cn(
+                        "absolute inset-y-0 right-0 z-40 border-2 border-transparent",
+                        draggedPage ? "pointer-events-auto w-1/2" : "pointer-events-none",
+                        dragHoverTarget === 'right' && "bg-primary/10 border-primary"
+                      )}
+                      onDragOver={handleDragOverRight}
+                      onDrop={handleDropRight}
+                      onDragLeave={() => {
+                        if (dragHoverTarget === 'right') dispatch({ type: 'SET_DRAG_HOVER_TARGET', payload: null });
+                      }}
+                    >
+                      {draggedPage && dragHoverTarget === 'right' && (
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                          <span className="px-3 py-1 rounded-md bg-primary/70 text-sm font-medium text-primary-foreground/80">Drop to Right</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+                {isSplitView ? (
+                  <div
+                    className="relative"
+                    onMouseEnter={() => { if (isSplitView && !draggedPage) dispatch({ type: 'SET_HOVERED_PANE', payload: 'right' }); }}
+                    onMouseLeave={() => { if (isSplitView && !draggedPage) dispatch({ type: 'SET_HOVERED_PANE', payload: null }); }}
+                    onDragOver={handleDragOverRight}
+                  >
+                    {rightPaneWithProps}
+                    {draggedPage && (
+                      <div
+                        className={cn(
+                          'absolute inset-0 z-50 transition-all',
+                          dragHoverTarget === 'right'
+                            ? 'bg-primary/10 border-2 border-primary'
+                            : 'pointer-events-none'
+                        )}
+                        onDragLeave={() => {
+                          if (dragHoverTarget === 'right')
+                            dispatch({ type: 'SET_DRAG_HOVER_TARGET', payload: null });
+                        }}
+                        onDrop={handleDropRight}
+                        onDragOver={(e) => e.preventDefault()}
+                      >
+                        {dragHoverTarget === 'right' && (
+                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                            <span className="px-3 py-1 rounded-md bg-primary/70 text-sm font-medium text-primary-foreground/80">
+                              Drop to Replace
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {hoveredPane === 'right' && !draggedPage && (
+                      <div className="absolute top-4 right-4 z-[70]">
+                        <ViewModeSwitcher />
+                      </div>
+                    )}
+                  </div>
+                ) : rightPaneWithProps}
+              </div>
+            </div>
+          </div>
+          {commandPalette || <CommandPalette />}
+        </div>
+      )
+    }
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 141
