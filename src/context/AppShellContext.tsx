@@ -18,7 +18,8 @@ interface AppShellState {
   bodyState: BodyState;
   sidePaneContent: 'details' | 'settings' | 'main' | 'toaster' | 'notifications';
   sidebarWidth: number;
-  rightPaneWidth: number;
+  sidePaneWidth: number;
+  splitPaneWidth: number;
   isResizing: boolean;
   isResizingRightPane: boolean;
   isTopBarVisible: boolean;
@@ -35,7 +36,8 @@ type AppShellAction =
   | { type: 'SET_BODY_STATE'; payload: BodyState }
   | { type: 'SET_SIDE_PANE_CONTENT'; payload: AppShellState['sidePaneContent'] }
   | { type: 'SET_SIDEBAR_WIDTH'; payload: number }
-  | { type: 'SET_RIGHT_PANE_WIDTH'; payload: number }
+  | { type: 'SET_SIDE_PANE_WIDTH'; payload: number }
+  | { type: 'SET_SPLIT_PANE_WIDTH'; payload: number }
   | { type: 'SET_IS_RESIZING'; payload: boolean }
   | { type: 'SET_IS_RESIZING_RIGHT_PANE'; payload: boolean }
   | { type: 'SET_TOP_BAR_VISIBLE'; payload: boolean }
@@ -52,7 +54,8 @@ const defaultState: AppShellState = {
   bodyState: BODY_STATES.NORMAL,
   sidePaneContent: 'details',
   sidebarWidth: 280,
-  rightPaneWidth: typeof window !== 'undefined' ? Math.max(300, Math.round(window.innerWidth * 0.6)) : 400,
+  sidePaneWidth: typeof window !== 'undefined' ? Math.max(300, Math.round(window.innerWidth * 0.6)) : 400,
+  splitPaneWidth: typeof window !== 'undefined' ? Math.max(300, Math.round(window.innerWidth * 0.35)) : 400,
   isResizing: false,
   isResizingRightPane: false,
   isTopBarVisible: true,
@@ -70,7 +73,8 @@ function appShellReducer(state: AppShellState, action: AppShellAction): AppShell
     case 'SET_BODY_STATE': return { ...state, bodyState: action.payload };
     case 'SET_SIDE_PANE_CONTENT': return { ...state, sidePaneContent: action.payload };
     case 'SET_SIDEBAR_WIDTH': return { ...state, sidebarWidth: Math.max(200, Math.min(500, action.payload)) };
-    case 'SET_RIGHT_PANE_WIDTH': return { ...state, rightPaneWidth: Math.max(300, Math.min(window.innerWidth * 0.8, action.payload)) };
+    case 'SET_SIDE_PANE_WIDTH': return { ...state, sidePaneWidth: Math.max(300, Math.min(window.innerWidth * 0.8, action.payload)) };
+    case 'SET_SPLIT_PANE_WIDTH': return { ...state, splitPaneWidth: Math.max(300, Math.min(window.innerWidth * 0.8, action.payload)) };
     case 'SET_IS_RESIZING': return { ...state, isResizing: action.payload };
     case 'SET_IS_RESIZING_RIGHT_PANE': return { ...state, isResizingRightPane: action.payload };
     case 'SET_TOP_BAR_VISIBLE': return { ...state, isTopBarVisible: action.payload };
@@ -92,6 +96,7 @@ function appShellReducer(state: AppShellState, action: AppShellAction): AppShell
 
 interface AppShellContextValue extends AppShellState {
   dispatch: Dispatch<AppShellAction>;
+  rightPaneWidth: number;
   // Composite actions for convenience
   toggleSidebar: () => void;
   hideSidebar: () => void;
@@ -110,13 +115,15 @@ interface AppShellProviderProps {
   children: ReactNode;
   appName?: string;
   appLogo?: ReactElement;
+  defaultSplitPaneWidth?: number;
 }
 
-export function AppShellProvider({ children, appName, appLogo }: AppShellProviderProps) {
+export function AppShellProvider({ children, appName, appLogo, defaultSplitPaneWidth }: AppShellProviderProps) {
   const [state, dispatch] = useReducer(appShellReducer, {
     ...defaultState,
     ...(appName && { appName }),
     ...(appLogo && { appLogo }),
+    ...(defaultSplitPaneWidth && { splitPaneWidth: defaultSplitPaneWidth }),
   });
 
   // Side effect for primary color
@@ -145,10 +152,13 @@ export function AppShellProvider({ children, appName, appLogo }: AppShellProvide
     const current = state.bodyState;
     if (current === BODY_STATES.SIDE_PANE) {
       dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.SPLIT_VIEW });
+      if (state.sidebarState === SIDEBAR_STATES.EXPANDED) {
+        dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.COLLAPSED });
+      }
     } else if (current === BODY_STATES.SPLIT_VIEW) {
       dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.SIDE_PANE });
     }
-  }, [state.bodyState]);
+  }, [state.bodyState, state.sidebarState]);
 
   const openSidePane = useCallback((content: AppShellState['sidePaneContent']) => {
     if (state.bodyState === BODY_STATES.SIDE_PANE && state.sidePaneContent === content) {
@@ -164,9 +174,14 @@ export function AppShellProvider({ children, appName, appLogo }: AppShellProvide
   const closeSidePane = useCallback(() => dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.NORMAL }), []);
   const resetToDefaults = useCallback(() => dispatch({ type: 'RESET_TO_DEFAULTS' }), []);
 
+  const rightPaneWidth = useMemo(() => (
+    state.bodyState === BODY_STATES.SPLIT_VIEW ? state.splitPaneWidth : state.sidePaneWidth
+  ), [state.bodyState, state.splitPaneWidth, state.sidePaneWidth]);
+
   const value = useMemo(() => ({ 
     ...state, 
-    dispatch, 
+    dispatch,
+    rightPaneWidth,
     toggleSidebar,
     hideSidebar,
     showSidebar,
@@ -178,6 +193,7 @@ export function AppShellProvider({ children, appName, appLogo }: AppShellProvide
     resetToDefaults,
   }), [
     state, 
+    rightPaneWidth,
     toggleSidebar,
     hideSidebar,
     showSidebar,

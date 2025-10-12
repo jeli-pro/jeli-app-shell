@@ -44,14 +44,18 @@ export function useResizableSidebar(
 }
 
 export function useResizableRightPane() {
-  const { isResizingRightPane, dispatch } = useAppShell();
+  const { isResizingRightPane, dispatch, bodyState } = useAppShell();
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (!isResizingRightPane) return;
 
       const newWidth = window.innerWidth - e.clientX;
-      dispatch({ type: 'SET_RIGHT_PANE_WIDTH', payload: newWidth });
+      if (bodyState === BODY_STATES.SPLIT_VIEW) {
+        dispatch({ type: 'SET_SPLIT_PANE_WIDTH', payload: newWidth });
+      } else {
+        dispatch({ type: 'SET_SIDE_PANE_WIDTH', payload: newWidth });
+      }
     };
 
     const handleMouseUp = () => {
@@ -72,5 +76,5 @@ export function useResizableRightPane() {
       document.removeEventListener('mouseup', handleMouseUp);
       document.body.style.cursor = '';
     };
-  }, [isResizingRightPane, dispatch]);
+  }, [isResizingRightPane, dispatch, bodyState]);
 }

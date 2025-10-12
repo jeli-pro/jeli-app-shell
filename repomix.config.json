@@ -30,8 +30,8 @@
     "tsconfig.node.json",
     "tailwind.config.js",
     "postcss.config.js",
-    "index.html"
-    // "src"
+    "index.html",
+    "src"
     //
     // "src/App.tsx",
     // "src/components/layout/AppShell.tsx",
