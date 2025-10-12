@@ -1,7 +1,15 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { gsap } from 'gsap';
 import { useAppShell } from '@/context/AppShellContext';
 import { SIDEBAR_STATES, BODY_STATES } from '@/lib/utils';
+
+function usePrevious<T>(value: T): T | undefined {
+  const ref = useRef<T>();
+  useEffect(() => {
+    ref.current = value;
+  }, [value]);
+  return ref.current;
+}
 
 export function useSidebarAnimations(
   sidebarRef: React.RefObject<HTMLDivElement>,
@@ -67,6 +75,7 @@ export function useBodyStateAnimations(
 ) {
   const { bodyState, reducedMotion, rightPaneWidth, isTopBarVisible, closeSidePane, fullscreenTarget } = useAppShell();
   const animationDuration = reducedMotion ? 0.1 : 0.4;
+  const prevBodyState = usePrevious(bodyState);
 
   useEffect(() => {
     if (!mainContentRef.current || !rightPaneRef.current || !topBarContainerRef.current || !mainAreaRef.current) return;
@@ -77,14 +86,33 @@ export function useBodyStateAnimations(
     const isSplitView = bodyState === BODY_STATES.SPLIT_VIEW;
 
     // Right pane animation
-    gsap.to(rightPaneRef.current, {
-      width: isFullscreen 
-        ? (fullscreenTarget === 'right' ? '100%' : 0) 
-        : (isSidePane || isSplitView ? rightPaneWidth : 0),
-      x: (isSidePane || isSplitView || (isFullscreen && fullscreenTarget === 'right')) ? 0 : rightPaneWidth + 5, // +5 to hide border
-      duration: animationDuration,
-      ease,
-    });
+    if (isSidePane && prevBodyState !== BODY_STATES.SPLIT_VIEW) {
+      // Opening overlay pane. Set width immediately, animate transform for performance.
+      gsap.set(rightPaneRef.current, { width: rightPaneWidth });
+      gsap.fromTo(rightPaneRef.current, { x: '100%' }, {
+          x: '0%',
+          duration: animationDuration,
+          ease,
+      });
+    } else if (bodyState === BODY_STATES.NORMAL && prevBodyState === BODY_STATES.SIDE_PANE) {
+      // Closing overlay pane. Animate transform.
+      gsap.to(rightPaneRef.current, {
+          x: '100%',
+          duration: animationDuration,
+          ease,
+      });
+    } else {
+      // For all other transitions (split view, fullscreen, side_pane -> split_view)
+      // the original logic with width animation is acceptable.
+      gsap.to(rightPaneRef.current, {
+        width: isFullscreen
+          ? (fullscreenTarget === 'right' ? '100%' : 0)
+          : (isSidePane || isSplitView ? rightPaneWidth : 0),
+        x: (isSidePane || isSplitView || (isFullscreen && fullscreenTarget === 'right')) ? 0 : rightPaneWidth + 5, // +5 to hide border
+        duration: animationDuration,
+        ease,
+      });
+    }
 
     // Determine top bar position based on state
     let topBarY = '0%';
@@ -115,5 +143,5 @@ export function useBodyStateAnimations(
         gsap.to(backdrop, { opacity: 0, duration: animationDuration, onComplete: () => backdrop.remove() });
       }
     }
-  }, [bodyState, animationDuration, rightPaneWidth, closeSidePane, isTopBarVisible, appRef, mainContentRef, rightPaneRef, topBarContainerRef, mainAreaRef, fullscreenTarget]);
+  }, [bodyState, prevBodyState, animationDuration, rightPaneWidth, closeSidePane, isTopBarVisible, appRef, mainContentRef, rightPaneRef, topBarContainerRef, mainAreaRef, fullscreenTarget]);
 }

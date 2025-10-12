@@ -1,69 +1,99 @@
-import React, { useEffect } from 'react'
-import { AppShell } from './components/layout/AppShell'
-import { AppShellProvider, useAppShell } from './context/AppShellContext'
-import { useAppStore } from './store/appStore'
-import { useAuthStore } from './store/authStore'
-import './index.css'
+import React, { useEffect } from "react";
+import { AppShell } from "./components/layout/AppShell";
+import { AppShellProvider, useAppShell } from "./context/AppShellContext";
+import { useAppStore } from "./store/appStore";
+import { useAuthStore } from "./store/authStore";
+import "./index.css";
 
 // Import library components
-import { EnhancedSidebar } from './components/layout/EnhancedSidebar'
-import { MainContent } from './components/layout/MainContent'
-import { RightPane } from './components/layout/RightPane'
-import { TopBar } from './components/layout/TopBar'
-import { CommandPalette } from './components/global/CommandPalette'
+import { EnhancedSidebar } from "./components/layout/EnhancedSidebar";
+import { MainContent } from "./components/layout/MainContent";
+import { RightPane } from "./components/layout/RightPane";
+import { TopBar } from "./components/layout/TopBar";
+import { CommandPalette } from "./components/global/CommandPalette";
 
 // Import page/content components
-import { DashboardContent } from './pages/Dashboard'
-import { SettingsPage } from './pages/Settings'
-import { ToasterDemo } from './pages/ToasterDemo'
-import { NotificationsPage } from './pages/Notifications'
-import { ContentInSidePanePlaceholder } from './components/shared/ContentInSidePanePlaceholder'
-import { SettingsContent } from './features/settings/SettingsContent'
-import { LoginPage } from './components/auth/LoginPage'
+import { DashboardContent } from "./pages/Dashboard";
+import { SettingsPage } from "./pages/Settings";
+import { ToasterDemo } from "./pages/ToasterDemo";
+import { NotificationsPage } from "./pages/Notifications";
+import { ContentInSidePanePlaceholder } from "./components/shared/ContentInSidePanePlaceholder";
+import { SettingsContent } from "./features/settings/SettingsContent";
+import { LoginPage } from "./components/auth/LoginPage";
 
 // Import icons
-import { LayoutDashboard, Settings, Component, Bell, SlidersHorizontal, ChevronsLeftRight, Search, Filter, Plus, PanelRight, ChevronRight, Rocket, Layers, SplitSquareHorizontal } from 'lucide-react'
-import { BODY_STATES } from './lib/utils'
-import { cn } from './lib/utils'
-
+import {
+  LayoutDashboard,
+  Settings,
+  Component,
+  Bell,
+  SlidersHorizontal,
+  ChevronsLeftRight,
+  Search,
+  Filter,
+  Plus,
+  PanelRight,
+  ChevronRight,
+  Rocket,
+  Layers,
+  SplitSquareHorizontal,
+} from "lucide-react";
+import { BODY_STATES } from "./lib/utils";
+import { cn } from "./lib/utils";
 
 // The content for the main area, with page routing logic
 function AppContent() {
-  const { activePage, setActivePage } = useAppStore()
-  const { bodyState, sidePaneContent, openSidePane } = useAppShell()
+  const { activePage, setActivePage } = useAppStore();
+  const { bodyState, sidePaneContent, openSidePane } = useAppShell();
 
   const pageMap = {
     dashboard: {
       component: <DashboardContent />,
-      sidePaneContent: 'main',
+      sidePaneContent: "main",
       icon: LayoutDashboard,
-      name: 'dashboard',
+      name: "dashboard",
     },
     settings: {
       component: <SettingsPage />,
-      sidePaneContent: 'settings',
+      sidePaneContent: "settings",
       icon: Settings,
-      name: 'settings',
+      name: "settings",
     },
     toaster: {
       component: <ToasterDemo />,
-      sidePaneContent: 'toaster',
+      sidePaneContent: "toaster",
       icon: Component,
-      name: 'toaster demo',
+      name: "toaster demo",
     },
     notifications: {
       component: <NotificationsPage />,
-      sidePaneContent: 'notifications',
+      sidePaneContent: "notifications",
       icon: Bell,
-      name: 'notifications',
+      name: "notifications",
     },
   } as const;
 
   const currentPage = pageMap[activePage];
 
-  if (sidePaneContent === currentPage.sidePaneContent && (bodyState === BODY_STATES.SIDE_PANE || bodyState === BODY_STATES.SPLIT_VIEW)) {
+  if (!currentPage) {
+    // This can happen if the persisted state for activePage is invalid.
+    // We'll reset it to the dashboard.
+    useEffect(() => {
+      setActivePage("dashboard");
+    }, [setActivePage]);
+
+    // Return null or a loading indicator while the state is being corrected.
+    return null;
+    ``;
+  }
+
+  if (
+    sidePaneContent === currentPage.sidePaneContent &&
+    (bodyState === BODY_STATES.SIDE_PANE ||
+      bodyState === BODY_STATES.SPLIT_VIEW)
+  ) {
     return (
-      <ContentInSidePanePlaceholder 
+      <ContentInSidePanePlaceholder
         icon={currentPage.icon}
         title={`${currentPage.name.charAt(0).toUpperCase() + currentPage.name.slice(1)} is in Side Pane`}
         pageName={currentPage.name}
@@ -72,7 +102,7 @@ function AppContent() {
           setActivePage(activePage);
         }}
       />
-    )
+    );
   }
 
   return currentPage.component;
@@ -80,77 +110,139 @@ function AppContent() {
 
 // Content for the Top Bar
 function AppTopBar() {
-  const { activePage, searchTerm, setSearchTerm } = useAppStore()
-  const { openSidePane } = useAppShell()
+  const { activePage, searchTerm, setSearchTerm } = useAppStore();
+  const { openSidePane } = useAppShell();
   const [isSearchFocused, setIsSearchFocused] = React.useState(false);
 
   return (
     <div className="flex items-center gap-3 flex-1">
-      <div className={cn("hidden md:flex items-center gap-2 text-sm transition-opacity", {
-          "opacity-0 pointer-events-none": isSearchFocused && activePage === 'dashboard'
-      })}>
-        <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">Home</a>
+      <div
+        className={cn(
+          "hidden md:flex items-center gap-2 text-sm transition-opacity",
+          {
+            "opacity-0 pointer-events-none":
+              isSearchFocused && activePage === "dashboard",
+          },
+        )}
+      >
+        <a
+          href="#"
+          className="text-muted-foreground hover:text-foreground transition-colors"
+        >
+          Home
+        </a>
         <ChevronRight className="w-4 h-4 text-muted-foreground" />
-        <span className="font-medium text-foreground capitalize">{activePage}</span>
+        <span className="font-medium text-foreground capitalize">
+          {activePage}
+        </span>
       </div>
-      
+
       <div className="flex-1" />
 
       {/* Page-specific: Dashboard search and actions */}
-      {activePage === 'dashboard' && (
-      <div className="flex items-center gap-2 flex-1 justify-end">
-        <div className={cn("relative transition-all duration-300 ease-in-out", isSearchFocused ? 'flex-1 max-w-lg' : 'w-auto')}>
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4 pointer-events-none" />
-          <input
-            type="text"
-            placeholder="Search..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            onFocus={() => setIsSearchFocused(true)}
-            onBlur={() => setIsSearchFocused(false)}
+      {activePage === "dashboard" && (
+        <div className="flex items-center gap-2 flex-1 justify-end">
+          <div
             className={cn(
-              "pl-9 pr-4 py-2 h-10 border-none rounded-lg bg-card focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300 ease-in-out w-full",
-              isSearchFocused ? 'bg-background' : 'w-48'
+              "relative transition-all duration-300 ease-in-out",
+              isSearchFocused ? "flex-1 max-w-lg" : "w-auto",
             )}
-          />
+          >
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4 pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Search..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              onFocus={() => setIsSearchFocused(true)}
+              onBlur={() => setIsSearchFocused(false)}
+              className={cn(
+                "pl-9 pr-4 py-2 h-10 border-none rounded-lg bg-card focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300 ease-in-out w-full",
+                isSearchFocused ? "bg-background" : "w-48",
+              )}
+            />
+          </div>
+          <button className="h-10 w-10 flex-shrink-0 flex items-center justify-center hover:bg-accent rounded-full transition-colors">
+            <Filter className="w-5 h-5" />
+          </button>
+          <button className="bg-primary text-primary-foreground px-4 py-2 rounded-full hover:bg-primary/90 transition-colors flex items-center gap-2 h-10 flex-shrink-0">
+            <Plus className="w-5 h-5" />
+            <span
+              className={cn(isSearchFocused ? "hidden sm:inline" : "inline")}
+            >
+              New Project
+            </span>
+          </button>
         </div>
-         <button className="h-10 w-10 flex-shrink-0 flex items-center justify-center hover:bg-accent rounded-full transition-colors">
-          <Filter className="w-5 h-5" />
-        </button>
-         <button className="bg-primary text-primary-foreground px-4 py-2 rounded-full hover:bg-primary/90 transition-colors flex items-center gap-2 h-10 flex-shrink-0">
-          <Plus className="w-5 h-5" />
-          <span className={cn(isSearchFocused ? 'hidden sm:inline' : 'inline')}>New Project</span>
-        </button>
-      </div>
       )}
     </div>
-  )
+  );
 }
 
 // The main App component that composes the shell
 function ComposedApp() {
-  const { sidePaneContent, closeSidePane, bodyState, toggleSplitView } = useAppShell()
+  const { sidePaneContent, closeSidePane, bodyState, toggleSplitView } =
+    useAppShell();
   const { setActivePage } = useAppStore();
 
   const isOverlaySidePane = bodyState === BODY_STATES.SIDE_PANE;
 
   const contentMap = {
-    main: { title: 'Dashboard', icon: LayoutDashboard, page: 'dashboard', content: <DashboardContent isInSidePane={isOverlaySidePane} /> },
-    settings: { title: 'Settings', icon: Settings, page: 'settings', content: isOverlaySidePane ? <div className="p-6"><SettingsContent /></div> : <SettingsPage /> },
-    toaster: { title: 'Toaster Demo', icon: Component, page: 'toaster', content: <ToasterDemo isInSidePane={isOverlaySidePane} /> },
-    notifications: { title: 'Notifications', icon: Bell, page: 'notifications', content: <NotificationsPage isInSidePane={isOverlaySidePane} /> },
-    details: { title: 'Details Panel', icon: SlidersHorizontal, content: <div className="p-6"><p className="text-muted-foreground">This is the side pane. It can be used to display contextual information, forms, or actions related to the main content.</p></div> }
+    main: {
+      title: "Dashboard",
+      icon: LayoutDashboard,
+      page: "dashboard",
+      content: <DashboardContent isInSidePane={isOverlaySidePane} />,
+    },
+    settings: {
+      title: "Settings",
+      icon: Settings,
+      page: "settings",
+      content: isOverlaySidePane ? (
+        <div className="p-6">
+          <SettingsContent />
+        </div>
+      ) : (
+        <SettingsPage />
+      ),
+    },
+    toaster: {
+      title: "Toaster Demo",
+      icon: Component,
+      page: "toaster",
+      content: <ToasterDemo isInSidePane={isOverlaySidePane} />,
+    },
+    notifications: {
+      title: "Notifications",
+      icon: Bell,
+      page: "notifications",
+      content: <NotificationsPage isInSidePane={isOverlaySidePane} />,
+    },
+    details: {
+      title: "Details Panel",
+      icon: SlidersHorizontal,
+      content: (
+        <div className="p-6">
+          <p className="text-muted-foreground">
+            This is the side pane. It can be used to display contextual
+            information, forms, or actions related to the main content.
+          </p>
+        </div>
+      ),
+    },
   } as const;
 
-  const currentContent = contentMap[sidePaneContent as keyof typeof contentMap] || contentMap.details;
+  const currentContent =
+    contentMap[sidePaneContent as keyof typeof contentMap] ||
+    contentMap.details;
   const CurrentIcon = currentContent.icon;
 
   const handleMaximize = () => {
-    if ('page' in currentContent && currentContent.page) {
+    if ("page" in currentContent && currentContent.page) {
       setActivePage(currentContent.page as any);
     }
-    closeSidePane()
-  }
+    closeSidePane();
+  };
 
   const rightPaneHeader =
     bodyState !== BODY_STATES.SPLIT_VIEW ? (
@@ -162,11 +254,16 @@ function ComposedApp() {
           </h2>
         </div>
         <div className="flex items-center">
-          {(bodyState === BODY_STATES.SIDE_PANE || bodyState === BODY_STATES.SPLIT_VIEW) && (
+          {(bodyState === BODY_STATES.SIDE_PANE ||
+            bodyState === BODY_STATES.SPLIT_VIEW) && (
             <button
               onClick={toggleSplitView}
               className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors"
-              title={bodyState === BODY_STATES.SIDE_PANE ? 'Switch to Split View' : 'Switch to Overlay View'}
+              title={
+                bodyState === BODY_STATES.SIDE_PANE
+                  ? "Switch to Split View"
+                  : "Switch to Overlay View"
+              }
             >
               {bodyState === BODY_STATES.SPLIT_VIEW ? (
                 <Layers className="w-5 h-5" />
@@ -175,7 +272,7 @@ function ComposedApp() {
               )}
             </button>
           )}
-          {'page' in currentContent && currentContent.page && (
+          {"page" in currentContent && currentContent.page && (
             <button
               onClick={handleMaximize}
               className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors mr-2"
@@ -191,45 +288,53 @@ function ComposedApp() {
   return (
     <AppShell
       sidebar={<EnhancedSidebar />}
-      topBar={<TopBar><AppTopBar /></TopBar>}
-      mainContent={<MainContent><AppContent /></MainContent>}
-      rightPane={(
+      topBar={
+        <TopBar>
+          <AppTopBar />
+        </TopBar>
+      }
+      mainContent={
+        <MainContent>
+          <AppContent />
+        </MainContent>
+      }
+      rightPane={
         <RightPane header={rightPaneHeader}>{currentContent.content}</RightPane>
-      )}
+      }
       commandPalette={<CommandPalette />}
     />
   );
 }
 
 function App() {
-  const isDarkMode = useAppStore((state) => state.isDarkMode)
-  const { isAuthenticated, login, forgotPassword } = useAuthStore()
+  const isDarkMode = useAppStore((state) => state.isDarkMode);
+  const { isAuthenticated, login, forgotPassword } = useAuthStore();
 
   useEffect(() => {
-    document.documentElement.classList.toggle('dark', isDarkMode);
+    document.documentElement.classList.toggle("dark", isDarkMode);
   }, [isDarkMode]);
 
   const handleLogin = async (email: string, password: string) => {
     try {
-      await login(email, password)
+      await login(email, password);
     } catch (error) {
-      console.error('Login failed:', error)
+      console.error("Login failed:", error);
       // In a real app, you'd show an error message to the user
     }
-  }
+  };
 
   const handleForgotPassword = async (email: string) => {
     try {
-      await forgotPassword(email)
+      await forgotPassword(email);
     } catch (error) {
-      console.error('Forgot password failed:', error)
+      console.error("Forgot password failed:", error);
     }
-  }
+  };
 
   const handleSignUp = () => {
     // In a real app, navigate to sign up page
-    console.log('Navigate to sign up page')
-  }
+    console.log("Navigate to sign up page");
+  };
 
   if (!isAuthenticated) {
     return (
@@ -238,7 +343,7 @@ function App() {
         onForgotPassword={handleForgotPassword}
         onSignUp={handleSignUp}
       />
-    )
+    );
   }
 
   return (
@@ -254,7 +359,7 @@ function App() {
         <ComposedApp />
       </AppShellProvider>
     </div>
-  )
+  );
 }
 
-export default App
+export default App;

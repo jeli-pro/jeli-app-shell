@@ -80,46 +80,6 @@ vite.config.ts
 
 # Files
 
-## File: src/components/shared/PageLayout.tsx
-````typescript
-import React from 'react';
-import { cn } from '@/lib/utils';
-import { useAppShell } from '@/context/AppShellContext';
-
-interface PageLayoutProps extends React.HTMLAttributes<HTMLDivElement> {
-  children: React.ReactNode;
-  scrollRef?: React.RefObject<HTMLDivElement>;
-  isInSidePane?: boolean;
-}
-
-export const PageLayout = React.forwardRef<HTMLDivElement, PageLayoutProps>(
-  ({ children, onScroll, scrollRef, className, isInSidePane = false, ...props }, ref) => {
-    const { isTopBarVisible, bodyState } = useAppShell();
-    const isFullscreen = bodyState === 'fullscreen';
-
-    return (
-      <div
-        ref={scrollRef}
-        className={cn("h-full overflow-y-auto", className)}
-        onScroll={onScroll}
-      >
-        <div ref={ref} className={cn(
-          "space-y-8 transition-all duration-300",
-          !isInSidePane ? "px-6 lg:px-12 pb-6" : "px-6 pb-6",
-          isTopBarVisible && !isFullscreen ? "pt-24" : "pt-6"
-        )}
-        {...props}
-        >
-          {children}
-        </div>
-      </div>
-    );
-  }
-);
-
-PageLayout.displayName = 'PageLayout';
-````
-
 ## File: src/components/layout/WorkspaceSwitcher.tsx
 ````typescript
 import * as React from 'react';
@@ -499,6 +459,46 @@ export function PageHeader({ title, description, children }: PageHeaderProps) {
     </div>
   );
 }
+````
+
+## File: src/components/shared/PageLayout.tsx
+````typescript
+import React from 'react';
+import { cn } from '@/lib/utils';
+import { useAppShell } from '@/context/AppShellContext';
+
+interface PageLayoutProps extends React.HTMLAttributes<HTMLDivElement> {
+  children: React.ReactNode;
+  scrollRef?: React.RefObject<HTMLDivElement>;
+  isInSidePane?: boolean;
+}
+
+export const PageLayout = React.forwardRef<HTMLDivElement, PageLayoutProps>(
+  ({ children, onScroll, scrollRef, className, isInSidePane = false, ...props }, ref) => {
+    const { isTopBarVisible, bodyState } = useAppShell();
+    const isFullscreen = bodyState === 'fullscreen';
+
+    return (
+      <div
+        ref={scrollRef}
+        className={cn("h-full overflow-y-auto", className)}
+        onScroll={onScroll}
+      >
+        <div ref={ref} className={cn(
+          "space-y-8 transition-all duration-300",
+          !isInSidePane ? "px-6 lg:px-12 pb-6" : "px-6 pb-6",
+          isTopBarVisible && !isFullscreen ? "pt-24" : "pt-6"
+        )}
+        {...props}
+        >
+          {children}
+        </div>
+      </div>
+    );
+  }
+);
+
+PageLayout.displayName = 'PageLayout';
 ````
 
 ## File: src/components/ui/avatar.tsx
@@ -3238,378 +3238,6 @@ export function useDashboardAnimations(
 }
 ````
 
-## File: src/pages/Notifications/index.tsx
-````typescript
-import React from "react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { PageHeader } from "@/components/shared/PageHeader";
-import { useToast } from "@/components/ui/toast";
-import { PageLayout } from "@/components/shared/PageLayout";
-import { cn } from "@/lib/utils";
-import { 
-  CheckCheck, 
-  Download, 
-  Settings, 
-  Bell,
-  MessageSquare,
-  UserPlus,
-  Mail,
-  File as FileIcon,
-  Heart,
-  AtSign,
-  ClipboardCheck,
-  ShieldCheck,
-} from "lucide-react";
-
-
-type Notification = {
-  id: number;
-  type: string;
-  user: {
-    name: string;
-    avatar: string;
-    fallback: string;
-  };
-  action: string;
-  target?: string;
-  content?: string;
-  timestamp: string;
-  timeAgo: string;
-  isRead: boolean;
-  hasActions?: boolean;
-  file?: {
-    name: string;
-    size: string;
-    type: string;
-  };
-};
-
-const initialNotifications: Array<Notification> = [
-  {
-    id: 1,
-    type: "comment",
-    user: { name: "Amélie", avatar: "https://api.dicebear.com/7.x/notionists/svg?seed=Amélie", fallback: "A" },
-    action: "commented in",
-    target: "Dashboard 2.0",
-    content: "Really love this approach. I think this is the best solution for the document sync UX issue.",
-    timestamp: "Friday 3:12 PM",
-    timeAgo: "2 hours ago",
-    isRead: false,
-  },
-  {
-    id: 2,
-    type: "follow",
-    user: { name: "Sienna", avatar: "https://api.dicebear.com/7.x/notionists/svg?seed=Sienna", fallback: "S" },
-    action: "followed you",
-    timestamp: "Friday 3:04 PM",
-    timeAgo: "2 hours ago",
-    isRead: false,
-  },
-  {
-    id: 3,
-    type: "invitation",
-    user: { name: "Ammar", avatar: "https://api.dicebear.com/7.x/notionists/svg?seed=Ammar", fallback: "A" },
-    action: "invited you to",
-    target: "Blog design",
-    timestamp: "Friday 2:22 PM",
-    timeAgo: "3 hours ago",
-    isRead: true,
-    hasActions: true,
-  },
-  {
-    id: 4,
-    type: "file_share",
-    user: { name: "Mathilde", avatar: "https://api.dicebear.com/7.x/notionists/svg?seed=Mathilde", fallback: "M" },
-    action: "shared a file in",
-    target: "Dashboard 2.0",
-    file: { name: "Prototype recording 01.mp4", size: "14 MB", type: "MP4" },
-    timestamp: "Friday 1:40 PM",
-    timeAgo: "4 hours ago",
-    isRead: true,
-  },
-  {
-    id: 5,
-    type: "mention",
-    user: { name: "James", avatar: "https://api.dicebear.com/7.x/notionists/svg?seed=James", fallback: "J" },
-    action: "mentioned you in",
-    target: "Project Alpha",
-    content: "Hey @you, can you review the latest designs when you get a chance?",
-    timestamp: "Thursday 11:30 AM",
-    timeAgo: "1 day ago",
-    isRead: true,
-  },
-  {
-    id: 6,
-    type: "like",
-    user: { name: "Sofia", avatar: "https://api.dicebear.com/7.x/notionists/svg?seed=Sofia", fallback: "S" },
-    action: "liked your comment in",
-    target: "Team Meeting Notes",
-    timestamp: "Thursday 9:15 AM",
-    timeAgo: "1 day ago",
-    isRead: true,
-  },
-  {
-    id: 7,
-    type: "task_assignment",
-    user: { name: "Admin", avatar: "https://api.dicebear.com/7.x/bottts/svg?seed=Admin", fallback: "AD" },
-    action: "assigned you a new task in",
-    target: "Q3 Marketing",
-    content: "Finalize the social media campaign assets.",
-    timestamp: "Wednesday 5:00 PM",
-    timeAgo: "2 days ago",
-    isRead: true,
-  },
-  {
-    id: 8,
-    type: "system_update",
-    user: { name: "System", avatar: "https://api.dicebear.com/7.x/shapes/svg?seed=System", fallback: "SYS" },
-    action: "pushed a new update",
-    content: "Version 2.1.0 is now live with improved performance and new features. Check out the release notes for more details.",
-    timestamp: "Wednesday 9:00 AM",
-    timeAgo: "2 days ago",
-    isRead: true,
-  },
-  {
-    id: 9,
-    type: 'comment',
-    user: { name: 'Elena', avatar: 'https://api.dicebear.com/7.x/notionists/svg?seed=Elena', fallback: 'E' },
-    action: 'replied to your comment in',
-    target: 'Dashboard 2.0',
-    content: 'Thanks for the feedback! I\'ve updated the prototype.',
-    timestamp: 'Tuesday 4:30 PM',
-    timeAgo: '3 days ago',
-    isRead: false,
-  },
-  {
-    id: 10,
-    type: 'invitation',
-    user: { name: 'Carlos', avatar: 'https://api.dicebear.com/7.x/notionists/svg?seed=Carlos', fallback: 'C' },
-    action: 'invited you to',
-    target: 'API Integration',
-    timestamp: 'Tuesday 10:00 AM',
-    timeAgo: '3 days ago',
-    isRead: true,
-    hasActions: true,
-  },
-];
-
-const iconMap: { [key: string]: React.ElementType } = {
-  comment: MessageSquare,
-  follow: UserPlus,
-  invitation: Mail,
-  file_share: FileIcon,
-  mention: AtSign,
-  like: Heart,
-  task_assignment: ClipboardCheck,
-  system_update: ShieldCheck,
-};
-
-function NotificationItem({ notification, onMarkAsRead, isInSidePane }: { notification: Notification; onMarkAsRead: (id: number) => void; isInSidePane?: boolean; }) {
-  const Icon = iconMap[notification.type];
-
-  return (
-    <div className={cn(
-      "group w-full py-4 rounded-xl hover:bg-accent/50 transition-colors duration-200",
-      isInSidePane ? "" : "-mx-4 px-4"
-    )}>
-      <div className="flex gap-3">
-        <div className="relative h-10 w-10 shrink-0">
-          <Avatar className="h-10 w-10">
-            <AvatarImage src={notification.user.avatar} alt={`${notification.user.name}'s profile picture`} />
-            <AvatarFallback>{notification.user.fallback}</AvatarFallback>
-          </Avatar>
-          {Icon && (
-            <div className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full border-2 border-card bg-background">
-              <Icon className={cn("h-3 w-3", notification.type === 'like' ? 'text-red-500 fill-current' : 'text-muted-foreground')} />
-            </div>
-          )}
-        </div>
-
-        <div className="flex flex-1 flex-col space-y-2">
-          <div className="flex items-start justify-between">
-            <div className="text-sm">
-              <span className="font-semibold">{notification.user.name}</span>
-              <span className="text-muted-foreground"> {notification.action} </span>
-              {notification.target && <span className="font-semibold">{notification.target}</span>}
-              <div className="mt-0.5 text-xs text-muted-foreground">{notification.timeAgo}</div>
-            </div>
-            <button
-              onClick={() => !notification.isRead && onMarkAsRead(notification.id)}
-              title={notification.isRead ? "Read" : "Mark as read"}
-              className={cn("size-2.5 rounded-full mt-1 shrink-0 transition-all duration-300",
-                notification.isRead ? 'bg-transparent' : 'bg-primary hover:scale-125 cursor-pointer'
-              )}
-            ></button>
-          </div>
-
-          {notification.content && <div className="rounded-lg border bg-muted/50 p-3 text-sm">{notification.content}</div>}
-
-          {notification.file && (
-            <div className="flex items-center gap-2 rounded-lg bg-muted/50 p-2 border border-border">
-              <div className="shrink-0 w-10 h-10 flex items-center justify-center bg-background rounded-md border border-border">
-                <FileIcon className="w-5 h-5 text-muted-foreground" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium truncate">{notification.file.name}</div>
-                <div className="text-xs text-muted-foreground">{notification.file.type} • {notification.file.size}</div>
-              </div>
-              <Button variant="ghost" size="icon" className="size-8 shrink-0">
-                <Download className="w-4 h-4" />
-              </Button>
-            </div>
-          )}
-
-          {notification.hasActions && (
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm">Decline</Button>
-              <Button size="sm">Accept</Button>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-export function NotificationsPage({ isInSidePane = false }: { isInSidePane?: boolean }) {
-  const [notifications, setNotifications] = React.useState<Notification[]>(initialNotifications);
-  const [activeTab, setActiveTab] = React.useState<string>("all");
-  const { show: showToast } = useToast();
-
-  const handleMarkAsRead = (id: number) => {
-    setNotifications(prev =>
-      prev.map(n => (n.id === id ? { ...n, isRead: true } : n))
-    );
-  };
-
-  const handleMarkAllAsRead = () => {
-    const unreadCount = notifications.filter(n => !n.isRead).length;
-    if (unreadCount === 0) {
-      showToast({
-        title: "Already up to date!",
-        message: "You have no unread notifications.",
-        variant: "default",
-      });
-      return;
-    }
-    setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
-    showToast({
-        title: "All Caught Up!",
-        message: "All notifications have been marked as read.",
-        variant: "success",
-    });
-  };
-
-  const unreadCount = notifications.filter(n => !n.isRead).length;
-
-  const verifiedNotifications = notifications.filter((n) => n.type === "follow" || n.type === "like");
-  const mentionNotifications = notifications.filter((n) => n.type === "mention");
-
-  const verifiedCount = verifiedNotifications.filter(n => !n.isRead).length;
-  const mentionCount = mentionNotifications.filter(n => !n.isRead).length;
-
-  const getFilteredNotifications = () => {
-    switch (activeTab) {
-      case "verified": return verifiedNotifications;
-      case "mentions": return mentionNotifications;
-      default: return notifications;
-    }
-  };
-
-  const filteredNotifications = getFilteredNotifications();
-
-  const content = (
-    <Card className={cn("flex w-full flex-col shadow-none", isInSidePane ? "border-none" : "")}>
-      <CardHeader className="p-0">
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold">
-            Your notifications
-          </h3>
-          <div className="flex items-center gap-1">
-            <Button variant="ghost" size="icon" className="size-8" onClick={handleMarkAllAsRead} title="Mark all as read">
-              <CheckCheck className="size-4 text-muted-foreground" />
-            </Button>
-            <Button variant="ghost" size="icon" className="size-8">
-              <Settings className="size-4 text-muted-foreground" />
-            </Button>
-          </div>
-        </div>
-
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex-col justify-start mt-4">
-          <TabsList className="gap-1.5">
-            <TabsTrigger value="all" className="gap-1.5">
-              View all {unreadCount > 0 && <Badge variant="secondary" className="rounded-full">{unreadCount}</Badge>}
-            </TabsTrigger>
-            <TabsTrigger value="verified" className="gap-1.5">
-              Verified {verifiedCount > 0 && <Badge variant="secondary" className="rounded-full">{verifiedCount}</Badge>}
-            </TabsTrigger>
-            <TabsTrigger value="mentions" className="gap-1.5">
-              Mentions {mentionCount > 0 && <Badge variant="secondary" className="rounded-full">{mentionCount}</Badge>}
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
-      </CardHeader>
-
-      <CardContent className="h-full p-0 mt-6">
-        <div className="space-y-0 divide-y divide-border">
-          {filteredNotifications.length > 0 ? (
-            filteredNotifications.map((notification) => (
-              <NotificationItem key={notification.id} notification={notification} onMarkAsRead={handleMarkAsRead} isInSidePane={isInSidePane} />
-            ))
-          ) : (
-            <div className="flex flex-col items-center justify-center space-y-2.5 py-12 text-center">
-              <div className="rounded-full bg-muted p-4">
-                <Bell className="text-muted-foreground" />
-              </div>
-              <p className="text-sm font-medium text-muted-foreground">No notifications yet.</p>
-            </div>
-          )}
-        </div>
-      </CardContent>
-    </Card>
-  );
-
-  return (
-    <PageLayout isInSidePane={isInSidePane}>
-      {!isInSidePane && (
-        <PageHeader
-          title="Notifications"
-          description="Manage your notifications and stay up-to-date."
-        />
-      )}
-      {content}
-    </PageLayout>
-  );
-};
-````
-
-## File: src/pages/Settings/index.tsx
-````typescript
-import { SettingsContent } from '@/features/settings/SettingsContent';
-import { useAutoAnimateTopBar } from '@/hooks/useAutoAnimateTopBar';
-import { PageHeader } from '@/components/shared/PageHeader';
-import { PageLayout } from '@/components/shared/PageLayout';
-
-export function SettingsPage() {
-  const { onScroll } = useAutoAnimateTopBar();
-
-  return (
-    <PageLayout onScroll={onScroll}>
-      {/* Header */}
-      <PageHeader
-        title="Settings"
-        description="Customize your experience. Changes are saved automatically."
-      />
-      <SettingsContent />
-    </PageLayout>
-  )
-}
-````
-
 ## File: src/main.tsx
 ````typescript
 import React from 'react'
@@ -3943,225 +3571,27 @@ export function ViewModeSwitcher({ pane }: { pane?: 'main' | 'right' }) {
 }
 ````
 
-## File: src/pages/ToasterDemo/index.tsx
+## File: src/pages/Settings/index.tsx
 ````typescript
-import { Button } from '@/components/ui/button';
-import { useToast } from '@/components/ui/toast';
+import { SettingsContent } from '@/features/settings/SettingsContent';
+import { useAutoAnimateTopBar } from '@/hooks/useAutoAnimateTopBar';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { PageLayout } from '@/components/shared/PageLayout';
-import { cn } from '@/lib/utils';
 
-type Variant = 'default' | 'success' | 'error' | 'warning';
-type Position =
-  | 'top-left'
-  | 'top-center'
-  | 'top-right'
-  | 'bottom-left'
-  | 'bottom-center'
-  | 'bottom-right';
-
-const variantColors = {
-  default: 'border-border text-foreground hover:bg-muted/10 dark:hover:bg-muted/20',
-  success: 'border-green-600 text-green-600 hover:bg-green-600/10 dark:hover:bg-green-400/20',
-  error: 'border-destructive text-destructive hover:bg-destructive/10 dark:hover:bg-destructive/20',
-  warning: 'border-amber-600 text-amber-600 hover:bg-amber-600/10 dark:hover:bg-amber-400/20',
-}
-
-const DemoSection: React.FC<{ title: string; children: React.ReactNode }> = ({
-  title,
-  children,
-}) => (
-  <section>
-    <h2 className="text-lg font-semibold mb-2">{title}</h2>
-    {children}
-  </section>
-);
-
-export function ToasterDemo({ isInSidePane = false }: { isInSidePane?: boolean }) {
-  const toast = useToast();
-
-  const showToast = (variant: Variant, position: Position = 'bottom-right') => {
-    toast.show({
-      title: `${variant.charAt(0).toUpperCase() + variant.slice(1)} Notification`,
-      message: `This is a ${variant} toast notification.`,
-      variant,
-      position,
-      duration: 3000,
-      onDismiss: () =>
-        console.log(`${variant} toast at ${position} dismissed`),
-    });
-  };
-
-  const simulateApiCall = async () => {
-    toast.show({
-      title: 'Scheduling...',
-      message: 'Please wait while we schedule your meeting.',
-      variant: 'default',
-      position: 'bottom-right',
-    });
-
-    try {
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-
-      toast.show({
-        title: 'Meeting Scheduled',
-        message: 'Your meeting is scheduled for July 4, 2025, at 3:42 PM IST.',
-        variant: 'success',
-        position: 'bottom-right',
-        highlightTitle: true,
-        actions: {
-          label: 'Undo',
-          onClick: () => console.log('Undoing meeting schedule'),
-          variant: 'outline',
-        },
-      });
-    } catch (error) {
-      toast.show({
-        title: 'Error Scheduling Meeting',
-        message: 'Failed to schedule the meeting. Please try again.',
-        variant: 'error',
-        position: 'bottom-right',
-      });
-    }
-  };
+export function SettingsPage() {
+  const { onScroll } = useAutoAnimateTopBar();
 
   return (
-    <PageLayout isInSidePane={isInSidePane}>
+    <PageLayout onScroll={onScroll}>
       {/* Header */}
-      {!isInSidePane && (
-        <PageHeader
-          title="Toaster"
-          description="A customizable toast component for notifications."
-        />
-      )}
-      <div className="space-y-6">
-        <DemoSection title="Toast Variants">
-          <div className="flex flex-wrap gap-4">
-            {(['default', 'success', 'error', 'warning'] as Variant[]).map((variantKey) => (
-              <Button
-                key={variantKey}
-                variant="outline"
-                onClick={() => showToast(variantKey as Variant)}
-                className={cn(variantColors[variantKey])}
-              >
-                {variantKey.charAt(0).toUpperCase() + variantKey.slice(1)} Toast
-              </Button>
-            ))}
-          </div>
-        </DemoSection>
-
-        <DemoSection title="Toast Positions">
-          <div className="flex flex-wrap gap-4">
-            {[
-              'top-left',
-              'top-center',
-              'top-right',
-              'bottom-left',
-              'bottom-center',
-              'bottom-right',
-            ].map((positionKey) => (
-              <Button
-                key={positionKey}
-                variant="outline"
-                onClick={() =>
-                  showToast('default', positionKey as Position)
-                }
-                className="border-border text-foreground hover:bg-muted/10 dark:hover:bg-muted/20"
-              >
-                {positionKey
-                  .replace('-', ' ')
-                  .replace(/\b\w/g, (char) => char.toUpperCase())}
-              </Button>
-            ))}
-          </div>
-        </DemoSection>
-
-        <DemoSection title="Real-World Example">
-          <Button
-            variant="outline"
-            onClick={simulateApiCall}
-            className="border-border text-foreground hover:bg-muted/10 dark:hover:bg-muted/20"
-          >
-            Schedule Meeting
-          </Button>
-        </DemoSection>
-      </div>
+      <PageHeader
+        title="Settings"
+        description="Customize your experience. Changes are saved automatically."
+      />
+      <SettingsContent />
     </PageLayout>
-  );
+  )
 }
-````
-
-## File: src/index.ts
-````typescript
-// Context
-export { AppShellProvider, useAppShell } from './context/AppShellContext';
-
-// Layout Components
-export { AppShell } from './components/layout/AppShell';
-export { MainContent } from './components/layout/MainContent';
-export { ViewModeSwitcher } from './components/layout/ViewModeSwitcher';
-export { RightPane } from './components/layout/RightPane';
-export { TopBar } from './components/layout/TopBar';
-export { UserDropdown } from './components/layout/UserDropdown';
-export { Workspaces as WorkspaceProvider, WorkspaceTrigger, WorkspaceContent } from './components/layout/WorkspaceSwitcher';
-
-// Sidebar Primitives
-export {
-  Sidebar,
-  SidebarBody,
-  SidebarContent,
-  SidebarFooter,
-  SidebarHeader,
-  SidebarSection,
-  SidebarTitle,
-  SidebarMenuItem,
-  SidebarMenuButton,
-  SidebarMenuAction,
-  SidebarLabel,
-  SidebarBadge,
-  SidebarTooltip,
-  SidebarIcon,
-  useSidebar,
-} from './components/layout/Sidebar';
-
-// Shared Components
-export { ContentInSidePanePlaceholder } from './components/shared/ContentInSidePanePlaceholder';
-export { PageHeader } from './components/shared/PageHeader';
-export { PageLayout } from './components/shared/PageLayout';
-
-// Feature Components
-export { SettingsContent } from './features/settings/SettingsContent';
-export { SettingsSection } from './features/settings/SettingsSection';
-export { SettingsToggle } from './features/settings/SettingsToggle';
-export { LoginPage } from './components/auth/LoginPage';
-
-// UI Components
-export * from './components/ui/avatar';
-export * from './components/ui/badge';
-export * from './components/ui/button';
-export * from './components/ui/card';
-export * from './components/ui/command';
-export * from './components/ui/dialog';
-export * from './components/ui/dropdown-menu';
-export * from './components/ui/input';
-export * from './components/ui/label';
-export * from './components/ui/popover';
-export * from './components/ui/tabs';
-export * from './components/ui/toast';
-
-// Global Components
-export { CommandPalette } from './components/global/CommandPalette';
-
-// Hooks
-export { useAutoAnimateTopBar } from './hooks/useAutoAnimateTopBar';
-export { useCommandPaletteToggle } from './hooks/useCommandPaletteToggle.hook';
-
-// Lib
-export * from './lib/utils';
-
-// Store
-export { useAppStore, type ActivePage } from './store/appStore';
-export { useAuthStore } from './store/authStore';
 ````
 
 ## File: index.html
@@ -4294,58 +3724,6 @@ export default {
     "resolveJsonModule": true
   },
   "include": ["vite.config.ts"]
-}
-````
-
-## File: src/hooks/useAutoAnimateTopBar.ts
-````typescript
-import { useRef, useCallback, useEffect } from 'react';
-import { useAppShell } from '@/context/AppShellContext';
-import { BODY_STATES } from '@/lib/utils';
-
-export function useAutoAnimateTopBar(isPane = false) {
-  const { dispatch, bodyState } = useAppShell();
-  const lastScrollTop = useRef(0);
-  const scrollTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const onScroll = useCallback((event: React.UIEvent<HTMLDivElement>) => {
-    if (isPane || bodyState === BODY_STATES.SPLIT_VIEW || bodyState === BODY_STATES.FULLSCREEN) return;
-
-    // Clear previous timeout
-    if (scrollTimeout.current) {
-      clearTimeout(scrollTimeout.current);
-    }
-
-    const { scrollTop } = event.currentTarget;
-    
-    if (scrollTop > lastScrollTop.current && scrollTop > 200) {
-      dispatch({ type: 'SET_TOP_BAR_VISIBLE', payload: false });
-    } else if (scrollTop < lastScrollTop.current || scrollTop <= 0) {
-      dispatch({ type: 'SET_TOP_BAR_VISIBLE', payload: true });
-    }
-    
-    lastScrollTop.current = scrollTop <= 0 ? 0 : scrollTop;
-
-    // Set new timeout to show top bar when scrolling stops
-    scrollTimeout.current = setTimeout(() => {
-      // Don't hide, just ensure it's visible after scrolling stops
-      // and we are not at the top of the page.
-      if (scrollTop > 0) {
-        dispatch({ type: 'SET_TOP_BAR_VISIBLE', payload: true });
-      }
-    }, 250); // Adjust timeout as needed
-  }, [isPane, dispatch, bodyState]);
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (scrollTimeout.current) {
-        clearTimeout(scrollTimeout.current);
-      }
-    };
-  }, []);
-
-  return { onScroll };
 }
 ````
 
@@ -4637,6 +4015,575 @@ export function DemoContent() {
 }
 ````
 
+## File: src/pages/Notifications/index.tsx
+````typescript
+import React from "react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PageHeader } from "@/components/shared/PageHeader";
+import { useToast } from "@/components/ui/toast";
+import { PageLayout } from "@/components/shared/PageLayout";
+import { cn } from "@/lib/utils";
+import { 
+  CheckCheck, 
+  Download, 
+  Settings, 
+  Bell,
+  MessageSquare,
+  UserPlus,
+  Mail,
+  File as FileIcon,
+  Heart,
+  AtSign,
+  ClipboardCheck,
+  ShieldCheck,
+} from "lucide-react";
+
+
+type Notification = {
+  id: number;
+  type: string;
+  user: {
+    name: string;
+    avatar: string;
+    fallback: string;
+  };
+  action: string;
+  target?: string;
+  content?: string;
+  timestamp: string;
+  timeAgo: string;
+  isRead: boolean;
+  hasActions?: boolean;
+  file?: {
+    name: string;
+    size: string;
+    type: string;
+  };
+};
+
+const initialNotifications: Array<Notification> = [
+  {
+    id: 1,
+    type: "comment",
+    user: { name: "Amélie", avatar: "https://api.dicebear.com/7.x/notionists/svg?seed=Amélie", fallback: "A" },
+    action: "commented in",
+    target: "Dashboard 2.0",
+    content: "Really love this approach. I think this is the best solution for the document sync UX issue.",
+    timestamp: "Friday 3:12 PM",
+    timeAgo: "2 hours ago",
+    isRead: false,
+  },
+  {
+    id: 2,
+    type: "follow",
+    user: { name: "Sienna", avatar: "https://api.dicebear.com/7.x/notionists/svg?seed=Sienna", fallback: "S" },
+    action: "followed you",
+    timestamp: "Friday 3:04 PM",
+    timeAgo: "2 hours ago",
+    isRead: false,
+  },
+  {
+    id: 3,
+    type: "invitation",
+    user: { name: "Ammar", avatar: "https://api.dicebear.com/7.x/notionists/svg?seed=Ammar", fallback: "A" },
+    action: "invited you to",
+    target: "Blog design",
+    timestamp: "Friday 2:22 PM",
+    timeAgo: "3 hours ago",
+    isRead: true,
+    hasActions: true,
+  },
+  {
+    id: 4,
+    type: "file_share",
+    user: { name: "Mathilde", avatar: "https://api.dicebear.com/7.x/notionists/svg?seed=Mathilde", fallback: "M" },
+    action: "shared a file in",
+    target: "Dashboard 2.0",
+    file: { name: "Prototype recording 01.mp4", size: "14 MB", type: "MP4" },
+    timestamp: "Friday 1:40 PM",
+    timeAgo: "4 hours ago",
+    isRead: true,
+  },
+  {
+    id: 5,
+    type: "mention",
+    user: { name: "James", avatar: "https://api.dicebear.com/7.x/notionists/svg?seed=James", fallback: "J" },
+    action: "mentioned you in",
+    target: "Project Alpha",
+    content: "Hey @you, can you review the latest designs when you get a chance?",
+    timestamp: "Thursday 11:30 AM",
+    timeAgo: "1 day ago",
+    isRead: true,
+  },
+  {
+    id: 6,
+    type: "like",
+    user: { name: "Sofia", avatar: "https://api.dicebear.com/7.x/notionists/svg?seed=Sofia", fallback: "S" },
+    action: "liked your comment in",
+    target: "Team Meeting Notes",
+    timestamp: "Thursday 9:15 AM",
+    timeAgo: "1 day ago",
+    isRead: true,
+  },
+  {
+    id: 7,
+    type: "task_assignment",
+    user: { name: "Admin", avatar: "https://api.dicebear.com/7.x/bottts/svg?seed=Admin", fallback: "AD" },
+    action: "assigned you a new task in",
+    target: "Q3 Marketing",
+    content: "Finalize the social media campaign assets.",
+    timestamp: "Wednesday 5:00 PM",
+    timeAgo: "2 days ago",
+    isRead: true,
+  },
+  {
+    id: 8,
+    type: "system_update",
+    user: { name: "System", avatar: "https://api.dicebear.com/7.x/shapes/svg?seed=System", fallback: "SYS" },
+    action: "pushed a new update",
+    content: "Version 2.1.0 is now live with improved performance and new features. Check out the release notes for more details.",
+    timestamp: "Wednesday 9:00 AM",
+    timeAgo: "2 days ago",
+    isRead: true,
+  },
+  {
+    id: 9,
+    type: 'comment',
+    user: { name: 'Elena', avatar: 'https://api.dicebear.com/7.x/notionists/svg?seed=Elena', fallback: 'E' },
+    action: 'replied to your comment in',
+    target: 'Dashboard 2.0',
+    content: 'Thanks for the feedback! I\'ve updated the prototype.',
+    timestamp: 'Tuesday 4:30 PM',
+    timeAgo: '3 days ago',
+    isRead: false,
+  },
+  {
+    id: 10,
+    type: 'invitation',
+    user: { name: 'Carlos', avatar: 'https://api.dicebear.com/7.x/notionists/svg?seed=Carlos', fallback: 'C' },
+    action: 'invited you to',
+    target: 'API Integration',
+    timestamp: 'Tuesday 10:00 AM',
+    timeAgo: '3 days ago',
+    isRead: true,
+    hasActions: true,
+  },
+];
+
+const iconMap: { [key: string]: React.ElementType } = {
+  comment: MessageSquare,
+  follow: UserPlus,
+  invitation: Mail,
+  file_share: FileIcon,
+  mention: AtSign,
+  like: Heart,
+  task_assignment: ClipboardCheck,
+  system_update: ShieldCheck,
+};
+
+function NotificationItem({ notification, onMarkAsRead, isInSidePane }: { notification: Notification; onMarkAsRead: (id: number) => void; isInSidePane?: boolean; }) {
+  const Icon = iconMap[notification.type];
+
+  return (
+    <div className={cn(
+      "group w-full p-4 hover:bg-accent/50 rounded-lg transition-colors duration-200"
+    )}>
+      <div className="flex gap-3">
+        <div className="relative h-10 w-10 shrink-0">
+          <Avatar className="h-10 w-10">
+            <AvatarImage src={notification.user.avatar} alt={`${notification.user.name}'s profile picture`} />
+            <AvatarFallback>{notification.user.fallback}</AvatarFallback>
+          </Avatar>
+          {Icon && (
+            <div className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full border-2 border-card bg-background">
+              <Icon className={cn("h-3 w-3", notification.type === 'like' ? 'text-red-500 fill-current' : 'text-muted-foreground')} />
+            </div>
+          )}
+        </div>
+
+        <div className="flex flex-1 flex-col space-y-2">
+          <div className="flex items-start justify-between">
+            <div className="text-sm">
+              <span className="font-semibold">{notification.user.name}</span>
+              <span className="text-muted-foreground"> {notification.action} </span>
+              {notification.target && <span className="font-semibold">{notification.target}</span>}
+              <div className="mt-0.5 text-xs text-muted-foreground">{notification.timeAgo}</div>
+            </div>
+            <button
+              onClick={() => !notification.isRead && onMarkAsRead(notification.id)}
+              title={notification.isRead ? "Read" : "Mark as read"}
+              className={cn("size-2.5 rounded-full mt-1 shrink-0 transition-all duration-300",
+                notification.isRead ? 'bg-transparent' : 'bg-primary hover:scale-125 cursor-pointer'
+              )}
+            ></button>
+          </div>
+
+          {notification.content && <div className="rounded-lg border bg-muted/50 p-3 text-sm">{notification.content}</div>}
+
+          {notification.file && (
+            <div className="flex items-center gap-2 rounded-lg bg-muted/50 p-2 border border-border">
+              <div className="shrink-0 w-10 h-10 flex items-center justify-center bg-background rounded-md border border-border">
+                <FileIcon className="w-5 h-5 text-muted-foreground" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-medium truncate">{notification.file.name}</div>
+                <div className="text-xs text-muted-foreground">{notification.file.type} • {notification.file.size}</div>
+              </div>
+              <Button variant="ghost" size="icon" className="size-8 shrink-0">
+                <Download className="w-4 h-4" />
+              </Button>
+            </div>
+          )}
+
+          {notification.hasActions && (
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm">Decline</Button>
+              <Button size="sm">Accept</Button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function NotificationsPage({ isInSidePane = false }: { isInSidePane?: boolean }) {
+  const [notifications, setNotifications] = React.useState<Notification[]>(initialNotifications);
+  const [activeTab, setActiveTab] = React.useState<string>("all");
+  const { show: showToast } = useToast();
+
+  const handleMarkAsRead = (id: number) => {
+    setNotifications(prev =>
+      prev.map(n => (n.id === id ? { ...n, isRead: true } : n))
+    );
+  };
+
+  const handleMarkAllAsRead = () => {
+    const unreadCount = notifications.filter(n => !n.isRead).length;
+    if (unreadCount === 0) {
+      showToast({
+        title: "Already up to date!",
+        message: "You have no unread notifications.",
+        variant: "default",
+      });
+      return;
+    }
+    setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+    showToast({
+        title: "All Caught Up!",
+        message: "All notifications have been marked as read.",
+        variant: "success",
+    });
+  };
+
+  const unreadCount = notifications.filter(n => !n.isRead).length;
+
+  const verifiedNotifications = notifications.filter((n) => n.type === "follow" || n.type === "like");
+  const mentionNotifications = notifications.filter((n) => n.type === "mention");
+
+  const verifiedCount = verifiedNotifications.filter(n => !n.isRead).length;
+  const mentionCount = mentionNotifications.filter(n => !n.isRead).length;
+
+  const getFilteredNotifications = () => {
+    switch (activeTab) {
+      case "verified": return verifiedNotifications;
+      case "mentions": return mentionNotifications;
+      default: return notifications;
+    }
+  };
+
+  const filteredNotifications = getFilteredNotifications();
+
+  const content = (
+    <Card className={cn("flex w-full flex-col shadow-none", isInSidePane ? "border-none" : "")}>
+      <CardHeader className={cn(isInSidePane ? "p-4" : "p-6")}>
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold">
+            Your notifications
+          </h3>
+          <div className="flex items-center gap-1">
+            <Button variant="ghost" size="icon" className="size-8" onClick={handleMarkAllAsRead} title="Mark all as read">
+              <CheckCheck className="size-4 text-muted-foreground" />
+            </Button>
+            <Button variant="ghost" size="icon" className="size-8">
+              <Settings className="size-4 text-muted-foreground" />
+            </Button>
+          </div>
+        </div>
+
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex-col justify-start mt-4">
+          <TabsList className="gap-1.5">
+            <TabsTrigger value="all" className="gap-1.5">
+              View all {unreadCount > 0 && <Badge variant="secondary" className="rounded-full">{unreadCount}</Badge>}
+            </TabsTrigger>
+            <TabsTrigger value="verified" className="gap-1.5">
+              Verified {verifiedCount > 0 && <Badge variant="secondary" className="rounded-full">{verifiedCount}</Badge>}
+            </TabsTrigger>
+            <TabsTrigger value="mentions" className="gap-1.5">
+              Mentions {mentionCount > 0 && <Badge variant="secondary" className="rounded-full">{mentionCount}</Badge>}
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </CardHeader>
+
+      <CardContent className={cn("h-full p-0", isInSidePane ? "px-2" : "px-6")}>
+        <div className="space-y-2 divide-y divide-border">
+          {filteredNotifications.length > 0 ? (
+            filteredNotifications.map((notification) => (
+              <NotificationItem key={notification.id} notification={notification} onMarkAsRead={handleMarkAsRead} isInSidePane={isInSidePane} />
+            ))
+          ) : (
+            <div className="flex flex-col items-center justify-center space-y-2.5 py-12 text-center">
+              <div className="rounded-full bg-muted p-4">
+                <Bell className="text-muted-foreground" />
+              </div>
+              <p className="text-sm font-medium text-muted-foreground">No notifications yet.</p>
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  return (
+    <PageLayout isInSidePane={isInSidePane}>
+      {!isInSidePane && (
+        <PageHeader
+          title="Notifications"
+          description="Manage your notifications and stay up-to-date."
+        />
+      )}
+      {content}
+    </PageLayout>
+  );
+};
+````
+
+## File: src/pages/ToasterDemo/index.tsx
+````typescript
+import { Button } from '@/components/ui/button';
+import { useToast } from '@/components/ui/toast';
+import { PageHeader } from '@/components/shared/PageHeader';
+import { PageLayout } from '@/components/shared/PageLayout';
+import { cn } from '@/lib/utils';
+
+type Variant = 'default' | 'success' | 'error' | 'warning';
+type Position =
+  | 'top-left'
+  | 'top-center'
+  | 'top-right'
+  | 'bottom-left'
+  | 'bottom-center'
+  | 'bottom-right';
+
+const variantColors = {
+  default: 'border-border text-foreground hover:bg-muted/10 dark:hover:bg-muted/20',
+  success: 'border-green-600 text-green-600 hover:bg-green-600/10 dark:hover:bg-green-400/20',
+  error: 'border-destructive text-destructive hover:bg-destructive/10 dark:hover:bg-destructive/20',
+  warning: 'border-amber-600 text-amber-600 hover:bg-amber-600/10 dark:hover:bg-amber-400/20',
+}
+
+const DemoSection: React.FC<{ title: string; children: React.ReactNode }> = ({
+  title,
+  children,
+}) => (
+  <section>
+    <h2 className="text-lg font-semibold mb-2">{title}</h2>
+    {children}
+  </section>
+);
+
+export function ToasterDemo({ isInSidePane = false }: { isInSidePane?: boolean }) {
+  const toast = useToast();
+
+  const showToast = (variant: Variant, position: Position = 'bottom-right') => {
+    toast.show({
+      title: `${variant.charAt(0).toUpperCase() + variant.slice(1)} Notification`,
+      message: `This is a ${variant} toast notification.`,
+      variant,
+      position,
+      duration: 3000,
+      onDismiss: () =>
+        console.log(`${variant} toast at ${position} dismissed`),
+    });
+  };
+
+  const simulateApiCall = async () => {
+    toast.show({
+      title: 'Scheduling...',
+      message: 'Please wait while we schedule your meeting.',
+      variant: 'default',
+      position: 'bottom-right',
+    });
+
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+
+      toast.show({
+        title: 'Meeting Scheduled',
+        message: 'Your meeting is scheduled for July 4, 2025, at 3:42 PM IST.',
+        variant: 'success',
+        position: 'bottom-right',
+        highlightTitle: true,
+        actions: {
+          label: 'Undo',
+          onClick: () => console.log('Undoing meeting schedule'),
+          variant: 'outline',
+        },
+      });
+    } catch (error) {
+      toast.show({
+        title: 'Error Scheduling Meeting',
+        message: 'Failed to schedule the meeting. Please try again.',
+        variant: 'error',
+        position: 'bottom-right',
+      });
+    }
+  };
+
+  return (
+    <PageLayout isInSidePane={isInSidePane}>
+      {/* Header */}
+      {!isInSidePane && (
+        <PageHeader
+          title="Toaster"
+          description="A customizable toast component for notifications."
+        />
+      )}
+      <div className="space-y-6">
+        <DemoSection title="Toast Variants">
+          <div className="flex flex-wrap gap-4">
+            {(['default', 'success', 'error', 'warning'] as Variant[]).map((variantKey) => (
+              <Button
+                key={variantKey}
+                variant="outline"
+                onClick={() => showToast(variantKey as Variant)}
+                className={cn(variantColors[variantKey])}
+              >
+                {variantKey.charAt(0).toUpperCase() + variantKey.slice(1)} Toast
+              </Button>
+            ))}
+          </div>
+        </DemoSection>
+
+        <DemoSection title="Toast Positions">
+          <div className="flex flex-wrap gap-4">
+            {[
+              'top-left',
+              'top-center',
+              'top-right',
+              'bottom-left',
+              'bottom-center',
+              'bottom-right',
+            ].map((positionKey) => (
+              <Button
+                key={positionKey}
+                variant="outline"
+                onClick={() =>
+                  showToast('default', positionKey as Position)
+                }
+                className="border-border text-foreground hover:bg-muted/10 dark:hover:bg-muted/20"
+              >
+                {positionKey
+                  .replace('-', ' ')
+                  .replace(/\b\w/g, (char) => char.toUpperCase())}
+              </Button>
+            ))}
+          </div>
+        </DemoSection>
+
+        <DemoSection title="Real-World Example">
+          <Button
+            variant="outline"
+            onClick={simulateApiCall}
+            className="border-border text-foreground hover:bg-muted/10 dark:hover:bg-muted/20"
+          >
+            Schedule Meeting
+          </Button>
+        </DemoSection>
+      </div>
+    </PageLayout>
+  );
+}
+````
+
+## File: src/index.ts
+````typescript
+// Context
+export { AppShellProvider, useAppShell } from './context/AppShellContext';
+
+// Layout Components
+export { AppShell } from './components/layout/AppShell';
+export { MainContent } from './components/layout/MainContent';
+export { ViewModeSwitcher } from './components/layout/ViewModeSwitcher';
+export { RightPane } from './components/layout/RightPane';
+export { TopBar } from './components/layout/TopBar';
+export { UserDropdown } from './components/layout/UserDropdown';
+export { Workspaces as WorkspaceProvider, WorkspaceTrigger, WorkspaceContent } from './components/layout/WorkspaceSwitcher';
+
+// Sidebar Primitives
+export {
+  Sidebar,
+  SidebarBody,
+  SidebarContent,
+  SidebarFooter,
+  SidebarHeader,
+  SidebarSection,
+  SidebarTitle,
+  SidebarMenuItem,
+  SidebarMenuButton,
+  SidebarMenuAction,
+  SidebarLabel,
+  SidebarBadge,
+  SidebarTooltip,
+  SidebarIcon,
+  useSidebar,
+} from './components/layout/Sidebar';
+
+// Shared Components
+export { ContentInSidePanePlaceholder } from './components/shared/ContentInSidePanePlaceholder';
+export { PageHeader } from './components/shared/PageHeader';
+export { PageLayout } from './components/shared/PageLayout';
+
+// Feature Components
+export { SettingsContent } from './features/settings/SettingsContent';
+export { SettingsSection } from './features/settings/SettingsSection';
+export { SettingsToggle } from './features/settings/SettingsToggle';
+export { LoginPage } from './components/auth/LoginPage';
+
+// UI Components
+export * from './components/ui/avatar';
+export * from './components/ui/badge';
+export * from './components/ui/button';
+export * from './components/ui/card';
+export * from './components/ui/command';
+export * from './components/ui/dialog';
+export * from './components/ui/dropdown-menu';
+export * from './components/ui/input';
+export * from './components/ui/label';
+export * from './components/ui/popover';
+export * from './components/ui/tabs';
+export * from './components/ui/toast';
+
+// Global Components
+export { CommandPalette } from './components/global/CommandPalette';
+
+// Hooks
+export { useAutoAnimateTopBar } from './hooks/useAutoAnimateTopBar';
+export { useCommandPaletteToggle } from './hooks/useCommandPaletteToggle.hook';
+
+// Lib
+export * from './lib/utils';
+
+// Store
+export { useAppStore, type ActivePage } from './store/appStore';
+export { useAuthStore } from './store/authStore';
+````
+
 ## File: src/components/layout/EnhancedSidebar.tsx
 ````typescript
 import React from 'react';
@@ -4900,6 +4847,225 @@ const AppMenuItem: React.FC<AppMenuItemProps> = ({ icon: Icon, label, badge, has
     </div>
   );
 };
+````
+
+## File: src/hooks/useAutoAnimateTopBar.ts
+````typescript
+import { useRef, useCallback, useEffect } from 'react';
+import { useAppShell } from '@/context/AppShellContext';
+import { BODY_STATES } from '@/lib/utils';
+
+export function useAutoAnimateTopBar(isPane = false) {
+  const { dispatch, bodyState } = useAppShell();
+  const lastScrollTop = useRef(0);
+  const scrollTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const onScroll = useCallback((event: React.UIEvent<HTMLDivElement>) => {
+    if (isPane || bodyState === BODY_STATES.SPLIT_VIEW || bodyState === BODY_STATES.FULLSCREEN) return;
+
+    // Clear previous timeout
+    if (scrollTimeout.current) {
+      clearTimeout(scrollTimeout.current);
+    }
+
+    const { scrollTop } = event.currentTarget;
+    
+    if (scrollTop > lastScrollTop.current && scrollTop > 200) {
+      dispatch({ type: 'SET_TOP_BAR_VISIBLE', payload: false });
+    } else if (scrollTop < lastScrollTop.current || scrollTop <= 0) {
+      dispatch({ type: 'SET_TOP_BAR_VISIBLE', payload: true });
+    }
+    
+    lastScrollTop.current = scrollTop <= 0 ? 0 : scrollTop;
+
+    // Set new timeout to show top bar when scrolling stops
+    scrollTimeout.current = setTimeout(() => {
+      // Don't hide, just ensure it's visible after scrolling stops
+      // and we are not at the top of the page.
+      if (scrollTop > 0) {
+        dispatch({ type: 'SET_TOP_BAR_VISIBLE', payload: true });
+      }
+    }, 250); // Adjust timeout as needed
+  }, [isPane, dispatch, bodyState]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (scrollTimeout.current) {
+        clearTimeout(scrollTimeout.current);
+      }
+    };
+  }, []);
+
+  return { onScroll };
+}
+````
+
+## File: vite.config.ts
+````typescript
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+import { fileURLToPath, URL } from 'url'
+import { resolve } from 'path'
+import pkg from './package.json' with { type: 'json' }
+
+// https://vitejs.dev/config/
+export default defineConfig({
+  plugins: [react()],
+  resolve: {
+    alias: {
+      "@": fileURLToPath(new URL('./src', import.meta.url)),
+    },
+  },
+  build: {
+    lib: {
+      entry: resolve(__dirname, 'src/index.ts'),
+      name: 'JeliAppShell',
+      fileName: (format) => `jeli-app-shell.${format}.js`,
+    },
+    rollupOptions: {
+      // make sure to externalize deps that shouldn't be bundled
+      // into your library
+      external: Object.keys(pkg.peerDependencies || {}),
+      output: {
+        // Provide global variables to use in the UMD build
+        // for externalized deps
+        globals: {
+          react: 'React',
+          'react-dom': 'ReactDOM',
+          tailwindcss: 'tailwindcss',
+          gsap: 'gsap',
+          'lucide-react': 'lucide-react',
+          zustand: 'zustand',
+          sonner: 'sonner'
+        },
+      },
+    },
+  },
+})
+````
+
+## File: src/components/layout/TopBar.tsx
+````typescript
+import {
+  Menu, 
+  Moon, 
+  Sun,
+  Settings,
+  Command,
+  Zap,
+} from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { BODY_STATES } from '@/lib/utils'
+import { useAppStore } from '@/store/appStore'
+import { useAppShell } from '@/context/AppShellContext'
+import { UserDropdown } from './UserDropdown'
+import { ViewModeSwitcher } from './ViewModeSwitcher'
+
+interface TopBarProps {
+  onToggleSidebar?: () => void
+  onToggleDarkMode?: () => void
+  children?: React.ReactNode
+}
+
+export function TopBar({
+  onToggleSidebar,
+  onToggleDarkMode,
+  children,
+}: TopBarProps) {
+  const { bodyState, openSidePane, sidePaneContent } = useAppShell();
+  const { 
+    setCommandPaletteOpen,
+    isDarkMode,
+  } = useAppStore()
+
+  const handleSettingsClick = () => {
+    const isSettingsInSidePane = bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === 'settings'
+
+    // If we're on the settings page and it's not in the side pane, treat this as a "minimize" action.
+    if (!isSettingsInSidePane) {
+      openSidePane('settings');
+    } else {
+      // In all other cases (on dashboard page, or settings already in pane),
+      // just toggle the settings side pane.
+      openSidePane('settings')
+    }
+  };
+
+  return (
+    <div className={cn(
+      "h-20 bg-background border-b border-border flex items-center justify-between px-6 z-50 gap-4"
+    )}>
+      {/* Left Section - Sidebar Controls & Breadcrumbs */}
+      <div className="flex items-center gap-4">
+        {/* Sidebar Controls */}
+        <button
+          onClick={() => onToggleSidebar?.()}
+          className={cn(
+            "h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors"
+          )}
+          title="Toggle Sidebar"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
+
+      </div>
+
+      {/* Right Section - page controls, and global controls */}
+      <div className="flex items-center gap-3">
+        {children}
+
+        {/* Separator */}
+        <div className="w-px h-6 bg-border mx-2" />
+
+        {/* Quick Actions */}
+        <div className="flex items-center gap-3">
+
+          <button
+            onClick={() => setCommandPaletteOpen(true)}
+            className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+            title="Command Palette (Ctrl+K)"
+          >
+            <Command className="w-5 h-5 group-hover:scale-110 transition-transform" />
+          </button>
+
+        <button
+          className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+          title="Quick Actions"
+        >
+          <Zap className="w-5 h-5 group-hover:scale-110 transition-transform" />
+        </button>
+
+        {bodyState !== BODY_STATES.SPLIT_VIEW && <ViewModeSwitcher />}
+
+        <div className="w-px h-6 bg-border mx-2" />
+
+        {/* Theme and Settings */}
+        <button
+          onClick={() => onToggleDarkMode?.()}
+          className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+          title="Toggle Dark Mode"
+        >
+          {isDarkMode ? (
+            <Sun className="w-5 h-5 group-hover:scale-110 transition-transform" />
+          ) : (
+            <Moon className="w-5 h-5 group-hover:scale-110 transition-transform" />
+          )}
+        </button>
+
+        <button
+          onClick={handleSettingsClick}
+          className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+          title="Settings"
+        >
+          <Settings className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
+        </button>
+        <UserDropdown />
+        </div>
+      </div>
+    </div>
+  )
+}
 ````
 
 ## File: src/hooks/useAppShellAnimations.hook.ts
@@ -5322,173 +5488,6 @@ export function DashboardContent({ isInSidePane = false }: DashboardContentProps
       )}
       </PageLayout>
     )
-}
-````
-
-## File: vite.config.ts
-````typescript
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-import { fileURLToPath, URL } from 'url'
-import { resolve } from 'path'
-import pkg from './package.json' with { type: 'json' }
-
-// https://vitejs.dev/config/
-export default defineConfig({
-  plugins: [react()],
-  resolve: {
-    alias: {
-      "@": fileURLToPath(new URL('./src', import.meta.url)),
-    },
-  },
-  build: {
-    lib: {
-      entry: resolve(__dirname, 'src/index.ts'),
-      name: 'JeliAppShell',
-      fileName: (format) => `jeli-app-shell.${format}.js`,
-    },
-    rollupOptions: {
-      // make sure to externalize deps that shouldn't be bundled
-      // into your library
-      external: Object.keys(pkg.peerDependencies || {}),
-      output: {
-        // Provide global variables to use in the UMD build
-        // for externalized deps
-        globals: {
-          react: 'React',
-          'react-dom': 'ReactDOM',
-          tailwindcss: 'tailwindcss',
-          gsap: 'gsap',
-          'lucide-react': 'lucide-react',
-          zustand: 'zustand',
-          sonner: 'sonner'
-        },
-      },
-    },
-  },
-})
-````
-
-## File: src/components/layout/TopBar.tsx
-````typescript
-import {
-  Menu, 
-  Moon, 
-  Sun,
-  Settings,
-  Command,
-  Zap,
-} from 'lucide-react'
-import { cn } from '@/lib/utils'
-import { BODY_STATES } from '@/lib/utils'
-import { useAppStore } from '@/store/appStore'
-import { useAppShell } from '@/context/AppShellContext'
-import { UserDropdown } from './UserDropdown'
-import { ViewModeSwitcher } from './ViewModeSwitcher'
-
-interface TopBarProps {
-  onToggleSidebar?: () => void
-  onToggleDarkMode?: () => void
-  children?: React.ReactNode
-}
-
-export function TopBar({
-  onToggleSidebar,
-  onToggleDarkMode,
-  children,
-}: TopBarProps) {
-  const { bodyState, openSidePane, sidePaneContent } = useAppShell();
-  const { 
-    setCommandPaletteOpen,
-    isDarkMode,
-  } = useAppStore()
-
-  const handleSettingsClick = () => {
-    const isSettingsInSidePane = bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === 'settings'
-
-    // If we're on the settings page and it's not in the side pane, treat this as a "minimize" action.
-    if (!isSettingsInSidePane) {
-      openSidePane('settings');
-    } else {
-      // In all other cases (on dashboard page, or settings already in pane),
-      // just toggle the settings side pane.
-      openSidePane('settings')
-    }
-  };
-
-  return (
-    <div className={cn(
-      "h-20 bg-background border-b border-border flex items-center justify-between px-6 z-50 gap-4"
-    )}>
-      {/* Left Section - Sidebar Controls & Breadcrumbs */}
-      <div className="flex items-center gap-4">
-        {/* Sidebar Controls */}
-        <button
-          onClick={() => onToggleSidebar?.()}
-          className={cn(
-            "h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors"
-          )}
-          title="Toggle Sidebar"
-        >
-          <Menu className="w-5 h-5" />
-        </button>
-
-      </div>
-
-      {/* Right Section - page controls, and global controls */}
-      <div className="flex items-center gap-3">
-        {children}
-
-        {/* Separator */}
-        <div className="w-px h-6 bg-border mx-2" />
-
-        {/* Quick Actions */}
-        <div className="flex items-center gap-3">
-
-          <button
-            onClick={() => setCommandPaletteOpen(true)}
-            className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
-            title="Command Palette (Ctrl+K)"
-          >
-            <Command className="w-5 h-5 group-hover:scale-110 transition-transform" />
-          </button>
-
-        <button
-          className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
-          title="Quick Actions"
-        >
-          <Zap className="w-5 h-5 group-hover:scale-110 transition-transform" />
-        </button>
-
-        {bodyState !== BODY_STATES.SPLIT_VIEW && <ViewModeSwitcher />}
-
-        <div className="w-px h-6 bg-border mx-2" />
-
-        {/* Theme and Settings */}
-        <button
-          onClick={() => onToggleDarkMode?.()}
-          className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
-          title="Toggle Dark Mode"
-        >
-          {isDarkMode ? (
-            <Sun className="w-5 h-5 group-hover:scale-110 transition-transform" />
-          ) : (
-            <Moon className="w-5 h-5 group-hover:scale-110 transition-transform" />
-          )}
-        </button>
-
-        <button
-          onClick={handleSettingsClick}
-          className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
-          title="Settings"
-        >
-          <Settings className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
-        </button>
-        <UserDropdown />
-        </div>
-      </div>
-    </div>
-  )
 }
 ````
 
@@ -6300,6 +6299,375 @@ export function useAppShell() {
 }
 ````
 
+## File: src/App.tsx
+````typescript
+import React, { useEffect } from "react";
+import { AppShell } from "./components/layout/AppShell";
+import { AppShellProvider, useAppShell } from "./context/AppShellContext";
+import { useAppStore } from "./store/appStore";
+import { useAuthStore } from "./store/authStore";
+import "./index.css";
+
+// Import library components
+import { EnhancedSidebar } from "./components/layout/EnhancedSidebar";
+import { MainContent } from "./components/layout/MainContent";
+import { RightPane } from "./components/layout/RightPane";
+import { TopBar } from "./components/layout/TopBar";
+import { CommandPalette } from "./components/global/CommandPalette";
+
+// Import page/content components
+import { DashboardContent } from "./pages/Dashboard";
+import { SettingsPage } from "./pages/Settings";
+import { ToasterDemo } from "./pages/ToasterDemo";
+import { NotificationsPage } from "./pages/Notifications";
+import { ContentInSidePanePlaceholder } from "./components/shared/ContentInSidePanePlaceholder";
+import { SettingsContent } from "./features/settings/SettingsContent";
+import { LoginPage } from "./components/auth/LoginPage";
+
+// Import icons
+import {
+  LayoutDashboard,
+  Settings,
+  Component,
+  Bell,
+  SlidersHorizontal,
+  ChevronsLeftRight,
+  Search,
+  Filter,
+  Plus,
+  PanelRight,
+  ChevronRight,
+  Rocket,
+  Layers,
+  SplitSquareHorizontal,
+} from "lucide-react";
+import { BODY_STATES } from "./lib/utils";
+import { cn } from "./lib/utils";
+
+// The content for the main area, with page routing logic
+function AppContent() {
+  const { activePage, setActivePage } = useAppStore();
+  const { bodyState, sidePaneContent, openSidePane } = useAppShell();
+
+  const pageMap = {
+    dashboard: {
+      component: <DashboardContent />,
+      sidePaneContent: "main",
+      icon: LayoutDashboard,
+      name: "dashboard",
+    },
+    settings: {
+      component: <SettingsPage />,
+      sidePaneContent: "settings",
+      icon: Settings,
+      name: "settings",
+    },
+    toaster: {
+      component: <ToasterDemo />,
+      sidePaneContent: "toaster",
+      icon: Component,
+      name: "toaster demo",
+    },
+    notifications: {
+      component: <NotificationsPage />,
+      sidePaneContent: "notifications",
+      icon: Bell,
+      name: "notifications",
+    },
+  } as const;
+
+  const currentPage = pageMap[activePage];
+
+  if (!currentPage) {
+    // This can happen if the persisted state for activePage is invalid.
+    // We'll reset it to the dashboard.
+    useEffect(() => {
+      setActivePage("dashboard");
+    }, [setActivePage]);
+
+    // Return null or a loading indicator while the state is being corrected.
+    return null;
+    ``;
+  }
+
+  if (
+    sidePaneContent === currentPage.sidePaneContent &&
+    (bodyState === BODY_STATES.SIDE_PANE ||
+      bodyState === BODY_STATES.SPLIT_VIEW)
+  ) {
+    return (
+      <ContentInSidePanePlaceholder
+        icon={currentPage.icon}
+        title={`${currentPage.name.charAt(0).toUpperCase() + currentPage.name.slice(1)} is in Side Pane`}
+        pageName={currentPage.name}
+        onBringBack={() => {
+          openSidePane(currentPage.sidePaneContent);
+          setActivePage(activePage);
+        }}
+      />
+    );
+  }
+
+  return currentPage.component;
+}
+
+// Content for the Top Bar
+function AppTopBar() {
+  const { activePage, searchTerm, setSearchTerm } = useAppStore();
+  const { openSidePane } = useAppShell();
+  const [isSearchFocused, setIsSearchFocused] = React.useState(false);
+
+  return (
+    <div className="flex items-center gap-3 flex-1">
+      <div
+        className={cn(
+          "hidden md:flex items-center gap-2 text-sm transition-opacity",
+          {
+            "opacity-0 pointer-events-none":
+              isSearchFocused && activePage === "dashboard",
+          },
+        )}
+      >
+        <a
+          href="#"
+          className="text-muted-foreground hover:text-foreground transition-colors"
+        >
+          Home
+        </a>
+        <ChevronRight className="w-4 h-4 text-muted-foreground" />
+        <span className="font-medium text-foreground capitalize">
+          {activePage}
+        </span>
+      </div>
+
+      <div className="flex-1" />
+
+      {/* Page-specific: Dashboard search and actions */}
+      {activePage === "dashboard" && (
+        <div className="flex items-center gap-2 flex-1 justify-end">
+          <div
+            className={cn(
+              "relative transition-all duration-300 ease-in-out",
+              isSearchFocused ? "flex-1 max-w-lg" : "w-auto",
+            )}
+          >
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4 pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Search..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              onFocus={() => setIsSearchFocused(true)}
+              onBlur={() => setIsSearchFocused(false)}
+              className={cn(
+                "pl-9 pr-4 py-2 h-10 border-none rounded-lg bg-card focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300 ease-in-out w-full",
+                isSearchFocused ? "bg-background" : "w-48",
+              )}
+            />
+          </div>
+          <button className="h-10 w-10 flex-shrink-0 flex items-center justify-center hover:bg-accent rounded-full transition-colors">
+            <Filter className="w-5 h-5" />
+          </button>
+          <button className="bg-primary text-primary-foreground px-4 py-2 rounded-full hover:bg-primary/90 transition-colors flex items-center gap-2 h-10 flex-shrink-0">
+            <Plus className="w-5 h-5" />
+            <span
+              className={cn(isSearchFocused ? "hidden sm:inline" : "inline")}
+            >
+              New Project
+            </span>
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// The main App component that composes the shell
+function ComposedApp() {
+  const { sidePaneContent, closeSidePane, bodyState, toggleSplitView } =
+    useAppShell();
+  const { setActivePage } = useAppStore();
+
+  const isOverlaySidePane = bodyState === BODY_STATES.SIDE_PANE;
+
+  const contentMap = {
+    main: {
+      title: "Dashboard",
+      icon: LayoutDashboard,
+      page: "dashboard",
+      content: <DashboardContent isInSidePane={isOverlaySidePane} />,
+    },
+    settings: {
+      title: "Settings",
+      icon: Settings,
+      page: "settings",
+      content: isOverlaySidePane ? (
+        <div className="p-6">
+          <SettingsContent />
+        </div>
+      ) : (
+        <SettingsPage />
+      ),
+    },
+    toaster: {
+      title: "Toaster Demo",
+      icon: Component,
+      page: "toaster",
+      content: <ToasterDemo isInSidePane={isOverlaySidePane} />,
+    },
+    notifications: {
+      title: "Notifications",
+      icon: Bell,
+      page: "notifications",
+      content: <NotificationsPage isInSidePane={isOverlaySidePane} />,
+    },
+    details: {
+      title: "Details Panel",
+      icon: SlidersHorizontal,
+      content: (
+        <div className="p-6">
+          <p className="text-muted-foreground">
+            This is the side pane. It can be used to display contextual
+            information, forms, or actions related to the main content.
+          </p>
+        </div>
+      ),
+    },
+  } as const;
+
+  const currentContent =
+    contentMap[sidePaneContent as keyof typeof contentMap] ||
+    contentMap.details;
+  const CurrentIcon = currentContent.icon;
+
+  const handleMaximize = () => {
+    if ("page" in currentContent && currentContent.page) {
+      setActivePage(currentContent.page as any);
+    }
+    closeSidePane();
+  };
+
+  const rightPaneHeader =
+    bodyState !== BODY_STATES.SPLIT_VIEW ? (
+      <>
+        <div className="flex items-center gap-2">
+          <CurrentIcon className="w-5 h-5" />
+          <h2 className="text-lg font-semibold whitespace-nowrap">
+            {currentContent.title}
+          </h2>
+        </div>
+        <div className="flex items-center">
+          {(bodyState === BODY_STATES.SIDE_PANE ||
+            bodyState === BODY_STATES.SPLIT_VIEW) && (
+            <button
+              onClick={toggleSplitView}
+              className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors"
+              title={
+                bodyState === BODY_STATES.SIDE_PANE
+                  ? "Switch to Split View"
+                  : "Switch to Overlay View"
+              }
+            >
+              {bodyState === BODY_STATES.SPLIT_VIEW ? (
+                <Layers className="w-5 h-5" />
+              ) : (
+                <SplitSquareHorizontal className="w-5 h-5" />
+              )}
+            </button>
+          )}
+          {"page" in currentContent && currentContent.page && (
+            <button
+              onClick={handleMaximize}
+              className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors mr-2"
+              title="Move to Main View"
+            >
+              <ChevronsLeftRight className="w-5 h-5" />
+            </button>
+          )}
+        </div>
+      </>
+    ) : undefined;
+
+  return (
+    <AppShell
+      sidebar={<EnhancedSidebar />}
+      topBar={
+        <TopBar>
+          <AppTopBar />
+        </TopBar>
+      }
+      mainContent={
+        <MainContent>
+          <AppContent />
+        </MainContent>
+      }
+      rightPane={
+        <RightPane header={rightPaneHeader}>{currentContent.content}</RightPane>
+      }
+      commandPalette={<CommandPalette />}
+    />
+  );
+}
+
+function App() {
+  const isDarkMode = useAppStore((state) => state.isDarkMode);
+  const { isAuthenticated, login, forgotPassword } = useAuthStore();
+
+  useEffect(() => {
+    document.documentElement.classList.toggle("dark", isDarkMode);
+  }, [isDarkMode]);
+
+  const handleLogin = async (email: string, password: string) => {
+    try {
+      await login(email, password);
+    } catch (error) {
+      console.error("Login failed:", error);
+      // In a real app, you'd show an error message to the user
+    }
+  };
+
+  const handleForgotPassword = async (email: string) => {
+    try {
+      await forgotPassword(email);
+    } catch (error) {
+      console.error("Forgot password failed:", error);
+    }
+  };
+
+  const handleSignUp = () => {
+    // In a real app, navigate to sign up page
+    console.log("Navigate to sign up page");
+  };
+
+  if (!isAuthenticated) {
+    return (
+      <LoginPage
+        onLogin={handleLogin}
+        onForgotPassword={handleForgotPassword}
+        onSignUp={handleSignUp}
+      />
+    );
+  }
+
+  return (
+    <div className="h-screen w-screen overflow-hidden bg-background">
+      <AppShellProvider
+        appName="Jeli App"
+        appLogo={
+          <div className="p-2 bg-primary/20 rounded-lg">
+            <Rocket className="w-5 h-5 text-primary" />
+          </div>
+        }
+      >
+        <ComposedApp />
+      </AppShellProvider>
+    </div>
+  );
+}
+
+export default App;
+````
+
 ## File: src/components/layout/AppShell.tsx
 ````typescript
 import React, { useRef, type ReactElement, useCallback, useEffect, useLayoutEffect } from 'react'
@@ -6652,270 +7020,6 @@ export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalet
     </div>
   )
 }
-````
-
-## File: src/App.tsx
-````typescript
-import React, { useEffect } from 'react'
-import { AppShell } from './components/layout/AppShell'
-import { AppShellProvider, useAppShell } from './context/AppShellContext'
-import { useAppStore } from './store/appStore'
-import { useAuthStore } from './store/authStore'
-import './index.css'
-
-// Import library components
-import { EnhancedSidebar } from './components/layout/EnhancedSidebar'
-import { MainContent } from './components/layout/MainContent'
-import { RightPane } from './components/layout/RightPane'
-import { TopBar } from './components/layout/TopBar'
-import { CommandPalette } from './components/global/CommandPalette'
-
-// Import page/content components
-import { DashboardContent } from './pages/Dashboard'
-import { SettingsPage } from './pages/Settings'
-import { ToasterDemo } from './pages/ToasterDemo'
-import { NotificationsPage } from './pages/Notifications'
-import { ContentInSidePanePlaceholder } from './components/shared/ContentInSidePanePlaceholder'
-import { SettingsContent } from './features/settings/SettingsContent'
-import { LoginPage } from './components/auth/LoginPage'
-
-// Import icons
-import { LayoutDashboard, Settings, Component, Bell, SlidersHorizontal, ChevronsLeftRight, Search, Filter, Plus, PanelRight, ChevronRight, Rocket, Layers, SplitSquareHorizontal } from 'lucide-react'
-import { BODY_STATES } from './lib/utils'
-import { cn } from './lib/utils'
-
-
-// The content for the main area, with page routing logic
-function AppContent() {
-  const { activePage, setActivePage } = useAppStore()
-  const { bodyState, sidePaneContent, openSidePane } = useAppShell()
-
-  const pageMap = {
-    dashboard: {
-      component: <DashboardContent />,
-      sidePaneContent: 'main',
-      icon: LayoutDashboard,
-      name: 'dashboard',
-    },
-    settings: {
-      component: <SettingsPage />,
-      sidePaneContent: 'settings',
-      icon: Settings,
-      name: 'settings',
-    },
-    toaster: {
-      component: <ToasterDemo />,
-      sidePaneContent: 'toaster',
-      icon: Component,
-      name: 'toaster demo',
-    },
-    notifications: {
-      component: <NotificationsPage />,
-      sidePaneContent: 'notifications',
-      icon: Bell,
-      name: 'notifications',
-    },
-  } as const;
-
-  const currentPage = pageMap[activePage];
-
-  if (sidePaneContent === currentPage.sidePaneContent && (bodyState === BODY_STATES.SIDE_PANE || bodyState === BODY_STATES.SPLIT_VIEW)) {
-    return (
-      <ContentInSidePanePlaceholder 
-        icon={currentPage.icon}
-        title={`${currentPage.name.charAt(0).toUpperCase() + currentPage.name.slice(1)} is in Side Pane`}
-        pageName={currentPage.name}
-        onBringBack={() => {
-          openSidePane(currentPage.sidePaneContent);
-          setActivePage(activePage);
-        }}
-      />
-    )
-  }
-
-  return currentPage.component;
-}
-
-// Content for the Top Bar
-function AppTopBar() {
-  const { activePage, searchTerm, setSearchTerm } = useAppStore()
-  const { openSidePane } = useAppShell()
-  const [isSearchFocused, setIsSearchFocused] = React.useState(false);
-
-  return (
-    <div className="flex items-center gap-3 flex-1">
-      <div className={cn("hidden md:flex items-center gap-2 text-sm transition-opacity", {
-          "opacity-0 pointer-events-none": isSearchFocused && activePage === 'dashboard'
-      })}>
-        <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">Home</a>
-        <ChevronRight className="w-4 h-4 text-muted-foreground" />
-        <span className="font-medium text-foreground capitalize">{activePage}</span>
-      </div>
-      
-      <div className="flex-1" />
-
-      {/* Page-specific: Dashboard search and actions */}
-      {activePage === 'dashboard' && (
-      <div className="flex items-center gap-2 flex-1 justify-end">
-        <div className={cn("relative transition-all duration-300 ease-in-out", isSearchFocused ? 'flex-1 max-w-lg' : 'w-auto')}>
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4 pointer-events-none" />
-          <input
-            type="text"
-            placeholder="Search..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            onFocus={() => setIsSearchFocused(true)}
-            onBlur={() => setIsSearchFocused(false)}
-            className={cn(
-              "pl-9 pr-4 py-2 h-10 border-none rounded-lg bg-card focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300 ease-in-out w-full",
-              isSearchFocused ? 'bg-background' : 'w-48'
-            )}
-          />
-        </div>
-         <button className="h-10 w-10 flex-shrink-0 flex items-center justify-center hover:bg-accent rounded-full transition-colors">
-          <Filter className="w-5 h-5" />
-        </button>
-         <button className="bg-primary text-primary-foreground px-4 py-2 rounded-full hover:bg-primary/90 transition-colors flex items-center gap-2 h-10 flex-shrink-0">
-          <Plus className="w-5 h-5" />
-          <span className={cn(isSearchFocused ? 'hidden sm:inline' : 'inline')}>New Project</span>
-        </button>
-      </div>
-      )}
-    </div>
-  )
-}
-
-// The main App component that composes the shell
-function ComposedApp() {
-  const { sidePaneContent, closeSidePane, bodyState, toggleSplitView } = useAppShell()
-  const { setActivePage } = useAppStore();
-
-  const isOverlaySidePane = bodyState === BODY_STATES.SIDE_PANE;
-
-  const contentMap = {
-    main: { title: 'Dashboard', icon: LayoutDashboard, page: 'dashboard', content: <DashboardContent isInSidePane={isOverlaySidePane} /> },
-    settings: { title: 'Settings', icon: Settings, page: 'settings', content: isOverlaySidePane ? <div className="p-6"><SettingsContent /></div> : <SettingsPage /> },
-    toaster: { title: 'Toaster Demo', icon: Component, page: 'toaster', content: <ToasterDemo isInSidePane={isOverlaySidePane} /> },
-    notifications: { title: 'Notifications', icon: Bell, page: 'notifications', content: <NotificationsPage isInSidePane={isOverlaySidePane} /> },
-    details: { title: 'Details Panel', icon: SlidersHorizontal, content: <div className="p-6"><p className="text-muted-foreground">This is the side pane. It can be used to display contextual information, forms, or actions related to the main content.</p></div> }
-  } as const;
-
-  const currentContent = contentMap[sidePaneContent as keyof typeof contentMap] || contentMap.details;
-  const CurrentIcon = currentContent.icon;
-
-  const handleMaximize = () => {
-    if ('page' in currentContent && currentContent.page) {
-      setActivePage(currentContent.page as any);
-    }
-    closeSidePane()
-  }
-
-  const rightPaneHeader =
-    bodyState !== BODY_STATES.SPLIT_VIEW ? (
-      <>
-        <div className="flex items-center gap-2">
-          <CurrentIcon className="w-5 h-5" />
-          <h2 className="text-lg font-semibold whitespace-nowrap">
-            {currentContent.title}
-          </h2>
-        </div>
-        <div className="flex items-center">
-          {(bodyState === BODY_STATES.SIDE_PANE || bodyState === BODY_STATES.SPLIT_VIEW) && (
-            <button
-              onClick={toggleSplitView}
-              className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors"
-              title={bodyState === BODY_STATES.SIDE_PANE ? 'Switch to Split View' : 'Switch to Overlay View'}
-            >
-              {bodyState === BODY_STATES.SPLIT_VIEW ? (
-                <Layers className="w-5 h-5" />
-              ) : (
-                <SplitSquareHorizontal className="w-5 h-5" />
-              )}
-            </button>
-          )}
-          {'page' in currentContent && currentContent.page && (
-            <button
-              onClick={handleMaximize}
-              className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors mr-2"
-              title="Move to Main View"
-            >
-              <ChevronsLeftRight className="w-5 h-5" />
-            </button>
-          )}
-        </div>
-      </>
-    ) : undefined;
-
-  return (
-    <AppShell
-      sidebar={<EnhancedSidebar />}
-      topBar={<TopBar><AppTopBar /></TopBar>}
-      mainContent={<MainContent><AppContent /></MainContent>}
-      rightPane={(
-        <RightPane header={rightPaneHeader}>{currentContent.content}</RightPane>
-      )}
-      commandPalette={<CommandPalette />}
-    />
-  );
-}
-
-function App() {
-  const isDarkMode = useAppStore((state) => state.isDarkMode)
-  const { isAuthenticated, login, forgotPassword } = useAuthStore()
-
-  useEffect(() => {
-    document.documentElement.classList.toggle('dark', isDarkMode);
-  }, [isDarkMode]);
-
-  const handleLogin = async (email: string, password: string) => {
-    try {
-      await login(email, password)
-    } catch (error) {
-      console.error('Login failed:', error)
-      // In a real app, you'd show an error message to the user
-    }
-  }
-
-  const handleForgotPassword = async (email: string) => {
-    try {
-      await forgotPassword(email)
-    } catch (error) {
-      console.error('Forgot password failed:', error)
-    }
-  }
-
-  const handleSignUp = () => {
-    // In a real app, navigate to sign up page
-    console.log('Navigate to sign up page')
-  }
-
-  if (!isAuthenticated) {
-    return (
-      <LoginPage
-        onLogin={handleLogin}
-        onForgotPassword={handleForgotPassword}
-        onSignUp={handleSignUp}
-      />
-    )
-  }
-
-  return (
-    <div className="h-screen w-screen overflow-hidden bg-background">
-      <AppShellProvider
-        appName="Jeli App"
-        appLogo={
-          <div className="p-2 bg-primary/20 rounded-lg">
-            <Rocket className="w-5 h-5 text-primary" />
-          </div>
-        }
-      >
-        <ComposedApp />
-      </AppShellProvider>
-    </div>
-  )
-}
-
-export default App
 ````
 
 ## File: src/store/appStore.ts

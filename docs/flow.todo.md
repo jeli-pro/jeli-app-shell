@@ -1,6 +1,6 @@
-create a page to demonstrate the data CRUD. with features like three view mode (list, grid, card, table, tree)
+ create a page to demonstrate presenting data to four view mode (list, card grid , table , tree). make sure the UI UX so amazing█
 
-===
+=== DONE
 
 currently, the page content has two view mode, side pane view and full page view. now I also want to add a third view mode, a split view mode.
 

@@ -3,7 +3,7 @@
   "projectId": "jeli-app-shell",
   "core": {
     "logLevel": "info",
-    "enableNotifications": false,
+    "enableNotifications": true,
     "watchConfig": true
   },
   "watcher": {
@@ -14,9 +14,9 @@
     "bulkTimeout": 30000
   },
   "patch": {
-    "approvalMode": "manual",
+    "approvalMode": "auto",
     "approvalOnErrorCount": 0,
-    "linter": "",
+    "linter": "bun tsc --noEmit",
     "preCommand": "",
     "postCommand": "",
     "minFileChanges": 0
