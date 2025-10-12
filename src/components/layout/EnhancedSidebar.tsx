@@ -178,7 +178,7 @@ interface AppMenuItemProps {
 
 const AppMenuItem: React.FC<AppMenuItemProps> = ({ icon: Icon, label, badge, hasActions, children, isSubItem = false, page, opensInSidePane = false }) => {
   const { handleNavigation, activePage } = useAppStore()
-  const { compactMode, bodyState, sidePaneContent, openSidePane } = useAppShell()
+  const { compactMode, bodyState, sidePaneContent, openSidePane, dispatch } = useAppShell()
   const { isCollapsed } = useSidebar();
 
   const isPageActive = (page: ActivePage) => {
@@ -212,7 +212,21 @@ const AppMenuItem: React.FC<AppMenuItemProps> = ({ icon: Icon, label, badge, has
   return (
     <div className={isSubItem ? (compactMode ? 'ml-4' : 'ml-6') : ''}>
       <SidebarMenuItem>
-        <SidebarMenuButton onClick={handleClick} isActive={isActive}>
+        <SidebarMenuButton
+          onClick={handleClick}
+          isActive={isActive}
+          draggable={!!page}
+          onDragStart={(e) => {
+            if (page) {
+              // set dragged page in AppShell context
+              dispatch({ type: 'SET_DRAGGED_PAGE', payload: page });
+            }
+          }}
+          onDragEnd={() => {
+            dispatch({ type: 'SET_DRAGGED_PAGE', payload: null });
+            dispatch({ type: 'SET_DRAG_HOVER_TARGET', payload: null });
+          }}
+        >
           <SidebarIcon>
             <Icon className={isSubItem ? "w-3 h-3" : "w-4 h-4"}/>
           </SidebarIcon>

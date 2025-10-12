@@ -1,151 +1,191 @@
-Ah, a classic case of scattered state logic. The current setup, with view controls sprinkled around, is asking for trouble. We've got buttons in the `TopBar`, buttons in the `App.tsx` content, and logic spread thin. It's time to forge a single source of truth for view management.
-
-We're going to rip out the disparate view-toggle buttons and create a new, centralized `ViewModeSwitcher` component. This component will live in the `TopBar` and be the one and only place for a user to switch between `Normal`, `Side Pane`, `Split View`, and `Fullscreen` modes. Crucially, it will be context-aware. Clicking "Side Pane" won't just open a generic panel; it will intelligently move the *currently active page* into the side pane, making the UI feel intuitive and powerful.
-
-This refactor will kill a whole class of potential state bugs, simplify the `TopBar` and `App` components, and give the user a clean, consistent control surface for managing their workspace. It's a classic move: centralize, simplify, and build a more robust foundation. Let's get to it.
+Here's the master plan for implementing the drag-and-drop sidebar feature.
 
 ```yaml
 plan:
-  uuid: 'c8a2b1f0-3e4d-4f6a-8b9c-9d0e1f2a3b4c'
+  uuid: '9b1a8c3d-f2e4-4d8a-9e6b-0c7f1a2b3d4e'
   status: 'todo'
-  title: 'Centralize View Mode Control into a Context-Aware Component'
+  title: 'Implement Drag-and-Drop Sidebar for Split View'
   introduction: |
-    Right now, the controls for changing the view mode (fullscreen, side pane) are scattered. There's a fullscreen button in the TopBar, and another page-specific button in the App's top bar content to move a page to the side pane. This is fragile and leads to duplicated logic.
+    Alright, let's wire this thing up. The goal is to let users drag items from the sidebar and drop them into the main content area to dynamically create a split view. This is a classic power-user feature that makes the shell feel more like a native desktop app.
 
-    This plan outlines the process of ripping out these scattered controls and forging a new, centralized `ViewModeSwitcher` component. This new component will live in the TopBar and serve as the single source of truth for managing the application's view state.
+    We'll build this in a clean, modular way. First, we'll lay the foundation with a new Drag-and-Drop (D&D) context to handle the global state of dragging. Then, we'll make the sidebar items draggable. After that, we'll define drop zones over our main content areas. Finally, we'll write the logic that triggers the app state change on a successful drop, rearranging the panes as needed.
 
-    The key here is making it context-aware. It will use the application's state to know which page is currently active, so when the user clicks "Side Pane," it intelligently moves the correct content. This refactor will significantly clean up the codebase, improve user experience by providing a consistent control pattern, and make future modifications to view logic much easier.
+    The result will be an intuitive way to multitask, allowing users to, for example, drag the 'Notifications' page next to their 'Dashboard' for a side-by-side view. It's all about boosting productivity and making the UI feel alive.
   parts:
     - uuid: 'a1b2c3d4-e5f6-7890-1234-567890abcdef'
       status: 'todo'
-      name: 'Part 1: Create the Context-Aware ViewModeSwitcher Component'
+      name: 'Part 1: Create the D&D Foundation'
       reason: |
-        We need a new, dedicated component to encapsulate the logic and UI for switching view modes. This centralizes control and makes it reusable and easier to manage. It will read from the global state to be context-aware and dispatch actions to change the view.
+        We need a centralized system to manage the state of the drag-and-drop operation. A dedicated React context is the cleanest way to track what's being dragged, whether a drag is in progress, and to render a "ghost" preview that follows the cursor, without polluting other components with D&D logic.
       steps:
-        - uuid: 'b2c3d4e5-f6a7-8901-2345-67890abcdef1'
+        - uuid: 'c7d8e9f0-1a2b-3c4d-5e6f-7a8b9c0d1e2f'
           status: 'todo'
-          name: '1. Create ViewModeSwitcher.tsx'
+          name: '1. Create DndContext'
           reason: |
-            This step establishes the new component file and its basic structure. We'll use shadcn/ui's `Tabs` component to create a visually appealing segmented control for the view modes.
+            To establish the core state management for all D&D operations.
           files:
-            - 'src/components/layout/ViewModeSwitcher.tsx'
+            - 'src/context/DndContext.tsx'
           operations:
-            - 'Create a new file at `src/components/layout/ViewModeSwitcher.tsx`.'
-            - 'Import React, necessary hooks (`useAppShell`, `useAppStore`), `cn`, and icons (`Columns3`, `PanelRightOpen`, `Maximize`, `SplitSquareHorizontal`) from `lucide-react`.'
-            - 'Create a functional component `ViewModeSwitcher`.'
-            - 'Use `useAppShell` to get `bodyState`, `openSidePane`, `closeSidePane`, `toggleFullscreen`, and `toggleSplitView`.'
-            - 'Use `useAppStore` to get the `activePage`.'
-            - 'Create a `pageToPaneMap` object to map `ActivePage` types (`dashboard`, `settings`, etc.) to `sidePaneContent` types (`main`, `settings`, etc.).'
-            - 'Implement the UI using a wrapper div, which will contain the view mode buttons.'
-        - uuid: 'c3d4e5f6-a7b8-9012-3456-7890abcdef12'
+            - "Create a new file `src/context/DndContext.tsx`."
+            - "Define a context to hold D&D state: `isDragging` (boolean), `draggedItem` (object with page data), and `draggedNode` (ReactNode for preview)."
+            - "Create a `DndProvider` that wraps its children and provides the context value."
+            - "The provider will manage the state and contain functions like `startDrag` and `endDrag`."
+            - "Implement a `DragPreview` component within the context file. It should render a portal-based element at the cursor's position, visible only when `isDragging` is true."
+            - "The `DndProvider` should add `onDragEnd` and `onDragOver` listeners to the window to globally handle drag termination and track the cursor."
+        - uuid: 'f3e2d1c0-b9a8-7c6d-5e4f-3a2b1c0d9e8f'
           status: 'todo'
-          name: '2. Implement Button Logic and Active States'
+          name: '2. Integrate DndProvider into the App'
           reason: |
-            The component needs to correctly reflect the current view state and dispatch the right actions when a user interacts with it. This logic is the core of making the component "context-aware".
-          files:
-            - 'src/components/layout/ViewModeSwitcher.tsx'
-          operations:
-            - 'Create a set of buttons for "Normal", "Side Pane", "Split View", and "Fullscreen" modes.'
-            - 'Bind `onClick` handlers to each button:'
-            - ' - "Normal" (`Columns3` icon) should call `closeSidePane()`.'
-            - ' - "Side Pane" (`PanelRightOpen` icon) should call `openSidePane(pageToPaneMap[activePage])`.'
-            - ' - "Split View" (`SplitSquareHorizontal` icon) should call `toggleSplitView()`.'
-            - ' - "Fullscreen" (`Maximize` icon) should call `toggleFullscreen()`.'
-            - 'Use the `cn` utility and the `bodyState` from `useAppShell` to conditionally apply an active style (e.g., `bg-accent`) to the button corresponding to the current view mode.'
-            - 'For the "Side Pane" button, it should be considered active if `bodyState` is `side_pane`.'
-            - 'For the "Split View" button, it should be considered active if `bodyState` is `split_view`.'
-            - 'For the "Fullscreen" button, it should be considered active if `bodyState` is `fullscreen`.'
-            - 'The "Normal" button should be active if `bodyState` is `normal`.'
-            - 'Wrap the buttons in a styled container that looks like a segmented control, perhaps a `div` with `bg-card` and `rounded-full`.'
-
-    - uuid: 'd4e5f6a7-b8c9-0123-4567-890abcdef123'
-      status: 'todo'
-      name: 'Part 2: Integrate ViewModeSwitcher and Refactor TopBar'
-      reason: |
-        With the new component built, we need to replace the old, fragmented controls in the `TopBar` to make the `ViewModeSwitcher` the single source of truth for these actions.
-      steps:
-        - uuid: 'e5f6a7b8-c9d0-1234-5678-90abcdef1234'
-          status: 'todo'
-          name: '1. Remove Old View Mode Buttons from TopBar'
-          reason: |
-            To avoid confusion and conflicting logic, the old individual buttons for fullscreen and side pane must be removed.
-          files:
-            - 'src/components/layout/TopBar.tsx'
-          operations:
-            - 'Open `src/components/layout/TopBar.tsx`.'
-            - "Locate and delete the `button` responsible for toggling the side pane (the one using a custom `div` for its icon)."
-            - "Locate and delete the `button` responsible for toggling fullscreen, which conditionally renders `<Maximize>` or `<Minimize>`."
-            - "Clean up the `TopBarProps` interface, removing `onToggleFullscreen` as it's no longer needed."
-        - uuid: 'f6a7b8c9-d0e1-2345-6789-0abcdef12345'
-          status: 'todo'
-          name: '2. Add ViewModeSwitcher to TopBar'
-          reason: |
-            The new component needs to be placed in the `TopBar` to be globally accessible.
-          files:
-            - 'src/components/layout/TopBar.tsx'
-          operations:
-            - 'Import the newly created `ViewModeSwitcher` component into `TopBar.tsx`.'
-            - 'In the JSX, find the "Body State Controls" section. Replace the deleted buttons with the `<ViewModeSwitcher />` component.'
-            - 'Ensure it is positioned logically, for example, next to the other quick actions, separated by a divider.'
-
-    - uuid: '0a1b2c3d-4e5f-6a7b-8c9d-0e1f2a3b4c5d'
-      status: 'todo'
-      name: 'Part 3: Clean Up Redundant Controls in App.tsx'
-      reason: |
-        The main application component (`App.tsx`) contains a page-specific control for moving content to the side pane. This is now redundant and should be removed to complete the centralization of view controls.
-      steps:
-        - uuid: '1b2c3d4e-5f6a-7b8c-9d0e-1f2a3b4c5d6e'
-          status: 'todo'
-          name: "1. Remove 'Move to Side Pane' Button from AppTopBar"
-          reason: |
-            This button's functionality is now handled globally by the `ViewModeSwitcher`, so it must be removed to prevent UI duplication.
+            To make the D&D context available to the entire application shell.
           files:
             - 'src/App.tsx'
           operations:
-            - 'In `src/App.tsx`, locate the `AppTopBar` internal component.'
-            - "Find and delete the `button` that uses the `PanelRight` icon and has the title 'Move to Side Pane'."
-            - "Delete the corresponding `handleMoveToSidePane` function, as it's no longer used."
-
-    - uuid: '2c3d4e5f-6a7b-8c9d-0e1f-2a3b4c5d6e7f'
+            - "Import `DndProvider` from the newly created context file."
+            - "In `App()` function, wrap the `<AppShellProvider>` component with `<DndProvider>` to ensure the D&D context is available everywhere inside the shell."
+      context_files:
+        compact:
+          - 'src/App.tsx'
+        medium:
+          - 'src/App.tsx'
+          - 'src/context/AppShellContext.tsx'
+        extended:
+          - 'src/App.tsx'
+          - 'src/context/AppShellContext.tsx'
+          - 'src/components/layout/AppShell.tsx'
+    - uuid: 'b2c3d4e5-f6a7-8b90-c1d2-e3f4a5b6c7d8'
       status: 'todo'
-      name: 'Part 4: Expose New Component from Library'
+      name: 'Part 2: Make Sidebar Items Draggable'
       reason: |
-        To ensure the new `ViewModeSwitcher` component is accessible to consumers of the `jeli-app-shell` library, it must be exported from the main `index.ts` file.
+        With the foundation in place, we need to designate the source of our drag operations. The `AppMenuItem` component in the sidebar is the natural candidate. It needs to be modified to initiate a drag when a user clicks and drags it.
       steps:
-        - uuid: '3d4e5f6a-7b8c-9d0e-1f-2a3b4c5d6e7f8a'
+        - uuid: '1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d'
           status: 'todo'
-          name: '1. Export ViewModeSwitcher in index.ts'
+          name: '1. Update AppMenuItem'
           reason: |
-            Properly exporting the component is essential for maintaining the library's public API.
+            To enable drag initiation on sidebar items that correspond to a page.
           files:
+            - 'src/components/layout/EnhancedSidebar.tsx'
+          operations:
+            - "Import the `useDnd` hook from `DndContext.tsx`."
+            - "In the `AppMenuItem` component, get the `startDrag` function from `useDnd()`."
+            - "Add a `draggable=true` attribute to the `<SidebarMenuButton>` element, but only if the menu item has a `page` prop."
+            - "Add an `onDragStart` event handler to the `<SidebarMenuButton>`."
+            - "Inside `onDragStart`, call `startDrag`, passing an object with the item's `page`, `label`, and the `Icon` component itself for rendering the preview. Also pass a reference to the dragged element to render a preview node."
+      context_files:
+        compact:
+          - 'src/components/layout/EnhancedSidebar.tsx'
+        medium:
+          - 'src/components/layout/EnhancedSidebar.tsx'
+          - 'src/context/DndContext.tsx'
+        extended:
+          - 'src/components/layout/EnhancedSidebar.tsx'
+          - 'src/context/DndContext.tsx'
+          - 'src/store/appStore.ts'
+    - uuid: 'c3d4e5f6-a7b8-9c0d-1e2f-3a4b5c6d7e8f'
+      status: 'todo'
+      name: 'Part 3: Centralize Page-to-Pane Mapping'
+      reason: |
+        The logic to map a page (like 'settings') to a pane content key (like 'settings') exists but is locally scoped in `ViewModeSwitcher`. To use this logic for our drop handler, we need to extract it into a shared, easily importable location. This avoids code duplication and creates a single source of truth.
+      steps:
+        - uuid: '4b5c6d7e-8f9a-0b1c-2d3e-4f5a6b7c8d9e'
+          status: 'todo'
+          name: '1. Create Mappings File and Refactor'
+          reason: |
+            To centralize the mapping between `ActivePage` types and `sidePaneContent` types.
+          files:
+            - 'src/lib/mappings.ts'
+            - 'src/components/layout/ViewModeSwitcher.tsx'
+          operations:
+            - "Create a new file `src/lib/mappings.ts`."
+            - "Move the `pageToPaneMap` constant from `ViewModeSwitcher.tsx` into `src/lib/mappings.ts` and export it."
+            - "Update `ViewModeSwitcher.tsx` to import `pageToPaneMap` from the new `mappings.ts` file."
+      context_files:
+        compact:
+          - 'src/components/layout/ViewModeSwitcher.tsx'
+        medium:
+          - 'src/components/layout/ViewModeSwitcher.tsx'
+        extended:
+          - 'src/components/layout/ViewModeSwitcher.tsx'
+          - 'src/store/appStore.ts'
+    - uuid: 'd4e5f6a7-b8c9-0d1e-2f3a-4b5c6d7e8f9a'
+      status: 'todo'
+      name: 'Part 4: Implement Drop Zones and Finalize Logic'
+      reason: |
+        This is where the magic happens. We need to define areas where the user can drop items and then implement the logic to handle the drop. This involves creating a reusable `DropZone` component and integrating it into the `AppShell` to modify the application's layout state.
+      steps:
+        - uuid: '5c6d7e8f-9a0b-1c2d-3e4f-5a6b7c8d9e0f'
+          status: 'todo'
+          name: '1. Create DropZone Component'
+          reason: |
+            To create a reusable component for handling drop events and providing visual feedback.
+          files:
+            - 'src/components/shared/DropZone.tsx'
+          operations:
+            - "Create a new file `src/components/shared/DropZone.tsx`."
+            - "The component will accept `side` ('left' | 'right') and `onDropItem` props."
+            - "It will render a div that covers one half of the main area."
+            - "Implement `onDragEnter`, `onDragLeave`, and `onDragOver` handlers to toggle a visual highlight class (e.g., a dashed border and semi-transparent background)."
+            - "Implement the `onDrop` handler, which will call `e.preventDefault()`, remove the highlight, and invoke the `onDropItem` callback, passing the `draggedItem` from the `DndContext` and its own `side`."
+        - uuid: '6d7e8f9a-0b1c-2d3e-4f5a-6b7c8d9e0f1a'
+          status: 'todo'
+          name: '2. Integrate DropZones into AppShell'
+          reason: |
+            To position the drop zones in the UI and connect them to the application state logic.
+          files:
+            - 'src/components/layout/AppShell.tsx'
             - 'src/index.ts'
           operations:
-            - "Open `src/index.ts`."
-            - "In the 'Layout Components' section, add an export for `ViewModeSwitcher`."
+            - "In `AppShell.tsx`, import `useDnd`, `useAppStore`, `DropZone`, and `pageToPaneMap`."
+            - "Inside the main area `div`, conditionally render two `<DropZone>` components (one for 'left', one for 'right') only when `isDragging` from the `DndContext` is true."
+            - "Create a `handleDrop` function within `AppShell.tsx`."
+            - "The `handleDrop` function will take the `draggedItem` and `side` as arguments."
+            - "Inside `handleDrop`, implement the logic: "
+            - "  - If `side` is 'right', use `pageToPaneMap` to find the pane content key for the dropped page, then dispatch actions to set the `sidePaneContent` and change `bodyState` to `SPLIT_VIEW`."
+            - "  - If `side` is 'left', get the current `activePage` and find its corresponding `paneContent` key. Dispatch an action to move *it* to the `sidePaneContent`. Then, call `setActivePage` with the dropped page's ID. Finally, set `bodyState` to `SPLIT_VIEW`."
+            - "Pass the `handleDrop` function to the `onDropItem` prop of the `<DropZone>` components."
+            - "Export the new `DropZone` component from `src/index.ts` under shared components."
+      context_files:
+        compact:
+          - 'src/components/layout/AppShell.tsx'
+          - 'src/context/DndContext.tsx'
+          - 'src/lib/mappings.ts'
+        medium:
+          - 'src/components/layout/AppShell.tsx'
+          - 'src/context/AppShellContext.tsx'
+          - 'src/store/appStore.ts'
+          - 'src/context/DndContext.tsx'
+          - 'src/lib/mappings.ts'
+        extended:
+          - 'src/components/layout/AppShell.tsx'
+          - 'src/context/AppShellContext.tsx'
+          - 'src/store/appStore.ts'
+          - 'src/context/DndContext.tsx'
+          - 'src/lib/mappings.ts'
+          - 'src/components/layout/MainContent.tsx'
+          - 'src/components/layout/RightPane.tsx'
   conclusion: |
-    By executing this plan, we will have successfully refactored the application's view management system. The new `ViewModeSwitcher` component centralizes all view-related logic, making the system more robust, easier to maintain, and predictable.
-
-    The `TopBar` is now cleaner, containing a single, intuitive control for workspace layout. The removal of redundant page-specific controls simplifies the main `App` component. This results in a superior developer experience and a more polished and cohesive user experience.
+    Once these parts are complete, the app shell will have a powerful and intuitive drag-and-drop interface for managing split views. This enhances the user experience by providing desktop-grade window management capabilities directly in the browser. The implementation is modular, with a clear separation between the D&D mechanics, the draggable items, and the drop targets, making it maintainable and extensible for future features.
   context_files:
     compact:
-      - 'src/components/layout/TopBar.tsx'
-      - 'src/App.tsx'
+      - 'src/components/layout/AppShell.tsx'
+      - 'src/components/layout/EnhancedSidebar.tsx'
       - 'src/context/AppShellContext.tsx'
-      - 'src/store/appStore.ts'
+      - 'src/App.tsx'
     medium:
-      - 'src/components/layout/TopBar.tsx'
-      - 'src/App.tsx'
+      - 'src/components/layout/AppShell.tsx'
+      - 'src/components/layout/EnhancedSidebar.tsx'
       - 'src/context/AppShellContext.tsx'
       - 'src/store/appStore.ts'
-      - 'src/components/layout/AppShell.tsx'
-      - 'src/components/layout/RightPane.tsx'
+      - 'src/App.tsx'
+      - 'src/components/layout/ViewModeSwitcher.tsx'
     extended:
-      - 'src/components/layout/TopBar.tsx'
-      - 'src/App.tsx'
+      - 'src/components/layout/AppShell.tsx'
+      - 'src/components/layout/EnhancedSidebar.tsx'
       - 'src/context/AppShellContext.tsx'
       - 'src/store/appStore.ts'
-      - 'src/components/layout/AppShell.tsx'
-      - 'src/components/layout/RightPane.tsx'
-      - 'src/hooks/useAppShellAnimations.hook.ts'
+      - 'src/App.tsx'
+      - 'src/components/layout/ViewModeSwitcher.tsx'
       - 'src/lib/utils.ts'
+      - 'src/components/layout/MainContent.tsx'
+      - 'src/components/layout/RightPane.tsx'
 ```

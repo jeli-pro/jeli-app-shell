@@ -1,9 +1,9 @@
-import React, { useRef, type ReactElement } from 'react'
+import React, { useRef, type ReactElement, useCallback } from 'react'
 import { cn } from '@/lib/utils'
 import { CommandPalette } from '@/components/global/CommandPalette';
 import { useAppStore } from '@/store/appStore';
 import { useAppShell } from '@/context/AppShellContext';
-import { SIDEBAR_STATES } from '@/lib/utils'
+import { SIDEBAR_STATES, BODY_STATES } from '@/lib/utils'
 import { useResizableSidebar, useResizableRightPane } from '@/hooks/useResizablePanes.hook'
 import { useSidebarAnimations, useBodyStateAnimations } from '@/hooks/useAppShellAnimations.hook'
 
@@ -15,6 +15,13 @@ interface AppShellProps {
   commandPalette?: ReactElement;
 }
 
+const pageToPaneMap: Record<string, 'main' | 'settings' | 'toaster' | 'notifications'> = {
+  dashboard: 'main',
+  settings: 'settings',
+  toaster: 'toaster',
+  notifications: 'notifications',
+};
+
 
 export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalette }: AppShellProps) {
   const {
@@ -23,9 +30,17 @@ export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalet
     autoExpandSidebar,
     toggleSidebar,
     peekSidebar,
+    draggedPage,
+    dragHoverTarget,
+    toggleSplitView,
+    openSidePane,
+    bodyState,
+    rightPaneWidth,
+    sidePaneContent,
+    closeSidePane,
   } = useAppShell();
   
-  const { isDarkMode, toggleDarkMode } = useAppStore();
+  const { isDarkMode, toggleDarkMode, handleNavigation, activePage } = useAppStore();
   const appRef = useRef<HTMLDivElement>(null)
   const sidebarRef = useRef<HTMLDivElement>(null)
   const mainContentRef = useRef<HTMLDivElement>(null)
@@ -65,6 +80,78 @@ export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalet
 
   const rightPaneWithProps = React.cloneElement(rightPane, { ref: rightPaneRef });
 
+  // Drag and drop handlers for docking
+  const handleDragOverLeft = useCallback((e: React.DragEvent) => {
+    if (!draggedPage) return;
+    e.preventDefault();
+    if (dragHoverTarget !== 'left') {
+      dispatch({ type: 'SET_DRAG_HOVER_TARGET', payload: 'left' });
+    }
+  }, [draggedPage, dragHoverTarget, dispatch]);
+
+  const handleDropLeft = useCallback(() => {
+    if (!draggedPage) return;
+    
+    const originalActivePage = activePage;
+    const originalActivePagePaneContent = pageToPaneMap[originalActivePage];
+
+    // If we drop the page that's already in the side pane, just make it the main view.
+    const paneContentOfDraggedPage = pageToPaneMap[draggedPage];
+    if (paneContentOfDraggedPage === sidePaneContent && (bodyState === BODY_STATES.SIDE_PANE || bodyState === BODY_STATES.SPLIT_VIEW)) {
+      closeSidePane();
+      handleNavigation(draggedPage);
+    } 
+    // New context-aware logic: if we are in normal view and drop a NEW page on the left
+    else if (bodyState === BODY_STATES.NORMAL && draggedPage !== originalActivePage) {
+        if (originalActivePagePaneContent) {
+            // 1. Set the right pane content to be the original page
+            dispatch({ type: 'SET_SIDE_PANE_CONTENT', payload: originalActivePagePaneContent });
+            // 2. Set the main page to be the new dragged page
+            handleNavigation(draggedPage);
+            // 3. Switch to split view
+            dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.SPLIT_VIEW });
+        } else {
+            // Fallback for pages that can't be in a pane
+            handleNavigation(draggedPage);
+        }
+    } else { // Default behavior: just make the dropped page the main one
+      handleNavigation(draggedPage);
+    }
+    
+    dispatch({ type: 'SET_DRAGGED_PAGE', payload: null });
+    dispatch({ type: 'SET_DRAG_HOVER_TARGET', payload: null });
+  }, [draggedPage, activePage, bodyState, sidePaneContent, handleNavigation, dispatch, closeSidePane]);
+
+  const handleDragOverRight = useCallback((e: React.DragEvent) => {
+    if (!draggedPage) return;
+    e.preventDefault();
+    if (dragHoverTarget !== 'right') {
+      dispatch({ type: 'SET_DRAG_HOVER_TARGET', payload: 'right' });
+    }
+  }, [draggedPage, dragHoverTarget, dispatch]);
+
+  const handleDropRight = useCallback(() => {
+    if (!draggedPage) return;
+    const pane = pageToPaneMap[draggedPage as keyof typeof pageToPaneMap];
+    if (pane) {
+      // If dropping the currently active page to the right,
+      // set a default page (e.g., dashboard) as the new active page.
+      if (draggedPage === activePage) {
+        handleNavigation('dashboard');
+      }
+
+      // Set the right pane content and ensure split view
+      dispatch({ type: 'SET_SIDE_PANE_CONTENT', payload: pane });
+      if (bodyState === BODY_STATES.NORMAL) {
+        toggleSplitView(pane);
+      } else if (bodyState === BODY_STATES.SIDE_PANE) {
+        toggleSplitView();
+      }
+    }
+    dispatch({ type: 'SET_DRAGGED_PAGE', payload: null });
+    dispatch({ type: 'SET_DRAG_HOVER_TARGET', payload: null });
+  }, [draggedPage, toggleSplitView, dispatch, bodyState, activePage, handleNavigation]);
+
   return (
     <div 
       ref={appRef}
@@ -101,7 +188,45 @@ export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalet
 
           <div className="flex flex-1 min-h-0">
             <div ref={mainAreaRef} className="relative flex-1 overflow-hidden bg-background">
+              {/* Left drop overlay */}
+              <div
+                className={cn(
+                  "absolute inset-y-0 left-0 z-40 border-2 border-transparent",
+                  draggedPage ? "pointer-events-auto w-1/2" : "pointer-events-none w-0",
+                  dragHoverTarget === 'left' && "bg-primary/10 border-primary"
+                )}
+                onDragOver={handleDragOverLeft}
+                onDrop={handleDropLeft}
+                onDragLeave={() => {
+                  if (dragHoverTarget === 'left') dispatch({ type: 'SET_DRAG_HOVER_TARGET', payload: null });
+                }}
+              >
+                {draggedPage && (
+                  <div className="absolute inset-0 flex items-center justify-center text-sm font-medium text-primary-foreground/80">
+                    <span className="px-3 py-1 rounded-md bg-primary/70">Drop to Left</span>
+                  </div>
+                )}
+              </div>
               {mainContentWithProps}
+              {/* Right drop overlay (over main area to allow docking even if pane hidden) */}
+              <div
+                className={cn(
+                  "absolute inset-y-0 right-0 z-40 border-2 border-transparent",
+                  draggedPage ? "pointer-events-auto w-1/2" : "pointer-events-none",
+                  dragHoverTarget === 'right' && "bg-primary/10 border-primary"
+                )}
+                onDragOver={handleDragOverRight}
+                onDrop={handleDropRight}
+                onDragLeave={() => {
+                  if (dragHoverTarget === 'right') dispatch({ type: 'SET_DRAG_HOVER_TARGET', payload: null });
+                }}
+              >
+                {draggedPage && (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="px-3 py-1 rounded-md bg-primary/70 text-sm font-medium text-primary-foreground/80">Drop to Right</span>
+                  </div>
+                )}
+              </div>
             </div>
             {rightPaneWithProps}
           </div>

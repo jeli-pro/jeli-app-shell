@@ -4162,7 +4162,7 @@ interface AppMenuItemProps {
 
 const AppMenuItem: React.FC<AppMenuItemProps> = ({ icon: Icon, label, badge, hasActions, children, isSubItem = false, page, opensInSidePane = false }) => {
   const { handleNavigation, activePage } = useAppStore()
-  const { compactMode, bodyState, sidePaneContent, openSidePane } = useAppShell()
+  const { compactMode, bodyState, sidePaneContent, openSidePane, dispatch } = useAppShell()
   const { isCollapsed } = useSidebar();
 
   const isPageActive = (page: ActivePage) => {
@@ -4196,7 +4196,21 @@ const AppMenuItem: React.FC<AppMenuItemProps> = ({ icon: Icon, label, badge, has
   return (
     <div className={isSubItem ? (compactMode ? 'ml-4' : 'ml-6') : ''}>
       <SidebarMenuItem>
-        <SidebarMenuButton onClick={handleClick} isActive={isActive}>
+        <SidebarMenuButton
+          onClick={handleClick}
+          isActive={isActive}
+          draggable={!!page}
+          onDragStart={(e) => {
+            if (page) {
+              // set dragged page in AppShell context
+              dispatch({ type: 'SET_DRAGGED_PAGE', payload: page });
+            }
+          }}
+          onDragEnd={() => {
+            dispatch({ type: 'SET_DRAGGED_PAGE', payload: null });
+            dispatch({ type: 'SET_DRAG_HOVER_TARGET', payload: null });
+          }}
+        >
           <SidebarIcon>
             <Icon className={isSubItem ? "w-3 h-3" : "w-4 h-4"}/>
           </SidebarIcon>
@@ -4229,57 +4243,6 @@ const AppMenuItem: React.FC<AppMenuItemProps> = ({ icon: Icon, label, badge, has
     </div>
   );
 };
-````
-
-## File: src/hooks/useAutoAnimateTopBar.ts
-````typescript
-import { useRef, useCallback, useEffect } from 'react';
-import { useAppShell } from '@/context/AppShellContext';
-
-export function useAutoAnimateTopBar(isPane = false) {
-  const { dispatch } = useAppShell();
-  const lastScrollTop = useRef(0);
-  const scrollTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const onScroll = useCallback((event: React.UIEvent<HTMLDivElement>) => {
-    if (isPane) return;
-
-    // Clear previous timeout
-    if (scrollTimeout.current) {
-      clearTimeout(scrollTimeout.current);
-    }
-
-    const { scrollTop } = event.currentTarget;
-    
-    if (scrollTop > lastScrollTop.current && scrollTop > 200) {
-      dispatch({ type: 'SET_TOP_BAR_VISIBLE', payload: false });
-    } else if (scrollTop < lastScrollTop.current || scrollTop <= 0) {
-      dispatch({ type: 'SET_TOP_BAR_VISIBLE', payload: true });
-    }
-    
-    lastScrollTop.current = scrollTop <= 0 ? 0 : scrollTop;
-
-    // Set new timeout to show top bar when scrolling stops
-    scrollTimeout.current = setTimeout(() => {
-      // Don't hide, just ensure it's visible after scrolling stops
-      // and we are not at the top of the page.
-      if (scrollTop > 0) {
-        dispatch({ type: 'SET_TOP_BAR_VISIBLE', payload: true });
-      }
-    }, 250); // Adjust timeout as needed
-  }, [isPane, dispatch]);
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (scrollTimeout.current) {
-        clearTimeout(scrollTimeout.current);
-      }
-    };
-  }, []);
-
-  return { onScroll };
-}
 ````
 
 ## File: src/index.ts
@@ -4773,6 +4736,58 @@ export function useBodyStateAnimations(
       }
     }
   }, [bodyState, animationDuration, rightPaneWidth, closeSidePane, isTopBarVisible, appRef, mainContentRef, rightPaneRef, topBarContainerRef, mainAreaRef]);
+}
+````
+
+## File: src/hooks/useAutoAnimateTopBar.ts
+````typescript
+import { useRef, useCallback, useEffect } from 'react';
+import { useAppShell } from '@/context/AppShellContext';
+import { BODY_STATES } from '@/lib/utils';
+
+export function useAutoAnimateTopBar(isPane = false) {
+  const { dispatch, bodyState } = useAppShell();
+  const lastScrollTop = useRef(0);
+  const scrollTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const onScroll = useCallback((event: React.UIEvent<HTMLDivElement>) => {
+    if (isPane || bodyState === BODY_STATES.SPLIT_VIEW) return;
+
+    // Clear previous timeout
+    if (scrollTimeout.current) {
+      clearTimeout(scrollTimeout.current);
+    }
+
+    const { scrollTop } = event.currentTarget;
+    
+    if (scrollTop > lastScrollTop.current && scrollTop > 200) {
+      dispatch({ type: 'SET_TOP_BAR_VISIBLE', payload: false });
+    } else if (scrollTop < lastScrollTop.current || scrollTop <= 0) {
+      dispatch({ type: 'SET_TOP_BAR_VISIBLE', payload: true });
+    }
+    
+    lastScrollTop.current = scrollTop <= 0 ? 0 : scrollTop;
+
+    // Set new timeout to show top bar when scrolling stops
+    scrollTimeout.current = setTimeout(() => {
+      // Don't hide, just ensure it's visible after scrolling stops
+      // and we are not at the top of the page.
+      if (scrollTop > 0) {
+        dispatch({ type: 'SET_TOP_BAR_VISIBLE', payload: true });
+      }
+    }, 250); // Adjust timeout as needed
+  }, [isPane, dispatch, bodyState]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (scrollTimeout.current) {
+        clearTimeout(scrollTimeout.current);
+      }
+    };
+  }, []);
+
+  return { onScroll };
 }
 ````
 
@@ -5893,12 +5908,12 @@ This project is licensed under the **MIT License**. See the [LICENSE](./LICENSE)
 
 ## File: src/components/layout/AppShell.tsx
 ````typescript
-import React, { useRef, type ReactElement } from 'react'
+import React, { useRef, type ReactElement, useCallback } from 'react'
 import { cn } from '@/lib/utils'
 import { CommandPalette } from '@/components/global/CommandPalette';
 import { useAppStore } from '@/store/appStore';
 import { useAppShell } from '@/context/AppShellContext';
-import { SIDEBAR_STATES } from '@/lib/utils'
+import { SIDEBAR_STATES, BODY_STATES } from '@/lib/utils'
 import { useResizableSidebar, useResizableRightPane } from '@/hooks/useResizablePanes.hook'
 import { useSidebarAnimations, useBodyStateAnimations } from '@/hooks/useAppShellAnimations.hook'
 
@@ -5910,6 +5925,13 @@ interface AppShellProps {
   commandPalette?: ReactElement;
 }
 
+const pageToPaneMap: Record<string, 'main' | 'settings' | 'toaster' | 'notifications'> = {
+  dashboard: 'main',
+  settings: 'settings',
+  toaster: 'toaster',
+  notifications: 'notifications',
+};
+
 
 export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalette }: AppShellProps) {
   const {
@@ -5918,9 +5940,17 @@ export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalet
     autoExpandSidebar,
     toggleSidebar,
     peekSidebar,
+    draggedPage,
+    dragHoverTarget,
+    toggleSplitView,
+    openSidePane,
+    bodyState,
+    rightPaneWidth,
+    sidePaneContent,
+    closeSidePane,
   } = useAppShell();
   
-  const { isDarkMode, toggleDarkMode } = useAppStore();
+  const { isDarkMode, toggleDarkMode, handleNavigation, activePage } = useAppStore();
   const appRef = useRef<HTMLDivElement>(null)
   const sidebarRef = useRef<HTMLDivElement>(null)
   const mainContentRef = useRef<HTMLDivElement>(null)
@@ -5960,6 +5990,59 @@ export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalet
 
   const rightPaneWithProps = React.cloneElement(rightPane, { ref: rightPaneRef });
 
+  // Drag and drop handlers for docking
+  const handleDragOverLeft = useCallback((e: React.DragEvent) => {
+    if (!draggedPage) return;
+    e.preventDefault();
+    if (dragHoverTarget !== 'left') {
+      dispatch({ type: 'SET_DRAG_HOVER_TARGET', payload: 'left' });
+    }
+  }, [draggedPage, dragHoverTarget, dispatch]);
+
+  const handleDropLeft = useCallback(() => {
+    if (!draggedPage) return;
+    
+    const paneContent = pageToPaneMap[draggedPage];
+    // If the dropped page is currently in the side pane, close it.
+    if (paneContent === sidePaneContent && (bodyState === BODY_STATES.SIDE_PANE || bodyState === BODY_STATES.SPLIT_VIEW)) {
+      closeSidePane();
+    }
+    
+    handleNavigation(draggedPage);
+    dispatch({ type: 'SET_DRAGGED_PAGE', payload: null });
+    dispatch({ type: 'SET_DRAG_HOVER_TARGET', payload: null });
+  }, [draggedPage, handleNavigation, dispatch, sidePaneContent, bodyState, closeSidePane]);
+
+  const handleDragOverRight = useCallback((e: React.DragEvent) => {
+    if (!draggedPage) return;
+    e.preventDefault();
+    if (dragHoverTarget !== 'right') {
+      dispatch({ type: 'SET_DRAG_HOVER_TARGET', payload: 'right' });
+    }
+  }, [draggedPage, dragHoverTarget, dispatch]);
+
+  const handleDropRight = useCallback(() => {
+    if (!draggedPage) return;
+    const pane = pageToPaneMap[draggedPage as keyof typeof pageToPaneMap];
+    if (pane) {
+      // If dropping the currently active page to the right,
+      // set a default page (e.g., dashboard) as the new active page.
+      if (draggedPage === activePage) {
+        handleNavigation('dashboard');
+      }
+
+      // Set the right pane content and ensure split view
+      dispatch({ type: 'SET_SIDE_PANE_CONTENT', payload: pane });
+      if (bodyState === BODY_STATES.NORMAL) {
+        toggleSplitView(pane);
+      } else if (bodyState === BODY_STATES.SIDE_PANE) {
+        toggleSplitView();
+      }
+    }
+    dispatch({ type: 'SET_DRAGGED_PAGE', payload: null });
+    dispatch({ type: 'SET_DRAG_HOVER_TARGET', payload: null });
+  }, [draggedPage, toggleSplitView, dispatch, bodyState, activePage, handleNavigation]);
+
   return (
     <div 
       ref={appRef}
@@ -5996,7 +6079,45 @@ export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalet
 
           <div className="flex flex-1 min-h-0">
             <div ref={mainAreaRef} className="relative flex-1 overflow-hidden bg-background">
+              {/* Left drop overlay */}
+              <div
+                className={cn(
+                  "absolute inset-y-0 left-0 z-40 border-2 border-transparent",
+                  draggedPage ? "pointer-events-auto w-1/2" : "pointer-events-none w-0",
+                  dragHoverTarget === 'left' && "bg-primary/10 border-primary"
+                )}
+                onDragOver={handleDragOverLeft}
+                onDrop={handleDropLeft}
+                onDragLeave={() => {
+                  if (dragHoverTarget === 'left') dispatch({ type: 'SET_DRAG_HOVER_TARGET', payload: null });
+                }}
+              >
+                {draggedPage && (
+                  <div className="absolute inset-0 flex items-center justify-center text-sm font-medium text-primary-foreground/80">
+                    <span className="px-3 py-1 rounded-md bg-primary/70">Drop to Left</span>
+                  </div>
+                )}
+              </div>
               {mainContentWithProps}
+              {/* Right drop overlay (over main area to allow docking even if pane hidden) */}
+              <div
+                className={cn(
+                  "absolute inset-y-0 right-0 z-40 border-2 border-transparent",
+                  draggedPage ? "pointer-events-auto w-1/2" : "pointer-events-none",
+                  dragHoverTarget === 'right' && "bg-primary/10 border-primary"
+                )}
+                onDragOver={handleDragOverRight}
+                onDrop={handleDropRight}
+                onDragLeave={() => {
+                  if (dragHoverTarget === 'right') dispatch({ type: 'SET_DRAG_HOVER_TARGET', payload: null });
+                }}
+              >
+                {draggedPage && (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="px-3 py-1 rounded-md bg-primary/70 text-sm font-medium text-primary-foreground/80">Drop to Right</span>
+                  </div>
+                )}
+              </div>
             </div>
             {rightPaneWithProps}
           </div>
@@ -6041,6 +6162,8 @@ export interface AppShellState {
   primaryColor: string;
   appName?: string;
   appLogo?: ReactElement;
+ draggedPage: 'dashboard' | 'settings' | 'toaster' | 'notifications' | null;
+ dragHoverTarget: 'left' | 'right' | null;
 }
 
 type AppShellAction =
@@ -6057,6 +6180,8 @@ type AppShellAction =
   | { type: 'SET_REDUCED_MOTION'; payload: boolean }
   | { type: 'SET_COMPACT_MODE'; payload: boolean }
   | { type: 'SET_PRIMARY_COLOR'; payload: string }
+  | { type: 'SET_DRAGGED_PAGE'; payload: 'dashboard' | 'settings' | 'toaster' | 'notifications' | null }
+  | { type: 'SET_DRAG_HOVER_TARGET'; payload: 'left' | 'right' | null }
   | { type: 'RESET_TO_DEFAULTS' };
 
 // --- Reducer ---
@@ -6077,6 +6202,8 @@ const defaultState: AppShellState = {
   primaryColor: '220 84% 60%',
   appName: 'Jeli App',
   appLogo: undefined,
+  draggedPage: null,
+  dragHoverTarget: null,
 };
 
 function appShellReducer(state: AppShellState, action: AppShellAction): AppShellState {
@@ -6094,6 +6221,8 @@ function appShellReducer(state: AppShellState, action: AppShellAction): AppShell
     case 'SET_REDUCED_MOTION': return { ...state, reducedMotion: action.payload };
     case 'SET_COMPACT_MODE': return { ...state, compactMode: action.payload };
     case 'SET_PRIMARY_COLOR': return { ...state, primaryColor: action.payload };
+    case 'SET_DRAGGED_PAGE': return { ...state, draggedPage: action.payload };
+    case 'SET_DRAG_HOVER_TARGET': return { ...state, dragHoverTarget: action.payload };
     case 'RESET_TO_DEFAULTS':
       return {
         ...defaultState,

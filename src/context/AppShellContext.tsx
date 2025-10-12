@@ -29,6 +29,8 @@ export interface AppShellState {
   primaryColor: string;
   appName?: string;
   appLogo?: ReactElement;
+ draggedPage: 'dashboard' | 'settings' | 'toaster' | 'notifications' | null;
+ dragHoverTarget: 'left' | 'right' | null;
 }
 
 type AppShellAction =
@@ -45,6 +47,8 @@ type AppShellAction =
   | { type: 'SET_REDUCED_MOTION'; payload: boolean }
   | { type: 'SET_COMPACT_MODE'; payload: boolean }
   | { type: 'SET_PRIMARY_COLOR'; payload: string }
+  | { type: 'SET_DRAGGED_PAGE'; payload: 'dashboard' | 'settings' | 'toaster' | 'notifications' | null }
+  | { type: 'SET_DRAG_HOVER_TARGET'; payload: 'left' | 'right' | null }
   | { type: 'RESET_TO_DEFAULTS' };
 
 // --- Reducer ---
@@ -65,6 +69,8 @@ const defaultState: AppShellState = {
   primaryColor: '220 84% 60%',
   appName: 'Jeli App',
   appLogo: undefined,
+  draggedPage: null,
+  dragHoverTarget: null,
 };
 
 function appShellReducer(state: AppShellState, action: AppShellAction): AppShellState {
@@ -82,6 +88,8 @@ function appShellReducer(state: AppShellState, action: AppShellAction): AppShell
     case 'SET_REDUCED_MOTION': return { ...state, reducedMotion: action.payload };
     case 'SET_COMPACT_MODE': return { ...state, compactMode: action.payload };
     case 'SET_PRIMARY_COLOR': return { ...state, primaryColor: action.payload };
+    case 'SET_DRAGGED_PAGE': return { ...state, draggedPage: action.payload };
+    case 'SET_DRAG_HOVER_TARGET': return { ...state, dragHoverTarget: action.payload };
     case 'RESET_TO_DEFAULTS':
       return {
         ...defaultState,

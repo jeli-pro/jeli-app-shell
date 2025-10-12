@@ -32,6 +32,16 @@
     "postcss.config.js",
     "index.html",
     "src"
+    // "src/App.tsx",
+    // "src/components/layout/AppShell.tsx",
+    // "src/components/layout/EnhancedSidebar.tsx",
+    // "src/components/layout/MainContent.tsx",
+    // "src/components/layout/RightPane.tsx",
+    // "src/components/layout/ViewModeSwitcher.tsx",
+    // "src/context/AppShellContext.tsx",
+    // "src/index.ts",
+    // "src/lib/utils.ts",
+    // "src/store/appStore.ts"
 
     // "src/App.tsx",
     // "src/components/layout/AppShell.tsx",
