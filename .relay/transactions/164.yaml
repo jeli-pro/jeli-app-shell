@@ -1,0 +1,256 @@
+uuid: 4f107f90-1c5c-43f1-b844-306e902a7b8f
+projectId: jeli-app-shell
+createdAt: '2025-10-12T09:44:05.623Z'
+gitCommitMsg: >-
+  feat(DataDemo): add mock line chart to showcase page
+
+  Adds a mock line chart component to the Data Showcase page to visualize
+  project activity over time. This enhances the dashboard-like feel of the page,
+  providing users with a visual representation of data trends, complementing the
+  existing statistics cards.
+promptSummary: User requested a line chart on the data demo page.
+reasoning:
+  - >-
+    Of course. Adding a line chart will provide more visual context to the data
+    showcase. I'll add a mock line chart component, similar to the one on the
+    dashboard page, to display trends in project activity.
+  - >-
+    This chart will be placed within a `Card` component for consistency with the
+    existing design and will sit between the new statistics section and the main
+    data view.
+operations:
+  - type: write
+    path: src/pages/DataDemo/index.tsx
+    content: >+
+      --- src/pages/DataDemo/index.tsx
+
+      +++ src/pages/DataDemo/index.tsx
+
+      @@ -3,7 +3,9 @@
+         Layers, 
+         AlertTriangle, 
+         PlayCircle, 
+      -  TrendingUp 
+
+      +  TrendingUp,
+
+      +  LineChart,
+
+      +  MoreVertical
+       } from 'lucide-react'
+       import { cn } from '@/lib/utils'
+       import { PageLayout } from '@/components/shared/PageLayout'
+      @@ -102,6 +104,23 @@
+                 ))}
+               </div>
+       
+      +        {/* Chart Section */}
+
+      +        <Card className="p-6 border-border/50">
+
+      +          <div className="flex items-center justify-between mb-6">
+
+      +            <h3 className="text-lg font-semibold">Project Activity</h3>
+
+      +            <button className="h-8 w-8 flex items-center justify-center
+      hover:bg-accent rounded-full transition-colors">
+
+      +              <MoreVertical className="w-5 h-5" />
+
+      +            </button>
+
+      +          </div>
+
+      +          
+
+      +          <div className="h-64 bg-gradient-to-br from-primary/10
+      to-transparent rounded-xl flex items-center justify-center border
+      border-border/50">
+
+      +            <div className="text-center">
+
+      +              <LineChart className="w-12 h-12 text-primary mx-auto mb-2"
+      />
+
+      +              <p className="text-muted-foreground">Line chart
+      visualization would go here</p>
+
+      +            </div>
+
+      +          </div>
+
+      +        </Card>
+
+      +
+               <div ref={contentRef} className="min-h-[500px]">
+                 {renderView()}
+               </div>
+
+    patchStrategy: standard-diff
+snapshot:
+  src/pages/DataDemo/index.tsx: |-
+    import { useState, useRef } from 'react'
+    import { 
+      Layers, 
+      AlertTriangle, 
+      PlayCircle, 
+      TrendingUp 
+    } from 'lucide-react'
+    import { cn } from '@/lib/utils'
+    import { PageLayout } from '@/components/shared/PageLayout'
+    import { DataViewModeSelector } from './components/DataViewModeSelector'
+    import { DataListView } from './components/DataListView'
+    import { DataCardView } from './components/DataCardView'
+    import { DataTableView } from './components/DataTableView'
+    import { DataDetailPanel } from './components/DataDetailPanel'
+    import { useAppShell } from '@/context/AppShellContext'
+    import { mockDataItems } from './data/mockData'
+    import { Card } from '@/components/ui/card'
+    import type { DataItem, ViewMode } from './types'
+
+    export default function DataDemoPage() {
+      const [viewMode, setViewMode] = useState<ViewMode>('list')
+      const [selectedItem, setSelectedItem] = useState<DataItem | null>(null)
+      const [searchTerm, setSearchTerm] = useState('')
+      const contentRef = useRef<HTMLDivElement>(null)
+      const { openSidePane } = useAppShell()
+
+      // Calculate stats from data
+      const totalItems = mockDataItems.length
+      const activeItems = mockDataItems.filter(item => item.status === 'active').length
+      const highPriorityItems = mockDataItems.filter(item => item.priority === 'high' || item.priority === 'critical').length
+      const avgCompletion = totalItems > 0 ? Math.round(
+        mockDataItems.reduce((acc, item) => acc + item.metrics.completion, 0) / totalItems
+      ) : 0
+
+      const stats = [
+        {
+          title: "Total Projects",
+          value: totalItems.toString(),
+          icon: <Layers className="w-5 h-5" />,
+          change: "+5.2% this month",
+          trend: "up" as const
+        },
+        {
+          title: "Active Projects",
+          value: activeItems.toString(),
+          icon: <PlayCircle className="w-5 h-5" />,
+          change: "+2 this week",
+          trend: "up" as const
+        },
+        {
+          title: "High Priority",
+          value: highPriorityItems.toString(),
+          icon: <AlertTriangle className="w-5 h-5" />,
+          change: "-1 from last week",
+          trend: "down" as const
+        },
+        {
+          title: "Avg. Completion",
+          value: `${avgCompletion}%`,
+          icon: <TrendingUp className="w-5 h-5" />,
+          change: "+3.2%",
+          trend: "up" as const
+        }
+      ]
+
+      // Filter data based on search
+      const filteredData = mockDataItems.filter(item =>
+        item.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.category.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+
+      // Handle item selection and open side panel
+      const handleItemSelect = (item: DataItem) => {
+        setSelectedItem(item)
+        openSidePane('data-details')
+      }
+
+      const renderView = () => {
+        const commonProps = {
+          data: filteredData,
+          onItemSelect: handleItemSelect,
+          selectedItem
+        }
+
+        switch (viewMode) {
+          case 'list':
+            return <DataListView {...commonProps} />
+          case 'cards':
+            return <DataCardView {...commonProps} />
+          case 'grid':
+            return <DataCardView {...commonProps} isGrid />
+          case 'table':
+            return <DataTableView {...commonProps} />
+          default:
+            return <DataListView {...commonProps} />
+        }
+      }
+
+      return (
+        <PageLayout
+          // Note: Search functionality is handled by a separate SearchBar in the TopBar
+        >
+          <div className="space-y-8">
+            {/* Header */}
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div>
+                <h1 className="text-2xl font-bold tracking-tight">Data Showcase</h1>
+                <p className="text-muted-foreground">
+                  Showing {filteredData.length} of {mockDataItems.length} items
+                </p>
+              </div>
+              <DataViewModeSelector 
+                viewMode={viewMode} 
+                onChange={setViewMode}
+              />
+            </div>
+
+            {/* Stats Section */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {stats.map((stat) => (
+                <Card
+                  key={stat.title}
+                  className="p-6 border-border/50 hover:border-primary/30 transition-all duration-300 group cursor-pointer"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="p-3 bg-primary/10 rounded-full group-hover:bg-primary/20 transition-colors">
+                      {stat.icon}
+                    </div>
+                    <div className={cn(
+                      "text-sm font-medium",
+                      stat.trend === 'up' ? "text-green-600" : "text-red-600"
+                    )}>
+                      {stat.change}
+                    </div>
+                  </div>
+                  <div className="mt-4">
+                    <h3 className="text-2xl font-bold">{stat.value}</h3>
+                    <p className="text-sm text-muted-foreground mt-1">{stat.title}</p>
+                  </div>
+                </Card>
+              ))}
+            </div>
+
+            <div ref={contentRef} className="min-h-[500px]">
+              {renderView()}
+            </div>
+
+          </div>
+
+          {/* Detail Panel */}
+          <DataDetailPanel 
+            item={selectedItem}
+            onClose={() => setSelectedItem(null)}
+          />
+        </PageLayout>
+      )
+    }
+approved: false
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: undone
+id: 164

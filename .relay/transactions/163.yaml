@@ -1,0 +1,310 @@
+uuid: 4403de80-87a3-4905-b02c-48618a80371a
+projectId: jeli-app-shell
+createdAt: '2025-10-12T09:41:35.346Z'
+gitCommitMsg: >-
+  feat(DataDemo): add stats section to data showcase page
+
+  Introduces a new statistics section at the top of the Data Showcase page,
+  providing an at-a-glance overview of the data. This section includes cards for
+  Total Projects, Active Projects, High Priority items, and Average Completion
+  rate.
+
+  This change enhances the page by giving it a more dashboard-like feel and
+  providing immediate, valuable insights into the dataset.
+promptSummary: Add a stats section to the Data Demo page to make it more like a dashboard.
+reasoning:
+  - >-
+    I will add a statistics section to the data demonstration page, similar to
+    the one on the dashboard. This will provide an at-a-glance overview of the
+    data being presented.
+  - >-
+    First, I will modify `src/pages/DataDemo/index.tsx` to calculate some key
+    metrics from the mock data, such as total items, active items, high-priority
+    items, and average completion rate.
+  - >-
+    Next, I will create a `stats` array to hold this data along with
+    corresponding icons and trend information.
+  - >-
+    Finally, I will render these stats using `Card` components in a grid layout,
+    positioned between the page header and the main data view, to make the page
+    more informative and dashboard-like as requested. I'll also add the
+    necessary imports for icons, the `Card` component, and utility functions.
+operations:
+  - type: write
+    path: src/pages/DataDemo/index.tsx
+    content: >+
+      --- src/pages/DataDemo/index.tsx
+
+      +++ src/pages/DataDemo/index.tsx
+
+      @@ -1,4 +1,11 @@
+       import { useState, useRef } from 'react'
+      +import { 
+
+      +  Layers, 
+
+      +  AlertTriangle, 
+
+      +  PlayCircle, 
+
+      +  TrendingUp 
+
+      +} from 'lucide-react'
+
+      +import { cn } from '@/lib/utils'
+       import { PageLayout } from '@/components/shared/PageLayout'
+       import { DataViewModeSelector } from './components/DataViewModeSelector'
+       import { DataListView } from './components/DataListView'
+      @@ -7,6 +14,7 @@
+       import { DataDetailPanel } from './components/DataDetailPanel'
+       import { useAppShell } from '@/context/AppShellContext'
+       import { mockDataItems } from './data/mockData'
+      +import { Card } from '@/components/ui/card'
+       import type { DataItem, ViewMode } from './types'
+       
+       export default function DataDemoPage() {
+      @@ -15,6 +23,43 @@
+         const [searchTerm, setSearchTerm] = useState('')
+         const contentRef = useRef<HTMLDivElement>(null)
+         const { openSidePane } = useAppShell()
+      +
+
+      +  // Calculate stats from data
+
+      +  const totalItems = mockDataItems.length
+
+      +  const activeItems = mockDataItems.filter(item => item.status ===
+      'active').length
+
+      +  const highPriorityItems = mockDataItems.filter(item => item.priority
+      === 'high' || item.priority === 'critical').length
+
+      +  const avgCompletion = totalItems > 0 ? Math.round(
+
+      +    mockDataItems.reduce((acc, item) => acc + item.metrics.completion, 0)
+      / totalItems
+
+      +  ) : 0
+
+      +
+
+      +  const stats = [
+
+      +    {
+
+      +      title: "Total Projects",
+
+      +      value: totalItems.toString(),
+
+      +      icon: <Layers className="w-5 h-5" />,
+
+      +      change: "+5.2% this month",
+
+      +      trend: "up" as const
+
+      +    },
+
+      +    {
+
+      +      title: "Active Projects",
+
+      +      value: activeItems.toString(),
+
+      +      icon: <PlayCircle className="w-5 h-5" />,
+
+      +      change: "+2 this week",
+
+      +      trend: "up" as const
+
+      +    },
+
+      +    {
+
+      +      title: "High Priority",
+
+      +      value: highPriorityItems.toString(),
+
+      +      icon: <AlertTriangle className="w-5 h-5" />,
+
+      +      change: "-1 from last week",
+
+      +      trend: "down" as const
+
+      +    },
+
+      +    {
+
+      +      title: "Avg. Completion",
+
+      +      value: `${avgCompletion}%`,
+
+      +      icon: <TrendingUp className="w-5 h-5" />,
+
+      +      change: "+3.2%",
+
+      +      trend: "up" as const
+
+      +    }
+
+      +  ]
+       
+         // Filter data based on search
+         const filteredData = mockDataItems.filter(item =>
+      @@ -62,6 +107,31 @@
+                 />
+               </div>
+       
+      +        {/* Stats Section */}
+
+      +        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4
+      gap-6">
+
+      +          {stats.map((stat) => (
+
+      +            <Card
+
+      +              key={stat.title}
+
+      +              className="p-6 border-border/50 hover:border-primary/30
+      transition-all duration-300 group cursor-pointer"
+
+      +            >
+
+      +              <div className="flex items-center justify-between">
+
+      +                <div className="p-3 bg-primary/10 rounded-full
+      group-hover:bg-primary/20 transition-colors">
+
+      +                  {stat.icon}
+
+      +                </div>
+
+      +                <div className={cn(
+
+      +                  "text-sm font-medium",
+
+      +                  stat.trend === 'up' ? "text-green-600" : "text-red-600"
+
+      +                )}>
+
+      +                  {stat.change}
+
+      +                </div>
+
+      +              </div>
+
+      +              <div className="mt-4">
+
+      +                <h3 className="text-2xl font-bold">{stat.value}</h3>
+
+      +                <p className="text-sm text-muted-foreground
+      mt-1">{stat.title}</p>
+
+      +              </div>
+
+      +            </Card>
+
+      +          ))}
+
+      +        </div>
+
+      +
+               <div ref={contentRef} className="min-h-[500px]">
+                 {renderView()}
+               </div>
+
+    patchStrategy: standard-diff
+snapshot:
+  src/pages/DataDemo/index.tsx: |-
+    import { useState, useRef } from 'react'
+    import { PageLayout } from '@/components/shared/PageLayout'
+    import { DataViewModeSelector } from './components/DataViewModeSelector'
+    import { DataListView } from './components/DataListView'
+    import { DataCardView } from './components/DataCardView'
+    import { DataTableView } from './components/DataTableView'
+    import { DataDetailPanel } from './components/DataDetailPanel'
+    import { useAppShell } from '@/context/AppShellContext'
+    import { mockDataItems } from './data/mockData'
+    import type { DataItem, ViewMode } from './types'
+
+    export default function DataDemoPage() {
+      const [viewMode, setViewMode] = useState<ViewMode>('list')
+      const [selectedItem, setSelectedItem] = useState<DataItem | null>(null)
+      const [searchTerm, setSearchTerm] = useState('')
+      const contentRef = useRef<HTMLDivElement>(null)
+      const { openSidePane } = useAppShell()
+
+      // Filter data based on search
+      const filteredData = mockDataItems.filter(item =>
+        item.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.category.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+
+      // Handle item selection and open side panel
+      const handleItemSelect = (item: DataItem) => {
+        setSelectedItem(item)
+        openSidePane('data-details')
+      }
+
+      const renderView = () => {
+        const commonProps = {
+          data: filteredData,
+          onItemSelect: handleItemSelect,
+          selectedItem
+        }
+
+        switch (viewMode) {
+          case 'list':
+            return <DataListView {...commonProps} />
+          case 'cards':
+            return <DataCardView {...commonProps} />
+          case 'grid':
+            return <DataCardView {...commonProps} isGrid />
+          case 'table':
+            return <DataTableView {...commonProps} />
+          default:
+            return <DataListView {...commonProps} />
+        }
+      }
+
+      return (
+        <PageLayout
+          // Note: Search functionality is handled by a separate SearchBar in the TopBar
+        >
+          <div className="space-y-8">
+            {/* Header */}
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div>
+                <h1 className="text-2xl font-bold tracking-tight">Data Showcase</h1>
+                <p className="text-muted-foreground">
+                  Showing {filteredData.length} of {mockDataItems.length} items
+                </p>
+              </div>
+              <DataViewModeSelector 
+                viewMode={viewMode} 
+                onChange={setViewMode}
+              />
+            </div>
+
+            <div ref={contentRef} className="min-h-[500px]">
+              {renderView()}
+            </div>
+
+          </div>
+
+          {/* Detail Panel */}
+          <DataDetailPanel 
+            item={selectedItem}
+            onClose={() => setSelectedItem(null)}
+          />
+        </PageLayout>
+      )
+    }
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 163

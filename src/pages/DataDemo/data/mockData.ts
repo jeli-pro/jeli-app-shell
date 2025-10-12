@@ -259,5 +259,523 @@ export const mockDataItems: DataItem[] = [
         { name: 'UI_Mockups.fig', type: 'Figma', size: '3.1 MB', url: '#' }
       ]
     }
+  },
+  {
+    id: '9',
+    title: 'Mobile App Redesign Project',
+    description: 'Complete overhaul of the mobile application user interface with focus on accessibility and modern design patterns.',
+    category: 'Design',
+    status: 'active',
+    priority: 'high',
+    assignee: {
+      name: 'Sarah Chen',
+      avatar: '🎨',
+      email: 'sarah.chen@company.com'
+    },
+    metrics: {
+      views: 1247,
+      likes: 89,
+      shares: 23,
+      completion: 65
+    },
+    tags: ['UI/UX', 'Mobile', 'Accessibility', 'Figma'],
+    createdAt: '2024-01-15T09:00:00Z',
+    updatedAt: '2024-01-20T14:30:00Z',
+    dueDate: '2024-02-28T23:59:59Z',
+    thumbnail: '🎨',
+    content: {
+      summary: 'Redesigning the mobile app to improve user experience and accessibility compliance.',
+      details: 'This project involves a complete redesign of our mobile application interface. The focus is on creating a more intuitive user experience while ensuring full accessibility compliance. We\'re implementing modern design patterns and conducting extensive user testing.',
+      attachments: [
+        { name: 'Design_Mockups_v2.fig', type: 'Figma', size: '2.4 MB', url: '#' },
+        { name: 'User_Research_Report.pdf', type: 'PDF', size: '1.8 MB', url: '#' },
+        { name: 'Accessibility_Guidelines.docx', type: 'Document', size: '850 KB', url: '#' }
+      ]
+    }
+  },
+  {
+    id: '10',
+    title: 'API Performance Optimization',
+    description: 'Optimize backend API endpoints to reduce response times and improve scalability for high-traffic scenarios.',
+    category: 'Development',
+    status: 'pending',
+    priority: 'critical',
+    assignee: {
+      name: 'Marcus Rodriguez',
+      avatar: '⚡',
+      email: 'marcus.rodriguez@company.com'
+    },
+    metrics: {
+      views: 892,
+      likes: 156,
+      shares: 45,
+      completion: 25
+    },
+    tags: ['Backend', 'Performance', 'API', 'Optimization'],
+    createdAt: '2024-01-18T11:15:00Z',
+    updatedAt: '2024-01-22T16:45:00Z',
+    dueDate: '2024-01-30T23:59:59Z',
+    thumbnail: '⚡',
+    content: {
+      summary: 'Critical performance improvements needed for API endpoints experiencing high latency.',
+      details: 'Our API endpoints are experiencing significant performance issues during peak traffic. This optimization project will focus on database query optimization, caching strategies, and implementing rate limiting to ensure consistent performance.',
+      attachments: [
+        { name: 'Performance_Analysis.xlsx', type: 'Spreadsheet', size: '3.2 MB', url: '#' },
+        { name: 'Database_Schema_Updates.sql', type: 'SQL', size: '45 KB', url: '#' }
+      ]
+    }
+  },
+  {
+    id: '11',
+    title: 'Customer Feedback Dashboard',
+    description: 'Build a comprehensive dashboard for analyzing customer feedback trends and sentiment analysis.',
+    category: 'Analytics',
+    status: 'completed',
+    priority: 'medium',
+    assignee: {
+      name: 'Emma Thompson',
+      avatar: '📊',
+      email: 'emma.thompson@company.com'
+    },
+    metrics: {
+      views: 2341,
+      likes: 234,
+      shares: 67,
+      completion: 100
+    },
+    tags: ['Dashboard', 'Analytics', 'Customer Experience', 'Data Viz'],
+    createdAt: '2024-01-05T08:30:00Z',
+    updatedAt: '2024-01-19T17:20:00Z',
+    thumbnail: '📊',
+    content: {
+      summary: 'Successfully launched customer feedback dashboard with real-time analytics.',
+      details: 'Completed the development of a comprehensive customer feedback dashboard that provides real-time insights into customer sentiment, trending topics, and satisfaction metrics. The dashboard includes interactive visualizations and automated reporting.',
+      attachments: [
+        { name: 'Dashboard_Demo.mp4', type: 'Video', size: '15.7 MB', url: '#' },
+        { name: 'User_Guide.pdf', type: 'PDF', size: '2.1 MB', url: '#' },
+        { name: 'Technical_Specs.md', type: 'Markdown', size: '23 KB', url: '#' }
+      ]
+    }
+  },
+  {
+    id: '12',
+    title: 'Security Audit & Compliance',
+    description: 'Comprehensive security audit of all systems and implementation of compliance measures for data protection.',
+    category: 'Security',
+    status: 'active',
+    priority: 'critical',
+    assignee: {
+      name: 'David Kim',
+      avatar: '🔒',
+      email: 'david.kim@company.com'
+    },
+    metrics: {
+      views: 567,
+      likes: 78,
+      shares: 12,
+      completion: 45
+    },
+    tags: ['Security', 'Compliance', 'GDPR', 'Audit'],
+    createdAt: '2024-01-20T10:00:00Z',
+    updatedAt: '2024-01-23T13:15:00Z',
+    dueDate: '2024-03-15T23:59:59Z',
+    thumbnail: '🔒',
+    content: {
+      summary: 'Ongoing security audit to ensure compliance with data protection regulations.',
+      details: 'Comprehensive security assessment covering all systems, applications, and data handling processes. The audit includes penetration testing, vulnerability assessments, and implementation of GDPR compliance measures.',
+      attachments: [
+        { name: 'Security_Checklist.xlsx', type: 'Spreadsheet', size: '1.5 MB', url: '#' },
+        { name: 'Compliance_Report_Draft.pdf', type: 'PDF', size: '4.2 MB', url: '#' }
+      ]
+    }
+  },
+  {
+    id: '13',
+    title: 'AI-Powered Content Recommendations',
+    description: 'Implement machine learning algorithms to provide personalized content recommendations for users.',
+    category: 'AI/ML',
+    status: 'pending',
+    priority: 'medium',
+    assignee: {
+      name: 'Priya Patel',
+      avatar: '🤖',
+      email: 'priya.patel@company.com'
+    },
+    metrics: {
+      views: 1456,
+      likes: 201,
+      shares: 89,
+      completion: 15
+    },
+    tags: ['Machine Learning', 'AI', 'Recommendations', 'Personalization'],
+    createdAt: '2024-01-22T14:20:00Z',
+    updatedAt: '2024-01-24T09:10:00Z',
+    dueDate: '2024-04-10T23:59:59Z',
+    thumbnail: '🤖',
+    content: {
+      summary: 'Building AI-driven recommendation system to enhance user engagement.',
+      details: 'Development of a sophisticated recommendation engine using machine learning algorithms. The system will analyze user behavior patterns, content preferences, and engagement metrics to provide highly personalized content suggestions.',
+      attachments: [
+        { name: 'ML_Model_Proposal.pdf', type: 'PDF', size: '3.8 MB', url: '#' },
+        { name: 'Training_Data_Analysis.ipynb', type: 'Jupyter Notebook', size: '892 KB', url: '#' }
+      ]
+    }
+  },
+  {
+    id: '14',
+    title: 'Cloud Infrastructure Migration',
+    description: 'Migrate legacy systems to cloud infrastructure for improved scalability and cost efficiency.',
+    category: 'Infrastructure',
+    status: 'active',
+    priority: 'high',
+    assignee: {
+      name: 'Alex Johnson',
+      avatar: '☁️',
+      email: 'alex.johnson@company.com'
+    },
+    metrics: {
+      views: 734,
+      likes: 92,
+      shares: 34,
+      completion: 70
+    },
+    tags: ['Cloud', 'Migration', 'AWS', 'Infrastructure'],
+    createdAt: '2024-01-10T07:45:00Z',
+    updatedAt: '2024-01-24T11:30:00Z',
+    dueDate: '2024-02-15T23:59:59Z',
+    thumbnail: '☁️',
+    content: {
+      summary: 'Migrating critical systems to cloud infrastructure for better performance and scalability.',
+      details: 'Comprehensive migration of our legacy on-premise infrastructure to AWS cloud services. This includes database migration, application containerization, and implementation of auto-scaling capabilities.',
+      attachments: [
+        { name: 'Migration_Plan.pdf', type: 'PDF', size: '5.1 MB', url: '#' },
+        { name: 'Cost_Analysis.xlsx', type: 'Spreadsheet', size: '1.9 MB', url: '#' },
+        { name: 'Architecture_Diagram.png', type: 'Image', size: '2.3 MB', url: '#' }
+      ]
+    }
+  },
+  {
+    id: '15',
+    title: 'User Onboarding Experience',
+    description: 'Design and implement an intuitive onboarding flow to improve new user activation rates.',
+    category: 'Product',
+    status: 'completed',
+    priority: 'medium',
+    assignee: {
+      name: 'Lisa Zhang',
+      avatar: '🚀',
+      email: 'lisa.zhang@company.com'
+    },
+    metrics: {
+      views: 1876,
+      likes: 298,
+      shares: 156,
+      completion: 100
+    },
+    tags: ['Onboarding', 'UX', 'Product', 'Conversion'],
+    createdAt: '2024-01-02T12:00:00Z',
+    updatedAt: '2024-01-16T18:45:00Z',
+    thumbnail: '🚀',
+    content: {
+      summary: 'Successfully launched new user onboarding experience with 40% improvement in activation rates.',
+      details: 'Designed and implemented a streamlined onboarding flow that guides new users through key product features. The new experience includes interactive tutorials, progress tracking, and personalized setup recommendations.',
+      attachments: [
+        { name: 'Onboarding_Flow.sketch', type: 'Sketch', size: '4.7 MB', url: '#' },
+        { name: 'A_B_Test_Results.pdf', type: 'PDF', size: '1.4 MB', url: '#' },
+        { name: 'User_Journey_Map.png', type: 'Image', size: '3.2 MB', url: '#' }
+      ]
+    }
+  },
+  {
+    id: '16',
+    title: 'Real-time Collaboration Features',
+    description: 'Implement real-time collaborative editing and communication features for team productivity.',
+    category: 'Development',
+    status: 'active',
+    priority: 'high',
+    assignee: {
+      name: 'Jordan Miller',
+      avatar: '👥',
+      email: 'jordan.miller@company.com'
+    },
+    metrics: {
+      views: 1123,
+      likes: 167,
+      shares: 78,
+      completion: 55
+    },
+    tags: ['Collaboration', 'Real-time', 'WebSocket', 'Team Tools'],
+    createdAt: '2024-01-14T15:30:00Z',
+    updatedAt: '2024-01-25T10:20:00Z',
+    dueDate: '2024-03-01T23:59:59Z',
+    thumbnail: '👥',
+    content: {
+      summary: 'Building real-time collaboration features to enhance team productivity and communication.',
+      details: 'Development of real-time collaborative editing capabilities using WebSocket technology. Features include live cursor tracking, simultaneous editing, instant messaging, and presence indicators for team members.',
+      attachments: [
+        { name: 'Technical_Architecture.pdf', type: 'PDF', size: '2.8 MB', url: '#' },
+        { name: 'WebSocket_Implementation.js', type: 'JavaScript', size: '67 KB', url: '#' },
+        { name: 'UI_Mockups.fig', type: 'Figma', size: '3.1 MB', url: '#' }
+      ]
+    }
+  },
+  {
+    id: '17',
+    title: 'Mobile App Redesign Project',
+    description: 'Complete overhaul of the mobile application user interface with focus on accessibility and modern design patterns.',
+    category: 'Design',
+    status: 'active',
+    priority: 'high',
+    assignee: {
+      name: 'Sarah Chen',
+      avatar: '🎨',
+      email: 'sarah.chen@company.com'
+    },
+    metrics: {
+      views: 1247,
+      likes: 89,
+      shares: 23,
+      completion: 65
+    },
+    tags: ['UI/UX', 'Mobile', 'Accessibility', 'Figma'],
+    createdAt: '2024-01-15T09:00:00Z',
+    updatedAt: '2024-01-20T14:30:00Z',
+    dueDate: '2024-02-28T23:59:59Z',
+    thumbnail: '🎨',
+    content: {
+      summary: 'Redesigning the mobile app to improve user experience and accessibility compliance.',
+      details: 'This project involves a complete redesign of our mobile application interface. The focus is on creating a more intuitive user experience while ensuring full accessibility compliance. We\'re implementing modern design patterns and conducting extensive user testing.',
+      attachments: [
+        { name: 'Design_Mockups_v2.fig', type: 'Figma', size: '2.4 MB', url: '#' },
+        { name: 'User_Research_Report.pdf', type: 'PDF', size: '1.8 MB', url: '#' },
+        { name: 'Accessibility_Guidelines.docx', type: 'Document', size: '850 KB', url: '#' }
+      ]
+    }
+  },
+  {
+    id: '18',
+    title: 'API Performance Optimization',
+    description: 'Optimize backend API endpoints to reduce response times and improve scalability for high-traffic scenarios.',
+    category: 'Development',
+    status: 'pending',
+    priority: 'critical',
+    assignee: {
+      name: 'Marcus Rodriguez',
+      avatar: '⚡',
+      email: 'marcus.rodriguez@company.com'
+    },
+    metrics: {
+      views: 892,
+      likes: 156,
+      shares: 45,
+      completion: 25
+    },
+    tags: ['Backend', 'Performance', 'API', 'Optimization'],
+    createdAt: '2024-01-18T11:15:00Z',
+    updatedAt: '2024-01-22T16:45:00Z',
+    dueDate: '2024-01-30T23:59:59Z',
+    thumbnail: '⚡',
+    content: {
+      summary: 'Critical performance improvements needed for API endpoints experiencing high latency.',
+      details: 'Our API endpoints are experiencing significant performance issues during peak traffic. This optimization project will focus on database query optimization, caching strategies, and implementing rate limiting to ensure consistent performance.',
+      attachments: [
+        { name: 'Performance_Analysis.xlsx', type: 'Spreadsheet', size: '3.2 MB', url: '#' },
+        { name: 'Database_Schema_Updates.sql', type: 'SQL', size: '45 KB', url: '#' }
+      ]
+    }
+  },
+  {
+    id: '19',
+    title: 'Customer Feedback Dashboard',
+    description: 'Build a comprehensive dashboard for analyzing customer feedback trends and sentiment analysis.',
+    category: 'Analytics',
+    status: 'completed',
+    priority: 'medium',
+    assignee: {
+      name: 'Emma Thompson',
+      avatar: '📊',
+      email: 'emma.thompson@company.com'
+    },
+    metrics: {
+      views: 2341,
+      likes: 234,
+      shares: 67,
+      completion: 100
+    },
+    tags: ['Dashboard', 'Analytics', 'Customer Experience', 'Data Viz'],
+    createdAt: '2024-01-05T08:30:00Z',
+    updatedAt: '2024-01-19T17:20:00Z',
+    thumbnail: '📊',
+    content: {
+      summary: 'Successfully launched customer feedback dashboard with real-time analytics.',
+      details: 'Completed the development of a comprehensive customer feedback dashboard that provides real-time insights into customer sentiment, trending topics, and satisfaction metrics. The dashboard includes interactive visualizations and automated reporting.',
+      attachments: [
+        { name: 'Dashboard_Demo.mp4', type: 'Video', size: '15.7 MB', url: '#' },
+        { name: 'User_Guide.pdf', type: 'PDF', size: '2.1 MB', url: '#' },
+        { name: 'Technical_Specs.md', type: 'Markdown', size: '23 KB', url: '#' }
+      ]
+    }
+  },
+  {
+    id: '20',
+    title: 'Security Audit & Compliance',
+    description: 'Comprehensive security audit of all systems and implementation of compliance measures for data protection.',
+    category: 'Security',
+    status: 'active',
+    priority: 'critical',
+    assignee: {
+      name: 'David Kim',
+      avatar: '🔒',
+      email: 'david.kim@company.com'
+    },
+    metrics: {
+      views: 567,
+      likes: 78,
+      shares: 12,
+      completion: 45
+    },
+    tags: ['Security', 'Compliance', 'GDPR', 'Audit'],
+    createdAt: '2024-01-20T10:00:00Z',
+    updatedAt: '2024-01-23T13:15:00Z',
+    dueDate: '2024-03-15T23:59:59Z',
+    thumbnail: '🔒',
+    content: {
+      summary: 'Ongoing security audit to ensure compliance with data protection regulations.',
+      details: 'Comprehensive security assessment covering all systems, applications, and data handling processes. The audit includes penetration testing, vulnerability assessments, and implementation of GDPR compliance measures.',
+      attachments: [
+        { name: 'Security_Checklist.xlsx', type: 'Spreadsheet', size: '1.5 MB', url: '#' },
+        { name: 'Compliance_Report_Draft.pdf', type: 'PDF', size: '4.2 MB', url: '#' }
+      ]
+    }
+  },
+  {
+    id: '21',
+    title: 'AI-Powered Content Recommendations',
+    description: 'Implement machine learning algorithms to provide personalized content recommendations for users.',
+    category: 'AI/ML',
+    status: 'pending',
+    priority: 'medium',
+    assignee: {
+      name: 'Priya Patel',
+      avatar: '🤖',
+      email: 'priya.patel@company.com'
+    },
+    metrics: {
+      views: 1456,
+      likes: 201,
+      shares: 89,
+      completion: 15
+    },
+    tags: ['Machine Learning', 'AI', 'Recommendations', 'Personalization'],
+    createdAt: '2024-01-22T14:20:00Z',
+    updatedAt: '2024-01-24T09:10:00Z',
+    dueDate: '2024-04-10T23:59:59Z',
+    thumbnail: '🤖',
+    content: {
+      summary: 'Building AI-driven recommendation system to enhance user engagement.',
+      details: 'Development of a sophisticated recommendation engine using machine learning algorithms. The system will analyze user behavior patterns, content preferences, and engagement metrics to provide highly personalized content suggestions.',
+      attachments: [
+        { name: 'ML_Model_Proposal.pdf', type: 'PDF', size: '3.8 MB', url: '#' },
+        { name: 'Training_Data_Analysis.ipynb', type: 'Jupyter Notebook', size: '892 KB', url: '#' }
+      ]
+    }
+  },
+  {
+    id: '22',
+    title: 'Cloud Infrastructure Migration',
+    description: 'Migrate legacy systems to cloud infrastructure for improved scalability and cost efficiency.',
+    category: 'Infrastructure',
+    status: 'active',
+    priority: 'high',
+    assignee: {
+      name: 'Alex Johnson',
+      avatar: '☁️',
+      email: 'alex.johnson@company.com'
+    },
+    metrics: {
+      views: 734,
+      likes: 92,
+      shares: 34,
+      completion: 70
+    },
+    tags: ['Cloud', 'Migration', 'AWS', 'Infrastructure'],
+    createdAt: '2024-01-10T07:45:00Z',
+    updatedAt: '2024-01-24T11:30:00Z',
+    dueDate: '2024-02-15T23:59:59Z',
+    thumbnail: '☁️',
+    content: {
+      summary: 'Migrating critical systems to cloud infrastructure for better performance and scalability.',
+      details: 'Comprehensive migration of our legacy on-premise infrastructure to AWS cloud services. This includes database migration, application containerization, and implementation of auto-scaling capabilities.',
+      attachments: [
+        { name: 'Migration_Plan.pdf', type: 'PDF', size: '5.1 MB', url: '#' },
+        { name: 'Cost_Analysis.xlsx', type: 'Spreadsheet', size: '1.9 MB', url: '#' },
+        { name: 'Architecture_Diagram.png', type: 'Image', size: '2.3 MB', url: '#' }
+      ]
+    }
+  },
+  {
+    id: '23',
+    title: 'User Onboarding Experience',
+    description: 'Design and implement an intuitive onboarding flow to improve new user activation rates.',
+    category: 'Product',
+    status: 'completed',
+    priority: 'medium',
+    assignee: {
+      name: 'Lisa Zhang',
+      avatar: '🚀',
+      email: 'lisa.zhang@company.com'
+    },
+    metrics: {
+      views: 1876,
+      likes: 298,
+      shares: 156,
+      completion: 100
+    },
+    tags: ['Onboarding', 'UX', 'Product', 'Conversion'],
+    createdAt: '2024-01-02T12:00:00Z',
+    updatedAt: '2024-01-16T18:45:00Z',
+    thumbnail: '🚀',
+    content: {
+      summary: 'Successfully launched new user onboarding experience with 40% improvement in activation rates.',
+      details: 'Designed and implemented a streamlined onboarding flow that guides new users through key product features. The new experience includes interactive tutorials, progress tracking, and personalized setup recommendations.',
+      attachments: [
+        { name: 'Onboarding_Flow.sketch', type: 'Sketch', size: '4.7 MB', url: '#' },
+        { name: 'A_B_Test_Results.pdf', type: 'PDF', size: '1.4 MB', url: '#' },
+        { name: 'User_Journey_Map.png', type: 'Image', size: '3.2 MB', url: '#' }
+      ]
+    }
+  },
+  {
+    id: '24',
+    title: 'Real-time Collaboration Features',
+    description: 'Implement real-time collaborative editing and communication features for team productivity.',
+    category: 'Development',
+    status: 'active',
+    priority: 'high',
+    assignee: {
+      name: 'Jordan Miller',
+      avatar: '👥',
+      email: 'jordan.miller@company.com'
+    },
+    metrics: {
+      views: 1123,
+      likes: 167,
+      shares: 78,
+      completion: 55
+    },
+    tags: ['Collaboration', 'Real-time', 'WebSocket', 'Team Tools'],
+    createdAt: '2024-01-14T15:30:00Z',
+    updatedAt: '2024-01-25T10:20:00Z',
+    dueDate: '2024-03-01T23:59:59Z',
+    thumbnail: '👥',
+    content: {
+      summary: 'Building real-time collaboration features to enhance team productivity and communication.',
+      details: 'Development of real-time collaborative editing capabilities using WebSocket technology. Features include live cursor tracking, simultaneous editing, instant messaging, and presence indicators for team members.',
+      attachments: [
+        { name: 'Technical_Architecture.pdf', type: 'PDF', size: '2.8 MB', url: '#' },
+        { name: 'WebSocket_Implementation.js', type: 'JavaScript', size: '67 KB', url: '#' },
+        { name: 'UI_Mockups.fig', type: 'Figma', size: '3.1 MB', url: '#' }
+      ]
+    }
   }
 ]

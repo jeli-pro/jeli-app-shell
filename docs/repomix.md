@@ -15,6 +15,8 @@ src/
         DataTableView.tsx
         DataViewModeSelector.tsx
         EmptyState.tsx
+      data/
+        mockData.ts
       index.tsx
       types.ts
       utils.ts
@@ -29,46 +31,6 @@ vite.config.ts
 ```
 
 # Files
-
-## File: src/pages/DataDemo/components/EmptyState.tsx
-````typescript
-import { Eye } from 'lucide-react'
-
-export function EmptyState() {
-  return (
-    <div className="flex flex-col items-center justify-center py-20 text-center">
-      <div className="w-24 h-24 bg-muted rounded-full flex items-center justify-center mb-6">
-        <Eye className="w-10 h-10 text-muted-foreground" />
-      </div>
-      <h3 className="text-lg font-semibold mb-2">No items found</h3>
-      <p className="text-muted-foreground">Try adjusting your search criteria</p>
-    </div>
-  )
-}
-````
-
-## File: src/pages/DataDemo/utils.ts
-````typescript
-export const getStatusColor = (status: string) => {
-  switch (status) {
-    case 'active': return 'bg-green-500/20 text-green-700 border-green-500/30'
-    case 'pending': return 'bg-yellow-500/20 text-yellow-700 border-yellow-500/30'
-    case 'completed': return 'bg-blue-500/20 text-blue-700 border-blue-500/30'
-    case 'archived': return 'bg-gray-500/20 text-gray-700 border-gray-500/30'
-    default: return 'bg-gray-500/20 text-gray-700 border-gray-500/30'
-  }
-}
-
-export const getPriorityColor = (priority: string) => {
-  switch (priority) {
-    case 'critical': return 'bg-red-500/20 text-red-700 border-red-500/30'
-    case 'high': return 'bg-orange-500/20 text-orange-700 border-orange-500/30'
-    case 'medium': return 'bg-blue-500/20 text-blue-700 border-blue-500/30'
-    case 'low': return 'bg-green-500/20 text-green-700 border-green-500/30'
-    default: return 'bg-gray-500/20 text-gray-700 border-gray-500/30'
-  }
-}
-````
 
 ## File: src/components/shared/PageLayout.tsx
 ````typescript
@@ -108,6 +70,397 @@ export const PageLayout = React.forwardRef<HTMLDivElement, PageLayoutProps>(
 );
 
 PageLayout.displayName = 'PageLayout';
+````
+
+## File: src/pages/DataDemo/components/EmptyState.tsx
+````typescript
+import { Eye } from 'lucide-react'
+
+export function EmptyState() {
+  return (
+    <div className="flex flex-col items-center justify-center py-20 text-center">
+      <div className="w-24 h-24 bg-muted rounded-full flex items-center justify-center mb-6">
+        <Eye className="w-10 h-10 text-muted-foreground" />
+      </div>
+      <h3 className="text-lg font-semibold mb-2">No items found</h3>
+      <p className="text-muted-foreground">Try adjusting your search criteria</p>
+    </div>
+  )
+}
+````
+
+## File: src/pages/DataDemo/data/mockData.ts
+````typescript
+import type { DataItem } from '../types'
+
+export const mockDataItems: DataItem[] = [
+  {
+    id: '1',
+    title: 'Mobile App Redesign Project',
+    description: 'Complete overhaul of the mobile application user interface with focus on accessibility and modern design patterns.',
+    category: 'Design',
+    status: 'active',
+    priority: 'high',
+    assignee: {
+      name: 'Sarah Chen',
+      avatar: '🎨',
+      email: 'sarah.chen@company.com'
+    },
+    metrics: {
+      views: 1247,
+      likes: 89,
+      shares: 23,
+      completion: 65
+    },
+    tags: ['UI/UX', 'Mobile', 'Accessibility', 'Figma'],
+    createdAt: '2024-01-15T09:00:00Z',
+    updatedAt: '2024-01-20T14:30:00Z',
+    dueDate: '2024-02-28T23:59:59Z',
+    thumbnail: '🎨',
+    content: {
+      summary: 'Redesigning the mobile app to improve user experience and accessibility compliance.',
+      details: 'This project involves a complete redesign of our mobile application interface. The focus is on creating a more intuitive user experience while ensuring full accessibility compliance. We\'re implementing modern design patterns and conducting extensive user testing.',
+      attachments: [
+        { name: 'Design_Mockups_v2.fig', type: 'Figma', size: '2.4 MB', url: '#' },
+        { name: 'User_Research_Report.pdf', type: 'PDF', size: '1.8 MB', url: '#' },
+        { name: 'Accessibility_Guidelines.docx', type: 'Document', size: '850 KB', url: '#' }
+      ]
+    }
+  },
+  {
+    id: '2',
+    title: 'API Performance Optimization',
+    description: 'Optimize backend API endpoints to reduce response times and improve scalability for high-traffic scenarios.',
+    category: 'Development',
+    status: 'pending',
+    priority: 'critical',
+    assignee: {
+      name: 'Marcus Rodriguez',
+      avatar: '⚡',
+      email: 'marcus.rodriguez@company.com'
+    },
+    metrics: {
+      views: 892,
+      likes: 156,
+      shares: 45,
+      completion: 25
+    },
+    tags: ['Backend', 'Performance', 'API', 'Optimization'],
+    createdAt: '2024-01-18T11:15:00Z',
+    updatedAt: '2024-01-22T16:45:00Z',
+    dueDate: '2024-01-30T23:59:59Z',
+    thumbnail: '⚡',
+    content: {
+      summary: 'Critical performance improvements needed for API endpoints experiencing high latency.',
+      details: 'Our API endpoints are experiencing significant performance issues during peak traffic. This optimization project will focus on database query optimization, caching strategies, and implementing rate limiting to ensure consistent performance.',
+      attachments: [
+        { name: 'Performance_Analysis.xlsx', type: 'Spreadsheet', size: '3.2 MB', url: '#' },
+        { name: 'Database_Schema_Updates.sql', type: 'SQL', size: '45 KB', url: '#' }
+      ]
+    }
+  },
+  {
+    id: '3',
+    title: 'Customer Feedback Dashboard',
+    description: 'Build a comprehensive dashboard for analyzing customer feedback trends and sentiment analysis.',
+    category: 'Analytics',
+    status: 'completed',
+    priority: 'medium',
+    assignee: {
+      name: 'Emma Thompson',
+      avatar: '📊',
+      email: 'emma.thompson@company.com'
+    },
+    metrics: {
+      views: 2341,
+      likes: 234,
+      shares: 67,
+      completion: 100
+    },
+    tags: ['Dashboard', 'Analytics', 'Customer Experience', 'Data Viz'],
+    createdAt: '2024-01-05T08:30:00Z',
+    updatedAt: '2024-01-19T17:20:00Z',
+    thumbnail: '📊',
+    content: {
+      summary: 'Successfully launched customer feedback dashboard with real-time analytics.',
+      details: 'Completed the development of a comprehensive customer feedback dashboard that provides real-time insights into customer sentiment, trending topics, and satisfaction metrics. The dashboard includes interactive visualizations and automated reporting.',
+      attachments: [
+        { name: 'Dashboard_Demo.mp4', type: 'Video', size: '15.7 MB', url: '#' },
+        { name: 'User_Guide.pdf', type: 'PDF', size: '2.1 MB', url: '#' },
+        { name: 'Technical_Specs.md', type: 'Markdown', size: '23 KB', url: '#' }
+      ]
+    }
+  },
+  {
+    id: '4',
+    title: 'Security Audit & Compliance',
+    description: 'Comprehensive security audit of all systems and implementation of compliance measures for data protection.',
+    category: 'Security',
+    status: 'active',
+    priority: 'critical',
+    assignee: {
+      name: 'David Kim',
+      avatar: '🔒',
+      email: 'david.kim@company.com'
+    },
+    metrics: {
+      views: 567,
+      likes: 78,
+      shares: 12,
+      completion: 45
+    },
+    tags: ['Security', 'Compliance', 'GDPR', 'Audit'],
+    createdAt: '2024-01-20T10:00:00Z',
+    updatedAt: '2024-01-23T13:15:00Z',
+    dueDate: '2024-03-15T23:59:59Z',
+    thumbnail: '🔒',
+    content: {
+      summary: 'Ongoing security audit to ensure compliance with data protection regulations.',
+      details: 'Comprehensive security assessment covering all systems, applications, and data handling processes. The audit includes penetration testing, vulnerability assessments, and implementation of GDPR compliance measures.',
+      attachments: [
+        { name: 'Security_Checklist.xlsx', type: 'Spreadsheet', size: '1.5 MB', url: '#' },
+        { name: 'Compliance_Report_Draft.pdf', type: 'PDF', size: '4.2 MB', url: '#' }
+      ]
+    }
+  },
+  {
+    id: '5',
+    title: 'AI-Powered Content Recommendations',
+    description: 'Implement machine learning algorithms to provide personalized content recommendations for users.',
+    category: 'AI/ML',
+    status: 'pending',
+    priority: 'medium',
+    assignee: {
+      name: 'Priya Patel',
+      avatar: '🤖',
+      email: 'priya.patel@company.com'
+    },
+    metrics: {
+      views: 1456,
+      likes: 201,
+      shares: 89,
+      completion: 15
+    },
+    tags: ['Machine Learning', 'AI', 'Recommendations', 'Personalization'],
+    createdAt: '2024-01-22T14:20:00Z',
+    updatedAt: '2024-01-24T09:10:00Z',
+    dueDate: '2024-04-10T23:59:59Z',
+    thumbnail: '🤖',
+    content: {
+      summary: 'Building AI-driven recommendation system to enhance user engagement.',
+      details: 'Development of a sophisticated recommendation engine using machine learning algorithms. The system will analyze user behavior patterns, content preferences, and engagement metrics to provide highly personalized content suggestions.',
+      attachments: [
+        { name: 'ML_Model_Proposal.pdf', type: 'PDF', size: '3.8 MB', url: '#' },
+        { name: 'Training_Data_Analysis.ipynb', type: 'Jupyter Notebook', size: '892 KB', url: '#' }
+      ]
+    }
+  },
+  {
+    id: '6',
+    title: 'Cloud Infrastructure Migration',
+    description: 'Migrate legacy systems to cloud infrastructure for improved scalability and cost efficiency.',
+    category: 'Infrastructure',
+    status: 'active',
+    priority: 'high',
+    assignee: {
+      name: 'Alex Johnson',
+      avatar: '☁️',
+      email: 'alex.johnson@company.com'
+    },
+    metrics: {
+      views: 734,
+      likes: 92,
+      shares: 34,
+      completion: 70
+    },
+    tags: ['Cloud', 'Migration', 'AWS', 'Infrastructure'],
+    createdAt: '2024-01-10T07:45:00Z',
+    updatedAt: '2024-01-24T11:30:00Z',
+    dueDate: '2024-02-15T23:59:59Z',
+    thumbnail: '☁️',
+    content: {
+      summary: 'Migrating critical systems to cloud infrastructure for better performance and scalability.',
+      details: 'Comprehensive migration of our legacy on-premise infrastructure to AWS cloud services. This includes database migration, application containerization, and implementation of auto-scaling capabilities.',
+      attachments: [
+        { name: 'Migration_Plan.pdf', type: 'PDF', size: '5.1 MB', url: '#' },
+        { name: 'Cost_Analysis.xlsx', type: 'Spreadsheet', size: '1.9 MB', url: '#' },
+        { name: 'Architecture_Diagram.png', type: 'Image', size: '2.3 MB', url: '#' }
+      ]
+    }
+  },
+  {
+    id: '7',
+    title: 'User Onboarding Experience',
+    description: 'Design and implement an intuitive onboarding flow to improve new user activation rates.',
+    category: 'Product',
+    status: 'completed',
+    priority: 'medium',
+    assignee: {
+      name: 'Lisa Zhang',
+      avatar: '🚀',
+      email: 'lisa.zhang@company.com'
+    },
+    metrics: {
+      views: 1876,
+      likes: 298,
+      shares: 156,
+      completion: 100
+    },
+    tags: ['Onboarding', 'UX', 'Product', 'Conversion'],
+    createdAt: '2024-01-02T12:00:00Z',
+    updatedAt: '2024-01-16T18:45:00Z',
+    thumbnail: '🚀',
+    content: {
+      summary: 'Successfully launched new user onboarding experience with 40% improvement in activation rates.',
+      details: 'Designed and implemented a streamlined onboarding flow that guides new users through key product features. The new experience includes interactive tutorials, progress tracking, and personalized setup recommendations.',
+      attachments: [
+        { name: 'Onboarding_Flow.sketch', type: 'Sketch', size: '4.7 MB', url: '#' },
+        { name: 'A_B_Test_Results.pdf', type: 'PDF', size: '1.4 MB', url: '#' },
+        { name: 'User_Journey_Map.png', type: 'Image', size: '3.2 MB', url: '#' }
+      ]
+    }
+  },
+  {
+    id: '8',
+    title: 'Real-time Collaboration Features',
+    description: 'Implement real-time collaborative editing and communication features for team productivity.',
+    category: 'Development',
+    status: 'active',
+    priority: 'high',
+    assignee: {
+      name: 'Jordan Miller',
+      avatar: '👥',
+      email: 'jordan.miller@company.com'
+    },
+    metrics: {
+      views: 1123,
+      likes: 167,
+      shares: 78,
+      completion: 55
+    },
+    tags: ['Collaboration', 'Real-time', 'WebSocket', 'Team Tools'],
+    createdAt: '2024-01-14T15:30:00Z',
+    updatedAt: '2024-01-25T10:20:00Z',
+    dueDate: '2024-03-01T23:59:59Z',
+    thumbnail: '👥',
+    content: {
+      summary: 'Building real-time collaboration features to enhance team productivity and communication.',
+      details: 'Development of real-time collaborative editing capabilities using WebSocket technology. Features include live cursor tracking, simultaneous editing, instant messaging, and presence indicators for team members.',
+      attachments: [
+        { name: 'Technical_Architecture.pdf', type: 'PDF', size: '2.8 MB', url: '#' },
+        { name: 'WebSocket_Implementation.js', type: 'JavaScript', size: '67 KB', url: '#' },
+        { name: 'UI_Mockups.fig', type: 'Figma', size: '3.1 MB', url: '#' }
+      ]
+    }
+  }
+]
+````
+
+## File: src/pages/DataDemo/types.ts
+````typescript
+export type ViewMode = 'list' | 'cards' | 'grid' | 'table'
+
+export interface DataItem {
+  id: string
+  title: string
+  description: string
+  category: string
+  status: 'active' | 'pending' | 'completed' | 'archived'
+  priority: 'low' | 'medium' | 'high' | 'critical'
+  assignee: {
+    name: string
+    avatar: string
+    email: string
+  }
+  metrics: {
+    views: number
+    likes: number
+    shares: number
+    completion: number
+  }
+  tags: string[]
+  createdAt: string
+  updatedAt: string
+  dueDate?: string
+  thumbnail?: string
+  content?: {
+    summary: string
+    details: string
+    attachments?: Array<{
+      name: string
+      type: string
+      size: string
+      url: string
+    }>
+  }
+}
+
+export interface ViewProps {
+  data: DataItem[]
+  onItemSelect: (item: DataItem) => void
+  selectedItem: DataItem | null
+  isGrid?: boolean
+}
+````
+
+## File: src/pages/DataDemo/utils.ts
+````typescript
+export const getStatusColor = (status: string) => {
+  switch (status) {
+    case 'active': return 'bg-green-500/20 text-green-700 border-green-500/30'
+    case 'pending': return 'bg-yellow-500/20 text-yellow-700 border-yellow-500/30'
+    case 'completed': return 'bg-blue-500/20 text-blue-700 border-blue-500/30'
+    case 'archived': return 'bg-gray-500/20 text-gray-700 border-gray-500/30'
+    default: return 'bg-gray-500/20 text-gray-700 border-gray-500/30'
+  }
+}
+
+export const getPriorityColor = (priority: string) => {
+  switch (priority) {
+    case 'critical': return 'bg-red-500/20 text-red-700 border-red-500/30'
+    case 'high': return 'bg-orange-500/20 text-orange-700 border-orange-500/30'
+    case 'medium': return 'bg-blue-500/20 text-blue-700 border-blue-500/30'
+    case 'low': return 'bg-green-500/20 text-green-700 border-green-500/30'
+    default: return 'bg-gray-500/20 text-gray-700 border-gray-500/30'
+  }
+}
+````
+
+## File: postcss.config.js
+````javascript
+export default {
+  plugins: {
+    tailwindcss: {},
+    autoprefixer: {},
+  },
+}
+````
+
+## File: src/lib/utils.ts
+````typescript
+import { type ClassValue, clsx } from "clsx"
+import { twMerge } from "tailwind-merge"
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs))
+}
+
+export const SIDEBAR_STATES = {
+  HIDDEN: 'hidden',
+  COLLAPSED: 'collapsed', 
+  EXPANDED: 'expanded',
+  PEEK: 'peek'
+} as const
+
+export const BODY_STATES = {
+  NORMAL: 'normal',
+  FULLSCREEN: 'fullscreen',
+  SIDE_PANE: 'side_pane',
+  SPLIT_VIEW: 'split_view'
+} as const
+
+export type SidebarState = typeof SIDEBAR_STATES[keyof typeof SIDEBAR_STATES]
+export type BodyState = typeof BODY_STATES[keyof typeof BODY_STATES]
 ````
 
 ## File: src/pages/DataDemo/components/DataCardView.tsx
@@ -1108,59 +1461,49 @@ export function DataViewModeSelector({ viewMode, onChange }: DataViewModeSelecto
   }, [viewMode])
 
   return (
-    <div className="relative">
-      {/* Background container */}
-      <div 
-        ref={containerRef}
-        className="relative flex items-center bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-1.5 shadow-lg"
-      >
-        {/* Animated indicator */}
-        <div
-          ref={indicatorRef}
-          className="absolute inset-y-1.5 bg-gradient-to-r from-primary/20 to-primary/10 border border-primary/20 rounded-xl transition-all duration-300"
-          style={{ left: 0, width: 0 }}
-        />
+    <div 
+      ref={containerRef}
+      className="relative flex items-center bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-1.5 shadow-lg"
+    >
+      {/* Animated indicator */}
+      <div
+        ref={indicatorRef}
+        className="absolute inset-y-1.5 bg-gradient-to-r from-primary/20 to-primary/10 border border-primary/20 rounded-xl transition-all duration-300"
+        style={{ left: 0, width: 0 }}
+      />
+      
+      {/* Mode buttons */}
+      {viewModes.map((mode) => {
+        const IconComponent = mode.icon
+        const isActive = viewMode === mode.id
         
-        {/* Mode buttons */}
-        {viewModes.map((mode) => {
-          const IconComponent = mode.icon
-          const isActive = viewMode === mode.id
-          
-          return (
-            <button
-              key={mode.id}
-              data-mode={mode.id}
-              onClick={() => onChange(mode.id)}
-              className={cn(
-                "relative flex items-center gap-3 px-6 py-3 rounded-xl transition-all duration-300 group min-w-[120px]",
-                "hover:bg-accent/20 active:scale-95",
-                isActive && "text-primary"
-              )}
-              title={mode.description}
-            >
-              <IconComponent className={cn(
-                "w-5 h-5 transition-all duration-300",
-                isActive && "scale-110",
-                "group-hover:scale-105"
-              )} />
-              <span className={cn(
-                "font-medium transition-all duration-300",
-                isActive ? "text-primary" : "text-muted-foreground",
-                "group-hover:text-foreground"
-              )}>
-                {mode.label}
-              </span>
-            </button>
-          )
-        })}
-      </div>
-
-      {/* Description tooltip */}
-      <div className="mt-3 text-center">
-        <p className="text-sm text-muted-foreground">
-          {viewModes.find(m => m.id === viewMode)?.description}
-        </p>
-      </div>
+        return (
+          <button
+            key={mode.id}
+            data-mode={mode.id}
+            onClick={() => onChange(mode.id)}
+            className={cn(
+              "relative flex items-center gap-3 px-6 py-3 rounded-xl transition-all duration-300 group min-w-[120px]",
+              "hover:bg-accent/20 active:scale-95",
+              isActive && "text-primary"
+            )}
+            title={mode.description}
+          >
+            <IconComponent className={cn(
+              "w-5 h-5 transition-all duration-300",
+              isActive && "scale-110",
+              "group-hover:scale-105"
+            )} />
+            <span className={cn(
+              "font-medium transition-all duration-300",
+              isActive ? "text-primary" : "text-muted-foreground",
+              "group-hover:text-foreground"
+            )}>
+              {mode.label}
+            </span>
+          </button>
+        )
+      })}
     </div>
   )
 }
@@ -1169,15 +1512,45 @@ export function DataViewModeSelector({ viewMode, onChange }: DataViewModeSelecto
 ## File: src/pages/DataDemo/index.tsx
 ````typescript
 import { useState, useRef } from 'react'
+import { 
+  Layers, 
+  AlertTriangle, 
+  PlayCircle, 
+  TrendingUp 
+} from 'lucide-react'
+import { cn } from '@/lib/utils'
 import { PageLayout } from '@/components/shared/PageLayout'
 import { DataViewModeSelector } from './components/DataViewModeSelector'
 import { DataListView } from './components/DataListView'
 import { DataCardView } from './components/DataCardView'
 import { DataTableView } from './components/DataTableView'
 import { DataDetailPanel } from './components/DataDetailPanel'
+import { StatChartCard } from './components/StatChartCard'
 import { useAppShell } from '@/context/AppShellContext'
 import { mockDataItems } from './data/mockData'
+import { Card } from '@/components/ui/card'
 import type { DataItem, ViewMode } from './types'
+
+type Stat = {
+  title: string;
+  value: string;
+  icon: React.ReactNode;
+  change: string;
+  trend: 'up' | 'down';
+  type?: 'card';
+};
+
+type ChartStat = {
+  title: string;
+  value: string;
+  icon: React.ReactNode;
+  change: string;
+  trend: 'up' | 'down';
+  type: 'chart';
+  chartData: number[];
+};
+
+type StatItem = Stat | ChartStat;
 
 export default function DataDemoPage() {
   const [viewMode, setViewMode] = useState<ViewMode>('list')
@@ -1185,6 +1558,53 @@ export default function DataDemoPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const contentRef = useRef<HTMLDivElement>(null)
   const { openSidePane } = useAppShell()
+
+  // Calculate stats from data
+  const totalItems = mockDataItems.length
+  const activeItems = mockDataItems.filter(item => item.status === 'active').length
+  const highPriorityItems = mockDataItems.filter(item => item.priority === 'high' || item.priority === 'critical').length
+  const avgCompletion = totalItems > 0 ? Math.round(
+    mockDataItems.reduce((acc, item) => acc + item.metrics.completion, 0) / totalItems
+  ) : 0
+
+  const stats: StatItem[] = [
+    {
+      title: "Total Projects",
+      value: totalItems.toString(),
+      icon: <Layers className="w-5 h-5" />,
+      change: "+5.2% this month",
+      trend: "up" as const,
+      type: 'chart',
+      chartData: [120, 125, 122, 130, 135, 138, 142]
+    },
+    {
+      title: "Active Projects",
+      value: activeItems.toString(),
+      icon: <PlayCircle className="w-5 h-5" />,
+      change: "+2 this week", 
+      trend: "up" as const,
+      type: 'chart',
+      chartData: [45, 50, 48, 55, 53, 60, 58]
+    },
+    {
+      title: "High Priority",
+      value: highPriorityItems.toString(),
+      icon: <AlertTriangle className="w-5 h-5" />,
+      change: "-1 from last week",
+      trend: "down" as const,
+      type: 'chart',
+      chartData: [25, 26, 28, 27, 26, 24, 23]
+    },
+    {
+      title: "Avg. Completion",
+      value: `${avgCompletion}%`,
+      icon: <TrendingUp className="w-5 h-5" />,
+      change: "+3.2%",
+      trend: "up" as const,
+      type: 'chart',
+      chartData: [65, 68, 70, 69, 72, 75, 78]
+    }
+  ]
 
   // Filter data based on search
   const filteredData = mockDataItems.filter(item =>
@@ -1239,6 +1659,44 @@ export default function DataDemoPage() {
           />
         </div>
 
+        {/* Stats Section */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {stats.map((stat) => {
+            if (stat.type === 'chart') {
+              return (
+                <StatChartCard
+                  key={stat.title}
+                  title={stat.title}
+                  value={stat.value}
+                  change={stat.change}
+                  trend={stat.trend}
+                  icon={stat.icon}
+                  chartData={stat.chartData}
+                />
+              )
+            }
+            return (
+              <Card
+                key={stat.title}
+                className="p-6 border-border/50 hover:border-primary/30 transition-all duration-300 group cursor-pointer"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="p-3 bg-primary/10 rounded-full group-hover:bg-primary/20 transition-colors">
+                    {stat.icon}
+                  </div>
+                  <div className={cn("text-sm font-medium", stat.trend === 'up' ? "text-green-600" : "text-red-600")}>
+                    {stat.change}
+                  </div>
+                </div>
+                <div className="mt-4">
+                  <h3 className="text-2xl font-bold">{stat.value}</h3>
+                  <p className="text-sm text-muted-foreground mt-1">{stat.title}</p>
+                </div>
+              </Card>
+            )
+          })}
+        </div>
+
         <div ref={contentRef} className="min-h-[500px]">
           {renderView()}
         </div>
@@ -1253,90 +1711,6 @@ export default function DataDemoPage() {
     </PageLayout>
   )
 }
-````
-
-## File: src/pages/DataDemo/types.ts
-````typescript
-export type ViewMode = 'list' | 'cards' | 'grid' | 'table'
-
-export interface DataItem {
-  id: string
-  title: string
-  description: string
-  category: string
-  status: 'active' | 'pending' | 'completed' | 'archived'
-  priority: 'low' | 'medium' | 'high' | 'critical'
-  assignee: {
-    name: string
-    avatar: string
-    email: string
-  }
-  metrics: {
-    views: number
-    likes: number
-    shares: number
-    completion: number
-  }
-  tags: string[]
-  createdAt: string
-  updatedAt: string
-  dueDate?: string
-  thumbnail?: string
-  content?: {
-    summary: string
-    details: string
-    attachments?: Array<{
-      name: string
-      type: string
-      size: string
-      url: string
-    }>
-  }
-}
-
-export interface ViewProps {
-  data: DataItem[]
-  onItemSelect: (item: DataItem) => void
-  selectedItem: DataItem | null
-  isGrid?: boolean
-}
-````
-
-## File: postcss.config.js
-````javascript
-export default {
-  plugins: {
-    tailwindcss: {},
-    autoprefixer: {},
-  },
-}
-````
-
-## File: src/lib/utils.ts
-````typescript
-import { type ClassValue, clsx } from "clsx"
-import { twMerge } from "tailwind-merge"
-
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
-}
-
-export const SIDEBAR_STATES = {
-  HIDDEN: 'hidden',
-  COLLAPSED: 'collapsed', 
-  EXPANDED: 'expanded',
-  PEEK: 'peek'
-} as const
-
-export const BODY_STATES = {
-  NORMAL: 'normal',
-  FULLSCREEN: 'fullscreen',
-  SIDE_PANE: 'side_pane',
-  SPLIT_VIEW: 'split_view'
-} as const
-
-export type SidebarState = typeof SIDEBAR_STATES[keyof typeof SIDEBAR_STATES]
-export type BodyState = typeof BODY_STATES[keyof typeof BODY_STATES]
 ````
 
 ## File: tsconfig.json

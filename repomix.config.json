@@ -42,7 +42,8 @@
     "src/lib/utils.ts",
     "src/pages/DataDemo/utils.ts",
     "src/pages/DataDemo/components/EmptyState.tsx",
-    "src/pages/DataDemo/components/DataViewModeSelector.tsx"
+    "src/pages/DataDemo/components/DataViewModeSelector.tsx",
+    "src/pages/DataDemo/data"
     // "src/App.tsx",
     // "src/components/layout/AppShell.tsx",
     // "src/components/layout/EnhancedSidebar.tsx",

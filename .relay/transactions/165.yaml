@@ -1,0 +1,523 @@
+uuid: 44b76c8c-6872-4d22-b5cc-7deebc54be60
+projectId: jeli-app-shell
+createdAt: '2025-10-12T09:47:34.840Z'
+gitCommitMsg: >-
+  feat(DataDemo): replace stat card with animated line chart component
+
+  Introduces a new `StatChartCard` component that renders an SVG line chart with
+  a gradient fill and GSAP-powered animations.
+
+  This new component replaces the "Active Projects" stat card on the Data
+  Showcase page, providing a more dynamic and visually appealing representation
+  of trend data. The page's data structure and rendering logic have been updated
+  to conditionally display either a standard stat card or the new chart card.
+promptSummary: Replace a stat card on the Data Demo page with a real line chart.
+reasoning:
+  - >-
+    I will replace one of the statistic cards on the data demonstration page
+    with a dynamic line chart to provide a more visually engaging data
+    representation.
+  - >-
+    First, I will create a new reusable component, `StatChartCard.tsx`, which
+    will render a styled SVG line chart. This component will handle data
+    normalization, path generation for the line and gradient area, and will
+    include an entry animation using GSAP for a polished effect.
+  - >-
+    Next, I will modify the `DataDemoPage` component in
+    `src/pages/DataDemo/index.tsx`. I will update the `stats` data structure to
+    differentiate between a standard stat card and the new chart card.
+    Specifically, the "Active Projects" statistic will be enhanced with mock
+    trend data.
+  - >-
+    Finally, within the rendering logic, I will introduce a condition that maps
+    over the stats and renders the new `StatChartCard` for the designated chart
+    item, while continuing to render the standard `Card` for the others. This
+    will seamlessly integrate the line chart into the existing layout.
+  - '### 1. Create the new chart card component'
+  - >-
+    I'll start by creating the `StatChartCard.tsx` component. This component
+    will contain the logic for rendering the SVG line chart.
+  - '### 2. Update the Data Demo page'
+  - Now, I'll update `DataDemo/index.tsx` to use this new chart component.
+operations:
+  - type: write
+    path: src/pages/DataDemo/components/StatChartCard.tsx
+    content: >-
+      import React, { useLayoutEffect, useRef } from 'react'
+
+      import { gsap } from 'gsap'
+
+      import { cn } from '@/lib/utils'
+
+      import { Card } from '@/components/ui/card'
+
+
+      interface StatChartCardProps {
+        title: string
+        value: string
+        change: string
+        trend: 'up' | 'down'
+        icon: React.ReactNode
+        chartData: number[]
+      }
+
+
+      export function StatChartCard({ title, value, change, trend, icon,
+      chartData }: StatChartCardProps) {
+        const chartRef = useRef<SVGSVGElement>(null)
+
+        useLayoutEffect(() => {
+          if (chartRef.current) {
+            const line = chartRef.current.querySelector('.chart-line')
+            const area = chartRef.current.querySelector('.chart-area')
+            if (line instanceof SVGPathElement && area) {
+              const length = line.getTotalLength()
+              gsap.set(line, { strokeDasharray: length, strokeDashoffset: length })
+              gsap.to(line, { strokeDashoffset: 0, duration: 1.5, ease: 'power2.inOut' })
+              gsap.fromTo(area, { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 1, ease: 'power2.out', delay: 0.5 })
+            }
+          }
+        }, [chartData])
+
+        // SVG dimensions
+        const width = 150
+        const height = 60
+
+        // Normalize data
+        const max = Math.max(...chartData)
+        const min = Math.min(...chartData)
+        const range = max - min === 0 ? 1 : max - min
+        
+        const points = chartData
+          .map((val, i) => {
+            const x = (i / (chartData.length - 1)) * width
+            const y = height - ((val - min) / range) * (height - 10) + 5 // Add vertical padding
+            return `${x},${y}`
+          })
+        
+        const linePath = "M" + points.join(" L");
+        const areaPath = `${linePath} L${width},${height} L0,${height} Z`
+
+        return (
+          <Card className="p-6 border-border/50 hover:border-primary/30 transition-all duration-300 group cursor-pointer flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between">
+                <div className="p-3 bg-primary/10 rounded-full group-hover:bg-primary/20 transition-colors">
+                  {icon}
+                </div>
+                <div className={cn(
+                  "text-sm font-medium",
+                  trend === 'up' ? "text-green-600" : "text-red-600"
+                )}>
+                  {change}
+                </div>
+              </div>
+              <div className="mt-4">
+                <h3 className="text-2xl font-bold">{value}</h3>
+                <p className="text-sm text-muted-foreground mt-1">{title}</p>
+              </div>
+            </div>
+            <div className="mt-4 -mb-2 -mx-2">
+              <svg ref={chartRef} viewBox={`0 0 ${width} ${height}`} className="w-full h-auto" preserveAspectRatio="none">
+                <defs>
+                  <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" className="text-primary" stopColor="currentColor" stopOpacity={0.3} />
+                    <stop offset="100%" className="text-primary" stopColor="currentColor" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <path
+                  className="chart-area"
+                  d={areaPath}
+                  fill="url(#chartGradient)"
+                />
+                <path
+                  className="chart-line"
+                  d={linePath}
+                  fill="none"
+                  stroke="hsl(var(--primary))"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </div>
+          </Card>
+        )
+      }
+    patchStrategy: replace
+  - type: write
+    path: src/pages/DataDemo/index.tsx
+    content: >+
+      --- src/pages/DataDemo/index.tsx
+
+      +++ src/pages/DataDemo/index.tsx
+
+      @@ -10,10 +10,31 @@
+       import { DataCardView } from './components/DataCardView'
+       import { DataTableView } from './components/DataTableView'
+       import { DataDetailPanel } from './components/DataDetailPanel'
+      +import { StatChartCard } from './components/StatChartCard'
+       import { useAppShell } from '@/context/AppShellContext'
+       import { mockDataItems } from './data/mockData'
+       import { Card } from '@/components/ui/card'
+       import type { DataItem, ViewMode } from './types'
+       
+      +type Stat = {
+
+      +  title: string;
+
+      +  value: string;
+
+      +  icon: React.ReactNode;
+
+      +  change: string;
+
+      +  trend: 'up' | 'down';
+
+      +  type?: 'card';
+
+      +};
+
+      +
+
+      +type ChartStat = {
+
+      +  title: string;
+
+      +  value: string;
+
+      +  icon: React.ReactNode;
+
+      +  change: string;
+
+      +  trend: 'up' | 'down';
+
+      +  type: 'chart';
+
+      +  chartData: number[];
+
+      +};
+
+      +
+
+      +type StatItem = Stat | ChartStat;
+
+      +
+       export default function DataDemoPage() {
+         const [viewMode, setViewMode] = useState<ViewMode>('list')
+         const [selectedItem, setSelectedItem] = useState<DataItem | null>(null)
+      @@ -27,7 +48,7 @@
+           mockDataItems.reduce((acc, item) => acc + item.metrics.completion, 0) / totalItems
+         ) : 0
+       
+      -  const stats = [
+
+      +  const stats: StatItem[] = [
+           {
+             title: "Total Projects",
+             value: totalItems.toString(),
+      @@ -39,7 +60,9 @@
+             title: "Active Projects",
+             value: activeItems.toString(),
+             icon: <PlayCircle className="w-5 h-5" />,
+      -      change: "+2 this week",
+
+      -      trend: "up" as const
+
+      +      change: "+2 this week", 
+
+      +      trend: "up" as const,
+
+      +      type: 'chart',
+
+      +      chartData: [45, 50, 48, 55, 53, 60, 58]
+           },
+           {
+             title: "High Priority",
+      @@ -95,24 +118,37 @@
+       
+               {/* Stats Section */}
+               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      -          {stats.map((stat) => (
+
+      -            <Card
+
+      -              key={stat.title}
+
+      -              className="p-6 border-border/50 hover:border-primary/30
+      transition-all duration-300 group cursor-pointer"
+
+      -            >
+
+      -              <div className="flex items-center justify-between">
+
+      -                <div className="p-3 bg-primary/10 rounded-full
+      group-hover:bg-primary/20 transition-colors">
+
+      -                  {stat.icon}
+
+      +          {stats.map((stat) => {
+
+      +            if (stat.type === 'chart') {
+
+      +              return (
+
+      +                <StatChartCard
+
+      +                  key={stat.title}
+
+      +                  title={stat.title}
+
+      +                  value={stat.value}
+
+      +                  change={stat.change}
+
+      +                  trend={stat.trend}
+
+      +                  icon={stat.icon}
+
+      +                  chartData={stat.chartData}
+
+      +                />
+
+      +              )
+
+      +            }
+
+      +            return (
+
+      +              <Card
+
+      +                key={stat.title}
+
+      +                className="p-6 border-border/50 hover:border-primary/30
+      transition-all duration-300 group cursor-pointer"
+
+      +              >
+
+      +                <div className="flex items-center justify-between">
+
+      +                  <div className="p-3 bg-primary/10 rounded-full
+      group-hover:bg-primary/20 transition-colors">
+
+      +                    {stat.icon}
+
+      +                  </div>
+
+      +                  <div className={cn("text-sm font-medium", stat.trend
+      === 'up' ? "text-green-600" : "text-red-600")}>
+
+      +                    {stat.change}
+
+      +                  </div>
+                       </div>
+      -                <div className={cn(
+
+      -                  "text-sm font-medium",
+
+      -                  stat.trend === 'up' ? "text-green-600" : "text-red-600"
+
+      -                )}>
+
+      -                  {stat.change}
+
+      +                <div className="mt-4">
+
+      +                  <h3 className="text-2xl font-bold">{stat.value}</h3>
+
+      +                  <p className="text-sm text-muted-foreground
+      mt-1">{stat.title}</p>
+                       </div>
+      -              </div>
+
+      -              <div className="mt-4">
+
+      -                <h3 className="text-2xl font-bold">{stat.value}</h3>
+
+      -                <p className="text-sm text-muted-foreground
+      mt-1">{stat.title}</p>
+
+      -              </div>
+
+      -            </Card>
+
+      -          ))}
+
+      +              </Card>
+
+      +            )
+
+      +          })}
+               </div>
+       
+               <div ref={contentRef} className="min-h-[500px]">
+
+    patchStrategy: standard-diff
+snapshot:
+  src/pages/DataDemo/components/StatChartCard.tsx: null
+  src/pages/DataDemo/index.tsx: |-
+    import { useState, useRef } from 'react'
+    import { 
+      Layers, 
+      AlertTriangle, 
+      PlayCircle, 
+      TrendingUp 
+    } from 'lucide-react'
+    import { cn } from '@/lib/utils'
+    import { PageLayout } from '@/components/shared/PageLayout'
+    import { DataViewModeSelector } from './components/DataViewModeSelector'
+    import { DataListView } from './components/DataListView'
+    import { DataCardView } from './components/DataCardView'
+    import { DataTableView } from './components/DataTableView'
+    import { DataDetailPanel } from './components/DataDetailPanel'
+    import { useAppShell } from '@/context/AppShellContext'
+    import { mockDataItems } from './data/mockData'
+    import { Card } from '@/components/ui/card'
+    import type { DataItem, ViewMode } from './types'
+
+    export default function DataDemoPage() {
+      const [viewMode, setViewMode] = useState<ViewMode>('list')
+      const [selectedItem, setSelectedItem] = useState<DataItem | null>(null)
+      const [searchTerm, setSearchTerm] = useState('')
+      const contentRef = useRef<HTMLDivElement>(null)
+      const { openSidePane } = useAppShell()
+
+      // Calculate stats from data
+      const totalItems = mockDataItems.length
+      const activeItems = mockDataItems.filter(item => item.status === 'active').length
+      const highPriorityItems = mockDataItems.filter(item => item.priority === 'high' || item.priority === 'critical').length
+      const avgCompletion = totalItems > 0 ? Math.round(
+        mockDataItems.reduce((acc, item) => acc + item.metrics.completion, 0) / totalItems
+      ) : 0
+
+      const stats = [
+        {
+          title: "Total Projects",
+          value: totalItems.toString(),
+          icon: <Layers className="w-5 h-5" />,
+          change: "+5.2% this month",
+          trend: "up" as const
+        },
+        {
+          title: "Active Projects",
+          value: activeItems.toString(),
+          icon: <PlayCircle className="w-5 h-5" />,
+          change: "+2 this week",
+          trend: "up" as const
+        },
+        {
+          title: "High Priority",
+          value: highPriorityItems.toString(),
+          icon: <AlertTriangle className="w-5 h-5" />,
+          change: "-1 from last week",
+          trend: "down" as const
+        },
+        {
+          title: "Avg. Completion",
+          value: `${avgCompletion}%`,
+          icon: <TrendingUp className="w-5 h-5" />,
+          change: "+3.2%",
+          trend: "up" as const
+        }
+      ]
+
+      // Filter data based on search
+      const filteredData = mockDataItems.filter(item =>
+        item.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.category.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+
+      // Handle item selection and open side panel
+      const handleItemSelect = (item: DataItem) => {
+        setSelectedItem(item)
+        openSidePane('data-details')
+      }
+
+      const renderView = () => {
+        const commonProps = {
+          data: filteredData,
+          onItemSelect: handleItemSelect,
+          selectedItem
+        }
+
+        switch (viewMode) {
+          case 'list':
+            return <DataListView {...commonProps} />
+          case 'cards':
+            return <DataCardView {...commonProps} />
+          case 'grid':
+            return <DataCardView {...commonProps} isGrid />
+          case 'table':
+            return <DataTableView {...commonProps} />
+          default:
+            return <DataListView {...commonProps} />
+        }
+      }
+
+      return (
+        <PageLayout
+          // Note: Search functionality is handled by a separate SearchBar in the TopBar
+        >
+          <div className="space-y-8">
+            {/* Header */}
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div>
+                <h1 className="text-2xl font-bold tracking-tight">Data Showcase</h1>
+                <p className="text-muted-foreground">
+                  Showing {filteredData.length} of {mockDataItems.length} items
+                </p>
+              </div>
+              <DataViewModeSelector 
+                viewMode={viewMode} 
+                onChange={setViewMode}
+              />
+            </div>
+
+            {/* Stats Section */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {stats.map((stat) => (
+                <Card
+                  key={stat.title}
+                  className="p-6 border-border/50 hover:border-primary/30 transition-all duration-300 group cursor-pointer"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="p-3 bg-primary/10 rounded-full group-hover:bg-primary/20 transition-colors">
+                      {stat.icon}
+                    </div>
+                    <div className={cn(
+                      "text-sm font-medium",
+                      stat.trend === 'up' ? "text-green-600" : "text-red-600"
+                    )}>
+                      {stat.change}
+                    </div>
+                  </div>
+                  <div className="mt-4">
+                    <h3 className="text-2xl font-bold">{stat.value}</h3>
+                    <p className="text-sm text-muted-foreground mt-1">{stat.title}</p>
+                  </div>
+                </Card>
+              ))}
+            </div>
+
+            <div ref={contentRef} className="min-h-[500px]">
+              {renderView()}
+            </div>
+
+          </div>
+
+          {/* Detail Panel */}
+          <DataDetailPanel 
+            item={selectedItem}
+            onClose={() => setSelectedItem(null)}
+          />
+        </PageLayout>
+      )
+    }
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 165
