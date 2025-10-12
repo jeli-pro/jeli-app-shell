@@ -3024,7 +3024,9 @@ import {
   SplitSquareHorizontal,
   Maximize,
   Minimize,
-  Layers
+  Layers,
+  X,
+  ArrowLeftRight
 } from 'lucide-react'
 
 const pageToPaneMap: Record<ActivePage, AppShellState['sidePaneContent']> = {
@@ -3043,8 +3045,9 @@ export function ViewModeSwitcher({ pane }: { pane?: 'main' | 'right' }) {
     toggleFullscreen,
     toggleSplitView,
     fullscreenTarget,
+    dispatch,
   } = useAppShell()
-  const { activePage } = useAppStore()
+  const { activePage, setActivePage } = useAppStore()
 
   const isFullscreen = bodyState === BODY_STATES.FULLSCREEN;
   const isThisPaneFullscreen = isFullscreen && (
@@ -3068,6 +3071,40 @@ export function ViewModeSwitcher({ pane }: { pane?: 'main' | 'right' }) {
       const paneContent = pageToPaneMap[activePage] || 'details';
       if (pane === 'right') return; // Don't allow splitting from a side pane in this simple case
       toggleSplitView(paneContent);
+  }
+
+  const handleSwitchPanes = () => {
+    if (bodyState !== BODY_STATES.SPLIT_VIEW) return;
+
+    // 1. Get current active page's corresponding pane content
+    const newSidePaneContent = pageToPaneMap[activePage];
+
+    // 2. Find the page that corresponds to the current side pane content
+    const newActivePage = Object.entries(pageToPaneMap).find(
+      ([, value]) => value === sidePaneContent
+    )?.[0] as ActivePage | undefined;
+
+    if (newActivePage && newSidePaneContent) {
+      // 3. Swap them
+      setActivePage(newActivePage);
+      dispatch({ type: 'SET_SIDE_PANE_CONTENT', payload: newSidePaneContent });
+    }
+  };
+
+  const handleClosePane = () => {
+    if (bodyState !== BODY_STATES.SPLIT_VIEW) return;
+    if (pane === 'right') {
+      closeSidePane();
+    } else if (pane === 'main') {
+      const pageToBecomeActive = Object.entries(pageToPaneMap).find(
+        ([, value]) => value === sidePaneContent
+      )?.[0] as ActivePage | undefined;
+      
+      if (pageToBecomeActive) {
+        setActivePage(pageToBecomeActive);
+      }
+      closeSidePane();
+    }
   }
 
   return (
@@ -3125,6 +3162,24 @@ export function ViewModeSwitcher({ pane }: { pane?: 'main' | 'right' }) {
           <Maximize className="w-4 h-4" />
         )}
       </button>
+      {bodyState === BODY_STATES.SPLIT_VIEW && (
+        <button
+          onClick={handleSwitchPanes}
+          className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+          title="Switch Panes"
+        >
+          <ArrowLeftRight className="w-4 h-4" />
+        </button>
+      )}
+      {bodyState === BODY_STATES.SPLIT_VIEW && (
+        <button
+          onClick={handleClosePane}
+          className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-destructive/20 transition-colors group"
+          title="Close Pane"
+        >
+          <X className="w-4 h-4 text-muted-foreground group-hover:text-destructive" />
+        </button>
+      )}
     </div>
   )
 }
@@ -4467,127 +4522,6 @@ const AppMenuItem: React.FC<AppMenuItemProps> = ({ icon: Icon, label, badge, has
 };
 ````
 
-## File: src/hooks/useAppShellAnimations.hook.ts
-````typescript
-import { useEffect } from 'react';
-import { gsap } from 'gsap';
-import { useAppShell } from '@/context/AppShellContext';
-import { SIDEBAR_STATES, BODY_STATES } from '@/lib/utils';
-
-export function useSidebarAnimations(
-  sidebarRef: React.RefObject<HTMLDivElement>,
-  resizeHandleRef: React.RefObject<HTMLDivElement>
-) {
-  const { sidebarState, sidebarWidth, bodyState, reducedMotion } = useAppShell();
-  const animationDuration = reducedMotion ? 0.1 : 0.4;
-
-  useEffect(() => {
-    if (!sidebarRef.current || !resizeHandleRef.current) return;
-
-    const sidebar = sidebarRef.current;
-    const handle = resizeHandleRef.current;
-    
-    let targetWidth = 0;
-    let targetOpacity = 1;
-
-    if (bodyState === BODY_STATES.FULLSCREEN) {
-      targetWidth = 0;
-      targetOpacity = 0;
-    } else {
-      switch (sidebarState) {
-        case SIDEBAR_STATES.HIDDEN:
-          targetWidth = 0;
-          targetOpacity = 0;
-          break;
-        case SIDEBAR_STATES.COLLAPSED:
-          targetWidth = 64;
-          targetOpacity = 1;
-          break;
-        case SIDEBAR_STATES.EXPANDED:
-          targetWidth = sidebarWidth;
-          targetOpacity = 1;
-          break;
-        case SIDEBAR_STATES.PEEK:
-          targetWidth = sidebarWidth * 0.8;
-          targetOpacity = 0.95;
-          break;
-      }
-    }
-
-    const tl = gsap.timeline({ ease: "power3.out" });
-    
-    tl.to(sidebar, {
-      width: targetWidth,
-      opacity: targetOpacity,
-      duration: animationDuration,
-    });
-    tl.to(handle, {
-      left: targetWidth,
-      duration: animationDuration,
-    }, 0);
-
-  }, [sidebarState, sidebarWidth, bodyState, animationDuration, sidebarRef, resizeHandleRef]);
-}
-
-export function useBodyStateAnimations(
-  appRef: React.RefObject<HTMLDivElement>,
-  mainContentRef: React.RefObject<HTMLDivElement>,
-  rightPaneRef: React.RefObject<HTMLDivElement>,
-  topBarContainerRef: React.RefObject<HTMLDivElement>,
-  mainAreaRef: React.RefObject<HTMLDivElement>
-) {
-  const { bodyState, reducedMotion, rightPaneWidth, isTopBarVisible, closeSidePane, fullscreenTarget } = useAppShell();
-  const animationDuration = reducedMotion ? 0.1 : 0.4;
-
-  useEffect(() => {
-    if (!mainContentRef.current || !rightPaneRef.current || !topBarContainerRef.current || !mainAreaRef.current) return;
-
-    const ease = "power3.out";
-    const isFullscreen = bodyState === BODY_STATES.FULLSCREEN;
-    const isSidePane = bodyState === BODY_STATES.SIDE_PANE;
-    const isSplitView = bodyState === BODY_STATES.SPLIT_VIEW;
-
-    // Right pane animation
-    gsap.to(rightPaneRef.current, {
-      width: isFullscreen 
-        ? (fullscreenTarget === 'right' ? '100%' : 0) 
-        : (isSidePane || isSplitView ? rightPaneWidth : 0),
-      x: (isSidePane || isSplitView || (isFullscreen && fullscreenTarget === 'right')) ? 0 : rightPaneWidth + 5, // +5 to hide border
-      duration: animationDuration,
-      ease,
-    });
-
-    gsap.to(mainContentRef.current, {
-      paddingTop: isFullscreen ? '0rem' : isTopBarVisible ? '5rem' : '0rem', // h-20 is 5rem
-      duration: animationDuration,
-      ease,
-    });
-
-    gsap.to(topBarContainerRef.current, {
-      y: (isFullscreen || !isTopBarVisible) ? '-100%' : '0%',
-      duration: animationDuration,
-      ease,
-    });
-    
-    // Add backdrop for side pane
-    const backdrop = document.querySelector('.app-backdrop');
-    if (isSidePane) { // This is correct because isSidePane is false when bodyState is split_view
-      if (!backdrop) {
-        const el = document.createElement('div');
-        el.className = 'app-backdrop fixed inset-0 bg-black/30 z-[55]';
-        appRef.current?.appendChild(el);
-        gsap.fromTo(el, { opacity: 0 }, { opacity: 1, duration: animationDuration });
-        el.onclick = () => closeSidePane();
-      }
-    } else {
-      if (backdrop) {
-        gsap.to(backdrop, { opacity: 0, duration: animationDuration, onComplete: () => backdrop.remove() });
-      }
-    }
-  }, [bodyState, animationDuration, rightPaneWidth, closeSidePane, isTopBarVisible, appRef, mainContentRef, rightPaneRef, topBarContainerRef, mainAreaRef, fullscreenTarget]);
-}
-````
-
 ## File: src/hooks/useAutoAnimateTopBar.ts
 ````typescript
 import { useRef, useCallback, useEffect } from 'react';
@@ -5230,6 +5164,171 @@ export function DashboardContent({ isInSidePane = false }: DashboardContentProps
 }
 ````
 
+## File: src/hooks/useAppShellAnimations.hook.ts
+````typescript
+import { useEffect } from 'react';
+import { gsap } from 'gsap';
+import { useAppShell } from '@/context/AppShellContext';
+import { SIDEBAR_STATES, BODY_STATES } from '@/lib/utils';
+
+export function useSidebarAnimations(
+  sidebarRef: React.RefObject<HTMLDivElement>,
+  resizeHandleRef: React.RefObject<HTMLDivElement>
+) {
+  const { sidebarState, sidebarWidth, bodyState, reducedMotion } = useAppShell();
+  const animationDuration = reducedMotion ? 0.1 : 0.4;
+
+  useEffect(() => {
+    if (!sidebarRef.current || !resizeHandleRef.current) return;
+
+    const sidebar = sidebarRef.current;
+    const handle = resizeHandleRef.current;
+    
+    let targetWidth = 0;
+    let targetOpacity = 1;
+
+    if (bodyState === BODY_STATES.FULLSCREEN) {
+      targetWidth = 0;
+      targetOpacity = 0;
+    } else {
+      switch (sidebarState) {
+        case SIDEBAR_STATES.HIDDEN:
+          targetWidth = 0;
+          targetOpacity = 0;
+          break;
+        case SIDEBAR_STATES.COLLAPSED:
+          targetWidth = 64;
+          targetOpacity = 1;
+          break;
+        case SIDEBAR_STATES.EXPANDED:
+          targetWidth = sidebarWidth;
+          targetOpacity = 1;
+          break;
+        case SIDEBAR_STATES.PEEK:
+          targetWidth = sidebarWidth * 0.8;
+          targetOpacity = 0.95;
+          break;
+      }
+    }
+
+    const tl = gsap.timeline({ ease: "power3.out" });
+    
+    tl.to(sidebar, {
+      width: targetWidth,
+      opacity: targetOpacity,
+      duration: animationDuration,
+    });
+    tl.to(handle, {
+      left: targetWidth,
+      duration: animationDuration,
+    }, 0);
+
+  }, [sidebarState, sidebarWidth, bodyState, animationDuration, sidebarRef, resizeHandleRef]);
+}
+
+export function useBodyStateAnimations(
+  appRef: React.RefObject<HTMLDivElement>,
+  mainContentRef: React.RefObject<HTMLDivElement>,
+  rightPaneRef: React.RefObject<HTMLDivElement>,
+  topBarContainerRef: React.RefObject<HTMLDivElement>,
+  mainAreaRef: React.RefObject<HTMLDivElement>
+) {
+  const { bodyState, reducedMotion, rightPaneWidth, isTopBarVisible, closeSidePane, fullscreenTarget } = useAppShell();
+  const animationDuration = reducedMotion ? 0.1 : 0.4;
+
+  useEffect(() => {
+    if (!mainContentRef.current || !rightPaneRef.current || !topBarContainerRef.current || !mainAreaRef.current) return;
+
+    const ease = "power3.out";
+    const isFullscreen = bodyState === BODY_STATES.FULLSCREEN;
+    const isSidePane = bodyState === BODY_STATES.SIDE_PANE;
+    const isSplitView = bodyState === BODY_STATES.SPLIT_VIEW;
+
+    // Right pane animation
+    gsap.to(rightPaneRef.current, {
+      width: isFullscreen 
+        ? (fullscreenTarget === 'right' ? '100%' : 0) 
+        : (isSidePane || isSplitView ? rightPaneWidth : 0),
+      x: (isSidePane || isSplitView || (isFullscreen && fullscreenTarget === 'right')) ? 0 : rightPaneWidth + 5, // +5 to hide border
+      duration: animationDuration,
+      ease,
+    });
+
+    gsap.to(mainContentRef.current, {
+      paddingTop: isFullscreen ? '0rem' : isTopBarVisible ? '5rem' : '0rem', // h-20 is 5rem
+      duration: animationDuration,
+      ease,
+    });
+
+    gsap.to(topBarContainerRef.current, {
+      y: (isFullscreen || !isTopBarVisible) ? '-100%' : '0%',
+      duration: animationDuration,
+      ease,
+    });
+    
+    // Add backdrop for side pane
+    const backdrop = document.querySelector('.app-backdrop');
+    if (isSidePane) { // This is correct because isSidePane is false when bodyState is split_view
+      if (!backdrop) {
+        const el = document.createElement('div');
+        el.className = 'app-backdrop fixed inset-0 bg-black/30 z-[55]';
+        appRef.current?.appendChild(el);
+        gsap.fromTo(el, { opacity: 0 }, { opacity: 1, duration: animationDuration });
+        el.onclick = () => closeSidePane();
+      }
+    } else {
+      if (backdrop) {
+        gsap.to(backdrop, { opacity: 0, duration: animationDuration, onComplete: () => backdrop.remove() });
+      }
+    }
+  }, [bodyState, animationDuration, rightPaneWidth, closeSidePane, isTopBarVisible, appRef, mainContentRef, rightPaneRef, topBarContainerRef, mainAreaRef, fullscreenTarget]);
+}
+````
+
+## File: vite.config.ts
+````typescript
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+import { fileURLToPath, URL } from 'url'
+import { resolve } from 'path'
+import pkg from './package.json' with { type: 'json' }
+
+// https://vitejs.dev/config/
+export default defineConfig({
+  plugins: [react()],
+  resolve: {
+    alias: {
+      "@": fileURLToPath(new URL('./src', import.meta.url)),
+    },
+  },
+  build: {
+    lib: {
+      entry: resolve(__dirname, 'src/index.ts'),
+      name: 'JeliAppShell',
+      fileName: (format) => `jeli-app-shell.${format}.js`,
+    },
+    rollupOptions: {
+      // make sure to externalize deps that shouldn't be bundled
+      // into your library
+      external: Object.keys(pkg.peerDependencies || {}),
+      output: {
+        // Provide global variables to use in the UMD build
+        // for externalized deps
+        globals: {
+          react: 'React',
+          'react-dom': 'ReactDOM',
+          tailwindcss: 'tailwindcss',
+          gsap: 'gsap',
+          'lucide-react': 'lucide-react',
+          zustand: 'zustand',
+          sonner: 'sonner'
+        },
+      },
+    },
+  },
+})
+````
+
 ## File: src/components/layout/MainContent.tsx
 ````typescript
 import { forwardRef } from 'react'
@@ -5256,8 +5355,8 @@ export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
       <div
         ref={ref}
         className={cn(
-        "flex flex-col h-full overflow-hidden",
-        isFullscreen && "absolute inset-0 z-40 bg-background"
+        "flex flex-col h-full overflow-hidden bg-background",
+        isFullscreen && "fixed inset-0 z-[60]"
         )}
       >
         {isFullscreen && (
@@ -5329,8 +5428,7 @@ export function TopBar({
 
   return (
     <div className={cn(
-      "h-20 bg-background border-b border-border flex items-center justify-between px-6 z-50 gap-4",
-      'transition-all duration-300 ease-in-out'
+      "h-20 bg-background border-b border-border flex items-center justify-between px-6 z-50 gap-4"
     )}>
       {/* Left Section - Sidebar Controls & Breadcrumbs */}
       <div className="flex items-center gap-4">
@@ -5402,126 +5500,6 @@ export function TopBar({
     </div>
   )
 }
-````
-
-## File: vite.config.ts
-````typescript
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-import { fileURLToPath, URL } from 'url'
-import { resolve } from 'path'
-import pkg from './package.json' with { type: 'json' }
-
-// https://vitejs.dev/config/
-export default defineConfig({
-  plugins: [react()],
-  resolve: {
-    alias: {
-      "@": fileURLToPath(new URL('./src', import.meta.url)),
-    },
-  },
-  build: {
-    lib: {
-      entry: resolve(__dirname, 'src/index.ts'),
-      name: 'JeliAppShell',
-      fileName: (format) => `jeli-app-shell.${format}.js`,
-    },
-    rollupOptions: {
-      // make sure to externalize deps that shouldn't be bundled
-      // into your library
-      external: Object.keys(pkg.peerDependencies || {}),
-      output: {
-        // Provide global variables to use in the UMD build
-        // for externalized deps
-        globals: {
-          react: 'React',
-          'react-dom': 'ReactDOM',
-          tailwindcss: 'tailwindcss',
-          gsap: 'gsap',
-          'lucide-react': 'lucide-react',
-          zustand: 'zustand',
-          sonner: 'sonner'
-        },
-      },
-    },
-  },
-})
-````
-
-## File: src/components/layout/RightPane.tsx
-````typescript
-import { forwardRef, type ReactNode } from 'react'
-import { ChevronRight, X } from 'lucide-react'
-import { cn, BODY_STATES } from '@/lib/utils'
-import { useAppShell } from '@/context/AppShellContext'
-
-interface RightPaneProps {
-  children?: ReactNode
-  header?: ReactNode
-  className?: string
-}
-
-export const RightPane = forwardRef<HTMLDivElement, RightPaneProps>(({ children, header, className }, ref) => {
-  const { closeSidePane, dispatch, bodyState, fullscreenTarget, toggleFullscreen } = useAppShell();
-  const isSplitView = bodyState === BODY_STATES.SPLIT_VIEW;
-  const isFullscreen = bodyState === BODY_STATES.FULLSCREEN;
-
-  if (isFullscreen && fullscreenTarget !== 'right') {
-    return null;
-  }
-
-  return (
-    <aside
-      ref={ref}
-      className={cn(
-        "border-l border-border flex flex-col h-full overflow-hidden",
-        isSplitView && "relative bg-background",
-        !isSplitView && !isFullscreen && "fixed top-0 right-0 z-[60] bg-card",
-        isFullscreen && fullscreenTarget === 'right' && "absolute inset-0 z-50 bg-card",
-        className,
-      )}
-    >
-      {isFullscreen && fullscreenTarget === 'right' && (
-        <button
-          onClick={() => toggleFullscreen()}
-          className="fixed top-6 right-6 lg:right-12 z-[100] h-12 w-12 flex items-center justify-center rounded-full bg-card/50 backdrop-blur-sm hover:bg-card/75 transition-colors group"
-          title="Exit Fullscreen"
-        >
-          <X className="w-6 h-6 group-hover:scale-110 group-hover:rotate-90 transition-all duration-300" />
-        </button>
-      )}
-      {bodyState !== BODY_STATES.SPLIT_VIEW && !isFullscreen && (
-        <button
-          onClick={closeSidePane}
-          className="absolute top-1/2 -left-px -translate-y-1/2 -translate-x-full w-8 h-16 bg-card border border-r-0 border-border rounded-l-lg flex items-center justify-center hover:bg-accent transition-colors group z-10"
-          title="Close pane"
-        >
-          <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-foreground transition-colors" />
-        </button>
-      )}
-      <div 
-        className={cn(
-          "absolute top-0 left-0 w-2 h-full bg-transparent hover:bg-primary/20 cursor-col-resize z-50 transition-colors duration-200 group -translate-x-1/2"
-        )}
-        onMouseDown={(e) => {
-          e.preventDefault()
-          dispatch({ type: 'SET_IS_RESIZING_RIGHT_PANE', payload: true });
-        }}
-      >
-        <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200 mx-auto" />
-      </div>
-      {header && (
-        <div className="flex items-center justify-between p-4 border-b border-border h-20 flex-shrink-0 pl-6">
-          {header}
-        </div>
-      )}
-      <div className={cn("flex-1 overflow-y-auto", bodyState === BODY_STATES.SIDE_PANE && "px-8 py-6")}>
-        {children}
-      </div>
-    </aside>
-  )
-})
-RightPane.displayName = "RightPane"
 ````
 
 ## File: src/index.css
@@ -5941,6 +5919,82 @@ Contributions are welcome! Please read our [contributing guidelines](./CONTRIBUT
 ## License
 
 This project is licensed under the **MIT License**. See the [LICENSE](./LICENSE) file for details.
+````
+
+## File: src/components/layout/RightPane.tsx
+````typescript
+import { forwardRef, type ReactNode } from 'react'
+import { ChevronRight, X } from 'lucide-react'
+import { cn, BODY_STATES } from '@/lib/utils'
+import { useAppShell } from '@/context/AppShellContext'
+
+interface RightPaneProps {
+  children?: ReactNode
+  header?: ReactNode
+  className?: string
+}
+
+export const RightPane = forwardRef<HTMLDivElement, RightPaneProps>(({ children, header, className }, ref) => {
+  const { closeSidePane, dispatch, bodyState, fullscreenTarget, toggleFullscreen } = useAppShell();
+  const isSplitView = bodyState === BODY_STATES.SPLIT_VIEW;
+  const isFullscreen = bodyState === BODY_STATES.FULLSCREEN;
+
+  if (isFullscreen && fullscreenTarget !== 'right') {
+    return null;
+  }
+
+  return (
+    <aside
+      ref={ref}
+      className={cn(
+        "border-l border-border flex flex-col h-full overflow-hidden",
+        isSplitView && "relative bg-background",
+        !isSplitView && !isFullscreen && "fixed top-0 right-0 z-[60] bg-card", // side pane overlay
+        isFullscreen && fullscreenTarget === 'right' && "fixed inset-0 z-[60] bg-card", // fullscreen
+        className,
+      )}
+    >
+      {isFullscreen && fullscreenTarget === 'right' && (
+        <button
+          onClick={() => toggleFullscreen()}
+          className="fixed top-6 right-6 lg:right-12 z-[100] h-12 w-12 flex items-center justify-center rounded-full bg-card/50 backdrop-blur-sm hover:bg-card/75 transition-colors group"
+          title="Exit Fullscreen"
+        >
+          <X className="w-6 h-6 group-hover:scale-110 group-hover:rotate-90 transition-all duration-300" />
+        </button>
+      )}
+      {bodyState !== BODY_STATES.SPLIT_VIEW && !isFullscreen && (
+        <button
+          onClick={closeSidePane}
+          className="absolute top-1/2 -left-px -translate-y-1/2 -translate-x-full w-8 h-16 bg-card border border-r-0 border-border rounded-l-lg flex items-center justify-center hover:bg-accent transition-colors group z-10"
+          title="Close pane"
+        >
+          <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-foreground transition-colors" />
+        </button>
+      )}
+      <div 
+        className={cn(
+          "absolute top-0 left-0 w-2 h-full bg-transparent hover:bg-primary/20 cursor-col-resize z-50 transition-colors duration-200 group -translate-x-1/2"
+        )}
+        onMouseDown={(e) => {
+          e.preventDefault()
+          dispatch({ type: 'SET_IS_RESIZING_RIGHT_PANE', payload: true });
+        }}
+      >
+        <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200 mx-auto" />
+      </div>
+      {header && (
+        <div className="flex items-center justify-between p-4 border-b border-border h-20 flex-shrink-0 pl-6">
+          {header}
+        </div>
+      )}
+      <div className={cn("flex-1 overflow-y-auto", bodyState === BODY_STATES.SIDE_PANE && "px-8 py-6")}>
+        {children}
+      </div>
+    </aside>
+  )
+})
+RightPane.displayName = "RightPane"
 ````
 
 ## File: src/context/AppShellContext.tsx

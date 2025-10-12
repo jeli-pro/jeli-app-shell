@@ -1,0 +1,272 @@
+uuid: d8e5e8c4-a3f2-45e3-a609-b6c2306d862e
+projectId: jeli-app-shell
+createdAt: '2025-10-12T04:12:48.791Z'
+gitCommitMsg: >-
+  feat(ViewModeSwitcher): add close button for panes in split view
+
+  Adds a close button to the ViewModeSwitcher component. This button is only
+  visible when the application is in split-view mode.
+
+  - When the right pane's close button is clicked, it closes the right pane and
+  returns to normal view. - When the left pane's close button is clicked, the
+  right pane's content becomes the main content, and the application returns to
+  normal view.
+promptSummary: >-
+  Add a close button to the ViewModeSwitcher component that is only visible in
+  split view mode to allow closing either the left or right pane.
+reasoning:
+  - >-
+    Based on your request, I will add a close button to the `ViewModeSwitcher`
+    component. This button will only be visible in split-view mode and will
+    allow the user to close either the left or right pane.
+  - '### Step 1: Update `ViewModeSwitcher.tsx`'
+  - >-
+    I will modify `src/components/layout/ViewModeSwitcher.tsx` to include the
+    new functionality.
+  - 1.  **Import the `X` icon** from `lucide-react`.
+  - >-
+    2.  **Access `setActivePage`**: I'll destructure the `setActivePage`
+    function from the `useAppStore` hook to change the main content when the
+    left pane is closed.
+  - >-
+    3.  **Implement `handleClosePane` logic**: A new function will be added to
+    handle the close action.
+  - '*   If the right pane is closed, the app will return to the normal view.'
+  - >-
+    *   If the left (main) pane is closed, the content from the right pane will
+    become the new main content, and the app will return to the normal view.
+  - >-
+    4.  **Add the Close Button**: A new button with the `X` icon will be added
+    to the component's JSX. It will be conditionally rendered only when
+    `bodyState` is `split_view`.
+  - >-
+    I have made the necessary changes to the `ViewModeSwitcher` component to
+    include the close button functionality in split-view mode as requested.
+operations:
+  - type: write
+    path: src/components/layout/ViewModeSwitcher.tsx
+    content: >+
+      --- src/components/layout/ViewModeSwitcher.tsx
+
+      +++ src/components/layout/ViewModeSwitcher.tsx
+
+      @@ -7,7 +7,8 @@
+         SplitSquareHorizontal,
+         Maximize,
+         Minimize,
+      -  Layers
+
+      +  Layers,
+
+      +  X
+       } from 'lucide-react'
+       
+       const pageToPaneMap: Record<ActivePage, AppShellState['sidePaneContent']> = {
+      @@ -27,7 +28,7 @@
+           toggleSplitView,
+           fullscreenTarget,
+         } = useAppShell()
+      -  const { activePage } = useAppStore()
+
+      +  const { activePage, setActivePage } = useAppStore()
+       
+         const isFullscreen = bodyState === BODY_STATES.FULLSCREEN;
+         const isThisPaneFullscreen = isFullscreen && (
+      @@ -52,6 +53,23 @@
+             toggleSplitView(paneContent);
+         }
+       
+      +  const handleClosePane = () => {
+
+      +    if (bodyState !== BODY_STATES.SPLIT_VIEW) return;
+
+      +    if (pane === 'right') {
+
+      +      closeSidePane();
+
+      +    } else if (pane === 'main') {
+
+      +      const pageToBecomeActive = Object.entries(pageToPaneMap).find(
+
+      +        ([, value]) => value === sidePaneContent
+
+      +      )?.[0] as ActivePage | undefined;
+
+      +      
+
+      +      if (pageToBecomeActive) {
+
+      +        setActivePage(pageToBecomeActive);
+
+      +      }
+
+      +      closeSidePane();
+
+      +    }
+
+      +  }
+
+      +
+         return (
+           <div className="flex items-center gap-1 p-1 bg-card rounded-full border border-border">
+             <button
+      @@ -107,6 +125,16 @@
+                 <Maximize className="w-4 h-4" />
+               )}
+             </button>
+      +      {bodyState === BODY_STATES.SPLIT_VIEW && (
+
+      +        <button
+
+      +          onClick={handleClosePane}
+
+      +          className="h-8 w-8 flex items-center justify-center
+      rounded-full hover:bg-destructive/20 transition-colors group"
+
+      +          title="Close Pane"
+
+      +        >
+
+      +          <X className="w-4 h-4 text-muted-foreground
+      group-hover:text-destructive" />
+
+      +        </button>
+
+      +      )}
+           </div>
+         )
+       }
+
+    patchStrategy: standard-diff
+snapshot:
+  src/components/layout/ViewModeSwitcher.tsx: >-
+    import { cn } from '@/lib/utils'
+
+    import { useAppShell } from '@/context/AppShellContext'
+
+    import { useAppStore, type ActivePage } from '@/store/appStore'
+
+    import { BODY_STATES } from '@/lib/utils'
+
+    import { type AppShellState } from '@/context/AppShellContext'
+
+    import {
+      Columns,
+      PanelRightOpen,
+      SplitSquareHorizontal,
+      Maximize,
+      Minimize,
+      Layers
+    } from 'lucide-react'
+
+
+    const pageToPaneMap: Record<ActivePage, AppShellState['sidePaneContent']> =
+    {
+      dashboard: 'main',
+      settings: 'settings',
+      toaster: 'toaster',
+      notifications: 'notifications',
+    };
+
+
+    export function ViewModeSwitcher({ pane }: { pane?: 'main' | 'right' }) {
+      const {
+        bodyState,
+        sidePaneContent,
+        openSidePane,
+        closeSidePane,
+        toggleFullscreen,
+        toggleSplitView,
+        fullscreenTarget,
+      } = useAppShell()
+      const { activePage } = useAppStore()
+
+      const isFullscreen = bodyState === BODY_STATES.FULLSCREEN;
+      const isThisPaneFullscreen = isFullscreen && (
+        (pane === 'main' && fullscreenTarget !== 'right') ||
+        (pane === 'right' && fullscreenTarget === 'right') ||
+        (!pane && !fullscreenTarget) // Global switcher, global fullscreen
+      );
+
+      const handleSidePaneClick = () => {
+        const paneContent = pageToPaneMap[activePage] || 'details';
+        if (pane === 'right') return; // Don't allow opening a side pane from a side pane
+        // If side pane is already open with the current page's content, clicking again should close it.
+        if (bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === paneContent) {
+          closeSidePane();
+        } else {
+          openSidePane(paneContent);
+        }
+      };
+      
+      const handleSplitViewClick = () => {
+          const paneContent = pageToPaneMap[activePage] || 'details';
+          if (pane === 'right') return; // Don't allow splitting from a side pane in this simple case
+          toggleSplitView(paneContent);
+      }
+
+      return (
+        <div className="flex items-center gap-1 p-1 bg-card rounded-full border border-border">
+          <button
+            onClick={() => {
+                // "Normal view" button should always just close any open panes.
+                if (bodyState === BODY_STATES.SIDE_PANE || bodyState === BODY_STATES.SPLIT_VIEW) {
+                  closeSidePane();
+                }
+                // This button is hidden in fullscreen, but as a fallback, it should exit.
+                if (isFullscreen) {
+                  toggleFullscreen();
+                }
+            }}
+            className={cn(
+              'h-8 w-8 flex items-center justify-center rounded-full hover:bg-accent transition-colors group',
+              bodyState === BODY_STATES.NORMAL && 'bg-accent text-accent-foreground'
+            )}
+            title="Normal View"
+          >
+            <Columns className="w-4 h-4" />
+          </button>
+          <button
+            onClick={handleSidePaneClick}
+            className={cn(
+              'h-8 w-8 flex items-center justify-center rounded-full hover:bg-accent transition-colors group',
+              bodyState === BODY_STATES.SIDE_PANE && 'bg-accent text-accent-foreground'
+            )}
+            title="Side Pane View"
+          >
+            <PanelRightOpen className="w-4 h-4" />
+          </button>
+          <button
+            onClick={handleSplitViewClick}
+            className={cn(
+              'h-8 w-8 flex items-center justify-center rounded-full hover:bg-accent transition-colors group',
+              bodyState === BODY_STATES.SPLIT_VIEW && 'bg-accent text-accent-foreground'
+            )}
+            title={bodyState === BODY_STATES.SPLIT_VIEW ? 'Switch to Overlay View' : 'Switch to Split View'}
+          >
+            {bodyState === BODY_STATES.SPLIT_VIEW ? <Layers className="w-4 h-4" /> : <SplitSquareHorizontal className="w-4 h-4" />}
+          </button>
+          <button
+            onClick={() => toggleFullscreen(pane)}
+            className={cn(
+              'h-8 w-8 flex items-center justify-center rounded-full hover:bg-accent transition-colors group',
+              isThisPaneFullscreen && 'bg-accent text-accent-foreground'
+            )}
+            title="Toggle Fullscreen"
+          >
+            {isThisPaneFullscreen ? (
+              <Minimize className="w-4 h-4" />
+            ) : (
+              <Maximize className="w-4 h-4" />
+            )}
+          </button>
+        </div>
+      )
+    }
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 144

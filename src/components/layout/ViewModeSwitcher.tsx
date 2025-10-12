@@ -9,7 +9,9 @@ import {
   SplitSquareHorizontal,
   Maximize,
   Minimize,
-  Layers
+  Layers,
+  X,
+  ArrowLeftRight
 } from 'lucide-react'
 
 const pageToPaneMap: Record<ActivePage, AppShellState['sidePaneContent']> = {
@@ -28,8 +30,9 @@ export function ViewModeSwitcher({ pane }: { pane?: 'main' | 'right' }) {
     toggleFullscreen,
     toggleSplitView,
     fullscreenTarget,
+    dispatch,
   } = useAppShell()
-  const { activePage } = useAppStore()
+  const { activePage, setActivePage } = useAppStore()
 
   const isFullscreen = bodyState === BODY_STATES.FULLSCREEN;
   const isThisPaneFullscreen = isFullscreen && (
@@ -53,6 +56,40 @@ export function ViewModeSwitcher({ pane }: { pane?: 'main' | 'right' }) {
       const paneContent = pageToPaneMap[activePage] || 'details';
       if (pane === 'right') return; // Don't allow splitting from a side pane in this simple case
       toggleSplitView(paneContent);
+  }
+
+  const handleSwitchPanes = () => {
+    if (bodyState !== BODY_STATES.SPLIT_VIEW) return;
+
+    // 1. Get current active page's corresponding pane content
+    const newSidePaneContent = pageToPaneMap[activePage];
+
+    // 2. Find the page that corresponds to the current side pane content
+    const newActivePage = Object.entries(pageToPaneMap).find(
+      ([, value]) => value === sidePaneContent
+    )?.[0] as ActivePage | undefined;
+
+    if (newActivePage && newSidePaneContent) {
+      // 3. Swap them
+      setActivePage(newActivePage);
+      dispatch({ type: 'SET_SIDE_PANE_CONTENT', payload: newSidePaneContent });
+    }
+  };
+
+  const handleClosePane = () => {
+    if (bodyState !== BODY_STATES.SPLIT_VIEW) return;
+    if (pane === 'right') {
+      closeSidePane();
+    } else if (pane === 'main') {
+      const pageToBecomeActive = Object.entries(pageToPaneMap).find(
+        ([, value]) => value === sidePaneContent
+      )?.[0] as ActivePage | undefined;
+      
+      if (pageToBecomeActive) {
+        setActivePage(pageToBecomeActive);
+      }
+      closeSidePane();
+    }
   }
 
   return (
@@ -110,6 +147,24 @@ export function ViewModeSwitcher({ pane }: { pane?: 'main' | 'right' }) {
           <Maximize className="w-4 h-4" />
         )}
       </button>
+      {bodyState === BODY_STATES.SPLIT_VIEW && (
+        <button
+          onClick={handleSwitchPanes}
+          className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+          title="Switch Panes"
+        >
+          <ArrowLeftRight className="w-4 h-4" />
+        </button>
+      )}
+      {bodyState === BODY_STATES.SPLIT_VIEW && (
+        <button
+          onClick={handleClosePane}
+          className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-destructive/20 transition-colors group"
+          title="Close Pane"
+        >
+          <X className="w-4 h-4 text-muted-foreground group-hover:text-destructive" />
+        </button>
+      )}
     </div>
   )
 }

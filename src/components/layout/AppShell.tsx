@@ -1,5 +1,6 @@
-import React, { useRef, type ReactElement, useCallback } from 'react'
+import React, { useRef, type ReactElement, useCallback, useEffect, useLayoutEffect } from 'react'
 import { cn } from '@/lib/utils'
+import { gsap } from 'gsap';
 import { CommandPalette } from '@/components/global/CommandPalette';
 import { useAppStore } from '@/store/appStore';
 import { useAppShell } from '@/context/AppShellContext';
@@ -23,6 +24,15 @@ const pageToPaneMap: Record<string, 'main' | 'settings' | 'toaster' | 'notificat
   notifications: 'notifications',
 };
 
+// Helper hook to get the previous value of a prop or state
+function usePrevious<T>(value: T): T | undefined {
+  const ref = useRef<T>();
+  useEffect(() => {
+    ref.current = value;
+  }, [value]);
+  return ref.current;
+}
+
 
 export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalette }: AppShellProps) {
   const {
@@ -40,6 +50,7 @@ export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalet
     rightPaneWidth,
     sidePaneContent,
     closeSidePane,
+    reducedMotion,
   } = useAppShell();
   
   const { isDarkMode, toggleDarkMode, handleNavigation, activePage } = useAppStore();
@@ -51,6 +62,9 @@ export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalet
   const topBarContainerRef = useRef<HTMLDivElement>(null)
   const mainAreaRef = useRef<HTMLDivElement>(null)
 
+  const prevActivePage = usePrevious(activePage);
+  const prevSidePaneContent = usePrevious(sidePaneContent);
+
   const isSplitView = bodyState === BODY_STATES.SPLIT_VIEW;
 
   // Custom hooks for logic
@@ -58,6 +72,40 @@ export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalet
   useResizableRightPane();
   useSidebarAnimations(sidebarRef, resizeHandleRef);
   useBodyStateAnimations(appRef, mainContentRef, rightPaneRef, topBarContainerRef, mainAreaRef);
+  
+  // Animation for pane swapping
+  useLayoutEffect(() => {
+    if (reducedMotion || bodyState !== BODY_STATES.SPLIT_VIEW || !prevActivePage || !prevSidePaneContent) {
+      return;
+    }
+
+    const pageForPrevSidePane = Object.keys(pageToPaneMap).find(
+      key => pageToPaneMap[key as keyof typeof pageToPaneMap] === prevSidePaneContent
+    );
+
+    // Check if a swap occurred by comparing current state with previous state
+    if (activePage === pageForPrevSidePane && sidePaneContent === pageToPaneMap[prevActivePage as keyof typeof pageToPaneMap]) {
+      const mainEl = mainAreaRef.current;
+      const rightEl = rightPaneRef.current;
+
+      if (mainEl && rightEl) {
+        const mainWidth = mainEl.offsetWidth;
+        const rightWidth = rightEl.offsetWidth;
+
+        const tl = gsap.timeline();
+        
+        // Animate main content FROM where right pane was TO its new place
+        tl.from(mainEl, {
+          x: rightWidth, duration: 0.4, ease: 'power3.inOut'
+        });
+
+        // Animate right pane FROM where main content was TO its new place
+        tl.from(rightEl, {
+          x: -mainWidth, duration: 0.4, ease: 'power3.inOut'
+        }, 0); // Start at the same time
+      }
+    }
+  }, [activePage, sidePaneContent, bodyState, prevActivePage, prevSidePaneContent, reducedMotion]);
   
   const sidebarWithProps = React.cloneElement(sidebar, { 
     ref: sidebarRef,
