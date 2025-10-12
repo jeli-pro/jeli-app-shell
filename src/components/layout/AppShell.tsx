@@ -93,17 +93,20 @@ export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalet
           </div>
         )}
 
-        {/* Main Content Area */}
-        <div ref={mainAreaRef} className="relative flex-1 overflow-hidden bg-background">
-          <div ref={topBarContainerRef} className="absolute inset-x-0 top-0 z-30">
+        {/* Main area wrapper */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <div ref={topBarContainerRef} className="relative z-30">
             {topBarWithProps}
           </div>
-          
-          {/* Main Content */}
-          {mainContentWithProps}
+
+          <div className="flex flex-1 min-h-0">
+            <div ref={mainAreaRef} className="relative flex-1 overflow-hidden bg-background">
+              {mainContentWithProps}
+            </div>
+            {rightPaneWithProps}
+          </div>
         </div>
       </div>
-      {rightPaneWithProps}
       {commandPalette || <CommandPalette />}
     </div>
   )

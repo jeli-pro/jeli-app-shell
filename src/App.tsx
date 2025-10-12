@@ -61,7 +61,7 @@ function AppContent() {
 
   const currentPage = pageMap[activePage];
 
-  if (sidePaneContent === currentPage.sidePaneContent && bodyState === BODY_STATES.SIDE_PANE) {
+  if (sidePaneContent === currentPage.sidePaneContent && (bodyState === BODY_STATES.SIDE_PANE || bodyState === BODY_STATES.SPLIT_VIEW)) {
     return (
       <ContentInSidePanePlaceholder 
         icon={currentPage.icon}
@@ -129,15 +129,17 @@ function AppTopBar() {
 
 // The main App component that composes the shell
 function ComposedApp() {
-  const { sidePaneContent, closeSidePane, bodyState, toggleSplitView } = useAppShell();
+  const { sidePaneContent, closeSidePane, bodyState, toggleSplitView } = useAppShell()
   const { setActivePage } = useAppStore();
 
+  const isOverlaySidePane = bodyState === BODY_STATES.SIDE_PANE;
+
   const contentMap = {
-    main: { title: 'Dashboard', icon: LayoutDashboard, page: 'dashboard', content: <DashboardContent isInSidePane /> },
-    settings: { title: 'Settings', icon: Settings, page: 'settings', content: <SettingsContent /> },
-    toaster: { title: 'Toaster Demo', icon: Component, page: 'toaster', content: <ToasterDemo isInSidePane /> },
-    notifications: { title: 'Notifications', icon: Bell, page: 'notifications', content: <NotificationsPage isInSidePane /> },
-    details: { title: 'Details Panel', icon: SlidersHorizontal, content: <p className="text-muted-foreground">This is the side pane. It can be used to display contextual information, forms, or actions related to the main content.</p> }
+    main: { title: 'Dashboard', icon: LayoutDashboard, page: 'dashboard', content: <DashboardContent isInSidePane={isOverlaySidePane} /> },
+    settings: { title: 'Settings', icon: Settings, page: 'settings', content: isOverlaySidePane ? <SettingsContent /> : <SettingsPage /> },
+    toaster: { title: 'Toaster Demo', icon: Component, page: 'toaster', content: <ToasterDemo isInSidePane={isOverlaySidePane} /> },
+    notifications: { title: 'Notifications', icon: Bell, page: 'notifications', content: <NotificationsPage isInSidePane={isOverlaySidePane} /> },
+    details: { title: 'Details Panel', icon: SlidersHorizontal, content: <div className="p-6"><p className="text-muted-foreground">This is the side pane. It can be used to display contextual information, forms, or actions related to the main content.</p></div> }
   } as const;
 
   const currentContent = contentMap[sidePaneContent as keyof typeof contentMap] || contentMap.details;
@@ -150,40 +152,41 @@ function ComposedApp() {
     closeSidePane()
   }
 
-  const rightPaneHeader = (
+  const rightPaneHeader =
+    bodyState !== BODY_STATES.SPLIT_VIEW ? (
       <>
-      <div className="flex items-center gap-2">
-        <CurrentIcon className="w-5 h-5" />
-        <h2 className="text-lg font-semibold whitespace-nowrap">
-          {currentContent.title}
-        </h2>
-      </div>
-      <div className="flex items-center">
-        {(bodyState === BODY_STATES.SIDE_PANE || bodyState === BODY_STATES.SPLIT_VIEW) && (
-          <button
-            onClick={toggleSplitView}
-            className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors"
-            title={bodyState === BODY_STATES.SIDE_PANE ? 'Switch to Split View' : 'Switch to Overlay View'}
-          >
-            {bodyState === BODY_STATES.SPLIT_VIEW ? (
-              <Layers className="w-5 h-5" />
-            ) : (
-              <SplitSquareHorizontal className="w-5 h-5" />
-            )}
-          </button>
-        )}
-        {'page' in currentContent && currentContent.page && (
-          <button
-            onClick={handleMaximize}
-            className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors mr-2"
-            title="Move to Main View"
-          >
-            <ChevronsLeftRight className="w-5 h-5" />
-          </button>
-        )}
-      </div>
+        <div className="flex items-center gap-2">
+          <CurrentIcon className="w-5 h-5" />
+          <h2 className="text-lg font-semibold whitespace-nowrap">
+            {currentContent.title}
+          </h2>
+        </div>
+        <div className="flex items-center">
+          {(bodyState === BODY_STATES.SIDE_PANE || bodyState === BODY_STATES.SPLIT_VIEW) && (
+            <button
+              onClick={toggleSplitView}
+              className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors"
+              title={bodyState === BODY_STATES.SIDE_PANE ? 'Switch to Split View' : 'Switch to Overlay View'}
+            >
+              {bodyState === BODY_STATES.SPLIT_VIEW ? (
+                <Layers className="w-5 h-5" />
+              ) : (
+                <SplitSquareHorizontal className="w-5 h-5" />
+              )}
+            </button>
+          )}
+          {'page' in currentContent && currentContent.page && (
+            <button
+              onClick={handleMaximize}
+              className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors mr-2"
+              title="Move to Main View"
+            >
+              <ChevronsLeftRight className="w-5 h-5" />
+            </button>
+          )}
+        </div>
       </>
-  );
+    ) : undefined;
 
   return (
     <AppShell

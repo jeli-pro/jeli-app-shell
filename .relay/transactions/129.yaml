@@ -1,0 +1,1301 @@
+uuid: 440ab767-f376-46c9-a9a7-80f4f912c9c5
+projectId: jeli-app-shell
+createdAt: '2025-10-12T02:08:28.949Z'
+gitCommitMsg: >-
+  feat(layout): implement shared top bar for split view
+
+  Refactored the AppShell layout to enable a shared TopBar between the main
+  content and the right pane when in split view mode.
+
+  - Modified `AppShell.tsx` to restructure the DOM, placing the RightPane as a
+  sibling to MainContent under a common TopBar. - Updated `RightPane.tsx` to use
+  relative positioning in split view and fixed positioning in side pane
+  (overlay) view. - Adjusted `useAppShellAnimations.hook.ts` to remove the
+  `marginRight` animation and correctly handle pane visibility for both modes. -
+  Conditionally removed the header from the RightPane and PageHeader from
+  content when displayed in split view for a cleaner UI.
+promptSummary: >-
+  I've updated the split view mode to have a shared top bar across both the main
+  content and the right-hand pane. I also removed the redundant headers from the
+  right-hand pane when it's in this mode.
+reasoning:
+  - >-
+    Based on your request, I'll modify the application to ensure that in split
+    view mode, the top bar is shared between the main content and the right
+    pane, and that the right pane does not display its own header in this mode.
+  - '### 1. Update AppShell Layout'
+  - >-
+    First, I'll adjust the main `AppShell.tsx` component. I'm moving the
+    `RightPane` to be a sibling of the main content area, inside a new flex
+    container. This allows the `TopBar` to span the full width above both,
+    creating the shared header effect in split view.
+  - '### 2. Adjust Right Pane Positioning'
+  - >-
+    Next, I'll modify `RightPane.tsx` to change its positioning strategy based
+    on the current `bodyState`. In split view, it will be a standard `relative`
+    element within the flex layout. For the side pane (overlay) view, it will
+    remain `fixed` to preserve the existing behavior.
+  - '### 3. Update Pane Animations'
+  - >-
+    To support the new layout, I'll update the animation logic in
+    `useAppShellAnimations.hook.ts`. I'm removing the `marginRight` animation
+    from the main content area and adjusting the `RightPane` animation to
+    correctly handle both the `relative` (split view) and `fixed` (side pane)
+    positioning.
+  - '### 4. Conditionally Render Right Pane Header'
+  - >-
+    Now, I'll update `App.tsx` to prevent the `RightPane`'s internal header from
+    rendering when the app is in split view mode.
+  - '### 5. Conditionally Render Page Header'
+  - >-
+    Finally, I'll update the `DashboardContent` component to hide its
+    `PageHeader` when it's being rendered inside the right pane, which is
+    consistent with the behavior of other pages.
+  - >-
+    These changes work together to create a seamless split-view experience where
+    the top bar is shared, and content within the right pane is correctly
+    displayed without redundant headers.
+operations:
+  - type: write
+    path: src/components/layout/AppShell.tsx
+    content: >+
+      --- src/components/layout/AppShell.tsx
+
+      +++ src/components/layout/AppShell.tsx
+
+      @@ -62,20 +62,21 @@
+                 </div>
+               )}
+       
+      -        {/* Main Content Area */}
+
+      -        <div ref={mainAreaRef} className="relative flex-1 overflow-hidden
+      bg-background">
+
+      -          <div ref={topBarContainerRef} className="absolute inset-x-0
+      top-0 z-30">
+
+      +        {/* Main area wrapper */}
+
+      +        <div className="flex-1 flex flex-col overflow-hidden">
+
+      +          <div ref={topBarContainerRef} className="relative z-30">
+                   {topBarWithProps}
+                 </div>
+      -          
+
+      -          {/* Main Content */}
+
+      -          {mainContentWithProps}
+
+      +
+
+      +          <div className="flex flex-1 min-h-0">
+
+      +            <div ref={mainAreaRef} className="relative flex-1
+      overflow-hidden bg-background">
+
+      +              {mainContentWithProps}
+
+      +            </div>
+
+      +            {rightPaneWithProps}
+
+      +          </div>
+               </div>
+             </div>
+      -      {rightPaneWithProps}
+             {commandPalette || <CommandPalette />}
+           </div>
+         )
+       }
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/components/layout/RightPane.tsx
+    content: >+
+      --- src/components/layout/RightPane.tsx
+
+      +++ src/components/layout/RightPane.tsx
+
+      @@ -7,12 +7,14 @@
+       }
+       
+       export const RightPane = forwardRef<HTMLDivElement, RightPaneProps>(({ children, header, className }, ref) => {
+      -  const { closeSidePane, dispatch, bodyState } = useAppShell();
+
+      +  const { closeSidePane, dispatch, bodyState } = useAppShell();
+
+      +  const isSplitView = bodyState === BODY_STATES.SPLIT_VIEW;
+       
+         return (
+           <aside
+             ref={ref}
+      -      className={cn("bg-card border-l border-border flex flex-col h-full
+      overflow-hidden fixed top-0 right-0 z-[60]", className)}
+
+      +      className={cn("bg-card border-l border-border flex flex-col h-full
+      overflow-hidden",
+
+      +        isSplitView ? "relative" : "fixed top-0 right-0 z-[60]",
+      className)}
+           >
+             {bodyState !== BODY_STATES.SPLIT_VIEW && (
+               <button
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/hooks/useAppShellAnimations.hook.ts
+    content: |+
+      --- src/hooks/useAppShellAnimations.hook.ts
+      +++ src/hooks/useAppShellAnimations.hook.ts
+      @@ -76,17 +76,12 @@
+           const isSidePane = bodyState === BODY_STATES.SIDE_PANE;
+           const isSplitView = bodyState === BODY_STATES.SPLIT_VIEW;
+       
+           // Right pane animation
+           gsap.to(rightPaneRef.current, {
+      -      width: rightPaneWidth,
+      +      width: isSidePane || isSplitView ? rightPaneWidth : 0,
+             x: isSidePane || isSplitView ? 0 : rightPaneWidth + 5, // +5 to hide border
+             duration: animationDuration,
+             ease,
+           });
+       
+      -    gsap.to(mainAreaRef.current, {
+      -      marginRight: isSplitView ? rightPaneWidth : 0,
+      -      duration: animationDuration,
+      -      ease,
+      -    });
+      -
+           gsap.to(mainContentRef.current, {
+             paddingTop: isFullscreen ? '0rem' : isTopBarVisible ? '5rem' : '0rem', // h-20 is 5rem
+             duration: animationDuration,
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/App.tsx
+    content: >+
+      --- src/App.tsx
+
+      +++ src/App.tsx
+
+      @@ -211,44 +211,46 @@
+       
+       // The main App component that composes the shell
+       function ComposedApp() {
+      -  const { sidePaneContent, closeSidePane, bodyState, toggleSplitView } =
+      useAppShell();
+
+      +  const { sidePaneContent, closeSidePane, bodyState, toggleSplitView } =
+      useAppShell()
+         const { setActivePage } = useAppStore();
+       
+         const contentMap = {
+      @@ -272,39 +274,41 @@
+           closeSidePane()
+         }
+       
+      -  const rightPaneHeader = (
+
+      -      <>
+
+      -      <div className="flex items-center gap-2">
+
+      -        <CurrentIcon className="w-5 h-5" />
+
+      -        <h2 className="text-lg font-semibold whitespace-nowrap">
+
+      -          {currentContent.title}
+
+      -        </h2>
+
+      -      </div>
+
+      -      <div className="flex items-center">
+
+      -        {(bodyState === BODY_STATES.SIDE_PANE || bodyState ===
+      BODY_STATES.SPLIT_VIEW) && (
+
+      -          <button
+
+      -            onClick={toggleSplitView}
+
+      -            className="h-10 w-10 flex items-center justify-center
+      hover:bg-accent rounded-full transition-colors"
+
+      -            title={bodyState === BODY_STATES.SIDE_PANE ? 'Switch to Split
+      View' : 'Switch to Overlay View'}
+
+      -          >
+
+      -            {bodyState === BODY_STATES.SPLIT_VIEW ? (
+
+      -              <Layers className="w-5 h-5" />
+
+      -            ) : (
+
+      -              <SplitSquareHorizontal className="w-5 h-5" />
+
+      -            )}
+
+      -          </button>
+
+      -        )}
+
+      -        {'page' in currentContent && currentContent.page && (
+
+      -          <button
+
+      -            onClick={handleMaximize}
+
+      -            className="h-10 w-10 flex items-center justify-center
+      hover:bg-accent rounded-full transition-colors mr-2"
+
+      -            title="Move to Main View"
+
+      -          >
+
+      -            <ChevronsLeftRight className="w-5 h-5" />
+
+      -          </button>
+
+      -        )}
+
+      -      </div>
+
+      -      </>
+
+      -  );
+
+      +  const rightPaneHeader =
+
+      +    bodyState !== BODY_STATES.SPLIT_VIEW ? (
+
+      +      <>
+
+      +        <div className="flex items-center gap-2">
+
+      +          <CurrentIcon className="w-5 h-5" />
+
+      +          <h2 className="text-lg font-semibold whitespace-nowrap">
+
+      +            {currentContent.title}
+
+      +          </h2>
+
+      +        </div>
+
+      +        <div className="flex items-center">
+
+      +          {(bodyState === BODY_STATES.SIDE_PANE || bodyState ===
+      BODY_STATES.SPLIT_VIEW) && (
+
+      +            <button
+
+      +              onClick={toggleSplitView}
+
+      +              className="h-10 w-10 flex items-center justify-center
+      hover:bg-accent rounded-full transition-colors"
+
+      +              title={bodyState === BODY_STATES.SIDE_PANE ? 'Switch to
+      Split View' : 'Switch to Overlay View'}
+
+      +            >
+
+      +              {bodyState === BODY_STATES.SPLIT_VIEW ? (
+
+      +                <Layers className="w-5 h-5" />
+
+      +              ) : (
+
+      +                <SplitSquareHorizontal className="w-5 h-5" />
+
+      +              )}
+
+      +            </button>
+
+      +          )}
+
+      +          {'page' in currentContent && currentContent.page && (
+
+      +            <button
+
+      +              onClick={handleMaximize}
+
+      +              className="h-10 w-10 flex items-center justify-center
+      hover:bg-accent rounded-full transition-colors mr-2"
+
+      +              title="Move to Main View"
+
+      +            >
+
+      +              <ChevronsLeftRight className="w-5 h-5" />
+
+      +            </button>
+
+      +          )}
+
+      +        </div>
+
+      +      </>
+
+      +    ) : undefined;
+       
+         return (
+           <AppShell
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/Dashboard/index.tsx
+    content: >+
+      --- src/pages/Dashboard/index.tsx
+
+      +++ src/pages/Dashboard/index.tsx
+
+      @@ -102,11 +102,13 @@
+                 className="h-full overflow-y-auto space-y-8 p-6 lg:px-12"
+                 onScroll={handleScroll}
+               >
+                 {/* Header */}
+      -          <PageHeader
+
+      -            title="Dashboard"
+
+      -            description="Welcome to the Jeli App Shell demo! Explore all
+      the features and customization options."
+
+      -          />
+
+      +          {!isInSidePane && (
+
+      +            <PageHeader
+
+      +              title="Dashboard"
+
+      +              description="Welcome to the Jeli App Shell demo! Explore
+      all the features and customization options."
+
+      +            />
+
+      +          )}
+                   {/* Stats Cards */}
+                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                     {statsCards.map((stat, index) => (
+
+    patchStrategy: standard-diff
+snapshot:
+  src/components/layout/AppShell.tsx: >-
+    import React, { useRef, type ReactElement } from 'react'
+
+    import { cn } from '@/lib/utils'
+
+    import { CommandPalette } from '@/components/global/CommandPalette';
+
+    import { useAppStore } from '@/store/appStore';
+
+    import { useAppShell } from '@/context/AppShellContext';
+
+    import { SIDEBAR_STATES } from '@/lib/utils'
+
+    import { useResizableSidebar, useResizableRightPane } from
+    '@/hooks/useResizablePanes.hook'
+
+    import { useSidebarAnimations, useBodyStateAnimations } from
+    '@/hooks/useAppShellAnimations.hook'
+
+
+    interface AppShellProps {
+      sidebar: ReactElement;
+      topBar: ReactElement;
+      mainContent: ReactElement;
+      rightPane: ReactElement;
+      commandPalette?: ReactElement;
+    }
+
+
+
+    export function AppShell({ sidebar, topBar, mainContent, rightPane,
+    commandPalette }: AppShellProps) {
+      const {
+        sidebarState,
+        dispatch,
+        autoExpandSidebar,
+        toggleSidebar,
+        peekSidebar,
+      } = useAppShell();
+      
+      const { isDarkMode, toggleDarkMode } = useAppStore();
+      const appRef = useRef<HTMLDivElement>(null)
+      const sidebarRef = useRef<HTMLDivElement>(null)
+      const mainContentRef = useRef<HTMLDivElement>(null)
+      const rightPaneRef = useRef<HTMLDivElement>(null)
+      const resizeHandleRef = useRef<HTMLDivElement>(null)
+      const topBarContainerRef = useRef<HTMLDivElement>(null)
+      const mainAreaRef = useRef<HTMLDivElement>(null)
+
+      // Custom hooks for logic
+      useResizableSidebar(sidebarRef, resizeHandleRef);
+      useResizableRightPane();
+      useSidebarAnimations(sidebarRef, resizeHandleRef);
+      useBodyStateAnimations(appRef, mainContentRef, rightPaneRef, topBarContainerRef, mainAreaRef);
+      
+      const sidebarWithProps = React.cloneElement(sidebar, { 
+        ref: sidebarRef,
+        onMouseEnter: () => {
+          if (autoExpandSidebar && sidebarState === SIDEBAR_STATES.COLLAPSED) {
+            peekSidebar()
+          }
+        },
+        onMouseLeave: () => {
+          if (autoExpandSidebar && sidebarState === SIDEBAR_STATES.PEEK) {
+            dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.COLLAPSED });
+          }
+        }
+      });
+
+      const topBarWithProps = React.cloneElement(topBar, {
+        onToggleSidebar: toggleSidebar,
+        onToggleDarkMode: toggleDarkMode,
+      });
+
+      const mainContentWithProps = React.cloneElement(mainContent, {
+        ref: mainContentRef,
+      });
+
+      const rightPaneWithProps = React.cloneElement(rightPane, { ref: rightPaneRef });
+
+      return (
+        <div 
+          ref={appRef}
+          className={cn(
+            "relative h-screen w-screen overflow-hidden bg-background transition-colors duration-300",
+            isDarkMode && "dark"
+          )}
+        >
+          <div className="flex h-screen overflow-hidden">
+            {/* Enhanced Sidebar */}
+            {sidebarWithProps}
+
+            {/* Resize Handle */}
+            {sidebarState !== SIDEBAR_STATES.HIDDEN && (
+              <div
+                ref={resizeHandleRef}
+                className={cn(
+                  "absolute top-0 w-2 h-full bg-transparent hover:bg-primary/20 cursor-col-resize z-50 transition-colors duration-200 group -translate-x-1/2"
+                )}
+                onMouseDown={(e) => {
+                  e.preventDefault()
+                  dispatch({ type: 'SET_IS_RESIZING', payload: true });
+                }}
+              >
+                <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200 mx-auto" />
+              </div>
+            )}
+
+            {/* Main Content Area */}
+            <div ref={mainAreaRef} className="relative flex-1 overflow-hidden bg-background">
+              <div ref={topBarContainerRef} className="absolute inset-x-0 top-0 z-30">
+                {topBarWithProps}
+              </div>
+              
+              {/* Main Content */}
+              {mainContentWithProps}
+            </div>
+          </div>
+          {rightPaneWithProps}
+          {commandPalette || <CommandPalette />}
+        </div>
+      )
+    }
+  src/components/layout/RightPane.tsx: >-
+    import { forwardRef, type ReactNode } from 'react'
+
+    import { ChevronRight } from 'lucide-react'
+
+    import { cn, BODY_STATES } from '@/lib/utils'
+
+    import { useAppShell } from '@/context/AppShellContext'
+
+
+    interface RightPaneProps {
+      children?: ReactNode
+      header?: ReactNode
+      className?: string
+    }
+
+
+    export const RightPane = forwardRef<HTMLDivElement, RightPaneProps>(({
+    children, header, className }, ref) => {
+      const { closeSidePane, dispatch, bodyState } = useAppShell();
+
+      return (
+        <aside
+          ref={ref}
+          className={cn("bg-card border-l border-border flex flex-col h-full overflow-hidden fixed top-0 right-0 z-[60]", className)}
+        >
+          {bodyState !== BODY_STATES.SPLIT_VIEW && (
+            <button
+              onClick={closeSidePane}
+              className="absolute top-1/2 -left-px -translate-y-1/2 -translate-x-full w-8 h-16 bg-card border border-r-0 border-border rounded-l-lg flex items-center justify-center hover:bg-accent transition-colors group z-10"
+              title="Close pane"
+            >
+              <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-foreground transition-colors" />
+            </button>
+          )}
+          <div 
+            className={cn(
+              "absolute top-0 left-0 w-2 h-full bg-transparent hover:bg-primary/20 cursor-col-resize z-50 transition-colors duration-200 group -translate-x-1/2"
+            )}
+            onMouseDown={(e) => {
+              e.preventDefault()
+              dispatch({ type: 'SET_IS_RESIZING_RIGHT_PANE', payload: true });
+            }}
+          >
+            <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200 mx-auto" />
+          </div>
+          {header && (
+            <div className="flex items-center justify-between p-4 border-b border-border h-20 flex-shrink-0 pl-6">
+              {header}
+            </div>
+          )}
+          <div className="flex-1 overflow-y-auto px-8 py-6">
+            {children}
+          </div>
+        </aside>
+      )
+    })
+
+    RightPane.displayName = "RightPane"
+  src/hooks/useAppShellAnimations.hook.ts: |-
+    import { useEffect } from 'react';
+    import { gsap } from 'gsap';
+    import { useAppShell } from '@/context/AppShellContext';
+    import { SIDEBAR_STATES, BODY_STATES } from '@/lib/utils';
+
+    export function useSidebarAnimations(
+      sidebarRef: React.RefObject<HTMLDivElement>,
+      resizeHandleRef: React.RefObject<HTMLDivElement>
+    ) {
+      const { sidebarState, sidebarWidth, bodyState, reducedMotion } = useAppShell();
+      const animationDuration = reducedMotion ? 0.1 : 0.4;
+
+      useEffect(() => {
+        if (!sidebarRef.current || !resizeHandleRef.current) return;
+
+        const sidebar = sidebarRef.current;
+        const handle = resizeHandleRef.current;
+        
+        let targetWidth = 0;
+        let targetOpacity = 1;
+
+        if (bodyState === BODY_STATES.FULLSCREEN) {
+          targetWidth = 0;
+          targetOpacity = 0;
+        } else {
+          switch (sidebarState) {
+            case SIDEBAR_STATES.HIDDEN:
+              targetWidth = 0;
+              targetOpacity = 0;
+              break;
+            case SIDEBAR_STATES.COLLAPSED:
+              targetWidth = 64;
+              targetOpacity = 1;
+              break;
+            case SIDEBAR_STATES.EXPANDED:
+              targetWidth = sidebarWidth;
+              targetOpacity = 1;
+              break;
+            case SIDEBAR_STATES.PEEK:
+              targetWidth = sidebarWidth * 0.8;
+              targetOpacity = 0.95;
+              break;
+          }
+        }
+
+        const tl = gsap.timeline({ ease: "power3.out" });
+        
+        tl.to(sidebar, {
+          width: targetWidth,
+          opacity: targetOpacity,
+          duration: animationDuration,
+        });
+        tl.to(handle, {
+          left: targetWidth,
+          duration: animationDuration,
+        }, 0);
+
+      }, [sidebarState, sidebarWidth, bodyState, animationDuration, sidebarRef, resizeHandleRef]);
+    }
+
+    export function useBodyStateAnimations(
+      appRef: React.RefObject<HTMLDivElement>,
+      mainContentRef: React.RefObject<HTMLDivElement>,
+      rightPaneRef: React.RefObject<HTMLDivElement>,
+      topBarContainerRef: React.RefObject<HTMLDivElement>,
+      mainAreaRef: React.RefObject<HTMLDivElement>
+    ) {
+      const { bodyState, reducedMotion, rightPaneWidth, isTopBarVisible, closeSidePane } = useAppShell();
+      const animationDuration = reducedMotion ? 0.1 : 0.4;
+
+      useEffect(() => {
+        if (!mainContentRef.current || !rightPaneRef.current || !topBarContainerRef.current || !mainAreaRef.current) return;
+
+        const ease = "power3.out";
+        const isFullscreen = bodyState === BODY_STATES.FULLSCREEN;
+        const isSidePane = bodyState === BODY_STATES.SIDE_PANE;
+        const isSplitView = bodyState === BODY_STATES.SPLIT_VIEW;
+
+        // Right pane animation
+        gsap.to(rightPaneRef.current, {
+          width: rightPaneWidth,
+          x: isSidePane || isSplitView ? 0 : rightPaneWidth + 5, // +5 to hide border
+          duration: animationDuration,
+          ease,
+        });
+
+        gsap.to(mainAreaRef.current, {
+          marginRight: isSplitView ? rightPaneWidth : 0,
+          duration: animationDuration,
+          ease,
+        });
+
+        gsap.to(mainContentRef.current, {
+          paddingTop: isFullscreen ? '0rem' : isTopBarVisible ? '5rem' : '0rem', // h-20 is 5rem
+          duration: animationDuration,
+          ease,
+        });
+
+        gsap.to(topBarContainerRef.current, {
+          y: (isFullscreen || !isTopBarVisible) ? '-100%' : '0%',
+          duration: animationDuration,
+          ease,
+        });
+        
+        // Add backdrop for side pane
+        const backdrop = document.querySelector('.app-backdrop');
+        if (isSidePane) { // This is correct because isSidePane is false when bodyState is split_view
+          if (!backdrop) {
+            const el = document.createElement('div');
+            el.className = 'app-backdrop fixed inset-0 bg-black/30 z-[55]';
+            appRef.current?.appendChild(el);
+            gsap.fromTo(el, { opacity: 0 }, { opacity: 1, duration: animationDuration });
+            el.onclick = () => closeSidePane();
+          }
+        } else {
+          if (backdrop) {
+            gsap.to(backdrop, { opacity: 0, duration: animationDuration, onComplete: () => backdrop.remove() });
+          }
+        }
+      }, [bodyState, animationDuration, rightPaneWidth, closeSidePane, isTopBarVisible, appRef, mainContentRef, rightPaneRef, topBarContainerRef, mainAreaRef]);
+    }
+  src/App.tsx: >-
+    import React, { useEffect } from 'react'
+
+    import { AppShell } from './components/layout/AppShell'
+
+    import { AppShellProvider, useAppShell } from './context/AppShellContext'
+
+    import { useAppStore } from './store/appStore'
+
+    import { useAuthStore } from './store/authStore'
+
+    import './index.css'
+
+
+    // Import library components
+
+    import { EnhancedSidebar } from './components/layout/EnhancedSidebar'
+
+    import { MainContent } from './components/layout/MainContent'
+
+    import { RightPane } from './components/layout/RightPane'
+
+    import { TopBar } from './components/layout/TopBar'
+
+    import { CommandPalette } from './components/global/CommandPalette'
+
+
+    // Import page/content components
+
+    import { DashboardContent } from './pages/Dashboard'
+
+    import { SettingsPage } from './pages/Settings'
+
+    import { ToasterDemo } from './pages/ToasterDemo'
+
+    import { NotificationsPage } from './pages/Notifications'
+
+    import { ContentInSidePanePlaceholder } from
+    './components/shared/ContentInSidePanePlaceholder'
+
+    import { SettingsContent } from './features/settings/SettingsContent'
+
+    import { LoginPage } from './components/auth/LoginPage'
+
+
+    // Import icons
+
+    import { LayoutDashboard, Settings, Component, Bell, SlidersHorizontal,
+    ChevronsLeftRight, Search, Filter, Plus, PanelRight, ChevronRight, Rocket,
+    Layers, SplitSquareHorizontal } from 'lucide-react'
+
+    import { BODY_STATES } from './lib/utils'
+
+    import { cn } from './lib/utils'
+
+
+
+    // The content for the main area, with page routing logic
+
+    function AppContent() {
+      const { activePage, setActivePage } = useAppStore()
+      const { bodyState, sidePaneContent, openSidePane } = useAppShell()
+
+      const pageMap = {
+        dashboard: {
+          component: <DashboardContent />,
+          sidePaneContent: 'main',
+          icon: LayoutDashboard,
+          name: 'dashboard',
+        },
+        settings: {
+          component: <SettingsPage />,
+          sidePaneContent: 'settings',
+          icon: Settings,
+          name: 'settings',
+        },
+        toaster: {
+          component: <ToasterDemo />,
+          sidePaneContent: 'toaster',
+          icon: Component,
+          name: 'toaster demo',
+        },
+        notifications: {
+          component: <NotificationsPage />,
+          sidePaneContent: 'notifications',
+          icon: Bell,
+          name: 'notifications',
+        },
+      } as const;
+
+      const currentPage = pageMap[activePage];
+
+      if (sidePaneContent === currentPage.sidePaneContent && bodyState === BODY_STATES.SIDE_PANE) {
+        return (
+          <ContentInSidePanePlaceholder 
+            icon={currentPage.icon}
+            title={`${currentPage.name.charAt(0).toUpperCase() + currentPage.name.slice(1)} is in Side Pane`}
+            pageName={currentPage.name}
+            onBringBack={() => {
+              openSidePane(currentPage.sidePaneContent);
+              setActivePage(activePage);
+            }}
+          />
+        )
+      }
+
+      return currentPage.component;
+    }
+
+
+    // Content for the Top Bar
+
+    function AppTopBar() {
+      const { activePage, searchTerm, setSearchTerm } = useAppStore()
+      const { openSidePane } = useAppShell()
+      const [isSearchFocused, setIsSearchFocused] = React.useState(false);
+
+      return (
+        <div className="flex items-center gap-3 flex-1">
+          <div className={cn("hidden md:flex items-center gap-2 text-sm transition-opacity", {
+              "opacity-0 pointer-events-none": isSearchFocused && activePage === 'dashboard'
+          })}>
+            <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">Home</a>
+            <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            <span className="font-medium text-foreground capitalize">{activePage}</span>
+          </div>
+          
+          <div className="flex-1" />
+
+          {/* Page-specific: Dashboard search and actions */}
+          {activePage === 'dashboard' && (
+          <div className="flex items-center gap-2 flex-1 justify-end">
+            <div className={cn("relative transition-all duration-300 ease-in-out", isSearchFocused ? 'flex-1 max-w-lg' : 'w-auto')}>
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4 pointer-events-none" />
+              <input
+                type="text"
+                placeholder="Search..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                onFocus={() => setIsSearchFocused(true)}
+                onBlur={() => setIsSearchFocused(false)}
+                className={cn(
+                  "pl-9 pr-4 py-2 h-10 border-none rounded-lg bg-card focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300 ease-in-out w-full",
+                  isSearchFocused ? 'bg-background' : 'w-48'
+                )}
+              />
+            </div>
+             <button className="h-10 w-10 flex-shrink-0 flex items-center justify-center hover:bg-accent rounded-full transition-colors">
+              <Filter className="w-5 h-5" />
+            </button>
+             <button className="bg-primary text-primary-foreground px-4 py-2 rounded-full hover:bg-primary/90 transition-colors flex items-center gap-2 h-10 flex-shrink-0">
+              <Plus className="w-5 h-5" />
+              <span className={cn(isSearchFocused ? 'hidden sm:inline' : 'inline')}>New Project</span>
+            </button>
+          </div>
+          )}
+        </div>
+      )
+    }
+
+
+    // The main App component that composes the shell
+
+    function ComposedApp() {
+      const { sidePaneContent, closeSidePane, bodyState, toggleSplitView } = useAppShell();
+      const { setActivePage } = useAppStore();
+
+      const contentMap = {
+        main: { title: 'Dashboard', icon: LayoutDashboard, page: 'dashboard', content: <DashboardContent isInSidePane /> },
+        settings: { title: 'Settings', icon: Settings, page: 'settings', content: <SettingsContent /> },
+        toaster: { title: 'Toaster Demo', icon: Component, page: 'toaster', content: <ToasterDemo isInSidePane /> },
+        notifications: { title: 'Notifications', icon: Bell, page: 'notifications', content: <NotificationsPage isInSidePane /> },
+        details: { title: 'Details Panel', icon: SlidersHorizontal, content: <p className="text-muted-foreground">This is the side pane. It can be used to display contextual information, forms, or actions related to the main content.</p> }
+      } as const;
+
+      const currentContent = contentMap[sidePaneContent as keyof typeof contentMap] || contentMap.details;
+      const CurrentIcon = currentContent.icon;
+
+      const handleMaximize = () => {
+        if ('page' in currentContent && currentContent.page) {
+          setActivePage(currentContent.page as any);
+        }
+        closeSidePane()
+      }
+
+      const rightPaneHeader = (
+          <>
+          <div className="flex items-center gap-2">
+            <CurrentIcon className="w-5 h-5" />
+            <h2 className="text-lg font-semibold whitespace-nowrap">
+              {currentContent.title}
+            </h2>
+          </div>
+          <div className="flex items-center">
+            {(bodyState === BODY_STATES.SIDE_PANE || bodyState === BODY_STATES.SPLIT_VIEW) && (
+              <button
+                onClick={toggleSplitView}
+                className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors"
+                title={bodyState === BODY_STATES.SIDE_PANE ? 'Switch to Split View' : 'Switch to Overlay View'}
+              >
+                {bodyState === BODY_STATES.SPLIT_VIEW ? (
+                  <Layers className="w-5 h-5" />
+                ) : (
+                  <SplitSquareHorizontal className="w-5 h-5" />
+                )}
+              </button>
+            )}
+            {'page' in currentContent && currentContent.page && (
+              <button
+                onClick={handleMaximize}
+                className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors mr-2"
+                title="Move to Main View"
+              >
+                <ChevronsLeftRight className="w-5 h-5" />
+              </button>
+            )}
+          </div>
+          </>
+      );
+
+      return (
+        <AppShell
+          sidebar={<EnhancedSidebar />}
+          topBar={<TopBar><AppTopBar /></TopBar>}
+          mainContent={<MainContent><AppContent /></MainContent>}
+          rightPane={(
+            <RightPane header={rightPaneHeader}>{currentContent.content}</RightPane>
+          )}
+          commandPalette={<CommandPalette />}
+        />
+      );
+    }
+
+
+    function App() {
+      const isDarkMode = useAppStore((state) => state.isDarkMode)
+      const { isAuthenticated, login, forgotPassword } = useAuthStore()
+
+      useEffect(() => {
+        document.documentElement.classList.toggle('dark', isDarkMode);
+      }, [isDarkMode]);
+
+      const handleLogin = async (email: string, password: string) => {
+        try {
+          await login(email, password)
+        } catch (error) {
+          console.error('Login failed:', error)
+          // In a real app, you'd show an error message to the user
+        }
+      }
+
+      const handleForgotPassword = async (email: string) => {
+        try {
+          await forgotPassword(email)
+        } catch (error) {
+          console.error('Forgot password failed:', error)
+        }
+      }
+
+      const handleSignUp = () => {
+        // In a real app, navigate to sign up page
+        console.log('Navigate to sign up page')
+      }
+
+      if (!isAuthenticated) {
+        return (
+          <LoginPage
+            onLogin={handleLogin}
+            onForgotPassword={handleForgotPassword}
+            onSignUp={handleSignUp}
+          />
+        )
+      }
+
+      return (
+        <div className="h-screen w-screen overflow-hidden bg-background">
+          <AppShellProvider
+            appName="Jeli App"
+            appLogo={
+              <div className="p-2 bg-primary/20 rounded-lg">
+                <Rocket className="w-5 h-5 text-primary" />
+              </div>
+            }
+          >
+            <ComposedApp />
+          </AppShellProvider>
+        </div>
+      )
+    }
+
+
+    export default App
+  src/pages/Dashboard/index.tsx: >-
+    import { useRef } from 'react'
+
+    import { 
+      BarChart3, 
+      TrendingUp, 
+      Users, 
+      DollarSign, 
+      Activity,
+      Calendar,
+      Clock,
+      MessageSquare,
+      FileText,
+      Star,
+      ChevronRight,
+      MoreVertical,
+      ArrowDown
+    } from 'lucide-react'
+
+    import { cn } from '@/lib/utils'
+
+    import { DemoContent } from './DemoContent'
+
+    import { useDashboardAnimations } from './hooks/useDashboardAnimations.hook'
+
+    import { useDashboardScroll } from './hooks/useDashboardScroll.hook'
+
+    import { PageHeader } from '@/components/shared/PageHeader';
+
+    import { Card } from '@/components/ui/card';
+
+
+    interface StatsCard {
+      title: string
+      value: string
+      change: string
+      trend: 'up' | 'down'
+      icon: React.ReactNode
+    }
+
+
+    interface ActivityItem {
+      id: string
+      type: 'comment' | 'file' | 'meeting' | 'task'
+      title: string
+      description: string
+      time: string
+      user: string
+    }
+
+
+    const statsCards: StatsCard[] = [
+      {
+        title: "Total Revenue",
+        value: "$45,231.89",
+        change: "+20.1%",
+        trend: "up",
+        icon: <DollarSign className="w-5 h-5" />
+      },
+      {
+        title: "Active Users",
+        value: "2,350",
+        change: "+180.1%",
+        trend: "up",
+        icon: <Users className="w-5 h-5" />
+      },
+      {
+        title: "Conversion Rate",
+        value: "12.5%",
+        change: "+19%",
+        trend: "up",
+        icon: <TrendingUp className="w-5 h-5" />
+      },
+      {
+        title: "Performance",
+        value: "573ms",
+        change: "-5.3%",
+        trend: "down",
+        icon: <Activity className="w-5 h-5" />
+      }
+    ]
+
+
+    const recentActivity: ActivityItem[] = [
+      {
+        id: "1",
+        type: "comment",
+        title: "New comment on Project Alpha",
+        description: "Sarah Johnson added a comment to the design review",
+        time: "2 minutes ago",
+        user: "SJ"
+      },
+      {
+        id: "2",
+        type: "file",
+        title: "Document uploaded",
+        description: "quarterly-report.pdf was uploaded to Documents",
+        time: "15 minutes ago",
+        user: "MD"
+      },
+      {
+        id: "3",
+        type: "meeting",
+        title: "Meeting scheduled",
+        description: "Weekly standup meeting scheduled for tomorrow 9 AM",
+        time: "1 hour ago",
+        user: "RW"
+      },
+      {
+        id: "4",
+        type: "task",
+        title: "Task completed",
+        description: "UI wireframes for mobile app completed",
+        time: "2 hours ago",
+        user: "AL"
+      }
+    ]
+
+
+    interface DashboardContentProps {
+      isInSidePane?: boolean;
+    }
+
+
+    export function DashboardContent({ isInSidePane = false }:
+    DashboardContentProps) {
+        const contentRef = useRef<HTMLDivElement>(null)
+        const cardsRef = useRef<(HTMLDivElement | null)[]>([])
+        const { showScrollToBottom, handleScroll, scrollToBottom } = useDashboardScroll(contentRef, isInSidePane);
+
+        useDashboardAnimations(contentRef, cardsRef);
+
+        const getTypeIcon = (type: ActivityItem['type']) => {
+          switch (type) {
+            case 'comment':
+              return <MessageSquare className="w-4 h-4" />
+            case 'file':
+              return <FileText className="w-4 h-4" />
+            case 'meeting':
+              return <Calendar className="w-4 h-4" />
+            case 'task':
+              return <Star className="w-4 h-4" />
+            default:
+              return <Activity className="w-4 h-4" />
+          }
+        }
+
+        return (
+            <div 
+              ref={contentRef}
+              className="h-full overflow-y-auto space-y-8 p-6 lg:px-12"
+              onScroll={handleScroll}
+            >
+              {/* Header */}
+              <PageHeader
+                title="Dashboard"
+                description="Welcome to the Jeli App Shell demo! Explore all the features and customization options."
+              />
+                {/* Stats Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  {statsCards.map((stat, index) => (
+                    <Card
+                    key={stat.title}
+                    ref={el => cardsRef.current[index] = el}
+                    className="p-6 border-border/50 hover:border-primary/30 transition-all duration-300 group cursor-pointer"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="p-3 bg-primary/10 rounded-full group-hover:bg-primary/20 transition-colors">
+                        {stat.icon}
+                      </div>
+                      <div className={cn(
+                        "text-sm font-medium",
+                        stat.trend === 'up' ? "text-green-600" : "text-red-600"
+                      )}>
+                        {stat.change}
+                      </div>
+                    </div>
+                    <div className="mt-4">
+                      <h3 className="text-2xl font-bold">{stat.value}</h3>
+                      <p className="text-sm text-muted-foreground mt-1">{stat.title}</p>
+                    </div>
+                  </Card>
+                  ))}
+                </div>
+
+                {/* Demo Content */}
+                <DemoContent />
+
+                {/* Main Content Grid */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Chart Area */}
+                <div className="lg:col-span-2 space-y-6">
+                  {/* Analytics Chart */}
+                  <Card className="p-6 border-border/50">
+                    <div className="flex items-center justify-between mb-6">
+                      <h3 className="text-lg font-semibold">Analytics Overview</h3>
+                      <button className="h-8 w-8 flex items-center justify-center hover:bg-accent rounded-full transition-colors">
+                        <MoreVertical className="w-5 h-5" />
+                      </button>
+                    </div>
+                    
+                    {/* Mock Chart */}
+                    <div className="h-64 bg-gradient-to-br from-primary/10 to-transparent rounded-xl flex items-center justify-center border border-border/50">
+                      <div className="text-center">
+                        <BarChart3 className="w-12 h-12 text-primary mx-auto mb-2" />
+                        <p className="text-muted-foreground">Chart visualization would go here</p>
+                      </div>
+                    </div>
+                  </Card>
+
+                  {/* Recent Projects */}
+                  <Card className="p-6 border-border/50">
+                    <div className="flex items-center justify-between mb-6">
+                      <h3 className="text-lg font-semibold">Recent Projects</h3>
+                      <button className="text-primary hover:text-primary/80 text-sm font-medium flex items-center gap-1">
+                        View All
+                        <ChevronRight className="w-4 h-4" />
+                      </button>
+                    </div>
+                    
+                    <div className="space-y-4">
+                      {[
+                        { name: "E-commerce Platform", progress: 75, team: 5, deadline: "Dec 15" },
+                        { name: "Mobile App Redesign", progress: 45, team: 3, deadline: "Jan 20" },
+                        { name: "Marketing Website", progress: 90, team: 4, deadline: "Dec 5" }
+                      ].map((project) => (
+                        <div key={project.name} className="p-4 bg-accent/30 rounded-xl hover:bg-accent/50 transition-colors cursor-pointer">
+                          <div className="flex items-center justify-between mb-2">
+                            <h4 className="font-medium">{project.name}</h4>
+                            <span className="text-sm text-muted-foreground">{project.progress}%</span>
+                          </div>
+                          <div className="w-full bg-muted rounded-full h-2 mb-3">
+                            <div 
+                              className="bg-primary h-2 rounded-full transition-all duration-500"
+                              style={{ width: `${project.progress}%` }}
+                            />
+                          </div>
+                          <div className="flex items-center justify-between text-sm text-muted-foreground">
+                            <span>{project.team} team members</span>
+                            <span>Due {project.deadline}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </Card>
+                </div>
+
+                {/* Sidebar Content */}
+                <div className="space-y-6">
+                  {/* Quick Actions */}
+                  <Card className="p-6 border-border/50">
+                    <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
+                    <div className="space-y-3">
+                      {[
+                        { icon: <FileText className="w-4 h-4" />, label: "Create Document", color: "bg-blue-500/10 text-blue-600" },
+                        { icon: <Calendar className="w-4 h-4" />, label: "Schedule Meeting", color: "bg-green-500/10 text-green-600" },
+                        { icon: <Users className="w-4 h-4" />, label: "Invite Team", color: "bg-purple-500/10 text-purple-600" },
+                        { icon: <BarChart3 className="w-4 h-4" />, label: "View Reports", color: "bg-orange-500/10 text-orange-600" }
+                      ].map((action) => (
+                        <button
+                          key={action.label}
+                          className="w-full flex items-center gap-3 p-3 hover:bg-accent rounded-lg transition-colors text-left"
+                        >
+                          <div className={cn("p-2 rounded-full", action.color)}>
+                            {action.icon}
+                          </div>
+                          <span className="font-medium">{action.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </Card>
+
+                  {/* Recent Activity */}
+                  <Card className="p-6 border-border/50">
+                    <h3 className="text-lg font-semibold mb-4">Recent Activity</h3>
+                    <div className="space-y-4">
+                      {recentActivity.map((activity) => (
+                        <div key={activity.id} className="flex items-start gap-3 p-3 hover:bg-accent/30 rounded-xl transition-colors cursor-pointer">
+                          <div className="p-2 bg-primary/10 rounded-full flex-shrink-0">
+                            {getTypeIcon(activity.type)}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-medium text-sm mb-1">{activity.title}</h4>
+                            <p className="text-xs text-muted-foreground mb-2">{activity.description}</p>
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <Clock className="w-3 h-3" />
+                              <span>{activity.time}</span>
+                              <div className="w-5 h-5 bg-primary rounded-full flex items-center justify-center text-primary-foreground text-xs font-medium">
+                                {activity.user}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </Card>
+                </div>
+              </div>
+              {showScrollToBottom && (
+                <button
+                  onClick={scrollToBottom}
+                  className="fixed bottom-8 right-8 w-12 h-12 bg-primary text-primary-foreground rounded-full flex items-center justify-center shadow-lg hover:bg-primary/90 transition-all animate-fade-in z-[51]"
+                  style={{ animation: 'bounce 2s infinite' }}
+                  title="Scroll to bottom"
+                >
+                  <ArrowDown className="w-6 h-6" />
+                </button>
+              )}
+          </div>
+        )
+    }
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 129

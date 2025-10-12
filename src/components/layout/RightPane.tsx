@@ -11,11 +11,18 @@ interface RightPaneProps {
 
 export const RightPane = forwardRef<HTMLDivElement, RightPaneProps>(({ children, header, className }, ref) => {
   const { closeSidePane, dispatch, bodyState } = useAppShell();
+  const isSplitView = bodyState === BODY_STATES.SPLIT_VIEW;
 
   return (
     <aside
       ref={ref}
-      className={cn("bg-card border-l border-border flex flex-col h-full overflow-hidden fixed top-0 right-0 z-[60]", className)}
+      className={cn(
+        "border-l border-border flex flex-col h-full overflow-hidden",
+        isSplitView
+          ? "relative bg-background"
+          : "fixed top-0 right-0 z-[60] bg-card",
+        className,
+      )}
     >
       {bodyState !== BODY_STATES.SPLIT_VIEW && (
         <button
@@ -42,7 +49,7 @@ export const RightPane = forwardRef<HTMLDivElement, RightPaneProps>(({ children,
           {header}
         </div>
       )}
-      <div className="flex-1 overflow-y-auto px-8 py-6">
+      <div className={cn("flex-1 overflow-y-auto", bodyState === BODY_STATES.SIDE_PANE && "px-8 py-6")}>
         {children}
       </div>
     </aside>

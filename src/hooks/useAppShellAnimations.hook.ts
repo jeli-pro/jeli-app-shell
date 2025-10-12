@@ -78,14 +78,8 @@ export function useBodyStateAnimations(
 
     // Right pane animation
     gsap.to(rightPaneRef.current, {
-      width: rightPaneWidth,
+      width: isSidePane || isSplitView ? rightPaneWidth : 0,
       x: isSidePane || isSplitView ? 0 : rightPaneWidth + 5, // +5 to hide border
-      duration: animationDuration,
-      ease,
-    });
-
-    gsap.to(mainAreaRef.current, {
-      marginRight: isSplitView ? rightPaneWidth : 0,
       duration: animationDuration,
       ease,
     });

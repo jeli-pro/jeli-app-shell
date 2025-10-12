@@ -133,14 +133,16 @@ export function DashboardContent({ isInSidePane = false }: DashboardContentProps
     return (
         <div 
           ref={contentRef}
-          className="h-full overflow-y-auto space-y-8 p-6 lg:px-12"
+          className={cn("h-full overflow-y-auto space-y-8", !isInSidePane && "p-6 lg:px-12")}
           onScroll={handleScroll}
         >
           {/* Header */}
-          <PageHeader
-            title="Dashboard"
-            description="Welcome to the Jeli App Shell demo! Explore all the features and customization options."
-          />
+          {!isInSidePane && (
+            <PageHeader
+              title="Dashboard"
+              description="Welcome to the Jeli App Shell demo! Explore all the features and customization options."
+            />
+          )}
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {statsCards.map((stat, index) => (
