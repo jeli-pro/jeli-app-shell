@@ -1,9 +1,10 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { 
   Layers, 
   AlertTriangle, 
   PlayCircle, 
-  TrendingUp 
+  TrendingUp,
+  Loader2
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { PageLayout } from '@/components/shared/PageLayout'
@@ -41,9 +42,13 @@ type StatItem = Stat | ChartStat;
 
 export default function DataDemoPage() {
   const [viewMode, setViewMode] = useState<ViewMode>('list')
-  const [selectedItem, setSelectedItem] = useState<DataItem | null>(null)
-  const [searchTerm, setSearchTerm] = useState('')
+  const [selectedItem, setSelectedItem] = useState<DataItem | null>(null)  
+  const [items, setItems] = useState<DataItem[]>([])
+  const [page, setPage] = useState(0) // Start at 0 to trigger initial load effect
+  const [hasMore, setHasMore] = useState(true)
+  const [isLoading, setIsLoading] = useState(false)
   const contentRef = useRef<HTMLDivElement>(null)
+  const observer = useRef<IntersectionObserver>()
   const { openSidePane } = useAppShell()
 
   // Calculate stats from data
@@ -53,6 +58,42 @@ export default function DataDemoPage() {
   const avgCompletion = totalItems > 0 ? Math.round(
     mockDataItems.reduce((acc, item) => acc + item.metrics.completion, 0) / totalItems
   ) : 0
+
+  // Infinite scroll logic
+  useEffect(() => {
+    // This effect handles fetching data when page changes
+    if (page === 0 || isLoading || !hasMore) return;
+
+    const fetchItems = async () => {
+      setIsLoading(true);
+      await new Promise(resolve => setTimeout(resolve, 500)); // Simulate network delay
+      
+      const pageSize = 12;
+      const newItems = mockDataItems.slice((page - 1) * pageSize, page * pageSize);
+      
+      if (newItems.length > 0) {
+        setItems(prev => [...prev, ...newItems]);
+      }
+      if (newItems.length < pageSize) {
+        setHasMore(false);
+      }
+      setIsLoading(false);
+    };
+
+    fetchItems();
+  }, [page]);
+
+  const loaderRef = useCallback(node => {
+    if (isLoading) return;
+    if (observer.current) observer.current.disconnect();
+    
+    observer.current = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting && hasMore) {
+        setPage(prevPage => prevPage + 1);
+      }
+    });
+    if (node) observer.current.observe(node);
+  }, [isLoading, hasMore]);
 
   const stats: StatItem[] = [
     {
@@ -93,12 +134,10 @@ export default function DataDemoPage() {
     }
   ]
 
-  // Filter data based on search
-  const filteredData = mockDataItems.filter(item =>
-    item.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.category.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  useEffect(() => {
+    // Initial load by setting page to 1
+    setPage(1);
+  }, []);
 
   // Handle item selection and open side panel
   const handleItemSelect = (item: DataItem) => {
@@ -108,7 +147,7 @@ export default function DataDemoPage() {
 
   const renderView = () => {
     const commonProps = {
-      data: filteredData,
+      data: items,
       onItemSelect: handleItemSelect,
       selectedItem
     }
@@ -137,7 +176,7 @@ export default function DataDemoPage() {
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Data Showcase</h1>
             <p className="text-muted-foreground">
-              Showing {filteredData.length} of {mockDataItems.length} items
+              Showing {items.length} of {mockDataItems.length} items
             </p>
           </div>
           <DataViewModeSelector 
@@ -188,6 +227,18 @@ export default function DataDemoPage() {
           {renderView()}
         </div>
 
+        {/* Loader for infinite scroll */}
+        <div ref={loaderRef} className="flex justify-center items-center py-6">
+          {isLoading && (
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Loader2 className="w-5 h-5 animate-spin" />
+              <span>Loading more...</span>
+            </div>
+          )}
+          {!isLoading && !hasMore && items.length > 0 && (
+            <p className="text-muted-foreground">You've reached the end.</p>
+          )}
+        </div>
       </div>
 
       {/* Detail Panel */}

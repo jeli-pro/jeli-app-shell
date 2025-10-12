@@ -10,10 +10,15 @@ import { EmptyState } from './EmptyState'
 
 export function DataCardView({ data, onItemSelect, selectedItem, isGrid = false }: ViewProps) {
   const containerRef = useRef<HTMLDivElement>(null)
+  const animatedItemsCount = useRef(0)
 
   useLayoutEffect(() => {
-    if (containerRef.current) {
-      gsap.fromTo(containerRef.current.children, 
+    if (containerRef.current && data.length > animatedItemsCount.current) {
+      const newItems = Array.from(containerRef.current.children).slice(
+        animatedItemsCount.current
+      );
+      gsap.fromTo(
+        newItems,
         { y: 40, opacity: 0, scale: 0.95 },
         {
           duration: 0.6,
@@ -21,11 +26,12 @@ export function DataCardView({ data, onItemSelect, selectedItem, isGrid = false 
           opacity: 1,
           scale: 1,
           stagger: 0.1,
-          ease: "power2.out",
-        }
-      )
+          ease: 'power2.out',
+        },
+      );
+      animatedItemsCount.current = data.length;
     }
-  }, [data])
+  }, [data]);
 
   if (data.length === 0) {
     return <EmptyState />

@@ -25,21 +25,26 @@ export function DataTableView({ data, onItemSelect, selectedItem }: ViewProps) {
   const [sortField, setSortField] = useState<SortField | null>(null)
   const [sortDirection, setSortDirection] = useState<SortDirection>(null)
   const tableRef = useRef<HTMLTableElement>(null)
+  const animatedItemsCount = useRef(0)
 
   useLayoutEffect(() => {
-    if (tableRef.current) {
-      gsap.fromTo(tableRef.current.querySelectorAll('tbody tr'),
+    if (tableRef.current && data.length > animatedItemsCount.current) {
+      const newItems = Array.from(
+        tableRef.current.querySelectorAll('tbody tr')
+      ).slice(animatedItemsCount.current);
+      gsap.fromTo(newItems,
         { y: 20, opacity: 0 },
         {
           duration: 0.5,
           y: 0,
           opacity: 1,
           stagger: 0.05,
-          ease: "power2.out"
-        }
-      )
+          ease: "power2.out",
+        },
+      );
+      animatedItemsCount.current = data.length;
     }
-  }, [data])
+  }, [data]);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {

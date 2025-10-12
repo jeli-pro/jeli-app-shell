@@ -10,21 +10,24 @@ import { EmptyState } from './EmptyState'
 
 export function DataListView({ data, onItemSelect, selectedItem }: ViewProps) {
   const listRef = useRef<HTMLDivElement>(null)
+  const animatedItemsCount = useRef(0)
 
   useLayoutEffect(() => {
-    if (listRef.current) {
-      gsap.fromTo(listRef.current.children,
+    if (listRef.current && data.length > animatedItemsCount.current) {
+      const newItems = Array.from(listRef.current.children).slice(animatedItemsCount.current);
+      gsap.fromTo(newItems,
         { y: 30, opacity: 0 },
         {
           duration: 0.5,
           y: 0,
           opacity: 1,
           stagger: 0.08,
-          ease: "power2.out"
-        }
-      )
+          ease: "power2.out",
+        },
+      );
+      animatedItemsCount.current = data.length;
     }
-  }, [data])
+  }, [data]);
 
   if (data.length === 0) {
     return <EmptyState />
