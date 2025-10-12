@@ -1,0 +1,1419 @@
+uuid: 4220b22a-f88a-45c5-bb2a-87ca79339393
+projectId: jeli-app-shell
+createdAt: '2025-10-12T08:59:30.804Z'
+gitCommitMsg: >-
+  fix(animations): Harden GSAP animations to prevent initial render flicker
+
+  Refactored the data demo components to use `useLayoutEffect` and
+  `gsap.fromTo()` instead of `useEffect` and `gsap.from()`.
+
+  This change ensures that entry animations are set up before the browser paints
+  the component, eliminating the flash of un-animated content that was visible
+  on initial load and view changes.
+
+  Additionally, removed a redundant parent-level animation from the main
+  DataDemoPage component, as each view component now robustly handles its own
+  entry animation. This simplifies the code and prevents potential animation
+  conflicts.
+promptSummary: >-
+  I'm seeing flickering and animation glitches on the Data Demo page when it
+  first loads or when I switch views. I want to fix this to make the animations
+  smooth and reliable, without any initial flash of un-animated content.
+reasoning:
+  - >-
+    I've identified the root cause of the animation glitches on the Data Demo
+    page. The issue stems from using `useEffect` with `gsap.from()`, which can
+    cause a flash of unstyled content because the effect runs after the browser
+    has already painted the component in its final state.
+  - 'To fix this, I will perform two key changes across the relevant files:'
+  - >-
+    1.  **Switch to `useLayoutEffect` and `gsap.fromTo()`:** I'll replace
+    `useEffect` with `useLayoutEffect` for all GSAP animations.
+    `useLayoutEffect` runs synchronously before the browser repaints, allowing
+    me to set the initial animation state (e.g., `opacity: 0`) before the user
+    sees the component. I'll also switch from `gsap.from()` to the more explicit
+    `gsap.fromTo()` to ensure precise control over the animation from start to
+    finish, completely eliminating any flickering.
+  - >-
+    2.  **Remove Redundant Parent Animation:** The main page component,
+    `DataDemoPage`, currently applies a generic animation to whatever view is
+    active. Since each view component (`DataCardView`, `DataListView`, etc.)
+    will now handle its own entry animation robustly, this parent animation is
+    unnecessary and can cause conflicts. Removing it will simplify the code and
+    improve performance, especially when filtering data.
+  - >-
+    These changes will result in smoother, more reliable animations and a
+    cleaner codebase.
+  - '### Part 1: Harden Component Entry Animations'
+  - >-
+    First, I'll update the animation logic in each data view component and the
+    detail panel to be more robust.
+  - '### Part 2: Simplify and Centralize Animation Logic'
+  - >-
+    Now I will remove the redundant animation from the parent `DataDemoPage`
+    component.
+operations:
+  - type: write
+    path: src/pages/DataDemo/components/DataCardView.tsx
+    content: |+
+      --- src/pages/DataDemo/components/DataCardView.tsx
+      +++ src/pages/DataDemo/components/DataCardView.tsx
+      @@ -1,4 +1,4 @@
+      -import { useRef, useEffect } from 'react'
+      +import { useRef, useLayoutEffect } from 'react'
+       import { gsap } from 'gsap'
+       import { cn } from '@/lib/utils'
+       import { Badge } from '@/components/ui/badge'
+      @@ -9,18 +9,20 @@
+       export function DataCardView({ data, onItemSelect, selectedItem, isGrid = false }: ViewProps) {
+         const containerRef = useRef<HTMLDivElement>(null)
+       
+      -  useEffect(() => {
+      +  useLayoutEffect(() => {
+           if (containerRef.current) {
+      -      gsap.from(containerRef.current.children, {
+      -        duration: 0.6,
+      -        y: 40,
+      -        opacity: 0,
+      -        stagger: 0.1,
+      -        ease: "power2.out",
+      -        scale: 0.95
+      -      })
+      +      gsap.fromTo(containerRef.current.children, 
+      +        { y: 40, opacity: 0, scale: 0.95 },
+      +        {
+      +          duration: 0.6,
+      +          y: 0,
+      +          opacity: 1,
+      +          scale: 1,
+      +          stagger: 0.1,
+      +          ease: "power2.out",
+      +        }
+      +      )
+           }
+         }, [data])
+       
+         const getStatusColor = (status: string) => {
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/DataDemo/components/DataDetailPanel.tsx
+    content: |+
+      --- src/pages/DataDemo/components/DataDetailPanel.tsx
+      +++ src/pages/DataDemo/components/DataDetailPanel.tsx
+      @@ -1,4 +1,4 @@
+      -import React, { useEffect, useRef } from 'react'
+      +import React, { useLayoutEffect, useRef } from 'react'
+       import { gsap } from 'gsap'
+       import { cn } from '@/lib/utils'
+       import { Badge } from '@/components/ui/badge'
+      @@ -29,18 +29,20 @@
+         const { bodyState, sidePaneContent } = useAppShell()
+         const contentRef = useRef<HTMLDivElement>(null)
+       
+      -  useEffect(() => {
+      +  useLayoutEffect(() => {
+           if (item && contentRef.current && sidePaneContent === 'data-details') {
+      -      gsap.from(contentRef.current.children, {
+      -        duration: 0.6,
+      -        y: 30,
+      -        opacity: 0,
+      -        stagger: 0.1,
+      -        ease: "power2.out"
+      -      })
+      +      gsap.fromTo(contentRef.current.children,
+      +        { y: 30, opacity: 0 },
+      +        {
+      +          duration: 0.6,
+      +          y: 0,
+      +          opacity: 1,
+      +          stagger: 0.1,
+      +          ease: "power2.out"
+      +        }
+      +      )
+           }
+         }, [item, sidePaneContent])
+       
+         if (!item || sidePaneContent !== 'data-details') {
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/DataDemo/components/DataListView.tsx
+    content: |
+      --- src/pages/DataDemo/components/DataListView.tsx
+      +++ src/pages/DataDemo/components/DataListView.tsx
+      @@ -1,4 +1,4 @@
+      -import { useRef, useEffect } from 'react'
+      +import { useRef, useLayoutEffect } from 'react'
+       import { gsap } from 'gsap'
+       import { cn } from '@/lib/utils'
+       import { Badge } from '@/components/ui/badge'
+      @@ -9,16 +9,18 @@
+       export function DataListView({ data, onItemSelect, selectedItem }: ViewProps) {
+         const listRef = useRef<HTMLDivElement>(null)
+       
+      -  useEffect(() => {
+      +  useLayoutEffect(() => {
+           if (listRef.current) {
+      -      gsap.from(listRef.current.children, {
+      -        duration: 0.5,
+      -        y: 30,
+      -        opacity: 0,
+      -        stagger: 0.08,
+      -        ease: "power2.out"
+      -      })
+      +      gsap.fromTo(listRef.current.children,
+      +        { y: 30, opacity: 0 },
+      +        {
+      +          duration: 0.5,
+      +          y: 0,
+      +          opacity: 1,
+      +          stagger: 0.08,
+      +          ease: "power2.out"
+      +        }
+      +      )
+           }
+         }, [data])
+       
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/DataDemo/components/DataTableView.tsx
+    content: |
+      --- src/pages/DataDemo/components/DataTableView.tsx
+      +++ src/pages/DataDemo/components/DataTableView.tsx
+      @@ -1,4 +1,4 @@
+      -import { useState, useRef, useEffect } from 'react'
+      +import { useState, useRef, useLayoutEffect } from 'react'
+       import { gsap } from 'gsap'
+       import { cn } from '@/lib/utils'
+       import { Badge } from '@/components/ui/badge'
+      @@ -19,16 +19,18 @@
+         const [sortDirection, setSortDirection] = useState<SortDirection>(null)
+         const tableRef = useRef<HTMLTableElement>(null)
+       
+      -  useEffect(() => {
+      +  useLayoutEffect(() => {
+           if (tableRef.current) {
+      -      gsap.from(tableRef.current.querySelectorAll('tbody tr'), {
+      -        duration: 0.5,
+      -        y: 20,
+      -        opacity: 0,
+      -        stagger: 0.05,
+      -        ease: "power2.out"
+      -      })
+      +      gsap.fromTo(tableRef.current.querySelectorAll('tbody tr'),
+      +        { y: 20, opacity: 0 },
+      +        {
+      +          duration: 0.5,
+      +          y: 0,
+      +          opacity: 1,
+      +          stagger: 0.05,
+      +          ease: "power2.out"
+      +        }
+      +      )
+           }
+         }, [data])
+       
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/DataDemo/index.tsx
+    content: |+
+      --- src/pages/DataDemo/index.tsx
+      +++ src/pages/DataDemo/index.tsx
+      @@ -1,5 +1,4 @@
+      -import { useState, useRef, useEffect } from 'react'
+      -import { gsap } from 'gsap'
+      +import { useState, useRef } from 'react'
+       import { PageLayout } from '@/components/shared/PageLayout'
+       import { ViewModeSwitcher } from '@/components/layout/ViewModeSwitcher'
+       import { DataViewModeSelector } from './components/DataViewModeSelector'
+      @@ -28,20 +27,6 @@
+           setSelectedItem(item)
+           openSidePane('data-details')
+         }
+      -
+      -  // Animate content on view mode change
+      -  useEffect(() => {
+      -    if (contentRef.current) {
+      -      gsap.from(contentRef.current.children, {
+      -        duration: 0.6,
+      -        y: 20,
+      -        opacity: 0,
+      -        stagger: 0.05,
+      -        ease: "power2.out"
+      -      })
+      -    }
+      -  }, [viewMode, filteredData])
+       
+         const renderView = () => {
+           const commonProps = {
+
+    patchStrategy: standard-diff
+snapshot:
+  src/pages/DataDemo/components/DataCardView.tsx: >-
+    import { useRef, useEffect } from 'react'
+
+    import { gsap } from 'gsap'
+
+    import { cn } from '@/lib/utils'
+
+    import { Badge } from '@/components/ui/badge'
+
+    import { Avatar } from '@/components/ui/avatar'
+
+    import { Calendar, Clock, Eye, Heart, Share, ArrowUpRight, Tag } from
+    'lucide-react'
+
+    import type { ViewProps } from '../types'
+
+
+    export function DataCardView({ data, onItemSelect, selectedItem, isGrid =
+    false }: ViewProps) {
+      const containerRef = useRef<HTMLDivElement>(null)
+
+      useEffect(() => {
+        if (containerRef.current) {
+          gsap.from(containerRef.current.children, {
+            duration: 0.6,
+            y: 40,
+            opacity: 0,
+            stagger: 0.1,
+            ease: "power2.out",
+            scale: 0.95
+          })
+        }
+      }, [data])
+
+      const getStatusColor = (status: string) => {
+        switch (status) {
+          case 'active': return 'bg-green-500/20 text-green-700 border-green-500/30'
+          case 'pending': return 'bg-yellow-500/20 text-yellow-700 border-yellow-500/30'
+          case 'completed': return 'bg-blue-500/20 text-blue-700 border-blue-500/30'
+          case 'archived': return 'bg-gray-500/20 text-gray-700 border-gray-500/30'
+          default: return 'bg-gray-500/20 text-gray-700 border-gray-500/30'
+        }
+      }
+
+      const getPriorityColor = (priority: string) => {
+        switch (priority) {
+          case 'critical': return 'bg-red-500/20 text-red-700 border-red-500/30'
+          case 'high': return 'bg-orange-500/20 text-orange-700 border-orange-500/30'
+          case 'medium': return 'bg-blue-500/20 text-blue-700 border-blue-500/30'
+          case 'low': return 'bg-green-500/20 text-green-700 border-green-500/30'
+          default: return 'bg-gray-500/20 text-gray-700 border-gray-500/30'
+        }
+      }
+
+      if (data.length === 0) {
+        return (
+          <div className="flex flex-col items-center justify-center py-20 text-center">
+            <div className="w-24 h-24 bg-muted rounded-full flex items-center justify-center mb-6">
+              <Eye className="w-10 h-10 text-muted-foreground" />
+            </div>
+            <h3 className="text-lg font-semibold mb-2">No items found</h3>
+            <p className="text-muted-foreground">Try adjusting your search criteria</p>
+          </div>
+        )
+      }
+
+      return (
+        <div 
+          ref={containerRef}
+          className={cn(
+            "gap-6",
+            isGrid 
+              ? "columns-1 sm:columns-2 lg:columns-3 xl:columns-4 space-y-6" 
+              : "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
+          )}
+        >
+          {data.map((item) => {
+            const isSelected = selectedItem?.id === item.id
+            
+            return (
+              <div
+                key={item.id}
+                onClick={() => onItemSelect(item)}
+                className={cn(
+                  "group relative overflow-hidden rounded-3xl border bg-card/50 backdrop-blur-sm transition-all duration-500 cursor-pointer",
+                  "hover:bg-card/80 hover:shadow-xl hover:shadow-primary/10 hover:border-primary/30 hover:-translate-y-2",
+                  "active:scale-[0.98]",
+                  isSelected && "ring-2 ring-primary/30 border-primary/40 bg-card/90 shadow-lg shadow-primary/20",
+                  isGrid && "break-inside-avoid mb-6"
+                )}
+              >
+                {/* Card Header with Thumbnail */}
+                <div className="relative p-6 pb-4">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-primary/10 rounded-2xl flex items-center justify-center text-3xl group-hover:scale-110 transition-transform duration-300">
+                      {item.thumbnail}
+                    </div>
+                    <ArrowUpRight className="w-5 h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 group-hover:-translate-y-1 transition-all duration-300" />
+                  </div>
+
+                  {/* Priority indicator */}
+                  <div className="absolute top-4 right-4">
+                    <div className={cn(
+                      "w-3 h-3 rounded-full",
+                      item.priority === 'critical' && "bg-red-500",
+                      item.priority === 'high' && "bg-orange-500",
+                      item.priority === 'medium' && "bg-blue-500",
+                      item.priority === 'low' && "bg-green-500"
+                    )} />
+                  </div>
+                </div>
+
+                {/* Card Content */}
+                <div className="px-6 pb-6">
+                  {/* Title and Description */}
+                  <h3 className="font-semibold text-lg mb-2 group-hover:text-primary transition-colors line-clamp-2">
+                    {item.title}
+                  </h3>
+                  <p className="text-muted-foreground text-sm mb-4 line-clamp-3">
+                    {item.description}
+                  </p>
+
+                  {/* Status and Category */}
+                  <div className="flex items-center gap-2 mb-4">
+                    <Badge variant="outline" className={getStatusColor(item.status)}>
+                      {item.status}
+                    </Badge>
+                    <Badge variant="outline" className="bg-accent/50 text-xs">
+                      {item.category}
+                    </Badge>
+                  </div>
+
+                  {/* Tags */}
+                  <div className="flex items-center gap-1 mb-4">
+                    <Tag className="w-3 h-3 text-muted-foreground" />
+                    <div className="flex flex-wrap gap-1">
+                      {item.tags.slice(0, 3).map((tag, index) => (
+                        <span key={index} className="text-xs text-muted-foreground bg-muted/50 px-2 py-1 rounded-md">
+                          {tag}
+                        </span>
+                      ))}
+                      {item.tags.length > 3 && (
+                        <span className="text-xs text-muted-foreground">
+                          +{item.tags.length - 3}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Progress */}
+                  <div className="mb-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs text-muted-foreground">Progress</span>
+                      <span className="text-xs font-semibold">{item.metrics.completion}%</span>
+                    </div>
+                    <div className="w-full bg-muted rounded-full h-2">
+                      <div 
+                        className="bg-gradient-to-r from-primary to-primary/80 h-2 rounded-full transition-all duration-700 ease-out"
+                        style={{ width: `${item.metrics.completion}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Assignee */}
+                  <div className="flex items-center gap-3 mb-4">
+                    <Avatar className="w-8 h-8 text-sm">
+                      {item.assignee.avatar}
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">
+                        {item.assignee.name}
+                      </p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {item.assignee.email}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Metrics */}
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-1">
+                        <Eye className="w-3 h-3" />
+                        {item.metrics.views}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Heart className="w-3 h-3" />
+                        {item.metrics.likes}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Share className="w-3 h-3" />
+                        {item.metrics.shares}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Calendar className="w-3 h-3" />
+                      {new Date(item.updatedAt).toLocaleDateString()}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Hover gradient overlay */}
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+                
+                {/* Selection indicator */}
+                {isSelected && (
+                  <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-primary/5 pointer-events-none" />
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )
+    }
+  src/pages/DataDemo/components/DataDetailPanel.tsx: |-
+    import React, { useEffect, useRef } from 'react'
+    import { gsap } from 'gsap'
+    import { cn } from '@/lib/utils'
+    import { Badge } from '@/components/ui/badge'
+    import { Avatar } from '@/components/ui/avatar'
+    import { Button } from '@/components/ui/button'
+    import { 
+      Calendar, 
+      Clock, 
+      Eye, 
+      Heart, 
+      Share, 
+      Download,
+      FileText,
+      Image,
+      Video,
+      File,
+      ExternalLink,
+      Tag,
+      User,
+      BarChart3,
+      TrendingUp,
+      CheckCircle,
+      AlertCircle,
+      Circle
+    } from 'lucide-react'
+    import { useAppShell } from '@/context/AppShellContext'
+    import type { DataItem } from '../types'
+
+    interface DataDetailPanelProps {
+      item: DataItem | null
+      onClose: () => void
+    }
+
+    export function DataDetailPanel({ item, onClose }: DataDetailPanelProps) {
+      const { bodyState, sidePaneContent } = useAppShell()
+      const contentRef = useRef<HTMLDivElement>(null)
+
+      useEffect(() => {
+        if (item && contentRef.current && sidePaneContent === 'data-details') {
+          gsap.from(contentRef.current.children, {
+            duration: 0.6,
+            y: 30,
+            opacity: 0,
+            stagger: 0.1,
+            ease: "power2.out"
+          })
+        }
+      }, [item, sidePaneContent])
+
+      if (!item || sidePaneContent !== 'data-details') {
+        return null
+      }
+
+      const getStatusColor = (status: string) => {
+        switch (status) {
+          case 'active': return 'bg-green-500/20 text-green-700 border-green-500/30'
+          case 'pending': return 'bg-yellow-500/20 text-yellow-700 border-yellow-500/30'
+          case 'completed': return 'bg-blue-500/20 text-blue-700 border-blue-500/30'
+          case 'archived': return 'bg-gray-500/20 text-gray-700 border-gray-500/30'
+          default: return 'bg-gray-500/20 text-gray-700 border-gray-500/30'
+        }
+      }
+
+      const getPriorityColor = (priority: string) => {
+        switch (priority) {
+          case 'critical': return 'bg-red-500/20 text-red-700 border-red-500/30'
+          case 'high': return 'bg-orange-500/20 text-orange-700 border-orange-500/30'
+          case 'medium': return 'bg-blue-500/20 text-blue-700 border-blue-500/30'
+          case 'low': return 'bg-green-500/20 text-green-700 border-green-500/30'
+          default: return 'bg-gray-500/20 text-gray-700 border-gray-500/30'
+        }
+      }
+
+      const getFileIcon = (type: string) => {
+        switch (type.toLowerCase()) {
+          case 'pdf': return FileText
+          case 'image':
+          case 'png':
+          case 'jpg':
+          case 'jpeg': return Image
+          case 'video':
+          case 'mp4': return Video
+          default: return File
+        }
+      }
+
+      const getStatusIcon = (status: string) => {
+        switch (status) {
+          case 'completed': return CheckCircle
+          case 'active': return Circle
+          case 'pending': return AlertCircle
+          default: return Circle
+        }
+      }
+
+      return (
+        <div ref={contentRef} className="h-full flex flex-col">
+          {/* Header */}
+          <div className="p-6 border-b border-border/50 bg-gradient-to-r from-card/50 to-card/30 backdrop-blur-sm">
+            <div className="flex items-start gap-4 mb-4">
+              <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-primary/10 rounded-2xl flex items-center justify-center text-3xl flex-shrink-0">
+                {item.thumbnail}
+              </div>
+              <div className="flex-1 min-w-0">
+                <h1 className="text-2xl font-bold mb-2 leading-tight">
+                  {item.title}
+                </h1>
+                <p className="text-muted-foreground">
+                  {item.description}
+                </p>
+              </div>
+            </div>
+
+            {/* Status badges */}
+            <div className="flex items-center gap-2 mb-4">
+              <Badge variant="outline" className={getStatusColor(item.status)}>
+                {React.createElement(getStatusIcon(item.status), { className: "w-3 h-3 mr-1" })}
+                {item.status}
+              </Badge>
+              <Badge variant="outline" className={getPriorityColor(item.priority)}>
+                {item.priority}
+              </Badge>
+              <Badge variant="outline" className="bg-accent/50">
+                {item.category}
+              </Badge>
+            </div>
+
+            {/* Progress */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Progress</span>
+                <span className="text-sm font-bold">{item.metrics.completion}%</span>
+              </div>
+              <div className="w-full bg-muted rounded-full h-3">
+                <div 
+                  className="bg-gradient-to-r from-primary to-primary/80 h-3 rounded-full transition-all duration-1000 ease-out"
+                  style={{ width: `${item.metrics.completion}%` }}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Content */}
+          <div className="flex-1 overflow-y-auto">
+            <div className="p-6 space-y-6">
+              {/* Assignee Info */}
+              <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
+                <div className="flex items-center gap-1 mb-3">
+                  <User className="w-4 h-4 text-muted-foreground" />
+                  <h3 className="font-semibold text-sm">Assigned to</h3>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Avatar className="w-12 h-12">
+                    {item.assignee.avatar}
+                  </Avatar>
+                  <div>
+                    <p className="font-medium">{item.assignee.name}</p>
+                    <p className="text-sm text-muted-foreground">{item.assignee.email}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Metrics */}
+              <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
+                <div className="flex items-center gap-1 mb-3">
+                  <BarChart3 className="w-4 h-4 text-muted-foreground" />
+                  <h3 className="font-semibold text-sm">Engagement Metrics</h3>
+                </div>
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="text-center">
+                    <div className="flex items-center justify-center gap-1 mb-1">
+                      <Eye className="w-4 h-4 text-blue-500" />
+                    </div>
+                    <p className="text-2xl font-bold">{item.metrics.views}</p>
+                    <p className="text-xs text-muted-foreground">Views</p>
+                  </div>
+                  <div className="text-center">
+                    <div className="flex items-center justify-center gap-1 mb-1">
+                      <Heart className="w-4 h-4 text-red-500" />
+                    </div>
+                    <p className="text-2xl font-bold">{item.metrics.likes}</p>
+                    <p className="text-xs text-muted-foreground">Likes</p>
+                  </div>
+                  <div className="text-center">
+                    <div className="flex items-center justify-center gap-1 mb-1">
+                      <Share className="w-4 h-4 text-green-500" />
+                    </div>
+                    <p className="text-2xl font-bold">{item.metrics.shares}</p>
+                    <p className="text-xs text-muted-foreground">Shares</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Tags */}
+              <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
+                <div className="flex items-center gap-1 mb-3">
+                  <Tag className="w-4 h-4 text-muted-foreground" />
+                  <h3 className="font-semibold text-sm">Tags</h3>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {item.tags.map((tag, index) => (
+                    <span
+                      key={index}
+                      className="bg-muted/50 text-muted-foreground px-3 py-1 rounded-full text-xs font-medium"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Content Details */}
+              {item.content && (
+                <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
+                  <h3 className="font-semibold text-sm mb-3">Project Details</h3>
+                  <div className="space-y-4">
+                    <div>
+                      <h4 className="font-medium text-sm mb-2">Summary</h4>
+                      <p className="text-sm text-muted-foreground leading-relaxed">
+                        {item.content.summary}
+                      </p>
+                    </div>
+                    <div>
+                      <h4 className="font-medium text-sm mb-2">Description</h4>
+                      <p className="text-sm text-muted-foreground leading-relaxed">
+                        {item.content.details}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Attachments */}
+              {item.content?.attachments && item.content.attachments.length > 0 && (
+                <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
+                  <h3 className="font-semibold text-sm mb-3">Attachments</h3>
+                  <div className="space-y-2">
+                    {item.content.attachments.map((attachment, index) => {
+                      const IconComponent = getFileIcon(attachment.type)
+                      return (
+                        <div
+                          key={index}
+                          className="flex items-center gap-3 p-3 bg-muted/30 rounded-xl hover:bg-muted/50 transition-colors cursor-pointer group"
+                        >
+                          <IconComponent className="w-5 h-5 text-muted-foreground" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">
+                              {attachment.name}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {attachment.type} • {attachment.size}
+                            </p>
+                          </div>
+                          <Button size="sm" variant="ghost" className="opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Download className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Timeline */}
+              <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
+                <div className="flex items-center gap-1 mb-3">
+                  <Clock className="w-4 h-4 text-muted-foreground" />
+                  <h3 className="font-semibold text-sm">Timeline</h3>
+                </div>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-sm">
+                    <Calendar className="w-3 h-3 text-muted-foreground" />
+                    <span className="text-muted-foreground">Created:</span>
+                    <span className="font-medium">
+                      {new Date(item.createdAt).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                      })}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <TrendingUp className="w-3 h-3 text-muted-foreground" />
+                    <span className="text-muted-foreground">Last updated:</span>
+                    <span className="font-medium">
+                      {new Date(item.updatedAt).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                      })}
+                    </span>
+                  </div>
+                  {item.dueDate && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <AlertCircle className="w-3 h-3 text-orange-500" />
+                      <span className="text-muted-foreground">Due date:</span>
+                      <span className="font-medium text-orange-600">
+                        {new Date(item.dueDate).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric'
+                        })}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Footer Actions */}
+          <div className="p-6 border-t border-border/50 bg-card/30">
+            <div className="flex gap-3">
+              <Button className="flex-1" size="sm">
+                <ExternalLink className="w-4 h-4 mr-2" />
+                Open Project
+              </Button>
+              <Button variant="outline" size="sm">
+                <Share className="w-4 h-4 mr-2" />
+                Share
+              </Button>
+            </div>
+          </div>
+        </div>
+      )
+    }
+  src/pages/DataDemo/components/DataListView.tsx: >-
+    import { useRef, useEffect } from 'react'
+
+    import { gsap } from 'gsap'
+
+    import { cn } from '@/lib/utils'
+
+    import { Badge } from '@/components/ui/badge'
+
+    import { Avatar } from '@/components/ui/avatar'
+
+    import { Calendar, Clock, Eye, Heart, Share, ArrowRight } from
+    'lucide-react'
+
+    import type { ViewProps } from '../types'
+
+
+    export function DataListView({ data, onItemSelect, selectedItem }:
+    ViewProps) {
+      const listRef = useRef<HTMLDivElement>(null)
+
+      useEffect(() => {
+        if (listRef.current) {
+          gsap.from(listRef.current.children, {
+            duration: 0.5,
+            y: 30,
+            opacity: 0,
+            stagger: 0.08,
+            ease: "power2.out"
+          })
+        }
+      }, [data])
+
+      const getStatusColor = (status: string) => {
+        switch (status) {
+          case 'active': return 'bg-green-500/20 text-green-700 border-green-500/30'
+          case 'pending': return 'bg-yellow-500/20 text-yellow-700 border-yellow-500/30'
+          case 'completed': return 'bg-blue-500/20 text-blue-700 border-blue-500/30'
+          case 'archived': return 'bg-gray-500/20 text-gray-700 border-gray-500/30'
+          default: return 'bg-gray-500/20 text-gray-700 border-gray-500/30'
+        }
+      }
+
+      const getPriorityColor = (priority: string) => {
+        switch (priority) {
+          case 'critical': return 'bg-red-500/20 text-red-700 border-red-500/30'
+          case 'high': return 'bg-orange-500/20 text-orange-700 border-orange-500/30'
+          case 'medium': return 'bg-blue-500/20 text-blue-700 border-blue-500/30'
+          case 'low': return 'bg-green-500/20 text-green-700 border-green-500/30'
+          default: return 'bg-gray-500/20 text-gray-700 border-gray-500/30'
+        }
+      }
+
+      if (data.length === 0) {
+        return (
+          <div className="flex flex-col items-center justify-center py-20 text-center">
+            <div className="w-24 h-24 bg-muted rounded-full flex items-center justify-center mb-6">
+              <Eye className="w-10 h-10 text-muted-foreground" />
+            </div>
+            <h3 className="text-lg font-semibold mb-2">No items found</h3>
+            <p className="text-muted-foreground">Try adjusting your search criteria</p>
+          </div>
+        )
+      }
+
+      return (
+        <div ref={listRef} className="space-y-4">
+          {data.map((item) => {
+            const isSelected = selectedItem?.id === item.id
+            
+            return (
+              <div
+                key={item.id}
+                onClick={() => onItemSelect(item)}
+                className={cn(
+                  "group relative overflow-hidden rounded-2xl border bg-card/50 backdrop-blur-sm transition-all duration-300 cursor-pointer",
+                  "hover:bg-card/80 hover:shadow-lg hover:shadow-primary/5 hover:border-primary/20",
+                  "active:scale-[0.99]",
+                  isSelected && "ring-2 ring-primary/20 border-primary/30 bg-card/90"
+                )}
+              >
+                <div className="p-6">
+                  <div className="flex items-start gap-4">
+                    {/* Thumbnail */}
+                    <div className="flex-shrink-0">
+                      <div className="w-14 h-14 bg-gradient-to-br from-primary/20 to-primary/10 rounded-xl flex items-center justify-center text-2xl">
+                        {item.thumbnail}
+                      </div>
+                    </div>
+
+                    {/* Content */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-semibold text-lg mb-1 group-hover:text-primary transition-colors">
+                            {item.title}
+                          </h3>
+                          <p className="text-muted-foreground text-sm mb-3 line-clamp-2">
+                            {item.description}
+                          </p>
+                        </div>
+                        <ArrowRight className="w-5 h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all duration-300 ml-4 flex-shrink-0" />
+                      </div>
+
+                      {/* Badges */}
+                      <div className="flex items-center gap-2 mb-4">
+                        <Badge variant="outline" className={getStatusColor(item.status)}>
+                          {item.status}
+                        </Badge>
+                        <Badge variant="outline" className={getPriorityColor(item.priority)}>
+                          {item.priority}
+                        </Badge>
+                        <Badge variant="outline" className="bg-accent/50">
+                          {item.category}
+                        </Badge>
+                      </div>
+
+                      {/* Meta info */}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                          {/* Assignee */}
+                          <div className="flex items-center gap-2">
+                            <Avatar className="w-7 h-7 text-sm">
+                              {item.assignee.avatar}
+                            </Avatar>
+                            <span className="text-sm text-muted-foreground font-medium">
+                              {item.assignee.name}
+                            </span>
+                          </div>
+
+                          {/* Date */}
+                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                            <Calendar className="w-3 h-3" />
+                            {new Date(item.updatedAt).toLocaleDateString()}
+                          </div>
+                        </div>
+
+                        {/* Metrics */}
+                        <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                          <div className="flex items-center gap-1">
+                            <Eye className="w-3 h-3" />
+                            {item.metrics.views}
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Heart className="w-3 h-3" />
+                            {item.metrics.likes}
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Share className="w-3 h-3" />
+                            {item.metrics.shares}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Progress bar */}
+                      <div className="mt-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-xs text-muted-foreground">Progress</span>
+                          <span className="text-xs font-medium">{item.metrics.completion}%</span>
+                        </div>
+                        <div className="w-full bg-muted rounded-full h-1.5">
+                          <div 
+                            className="bg-gradient-to-r from-primary to-primary/80 h-1.5 rounded-full transition-all duration-500 ease-out"
+                            style={{ width: `${item.metrics.completion}%` }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Hover gradient overlay */}
+                <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+              </div>
+            )
+          })}
+        </div>
+      )
+    }
+  src/pages/DataDemo/components/DataTableView.tsx: >-
+    import { useState, useRef, useEffect } from 'react'
+
+    import { gsap } from 'gsap'
+
+    import { cn } from '@/lib/utils'
+
+    import { Badge } from '@/components/ui/badge'
+
+    import { Avatar } from '@/components/ui/avatar'
+
+    import { 
+      Calendar, 
+      Eye, 
+      Heart, 
+      Share, 
+      ArrowUpDown, 
+      ArrowUp, 
+      ArrowDown,
+      MoreHorizontal,
+      ExternalLink
+    } from 'lucide-react'
+
+    import type { ViewProps, DataItem } from '../types'
+
+
+    type SortField = keyof DataItem | 'assignee.name' | 'metrics.views' |
+    'metrics.completion'
+
+    type SortDirection = 'asc' | 'desc' | null
+
+
+    export function DataTableView({ data, onItemSelect, selectedItem }:
+    ViewProps) {
+      const [sortField, setSortField] = useState<SortField | null>(null)
+      const [sortDirection, setSortDirection] = useState<SortDirection>(null)
+      const tableRef = useRef<HTMLTableElement>(null)
+
+      useEffect(() => {
+        if (tableRef.current) {
+          gsap.from(tableRef.current.querySelectorAll('tbody tr'), {
+            duration: 0.5,
+            y: 20,
+            opacity: 0,
+            stagger: 0.05,
+            ease: "power2.out"
+          })
+        }
+      }, [data])
+
+      const handleSort = (field: SortField) => {
+        if (sortField === field) {
+          setSortDirection(prev => 
+            prev === 'asc' ? 'desc' : prev === 'desc' ? null : 'asc'
+          )
+          if (sortDirection === 'desc') {
+            setSortField(null)
+          }
+        } else {
+          setSortField(field)
+          setSortDirection('asc')
+        }
+      }
+
+      const getSortedData = () => {
+        if (!sortField || !sortDirection) return data
+
+        return [...data].sort((a, b) => {
+          let aValue: any
+          let bValue: any
+
+          if (sortField === 'assignee.name') {
+            aValue = a.assignee.name
+            bValue = b.assignee.name
+          } else if (sortField === 'metrics.views') {
+            aValue = a.metrics.views
+            bValue = b.metrics.views
+          } else if (sortField === 'metrics.completion') {
+            aValue = a.metrics.completion
+            bValue = b.metrics.completion
+          } else {
+            aValue = a[sortField as keyof DataItem]
+            bValue = b[sortField as keyof DataItem]
+          }
+
+          if (typeof aValue === 'string' && typeof bValue === 'string') {
+            return sortDirection === 'asc' 
+              ? aValue.localeCompare(bValue)
+              : bValue.localeCompare(aValue)
+          }
+
+          if (typeof aValue === 'number' && typeof bValue === 'number') {
+            return sortDirection === 'asc' ? aValue - bValue : bValue - aValue
+          }
+
+          return 0
+        })
+      }
+
+      const getStatusColor = (status: string) => {
+        switch (status) {
+          case 'active': return 'bg-green-500/20 text-green-700 border-green-500/30'
+          case 'pending': return 'bg-yellow-500/20 text-yellow-700 border-yellow-500/30'
+          case 'completed': return 'bg-blue-500/20 text-blue-700 border-blue-500/30'
+          case 'archived': return 'bg-gray-500/20 text-gray-700 border-gray-500/30'
+          default: return 'bg-gray-500/20 text-gray-700 border-gray-500/30'
+        }
+      }
+
+      const getPriorityColor = (priority: string) => {
+        switch (priority) {
+          case 'critical': return 'bg-red-500/20 text-red-700 border-red-500/30'
+          case 'high': return 'bg-orange-500/20 text-orange-700 border-orange-500/30'
+          case 'medium': return 'bg-blue-500/20 text-blue-700 border-blue-500/30'
+          case 'low': return 'bg-green-500/20 text-green-700 border-green-500/30'
+          default: return 'bg-gray-500/20 text-gray-700 border-gray-500/30'
+        }
+      }
+
+      const SortIcon = ({ field }: { field: SortField }) => {
+        if (sortField !== field) {
+          return <ArrowUpDown className="w-4 h-4 opacity-50" />
+        }
+        if (sortDirection === 'asc') {
+          return <ArrowUp className="w-4 h-4 text-primary" />
+        }
+        if (sortDirection === 'desc') {
+          return <ArrowDown className="w-4 h-4 text-primary" />
+        }
+        return <ArrowUpDown className="w-4 h-4 opacity-50" />
+      }
+
+      const sortedData = getSortedData()
+
+      if (data.length === 0) {
+        return (
+          <div className="flex flex-col items-center justify-center py-20 text-center">
+            <div className="w-24 h-24 bg-muted rounded-full flex items-center justify-center mb-6">
+              <Eye className="w-10 h-10 text-muted-foreground" />
+            </div>
+            <h3 className="text-lg font-semibold mb-2">No items found</h3>
+            <p className="text-muted-foreground">Try adjusting your search criteria</p>
+          </div>
+        )
+      }
+
+      return (
+        <div className="relative overflow-hidden rounded-2xl border bg-card/50 backdrop-blur-sm">
+          <div className="overflow-x-auto">
+            <table ref={tableRef} className="w-full">
+              <thead>
+                <tr className="border-b border-border/50 bg-muted/20">
+                  <th className="text-left p-4 font-semibold text-sm">
+                    <button
+                      onClick={() => handleSort('title')}
+                      className="flex items-center gap-2 hover:text-primary transition-colors"
+                    >
+                      Project
+                      <SortIcon field="title" />
+                    </button>
+                  </th>
+                  <th className="text-left p-4 font-semibold text-sm">
+                    <button
+                      onClick={() => handleSort('status')}
+                      className="flex items-center gap-2 hover:text-primary transition-colors"
+                    >
+                      Status
+                      <SortIcon field="status" />
+                    </button>
+                  </th>
+                  <th className="text-left p-4 font-semibold text-sm">
+                    <button
+                      onClick={() => handleSort('priority')}
+                      className="flex items-center gap-2 hover:text-primary transition-colors"
+                    >
+                      Priority
+                      <SortIcon field="priority" />
+                    </button>
+                  </th>
+                  <th className="text-left p-4 font-semibold text-sm">
+                    <button
+                      onClick={() => handleSort('assignee.name')}
+                      className="flex items-center gap-2 hover:text-primary transition-colors"
+                    >
+                      Assignee
+                      <SortIcon field="assignee.name" />
+                    </button>
+                  </th>
+                  <th className="text-left p-4 font-semibold text-sm">
+                    <button
+                      onClick={() => handleSort('metrics.completion')}
+                      className="flex items-center gap-2 hover:text-primary transition-colors"
+                    >
+                      Progress
+                      <SortIcon field="metrics.completion" />
+                    </button>
+                  </th>
+                  <th className="text-left p-4 font-semibold text-sm">
+                    <button
+                      onClick={() => handleSort('metrics.views')}
+                      className="flex items-center gap-2 hover:text-primary transition-colors"
+                    >
+                      Engagement
+                      <SortIcon field="metrics.views" />
+                    </button>
+                  </th>
+                  <th className="text-left p-4 font-semibold text-sm">Date</th>
+                  <th className="text-center p-4 font-semibold text-sm w-16">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sortedData.map((item, index) => {
+                  const isSelected = selectedItem?.id === item.id
+                  
+                  return (
+                    <tr
+                      key={item.id}
+                      onClick={() => onItemSelect(item)}
+                      className={cn(
+                        "group border-b border-border/30 transition-all duration-200 cursor-pointer",
+                        "hover:bg-accent/20 hover:border-primary/20",
+                        isSelected && "bg-primary/5 border-primary/30"
+                      )}
+                    >
+                      {/* Project Column */}
+                      <td className="p-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-gradient-to-br from-primary/20 to-primary/10 rounded-lg flex items-center justify-center text-lg flex-shrink-0">
+                            {item.thumbnail}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <h4 className="font-medium group-hover:text-primary transition-colors truncate">
+                              {item.title}
+                            </h4>
+                            <p className="text-sm text-muted-foreground truncate">
+                              {item.category}
+                            </p>
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Status Column */}
+                      <td className="p-4">
+                        <Badge variant="outline" className={getStatusColor(item.status)}>
+                          {item.status}
+                        </Badge>
+                      </td>
+
+                      {/* Priority Column */}
+                      <td className="p-4">
+                        <Badge variant="outline" className={getPriorityColor(item.priority)}>
+                          {item.priority}
+                        </Badge>
+                      </td>
+
+                      {/* Assignee Column */}
+                      <td className="p-4">
+                        <div className="flex items-center gap-2">
+                          <Avatar className="w-8 h-8 text-sm">
+                            {item.assignee.avatar}
+                          </Avatar>
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium truncate">
+                              {item.assignee.name}
+                            </p>
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Progress Column */}
+                      <td className="p-4">
+                        <div className="flex items-center gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="w-full bg-muted rounded-full h-2">
+                              <div 
+                                className="bg-gradient-to-r from-primary to-primary/80 h-2 rounded-full transition-all duration-500"
+                                style={{ width: `${item.metrics.completion}%` }}
+                              />
+                            </div>
+                          </div>
+                          <span className="text-sm font-medium text-muted-foreground">
+                            {item.metrics.completion}%
+                          </span>
+                        </div>
+                      </td>
+
+                      {/* Engagement Column */}
+                      <td className="p-4">
+                        <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                          <div className="flex items-center gap-1">
+                            <Eye className="w-3 h-3" />
+                            {item.metrics.views}
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Heart className="w-3 h-3" />
+                            {item.metrics.likes}
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Share className="w-3 h-3" />
+                            {item.metrics.shares}
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Date Column */}
+                      <td className="p-4">
+                        <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                          <Calendar className="w-3 h-3" />
+                          {new Date(item.updatedAt).toLocaleDateString()}
+                        </div>
+                      </td>
+
+                      {/* Actions Column */}
+                      <td className="p-4">
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            onItemSelect(item)
+                          }}
+                          className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-accent transition-colors"
+                          title="View details"
+                        >
+                          <ExternalLink className="w-4 h-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )
+    }
+  src/pages/DataDemo/index.tsx: |-
+    import { useState, useRef, useEffect } from 'react'
+    import { gsap } from 'gsap'
+    import { PageLayout } from '@/components/shared/PageLayout'
+    import { ViewModeSwitcher } from '@/components/layout/ViewModeSwitcher'
+    import { DataViewModeSelector } from './components/DataViewModeSelector'
+    import { DataListView } from './components/DataListView'
+    import { DataCardView } from './components/DataCardView'
+    import { DataTableView } from './components/DataTableView'
+    import { DataDetailPanel } from './components/DataDetailPanel'
+    import { useAppShell } from '@/context/AppShellContext'
+    import { mockDataItems } from './data/mockData'
+    import type { DataItem, ViewMode } from './types'
+
+    export default function DataDemoPage() {
+      const [viewMode, setViewMode] = useState<ViewMode>('list')
+      const [selectedItem, setSelectedItem] = useState<DataItem | null>(null)
+      const [searchTerm, setSearchTerm] = useState('')
+      const contentRef = useRef<HTMLDivElement>(null)
+      const { openSidePane } = useAppShell()
+
+      // Filter data based on search
+      const filteredData = mockDataItems.filter(item =>
+        item.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.category.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+
+      // Handle item selection and open side panel
+      const handleItemSelect = (item: DataItem) => {
+        setSelectedItem(item)
+        openSidePane('data-details')
+      }
+
+      // Animate content on view mode change
+      useEffect(() => {
+        if (contentRef.current) {
+          gsap.from(contentRef.current.children, {
+            duration: 0.6,
+            y: 20,
+            opacity: 0,
+            stagger: 0.05,
+            ease: "power2.out"
+          })
+        }
+      }, [viewMode, filteredData])
+
+      const renderView = () => {
+        const commonProps = {
+          data: filteredData,
+          onItemSelect: handleItemSelect,
+          selectedItem
+        }
+
+        switch (viewMode) {
+          case 'list':
+            return <DataListView {...commonProps} />
+          case 'cards':
+            return <DataCardView {...commonProps} />
+          case 'grid':
+            return <DataCardView {...commonProps} isGrid />
+          case 'table':
+            return <DataTableView {...commonProps} />
+          default:
+            return <DataListView {...commonProps} />
+        }
+      }
+
+      return (
+        <PageLayout
+          title="Data Showcase"
+          subtitle="Explore data with immersive view modes and seamless interactions"
+          rightContent={<ViewModeSwitcher />}
+          searchValue={searchTerm}
+          onSearchChange={setSearchTerm}
+          searchPlaceholder="Search data items..."
+        >
+          <div className="space-y-6">
+            {/* View Mode Selector */}
+            <div className="flex justify-center">
+              <DataViewModeSelector 
+                viewMode={viewMode} 
+                onChange={setViewMode}
+              />
+            </div>
+
+            {/* Data Content */}
+            <div ref={contentRef} className="min-h-[500px]">
+              {renderView()}
+            </div>
+
+            {/* Results Counter */}
+            <div className="text-center text-sm text-muted-foreground">
+              Showing {filteredData.length} of {mockDataItems.length} items
+            </div>
+          </div>
+
+          {/* Detail Panel */}
+          <DataDetailPanel 
+            item={selectedItem}
+            onClose={() => setSelectedItem(null)}
+          />
+        </PageLayout>
+      )
+    }
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 159

@@ -16,7 +16,7 @@ import { SIDEBAR_STATES, BODY_STATES, type SidebarState, type BodyState } from '
 export interface AppShellState {
   sidebarState: SidebarState;
   bodyState: BodyState;
-  sidePaneContent: 'details' | 'settings' | 'main' | 'toaster' | 'notifications';
+  sidePaneContent: 'details' | 'settings' | 'main' | 'toaster' | 'notifications' | 'data-details';
   sidebarWidth: number;
   sidePaneWidth: number;
   splitPaneWidth: number;
@@ -31,7 +31,7 @@ export interface AppShellState {
   primaryColor: string;
   appName?: string;
   appLogo?: ReactElement;
- draggedPage: 'dashboard' | 'settings' | 'toaster' | 'notifications' | null;
+ draggedPage: 'dashboard' | 'settings' | 'toaster' | 'notifications' | 'data-demo' | null;
  dragHoverTarget: 'left' | 'right' | null;
  hoveredPane: 'left' | 'right' | null;
 }
@@ -52,7 +52,7 @@ type AppShellAction =
   | { type: 'SET_REDUCED_MOTION'; payload: boolean }
   | { type: 'SET_COMPACT_MODE'; payload: boolean }
   | { type: 'SET_PRIMARY_COLOR'; payload: string }
-  | { type: 'SET_DRAGGED_PAGE'; payload: 'dashboard' | 'settings' | 'toaster' | 'notifications' | null }
+  | { type: 'SET_DRAGGED_PAGE'; payload: 'dashboard' | 'settings' | 'toaster' | 'notifications' | 'data-demo' | null }
   | { type: 'SET_DRAG_HOVER_TARGET'; payload: 'left' | 'right' | null }
   | { type: 'SET_HOVERED_PANE'; payload: 'left' | 'right' | null }
   | { type: 'RESET_TO_DEFAULTS' };

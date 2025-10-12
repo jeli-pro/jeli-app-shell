@@ -31,7 +31,14 @@
     "tailwind.config.js",
     "postcss.config.js",
     "index.html",
-    "src"
+    // "src"
+    "src/components/shared/PageLayout.tsx",
+    "src/pages/DataDemo/components/DataCardView.tsx",
+    "src/pages/DataDemo/components/DataDetailPanel.tsx",
+    "src/pages/DataDemo/components/DataListView.tsx",
+    "src/pages/DataDemo/components/DataTableView.tsx",
+    "src/pages/DataDemo/index.tsx",
+    "src/pages/DataDemo/types.ts"
     // "src/App.tsx",
     // "src/components/layout/AppShell.tsx",
     // "src/components/layout/EnhancedSidebar.tsx",

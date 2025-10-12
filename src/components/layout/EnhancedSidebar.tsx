@@ -16,7 +16,8 @@ import {
   Bookmark,
   Download,
   User,
-  Plus
+  Plus,
+  Database
 } from 'lucide-react';
 import { useAppStore, type ActivePage } from '@/store/appStore';
 import { useAppShell } from '@/context/AppShellContext';
@@ -108,6 +109,7 @@ export const EnhancedSidebar = React.forwardRef<HTMLDivElement, SidebarProps>(
           <SidebarBody>
             <SidebarSection title="Main">
               <AppMenuItem icon={Home} label="Dashboard" page="dashboard" />
+              <AppMenuItem icon={Database} label="Data Demo" page="data-demo" />
               <AppMenuItem icon={Search} label="Search" />
               <AppMenuItem icon={Bell} label="Notifications" badge={3} page="notifications" opensInSidePane />
             </SidebarSection>
@@ -187,6 +189,7 @@ const AppMenuItem: React.FC<AppMenuItemProps> = ({ icon: Icon, label, badge, has
       settings: 'settings',
       toaster: 'toaster',
       notifications: 'notifications',
+      'data-demo': 'main',
     };
     return activePage === page || (bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === pageToSidePaneContent[page]);
   };
@@ -201,6 +204,7 @@ const AppMenuItem: React.FC<AppMenuItemProps> = ({ icon: Icon, label, badge, has
           settings: 'settings',
           toaster: 'toaster',
           notifications: 'notifications',
+          'data-demo': 'main',
         };
         if (pageToPaneMap[page]) openSidePane(pageToPaneMap[page]!)
       } else {

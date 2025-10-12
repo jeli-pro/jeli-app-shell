@@ -1,0 +1,99 @@
+import { useEffect, useRef } from 'react'
+import { gsap } from 'gsap'
+import { cn } from '@/lib/utils'
+import { List, Grid3X3, LayoutGrid, Table } from 'lucide-react'
+import type { ViewMode } from '../types'
+
+interface DataViewModeSelectorProps {
+  viewMode: ViewMode
+  onChange: (mode: ViewMode) => void
+}
+
+const viewModes = [
+  { id: 'list' as ViewMode, label: 'List', icon: List, description: 'Compact list with details' },
+  { id: 'cards' as ViewMode, label: 'Cards', icon: LayoutGrid, description: 'Rich card layout' },
+  { id: 'grid' as ViewMode, label: 'Grid', icon: Grid3X3, description: 'Masonry grid view' },
+  { id: 'table' as ViewMode, label: 'Table', icon: Table, description: 'Structured data table' }
+]
+
+export function DataViewModeSelector({ viewMode, onChange }: DataViewModeSelectorProps) {
+  const indicatorRef = useRef<HTMLDivElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!indicatorRef.current || !containerRef.current) return
+
+    const activeButton = containerRef.current.querySelector(`[data-mode="${viewMode}"]`) as HTMLElement
+    if (!activeButton) return
+
+    const containerRect = containerRef.current.getBoundingClientRect()
+    const buttonRect = activeButton.getBoundingClientRect()
+    
+    const left = buttonRect.left - containerRect.left
+    const width = buttonRect.width
+
+    gsap.to(indicatorRef.current, {
+      duration: 0.3,
+      x: left,
+      width: width,
+      ease: "power2.out"
+    })
+  }, [viewMode])
+
+  return (
+    <div className="relative">
+      {/* Background container */}
+      <div 
+        ref={containerRef}
+        className="relative flex items-center bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-1.5 shadow-lg"
+      >
+        {/* Animated indicator */}
+        <div
+          ref={indicatorRef}
+          className="absolute inset-y-1.5 bg-gradient-to-r from-primary/20 to-primary/10 border border-primary/20 rounded-xl transition-all duration-300"
+          style={{ left: 0, width: 0 }}
+        />
+        
+        {/* Mode buttons */}
+        {viewModes.map((mode) => {
+          const IconComponent = mode.icon
+          const isActive = viewMode === mode.id
+          
+          return (
+            <button
+              key={mode.id}
+              data-mode={mode.id}
+              onClick={() => onChange(mode.id)}
+              className={cn(
+                "relative flex items-center gap-3 px-6 py-3 rounded-xl transition-all duration-300 group min-w-[120px]",
+                "hover:bg-accent/20 active:scale-95",
+                isActive && "text-primary"
+              )}
+              title={mode.description}
+            >
+              <IconComponent className={cn(
+                "w-5 h-5 transition-all duration-300",
+                isActive && "scale-110",
+                "group-hover:scale-105"
+              )} />
+              <span className={cn(
+                "font-medium transition-all duration-300",
+                isActive ? "text-primary" : "text-muted-foreground",
+                "group-hover:text-foreground"
+              )}>
+                {mode.label}
+              </span>
+            </button>
+          )
+        })}
+      </div>
+
+      {/* Description tooltip */}
+      <div className="mt-3 text-center">
+        <p className="text-sm text-muted-foreground">
+          {viewModes.find(m => m.id === viewMode)?.description}
+        </p>
+      </div>
+    </div>
+  )
+}

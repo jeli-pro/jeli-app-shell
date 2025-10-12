@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
-export type ActivePage = 'dashboard' | 'settings' | 'toaster' | 'notifications';
+export type ActivePage = 'dashboard' | 'settings' | 'toaster' | 'notifications' | 'data-demo';
 
 interface AppState {
   // UI States

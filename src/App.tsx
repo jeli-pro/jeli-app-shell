@@ -17,6 +17,8 @@ import { DashboardContent } from "./pages/Dashboard";
 import { SettingsPage } from "./pages/Settings";
 import { ToasterDemo } from "./pages/ToasterDemo";
 import { NotificationsPage } from "./pages/Notifications";
+import DataDemoPage from "./pages/DataDemo";
+import { DataDetailPanel } from "./pages/DataDemo/components/DataDetailPanel";
 import { ContentInSidePanePlaceholder } from "./components/shared/ContentInSidePanePlaceholder";
 import { SettingsContent } from "./features/settings/SettingsContent";
 import { LoginPage } from "./components/auth/LoginPage";
@@ -37,6 +39,7 @@ import {
   Rocket,
   Layers,
   SplitSquareHorizontal,
+  Database,
 } from "lucide-react";
 import { BODY_STATES } from "./lib/utils";
 import { cn } from "./lib/utils";
@@ -70,6 +73,12 @@ function AppContent() {
       sidePaneContent: "notifications",
       icon: Bell,
       name: "notifications",
+    },
+    "data-demo": {
+      component: <DataDemoPage />,
+      sidePaneContent: "data-details",
+      icon: Database,
+      name: "data demo",
     },
   } as const;
 
@@ -217,6 +226,12 @@ function ComposedApp() {
       icon: Bell,
       page: "notifications",
       content: <NotificationsPage isInSidePane={isOverlaySidePane} />,
+    },
+    "data-details": {
+      title: "Data Details",
+      icon: Database,
+      page: "data-demo",
+      content: <DataDetailPanel item={null} onClose={() => {}} />,
     },
     details: {
       title: "Details Panel",
