@@ -24,8 +24,8 @@ export const RightPane = forwardRef<HTMLDivElement, RightPaneProps>(({ children,
       className={cn(
         "border-l border-border flex flex-col h-full overflow-hidden",
         isSplitView && "relative bg-background",
-        !isSplitView && !isFullscreen && "fixed top-0 right-0 z-[60] bg-card",
-        isFullscreen && fullscreenTarget === 'right' && "absolute inset-0 z-50 bg-card",
+        !isSplitView && !isFullscreen && "fixed top-0 right-0 z-[60] bg-card", // side pane overlay
+        isFullscreen && fullscreenTarget === 'right' && "fixed inset-0 z-[60] bg-card", // fullscreen
         className,
       )}
     >

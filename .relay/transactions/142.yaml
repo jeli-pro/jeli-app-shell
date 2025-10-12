@@ -1,0 +1,230 @@
+uuid: c253a653-60ba-47a3-b541-69e1c1f727c0
+projectId: jeli-app-shell
+createdAt: '2025-10-12T04:04:02.381Z'
+gitCommitMsg: >-
+  fix(animations): ensure right pane animates correctly to fullscreen
+
+  Updated the `useBodyStateAnimations` hook to account for the
+  `fullscreenTarget`. This ensures that when fullscreen is toggled for the right
+  pane (especially from split view), it correctly expands to 100% width and
+  hides other shell elements, matching the behavior of the main content pane.
+promptSummary: >-
+  User requested a fix for fullscreen mode when initiated from the right pane in
+  split view, so that it behaves consistently with the main content's fullscreen
+  mode (hiding the top bar and sidebar).
+reasoning:
+  - >-
+    Based on your request, I've identified that the issue with fullscreen mode
+    in split view is caused by the animation logic not accounting for which pane
+    is targeted for fullscreen. The GSAP animation for the right pane was
+    incorrectly setting its width to 0 during fullscreen mode, regardless of
+    whether it was the intended fullscreen target.
+  - >-
+    I will correct this by updating the `useBodyStateAnimations` hook to be
+    aware of the `fullscreenTarget`. This ensures that when the right pane is
+    selected for fullscreen, it expands to 100% width, matching the behavior of
+    the main content pane and providing the consistent presentation you
+    described (no top bar, no sidebar).
+  - '### Step-by-step reasoning:'
+  - >-
+    1.  **Identify the Root Cause**: The `useBodyStateAnimations` hook in
+    `src/hooks/useAppShellAnimations.hook.ts` controls the positioning and size
+    of the main content and right pane. Its logic for the right pane's width did
+    not correctly handle the case where `bodyState` is `fullscreen` and the
+    `fullscreenTarget` is `right`. It was defaulting to a width of 0.
+  - '2.  **Update Animation Hook**: I will modify `useBodyStateAnimations` to:'
+  - '*   Destructure `fullscreenTarget` from the `useAppShell` hook.'
+  - >-
+    *   Update the `gsap.to()` animation for `rightPaneRef` to check if
+    `bodyState` is `fullscreen` and if `fullscreenTarget` is `right`.
+  - >-
+    *   If both conditions are true, the right pane's width will be animated to
+    `'100%'` and its `x` position to `0`.
+  - >-
+    *   Add `fullscreenTarget` to the `useEffect` dependency array to ensure the
+    animation re-runs when the target changes.
+  - >-
+    This single change will fix the presentation of the right pane in fullscreen
+    mode, making it consistent with the main content pane's fullscreen behavior.
+  - '### Code change:'
+  - >-
+    This change ensures the right pane correctly animates to full screen when
+    requested from split view, creating a consistent user experience.
+operations:
+  - type: write
+    path: src/hooks/useAppShellAnimations.hook.ts
+    content: >+
+      --- src/hooks/useAppShellAnimations.hook.ts
+
+      +++ src/hooks/useAppShellAnimations.hook.ts
+
+      @@ -37,7 +37,7 @@
+         topBarContainerRef: React.RefObject<HTMLDivElement>,
+         mainAreaRef: React.RefObject<HTMLDivElement>
+       ) {
+      -  const { bodyState, reducedMotion, rightPaneWidth, isTopBarVisible,
+      closeSidePane } = useAppShell();
+
+      +  const { bodyState, reducedMotion, rightPaneWidth, isTopBarVisible,
+      closeSidePane, fullscreenTarget } = useAppShell();
+         const animationDuration = reducedMotion ? 0.1 : 0.4;
+       
+         useEffect(() => {
+      @@ -50,8 +50,10 @@
+       
+           // Right pane animation
+           gsap.to(rightPaneRef.current, {
+      -      width: isSidePane || isSplitView ? rightPaneWidth : 0,
+
+      -      x: isSidePane || isSplitView ? 0 : rightPaneWidth + 5, // +5 to
+      hide border
+
+      +      width: isFullscreen 
+
+      +        ? (fullscreenTarget === 'right' ? '100%' : 0) 
+
+      +        : (isSidePane || isSplitView ? rightPaneWidth : 0),
+
+      +      x: (isSidePane || isSplitView || (isFullscreen && fullscreenTarget
+      === 'right')) ? 0 : rightPaneWidth + 5, // +5 to hide border
+             duration: animationDuration,
+             ease,
+           });
+      @@ -77,5 +79,5 @@
+               gsap.to(backdrop, { opacity: 0, duration: animationDuration, onComplete: () => backdrop.remove() });
+             }
+           }
+      -  }, [bodyState, animationDuration, rightPaneWidth, closeSidePane,
+      isTopBarVisible, appRef, mainContentRef, rightPaneRef, topBarContainerRef,
+      mainAreaRef]);
+
+      +  }, [bodyState, animationDuration, rightPaneWidth, closeSidePane,
+      isTopBarVisible, appRef, mainContentRef, rightPaneRef, topBarContainerRef,
+      mainAreaRef, fullscreenTarget]);
+       }
+
+    patchStrategy: standard-diff
+snapshot:
+  src/hooks/useAppShellAnimations.hook.ts: |-
+    import { useEffect } from 'react';
+    import { gsap } from 'gsap';
+    import { useAppShell } from '@/context/AppShellContext';
+    import { SIDEBAR_STATES, BODY_STATES } from '@/lib/utils';
+
+    export function useSidebarAnimations(
+      sidebarRef: React.RefObject<HTMLDivElement>,
+      resizeHandleRef: React.RefObject<HTMLDivElement>
+    ) {
+      const { sidebarState, sidebarWidth, bodyState, reducedMotion } = useAppShell();
+      const animationDuration = reducedMotion ? 0.1 : 0.4;
+
+      useEffect(() => {
+        if (!sidebarRef.current || !resizeHandleRef.current) return;
+
+        const sidebar = sidebarRef.current;
+        const handle = resizeHandleRef.current;
+        
+        let targetWidth = 0;
+        let targetOpacity = 1;
+
+        if (bodyState === BODY_STATES.FULLSCREEN) {
+          targetWidth = 0;
+          targetOpacity = 0;
+        } else {
+          switch (sidebarState) {
+            case SIDEBAR_STATES.HIDDEN:
+              targetWidth = 0;
+              targetOpacity = 0;
+              break;
+            case SIDEBAR_STATES.COLLAPSED:
+              targetWidth = 64;
+              targetOpacity = 1;
+              break;
+            case SIDEBAR_STATES.EXPANDED:
+              targetWidth = sidebarWidth;
+              targetOpacity = 1;
+              break;
+            case SIDEBAR_STATES.PEEK:
+              targetWidth = sidebarWidth * 0.8;
+              targetOpacity = 0.95;
+              break;
+          }
+        }
+
+        const tl = gsap.timeline({ ease: "power3.out" });
+        
+        tl.to(sidebar, {
+          width: targetWidth,
+          opacity: targetOpacity,
+          duration: animationDuration,
+        });
+        tl.to(handle, {
+          left: targetWidth,
+          duration: animationDuration,
+        }, 0);
+
+      }, [sidebarState, sidebarWidth, bodyState, animationDuration, sidebarRef, resizeHandleRef]);
+    }
+
+    export function useBodyStateAnimations(
+      appRef: React.RefObject<HTMLDivElement>,
+      mainContentRef: React.RefObject<HTMLDivElement>,
+      rightPaneRef: React.RefObject<HTMLDivElement>,
+      topBarContainerRef: React.RefObject<HTMLDivElement>,
+      mainAreaRef: React.RefObject<HTMLDivElement>
+    ) {
+      const { bodyState, reducedMotion, rightPaneWidth, isTopBarVisible, closeSidePane } = useAppShell();
+      const animationDuration = reducedMotion ? 0.1 : 0.4;
+
+      useEffect(() => {
+        if (!mainContentRef.current || !rightPaneRef.current || !topBarContainerRef.current || !mainAreaRef.current) return;
+
+        const ease = "power3.out";
+        const isFullscreen = bodyState === BODY_STATES.FULLSCREEN;
+        const isSidePane = bodyState === BODY_STATES.SIDE_PANE;
+        const isSplitView = bodyState === BODY_STATES.SPLIT_VIEW;
+
+        // Right pane animation
+        gsap.to(rightPaneRef.current, {
+          width: isSidePane || isSplitView ? rightPaneWidth : 0,
+          x: isSidePane || isSplitView ? 0 : rightPaneWidth + 5, // +5 to hide border
+          duration: animationDuration,
+          ease,
+        });
+
+        gsap.to(mainContentRef.current, {
+          paddingTop: isFullscreen ? '0rem' : isTopBarVisible ? '5rem' : '0rem', // h-20 is 5rem
+          duration: animationDuration,
+          ease,
+        });
+
+        gsap.to(topBarContainerRef.current, {
+          y: (isFullscreen || !isTopBarVisible) ? '-100%' : '0%',
+          duration: animationDuration,
+          ease,
+        });
+        
+        // Add backdrop for side pane
+        const backdrop = document.querySelector('.app-backdrop');
+        if (isSidePane) { // This is correct because isSidePane is false when bodyState is split_view
+          if (!backdrop) {
+            const el = document.createElement('div');
+            el.className = 'app-backdrop fixed inset-0 bg-black/30 z-[55]';
+            appRef.current?.appendChild(el);
+            gsap.fromTo(el, { opacity: 0 }, { opacity: 1, duration: animationDuration });
+            el.onclick = () => closeSidePane();
+          }
+        } else {
+          if (backdrop) {
+            gsap.to(backdrop, { opacity: 0, duration: animationDuration, onComplete: () => backdrop.remove() });
+          }
+        }
+      }, [bodyState, animationDuration, rightPaneWidth, closeSidePane, isTopBarVisible, appRef, mainContentRef, rightPaneRef, topBarContainerRef, mainAreaRef]);
+    }
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 142

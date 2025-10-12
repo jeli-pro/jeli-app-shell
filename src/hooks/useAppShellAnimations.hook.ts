@@ -65,7 +65,7 @@ export function useBodyStateAnimations(
   topBarContainerRef: React.RefObject<HTMLDivElement>,
   mainAreaRef: React.RefObject<HTMLDivElement>
 ) {
-  const { bodyState, reducedMotion, rightPaneWidth, isTopBarVisible, closeSidePane } = useAppShell();
+  const { bodyState, reducedMotion, rightPaneWidth, isTopBarVisible, closeSidePane, fullscreenTarget } = useAppShell();
   const animationDuration = reducedMotion ? 0.1 : 0.4;
 
   useEffect(() => {
@@ -78,8 +78,10 @@ export function useBodyStateAnimations(
 
     // Right pane animation
     gsap.to(rightPaneRef.current, {
-      width: isSidePane || isSplitView ? rightPaneWidth : 0,
-      x: isSidePane || isSplitView ? 0 : rightPaneWidth + 5, // +5 to hide border
+      width: isFullscreen 
+        ? (fullscreenTarget === 'right' ? '100%' : 0) 
+        : (isSidePane || isSplitView ? rightPaneWidth : 0),
+      x: (isSidePane || isSplitView || (isFullscreen && fullscreenTarget === 'right')) ? 0 : rightPaneWidth + 5, // +5 to hide border
       duration: animationDuration,
       ease,
     });
@@ -111,5 +113,5 @@ export function useBodyStateAnimations(
         gsap.to(backdrop, { opacity: 0, duration: animationDuration, onComplete: () => backdrop.remove() });
       }
     }
-  }, [bodyState, animationDuration, rightPaneWidth, closeSidePane, isTopBarVisible, appRef, mainContentRef, rightPaneRef, topBarContainerRef, mainAreaRef]);
+  }, [bodyState, animationDuration, rightPaneWidth, closeSidePane, isTopBarVisible, appRef, mainContentRef, rightPaneRef, topBarContainerRef, mainAreaRef, fullscreenTarget]);
 }

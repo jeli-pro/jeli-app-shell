@@ -1,0 +1,380 @@
+uuid: d8e02d41-e945-4209-9f7a-8533b3b4f693
+projectId: jeli-app-shell
+createdAt: '2025-10-12T04:09:18.626Z'
+gitCommitMsg: >-
+  fix(layout): ensure top bar hides correctly in fullscreen from split view
+
+  Corrected an issue where the top bar would remain visible when entering
+  fullscreen mode from the main content pane while in split view.
+
+  - Changed `MainContent` and `RightPane` to use `position: fixed` instead of
+  `absolute` in fullscreen mode. This ensures they are positioned relative to
+  the viewport and can correctly cover the entire screen. - Increased the
+  `z-index` for fullscreen panes to ensure they appear above all other UI
+  elements. - Removed a `transition-all` CSS class from `TopBar` to prevent
+  conflicts with GSAP animations that are responsible for hiding it.
+promptSummary: >-
+  The user wanted to fix a bug where the top bar was still visible when entering
+  fullscreen mode from the main content area in a split-view layout.
+reasoning:
+  - >-
+    I've identified the root causes for the issue with fullscreen mode when
+    initiated from a split view.
+  - >-
+    1.  **Incorrect Positioning**: The `MainContent` component was using
+    `position: absolute` for its fullscreen mode. This positioned it relative to
+    its parent container in the layout flow, which doesn't cover the `TopBar`.
+    I'll change this to `position: fixed` to ensure it covers the entire
+    viewport. I'll also update the `RightPane` for consistency.
+  - >-
+    2.  **Conflicting Transitions**: The `TopBar` component had a
+    `transition-all` CSS property, which can interfere with GSAP's
+    JavaScript-driven animations. When entering fullscreen, GSAP would try to
+    animate the top bar out of view, but a component re-render could cause the
+    CSS transition to fight it, leaving the top bar visible. I will remove this
+    CSS transition to let GSAP handle all animations.
+  - >-
+    These changes will ensure that both the left and right panes in split view
+    transition correctly into a true fullscreen mode, with the top bar and
+    sidebar properly hidden.
+  - 'Here are the modifications:'
+  - >-
+    First, I'll update the `MainContent` component to use `fixed` positioning
+    and an appropriate `z-index` when in fullscreen mode. This ensures it covers
+    the entire screen, including the top bar area.
+  - >-
+    Next, for consistency, I'll apply the same `fixed` positioning strategy to
+    the `RightPane` component for its fullscreen state.
+  - >-
+    Finally, I'll remove the conflicting `transition-all` class from the
+    `TopBar` component, allowing GSAP to manage its animations without
+    interference.
+  - >-
+    These changes will resolve the issue and make the fullscreen behavior
+    consistent and correct across all views.
+operations:
+  - type: write
+    path: src/components/layout/MainContent.tsx
+    content: |+
+      --- src/components/layout/MainContent.tsx
+      +++ src/components/layout/MainContent.tsx
+      @@ -19,8 +19,8 @@
+             <div
+               ref={ref}
+               className={cn(
+      -        "flex flex-col h-full overflow-hidden",
+      -        isFullscreen && "absolute inset-0 z-40 bg-background"
+      +        "flex flex-col h-full overflow-hidden bg-background",
+      +        isFullscreen && "fixed inset-0 z-[60]"
+               )}
+             >
+               {isFullscreen && (
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/components/layout/RightPane.tsx
+    content: >+
+      --- src/components/layout/RightPane.tsx
+
+      +++ src/components/layout/RightPane.tsx
+
+      @@ -25,8 +25,8 @@
+             className={cn(
+               "border-l border-border flex flex-col h-full overflow-hidden",
+               isSplitView && "relative bg-background",
+      -        !isSplitView && !isFullscreen && "fixed top-0 right-0 z-[60]
+      bg-card",
+
+      -        isFullscreen && fullscreenTarget === 'right' && "absolute inset-0
+      z-50 bg-card",
+
+      +        !isSplitView && !isFullscreen && "fixed top-0 right-0 z-[60]
+      bg-card", // side pane overlay
+
+      +        isFullscreen && fullscreenTarget === 'right' && "fixed inset-0
+      z-[60] bg-card", // fullscreen
+               className,
+             )}
+           >
+             {isFullscreen && fullscreenTarget === 'right' && (
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/components/layout/TopBar.tsx
+    content: >+
+      --- src/components/layout/TopBar.tsx
+
+      +++ src/components/layout/TopBar.tsx
+
+      @@ -40,8 +40,7 @@
+       
+         return (
+           <div className={cn(
+      -      "h-20 bg-background border-b border-border flex items-center
+      justify-between px-6 z-50 gap-4",
+
+      -      'transition-all duration-300 ease-in-out'
+
+      +      "h-20 bg-background border-b border-border flex items-center
+      justify-between px-6 z-50 gap-4"
+           )}>
+             {/* Left Section - Sidebar Controls & Breadcrumbs */}
+             <div className="flex items-center gap-4">
+
+    patchStrategy: standard-diff
+snapshot:
+  src/components/layout/MainContent.tsx: |-
+    import { forwardRef } from 'react'
+    import { X } from 'lucide-react'
+    import { cn } from '@/lib/utils';
+    import { BODY_STATES } from '@/lib/utils'
+    import { useAppShell } from '@/context/AppShellContext'
+
+    interface MainContentProps {
+      onToggleFullscreen?: () => void
+      children?: React.ReactNode;
+    }
+
+    export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
+      ({ onToggleFullscreen, children }, ref) => {
+        const { bodyState, fullscreenTarget, toggleFullscreen } = useAppShell();
+        const isFullscreen = bodyState === BODY_STATES.FULLSCREEN;
+
+        if (isFullscreen && fullscreenTarget === 'right') {
+          return null;
+        }
+
+        return (
+          <div
+            ref={ref}
+            className={cn(
+            "flex flex-col h-full overflow-hidden",
+            isFullscreen && "absolute inset-0 z-40 bg-background"
+            )}
+          >
+            {isFullscreen && (
+              <button
+                onClick={() => toggleFullscreen()}
+                className="fixed top-6 right-6 lg:right-12 z-[100] h-12 w-12 flex items-center justify-center rounded-full bg-card/50 backdrop-blur-sm hover:bg-card/75 transition-colors group"
+                title="Exit Fullscreen"
+              >
+                <X className="w-6 h-6 group-hover:scale-110 group-hover:rotate-90 transition-all duration-300" />
+              </button>
+            )}
+
+            <div className="flex-1 min-h-0 flex flex-col">
+              {children}
+            </div>
+          </div>
+        )
+      }
+    )
+    MainContent.displayName = 'MainContent'
+  src/components/layout/RightPane.tsx: >-
+    import { forwardRef, type ReactNode } from 'react'
+
+    import { ChevronRight, X } from 'lucide-react'
+
+    import { cn, BODY_STATES } from '@/lib/utils'
+
+    import { useAppShell } from '@/context/AppShellContext'
+
+
+    interface RightPaneProps {
+      children?: ReactNode
+      header?: ReactNode
+      className?: string
+    }
+
+
+    export const RightPane = forwardRef<HTMLDivElement, RightPaneProps>(({
+    children, header, className }, ref) => {
+      const { closeSidePane, dispatch, bodyState, fullscreenTarget, toggleFullscreen } = useAppShell();
+      const isSplitView = bodyState === BODY_STATES.SPLIT_VIEW;
+      const isFullscreen = bodyState === BODY_STATES.FULLSCREEN;
+
+      if (isFullscreen && fullscreenTarget !== 'right') {
+        return null;
+      }
+
+      return (
+        <aside
+          ref={ref}
+          className={cn(
+            "border-l border-border flex flex-col h-full overflow-hidden",
+            isSplitView && "relative bg-background",
+            !isSplitView && !isFullscreen && "fixed top-0 right-0 z-[60] bg-card",
+            isFullscreen && fullscreenTarget === 'right' && "absolute inset-0 z-50 bg-card",
+            className,
+          )}
+        >
+          {isFullscreen && fullscreenTarget === 'right' && (
+            <button
+              onClick={() => toggleFullscreen()}
+              className="fixed top-6 right-6 lg:right-12 z-[100] h-12 w-12 flex items-center justify-center rounded-full bg-card/50 backdrop-blur-sm hover:bg-card/75 transition-colors group"
+              title="Exit Fullscreen"
+            >
+              <X className="w-6 h-6 group-hover:scale-110 group-hover:rotate-90 transition-all duration-300" />
+            </button>
+          )}
+          {bodyState !== BODY_STATES.SPLIT_VIEW && !isFullscreen && (
+            <button
+              onClick={closeSidePane}
+              className="absolute top-1/2 -left-px -translate-y-1/2 -translate-x-full w-8 h-16 bg-card border border-r-0 border-border rounded-l-lg flex items-center justify-center hover:bg-accent transition-colors group z-10"
+              title="Close pane"
+            >
+              <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-foreground transition-colors" />
+            </button>
+          )}
+          <div 
+            className={cn(
+              "absolute top-0 left-0 w-2 h-full bg-transparent hover:bg-primary/20 cursor-col-resize z-50 transition-colors duration-200 group -translate-x-1/2"
+            )}
+            onMouseDown={(e) => {
+              e.preventDefault()
+              dispatch({ type: 'SET_IS_RESIZING_RIGHT_PANE', payload: true });
+            }}
+          >
+            <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200 mx-auto" />
+          </div>
+          {header && (
+            <div className="flex items-center justify-between p-4 border-b border-border h-20 flex-shrink-0 pl-6">
+              {header}
+            </div>
+          )}
+          <div className={cn("flex-1 overflow-y-auto", bodyState === BODY_STATES.SIDE_PANE && "px-8 py-6")}>
+            {children}
+          </div>
+        </aside>
+      )
+    })
+
+    RightPane.displayName = "RightPane"
+  src/components/layout/TopBar.tsx: |-
+    import {
+      Menu, 
+      Moon, 
+      Sun,
+      Settings,
+      Command,
+      Zap,
+    } from 'lucide-react'
+    import { cn } from '@/lib/utils'
+    import { BODY_STATES } from '@/lib/utils'
+    import { useAppStore } from '@/store/appStore'
+    import { useAppShell } from '@/context/AppShellContext'
+    import { UserDropdown } from './UserDropdown'
+    import { ViewModeSwitcher } from './ViewModeSwitcher'
+
+    interface TopBarProps {
+      onToggleSidebar?: () => void
+      onToggleDarkMode?: () => void
+      children?: React.ReactNode
+    }
+
+    export function TopBar({
+      onToggleSidebar,
+      onToggleDarkMode,
+      children,
+    }: TopBarProps) {
+      const { bodyState, openSidePane, sidePaneContent } = useAppShell();
+      const { 
+        setCommandPaletteOpen,
+        isDarkMode,
+      } = useAppStore()
+
+      const handleSettingsClick = () => {
+        const isSettingsInSidePane = bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === 'settings'
+
+        // If we're on the settings page and it's not in the side pane, treat this as a "minimize" action.
+        if (!isSettingsInSidePane) {
+          openSidePane('settings');
+        } else {
+          // In all other cases (on dashboard page, or settings already in pane),
+          // just toggle the settings side pane.
+          openSidePane('settings')
+        }
+      };
+
+      return (
+        <div className={cn(
+          "h-20 bg-background border-b border-border flex items-center justify-between px-6 z-50 gap-4",
+          'transition-all duration-300 ease-in-out'
+        )}>
+          {/* Left Section - Sidebar Controls & Breadcrumbs */}
+          <div className="flex items-center gap-4">
+            {/* Sidebar Controls */}
+            <button
+              onClick={() => onToggleSidebar?.()}
+              className={cn(
+                "h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors"
+              )}
+              title="Toggle Sidebar"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+
+          </div>
+
+          {/* Right Section - page controls, and global controls */}
+          <div className="flex items-center gap-3">
+            {children}
+
+            {/* Separator */}
+            <div className="w-px h-6 bg-border mx-2" />
+
+            {/* Quick Actions */}
+            <div className="flex items-center gap-3">
+
+              <button
+                onClick={() => setCommandPaletteOpen(true)}
+                className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+                title="Command Palette (Ctrl+K)"
+              >
+                <Command className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              </button>
+
+            <button
+              className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+              title="Quick Actions"
+            >
+              <Zap className="w-5 h-5 group-hover:scale-110 transition-transform" />
+            </button>
+
+            {bodyState !== BODY_STATES.SPLIT_VIEW && <ViewModeSwitcher />}
+
+            <div className="w-px h-6 bg-border mx-2" />
+
+            {/* Theme and Settings */}
+            <button
+              onClick={() => onToggleDarkMode?.()}
+              className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+              title="Toggle Dark Mode"
+            >
+              {isDarkMode ? (
+                <Sun className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              ) : (
+                <Moon className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              )}
+            </button>
+
+            <button
+              onClick={handleSettingsClick}
+              className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+              title="Settings"
+            >
+              <Settings className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
+            </button>
+            <UserDropdown />
+            </div>
+          </div>
+        </div>
+      )
+    }
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 143

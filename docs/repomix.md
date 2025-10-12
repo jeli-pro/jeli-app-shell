@@ -79,125 +79,6 @@ vite.config.ts
 
 # Files
 
-## File: src/components/layout/ViewModeSwitcher.tsx
-````typescript
-import { cn } from '@/lib/utils'
-import { useAppShell } from '@/context/AppShellContext'
-import { useAppStore, type ActivePage } from '@/store/appStore'
-import { BODY_STATES } from '@/lib/utils'
-import { type AppShellState } from '@/context/AppShellContext'
-import {
-  Columns,
-  PanelRightOpen,
-  SplitSquareHorizontal,
-  Maximize,
-  Minimize,
-  Layers
-} from 'lucide-react'
-
-const pageToPaneMap: Record<ActivePage, AppShellState['sidePaneContent']> = {
-  dashboard: 'main',
-  settings: 'settings',
-  toaster: 'toaster',
-  notifications: 'notifications',
-};
-
-export function ViewModeSwitcher({ pane }: { pane?: 'main' | 'right' }) {
-  const {
-    bodyState,
-    sidePaneContent,
-    openSidePane,
-    closeSidePane,
-    toggleFullscreen,
-    toggleSplitView,
-    fullscreenTarget,
-  } = useAppShell()
-  const { activePage } = useAppStore()
-
-  const isFullscreen = bodyState === BODY_STATES.FULLSCREEN;
-  const isThisPaneFullscreen = isFullscreen && (
-    (pane === 'main' && fullscreenTarget !== 'right') ||
-    (pane === 'right' && fullscreenTarget === 'right') ||
-    (!pane && !fullscreenTarget) // Global switcher, global fullscreen
-  );
-
-  const handleSidePaneClick = () => {
-    const paneContent = pageToPaneMap[activePage] || 'details';
-    if (pane === 'right') return; // Don't allow opening a side pane from a side pane
-    // If side pane is already open with the current page's content, clicking again should close it.
-    if (bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === paneContent) {
-      closeSidePane();
-    } else {
-      openSidePane(paneContent);
-    }
-  };
-  
-  const handleSplitViewClick = () => {
-      const paneContent = pageToPaneMap[activePage] || 'details';
-      if (pane === 'right') return; // Don't allow splitting from a side pane in this simple case
-      toggleSplitView(paneContent);
-  }
-
-  return (
-    <div className="flex items-center gap-1 p-1 bg-card rounded-full border border-border">
-      <button
-        onClick={() => {
-            // "Normal view" button should always just close any open panes.
-            if (bodyState === BODY_STATES.SIDE_PANE || bodyState === BODY_STATES.SPLIT_VIEW) {
-              closeSidePane();
-            }
-            // This button is hidden in fullscreen, but as a fallback, it should exit.
-            if (isFullscreen) {
-              toggleFullscreen();
-            }
-        }}
-        className={cn(
-          'h-8 w-8 flex items-center justify-center rounded-full hover:bg-accent transition-colors group',
-          bodyState === BODY_STATES.NORMAL && 'bg-accent text-accent-foreground'
-        )}
-        title="Normal View"
-      >
-        <Columns className="w-4 h-4" />
-      </button>
-      <button
-        onClick={handleSidePaneClick}
-        className={cn(
-          'h-8 w-8 flex items-center justify-center rounded-full hover:bg-accent transition-colors group',
-          bodyState === BODY_STATES.SIDE_PANE && 'bg-accent text-accent-foreground'
-        )}
-        title="Side Pane View"
-      >
-        <PanelRightOpen className="w-4 h-4" />
-      </button>
-      <button
-        onClick={handleSplitViewClick}
-        className={cn(
-          'h-8 w-8 flex items-center justify-center rounded-full hover:bg-accent transition-colors group',
-          bodyState === BODY_STATES.SPLIT_VIEW && 'bg-accent text-accent-foreground'
-        )}
-        title={bodyState === BODY_STATES.SPLIT_VIEW ? 'Switch to Overlay View' : 'Switch to Split View'}
-      >
-        {bodyState === BODY_STATES.SPLIT_VIEW ? <Layers className="w-4 h-4" /> : <SplitSquareHorizontal className="w-4 h-4" />}
-      </button>
-      <button
-        onClick={() => toggleFullscreen(pane)}
-        className={cn(
-          'h-8 w-8 flex items-center justify-center rounded-full hover:bg-accent transition-colors group',
-          isThisPaneFullscreen && 'bg-accent text-accent-foreground'
-        )}
-        title="Toggle Fullscreen"
-      >
-        {isThisPaneFullscreen ? (
-          <Minimize className="w-4 h-4" />
-        ) : (
-          <Maximize className="w-4 h-4" />
-        )}
-      </button>
-    </div>
-  )
-}
-````
-
 ## File: src/components/layout/WorkspaceSwitcher.tsx
 ````typescript
 import * as React from 'react';
@@ -3130,6 +3011,125 @@ export const UserDropdown = ({
 };
 ````
 
+## File: src/components/layout/ViewModeSwitcher.tsx
+````typescript
+import { cn } from '@/lib/utils'
+import { useAppShell } from '@/context/AppShellContext'
+import { useAppStore, type ActivePage } from '@/store/appStore'
+import { BODY_STATES } from '@/lib/utils'
+import { type AppShellState } from '@/context/AppShellContext'
+import {
+  Columns,
+  PanelRightOpen,
+  SplitSquareHorizontal,
+  Maximize,
+  Minimize,
+  Layers
+} from 'lucide-react'
+
+const pageToPaneMap: Record<ActivePage, AppShellState['sidePaneContent']> = {
+  dashboard: 'main',
+  settings: 'settings',
+  toaster: 'toaster',
+  notifications: 'notifications',
+};
+
+export function ViewModeSwitcher({ pane }: { pane?: 'main' | 'right' }) {
+  const {
+    bodyState,
+    sidePaneContent,
+    openSidePane,
+    closeSidePane,
+    toggleFullscreen,
+    toggleSplitView,
+    fullscreenTarget,
+  } = useAppShell()
+  const { activePage } = useAppStore()
+
+  const isFullscreen = bodyState === BODY_STATES.FULLSCREEN;
+  const isThisPaneFullscreen = isFullscreen && (
+    (pane === 'main' && fullscreenTarget !== 'right') ||
+    (pane === 'right' && fullscreenTarget === 'right') ||
+    (!pane && !fullscreenTarget) // Global switcher, global fullscreen
+  );
+
+  const handleSidePaneClick = () => {
+    const paneContent = pageToPaneMap[activePage] || 'details';
+    if (pane === 'right') return; // Don't allow opening a side pane from a side pane
+    // If side pane is already open with the current page's content, clicking again should close it.
+    if (bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === paneContent) {
+      closeSidePane();
+    } else {
+      openSidePane(paneContent);
+    }
+  };
+  
+  const handleSplitViewClick = () => {
+      const paneContent = pageToPaneMap[activePage] || 'details';
+      if (pane === 'right') return; // Don't allow splitting from a side pane in this simple case
+      toggleSplitView(paneContent);
+  }
+
+  return (
+    <div className="flex items-center gap-1 p-1 bg-card rounded-full border border-border">
+      <button
+        onClick={() => {
+            // "Normal view" button should always just close any open panes.
+            if (bodyState === BODY_STATES.SIDE_PANE || bodyState === BODY_STATES.SPLIT_VIEW) {
+              closeSidePane();
+            }
+            // This button is hidden in fullscreen, but as a fallback, it should exit.
+            if (isFullscreen) {
+              toggleFullscreen();
+            }
+        }}
+        className={cn(
+          'h-8 w-8 flex items-center justify-center rounded-full hover:bg-accent transition-colors group',
+          bodyState === BODY_STATES.NORMAL && 'bg-accent text-accent-foreground'
+        )}
+        title="Normal View"
+      >
+        <Columns className="w-4 h-4" />
+      </button>
+      <button
+        onClick={handleSidePaneClick}
+        className={cn(
+          'h-8 w-8 flex items-center justify-center rounded-full hover:bg-accent transition-colors group',
+          bodyState === BODY_STATES.SIDE_PANE && 'bg-accent text-accent-foreground'
+        )}
+        title="Side Pane View"
+      >
+        <PanelRightOpen className="w-4 h-4" />
+      </button>
+      <button
+        onClick={handleSplitViewClick}
+        className={cn(
+          'h-8 w-8 flex items-center justify-center rounded-full hover:bg-accent transition-colors group',
+          bodyState === BODY_STATES.SPLIT_VIEW && 'bg-accent text-accent-foreground'
+        )}
+        title={bodyState === BODY_STATES.SPLIT_VIEW ? 'Switch to Overlay View' : 'Switch to Split View'}
+      >
+        {bodyState === BODY_STATES.SPLIT_VIEW ? <Layers className="w-4 h-4" /> : <SplitSquareHorizontal className="w-4 h-4" />}
+      </button>
+      <button
+        onClick={() => toggleFullscreen(pane)}
+        className={cn(
+          'h-8 w-8 flex items-center justify-center rounded-full hover:bg-accent transition-colors group',
+          isThisPaneFullscreen && 'bg-accent text-accent-foreground'
+        )}
+        title="Toggle Fullscreen"
+      >
+        {isThisPaneFullscreen ? (
+          <Minimize className="w-4 h-4" />
+        ) : (
+          <Maximize className="w-4 h-4" />
+        )}
+      </button>
+    </div>
+  )
+}
+````
+
 ## File: src/components/ui/dropdown-menu.tsx
 ````typescript
 import * as React from "react"
@@ -4467,56 +4467,6 @@ const AppMenuItem: React.FC<AppMenuItemProps> = ({ icon: Icon, label, badge, has
 };
 ````
 
-## File: src/components/layout/MainContent.tsx
-````typescript
-import { forwardRef } from 'react'
-import { X } from 'lucide-react'
-import { cn } from '@/lib/utils';
-import { BODY_STATES } from '@/lib/utils'
-import { useAppShell } from '@/context/AppShellContext'
-
-interface MainContentProps {
-  onToggleFullscreen?: () => void
-  children?: React.ReactNode;
-}
-
-export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
-  ({ onToggleFullscreen, children }, ref) => {
-    const { bodyState, fullscreenTarget, toggleFullscreen } = useAppShell();
-    const isFullscreen = bodyState === BODY_STATES.FULLSCREEN;
-
-    if (isFullscreen && fullscreenTarget === 'right') {
-      return null;
-    }
-
-    return (
-      <div
-        ref={ref}
-        className={cn(
-        "flex flex-col h-full overflow-hidden",
-        isFullscreen && "absolute inset-0 z-40 bg-background"
-        )}
-      >
-        {isFullscreen && (
-          <button
-            onClick={() => toggleFullscreen()}
-            className="fixed top-6 right-6 lg:right-12 z-[100] h-12 w-12 flex items-center justify-center rounded-full bg-card/50 backdrop-blur-sm hover:bg-card/75 transition-colors group"
-            title="Exit Fullscreen"
-          >
-            <X className="w-6 h-6 group-hover:scale-110 group-hover:rotate-90 transition-all duration-300" />
-          </button>
-        )}
-
-        <div className="flex-1 min-h-0 flex flex-col">
-          {children}
-        </div>
-      </div>
-    )
-  }
-)
-MainContent.displayName = 'MainContent'
-````
-
 ## File: src/hooks/useAppShellAnimations.hook.ts
 ````typescript
 import { useEffect } from 'react';
@@ -4586,7 +4536,7 @@ export function useBodyStateAnimations(
   topBarContainerRef: React.RefObject<HTMLDivElement>,
   mainAreaRef: React.RefObject<HTMLDivElement>
 ) {
-  const { bodyState, reducedMotion, rightPaneWidth, isTopBarVisible, closeSidePane } = useAppShell();
+  const { bodyState, reducedMotion, rightPaneWidth, isTopBarVisible, closeSidePane, fullscreenTarget } = useAppShell();
   const animationDuration = reducedMotion ? 0.1 : 0.4;
 
   useEffect(() => {
@@ -4599,8 +4549,10 @@ export function useBodyStateAnimations(
 
     // Right pane animation
     gsap.to(rightPaneRef.current, {
-      width: isSidePane || isSplitView ? rightPaneWidth : 0,
-      x: isSidePane || isSplitView ? 0 : rightPaneWidth + 5, // +5 to hide border
+      width: isFullscreen 
+        ? (fullscreenTarget === 'right' ? '100%' : 0) 
+        : (isSidePane || isSplitView ? rightPaneWidth : 0),
+      x: (isSidePane || isSplitView || (isFullscreen && fullscreenTarget === 'right')) ? 0 : rightPaneWidth + 5, // +5 to hide border
       duration: animationDuration,
       ease,
     });
@@ -4632,7 +4584,7 @@ export function useBodyStateAnimations(
         gsap.to(backdrop, { opacity: 0, duration: animationDuration, onComplete: () => backdrop.remove() });
       }
     }
-  }, [bodyState, animationDuration, rightPaneWidth, closeSidePane, isTopBarVisible, appRef, mainContentRef, rightPaneRef, topBarContainerRef, mainAreaRef]);
+  }, [bodyState, animationDuration, rightPaneWidth, closeSidePane, isTopBarVisible, appRef, mainContentRef, rightPaneRef, topBarContainerRef, mainAreaRef, fullscreenTarget]);
 }
 ````
 
@@ -5278,80 +5230,54 @@ export function DashboardContent({ isInSidePane = false }: DashboardContentProps
 }
 ````
 
-## File: src/components/layout/RightPane.tsx
+## File: src/components/layout/MainContent.tsx
 ````typescript
-import { forwardRef, type ReactNode } from 'react'
-import { ChevronRight, X } from 'lucide-react'
-import { cn, BODY_STATES } from '@/lib/utils'
+import { forwardRef } from 'react'
+import { X } from 'lucide-react'
+import { cn } from '@/lib/utils';
+import { BODY_STATES } from '@/lib/utils'
 import { useAppShell } from '@/context/AppShellContext'
 
-interface RightPaneProps {
-  children?: ReactNode
-  header?: ReactNode
-  className?: string
+interface MainContentProps {
+  onToggleFullscreen?: () => void
+  children?: React.ReactNode;
 }
 
-export const RightPane = forwardRef<HTMLDivElement, RightPaneProps>(({ children, header, className }, ref) => {
-  const { closeSidePane, dispatch, bodyState, fullscreenTarget, toggleFullscreen } = useAppShell();
-  const isSplitView = bodyState === BODY_STATES.SPLIT_VIEW;
-  const isFullscreen = bodyState === BODY_STATES.FULLSCREEN;
+export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
+  ({ onToggleFullscreen, children }, ref) => {
+    const { bodyState, fullscreenTarget, toggleFullscreen } = useAppShell();
+    const isFullscreen = bodyState === BODY_STATES.FULLSCREEN;
 
-  if (isFullscreen && fullscreenTarget !== 'right') {
-    return null;
-  }
+    if (isFullscreen && fullscreenTarget === 'right') {
+      return null;
+    }
 
-  return (
-    <aside
-      ref={ref}
-      className={cn(
-        "border-l border-border flex flex-col h-full overflow-hidden",
-        isSplitView && "relative bg-background",
-        !isSplitView && !isFullscreen && "fixed top-0 right-0 z-[60] bg-card",
-        isFullscreen && fullscreenTarget === 'right' && "absolute inset-0 z-50 bg-card",
-        className,
-      )}
-    >
-      {isFullscreen && fullscreenTarget === 'right' && (
-        <button
-          onClick={() => toggleFullscreen()}
-          className="fixed top-6 right-6 lg:right-12 z-[100] h-12 w-12 flex items-center justify-center rounded-full bg-card/50 backdrop-blur-sm hover:bg-card/75 transition-colors group"
-          title="Exit Fullscreen"
-        >
-          <X className="w-6 h-6 group-hover:scale-110 group-hover:rotate-90 transition-all duration-300" />
-        </button>
-      )}
-      {bodyState !== BODY_STATES.SPLIT_VIEW && !isFullscreen && (
-        <button
-          onClick={closeSidePane}
-          className="absolute top-1/2 -left-px -translate-y-1/2 -translate-x-full w-8 h-16 bg-card border border-r-0 border-border rounded-l-lg flex items-center justify-center hover:bg-accent transition-colors group z-10"
-          title="Close pane"
-        >
-          <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-foreground transition-colors" />
-        </button>
-      )}
-      <div 
+    return (
+      <div
+        ref={ref}
         className={cn(
-          "absolute top-0 left-0 w-2 h-full bg-transparent hover:bg-primary/20 cursor-col-resize z-50 transition-colors duration-200 group -translate-x-1/2"
+        "flex flex-col h-full overflow-hidden",
+        isFullscreen && "absolute inset-0 z-40 bg-background"
         )}
-        onMouseDown={(e) => {
-          e.preventDefault()
-          dispatch({ type: 'SET_IS_RESIZING_RIGHT_PANE', payload: true });
-        }}
       >
-        <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200 mx-auto" />
-      </div>
-      {header && (
-        <div className="flex items-center justify-between p-4 border-b border-border h-20 flex-shrink-0 pl-6">
-          {header}
+        {isFullscreen && (
+          <button
+            onClick={() => toggleFullscreen()}
+            className="fixed top-6 right-6 lg:right-12 z-[100] h-12 w-12 flex items-center justify-center rounded-full bg-card/50 backdrop-blur-sm hover:bg-card/75 transition-colors group"
+            title="Exit Fullscreen"
+          >
+            <X className="w-6 h-6 group-hover:scale-110 group-hover:rotate-90 transition-all duration-300" />
+          </button>
+        )}
+
+        <div className="flex-1 min-h-0 flex flex-col">
+          {children}
         </div>
-      )}
-      <div className={cn("flex-1 overflow-y-auto", bodyState === BODY_STATES.SIDE_PANE && "px-8 py-6")}>
-        {children}
       </div>
-    </aside>
-  )
-})
-RightPane.displayName = "RightPane"
+    )
+  }
+)
+MainContent.displayName = 'MainContent'
 ````
 
 ## File: src/components/layout/TopBar.tsx
@@ -5520,6 +5446,82 @@ export default defineConfig({
     },
   },
 })
+````
+
+## File: src/components/layout/RightPane.tsx
+````typescript
+import { forwardRef, type ReactNode } from 'react'
+import { ChevronRight, X } from 'lucide-react'
+import { cn, BODY_STATES } from '@/lib/utils'
+import { useAppShell } from '@/context/AppShellContext'
+
+interface RightPaneProps {
+  children?: ReactNode
+  header?: ReactNode
+  className?: string
+}
+
+export const RightPane = forwardRef<HTMLDivElement, RightPaneProps>(({ children, header, className }, ref) => {
+  const { closeSidePane, dispatch, bodyState, fullscreenTarget, toggleFullscreen } = useAppShell();
+  const isSplitView = bodyState === BODY_STATES.SPLIT_VIEW;
+  const isFullscreen = bodyState === BODY_STATES.FULLSCREEN;
+
+  if (isFullscreen && fullscreenTarget !== 'right') {
+    return null;
+  }
+
+  return (
+    <aside
+      ref={ref}
+      className={cn(
+        "border-l border-border flex flex-col h-full overflow-hidden",
+        isSplitView && "relative bg-background",
+        !isSplitView && !isFullscreen && "fixed top-0 right-0 z-[60] bg-card",
+        isFullscreen && fullscreenTarget === 'right' && "absolute inset-0 z-50 bg-card",
+        className,
+      )}
+    >
+      {isFullscreen && fullscreenTarget === 'right' && (
+        <button
+          onClick={() => toggleFullscreen()}
+          className="fixed top-6 right-6 lg:right-12 z-[100] h-12 w-12 flex items-center justify-center rounded-full bg-card/50 backdrop-blur-sm hover:bg-card/75 transition-colors group"
+          title="Exit Fullscreen"
+        >
+          <X className="w-6 h-6 group-hover:scale-110 group-hover:rotate-90 transition-all duration-300" />
+        </button>
+      )}
+      {bodyState !== BODY_STATES.SPLIT_VIEW && !isFullscreen && (
+        <button
+          onClick={closeSidePane}
+          className="absolute top-1/2 -left-px -translate-y-1/2 -translate-x-full w-8 h-16 bg-card border border-r-0 border-border rounded-l-lg flex items-center justify-center hover:bg-accent transition-colors group z-10"
+          title="Close pane"
+        >
+          <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-foreground transition-colors" />
+        </button>
+      )}
+      <div 
+        className={cn(
+          "absolute top-0 left-0 w-2 h-full bg-transparent hover:bg-primary/20 cursor-col-resize z-50 transition-colors duration-200 group -translate-x-1/2"
+        )}
+        onMouseDown={(e) => {
+          e.preventDefault()
+          dispatch({ type: 'SET_IS_RESIZING_RIGHT_PANE', payload: true });
+        }}
+      >
+        <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200 mx-auto" />
+      </div>
+      {header && (
+        <div className="flex items-center justify-between p-4 border-b border-border h-20 flex-shrink-0 pl-6">
+          {header}
+        </div>
+      )}
+      <div className={cn("flex-1 overflow-y-auto", bodyState === BODY_STATES.SIDE_PANE && "px-8 py-6")}>
+        {children}
+      </div>
+    </aside>
+  )
+})
+RightPane.displayName = "RightPane"
 ````
 
 ## File: src/index.css

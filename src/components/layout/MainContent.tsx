@@ -22,8 +22,8 @@ export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
       <div
         ref={ref}
         className={cn(
-        "flex flex-col h-full overflow-hidden",
-        isFullscreen && "absolute inset-0 z-40 bg-background"
+        "flex flex-col h-full overflow-hidden bg-background",
+        isFullscreen && "fixed inset-0 z-[60]"
         )}
       >
         {isFullscreen && (

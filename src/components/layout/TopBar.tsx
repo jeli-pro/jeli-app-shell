@@ -45,8 +45,7 @@ export function TopBar({
 
   return (
     <div className={cn(
-      "h-20 bg-background border-b border-border flex items-center justify-between px-6 z-50 gap-4",
-      'transition-all duration-300 ease-in-out'
+      "h-20 bg-background border-b border-border flex items-center justify-between px-6 z-50 gap-4"
     )}>
       {/* Left Section - Sidebar Controls & Breadcrumbs */}
       <div className="flex items-center gap-4">
