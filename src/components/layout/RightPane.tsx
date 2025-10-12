@@ -1,6 +1,6 @@
 import { forwardRef, type ReactNode } from 'react'
 import { ChevronRight } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { cn, BODY_STATES } from '@/lib/utils'
 import { useAppShell } from '@/context/AppShellContext'
 
 interface RightPaneProps {
@@ -10,20 +10,22 @@ interface RightPaneProps {
 }
 
 export const RightPane = forwardRef<HTMLDivElement, RightPaneProps>(({ children, header, className }, ref) => {
-  const { closeSidePane, dispatch } = useAppShell();
+  const { closeSidePane, dispatch, bodyState } = useAppShell();
 
   return (
     <aside
       ref={ref}
       className={cn("bg-card border-l border-border flex flex-col h-full overflow-hidden fixed top-0 right-0 z-[60]", className)}
     >
-      <button
-        onClick={closeSidePane}
-        className="absolute top-1/2 -left-px -translate-y-1/2 -translate-x-full w-8 h-16 bg-card border border-r-0 border-border rounded-l-lg flex items-center justify-center hover:bg-accent transition-colors group z-10"
-        title="Close pane"
-      >
-        <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-foreground transition-colors" />
-      </button>
+      {bodyState !== BODY_STATES.SPLIT_VIEW && (
+        <button
+          onClick={closeSidePane}
+          className="absolute top-1/2 -left-px -translate-y-1/2 -translate-x-full w-8 h-16 bg-card border border-r-0 border-border rounded-l-lg flex items-center justify-center hover:bg-accent transition-colors group z-10"
+          title="Close pane"
+        >
+          <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-foreground transition-colors" />
+        </button>
+      )}
       <div 
         className={cn(
           "absolute top-0 left-0 w-2 h-full bg-transparent hover:bg-primary/20 cursor-col-resize z-50 transition-colors duration-200 group -translate-x-1/2"

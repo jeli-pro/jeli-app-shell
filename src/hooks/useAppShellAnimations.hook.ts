@@ -62,22 +62,30 @@ export function useBodyStateAnimations(
   appRef: React.RefObject<HTMLDivElement>,
   mainContentRef: React.RefObject<HTMLDivElement>,
   rightPaneRef: React.RefObject<HTMLDivElement>,
-  topBarContainerRef: React.RefObject<HTMLDivElement>
+  topBarContainerRef: React.RefObject<HTMLDivElement>,
+  mainAreaRef: React.RefObject<HTMLDivElement>
 ) {
   const { bodyState, reducedMotion, rightPaneWidth, isTopBarVisible, closeSidePane } = useAppShell();
   const animationDuration = reducedMotion ? 0.1 : 0.4;
 
   useEffect(() => {
-    if (!mainContentRef.current || !rightPaneRef.current || !topBarContainerRef.current) return;
+    if (!mainContentRef.current || !rightPaneRef.current || !topBarContainerRef.current || !mainAreaRef.current) return;
 
     const ease = "power3.out";
     const isFullscreen = bodyState === BODY_STATES.FULLSCREEN;
     const isSidePane = bodyState === BODY_STATES.SIDE_PANE;
+    const isSplitView = bodyState === BODY_STATES.SPLIT_VIEW;
 
     // Right pane animation
     gsap.to(rightPaneRef.current, {
       width: rightPaneWidth,
-      x: isSidePane ? 0 : rightPaneWidth + 5, // +5 to hide border
+      x: isSidePane || isSplitView ? 0 : rightPaneWidth + 5, // +5 to hide border
+      duration: animationDuration,
+      ease,
+    });
+
+    gsap.to(mainAreaRef.current, {
+      marginRight: isSplitView ? rightPaneWidth : 0,
       duration: animationDuration,
       ease,
     });
@@ -96,7 +104,7 @@ export function useBodyStateAnimations(
     
     // Add backdrop for side pane
     const backdrop = document.querySelector('.app-backdrop');
-    if (isSidePane) {
+    if (isSidePane) { // This is correct because isSidePane is false when bodyState is split_view
       if (!backdrop) {
         const el = document.createElement('div');
         el.className = 'app-backdrop fixed inset-0 bg-black/30 z-[55]';
@@ -109,5 +117,5 @@ export function useBodyStateAnimations(
         gsap.to(backdrop, { opacity: 0, duration: animationDuration, onComplete: () => backdrop.remove() });
       }
     }
-  }, [bodyState, animationDuration, rightPaneWidth, closeSidePane, isTopBarVisible, appRef, mainContentRef, rightPaneRef, topBarContainerRef]);
+  }, [bodyState, animationDuration, rightPaneWidth, closeSidePane, isTopBarVisible, appRef, mainContentRef, rightPaneRef, topBarContainerRef, mainAreaRef]);
 }

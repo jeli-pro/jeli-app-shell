@@ -22,7 +22,7 @@ import { SettingsContent } from './features/settings/SettingsContent'
 import { LoginPage } from './components/auth/LoginPage'
 
 // Import icons
-import { LayoutDashboard, Settings, Component, Bell, SlidersHorizontal, ChevronsLeftRight, Search, Filter, Plus, PanelRight, ChevronRight, Rocket } from 'lucide-react'
+import { LayoutDashboard, Settings, Component, Bell, SlidersHorizontal, ChevronsLeftRight, Search, Filter, Plus, PanelRight, ChevronRight, Rocket, Layers, SplitSquareHorizontal } from 'lucide-react'
 import { BODY_STATES } from './lib/utils'
 import { cn } from './lib/utils'
 
@@ -139,7 +139,7 @@ function AppTopBar() {
 
 // The main App component that composes the shell
 function ComposedApp() {
-  const { sidePaneContent, closeSidePane } = useAppShell();
+  const { sidePaneContent, closeSidePane, bodyState, toggleSplitView } = useAppShell();
   const { setActivePage } = useAppStore();
 
   const contentMap = {
@@ -168,16 +168,30 @@ function ComposedApp() {
           {currentContent.title}
         </h2>
       </div>
-      
-      {'page' in currentContent && currentContent.page && (
-        <button
-          onClick={handleMaximize}
-          className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors mr-2"
-          title="Move to Main View"
-        >
-          <ChevronsLeftRight className="w-5 h-5" />
-        </button>
-      )}
+      <div className="flex items-center">
+        {(bodyState === BODY_STATES.SIDE_PANE || bodyState === BODY_STATES.SPLIT_VIEW) && (
+          <button
+            onClick={toggleSplitView}
+            className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors"
+            title={bodyState === BODY_STATES.SIDE_PANE ? 'Switch to Split View' : 'Switch to Overlay View'}
+          >
+            {bodyState === BODY_STATES.SPLIT_VIEW ? (
+              <Layers className="w-5 h-5" />
+            ) : (
+              <SplitSquareHorizontal className="w-5 h-5" />
+            )}
+          </button>
+        )}
+        {'page' in currentContent && currentContent.page && (
+          <button
+            onClick={handleMaximize}
+            className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors mr-2"
+            title="Move to Main View"
+          >
+            <ChevronsLeftRight className="w-5 h-5" />
+          </button>
+        )}
+      </div>
       </>
   );
 

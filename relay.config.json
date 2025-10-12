@@ -1,6 +1,6 @@
 {
   "$schema": "https://relay.noca.pro/schema.json",
-  "projectId": "amazing-app-shell",
+  "projectId": "jeli-app-shell",
   "core": {
     "logLevel": "info",
     "enableNotifications": false,

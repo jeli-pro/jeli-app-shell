@@ -1,3 +1,9 @@
+create a page to demonstrate the data CRUD. with features like three view mode (list, grid, card, table, tree)
+
+===
+
+currently, the page content has two view mode, side pane view and full page view. now I also want to add a third view mode, a split view mode.
+
 === DONE
 
 tsx only for renders, so please extract out all hooks to *.hook.ts files

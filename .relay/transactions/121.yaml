@@ -1,0 +1,1274 @@
+uuid: d8e56149-14a5-48b4-934d-4581561f368f
+projectId: jeli-app-shell
+createdAt: '2025-10-12T01:29:46.004Z'
+gitCommitMsg: >-
+  feat: Add split view mode for side-by-side content
+
+  This commit introduces a new 'split_view' layout mode, allowing the main
+  content and right pane to be displayed side-by-side.
+
+  - Adds `SPLIT_VIEW` to `BODY_STATES` and a `toggleSplitView` action to
+  `AppShellContext`. - Updates `useBodyStateAnimations` to animate the main
+  content area's margin, creating the split layout. - Adds a new toggle button
+  in the `RightPane` header to switch between overlay and split view modes. -
+  Hides the external close handle on `RightPane` when in split view.
+promptSummary: Add a split view mode to the application shell.
+reasoning:
+  - >-
+    This is an excellent feature request. Adding a split view will significantly
+    improve the usability of the application shell for users who need to see
+    main content and side pane information simultaneously.
+  - >-
+    Here is the step-by-step implementation to introduce the new `split_view`
+    mode.
+  - '### Step 1: Update State Management & Types'
+  - >-
+    First, I'll update the core state management to recognize and handle the new
+    `split_view` state.
+  - >-
+    I'm adding `SPLIT_VIEW` to our `BODY_STATES` constant in `src/lib/utils.ts`.
+    This makes it a recognized state across the application.
+  - >-
+    Next, I'll add a `toggleSplitView` action to
+    `src/context/AppShellContext.tsx`. This function will provide a convenient
+    way to switch between the overlay (`SIDE_PANE`) and `SPLIT_VIEW` modes.
+  - '### Step 2: Adapt Layout and Animation Engine'
+  - >-
+    Now I will adapt the layout and animations. I'll add a `ref` to the main
+    content area in `AppShell.tsx` so I can animate its margin.
+  - >-
+    With the `ref` in place, I'll update the animation hook
+    `useBodyStateAnimations` to handle the new state. It will now animate the
+    `marginRight` of the main content area to create the split view effect, and
+    ensure the right pane is visible in both `SIDE_PANE` and `SPLIT_VIEW` modes.
+  - '### Step 3: Implement UI Controls'
+  - Finally, let's add the UI controls for the new feature.
+  - >-
+    I will hide the slide-out handle on the `RightPane` when in `SPLIT_VIEW`
+    mode, as it's not applicable for a non-overlay view.
+  - >-
+    Lastly, I'll add a toggle button to the header of the `RightPane` in
+    `App.tsx`, allowing users to switch between overlay and split view modes.
+  - >-
+    These changes complete the implementation of the split view mode. The
+    application shell is now more flexible and powerful.
+operations:
+  - type: write
+    path: src/lib/utils.ts
+    content: |+
+      --- src/lib/utils.ts
+      +++ src/lib/utils.ts
+      @@ -14,7 +14,8 @@
+       export const BODY_STATES = {
+         NORMAL: 'normal',
+         FULLSCREEN: 'fullscreen',
+      -  SIDE_PANE: 'side_pane'
+      +  SIDE_PANE: 'side_pane',
+      +  SPLIT_VIEW: 'split_view'
+       } as const
+       
+       export type SidebarState = typeof SIDEBAR_STATES[keyof typeof SIDEBAR_STATES]
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/context/AppShellContext.tsx
+    content: >+
+      --- src/context/AppShellContext.tsx
+
+      +++ src/context/AppShellContext.tsx
+
+      @@ -99,6 +99,7 @@
+         showSidebar: () => void;
+         peekSidebar: () => void;
+         toggleFullscreen: () => void;
+      +  toggleSplitView: () => void;
+         openSidePane: (content: AppShellState['sidePaneContent']) => void;
+         closeSidePane: () => void;
+         resetToDefaults: () => void;
+      @@ -134,6 +135,15 @@
+           dispatch({ type: 'SET_BODY_STATE', payload: current === BODY_STATES.FULLSCREEN ? BODY_STATES.NORMAL : BODY_STATES.FULLSCREEN });
+         }, [state.bodyState]);
+       
+      +  const toggleSplitView = useCallback(() => {
+
+      +    const current = state.bodyState;
+
+      +    if (current === BODY_STATES.SIDE_PANE) {
+
+      +      dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.SPLIT_VIEW
+      });
+
+      +    } else if (current === BODY_STATES.SPLIT_VIEW) {
+
+      +      dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.SIDE_PANE
+      });
+
+      +    }
+
+      +  }, [state.bodyState]);
+
+      +
+         const openSidePane = useCallback((content: AppShellState['sidePaneContent']) => {
+           if (state.bodyState === BODY_STATES.SIDE_PANE && state.sidePaneContent === content) {
+             // If it's open with same content, close it.
+      @@ -154,6 +164,7 @@
+           showSidebar,
+           peekSidebar,
+           toggleFullscreen,
+      +    toggleSplitView,
+           openSidePane,
+           closeSidePane,
+           resetToDefaults,
+      @@ -164,6 +175,7 @@
+           showSidebar,
+           peekSidebar,
+           toggleFullscreen,
+      +    toggleSplitView,
+           openSidePane,
+           closeSidePane,
+           resetToDefaults
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/components/layout/AppShell.tsx
+    content: >+
+      --- src/components/layout/AppShell.tsx
+
+      +++ src/components/layout/AppShell.tsx
+
+      @@ -26,12 +26,13 @@
+         const rightPaneRef = useRef<HTMLDivElement>(null)
+         const resizeHandleRef = useRef<HTMLDivElement>(null)
+         const topBarContainerRef = useRef<HTMLDivElement>(null)
+      +  const mainAreaRef = useRef<HTMLDivElement>(null)
+       
+         // Custom hooks for logic
+         useResizableSidebar(sidebarRef, resizeHandleRef);
+         useResizableRightPane();
+         useSidebarAnimations(sidebarRef, resizeHandleRef);
+      -  useBodyStateAnimations(appRef, mainContentRef, rightPaneRef,
+      topBarContainerRef);
+
+      +  useBodyStateAnimations(appRef, mainContentRef, rightPaneRef,
+      topBarContainerRef, mainAreaRef);
+         
+         const sidebarWithProps = React.cloneElement(sidebar, { 
+           ref: sidebarRef,
+      @@ -83,7 +84,7 @@
+               )}
+       
+               {/* Main Content Area */}
+      -        <div className="relative flex-1 overflow-hidden bg-background">
+
+      +        <div ref={mainAreaRef} className="relative flex-1 overflow-hidden
+      bg-background">
+                 <div ref={topBarContainerRef} className="absolute inset-x-0 top-0 z-30">
+                   {topBarWithProps}
+                 </div>
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/hooks/useAppShellAnimations.hook.ts
+    content: >+
+      --- src/hooks/useAppShellAnimations.hook.ts
+
+      +++ src/hooks/useAppShellAnimations.hook.ts
+
+      @@ -52,24 +52,33 @@
+         appRef: React.RefObject<HTMLDivElement>,
+         mainContentRef: React.RefObject<HTMLDivElement>,
+         rightPaneRef: React.RefObject<HTMLDivElement>,
+      -  topBarContainerRef: React.RefObject<HTMLDivElement>
+
+      +  topBarContainerRef: React.RefObject<HTMLDivElement>,
+
+      +  mainAreaRef: React.RefObject<HTMLDivElement>
+       ) {
+         const { bodyState, reducedMotion, rightPaneWidth, isTopBarVisible, closeSidePane } = useAppShell();
+         const animationDuration = reducedMotion ? 0.1 : 0.4;
+       
+         useEffect(() => {
+      -    if (!mainContentRef.current || !rightPaneRef.current ||
+      !topBarContainerRef.current) return;
+
+      +    if (!mainContentRef.current || !rightPaneRef.current ||
+      !topBarContainerRef.current || !mainAreaRef.current) return;
+       
+           const ease = "power3.out";
+           const isFullscreen = bodyState === BODY_STATES.FULLSCREEN;
+           const isSidePane = bodyState === BODY_STATES.SIDE_PANE;
+      +    const isSplitView = bodyState === BODY_STATES.SPLIT_VIEW;
+       
+           // Right pane animation
+           gsap.to(rightPaneRef.current, {
+             width: rightPaneWidth,
+      -      x: isSidePane ? 0 : rightPaneWidth + 5, // +5 to hide border
+
+      +      x: isSidePane || isSplitView ? 0 : rightPaneWidth + 5, // +5 to
+      hide border
+             duration: animationDuration,
+             ease,
+           });
+      +
+
+      +    gsap.to(mainAreaRef.current, {
+
+      +      marginRight: isSplitView ? rightPaneWidth : 0,
+
+      +      duration: animationDuration,
+
+      +      ease,
+
+      +    });
+       
+           gsap.to(mainContentRef.current, {
+             paddingTop: isFullscreen ? '0rem' : isTopBarVisible ? '5rem' : '0rem', // h-20 is 5rem
+      @@ -84,7 +93,7 @@
+           
+           // Add backdrop for side pane
+           const backdrop = document.querySelector('.app-backdrop');
+      -    if (isSidePane) {
+
+      +    if (isSidePane) { // This is correct because isSidePane is false when
+      bodyState is split_view
+             if (!backdrop) {
+               const el = document.createElement('div');
+               el.className = 'app-backdrop fixed inset-0 bg-black/30 z-[55]';
+      @@ -97,6 +106,6 @@
+               gsap.to(backdrop, { opacity: 0, duration: animationDuration, onComplete: () => backdrop.remove() });
+             }
+           }
+      -  }, [bodyState, animationDuration, rightPaneWidth, closeSidePane,
+      isTopBarVisible, appRef, mainContentRef, rightPaneRef,
+      topBarContainerRef]);
+
+      +  }, [bodyState, animationDuration, rightPaneWidth, closeSidePane,
+      isTopBarVisible, appRef, mainContentRef, rightPaneRef, topBarContainerRef,
+      mainAreaRef]);
+       }
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/components/layout/RightPane.tsx
+    content: >+
+      --- src/components/layout/RightPane.tsx
+
+      +++ src/components/layout/RightPane.tsx
+
+      @@ -1,7 +1,7 @@
+       import { forwardRef, type ReactNode } from 'react'
+       import { ChevronRight } from 'lucide-react'
+      -import { cn } from '@/lib/utils'
+
+      -import { useAppShell } from '@/context/AppShellContext'
+
+      +import { cn, BODY_STATES } from '@/lib/utils'
+
+      +import { useAppShell } from '@/context/AppShellContext'
+       
+       interface RightPaneProps {
+         children?: ReactNode
+      @@ -10,21 +10,23 @@
+       }
+       
+       export const RightPane = forwardRef<HTMLDivElement, RightPaneProps>(({ children, header, className }, ref) => {
+      -  const { closeSidePane, dispatch } = useAppShell();
+
+      +  const { closeSidePane, dispatch, bodyState } = useAppShell();
+       
+         return (
+           <aside
+             ref={ref}
+             className={cn("bg-card border-l border-border flex flex-col h-full overflow-hidden fixed top-0 right-0 z-[60]", className)}
+           >
+      -      <button
+
+      -        onClick={closeSidePane}
+
+      -        className="absolute top-1/2 -left-px -translate-y-1/2
+      -translate-x-full w-8 h-16 bg-card border border-r-0 border-border
+      rounded-l-lg flex items-center justify-center hover:bg-accent
+      transition-colors group z-10"
+
+      -        title="Close pane"
+
+      -      >
+
+      -        <ChevronRight className="w-5 h-5 text-muted-foreground
+      group-hover:text-foreground transition-colors" />
+
+      -      </button>
+
+      +      {bodyState !== BODY_STATES.SPLIT_VIEW && (
+
+      +        <button
+
+      +          onClick={closeSidePane}
+
+      +          className="absolute top-1/2 -left-px -translate-y-1/2
+      -translate-x-full w-8 h-16 bg-card border border-r-0 border-border
+      rounded-l-lg flex items-center justify-center hover:bg-accent
+      transition-colors group z-10"
+
+      +          title="Close pane"
+
+      +        >
+
+      +          <ChevronRight className="w-5 h-5 text-muted-foreground
+      group-hover:text-foreground transition-colors" />
+
+      +        </button>
+
+      +      )}
+             <div 
+               className={cn(
+                 "absolute top-0 left-0 w-2 h-full bg-transparent hover:bg-primary/20 cursor-col-resize z-50 transition-colors duration-200 group -translate-x-1/2"
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/App.tsx
+    content: >+
+      --- src/App.tsx
+
+      +++ src/App.tsx
+
+      @@ -15,7 +15,7 @@
+       import { LoginPage } from './components/auth/LoginPage'
+       
+       // Import icons
+      -import { LayoutDashboard, Settings, Component, Bell, SlidersHorizontal,
+      ChevronsLeftRight, Search, Filter, Plus, PanelRight, ChevronRight, Rocket
+      } from 'lucide-react'
+
+      +import { LayoutDashboard, Settings, Component, Bell, SlidersHorizontal,
+      ChevronsLeftRight, Search, Filter, Plus, PanelRight, ChevronRight, Rocket,
+      Layers, SplitSquareHorizontal } from 'lucide-react'
+       import { BODY_STATES } from './lib/utils'
+       import { cn } from './lib/utils'
+       
+      @@ -142,7 +142,7 @@
+       
+       // The main App component that composes the shell
+       function ComposedApp() {
+      -  const { sidePaneContent, closeSidePane } = useAppShell();
+
+      +  const { sidePaneContent, closeSidePane, bodyState, toggleSplitView } =
+      useAppShell();
+         const { setActivePage } = useAppStore();
+       
+         const contentMap = {
+      @@ -171,16 +171,31 @@
+                 {currentContent.title}
+               </h2>
+             </div>
+      -      
+
+      -      {'page' in currentContent && currentContent.page && (
+
+      -        <button
+
+      -          onClick={handleMaximize}
+
+      -          className="h-10 w-10 flex items-center justify-center
+      hover:bg-accent rounded-full transition-colors mr-2"
+
+      -          title="Move to Main View"
+
+      -        >
+
+      -          <ChevronsLeftRight className="w-5 h-5" />
+
+      -        </button>
+
+      -      )}
+
+      +      <div className="flex items-center">
+
+      +        {(bodyState === BODY_STATES.SIDE_PANE || bodyState ===
+      BODY_STATES.SPLIT_VIEW) && (
+
+      +          <button
+
+      +            onClick={toggleSplitView}
+
+      +            className="h-10 w-10 flex items-center justify-center
+      hover:bg-accent rounded-full transition-colors"
+
+      +            title={bodyState === BODY_STATES.SIDE_PANE ? 'Switch to Split
+      View' : 'Switch to Overlay View'}
+
+      +          >
+
+      +            {bodyState === BODY_STATES.SPLIT_VIEW ? (
+
+      +              <Layers className="w-5 h-5" />
+
+      +            ) : (
+
+      +              <SplitSquareHorizontal className="w-5 h-5" />
+
+      +            )}
+
+      +          </button>
+
+      +        )}
+
+      +        {'page' in currentContent && currentContent.page && (
+
+      +          <button
+
+      +            onClick={handleMaximize}
+
+      +            className="h-10 w-10 flex items-center justify-center
+      hover:bg-accent rounded-full transition-colors mr-2"
+
+      +            title="Move to Main View"
+
+      +          >
+
+      +            <ChevronsLeftRight className="w-5 h-5" />
+
+      +          </button>
+
+      +        )}
+
+      +      </div>
+             </>
+         );
+       
+
+    patchStrategy: standard-diff
+snapshot:
+  src/lib/utils.ts: >-
+    import { type ClassValue, clsx } from "clsx"
+
+    import { twMerge } from "tailwind-merge"
+
+
+    export function cn(...inputs: ClassValue[]) {
+      return twMerge(clsx(inputs))
+    }
+
+
+    export const SIDEBAR_STATES = {
+      HIDDEN: 'hidden',
+      COLLAPSED: 'collapsed', 
+      EXPANDED: 'expanded',
+      PEEK: 'peek'
+    } as const
+
+
+    export const BODY_STATES = {
+      NORMAL: 'normal',
+      FULLSCREEN: 'fullscreen',
+      SIDE_PANE: 'side_pane'
+    } as const
+
+
+    export type SidebarState = typeof SIDEBAR_STATES[keyof typeof
+    SIDEBAR_STATES]
+
+    export type BodyState = typeof BODY_STATES[keyof typeof BODY_STATES]
+  src/context/AppShellContext.tsx: >-
+    import {
+      createContext,
+      useContext,
+      useReducer,
+      useEffect,
+      useMemo,
+      useCallback,
+      type ReactNode,
+      type ReactElement,
+      type Dispatch,
+    } from 'react';
+
+    import { SIDEBAR_STATES, BODY_STATES, type SidebarState, type BodyState }
+    from '@/lib/utils';
+
+
+    // --- State and Action Types ---
+
+
+    interface AppShellState {
+      sidebarState: SidebarState;
+      bodyState: BodyState;
+      sidePaneContent: 'details' | 'settings' | 'main' | 'toaster' | 'notifications';
+      sidebarWidth: number;
+      rightPaneWidth: number;
+      isResizing: boolean;
+      isResizingRightPane: boolean;
+      isTopBarVisible: boolean;
+      autoExpandSidebar: boolean;
+      reducedMotion: boolean;
+      compactMode: boolean;
+      primaryColor: string;
+      appName?: string;
+      appLogo?: ReactElement;
+    }
+
+
+    type AppShellAction =
+      | { type: 'SET_SIDEBAR_STATE'; payload: SidebarState }
+      | { type: 'SET_BODY_STATE'; payload: BodyState }
+      | { type: 'SET_SIDE_PANE_CONTENT'; payload: AppShellState['sidePaneContent'] }
+      | { type: 'SET_SIDEBAR_WIDTH'; payload: number }
+      | { type: 'SET_RIGHT_PANE_WIDTH'; payload: number }
+      | { type: 'SET_IS_RESIZING'; payload: boolean }
+      | { type: 'SET_IS_RESIZING_RIGHT_PANE'; payload: boolean }
+      | { type: 'SET_TOP_BAR_VISIBLE'; payload: boolean }
+      | { type: 'SET_AUTO_EXPAND_SIDEBAR'; payload: boolean }
+      | { type: 'SET_REDUCED_MOTION'; payload: boolean }
+      | { type: 'SET_COMPACT_MODE'; payload: boolean }
+      | { type: 'SET_PRIMARY_COLOR'; payload: string }
+      | { type: 'RESET_TO_DEFAULTS' };
+
+    // --- Reducer ---
+
+
+    const defaultState: AppShellState = {
+      sidebarState: SIDEBAR_STATES.EXPANDED,
+      bodyState: BODY_STATES.NORMAL,
+      sidePaneContent: 'details',
+      sidebarWidth: 280,
+      rightPaneWidth: typeof window !== 'undefined' ? Math.max(300, Math.round(window.innerWidth * 0.6)) : 400,
+      isResizing: false,
+      isResizingRightPane: false,
+      isTopBarVisible: true,
+      autoExpandSidebar: true,
+      reducedMotion: false,
+      compactMode: false,
+      primaryColor: '220 84% 60%',
+      appName: 'Jeli App',
+      appLogo: undefined,
+    };
+
+
+    function appShellReducer(state: AppShellState, action: AppShellAction):
+    AppShellState {
+      switch (action.type) {
+        case 'SET_SIDEBAR_STATE': return { ...state, sidebarState: action.payload };
+        case 'SET_BODY_STATE': return { ...state, bodyState: action.payload };
+        case 'SET_SIDE_PANE_CONTENT': return { ...state, sidePaneContent: action.payload };
+        case 'SET_SIDEBAR_WIDTH': return { ...state, sidebarWidth: Math.max(200, Math.min(500, action.payload)) };
+        case 'SET_RIGHT_PANE_WIDTH': return { ...state, rightPaneWidth: Math.max(300, Math.min(window.innerWidth * 0.8, action.payload)) };
+        case 'SET_IS_RESIZING': return { ...state, isResizing: action.payload };
+        case 'SET_IS_RESIZING_RIGHT_PANE': return { ...state, isResizingRightPane: action.payload };
+        case 'SET_TOP_BAR_VISIBLE': return { ...state, isTopBarVisible: action.payload };
+        case 'SET_AUTO_EXPAND_SIDEBAR': return { ...state, autoExpandSidebar: action.payload };
+        case 'SET_REDUCED_MOTION': return { ...state, reducedMotion: action.payload };
+        case 'SET_COMPACT_MODE': return { ...state, compactMode: action.payload };
+        case 'SET_PRIMARY_COLOR': return { ...state, primaryColor: action.payload };
+        case 'RESET_TO_DEFAULTS':
+          return {
+            ...defaultState,
+            appName: state.appName, // Preserve props passed to provider
+            appLogo: state.appLogo,   // Preserve props passed to provider
+          };
+        default: return state;
+      }
+    }
+
+
+    // --- Context and Provider ---
+
+
+    interface AppShellContextValue extends AppShellState {
+      dispatch: Dispatch<AppShellAction>;
+      // Composite actions for convenience
+      toggleSidebar: () => void;
+      hideSidebar: () => void;
+      showSidebar: () => void;
+      peekSidebar: () => void;
+      toggleFullscreen: () => void;
+      openSidePane: (content: AppShellState['sidePaneContent']) => void;
+      closeSidePane: () => void;
+      resetToDefaults: () => void;
+    }
+
+
+    const AppShellContext = createContext<AppShellContextValue | null>(null);
+
+
+    interface AppShellProviderProps {
+      children: ReactNode;
+      appName?: string;
+      appLogo?: ReactElement;
+    }
+
+
+    export function AppShellProvider({ children, appName, appLogo }:
+    AppShellProviderProps) {
+      const [state, dispatch] = useReducer(appShellReducer, {
+        ...defaultState,
+        ...(appName && { appName }),
+        ...(appLogo && { appLogo }),
+      });
+
+      // Side effect for primary color
+      useEffect(() => {
+        document.documentElement.style.setProperty('--primary-hsl', state.primaryColor);
+      }, [state.primaryColor]);
+
+      // Memoized composite actions using useCallback for stable function identities
+      const toggleSidebar = useCallback(() => {
+        const current = state.sidebarState;
+        if (current === SIDEBAR_STATES.HIDDEN) dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.COLLAPSED });
+        else if (current === SIDEBAR_STATES.COLLAPSED) dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.EXPANDED });
+        else if (current === SIDEBAR_STATES.EXPANDED) dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.COLLAPSED });
+      }, [state.sidebarState]);
+
+      const hideSidebar = useCallback(() => dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.HIDDEN }), []);
+      const showSidebar = useCallback(() => dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.EXPANDED }), []);
+      const peekSidebar = useCallback(() => dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.PEEK }), []);
+      
+      const toggleFullscreen = useCallback(() => {
+        const current = state.bodyState;
+        dispatch({ type: 'SET_BODY_STATE', payload: current === BODY_STATES.FULLSCREEN ? BODY_STATES.NORMAL : BODY_STATES.FULLSCREEN });
+      }, [state.bodyState]);
+
+      const openSidePane = useCallback((content: AppShellState['sidePaneContent']) => {
+        if (state.bodyState === BODY_STATES.SIDE_PANE && state.sidePaneContent === content) {
+          // If it's open with same content, close it.
+          dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.NORMAL });
+        } else {
+          // If closed, or different content, open with new content.
+          dispatch({ type: 'SET_SIDE_PANE_CONTENT', payload: content });
+          dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.SIDE_PANE });
+        }
+      }, [state.bodyState, state.sidePaneContent]);
+
+      const closeSidePane = useCallback(() => dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.NORMAL }), []);
+      const resetToDefaults = useCallback(() => dispatch({ type: 'RESET_TO_DEFAULTS' }), []);
+
+      const value = useMemo(() => ({ 
+        ...state, 
+        dispatch, 
+        toggleSidebar,
+        hideSidebar,
+        showSidebar,
+        peekSidebar,
+        toggleFullscreen,
+        openSidePane,
+        closeSidePane,
+        resetToDefaults,
+      }), [
+        state, 
+        toggleSidebar,
+        hideSidebar,
+        showSidebar,
+        peekSidebar,
+        toggleFullscreen,
+        openSidePane,
+        closeSidePane,
+        resetToDefaults
+      ]);
+
+      return (
+        <AppShellContext.Provider value={value}>
+          {children}
+        </AppShellContext.Provider>
+      );
+    }
+
+
+    // --- Hook ---
+
+
+    export function useAppShell() {
+      const context = useContext(AppShellContext);
+      if (!context) {
+        throw new Error('useAppShell must be used within an AppShellProvider');
+      }
+      return context;
+    }
+  src/hooks/useAppShellAnimations.hook.ts: |-
+    import { useEffect } from 'react';
+    import { gsap } from 'gsap';
+    import { useAppShell } from '@/context/AppShellContext';
+    import { SIDEBAR_STATES, BODY_STATES } from '@/lib/utils';
+
+    export function useSidebarAnimations(
+      sidebarRef: React.RefObject<HTMLDivElement>,
+      resizeHandleRef: React.RefObject<HTMLDivElement>
+    ) {
+      const { sidebarState, sidebarWidth, bodyState, reducedMotion } = useAppShell();
+      const animationDuration = reducedMotion ? 0.1 : 0.4;
+
+      useEffect(() => {
+        if (!sidebarRef.current || !resizeHandleRef.current) return;
+
+        const sidebar = sidebarRef.current;
+        const handle = resizeHandleRef.current;
+        
+        let targetWidth = 0;
+        let targetOpacity = 1;
+
+        if (bodyState === BODY_STATES.FULLSCREEN) {
+          targetWidth = 0;
+          targetOpacity = 0;
+        } else {
+          switch (sidebarState) {
+            case SIDEBAR_STATES.HIDDEN:
+              targetWidth = 0;
+              targetOpacity = 0;
+              break;
+            case SIDEBAR_STATES.COLLAPSED:
+              targetWidth = 64;
+              targetOpacity = 1;
+              break;
+            case SIDEBAR_STATES.EXPANDED:
+              targetWidth = sidebarWidth;
+              targetOpacity = 1;
+              break;
+            case SIDEBAR_STATES.PEEK:
+              targetWidth = sidebarWidth * 0.8;
+              targetOpacity = 0.95;
+              break;
+          }
+        }
+
+        const tl = gsap.timeline({ ease: "power3.out" });
+        
+        tl.to(sidebar, {
+          width: targetWidth,
+          opacity: targetOpacity,
+          duration: animationDuration,
+        });
+        tl.to(handle, {
+          left: targetWidth,
+          duration: animationDuration,
+        }, 0);
+
+      }, [sidebarState, sidebarWidth, bodyState, animationDuration, sidebarRef, resizeHandleRef]);
+    }
+
+    export function useBodyStateAnimations(
+      appRef: React.RefObject<HTMLDivElement>,
+      mainContentRef: React.RefObject<HTMLDivElement>,
+      rightPaneRef: React.RefObject<HTMLDivElement>,
+      topBarContainerRef: React.RefObject<HTMLDivElement>
+    ) {
+      const { bodyState, reducedMotion, rightPaneWidth, isTopBarVisible, closeSidePane } = useAppShell();
+      const animationDuration = reducedMotion ? 0.1 : 0.4;
+
+      useEffect(() => {
+        if (!mainContentRef.current || !rightPaneRef.current || !topBarContainerRef.current) return;
+
+        const ease = "power3.out";
+        const isFullscreen = bodyState === BODY_STATES.FULLSCREEN;
+        const isSidePane = bodyState === BODY_STATES.SIDE_PANE;
+
+        // Right pane animation
+        gsap.to(rightPaneRef.current, {
+          width: rightPaneWidth,
+          x: isSidePane ? 0 : rightPaneWidth + 5, // +5 to hide border
+          duration: animationDuration,
+          ease,
+        });
+
+        gsap.to(mainContentRef.current, {
+          paddingTop: isFullscreen ? '0rem' : isTopBarVisible ? '5rem' : '0rem', // h-20 is 5rem
+          duration: animationDuration,
+          ease,
+        });
+
+        gsap.to(topBarContainerRef.current, {
+          y: (isFullscreen || !isTopBarVisible) ? '-100%' : '0%',
+          duration: animationDuration,
+          ease,
+        });
+        
+        // Add backdrop for side pane
+        const backdrop = document.querySelector('.app-backdrop');
+        if (isSidePane) {
+          if (!backdrop) {
+            const el = document.createElement('div');
+            el.className = 'app-backdrop fixed inset-0 bg-black/30 z-[55]';
+            appRef.current?.appendChild(el);
+            gsap.fromTo(el, { opacity: 0 }, { opacity: 1, duration: animationDuration });
+            el.onclick = () => closeSidePane();
+          }
+        } else {
+          if (backdrop) {
+            gsap.to(backdrop, { opacity: 0, duration: animationDuration, onComplete: () => backdrop.remove() });
+          }
+        }
+      }, [bodyState, animationDuration, rightPaneWidth, closeSidePane, isTopBarVisible, appRef, mainContentRef, rightPaneRef, topBarContainerRef]);
+    }
+  src/components/layout/RightPane.tsx: >-
+    import { forwardRef, type ReactNode } from 'react'
+
+    import { ChevronRight } from 'lucide-react'
+
+    import { cn } from '@/lib/utils'
+
+    import { useAppShell } from '@/context/AppShellContext'
+
+
+    interface RightPaneProps {
+      children?: ReactNode
+      header?: ReactNode
+      className?: string
+    }
+
+
+    export const RightPane = forwardRef<HTMLDivElement, RightPaneProps>(({
+    children, header, className }, ref) => {
+      const { closeSidePane, dispatch } = useAppShell();
+
+      return (
+        <aside
+          ref={ref}
+          className={cn("bg-card border-l border-border flex flex-col h-full overflow-hidden fixed top-0 right-0 z-[60]", className)}
+        >
+          <button
+            onClick={closeSidePane}
+            className="absolute top-1/2 -left-px -translate-y-1/2 -translate-x-full w-8 h-16 bg-card border border-r-0 border-border rounded-l-lg flex items-center justify-center hover:bg-accent transition-colors group z-10"
+            title="Close pane"
+          >
+            <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-foreground transition-colors" />
+          </button>
+          <div 
+            className={cn(
+              "absolute top-0 left-0 w-2 h-full bg-transparent hover:bg-primary/20 cursor-col-resize z-50 transition-colors duration-200 group -translate-x-1/2"
+            )}
+            onMouseDown={(e) => {
+              e.preventDefault()
+              dispatch({ type: 'SET_IS_RESIZING_RIGHT_PANE', payload: true });
+            }}
+          >
+            <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200 mx-auto" />
+          </div>
+          {header && (
+            <div className="flex items-center justify-between p-4 border-b border-border h-20 flex-shrink-0 pl-6">
+              {header}
+            </div>
+          )}
+          <div className="flex-1 overflow-y-auto px-8 py-6">
+            {children}
+          </div>
+        </aside>
+      )
+    })
+
+    RightPane.displayName = "RightPane"
+  src/components/layout/AppShell.tsx: >-
+    import React, { useRef, type ReactElement } from 'react'
+
+    import { cn } from '@/lib/utils'
+
+    import { CommandPalette } from '@/components/global/CommandPalette';
+
+    import { useAppStore } from '@/store/appStore';
+
+    import { useAppShell } from '@/context/AppShellContext';
+
+    import { SIDEBAR_STATES } from '@/lib/utils'
+
+    import { useResizableSidebar, useResizableRightPane } from
+    '@/hooks/useResizablePanes.hook'
+
+    import { useSidebarAnimations, useBodyStateAnimations } from
+    '@/hooks/useAppShellAnimations.hook'
+
+
+    interface AppShellProps {
+      sidebar: ReactElement;
+      topBar: ReactElement;
+      mainContent: ReactElement;
+      rightPane: ReactElement;
+      commandPalette?: ReactElement;
+    }
+
+
+
+    export function AppShell({ sidebar, topBar, mainContent, rightPane,
+    commandPalette }: AppShellProps) {
+      const {
+        sidebarState,
+        dispatch,
+        autoExpandSidebar,
+        toggleSidebar,
+        peekSidebar,
+        toggleFullscreen,
+      } = useAppShell();
+      
+      const { isDarkMode, toggleDarkMode } = useAppStore();
+      const appRef = useRef<HTMLDivElement>(null)
+      const sidebarRef = useRef<HTMLDivElement>(null)
+      const mainContentRef = useRef<HTMLDivElement>(null)
+      const rightPaneRef = useRef<HTMLDivElement>(null)
+      const resizeHandleRef = useRef<HTMLDivElement>(null)
+      const topBarContainerRef = useRef<HTMLDivElement>(null)
+
+      // Custom hooks for logic
+      useResizableSidebar(sidebarRef, resizeHandleRef);
+      useResizableRightPane();
+      useSidebarAnimations(sidebarRef, resizeHandleRef);
+      useBodyStateAnimations(appRef, mainContentRef, rightPaneRef, topBarContainerRef);
+      
+      const sidebarWithProps = React.cloneElement(sidebar, { 
+        ref: sidebarRef,
+        onMouseEnter: () => {
+          if (autoExpandSidebar && sidebarState === SIDEBAR_STATES.COLLAPSED) {
+            peekSidebar()
+          }
+        },
+        onMouseLeave: () => {
+          if (autoExpandSidebar && sidebarState === SIDEBAR_STATES.PEEK) {
+            dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.COLLAPSED });
+          }
+        }
+      });
+
+      const topBarWithProps = React.cloneElement(topBar, {
+        onToggleSidebar: toggleSidebar,
+        onToggleFullscreen: toggleFullscreen,
+        onToggleDarkMode: toggleDarkMode,
+      });
+
+      const mainContentWithProps = React.cloneElement(mainContent, {
+        ref: mainContentRef,
+        onToggleFullscreen: toggleFullscreen,
+      });
+
+      const rightPaneWithProps = React.cloneElement(rightPane, { ref: rightPaneRef });
+
+      return (
+        <div 
+          ref={appRef}
+          className={cn(
+            "relative h-screen w-screen overflow-hidden bg-background transition-colors duration-300",
+            isDarkMode && "dark"
+          )}
+        >
+          <div className="flex h-screen overflow-hidden">
+            {/* Enhanced Sidebar */}
+            {sidebarWithProps}
+
+            {/* Resize Handle */}
+            {sidebarState !== SIDEBAR_STATES.HIDDEN && (
+              <div
+                ref={resizeHandleRef}
+                className={cn(
+                  "absolute top-0 w-2 h-full bg-transparent hover:bg-primary/20 cursor-col-resize z-50 transition-colors duration-200 group -translate-x-1/2"
+                )}
+                onMouseDown={(e) => {
+                  e.preventDefault()
+                  dispatch({ type: 'SET_IS_RESIZING', payload: true });
+                }}
+              >
+                <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200 mx-auto" />
+              </div>
+            )}
+
+            {/* Main Content Area */}
+            <div className="relative flex-1 overflow-hidden bg-background">
+              <div ref={topBarContainerRef} className="absolute inset-x-0 top-0 z-30">
+                {topBarWithProps}
+              </div>
+              
+              {/* Main Content */}
+              {mainContentWithProps}
+            </div>
+          </div>
+          {rightPaneWithProps}
+          {commandPalette || <CommandPalette />}
+        </div>
+      )
+    }
+  src/App.tsx: >-
+    import React, { useEffect } from 'react'
+
+    import { AppShell } from './components/layout/AppShell'
+
+    import { AppShellProvider, useAppShell } from './context/AppShellContext'
+
+    import { useAppStore } from './store/appStore'
+
+    import { useAuthStore } from './store/authStore'
+
+    import './index.css'
+
+
+    // Import library components
+
+    import { EnhancedSidebar } from './components/layout/EnhancedSidebar'
+
+    import { MainContent } from './components/layout/MainContent'
+
+    import { RightPane } from './components/layout/RightPane'
+
+    import { TopBar } from './components/layout/TopBar'
+
+    import { CommandPalette } from './components/global/CommandPalette'
+
+
+    // Import page/content components
+
+    import { DashboardContent } from './pages/Dashboard'
+
+    import { SettingsPage } from './pages/Settings'
+
+    import { ToasterDemo } from './pages/ToasterDemo'
+
+    import { NotificationsPage } from './pages/Notifications'
+
+    import { ContentInSidePanePlaceholder } from
+    './components/shared/ContentInSidePanePlaceholder'
+
+    import { SettingsContent } from './features/settings/SettingsContent'
+
+    import { LoginPage } from './components/auth/LoginPage'
+
+
+    // Import icons
+
+    import { LayoutDashboard, Settings, Component, Bell, SlidersHorizontal,
+    ChevronsLeftRight, Search, Filter, Plus, PanelRight, ChevronRight, Rocket }
+    from 'lucide-react'
+
+    import { BODY_STATES } from './lib/utils'
+
+    import { cn } from './lib/utils'
+
+
+
+    // The content for the main area, with page routing logic
+
+    function AppContent() {
+      const { activePage, setActivePage } = useAppStore()
+      const { bodyState, sidePaneContent, openSidePane } = useAppShell()
+
+      const pageMap = {
+        dashboard: {
+          component: <DashboardContent />,
+          sidePaneContent: 'main',
+          icon: LayoutDashboard,
+          name: 'dashboard',
+        },
+        settings: {
+          component: <SettingsPage />,
+          sidePaneContent: 'settings',
+          icon: Settings,
+          name: 'settings',
+        },
+        toaster: {
+          component: <ToasterDemo />,
+          sidePaneContent: 'toaster',
+          icon: Component,
+          name: 'toaster demo',
+        },
+        notifications: {
+          component: <NotificationsPage />,
+          sidePaneContent: 'notifications',
+          icon: Bell,
+          name: 'notifications',
+        },
+      } as const;
+
+      const currentPage = pageMap[activePage];
+
+      if (sidePaneContent === currentPage.sidePaneContent && bodyState === BODY_STATES.SIDE_PANE) {
+        return (
+          <ContentInSidePanePlaceholder 
+            icon={currentPage.icon}
+            title={`${currentPage.name.charAt(0).toUpperCase() + currentPage.name.slice(1)} is in Side Pane`}
+            pageName={currentPage.name}
+            onBringBack={() => {
+              openSidePane(currentPage.sidePaneContent);
+              setActivePage(activePage);
+            }}
+          />
+        )
+      }
+
+      return currentPage.component;
+    }
+
+
+    // Content for the Top Bar
+
+    function AppTopBar() {
+      const { activePage, searchTerm, setSearchTerm } = useAppStore()
+      const { openSidePane } = useAppShell()
+      const [isSearchFocused, setIsSearchFocused] = React.useState(false);
+
+      const handleMoveToSidePane = () => {
+        const mapping = { dashboard: 'main', settings: 'settings', toaster: 'toaster', notifications: 'notifications' } as const;
+        if (mapping[activePage]) openSidePane(mapping[activePage]);
+      };
+
+      return (
+        <div className="flex items-center gap-3 flex-1">
+          <div className={cn("hidden md:flex items-center gap-2 text-sm transition-opacity", {
+              "opacity-0 pointer-events-none": isSearchFocused && activePage === 'dashboard'
+          })}>
+            <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">Home</a>
+            <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            <span className="font-medium text-foreground capitalize">{activePage}</span>
+          </div>
+          
+          <div className="flex-1" />
+
+          {/* Page-specific: Dashboard search and actions */}
+          {activePage === 'dashboard' && (
+          <div className="flex items-center gap-2 flex-1 justify-end">
+            <div className={cn("relative transition-all duration-300 ease-in-out", isSearchFocused ? 'flex-1 max-w-lg' : 'w-auto')}>
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4 pointer-events-none" />
+              <input
+                type="text"
+                placeholder="Search..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                onFocus={() => setIsSearchFocused(true)}
+                onBlur={() => setIsSearchFocused(false)}
+                className={cn(
+                  "pl-9 pr-4 py-2 h-10 border-none rounded-lg bg-card focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300 ease-in-out w-full",
+                  isSearchFocused ? 'bg-background' : 'w-48'
+                )}
+              />
+            </div>
+             <button className="h-10 w-10 flex-shrink-0 flex items-center justify-center hover:bg-accent rounded-full transition-colors">
+              <Filter className="w-5 h-5" />
+            </button>
+             <button className="bg-primary text-primary-foreground px-4 py-2 rounded-full hover:bg-primary/90 transition-colors flex items-center gap-2 h-10 flex-shrink-0">
+              <Plus className="w-5 h-5" />
+              <span className={cn(isSearchFocused ? 'hidden sm:inline' : 'inline')}>New Project</span>
+            </button>
+          </div>
+          )}
+
+          {/* Page-specific: Move to side pane */}
+          {['dashboard', 'settings', 'toaster', 'notifications'].includes(activePage) && (
+            <button onClick={handleMoveToSidePane} className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors" title="Move to Side Pane"><PanelRight className="w-5 h-5" /></button>
+          )}
+        </div>
+      )
+    }
+
+
+    // The main App component that composes the shell
+
+    function ComposedApp() {
+      const { sidePaneContent, closeSidePane } = useAppShell();
+      const { setActivePage } = useAppStore();
+
+      const contentMap = {
+        main: { title: 'Dashboard', icon: LayoutDashboard, page: 'dashboard', content: <DashboardContent isInSidePane /> },
+        settings: { title: 'Settings', icon: Settings, page: 'settings', content: <SettingsContent /> },
+        toaster: { title: 'Toaster Demo', icon: Component, page: 'toaster', content: <ToasterDemo isInSidePane /> },
+        notifications: { title: 'Notifications', icon: Bell, page: 'notifications', content: <NotificationsPage isInSidePane /> },
+        details: { title: 'Details Panel', icon: SlidersHorizontal, content: <p className="text-muted-foreground">This is the side pane. It can be used to display contextual information, forms, or actions related to the main content.</p> }
+      } as const;
+
+      const currentContent = contentMap[sidePaneContent as keyof typeof contentMap] || contentMap.details;
+      const CurrentIcon = currentContent.icon;
+
+      const handleMaximize = () => {
+        if ('page' in currentContent && currentContent.page) {
+          setActivePage(currentContent.page as any);
+        }
+        closeSidePane()
+      }
+
+      const rightPaneHeader = (
+          <>
+          <div className="flex items-center gap-2">
+            <CurrentIcon className="w-5 h-5" />
+            <h2 className="text-lg font-semibold whitespace-nowrap">
+              {currentContent.title}
+            </h2>
+          </div>
+          
+          {'page' in currentContent && currentContent.page && (
+            <button
+              onClick={handleMaximize}
+              className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors mr-2"
+              title="Move to Main View"
+            >
+              <ChevronsLeftRight className="w-5 h-5" />
+            </button>
+          )}
+          </>
+      );
+
+      return (
+        <AppShell
+          sidebar={<EnhancedSidebar />}
+          topBar={<TopBar><AppTopBar /></TopBar>}
+          mainContent={<MainContent><AppContent /></MainContent>}
+          rightPane={(
+            <RightPane header={rightPaneHeader}>{currentContent.content}</RightPane>
+          )}
+          commandPalette={<CommandPalette />}
+        />
+      );
+    }
+
+
+    function App() {
+      const isDarkMode = useAppStore((state) => state.isDarkMode)
+      const { isAuthenticated, login, forgotPassword } = useAuthStore()
+
+      useEffect(() => {
+        document.documentElement.classList.toggle('dark', isDarkMode);
+      }, [isDarkMode]);
+
+      const handleLogin = async (email: string, password: string) => {
+        try {
+          await login(email, password)
+        } catch (error) {
+          console.error('Login failed:', error)
+          // In a real app, you'd show an error message to the user
+        }
+      }
+
+      const handleForgotPassword = async (email: string) => {
+        try {
+          await forgotPassword(email)
+        } catch (error) {
+          console.error('Forgot password failed:', error)
+        }
+      }
+
+      const handleSignUp = () => {
+        // In a real app, navigate to sign up page
+        console.log('Navigate to sign up page')
+      }
+
+      if (!isAuthenticated) {
+        return (
+          <LoginPage
+            onLogin={handleLogin}
+            onForgotPassword={handleForgotPassword}
+            onSignUp={handleSignUp}
+          />
+        )
+      }
+
+      return (
+        <div className="h-screen w-screen overflow-hidden bg-background">
+          <AppShellProvider
+            appName="Jeli App"
+            appLogo={
+              <div className="p-2 bg-primary/20 rounded-lg">
+                <Rocket className="w-5 h-5 text-primary" />
+              </div>
+            }
+          >
+            <ComposedApp />
+          </AppShellProvider>
+        </div>
+      )
+    }
+
+
+    export default App
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 121

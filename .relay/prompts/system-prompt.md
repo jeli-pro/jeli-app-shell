@@ -86,7 +86,7 @@ Repeat this block for each replacement.
 2.  ALWAYS add the following YAML block at the very end of your response. Use the exact projectId shown here. Generate a new random uuid for each response.
 
     ```yaml
-    projectId: amazing-app-shell
+    projectId: jeli-app-shell
     uuid: (generate a random uuid)
     changeSummary: # A list of key-value pairs for changes
       - edit: src/main.ts

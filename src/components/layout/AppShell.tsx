@@ -33,12 +33,13 @@ export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalet
   const rightPaneRef = useRef<HTMLDivElement>(null)
   const resizeHandleRef = useRef<HTMLDivElement>(null)
   const topBarContainerRef = useRef<HTMLDivElement>(null)
+  const mainAreaRef = useRef<HTMLDivElement>(null)
 
   // Custom hooks for logic
   useResizableSidebar(sidebarRef, resizeHandleRef);
   useResizableRightPane();
   useSidebarAnimations(sidebarRef, resizeHandleRef);
-  useBodyStateAnimations(appRef, mainContentRef, rightPaneRef, topBarContainerRef);
+  useBodyStateAnimations(appRef, mainContentRef, rightPaneRef, topBarContainerRef, mainAreaRef);
   
   const sidebarWithProps = React.cloneElement(sidebar, { 
     ref: sidebarRef,
@@ -96,7 +97,7 @@ export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalet
         )}
 
         {/* Main Content Area */}
-        <div className="relative flex-1 overflow-hidden bg-background">
+        <div ref={mainAreaRef} className="relative flex-1 overflow-hidden bg-background">
           <div ref={topBarContainerRef} className="absolute inset-x-0 top-0 z-30">
             {topBarWithProps}
           </div>

@@ -15,7 +15,8 @@ export const SIDEBAR_STATES = {
 export const BODY_STATES = {
   NORMAL: 'normal',
   FULLSCREEN: 'fullscreen',
-  SIDE_PANE: 'side_pane'
+  SIDE_PANE: 'side_pane',
+  SPLIT_VIEW: 'split_view'
 } as const
 
 export type SidebarState = typeof SIDEBAR_STATES[keyof typeof SIDEBAR_STATES]

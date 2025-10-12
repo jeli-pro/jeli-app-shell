@@ -98,6 +98,7 @@ interface AppShellContextValue extends AppShellState {
   showSidebar: () => void;
   peekSidebar: () => void;
   toggleFullscreen: () => void;
+  toggleSplitView: () => void;
   openSidePane: (content: AppShellState['sidePaneContent']) => void;
   closeSidePane: () => void;
   resetToDefaults: () => void;
@@ -140,6 +141,15 @@ export function AppShellProvider({ children, appName, appLogo }: AppShellProvide
     dispatch({ type: 'SET_BODY_STATE', payload: current === BODY_STATES.FULLSCREEN ? BODY_STATES.NORMAL : BODY_STATES.FULLSCREEN });
   }, [state.bodyState]);
 
+  const toggleSplitView = useCallback(() => {
+    const current = state.bodyState;
+    if (current === BODY_STATES.SIDE_PANE) {
+      dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.SPLIT_VIEW });
+    } else if (current === BODY_STATES.SPLIT_VIEW) {
+      dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.SIDE_PANE });
+    }
+  }, [state.bodyState]);
+
   const openSidePane = useCallback((content: AppShellState['sidePaneContent']) => {
     if (state.bodyState === BODY_STATES.SIDE_PANE && state.sidePaneContent === content) {
       // If it's open with same content, close it.
@@ -162,6 +172,7 @@ export function AppShellProvider({ children, appName, appLogo }: AppShellProvide
     showSidebar,
     peekSidebar,
     toggleFullscreen,
+    toggleSplitView,
     openSidePane,
     closeSidePane,
     resetToDefaults,
@@ -172,6 +183,7 @@ export function AppShellProvider({ children, appName, appLogo }: AppShellProvide
     showSidebar,
     peekSidebar,
     toggleFullscreen,
+    toggleSplitView,
     openSidePane,
     closeSidePane,
     resetToDefaults
