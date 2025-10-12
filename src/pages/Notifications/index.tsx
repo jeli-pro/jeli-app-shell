@@ -171,8 +171,7 @@ function NotificationItem({ notification, onMarkAsRead, isInSidePane }: { notifi
 
   return (
     <div className={cn(
-      "group w-full py-4 rounded-xl hover:bg-accent/50 transition-colors duration-200",
-      isInSidePane ? "" : "-mx-4 px-4"
+      "group w-full p-4 hover:bg-accent/50 rounded-lg transition-colors duration-200"
     )}>
       <div className="flex gap-3">
         <div className="relative h-10 w-10 shrink-0">
@@ -282,7 +281,7 @@ export function NotificationsPage({ isInSidePane = false }: { isInSidePane?: boo
 
   const content = (
     <Card className={cn("flex w-full flex-col shadow-none", isInSidePane ? "border-none" : "")}>
-      <CardHeader className="p-0">
+      <CardHeader className={cn(isInSidePane ? "p-4" : "p-6")}>
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold">
             Your notifications
@@ -312,8 +311,8 @@ export function NotificationsPage({ isInSidePane = false }: { isInSidePane?: boo
         </Tabs>
       </CardHeader>
 
-      <CardContent className="h-full p-0 mt-6">
-        <div className="space-y-0 divide-y divide-border">
+      <CardContent className={cn("h-full p-0", isInSidePane ? "px-2" : "px-6")}>
+        <div className="space-y-2 divide-y divide-border">
           {filteredNotifications.length > 0 ? (
             filteredNotifications.map((notification) => (
               <NotificationItem key={notification.id} notification={notification} onMarkAsRead={handleMarkAsRead} isInSidePane={isInSidePane} />
