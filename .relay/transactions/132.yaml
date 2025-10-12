@@ -1,0 +1,113 @@
+uuid: c2536c0a-0e9e-4df7-bc0c-15a0c3bbd743
+projectId: jeli-app-shell
+createdAt: '2025-10-12T02:30:10.225Z'
+gitCommitMsg: >-
+  fix: prevent top bar auto-hide in split view
+
+  The top bar auto-hiding behavior on scroll is now disabled when the
+  application is in split-view mode. This provides a more stable and less
+  distracting UI when users are working with two panes simultaneously.
+
+  The `useAutoAnimateTopBar` hook has been updated to check the `bodyState` from
+  the AppShell context and bypass the scroll logic if the state is `SPLIT_VIEW`.
+promptSummary: User wants to disable auto-hiding of the topbar when in split-view mode.
+reasoning:
+  - >-
+    I'll prevent the top bar from auto-hiding on scroll when the application is
+    in split-view mode. This is a better user experience as in split view, the
+    user is often comparing or working with two panes simultaneously, and a
+    stable top bar is less distracting.
+  - >-
+    To achieve this, I will modify the `useAutoAnimateTopBar` hook to check for
+    the current `bodyState`. If the state is `SPLIT_VIEW`, the scroll-based
+    hide/show logic will be skipped, ensuring the top bar remains visible.
+operations:
+  - type: write
+    path: src/hooks/useAutoAnimateTopBar.ts
+    content: |+
+      --- src/hooks/useAutoAnimateTopBar.ts
+      +++ src/hooks/useAutoAnimateTopBar.ts
+      @@ -1,13 +1,14 @@
+       import { useRef, useCallback, useEffect } from 'react';
+       import { useAppShell } from '@/context/AppShellContext';
+      +import { BODY_STATES } from '@/lib/utils';
+       
+       export function useAutoAnimateTopBar(isPane = false) {
+      -  const { dispatch } = useAppShell();
+      +  const { dispatch, bodyState } = useAppShell();
+         const lastScrollTop = useRef(0);
+         const scrollTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+       
+         const onScroll = useCallback((event: React.UIEvent<HTMLDivElement>) => {
+      -    if (isPane) return;
+      +    if (isPane || bodyState === BODY_STATES.SPLIT_VIEW) return;
+       
+           // Clear previous timeout
+           if (scrollTimeout.current) {
+      @@ -28,7 +29,7 @@
+               dispatch({ type: 'SET_TOP_BAR_VISIBLE', payload: true });
+             }
+           }, 250); // Adjust timeout as needed
+      -  }, [isPane, dispatch]);
+      +  }, [isPane, dispatch, bodyState]);
+       
+         // Cleanup on unmount
+         useEffect(() => {
+
+    patchStrategy: standard-diff
+snapshot:
+  src/hooks/useAutoAnimateTopBar.ts: |-
+    import { useRef, useCallback, useEffect } from 'react';
+    import { useAppShell } from '@/context/AppShellContext';
+
+    export function useAutoAnimateTopBar(isPane = false) {
+      const { dispatch } = useAppShell();
+      const lastScrollTop = useRef(0);
+      const scrollTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+      const onScroll = useCallback((event: React.UIEvent<HTMLDivElement>) => {
+        if (isPane) return;
+
+        // Clear previous timeout
+        if (scrollTimeout.current) {
+          clearTimeout(scrollTimeout.current);
+        }
+
+        const { scrollTop } = event.currentTarget;
+        
+        if (scrollTop > lastScrollTop.current && scrollTop > 200) {
+          dispatch({ type: 'SET_TOP_BAR_VISIBLE', payload: false });
+        } else if (scrollTop < lastScrollTop.current || scrollTop <= 0) {
+          dispatch({ type: 'SET_TOP_BAR_VISIBLE', payload: true });
+        }
+        
+        lastScrollTop.current = scrollTop <= 0 ? 0 : scrollTop;
+
+        // Set new timeout to show top bar when scrolling stops
+        scrollTimeout.current = setTimeout(() => {
+          // Don't hide, just ensure it's visible after scrolling stops
+          // and we are not at the top of the page.
+          if (scrollTop > 0) {
+            dispatch({ type: 'SET_TOP_BAR_VISIBLE', payload: true });
+          }
+        }, 250); // Adjust timeout as needed
+      }, [isPane, dispatch]);
+
+      // Cleanup on unmount
+      useEffect(() => {
+        return () => {
+          if (scrollTimeout.current) {
+            clearTimeout(scrollTimeout.current);
+          }
+        };
+      }, []);
+
+      return { onScroll };
+    }
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 132

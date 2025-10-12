@@ -1959,155 +1959,6 @@ export function SettingsPage() {
 }
 ````
 
-## File: src/pages/ToasterDemo/index.tsx
-````typescript
-import { Button } from '@/components/ui/button';
-import { useToast } from '@/components/ui/toast';
-import { PageHeader } from '@/components/shared/PageHeader';
-import { cn } from '@/lib/utils';
-
-type Variant = 'default' | 'success' | 'error' | 'warning';
-type Position =
-  | 'top-left'
-  | 'top-center'
-  | 'top-right'
-  | 'bottom-left'
-  | 'bottom-center'
-  | 'bottom-right';
-
-const variantColors = {
-  default: 'border-border text-foreground hover:bg-muted/10 dark:hover:bg-muted/20',
-  success: 'border-green-600 text-green-600 hover:bg-green-600/10 dark:hover:bg-green-400/20',
-  error: 'border-destructive text-destructive hover:bg-destructive/10 dark:hover:bg-destructive/20',
-  warning: 'border-amber-600 text-amber-600 hover:bg-amber-600/10 dark:hover:bg-amber-400/20',
-}
-
-const DemoSection: React.FC<{ title: string; children: React.ReactNode }> = ({
-  title,
-  children,
-}) => (
-  <section>
-    <h2 className="text-lg font-semibold mb-2">{title}</h2>
-    {children}
-  </section>
-);
-
-export function ToasterDemo({ isInSidePane = false }: { isInSidePane?: boolean }) {
-  const toast = useToast();
-
-  const showToast = (variant: Variant, position: Position = 'bottom-right') => {
-    toast.show({
-      title: `${variant.charAt(0).toUpperCase() + variant.slice(1)} Notification`,
-      message: `This is a ${variant} toast notification.`,
-      variant,
-      position,
-      duration: 3000,
-      onDismiss: () =>
-        console.log(`${variant} toast at ${position} dismissed`),
-    });
-  };
-
-  const simulateApiCall = async () => {
-    toast.show({
-      title: 'Scheduling...',
-      message: 'Please wait while we schedule your meeting.',
-      variant: 'default',
-      position: 'bottom-right',
-    });
-
-    try {
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-
-      toast.show({
-        title: 'Meeting Scheduled',
-        message: 'Your meeting is scheduled for July 4, 2025, at 3:42 PM IST.',
-        variant: 'success',
-        position: 'bottom-right',
-        highlightTitle: true,
-        actions: {
-          label: 'Undo',
-          onClick: () => console.log('Undoing meeting schedule'),
-          variant: 'outline',
-        },
-      });
-    } catch (error) {
-      toast.show({
-        title: 'Error Scheduling Meeting',
-        message: 'Failed to schedule the meeting. Please try again.',
-        variant: 'error',
-        position: 'bottom-right',
-      });
-    }
-  };
-
-  return (
-    <div className={cn("overflow-y-auto space-y-8", !isInSidePane ? "h-full p-6 lg:px-12" : "h-full")}>
-      {/* Header */}
-      {!isInSidePane && (
-        <PageHeader
-          title="Toaster"
-          description="A customizable toast component for notifications."
-        />
-      )}
-      <div className="space-y-6">
-        <div className="space-y-6">
-          <DemoSection title="Toast Variants">
-            <div className="flex flex-wrap gap-4">
-              {(['default', 'success', 'error', 'warning'] as Variant[]).map((variantKey) => (
-                <Button
-                  key={variantKey}
-                  variant="outline"
-                  onClick={() => showToast(variantKey as Variant)}
-                  className={cn(variantColors[variantKey])}
-                >
-                  {variantKey.charAt(0).toUpperCase() + variantKey.slice(1)} Toast
-                </Button>
-              ))}
-            </div>
-          </DemoSection>
-
-          <DemoSection title="Toast Positions">
-            <div className="flex flex-wrap gap-4">
-              {[
-                'top-left',
-                'top-center',
-                'top-right',
-                'bottom-left',
-                'bottom-center',
-                'bottom-right',
-              ].map((positionKey) => (
-                <Button
-                  key={positionKey}
-                  variant="outline"
-                  onClick={() =>
-                    showToast('default', positionKey as Position)
-                  }
-                  className="border-border text-foreground hover:bg-muted/10 dark:hover:bg-muted/20"
-                >
-                  {positionKey
-                    .replace('-', ' ')
-                    .replace(/\b\w/g, (char) => char.toUpperCase())}
-                </Button>
-              ))}
-            </div>
-          </DemoSection>
-
-          <DemoSection title="Real-World Example">
-            <Button
-              variant="outline"
-              onClick={simulateApiCall}
-              className="border-border text-foreground hover:bg-muted/10 dark:hover:bg-muted/20"
-            >
-              Schedule Meeting
-            </Button>
-          </DemoSection>
-        </div>
-      </div>
-    </div>
-  );
-}
-````
-
 ## File: src/store/authStore.ts
 ````typescript
 import { create } from 'zustand'
@@ -3821,6 +3672,155 @@ export function useDashboardAnimations(
 }
 ````
 
+## File: src/pages/ToasterDemo/index.tsx
+````typescript
+import { Button } from '@/components/ui/button';
+import { useToast } from '@/components/ui/toast';
+import { PageHeader } from '@/components/shared/PageHeader';
+import { cn } from '@/lib/utils';
+
+type Variant = 'default' | 'success' | 'error' | 'warning';
+type Position =
+  | 'top-left'
+  | 'top-center'
+  | 'top-right'
+  | 'bottom-left'
+  | 'bottom-center'
+  | 'bottom-right';
+
+const variantColors = {
+  default: 'border-border text-foreground hover:bg-muted/10 dark:hover:bg-muted/20',
+  success: 'border-green-600 text-green-600 hover:bg-green-600/10 dark:hover:bg-green-400/20',
+  error: 'border-destructive text-destructive hover:bg-destructive/10 dark:hover:bg-destructive/20',
+  warning: 'border-amber-600 text-amber-600 hover:bg-amber-600/10 dark:hover:bg-amber-400/20',
+}
+
+const DemoSection: React.FC<{ title: string; children: React.ReactNode }> = ({
+  title,
+  children,
+}) => (
+  <section>
+    <h2 className="text-lg font-semibold mb-2">{title}</h2>
+    {children}
+  </section>
+);
+
+export function ToasterDemo({ isInSidePane = false }: { isInSidePane?: boolean }) {
+  const toast = useToast();
+
+  const showToast = (variant: Variant, position: Position = 'bottom-right') => {
+    toast.show({
+      title: `${variant.charAt(0).toUpperCase() + variant.slice(1)} Notification`,
+      message: `This is a ${variant} toast notification.`,
+      variant,
+      position,
+      duration: 3000,
+      onDismiss: () =>
+        console.log(`${variant} toast at ${position} dismissed`),
+    });
+  };
+
+  const simulateApiCall = async () => {
+    toast.show({
+      title: 'Scheduling...',
+      message: 'Please wait while we schedule your meeting.',
+      variant: 'default',
+      position: 'bottom-right',
+    });
+
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+
+      toast.show({
+        title: 'Meeting Scheduled',
+        message: 'Your meeting is scheduled for July 4, 2025, at 3:42 PM IST.',
+        variant: 'success',
+        position: 'bottom-right',
+        highlightTitle: true,
+        actions: {
+          label: 'Undo',
+          onClick: () => console.log('Undoing meeting schedule'),
+          variant: 'outline',
+        },
+      });
+    } catch (error) {
+      toast.show({
+        title: 'Error Scheduling Meeting',
+        message: 'Failed to schedule the meeting. Please try again.',
+        variant: 'error',
+        position: 'bottom-right',
+      });
+    }
+  };
+
+  return (
+    <div className={cn("overflow-y-auto space-y-8", !isInSidePane ? "h-full p-6 lg:px-12" : "h-full")}>
+      {/* Header */}
+      {!isInSidePane && (
+        <PageHeader
+          title="Toaster"
+          description="A customizable toast component for notifications."
+        />
+      )}
+      <div className="space-y-6">
+        <div className="space-y-6">
+          <DemoSection title="Toast Variants">
+            <div className="flex flex-wrap gap-4">
+              {(['default', 'success', 'error', 'warning'] as Variant[]).map((variantKey) => (
+                <Button
+                  key={variantKey}
+                  variant="outline"
+                  onClick={() => showToast(variantKey as Variant)}
+                  className={cn(variantColors[variantKey])}
+                >
+                  {variantKey.charAt(0).toUpperCase() + variantKey.slice(1)} Toast
+                </Button>
+              ))}
+            </div>
+          </DemoSection>
+
+          <DemoSection title="Toast Positions">
+            <div className="flex flex-wrap gap-4">
+              {[
+                'top-left',
+                'top-center',
+                'top-right',
+                'bottom-left',
+                'bottom-center',
+                'bottom-right',
+              ].map((positionKey) => (
+                <Button
+                  key={positionKey}
+                  variant="outline"
+                  onClick={() =>
+                    showToast('default', positionKey as Position)
+                  }
+                  className="border-border text-foreground hover:bg-muted/10 dark:hover:bg-muted/20"
+                >
+                  {positionKey
+                    .replace('-', ' ')
+                    .replace(/\b\w/g, (char) => char.toUpperCase())}
+                </Button>
+              ))}
+            </div>
+          </DemoSection>
+
+          <DemoSection title="Real-World Example">
+            <Button
+              variant="outline"
+              onClick={simulateApiCall}
+              className="border-border text-foreground hover:bg-muted/10 dark:hover:bg-muted/20"
+            >
+              Schedule Meeting
+            </Button>
+          </DemoSection>
+        </div>
+      </div>
+    </div>
+  );
+}
+````
+
 ## File: src/main.tsx
 ````typescript
 import React from 'react'
@@ -4231,6 +4231,432 @@ const AppMenuItem: React.FC<AppMenuItemProps> = ({ icon: Icon, label, badge, has
 };
 ````
 
+## File: src/hooks/useAutoAnimateTopBar.ts
+````typescript
+import { useRef, useCallback, useEffect } from 'react';
+import { useAppShell } from '@/context/AppShellContext';
+
+export function useAutoAnimateTopBar(isPane = false) {
+  const { dispatch } = useAppShell();
+  const lastScrollTop = useRef(0);
+  const scrollTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const onScroll = useCallback((event: React.UIEvent<HTMLDivElement>) => {
+    if (isPane) return;
+
+    // Clear previous timeout
+    if (scrollTimeout.current) {
+      clearTimeout(scrollTimeout.current);
+    }
+
+    const { scrollTop } = event.currentTarget;
+    
+    if (scrollTop > lastScrollTop.current && scrollTop > 200) {
+      dispatch({ type: 'SET_TOP_BAR_VISIBLE', payload: false });
+    } else if (scrollTop < lastScrollTop.current || scrollTop <= 0) {
+      dispatch({ type: 'SET_TOP_BAR_VISIBLE', payload: true });
+    }
+    
+    lastScrollTop.current = scrollTop <= 0 ? 0 : scrollTop;
+
+    // Set new timeout to show top bar when scrolling stops
+    scrollTimeout.current = setTimeout(() => {
+      // Don't hide, just ensure it's visible after scrolling stops
+      // and we are not at the top of the page.
+      if (scrollTop > 0) {
+        dispatch({ type: 'SET_TOP_BAR_VISIBLE', payload: true });
+      }
+    }, 250); // Adjust timeout as needed
+  }, [isPane, dispatch]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (scrollTimeout.current) {
+        clearTimeout(scrollTimeout.current);
+      }
+    };
+  }, []);
+
+  return { onScroll };
+}
+````
+
+## File: src/index.ts
+````typescript
+// Context
+export { AppShellProvider, useAppShell } from './context/AppShellContext';
+
+// Layout Components
+export { AppShell } from './components/layout/AppShell';
+export { MainContent } from './components/layout/MainContent';
+export { ViewModeSwitcher } from './components/layout/ViewModeSwitcher';
+export { RightPane } from './components/layout/RightPane';
+export { TopBar } from './components/layout/TopBar';
+export { UserDropdown } from './components/layout/UserDropdown';
+export { Workspaces as WorkspaceProvider, WorkspaceTrigger, WorkspaceContent } from './components/layout/WorkspaceSwitcher';
+
+// Sidebar Primitives
+export {
+  Sidebar,
+  SidebarBody,
+  SidebarContent,
+  SidebarFooter,
+  SidebarHeader,
+  SidebarSection,
+  SidebarTitle,
+  SidebarMenuItem,
+  SidebarMenuButton,
+  SidebarMenuAction,
+  SidebarLabel,
+  SidebarBadge,
+  SidebarTooltip,
+  SidebarIcon,
+  useSidebar,
+} from './components/layout/Sidebar';
+
+// Shared Components
+export { ContentInSidePanePlaceholder } from './components/shared/ContentInSidePanePlaceholder';
+export { PageHeader } from './components/shared/PageHeader';
+
+// Feature Components
+export { SettingsContent } from './features/settings/SettingsContent';
+export { SettingsSection } from './features/settings/SettingsSection';
+export { SettingsToggle } from './features/settings/SettingsToggle';
+export { LoginPage } from './components/auth/LoginPage';
+
+// UI Components
+export * from './components/ui/avatar';
+export * from './components/ui/badge';
+export * from './components/ui/button';
+export * from './components/ui/card';
+export * from './components/ui/command';
+export * from './components/ui/dialog';
+export * from './components/ui/dropdown-menu';
+export * from './components/ui/input';
+export * from './components/ui/label';
+export * from './components/ui/popover';
+export * from './components/ui/tabs';
+export * from './components/ui/toast';
+
+// Global Components
+export { CommandPalette } from './components/global/CommandPalette';
+
+// Hooks
+export { useAutoAnimateTopBar } from './hooks/useAutoAnimateTopBar';
+export { useCommandPaletteToggle } from './hooks/useCommandPaletteToggle.hook';
+
+// Lib
+export * from './lib/utils';
+
+// Store
+export { useAppStore, type ActivePage } from './store/appStore';
+export { useAuthStore } from './store/authStore';
+````
+
+## File: index.html
+````html
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Jeli App Shell</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <div id="toaster-container"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+````
+
+## File: tailwind.config.js
+````javascript
+/** @type {import('tailwindcss').Config} */
+export default {
+  content: [
+    "./index.html",
+    "./src/**/*.{js,ts,jsx,tsx}",
+  ],
+  darkMode: "class",
+  theme: {
+    extend: {
+      colors: {
+        border: "hsl(var(--border))",
+        input: "hsl(var(--input))",
+        ring: "hsl(var(--ring))",
+        background: "hsl(var(--background))",
+        foreground: "hsl(var(--foreground))",
+        primary: {
+          DEFAULT: "hsl(var(--primary))",
+          foreground: "hsl(var(--primary-foreground))",
+        },
+        secondary: {
+          DEFAULT: "hsl(var(--secondary))",
+          foreground: "hsl(var(--secondary-foreground))",
+        },
+        destructive: {
+          DEFAULT: "hsl(var(--destructive))",
+          foreground: "hsl(var(--destructive-foreground))",
+        },
+        muted: {
+          DEFAULT: "hsl(var(--muted))",
+          foreground: "hsl(var(--muted-foreground))",
+        },
+        accent: {
+          DEFAULT: "hsl(var(--accent))",
+          foreground: "hsl(var(--accent-foreground))",
+        },
+        popover: {
+          DEFAULT: "hsl(var(--popover))",
+          foreground: "hsl(var(--popover-foreground))",
+        },
+        card: {
+          DEFAULT: "hsl(var(--card))",
+          foreground: "hsl(var(--card-foreground))",
+        },
+      },
+      borderRadius: {
+        lg: "var(--radius)",
+        md: "calc(var(--radius) - 4px)",
+        sm: "calc(var(--radius) - 8px)",
+        DEFAULT: "0.5rem",
+      },
+      boxShadow: {
+        input: [
+          "0px 2px 3px -1px rgba(0, 0, 0, 0.1)",
+          "0px 1px 0px 0px rgba(25, 28, 33, 0.02)",
+          "0px 0px 0px 1px rgba(25, 28, 33, 0.08)",
+        ].join(", "),
+      },
+      animation: {
+        "fade-in": "fadeIn 0.5s ease-in-out",
+        "slide-in": "slideIn 0.3s ease-out",
+        "scale-in": "scaleIn 0.2s ease-out",
+        ripple: "ripple 2s ease calc(var(--i, 0) * 0.2s) infinite",
+        orbit: "orbit calc(var(--duration) * 1s) linear infinite",
+      },
+      keyframes: {
+        fadeIn: {
+          "0%": { opacity: "0" },
+          "100%": { opacity: "1" },
+        },
+        slideIn: {
+          "0%": { transform: "translateX(-100%)" },
+          "100%": { transform: "translateX(0)" },
+        },
+        scaleIn: {
+          "0%": { transform: "scale(0.95)", opacity: "0" },
+          "100%": { transform: "scale(1)", opacity: "1" },
+        },
+        ripple: {
+          "0%, 100%": { transform: "translate(-50%, -50%) scale(1)" },
+          "50%": { transform: "translate(-50%, -50%) scale(0.9)" },
+        },
+        orbit: {
+          "0%": {
+            transform:
+              "rotate(0deg) translateY(calc(var(--radius) * 1px)) rotate(0deg)",
+          },
+          "100%": {
+            transform:
+              "rotate(360deg) translateY(calc(var(--radius) * 1px)) rotate(-360deg)",
+          },
+        }
+      },
+    },
+  },
+  plugins: [require("tailwindcss-animate")],
+}
+````
+
+## File: tsconfig.node.json
+````json
+{
+  "compilerOptions": {
+    "composite": true,
+    "skipLibCheck": true,
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "allowSyntheticDefaultImports": true,
+    "resolveJsonModule": true
+  },
+  "include": ["vite.config.ts"]
+}
+````
+
+## File: src/components/layout/MainContent.tsx
+````typescript
+import { forwardRef } from 'react'
+import { X } from 'lucide-react'
+import { cn } from '@/lib/utils';
+import { BODY_STATES } from '@/lib/utils'
+import { useAppShell } from '@/context/AppShellContext'
+
+interface MainContentProps {
+  onToggleFullscreen?: () => void
+  children?: React.ReactNode;
+}
+
+export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
+  ({ onToggleFullscreen, children }, ref) => {
+    const { bodyState } = useAppShell();
+
+    return (
+      <div
+        ref={ref}
+        className={cn(
+        "flex flex-col h-full overflow-hidden",
+        bodyState === BODY_STATES.FULLSCREEN && "absolute inset-0 z-40 bg-background"
+        )}
+      >
+        {bodyState === BODY_STATES.FULLSCREEN && (
+          <button
+            onClick={() => onToggleFullscreen?.()}
+            className="fixed top-6 right-6 lg:right-12 z-[100] h-12 w-12 flex items-center justify-center rounded-full bg-card/50 backdrop-blur-sm hover:bg-card/75 transition-colors group"
+            title="Exit Fullscreen"
+          >
+            <X className="w-6 h-6 group-hover:scale-110 group-hover:rotate-90 transition-all duration-300" />
+          </button>
+        )}
+
+        <div className="flex-1 min-h-0 flex flex-col">
+          {children}
+        </div>
+      </div>
+    )
+  }
+)
+MainContent.displayName = 'MainContent'
+````
+
+## File: src/components/layout/TopBar.tsx
+````typescript
+import {
+  Menu, 
+  Moon, 
+  Sun,
+  Settings,
+  Command,
+  Zap,
+} from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { BODY_STATES } from '@/lib/utils'
+import { useAppStore } from '@/store/appStore'
+import { useAppShell } from '@/context/AppShellContext'
+import { UserDropdown } from './UserDropdown'
+import { ViewModeSwitcher } from './ViewModeSwitcher'
+
+interface TopBarProps {
+  onToggleSidebar?: () => void
+  onToggleDarkMode?: () => void
+  children?: React.ReactNode
+}
+
+export function TopBar({
+  onToggleSidebar,
+  onToggleDarkMode,
+  children,
+}: TopBarProps) {
+  const { bodyState, openSidePane, sidePaneContent } = useAppShell();
+  const { 
+    setCommandPaletteOpen,
+    isDarkMode,
+  } = useAppStore()
+
+  const handleSettingsClick = () => {
+    const isSettingsInSidePane = bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === 'settings'
+
+    // If we're on the settings page and it's not in the side pane, treat this as a "minimize" action.
+    if (!isSettingsInSidePane) {
+      openSidePane('settings');
+    } else {
+      // In all other cases (on dashboard page, or settings already in pane),
+      // just toggle the settings side pane.
+      openSidePane('settings')
+    }
+  };
+
+  return (
+    <div className={cn(
+      "h-20 bg-background border-b border-border flex items-center justify-between px-6 z-50 gap-4",
+      'transition-all duration-300 ease-in-out'
+    )}>
+      {/* Left Section - Sidebar Controls & Breadcrumbs */}
+      <div className="flex items-center gap-4">
+        {/* Sidebar Controls */}
+        <button
+          onClick={() => onToggleSidebar?.()}
+          className={cn(
+            "h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors"
+          )}
+          title="Toggle Sidebar"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
+
+      </div>
+
+      {/* Right Section - page controls, and global controls */}
+      <div className="flex items-center gap-3">
+        {children}
+
+        {/* Separator */}
+        <div className="w-px h-6 bg-border mx-2" />
+
+        {/* Quick Actions */}
+        <div className="flex items-center gap-3">
+
+          <button
+            onClick={() => setCommandPaletteOpen(true)}
+            className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+            title="Command Palette (Ctrl+K)"
+          >
+            <Command className="w-5 h-5 group-hover:scale-110 transition-transform" />
+          </button>
+
+        <button
+          className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+          title="Quick Actions"
+        >
+          <Zap className="w-5 h-5 group-hover:scale-110 transition-transform" />
+        </button>
+
+        {/* View Mode Controls */}
+        <ViewModeSwitcher />
+
+        <div className="w-px h-6 bg-border mx-2" />
+
+        {/* Theme and Settings */}
+        <button
+          onClick={() => onToggleDarkMode?.()}
+          className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+          title="Toggle Dark Mode"
+        >
+          {isDarkMode ? (
+            <Sun className="w-5 h-5 group-hover:scale-110 transition-transform" />
+          ) : (
+            <Moon className="w-5 h-5 group-hover:scale-110 transition-transform" />
+          )}
+        </button>
+
+        <button
+          onClick={handleSettingsClick}
+          className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+          title="Settings"
+        >
+          <Settings className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
+        </button>
+        <UserDropdown />
+        </div>
+      </div>
+    </div>
+  )
+}
+````
+
 ## File: src/hooks/useAppShellAnimations.hook.ts
 ````typescript
 import { useEffect } from 'react';
@@ -4350,54 +4776,291 @@ export function useBodyStateAnimations(
 }
 ````
 
-## File: src/hooks/useAutoAnimateTopBar.ts
+## File: src/hooks/useResizablePanes.hook.ts
 ````typescript
-import { useRef, useCallback, useEffect } from 'react';
+import { useEffect } from 'react';
+import { gsap } from 'gsap';
 import { useAppShell } from '@/context/AppShellContext';
+import { BODY_STATES } from '@/lib/utils';
 
-export function useAutoAnimateTopBar(isPane = false) {
-  const { dispatch } = useAppShell();
-  const lastScrollTop = useRef(0);
-  const scrollTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+export function useResizableSidebar(
+  sidebarRef: React.RefObject<HTMLDivElement>,
+  resizeHandleRef: React.RefObject<HTMLDivElement>
+) {
+  const { isResizing, dispatch } = useAppShell();
 
-  const onScroll = useCallback((event: React.UIEvent<HTMLDivElement>) => {
-    if (isPane) return;
-
-    // Clear previous timeout
-    if (scrollTimeout.current) {
-      clearTimeout(scrollTimeout.current);
-    }
-
-    const { scrollTop } = event.currentTarget;
-    
-    if (scrollTop > lastScrollTop.current && scrollTop > 200) {
-      dispatch({ type: 'SET_TOP_BAR_VISIBLE', payload: false });
-    } else if (scrollTop < lastScrollTop.current || scrollTop <= 0) {
-      dispatch({ type: 'SET_TOP_BAR_VISIBLE', payload: true });
-    }
-    
-    lastScrollTop.current = scrollTop <= 0 ? 0 : scrollTop;
-
-    // Set new timeout to show top bar when scrolling stops
-    scrollTimeout.current = setTimeout(() => {
-      // Don't hide, just ensure it's visible after scrolling stops
-      // and we are not at the top of the page.
-      if (scrollTop > 0) {
-        dispatch({ type: 'SET_TOP_BAR_VISIBLE', payload: true });
-      }
-    }, 250); // Adjust timeout as needed
-  }, [isPane, dispatch]);
-
-  // Cleanup on unmount
   useEffect(() => {
-    return () => {
-      if (scrollTimeout.current) {
-        clearTimeout(scrollTimeout.current);
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizing) return;
+
+      const newWidth = Math.max(200, Math.min(500, e.clientX));
+      dispatch({ type: 'SET_SIDEBAR_WIDTH', payload: newWidth });
+
+      if (sidebarRef.current) {
+        gsap.set(sidebarRef.current, { width: newWidth });
+      }
+      if (resizeHandleRef.current) {
+        gsap.set(resizeHandleRef.current, { left: newWidth });
       }
     };
-  }, []);
 
-  return { onScroll };
+    const handleMouseUp = () => {
+      dispatch({ type: 'SET_IS_RESIZING', payload: false });
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+
+    if (isResizing) {
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizing, dispatch, sidebarRef, resizeHandleRef]);
+}
+
+export function useResizableRightPane() {
+  const { isResizingRightPane, dispatch, bodyState } = useAppShell();
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizingRightPane) return;
+
+      const newWidth = window.innerWidth - e.clientX;
+      if (bodyState === BODY_STATES.SPLIT_VIEW) {
+        dispatch({ type: 'SET_SPLIT_PANE_WIDTH', payload: newWidth });
+      } else {
+        dispatch({ type: 'SET_SIDE_PANE_WIDTH', payload: newWidth });
+      }
+    };
+
+    const handleMouseUp = () => {
+      dispatch({ type: 'SET_IS_RESIZING_RIGHT_PANE', payload: false });
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+
+    if (isResizingRightPane) {
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = '';
+    };
+  }, [isResizingRightPane, dispatch, bodyState]);
+}
+````
+
+## File: src/pages/Dashboard/DemoContent.tsx
+````typescript
+import { useRef } from 'react'
+import { 
+  Sparkles, 
+  Zap, 
+  Rocket, 
+  Star, 
+  Heart,
+  Layers,
+  Code,
+  Palette,
+  Smartphone,
+  Monitor,
+  Settings
+} from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { useAppStore } from '@/store/appStore'
+import { useAppShell } from '@/context/AppShellContext'
+import { Card } from '@/components/ui/card'
+import { useDemoContentAnimations } from './hooks/useDemoContentAnimations.hook'
+
+export function DemoContent() {
+  const { bodyState, sidebarState, compactMode } = useAppShell()
+  const { isDarkMode } = useAppStore()
+  const contentRef = useRef<HTMLDivElement>(null)
+  const cardsRef = useRef<(HTMLDivElement | null)[]>([])
+  useDemoContentAnimations(cardsRef);
+
+  const features = [
+    {
+      icon: <Sparkles className="w-6 h-6" />,
+      title: "Amazing Animations",
+      description: "Powered by GSAP for smooth, buttery animations",
+      color: "from-emerald-500 to-teal-500"
+    },
+    {
+      icon: <Zap className="w-6 h-6" />,
+      title: "Lightning Fast",
+      description: "Built with Vite and optimized for performance",
+      color: "from-amber-500 to-orange-500"
+    },
+    {
+      icon: <Layers className="w-6 h-6" />,
+      title: "Multiple States",
+      description: "Fullscreen, side pane, and normal viewing modes",
+      color: "from-emerald-500 to-green-500"
+    },
+    {
+      icon: <Code className="w-6 h-6" />,
+      title: "TypeScript",
+      description: "Fully typed with excellent developer experience",
+      color: "from-green-500 to-emerald-500"
+    },
+    {
+      icon: <Palette className="w-6 h-6" />,
+      title: "Beautiful Design",
+      description: "Shadcn/ui components with Tailwind CSS",
+      color: "from-teal-500 to-emerald-500"
+    },
+    {
+      icon: <Settings className="w-6 h-6" />,
+      title: "Customizable",
+      description: "Extensive settings and preferences panel",
+      color: "from-slate-500 to-gray-500"
+    }
+  ]
+
+  const stats = [
+    { label: "Components", value: "12+", color: "text-emerald-600" },
+    { label: "Animations", value: "25+", color: "text-teal-600" },
+    { label: "States", value: "7", color: "text-primary" },
+    { label: "Settings", value: "10+", color: "text-amber-600" }
+  ]
+
+  return (
+    <div ref={contentRef} className="p-8 space-y-12">
+      {/* Hero Section */}
+      <div className="text-center space-y-4">
+        <div className="flex items-center justify-center gap-2 mb-4">
+          <Rocket className="w-8 h-8 text-primary" />
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">Jeli App Shell</h1>
+        </div>
+        <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+          A super flexible application shell with resizable sidebar, multiple body states, 
+          smooth animations, and comprehensive settings - all built with modern web technologies.
+        </p>
+        
+        {/* Quick Stats */}
+        <div className="flex items-center justify-center gap-12 mt-8">
+          {stats.map((stat) => (
+            <div key={stat.label} className="text-center">
+              <div className={cn("text-2xl font-bold", stat.color)}>{stat.value}</div>
+              <div className="text-sm text-muted-foreground">{stat.label}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Feature Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {features.map((feature, index) => (
+          <Card
+            key={feature.title}
+            ref={el => cardsRef.current[index] = el}
+            className="group relative overflow-hidden border-border/50 p-6 hover:border-primary/30 hover:bg-accent/30 transition-all duration-300 cursor-pointer"
+          >
+            <div className="relative z-10">
+              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-4 group-hover:scale-110 group-hover:bg-primary/20 transition-transform">
+                {feature.icon}
+              </div>
+              
+              <h3 className="text-lg font-semibold mb-2">{feature.title}</h3>
+              <p className="text-muted-foreground text-sm">{feature.description}</p>
+            </div>
+          </Card>
+        ))}
+      </div>
+
+      {/* Technology Stack */}
+      <Card className="border-border/50 p-6">
+        <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
+          <Star className="w-6 h-6 text-yellow-500" />
+          Technology Stack
+        </h2>
+        
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[
+            { name: "React 18", desc: "Latest React with hooks" },
+            { name: "TypeScript", desc: "Type-safe development" },
+            { name: "Vite", desc: "Lightning fast build tool" },
+            { name: "Tailwind CSS", desc: "Utility-first styling" },
+            { name: "GSAP", desc: "Professional animations" },
+            { name: "Zustand", desc: "Lightweight state management" },
+            { name: "Shadcn/ui", desc: "Beautiful components" },
+            { name: "Lucide Icons", desc: "Consistent iconography" }
+          ].map((tech) => (
+            <div key={tech.name} className="bg-background rounded-xl p-4 border border-border/50">
+              <h4 className="font-medium">{tech.name}</h4>
+              <p className="text-sm text-muted-foreground">{tech.desc}</p>
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      {/* Current State Display */}
+      <Card className="border-border/50 p-6">
+        <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+          <Monitor className="w-5 h-5" />
+          Current App State
+        </h2>
+        
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="text-center p-3 bg-background rounded-xl">
+            <div className="text-sm text-muted-foreground">Sidebar</div>
+            <div className="font-medium capitalize">{sidebarState}</div>
+          </div>
+          <div className="text-center p-3 bg-background rounded-xl">
+            <div className="text-sm text-muted-foreground">Body State</div>
+            <div className="font-medium capitalize">{bodyState.replace('_', ' ')}</div>
+          </div>
+          <div className="text-center p-3 bg-background rounded-xl">
+            <div className="text-sm text-muted-foreground">Theme</div>
+            <div className="font-medium">{isDarkMode ? 'Dark' : 'Light'}</div>
+          </div>
+          <div className="text-center p-3 bg-background rounded-xl">
+            <div className="text-sm text-muted-foreground">Mode</div>
+            <div className="font-medium">{compactMode ? 'Compact' : 'Normal'}</div>
+          </div>
+        </div>
+      </Card>
+
+      {/* Interactive Demo */}
+      <div className="text-center space-y-4">
+        <h2 className="text-2xl font-bold flex items-center justify-center gap-2">
+          <Heart className="w-6 h-6 text-red-500" />
+          Try It Out!
+        </h2>
+        <p className="text-muted-foreground">
+          Use the controls in the top bar to explore different states, toggle the sidebar, 
+          or open settings to customize the experience. The sidebar is resizable by dragging the edge!
+        </p>
+        
+        <div className="flex items-center justify-center gap-4 pt-4">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Smartphone className="w-4 h-4" />
+            <span>Responsive</span>
+          </div>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Zap className="w-4 h-4" />
+            <span>Fast</span>
+          </div>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Star className="w-4 h-4" />
+            <span>Beautiful</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
 }
 ````
 
@@ -4703,256 +5366,6 @@ export function DashboardContent({ isInSidePane = false }: DashboardContentProps
 }
 ````
 
-## File: src/index.ts
-````typescript
-// Context
-export { AppShellProvider, useAppShell } from './context/AppShellContext';
-
-// Layout Components
-export { AppShell } from './components/layout/AppShell';
-export { MainContent } from './components/layout/MainContent';
-export { ViewModeSwitcher } from './components/layout/ViewModeSwitcher';
-export { RightPane } from './components/layout/RightPane';
-export { TopBar } from './components/layout/TopBar';
-export { UserDropdown } from './components/layout/UserDropdown';
-export { Workspaces as WorkspaceProvider, WorkspaceTrigger, WorkspaceContent } from './components/layout/WorkspaceSwitcher';
-
-// Sidebar Primitives
-export {
-  Sidebar,
-  SidebarBody,
-  SidebarContent,
-  SidebarFooter,
-  SidebarHeader,
-  SidebarSection,
-  SidebarTitle,
-  SidebarMenuItem,
-  SidebarMenuButton,
-  SidebarMenuAction,
-  SidebarLabel,
-  SidebarBadge,
-  SidebarTooltip,
-  SidebarIcon,
-  useSidebar,
-} from './components/layout/Sidebar';
-
-// Shared Components
-export { ContentInSidePanePlaceholder } from './components/shared/ContentInSidePanePlaceholder';
-export { PageHeader } from './components/shared/PageHeader';
-
-// Feature Components
-export { SettingsContent } from './features/settings/SettingsContent';
-export { SettingsSection } from './features/settings/SettingsSection';
-export { SettingsToggle } from './features/settings/SettingsToggle';
-export { LoginPage } from './components/auth/LoginPage';
-
-// UI Components
-export * from './components/ui/avatar';
-export * from './components/ui/badge';
-export * from './components/ui/button';
-export * from './components/ui/card';
-export * from './components/ui/command';
-export * from './components/ui/dialog';
-export * from './components/ui/dropdown-menu';
-export * from './components/ui/input';
-export * from './components/ui/label';
-export * from './components/ui/popover';
-export * from './components/ui/tabs';
-export * from './components/ui/toast';
-
-// Global Components
-export { CommandPalette } from './components/global/CommandPalette';
-
-// Hooks
-export { useAutoAnimateTopBar } from './hooks/useAutoAnimateTopBar';
-export { useCommandPaletteToggle } from './hooks/useCommandPaletteToggle.hook';
-
-// Lib
-export * from './lib/utils';
-
-// Store
-export { useAppStore, type ActivePage } from './store/appStore';
-export { useAuthStore } from './store/authStore';
-````
-
-## File: index.html
-````html
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Jeli App Shell</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <div id="toaster-container"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
-</html>
-````
-
-## File: tailwind.config.js
-````javascript
-/** @type {import('tailwindcss').Config} */
-export default {
-  content: [
-    "./index.html",
-    "./src/**/*.{js,ts,jsx,tsx}",
-  ],
-  darkMode: "class",
-  theme: {
-    extend: {
-      colors: {
-        border: "hsl(var(--border))",
-        input: "hsl(var(--input))",
-        ring: "hsl(var(--ring))",
-        background: "hsl(var(--background))",
-        foreground: "hsl(var(--foreground))",
-        primary: {
-          DEFAULT: "hsl(var(--primary))",
-          foreground: "hsl(var(--primary-foreground))",
-        },
-        secondary: {
-          DEFAULT: "hsl(var(--secondary))",
-          foreground: "hsl(var(--secondary-foreground))",
-        },
-        destructive: {
-          DEFAULT: "hsl(var(--destructive))",
-          foreground: "hsl(var(--destructive-foreground))",
-        },
-        muted: {
-          DEFAULT: "hsl(var(--muted))",
-          foreground: "hsl(var(--muted-foreground))",
-        },
-        accent: {
-          DEFAULT: "hsl(var(--accent))",
-          foreground: "hsl(var(--accent-foreground))",
-        },
-        popover: {
-          DEFAULT: "hsl(var(--popover))",
-          foreground: "hsl(var(--popover-foreground))",
-        },
-        card: {
-          DEFAULT: "hsl(var(--card))",
-          foreground: "hsl(var(--card-foreground))",
-        },
-      },
-      borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 4px)",
-        sm: "calc(var(--radius) - 8px)",
-        DEFAULT: "0.5rem",
-      },
-      boxShadow: {
-        input: [
-          "0px 2px 3px -1px rgba(0, 0, 0, 0.1)",
-          "0px 1px 0px 0px rgba(25, 28, 33, 0.02)",
-          "0px 0px 0px 1px rgba(25, 28, 33, 0.08)",
-        ].join(", "),
-      },
-      animation: {
-        "fade-in": "fadeIn 0.5s ease-in-out",
-        "slide-in": "slideIn 0.3s ease-out",
-        "scale-in": "scaleIn 0.2s ease-out",
-        ripple: "ripple 2s ease calc(var(--i, 0) * 0.2s) infinite",
-        orbit: "orbit calc(var(--duration) * 1s) linear infinite",
-      },
-      keyframes: {
-        fadeIn: {
-          "0%": { opacity: "0" },
-          "100%": { opacity: "1" },
-        },
-        slideIn: {
-          "0%": { transform: "translateX(-100%)" },
-          "100%": { transform: "translateX(0)" },
-        },
-        scaleIn: {
-          "0%": { transform: "scale(0.95)", opacity: "0" },
-          "100%": { transform: "scale(1)", opacity: "1" },
-        },
-        ripple: {
-          "0%, 100%": { transform: "translate(-50%, -50%) scale(1)" },
-          "50%": { transform: "translate(-50%, -50%) scale(0.9)" },
-        },
-        orbit: {
-          "0%": {
-            transform:
-              "rotate(0deg) translateY(calc(var(--radius) * 1px)) rotate(0deg)",
-          },
-          "100%": {
-            transform:
-              "rotate(360deg) translateY(calc(var(--radius) * 1px)) rotate(-360deg)",
-          },
-        }
-      },
-    },
-  },
-  plugins: [require("tailwindcss-animate")],
-}
-````
-
-## File: tsconfig.node.json
-````json
-{
-  "compilerOptions": {
-    "composite": true,
-    "skipLibCheck": true,
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
-    "allowSyntheticDefaultImports": true,
-    "resolveJsonModule": true
-  },
-  "include": ["vite.config.ts"]
-}
-````
-
-## File: src/components/layout/MainContent.tsx
-````typescript
-import { forwardRef } from 'react'
-import { X } from 'lucide-react'
-import { cn } from '@/lib/utils';
-import { BODY_STATES } from '@/lib/utils'
-import { useAppShell } from '@/context/AppShellContext'
-
-interface MainContentProps {
-  onToggleFullscreen?: () => void
-  children?: React.ReactNode;
-}
-
-export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
-  ({ onToggleFullscreen, children }, ref) => {
-    const { bodyState } = useAppShell();
-
-    return (
-      <div
-        ref={ref}
-        className={cn(
-        "flex flex-col h-full overflow-hidden",
-        bodyState === BODY_STATES.FULLSCREEN && "absolute inset-0 z-40 bg-background"
-        )}
-      >
-        {bodyState === BODY_STATES.FULLSCREEN && (
-          <button
-            onClick={() => onToggleFullscreen?.()}
-            className="fixed top-6 right-6 lg:right-12 z-[100] h-12 w-12 flex items-center justify-center rounded-full bg-card/50 backdrop-blur-sm hover:bg-card/75 transition-colors group"
-            title="Exit Fullscreen"
-          >
-            <X className="w-6 h-6 group-hover:scale-110 group-hover:rotate-90 transition-all duration-300" />
-          </button>
-        )}
-
-        <div className="flex-1 min-h-0 flex flex-col">
-          {children}
-        </div>
-      </div>
-    )
-  }
-)
-MainContent.displayName = 'MainContent'
-````
-
 ## File: src/components/layout/RightPane.tsx
 ````typescript
 import { forwardRef, type ReactNode } from 'react'
@@ -5015,419 +5428,6 @@ export const RightPane = forwardRef<HTMLDivElement, RightPaneProps>(({ children,
 RightPane.displayName = "RightPane"
 ````
 
-## File: src/components/layout/TopBar.tsx
-````typescript
-import {
-  Menu, 
-  Moon, 
-  Sun,
-  Settings,
-  Command,
-  Zap,
-} from 'lucide-react'
-import { cn } from '@/lib/utils'
-import { BODY_STATES } from '@/lib/utils'
-import { useAppStore } from '@/store/appStore'
-import { useAppShell } from '@/context/AppShellContext'
-import { UserDropdown } from './UserDropdown'
-import { ViewModeSwitcher } from './ViewModeSwitcher'
-
-interface TopBarProps {
-  onToggleSidebar?: () => void
-  onToggleDarkMode?: () => void
-  children?: React.ReactNode
-}
-
-export function TopBar({
-  onToggleSidebar,
-  onToggleDarkMode,
-  children,
-}: TopBarProps) {
-  const { bodyState, openSidePane, sidePaneContent } = useAppShell();
-  const { 
-    setCommandPaletteOpen,
-    isDarkMode,
-  } = useAppStore()
-
-  const handleSettingsClick = () => {
-    const isSettingsInSidePane = bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === 'settings'
-
-    // If we're on the settings page and it's not in the side pane, treat this as a "minimize" action.
-    if (!isSettingsInSidePane) {
-      openSidePane('settings');
-    } else {
-      // In all other cases (on dashboard page, or settings already in pane),
-      // just toggle the settings side pane.
-      openSidePane('settings')
-    }
-  };
-
-  return (
-    <div className={cn(
-      "h-20 bg-background border-b border-border flex items-center justify-between px-6 z-50 gap-4",
-      'transition-all duration-300 ease-in-out'
-    )}>
-      {/* Left Section - Sidebar Controls & Breadcrumbs */}
-      <div className="flex items-center gap-4">
-        {/* Sidebar Controls */}
-        <button
-          onClick={() => onToggleSidebar?.()}
-          className={cn(
-            "h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors"
-          )}
-          title="Toggle Sidebar"
-        >
-          <Menu className="w-5 h-5" />
-        </button>
-
-      </div>
-
-      {/* Right Section - page controls, and global controls */}
-      <div className="flex items-center gap-3">
-        {children}
-
-        {/* Separator */}
-        <div className="w-px h-6 bg-border mx-2" />
-
-        {/* Quick Actions */}
-        <div className="flex items-center gap-3">
-
-          <button
-            onClick={() => setCommandPaletteOpen(true)}
-            className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
-            title="Command Palette (Ctrl+K)"
-          >
-            <Command className="w-5 h-5 group-hover:scale-110 transition-transform" />
-          </button>
-
-        <button
-          className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
-          title="Quick Actions"
-        >
-          <Zap className="w-5 h-5 group-hover:scale-110 transition-transform" />
-        </button>
-
-        {/* View Mode Controls */}
-        <ViewModeSwitcher />
-
-        <div className="w-px h-6 bg-border mx-2" />
-
-        {/* Theme and Settings */}
-        <button
-          onClick={() => onToggleDarkMode?.()}
-          className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
-          title="Toggle Dark Mode"
-        >
-          {isDarkMode ? (
-            <Sun className="w-5 h-5 group-hover:scale-110 transition-transform" />
-          ) : (
-            <Moon className="w-5 h-5 group-hover:scale-110 transition-transform" />
-          )}
-        </button>
-
-        <button
-          onClick={handleSettingsClick}
-          className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
-          title="Settings"
-        >
-          <Settings className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
-        </button>
-        <UserDropdown />
-        </div>
-      </div>
-    </div>
-  )
-}
-````
-
-## File: src/hooks/useResizablePanes.hook.ts
-````typescript
-import { useEffect } from 'react';
-import { gsap } from 'gsap';
-import { useAppShell } from '@/context/AppShellContext';
-import { BODY_STATES } from '@/lib/utils';
-
-export function useResizableSidebar(
-  sidebarRef: React.RefObject<HTMLDivElement>,
-  resizeHandleRef: React.RefObject<HTMLDivElement>
-) {
-  const { isResizing, dispatch } = useAppShell();
-
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!isResizing) return;
-
-      const newWidth = Math.max(200, Math.min(500, e.clientX));
-      dispatch({ type: 'SET_SIDEBAR_WIDTH', payload: newWidth });
-
-      if (sidebarRef.current) {
-        gsap.set(sidebarRef.current, { width: newWidth });
-      }
-      if (resizeHandleRef.current) {
-        gsap.set(resizeHandleRef.current, { left: newWidth });
-      }
-    };
-
-    const handleMouseUp = () => {
-      dispatch({ type: 'SET_IS_RESIZING', payload: false });
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
-    };
-
-    if (isResizing) {
-      document.body.style.cursor = 'col-resize';
-      document.body.style.userSelect = 'none';
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-    }
-
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [isResizing, dispatch, sidebarRef, resizeHandleRef]);
-}
-
-export function useResizableRightPane() {
-  const { isResizingRightPane, dispatch, bodyState } = useAppShell();
-
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!isResizingRightPane) return;
-
-      const newWidth = window.innerWidth - e.clientX;
-      if (bodyState === BODY_STATES.SPLIT_VIEW) {
-        dispatch({ type: 'SET_SPLIT_PANE_WIDTH', payload: newWidth });
-      } else {
-        dispatch({ type: 'SET_SIDE_PANE_WIDTH', payload: newWidth });
-      }
-    };
-
-    const handleMouseUp = () => {
-      dispatch({ type: 'SET_IS_RESIZING_RIGHT_PANE', payload: false });
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
-    };
-
-    if (isResizingRightPane) {
-      document.body.style.cursor = 'col-resize';
-      document.body.style.userSelect = 'none';
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-    }
-
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-      document.body.style.cursor = '';
-    };
-  }, [isResizingRightPane, dispatch, bodyState]);
-}
-````
-
-## File: src/pages/Dashboard/DemoContent.tsx
-````typescript
-import { useRef } from 'react'
-import { 
-  Sparkles, 
-  Zap, 
-  Rocket, 
-  Star, 
-  Heart,
-  Layers,
-  Code,
-  Palette,
-  Smartphone,
-  Monitor,
-  Settings
-} from 'lucide-react'
-import { cn } from '@/lib/utils'
-import { useAppStore } from '@/store/appStore'
-import { useAppShell } from '@/context/AppShellContext'
-import { Card } from '@/components/ui/card'
-import { useDemoContentAnimations } from './hooks/useDemoContentAnimations.hook'
-
-export function DemoContent() {
-  const { bodyState, sidebarState, compactMode } = useAppShell()
-  const { isDarkMode } = useAppStore()
-  const contentRef = useRef<HTMLDivElement>(null)
-  const cardsRef = useRef<(HTMLDivElement | null)[]>([])
-  useDemoContentAnimations(cardsRef);
-
-  const features = [
-    {
-      icon: <Sparkles className="w-6 h-6" />,
-      title: "Amazing Animations",
-      description: "Powered by GSAP for smooth, buttery animations",
-      color: "from-emerald-500 to-teal-500"
-    },
-    {
-      icon: <Zap className="w-6 h-6" />,
-      title: "Lightning Fast",
-      description: "Built with Vite and optimized for performance",
-      color: "from-amber-500 to-orange-500"
-    },
-    {
-      icon: <Layers className="w-6 h-6" />,
-      title: "Multiple States",
-      description: "Fullscreen, side pane, and normal viewing modes",
-      color: "from-emerald-500 to-green-500"
-    },
-    {
-      icon: <Code className="w-6 h-6" />,
-      title: "TypeScript",
-      description: "Fully typed with excellent developer experience",
-      color: "from-green-500 to-emerald-500"
-    },
-    {
-      icon: <Palette className="w-6 h-6" />,
-      title: "Beautiful Design",
-      description: "Shadcn/ui components with Tailwind CSS",
-      color: "from-teal-500 to-emerald-500"
-    },
-    {
-      icon: <Settings className="w-6 h-6" />,
-      title: "Customizable",
-      description: "Extensive settings and preferences panel",
-      color: "from-slate-500 to-gray-500"
-    }
-  ]
-
-  const stats = [
-    { label: "Components", value: "12+", color: "text-emerald-600" },
-    { label: "Animations", value: "25+", color: "text-teal-600" },
-    { label: "States", value: "7", color: "text-primary" },
-    { label: "Settings", value: "10+", color: "text-amber-600" }
-  ]
-
-  return (
-    <div ref={contentRef} className="p-8 space-y-12">
-      {/* Hero Section */}
-      <div className="text-center space-y-4">
-        <div className="flex items-center justify-center gap-2 mb-4">
-          <Rocket className="w-8 h-8 text-primary" />
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">Jeli App Shell</h1>
-        </div>
-        <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-          A super flexible application shell with resizable sidebar, multiple body states, 
-          smooth animations, and comprehensive settings - all built with modern web technologies.
-        </p>
-        
-        {/* Quick Stats */}
-        <div className="flex items-center justify-center gap-12 mt-8">
-          {stats.map((stat) => (
-            <div key={stat.label} className="text-center">
-              <div className={cn("text-2xl font-bold", stat.color)}>{stat.value}</div>
-              <div className="text-sm text-muted-foreground">{stat.label}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Feature Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {features.map((feature, index) => (
-          <Card
-            key={feature.title}
-            ref={el => cardsRef.current[index] = el}
-            className="group relative overflow-hidden border-border/50 p-6 hover:border-primary/30 hover:bg-accent/30 transition-all duration-300 cursor-pointer"
-          >
-            <div className="relative z-10">
-              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-4 group-hover:scale-110 group-hover:bg-primary/20 transition-transform">
-                {feature.icon}
-              </div>
-              
-              <h3 className="text-lg font-semibold mb-2">{feature.title}</h3>
-              <p className="text-muted-foreground text-sm">{feature.description}</p>
-            </div>
-          </Card>
-        ))}
-      </div>
-
-      {/* Technology Stack */}
-      <Card className="border-border/50 p-6">
-        <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
-          <Star className="w-6 h-6 text-yellow-500" />
-          Technology Stack
-        </h2>
-        
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {[
-            { name: "React 18", desc: "Latest React with hooks" },
-            { name: "TypeScript", desc: "Type-safe development" },
-            { name: "Vite", desc: "Lightning fast build tool" },
-            { name: "Tailwind CSS", desc: "Utility-first styling" },
-            { name: "GSAP", desc: "Professional animations" },
-            { name: "Zustand", desc: "Lightweight state management" },
-            { name: "Shadcn/ui", desc: "Beautiful components" },
-            { name: "Lucide Icons", desc: "Consistent iconography" }
-          ].map((tech) => (
-            <div key={tech.name} className="bg-background rounded-xl p-4 border border-border/50">
-              <h4 className="font-medium">{tech.name}</h4>
-              <p className="text-sm text-muted-foreground">{tech.desc}</p>
-            </div>
-          ))}
-        </div>
-      </Card>
-
-      {/* Current State Display */}
-      <Card className="border-border/50 p-6">
-        <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-          <Monitor className="w-5 h-5" />
-          Current App State
-        </h2>
-        
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="text-center p-3 bg-background rounded-xl">
-            <div className="text-sm text-muted-foreground">Sidebar</div>
-            <div className="font-medium capitalize">{sidebarState}</div>
-          </div>
-          <div className="text-center p-3 bg-background rounded-xl">
-            <div className="text-sm text-muted-foreground">Body State</div>
-            <div className="font-medium capitalize">{bodyState.replace('_', ' ')}</div>
-          </div>
-          <div className="text-center p-3 bg-background rounded-xl">
-            <div className="text-sm text-muted-foreground">Theme</div>
-            <div className="font-medium">{isDarkMode ? 'Dark' : 'Light'}</div>
-          </div>
-          <div className="text-center p-3 bg-background rounded-xl">
-            <div className="text-sm text-muted-foreground">Mode</div>
-            <div className="font-medium">{compactMode ? 'Compact' : 'Normal'}</div>
-          </div>
-        </div>
-      </Card>
-
-      {/* Interactive Demo */}
-      <div className="text-center space-y-4">
-        <h2 className="text-2xl font-bold flex items-center justify-center gap-2">
-          <Heart className="w-6 h-6 text-red-500" />
-          Try It Out!
-        </h2>
-        <p className="text-muted-foreground">
-          Use the controls in the top bar to explore different states, toggle the sidebar, 
-          or open settings to customize the experience. The sidebar is resizable by dragging the edge!
-        </p>
-        
-        <div className="flex items-center justify-center gap-4 pt-4">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Smartphone className="w-4 h-4" />
-            <span>Responsive</span>
-          </div>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Zap className="w-4 h-4" />
-            <span>Fast</span>
-          </div>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Star className="w-4 h-4" />
-            <span>Beautiful</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-````
-
 ## File: vite.config.ts
 ````typescript
 import { defineConfig } from 'vite'
@@ -5470,123 +5470,6 @@ export default defineConfig({
     },
   },
 })
-````
-
-## File: src/components/layout/AppShell.tsx
-````typescript
-import React, { useRef, type ReactElement } from 'react'
-import { cn } from '@/lib/utils'
-import { CommandPalette } from '@/components/global/CommandPalette';
-import { useAppStore } from '@/store/appStore';
-import { useAppShell } from '@/context/AppShellContext';
-import { SIDEBAR_STATES } from '@/lib/utils'
-import { useResizableSidebar, useResizableRightPane } from '@/hooks/useResizablePanes.hook'
-import { useSidebarAnimations, useBodyStateAnimations } from '@/hooks/useAppShellAnimations.hook'
-
-interface AppShellProps {
-  sidebar: ReactElement;
-  topBar: ReactElement;
-  mainContent: ReactElement;
-  rightPane: ReactElement;
-  commandPalette?: ReactElement;
-}
-
-
-export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalette }: AppShellProps) {
-  const {
-    sidebarState,
-    dispatch,
-    autoExpandSidebar,
-    toggleSidebar,
-    peekSidebar,
-  } = useAppShell();
-  
-  const { isDarkMode, toggleDarkMode } = useAppStore();
-  const appRef = useRef<HTMLDivElement>(null)
-  const sidebarRef = useRef<HTMLDivElement>(null)
-  const mainContentRef = useRef<HTMLDivElement>(null)
-  const rightPaneRef = useRef<HTMLDivElement>(null)
-  const resizeHandleRef = useRef<HTMLDivElement>(null)
-  const topBarContainerRef = useRef<HTMLDivElement>(null)
-  const mainAreaRef = useRef<HTMLDivElement>(null)
-
-  // Custom hooks for logic
-  useResizableSidebar(sidebarRef, resizeHandleRef);
-  useResizableRightPane();
-  useSidebarAnimations(sidebarRef, resizeHandleRef);
-  useBodyStateAnimations(appRef, mainContentRef, rightPaneRef, topBarContainerRef, mainAreaRef);
-  
-  const sidebarWithProps = React.cloneElement(sidebar, { 
-    ref: sidebarRef,
-    onMouseEnter: () => {
-      if (autoExpandSidebar && sidebarState === SIDEBAR_STATES.COLLAPSED) {
-        peekSidebar()
-      }
-    },
-    onMouseLeave: () => {
-      if (autoExpandSidebar && sidebarState === SIDEBAR_STATES.PEEK) {
-        dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.COLLAPSED });
-      }
-    }
-  });
-
-  const topBarWithProps = React.cloneElement(topBar, {
-    onToggleSidebar: toggleSidebar,
-    onToggleDarkMode: toggleDarkMode,
-  });
-
-  const mainContentWithProps = React.cloneElement(mainContent, {
-    ref: mainContentRef,
-  });
-
-  const rightPaneWithProps = React.cloneElement(rightPane, { ref: rightPaneRef });
-
-  return (
-    <div 
-      ref={appRef}
-      className={cn(
-        "relative h-screen w-screen overflow-hidden bg-background transition-colors duration-300",
-        isDarkMode && "dark"
-      )}
-    >
-      <div className="flex h-screen overflow-hidden">
-        {/* Enhanced Sidebar */}
-        {sidebarWithProps}
-
-        {/* Resize Handle */}
-        {sidebarState !== SIDEBAR_STATES.HIDDEN && (
-          <div
-            ref={resizeHandleRef}
-            className={cn(
-              "absolute top-0 w-2 h-full bg-transparent hover:bg-primary/20 cursor-col-resize z-50 transition-colors duration-200 group -translate-x-1/2"
-            )}
-            onMouseDown={(e) => {
-              e.preventDefault()
-              dispatch({ type: 'SET_IS_RESIZING', payload: true });
-            }}
-          >
-            <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200 mx-auto" />
-          </div>
-        )}
-
-        {/* Main area wrapper */}
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <div ref={topBarContainerRef} className="relative z-30">
-            {topBarWithProps}
-          </div>
-
-          <div className="flex flex-1 min-h-0">
-            <div ref={mainAreaRef} className="relative flex-1 overflow-hidden bg-background">
-              {mainContentWithProps}
-            </div>
-            {rightPaneWithProps}
-          </div>
-        </div>
-      </div>
-      {commandPalette || <CommandPalette />}
-    </div>
-  )
-}
 ````
 
 ## File: src/index.css
@@ -6006,6 +5889,123 @@ Contributions are welcome! Please read our [contributing guidelines](./CONTRIBUT
 ## License
 
 This project is licensed under the **MIT License**. See the [LICENSE](./LICENSE) file for details.
+````
+
+## File: src/components/layout/AppShell.tsx
+````typescript
+import React, { useRef, type ReactElement } from 'react'
+import { cn } from '@/lib/utils'
+import { CommandPalette } from '@/components/global/CommandPalette';
+import { useAppStore } from '@/store/appStore';
+import { useAppShell } from '@/context/AppShellContext';
+import { SIDEBAR_STATES } from '@/lib/utils'
+import { useResizableSidebar, useResizableRightPane } from '@/hooks/useResizablePanes.hook'
+import { useSidebarAnimations, useBodyStateAnimations } from '@/hooks/useAppShellAnimations.hook'
+
+interface AppShellProps {
+  sidebar: ReactElement;
+  topBar: ReactElement;
+  mainContent: ReactElement;
+  rightPane: ReactElement;
+  commandPalette?: ReactElement;
+}
+
+
+export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalette }: AppShellProps) {
+  const {
+    sidebarState,
+    dispatch,
+    autoExpandSidebar,
+    toggleSidebar,
+    peekSidebar,
+  } = useAppShell();
+  
+  const { isDarkMode, toggleDarkMode } = useAppStore();
+  const appRef = useRef<HTMLDivElement>(null)
+  const sidebarRef = useRef<HTMLDivElement>(null)
+  const mainContentRef = useRef<HTMLDivElement>(null)
+  const rightPaneRef = useRef<HTMLDivElement>(null)
+  const resizeHandleRef = useRef<HTMLDivElement>(null)
+  const topBarContainerRef = useRef<HTMLDivElement>(null)
+  const mainAreaRef = useRef<HTMLDivElement>(null)
+
+  // Custom hooks for logic
+  useResizableSidebar(sidebarRef, resizeHandleRef);
+  useResizableRightPane();
+  useSidebarAnimations(sidebarRef, resizeHandleRef);
+  useBodyStateAnimations(appRef, mainContentRef, rightPaneRef, topBarContainerRef, mainAreaRef);
+  
+  const sidebarWithProps = React.cloneElement(sidebar, { 
+    ref: sidebarRef,
+    onMouseEnter: () => {
+      if (autoExpandSidebar && sidebarState === SIDEBAR_STATES.COLLAPSED) {
+        peekSidebar()
+      }
+    },
+    onMouseLeave: () => {
+      if (autoExpandSidebar && sidebarState === SIDEBAR_STATES.PEEK) {
+        dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.COLLAPSED });
+      }
+    }
+  });
+
+  const topBarWithProps = React.cloneElement(topBar, {
+    onToggleSidebar: toggleSidebar,
+    onToggleDarkMode: toggleDarkMode,
+  });
+
+  const mainContentWithProps = React.cloneElement(mainContent, {
+    ref: mainContentRef,
+  });
+
+  const rightPaneWithProps = React.cloneElement(rightPane, { ref: rightPaneRef });
+
+  return (
+    <div 
+      ref={appRef}
+      className={cn(
+        "relative h-screen w-screen overflow-hidden bg-background transition-colors duration-300",
+        isDarkMode && "dark"
+      )}
+    >
+      <div className="flex h-screen overflow-hidden">
+        {/* Enhanced Sidebar */}
+        {sidebarWithProps}
+
+        {/* Resize Handle */}
+        {sidebarState !== SIDEBAR_STATES.HIDDEN && (
+          <div
+            ref={resizeHandleRef}
+            className={cn(
+              "absolute top-0 w-2 h-full bg-transparent hover:bg-primary/20 cursor-col-resize z-50 transition-colors duration-200 group -translate-x-1/2"
+            )}
+            onMouseDown={(e) => {
+              e.preventDefault()
+              dispatch({ type: 'SET_IS_RESIZING', payload: true });
+            }}
+          >
+            <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200 mx-auto" />
+          </div>
+        )}
+
+        {/* Main area wrapper */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <div ref={topBarContainerRef} className="relative z-30">
+            {topBarWithProps}
+          </div>
+
+          <div className="flex flex-1 min-h-0">
+            <div ref={mainAreaRef} className="relative flex-1 overflow-hidden bg-background">
+              {mainContentWithProps}
+            </div>
+            {rightPaneWithProps}
+          </div>
+        </div>
+      </div>
+      {commandPalette || <CommandPalette />}
+    </div>
+  )
+}
 ````
 
 ## File: src/context/AppShellContext.tsx

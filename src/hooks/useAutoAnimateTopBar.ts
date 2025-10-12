@@ -1,13 +1,14 @@
 import { useRef, useCallback, useEffect } from 'react';
 import { useAppShell } from '@/context/AppShellContext';
+import { BODY_STATES } from '@/lib/utils';
 
 export function useAutoAnimateTopBar(isPane = false) {
-  const { dispatch } = useAppShell();
+  const { dispatch, bodyState } = useAppShell();
   const lastScrollTop = useRef(0);
   const scrollTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const onScroll = useCallback((event: React.UIEvent<HTMLDivElement>) => {
-    if (isPane) return;
+    if (isPane || bodyState === BODY_STATES.SPLIT_VIEW) return;
 
     // Clear previous timeout
     if (scrollTimeout.current) {
@@ -32,7 +33,7 @@ export function useAutoAnimateTopBar(isPane = false) {
         dispatch({ type: 'SET_TOP_BAR_VISIBLE', payload: true });
       }
     }, 250); // Adjust timeout as needed
-  }, [isPane, dispatch]);
+  }, [isPane, dispatch, bodyState]);
 
   // Cleanup on unmount
   useEffect(() => {
