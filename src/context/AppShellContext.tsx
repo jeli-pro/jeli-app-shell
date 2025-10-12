@@ -13,7 +13,7 @@ import { SIDEBAR_STATES, BODY_STATES, type SidebarState, type BodyState } from '
 
 // --- State and Action Types ---
 
-interface AppShellState {
+export interface AppShellState {
   sidebarState: SidebarState;
   bodyState: BodyState;
   sidePaneContent: 'details' | 'settings' | 'main' | 'toaster' | 'notifications';
@@ -103,7 +103,7 @@ interface AppShellContextValue extends AppShellState {
   showSidebar: () => void;
   peekSidebar: () => void;
   toggleFullscreen: () => void;
-  toggleSplitView: () => void;
+  toggleSplitView: (content?: AppShellState['sidePaneContent']) => void;
   openSidePane: (content: AppShellState['sidePaneContent']) => void;
   closeSidePane: () => void;
   resetToDefaults: () => void;
@@ -148,7 +148,7 @@ export function AppShellProvider({ children, appName, appLogo, defaultSplitPaneW
     dispatch({ type: 'SET_BODY_STATE', payload: current === BODY_STATES.FULLSCREEN ? BODY_STATES.NORMAL : BODY_STATES.FULLSCREEN });
   }, [state.bodyState]);
 
-  const toggleSplitView = useCallback(() => {
+  const toggleSplitView = useCallback((content?: AppShellState['sidePaneContent']) => {
     const current = state.bodyState;
     if (current === BODY_STATES.SIDE_PANE) {
       dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.SPLIT_VIEW });
@@ -157,6 +157,10 @@ export function AppShellProvider({ children, appName, appLogo, defaultSplitPaneW
       }
     } else if (current === BODY_STATES.SPLIT_VIEW) {
       dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.SIDE_PANE });
+    } else if (current === BODY_STATES.NORMAL && content) {
+      // If we're in normal view, open the pane and switch to split view
+      dispatch({ type: 'SET_SIDE_PANE_CONTENT', payload: content });
+      dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.SPLIT_VIEW });
     }
   }, [state.bodyState, state.sidebarState]);
 

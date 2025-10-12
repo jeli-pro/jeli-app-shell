@@ -1,7 +1,5 @@
 import {
   Menu, 
-  Maximize, 
-  Minimize, 
   Moon, 
   Sun,
   Settings,
@@ -13,17 +11,16 @@ import { BODY_STATES } from '@/lib/utils'
 import { useAppStore } from '@/store/appStore'
 import { useAppShell } from '@/context/AppShellContext'
 import { UserDropdown } from './UserDropdown'
+import { ViewModeSwitcher } from './ViewModeSwitcher'
 
 interface TopBarProps {
   onToggleSidebar?: () => void
-  onToggleFullscreen?: () => void
   onToggleDarkMode?: () => void
   children?: React.ReactNode
 }
 
 export function TopBar({
   onToggleSidebar,
-  onToggleFullscreen,
   onToggleDarkMode,
   children,
 }: TopBarProps) {
@@ -91,35 +88,8 @@ export function TopBar({
           <Zap className="w-5 h-5 group-hover:scale-110 transition-transform" />
         </button>
 
-        {/* Body State Controls */}
-        <button
-          onClick={() => openSidePane('details')}
-          className={cn(
-            "h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group",
-            bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === 'details' && "bg-accent"
-          )}
-          title="Toggle Side Pane"
-        >
-          <div className="w-5 h-5 flex group-hover:scale-110 transition-transform">
-            <div className="w-1/2 h-full bg-current opacity-60 rounded-l-sm" />
-            <div className="w-1/2 h-full bg-current rounded-r-sm" />
-          </div>
-        </button>
-
-        <button
-          onClick={() => onToggleFullscreen?.()}
-          className={cn(
-            "h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group",
-            bodyState === BODY_STATES.FULLSCREEN && "bg-accent"
-          )}
-          title="Toggle Fullscreen"
-        >
-          {bodyState === BODY_STATES.FULLSCREEN ? (
-            <Minimize className="w-5 h-5 group-hover:scale-110 transition-transform" />
-          ) : (
-            <Maximize className="w-5 h-5 group-hover:scale-110 transition-transform" />
-          )}
-        </button>
+        {/* View Mode Controls */}
+        <ViewModeSwitcher />
 
         <div className="w-px h-6 bg-border mx-2" />
 

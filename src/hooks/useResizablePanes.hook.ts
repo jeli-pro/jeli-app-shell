@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { gsap } from 'gsap';
 import { useAppShell } from '@/context/AppShellContext';
+import { BODY_STATES } from '@/lib/utils';
 
 export function useResizableSidebar(
   sidebarRef: React.RefObject<HTMLDivElement>,

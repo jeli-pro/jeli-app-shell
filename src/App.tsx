@@ -84,11 +84,6 @@ function AppTopBar() {
   const { openSidePane } = useAppShell()
   const [isSearchFocused, setIsSearchFocused] = React.useState(false);
 
-  const handleMoveToSidePane = () => {
-    const mapping = { dashboard: 'main', settings: 'settings', toaster: 'toaster', notifications: 'notifications' } as const;
-    if (mapping[activePage]) openSidePane(mapping[activePage]);
-  };
-
   return (
     <div className="flex items-center gap-3 flex-1">
       <div className={cn("hidden md:flex items-center gap-2 text-sm transition-opacity", {
@@ -127,11 +122,6 @@ function AppTopBar() {
           <span className={cn(isSearchFocused ? 'hidden sm:inline' : 'inline')}>New Project</span>
         </button>
       </div>
-      )}
-
-      {/* Page-specific: Move to side pane */}
-      {['dashboard', 'settings', 'toaster', 'notifications'].includes(activePage) && (
-        <button onClick={handleMoveToSidePane} className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors" title="Move to Side Pane"><PanelRight className="w-5 h-5" /></button>
       )}
     </div>
   )

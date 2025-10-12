@@ -23,7 +23,6 @@ export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalet
     autoExpandSidebar,
     toggleSidebar,
     peekSidebar,
-    toggleFullscreen,
   } = useAppShell();
   
   const { isDarkMode, toggleDarkMode } = useAppStore();
@@ -57,13 +56,11 @@ export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalet
 
   const topBarWithProps = React.cloneElement(topBar, {
     onToggleSidebar: toggleSidebar,
-    onToggleFullscreen: toggleFullscreen,
     onToggleDarkMode: toggleDarkMode,
   });
 
   const mainContentWithProps = React.cloneElement(mainContent, {
     ref: mainContentRef,
-    onToggleFullscreen: toggleFullscreen,
   });
 
   const rightPaneWithProps = React.cloneElement(rightPane, { ref: rightPaneRef });

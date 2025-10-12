@@ -4,6 +4,7 @@ export { AppShellProvider, useAppShell } from './context/AppShellContext';
 // Layout Components
 export { AppShell } from './components/layout/AppShell';
 export { MainContent } from './components/layout/MainContent';
+export { ViewModeSwitcher } from './components/layout/ViewModeSwitcher';
 export { RightPane } from './components/layout/RightPane';
 export { TopBar } from './components/layout/TopBar';
 export { UserDropdown } from './components/layout/UserDropdown';

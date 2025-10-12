@@ -1,0 +1,838 @@
+uuid: c328b9a1-d850-4d56-b097-4020a596f26d
+projectId: jeli-app-shell
+createdAt: '2025-10-12T01:42:08.687Z'
+gitCommitMsg: >-
+  feat: add centralized view mode switcher
+
+  Introduces a new `ViewModeSwitcher` component in the `TopBar` to allow users
+  to easily switch between normal, side pane, and split view modes.
+
+  - Added a `SET_VIEW_MODE` action and `setViewMode` function to
+  `AppShellContext` for centralized state management. - Created the
+  `ViewModeSwitcher` component with a dropdown menu for selecting view modes. -
+  Replaced the previous side pane toggle button in the `TopBar` with the new
+  switcher. - Refactored existing actions like `openSidePane` and
+  `toggleSplitView` to use the new centralized logic.
+promptSummary: >-
+  The user requested a centralized UI control to manage different view modes
+  (normal, side pane, split view).
+reasoning:
+  - >-
+    I will add a centralized UI control to set the view mode between normal,
+    split view, and side pane view.
+  - 'This will be achieved by:'
+  - >-
+    1.  Adding a new `SET_VIEW_MODE` action and a `setViewMode` function to the
+    `AppShellContext` for direct state control.
+  - >-
+    2.  Creating a new `ViewModeSwitcher` component that uses a dropdown to
+    select the view mode.
+  - >-
+    3.  Replacing the old side pane toggle button in the `TopBar` with this new,
+    more powerful `ViewModeSwitcher` component.
+  - 4.  Exporting the new component for library consumers.
+  - >-
+    First, I'll update the `AppShellContext` to handle view mode changes
+    centrally.
+  - Next, I'll create the `ViewModeSwitcher` component.
+  - >-
+    Now, I'll integrate the `ViewModeSwitcher` into the `TopBar` and remove the
+    old button.
+  - Finally, I'll export the new component from the library's entry point.
+  - These changes introduce the centralized view mode control as requested.
+operations:
+  - type: write
+    path: src/context/AppShellContext.tsx
+    content: >+
+      --- src/context/AppShellContext.tsx
+
+      +++ src/context/AppShellContext.tsx
+
+      @@ -28,7 +28,8 @@
+         | { type: 'SET_REDUCED_MOTION'; payload: boolean }
+         | { type: 'SET_COMPACT_MODE'; payload: boolean }
+         | { type: 'SET_PRIMARY_COLOR'; payload: string }
+      -  | { type: 'RESET_TO_DEFAULTS' };
+
+      +  | { type: 'RESET_TO_DEFAULTS' }
+
+      +  | { type: 'SET_VIEW_MODE'; payload: 'normal' | 'side-pane' |
+      'split-view' };
+       
+       // --- Reducer ---
+       
+      @@ -62,6 +63,22 @@
+               appName: state.appName, // Preserve props passed to provider
+               appLogo: state.appLogo,   // Preserve props passed to provider
+             };
+      +    case 'SET_VIEW_MODE': {
+
+      +      switch (action.payload) {
+
+      +        case 'normal':
+
+      +          return { ...state, bodyState: BODY_STATES.NORMAL };
+
+      +        case 'side-pane':
+
+      +          return { ...state, bodyState: BODY_STATES.SIDE_PANE };
+
+      +        case 'split-view': {
+
+      +          let sidebarState = state.sidebarState;
+
+      +          if (sidebarState === SIDEBAR_STATES.EXPANDED) {
+
+      +            sidebarState = SIDEBAR_STATES.COLLAPSED;
+
+      +          }
+
+      +          return { ...state, bodyState: BODY_STATES.SPLIT_VIEW,
+      sidebarState };
+
+      +        }
+
+      +        default: return state;
+
+      +      }
+
+      +    }
+           default: return state;
+         }
+       }
+      @@ -80,6 +97,7 @@
+         openSidePane: (content: AppShellState['sidePaneContent']) => void;
+         closeSidePane: () => void;
+         resetToDefaults: () => void;
+      +  setViewMode: (mode: 'normal' | 'side-pane' | 'split-view') => void;
+       }
+       
+       const AppShellContext = createContext<AppShellContextValue | null>(null);
+      @@ -113,29 +131,31 @@
+           const current = state.bodyState;
+           dispatch({ type: 'SET_BODY_STATE', payload: current === BODY_STATES.FULLSCREEN ? BODY_STATES.NORMAL : BODY_STATES.FULLSCREEN });
+         }, [state.bodyState]);
+      +
+
+      +  const setViewMode = useCallback((mode: 'normal' | 'side-pane' |
+      'split-view') => {
+
+      +    dispatch({ type: 'SET_VIEW_MODE', payload: mode });
+
+      +  }, []);
+       
+         const toggleSplitView = useCallback(() => {
+           const current = state.bodyState;
+           if (current === BODY_STATES.SIDE_PANE) {
+      -      dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.SPLIT_VIEW
+      });
+
+      -      if (state.sidebarState === SIDEBAR_STATES.EXPANDED) {
+
+      -        dispatch({ type: 'SET_SIDEBAR_STATE', payload:
+      SIDEBAR_STATES.COLLAPSED });
+
+      -      }
+
+      +      setViewMode('split-view');
+           } else if (current === BODY_STATES.SPLIT_VIEW) {
+      -      dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.SIDE_PANE
+      });
+
+      +      setViewMode('side-pane');
+           }
+      -  }, [state.bodyState, state.sidebarState]);
+
+      +  }, [state.bodyState, setViewMode]);
+       
+         const openSidePane = useCallback((content: AppShellState['sidePaneContent']) => {
+           if (state.bodyState === BODY_STATES.SIDE_PANE && state.sidePaneContent === content) {
+             // If it's open with same content, close it.
+      -      dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.NORMAL });
+
+      +      setViewMode('normal');
+           } else {
+             // If closed, or different content, open with new content.
+             dispatch({ type: 'SET_SIDE_PANE_CONTENT', payload: content });
+      -      dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.SIDE_PANE
+      });
+
+      +      setViewMode('side-pane');
+           }
+      -  }, [state.bodyState, state.sidePaneContent]);
+
+      +  }, [state.bodyState, state.sidePaneContent, setViewMode]);
+       
+         const closeSidePane = useCallback(() => dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.NORMAL }), []);
+         const resetToDefaults = useCallback(() => dispatch({ type: 'RESET_TO_DEFAULTS' }), []);
+      @@ -156,6 +176,7 @@
+           openSidePane,
+           closeSidePane,
+           resetToDefaults,
+      +    setViewMode,
+         }), [
+           state, 
+           rightPaneWidth,
+      @@ -167,7 +188,8 @@
+           toggleSplitView,
+           openSidePane,
+           closeSidePane,
+      -    resetToDefaults
+
+      +    resetToDefaults,
+
+      +    setViewMode
+         ]);
+       
+         return (
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/components/layout/ViewModeSwitcher.tsx
+    content: >-
+      import { useAppShell } from '@/context/AppShellContext';
+
+      import { BODY_STATES } from '@/lib/utils';
+
+      import { DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup,
+      DropdownMenuRadioItem, DropdownMenuTrigger } from
+      '@/components/ui/dropdown-menu';
+
+      import { Button } from '@/components/ui/button';
+
+      import { PanelRightOpen, SplitSquareHorizontal, Rows } from
+      'lucide-react';
+
+
+      const viewModes = [
+        { value: 'normal', label: 'Normal View', icon: Rows },
+        { value: 'side-pane', label: 'Side Pane', icon: PanelRightOpen },
+        { value: 'split-view', label: 'Split View', icon: SplitSquareHorizontal },
+      ];
+
+
+      export function ViewModeSwitcher() {
+        const { bodyState, setViewMode } = useAppShell();
+
+        const getCurrentViewMode = () => {
+          if (bodyState === BODY_STATES.SIDE_PANE) return 'side-pane';
+          if (bodyState === BODY_STATES.SPLIT_VIEW) return 'split-view';
+          return 'normal';
+        };
+
+        const currentViewMode = getCurrentViewMode();
+
+        const handleValueChange = (value: string) => {
+          setViewMode(value as 'normal' | 'side-pane' | 'split-view');
+        };
+
+        const CurrentIcon = viewModes.find(vm => vm.value === currentViewMode)?.icon || Rows;
+
+        return (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-10 w-10 group" title="Switch View Mode">
+                <CurrentIcon className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuRadioGroup value={currentViewMode} onValueChange={handleValueChange}>
+                {viewModes.map((mode) => (
+                  <DropdownMenuRadioItem key={mode.value} value={mode.value} className="gap-2 cursor-pointer">
+                    <mode.icon className="w-4 h-4 text-muted-foreground" />
+                    <span>{mode.label}</span>
+                  </DropdownMenuRadioItem>
+                ))}
+              </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        );
+      }
+    patchStrategy: replace
+  - type: write
+    path: src/components/layout/TopBar.tsx
+    content: >+
+      --- src/components/layout/TopBar.tsx
+
+      +++ src/components/layout/TopBar.tsx
+
+      @@ -10,6 +10,7 @@
+       import { useAppStore } from '@/store/appStore'
+       import { useAppShell } from '@/context/AppShellContext'
+       import { UserDropdown } from './UserDropdown'
+      +import { ViewModeSwitcher } from './ViewModeSwitcher'
+       
+       interface TopBarProps {
+         onToggleSidebar?: () => void
+      @@ -62,21 +63,8 @@
+                 <Zap className="w-5 h-5 group-hover:scale-110 transition-transform" />
+               </button>
+       
+      -        {/* Body State Controls */}
+
+      -        <button
+
+      -          onClick={() => openSidePane('details')}
+
+      -          className={cn(
+
+      -            "h-10 w-10 flex items-center justify-center rounded-full
+      hover:bg-accent transition-colors group",
+
+      -            bodyState === BODY_STATES.SIDE_PANE && sidePaneContent ===
+      'details' && "bg-accent"
+
+      -          )}
+
+      -          title="Toggle Side Pane"
+
+      -        >
+
+      -          <div className="w-5 h-5 flex group-hover:scale-110
+      transition-transform">
+
+      -            <div className="w-1/2 h-full bg-current opacity-60
+      rounded-l-sm" />
+
+      -            <div className="w-1/2 h-full bg-current rounded-r-sm" />
+
+      -          </div>
+
+      -        </button>
+
+      +        {/* View Mode Controls */}
+
+      +        <ViewModeSwitcher />
+       
+               <button
+                 onClick={() => onToggleFullscreen?.()}
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/index.ts
+    content: |+
+      --- src/index.ts
+      +++ src/index.ts
+      @@ -5,6 +5,7 @@
+       export { RightPane } from './components/layout/RightPane';
+       export { TopBar } from './components/layout/TopBar';
+       export { UserDropdown } from './components/layout/UserDropdown';
+      +export { ViewModeSwitcher } from './components/layout/ViewModeSwitcher';
+       export { Workspaces as WorkspaceProvider, WorkspaceTrigger, WorkspaceContent } from './components/layout/WorkspaceSwitcher';
+       
+       // Sidebar Primitives
+
+    patchStrategy: standard-diff
+snapshot:
+  src/components/layout/ViewModeSwitcher.tsx: null
+  src/context/AppShellContext.tsx: >-
+    import {
+      createContext,
+      useContext,
+      useReducer,
+      useEffect,
+      useMemo,
+      useCallback,
+      type ReactNode,
+      type ReactElement,
+      type Dispatch,
+    } from 'react';
+
+    import { SIDEBAR_STATES, BODY_STATES, type SidebarState, type BodyState }
+    from '@/lib/utils';
+
+
+    // --- State and Action Types ---
+
+
+    interface AppShellState {
+      sidebarState: SidebarState;
+      bodyState: BodyState;
+      sidePaneContent: 'details' | 'settings' | 'main' | 'toaster' | 'notifications';
+      sidebarWidth: number;
+      sidePaneWidth: number;
+      splitPaneWidth: number;
+      isResizing: boolean;
+      isResizingRightPane: boolean;
+      isTopBarVisible: boolean;
+      autoExpandSidebar: boolean;
+      reducedMotion: boolean;
+      compactMode: boolean;
+      primaryColor: string;
+      appName?: string;
+      appLogo?: ReactElement;
+    }
+
+
+    type AppShellAction =
+      | { type: 'SET_SIDEBAR_STATE'; payload: SidebarState }
+      | { type: 'SET_BODY_STATE'; payload: BodyState }
+      | { type: 'SET_SIDE_PANE_CONTENT'; payload: AppShellState['sidePaneContent'] }
+      | { type: 'SET_SIDEBAR_WIDTH'; payload: number }
+      | { type: 'SET_SIDE_PANE_WIDTH'; payload: number }
+      | { type: 'SET_SPLIT_PANE_WIDTH'; payload: number }
+      | { type: 'SET_IS_RESIZING'; payload: boolean }
+      | { type: 'SET_IS_RESIZING_RIGHT_PANE'; payload: boolean }
+      | { type: 'SET_TOP_BAR_VISIBLE'; payload: boolean }
+      | { type: 'SET_AUTO_EXPAND_SIDEBAR'; payload: boolean }
+      | { type: 'SET_REDUCED_MOTION'; payload: boolean }
+      | { type: 'SET_COMPACT_MODE'; payload: boolean }
+      | { type: 'SET_PRIMARY_COLOR'; payload: string }
+      | { type: 'RESET_TO_DEFAULTS' };
+
+    // --- Reducer ---
+
+
+    const defaultState: AppShellState = {
+      sidebarState: SIDEBAR_STATES.EXPANDED,
+      bodyState: BODY_STATES.NORMAL,
+      sidePaneContent: 'details',
+      sidebarWidth: 280,
+      sidePaneWidth: typeof window !== 'undefined' ? Math.max(300, Math.round(window.innerWidth * 0.6)) : 400,
+      splitPaneWidth: typeof window !== 'undefined' ? Math.max(300, Math.round(window.innerWidth * 0.35)) : 400,
+      isResizing: false,
+      isResizingRightPane: false,
+      isTopBarVisible: true,
+      autoExpandSidebar: true,
+      reducedMotion: false,
+      compactMode: false,
+      primaryColor: '220 84% 60%',
+      appName: 'Jeli App',
+      appLogo: undefined,
+    };
+
+
+    function appShellReducer(state: AppShellState, action: AppShellAction):
+    AppShellState {
+      switch (action.type) {
+        case 'SET_SIDEBAR_STATE': return { ...state, sidebarState: action.payload };
+        case 'SET_BODY_STATE': return { ...state, bodyState: action.payload };
+        case 'SET_SIDE_PANE_CONTENT': return { ...state, sidePaneContent: action.payload };
+        case 'SET_SIDEBAR_WIDTH': return { ...state, sidebarWidth: Math.max(200, Math.min(500, action.payload)) };
+        case 'SET_SIDE_PANE_WIDTH': return { ...state, sidePaneWidth: Math.max(300, Math.min(window.innerWidth * 0.8, action.payload)) };
+        case 'SET_SPLIT_PANE_WIDTH': return { ...state, splitPaneWidth: Math.max(300, Math.min(window.innerWidth * 0.8, action.payload)) };
+        case 'SET_IS_RESIZING': return { ...state, isResizing: action.payload };
+        case 'SET_IS_RESIZING_RIGHT_PANE': return { ...state, isResizingRightPane: action.payload };
+        case 'SET_TOP_BAR_VISIBLE': return { ...state, isTopBarVisible: action.payload };
+        case 'SET_AUTO_EXPAND_SIDEBAR': return { ...state, autoExpandSidebar: action.payload };
+        case 'SET_REDUCED_MOTION': return { ...state, reducedMotion: action.payload };
+        case 'SET_COMPACT_MODE': return { ...state, compactMode: action.payload };
+        case 'SET_PRIMARY_COLOR': return { ...state, primaryColor: action.payload };
+        case 'RESET_TO_DEFAULTS':
+          return {
+            ...defaultState,
+            appName: state.appName, // Preserve props passed to provider
+            appLogo: state.appLogo,   // Preserve props passed to provider
+          };
+        default: return state;
+      }
+    }
+
+
+    // --- Context and Provider ---
+
+
+    interface AppShellContextValue extends AppShellState {
+      dispatch: Dispatch<AppShellAction>;
+      rightPaneWidth: number;
+      // Composite actions for convenience
+      toggleSidebar: () => void;
+      hideSidebar: () => void;
+      showSidebar: () => void;
+      peekSidebar: () => void;
+      toggleFullscreen: () => void;
+      toggleSplitView: () => void;
+      openSidePane: (content: AppShellState['sidePaneContent']) => void;
+      closeSidePane: () => void;
+      resetToDefaults: () => void;
+    }
+
+
+    const AppShellContext = createContext<AppShellContextValue | null>(null);
+
+
+    interface AppShellProviderProps {
+      children: ReactNode;
+      appName?: string;
+      appLogo?: ReactElement;
+      defaultSplitPaneWidth?: number;
+    }
+
+
+    export function AppShellProvider({ children, appName, appLogo,
+    defaultSplitPaneWidth }: AppShellProviderProps) {
+      const [state, dispatch] = useReducer(appShellReducer, {
+        ...defaultState,
+        ...(appName && { appName }),
+        ...(appLogo && { appLogo }),
+        ...(defaultSplitPaneWidth && { splitPaneWidth: defaultSplitPaneWidth }),
+      });
+
+      // Side effect for primary color
+      useEffect(() => {
+        document.documentElement.style.setProperty('--primary-hsl', state.primaryColor);
+      }, [state.primaryColor]);
+
+      // Memoized composite actions using useCallback for stable function identities
+      const toggleSidebar = useCallback(() => {
+        const current = state.sidebarState;
+        if (current === SIDEBAR_STATES.HIDDEN) dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.COLLAPSED });
+        else if (current === SIDEBAR_STATES.COLLAPSED) dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.EXPANDED });
+        else if (current === SIDEBAR_STATES.EXPANDED) dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.COLLAPSED });
+      }, [state.sidebarState]);
+
+      const hideSidebar = useCallback(() => dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.HIDDEN }), []);
+      const showSidebar = useCallback(() => dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.EXPANDED }), []);
+      const peekSidebar = useCallback(() => dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.PEEK }), []);
+      
+      const toggleFullscreen = useCallback(() => {
+        const current = state.bodyState;
+        dispatch({ type: 'SET_BODY_STATE', payload: current === BODY_STATES.FULLSCREEN ? BODY_STATES.NORMAL : BODY_STATES.FULLSCREEN });
+      }, [state.bodyState]);
+
+      const toggleSplitView = useCallback(() => {
+        const current = state.bodyState;
+        if (current === BODY_STATES.SIDE_PANE) {
+          dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.SPLIT_VIEW });
+          if (state.sidebarState === SIDEBAR_STATES.EXPANDED) {
+            dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.COLLAPSED });
+          }
+        } else if (current === BODY_STATES.SPLIT_VIEW) {
+          dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.SIDE_PANE });
+        }
+      }, [state.bodyState, state.sidebarState]);
+
+      const openSidePane = useCallback((content: AppShellState['sidePaneContent']) => {
+        if (state.bodyState === BODY_STATES.SIDE_PANE && state.sidePaneContent === content) {
+          // If it's open with same content, close it.
+          dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.NORMAL });
+        } else {
+          // If closed, or different content, open with new content.
+          dispatch({ type: 'SET_SIDE_PANE_CONTENT', payload: content });
+          dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.SIDE_PANE });
+        }
+      }, [state.bodyState, state.sidePaneContent]);
+
+      const closeSidePane = useCallback(() => dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.NORMAL }), []);
+      const resetToDefaults = useCallback(() => dispatch({ type: 'RESET_TO_DEFAULTS' }), []);
+
+      const rightPaneWidth = useMemo(() => (
+        state.bodyState === BODY_STATES.SPLIT_VIEW ? state.splitPaneWidth : state.sidePaneWidth
+      ), [state.bodyState, state.splitPaneWidth, state.sidePaneWidth]);
+
+      const value = useMemo(() => ({ 
+        ...state, 
+        dispatch,
+        rightPaneWidth,
+        toggleSidebar,
+        hideSidebar,
+        showSidebar,
+        peekSidebar,
+        toggleFullscreen,
+        toggleSplitView,
+        openSidePane,
+        closeSidePane,
+        resetToDefaults,
+      }), [
+        state, 
+        rightPaneWidth,
+        toggleSidebar,
+        hideSidebar,
+        showSidebar,
+        peekSidebar,
+        toggleFullscreen,
+        toggleSplitView,
+        openSidePane,
+        closeSidePane,
+        resetToDefaults
+      ]);
+
+      return (
+        <AppShellContext.Provider value={value}>
+          {children}
+        </AppShellContext.Provider>
+      );
+    }
+
+
+    // --- Hook ---
+
+
+    export function useAppShell() {
+      const context = useContext(AppShellContext);
+      if (!context) {
+        throw new Error('useAppShell must be used within an AppShellProvider');
+      }
+      return context;
+    }
+  src/components/layout/TopBar.tsx: |-
+    import {
+      Menu, 
+      Maximize, 
+      Minimize, 
+      Moon, 
+      Sun,
+      Settings,
+      Command,
+      Zap,
+    } from 'lucide-react'
+    import { cn } from '@/lib/utils'
+    import { BODY_STATES } from '@/lib/utils'
+    import { useAppStore } from '@/store/appStore'
+    import { useAppShell } from '@/context/AppShellContext'
+    import { UserDropdown } from './UserDropdown'
+
+    interface TopBarProps {
+      onToggleSidebar?: () => void
+      onToggleFullscreen?: () => void
+      onToggleDarkMode?: () => void
+      children?: React.ReactNode
+    }
+
+    export function TopBar({
+      onToggleSidebar,
+      onToggleFullscreen,
+      onToggleDarkMode,
+      children,
+    }: TopBarProps) {
+      const { bodyState, openSidePane, sidePaneContent } = useAppShell();
+      const { 
+        setCommandPaletteOpen,
+        isDarkMode,
+      } = useAppStore()
+
+      const handleSettingsClick = () => {
+        const isSettingsInSidePane = bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === 'settings'
+
+        // If we're on the settings page and it's not in the side pane, treat this as a "minimize" action.
+        if (!isSettingsInSidePane) {
+          openSidePane('settings');
+        } else {
+          // In all other cases (on dashboard page, or settings already in pane),
+          // just toggle the settings side pane.
+          openSidePane('settings')
+        }
+      };
+
+      return (
+        <div className={cn(
+          "h-20 bg-background border-b border-border flex items-center justify-between px-6 z-50 gap-4",
+          'transition-all duration-300 ease-in-out'
+        )}>
+          {/* Left Section - Sidebar Controls & Breadcrumbs */}
+          <div className="flex items-center gap-4">
+            {/* Sidebar Controls */}
+            <button
+              onClick={() => onToggleSidebar?.()}
+              className={cn(
+                "h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors"
+              )}
+              title="Toggle Sidebar"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+
+          </div>
+
+          {/* Right Section - page controls, and global controls */}
+          <div className="flex items-center gap-3">
+            {children}
+
+            {/* Separator */}
+            <div className="w-px h-6 bg-border mx-2" />
+
+            {/* Quick Actions */}
+            <div className="flex items-center gap-3">
+
+              <button
+                onClick={() => setCommandPaletteOpen(true)}
+                className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+                title="Command Palette (Ctrl+K)"
+              >
+                <Command className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              </button>
+
+            <button
+              className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+              title="Quick Actions"
+            >
+              <Zap className="w-5 h-5 group-hover:scale-110 transition-transform" />
+            </button>
+
+            {/* Body State Controls */}
+            <button
+              onClick={() => openSidePane('details')}
+              className={cn(
+                "h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group",
+                bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === 'details' && "bg-accent"
+              )}
+              title="Toggle Side Pane"
+            >
+              <div className="w-5 h-5 flex group-hover:scale-110 transition-transform">
+                <div className="w-1/2 h-full bg-current opacity-60 rounded-l-sm" />
+                <div className="w-1/2 h-full bg-current rounded-r-sm" />
+              </div>
+            </button>
+
+            <button
+              onClick={() => onToggleFullscreen?.()}
+              className={cn(
+                "h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group",
+                bodyState === BODY_STATES.FULLSCREEN && "bg-accent"
+              )}
+              title="Toggle Fullscreen"
+            >
+              {bodyState === BODY_STATES.FULLSCREEN ? (
+                <Minimize className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              ) : (
+                <Maximize className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              )}
+            </button>
+
+            <div className="w-px h-6 bg-border mx-2" />
+
+            {/* Theme and Settings */}
+            <button
+              onClick={() => onToggleDarkMode?.()}
+              className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+              title="Toggle Dark Mode"
+            >
+              {isDarkMode ? (
+                <Sun className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              ) : (
+                <Moon className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              )}
+            </button>
+
+            <button
+              onClick={handleSettingsClick}
+              className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+              title="Settings"
+            >
+              <Settings className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
+            </button>
+            <UserDropdown />
+            </div>
+          </div>
+        </div>
+      )
+    }
+  src/index.ts: >-
+    // Context
+
+    export { AppShellProvider, useAppShell } from './context/AppShellContext';
+
+
+    // Layout Components
+
+    export { AppShell } from './components/layout/AppShell';
+
+    export { MainContent } from './components/layout/MainContent';
+
+    export { RightPane } from './components/layout/RightPane';
+
+    export { TopBar } from './components/layout/TopBar';
+
+    export { UserDropdown } from './components/layout/UserDropdown';
+
+    export { Workspaces as WorkspaceProvider, WorkspaceTrigger, WorkspaceContent
+    } from './components/layout/WorkspaceSwitcher';
+
+
+    // Sidebar Primitives
+
+    export {
+      Sidebar,
+      SidebarBody,
+      SidebarContent,
+      SidebarFooter,
+      SidebarHeader,
+      SidebarSection,
+      SidebarTitle,
+      SidebarMenuItem,
+      SidebarMenuButton,
+      SidebarMenuAction,
+      SidebarLabel,
+      SidebarBadge,
+      SidebarTooltip,
+      SidebarIcon,
+      useSidebar,
+    } from './components/layout/Sidebar';
+
+
+    // Shared Components
+
+    export { ContentInSidePanePlaceholder } from
+    './components/shared/ContentInSidePanePlaceholder';
+
+    export { PageHeader } from './components/shared/PageHeader';
+
+
+    // Feature Components
+
+    export { SettingsContent } from './features/settings/SettingsContent';
+
+    export { SettingsSection } from './features/settings/SettingsSection';
+
+    export { SettingsToggle } from './features/settings/SettingsToggle';
+
+    export { LoginPage } from './components/auth/LoginPage';
+
+
+    // UI Components
+
+    export * from './components/ui/avatar';
+
+    export * from './components/ui/badge';
+
+    export * from './components/ui/button';
+
+    export * from './components/ui/card';
+
+    export * from './components/ui/command';
+
+    export * from './components/ui/dialog';
+
+    export * from './components/ui/dropdown-menu';
+
+    export * from './components/ui/input';
+
+    export * from './components/ui/label';
+
+    export * from './components/ui/popover';
+
+    export * from './components/ui/tabs';
+
+    export * from './components/ui/toast';
+
+
+    // Global Components
+
+    export { CommandPalette } from './components/global/CommandPalette';
+
+
+    // Hooks
+
+    export { useAutoAnimateTopBar } from './hooks/useAutoAnimateTopBar';
+
+    export { useCommandPaletteToggle } from
+    './hooks/useCommandPaletteToggle.hook';
+
+
+    // Lib
+
+    export * from './lib/utils';
+
+
+    // Store
+
+    export { useAppStore, type ActivePage } from './store/appStore';
+
+    export { useAuthStore } from './store/authStore';
+approved: false
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: undone
+id: 123
