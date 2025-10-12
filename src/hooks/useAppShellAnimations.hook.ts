@@ -86,14 +86,16 @@ export function useBodyStateAnimations(
       ease,
     });
 
-    gsap.to(mainContentRef.current, {
-      paddingTop: isFullscreen ? '0rem' : isTopBarVisible ? '5rem' : '0rem', // h-20 is 5rem
-      duration: animationDuration,
-      ease,
-    });
+    // Determine top bar position based on state
+    let topBarY = '0%';
+    if (bodyState === BODY_STATES.FULLSCREEN) {
+      topBarY = '-100%'; // Always hide in fullscreen
+    } else if (bodyState === BODY_STATES.NORMAL && !isTopBarVisible) {
+      topBarY = '-100%'; // Hide only in normal mode when scrolled
+    }
 
     gsap.to(topBarContainerRef.current, {
-      y: (isFullscreen || !isTopBarVisible) ? '-100%' : '0%',
+      y: topBarY,
       duration: animationDuration,
       ease,
     });

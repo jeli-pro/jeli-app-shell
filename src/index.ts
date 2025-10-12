@@ -32,6 +32,7 @@ export {
 // Shared Components
 export { ContentInSidePanePlaceholder } from './components/shared/ContentInSidePanePlaceholder';
 export { PageHeader } from './components/shared/PageHeader';
+export { PageLayout } from './components/shared/PageLayout';
 
 // Feature Components
 export { SettingsContent } from './features/settings/SettingsContent';

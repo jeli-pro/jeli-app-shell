@@ -1,0 +1,215 @@
+uuid: a30d5084-282e-4b68-b789-9828e858ca37
+projectId: jeli-app-shell
+createdAt: '2025-10-12T04:51:53.259Z'
+gitCommitMsg: >-
+  fix(animations): ensure top bar is always hidden in fullscreen
+
+  The top bar was not being reliably hidden when transitioning to fullscreen
+  mode, particularly from the normal view. This was due to a flawed condition in
+  the `useBodyStateAnimations` hook that incorrectly coupled the fullscreen
+  state with the scroll-based visibility state (`isTopBarVisible`).
+
+  This commit refactors the animation logic to be more explicit and
+  state-driven. The top bar's visibility is now determined with clear
+  precedence: it is always hidden in `FULLSCREEN` mode, and the scroll-based
+  behavior is correctly scoped to only the `NORMAL` mode. This resolves the bug
+  and improves the consistency of the UI across all view states.
+promptSummary: >-
+  User reported that the top bar is still visible when entering fullscreen from
+  normal view. The previous fix was insufficient.
+reasoning:
+  - >-
+    You are absolutely right. My apologies, my previous fix was incomplete. The
+    issue is more nuanced than just the scroll behavior; it's about how the top
+    bar's visibility state is determined during transitions.
+  - >-
+    The old logic for hiding the top bar was flawed because it coupled the
+    `fullscreen` state with the `isTopBarVisible` scroll state. This created
+    race conditions, especially when transitioning into fullscreen while the top
+    bar was visible.
+  - 'The correct approach is to make the logic more explicit:'
+  - 1.  In `fullscreen` mode, the top bar must **always** be hidden.
+  - >-
+    2.  The auto-hide-on-scroll behavior (`isTopBarVisible`) should **only**
+    apply when in `normal` view mode.
+  - >-
+    3.  In all other modes (`side_pane`, `split_view`), the top bar should be
+    visible.
+  - >-
+    I will update the `useBodyStateAnimations.hook.ts` file to implement this
+    robust logic. This will ensure that entering fullscreen mode from any state
+    will correctly and reliably hide the top bar, resolving the issue you've
+    pointed out.
+  - '### Step-by-step reasoning:'
+  - >-
+    1.  **Isolate the Bug**: The animation logic in
+    `useBodyStateAnimations.hook.ts` incorrectly used a combined condition
+    (`isFullscreen || !isTopBarVisible`) to determine the top bar's position.
+    This allowed the scroll visibility state (`isTopBarVisible`) to interfere
+    with the fullscreen visibility requirement.
+  - >-
+    2.  **Implement Correct Logic**: I will replace the flawed one-liner with a
+    clear, state-driven logic block. This new logic explicitly sets the top
+    bar's vertical position (`y`) based on the current `bodyState`:
+  - '-   If `bodyState` is `FULLSCREEN`, `y` is always `-100%` (hidden).'
+  - >-
+    -   If `bodyState` is `NORMAL`, `y` depends on `isTopBarVisible` (the scroll
+    behavior).
+  - '-   For any other `bodyState`, `y` is `0%` (visible).'
+  - >-
+    3.  **Apply the Change**: I will modify
+    `src/hooks/useAppShellAnimations.hook.ts` to replace the old animation call
+    with this new, more precise logic. This not only fixes the reported bug but
+    also improves the overall consistency of the top bar's behavior across all
+    application states.
+  - '---'
+  - '---'
+operations:
+  - type: write
+    path: src/hooks/useAppShellAnimations.hook.ts
+    content: |+
+      --- src/hooks/useAppShellAnimations.hook.ts
+      +++ src/hooks/useAppShellAnimations.hook.ts
+      @@ -52,12 +52,18 @@
+             ease,
+           });
+       
+      +    // Determine top bar position based on state
+      +    let topBarY = '0%';
+      +    if (bodyState === BODY_STATES.FULLSCREEN) {
+      +      topBarY = '-100%'; // Always hide in fullscreen
+      +    } else if (bodyState === BODY_STATES.NORMAL && !isTopBarVisible) {
+      +      topBarY = '-100%'; // Hide only in normal mode when scrolled
+      +    }
+      +
+           gsap.to(topBarContainerRef.current, {
+      -      y: (isFullscreen || !isTopBarVisible) ? '-100%' : '0%',
+      +      y: topBarY,
+             duration: animationDuration,
+             ease,
+           });
+           
+           // Add backdrop for side pane
+           const backdrop = document.querySelector('.app-backdrop');
+
+    patchStrategy: standard-diff
+snapshot:
+  src/hooks/useAppShellAnimations.hook.ts: |-
+    import { useEffect } from 'react';
+    import { gsap } from 'gsap';
+    import { useAppShell } from '@/context/AppShellContext';
+    import { SIDEBAR_STATES, BODY_STATES } from '@/lib/utils';
+
+    export function useSidebarAnimations(
+      sidebarRef: React.RefObject<HTMLDivElement>,
+      resizeHandleRef: React.RefObject<HTMLDivElement>
+    ) {
+      const { sidebarState, sidebarWidth, bodyState, reducedMotion } = useAppShell();
+      const animationDuration = reducedMotion ? 0.1 : 0.4;
+
+      useEffect(() => {
+        if (!sidebarRef.current || !resizeHandleRef.current) return;
+
+        const sidebar = sidebarRef.current;
+        const handle = resizeHandleRef.current;
+        
+        let targetWidth = 0;
+        let targetOpacity = 1;
+
+        if (bodyState === BODY_STATES.FULLSCREEN) {
+          targetWidth = 0;
+          targetOpacity = 0;
+        } else {
+          switch (sidebarState) {
+            case SIDEBAR_STATES.HIDDEN:
+              targetWidth = 0;
+              targetOpacity = 0;
+              break;
+            case SIDEBAR_STATES.COLLAPSED:
+              targetWidth = 64;
+              targetOpacity = 1;
+              break;
+            case SIDEBAR_STATES.EXPANDED:
+              targetWidth = sidebarWidth;
+              targetOpacity = 1;
+              break;
+            case SIDEBAR_STATES.PEEK:
+              targetWidth = sidebarWidth * 0.8;
+              targetOpacity = 0.95;
+              break;
+          }
+        }
+
+        const tl = gsap.timeline({ ease: "power3.out" });
+        
+        tl.to(sidebar, {
+          width: targetWidth,
+          opacity: targetOpacity,
+          duration: animationDuration,
+        });
+        tl.to(handle, {
+          left: targetWidth,
+          duration: animationDuration,
+        }, 0);
+
+      }, [sidebarState, sidebarWidth, bodyState, animationDuration, sidebarRef, resizeHandleRef]);
+    }
+
+    export function useBodyStateAnimations(
+      appRef: React.RefObject<HTMLDivElement>,
+      mainContentRef: React.RefObject<HTMLDivElement>,
+      rightPaneRef: React.RefObject<HTMLDivElement>,
+      topBarContainerRef: React.RefObject<HTMLDivElement>,
+      mainAreaRef: React.RefObject<HTMLDivElement>
+    ) {
+      const { bodyState, reducedMotion, rightPaneWidth, isTopBarVisible, closeSidePane, fullscreenTarget } = useAppShell();
+      const animationDuration = reducedMotion ? 0.1 : 0.4;
+
+      useEffect(() => {
+        if (!mainContentRef.current || !rightPaneRef.current || !topBarContainerRef.current || !mainAreaRef.current) return;
+
+        const ease = "power3.out";
+        const isFullscreen = bodyState === BODY_STATES.FULLSCREEN;
+        const isSidePane = bodyState === BODY_STATES.SIDE_PANE;
+        const isSplitView = bodyState === BODY_STATES.SPLIT_VIEW;
+
+        // Right pane animation
+        gsap.to(rightPaneRef.current, {
+          width: isFullscreen 
+            ? (fullscreenTarget === 'right' ? '100%' : 0) 
+            : (isSidePane || isSplitView ? rightPaneWidth : 0),
+          x: (isSidePane || isSplitView || (isFullscreen && fullscreenTarget === 'right')) ? 0 : rightPaneWidth + 5, // +5 to hide border
+          duration: animationDuration,
+          ease,
+        });
+
+        gsap.to(topBarContainerRef.current, {
+          y: (isFullscreen || !isTopBarVisible) ? '-100%' : '0%',
+          duration: animationDuration,
+          ease,
+        });
+        
+        // Add backdrop for side pane
+        const backdrop = document.querySelector('.app-backdrop');
+        if (isSidePane) { // This is correct because isSidePane is false when bodyState is split_view
+          if (!backdrop) {
+            const el = document.createElement('div');
+            el.className = 'app-backdrop fixed inset-0 bg-black/30 z-[55]';
+            appRef.current?.appendChild(el);
+            gsap.fromTo(el, { opacity: 0 }, { opacity: 1, duration: animationDuration });
+            el.onclick = () => closeSidePane();
+          }
+        } else {
+          if (backdrop) {
+            gsap.to(backdrop, { opacity: 0, duration: animationDuration, onComplete: () => backdrop.remove() });
+          }
+        }
+      }, [bodyState, animationDuration, rightPaneWidth, closeSidePane, isTopBarVisible, appRef, mainContentRef, rightPaneRef, topBarContainerRef, mainAreaRef, fullscreenTarget]);
+    }
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 155

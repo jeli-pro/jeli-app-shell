@@ -8,7 +8,7 @@ export function useAutoAnimateTopBar(isPane = false) {
   const scrollTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const onScroll = useCallback((event: React.UIEvent<HTMLDivElement>) => {
-    if (isPane || bodyState === BODY_STATES.SPLIT_VIEW) return;
+    if (isPane || bodyState === BODY_STATES.SPLIT_VIEW || bodyState === BODY_STATES.FULLSCREEN) return;
 
     // Clear previous timeout
     if (scrollTimeout.current) {

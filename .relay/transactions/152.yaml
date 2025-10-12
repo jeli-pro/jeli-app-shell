@@ -1,0 +1,2324 @@
+uuid: 1c55df59-a5e2-45e0-930c-7b700f074d32
+projectId: jeli-app-shell
+createdAt: '2025-10-12T04:42:10.671Z'
+gitCommitMsg: >-
+  refactor: centralize page layout logic into PageLayout component
+
+  Created a new `PageLayout` component to encapsulate the scroll container and
+  dynamic padding logic previously duplicated across multiple page components.
+  This approach is more elegant and adheres to the DRY principle.
+
+  - Created `src/components/shared/PageLayout.tsx` to handle scrolling and
+  dynamic top padding based on top bar visibility. - Refactored `Dashboard`,
+  `Notifications`, `Settings`, and `ToasterDemo` pages to use the new
+  `PageLayout` component, cleaning up their code significantly. - The new
+  component accepts refs and scroll handlers, preserving page-specific scroll
+  behaviors where needed (e.g., Dashboard's scroll-to-bottom button).
+promptSummary: >-
+  The user correctly pointed out that adding padding logic to every page was not
+  an elegant solution.
+reasoning:
+  - >-
+    You are absolutely right. My previous solution was not elegant and violated
+    the DRY (Don't Repeat Yourself) principle. Forcing every page to handle its
+    own layout and padding is poor design.
+  - >-
+    I've corrected this by creating a centralized `PageLayout` component. This
+    new component encapsulates all the logic for scrolling and dynamic padding,
+    providing a consistent layout for all pages while still allowing for
+    page-specific scroll behaviors when needed.
+  - 'Here are the improved changes:'
+  - '### 1. New Centralized `PageLayout` Component'
+  - >-
+    I've created a new reusable component, `PageLayout`, which now handles the
+    scroll container and the dynamic top padding. This makes the page components
+    much cleaner and easier to maintain.
+  - '### 2. Refactoring Pages to Use `PageLayout`'
+  - >-
+    I've updated all the main pages to use the new `PageLayout` component,
+    removing the duplicated layout code from each file.
+  - '#### `src/pages/Dashboard/index.tsx`'
+  - >-
+    The Dashboard now uses `PageLayout`, passing its specific refs and scroll
+    handler to it, keeping the page component focused on its own content.
+  - '#### `src/pages/Notifications/index.tsx`'
+  - '#### `src/pages/Settings/index.tsx`'
+  - '#### `src/pages/ToasterDemo/index.tsx`'
+  - '### 3. Exporting the New Component'
+  - >-
+    Finally, I've exported the `PageLayout` component so it can be used
+    throughout the library and in your project.
+  - >-
+    This refactoring makes the codebase significantly more elegant and
+    maintainable, just as you suggested. Thank you for the excellent feedback!
+operations:
+  - type: write
+    path: src/components/shared/PageLayout.tsx
+    content: >-
+      import React from 'react';
+
+      import { cn } from '@/lib/utils';
+
+      import { useAppShell } from '@/context/AppShellContext';
+
+
+      interface PageLayoutProps extends React.HTMLAttributes<HTMLDivElement> {
+        children: React.ReactNode;
+        scrollRef?: React.RefObject<HTMLDivElement>;
+        isInSidePane?: boolean;
+      }
+
+
+      export const PageLayout = React.forwardRef<HTMLDivElement,
+      PageLayoutProps>(
+        ({ children, onScroll, scrollRef, className, isInSidePane = false, ...props }, ref) => {
+          const { isTopBarVisible, bodyState } = useAppShell();
+          const isFullscreen = bodyState === 'fullscreen';
+
+          return (
+            <div
+              ref={scrollRef}
+              className={cn("h-full overflow-y-auto", className)}
+              onScroll={onScroll}
+            >
+              <div ref={ref} className={cn(
+                "space-y-8 transition-all duration-300",
+                !isInSidePane ? "px-6 lg:px-12 pb-6" : "px-6 pb-6",
+                isTopBarVisible && !isFullscreen ? "pt-24" : "pt-6"
+              )}
+              {...props}
+              >
+                {children}
+              </div>
+            </div>
+          );
+        }
+      );
+
+
+      PageLayout.displayName = 'PageLayout';
+    patchStrategy: replace
+  - type: write
+    path: src/pages/Dashboard/index.tsx
+    content: >+
+      --- src/pages/Dashboard/index.tsx
+
+      +++ src/pages/Dashboard/index.tsx
+
+      @@ -14,11 +14,10 @@
+         ArrowDown
+       } from 'lucide-react'
+       import { cn } from '@/lib/utils'
+      -import { DemoContent } from './DemoContent'
+
+      -import { useAppShell } from '@/context/AppShellContext'
+
+      +import { DemoContent } from './DemoContent';
+       import { useDashboardAnimations } from './hooks/useDashboardAnimations.hook'
+       import { useDashboardScroll } from './hooks/useDashboardScroll.hook'
+       import { PageHeader } from '@/components/shared/PageHeader';
+       import { Card } from '@/components/ui/card';
+      +import { PageLayout } from '@/components/shared/PageLayout';
+       
+       interface StatsCard {
+         title: string
+      @@ -124,19 +123,17 @@
+       }
+       
+       export function DashboardContent({ isInSidePane = false }: DashboardContentProps) {
+      -    const contentRef = useRef<HTMLDivElement>(null)
+
+      +    const scrollRef = useRef<HTMLDivElement>(null)
+
+      +    const contentRef = useRef<HTMLDivElement>(null);
+           const cardsRef = useRef<(HTMLDivElement | null)[]>([])
+      -    const { showScrollToBottom, handleScroll, scrollToBottom } =
+      useDashboardScroll(contentRef, isInSidePane);
+
+      -    const { isTopBarVisible, bodyState } = useAppShell();
+
+      -    const isFullscreen = bodyState === 'fullscreen';
+
+      +    const { showScrollToBottom, handleScroll, scrollToBottom } =
+      useDashboardScroll(scrollRef, isInSidePane);
+       
+           useDashboardAnimations(contentRef, cardsRef);
+       
+           const getTypeIcon = (type: ActivityItem['type']) => {
+             switch (type) {
+               case 'comment':
+      @@ -155,93 +152,87 @@
+           }
+       
+           return (
+      -        <div 
+
+      -          ref={contentRef}
+
+      -          className={cn("h-full overflow-y-auto")}
+
+      -          onScroll={handleScroll}
+
+      -        >
+
+      -          <div className={cn(
+
+      -            "space-y-8 transition-all duration-300",
+
+      -            !isInSidePane ? "px-6 lg:px-12 pb-6" : "px-6 pb-6",
+
+      -            isTopBarVisible && !isFullscreen ? "pt-24" : "pt-6"
+
+      -          )}>
+
+      -            {/* Header */}
+
+      -            {!isInSidePane && (
+
+      -              <PageHeader
+
+      -                title="Dashboard"
+
+      -                description="Welcome to the Jeli App Shell demo! Explore
+      all the features and customization options."
+
+      -              />
+
+      -            )}
+
+      -              {/* Stats Cards */}
+
+      -            <div className="grid grid-cols-1 md:grid-cols-2
+      lg:grid-cols-4 gap-6">
+
+      -              {statsCards.map((stat, index) => (
+
+      -                <Card
+
+      -                key={stat.title}
+
+      -                ref={el => cardsRef.current[index] = el}
+
+      -                className="p-6 border-border/50 hover:border-primary/30
+      transition-all duration-300 group cursor-pointer"
+
+      -              >
+
+      -                <div className="flex items-center justify-between">
+
+      -                  <div className="p-3 bg-primary/10 rounded-full
+      group-hover:bg-primary/20 transition-colors">
+
+      -                    {stat.icon}
+
+      -                  </div>
+
+      -                  <div className={cn(
+
+      -                    "text-sm font-medium",
+
+      -                    stat.trend === 'up' ? "text-green-600" :
+      "text-red-600"
+
+      -                  )}>
+
+      -                    {stat.change}
+
+      -                  </div>
+
+      -                </div>
+
+      -                <div className="mt-4">
+
+      -                  <h3 className="text-2xl font-bold">{stat.value}</h3>
+
+      -                  <p className="text-sm text-muted-foreground
+      mt-1">{stat.title}</p>
+
+      -                </div>
+
+      -              </Card>
+
+      -              ))}
+
+      -            </div>
+
+      -
+
+      -            {/* Demo Content */}
+
+      -            <DemoContent />
+
+      -
+
+      -            {/* Main Content Grid */}
+
+      -            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+      -            {/* Chart Area */}
+
+      -            <div className="lg:col-span-2 space-y-6">
+
+      -              {/* Analytics Chart */}
+
+      -              <Card className="p-6 border-border/50">
+
+      -                <div className="flex items-center justify-between mb-6">
+
+      -                  <h3 className="text-lg font-semibold">Analytics
+      Overview</h3>
+
+      -                  <button className="h-8 w-8 flex items-center
+      justify-center hover:bg-accent rounded-full transition-colors">
+
+      -                    <MoreVertical className="w-5 h-5" />
+
+      -                  </button>
+
+      -                </div>
+
+      -                
+
+      -                {/* Mock Chart */}
+
+      -                <div className="h-64 bg-gradient-to-br from-primary/10
+      to-transparent rounded-xl flex items-center justify-center border
+      border-border/50">
+
+      -                  <div className="text-center">
+
+      -                    <BarChart3 className="w-12 h-12 text-primary mx-auto
+      mb-2" />
+
+      -                    <p className="text-muted-foreground">Chart
+      visualization would go here</p>
+
+      -                  </div>
+
+      -                </div>
+
+      -              </Card>
+
+      -
+
+      -              {/* Recent Projects */}
+
+      -              <Card className="p-6 border-border/50">
+
+      -                <div className="flex items-center justify-between mb-6">
+
+      -                  <h3 className="text-lg font-semibold">Recent
+      Projects</h3>
+
+      -                  <button className="text-primary hover:text-primary/80
+      text-sm font-medium flex items-center gap-1">
+
+      -                    View All
+
+      -                    <ChevronRight className="w-4 h-4" />
+
+      -                  </button>
+
+      -                </div>
+
+      -                
+
+      -                <div className="space-y-4">
+
+      -                  {[
+
+      -                    { name: "E-commerce Platform", progress: 75, team: 5,
+      deadline: "Dec 15" },
+
+      -                    { name: "Mobile App Redesign", progress: 45, team: 3,
+      deadline: "Jan 20" },
+
+      -                    { name: "Marketing Website", progress: 90, team: 4,
+      deadline: "Dec 5" }
+
+      -                  ].map((project) => (
+
+      -                    <div key={project.name} className="p-4 bg-accent/30
+      rounded-xl hover:bg-accent/50 transition-colors cursor-pointer">
+
+      -                      <div className="flex items-center justify-between
+      mb-2">
+
+      -                        <h4 className="font-medium">{project.name}</h4>
+
+      -                        <span className="text-sm
+      text-muted-foreground">{project.progress}%</span>
+
+      -                      </div>
+
+      -                      <div className="w-full bg-muted rounded-full h-2
+      mb-3">
+
+      -                        <div 
+
+      -                          className="bg-primary h-2 rounded-full
+      transition-all duration-500"
+
+      -                          style={{ width: `${project.progress}%` }}
+
+      -                        />
+
+      -                      </div>
+
+      -                      <div className="flex items-center justify-between
+      text-sm text-muted-foreground">
+
+      -                        <span>{project.team} team members</span>
+
+      -                        <span>Due {project.deadline}</span>
+
+      -                      </div>
+
+      +      <PageLayout scrollRef={scrollRef} onScroll={handleScroll}
+      ref={contentRef} isInSidePane={isInSidePane}>
+
+      +        {/* Header */}
+
+      +        {!isInSidePane && (
+
+      +          <PageHeader
+
+      +            title="Dashboard"
+
+      +            description="Welcome to the Jeli App Shell demo! Explore all
+      the features and customization options."
+
+      +          />
+
+      +        )}
+
+      +          {/* Stats Cards */}
+
+      +        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4
+      gap-6">
+
+      +          {statsCards.map((stat, index) => (
+
+      +            <Card
+
+      +            key={stat.title}
+
+      +            ref={el => cardsRef.current[index] = el}
+
+      +            className="p-6 border-border/50 hover:border-primary/30
+      transition-all duration-300 group cursor-pointer"
+
+      +          >
+
+      +            <div className="flex items-center justify-between">
+
+      +              <div className="p-3 bg-primary/10 rounded-full
+      group-hover:bg-primary/20 transition-colors">
+
+      +                {stat.icon}
+
+      +              </div>
+
+      +              <div className={cn(
+
+      +                "text-sm font-medium",
+
+      +                stat.trend === 'up' ? "text-green-600" : "text-red-600"
+
+      +              )}>
+
+      +                {stat.change}
+
+      +              </div>
+
+      +            </div>
+
+      +            <div className="mt-4">
+
+      +              <h3 className="text-2xl font-bold">{stat.value}</h3>
+
+      +              <p className="text-sm text-muted-foreground
+      mt-1">{stat.title}</p>
+
+      +            </div>
+
+      +          </Card>
+
+      +          ))}
+
+      +        </div>
+
+      +
+
+      +        {/* Demo Content */}
+
+      +        <DemoContent />
+
+      +
+
+      +        {/* Main Content Grid */}
+
+      +        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+      +        {/* Chart Area */}
+
+      +        <div className="lg:col-span-2 space-y-6">
+
+      +          {/* Analytics Chart */}
+
+      +          <Card className="p-6 border-border/50">
+
+      +            <div className="flex items-center justify-between mb-6">
+
+      +              <h3 className="text-lg font-semibold">Analytics
+      Overview</h3>
+
+      +              <button className="h-8 w-8 flex items-center justify-center
+      hover:bg-accent rounded-full transition-colors">
+
+      +                <MoreVertical className="w-5 h-5" />
+
+      +              </button>
+
+      +            </div>
+
+      +            
+
+      +            {/* Mock Chart */}
+
+      +            <div className="h-64 bg-gradient-to-br from-primary/10
+      to-transparent rounded-xl flex items-center justify-center border
+      border-border/50">
+
+      +              <div className="text-center">
+
+      +                <BarChart3 className="w-12 h-12 text-primary mx-auto
+      mb-2" />
+
+      +                <p className="text-muted-foreground">Chart visualization
+      would go here</p>
+
+      +              </div>
+
+      +            </div>
+
+      +          </Card>
+
+      +
+
+      +          {/* Recent Projects */}
+
+      +          <Card className="p-6 border-border/50">
+
+      +            <div className="flex items-center justify-between mb-6">
+
+      +              <h3 className="text-lg font-semibold">Recent Projects</h3>
+
+      +              <button className="text-primary hover:text-primary/80
+      text-sm font-medium flex items-center gap-1">
+
+      +                View All
+
+      +                <ChevronRight className="w-4 h-4" />
+
+      +              </button>
+
+      +            </div>
+
+      +            
+
+      +            <div className="space-y-4">
+
+      +              {[
+
+      +                { name: "E-commerce Platform", progress: 75, team: 5,
+      deadline: "Dec 15" },
+
+      +                { name: "Mobile App Redesign", progress: 45, team: 3,
+      deadline: "Jan 20" },
+
+      +                { name: "Marketing Website", progress: 90, team: 4,
+      deadline: "Dec 5" }
+
+      +              ].map((project) => (
+
+      +                <div key={project.name} className="p-4 bg-accent/30
+      rounded-xl hover:bg-accent/50 transition-colors cursor-pointer">
+
+      +                  <div className="flex items-center justify-between
+      mb-2">
+
+      +                    <h4 className="font-medium">{project.name}</h4>
+
+      +                    <span className="text-sm
+      text-muted-foreground">{project.progress}%</span>
+
+      +                  </div>
+
+      +                  <div className="w-full bg-muted rounded-full h-2 mb-3">
+
+      +                    <div 
+
+      +                      className="bg-primary h-2 rounded-full
+      transition-all duration-500"
+
+      +                      style={{ width: `${project.progress}%` }}
+
+      +                    />
+
+      +                  </div>
+
+      +                  <div className="flex items-center justify-between
+      text-sm text-muted-foreground">
+
+      +                    <span>{project.team} team members</span>
+
+      +                    <span>Due {project.deadline}</span>
+                         </div>
+      -                  ))}
+
+      -                </div>
+
+      -              </Card>
+
+      -            </div>
+
+      -
+
+      -            {/* Sidebar Content */}
+
+      -            <div className="space-y-6">
+
+      -              {/* Quick Actions */}
+
+      -              <Card className="p-6 border-border/50">
+
+      -                <h3 className="text-lg font-semibold mb-4">Quick
+      Actions</h3>
+
+      -                <div className="space-y-3">
+
+      -                  {[
+
+      -                    { icon: <FileText className="w-4 h-4" />, label:
+      "Create Document", color: "bg-blue-500/10 text-blue-600" },
+
+      -                    { icon: <Calendar className="w-4 h-4" />, label:
+      "Schedule Meeting", color: "bg-green-500/10 text-green-600" },
+
+      -                    { icon: <Users className="w-4 h-4" />, label: "Invite
+      Team", color: "bg-purple-500/10 text-purple-600" },
+
+      -                    { icon: <BarChart3 className="w-4 h-4" />, label:
+      "View Reports", color: "bg-orange-500/10 text-orange-600" }
+
+      -                  ].map((action) => (
+
+      -                    <button
+
+      -                      key={action.label}
+
+      -                      className="w-full flex items-center gap-3 p-3
+      hover:bg-accent rounded-lg transition-colors text-left"
+
+      -                    >
+
+      -                      <div className={cn("p-2 rounded-full",
+      action.color)}>
+
+      -                        {action.icon}
+
+      -                      </div>
+
+      -                      <span className="font-medium">{action.label}</span>
+
+      -                    </button>
+
+      -                  ))}
+                       </div>
+      -              </Card>
+
+      -
+
+      -              {/* Recent Activity */}
+
+      -              <Card className="p-6 border-border/50">
+
+      -                <h3 className="text-lg font-semibold mb-4">Recent
+      Activity</h3>
+
+      -                <div className="space-y-4">
+
+      -                  {recentActivity.map((activity) => (
+
+      -                    <div key={activity.id} className="flex items-start
+      gap-3 p-3 hover:bg-accent/30 rounded-xl transition-colors cursor-pointer">
+
+      -                      <div className="p-2 bg-primary/10 rounded-full
+      flex-shrink-0">
+
+      -                        {getTypeIcon(activity.type)}
+
+      -                      </div>
+
+      -                      <div className="flex-1 min-w-0">
+
+      -                        <h4 className="font-medium text-sm
+      mb-1">{activity.title}</h4>
+
+      -                        <p className="text-xs text-muted-foreground
+      mb-2">{activity.description}</p>
+
+      -                        <div className="flex items-center gap-2 text-xs
+      text-muted-foreground">
+
+      -                          <Clock className="w-3 h-3" />
+
+      -                          <span>{activity.time}</span>
+
+      -                          <div className="w-5 h-5 bg-primary rounded-full
+      flex items-center justify-center text-primary-foreground text-xs
+      font-medium">
+
+      -                            {activity.user}
+
+      -                          </div>
+
+      +              ))}
+
+      +            </div>
+
+      +          </Card>
+
+      +        </div>
+
+      +
+
+      +        {/* Sidebar Content */}
+
+      +        <div className="space-y-6">
+
+      +          {/* Quick Actions */}
+
+      +          <Card className="p-6 border-border/50">
+
+      +            <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
+
+      +            <div className="space-y-3">
+
+      +              {[
+
+      +                { icon: <FileText className="w-4 h-4" />, label: "Create
+      Document", color: "bg-blue-500/10 text-blue-600" },
+
+      +                { icon: <Calendar className="w-4 h-4" />, label:
+      "Schedule Meeting", color: "bg-green-500/10 text-green-600" },
+
+      +                { icon: <Users className="w-4 h-4" />, label: "Invite
+      Team", color: "bg-purple-500/10 text-purple-600" },
+
+      +                { icon: <BarChart3 className="w-4 h-4" />, label: "View
+      Reports", color: "bg-orange-500/10 text-orange-600" }
+
+      +              ].map((action) => (
+
+      +                <button
+
+      +                  key={action.label}
+
+      +                  className="w-full flex items-center gap-3 p-3
+      hover:bg-accent rounded-lg transition-colors text-left"
+
+      +                >
+
+      +                  <div className={cn("p-2 rounded-full", action.color)}>
+
+      +                    {action.icon}
+
+      +                  </div>
+
+      +                  <span className="font-medium">{action.label}</span>
+
+      +                </button>
+
+      +              ))}
+
+      +            </div>
+
+      +          </Card>
+
+      +
+
+      +          {/* Recent Activity */}
+
+      +          <Card className="p-6 border-border/50">
+
+      +            <h3 className="text-lg font-semibold mb-4">Recent
+      Activity</h3>
+
+      +            <div className="space-y-4">
+
+      +              {recentActivity.map((activity) => (
+
+      +                <div key={activity.id} className="flex items-start gap-3
+      p-3 hover:bg-accent/30 rounded-xl transition-colors cursor-pointer">
+
+      +                  <div className="p-2 bg-primary/10 rounded-full
+      flex-shrink-0">
+
+      +                    {getTypeIcon(activity.type)}
+
+      +                  </div>
+
+      +                  <div className="flex-1 min-w-0">
+
+      +                    <h4 className="font-medium text-sm
+      mb-1">{activity.title}</h4>
+
+      +                    <p className="text-xs text-muted-foreground
+      mb-2">{activity.description}</p>
+
+      +                    <div className="flex items-center gap-2 text-xs
+      text-muted-foreground">
+
+      +                      <Clock className="w-3 h-3" />
+
+      +                      <span>{activity.time}</span>
+
+      +                      <div className="w-5 h-5 bg-primary rounded-full
+      flex items-center justify-center text-primary-foreground text-xs
+      font-medium">
+
+      +                        {activity.user}
+
+      -                        </div>
+
+      -                      </div>
+
+      +                      </div>
+                           </div>
+      -                  ))}
+
+      -                </div>
+
+      -              </Card>
+
+      -            </div>
+
+      -          </div>
+
+      -          </div>
+
+      -          {showScrollToBottom && (
+
+      -            <button
+
+      -              onClick={scrollToBottom}
+
+      -              className="fixed bottom-8 right-8 w-12 h-12 bg-primary
+      text-primary-foreground rounded-full flex items-center justify-center
+      shadow-lg hover:bg-primary/90 transition-all animate-fade-in z-[51]"
+
+      -              style={{ animation: 'bounce 2s infinite' }}
+
+      -              title="Scroll to bottom"
+
+      -            >
+
+      -              <ArrowDown className="w-6 h-6" />
+
+      -            </button>
+
+      -          )}
+
+      -      </div>
+
+      +                  </div>
+
+      +                </div>
+
+      +              ))}
+
+      +            </div>
+
+      +          </Card>
+
+      +        </div>
+
+      +      </div>
+
+      +      {showScrollToBottom && (
+
+      +        <button
+
+      +          onClick={scrollToBottom}
+
+      +          className="fixed bottom-8 right-8 w-12 h-12 bg-primary
+      text-primary-foreground rounded-full flex items-center justify-center
+      shadow-lg hover:bg-primary/90 transition-all animate-fade-in z-[51]"
+
+      +          style={{ animation: 'bounce 2s infinite' }}
+
+      +          title="Scroll to bottom"
+
+      +        >
+
+      +          <ArrowDown className="w-6 h-6" />
+
+      +        </button>
+
+      +      )}
+
+      +      </PageLayout>
+           )
+       }
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/Notifications/index.tsx
+    content: |+
+      --- src/pages/Notifications/index.tsx
+      +++ src/pages/Notifications/index.tsx
+      @@ -4,8 +4,8 @@
+       import { Card, CardContent, CardHeader } from "@/components/ui/card";
+       import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+       import { PageHeader } from "@/components/shared/PageHeader";
+      -import { useAppShell } from "@/context/AppShellContext";
+       import { useToast } from "@/components/ui/toast";
+      +import { PageLayout } from "@/components/shared/PageLayout";
+       import { cn } from "@/lib/utils";
+       import { 
+         CheckCheck, 
+      @@ -293,9 +293,7 @@
+       export function NotificationsPage({ isInSidePane = false }: { isInSidePane?: boolean }) {
+         const [notifications, setNotifications] = React.useState<Notification[]>(initialNotifications);
+         const [activeTab, setActiveTab] = React.useState<string>("all");
+         const { show: showToast } = useToast();
+      -  const { isTopBarVisible, bodyState } = useAppShell();
+      -  const isFullscreen = bodyState === 'fullscreen';
+       
+         const handleMarkAsRead = (id: number) => {
+           setNotifications(prev =>
+      @@ -377,16 +375,12 @@
+         );
+       
+         return (
+      -    <div className={cn("overflow-y-auto h-full")}>
+      -      <div className={cn(
+      -        "space-y-8 transition-all duration-300", 
+      -        !isInSidePane ? "px-6 lg:px-12 pb-6" : "px-6 pb-6",
+      -        isTopBarVisible && !isFullscreen ? "pt-24" : "pt-6"
+      -        )}>
+      -        {!isInSidePane && (
+      -          <PageHeader
+      -            title="Notifications"
+      -            description="Manage your notifications and stay up-to-date."
+      -          />
+      -        )}
+      -        {content}
+      -      </div>
+      -    </div>
+      +    <PageLayout isInSidePane={isInSidePane}>
+      +      {!isInSidePane && (
+      +        <PageHeader
+      +          title="Notifications"
+      +          description="Manage your notifications and stay up-to-date."
+      +        />
+      +      )}
+      +      {content}
+      +    </PageLayout>
+         );
+       };
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/Settings/index.tsx
+    content: >+
+      --- src/pages/Settings/index.tsx
+
+      +++ src/pages/Settings/index.tsx
+
+      @@ -1,25 +1,19 @@
+       import { SettingsContent } from '@/features/settings/SettingsContent';
+       import { useAutoAnimateTopBar } from '@/hooks/useAutoAnimateTopBar';
+       import { PageHeader } from '@/components/shared/PageHeader';
+      -import { useAppShell } from '@/context/AppShellContext';
+
+      -import { cn } from '@/lib/utils';
+
+      +import { PageLayout } from '@/components/shared/PageLayout';
+       
+       export function SettingsPage() {
+         const { onScroll } = useAutoAnimateTopBar();
+      -  const { isTopBarVisible, bodyState } = useAppShell();
+
+      -  const isFullscreen = bodyState === 'fullscreen';
+       
+         return (
+      -    <div
+
+      -      className="h-full overflow-y-auto"
+
+      -      onScroll={onScroll}
+
+      -    >
+
+      -      <div className={cn(
+
+      -        "px-6 lg:px-12 pb-6 space-y-8 transition-all duration-300",
+
+      -        isTopBarVisible && !isFullscreen ? "pt-24" : "pt-6"
+
+      -        )}>
+
+      -        {/* Header */}
+
+      -        <PageHeader
+
+      -          title="Settings"
+
+      -          description="Customize your experience. Changes are saved
+      automatically."
+
+      -        />
+
+      -        <SettingsContent />
+
+      -      </div>
+
+      -    </div>
+
+      +    <PageLayout onScroll={onScroll}>
+
+      +      {/* Header */}
+
+      +      <PageHeader
+
+      +        title="Settings"
+
+      +        description="Customize your experience. Changes are saved
+      automatically."
+
+      +      />
+
+      +      <SettingsContent />
+
+      +    </PageLayout>
+         )
+       }
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/ToasterDemo/index.tsx
+    content: >+
+      --- src/pages/ToasterDemo/index.tsx
+
+      +++ src/pages/ToasterDemo/index.tsx
+
+      @@ -1,7 +1,7 @@
+       import { Button } from '@/components/ui/button';
+       import { useToast } from '@/components/ui/toast';
+      -import { useAppShell } from '@/context/AppShellContext';
+       import { PageHeader } from '@/components/shared/PageHeader';
+      +import { PageLayout } from '@/components/shared/PageLayout';
+       import { cn } from '@/lib/utils';
+       
+       type Variant = 'default' | 'success' | 'error' | 'warning';
+      @@ -32,8 +32,6 @@
+       
+       export function ToasterDemo({ isInSidePane = false }: { isInSidePane?: boolean }) {
+         const toast = useToast();
+      -  const { isTopBarVisible, bodyState } = useAppShell();
+
+      -  const isFullscreen = bodyState === 'fullscreen';
+       
+         const showToast = (variant: Variant, position: Position = 'bottom-right') => {
+           toast.show({
+      @@ -82,49 +80,45 @@
+         };
+       
+         return (
+      -    <div className={cn("overflow-y-auto h-full")}>
+
+      -      <div className={cn(
+
+      -        "space-y-8 transition-all duration-300",
+
+      -        !isInSidePane ? "px-6 lg:px-12 pb-6" : "px-6 pb-6",
+
+      -        isTopBarVisible && !isFullscreen ? "pt-24" : "pt-6"
+
+      -      )}>
+
+      -        {/* Header */}
+
+      -        {!isInSidePane && (
+
+      -          <PageHeader
+
+      -            title="Toaster"
+
+      -            description="A customizable toast component for
+      notifications."
+
+      -          />
+
+      -        )}
+
+      -        <div className="space-y-6">
+
+      -          <DemoSection title="Toast Variants">
+
+      -            <div className="flex flex-wrap gap-4">
+
+      -              {(['default', 'success', 'error', 'warning'] as
+      Variant[]).map((variantKey) => (
+
+      -                <Button
+
+      -                  key={variantKey}
+
+      -                  variant="outline"
+
+      -                  onClick={() => showToast(variantKey as Variant)}
+
+      -                  className={cn(variantColors[variantKey])}
+
+      -                >
+
+      -                  {variantKey.charAt(0).toUpperCase() +
+      variantKey.slice(1)} Toast
+
+      -                </Button>
+
+      -              ))}
+
+      -            </div>
+
+      -          </DemoSection>
+
+      +    <PageLayout isInSidePane={isInSidePane}>
+
+      +      {/* Header */}
+
+      +      {!isInSidePane && (
+
+      +        <PageHeader
+
+      +          title="Toaster"
+
+      +          description="A customizable toast component for notifications."
+
+      +        />
+
+      +      )}
+
+      +      <div className="space-y-6">
+
+      +        <DemoSection title="Toast Variants">
+
+      +          <div className="flex flex-wrap gap-4">
+
+      +            {(['default', 'success', 'error', 'warning'] as
+      Variant[]).map((variantKey) => (
+
+      +              <Button
+
+      +                key={variantKey}
+
+      +                variant="outline"
+
+      +                onClick={() => showToast(variantKey as Variant)}
+
+      +                className={cn(variantColors[variantKey])}
+
+      +              >
+
+      +                {variantKey.charAt(0).toUpperCase() +
+      variantKey.slice(1)} Toast
+
+      +              </Button>
+
+      +            ))}
+
+      +          </div>
+
+      +        </DemoSection>
+       
+      -          <DemoSection title="Toast Positions">
+
+      -            <div className="flex flex-wrap gap-4">
+
+      -              {[
+
+      -                'top-left',
+
+      -                'top-center',
+
+      -                'top-right',
+
+      -                'bottom-left',
+
+      -                'bottom-center',
+
+      -                'bottom-right',
+
+      -              ].map((positionKey) => (
+
+      -                <Button
+
+      -                  key={positionKey}
+
+      -                  variant="outline"
+
+      -                  onClick={() =>
+
+      -                    showToast('default', positionKey as Position)
+
+      -                  }
+
+      -                  className="border-border text-foreground
+      hover:bg-muted/10 dark:hover:bg-muted/20"
+
+      -                >
+
+      -                  {positionKey
+
+      -                    .replace('-', ' ')
+
+      -                    .replace(/\b\w/g, (char) => char.toUpperCase())}
+
+      -                </Button>
+
+      -              ))}
+
+      -            </div>
+
+      -          </DemoSection>
+
+      +        <DemoSection title="Toast Positions">
+
+      +          <div className="flex flex-wrap gap-4">
+
+      +            {[
+
+      +              'top-left',
+
+      +              'top-center',
+
+      +              'top-right',
+
+      +              'bottom-left',
+
+      +              'bottom-center',
+
+      +              'bottom-right',
+
+      +            ].map((positionKey) => (
+
+      +              <Button
+
+      +                key={positionKey}
+
+      +                variant="outline"
+
+      +                onClick={() =>
+
+      +                  showToast('default', positionKey as Position)
+
+      +                }
+
+      +                className="border-border text-foreground
+      hover:bg-muted/10 dark:hover:bg-muted/20"
+
+      +              >
+
+      +                {positionKey
+
+      +                  .replace('-', ' ')
+
+      +                  .replace(/\b\w/g, (char) => char.toUpperCase())}
+
+      +              </Button>
+
+      +            ))}
+
+      +          </div>
+
+      +        </DemoSection>
+       
+      -          <DemoSection title="Real-World Example">
+
+      -            <Button
+
+      -              variant="outline"
+
+      -              onClick={simulateApiCall}
+
+      -              className="border-border text-foreground hover:bg-muted/10
+      dark:hover:bg-muted/20"
+
+      -            >
+
+      -              Schedule Meeting
+
+      -            </Button>
+
+      -          </DemoSection>
+
+      -        </div>
+
+      +        <DemoSection title="Real-World Example">
+
+      +          <Button
+
+      +            variant="outline"
+
+      +            onClick={simulateApiCall}
+
+      +            className="border-border text-foreground hover:bg-muted/10
+      dark:hover:bg-muted/20"
+
+      +          >
+
+      +            Schedule Meeting
+
+      +          </Button>
+
+      +        </DemoSection>
+             </div>
+      -    </div>
+
+      +    </PageLayout>
+         );
+       }
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/index.ts
+    content: |+
+      --- src/index.ts
+      +++ src/index.ts
+      @@ -29,6 +29,7 @@
+       // Shared Components
+       export { ContentInSidePanePlaceholder } from './components/shared/ContentInSidePanePlaceholder';
+       export { PageHeader } from './components/shared/PageHeader';
+      +export { PageLayout } from './components/shared/PageLayout';
+       
+       // Feature Components
+       export { SettingsContent } from './features/settings/SettingsContent';
+
+    patchStrategy: standard-diff
+snapshot:
+  src/components/shared/PageLayout.tsx: null
+  src/pages/Dashboard/index.tsx: >-
+    import { useRef } from 'react'
+
+    import { 
+      BarChart3, 
+      TrendingUp, 
+      Users, 
+      DollarSign, 
+      Activity,
+      Calendar,
+      Clock,
+      MessageSquare,
+      FileText,
+      Star,
+      ChevronRight,
+      MoreVertical,
+      ArrowDown
+    } from 'lucide-react'
+
+    import { cn } from '@/lib/utils'
+
+    import { DemoContent } from './DemoContent'
+
+    import { useAppShell } from '@/context/AppShellContext'
+
+    import { useDashboardAnimations } from './hooks/useDashboardAnimations.hook'
+
+    import { useDashboardScroll } from './hooks/useDashboardScroll.hook'
+
+    import { PageHeader } from '@/components/shared/PageHeader';
+
+    import { Card } from '@/components/ui/card';
+
+
+    interface StatsCard {
+      title: string
+      value: string
+      change: string
+      trend: 'up' | 'down'
+      icon: React.ReactNode
+    }
+
+
+    interface ActivityItem {
+      id: string
+      type: 'comment' | 'file' | 'meeting' | 'task'
+      title: string
+      description: string
+      time: string
+      user: string
+    }
+
+
+    const statsCards: StatsCard[] = [
+      {
+        title: "Total Revenue",
+        value: "$45,231.89",
+        change: "+20.1%",
+        trend: "up",
+        icon: <DollarSign className="w-5 h-5" />
+      },
+      {
+        title: "Active Users",
+        value: "2,350",
+        change: "+180.1%",
+        trend: "up",
+        icon: <Users className="w-5 h-5" />
+      },
+      {
+        title: "Conversion Rate",
+        value: "12.5%",
+        change: "+19%",
+        trend: "up",
+        icon: <TrendingUp className="w-5 h-5" />
+      },
+      {
+        title: "Performance",
+        value: "573ms",
+        change: "-5.3%",
+        trend: "down",
+        icon: <Activity className="w-5 h-5" />
+      }
+    ]
+
+
+    const recentActivity: ActivityItem[] = [
+      {
+        id: "1",
+        type: "comment",
+        title: "New comment on Project Alpha",
+        description: "Sarah Johnson added a comment to the design review",
+        time: "2 minutes ago",
+        user: "SJ"
+      },
+      {
+        id: "2",
+        type: "file",
+        title: "Document uploaded",
+        description: "quarterly-report.pdf was uploaded to Documents",
+        time: "15 minutes ago",
+        user: "MD"
+      },
+      {
+        id: "3",
+        type: "meeting",
+        title: "Meeting scheduled",
+        description: "Weekly standup meeting scheduled for tomorrow 9 AM",
+        time: "1 hour ago",
+        user: "RW"
+      },
+      {
+        id: "4",
+        type: "task",
+        title: "Task completed",
+        description: "UI wireframes for mobile app completed",
+        time: "2 hours ago",
+        user: "AL"
+      }
+    ]
+
+
+    interface DashboardContentProps {
+      isInSidePane?: boolean;
+    }
+
+
+    export function DashboardContent({ isInSidePane = false }:
+    DashboardContentProps) {
+        const contentRef = useRef<HTMLDivElement>(null)
+        const cardsRef = useRef<(HTMLDivElement | null)[]>([])
+        const { showScrollToBottom, handleScroll, scrollToBottom } = useDashboardScroll(contentRef, isInSidePane);
+        const { isTopBarVisible, bodyState } = useAppShell();
+        const isFullscreen = bodyState === 'fullscreen';
+
+        useDashboardAnimations(contentRef, cardsRef);
+
+        const getTypeIcon = (type: ActivityItem['type']) => {
+          switch (type) {
+            case 'comment':
+              return <MessageSquare className="w-4 h-4" />
+            case 'file':
+              return <FileText className="w-4 h-4" />
+            case 'meeting':
+              return <Calendar className="w-4 h-4" />
+            case 'task':
+              return <Star className="w-4 h-4" />
+            default:
+              return <Activity className="w-4 h-4" />
+          }
+        }
+
+        return (
+            <div 
+              ref={contentRef}
+              className={cn("h-full overflow-y-auto")}
+              onScroll={handleScroll}
+            >
+              <div className={cn(
+                "space-y-8 transition-all duration-300",
+                !isInSidePane ? "px-6 lg:px-12 pb-6" : "px-6 pb-6",
+                isTopBarVisible && !isFullscreen ? "pt-24" : "pt-6"
+              )}>
+                {/* Header */}
+                {!isInSidePane && (
+                  <PageHeader
+                    title="Dashboard"
+                    description="Welcome to the Jeli App Shell demo! Explore all the features and customization options."
+                  />
+                )}
+                  {/* Stats Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  {statsCards.map((stat, index) => (
+                    <Card
+                    key={stat.title}
+                    ref={el => cardsRef.current[index] = el}
+                    className="p-6 border-border/50 hover:border-primary/30 transition-all duration-300 group cursor-pointer"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="p-3 bg-primary/10 rounded-full group-hover:bg-primary/20 transition-colors">
+                        {stat.icon}
+                      </div>
+                      <div className={cn(
+                        "text-sm font-medium",
+                        stat.trend === 'up' ? "text-green-600" : "text-red-600"
+                      )}>
+                        {stat.change}
+                      </div>
+                    </div>
+                    <div className="mt-4">
+                      <h3 className="text-2xl font-bold">{stat.value}</h3>
+                      <p className="text-sm text-muted-foreground mt-1">{stat.title}</p>
+                    </div>
+                  </Card>
+                  ))}
+                </div>
+
+                {/* Demo Content */}
+                <DemoContent />
+
+                {/* Main Content Grid */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Chart Area */}
+                <div className="lg:col-span-2 space-y-6">
+                  {/* Analytics Chart */}
+                  <Card className="p-6 border-border/50">
+                    <div className="flex items-center justify-between mb-6">
+                      <h3 className="text-lg font-semibold">Analytics Overview</h3>
+                      <button className="h-8 w-8 flex items-center justify-center hover:bg-accent rounded-full transition-colors">
+                        <MoreVertical className="w-5 h-5" />
+                      </button>
+                    </div>
+                    
+                    {/* Mock Chart */}
+                    <div className="h-64 bg-gradient-to-br from-primary/10 to-transparent rounded-xl flex items-center justify-center border border-border/50">
+                      <div className="text-center">
+                        <BarChart3 className="w-12 h-12 text-primary mx-auto mb-2" />
+                        <p className="text-muted-foreground">Chart visualization would go here</p>
+                      </div>
+                    </div>
+                  </Card>
+
+                  {/* Recent Projects */}
+                  <Card className="p-6 border-border/50">
+                    <div className="flex items-center justify-between mb-6">
+                      <h3 className="text-lg font-semibold">Recent Projects</h3>
+                      <button className="text-primary hover:text-primary/80 text-sm font-medium flex items-center gap-1">
+                        View All
+                        <ChevronRight className="w-4 h-4" />
+                      </button>
+                    </div>
+                    
+                    <div className="space-y-4">
+                      {[
+                        { name: "E-commerce Platform", progress: 75, team: 5, deadline: "Dec 15" },
+                        { name: "Mobile App Redesign", progress: 45, team: 3, deadline: "Jan 20" },
+                        { name: "Marketing Website", progress: 90, team: 4, deadline: "Dec 5" }
+                      ].map((project) => (
+                        <div key={project.name} className="p-4 bg-accent/30 rounded-xl hover:bg-accent/50 transition-colors cursor-pointer">
+                          <div className="flex items-center justify-between mb-2">
+                            <h4 className="font-medium">{project.name}</h4>
+                            <span className="text-sm text-muted-foreground">{project.progress}%</span>
+                          </div>
+                          <div className="w-full bg-muted rounded-full h-2 mb-3">
+                            <div 
+                              className="bg-primary h-2 rounded-full transition-all duration-500"
+                              style={{ width: `${project.progress}%` }}
+                            />
+                          </div>
+                          <div className="flex items-center justify-between text-sm text-muted-foreground">
+                            <span>{project.team} team members</span>
+                            <span>Due {project.deadline}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </Card>
+                </div>
+
+                {/* Sidebar Content */}
+                <div className="space-y-6">
+                  {/* Quick Actions */}
+                  <Card className="p-6 border-border/50">
+                    <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
+                    <div className="space-y-3">
+                      {[
+                        { icon: <FileText className="w-4 h-4" />, label: "Create Document", color: "bg-blue-500/10 text-blue-600" },
+                        { icon: <Calendar className="w-4 h-4" />, label: "Schedule Meeting", color: "bg-green-500/10 text-green-600" },
+                        { icon: <Users className="w-4 h-4" />, label: "Invite Team", color: "bg-purple-500/10 text-purple-600" },
+                        { icon: <BarChart3 className="w-4 h-4" />, label: "View Reports", color: "bg-orange-500/10 text-orange-600" }
+                      ].map((action) => (
+                        <button
+                          key={action.label}
+                          className="w-full flex items-center gap-3 p-3 hover:bg-accent rounded-lg transition-colors text-left"
+                        >
+                          <div className={cn("p-2 rounded-full", action.color)}>
+                            {action.icon}
+                          </div>
+                          <span className="font-medium">{action.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </Card>
+
+                  {/* Recent Activity */}
+                  <Card className="p-6 border-border/50">
+                    <h3 className="text-lg font-semibold mb-4">Recent Activity</h3>
+                    <div className="space-y-4">
+                      {recentActivity.map((activity) => (
+                        <div key={activity.id} className="flex items-start gap-3 p-3 hover:bg-accent/30 rounded-xl transition-colors cursor-pointer">
+                          <div className="p-2 bg-primary/10 rounded-full flex-shrink-0">
+                            {getTypeIcon(activity.type)}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-medium text-sm mb-1">{activity.title}</h4>
+                            <p className="text-xs text-muted-foreground mb-2">{activity.description}</p>
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <Clock className="w-3 h-3" />
+                              <span>{activity.time}</span>
+                              <div className="w-5 h-5 bg-primary rounded-full flex items-center justify-center text-primary-foreground text-xs font-medium">
+                                {activity.user}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </Card>
+                </div>
+              </div>
+              </div>
+              {showScrollToBottom && (
+                <button
+                  onClick={scrollToBottom}
+                  className="fixed bottom-8 right-8 w-12 h-12 bg-primary text-primary-foreground rounded-full flex items-center justify-center shadow-lg hover:bg-primary/90 transition-all animate-fade-in z-[51]"
+                  style={{ animation: 'bounce 2s infinite' }}
+                  title="Scroll to bottom"
+                >
+                  <ArrowDown className="w-6 h-6" />
+                </button>
+              )}
+          </div>
+        )
+    }
+  src/pages/Settings/index.tsx: |-
+    import { SettingsContent } from '@/features/settings/SettingsContent';
+    import { useAutoAnimateTopBar } from '@/hooks/useAutoAnimateTopBar';
+    import { PageHeader } from '@/components/shared/PageHeader';
+    import { useAppShell } from '@/context/AppShellContext';
+    import { cn } from '@/lib/utils';
+
+    export function SettingsPage() {
+      const { onScroll } = useAutoAnimateTopBar();
+      const { isTopBarVisible, bodyState } = useAppShell();
+      const isFullscreen = bodyState === 'fullscreen';
+
+      return (
+        <div
+          className="h-full overflow-y-auto"
+          onScroll={onScroll}
+        >
+          <div className={cn(
+            "px-6 lg:px-12 pb-6 space-y-8 transition-all duration-300",
+            isTopBarVisible && !isFullscreen ? "pt-24" : "pt-6"
+            )}>
+            {/* Header */}
+            <PageHeader
+              title="Settings"
+              description="Customize your experience. Changes are saved automatically."
+            />
+            <SettingsContent />
+          </div>
+        </div>
+      )
+    }
+  src/pages/Notifications/index.tsx: >-
+    import React from "react";
+
+    import { Avatar, AvatarFallback, AvatarImage } from
+    "@/components/ui/avatar";
+
+    import { Badge } from "@/components/ui/badge";
+
+    import { Button } from "@/components/ui/button";
+
+    import { Card, CardContent, CardHeader } from "@/components/ui/card";
+
+    import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
+    import { PageHeader } from "@/components/shared/PageHeader";
+
+    import { useAppShell } from "@/context/AppShellContext";
+
+    import { useToast } from "@/components/ui/toast";
+
+    import { cn } from "@/lib/utils";
+
+    import { 
+      CheckCheck, 
+      Download, 
+      Settings, 
+      Bell,
+      MessageSquare,
+      UserPlus,
+      Mail,
+      File as FileIcon,
+      Heart,
+      AtSign,
+      ClipboardCheck,
+      ShieldCheck,
+    } from "lucide-react";
+
+
+
+    type Notification = {
+      id: number;
+      type: string;
+      user: {
+        name: string;
+        avatar: string;
+        fallback: string;
+      };
+      action: string;
+      target?: string;
+      content?: string;
+      timestamp: string;
+      timeAgo: string;
+      isRead: boolean;
+      hasActions?: boolean;
+      file?: {
+        name: string;
+        size: string;
+        type: string;
+      };
+    };
+
+
+    const initialNotifications: Array<Notification> = [
+      {
+        id: 1,
+        type: "comment",
+        user: { name: "Amélie", avatar: "https://api.dicebear.com/7.x/notionists/svg?seed=Amélie", fallback: "A" },
+        action: "commented in",
+        target: "Dashboard 2.0",
+        content: "Really love this approach. I think this is the best solution for the document sync UX issue.",
+        timestamp: "Friday 3:12 PM",
+        timeAgo: "2 hours ago",
+        isRead: false,
+      },
+      {
+        id: 2,
+        type: "follow",
+        user: { name: "Sienna", avatar: "https://api.dicebear.com/7.x/notionists/svg?seed=Sienna", fallback: "S" },
+        action: "followed you",
+        timestamp: "Friday 3:04 PM",
+        timeAgo: "2 hours ago",
+        isRead: false,
+      },
+      {
+        id: 3,
+        type: "invitation",
+        user: { name: "Ammar", avatar: "https://api.dicebear.com/7.x/notionists/svg?seed=Ammar", fallback: "A" },
+        action: "invited you to",
+        target: "Blog design",
+        timestamp: "Friday 2:22 PM",
+        timeAgo: "3 hours ago",
+        isRead: true,
+        hasActions: true,
+      },
+      {
+        id: 4,
+        type: "file_share",
+        user: { name: "Mathilde", avatar: "https://api.dicebear.com/7.x/notionists/svg?seed=Mathilde", fallback: "M" },
+        action: "shared a file in",
+        target: "Dashboard 2.0",
+        file: { name: "Prototype recording 01.mp4", size: "14 MB", type: "MP4" },
+        timestamp: "Friday 1:40 PM",
+        timeAgo: "4 hours ago",
+        isRead: true,
+      },
+      {
+        id: 5,
+        type: "mention",
+        user: { name: "James", avatar: "https://api.dicebear.com/7.x/notionists/svg?seed=James", fallback: "J" },
+        action: "mentioned you in",
+        target: "Project Alpha",
+        content: "Hey @you, can you review the latest designs when you get a chance?",
+        timestamp: "Thursday 11:30 AM",
+        timeAgo: "1 day ago",
+        isRead: true,
+      },
+      {
+        id: 6,
+        type: "like",
+        user: { name: "Sofia", avatar: "https://api.dicebear.com/7.x/notionists/svg?seed=Sofia", fallback: "S" },
+        action: "liked your comment in",
+        target: "Team Meeting Notes",
+        timestamp: "Thursday 9:15 AM",
+        timeAgo: "1 day ago",
+        isRead: true,
+      },
+      {
+        id: 7,
+        type: "task_assignment",
+        user: { name: "Admin", avatar: "https://api.dicebear.com/7.x/bottts/svg?seed=Admin", fallback: "AD" },
+        action: "assigned you a new task in",
+        target: "Q3 Marketing",
+        content: "Finalize the social media campaign assets.",
+        timestamp: "Wednesday 5:00 PM",
+        timeAgo: "2 days ago",
+        isRead: true,
+      },
+      {
+        id: 8,
+        type: "system_update",
+        user: { name: "System", avatar: "https://api.dicebear.com/7.x/shapes/svg?seed=System", fallback: "SYS" },
+        action: "pushed a new update",
+        content: "Version 2.1.0 is now live with improved performance and new features. Check out the release notes for more details.",
+        timestamp: "Wednesday 9:00 AM",
+        timeAgo: "2 days ago",
+        isRead: true,
+      },
+      {
+        id: 9,
+        type: 'comment',
+        user: { name: 'Elena', avatar: 'https://api.dicebear.com/7.x/notionists/svg?seed=Elena', fallback: 'E' },
+        action: 'replied to your comment in',
+        target: 'Dashboard 2.0',
+        content: 'Thanks for the feedback! I\'ve updated the prototype.',
+        timestamp: 'Tuesday 4:30 PM',
+        timeAgo: '3 days ago',
+        isRead: false,
+      },
+      {
+        id: 10,
+        type: 'invitation',
+        user: { name: 'Carlos', avatar: 'https://api.dicebear.com/7.x/notionists/svg?seed=Carlos', fallback: 'C' },
+        action: 'invited you to',
+        target: 'API Integration',
+        timestamp: 'Tuesday 10:00 AM',
+        timeAgo: '3 days ago',
+        isRead: true,
+        hasActions: true,
+      },
+    ];
+
+
+    const iconMap: { [key: string]: React.ElementType } = {
+      comment: MessageSquare,
+      follow: UserPlus,
+      invitation: Mail,
+      file_share: FileIcon,
+      mention: AtSign,
+      like: Heart,
+      task_assignment: ClipboardCheck,
+      system_update: ShieldCheck,
+    };
+
+
+    function NotificationItem({ notification, onMarkAsRead, isInSidePane }: {
+    notification: Notification; onMarkAsRead: (id: number) => void;
+    isInSidePane?: boolean; }) {
+      const Icon = iconMap[notification.type];
+
+      return (
+        <div className={cn(
+          "group w-full py-4 rounded-xl hover:bg-accent/50 transition-colors duration-200",
+          isInSidePane ? "" : "-mx-4 px-4"
+        )}>
+          <div className="flex gap-3">
+            <div className="relative h-10 w-10 shrink-0">
+              <Avatar className="h-10 w-10">
+                <AvatarImage src={notification.user.avatar} alt={`${notification.user.name}'s profile picture`} />
+                <AvatarFallback>{notification.user.fallback}</AvatarFallback>
+              </Avatar>
+              {Icon && (
+                <div className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full border-2 border-card bg-background">
+                  <Icon className={cn("h-3 w-3", notification.type === 'like' ? 'text-red-500 fill-current' : 'text-muted-foreground')} />
+                </div>
+              )}
+            </div>
+
+            <div className="flex flex-1 flex-col space-y-2">
+              <div className="flex items-start justify-between">
+                <div className="text-sm">
+                  <span className="font-semibold">{notification.user.name}</span>
+                  <span className="text-muted-foreground"> {notification.action} </span>
+                  {notification.target && <span className="font-semibold">{notification.target}</span>}
+                  <div className="mt-0.5 text-xs text-muted-foreground">{notification.timeAgo}</div>
+                </div>
+                <button
+                  onClick={() => !notification.isRead && onMarkAsRead(notification.id)}
+                  title={notification.isRead ? "Read" : "Mark as read"}
+                  className={cn("size-2.5 rounded-full mt-1 shrink-0 transition-all duration-300",
+                    notification.isRead ? 'bg-transparent' : 'bg-primary hover:scale-125 cursor-pointer'
+                  )}
+                ></button>
+              </div>
+
+              {notification.content && <div className="rounded-lg border bg-muted/50 p-3 text-sm">{notification.content}</div>}
+
+              {notification.file && (
+                <div className="flex items-center gap-2 rounded-lg bg-muted/50 p-2 border border-border">
+                  <div className="shrink-0 w-10 h-10 flex items-center justify-center bg-background rounded-md border border-border">
+                    <FileIcon className="w-5 h-5 text-muted-foreground" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium truncate">{notification.file.name}</div>
+                    <div className="text-xs text-muted-foreground">{notification.file.type} • {notification.file.size}</div>
+                  </div>
+                  <Button variant="ghost" size="icon" className="size-8 shrink-0">
+                    <Download className="w-4 h-4" />
+                  </Button>
+                </div>
+              )}
+
+              {notification.hasActions && (
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm">Decline</Button>
+                  <Button size="sm">Accept</Button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+
+    export function NotificationsPage({ isInSidePane = false }: { isInSidePane?:
+    boolean }) {
+      const [notifications, setNotifications] = React.useState<Notification[]>(initialNotifications);
+      const [activeTab, setActiveTab] = React.useState<string>("all");
+      const { show: showToast } = useToast();
+      const { isTopBarVisible, bodyState } = useAppShell();
+      const isFullscreen = bodyState === 'fullscreen';
+
+      const handleMarkAsRead = (id: number) => {
+        setNotifications(prev =>
+          prev.map(n => (n.id === id ? { ...n, isRead: true } : n))
+        );
+      };
+
+      const handleMarkAllAsRead = () => {
+        const unreadCount = notifications.filter(n => !n.isRead).length;
+        if (unreadCount === 0) {
+          showToast({
+            title: "Already up to date!",
+            message: "You have no unread notifications.",
+            variant: "default",
+          });
+          return;
+        }
+        setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+        showToast({
+            title: "All Caught Up!",
+            message: "All notifications have been marked as read.",
+            variant: "success",
+        });
+      };
+
+      const unreadCount = notifications.filter(n => !n.isRead).length;
+
+      const verifiedNotifications = notifications.filter((n) => n.type === "follow" || n.type === "like");
+      const mentionNotifications = notifications.filter((n) => n.type === "mention");
+
+      const verifiedCount = verifiedNotifications.filter(n => !n.isRead).length;
+      const mentionCount = mentionNotifications.filter(n => !n.isRead).length;
+
+      const getFilteredNotifications = () => {
+        switch (activeTab) {
+          case "verified": return verifiedNotifications;
+          case "mentions": return mentionNotifications;
+          default: return notifications;
+        }
+      };
+
+      const filteredNotifications = getFilteredNotifications();
+
+      const content = (
+        <Card className={cn("flex w-full flex-col shadow-none", isInSidePane ? "border-none" : "")}>
+          <CardHeader className="p-0">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold">
+                Your notifications
+              </h3>
+              <div className="flex items-center gap-1">
+                <Button variant="ghost" size="icon" className="size-8" onClick={handleMarkAllAsRead} title="Mark all as read">
+                  <CheckCheck className="size-4 text-muted-foreground" />
+                </Button>
+                <Button variant="ghost" size="icon" className="size-8">
+                  <Settings className="size-4 text-muted-foreground" />
+                </Button>
+              </div>
+            </div>
+
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex-col justify-start mt-4">
+              <TabsList className="gap-1.5">
+                <TabsTrigger value="all" className="gap-1.5">
+                  View all {unreadCount > 0 && <Badge variant="secondary" className="rounded-full">{unreadCount}</Badge>}
+                </TabsTrigger>
+                <TabsTrigger value="verified" className="gap-1.5">
+                  Verified {verifiedCount > 0 && <Badge variant="secondary" className="rounded-full">{verifiedCount}</Badge>}
+                </TabsTrigger>
+                <TabsTrigger value="mentions" className="gap-1.5">
+                  Mentions {mentionCount > 0 && <Badge variant="secondary" className="rounded-full">{mentionCount}</Badge>}
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </CardHeader>
+
+          <CardContent className="h-full p-0 mt-6">
+            <div className="space-y-0 divide-y divide-border">
+              {filteredNotifications.length > 0 ? (
+                filteredNotifications.map((notification) => (
+                  <NotificationItem key={notification.id} notification={notification} onMarkAsRead={handleMarkAsRead} isInSidePane={isInSidePane} />
+                ))
+              ) : (
+                <div className="flex flex-col items-center justify-center space-y-2.5 py-12 text-center">
+                  <div className="rounded-full bg-muted p-4">
+                    <Bell className="text-muted-foreground" />
+                  </div>
+                  <p className="text-sm font-medium text-muted-foreground">No notifications yet.</p>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      );
+
+      return (
+        <div className={cn("overflow-y-auto h-full")}>
+          <div className={cn(
+            "space-y-8 transition-all duration-300", 
+            !isInSidePane ? "px-6 lg:px-12 pb-6" : "px-6 pb-6",
+            isTopBarVisible && !isFullscreen ? "pt-24" : "pt-6"
+            )}>
+            {!isInSidePane && (
+              <PageHeader
+                title="Notifications"
+                description="Manage your notifications and stay up-to-date."
+              />
+            )}
+            {content}
+          </div>
+        </div>
+      );
+    };
+  src/pages/ToasterDemo/index.tsx: >-
+    import { Button } from '@/components/ui/button';
+
+    import { useToast } from '@/components/ui/toast';
+
+    import { useAppShell } from '@/context/AppShellContext';
+
+    import { PageHeader } from '@/components/shared/PageHeader';
+
+    import { cn } from '@/lib/utils';
+
+
+    type Variant = 'default' | 'success' | 'error' | 'warning';
+
+    type Position =
+      | 'top-left'
+      | 'top-center'
+      | 'top-right'
+      | 'bottom-left'
+      | 'bottom-center'
+      | 'bottom-right';
+
+    const variantColors = {
+      default: 'border-border text-foreground hover:bg-muted/10 dark:hover:bg-muted/20',
+      success: 'border-green-600 text-green-600 hover:bg-green-600/10 dark:hover:bg-green-400/20',
+      error: 'border-destructive text-destructive hover:bg-destructive/10 dark:hover:bg-destructive/20',
+      warning: 'border-amber-600 text-amber-600 hover:bg-amber-600/10 dark:hover:bg-amber-400/20',
+    }
+
+
+    const DemoSection: React.FC<{ title: string; children: React.ReactNode }> =
+    ({
+      title,
+      children,
+    }) => (
+      <section>
+        <h2 className="text-lg font-semibold mb-2">{title}</h2>
+        {children}
+      </section>
+    );
+
+
+    export function ToasterDemo({ isInSidePane = false }: { isInSidePane?:
+    boolean }) {
+      const toast = useToast();
+      const { isTopBarVisible, bodyState } = useAppShell();
+      const isFullscreen = bodyState === 'fullscreen';
+
+      const showToast = (variant: Variant, position: Position = 'bottom-right') => {
+        toast.show({
+          title: `${variant.charAt(0).toUpperCase() + variant.slice(1)} Notification`,
+          message: `This is a ${variant} toast notification.`,
+          variant,
+          position,
+          duration: 3000,
+          onDismiss: () =>
+            console.log(`${variant} toast at ${position} dismissed`),
+        });
+      };
+
+      const simulateApiCall = async () => {
+        toast.show({
+          title: 'Scheduling...',
+          message: 'Please wait while we schedule your meeting.',
+          variant: 'default',
+          position: 'bottom-right',
+        });
+
+        try {
+          await new Promise((resolve) => setTimeout(resolve, 2000));
+
+          toast.show({
+            title: 'Meeting Scheduled',
+            message: 'Your meeting is scheduled for July 4, 2025, at 3:42 PM IST.',
+            variant: 'success',
+            position: 'bottom-right',
+            highlightTitle: true,
+            actions: {
+              label: 'Undo',
+              onClick: () => console.log('Undoing meeting schedule'),
+              variant: 'outline',
+            },
+          });
+        } catch (error) {
+          toast.show({
+            title: 'Error Scheduling Meeting',
+            message: 'Failed to schedule the meeting. Please try again.',
+            variant: 'error',
+            position: 'bottom-right',
+          });
+        }
+      };
+
+      return (
+        <div className={cn("overflow-y-auto h-full")}>
+          <div className={cn(
+            "space-y-8 transition-all duration-300",
+            !isInSidePane ? "px-6 lg:px-12 pb-6" : "px-6 pb-6",
+            isTopBarVisible && !isFullscreen ? "pt-24" : "pt-6"
+          )}>
+            {/* Header */}
+            {!isInSidePane && (
+              <PageHeader
+                title="Toaster"
+                description="A customizable toast component for notifications."
+              />
+            )}
+            <div className="space-y-6">
+              <DemoSection title="Toast Variants">
+                <div className="flex flex-wrap gap-4">
+                  {(['default', 'success', 'error', 'warning'] as Variant[]).map((variantKey) => (
+                    <Button
+                      key={variantKey}
+                      variant="outline"
+                      onClick={() => showToast(variantKey as Variant)}
+                      className={cn(variantColors[variantKey])}
+                    >
+                      {variantKey.charAt(0).toUpperCase() + variantKey.slice(1)} Toast
+                    </Button>
+                  ))}
+                </div>
+              </DemoSection>
+
+              <DemoSection title="Toast Positions">
+                <div className="flex flex-wrap gap-4">
+                  {[
+                    'top-left',
+                    'top-center',
+                    'top-right',
+                    'bottom-left',
+                    'bottom-center',
+                    'bottom-right',
+                  ].map((positionKey) => (
+                    <Button
+                      key={positionKey}
+                      variant="outline"
+                      onClick={() =>
+                        showToast('default', positionKey as Position)
+                      }
+                      className="border-border text-foreground hover:bg-muted/10 dark:hover:bg-muted/20"
+                    >
+                      {positionKey
+                        .replace('-', ' ')
+                        .replace(/\b\w/g, (char) => char.toUpperCase())}
+                    </Button>
+                  ))}
+                </div>
+              </DemoSection>
+
+              <DemoSection title="Real-World Example">
+                <Button
+                  variant="outline"
+                  onClick={simulateApiCall}
+                  className="border-border text-foreground hover:bg-muted/10 dark:hover:bg-muted/20"
+                >
+                  Schedule Meeting
+                </Button>
+              </DemoSection>
+            </div>
+          </div>
+        </div>
+      );
+    }
+  src/index.ts: >-
+    // Context
+
+    export { AppShellProvider, useAppShell } from './context/AppShellContext';
+
+
+    // Layout Components
+
+    export { AppShell } from './components/layout/AppShell';
+
+    export { MainContent } from './components/layout/MainContent';
+
+    export { ViewModeSwitcher } from './components/layout/ViewModeSwitcher';
+
+    export { RightPane } from './components/layout/RightPane';
+
+    export { TopBar } from './components/layout/TopBar';
+
+    export { UserDropdown } from './components/layout/UserDropdown';
+
+    export { Workspaces as WorkspaceProvider, WorkspaceTrigger, WorkspaceContent
+    } from './components/layout/WorkspaceSwitcher';
+
+
+    // Sidebar Primitives
+
+    export {
+      Sidebar,
+      SidebarBody,
+      SidebarContent,
+      SidebarFooter,
+      SidebarHeader,
+      SidebarSection,
+      SidebarTitle,
+      SidebarMenuItem,
+      SidebarMenuButton,
+      SidebarMenuAction,
+      SidebarLabel,
+      SidebarBadge,
+      SidebarTooltip,
+      SidebarIcon,
+      useSidebar,
+    } from './components/layout/Sidebar';
+
+
+    // Shared Components
+
+    export { ContentInSidePanePlaceholder } from
+    './components/shared/ContentInSidePanePlaceholder';
+
+    export { PageHeader } from './components/shared/PageHeader';
+
+
+    // Feature Components
+
+    export { SettingsContent } from './features/settings/SettingsContent';
+
+    export { SettingsSection } from './features/settings/SettingsSection';
+
+    export { SettingsToggle } from './features/settings/SettingsToggle';
+
+    export { LoginPage } from './components/auth/LoginPage';
+
+
+    // UI Components
+
+    export * from './components/ui/avatar';
+
+    export * from './components/ui/badge';
+
+    export * from './components/ui/button';
+
+    export * from './components/ui/card';
+
+    export * from './components/ui/command';
+
+    export * from './components/ui/dialog';
+
+    export * from './components/ui/dropdown-menu';
+
+    export * from './components/ui/input';
+
+    export * from './components/ui/label';
+
+    export * from './components/ui/popover';
+
+    export * from './components/ui/tabs';
+
+    export * from './components/ui/toast';
+
+
+    // Global Components
+
+    export { CommandPalette } from './components/global/CommandPalette';
+
+
+    // Hooks
+
+    export { useAutoAnimateTopBar } from './hooks/useAutoAnimateTopBar';
+
+    export { useCommandPaletteToggle } from
+    './hooks/useCommandPaletteToggle.hook';
+
+
+    // Lib
+
+    export * from './lib/utils';
+
+
+    // Store
+
+    export { useAppStore, type ActivePage } from './store/appStore';
+
+    export { useAuthStore } from './store/authStore';
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 152

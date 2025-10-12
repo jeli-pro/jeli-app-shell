@@ -1,6 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/toast';
 import { PageHeader } from '@/components/shared/PageHeader';
+import { PageLayout } from '@/components/shared/PageLayout';
 import { cn } from '@/lib/utils';
 
 type Variant = 'default' | 'success' | 'error' | 'warning';
@@ -78,68 +79,66 @@ export function ToasterDemo({ isInSidePane = false }: { isInSidePane?: boolean }
   };
 
   return (
-    <div className={cn("overflow-y-auto h-full")}>
-      <div className={cn("space-y-8", !isInSidePane ? "p-6 lg:px-12" : "p-6")}>
-        {/* Header */}
-        {!isInSidePane && (
-          <PageHeader
-            title="Toaster"
-            description="A customizable toast component for notifications."
-          />
-        )}
-        <div className="space-y-6">
-          <DemoSection title="Toast Variants">
-            <div className="flex flex-wrap gap-4">
-              {(['default', 'success', 'error', 'warning'] as Variant[]).map((variantKey) => (
-                <Button
-                  key={variantKey}
-                  variant="outline"
-                  onClick={() => showToast(variantKey as Variant)}
-                  className={cn(variantColors[variantKey])}
-                >
-                  {variantKey.charAt(0).toUpperCase() + variantKey.slice(1)} Toast
-                </Button>
-              ))}
-            </div>
-          </DemoSection>
+    <PageLayout isInSidePane={isInSidePane}>
+      {/* Header */}
+      {!isInSidePane && (
+        <PageHeader
+          title="Toaster"
+          description="A customizable toast component for notifications."
+        />
+      )}
+      <div className="space-y-6">
+        <DemoSection title="Toast Variants">
+          <div className="flex flex-wrap gap-4">
+            {(['default', 'success', 'error', 'warning'] as Variant[]).map((variantKey) => (
+              <Button
+                key={variantKey}
+                variant="outline"
+                onClick={() => showToast(variantKey as Variant)}
+                className={cn(variantColors[variantKey])}
+              >
+                {variantKey.charAt(0).toUpperCase() + variantKey.slice(1)} Toast
+              </Button>
+            ))}
+          </div>
+        </DemoSection>
 
-          <DemoSection title="Toast Positions">
-            <div className="flex flex-wrap gap-4">
-              {[
-                'top-left',
-                'top-center',
-                'top-right',
-                'bottom-left',
-                'bottom-center',
-                'bottom-right',
-              ].map((positionKey) => (
-                <Button
-                  key={positionKey}
-                  variant="outline"
-                  onClick={() =>
-                    showToast('default', positionKey as Position)
-                  }
-                  className="border-border text-foreground hover:bg-muted/10 dark:hover:bg-muted/20"
-                >
-                  {positionKey
-                    .replace('-', ' ')
-                    .replace(/\b\w/g, (char) => char.toUpperCase())}
-                </Button>
-              ))}
-            </div>
-          </DemoSection>
+        <DemoSection title="Toast Positions">
+          <div className="flex flex-wrap gap-4">
+            {[
+              'top-left',
+              'top-center',
+              'top-right',
+              'bottom-left',
+              'bottom-center',
+              'bottom-right',
+            ].map((positionKey) => (
+              <Button
+                key={positionKey}
+                variant="outline"
+                onClick={() =>
+                  showToast('default', positionKey as Position)
+                }
+                className="border-border text-foreground hover:bg-muted/10 dark:hover:bg-muted/20"
+              >
+                {positionKey
+                  .replace('-', ' ')
+                  .replace(/\b\w/g, (char) => char.toUpperCase())}
+              </Button>
+            ))}
+          </div>
+        </DemoSection>
 
-          <DemoSection title="Real-World Example">
-            <Button
-              variant="outline"
-              onClick={simulateApiCall}
-              className="border-border text-foreground hover:bg-muted/10 dark:hover:bg-muted/20"
-            >
-              Schedule Meeting
-            </Button>
-          </DemoSection>
-        </div>
+        <DemoSection title="Real-World Example">
+          <Button
+            variant="outline"
+            onClick={simulateApiCall}
+            className="border-border text-foreground hover:bg-muted/10 dark:hover:bg-muted/20"
+          >
+            Schedule Meeting
+          </Button>
+        </DemoSection>
       </div>
-    </div>
+    </PageLayout>
   );
 }

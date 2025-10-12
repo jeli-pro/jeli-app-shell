@@ -1,0 +1,133 @@
+uuid: c2584144-8027-4a6c-941d-9076f6424e4d
+projectId: jeli-app-shell
+createdAt: '2025-10-12T04:49:39.122Z'
+gitCommitMsg: >-
+  fix(animations): prevent top bar from appearing in fullscreen
+
+  The top bar was sometimes visible when entering fullscreen mode from
+  split-view. This was caused by the `useAutoAnimateTopBar` hook, which
+  continued to manage top bar visibility based on scroll events even within the
+  fullscreen state.
+
+  This commit updates the hook to disable its scroll-based logic when the
+  `bodyState` is `FULLSCREEN`, ensuring a consistent presentation with no top
+  bar, regardless of the previous view mode or user interaction.
+promptSummary: >-
+  The user wants to ensure that in fullscreen mode, the top bar and sidebar are
+  always hidden, even when transitioning from split-view mode.
+reasoning:
+  - >-
+    I've analyzed the issue regarding the top bar's behavior when entering
+    fullscreen mode, especially from the split-view state. The problem is that
+    the top bar, which should be hidden, sometimes appears.
+  - >-
+    My investigation points to the `useAutoAnimateTopBar` hook, which controls
+    the top bar's visibility based on scroll behavior. Currently, this hook does
+    not account for the `fullscreen` body state. When content is scrolled within
+    a fullscreen pane, this hook can inadvertently change the `isTopBarVisible`
+    state, causing the top bar to reappear or flicker as different animations
+    compete.
+  - >-
+    To resolve this, I will update `useAutoAnimateTopBar.ts` to disable its
+    logic when the application is in fullscreen mode. This ensures that entering
+    fullscreen provides a consistent presentation—no sidebar and no top bar—by
+    preventing scroll events from interfering with the fullscreen state's
+    defined appearance.
+  - '### Step-by-step reasoning:'
+  - >-
+    1.  **Identify the root cause**: The `useAutoAnimateTopBar` hook, which
+    manages top bar visibility on scroll, does not check if the application is
+    in `fullscreen` mode. This allows scroll events within a fullscreen pane to
+    trigger changes to `isTopBarVisible`, conflicting with the expected
+    fullscreen appearance.
+  - >-
+    2.  **Determine the fix**: The solution is to add a condition to the
+    `onScroll` callback within `useAutoAnimateTopBar.ts`. This condition will
+    make the hook ignore scroll events if `bodyState` is `FULLSCREEN`, just as
+    it already does for `SPLIT_VIEW`.
+  - >-
+    3.  **Apply the change**: I will modify a single line in
+    `src/hooks/useAutoAnimateTopBar.ts` to include `bodyState ===
+    BODY_STATES.FULLSCREEN` in the early-return condition. This makes the
+    fullscreen state override the scroll-based visibility logic, ensuring the
+    top bar remains hidden as intended.
+  - '---'
+  - '---'
+operations:
+  - type: write
+    path: src/hooks/useAutoAnimateTopBar.ts
+    content: >+
+      --- src/hooks/useAutoAnimateTopBar.ts
+
+      +++ src/hooks/useAutoAnimateTopBar.ts
+
+      @@ -8,7 +8,7 @@
+         const scrollTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+       
+         const onScroll = useCallback((event: React.UIEvent<HTMLDivElement>) => {
+      -    if (isPane || bodyState === BODY_STATES.SPLIT_VIEW) return;
+
+      +    if (isPane || bodyState === BODY_STATES.SPLIT_VIEW || bodyState ===
+      BODY_STATES.FULLSCREEN) return;
+       
+           // Clear previous timeout
+           if (scrollTimeout.current) {
+
+    patchStrategy: standard-diff
+snapshot:
+  src/hooks/useAutoAnimateTopBar.ts: |-
+    import { useRef, useCallback, useEffect } from 'react';
+    import { useAppShell } from '@/context/AppShellContext';
+    import { BODY_STATES } from '@/lib/utils';
+
+    export function useAutoAnimateTopBar(isPane = false) {
+      const { dispatch, bodyState } = useAppShell();
+      const lastScrollTop = useRef(0);
+      const scrollTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+      const onScroll = useCallback((event: React.UIEvent<HTMLDivElement>) => {
+        if (isPane || bodyState === BODY_STATES.SPLIT_VIEW) return;
+
+        // Clear previous timeout
+        if (scrollTimeout.current) {
+          clearTimeout(scrollTimeout.current);
+        }
+
+        const { scrollTop } = event.currentTarget;
+        
+        if (scrollTop > lastScrollTop.current && scrollTop > 200) {
+          dispatch({ type: 'SET_TOP_BAR_VISIBLE', payload: false });
+        } else if (scrollTop < lastScrollTop.current || scrollTop <= 0) {
+          dispatch({ type: 'SET_TOP_BAR_VISIBLE', payload: true });
+        }
+        
+        lastScrollTop.current = scrollTop <= 0 ? 0 : scrollTop;
+
+        // Set new timeout to show top bar when scrolling stops
+        scrollTimeout.current = setTimeout(() => {
+          // Don't hide, just ensure it's visible after scrolling stops
+          // and we are not at the top of the page.
+          if (scrollTop > 0) {
+            dispatch({ type: 'SET_TOP_BAR_VISIBLE', payload: true });
+          }
+        }, 250); // Adjust timeout as needed
+      }, [isPane, dispatch, bodyState]);
+
+      // Cleanup on unmount
+      useEffect(() => {
+        return () => {
+          if (scrollTimeout.current) {
+            clearTimeout(scrollTimeout.current);
+          }
+        };
+      }, []);
+
+      return { onScroll };
+    }
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 154

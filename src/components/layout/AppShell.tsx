@@ -44,12 +44,16 @@ export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalet
     peekSidebar,
     draggedPage,
     dragHoverTarget,
-    toggleSplitView,    bodyState,
+    toggleSplitView,
+    bodyState,
     sidePaneContent,
     closeSidePane,
     reducedMotion,
+    isTopBarVisible,
   } = useAppShell();
   
+  const isFullscreen = bodyState === BODY_STATES.FULLSCREEN;
+
   const { isDarkMode, toggleDarkMode, handleNavigation, activePage } = useAppStore();
   const appRef = useRef<HTMLDivElement>(null)
   const sidebarRef = useRef<HTMLDivElement>(null)
@@ -230,10 +234,13 @@ export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalet
         )}
 
         {/* Main area wrapper */}
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 flex flex-col overflow-hidden relative">
           <div
             ref={topBarContainerRef}
-            className="relative z-30"
+            className={cn(
+              "absolute top-0 left-0 right-0 z-30",
+              isFullscreen && "z-0"
+            )}
             onMouseEnter={() => { if (isSplitView) dispatch({ type: 'SET_HOVERED_PANE', payload: null }); }}
           >
             {topBarWithProps}
@@ -269,7 +276,7 @@ export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalet
               </div>
               {mainContentWithProps}
               {isSplitView && hoveredPane === 'left' && !draggedPage && (
-                <div className="absolute top-4 right-4 z-50">
+                <div className={cn("absolute right-4 z-50 transition-all", isTopBarVisible ? 'top-24' : 'top-4')}>
                   <ViewModeSwitcher pane="main" />
                 </div>
               )}
@@ -328,7 +335,7 @@ export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalet
                   </div>
                 )}
                 {hoveredPane === 'right' && !draggedPage && (
-                  <div className="absolute top-4 right-4 z-[70]">
+                  <div className={cn("absolute right-4 z-[70] transition-all", isTopBarVisible ? 'top-24' : 'top-4')}>
                     <ViewModeSwitcher pane="right" />
                   </div>
                 )}

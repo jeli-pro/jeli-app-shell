@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { useToast } from "@/components/ui/toast";
+import { PageLayout } from "@/components/shared/PageLayout";
 import { cn } from "@/lib/utils";
 import { 
   CheckCheck, 
@@ -331,16 +332,14 @@ export function NotificationsPage({ isInSidePane = false }: { isInSidePane?: boo
   );
 
   return (
-    <div className={cn("overflow-y-auto h-full")}>
-      <div className={cn("space-y-8", !isInSidePane ? "p-6 lg:px-12" : "p-6")}>
-        {!isInSidePane && (
-          <PageHeader
-            title="Notifications"
-            description="Manage your notifications and stay up-to-date."
-          />
-        )}
-        {content}
-      </div>
-    </div>
+    <PageLayout isInSidePane={isInSidePane}>
+      {!isInSidePane && (
+        <PageHeader
+          title="Notifications"
+          description="Manage your notifications and stay up-to-date."
+        />
+      )}
+      {content}
+    </PageLayout>
   );
 };

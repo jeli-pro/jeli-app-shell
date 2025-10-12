@@ -1,90 +1,111 @@
-uuid: 4de2557c-f377-4591-ab51-692797e8412e
+uuid: d8e56149-a35c-44da-b01b-c32ab5c5fca2
 projectId: jeli-app-shell
-createdAt: '2025-10-12T04:28:39.811Z'
+createdAt: '2025-10-12T04:38:48.471Z'
 gitCommitMsg: >-
-  refactor(layout): create immersive full-height content views
+  refactor: implement immersive scrolling layout
 
-  Refactored page layouts to provide a more immersive, full-height content
-  experience.
+  Refactored the AppShell layout to provide a more immersive user experience
+  where content scrolls underneath the top bar.
 
-  - Removed hardcoded padding from the `RightPane` component to allow content to
-  span the full height in overlay mode. - Updated `Dashboard`, `Settings`,
-  `Notifications`, and `ToasterDemo` pages to manage their own internal padding.
-  - Restructured main page views to have an unpadded, scrollable root with a
-  padded content wrapper, making the scrollbar align with the viewport edge and
-  enabling potential full-width content sections. - Fixed a double-padding issue
-  on the `NotificationsPage` card.
+  - Changed the TopBar to be absolutely positioned, floating it above the main
+  content area. - Removed the global `padding-top` animation from the
+  `MainContent` component, which was causing the content to be pushed down. -
+  Added dynamic, page-level padding to the content of `Dashboard`, `Settings`,
+  `Notifications`, and `ToasterDemo` pages. This padding is applied
+  conditionally based on the visibility of the top bar, ensuring content is not
+  obscured.
 promptSummary: >-
-  The user wants to remove the containers that block the main content view,
-  specifically in the upper header area and in the overlay pane view, to achieve
-  a more full-height, immersive experience.
+  The user wanted a more immersive, full-height content experience, feeling that
+  a container was blocking the view near the top bar.
 reasoning:
   - >-
-    Based on your request to make the content views more immersive, especially
-    in the overlay side pane and the main content area, I'll make the following
-    changes:
+    Based on your request for a more immersive, full-height content experience,
+    I've adjusted the layout so that the page content scrolls underneath the top
+    bar instead of being pushed down by it.
+  - 'Here''s a breakdown of the changes:'
   - >-
-    1.  **Right Pane (Overlay View)**: I'll remove the hardcoded padding from
-    the `RightPane` component. This will make the content area span the full
-    height of the pane, achieving the "immersive" feel you described.
+    1.  **Top Bar Positioning**: I've changed the `TopBar` to be absolutely
+    positioned, so it "floats" above the main content area. This allows the main
+    content to occupy the full height of its container.
   - >-
-    2.  **Page Content Padding**: To compensate for removing the padding from
-    `RightPane`, I'll adjust the individual page components (`Dashboard`,
-    `Settings`, `Notifications`, `Toaster Demo`) to manage their own padding.
-    This ensures they look correct in both the main view and the now un-padded
-    side pane.
+    2.  **Animation Hook Update**: The animation that previously added
+    `padding-top` to the entire `MainContent` component has been removed. This
+    was the primary cause of the "blocked" feeling you described.
   - >-
-    3.  **Main Content Immersiveness**: I'll apply the same structural change to
-    all main page components. I'll make the root scrollable container full-width
-    and wrap the actual content in a padded container. This makes the scrollbar
-    sit at the very edge of the view and allows for potential full-width content
-    sections in the future, while keeping the primary content neatly padded.
+    3.  **Page-Level Padding**: To prevent page content from being hidden behind
+    the now-floating top bar, I've added dynamic padding to the scrollable area
+    within each page (`Dashboard`, `Settings`, `Notifications`, `ToasterDemo`).
+    This padding is smoothly applied only when the top bar is visible, ensuring
+    content is always accessible while maintaining the immersive feel.
   - >-
-    4.  **Consistency Fix**: I'll correct a minor double-padding issue in the
-    `NotificationsPage` to ensure consistent layout.
+    These changes result in a more modern, "immersive" layout where the content
+    area extends to the top of the viewport, with the top bar elegantly
+    overlaying it.
+  - '### `src/components/layout/AppShell.tsx`'
   - >-
-    These changes will result in a cleaner, more immersive layout that directly
-    addresses the "blocking container" issue you pointed out.
-  - '### Right Pane'
+    I've made the top bar container `absolute` and its parent `relative` to
+    allow the main content area to fill the full height of the viewport.
+  - '### `src/hooks/useAppShellAnimations.hook.ts`'
   - >-
-    I'll start by removing the padding from the `RightPane` component when it's
-    in the side pane (overlay) mode. This makes the content area full-height.
-  - '### Update Page Components for New Layout'
+    I've removed the `paddingTop` animation from `mainContentRef`, as this is
+    now handled within each page for a more fine-grained and immersive layout.
+  - '### `src/pages/Dashboard/index.tsx`'
   - >-
-    Now, I'll update the main pages to adapt to the new immersive structure and
-    to correctly apply padding when used within the updated `RightPane`.
-  - 'First, for the Dashboard page:'
-  - >-
-    Next, the Notifications page. I'll also fix the double padding on the card
-    here.
-  - 'Then, the Settings page:'
-  - 'And finally, the Toaster Demo page:'
-  - '### Update App Composition'
-  - >-
-    To ensure `SettingsContent` has padding when rendered directly in the side
-    pane, I'll wrap it in a padded `div` inside the main `App.tsx` component.
-  - >-
-    These changes should give you the more immersive, full-height content
-    experience you're looking for.
+    I've updated the Dashboard page to dynamically add padding to its content,
+    ensuring it doesn't get obscured by the floating top bar.
+  - '### `src/pages/Notifications/index.tsx`'
+  - Similarly, I've applied the dynamic padding logic to the Notifications page.
+  - '### `src/pages/Settings/index.tsx`'
+  - The Settings page also receives the dynamic padding update.
+  - '### `src/pages/ToasterDemo/index.tsx`'
+  - Finally, the Toaster Demo page is updated with the new padding logic.
 operations:
   - type: write
-    path: src/components/layout/RightPane.tsx
+    path: src/components/layout/AppShell.tsx
+    content: |+
+      --- src/components/layout/AppShell.tsx
+      +++ src/components/layout/AppShell.tsx
+      @@ -213,11 +213,11 @@
+               )}
+       
+               {/* Main area wrapper */}
+      -        <div className="flex-1 flex flex-col overflow-hidden">
+      +        <div className="flex-1 flex flex-col overflow-hidden relative">
+                 <div
+                   ref={topBarContainerRef}
+      -            className="relative z-30"
+      +            className="absolute top-0 left-0 right-0 z-30"
+                   onMouseEnter={() => { if (isSplitView) dispatch({ type: 'SET_HOVERED_PANE', payload: null }); }}
+                 >
+                   {topBarWithProps}
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/hooks/useAppShellAnimations.hook.ts
     content: >+
-      --- src/components/layout/RightPane.tsx
+      --- src/hooks/useAppShellAnimations.hook.ts
 
-      +++ src/components/layout/RightPane.tsx
+      +++ src/hooks/useAppShellAnimations.hook.ts
 
-      @@ -47,7 +47,7 @@
-                 {header}
-               </div>
-             )}
-      -      <div className={cn("flex-1 overflow-y-auto", bodyState ===
-      BODY_STATES.SIDE_PANE && "px-8 py-6")}>
+      @@ -81,12 +81,6 @@
+             ease,
+           });
+       
+      -    gsap.to(mainContentRef.current, {
 
-      +      <div className={cn("flex-1 overflow-y-auto")}>
-               {children}
-             </div>
-           </aside>
+      -      paddingTop: isFullscreen ? '0rem' : isTopBarVisible ? '5rem' :
+      '0rem', // h-20 is 5rem
+
+      -      duration: animationDuration,
+
+      -      ease,
+
+      -    });
+
+      -
+           gsap.to(topBarContainerRef.current, {
+             y: (isFullscreen || !isTopBarVisible) ? '-100%' : '0%',
+             duration: animationDuration,
 
     patchStrategy: standard-diff
   - type: write
@@ -94,63 +115,43 @@ operations:
 
       +++ src/pages/Dashboard/index.tsx
 
-      @@ -103,17 +103,19 @@
-           return (
-               <div 
-                 ref={contentRef}
-      -          className={cn("h-full overflow-y-auto space-y-8", !isInSidePane
-      && "p-6 lg:px-12")}
+      @@ -12,6 +12,7 @@
+       } from 'lucide-react'
+       import { cn } from '@/lib/utils'
+       import { DemoContent } from './DemoContent'
+      +import { useAppShell } from '@/context/AppShellContext'
+       import { useDashboardAnimations } from './hooks/useDashboardAnimations.hook'
+       import { useDashboardScroll } from './hooks/useDashboardScroll.hook'
+       import { PageHeader } from '@/components/shared/PageHeader';
+      @@ -125,6 +126,8 @@
+           const contentRef = useRef<HTMLDivElement>(null)
+           const cardsRef = useRef<(HTMLDivElement | null)[]>([])
+           const { showScrollToBottom, handleScroll, scrollToBottom } = useDashboardScroll(contentRef, isInSidePane);
+      +    const { isTopBarVisible, bodyState } = useAppShell();
 
-      +          className={cn("h-full overflow-y-auto")}
+      +    const isFullscreen = bodyState === 'fullscreen';
+       
+           useDashboardAnimations(contentRef, cardsRef);
+       
+      @@ -151,9 +154,13 @@
+                 className={cn("h-full overflow-y-auto")}
                  onScroll={handleScroll}
                >
-      -          {/* Header */}
-
-      -          {!isInSidePane && (
-
-      -            <PageHeader
-
-      -              title="Dashboard"
-
-      -              description="Welcome to the Jeli App Shell demo! Explore
-      all the features and customization options."
-
-      -            />
-
-      -          )}
-
-      -            {/* Stats Cards */}
-
-      +          <div className={cn("space-y-8", !isInSidePane ? "p-6 lg:px-12"
+      -          <div className={cn("space-y-8", !isInSidePane ? "p-6 lg:px-12"
       : "p-6")}>
 
-      +            {/* Header */}
+      +          <div className={cn(
 
-      +            {!isInSidePane && (
+      +            "space-y-8 transition-all duration-300",
 
-      +              <PageHeader
+      +            !isInSidePane ? "px-6 lg:px-12 pb-6" : "px-6 pb-6",
 
-      +                title="Dashboard"
+      +            isTopBarVisible && !isFullscreen ? "pt-24" : "pt-6"
 
-      +                description="Welcome to the Jeli App Shell demo! Explore
-      all the features and customization options."
-
-      +              />
-
-      +            )}
-
-      +              {/* Stats Cards */}
-                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                     {statsCards.map((stat, index) => (
-                       <Card
-      @@ -254,6 +256,7 @@
-                       </div>
-                     </Card>
-                   </div>
-      +          </div>
-                 </div>
-                 {showScrollToBottom && (
-                   <button
+      +          )}>
+                   {/* Header */}
+                   {!isInSidePane && (
+                     <PageHeader
 
     patchStrategy: standard-diff
   - type: write
@@ -160,112 +161,75 @@ operations:
 
       +++ src/pages/Notifications/index.tsx
 
-      @@ -257,7 +257,7 @@
-         const filteredNotifications = getFilteredNotifications();
-       
-         const content = (
-      -    <Card className={cn("flex w-full flex-col shadow-none", isInSidePane
-      ? "border-none" : "p-6 lg:p-8")}>
+      @@ -4,6 +4,7 @@
+       import { Card, CardContent, CardHeader } from "@/components/ui/card";
+       import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+       import { PageHeader } from "@/components/shared/PageHeader";
+      +import { useAppShell } from "@/context/AppShellContext";
+       import { useToast } from "@/components/ui/toast";
+       import { cn } from "@/lib/utils";
+       import { 
+      @@ -293,6 +294,8 @@
+         const [notifications, setNotifications] = React.useState<Notification[]>(initialNotifications);
+         const [activeTab, setActiveTab] = React.useState<string>("all");
+         const { show: showToast } = useToast();
+      +  const { isTopBarVisible, bodyState } = useAppShell();
 
-      +    <Card className={cn("flex w-full flex-col shadow-none", isInSidePane
-      ? "border-none" : "")}>
-             <CardHeader className="p-0">
-               <div className="flex items-center justify-between">
-                 <h3 className="text-lg font-semibold">
-      @@ -290,14 +290,16 @@
-         );
+      +  const isFullscreen = bodyState === 'fullscreen';
+       
+         const handleMarkAsRead = (id: number) => {
+           setNotifications(prev =>
+      @@ -377,8 +380,12 @@
        
          return (
-      -    <div className={cn("overflow-y-auto", !isInSidePane ? "h-full p-6
-      lg:px-12 space-y-8" : "h-full")}>
-
-      -      {!isInSidePane && (
-
-      -        <PageHeader
-
-      -          title="Notifications"
-
-      -          description="Manage your notifications and stay up-to-date."
-
-      -        />
-
-      -      )}
-
-      -      {content}
-
-      +    <div className={cn("overflow-y-auto h-full")}>
-
-      +      <div className={cn("space-y-8", !isInSidePane ? "p-6 lg:px-12" :
+           <div className={cn("overflow-y-auto h-full")}>
+      -      <div className={cn("space-y-8", !isInSidePane ? "p-6 lg:px-12" :
       "p-6")}>
 
-      +        {!isInSidePane && (
+      +      <div className={cn(
 
-      +          <PageHeader
+      +        "space-y-8 transition-all duration-300", 
 
-      +            title="Notifications"
+      +        !isInSidePane ? "px-6 lg:px-12 pb-6" : "px-6 pb-6",
 
-      +            description="Manage your notifications and stay up-to-date."
+      +        isTopBarVisible && !isFullscreen ? "pt-24" : "pt-6"
 
-      +          />
-
-      +        )}
-
-      +        {content}
-
-      +      </div>
-           </div>
-         );
-       };
+      +        )}>
+               {!isInSidePane && (
+                 <PageHeader
+                   title="Notifications"
 
     patchStrategy: standard-diff
   - type: write
     path: src/pages/Settings/index.tsx
-    content: >+
+    content: |+
       --- src/pages/Settings/index.tsx
-
       +++ src/pages/Settings/index.tsx
-
-      @@ -5,14 +5,16 @@
+      @@ -1,15 +1,22 @@
+       import { SettingsContent } from '@/features/settings/SettingsContent';
+       import { useAutoAnimateTopBar } from '@/hooks/useAutoAnimateTopBar';
+       import { PageHeader } from '@/components/shared/PageHeader';
+      +import { useAppShell } from '@/context/AppShellContext';
+      +import { cn } from '@/lib/utils';
+       
+       export function SettingsPage() {
+         const { onScroll } = useAutoAnimateTopBar();
+      +  const { isTopBarVisible, bodyState } = useAppShell();
+      +  const isFullscreen = bodyState === 'fullscreen';
        
          return (
            <div
-      -      className="h-full overflow-y-auto p-6 lg:px-12 space-y-8"
-
-      +      className="h-full overflow-y-auto"
+             className="h-full overflow-y-auto"
              onScroll={onScroll}
            >
-      -      {/* Header */}
-
-      -      <PageHeader
-
-      -        title="Settings"
-
-      -        description="Customize your experience. Changes are saved
-      automatically."
-
-      -      />
-
-      -      <SettingsContent />
-
-      +      <div className="p-6 lg:px-12 space-y-8">
-
-      +        {/* Header */}
-
-      +        <PageHeader
-
-      +          title="Settings"
-
-      +          description="Customize your experience. Changes are saved
-      automatically."
-
-      +        />
-
-      +        <SettingsContent />
-
-      +      </div>
-           </div>
-         )
-       }
+      -      <div className="p-6 lg:px-12 space-y-8">
+      +      <div className={cn(
+      +        "px-6 lg:px-12 pb-6 space-y-8 transition-all duration-300",
+      +        isTopBarVisible && !isFullscreen ? "pt-24" : "pt-6"
+      +        )}>
+               {/* Header */}
+               <PageHeader
+                 title="Settings"
 
     patchStrategy: standard-diff
   - type: write
@@ -275,167 +239,163 @@ operations:
 
       +++ src/pages/ToasterDemo/index.tsx
 
-      @@ -95,17 +95,19 @@
-         };
+      @@ -1,5 +1,6 @@
+       import { Button } from '@/components/ui/button';
+       import { useToast } from '@/components/ui/toast';
+      +import { useAppShell } from '@/context/AppShellContext';
+       import { PageHeader } from '@/components/shared/PageHeader';
+       import { cn } from '@/lib/utils';
+       
+      @@ -32,6 +33,8 @@
+       
+       export function ToasterDemo({ isInSidePane = false }: { isInSidePane?: boolean }) {
+         const toast = useToast();
+      +  const { isTopBarVisible, bodyState } = useAppShell();
+
+      +  const isFullscreen = bodyState === 'fullscreen';
+       
+         const showToast = (variant: Variant, position: Position = 'bottom-right') => {
+           toast.show({
+      @@ -82,8 +85,12 @@
        
          return (
-      -    <div className={cn("overflow-y-auto space-y-8", !isInSidePane ?
-      "h-full p-6 lg:px-12" : "h-full")}>
-
-      -      {/* Header */}
-
-      -      {!isInSidePane && (
-
-      -        <PageHeader
-
-      -          title="Toaster"
-
-      -          description="A customizable toast component for notifications."
-
-      -        />
-
-      -      )}
-
-      -      <div className="space-y-6">
-
-      +    <div className={cn("overflow-y-auto h-full")}>
-
-      +      <div className={cn("space-y-8", !isInSidePane ? "p-6 lg:px-12" :
+           <div className={cn("overflow-y-auto h-full")}>
+      -      <div className={cn("space-y-8", !isInSidePane ? "p-6 lg:px-12" :
       "p-6")}>
 
-      +        {/* Header */}
+      +      <div className={cn(
 
-      +        {!isInSidePane && (
+      +        "space-y-8 transition-all duration-300",
 
-      +          <PageHeader
+      +        !isInSidePane ? "px-6 lg:px-12 pb-6" : "px-6 pb-6",
 
-      +            title="Toaster"
+      +        isTopBarVisible && !isFullscreen ? "pt-24" : "pt-6"
 
-      +            description="A customizable toast component for
-      notifications."
-
-      +          />
-
-      +        )}
-               <div className="space-y-6">
-                 <DemoSection title="Toast Variants">
-                   <div className="flex flex-wrap gap-4">
-                     {(['default', 'success', 'error', 'warning'] as Variant[]).map((variantKey) => (
-      @@ -148,7 +150,7 @@
-                   </Button>
-                 </DemoSection>
-               </div>
-      -      </div>
-
-      +      </div>
-           </div>
-         );
-       }
-
-    patchStrategy: standard-diff
-  - type: write
-    path: src/App.tsx
-    content: >+
-      --- src/App.tsx
-
-      +++ src/App.tsx
-
-      @@ -124,7 +124,7 @@
-       
-         const contentMap = {
-           main: { title: 'Dashboard', icon: LayoutDashboard, page: 'dashboard', content: <DashboardContent isInSidePane={isOverlaySidePane} /> },
-      -    settings: { title: 'Settings', icon: Settings, page: 'settings',
-      content: isOverlaySidePane ? <SettingsContent /> : <SettingsPage /> },
-
-      +    settings: { title: 'Settings', icon: Settings, page: 'settings',
-      content: isOverlaySidePane ? <div className="p-6"><SettingsContent
-      /></div> : <SettingsPage /> },
-           toaster: { title: 'Toaster Demo', icon: Component, page: 'toaster', content: <ToasterDemo isInSidePane={isOverlaySidePane} /> },
-           notifications: { title: 'Notifications', icon: Bell, page: 'notifications', content: <NotificationsPage isInSidePane={isOverlaySidePane} /> },
-           details: { title: 'Details Panel', icon: SlidersHorizontal, content: <div className="p-6"><p className="text-muted-foreground">This is the side pane. It can be used to display contextual information, forms, or actions related to the main content.</p></div> }
+      +      )}>
+               {/* Header */}
+               {!isInSidePane && (
+                 <PageHeader
 
     patchStrategy: standard-diff
 snapshot:
-  src/components/layout/RightPane.tsx: >-
-    import { forwardRef, type ReactNode } from 'react'
+  src/hooks/useAppShellAnimations.hook.ts: |-
+    import { useEffect } from 'react';
+    import { gsap } from 'gsap';
+    import { useAppShell } from '@/context/AppShellContext';
+    import { SIDEBAR_STATES, BODY_STATES } from '@/lib/utils';
 
-    import { ChevronRight, X } from 'lucide-react'
+    export function useSidebarAnimations(
+      sidebarRef: React.RefObject<HTMLDivElement>,
+      resizeHandleRef: React.RefObject<HTMLDivElement>
+    ) {
+      const { sidebarState, sidebarWidth, bodyState, reducedMotion } = useAppShell();
+      const animationDuration = reducedMotion ? 0.1 : 0.4;
 
-    import { cn, BODY_STATES } from '@/lib/utils'
+      useEffect(() => {
+        if (!sidebarRef.current || !resizeHandleRef.current) return;
 
-    import { useAppShell } from '@/context/AppShellContext'
+        const sidebar = sidebarRef.current;
+        const handle = resizeHandleRef.current;
+        
+        let targetWidth = 0;
+        let targetOpacity = 1;
 
+        if (bodyState === BODY_STATES.FULLSCREEN) {
+          targetWidth = 0;
+          targetOpacity = 0;
+        } else {
+          switch (sidebarState) {
+            case SIDEBAR_STATES.HIDDEN:
+              targetWidth = 0;
+              targetOpacity = 0;
+              break;
+            case SIDEBAR_STATES.COLLAPSED:
+              targetWidth = 64;
+              targetOpacity = 1;
+              break;
+            case SIDEBAR_STATES.EXPANDED:
+              targetWidth = sidebarWidth;
+              targetOpacity = 1;
+              break;
+            case SIDEBAR_STATES.PEEK:
+              targetWidth = sidebarWidth * 0.8;
+              targetOpacity = 0.95;
+              break;
+          }
+        }
 
-    interface RightPaneProps {
-      children?: ReactNode
-      header?: ReactNode
-      className?: string
+        const tl = gsap.timeline({ ease: "power3.out" });
+        
+        tl.to(sidebar, {
+          width: targetWidth,
+          opacity: targetOpacity,
+          duration: animationDuration,
+        });
+        tl.to(handle, {
+          left: targetWidth,
+          duration: animationDuration,
+        }, 0);
+
+      }, [sidebarState, sidebarWidth, bodyState, animationDuration, sidebarRef, resizeHandleRef]);
     }
 
+    export function useBodyStateAnimations(
+      appRef: React.RefObject<HTMLDivElement>,
+      mainContentRef: React.RefObject<HTMLDivElement>,
+      rightPaneRef: React.RefObject<HTMLDivElement>,
+      topBarContainerRef: React.RefObject<HTMLDivElement>,
+      mainAreaRef: React.RefObject<HTMLDivElement>
+    ) {
+      const { bodyState, reducedMotion, rightPaneWidth, isTopBarVisible, closeSidePane, fullscreenTarget } = useAppShell();
+      const animationDuration = reducedMotion ? 0.1 : 0.4;
 
-    export const RightPane = forwardRef<HTMLDivElement, RightPaneProps>(({
-    children, header, className }, ref) => {
-      const { closeSidePane, dispatch, bodyState, fullscreenTarget, toggleFullscreen } = useAppShell();
-      const isSplitView = bodyState === BODY_STATES.SPLIT_VIEW;
-      const isFullscreen = bodyState === BODY_STATES.FULLSCREEN;
+      useEffect(() => {
+        if (!mainContentRef.current || !rightPaneRef.current || !topBarContainerRef.current || !mainAreaRef.current) return;
 
-      if (isFullscreen && fullscreenTarget !== 'right') {
-        return null;
-      }
+        const ease = "power3.out";
+        const isFullscreen = bodyState === BODY_STATES.FULLSCREEN;
+        const isSidePane = bodyState === BODY_STATES.SIDE_PANE;
+        const isSplitView = bodyState === BODY_STATES.SPLIT_VIEW;
 
-      return (
-        <aside
-          ref={ref}
-          className={cn(
-            "border-l border-border flex flex-col h-full overflow-hidden",
-            isSplitView && "relative bg-background",
-            !isSplitView && !isFullscreen && "fixed top-0 right-0 z-[60] bg-card", // side pane overlay
-            isFullscreen && fullscreenTarget === 'right' && "fixed inset-0 z-[60] bg-card", // fullscreen
-            className,
-          )}
-        >
-          {isFullscreen && fullscreenTarget === 'right' && (
-            <button
-              onClick={() => toggleFullscreen()}
-              className="fixed top-6 right-6 lg:right-12 z-[100] h-12 w-12 flex items-center justify-center rounded-full bg-card/50 backdrop-blur-sm hover:bg-card/75 transition-colors group"
-              title="Exit Fullscreen"
-            >
-              <X className="w-6 h-6 group-hover:scale-110 group-hover:rotate-90 transition-all duration-300" />
-            </button>
-          )}
-          {bodyState !== BODY_STATES.SPLIT_VIEW && !isFullscreen && (
-            <button
-              onClick={closeSidePane}
-              className="absolute top-1/2 -left-px -translate-y-1/2 -translate-x-full w-8 h-16 bg-card border border-r-0 border-border rounded-l-lg flex items-center justify-center hover:bg-accent transition-colors group z-10"
-              title="Close pane"
-            >
-              <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-foreground transition-colors" />
-            </button>
-          )}
-          <div 
-            className={cn(
-              "absolute top-0 left-0 w-2 h-full bg-transparent hover:bg-primary/20 cursor-col-resize z-50 transition-colors duration-200 group -translate-x-1/2"
-            )}
-            onMouseDown={(e) => {
-              e.preventDefault()
-              dispatch({ type: 'SET_IS_RESIZING_RIGHT_PANE', payload: true });
-            }}
-          >
-            <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200 mx-auto" />
-          </div>
-          {header && (
-            <div className="flex items-center justify-between p-4 border-b border-border h-20 flex-shrink-0 pl-6">
-              {header}
-            </div>
-          )}
-          <div className={cn("flex-1 overflow-y-auto", bodyState === BODY_STATES.SIDE_PANE && "px-8 py-6")}>
-            {children}
-          </div>
-        </aside>
-      )
-    })
+        // Right pane animation
+        gsap.to(rightPaneRef.current, {
+          width: isFullscreen 
+            ? (fullscreenTarget === 'right' ? '100%' : 0) 
+            : (isSidePane || isSplitView ? rightPaneWidth : 0),
+          x: (isSidePane || isSplitView || (isFullscreen && fullscreenTarget === 'right')) ? 0 : rightPaneWidth + 5, // +5 to hide border
+          duration: animationDuration,
+          ease,
+        });
 
-    RightPane.displayName = "RightPane"
+        gsap.to(mainContentRef.current, {
+          paddingTop: isFullscreen ? '0rem' : isTopBarVisible ? '5rem' : '0rem', // h-20 is 5rem
+          duration: animationDuration,
+          ease,
+        });
+
+        gsap.to(topBarContainerRef.current, {
+          y: (isFullscreen || !isTopBarVisible) ? '-100%' : '0%',
+          duration: animationDuration,
+          ease,
+        });
+        
+        // Add backdrop for side pane
+        const backdrop = document.querySelector('.app-backdrop');
+        if (isSidePane) { // This is correct because isSidePane is false when bodyState is split_view
+          if (!backdrop) {
+            const el = document.createElement('div');
+            el.className = 'app-backdrop fixed inset-0 bg-black/30 z-[55]';
+            appRef.current?.appendChild(el);
+            gsap.fromTo(el, { opacity: 0 }, { opacity: 1, duration: animationDuration });
+            el.onclick = () => closeSidePane();
+          }
+        } else {
+          if (backdrop) {
+            gsap.to(backdrop, { opacity: 0, duration: animationDuration, onComplete: () => backdrop.remove() });
+          }
+        }
+      }, [bodyState, animationDuration, rightPaneWidth, closeSidePane, isTopBarVisible, appRef, mainContentRef, rightPaneRef, topBarContainerRef, mainAreaRef, fullscreenTarget]);
+    }
   src/pages/Dashboard/index.tsx: >-
     import { useRef } from 'react'
 
@@ -586,17 +546,18 @@ snapshot:
         return (
             <div 
               ref={contentRef}
-              className={cn("h-full overflow-y-auto space-y-8", !isInSidePane && "p-6 lg:px-12")}
+              className={cn("h-full overflow-y-auto")}
               onScroll={handleScroll}
             >
-              {/* Header */}
-              {!isInSidePane && (
-                <PageHeader
-                  title="Dashboard"
-                  description="Welcome to the Jeli App Shell demo! Explore all the features and customization options."
-                />
-              )}
-                {/* Stats Cards */}
+              <div className={cn("space-y-8", !isInSidePane ? "p-6 lg:px-12" : "p-6")}>
+                {/* Header */}
+                {!isInSidePane && (
+                  <PageHeader
+                    title="Dashboard"
+                    description="Welcome to the Jeli App Shell demo! Explore all the features and customization options."
+                  />
+                )}
+                  {/* Stats Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                   {statsCards.map((stat, index) => (
                     <Card
@@ -735,6 +696,7 @@ snapshot:
                     </div>
                   </Card>
                 </div>
+              </div>
               </div>
               {showScrollToBottom && (
                 <button
@@ -1050,7 +1012,7 @@ snapshot:
       const filteredNotifications = getFilteredNotifications();
 
       const content = (
-        <Card className={cn("flex w-full flex-col shadow-none", isInSidePane ? "border-none" : "p-6 lg:p-8")}>
+        <Card className={cn("flex w-full flex-col shadow-none", isInSidePane ? "border-none" : "")}>
           <CardHeader className="p-0">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold">
@@ -1101,17 +1063,382 @@ snapshot:
       );
 
       return (
-        <div className={cn("overflow-y-auto", !isInSidePane ? "h-full p-6 lg:px-12 space-y-8" : "h-full")}>
-          {!isInSidePane && (
-            <PageHeader
-              title="Notifications"
-              description="Manage your notifications and stay up-to-date."
-            />
-          )}
-          {content}
+        <div className={cn("overflow-y-auto h-full")}>
+          <div className={cn("space-y-8", !isInSidePane ? "p-6 lg:px-12" : "p-6")}>
+            {!isInSidePane && (
+              <PageHeader
+                title="Notifications"
+                description="Manage your notifications and stay up-to-date."
+              />
+            )}
+            {content}
+          </div>
         </div>
       );
     };
+  src/components/layout/AppShell.tsx: >-
+    import React, { useRef, type ReactElement, useCallback, useEffect,
+    useLayoutEffect } from 'react'
+
+    import { cn } from '@/lib/utils'
+
+    import { gsap } from 'gsap';
+
+    import { CommandPalette } from '@/components/global/CommandPalette';
+
+    import { useAppStore } from '@/store/appStore';
+
+    import { useAppShell } from '@/context/AppShellContext';
+
+    import { SIDEBAR_STATES, BODY_STATES } from '@/lib/utils'
+
+    import { useResizableSidebar, useResizableRightPane } from
+    '@/hooks/useResizablePanes.hook'
+
+    import { useSidebarAnimations, useBodyStateAnimations } from
+    '@/hooks/useAppShellAnimations.hook'
+
+    import { ViewModeSwitcher } from './ViewModeSwitcher';
+
+
+    interface AppShellProps {
+      sidebar: ReactElement;
+      topBar: ReactElement;
+      mainContent: ReactElement;
+      rightPane: ReactElement;
+      commandPalette?: ReactElement;
+    }
+
+
+    const pageToPaneMap: Record<string, 'main' | 'settings' | 'toaster' |
+    'notifications'> = {
+      dashboard: 'main',
+      settings: 'settings',
+      toaster: 'toaster',
+      notifications: 'notifications',
+    };
+
+
+    // Helper hook to get the previous value of a prop or state
+
+    function usePrevious<T>(value: T): T | undefined {
+      const ref = useRef<T>();
+      useEffect(() => {
+        ref.current = value;
+      }, [value]);
+      return ref.current;
+    }
+
+
+
+    export function AppShell({ sidebar, topBar, mainContent, rightPane,
+    commandPalette }: AppShellProps) {
+      const {
+        sidebarState,
+        dispatch,
+        autoExpandSidebar,
+        toggleSidebar,
+        hoveredPane,
+        peekSidebar,
+        draggedPage,
+        dragHoverTarget,
+        toggleSplitView,    bodyState,
+        sidePaneContent,
+        closeSidePane,
+        reducedMotion,
+      } = useAppShell();
+      
+      const { isDarkMode, toggleDarkMode, handleNavigation, activePage } = useAppStore();
+      const appRef = useRef<HTMLDivElement>(null)
+      const sidebarRef = useRef<HTMLDivElement>(null)
+      const mainContentRef = useRef<HTMLDivElement>(null)
+      const rightPaneRef = useRef<HTMLDivElement>(null)
+      const resizeHandleRef = useRef<HTMLDivElement>(null)
+      const topBarContainerRef = useRef<HTMLDivElement>(null)
+      const mainAreaRef = useRef<HTMLDivElement>(null)
+
+      const prevActivePage = usePrevious(activePage);
+      const prevSidePaneContent = usePrevious(sidePaneContent);
+
+      const isSplitView = bodyState === BODY_STATES.SPLIT_VIEW;
+
+      // Custom hooks for logic
+      useResizableSidebar(sidebarRef, resizeHandleRef);
+      useResizableRightPane();
+      useSidebarAnimations(sidebarRef, resizeHandleRef);
+      useBodyStateAnimations(appRef, mainContentRef, rightPaneRef, topBarContainerRef, mainAreaRef);
+      
+      // Animation for pane swapping
+      useLayoutEffect(() => {
+        if (reducedMotion || bodyState !== BODY_STATES.SPLIT_VIEW || !prevActivePage || !prevSidePaneContent) {
+          return;
+        }
+
+        const pageForPrevSidePane = Object.keys(pageToPaneMap).find(
+          key => pageToPaneMap[key as keyof typeof pageToPaneMap] === prevSidePaneContent
+        );
+
+        // Check if a swap occurred by comparing current state with previous state
+        if (activePage === pageForPrevSidePane && sidePaneContent === pageToPaneMap[prevActivePage as keyof typeof pageToPaneMap]) {
+          const mainEl = mainAreaRef.current;
+          const rightEl = rightPaneRef.current;
+
+          if (mainEl && rightEl) {
+            const mainWidth = mainEl.offsetWidth;
+            const rightWidth = rightEl.offsetWidth;
+
+            const tl = gsap.timeline();
+            
+            // Animate main content FROM where right pane was TO its new place
+            tl.from(mainEl, {
+              x: rightWidth, duration: 0.4, ease: 'power3.inOut'
+            });
+
+            // Animate right pane FROM where main content was TO its new place
+            tl.from(rightEl, {
+              x: -mainWidth, duration: 0.4, ease: 'power3.inOut'
+            }, 0); // Start at the same time
+          }
+        }
+      }, [activePage, sidePaneContent, bodyState, prevActivePage, prevSidePaneContent, reducedMotion]);
+      
+      const sidebarWithProps = React.cloneElement(sidebar, { 
+        ref: sidebarRef,
+        onMouseEnter: () => {
+          if (autoExpandSidebar && sidebarState === SIDEBAR_STATES.COLLAPSED) {
+            peekSidebar()
+          }
+        },
+        onMouseLeave: () => {
+          if (autoExpandSidebar && sidebarState === SIDEBAR_STATES.PEEK) {
+            dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.COLLAPSED });
+          }
+        }
+      });
+
+      const topBarWithProps = React.cloneElement(topBar, {
+        onToggleSidebar: toggleSidebar,
+        onToggleDarkMode: toggleDarkMode,
+      });
+
+      const mainContentWithProps = React.cloneElement(mainContent, {
+        ref: mainContentRef,
+      });
+
+      const rightPaneWithProps = React.cloneElement(rightPane, { ref: rightPaneRef });
+
+      // Drag and drop handlers for docking
+      const handleDragOverLeft = useCallback((e: React.DragEvent) => {
+        if (!draggedPage) return;
+        e.preventDefault();
+        if (dragHoverTarget !== 'left') {
+          dispatch({ type: 'SET_DRAG_HOVER_TARGET', payload: 'left' });
+        }
+      }, [draggedPage, dragHoverTarget, dispatch]);
+
+      const handleDropLeft = useCallback(() => {
+        if (!draggedPage) return;
+        
+        const originalActivePage = activePage;
+        const originalActivePagePaneContent = pageToPaneMap[originalActivePage];
+
+        // If we drop the page that's already in the side pane, just make it the main view.
+        const paneContentOfDraggedPage = pageToPaneMap[draggedPage];
+        if (paneContentOfDraggedPage === sidePaneContent && (bodyState === BODY_STATES.SIDE_PANE || bodyState === BODY_STATES.SPLIT_VIEW)) {
+          closeSidePane();
+          handleNavigation(draggedPage);
+        } 
+        // New context-aware logic: if we are in normal view and drop a NEW page on the left
+        else if (bodyState === BODY_STATES.NORMAL && draggedPage !== originalActivePage) {
+            if (originalActivePagePaneContent) {
+                // 1. Set the right pane content to be the original page
+                dispatch({ type: 'SET_SIDE_PANE_CONTENT', payload: originalActivePagePaneContent });
+                // 2. Set the main page to be the new dragged page
+                handleNavigation(draggedPage);
+                // 3. Switch to split view
+                dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.SPLIT_VIEW });
+            } else {
+                // Fallback for pages that can't be in a pane
+                handleNavigation(draggedPage);
+            }
+        } else { // Default behavior: just make the dropped page the main one
+          handleNavigation(draggedPage);
+        }
+        
+        dispatch({ type: 'SET_DRAGGED_PAGE', payload: null });
+        dispatch({ type: 'SET_DRAG_HOVER_TARGET', payload: null });
+      }, [draggedPage, activePage, bodyState, sidePaneContent, handleNavigation, dispatch, closeSidePane]);
+
+      const handleDragOverRight = useCallback((e: React.DragEvent) => {
+        if (!draggedPage) return;
+        e.preventDefault();
+        if (dragHoverTarget !== 'right') {
+          dispatch({ type: 'SET_DRAG_HOVER_TARGET', payload: 'right' });
+        }
+      }, [draggedPage, dragHoverTarget, dispatch]);
+
+      const handleDropRight = useCallback(() => {
+        if (!draggedPage) return;
+        const pane = pageToPaneMap[draggedPage as keyof typeof pageToPaneMap];
+        if (pane) {
+          // If dropping the currently active page to the right,
+          // set a default page (e.g., dashboard) as the new active page.
+          if (draggedPage === activePage) {
+            handleNavigation('dashboard');
+          }
+
+          // Set the right pane content and ensure split view
+          dispatch({ type: 'SET_SIDE_PANE_CONTENT', payload: pane });
+          if (bodyState === BODY_STATES.NORMAL) {
+            toggleSplitView(pane);
+          } else if (bodyState === BODY_STATES.SIDE_PANE) {
+            toggleSplitView();
+          }
+        }
+        dispatch({ type: 'SET_DRAGGED_PAGE', payload: null });
+        dispatch({ type: 'SET_DRAG_HOVER_TARGET', payload: null });
+      }, [draggedPage, toggleSplitView, dispatch, bodyState, activePage, handleNavigation]);
+
+      return (
+        <div 
+          ref={appRef}
+          className={cn(
+            "relative h-screen w-screen overflow-hidden bg-background transition-colors duration-300",
+            isDarkMode && "dark"
+          )}
+        >
+          <div className="flex h-screen overflow-hidden">
+            {/* Enhanced Sidebar */}
+            {sidebarWithProps}
+
+            {/* Resize Handle */}
+            {sidebarState !== SIDEBAR_STATES.HIDDEN && (
+              <div
+                ref={resizeHandleRef}
+                className={cn(
+                  "absolute top-0 w-2 h-full bg-transparent hover:bg-primary/20 cursor-col-resize z-50 transition-colors duration-200 group -translate-x-1/2"
+                )}
+                onMouseDown={(e) => {
+                  e.preventDefault()
+                  dispatch({ type: 'SET_IS_RESIZING', payload: true });
+                }}
+              >
+                <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200 mx-auto" />
+              </div>
+            )}
+
+            {/* Main area wrapper */}
+            <div className="flex-1 flex flex-col overflow-hidden">
+              <div
+                ref={topBarContainerRef}
+                className="relative z-30"
+                onMouseEnter={() => { if (isSplitView) dispatch({ type: 'SET_HOVERED_PANE', payload: null }); }}
+              >
+                {topBarWithProps}
+              </div>
+
+              <div className="flex flex-1 min-h-0">
+                <div
+                  ref={mainAreaRef}
+                  className="relative flex-1 overflow-hidden bg-background"
+                  onMouseEnter={() => { if (isSplitView && !draggedPage) dispatch({ type: 'SET_HOVERED_PANE', payload: 'left' }); }}
+                  onMouseLeave={() => { if (isSplitView && !draggedPage) dispatch({ type: 'SET_HOVERED_PANE', payload: null }); }}
+                >
+                  {/* Left drop overlay */}
+                  <div
+                    className={cn(
+                      "absolute inset-y-0 left-0 z-40 border-2 border-transparent transition-all",
+                      draggedPage
+                        ? cn("pointer-events-auto", isSplitView ? 'w-full' : 'w-1/2')
+                        : "pointer-events-none w-0",
+                      dragHoverTarget === 'left' && "bg-primary/10 border-primary"
+                    )}
+                    onDragOver={handleDragOverLeft}
+                    onDrop={handleDropLeft}
+                    onDragLeave={() => {
+                      if (dragHoverTarget === 'left') dispatch({ type: 'SET_DRAG_HOVER_TARGET', payload: null });
+                    }}
+                  >
+                    {draggedPage && dragHoverTarget === 'left' && (
+                      <div className="absolute inset-0 flex items-center justify-center text-sm font-medium text-primary-foreground/80 pointer-events-none">
+                        <span className="px-3 py-1 rounded-md bg-primary/70">{isSplitView ? 'Drop to Replace' : 'Drop to Left'}</span>
+                      </div>
+                    )}
+                  </div>
+                  {mainContentWithProps}
+                  {isSplitView && hoveredPane === 'left' && !draggedPage && (
+                    <div className="absolute top-4 right-4 z-50">
+                      <ViewModeSwitcher pane="main" />
+                    </div>
+                  )}
+                  {/* Right drop overlay (over main area, ONLY when NOT in split view) */}
+                  {!isSplitView && (
+                    <div
+                      className={cn(
+                        "absolute inset-y-0 right-0 z-40 border-2 border-transparent",
+                        draggedPage ? "pointer-events-auto w-1/2" : "pointer-events-none",
+                        dragHoverTarget === 'right' && "bg-primary/10 border-primary"
+                      )}
+                      onDragOver={handleDragOverRight}
+                      onDrop={handleDropRight}
+                      onDragLeave={() => {
+                        if (dragHoverTarget === 'right') dispatch({ type: 'SET_DRAG_HOVER_TARGET', payload: null });
+                      }}
+                    >
+                      {draggedPage && dragHoverTarget === 'right' && (
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                          <span className="px-3 py-1 rounded-md bg-primary/70 text-sm font-medium text-primary-foreground/80">Drop to Right</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+                {isSplitView ? (
+                  <div
+                    className="relative"
+                    onMouseEnter={() => { if (isSplitView && !draggedPage) dispatch({ type: 'SET_HOVERED_PANE', payload: 'right' }); }}
+                    onMouseLeave={() => { if (isSplitView && !draggedPage) dispatch({ type: 'SET_HOVERED_PANE', payload: null }); }}
+                    onDragOver={handleDragOverRight}
+                  >
+                    {rightPaneWithProps}
+                    {draggedPage && (
+                      <div
+                        className={cn(
+                          'absolute inset-0 z-50 transition-all',
+                          dragHoverTarget === 'right'
+                            ? 'bg-primary/10 border-2 border-primary'
+                            : 'pointer-events-none'
+                        )}
+                        onDragLeave={() => {
+                          if (dragHoverTarget === 'right')
+                            dispatch({ type: 'SET_DRAG_HOVER_TARGET', payload: null });
+                        }}
+                        onDrop={handleDropRight}
+                        onDragOver={(e) => e.preventDefault()}
+                      >
+                        {dragHoverTarget === 'right' && (
+                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                            <span className="px-3 py-1 rounded-md bg-primary/70 text-sm font-medium text-primary-foreground/80">
+                              Drop to Replace
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {hoveredPane === 'right' && !draggedPage && (
+                      <div className="absolute top-4 right-4 z-[70]">
+                        <ViewModeSwitcher pane="right" />
+                      </div>
+                    )}
+                  </div>
+                ) : rightPaneWithProps}
+              </div>
+            </div>
+          </div>
+          {commandPalette || <CommandPalette />}
+        </div>
+      )
+    }
   src/pages/Settings/index.tsx: |-
     import { SettingsContent } from '@/features/settings/SettingsContent';
     import { useAutoAnimateTopBar } from '@/hooks/useAutoAnimateTopBar';
@@ -1122,15 +1449,17 @@ snapshot:
 
       return (
         <div
-          className="h-full overflow-y-auto p-6 lg:px-12 space-y-8"
+          className="h-full overflow-y-auto"
           onScroll={onScroll}
         >
-          {/* Header */}
-          <PageHeader
-            title="Settings"
-            description="Customize your experience. Changes are saved automatically."
-          />
-          <SettingsContent />
+          <div className="p-6 lg:px-12 space-y-8">
+            {/* Header */}
+            <PageHeader
+              title="Settings"
+              description="Customize your experience. Changes are saved automatically."
+            />
+            <SettingsContent />
+          </div>
         </div>
       )
     }
@@ -1224,15 +1553,15 @@ snapshot:
       };
 
       return (
-        <div className={cn("overflow-y-auto space-y-8", !isInSidePane ? "h-full p-6 lg:px-12" : "h-full")}>
-          {/* Header */}
-          {!isInSidePane && (
-            <PageHeader
-              title="Toaster"
-              description="A customizable toast component for notifications."
-            />
-          )}
-          <div className="space-y-6">
+        <div className={cn("overflow-y-auto h-full")}>
+          <div className={cn("space-y-8", !isInSidePane ? "p-6 lg:px-12" : "p-6")}>
+            {/* Header */}
+            {!isInSidePane && (
+              <PageHeader
+                title="Toaster"
+                description="A customizable toast component for notifications."
+              />
+            )}
             <div className="space-y-6">
               <DemoSection title="Toast Variants">
                 <div className="flex flex-wrap gap-4">
@@ -1289,305 +1618,10 @@ snapshot:
         </div>
       );
     }
-  src/App.tsx: >-
-    import React, { useEffect } from 'react'
-
-    import { AppShell } from './components/layout/AppShell'
-
-    import { AppShellProvider, useAppShell } from './context/AppShellContext'
-
-    import { useAppStore } from './store/appStore'
-
-    import { useAuthStore } from './store/authStore'
-
-    import './index.css'
-
-
-    // Import library components
-
-    import { EnhancedSidebar } from './components/layout/EnhancedSidebar'
-
-    import { MainContent } from './components/layout/MainContent'
-
-    import { RightPane } from './components/layout/RightPane'
-
-    import { TopBar } from './components/layout/TopBar'
-
-    import { CommandPalette } from './components/global/CommandPalette'
-
-
-    // Import page/content components
-
-    import { DashboardContent } from './pages/Dashboard'
-
-    import { SettingsPage } from './pages/Settings'
-
-    import { ToasterDemo } from './pages/ToasterDemo'
-
-    import { NotificationsPage } from './pages/Notifications'
-
-    import { ContentInSidePanePlaceholder } from
-    './components/shared/ContentInSidePanePlaceholder'
-
-    import { SettingsContent } from './features/settings/SettingsContent'
-
-    import { LoginPage } from './components/auth/LoginPage'
-
-
-    // Import icons
-
-    import { LayoutDashboard, Settings, Component, Bell, SlidersHorizontal,
-    ChevronsLeftRight, Search, Filter, Plus, PanelRight, ChevronRight, Rocket,
-    Layers, SplitSquareHorizontal } from 'lucide-react'
-
-    import { BODY_STATES } from './lib/utils'
-
-    import { cn } from './lib/utils'
-
-
-
-    // The content for the main area, with page routing logic
-
-    function AppContent() {
-      const { activePage, setActivePage } = useAppStore()
-      const { bodyState, sidePaneContent, openSidePane } = useAppShell()
-
-      const pageMap = {
-        dashboard: {
-          component: <DashboardContent />,
-          sidePaneContent: 'main',
-          icon: LayoutDashboard,
-          name: 'dashboard',
-        },
-        settings: {
-          component: <SettingsPage />,
-          sidePaneContent: 'settings',
-          icon: Settings,
-          name: 'settings',
-        },
-        toaster: {
-          component: <ToasterDemo />,
-          sidePaneContent: 'toaster',
-          icon: Component,
-          name: 'toaster demo',
-        },
-        notifications: {
-          component: <NotificationsPage />,
-          sidePaneContent: 'notifications',
-          icon: Bell,
-          name: 'notifications',
-        },
-      } as const;
-
-      const currentPage = pageMap[activePage];
-
-      if (sidePaneContent === currentPage.sidePaneContent && (bodyState === BODY_STATES.SIDE_PANE || bodyState === BODY_STATES.SPLIT_VIEW)) {
-        return (
-          <ContentInSidePanePlaceholder 
-            icon={currentPage.icon}
-            title={`${currentPage.name.charAt(0).toUpperCase() + currentPage.name.slice(1)} is in Side Pane`}
-            pageName={currentPage.name}
-            onBringBack={() => {
-              openSidePane(currentPage.sidePaneContent);
-              setActivePage(activePage);
-            }}
-          />
-        )
-      }
-
-      return currentPage.component;
-    }
-
-
-    // Content for the Top Bar
-
-    function AppTopBar() {
-      const { activePage, searchTerm, setSearchTerm } = useAppStore()
-      const { openSidePane } = useAppShell()
-      const [isSearchFocused, setIsSearchFocused] = React.useState(false);
-
-      return (
-        <div className="flex items-center gap-3 flex-1">
-          <div className={cn("hidden md:flex items-center gap-2 text-sm transition-opacity", {
-              "opacity-0 pointer-events-none": isSearchFocused && activePage === 'dashboard'
-          })}>
-            <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">Home</a>
-            <ChevronRight className="w-4 h-4 text-muted-foreground" />
-            <span className="font-medium text-foreground capitalize">{activePage}</span>
-          </div>
-          
-          <div className="flex-1" />
-
-          {/* Page-specific: Dashboard search and actions */}
-          {activePage === 'dashboard' && (
-          <div className="flex items-center gap-2 flex-1 justify-end">
-            <div className={cn("relative transition-all duration-300 ease-in-out", isSearchFocused ? 'flex-1 max-w-lg' : 'w-auto')}>
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4 pointer-events-none" />
-              <input
-                type="text"
-                placeholder="Search..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                onFocus={() => setIsSearchFocused(true)}
-                onBlur={() => setIsSearchFocused(false)}
-                className={cn(
-                  "pl-9 pr-4 py-2 h-10 border-none rounded-lg bg-card focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300 ease-in-out w-full",
-                  isSearchFocused ? 'bg-background' : 'w-48'
-                )}
-              />
-            </div>
-             <button className="h-10 w-10 flex-shrink-0 flex items-center justify-center hover:bg-accent rounded-full transition-colors">
-              <Filter className="w-5 h-5" />
-            </button>
-             <button className="bg-primary text-primary-foreground px-4 py-2 rounded-full hover:bg-primary/90 transition-colors flex items-center gap-2 h-10 flex-shrink-0">
-              <Plus className="w-5 h-5" />
-              <span className={cn(isSearchFocused ? 'hidden sm:inline' : 'inline')}>New Project</span>
-            </button>
-          </div>
-          )}
-        </div>
-      )
-    }
-
-
-    // The main App component that composes the shell
-
-    function ComposedApp() {
-      const { sidePaneContent, closeSidePane, bodyState, toggleSplitView } = useAppShell()
-      const { setActivePage } = useAppStore();
-
-      const isOverlaySidePane = bodyState === BODY_STATES.SIDE_PANE;
-
-      const contentMap = {
-        main: { title: 'Dashboard', icon: LayoutDashboard, page: 'dashboard', content: <DashboardContent isInSidePane={isOverlaySidePane} /> },
-        settings: { title: 'Settings', icon: Settings, page: 'settings', content: isOverlaySidePane ? <SettingsContent /> : <SettingsPage /> },
-        toaster: { title: 'Toaster Demo', icon: Component, page: 'toaster', content: <ToasterDemo isInSidePane={isOverlaySidePane} /> },
-        notifications: { title: 'Notifications', icon: Bell, page: 'notifications', content: <NotificationsPage isInSidePane={isOverlaySidePane} /> },
-        details: { title: 'Details Panel', icon: SlidersHorizontal, content: <div className="p-6"><p className="text-muted-foreground">This is the side pane. It can be used to display contextual information, forms, or actions related to the main content.</p></div> }
-      } as const;
-
-      const currentContent = contentMap[sidePaneContent as keyof typeof contentMap] || contentMap.details;
-      const CurrentIcon = currentContent.icon;
-
-      const handleMaximize = () => {
-        if ('page' in currentContent && currentContent.page) {
-          setActivePage(currentContent.page as any);
-        }
-        closeSidePane()
-      }
-
-      const rightPaneHeader =
-        bodyState !== BODY_STATES.SPLIT_VIEW ? (
-          <>
-            <div className="flex items-center gap-2">
-              <CurrentIcon className="w-5 h-5" />
-              <h2 className="text-lg font-semibold whitespace-nowrap">
-                {currentContent.title}
-              </h2>
-            </div>
-            <div className="flex items-center">
-              {(bodyState === BODY_STATES.SIDE_PANE || bodyState === BODY_STATES.SPLIT_VIEW) && (
-                <button
-                  onClick={toggleSplitView}
-                  className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors"
-                  title={bodyState === BODY_STATES.SIDE_PANE ? 'Switch to Split View' : 'Switch to Overlay View'}
-                >
-                  {bodyState === BODY_STATES.SPLIT_VIEW ? (
-                    <Layers className="w-5 h-5" />
-                  ) : (
-                    <SplitSquareHorizontal className="w-5 h-5" />
-                  )}
-                </button>
-              )}
-              {'page' in currentContent && currentContent.page && (
-                <button
-                  onClick={handleMaximize}
-                  className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors mr-2"
-                  title="Move to Main View"
-                >
-                  <ChevronsLeftRight className="w-5 h-5" />
-                </button>
-              )}
-            </div>
-          </>
-        ) : undefined;
-
-      return (
-        <AppShell
-          sidebar={<EnhancedSidebar />}
-          topBar={<TopBar><AppTopBar /></TopBar>}
-          mainContent={<MainContent><AppContent /></MainContent>}
-          rightPane={(
-            <RightPane header={rightPaneHeader}>{currentContent.content}</RightPane>
-          )}
-          commandPalette={<CommandPalette />}
-        />
-      );
-    }
-
-
-    function App() {
-      const isDarkMode = useAppStore((state) => state.isDarkMode)
-      const { isAuthenticated, login, forgotPassword } = useAuthStore()
-
-      useEffect(() => {
-        document.documentElement.classList.toggle('dark', isDarkMode);
-      }, [isDarkMode]);
-
-      const handleLogin = async (email: string, password: string) => {
-        try {
-          await login(email, password)
-        } catch (error) {
-          console.error('Login failed:', error)
-          // In a real app, you'd show an error message to the user
-        }
-      }
-
-      const handleForgotPassword = async (email: string) => {
-        try {
-          await forgotPassword(email)
-        } catch (error) {
-          console.error('Forgot password failed:', error)
-        }
-      }
-
-      const handleSignUp = () => {
-        // In a real app, navigate to sign up page
-        console.log('Navigate to sign up page')
-      }
-
-      if (!isAuthenticated) {
-        return (
-          <LoginPage
-            onLogin={handleLogin}
-            onForgotPassword={handleForgotPassword}
-            onSignUp={handleSignUp}
-          />
-        )
-      }
-
-      return (
-        <div className="h-screen w-screen overflow-hidden bg-background">
-          <AppShellProvider
-            appName="Jeli App"
-            appLogo={
-              <div className="p-2 bg-primary/20 rounded-lg">
-                <Rocket className="w-5 h-5 text-primary" />
-              </div>
-            }
-          >
-            <ComposedApp />
-          </AppShellProvider>
-        </div>
-      )
-    }
-
-
-    export default App
 approved: true
 linesAdded: null
 linesRemoved: null
 linesDifference: null
-gitCommittedAt: '2025-10-12T04:31:03.349Z'
+gitCommittedAt: null
 status: committed
-id: 148
+id: 151
