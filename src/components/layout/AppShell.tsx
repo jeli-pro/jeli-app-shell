@@ -44,10 +44,7 @@ export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalet
     peekSidebar,
     draggedPage,
     dragHoverTarget,
-    toggleSplitView,
-    openSidePane,
-    bodyState,
-    rightPaneWidth,
+    toggleSplitView,    bodyState,
     sidePaneContent,
     closeSidePane,
     reducedMotion,
@@ -271,7 +268,7 @@ export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalet
                 )}
               </div>
               {mainContentWithProps}
-              {isSplitView && hoveredPane === 'left' && !draggedPage && bodyState !== BODY_STATES.FULLSCREEN && (
+              {isSplitView && hoveredPane === 'left' && !draggedPage && (
                 <div className="absolute top-4 right-4 z-50">
                   <ViewModeSwitcher pane="main" />
                 </div>
@@ -330,7 +327,7 @@ export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalet
                     )}
                   </div>
                 )}
-                {hoveredPane === 'right' && !draggedPage && bodyState !== BODY_STATES.FULLSCREEN && (
+                {hoveredPane === 'right' && !draggedPage && (
                   <div className="absolute top-4 right-4 z-[70]">
                     <ViewModeSwitcher pane="right" />
                   </div>

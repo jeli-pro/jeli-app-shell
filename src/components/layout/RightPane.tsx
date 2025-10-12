@@ -63,7 +63,7 @@ export const RightPane = forwardRef<HTMLDivElement, RightPaneProps>(({ children,
           {header}
         </div>
       )}
-      <div className={cn("flex-1 overflow-y-auto", bodyState === BODY_STATES.SIDE_PANE && "px-8 py-6")}>
+      <div className={cn("flex-1 overflow-y-auto")}>
         {children}
       </div>
     </aside>

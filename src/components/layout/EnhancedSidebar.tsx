@@ -216,7 +216,7 @@ const AppMenuItem: React.FC<AppMenuItemProps> = ({ icon: Icon, label, badge, has
           onClick={handleClick}
           isActive={isActive}
           draggable={!!page}
-          onDragStart={(e) => {
+          onDragStart={(_e) => {
             if (page) {
               // set dragged page in AppShell context
               dispatch({ type: 'SET_DRAGGED_PAGE', payload: page });

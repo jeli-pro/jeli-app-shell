@@ -78,15 +78,15 @@ export function ToasterDemo({ isInSidePane = false }: { isInSidePane?: boolean }
   };
 
   return (
-    <div className={cn("overflow-y-auto space-y-8", !isInSidePane ? "h-full p-6 lg:px-12" : "h-full")}>
-      {/* Header */}
-      {!isInSidePane && (
-        <PageHeader
-          title="Toaster"
-          description="A customizable toast component for notifications."
-        />
-      )}
-      <div className="space-y-6">
+    <div className={cn("overflow-y-auto h-full")}>
+      <div className={cn("space-y-8", !isInSidePane ? "p-6 lg:px-12" : "p-6")}>
+        {/* Header */}
+        {!isInSidePane && (
+          <PageHeader
+            title="Toaster"
+            description="A customizable toast component for notifications."
+          />
+        )}
         <div className="space-y-6">
           <DemoSection title="Toast Variants">
             <div className="flex flex-wrap gap-4">

@@ -280,7 +280,7 @@ export function NotificationsPage({ isInSidePane = false }: { isInSidePane?: boo
   const filteredNotifications = getFilteredNotifications();
 
   const content = (
-    <Card className={cn("flex w-full flex-col shadow-none", isInSidePane ? "border-none" : "p-6 lg:p-8")}>
+    <Card className={cn("flex w-full flex-col shadow-none", isInSidePane ? "border-none" : "")}>
       <CardHeader className="p-0">
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold">
@@ -331,14 +331,16 @@ export function NotificationsPage({ isInSidePane = false }: { isInSidePane?: boo
   );
 
   return (
-    <div className={cn("overflow-y-auto", !isInSidePane ? "h-full p-6 lg:px-12 space-y-8" : "h-full")}>
-      {!isInSidePane && (
-        <PageHeader
-          title="Notifications"
-          description="Manage your notifications and stay up-to-date."
-        />
-      )}
-      {content}
+    <div className={cn("overflow-y-auto h-full")}>
+      <div className={cn("space-y-8", !isInSidePane ? "p-6 lg:px-12" : "p-6")}>
+        {!isInSidePane && (
+          <PageHeader
+            title="Notifications"
+            description="Manage your notifications and stay up-to-date."
+          />
+        )}
+        {content}
+      </div>
     </div>
   );
 };

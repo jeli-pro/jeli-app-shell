@@ -5,12 +5,11 @@ import { BODY_STATES } from '@/lib/utils'
 import { useAppShell } from '@/context/AppShellContext'
 
 interface MainContentProps {
-  onToggleFullscreen?: () => void
   children?: React.ReactNode;
 }
 
 export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
-  ({ onToggleFullscreen, children }, ref) => {
+  ({ children }, ref) => {
     const { bodyState, fullscreenTarget, toggleFullscreen } = useAppShell();
     const isFullscreen = bodyState === BODY_STATES.FULLSCREEN;
 

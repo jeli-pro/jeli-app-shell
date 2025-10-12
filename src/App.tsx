@@ -136,7 +136,7 @@ function ComposedApp() {
 
   const contentMap = {
     main: { title: 'Dashboard', icon: LayoutDashboard, page: 'dashboard', content: <DashboardContent isInSidePane={isOverlaySidePane} /> },
-    settings: { title: 'Settings', icon: Settings, page: 'settings', content: isOverlaySidePane ? <SettingsContent /> : <SettingsPage /> },
+    settings: { title: 'Settings', icon: Settings, page: 'settings', content: isOverlaySidePane ? <div className="p-6"><SettingsContent /></div> : <SettingsPage /> },
     toaster: { title: 'Toaster Demo', icon: Component, page: 'toaster', content: <ToasterDemo isInSidePane={isOverlaySidePane} /> },
     notifications: { title: 'Notifications', icon: Bell, page: 'notifications', content: <NotificationsPage isInSidePane={isOverlaySidePane} /> },
     details: { title: 'Details Panel', icon: SlidersHorizontal, content: <div className="p-6"><p className="text-muted-foreground">This is the side pane. It can be used to display contextual information, forms, or actions related to the main content.</p></div> }
