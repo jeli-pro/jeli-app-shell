@@ -13,6 +13,7 @@ import { DataListView } from './components/DataListView'
 import { DataCardView } from './components/DataCardView'
 import { DataTableView } from './components/DataTableView'
 import { DataDetailPanel } from './components/DataDetailPanel'
+import { AnimatedLoadingSkeleton } from './components/AnimatedLoadingSkeleton'
 import { StatChartCard } from './components/StatChartCard'
 import { useAppShell } from '@/context/AppShellContext'
 import { mockDataItems } from './data/mockData'
@@ -46,7 +47,7 @@ export default function DataDemoPage() {
   const [items, setItems] = useState<DataItem[]>([])
   const [page, setPage] = useState(0) // Start at 0 to trigger initial load effect
   const [hasMore, setHasMore] = useState(true)
-  const [isLoading, setIsLoading] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
   const contentRef = useRef<HTMLDivElement>(null)
   const observer = useRef<IntersectionObserver>()
   const { openSidePane } = useAppShell()
@@ -60,13 +61,14 @@ export default function DataDemoPage() {
   ) : 0
 
   // Infinite scroll logic
-  useEffect(() => {
-    // This effect handles fetching data when page changes
-    if (page === 0 || isLoading || !hasMore) return;
+  useEffect(() => { // eslint-disable-line react-hooks/exhaustive-deps
+    if (page === 0) return;
 
     const fetchItems = async () => {
       setIsLoading(true);
-      await new Promise(resolve => setTimeout(resolve, 500)); // Simulate network delay
+      // Add a longer delay for the initial load to showcase the skeleton
+      const delay = page === 1 ? 1500 : 500
+      await new Promise(resolve => setTimeout(resolve, delay)); // Simulate network delay
       
       const pageSize = 12;
       const newItems = mockDataItems.slice((page - 1) * pageSize, page * pageSize);
@@ -74,13 +76,13 @@ export default function DataDemoPage() {
       if (newItems.length > 0) {
         setItems(prev => [...prev, ...newItems]);
       }
-      if (newItems.length < pageSize) {
+      if (items.length + newItems.length >= mockDataItems.length) {
         setHasMore(false);
       }
       setIsLoading(false);
     };
 
-    fetchItems();
+    if (hasMore) fetchItems();
   }, [page]);
 
   const loaderRef = useCallback(node => {
@@ -145,6 +147,8 @@ export default function DataDemoPage() {
     openSidePane('data-details')
   }
 
+  const isInitialLoading = isLoading && items.length === 0
+
   const renderView = () => {
     const commonProps = {
       data: items,
@@ -176,7 +180,9 @@ export default function DataDemoPage() {
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Data Showcase</h1>
             <p className="text-muted-foreground">
-              Showing {items.length} of {mockDataItems.length} items
+              {isInitialLoading 
+                ? "Loading projects..." 
+                : `Showing ${items.length} of ${mockDataItems.length} items`}
             </p>
           </div>
           <DataViewModeSelector 
@@ -224,18 +230,18 @@ export default function DataDemoPage() {
         </div>
 
         <div ref={contentRef} className="min-h-[500px]">
-          {renderView()}
+          {isInitialLoading ? <AnimatedLoadingSkeleton viewMode={viewMode} /> : renderView()}
         </div>
 
         {/* Loader for infinite scroll */}
         <div ref={loaderRef} className="flex justify-center items-center py-6">
-          {isLoading && (
+          {isLoading && !isInitialLoading && (
             <div className="flex items-center gap-2 text-muted-foreground">
               <Loader2 className="w-5 h-5 animate-spin" />
               <span>Loading more...</span>
             </div>
           )}
-          {!isLoading && !hasMore && items.length > 0 && (
+          {!isLoading && !hasMore && items.length > 0 && !isInitialLoading && (
             <p className="text-muted-foreground">You've reached the end.</p>
           )}
         </div>

@@ -194,191 +194,6 @@ export type SidebarState = typeof SIDEBAR_STATES[keyof typeof SIDEBAR_STATES]
 export type BodyState = typeof BODY_STATES[keyof typeof BODY_STATES]
 ````
 
-## File: src/pages/DataDemo/components/DataCardView.tsx
-````typescript
-import { useRef, useLayoutEffect } from 'react'
-import { gsap } from 'gsap'
-import { cn } from '@/lib/utils'
-import { Badge } from '@/components/ui/badge'
-import { Avatar } from '@/components/ui/avatar'
-import { Calendar, Eye, Heart, Share, ArrowUpRight, Tag } from 'lucide-react'
-import type { ViewProps } from '../types'
-import { getStatusColor, getPriorityColor } from '../utils'
-import { EmptyState } from './EmptyState'
-
-export function DataCardView({ data, onItemSelect, selectedItem, isGrid = false }: ViewProps) {
-  const containerRef = useRef<HTMLDivElement>(null)
-
-  useLayoutEffect(() => {
-    if (containerRef.current) {
-      gsap.fromTo(containerRef.current.children, 
-        { y: 40, opacity: 0, scale: 0.95 },
-        {
-          duration: 0.6,
-          y: 0,
-          opacity: 1,
-          scale: 1,
-          stagger: 0.1,
-          ease: "power2.out",
-        }
-      )
-    }
-  }, [data])
-
-  if (data.length === 0) {
-    return <EmptyState />
-  }
-
-  return (
-    <div 
-      ref={containerRef}
-      className={cn(
-        "gap-6",
-        isGrid 
-          ? "columns-1 sm:columns-2 lg:columns-3 xl:columns-4 space-y-6" 
-          : "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
-      )}
-    >
-      {data.map((item) => {
-        const isSelected = selectedItem?.id === item.id
-        
-        return (
-          <div
-            key={item.id}
-            onClick={() => onItemSelect(item)}
-            className={cn(
-              "group relative overflow-hidden rounded-3xl border bg-card/50 backdrop-blur-sm transition-all duration-500 cursor-pointer",
-              "hover:bg-card/80 hover:shadow-xl hover:shadow-primary/10 hover:border-primary/30 hover:-translate-y-2",
-              "active:scale-[0.98]",
-              isSelected && "ring-2 ring-primary/30 border-primary/40 bg-card/90 shadow-lg shadow-primary/20",
-              isGrid && "break-inside-avoid mb-6"
-            )}
-          >
-            {/* Card Header with Thumbnail */}
-            <div className="relative p-6 pb-4">
-              <div className="flex items-start justify-between mb-4">
-                <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-primary/10 rounded-2xl flex items-center justify-center text-3xl group-hover:scale-110 transition-transform duration-300">
-                  {item.thumbnail}
-                </div>
-                <ArrowUpRight className="w-5 h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 group-hover:-translate-y-1 transition-all duration-300" />
-              </div>
-
-              {/* Priority indicator */}
-              <div className="absolute top-4 right-4">
-                <div className={cn(
-                  "w-3 h-3 rounded-full",
-                  item.priority === 'critical' && "bg-red-500",
-                  item.priority === 'high' && "bg-orange-500",
-                  item.priority === 'medium' && "bg-blue-500",
-                  item.priority === 'low' && "bg-green-500"
-                )} />
-              </div>
-            </div>
-
-            {/* Card Content */}
-            <div className="px-6 pb-6">
-              {/* Title and Description */}
-              <h3 className="font-semibold text-lg mb-2 group-hover:text-primary transition-colors line-clamp-2">
-                {item.title}
-              </h3>
-              <p className="text-muted-foreground text-sm mb-4 line-clamp-3">
-                {item.description}
-              </p>
-
-              {/* Status and Category */}
-              <div className="flex items-center gap-2 mb-4">
-                <Badge variant="outline" className={getStatusColor(item.status)}>
-                  {item.status}
-                </Badge>
-                <Badge variant="outline" className="bg-accent/50 text-xs">
-                  {item.category}
-                </Badge>
-              </div>
-
-              {/* Tags */}
-              <div className="flex items-center gap-1 mb-4">
-                <Tag className="w-3 h-3 text-muted-foreground" />
-                <div className="flex flex-wrap gap-1">
-                  {item.tags.slice(0, 3).map((tag, index) => (
-                    <span key={index} className="text-xs text-muted-foreground bg-muted/50 px-2 py-1 rounded-md">
-                      {tag}
-                    </span>
-                  ))}
-                  {item.tags.length > 3 && (
-                    <span className="text-xs text-muted-foreground">
-                      +{item.tags.length - 3}
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {/* Progress */}
-              <div className="mb-4">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs text-muted-foreground">Progress</span>
-                  <span className="text-xs font-semibold">{item.metrics.completion}%</span>
-                </div>
-                <div className="w-full bg-muted rounded-full h-2">
-                  <div 
-                    className="bg-gradient-to-r from-primary to-primary/80 h-2 rounded-full transition-all duration-700 ease-out"
-                    style={{ width: `${item.metrics.completion}%` }}
-                  />
-                </div>
-              </div>
-
-              {/* Assignee */}
-              <div className="flex items-center gap-3 mb-4">
-                <Avatar className="w-8 h-8 text-sm">
-                  {item.assignee.avatar}
-                </Avatar>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">
-                    {item.assignee.name}
-                  </p>
-                  <p className="text-xs text-muted-foreground truncate">
-                    {item.assignee.email}
-                  </p>
-                </div>
-              </div>
-
-              {/* Metrics */}
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-1">
-                    <Eye className="w-3 h-3" />
-                    {item.metrics.views}
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Heart className="w-3 h-3" />
-                    {item.metrics.likes}
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Share className="w-3 h-3" />
-                    {item.metrics.shares}
-                  </div>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Calendar className="w-3 h-3" />
-                  {new Date(item.updatedAt).toLocaleDateString()}
-                </div>
-              </div>
-            </div>
-
-            {/* Hover gradient overlay */}
-            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
-            
-            {/* Selection indicator */}
-            {isSelected && (
-              <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-primary/5 pointer-events-none" />
-            )}
-          </div>
-        )
-      })}
-    </div>
-  )
-}
-````
-
 ## File: src/pages/DataDemo/components/DataDetailPanel.tsx
 ````typescript
 import React, { useLayoutEffect, useRef } from 'react'
@@ -694,6 +509,335 @@ export function DataDetailPanel({ item, onClose }: DataDetailPanelProps) {
 }
 ````
 
+## File: src/pages/DataDemo/components/DataViewModeSelector.tsx
+````typescript
+import { useEffect, useRef } from 'react'
+import { gsap } from 'gsap'
+import { cn } from '@/lib/utils'
+import { List, Grid3X3, LayoutGrid, Table } from 'lucide-react'
+import type { ViewMode } from '../types'
+
+interface DataViewModeSelectorProps {
+  viewMode: ViewMode
+  onChange: (mode: ViewMode) => void
+}
+
+const viewModes = [
+  { id: 'list' as ViewMode, label: 'List', icon: List, description: 'Compact list with details' },
+  { id: 'cards' as ViewMode, label: 'Cards', icon: LayoutGrid, description: 'Rich card layout' },
+  { id: 'grid' as ViewMode, label: 'Grid', icon: Grid3X3, description: 'Masonry grid view' },
+  { id: 'table' as ViewMode, label: 'Table', icon: Table, description: 'Structured data table' }
+]
+
+export function DataViewModeSelector({ viewMode, onChange }: DataViewModeSelectorProps) {
+  const indicatorRef = useRef<HTMLDivElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!indicatorRef.current || !containerRef.current) return
+
+    const activeButton = containerRef.current.querySelector(`[data-mode="${viewMode}"]`) as HTMLElement
+    if (!activeButton) return
+
+    const containerRect = containerRef.current.getBoundingClientRect()
+    const buttonRect = activeButton.getBoundingClientRect()
+    
+    const left = buttonRect.left - containerRect.left
+    const width = buttonRect.width
+
+    gsap.to(indicatorRef.current, {
+      duration: 0.3,
+      x: left,
+      width: width,
+      ease: "power2.out"
+    })
+  }, [viewMode])
+
+  return (
+    <div 
+      ref={containerRef}
+      className="relative flex items-center bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-1.5 shadow-lg"
+    >
+      {/* Animated indicator */}
+      <div
+        ref={indicatorRef}
+        className="absolute inset-y-1.5 bg-gradient-to-r from-primary/20 to-primary/10 border border-primary/20 rounded-xl transition-all duration-300"
+        style={{ left: 0, width: 0 }}
+      />
+      
+      {/* Mode buttons */}
+      {viewModes.map((mode) => {
+        const IconComponent = mode.icon
+        const isActive = viewMode === mode.id
+        
+        return (
+          <button
+            key={mode.id}
+            data-mode={mode.id}
+            onClick={() => onChange(mode.id)}
+            className={cn(
+              "relative flex items-center gap-3 px-6 py-3 rounded-xl transition-all duration-300 group min-w-[120px]",
+              "hover:bg-accent/20 active:scale-95",
+              isActive && "text-primary"
+            )}
+            title={mode.description}
+          >
+            <IconComponent className={cn(
+              "w-5 h-5 transition-all duration-300",
+              isActive && "scale-110",
+              "group-hover:scale-105"
+            )} />
+            <span className={cn(
+              "font-medium transition-all duration-300",
+              isActive ? "text-primary" : "text-muted-foreground",
+              "group-hover:text-foreground"
+            )}>
+              {mode.label}
+            </span>
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+````
+
+## File: tsconfig.json
+````json
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "useDefineForClassFields": true,
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+
+    /* Bundler mode */
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "react-jsx",
+
+    /* Linting */
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+
+    /* Library Build */
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "declarationDir": "dist",
+
+    /* Path mapping */
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": ["src"],
+  "exclude": [
+    "dist",
+    "src/App.tsx",
+    "src/main.tsx",
+    "src/pages"
+  ],
+  "references": [{ "path": "./tsconfig.node.json" }]
+}
+````
+
+## File: src/pages/DataDemo/components/DataCardView.tsx
+````typescript
+import { useRef, useLayoutEffect } from 'react'
+import { gsap } from 'gsap'
+import { cn } from '@/lib/utils'
+import { Badge } from '@/components/ui/badge'
+import { Avatar } from '@/components/ui/avatar'
+import { Calendar, Eye, Heart, Share, ArrowUpRight, Tag } from 'lucide-react'
+import type { ViewProps } from '../types'
+import { getStatusColor, getPriorityColor } from '../utils'
+import { EmptyState } from './EmptyState'
+
+export function DataCardView({ data, onItemSelect, selectedItem, isGrid = false }: ViewProps) {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const animatedItemsCount = useRef(0)
+
+  useLayoutEffect(() => {
+    if (containerRef.current && data.length > animatedItemsCount.current) {
+      const newItems = Array.from(containerRef.current.children).slice(
+        animatedItemsCount.current
+      );
+      gsap.fromTo(
+        newItems,
+        { y: 40, opacity: 0, scale: 0.95 },
+        {
+          duration: 0.6,
+          y: 0,
+          opacity: 1,
+          scale: 1,
+          stagger: 0.1,
+          ease: 'power2.out',
+        },
+      );
+      animatedItemsCount.current = data.length;
+    }
+  }, [data]);
+
+  if (data.length === 0) {
+    return <EmptyState />
+  }
+
+  return (
+    <div 
+      ref={containerRef}
+      className={cn(
+        "gap-6",
+        isGrid 
+          ? "columns-1 sm:columns-2 lg:columns-3 xl:columns-4 space-y-6" 
+          : "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
+      )}
+    >
+      {data.map((item) => {
+        const isSelected = selectedItem?.id === item.id
+        
+        return (
+          <div
+            key={item.id}
+            onClick={() => onItemSelect(item)}
+            className={cn(
+              "group relative overflow-hidden rounded-3xl border bg-card/50 backdrop-blur-sm transition-all duration-500 cursor-pointer",
+              "hover:bg-card/80 hover:shadow-xl hover:shadow-primary/10 hover:border-primary/30 hover:-translate-y-2",
+              "active:scale-[0.98]",
+              isSelected && "ring-2 ring-primary/30 border-primary/40 bg-card/90 shadow-lg shadow-primary/20",
+              isGrid && "break-inside-avoid mb-6"
+            )}
+          >
+            {/* Card Header with Thumbnail */}
+            <div className="relative p-6 pb-4">
+              <div className="flex items-start justify-between mb-4">
+                <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-primary/10 rounded-2xl flex items-center justify-center text-3xl group-hover:scale-110 transition-transform duration-300">
+                  {item.thumbnail}
+                </div>
+                <ArrowUpRight className="w-5 h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 group-hover:-translate-y-1 transition-all duration-300" />
+              </div>
+
+              {/* Priority indicator */}
+              <div className="absolute top-4 right-4">
+                <div className={cn(
+                  "w-3 h-3 rounded-full",
+                  item.priority === 'critical' && "bg-red-500",
+                  item.priority === 'high' && "bg-orange-500",
+                  item.priority === 'medium' && "bg-blue-500",
+                  item.priority === 'low' && "bg-green-500"
+                )} />
+              </div>
+            </div>
+
+            {/* Card Content */}
+            <div className="px-6 pb-6">
+              {/* Title and Description */}
+              <h3 className="font-semibold text-lg mb-2 group-hover:text-primary transition-colors line-clamp-2">
+                {item.title}
+              </h3>
+              <p className="text-muted-foreground text-sm mb-4 line-clamp-3">
+                {item.description}
+              </p>
+
+              {/* Status and Category */}
+              <div className="flex items-center gap-2 mb-4">
+                <Badge variant="outline" className={getStatusColor(item.status)}>
+                  {item.status}
+                </Badge>
+                <Badge variant="outline" className="bg-accent/50 text-xs">
+                  {item.category}
+                </Badge>
+              </div>
+
+              {/* Tags */}
+              <div className="flex items-center gap-1 mb-4">
+                <Tag className="w-3 h-3 text-muted-foreground" />
+                <div className="flex flex-wrap gap-1">
+                  {item.tags.slice(0, 3).map((tag, index) => (
+                    <span key={index} className="text-xs text-muted-foreground bg-muted/50 px-2 py-1 rounded-md">
+                      {tag}
+                    </span>
+                  ))}
+                  {item.tags.length > 3 && (
+                    <span className="text-xs text-muted-foreground">
+                      +{item.tags.length - 3}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Progress */}
+              <div className="mb-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs text-muted-foreground">Progress</span>
+                  <span className="text-xs font-semibold">{item.metrics.completion}%</span>
+                </div>
+                <div className="w-full bg-muted rounded-full h-2">
+                  <div 
+                    className="bg-gradient-to-r from-primary to-primary/80 h-2 rounded-full transition-all duration-700 ease-out"
+                    style={{ width: `${item.metrics.completion}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* Assignee */}
+              <div className="flex items-center gap-3 mb-4">
+                <Avatar className="w-8 h-8 text-sm">
+                  {item.assignee.avatar}
+                </Avatar>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">
+                    {item.assignee.name}
+                  </p>
+                  <p className="text-xs text-muted-foreground truncate">
+                    {item.assignee.email}
+                  </p>
+                </div>
+              </div>
+
+              {/* Metrics */}
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-1">
+                    <Eye className="w-3 h-3" />
+                    {item.metrics.views}
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Heart className="w-3 h-3" />
+                    {item.metrics.likes}
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Share className="w-3 h-3" />
+                    {item.metrics.shares}
+                  </div>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Calendar className="w-3 h-3" />
+                  {new Date(item.updatedAt).toLocaleDateString()}
+                </div>
+              </div>
+            </div>
+
+            {/* Hover gradient overlay */}
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+            
+            {/* Selection indicator */}
+            {isSelected && (
+              <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-primary/5 pointer-events-none" />
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+````
+
 ## File: src/pages/DataDemo/components/DataListView.tsx
 ````typescript
 import { useRef, useLayoutEffect } from 'react'
@@ -708,21 +852,24 @@ import { EmptyState } from './EmptyState'
 
 export function DataListView({ data, onItemSelect, selectedItem }: ViewProps) {
   const listRef = useRef<HTMLDivElement>(null)
+  const animatedItemsCount = useRef(0)
 
   useLayoutEffect(() => {
-    if (listRef.current) {
-      gsap.fromTo(listRef.current.children,
+    if (listRef.current && data.length > animatedItemsCount.current) {
+      const newItems = Array.from(listRef.current.children).slice(animatedItemsCount.current);
+      gsap.fromTo(newItems,
         { y: 30, opacity: 0 },
         {
           duration: 0.5,
           y: 0,
           opacity: 1,
           stagger: 0.08,
-          ease: "power2.out"
-        }
-      )
+          ease: "power2.out",
+        },
+      );
+      animatedItemsCount.current = data.length;
     }
-  }, [data])
+  }, [data]);
 
   if (data.length === 0) {
     return <EmptyState />
@@ -873,21 +1020,26 @@ export function DataTableView({ data, onItemSelect, selectedItem }: ViewProps) {
   const [sortField, setSortField] = useState<SortField | null>(null)
   const [sortDirection, setSortDirection] = useState<SortDirection>(null)
   const tableRef = useRef<HTMLTableElement>(null)
+  const animatedItemsCount = useRef(0)
 
   useLayoutEffect(() => {
-    if (tableRef.current) {
-      gsap.fromTo(tableRef.current.querySelectorAll('tbody tr'),
+    if (tableRef.current && data.length > animatedItemsCount.current) {
+      const newItems = Array.from(
+        tableRef.current.querySelectorAll('tbody tr')
+      ).slice(animatedItemsCount.current);
+      gsap.fromTo(newItems,
         { y: 20, opacity: 0 },
         {
           duration: 0.5,
           y: 0,
           opacity: 1,
           stagger: 0.05,
-          ease: "power2.out"
-        }
-      )
+          ease: "power2.out",
+        },
+      );
+      animatedItemsCount.current = data.length;
     }
-  }, [data])
+  }, [data]);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -1147,141 +1299,136 @@ export function DataTableView({ data, onItemSelect, selectedItem }: ViewProps) {
 }
 ````
 
-## File: src/pages/DataDemo/components/DataViewModeSelector.tsx
-````typescript
-import { useEffect, useRef } from 'react'
-import { gsap } from 'gsap'
-import { cn } from '@/lib/utils'
-import { List, Grid3X3, LayoutGrid, Table } from 'lucide-react'
-import type { ViewMode } from '../types'
+## File: index.html
+````html
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Jeli App Shell</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <div id="toaster-container"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+````
 
-interface DataViewModeSelectorProps {
-  viewMode: ViewMode
-  onChange: (mode: ViewMode) => void
-}
-
-const viewModes = [
-  { id: 'list' as ViewMode, label: 'List', icon: List, description: 'Compact list with details' },
-  { id: 'cards' as ViewMode, label: 'Cards', icon: LayoutGrid, description: 'Rich card layout' },
-  { id: 'grid' as ViewMode, label: 'Grid', icon: Grid3X3, description: 'Masonry grid view' },
-  { id: 'table' as ViewMode, label: 'Table', icon: Table, description: 'Structured data table' }
-]
-
-export function DataViewModeSelector({ viewMode, onChange }: DataViewModeSelectorProps) {
-  const indicatorRef = useRef<HTMLDivElement>(null)
-  const containerRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (!indicatorRef.current || !containerRef.current) return
-
-    const activeButton = containerRef.current.querySelector(`[data-mode="${viewMode}"]`) as HTMLElement
-    if (!activeButton) return
-
-    const containerRect = containerRef.current.getBoundingClientRect()
-    const buttonRect = activeButton.getBoundingClientRect()
-    
-    const left = buttonRect.left - containerRect.left
-    const width = buttonRect.width
-
-    gsap.to(indicatorRef.current, {
-      duration: 0.3,
-      x: left,
-      width: width,
-      ease: "power2.out"
-    })
-  }, [viewMode])
-
-  return (
-    <div 
-      ref={containerRef}
-      className="relative flex items-center bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-1.5 shadow-lg"
-    >
-      {/* Animated indicator */}
-      <div
-        ref={indicatorRef}
-        className="absolute inset-y-1.5 bg-gradient-to-r from-primary/20 to-primary/10 border border-primary/20 rounded-xl transition-all duration-300"
-        style={{ left: 0, width: 0 }}
-      />
-      
-      {/* Mode buttons */}
-      {viewModes.map((mode) => {
-        const IconComponent = mode.icon
-        const isActive = viewMode === mode.id
-        
-        return (
-          <button
-            key={mode.id}
-            data-mode={mode.id}
-            onClick={() => onChange(mode.id)}
-            className={cn(
-              "relative flex items-center gap-3 px-6 py-3 rounded-xl transition-all duration-300 group min-w-[120px]",
-              "hover:bg-accent/20 active:scale-95",
-              isActive && "text-primary"
-            )}
-            title={mode.description}
-          >
-            <IconComponent className={cn(
-              "w-5 h-5 transition-all duration-300",
-              isActive && "scale-110",
-              "group-hover:scale-105"
-            )} />
-            <span className={cn(
-              "font-medium transition-all duration-300",
-              isActive ? "text-primary" : "text-muted-foreground",
-              "group-hover:text-foreground"
-            )}>
-              {mode.label}
-            </span>
-          </button>
-        )
-      })}
-    </div>
-  )
+## File: tailwind.config.js
+````javascript
+/** @type {import('tailwindcss').Config} */
+export default {
+  content: [
+    "./index.html",
+    "./src/**/*.{js,ts,jsx,tsx}",
+  ],
+  darkMode: "class",
+  theme: {
+    extend: {
+      colors: {
+        border: "hsl(var(--border))",
+        input: "hsl(var(--input))",
+        ring: "hsl(var(--ring))",
+        background: "hsl(var(--background))",
+        foreground: "hsl(var(--foreground))",
+        primary: {
+          DEFAULT: "hsl(var(--primary))",
+          foreground: "hsl(var(--primary-foreground))",
+        },
+        secondary: {
+          DEFAULT: "hsl(var(--secondary))",
+          foreground: "hsl(var(--secondary-foreground))",
+        },
+        destructive: {
+          DEFAULT: "hsl(var(--destructive))",
+          foreground: "hsl(var(--destructive-foreground))",
+        },
+        muted: {
+          DEFAULT: "hsl(var(--muted))",
+          foreground: "hsl(var(--muted-foreground))",
+        },
+        accent: {
+          DEFAULT: "hsl(var(--accent))",
+          foreground: "hsl(var(--accent-foreground))",
+        },
+        popover: {
+          DEFAULT: "hsl(var(--popover))",
+          foreground: "hsl(var(--popover-foreground))",
+        },
+        card: {
+          DEFAULT: "hsl(var(--card))",
+          foreground: "hsl(var(--card-foreground))",
+        },
+      },
+      borderRadius: {
+        lg: "var(--radius)",
+        md: "calc(var(--radius) - 4px)",
+        sm: "calc(var(--radius) - 8px)",
+        DEFAULT: "0.5rem",
+      },
+      boxShadow: {
+        input: [
+          "0px 2px 3px -1px rgba(0, 0, 0, 0.1)",
+          "0px 1px 0px 0px rgba(25, 28, 33, 0.02)",
+          "0px 0px 0px 1px rgba(25, 28, 33, 0.08)",
+        ].join(", "),
+      },
+      animation: {
+        "fade-in": "fadeIn 0.5s ease-in-out",
+        "slide-in": "slideIn 0.3s ease-out",
+        "scale-in": "scaleIn 0.2s ease-out",
+        ripple: "ripple 2s ease calc(var(--i, 0) * 0.2s) infinite",
+        orbit: "orbit calc(var(--duration) * 1s) linear infinite",
+      },
+      keyframes: {
+        fadeIn: {
+          "0%": { opacity: "0" },
+          "100%": { opacity: "1" },
+        },
+        slideIn: {
+          "0%": { transform: "translateX(-100%)" },
+          "100%": { transform: "translateX(0)" },
+        },
+        scaleIn: {
+          "0%": { transform: "scale(0.95)", opacity: "0" },
+          "100%": { transform: "scale(1)", opacity: "1" },
+        },
+        ripple: {
+          "0%, 100%": { transform: "translate(-50%, -50%) scale(1)" },
+          "50%": { transform: "translate(-50%, -50%) scale(0.9)" },
+        },
+        orbit: {
+          "0%": {
+            transform:
+              "rotate(0deg) translateY(calc(var(--radius) * 1px)) rotate(0deg)",
+          },
+          "100%": {
+            transform:
+              "rotate(360deg) translateY(calc(var(--radius) * 1px)) rotate(-360deg)",
+          },
+        }
+      },
+    },
+  },
+  plugins: [require("tailwindcss-animate")],
 }
 ````
 
-## File: tsconfig.json
+## File: tsconfig.node.json
 ````json
 {
   "compilerOptions": {
-    "target": "ES2020",
-    "useDefineForClassFields": true,
-    "lib": ["ES2020", "DOM", "DOM.Iterable"],
-    "module": "ESNext",
+    "composite": true,
     "skipLibCheck": true,
-
-    /* Bundler mode */
-    "moduleResolution": "bundler",
-    "allowImportingTsExtensions": true,
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "jsx": "react-jsx",
-
-    /* Linting */
-    "strict": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noFallthroughCasesInSwitch": true,
-
-    /* Library Build */
-    "declaration": true,
-    "emitDeclarationOnly": true,
-    "declarationDir": "dist",
-
-    /* Path mapping */
-    "baseUrl": ".",
-    "paths": {
-      "@/*": ["./src/*"]
-    }
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "allowSyntheticDefaultImports": true,
+    "resolveJsonModule": true
   },
-  "include": ["src"],
-  "exclude": [
-    "dist",
-    "src/App.tsx",
-    "src/main.tsx",
-    "src/pages"
-  ],
-  "references": [{ "path": "./tsconfig.node.json" }]
+  "include": ["vite.config.ts"]
 }
 ````
 
@@ -1537,139 +1684,6 @@ export default function DataDemoPage() {
       />
     </PageLayout>
   )
-}
-````
-
-## File: index.html
-````html
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Jeli App Shell</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <div id="toaster-container"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
-</html>
-````
-
-## File: tailwind.config.js
-````javascript
-/** @type {import('tailwindcss').Config} */
-export default {
-  content: [
-    "./index.html",
-    "./src/**/*.{js,ts,jsx,tsx}",
-  ],
-  darkMode: "class",
-  theme: {
-    extend: {
-      colors: {
-        border: "hsl(var(--border))",
-        input: "hsl(var(--input))",
-        ring: "hsl(var(--ring))",
-        background: "hsl(var(--background))",
-        foreground: "hsl(var(--foreground))",
-        primary: {
-          DEFAULT: "hsl(var(--primary))",
-          foreground: "hsl(var(--primary-foreground))",
-        },
-        secondary: {
-          DEFAULT: "hsl(var(--secondary))",
-          foreground: "hsl(var(--secondary-foreground))",
-        },
-        destructive: {
-          DEFAULT: "hsl(var(--destructive))",
-          foreground: "hsl(var(--destructive-foreground))",
-        },
-        muted: {
-          DEFAULT: "hsl(var(--muted))",
-          foreground: "hsl(var(--muted-foreground))",
-        },
-        accent: {
-          DEFAULT: "hsl(var(--accent))",
-          foreground: "hsl(var(--accent-foreground))",
-        },
-        popover: {
-          DEFAULT: "hsl(var(--popover))",
-          foreground: "hsl(var(--popover-foreground))",
-        },
-        card: {
-          DEFAULT: "hsl(var(--card))",
-          foreground: "hsl(var(--card-foreground))",
-        },
-      },
-      borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 4px)",
-        sm: "calc(var(--radius) - 8px)",
-        DEFAULT: "0.5rem",
-      },
-      boxShadow: {
-        input: [
-          "0px 2px 3px -1px rgba(0, 0, 0, 0.1)",
-          "0px 1px 0px 0px rgba(25, 28, 33, 0.02)",
-          "0px 0px 0px 1px rgba(25, 28, 33, 0.08)",
-        ].join(", "),
-      },
-      animation: {
-        "fade-in": "fadeIn 0.5s ease-in-out",
-        "slide-in": "slideIn 0.3s ease-out",
-        "scale-in": "scaleIn 0.2s ease-out",
-        ripple: "ripple 2s ease calc(var(--i, 0) * 0.2s) infinite",
-        orbit: "orbit calc(var(--duration) * 1s) linear infinite",
-      },
-      keyframes: {
-        fadeIn: {
-          "0%": { opacity: "0" },
-          "100%": { opacity: "1" },
-        },
-        slideIn: {
-          "0%": { transform: "translateX(-100%)" },
-          "100%": { transform: "translateX(0)" },
-        },
-        scaleIn: {
-          "0%": { transform: "scale(0.95)", opacity: "0" },
-          "100%": { transform: "scale(1)", opacity: "1" },
-        },
-        ripple: {
-          "0%, 100%": { transform: "translate(-50%, -50%) scale(1)" },
-          "50%": { transform: "translate(-50%, -50%) scale(0.9)" },
-        },
-        orbit: {
-          "0%": {
-            transform:
-              "rotate(0deg) translateY(calc(var(--radius) * 1px)) rotate(0deg)",
-          },
-          "100%": {
-            transform:
-              "rotate(360deg) translateY(calc(var(--radius) * 1px)) rotate(-360deg)",
-          },
-        }
-      },
-    },
-  },
-  plugins: [require("tailwindcss-animate")],
-}
-````
-
-## File: tsconfig.node.json
-````json
-{
-  "compilerOptions": {
-    "composite": true,
-    "skipLibCheck": true,
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
-    "allowSyntheticDefaultImports": true,
-    "resolveJsonModule": true
-  },
-  "include": ["vite.config.ts"]
 }
 ````
 
