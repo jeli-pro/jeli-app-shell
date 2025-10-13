@@ -1,0 +1,251 @@
+uuid: 133d2657-3f32-4759-99bb-9c3f4e1957de
+projectId: jeli-app-shell
+createdAt: '2025-10-13T03:13:22.253Z'
+gitCommitMsg: >-
+  feat(DataViewModeSelector): Refactor to hover-to-expand UI
+
+  - Replaced the always-visible list of view modes with a single static trigger
+  icon. - Implemented a GSAP animation to expand and reveal all view mode
+  buttons on hover, consistent with the `ViewModeSwitcher`. - Removed the
+  sliding indicator bar in favor of a cleaner background highlight on the active
+  button to align with the new minimalistic design.
+promptSummary: >-
+  I want to apply the same hover-to-expand animation to the
+  `DataViewModeSelector` that was previously applied to the `ViewModeSwitcher`.
+  It should have a static trigger icon and expand to show the view mode options
+  on hover.
+reasoning:
+  - >-
+    Of course. I'll apply the same minimalistic hover-to-expand interaction to
+    the `DataViewModeSelector` for a consistent user experience.
+  - 'Here''s the plan:'
+  - >-
+    1.  **Refactor `DataViewModeSelector.tsx`**: I will update the component to
+    use a single, static trigger icon.
+  - >-
+    2.  **Add Hover Animation**: When the user hovers over the trigger, all
+    available view mode options (`List`, `Cards`, `Grid`, `Table`) will animate
+    into view using GSAP.
+  - >-
+    3.  **Update Active State Styling**: The sliding indicator bar will be
+    removed in favor of a simpler, cleaner background highlight on the active
+    button, enhancing the minimalist design.
+  - >-
+    This refactoring will be applied to
+    `src/pages/DataDemo/components/DataViewModeSelector.tsx`.
+operations:
+  - type: write
+    path: src/pages/DataDemo/components/DataViewModeSelector.tsx
+    content: >-
+      import { useEffect, useRef, useState } from 'react'
+
+      import { gsap } from 'gsap'
+
+      import { cn } from '@/lib/utils'
+
+      import { List, Grid3X3, LayoutGrid, Table } from 'lucide-react'
+
+      import type { ViewMode } from '../types'
+
+
+      interface DataViewModeSelectorProps {
+        viewMode: ViewMode
+        onChange: (mode: ViewMode) => void
+      }
+
+
+      const viewModes = [
+        { id: 'list' as ViewMode, label: 'List', icon: List, description: 'Compact list with details' },
+        { id: 'cards' as ViewMode, label: 'Cards', icon: LayoutGrid, description: 'Rich card layout' },
+        { id: 'grid' as ViewMode, label: 'Grid', icon: Grid3X3, description: 'Masonry grid view' },
+        { id: 'table' as ViewMode, label: 'Table', icon: Table, description: 'Structured data table' }
+      ]
+
+
+      export function DataViewModeSelector({ viewMode, onChange }:
+      DataViewModeSelectorProps) {
+        const [isExpanded, setIsExpanded] = useState(false)
+        const buttonRefs = useRef<(HTMLButtonElement | null)[]>([])
+
+        useEffect(() => {
+          const buttons = buttonRefs.current.filter(Boolean) as HTMLButtonElement[]
+          if (buttons.length === 0) return
+
+          gsap.killTweensOf(buttons)
+          const buttonWidth = window.innerWidth < 640 ? 100 : 120
+
+          if (isExpanded) {
+            gsap.to(buttons, {
+              width: buttonWidth,
+              opacity: 1,
+              pointerEvents: 'auto',
+              marginLeft: 6,
+              duration: 0.2,
+              stagger: { each: 0.05, from: 'start' },
+              ease: 'power2.out',
+            })
+          } else {
+            gsap.to(buttons, {
+              width: 0,
+              opacity: 0,
+              pointerEvents: 'none',
+              marginLeft: 0,
+              duration: 0.2,
+              stagger: { each: 0.05, from: 'end' },
+              ease: 'power2.in',
+            })
+          }
+        }, [isExpanded])
+
+        return (
+          <div
+            onMouseEnter={() => setIsExpanded(true)}
+            onMouseLeave={() => setIsExpanded(false)}
+            className="relative flex items-center bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-1.5 shadow-lg"
+          >
+            {/* Static trigger button */}
+            <button
+              className="h-10 sm:h-12 w-10 sm:w-12 flex-shrink-0 flex items-center justify-center rounded-xl hover:bg-accent transition-colors"
+              onClick={() => setIsExpanded(!isExpanded)}
+              title="Change View Mode"
+            >
+              <LayoutGrid className="w-5 h-5 text-primary" />
+            </button>
+
+            {/* Animated Mode buttons */}
+            <div className="flex items-center">
+              {viewModes.map((mode, index) => {
+                const IconComponent = mode.icon
+                const isActive = viewMode === mode.id
+
+                return (
+                  <button
+                    key={mode.id}
+                    ref={(el) => (buttonRefs.current[index] = el)}
+                    data-mode={mode.id}
+                    onClick={() => onChange(mode.id)}
+                    className={cn(
+                      "relative flex items-center justify-center gap-2 sm:gap-3 rounded-xl transition-colors duration-200 group whitespace-nowrap overflow-hidden",
+                      "h-10 sm:h-12 px-4 sm:px-6",
+                      "hover:bg-accent/50 active:scale-95",
+                      isActive ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground"
+                    )}
+                    style={{ width: 0, opacity: 0, pointerEvents: 'none', marginLeft: 0 }}
+                    title={mode.description}
+                  >
+                    <IconComponent className="w-5 h-5" />
+                    <span className="font-medium">{mode.label}</span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )
+      }
+    patchStrategy: replace
+snapshot:
+  src/pages/DataDemo/components/DataViewModeSelector.tsx: >-
+    import { useEffect, useRef } from 'react'
+
+    import { gsap } from 'gsap'
+
+    import { cn } from '@/lib/utils'
+
+    import { List, Grid3X3, LayoutGrid, Table } from 'lucide-react'
+
+    import type { ViewMode } from '../types'
+
+
+    interface DataViewModeSelectorProps {
+      viewMode: ViewMode
+      onChange: (mode: ViewMode) => void
+    }
+
+
+    const viewModes = [
+      { id: 'list' as ViewMode, label: 'List', icon: List, description: 'Compact list with details' },
+      { id: 'cards' as ViewMode, label: 'Cards', icon: LayoutGrid, description: 'Rich card layout' },
+      { id: 'grid' as ViewMode, label: 'Grid', icon: Grid3X3, description: 'Masonry grid view' },
+      { id: 'table' as ViewMode, label: 'Table', icon: Table, description: 'Structured data table' }
+    ]
+
+
+    export function DataViewModeSelector({ viewMode, onChange }:
+    DataViewModeSelectorProps) {
+      const indicatorRef = useRef<HTMLDivElement>(null)
+      const containerRef = useRef<HTMLDivElement>(null)
+
+      useEffect(() => {
+        if (!indicatorRef.current || !containerRef.current) return
+
+        const activeButton = containerRef.current.querySelector(`[data-mode="${viewMode}"]`) as HTMLElement
+        if (!activeButton) return
+
+        const containerRect = containerRef.current.getBoundingClientRect()
+        const buttonRect = activeButton.getBoundingClientRect()
+        
+        const left = buttonRect.left - containerRect.left
+        const width = buttonRect.width
+
+        gsap.to(indicatorRef.current, {
+          duration: 0.3,
+          x: left,
+          width: width,
+          ease: "power2.out"
+        })
+      }, [viewMode])
+
+      return (
+        <div 
+          ref={containerRef}
+          className="relative flex flex-wrap justify-center items-center bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-1.5 shadow-lg"
+        >
+          {/* Animated indicator */}
+          <div
+            ref={indicatorRef}
+            className="absolute inset-y-1.5 bg-gradient-to-r from-primary/20 to-primary/10 border border-primary/20 rounded-xl transition-all duration-300"
+            style={{ left: 0, width: 0 }}
+          />
+          
+          {/* Mode buttons */}
+          {viewModes.map((mode) => {
+            const IconComponent = mode.icon
+            const isActive = viewMode === mode.id
+            
+            return (
+              <button
+                key={mode.id}
+                data-mode={mode.id}
+                onClick={() => onChange(mode.id)}
+                className={cn(
+                  "relative flex items-center justify-center gap-2 sm:gap-3 px-4 py-2 sm:px-6 sm:py-3 rounded-xl transition-all duration-300 group min-w-[100px] sm:min-w-[120px]",
+                  "hover:bg-accent/20 active:scale-95",
+                  isActive && "text-primary"
+                )}
+                title={mode.description}
+              >
+                <IconComponent className={cn(
+                  "w-5 h-5 transition-all duration-300",
+                  isActive && "scale-110",
+                  "group-hover:scale-105"
+                )} />
+                <span className={cn(
+                  "font-medium transition-all duration-300",
+                  isActive ? "text-primary" : "text-muted-foreground",
+                  "group-hover:text-foreground"
+                )}>
+                  {mode.label}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+      )
+    }
+approved: false
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: undone
+id: 193

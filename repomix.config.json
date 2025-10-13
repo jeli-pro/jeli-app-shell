@@ -31,7 +31,8 @@
     "tailwind.config.js",
     "postcss.config.js",
     "index.html",
-    "src"
+    // "src"
+    "src/pages/DataDemo/components/DataViewModeSelector.tsx"
   ],
   "ignore": {
     "useGitignore": true,

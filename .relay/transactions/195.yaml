@@ -1,0 +1,590 @@
+uuid: 44b76c8c-6332-47c4-a4b5-65476b7e6717
+projectId: jeli-app-shell
+createdAt: '2025-10-13T03:21:30.744Z'
+gitCommitMsg: >-
+  feat(DataViewModeSelector): Refactor to minimalist hover-to-expand UI
+
+  - Reworked the component to only show the active view mode by default. -
+  Implemented a GSAP-powered animation to expand and reveal all other view
+  options on hover. - Buttons now expand outwards from the active button with a
+  staggered effect. - The background indicator remains and smoothly animates its
+  position and size to sync with layout changes. - This provides a cleaner, more
+  interactive, and modern user experience.
+promptSummary: >-
+  Refactor the DataViewModeSelector to have a minimalist hover-to-expand UI,
+  similar to a previous request for another component.
+reasoning:
+  - >-
+    Of course. I'll apply the same "hover-to-expand" interaction to the
+    `DataViewModeSelector` component.
+  - 'Here''s my approach to creating a "cool" and functional minimalist version:'
+  - >-
+    1.  **Default State**: The component will only display the currently active
+    view mode button (e.g., "Cards"). This keeps the UI clean and contextual.
+  - >-
+    2.  **Hover Interaction**: When the user hovers over the component, the
+    other available view mode buttons will animate into view, expanding outwards
+    from the active button with a smooth, staggered GSAP animation.
+  - >-
+    3.  **Animation Logic**: I will refactor the component to use GSAP to
+    control the `width`, `padding`, and `opacity` of the inactive buttons,
+    ensuring a fluid transition between the collapsed and expanded states.
+  - >-
+    4.  **Indicator Sync**: The animated background indicator will be kept and
+    will intelligently re-calculate its position and size during expansion,
+    collapse, and view mode changes to stay perfectly synced with the active
+    button.
+  - >-
+    This will result in a sleek, interactive component that reveals complexity
+    only when needed, which I believe fits the "cool but not absurd" requirement
+    perfectly.
+  - >-
+    Here are the changes for
+    `src/pages/DataDemo/components/DataViewModeSelector.tsx`:
+operations:
+  - type: write
+    path: src/pages/DataDemo/components/DataViewModeSelector.tsx
+    content: >+
+      --- src/pages/DataDemo/components/DataViewModeSelector.tsx
+
+      +++ src/pages/DataDemo/components/DataViewModeSelector.tsx
+
+      @@ -1,4 +1,4 @@
+
+      -import { useEffect, useRef } from 'react'
+
+      +import { useEffect, useRef, useState } from 'react'
+       import { gsap } from 'gsap'
+       import { cn } from '@/lib/utils'
+       import { List, Grid3X3, LayoutGrid, Table } from 'lucide-react'
+      @@ -17,73 +17,133 @@
+       
+       export function DataViewModeSelector({ viewMode, onChange }: DataViewModeSelectorProps) {
+         const indicatorRef = useRef<HTMLDivElement>(null)
+      -  const containerRef = useRef<HTMLDivElement>(null)
+
+      +  const containerRef = useRef<HTMLDivElement>(null);
+
+      +  const buttonRefs = useRef<(HTMLButtonElement | null)[]>([]);
+
+      +  const [isExpanded, setIsExpanded] = useState(false);
+       
+      +  // Animate the indicator to the active button
+         useEffect(() => {
+           if (!indicatorRef.current || !containerRef.current) return
+       
+      -    const activeButton =
+      containerRef.current.querySelector(`[data-mode="${viewMode}"]`) as
+      HTMLElement
+
+      -    if (!activeButton) return
+
+      +    const activeButton = buttonRefs.current.find(
+
+      +      (b) => b?.dataset.mode === viewMode
+
+      +    );
+
+      +    if (!activeButton) return;
+       
+      -    const containerRect = containerRef.current.getBoundingClientRect()
+
+      -    const buttonRect = activeButton.getBoundingClientRect()
+
+      -    
+
+      -    const left = buttonRect.left - containerRect.left
+
+      -    const width = buttonRect.width
+
+      +    // Use a short delay to allow the expand/collapse animation to start
+      and layout to be updated.
+
+      +    gsap.delayedCall(0.05, () => {
+
+      +      if (!containerRef.current) return; // container might be unmounted
+
+      +      const containerRect = containerRef.current.getBoundingClientRect();
+
+      +      const buttonRect = activeButton.getBoundingClientRect();
+       
+      -    gsap.to(indicatorRef.current, {
+
+      -      duration: 0.3,
+
+      -      x: left,
+
+      -      width: width,
+
+      -      ease: "power2.out"
+
+      -    })
+
+      -  }, [viewMode])
+
+      +      gsap.to(indicatorRef.current, {
+
+      +        duration: 0.4,
+
+      +        x: buttonRect.left - containerRect.left,
+
+      +        width: buttonRect.width,
+
+      +        ease: "power3.out",
+
+      +      });
+
+      +    });
+
+      +  }, [viewMode, isExpanded]);
+
+      +
+
+      +  // Expand and collapse inactive buttons
+
+      +  useEffect(() => {
+
+      +    const activeIndex = viewModes.findIndex((m) => m.id === viewMode);
+
+      +    
+
+      +    // Determine responsive sizes
+
+      +    const isSmallScreen = window.innerWidth < 640;
+
+      +    const padding = isSmallScreen ? 16 : 24; // px-4 vs sm:px-6
+
+      +    const minWidth = isSmallScreen ? 100 : 120;
+
+      +
+
+      +    buttonRefs.current.forEach((button, index) => {
+
+      +      if (!button) return;
+
+      +
+
+      +      const isActive = index === activeIndex;
+
+      +
+
+      +      // The active button is always visible and sized correctly
+
+      +      if (isActive) {
+
+      +        gsap.set(button, {
+
+      +          minWidth: minWidth,
+
+      +          width: minWidth,
+
+      +          paddingLeft: padding,
+
+      +          paddingRight: padding,
+
+      +          opacity: 1,
+
+      +          pointerEvents: 'auto',
+
+      +          overflow: 'visible'
+
+      +        });
+
+      +        return;
+
+      +      }
+
+      +
+
+      +      // Animate inactive buttons
+
+      +      gsap.to(button, {
+
+      +        width: isExpanded ? minWidth : 0,
+
+      +        minWidth: isExpanded ? minWidth : 0,
+
+      +        paddingLeft: isExpanded ? padding : 0,
+
+      +        paddingRight: isExpanded ? padding : 0,
+
+      +        opacity: isExpanded ? 1 : 0,
+
+      +        duration: 0.3,
+
+      +        ease: "power2.out",
+
+      +        delay: isExpanded ? (Math.abs(index - activeIndex) - 1) * 0.05 :
+      0,
+
+      +        pointerEvents: isExpanded ? "auto" : "none",
+
+      +        overwrite: true,
+
+      +        onStart: () => {
+
+      +          if(!isExpanded) button.style.overflow = 'hidden';
+
+      +        },
+
+      +        onComplete: () => {
+
+      +          if (isExpanded) button.style.overflow = 'visible';
+
+      +        }
+
+      +      });
+
+      +    });
+
+      +  }, [isExpanded, viewMode]);
+       
+         return (
+      -    <div 
+
+      -      ref={containerRef}
+
+      -      className="relative flex flex-wrap justify-center items-center
+      bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-1.5
+      shadow-lg"
+
+      +    <div
+
+      +      onMouseEnter={() => setIsExpanded(true)}
+
+      +      onMouseLeave={() => setIsExpanded(false)}
+
+      +      className="inline-block" // Wrapper to isolate from parent layout
+      changes
+           >
+      -      {/* Animated indicator */}
+
+      -      <div
+
+      -        ref={indicatorRef}
+
+      -        className="absolute inset-y-1.5 bg-gradient-to-r from-primary/20
+      to-primary/10 border border-primary/20 rounded-xl transition-all
+      duration-300"
+
+      -        style={{ left: 0, width: 0 }}
+
+      -      />
+
+      -      
+
+      -      {/* Mode buttons */}
+
+      -      {viewModes.map((mode) => {
+
+      -        const IconComponent = mode.icon
+
+      -        const isActive = viewMode === mode.id
+
+      -        
+
+      -        return (
+
+      -          <button
+
+      -            key={mode.id}
+
+      -            data-mode={mode.id}
+
+      -            onClick={() => onChange(mode.id)}
+
+      -            className={cn(
+
+      -              "relative flex items-center justify-center gap-2 sm:gap-3
+      px-4 py-2 sm:px-6 sm:py-3 rounded-xl transition-all duration-300 group
+      min-w-[100px] sm:min-w-[120px]",
+
+      -              "hover:bg-accent/20 active:scale-95",
+
+      -              isActive && "text-primary"
+
+      -            )}
+
+      -            title={mode.description}
+
+      -          >
+
+      -            <IconComponent className={cn(
+
+      -              "w-5 h-5 transition-all duration-300",
+
+      -              isActive && "scale-110",
+
+      -              "group-hover:scale-105"
+
+      -            )} />
+
+      -            <span className={cn(
+
+      -              "font-medium transition-all duration-300",
+
+      -              isActive ? "text-primary" : "text-muted-foreground",
+
+      -              "group-hover:text-foreground"
+
+      -            )}>
+
+      -              {mode.label}
+
+      -            </span>
+
+      -          </button>
+
+      -        )
+
+      -      })}
+
+      +      <div
+
+      +        ref={containerRef}
+
+      +        className="relative flex flex-nowrap justify-center items-center
+      bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-1.5
+      shadow-lg"
+
+      +      >
+
+      +        {/* Animated indicator */}
+
+      +        <div
+
+      +          ref={indicatorRef}
+
+      +          className="absolute inset-y-1.5 bg-gradient-to-r
+      from-primary/20 to-primary/10 border border-primary/20 rounded-xl"
+
+      +          style={{ left: 0, width: 0, pointerEvents: 'none' }}
+
+      +        />
+
+      +
+
+      +        {/* Mode buttons */}
+
+      +        {viewModes.map((mode, index) => {
+
+      +          const IconComponent = mode.icon;
+
+      +          const isActive = viewMode === mode.id;
+
+      +
+
+      +          return (
+
+      +            <button
+
+      +              key={mode.id}
+
+      +              ref={(el) => {
+
+      +                buttonRefs.current[index] = el;
+
+      +              }}
+
+      +              data-mode={mode.id}
+
+      +              onClick={() => {
+
+      +                if (!isActive) onChange(mode.id);
+
+      +              }}
+
+      +              // Size and padding classes are removed and handled by GSAP
+
+      +              className={cn(
+
+      +                "relative flex items-center justify-center gap-2 sm:gap-3
+      py-2 sm:py-3 rounded-xl transition-colors duration-300 group z-10",
+
+      +                "hover:bg-accent/20 active:scale-95",
+
+      +                isActive ? "text-primary" : ""
+
+      +              )}
+
+      +              style={
+
+      +                !isActive
+
+      +                  ? {
+
+      +                      width: 0,
+
+      +                      minWidth: 0,
+
+      +                      paddingLeft: 0,
+
+      +                      paddingRight: 0,
+
+      +                      opacity: 0,
+
+      +                      overflow: "hidden",
+
+      +                      pointerEvents: "none",
+
+      +                    }
+
+      +                  : {}
+
+      +              }
+
+      +              title={mode.description}
+
+      +            >
+
+      +              <IconComponent
+
+      +                className={cn(
+
+      +                  "w-5 h-5 transition-all duration-300 flex-shrink-0",
+
+      +                  isActive && "scale-110",
+
+      +                  "group-hover:scale-105"
+
+      +                )}
+
+      +              />
+
+      +              <span
+
+      +                className={cn(
+
+      +                  "font-medium transition-colors duration-300
+      whitespace-nowrap",
+
+      +                  isActive ? "text-primary" : "text-muted-foreground",
+
+      +                  "group-hover:text-foreground"
+
+      +                )}
+
+      +              >
+
+      +                {mode.label}
+
+      +              </span>
+
+      +            </button>
+
+      +          );
+
+      +        })}
+
+      +      </div>
+           </div>
+         )
+       }
+
+    patchStrategy: standard-diff
+snapshot:
+  src/pages/DataDemo/components/DataViewModeSelector.tsx: >-
+    import { useEffect, useRef } from 'react'
+
+    import { gsap } from 'gsap'
+
+    import { cn } from '@/lib/utils'
+
+    import { List, Grid3X3, LayoutGrid, Table } from 'lucide-react'
+
+    import type { ViewMode } from '../types'
+
+
+    interface DataViewModeSelectorProps {
+      viewMode: ViewMode
+      onChange: (mode: ViewMode) => void
+    }
+
+
+    const viewModes = [
+      { id: 'list' as ViewMode, label: 'List', icon: List, description: 'Compact list with details' },
+      { id: 'cards' as ViewMode, label: 'Cards', icon: LayoutGrid, description: 'Rich card layout' },
+      { id: 'grid' as ViewMode, label: 'Grid', icon: Grid3X3, description: 'Masonry grid view' },
+      { id: 'table' as ViewMode, label: 'Table', icon: Table, description: 'Structured data table' }
+    ]
+
+
+    export function DataViewModeSelector({ viewMode, onChange }:
+    DataViewModeSelectorProps) {
+      const indicatorRef = useRef<HTMLDivElement>(null)
+      const containerRef = useRef<HTMLDivElement>(null)
+
+      useEffect(() => {
+        if (!indicatorRef.current || !containerRef.current) return
+
+        const activeButton = containerRef.current.querySelector(`[data-mode="${viewMode}"]`) as HTMLElement
+        if (!activeButton) return
+
+        const containerRect = containerRef.current.getBoundingClientRect()
+        const buttonRect = activeButton.getBoundingClientRect()
+        
+        const left = buttonRect.left - containerRect.left
+        const width = buttonRect.width
+
+        gsap.to(indicatorRef.current, {
+          duration: 0.3,
+          x: left,
+          width: width,
+          ease: "power2.out"
+        })
+      }, [viewMode])
+
+      return (
+        <div 
+          ref={containerRef}
+          className="relative flex flex-wrap justify-center items-center bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-1.5 shadow-lg"
+        >
+          {/* Animated indicator */}
+          <div
+            ref={indicatorRef}
+            className="absolute inset-y-1.5 bg-gradient-to-r from-primary/20 to-primary/10 border border-primary/20 rounded-xl transition-all duration-300"
+            style={{ left: 0, width: 0 }}
+          />
+          
+          {/* Mode buttons */}
+          {viewModes.map((mode) => {
+            const IconComponent = mode.icon
+            const isActive = viewMode === mode.id
+            
+            return (
+              <button
+                key={mode.id}
+                data-mode={mode.id}
+                onClick={() => onChange(mode.id)}
+                className={cn(
+                  "relative flex items-center justify-center gap-2 sm:gap-3 px-4 py-2 sm:px-6 sm:py-3 rounded-xl transition-all duration-300 group min-w-[100px] sm:min-w-[120px]",
+                  "hover:bg-accent/20 active:scale-95",
+                  isActive && "text-primary"
+                )}
+                title={mode.description}
+              >
+                <IconComponent className={cn(
+                  "w-5 h-5 transition-all duration-300",
+                  isActive && "scale-110",
+                  "group-hover:scale-105"
+                )} />
+                <span className={cn(
+                  "font-medium transition-all duration-300",
+                  isActive ? "text-primary" : "text-muted-foreground",
+                  "group-hover:text-foreground"
+                )}>
+                  {mode.label}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+      )
+    }
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 195

@@ -3,10 +3,19 @@
 scroll to bottom in dashboard is not stick to right bottom.
 also why not auto applied to another page like demo data?
 
+===
+
+make the codebase highly DRY without UI UX regression
 
 ===
 
-demo data page: opening data item detail not working , the overlay side pane blank
+data demo page: table view header should be sticky on scroll
+
+===
+
+demo data page: opening data item detail should defaulting as overlay side pane mode.
+
+also the breadcrumb navigation should aware of the content position
 
 ===
 
@@ -16,7 +25,7 @@ sidebar item: while hover, show ViewModeSwitcher so user can open page with desi
 
 viewmodeswitcher: no need to show all iconbuttons, just let user hover first then gsap spread the iconbuttons to make the UI feel minimalism
 
-===
+=== DONE
 
 demo data page: not working on overlay side pane mode. also not working in split pane right side. just blank
 
