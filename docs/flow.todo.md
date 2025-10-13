@@ -25,9 +25,13 @@ data demo page: table view header should be sticky on scroll
 
 2. make sure the mental model is that the data item detail view should be distinct page with its address bar url. so user can enjoy in all view mode format
 
-3. also the breadcrumb navigation should aware the data detail page
+3. direct url access /data-demo/:itemId should open the data detail in overlay side pane with main normal view of the data list page
 
-4. when data item detail overlay side pane opened, the normal view should persist state of data list page so user can explore another data from list while viewing the data item detail in overlay side pane mode
+4. again,  user should still can enjoy data item detail page in all view mode format
+
+5. also the breadcrumb navigation should aware the data detail page
+
+6. when data item detail overlay side pane opened, the normal view should persist state of data list page so user can explore another data from list while viewing the data item detail in overlay side pane mode
 
 === DONE
 

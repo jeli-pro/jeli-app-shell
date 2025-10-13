@@ -16,7 +16,7 @@ import { SIDEBAR_STATES, BODY_STATES, type SidebarState, type BodyState } from '
 export interface AppShellState {
   sidebarState: SidebarState;
   bodyState: BodyState;
-  sidePaneContent: 'details' | 'settings' | 'main' | 'toaster' | 'notifications' | 'dataDemo';
+  sidePaneContent: 'details' | 'settings' | 'main' | 'toaster' | 'notifications' | 'dataDemo' | 'dataItem';
   sidebarWidth: number;
   sidePaneWidth: number;
   splitPaneWidth: number;

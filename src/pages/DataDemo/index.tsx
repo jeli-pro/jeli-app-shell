@@ -13,7 +13,6 @@ import { DataListView } from './components/DataListView'
 import { DataCardView } from './components/DataCardView'
 import { DataTableView } from './components/DataTableView'
 import { DataViewModeSelector } from './components/DataViewModeSelector'
-import { DataDetailPanel } from './components/DataDetailPanel'
 import { AnimatedLoadingSkeleton } from './components/AnimatedLoadingSkeleton'
 import { StatChartCard } from './components/StatChartCard'
 import { DataToolbar, FilterConfig } from './components/DataToolbar'
@@ -41,7 +40,7 @@ type ChartStat = {
 
 type StatItem = Stat | ChartStat;
 
-export default function DataDemoPage({ isInSidePane = false }: { isInSidePane?: boolean }) {
+export default function DataDemoPage() {
   const [viewMode, setViewMode] = useState<ViewMode>('list')
   const [filters, setFilters] = useState<FilterConfig>({
     searchTerm: '',
@@ -246,19 +245,6 @@ export default function DataDemoPage({ isInSidePane = false }: { isInSidePane?: 
     navigate(`/data-demo/${item.id}`)
   }
 
-  if (itemId) {
-    if (!selectedItem) {
-      return (
-        <PageLayout>
-          <div className="text-center py-20">
-            <h2 className="text-xl font-semibold">Item Not Found</h2>
-            <p className="text-muted-foreground">The item you are looking for does not exist.</p>
-          </div>
-        </PageLayout>
-      )
-    }
-    return <DataDetailPanel item={selectedItem} onClose={() => navigate('/data-demo')} />
-  }
 
   const renderView = () => {
     const commonProps = {

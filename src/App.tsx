@@ -1,10 +1,11 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useMemo } from "react";
 import {
   createBrowserRouter,
   RouterProvider,
   Outlet,
   Navigate,
   useNavigate,
+  useParams,
   useLocation,
   useSearchParams,
 } from "react-router-dom";
@@ -28,6 +29,8 @@ import { DashboardContent } from "./pages/Dashboard";
 import { SettingsPage } from "./pages/Settings";
 import { ToasterDemo } from "./pages/ToasterDemo";
 import { NotificationsPage } from "./pages/Notifications";
+import { DataDetailPanel } from "./pages/DataDemo/components/DataDetailPanel";
+import { mockDataItems } from "./pages/DataDemo/data/mockData";
 import DataDemoPage from "./pages/DataDemo";
 import { SettingsContent } from "./features/settings/SettingsContent";
 import { LoginPage } from "./components/auth/LoginPage";
@@ -203,39 +206,54 @@ function ComposedApp() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
+  const { itemId } = useParams<{ itemId: string }>();
 
   useEffect(() => {
     const pane = searchParams.get('sidePane');
     const view = searchParams.get('view');
     const right = searchParams.get('right');
 
-    if (pane) {
+    // Case 1: A specific item is selected via URL path. This takes precedence.
+    // This will render the data list in main content, and item detail in a pane.
+    if (itemId) {
+      dispatch({ type: 'SET_SIDE_PANE_CONTENT', payload: 'dataItem' });
+      // Allow user to still use split view with a direct item link
+      if (view === 'split') {
+          dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.SPLIT_VIEW });
+      } else {
+          dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.SIDE_PANE });
+      }
+    } 
+    // Case 2: A generic side pane is requested via query param.
+    else if (pane) {
       dispatch({ type: 'SET_SIDE_PANE_CONTENT', payload: pane as any });
       dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.SIDE_PANE });
-    } else if (view === 'split' && right) {
+    } 
+    // Case 3: Split view is requested via query param.
+    else if (view === 'split' && right) {
       dispatch({ type: 'SET_SIDE_PANE_CONTENT', payload: right as any });
       dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.SPLIT_VIEW });
-    } else {
+    } 
+    // Case 4: Default state, no panes.
+    else {
       dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.NORMAL });
       // Clean up side pane content when not in use
       dispatch({ type: 'SET_SIDE_PANE_CONTENT', payload: 'details' });
     }
-  }, [searchParams, dispatch]);
-  
-  const isOverlaySidePane = bodyState === BODY_STATES.SIDE_PANE;
+  }, [itemId, searchParams, dispatch]);
 
   const contentMap = {
     main: {
       title: "Dashboard",
       icon: LayoutDashboard,
       page: "dashboard",
-      content: <DashboardContent isInSidePane={isOverlaySidePane} />,
+      content: <DashboardContent />,
     },
     settings: {
       title: "Settings",
       icon: Settings,
       page: "settings",
-      content: isOverlaySidePane ? (
+      content: bodyState === BODY_STATES.SIDE_PANE ? (
         <div className="p-6">
           <SettingsContent />
         </div>
@@ -247,19 +265,19 @@ function ComposedApp() {
       title: "Toaster Demo",
       icon: Component,
       page: "toaster",
-      content: <ToasterDemo isInSidePane={isOverlaySidePane} />,
+      content: <ToasterDemo />,
     },
     notifications: {
       title: "Notifications",
       icon: Bell,
       page: "notifications",
-      content: <NotificationsPage isInSidePane={isOverlaySidePane} />,
+      content: <NotificationsPage />,
     },
     dataDemo: {
       title: "Data Showcase",
       icon: Database,
       page: "data-demo",
-      content: <DataDemoPage isInSidePane={isOverlaySidePane} />,
+      content: <DataDemoPage />,
     },
     details: {
       title: "Details Panel",
@@ -275,11 +293,28 @@ function ComposedApp() {
     },
   } as const;
 
+  const selectedItem = useMemo(() => {
+    if (!itemId) return null
+    return mockDataItems.find(item => item.id === itemId) ?? null
+  }, [itemId]);
+
   // Derive content directly from URL to prevent flashes of incorrect content
-  const sidePaneContent = searchParams.get('sidePane') || searchParams.get('right') || 'details';
-  const currentContent =
-    contentMap[sidePaneContent as keyof typeof contentMap] ||
-    contentMap.details;
+  const sidePaneIdentifier = itemId 
+    ? 'dataItem' 
+    : searchParams.get('sidePane') || searchParams.get('right') || 'details';
+
+  let rightPaneContent;
+  let currentContent: { title: string, icon: React.ElementType, page?: string };
+
+  if (sidePaneIdentifier === 'dataItem') {
+    currentContent = { title: "Item Details", icon: Database };
+    rightPaneContent = <DataDetailPanel item={selectedItem} onClose={() => navigate('/data-demo')} />;
+  } else {
+    const mappedContent = contentMap[sidePaneIdentifier as keyof typeof contentMap] || contentMap.details;
+    currentContent = mappedContent;
+    rightPaneContent = mappedContent.content;
+  }
+  
   const CurrentIcon = currentContent.icon;
 
   const handleMaximize = () => {
@@ -374,7 +409,7 @@ function ComposedApp() {
         </MainContent>
       }
       rightPane={
-        <RightPane onClose={handleCloseSidePane} header={rightPaneHeader}>{currentContent.content}</RightPane>
+        <RightPane onClose={handleCloseSidePane} header={rightPaneHeader}>{rightPaneContent}</RightPane>
       }
       commandPalette={<CommandPalette />}
     />

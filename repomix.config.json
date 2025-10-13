@@ -33,27 +33,10 @@
     "index.html",
     // "src"
     "src/App.tsx",
-    // "src/components/auth/LoginPage.tsx",
-    // "src/components/global/CommandPalette.tsx",
     "src/components/layout/AppShell.tsx",
-    "src/components/layout/EnhancedSidebar.tsx",
-    "src/components/layout/MainContent.tsx",
-    // "src/components/layout/TopBar.tsx",
-    // "src/components/layout/ViewModeSwitcher.tsx",
+    "src/components/layout/RightPane.tsx",
     "src/context/AppShellContext.tsx",
-    "src/main.tsx",
-    // "src/pages/DataDemo/components/DataCardView.tsx",
-    // "src/pages/DataDemo/components/DataDetailPanel.tsx",
-    // "src/pages/DataDemo/components/DataListView.tsx",
-    "src/pages/DataDemo/index.tsx",
-    "src/store/appStore.ts",
-    "src/store/authStore.ts",
-    "src/components/layout/AppShell.tsx",
-
-    // "src/components/global/CommandPalette.tsx",
-    "src/components/layout/AppShell.tsx",
-    "src/components/layout/EnhancedSidebar.tsx",
-    "src/components/layout/ViewModeSwitcher.tsx"
+    "src/hooks/useAppShellAnimations.hook.ts"
   ],
   "ignore": {
     "useGitignore": true,

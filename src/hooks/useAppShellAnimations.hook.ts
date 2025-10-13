@@ -85,33 +85,39 @@ export function useBodyStateAnimations(
     const isSidePane = bodyState === BODY_STATES.SIDE_PANE;
     const isSplitView = bodyState === BODY_STATES.SPLIT_VIEW;
 
+    // Kill any existing animations on the right pane to prevent conflicts
+    gsap.killTweensOf(rightPaneRef.current);
+
     // Right pane animation
-    if (isSidePane && prevBodyState !== BODY_STATES.SPLIT_VIEW) {
-      // Opening overlay pane. Set width immediately, animate transform for performance.
-      gsap.set(rightPaneRef.current, { width: rightPaneWidth });
+    if (isSidePane) {
+      // SHOW AS OVERLAY: Set width immediately, animate transform for performance.
+      gsap.set(rightPaneRef.current, { width: rightPaneWidth, x: '0%' });
       gsap.fromTo(rightPaneRef.current, { x: '100%' }, {
           x: '0%',
           duration: animationDuration,
           ease,
       });
-    } else if (bodyState === BODY_STATES.NORMAL && prevBodyState === BODY_STATES.SIDE_PANE) {
-      // Closing overlay pane. Animate transform.
-      gsap.to(rightPaneRef.current, {
+    } else if (isSplitView) {
+        // SHOW AS SPLIT: Set transform immediately, animate width.
+        gsap.set(rightPaneRef.current, { x: '0%' });
+        gsap.to(rightPaneRef.current, {
+            width: rightPaneWidth,
+            duration: animationDuration,
+            ease,
+        });
+    } else {
+        // HIDE PANE: Determine how to hide based on the state we are coming FROM.
+        if (prevBodyState === BODY_STATES.SIDE_PANE) {
+            // It was an overlay, so slide it out.
+            gsap.to(rightPaneRef.current, {
           x: '100%',
           duration: animationDuration,
           ease,
-      });
-    } else {
-      // For all other transitions (split view, fullscreen, side_pane -> split_view)
-      // the original logic with width animation is acceptable.
-      gsap.to(rightPaneRef.current, {
-        width: isFullscreen
-          ? (fullscreenTarget === 'right' ? '100%' : 0)
-          : (isSidePane || isSplitView ? rightPaneWidth : 0),
-        x: (isSidePane || isSplitView || (isFullscreen && fullscreenTarget === 'right')) ? 0 : rightPaneWidth + 5, // +5 to hide border
-        duration: animationDuration,
-        ease,
-      });
+            });
+        } else { // Covers coming from SPLIT_VIEW, FULLSCREEN, or NORMAL
+            // It was docked or fullscreen, so shrink its width.
+            gsap.to(rightPaneRef.current, { width: 0, duration: animationDuration, ease });
+        }
     }
 
     // Determine top bar position based on state
