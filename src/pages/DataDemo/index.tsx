@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback, useMemo, useLayoutEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
-import { 
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
+import {
   Layers, 
   AlertTriangle, 
   PlayCircle, 
@@ -53,21 +53,72 @@ type ChartStat = {
 type StatItem = Stat | ChartStat;
 
 export default function DataDemoPage() {
-  const [viewMode, setViewMode] = useState<ViewMode>('list')
-  const [filters, setFilters] = useState<FilterConfig>({
-    searchTerm: '',
-    status: [],
-    priority: [],
-  })
-  const [sortConfig, setSortConfig] = useState<SortConfig | null>({ key: 'updatedAt', direction: 'desc' })
-  const [groupBy, setGroupBy] = useState<GroupableField | 'none'>('none')
-  const [activeGroupTab, setActiveGroupTab] = useState('all')
-  
+  const [searchParams, setSearchParams] = useSearchParams()
+
+  // Derive state from URL search params
+  const viewMode = useMemo(() => (searchParams.get('view') as ViewMode) || 'list', [searchParams])
+  const page = useMemo(() => parseInt(searchParams.get('page') || '1', 10), [searchParams])
+  const groupBy = useMemo(() => (searchParams.get('groupBy') as GroupableField | 'none') || 'none', [searchParams])
+  const activeGroupTab = useMemo(() => searchParams.get('tab') || 'all', [searchParams])
+
+  const filters = useMemo<FilterConfig>(() => ({
+    searchTerm: searchParams.get('q') || '',
+    status: (searchParams.get('status')?.split(',') || []).filter(Boolean) as Status[],
+    priority: (searchParams.get('priority')?.split(',') || []).filter(Boolean) as Priority[],
+  }), [searchParams])
+
+  const sortConfig = useMemo<SortConfig | null>(() => {
+    const sortParam = searchParams.get('sort');
+    if (!sortParam) return { key: 'updatedAt', direction: 'desc' }; // Default sort
+    if (sortParam === 'default') return null;
+    
+    const [key, direction] = sortParam.split('-');
+    return { key: key as SortableField, direction: direction as 'asc' | 'desc' };
+  }, [searchParams])
+
+  // Centralized handler for updating URL search params
+  const handleParamsChange = useCallback(
+    (newParams: Record<string, string | string[] | null | undefined>) => {
+      setSearchParams(
+        (prev) => {
+          const updated = new URLSearchParams(prev);
+          let pageReset = false;
+
+          for (const [key, value] of Object.entries(newParams)) {
+            const isFilterOrSort = ['q', 'status', 'priority', 'sort', 'groupBy'].includes(key);
+            
+            if (value === null || value === undefined || (Array.isArray(value) && value.length === 0) || value === '') {
+              updated.delete(key);
+            } else if (Array.isArray(value)) {
+              updated.set(key, value.join(','));
+            } else {
+              updated.set(key, String(value));
+            }
+            
+            if (isFilterOrSort) {
+              pageReset = true;
+            }
+          }
+
+          if (pageReset) {
+            updated.delete('page');
+          }
+          if ('groupBy' in newParams) {
+            updated.delete('tab');
+          }
+
+          return updated;
+        },
+        { replace: true }
+      );
+    },
+    [setSearchParams]
+  );
+
   const groupOptions: { id: GroupableField | 'none'; label: string }[] = [
     { id: 'none', label: 'None' }, { id: 'status', label: 'Status' }, { id: 'priority', label: 'Priority' }, { id: 'category', label: 'Category' }
   ]
   const [items, setItems] = useState<DataItem[]>([])
-  const [page, setPage] = useState(0) // Start at 0 to trigger initial load effect
   const [hasMore, setHasMore] = useState(true)
   const [isLoading, setIsLoading] = useState(true)
   const contentRef = useRef<HTMLDivElement>(null)
@@ -75,6 +126,10 @@ export default function DataDemoPage() {
   const observer = useRef<IntersectionObserver>()
   const navigate = useNavigate()
   const { itemId } = useParams<{ itemId: string }>()
+
+  const handleItemSelect = (item: DataItem) => {
+    navigate(`/data-demo/${item.id}`)
+  }
 
   const selectedItem = useMemo(() => {
     if (!itemId) return null
@@ -126,8 +181,53 @@ export default function DataDemoPage() {
       })
     }
 
-    return filteredItems
-  }, [filters, sortConfig, groupBy])
+    return filteredItems;
+  }, [filters, sortConfig]);
+
+
+  // Data loading effect
+  useEffect(() => {
+    setIsLoading(true);
+    const isFirstPage = page === 1;
+
+    const loadData = () => {
+      if (groupBy !== 'none') {
+        // For grouped views, load all data at once, pagination is disabled.
+        setItems(filteredAndSortedData);
+        setHasMore(false);
+        setIsLoading(false);
+        return;
+      }
+      
+      // Handle paginated view
+      const pageSize = 12;
+      const newItems = filteredAndSortedData.slice((page - 1) * pageSize, page * pageSize);
+      
+      setTimeout(() => {
+        // Double-check in case groupBy changed during the timeout
+        if (groupBy === 'none') {
+          setItems(prev => isFirstPage ? newItems : [...prev, ...newItems]);
+          setHasMore(filteredAndSortedData.length > page * pageSize);
+          setIsLoading(false);
+        }
+      }, isFirstPage && items.length === 0 ? 1500 : 500); // Longer delay for initial skeleton
+    };
+
+    loadData();
+  }, [searchParams, filteredAndSortedData]); // Reacts to any URL change
+
+  const loaderRef = useCallback(node => {
+    if (isLoading) return;
+    if (observer.current) observer.current.disconnect();
+    
+    observer.current = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting && hasMore) {
+        // Instead of setting local state, we update the URL, which triggers the data loading effect.
+        handleParamsChange({ page: (page + 1).toString() })
+      }
+    });
+    if (node) observer.current.observe(node);
+  }, [isLoading, hasMore, page, handleParamsChange]);
 
   // Calculate stats from data
   const totalItems = mockDataItems.length
@@ -136,63 +236,6 @@ export default function DataDemoPage() {
   const avgCompletion = totalItems > 0 ? Math.round(
     mockDataItems.reduce((acc, item) => acc + item.metrics.completion, 0) / totalItems
   ) : 0
-
-  // Reset pagination when filters or sort change
-  useEffect(() => {
-    setItems([])
-    setActiveGroupTab('all')
-    setPage(0) // This will be incremented to 1 in the loader `useEffect`, triggering a fresh load
-    setHasMore(true)
-    setIsLoading(true)
-    // Timeout prevents flicker and ensures loading state is visible for new filter/sort/group
-    setTimeout(() => {
-      if (groupBy !== 'none') {
-        setItems(filteredAndSortedData);
-        setHasMore(false);
-        setIsLoading(false);
-      } else {
-        setPage(1)
-      }
-    }, 100);
-  }, [filteredAndSortedData, groupBy])
-
-  // Infinite scroll logic
-  useEffect(() => {
-    if (page === 0) return;
-    if (groupBy !== 'none') return; // Pagination is disabled when grouping
-
-    const fetchItems = () => {
-      setIsLoading(true);
-      const isFirstPage = page === 1
-      
-      const pageSize = 12;
-      const newItems = filteredAndSortedData.slice((page - 1) * pageSize, page * pageSize);
-      
-      // Simulate network delay, longer for initial load to showcase skeleton
-      setTimeout(() => {
-        // Double-check in case groupBy changed during timeout
-        if (groupBy === 'none') {
-          setItems(prev => (isFirstPage ? newItems : [...prev, ...newItems]))
-          setHasMore(filteredAndSortedData.length > page * pageSize)
-          setIsLoading(false)
-        }
-      }, isFirstPage && items.length === 0 ? 1500 : 500)
-    };
-
-    if (hasMore) fetchItems();
-  }, [page, groupBy, filteredAndSortedData, hasMore]);
-
-  const loaderRef = useCallback(node => {
-    if (isLoading) return;
-    if (observer.current) observer.current.disconnect();
-    
-    observer.current = new IntersectionObserver(entries => {
-      if (entries[0].isIntersecting && hasMore) {
-        setPage(prevPage => prevPage + 1);
-      }
-    });
-    if (node) observer.current.observe(node);
-  }, [isLoading, hasMore]);
 
   const stats: StatItem[] = [
     {
@@ -250,7 +293,11 @@ export default function DataDemoPage() {
   }, [isInitialLoading])
 
   const handleSortChange = (config: SortConfig | null) => {
-    setSortConfig(config)
+    if (!config) {
+      handleParamsChange({ sort: 'default' });
+    } else {
+      handleParamsChange({ sort: `${config.key}-${config.direction}` });
+    }
   }
 
   // For table view header clicks
@@ -258,24 +305,19 @@ export default function DataDemoPage() {
     if (sortConfig?.key === field) {
       if (sortConfig.direction === 'desc') {
         // Cycle: desc -> asc
-        setSortConfig({ key: field, direction: 'asc' })
+        handleParamsChange({ sort: `${field}-asc` });
       } else {
-        // Cycle: asc -> default
-        setSortConfig(null)
+        // Cycle: asc -> default (by removing param)
+        handleParamsChange({ sort: 'default' });
       }
     } else {
       // New field, default to desc
-      setSortConfig({ key: field, direction: 'desc' })
+      handleParamsChange({ sort: `${field}-desc` });
     }
   }
 
   const handleFilterChange = (newFilters: FilterConfig) => {
-    setFilters(newFilters)
-  }
-  
-  // Handle item selection and open side panel
-  const handleItemSelect = (item: DataItem) => {
-    navigate(`/data-demo/${item.id}`)
+    handleParamsChange({ q: newFilters.searchTerm, status: newFilters.status, priority: newFilters.priority });
   }
 
   const groupTabs = useMemo(() => {
@@ -345,10 +387,10 @@ export default function DataDemoPage() {
             <p className="text-muted-foreground">
               {isInitialLoading 
                 ? "Loading projects..." 
-                : `Showing ${totalItemCount} item(s)`}
+                : `Showing ${dataToRender.length} of ${totalItemCount} item(s)`}
             </p>
           </div>
-          <DataViewModeSelector viewMode={viewMode} onChange={setViewMode} />
+          <DataViewModeSelector viewMode={viewMode} onChange={(mode) => handleParamsChange({ view: mode })} />
         </div>
 
         {/* Stats Section */}
@@ -391,7 +433,7 @@ export default function DataDemoPage() {
               <AnimatedTabs
                 tabs={groupTabs}
                 activeTab={activeGroupTab}
-                onTabChange={setActiveGroupTab}
+                onTabChange={(tab) => handleParamsChange({ tab: tab === 'all' ? null : tab })}
               />
             ) : (
               <div className="h-[68px]" /> // Placeholder for consistent height.
@@ -409,7 +451,7 @@ export default function DataDemoPage() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-[180px]">
-                <DropdownMenuRadioGroup value={groupBy} onValueChange={(val) => setGroupBy(val as GroupableField | 'none')}>
+                <DropdownMenuRadioGroup value={groupBy} onValueChange={(val) => handleParamsChange({ groupBy: val === 'none' ? null : val })}>
                   {groupOptions.map(option => (
                     <DropdownMenuRadioItem key={option.id} value={option.id}>
                       {option.label}
@@ -450,7 +492,7 @@ export default function DataDemoPage() {
               <span>Loading more...</span>
             </div>
           )}
-          {!isLoading && !hasMore && totalItemCount > 0 && !isInitialLoading && groupBy === 'none' && (
+          {!isLoading && !hasMore && items.length > 0 && !isInitialLoading && groupBy === 'none' && (
             <p className="text-muted-foreground">You've reached the end.</p>
           )}
         </div>

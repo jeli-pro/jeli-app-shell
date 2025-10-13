@@ -1,196 +1,107 @@
-Alright, let's architect this refactor. The goal is to bolt on a slick, tab-based grouping feature to the `DataDemoPage`. We're talking GSAP-powered UI, cohesive UX, and making it work across all existing data views. This isn't just a feature add; it's an upgrade to the entire data exploration experience.
+This is a classic case of state management getting out of hand on a single page. Moving all this view state into the URL is a massive win for user experience. Bookmarks will just work, sharing a specific filtered/sorted view becomes trivial, and the browser's back button becomes our friend again. We're going to turn that mess of `useState` into a clean, URL-driven component.
 
-We'll start by forging the new `AnimatedTabs` component the user provided. Then, we'll inject the core grouping logic into the `DataDemoPage`, refactoring its main data processing hook to handle the new dimension of grouping. Finally, we'll pipe this new grouped data structure into the view components, making sure each one—especially the tricky table view—renders the groups beautifully with staggered animations.
+The core idea is to make `URLSearchParams` the single source of truth. We'll read from it to build the UI, and any user interaction will update the URL, which in turn triggers a re-render with the new state. It's a clean, declarative flow. We'll centralize all URL updates into a single handler to keep things DRY and manage side-effects like resetting pagination.
 
-This is a full-stack UI refactor. We'll touch state management, data processing, component architecture, and animations. The result will be a far more powerful and "amazing" data showcase. Let's get to it.
+Let's get this done.
 
 ```yaml
 plan:
-  uuid: 'e8a3f9c1-4b7d-4e2f-8a9b-5c0d1e2f3g4h'
+  uuid: 'f2d9c1e0-a7b3-4f9d-8c4a-6e5b7f1d2a3b'
   status: 'todo'
-  title: 'Implement Data Grouping Feature in Data Demo Page'
+  title: 'Refactor Data Demo Page State to be URL-Driven'
   introduction: |
-    This master plan outlines the refactoring required to introduce a sophisticated data grouping feature into the `DataDemoPage`. The objective is to allow users to group data by various criteria like status, priority, or category, enhancing data analysis and visualization capabilities.
+    We're overhauling the `DataDemoPage` to move its local component state into the URL's search parameters. Currently, all filtering, sorting, view mode, and pagination are managed by a series of `useState` hooks, making the page's state ephemeral and not shareable.
 
-    The core of this effort involves creating a new, highly-animated `AnimatedTabs` component for group selection, inspired by the user's provided code. We will then refactor the central data processing logic in `DataDemoPage` to handle the transformation of a flat list into a grouped data structure. Finally, we'll update the rendering logic for all views (list, cards, grid, and table) to present this grouped data in an intuitive and visually appealing manner, complete with `gsap`-powered animations for a fluid user experience. This will significantly elevate the interactivity and utility of the data showcase.
+    This refactor will make `react-router`'s `useSearchParams` the single source of truth for the page's configuration. Every state change will be reflected in the URL, making the view fully linkable, bookmarkable, and navigable through browser history. We'll create a centralized handler to manage URL updates, ensuring consistent behavior like resetting pagination when filters are applied. The goal is a cleaner, more robust, and user-friendly data exploration experience.
   parts:
-    - uuid: 'a1b2c3d4-5e6f-7a8b-9c0d-1e2f3a4b5c6d'
+    - uuid: '9a1b8c7d-4e5f-4a3b-9c8d-1e2f3a4b5c6d'
       status: 'todo'
-      name: 'Part 1: Forge the AnimatedTabs Component'
+      name: 'Part 1: Make Data Demo Page State URL-Driven'
       reason: |
-        Before we can implement the grouping logic, we need the UI component that will control it. This part focuses on creating a new, reusable `AnimatedTabs` component based on the user-provided snippet, ensuring it's well-integrated with our project structure and tooling.
+        To make the page state (filters, sorting, view mode, etc.) bookmarkable, shareable, and navigable via browser history. This change centralizes state management, making the component more predictable and easier to debug.
       steps:
-        - uuid: 'b1c2d3e4-f5a6-b7c8-d9e0-a1b2c3d4e5f6'
+        - uuid: '1b2c3d4e-5f6a-7b8c-9d0e-1f2a3b4c5d6e'
           status: 'todo'
-          name: '1. Create and Implement AnimatedTabs Component'
+          name: '1. Parse URL Search Parameters for State'
           reason: |
-            To create the foundation for our grouping UI, we will first implement the tab component provided by the user. This component will be responsible for the visual selection of the grouping criteria.
+            The first step is to stop managing state locally and instead derive it directly from the URL. This makes the URL the single source of truth. We'll replace multiple `useState` hooks with `useMemo` hooks that parse the `searchParams` object from `react-router-dom`.
           files:
-            - 'src/components/ui/animated-tabs.tsx'
+            - src/pages/DataDemo/index.tsx
           operations:
-            - 'Create a new file at `src/components/ui/animated-tabs.tsx`.'
-            - 'Paste the user-provided code into the new file.'
-            - 'Add necessary imports: `React`, `useState`, `useRef`, `useEffect`, `cn`, and `gsap`.'
-            - 'Rename the component to `AnimatedTabs` for clarity and consistency.'
-            - 'Ensure the component correctly accepts and uses `tabs`, `activeTab`, and `onTabChange` props for controlled usage.'
-        - uuid: 'c2d3e4f5-a6b7-c8d9-e0f1-b2c3d4e5f6a7'
+            - 'Import `useSearchParams` from `react-router-dom` in `DataDemoPage`.'
+            - 'Remove the `useState` hooks for `viewMode`, `filters`, `sortConfig`, `groupBy`, and `activeGroupTab`.'
+            - 'Create `useMemo` hooks to derive these state variables from `searchParams`. For example: `const viewMode = useMemo(() => (searchParams.get("view") as ViewMode) || "list", [searchParams]);`.'
+            - 'Ensure parsing is case-insensitive where appropriate by using `.toLowerCase()` on retrieved parameter values.'
+            - 'Parse `q` for search, `status` and `priority` for filters (split by comma), `sort` for sorting, `groupBy`, and `tab`.'
+            - 'Remove the `useState` for `page` and derive it from the `page` search param, defaulting to `1`. For example: `const page = useMemo(() => parseInt(searchParams.get("page") || "1"), [searchParams]);`.'
+        - uuid: '2c3d4e5f-6a7b-8c9d-0e1f-2a3b4c5d6e7f'
           status: 'todo'
-          name: '2. Export the New Component'
+          name: '2. Implement a Centralized URL Update Handler'
           reason: |
-            To make the new `AnimatedTabs` component available throughout the application and for potential library consumers, it must be exported from the main entry point.
+            Instead of scattering `setSearchParams` calls throughout the component, we'll create a single, robust function to handle all URL modifications. This keeps logic centralized, reduces boilerplate, and allows us to manage complex side-effects like resetting pagination when filters change.
           files:
-            - 'src/index.ts'
+            - src/pages/DataDemo/index.tsx
           operations:
-            - "Add a new export line to `src/index.ts`: `export { AnimatedTabs } from './components/ui/animated-tabs';`"
+            - 'Create a new function `handleParamsChange` wrapped in `useCallback`.'
+            - 'This function should accept an object of new or updated search parameters (e.g., `{ view: "cards" }`).'
+            - 'Inside the function, use the functional update form of `setSearchParams(prev => { ... })` to avoid stale state.'
+            - 'Implement logic to merge the new params with the existing ones. If a value is `null`, `undefined`, or an empty string/array, delete the parameter from the URL.'
+            - 'Add logic to automatically reset the `page` to 1 by deleting the `page` param whenever filters (`q`, `status`, `priority`), sorting (`sort`), or grouping (`groupBy`) are changed.'
+            - 'Add logic to reset the active group `tab` by deleting the `tab` param whenever `groupBy` is changed.'
+        - uuid: '3d4e5f6a-7b8c-9d0e-1f2a-3b4c5d6e7f8g'
+          status: 'todo'
+          name: '3. Connect UI Components to the URL Handler'
+          reason: |
+            With the state derived from the URL and a handler to update it, we now need to wire up the UI components to this new system. All user interactions that change the view will now call our centralized `handleParamsChange` function.
+          files:
+            - src/pages/DataDemo/index.tsx
+          operations:
+            - 'Update the `onChange` prop for `DataViewModeSelector` to call `handleParamsChange({ view: newMode })`.'
+            - 'Modify the `onFiltersChange` handler for `DataToolbar` to call `handleParamsChange` with the new filter values for `q`, `status`, and `priority`.'
+            - 'Modify the `onSortChange` handler for `DataToolbar` to format the sort config into a string (e.g., `updatedAt-desc`) and pass it to `handleParamsChange({ sort: ... })`.'
+            - 'Update the `onValueChange` handler for the `groupBy` `DropdownMenu` to call `handleParamsChange({ groupBy: ... })`.'
+            - 'Update the `onTabChange` prop for `AnimatedTabs` to call `handleParamsChange({ tab: ... })`.'
+        - uuid: '4e5f6a7b-8c9d-0e1f-2a3b-4c5d6e7f8g9h'
+          status: 'todo'
+          name: '4. Refactor Data Loading and Infinite Scroll'
+          reason: |
+            The data fetching and pagination logic needs to be adapted to the new URL-driven state model. The component should now react to changes in `searchParams` to fetch or display data, rather than local state.
+          files:
+            - src/pages/DataDemo/index.tsx
+          operations:
+            - "Remove the `useEffect` hook that was responsible for resetting pagination; this logic is now in `handleParamsChange`."
+            - "Refactor the main data-loading `useEffect` to be triggered by `searchParams` and the `filteredAndSortedData` memo."
+            - "Inside this effect, handle the case where `groupBy` is active by loading all data at once and disabling pagination (`setHasMore(false)`)."
+            - "For paginated views (`groupBy` is `'none'`), check the `page` from the URL. If it's `1`, clear the existing `items`. Then, slice the correct page of data from `filteredAndSortedData` and append it to the `items` state."
+            - "Update the `loaderRef` `useCallback` for infinite scroll. When triggered, it should read the current `page` from `searchParams`, calculate `currentPage + 1`, and call `handleParamsChange` to update the `page` param in the URL."
       context_files:
         compact:
-          - 'src/components/ui/animated-tabs.tsx'
-          - 'src/index.ts'
+          - src/pages/DataDemo/index.tsx
         medium:
-          - 'src/components/ui/animated-tabs.tsx'
-          - 'src/index.ts'
-          - 'src/lib/utils.ts'
+          - src/pages/DataDemo/index.tsx
+          - src/pages/DataDemo/components/DataToolbar.tsx
+          - src/pages/DataDemo/components/DataViewModeSelector.tsx
         extended:
-          - 'src/components/ui/animated-tabs.tsx'
-          - 'src/index.ts'
-          - 'src/lib/utils.ts'
-          - 'src/pages/DataDemo/index.tsx'
-
-    - uuid: 'd4e5f6a7-b8c9-d0e1-f2a3-b4c5d6e7f8a9'
-      status: 'todo'
-      name: 'Part 2: Integrate Grouping Logic into DataDemoPage'
-      reason: |
-        This part retrofits the `DataDemoPage` to support grouping. We'll introduce new state for managing the selected group, render the `AnimatedTabs` UI, and overhaul the core data processing hook to transform the flat data array into a grouped structure.
-      steps:
-        - uuid: 'e5f6a7b8-c9d0-e1f2-a3b4-c5d6e7f8a9b0'
-          status: 'todo'
-          name: '1. Add Grouping State and UI to DataDemoPage'
-          reason: |
-            We need to add the state management for the grouping feature and render the `AnimatedTabs` component to allow users to interact with it.
-          files:
-            - 'src/pages/DataDemo/index.tsx'
-          operations:
-            - "Import `AnimatedTabs` from `@/components/ui/animated-tabs`."
-            - "Add a new state for the grouping criteria: `const [groupBy, setGroupBy] = useState<string>('none');`."
-            - "Define the grouping options: `const groupOptions = [{ id: 'none', label: 'None' }, { id: 'status', label: 'Status' }, { id: 'priority', label: 'Priority' }, { id: 'category', label: 'Category' }];`"
-            - 'In the main JSX, render the `<AnimatedTabs />` component above the `<DataToolbar />`. Pass the `groupOptions` as `tabs`, `groupBy` as `activeTab`, and `setGroupBy` as `onTabChange`.'
-        - uuid: 'f6a7b8c9-d0e1-f2a3-b4c5-d6e7f8a9b0c1'
-          status: 'todo'
-          name: '2. Refactor `processedData` Hook for Grouping'
-          reason: |
-            The main data processing logic must be updated to handle the new `groupBy` state. It will now be responsible for either returning a sorted flat list or a structured object of grouped items.
-          files:
-            - 'src/pages/DataDemo/index.tsx'
-          operations:
-            - "Update the `processedData` `useMemo` hook to depend on `groupBy`."
-            - 'Inside the hook, after all filtering and sorting is done, add a condition.'
-            - "If `groupBy === 'none'`, return the flat `filteredItems` array as is."
-            - "If `groupBy` is set (e.g., 'status'), use `reduce` to group the `filteredItems` into a `Record<string, DataItem[]>`. The key should be the value of the property specified by `groupBy`."
-            - 'This hook will now return data of type `DataItem[] | Record<string, DataItem[]>`.'
-      context_files:
-        compact:
-          - 'src/pages/DataDemo/index.tsx'
-          - 'src/components/ui/animated-tabs.tsx'
-        medium:
-          - 'src/pages/DataDemo/index.tsx'
-          - 'src/components/ui/animated-tabs.tsx'
-          - 'src/pages/DataDemo/types.ts'
-        extended:
-          - 'src/pages/DataDemo/index.tsx'
-          - 'src/components/ui/animated-tabs.tsx'
-          - 'src/pages/DataDemo/types.ts'
-          - 'src/pages/DataDemo/data/mockData.ts'
-
-    - uuid: 'a9b8c7d6-e5f4-a3b2-c1d0-e9f8a7b6c5d4'
-      status: 'todo'
-      name: 'Part 3: Render and Animate Grouped Views'
-      reason: |
-        With the data now grouped, we need to update the UI to render it correctly. This involves creating a new animated wrapper for groups and modifying the rendering logic for all views, with special attention given to the `DataTableView` to ensure it displays groups correctly.
-      steps:
-        - uuid: 'b0c1d2e3-f4a5-b6c7-d8e9-f0a1b2c3d4e5'
-          status: 'todo'
-          name: '1. Create Animated GroupWrapper and Update Render Logic'
-          reason: |
-            To provide a cohesive UX, we need to animate the groups as they appear and render them with clear headers. A dedicated wrapper component will handle animations, and the main page will loop through the grouped data.
-          files:
-            - 'src/pages/DataDemo/index.tsx'
-          operations:
-            - "Inside `DataDemoPage.tsx`, create a new local component `GroupWrapper({ title, children, count })`."
-            - "Use `gsap` in the `GroupWrapper`'s `useEffect` to animate its entrance (e.g., `gsap.fromTo(ref.current, { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.5 })`)."
-            - "Style a group header within `GroupWrapper` that displays the group `title` and item `count`."
-            - "In the main return statement of `DataDemoPage`, check if `processedData` is an object (i.e., grouped)."
-            - "If grouped, map over `Object.entries(processedData)`. For each `[groupName, items]`, render a `<GroupWrapper>`."
-            - "Inside the `GroupWrapper`, render the appropriate view (`DataListView`, `DataCardView`, or `DataGridView`) passing the `items` array to it. This works for all views except the table."
-            - "If not grouped, render the view component once with the full `processedData` array as before."
-        - uuid: 'c1d2e3f4-a5b6-c7d8-e9f0-a1b2c3d4e5f6'
-          status: 'todo'
-          name: '2. Refactor `DataTableView` for Grouped Data'
-          reason: |
-            The table view cannot simply be repeated for each group; it requires a more integrated approach. We will modify it to render group headers as distinct rows within a single table structure.
-          files:
-            - 'src/pages/DataDemo/components/DataTableView.tsx'
-            - 'src/pages/DataDemo/types.ts'
-          operations:
-            - "In `types.ts`, update `ViewProps` so the `data` prop can be `DataItem[] | Record<string, DataItem[]>`. Also, pass `groupBy?: string`."
-            - "In `DataTableView.tsx`, update the component's props to accept the new data structure."
-            - 'Inside the `DataTableView` component, check if `data` is an array or an object.'
-            - "If it's an object, map over its entries to render multiple `<tbody>` elements."
-            - "For each group, render a `<tbody>`. The first row (`<tr>`) inside the `<tbody>` should be a header for the group (e.g., `<td colSpan={8}>...{groupName}</td>`)."
-            - 'Following the header row, map over the items in that group and render their respective `<tr>` elements as before.'
-            - "If `data` is a flat array, render a single `<tbody>` with all item rows, maintaining existing functionality."
-        - uuid: 'd2e3f4a5-b6c7-d8e9-f0a1-b2c3d4e5f6a7'
-          status: 'todo'
-          name: '3. Pass Grouped Data to `DataTableView`'
-          reason: |
-            After refactoring `DataTableView` to accept grouped data, we need to update the parent component (`DataDemoPage`) to pass the correct data structure to it.
-          files:
-            - 'src/pages/DataDemo/index.tsx'
-          operations:
-            - "In `DataDemoPage.tsx`'s `renderView` function, locate the `case 'table'`."
-            - 'Instead of looping like the other views, pass the entire `processedData` object (or array) directly to `<DataTableView />`.'
-            - "This allows `DataTableView` to handle its own internal group rendering logic."
-      context_files:
-        compact:
-          - 'src/pages/DataDemo/index.tsx'
-          - 'src/pages/DataDemo/components/DataTableView.tsx'
-          - 'src/pages/DataDemo/types.ts'
-        medium:
-          - 'src/pages/DataDemo/index.tsx'
-          - 'src/pages/DataDemo/components/DataTableView.tsx'
-          - 'src/pages/DataDemo/types.ts'
-          - 'src/pages/DataDemo/components/DataListView.tsx'
-          - 'src/pages/DataDemo/components/DataCardView.tsx'
-        extended:
-          - 'src/pages/DataDemo/index.tsx'
-          - 'src/pages/DataDemo/components/DataTableView.tsx'
-          - 'src/pages/DataDemo/types.ts'
-          - 'src/pages/DataDemo/components/DataListView.tsx'
-          - 'src/pages/DataDemo/components/DataCardView.tsx'
-          - 'src/pages/DataDemo/data/mockData.ts'
+          - src/pages/DataDemo/index.tsx
+          - src/pages/DataDemo/components/DataToolbar.tsx
+          - src/pages/DataDemo/components/DataViewModeSelector.tsx
+          - src/App.tsx
+          - src/pages/DataDemo/types.ts
   conclusion: |
-    Upon completion of this refactoring, the `DataDemoPage` will be significantly more powerful and interactive. Users will be able to fluidly switch between ungrouped and grouped views using a sleek, animated tab interface.
+    By completing this refactor, the `DataDemoPage` will be significantly more robust and user-friendly. Its state will be entirely controlled by the URL, making every possible view of the data—filtered, sorted, grouped, and paginated—a distinct, shareable link.
 
-    The new architecture cleanly separates the grouping UI, data processing, and view rendering, making future enhancements easier to implement. The user experience will be greatly improved with clear visual grouping and smooth `gsap` animations, fulfilling the request for an "amazing" and "cohesive" feature.
+    This change simplifies the component's internal logic by removing multiple `useState` hooks and effects in favor of a declarative approach that derives state from a single source of truth. The result is cleaner code, a better user experience, and a more powerful data exploration tool.
   context_files:
     compact:
-      - 'src/pages/DataDemo/index.tsx'
-      - 'src/pages/DataDemo/components/DataTableView.tsx'
-      - 'src/pages/DataDemo/types.ts'
-      - 'src/components/ui/animated-tabs.tsx'
+      - src/pages/DataDemo/index.tsx
     medium:
-      - 'src/pages/DataDemo/index.tsx'
-      - 'src/pages/DataDemo/components/DataTableView.tsx'
-      - 'src/pages/DataDemo/types.ts'
-      - 'src/components/ui/animated-tabs.tsx'
-      - 'src/pages/DataDemo/components/DataListView.tsx'
-      - 'src/pages/DataDemo/components/DataCardView.tsx'
+      - src/pages/DataDemo/index.tsx
+      - src/pages/DataDemo/components/DataToolbar.tsx
+      - src/pages/DataDemo/components/DataViewModeSelector.tsx
     extended:
-      - 'src/pages/DataDemo/index.tsx'
-      - 'src/pages/DataDemo/components/DataTableView.tsx'
-      - 'src/pages/DataDemo/types.ts'
-      - 'src/components/ui/animated-tabs.tsx'
-      - 'src/pages/DataDemo/components/DataListView.tsx'
-      - 'src/pages/DataDemo/components/DataCardView.tsx'
-      - 'src/pages/DataDemo/data/mockData.ts'
-      - 'src/index.ts'
+      - src/pages/DataDemo/index.tsx
+      - src/pages/DataDemo/components/DataToolbar.tsx
+      - src/pages/DataDemo/components/DataViewModeSelector.tsx
+      - src/App.tsx
+      - src/pages/DataDemo/types.ts
 ```

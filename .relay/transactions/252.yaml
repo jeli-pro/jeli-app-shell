@@ -1,35 +1,71 @@
-uuid: 4400e9de-631d-4861-ac32-f3f37474a008
+uuid: c25841b8-2e06-4b68-b7ec-980753d08f75
 projectId: jeli-app-shell
-createdAt: '2025-10-13T17:02:09.683Z'
+createdAt: '2025-10-13T17:10:20.150Z'
 gitCommitMsg: >-
-  fix(DataDemo): Refine group-by tabs UI
+  refactor(DataDemo): make all view state URL-driven
 
-  - Conditionally apply bottom border to the tabs/group-by section, hiding it
-  when `groupBy` is 'none'. - Added `overflow-y-hidden` to the tabs container to
-  ensure scrolling is strictly horizontal, preventing any potential vertical
-  overflow.
+  Refactors the DataDemoPage to move all view state management from local
+  `useState` hooks to URL search parameters using `useSearchParams`.
+
+  This change makes the page's entire configuration (view mode, filters,
+  sorting, grouping, and pagination) declarative and derived from the URL.
+
+  Key changes include: - Replacing multiple `useState` hooks with `useMemo`
+  hooks that parse
+    `searchParams`.
+  - Introducing a centralized `handleParamsChange` function to manage all
+    URL updates, including side-effects like resetting pagination on
+    filter changes.
+  - Updating all UI controls to interact with the new URL-based state
+    management system.
+  - Refactoring data loading and infinite scroll logic to be reactive to
+    URL changes.
+
+  This makes the data view fully linkable, bookmarkable, and improves the
+  overall user experience by enabling browser history navigation.
 promptSummary: >-
-  Update the Data Demo page to hide the group-by border when no grouping is
-  selected and ensure tab scrolling is strictly horizontal.
+  I want to refactor the DataDemoPage component to manage all of its view state
+  (filtering, sorting, pagination, grouping, view mode) using URL search
+  parameters instead of local `useState` hooks. This will make the page's state
+  shareable and bookmarkable.
 reasoning:
-  - Here are the changes to address your request.
-  - '### Step-by-step Reasoning'
   - >-
-    1.  **Hide Bottom Border:** I'll modify the "Group by and Tabs section"
-    container in `src/pages/DataDemo/index.tsx`. I will wrap its `className`
-    attribute with the `cn` utility function. This allows me to conditionally
-    apply the `border-b` class only when `groupBy` is not equal to `'none'`.
-    When no grouping is active, the border will be hidden as requested.
+    This is an excellent request. Centralizing view state in the URL is a best
+    practice for creating shareable, bookmarkable, and robust user interfaces.
+    It makes the application state declarative and easy to reason about.
+  - 'Here is the plan to refactor the `DataDemoPage`:'
   - >-
-    2.  **Ensure Horizontal Scrolling:** To enforce that the group tabs scroll
-    only horizontally, I'll update the `div` that wraps the `AnimatedTabs`
-    component. I will add the `overflow-y-hidden` class to its existing
-    `className` string. This prevents any potential vertical overflow or
-    scrolling, ensuring the tab list remains on a single line that scrolls
-    horizontally when needed.
-  - '### Code Changes'
-  - I will now apply these changes to `src/pages/DataDemo/index.tsx`.
-  - '---'
+    1.  **Remove Local State**: Eliminate all `useState` hooks that manage
+    view-related state like filters, sorting, grouping, pagination, and view
+    mode.
+  - >-
+    2.  **Embrace the URL**: Use the `useSearchParams` hook from
+    `react-router-dom` as the single source of truth for this state.
+  - >-
+    3.  **Derive State**: Create `useMemo` hooks to parse the URL search
+    parameters into the data structures our component needs (e.g., `filters`,
+    `sortConfig`). This ensures state is always in sync with the URL.
+  - >-
+    4.  **Centralize Updates**: Implement a single `handleParamsChange`
+    function. This function will be responsible for updating the URL search
+    parameters in a consistent way, handling logic like resetting the page
+    number when filters are changed.
+  - >-
+    5.  **Connect the UI**: Wire up all UI controls (toolbar, view selector,
+    tabs, etc.) to call `handleParamsChange`, ensuring any user interaction
+    updates the URL.
+  - >-
+    6.  **Refactor Data Flow**: Adjust the data loading `useEffect` and the
+    infinite scroll logic to be driven by changes in the `searchParams` object,
+    creating a reactive data flow from the URL to the view.
+  - >-
+    This approach will transform the component from an imperative, stateful
+    component into a declarative one that simply reflects the state of the URL.
+  - '### Refactoring the Data Demo Page'
+  - >-
+    I will now apply all the necessary changes to
+    `src/pages/DataDemo/index.tsx`. This is the only file that needs to be
+    modified.
 operations:
   - type: write
     path: src/pages/DataDemo/index.tsx
@@ -38,28 +74,501 @@ operations:
 
       +++ src/pages/DataDemo/index.tsx
 
-      @@ -401,11 +401,14 @@
+      @@ -1,6 +1,6 @@
+       import { useState, useRef, useEffect, useCallback, useMemo, useLayoutEffect } from 'react'
+      -import { useParams, useNavigate } from 'react-router-dom'
+
+      -import { 
+
+      +import { useParams, useNavigate, useSearchParams } from
+      'react-router-dom'
+
+      +import {
+         Layers, 
+         AlertTriangle, 
+         PlayCircle, 
+      @@ -43,26 +43,84 @@
+       type StatItem = Stat | ChartStat;
+       
+       export default function DataDemoPage() {
+      -  const [viewMode, setViewMode] = useState<ViewMode>('list')
+
+      -  const [filters, setFilters] = useState<FilterConfig>({
+
+      -    searchTerm: '',
+
+      -    status: [],
+
+      -    priority: [],
+
+      -  })
+
+      -  const [sortConfig, setSortConfig] = useState<SortConfig | null>({ key:
+      'updatedAt', direction: 'desc' })
+
+      -  const [groupBy, setGroupBy] = useState<GroupableField | 'none'>('none')
+
+      -  const [activeGroupTab, setActiveGroupTab] = useState('all')
+
+      -  
+
+      +  const [searchParams, setSearchParams] = useSearchParams()
+
+      +
+
+      +  // Derive state from URL search params
+
+      +  const viewMode = useMemo(() => (searchParams.get('view') as ViewMode)
+      || 'list', [searchParams])
+
+      +  const page = useMemo(() => parseInt(searchParams.get('page') || '1',
+      10), [searchParams])
+
+      +  const groupBy = useMemo(() => (searchParams.get('groupBy') as
+      GroupableField | 'none') || 'none', [searchParams])
+
+      +  const activeGroupTab = useMemo(() => searchParams.get('tab') || 'all',
+      [searchParams])
+
+      +
+
+      +  const filters = useMemo<FilterConfig>(() => ({
+
+      +    searchTerm: searchParams.get('q') || '',
+
+      +    status: (searchParams.get('status')?.split(',') ||
+      []).filter(Boolean) as Status[],
+
+      +    priority: (searchParams.get('priority')?.split(',') ||
+      []).filter(Boolean) as Priority[],
+
+      +  }), [searchParams])
+
+      +
+
+      +  const sortConfig = useMemo<SortConfig | null>(() => {
+
+      +    const sortParam = searchParams.get('sort');
+
+      +    if (!sortParam) return { key: 'updatedAt', direction: 'desc' }; //
+      Default sort
+
+      +    if (sortParam === 'default') return null;
+
+      +    
+
+      +    const [key, direction] = sortParam.split('-');
+
+      +    return { key: key as SortableField, direction: direction as 'asc' |
+      'desc' };
+
+      +  }, [searchParams])
+
+      +
+
+      +  // Centralized handler for updating URL search params
+
+      +  const handleParamsChange = useCallback(
+
+      +    (newParams: Record<string, string | string[] | null | undefined>) =>
+      {
+
+      +      setSearchParams(
+
+      +        (prev) => {
+
+      +          const updated = new URLSearchParams(prev);
+
+      +          let pageReset = false;
+
+      +
+
+      +          for (const [key, value] of Object.entries(newParams)) {
+
+      +            const isFilterOrSort = ['q', 'status', 'priority', 'sort',
+      'groupBy'].includes(key);
+
+      +            
+
+      +            if (value === null || value === undefined ||
+      (Array.isArray(value) && value.length === 0) || value === '') {
+
+      +              updated.delete(key);
+
+      +            } else if (Array.isArray(value)) {
+
+      +              updated.set(key, value.join(','));
+
+      +            } else {
+
+      +              updated.set(key, String(value));
+
+      +            }
+
+      +            
+
+      +            if (isFilterOrSort) {
+
+      +              pageReset = true;
+
+      +            }
+
+      +          }
+
+      +
+
+      +          if (pageReset) {
+
+      +            updated.delete('page');
+
+      +          }
+
+      +          if ('groupBy' in newParams) {
+
+      +            updated.delete('tab');
+
+      +          }
+
+      +
+
+      +          return updated;
+
+      +        },
+
+      +        { replace: true }
+
+      +      );
+
+      +    },
+
+      +    [setSearchParams]
+
+      +  );
+
+      +
+         const groupOptions: { id: GroupableField | 'none'; label: string }[] = [
+           { id: 'none', label: 'None' }, { id: 'status', label: 'Status' }, { id: 'priority', label: 'Priority' }, { id: 'category', label: 'Category' }
+         ]
+         const [items, setItems] = useState<DataItem[]>([])
+      -  const [page, setPage] = useState(0) // Start at 0 to trigger initial
+      load effect
+         const [hasMore, setHasMore] = useState(true)
+         const [isLoading, setIsLoading] = useState(true)
+         const contentRef = useRef<HTMLDivElement>(null)
+         const statsRef = useRef<HTMLDivElement>(null)
+         const observer = useRef<IntersectionObserver>()
+         const navigate = useNavigate()
+         const { itemId } = useParams<{ itemId: string }>()
+      +
+
+      +  const handleItemSelect = (item: DataItem) => {
+
+      +    navigate(`/data-demo/${item.id}`)
+
+      +  }
+       
+         const selectedItem = useMemo(() => {
+           if (!itemId) return null
+      @@ -124,53 +182,34 @@
+             })
+           }
+       
+      -    return filteredItems
+
+      -  }, [filters, sortConfig, groupBy])
+
+      -
+
+      -  // Calculate stats from data
+
+      -  const totalItems = mockDataItems.length
+
+      -  const activeItems = mockDataItems.filter(item => item.status ===
+      'active').length
+
+      -  const highPriorityItems = mockDataItems.filter(item => item.priority
+      === 'high' || item.priority === 'critical').length
+
+      -  const avgCompletion = totalItems > 0 ? Math.round(
+
+      -    mockDataItems.reduce((acc, item) => acc + item.metrics.completion, 0)
+      / totalItems
+
+      -  ) : 0
+
+      -
+
+      -  // Reset pagination when filters or sort change
+
+      +    return filteredItems;
+
+      +  }, [filters, sortConfig]);
+
+      +
+
+      +
+
+      +  // Data loading effect
+         useEffect(() => {
+      -    setItems([])
+
+      -    setActiveGroupTab('all')
+
+      -    setPage(0) // This will be incremented to 1 in the loader
+      `useEffect`, triggering a fresh load
+
+      -    setHasMore(true)
+
+      -    setIsLoading(true)
+
+      -    // Timeout prevents flicker and ensures loading state is visible for
+      new filter/sort/group
+
+      -    setTimeout(() => {
+
+      +    setIsLoading(true);
+
+      +    const isFirstPage = page === 1;
+
+      +
+
+      +    const loadData = () => {
+             if (groupBy !== 'none') {
+      +        // For grouped views, load all data at once, pagination is
+      disabled.
+               setItems(filteredAndSortedData);
+               setHasMore(false);
+               setIsLoading(false);
+      -      } else {
+
+      -        setPage(1)
+
+      +        return;
+             }
+      -    }, 100);
+
+      -  }, [filteredAndSortedData, groupBy])
+
+      -
+
+      -  // Infinite scroll logic
+
+      -  useEffect(() => {
+
+      -    if (page === 0) return;
+
+      -    if (groupBy !== 'none') return; // Pagination is disabled when
+      grouping
+
+      -
+
+      -    const fetchItems = () => {
+
+      -      setIsLoading(true);
+
+      -      const isFirstPage = page === 1
+             
+      +      // Handle paginated view
+             const pageSize = 12;
+             const newItems = filteredAndSortedData.slice((page - 1) * pageSize, page * pageSize);
+             
+      -      // Simulate network delay, longer for initial load to showcase
+      skeleton
+             setTimeout(() => {
+      -        // Double-check in case groupBy changed during timeout
+
+      +        // Double-check in case groupBy changed during the timeout
+               if (groupBy === 'none') {
+      -          setItems(prev => (isFirstPage ? newItems : [...prev,
+      ...newItems]))
+
+      -          setHasMore(filteredAndSortedData.length > page * pageSize)
+
+      -          setIsLoading(false)
+
+      +          setItems(prev => isFirstPage ? newItems : [...prev,
+      ...newItems]);
+
+      +          setHasMore(filteredAndSortedData.length > page * pageSize);
+
+      +          setIsLoading(false);
+               }
+      -      }, isFirstPage && items.length === 0 ? 1500 : 500)
+
+      -    };
+
+      -
+
+      -    if (hasMore) fetchItems();
+
+      -  }, [page, groupBy, filteredAndSortedData, hasMore]);
+
+      +      }, isFirstPage && items.length === 0 ? 1500 : 500); // Longer delay
+      for initial skeleton
+
+      +    };
+
+      +
+
+      +    loadData();
+
+      +  }, [searchParams, filteredAndSortedData]); // Reacts to any URL change
+       
+         const loaderRef = useCallback(node => {
+           if (isLoading) return;
+      @@ -178,11 +217,20 @@
+           
+           observer.current = new IntersectionObserver(entries => {
+             if (entries[0].isIntersecting && hasMore) {
+      -        setPage(prevPage => prevPage + 1);
+
+      +        // Instead of setting local state, we update the URL, which
+      triggers the data loading effect.
+
+      +        handleParamsChange({ page: (page + 1).toString() })
+             }
+           });
+           if (node) observer.current.observe(node);
+      -  }, [isLoading, hasMore]);
+
+      +  }, [isLoading, hasMore, page, handleParamsChange]);
+
+      +
+
+      +  // Calculate stats from data
+
+      +  const totalItems = mockDataItems.length
+
+      +  const activeItems = mockDataItems.filter(item => item.status ===
+      'active').length
+
+      +  const highPriorityItems = mockDataItems.filter(item => item.priority
+      === 'high' || item.priority === 'critical').length
+
+      +  const avgCompletion = totalItems > 0 ? Math.round(
+
+      +    mockDataItems.reduce((acc, item) => acc + item.metrics.completion, 0)
+      / totalItems
+
+      +  ) : 0
+       
+         const stats: StatItem[] = [
+           {
+      @@ -242,8 +290,12 @@
+         }, [isInitialLoading])
+       
+         const handleSortChange = (config: SortConfig | null) => {
+      -    setSortConfig(config)
+
+      +    if (!config) {
+
+      +      handleParamsChange({ sort: 'default' });
+
+      +    } else {
+
+      +      handleParamsChange({ sort: `${config.key}-${config.direction}` });
+
+      +    }
+         }
+       
+         // For table view header clicks
+      @@ -251,24 +303,19 @@
+           if (sortConfig?.key === field) {
+             if (sortConfig.direction === 'desc') {
+               // Cycle: desc -> asc
+      -        setSortConfig({ key: field, direction: 'asc' })
+
+      +        handleParamsChange({ sort: `${field}-asc` });
+             } else {
+      -        // Cycle: asc -> default
+
+      -        setSortConfig(null)
+
+      +        // Cycle: asc -> default (by removing param)
+
+      +        handleParamsChange({ sort: 'default' });
+             }
+           } else {
+             // New field, default to desc
+      -      setSortConfig({ key: field, direction: 'desc' })
+
+      +      handleParamsChange({ sort: `${field}-desc` });
+           }
+         }
+       
+         const handleFilterChange = (newFilters: FilterConfig) => {
+      -    setFilters(newFilters)
+
+      -  }
+
+      -  
+
+      -  // Handle item selection and open side panel
+
+      -  const handleItemSelect = (item: DataItem) => {
+
+      -    navigate(`/data-demo/${item.id}`)
+
+      +    handleParamsChange({ q: newFilters.searchTerm, status:
+      newFilters.status, priority: newFilters.priority });
+         }
+       
+         const groupTabs = useMemo(() => {
+      @@ -325,10 +372,10 @@
+                   <p className="text-muted-foreground">
+                     {isInitialLoading 
+                       ? "Loading projects..." 
+      -                : `Showing ${totalItemCount} item(s)`}
+
+      +                : `Showing ${dataToRender.length} of ${totalItemCount}
+      item(s)`}
+                   </p>
+                 </div>
+      -          <DataViewModeSelector viewMode={viewMode}
+      onChange={setViewMode} />
+
+      +          <DataViewModeSelector viewMode={viewMode} onChange={(mode) =>
+      handleParamsChange({ view: mode })} />
                </div>
        
-               {/* Group by and Tabs section */}
-      -        <div className="flex items-center justify-between gap-4
-      border-b">
-
-      +        <div className={cn(
-
-      +          "flex items-center justify-between gap-4",
-
-      +          groupBy !== 'none' && "border-b"
-
-      +        )}>
-                 {/* Tabs on the left, takes up available space */}
-      -          <div className="flex-grow overflow-x-auto no-scrollbar">
-
-      +          <div className="flex-grow overflow-x-auto overflow-y-hidden
-      no-scrollbar">
+               {/* Stats Section */}
+      @@ -364,7 +411,7 @@
                    {groupBy !== 'none' && groupTabs.length > 1 ? (
                      <AnimatedTabs
                        tabs={groupTabs}
+                       activeTab={activeGroupTab}
+      -                onTabChange={setActiveGroupTab}
+
+      +                onTabChange={(tab) => handleParamsChange({ tab: tab ===
+      'all' ? null : tab })}
+                     />
+                   ) : (
+                     <div className="h-[68px]" /> // Placeholder for consistent height.
+      @@ -381,7 +428,7 @@
+                       </Button>
+                     </DropdownMenuTrigger>
+                     <DropdownMenuContent className="w-[180px]">
+      -                <DropdownMenuRadioGroup value={groupBy}
+      onValueChange={(val) => setGroupBy(val as GroupableField | 'none')}>
+
+      +                <DropdownMenuRadioGroup value={groupBy}
+      onValueChange={(val) => handleParamsChange({ groupBy: val === 'none' ?
+      null : val })}>
+                         {groupOptions.map(option => (
+                           <DropdownMenuRadioItem key={option.id} value={option.id}>
+                             {option.label}
+      @@ -422,7 +469,7 @@
+                     <span>Loading more...</span>
+                   </div>
+                 )}
+      -          {!isLoading && !hasMore && totalItemCount > 0 &&
+      !isInitialLoading && groupBy === 'none' && (
+
+      +          {!isLoading && !hasMore && items.length > 0 &&
+      !isInitialLoading && groupBy === 'none' && (
+                   <p className="text-muted-foreground">You've reached the end.</p>
+                 )}
+               </div>
 
     patchStrategy: standard-diff
 snapshot:
@@ -472,9 +981,12 @@ snapshot:
             </div>
 
             {/* Group by and Tabs section */}
-            <div className="flex items-center justify-between gap-4 border-b">
+            <div className={cn(
+              "flex items-center justify-between gap-4",
+              groupBy !== 'none' && "border-b"
+            )}>
               {/* Tabs on the left, takes up available space */}
-              <div className="flex-grow overflow-x-auto no-scrollbar">
+              <div className="flex-grow overflow-x-auto overflow-y-hidden no-scrollbar">
                 {groupBy !== 'none' && groupTabs.length > 1 ? (
                   <AnimatedTabs
                     tabs={groupTabs}
@@ -550,6 +1062,6 @@ approved: true
 linesAdded: null
 linesRemoved: null
 linesDifference: null
-gitCommittedAt: '2025-10-13T17:02:48.411Z'
+gitCommittedAt: null
 status: committed
-id: 251
+id: 252
