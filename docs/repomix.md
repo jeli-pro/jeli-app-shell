@@ -74,7 +74,7 @@ export default {
 
 ## File: src/pages/DataDemo/components/DataViewModeSelector.tsx
 ````typescript
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import { gsap } from 'gsap'
 import { cn } from '@/lib/utils'
 import { List, Grid3X3, LayoutGrid, Table } from 'lucide-react'
@@ -94,158 +94,72 @@ const viewModes = [
 
 export function DataViewModeSelector({ viewMode, onChange }: DataViewModeSelectorProps) {
   const indicatorRef = useRef<HTMLDivElement>(null)
-  const containerRef = useRef<HTMLDivElement>(null);
-  const buttonRefs = useRef<(HTMLButtonElement | null)[]>([]);
-  const [isExpanded, setIsExpanded] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null)
 
-  // Animate the indicator to the active button
   useEffect(() => {
-    if (!indicatorRef.current) return
+    if (!indicatorRef.current || !containerRef.current) return
 
-    const activeIndex = viewModes.findIndex((m) => m.id === viewMode);
-    if (activeIndex === -1) return;
+    const activeButton = containerRef.current.querySelector(`[data-mode="${viewMode}"]`) as HTMLElement
+    if (!activeButton) return
 
-    // Determine responsive sizes, must match the other useEffect
-    const isSmallScreen = window.innerWidth < 640;
-    const buttonWidth = isSmallScreen ? 100 : 120;
+    const containerRect = containerRef.current.getBoundingClientRect()
+    const buttonRect = activeButton.getBoundingClientRect()
     
-    // Calculate final position without reading from DOM during animation
-    const targetX = isExpanded
-      ? activeIndex * buttonWidth
-      : 0;
+    const left = buttonRect.left - containerRect.left
+    const width = buttonRect.width
 
-    // Animate indicator to the calculated position
     gsap.to(indicatorRef.current, {
-      duration: 0.4,
-      x: targetX,
-      width: buttonWidth,
-      ease: "power3.out",
-    });
-  }, [viewMode, isExpanded]);
-
-  // Expand and collapse inactive buttons
-  useEffect(() => {
-    const activeIndex = viewModes.findIndex((m) => m.id === viewMode);
-    
-    // Determine responsive sizes
-    const isSmallScreen = window.innerWidth < 640;
-    const padding = isSmallScreen ? 16 : 24; // px-4 vs sm:px-6
-    const minWidth = isSmallScreen ? 100 : 120;
-
-    buttonRefs.current.forEach((button, index) => {
-      if (!button) return;
-
-      const isActive = index === activeIndex;
-
-      // The active button is always visible and sized correctly
-      if (isActive) {
-        gsap.set(button, {
-          minWidth: minWidth,
-          width: minWidth,
-          paddingLeft: padding,
-          paddingRight: padding,
-          opacity: 1,
-          pointerEvents: 'auto',
-          overflow: 'visible'
-        });
-        return;
-      }
-
-      // Animate inactive buttons
-      gsap.to(button, {
-        width: isExpanded ? minWidth : 0,
-        minWidth: isExpanded ? minWidth : 0,
-        paddingLeft: isExpanded ? padding : 0,
-        paddingRight: isExpanded ? padding : 0,
-        opacity: isExpanded ? 1 : 0,
-        duration: 0.3,
-        ease: "power2.out",
-        delay: isExpanded ? (Math.abs(index - activeIndex) - 1) * 0.05 : 0,
-        pointerEvents: isExpanded ? "auto" : "none",
-        overwrite: true,
-        onStart: () => {
-          if(!isExpanded) button.style.overflow = 'hidden';
-        },
-        onComplete: () => {
-          if (isExpanded) button.style.overflow = 'visible';
-        }
-      });
-    });
-  }, [isExpanded, viewMode]);
+      duration: 0.3,
+      x: left,
+      width: width,
+      ease: "power2.out"
+    })
+  }, [viewMode])
 
   return (
-    <div
-      onMouseEnter={() => setIsExpanded(true)}
-      onMouseLeave={() => setIsExpanded(false)}
-      className="inline-block" // Wrapper to isolate from parent layout changes
+    <div 
+      ref={containerRef}
+      className="relative flex flex-wrap justify-center items-center bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-1.5 shadow-lg"
     >
+      {/* Animated indicator */}
       <div
-        ref={containerRef}
-        className="relative flex flex-nowrap justify-center items-center bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-1.5 shadow-lg"
-      >
-        {/* Animated indicator */}
-        <div
-          ref={indicatorRef}
-          className="absolute inset-y-1.5 bg-gradient-to-r from-primary/20 to-primary/10 border border-primary/20 rounded-xl"
-          style={{ left: 0, width: 0, pointerEvents: 'none' }}
-        />
-
-        {/* Mode buttons */}
-        {viewModes.map((mode, index) => {
-          const IconComponent = mode.icon;
-          const isActive = viewMode === mode.id;
-
-          return (
-            <button
-              key={mode.id}
-              ref={(el) => {
-                buttonRefs.current[index] = el;
-              }}
-              data-mode={mode.id}
-              onClick={() => {
-                if (!isActive) onChange(mode.id);
-              }}
-              // Size and padding classes are removed and handled by GSAP
-              className={cn(
-                "relative flex items-center justify-center gap-2 sm:gap-3 py-2 sm:py-3 rounded-xl transition-colors duration-300 group z-10",
-                "hover:bg-accent/20 active:scale-95",
-                isActive ? "text-primary" : ""
-              )}
-              style={
-                !isActive
-                  ? {
-                      width: 0,
-                      minWidth: 0,
-                      paddingLeft: 0,
-                      paddingRight: 0,
-                      opacity: 0,
-                      overflow: "hidden",
-                      pointerEvents: "none",
-                    }
-                  : {}
-              }
-              title={mode.description}
-            >
-              <IconComponent
-                className={cn(
-                  "w-5 h-5 transition-all duration-300 flex-shrink-0",
-                  isActive && "scale-110",
-                  "group-hover:scale-105"
-                )}
-              />
-              <span
-                className={cn(
-                  "font-medium transition-colors duration-300 whitespace-nowrap",
-                  isActive ? "text-primary" : "text-muted-foreground",
-                  "group-hover:text-foreground"
-                )}
-              >
-                {mode.label}
-              </span>
-            </button>
-          );
-        })}
-      </div>
+        ref={indicatorRef}
+        className="absolute inset-y-1.5 bg-gradient-to-r from-primary/20 to-primary/10 border border-primary/20 rounded-xl transition-all duration-300"
+        style={{ left: 0, width: 0 }}
+      />
+      
+      {/* Mode buttons */}
+      {viewModes.map((mode) => {
+        const IconComponent = mode.icon
+        const isActive = viewMode === mode.id
+        
+        return (
+          <button
+            key={mode.id}
+            data-mode={mode.id}
+            onClick={() => onChange(mode.id)}
+            className={cn(
+              "relative flex items-center justify-center gap-2 sm:gap-3 px-4 py-2 sm:px-6 sm:py-3 rounded-xl transition-all duration-300 group min-w-[100px] sm:min-w-[120px]",
+              "hover:bg-accent/20 active:scale-95",
+              isActive && "text-primary"
+            )}
+            title={mode.description}
+          >
+            <IconComponent className={cn(
+              "w-5 h-5 transition-all duration-300",
+              isActive && "scale-110",
+              "group-hover:scale-105"
+            )} />
+            <span className={cn(
+              "font-medium transition-all duration-300",
+              isActive ? "text-primary" : "text-muted-foreground",
+              "group-hover:text-foreground"
+            )}>
+              {mode.label}
+            </span>
+          </button>
+        )
+      })}
     </div>
   )
 }

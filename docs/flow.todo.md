@@ -1,5 +1,9 @@
 ===
 
+I am obsessed with laravel filament... so make everything about data demo page is highly available to customizable for consumer and developer while also make them so easy to use in the most less code and effort.
+
+===
+
 scroll to bottom in dashboard is not stick to right bottom.
 also why not auto applied to another page like demo data?
 

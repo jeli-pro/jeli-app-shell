@@ -1,0 +1,302 @@
+uuid: a69de4de-12e0-4965-9851-f76cfacdd739
+projectId: jeli-app-shell
+createdAt: '2025-10-13T03:37:15.708Z'
+gitCommitMsg: >-
+  feat(DataViewModeSelector): Refactor to hover-to-expand UI with GSAP
+
+  - Implemented a minimalist, hover-to-expand user interface for the
+  DataViewModeSelector. - The component now collapses to show only the active
+  view mode's icon by default. - On hover, buttons and labels expand with a
+  staggered GSAP animation. - A unified GSAP timeline with an `onUpdate`
+  callback ensures the active state indicator tracks the button's position and
+  size flawlessly during all animations (expand, collapse, and view change),
+  creating a smooth, fluid user experience.
+promptSummary: >-
+  I want to refactor the DataViewModeSelector to be more minimalistic and cool.
+  It should only show the active icon by default, and on hover, expand with a
+  GSAP animation to show all options. The transition and active state indicator
+  must be very smooth and not appear broken during state changes.
+reasoning:
+  - >-
+    Of course. I'll refactor the `DataViewModeSelector` to implement a sleek,
+    hover-to-expand interaction, similar to the previous request.
+  - 'Here is my plan:'
+  - >-
+    1.  **Introduce Hover State**: I will add a state variable to track when the
+    user's mouse is over the component.
+  - >-
+    2.  **Single GSAP Timeline**: I'll create a unified GSAP timeline within a
+    `useEffect` hook that listens for changes to both the active `viewMode` and
+    the `isHovered` state. This ensures all animations are perfectly
+    synchronized.
+  - >-
+    3.  **Collapse to Active Icon**: In the default (unhovered) state, the
+    component will collapse to show only the icon of the currently active view
+    mode, housed in a neat, square button. The blue indicator will be perfectly
+    centered on it.
+  - >-
+    4.  **Animate Expansion**: On hover, the buttons will animate outwards in a
+    staggered sequence to their full width, revealing their labels.
+  - >-
+    5.  **Fluid Indicator Animation**: The key to a smooth experience is having
+    the blue indicator follow the active button flawlessly during expansion,
+    collapse, and view mode changes. I'll use GSAP's `onUpdate` callback to
+    continuously track the active button's position and size during animations,
+    resulting in a fluid, "sticky" feel for the indicator with no jarring jumps.
+  - >-
+    6.  **Refine Styles**: I'll adjust the button styles to have a fixed height
+    and let GSAP manage the width, ensuring a consistent look and feel for the
+    animation.
+  - >-
+    This approach will create a minimalist, interactive, and "cool" component
+    that is both visually engaging and robust.
+  - >-
+    Here is the code change for
+    `src/pages/DataDemo/components/DataViewModeSelector.tsx`.
+operations:
+  - type: write
+    path: src/pages/DataDemo/components/DataViewModeSelector.tsx
+    content: >-
+      import { useEffect, useRef, useState } from 'react'
+
+      import { gsap } from 'gsap'
+
+      import { cn } from '@/lib/utils'
+
+      import { List, Grid3X3, LayoutGrid, Table } from 'lucide-react'
+
+      import type { ViewMode } from '../types'
+
+
+      interface DataViewModeSelectorProps {
+        viewMode: ViewMode
+        onChange: (mode: ViewMode) => void
+      }
+
+
+      const viewModes = [
+        { id: 'list' as ViewMode, label: 'List', icon: List, description: 'Compact list with details' },
+        { id: 'cards' as ViewMode, label: 'Cards', icon: LayoutGrid, description: 'Rich card layout' },
+        { id: 'grid' as ViewMode, label: 'Grid', icon: Grid3X3, description: 'Masonry grid view' },
+        { id: 'table' as ViewMode, label: 'Table', icon: Table, description: 'Structured data table' },
+      ]
+
+
+      export function DataViewModeSelector({ viewMode, onChange }:
+      DataViewModeSelectorProps) {
+        const [isHovered, setIsHovered] = useState(false)
+        const indicatorRef = useRef<HTMLDivElement>(null)
+        const containerRef = useRef<HTMLDivElement>(null)
+        const buttonRefs = useRef<(HTMLButtonElement | null)[]>([])
+        const labelRefs = useRef<(HTMLSpanElement | null)[]>([])
+
+        useEffect(() => {
+          const buttons = buttonRefs.current.filter(Boolean) as HTMLElement[]
+          const labels = labelRefs.current.filter(Boolean) as HTMLElement[]
+          const indicator = indicatorRef.current
+          const container = containerRef.current
+          if (!buttons.length || !labels.length || !indicator || !container) return
+
+          const activeIndex = viewModes.findIndex((mode) => mode.id === viewMode)
+          const activeButton = buttons[activeIndex]
+          if (activeIndex === -1 || !activeButton) return
+
+          const collapsedSize = activeButton.offsetHeight || 44
+          const expandedWidth = 110
+
+          // A single timeline orchestrates all animations.
+          const tl = gsap.timeline({
+            // onUpdate ensures the indicator perfectly tracks the active button's size and position
+            // during the entire animation, creating a seamless, fluid effect.
+            onUpdate: () => {
+              const containerRect = container.getBoundingClientRect()
+              const buttonRect = activeButton.getBoundingClientRect()
+              gsap.set(indicator, {
+                x: buttonRect.left - containerRect.left,
+                width: buttonRect.width,
+              })
+            },
+            defaults: { duration: 0.4, ease: 'power2.out' },
+          })
+
+          if (isHovered) {
+            // --- EXPAND ---
+            tl.to(
+              buttons,
+              {
+                width: expandedWidth,
+                stagger: { each: 0.05, from: 'start' },
+              },
+              0
+            )
+            tl.to(labels, { opacity: 1, duration: 0.2 }, '<0.1')
+          } else {
+            // --- COLLAPSE ---
+            tl.to(labels, { opacity: 0, duration: 0.2, ease: 'power2.in' }, 0)
+            tl.to(
+              buttons,
+              {
+                width: (i) => (i === activeIndex ? collapsedSize : 0),
+                stagger: { each: 0.05, from: 'end' },
+              },
+              '<'
+            )
+          }
+        }, [viewMode, isHovered])
+
+        return (
+          <div
+            ref={containerRef}
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
+            className="relative flex items-center bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-1 shadow-lg"
+          >
+            <div
+              ref={indicatorRef}
+              className="absolute inset-y-1 bg-gradient-to-r from-primary/20 to-primary/10 border border-primary/20 rounded-xl"
+              // GSAP controls position and size, so initial style is minimal.
+            />
+
+            {viewModes.map((mode, index) => {
+              const IconComponent = mode.icon
+              const isActive = viewMode === mode.id
+
+              return (
+                <button
+                  key={mode.id}
+                  ref={(el) => (buttonRefs.current[index] = el)}
+                  data-mode={mode.id}
+                  onClick={() => onChange(mode.id)}
+                  className={cn(
+                    'relative flex items-center justify-center gap-2 h-11 rounded-xl transition-colors duration-200 group overflow-hidden',
+                    'hover:bg-accent/20 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                    isActive && 'text-primary'
+                  )}
+                  style={{ width: 0 }} // Initial width is 0, GSAP handles it.
+                  title={mode.description}
+                >
+                  <IconComponent className="w-5 h-5 transition-transform duration-200 flex-shrink-0 group-hover:scale-105" />
+                  <span
+                    ref={(el) => (labelRefs.current[index] = el)}
+                    className={cn(
+                      'font-medium transition-colors duration-200 whitespace-nowrap',
+                      isActive ? 'text-primary' : 'text-muted-foreground',
+                      'group-hover:text-foreground'
+                    )}
+                    style={{ opacity: 0 }} // Initial opacity is 0, GSAP handles it.
+                  >
+                    {mode.label}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+        )
+      }
+    patchStrategy: replace
+snapshot:
+  src/pages/DataDemo/components/DataViewModeSelector.tsx: >-
+    import { useEffect, useRef } from 'react'
+
+    import { gsap } from 'gsap'
+
+    import { cn } from '@/lib/utils'
+
+    import { List, Grid3X3, LayoutGrid, Table } from 'lucide-react'
+
+    import type { ViewMode } from '../types'
+
+
+    interface DataViewModeSelectorProps {
+      viewMode: ViewMode
+      onChange: (mode: ViewMode) => void
+    }
+
+
+    const viewModes = [
+      { id: 'list' as ViewMode, label: 'List', icon: List, description: 'Compact list with details' },
+      { id: 'cards' as ViewMode, label: 'Cards', icon: LayoutGrid, description: 'Rich card layout' },
+      { id: 'grid' as ViewMode, label: 'Grid', icon: Grid3X3, description: 'Masonry grid view' },
+      { id: 'table' as ViewMode, label: 'Table', icon: Table, description: 'Structured data table' }
+    ]
+
+
+    export function DataViewModeSelector({ viewMode, onChange }:
+    DataViewModeSelectorProps) {
+      const indicatorRef = useRef<HTMLDivElement>(null)
+      const containerRef = useRef<HTMLDivElement>(null)
+
+      useEffect(() => {
+        if (!indicatorRef.current || !containerRef.current) return
+
+        const activeButton = containerRef.current.querySelector(`[data-mode="${viewMode}"]`) as HTMLElement
+        if (!activeButton) return
+
+        const containerRect = containerRef.current.getBoundingClientRect()
+        const buttonRect = activeButton.getBoundingClientRect()
+        
+        const left = buttonRect.left - containerRect.left
+        const width = buttonRect.width
+
+        gsap.to(indicatorRef.current, {
+          duration: 0.3,
+          x: left,
+          width: width,
+          ease: "power2.out"
+        })
+      }, [viewMode])
+
+      return (
+        <div 
+          ref={containerRef}
+          className="relative flex flex-wrap justify-center items-center bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-1.5 shadow-lg"
+        >
+          {/* Animated indicator */}
+          <div
+            ref={indicatorRef}
+            className="absolute inset-y-1.5 bg-gradient-to-r from-primary/20 to-primary/10 border border-primary/20 rounded-xl transition-all duration-300"
+            style={{ left: 0, width: 0 }}
+          />
+          
+          {/* Mode buttons */}
+          {viewModes.map((mode) => {
+            const IconComponent = mode.icon
+            const isActive = viewMode === mode.id
+            
+            return (
+              <button
+                key={mode.id}
+                data-mode={mode.id}
+                onClick={() => onChange(mode.id)}
+                className={cn(
+                  "relative flex items-center justify-center gap-2 sm:gap-3 px-4 py-2 sm:px-6 sm:py-3 rounded-xl transition-all duration-300 group min-w-[100px] sm:min-w-[120px]",
+                  "hover:bg-accent/20 active:scale-95",
+                  isActive && "text-primary"
+                )}
+                title={mode.description}
+              >
+                <IconComponent className={cn(
+                  "w-5 h-5 transition-all duration-300",
+                  isActive && "scale-110",
+                  "group-hover:scale-105"
+                )} />
+                <span className={cn(
+                  "font-medium transition-all duration-300",
+                  isActive ? "text-primary" : "text-muted-foreground",
+                  "group-hover:text-foreground"
+                )}>
+                  {mode.label}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+      )
+    }
+approved: false
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: undone
+id: 200

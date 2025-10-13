@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { gsap } from 'gsap'
 import { cn } from '@/lib/utils'
 import { List, Grid3X3, LayoutGrid, Table } from 'lucide-react'
@@ -19,9 +19,11 @@ const viewModes = [
 export function DataViewModeSelector({ viewMode, onChange }: DataViewModeSelectorProps) {
   const indicatorRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  const [isExpanded, setIsExpanded] = useState(false)
+  const [isTransitioning, setIsTransitioning] = useState(false)
 
-  useEffect(() => {
-    if (!indicatorRef.current || !containerRef.current) return
+  const updateIndicatorPosition = useCallback((immediate = false) => {
+    if (!indicatorRef.current || !containerRef.current || isTransitioning) return
 
     const activeButton = containerRef.current.querySelector(`[data-mode="${viewMode}"]`) as HTMLElement
     if (!activeButton) return
@@ -32,18 +34,66 @@ export function DataViewModeSelector({ viewMode, onChange }: DataViewModeSelecto
     const left = buttonRect.left - containerRect.left
     const width = buttonRect.width
 
-    gsap.to(indicatorRef.current, {
-      duration: 0.3,
-      x: left,
-      width: width,
-      ease: "power2.out"
-    })
-  }, [viewMode])
+    if (immediate) {
+      // Set position immediately without animation for initial load
+      gsap.set(indicatorRef.current, {
+        x: left,
+        width: width
+      })
+    } else {
+      gsap.to(indicatorRef.current, {
+        duration: 0.3,
+        x: left,
+        width: width,
+        ease: "power2.out"
+      })
+    }
+  }, [viewMode, isTransitioning])
+
+  // Initial setup - set position immediately without animation
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      updateIndicatorPosition(true)
+    }, 0)
+    return () => clearTimeout(timer)
+  }, []) // Only run once on mount
+
+  useEffect(() => {
+    if (!isTransitioning) {
+      updateIndicatorPosition()
+    }
+  }, [updateIndicatorPosition, viewMode, isTransitioning])
+
+  const handleMouseEnter = () => {
+    setIsTransitioning(true)
+    setIsExpanded(true)
+    
+    // Wait for expand animation to complete
+    setTimeout(() => {
+      setIsTransitioning(false)
+    }, 500)
+  }
+
+  const handleMouseLeave = () => {
+    setIsTransitioning(true)
+    setIsExpanded(false)
+    
+    // Wait for collapse animation to complete
+    setTimeout(() => {
+      setIsTransitioning(false)
+    }, 500)
+  }
 
   return (
     <div 
       ref={containerRef}
-      className="relative flex flex-wrap justify-center items-center bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-1.5 shadow-lg"
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+      className={cn(
+        "relative flex items-center bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-1.5 shadow-lg transition-all duration-500 ease-out",
+        "hover:shadow-xl hover:bg-card/70",
+        isExpanded ? "gap-1" : "gap-0"
+      )}
     >
       {/* Animated indicator */}
       <div
@@ -53,7 +103,7 @@ export function DataViewModeSelector({ viewMode, onChange }: DataViewModeSelecto
       />
       
       {/* Mode buttons */}
-      {viewModes.map((mode) => {
+      {viewModes.map((mode, index) => {
         const IconComponent = mode.icon
         const isActive = viewMode === mode.id
         
@@ -63,24 +113,36 @@ export function DataViewModeSelector({ viewMode, onChange }: DataViewModeSelecto
             data-mode={mode.id}
             onClick={() => onChange(mode.id)}
             className={cn(
-              "relative flex items-center justify-center gap-2 sm:gap-3 px-4 py-2 sm:px-6 sm:py-3 rounded-xl transition-all duration-300 group min-w-[100px] sm:min-w-[120px]",
+              "relative flex items-center justify-center rounded-xl transition-all duration-500 ease-out group overflow-hidden",
               "hover:bg-accent/20 active:scale-95",
-              isActive && "text-primary"
+              isActive && "text-primary",
+              isExpanded ? "gap-3 px-4 py-2.5" : "gap-0 px-3 py-2.5"
             )}
             title={mode.description}
+            style={{
+              transitionDelay: isExpanded ? `${index * 50}ms` : `${(viewModes.length - index - 1) * 30}ms`
+            }}
           >
             <IconComponent className={cn(
-              "w-5 h-5 transition-all duration-300",
+              "w-5 h-5 transition-all duration-300 flex-shrink-0",
               isActive && "scale-110",
-              "group-hover:scale-105"
+              "group-hover:scale-105",
+              isExpanded ? "rotate-0" : "rotate-0"
             )} />
-            <span className={cn(
-              "font-medium transition-all duration-300",
-              isActive ? "text-primary" : "text-muted-foreground",
-              "group-hover:text-foreground"
+            
+            {/* Label with smooth expand/collapse */}
+            <div className={cn(
+              "overflow-hidden transition-all duration-500 ease-out",
+              isExpanded ? "max-w-[80px] opacity-100" : "max-w-0 opacity-0"
             )}>
-              {mode.label}
-            </span>
+              <span className={cn(
+                "font-medium whitespace-nowrap transition-all duration-300",
+                isActive ? "text-primary" : "text-muted-foreground",
+                "group-hover:text-foreground"
+              )}>
+                {mode.label}
+              </span>
+            </div>
           </button>
         )
       })}
