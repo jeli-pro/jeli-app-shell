@@ -1,0 +1,1634 @@
+uuid: c32c58a8-b5b6-45ef-8968-3ac3a84e62ad
+projectId: jeli-app-shell
+createdAt: '2025-10-13T16:17:36.977Z'
+gitCommitMsg: >-
+  feat(DataDemo): refactor grouping with dropdown and tabs
+
+  - Replaced the "Group by" tab selector with a dropdown menu for a more compact
+  UI. - When a grouping is active, results are now displayed in horizontal tabs,
+  including an "All" tab. - Enhanced the `AnimatedTabs` component with a new
+  `underline` variant for a minimalist aesthetic, used for the new group-result
+  tabs. - Simplified data handling in view components (`DataTableView`, etc.) by
+  removing internal grouping logic, as data is now pre-filtered by the active
+  group tab.
+promptSummary: >-
+  The user requested to refactor the data grouping functionality on the Data
+  Demo page. This involved changing the "Group by" selector to a dropdown,
+  displaying grouped results as horizontal tabs with a new minimalist design
+  (including an "All" tab), and updating the view components to handle the new
+  data flow.
+reasoning:
+  - >-
+    This request involves refactoring the data grouping functionality on the
+    "Data Demo" page. I will change the "Group by" selector from tabs to a
+    dropdown menu. When a grouping is applied, the results will be displayed in
+    a new set of horizontal tabs with a minimalist underline style. This
+    includes adding an "All" tab to view all items within the selected grouping.
+  - 'To achieve this, I will perform the following steps:'
+  - >-
+    1.  **Modify `AnimatedTabs` Component**: I'll enhance the existing
+    `src/components/ui/animated-tabs.tsx` component to support a new `underline`
+    variant, in addition to the default `pill` style. This will allow for the
+    requested minimalist tab design with an animated underline for the active
+    tab.
+  - >-
+    2.  **Update `DataDemoPage`**: In `src/pages/DataDemo/index.tsx`, I will
+    replace the "Group by" `AnimatedTabs` selector with a `DropdownMenu`. I will
+    then introduce new logic to render the `AnimatedTabs` component (using the
+    new `underline` variant) to display the grouped data categories (e.g.,
+    "All", "Active", "Pending"). This simplifies the main view logic, as the
+    data passed to the list, card, or table views will always be a simple array
+    of items for the selected group tab.
+  - >-
+    3.  **Simplify View Components**: As a consequence of the above change, the
+    `DataTableView` component will no longer need to handle hierarchically
+    grouped data. I will simplify its implementation in
+    `src/pages/DataDemo/components/DataTableView.tsx` and update the
+    corresponding `ViewProps` type in `src/pages/DataDemo/types.ts` to reflect
+    that the `data` prop will always be an array.
+  - '---'
+  - '### 1. Enhance `AnimatedTabs` to support an underline variant'
+  - >-
+    I'll add a `variant` prop to the `AnimatedTabs` component. This will allow
+    it to render either the original `pill` style or the new `underline` style,
+    making the component more versatile.
+  - '### 2. Update `ViewProps` type'
+  - >-
+    To reflect the simplified data handling, I will update `ViewProps` to only
+    accept a flat array of `DataItem`.
+  - '### 3. Simplify `DataTableView`'
+  - >-
+    Now that `DataTableView` will only receive simple arrays, I can remove the
+    complex logic for rendering grouped data with headers.
+  - '### 4. Refactor `DataDemoPage` to implement new grouping UI and logic'
+  - >-
+    This is the core change. I'll replace the "Group by" selector, add the group
+    results tabs, and connect everything to the data rendering logic.
+  - '---'
+operations:
+  - type: write
+    path: src/components/ui/animated-tabs.tsx
+    content: >+
+      --- src/components/ui/animated-tabs.tsx
+
+      +++ src/components/ui/animated-tabs.tsx
+
+      @@ -9,12 +9,14 @@
+       interface AnimatedTabsProps extends React.HTMLAttributes<HTMLDivElement> {
+         tabs: Tab[]
+         activeTab: string
+      -  onTabChange: (tabId: string) => void
+
+      +  onTabChange: (tabId: string) => void;
+
+      +  variant?: 'pill' | 'underline';
+       }
+       
+       const AnimatedTabs = React.forwardRef<HTMLDivElement, AnimatedTabsProps>(
+      -  ({ className, tabs, activeTab, onTabChange, ...props }, ref) => {
+
+      -    const [hoveredIndex, setHoveredIndex] = useState<number | null>(null)
+
+      +  ({ className, tabs, activeTab, onTabChange, variant = 'pill', ...props
+      }, ref) => {
+
+      +    const isPill = variant === 'pill';
+
+      +    const [hoveredIndex, setHoveredIndex] = useState<number |
+      null>(null);
+           const [activeIndex, setActiveIndex] = useState(0)
+           const [hoverStyle, setHoverStyle] = useState({})
+           const [activeStyle, setActiveStyle] = useState({ left: "0px", width: "0px" })
+      @@ -82,27 +84,33 @@
+       
+           return (
+             <div 
+      -        ref={ref} 
+
+      -        className={cn("relative p-1 bg-muted/60 rounded-xl", className)} 
+
+      +        ref={ref}
+
+      +        className={cn(
+
+      +          "relative",
+
+      +          isPill && "p-1 bg-muted/60 rounded-xl",
+
+      +          !isPill && "border-b",
+
+      +          className
+
+      +        )}
+               onMouseLeave={() => setHoveredIndex(null)}
+               {...props}
+             >
+               <div className="relative flex items-center">
+                 {/* Hover Highlight */}
+      -          <div
+
+      -            className="absolute h-full transition-all duration-300
+      ease-out bg-background/70 rounded-lg shadow-sm pointer-events-none"
+
+      -            style={{
+
+      -              ...hoverStyle,
+
+      -              opacity: hoveredIndex !== null && hoveredIndex !==
+      activeIndex ? 1 : 0,
+
+      -            }}
+
+      -          />
+
+      +          {isPill && (
+
+      +            <div
+
+      +              className="absolute h-full transition-all duration-300
+      ease-out bg-background/70 rounded-lg shadow-sm pointer-events-none"
+
+      +              style={{
+
+      +                ...hoverStyle,
+
+      +                opacity: hoveredIndex !== null && hoveredIndex !==
+      activeIndex ? 1 : 0,
+
+      +              }}
+
+      +            />
+
+      +          )}
+       
+                 {/* Active Indicator */}
+                 <div
+      -            className="absolute h-full bg-background rounded-lg shadow-sm
+      transition-all duration-300 ease-out pointer-events-none"
+
+      +            className={cn("absolute transition-all duration-300 ease-out
+      pointer-events-none", isPill ? "h-full bg-background rounded-lg shadow-sm"
+      : "h-0.5 bg-primary bottom-[-1px]")}
+                   style={activeStyle}
+                 />
+       
+      @@ -113,10 +121,11 @@
+                       key={tab.id}
+                       ref={(el) => (tabRefs.current[index] = el)}
+                       className={cn(
+      -                  "relative px-4 py-1.5 cursor-pointer transition-colors
+      duration-300 rounded-md focus:outline-none focus-visible:ring-2
+      focus-visible:ring-ring focus-visible:ring-offset-2",
+
+      -                  index === activeIndex 
+
+      -                    ? "text-foreground" 
+
+      -                    : "text-muted-foreground hover:text-foreground"
+
+      +                  "relative cursor-pointer transition-colors duration-300
+      focus:outline-none focus-visible:ring-2 focus-visible:ring-ring
+      focus-visible:ring-offset-2",
+
+      +                  isPill ? "px-4 py-1.5 rounded-md" : "px-4 py-2",
+
+      +                  index === activeIndex
+
+      +                    ? (isPill ? "text-foreground" : "text-primary")
+
+      +                    : "text-muted-foreground hover:text-foreground"
+                       )}
+                       onMouseEnter={() => setHoveredIndex(index)}
+                       onClick={() => {
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/DataDemo/types.ts
+    content: |+
+      --- src/pages/DataDemo/types.ts
+      +++ src/pages/DataDemo/types.ts
+      @@ -37,7 +37,7 @@
+       }
+       
+       export interface ViewProps {
+      -  data: DataItem[] | Record<string, DataItem[]>
+      +  data: DataItem[]
+         onItemSelect: (item: DataItem) => void
+         selectedItem: DataItem | null
+         isGrid?: boolean
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/DataDemo/components/DataTableView.tsx
+    content: >+
+      --- src/pages/DataDemo/components/DataTableView.tsx
+
+      +++ src/pages/DataDemo/components/DataTableView.tsx
+
+      @@ -14,7 +14,6 @@
+       import type { ViewProps, DataItem, SortableField } from '../types'
+       import { getStatusColor, getPriorityColor } from '../utils'
+       import { EmptyState } from './EmptyState'
+      -import { capitalize } from '@/lib/utils'
+       
+       export function DataTableView({ data, onItemSelect, selectedItem, sortConfig, onSort }: ViewProps) {
+         const tableRef = useRef<HTMLTableElement>(null)
+      @@ -23,10 +22,7 @@
+         useLayoutEffect(() => {
+           if (tableRef.current) {
+             // Only select item rows for animation, not group headers
+      -      const newItems = Array.from( 
+
+      -        tableRef.current.querySelectorAll('tbody tr')
+
+      -      ).filter(tr => !tr.dataset.groupHeader)
+
+      -       .slice(animatedItemsCount.current);
+
+      +      const newItems =
+      Array.from(tableRef.current.querySelectorAll('tbody
+      tr')).slice(animatedItemsCount.current)
+             gsap.fromTo(newItems,
+               { y: 20, opacity: 0 },
+               {
+      @@ -37,9 +33,7 @@
+                 ease: "power2.out",
+               },
+             );
+      -      animatedItemsCount.current = Array.isArray(data) 
+
+      -        ? data.length 
+
+      -        : Object.values(data).reduce((sum, items) => sum + items.length,
+      0);
+
+      +      animatedItemsCount.current = data.length
+           }
+         }, [data]);
+       
+      @@ -58,7 +52,7 @@
+           onSort?.(field)
+         }
+       
+      -  if ((Array.isArray(data) && data.length === 0) || (!Array.isArray(data)
+      && Object.keys(data).length === 0)) {
+
+      +  if (data.length === 0) {
+           return <EmptyState />
+         }
+       
+      @@ -128,21 +122,7 @@
+                   </tr>
+                 </thead>
+                 <tbody>
+      -            {Array.isArray(data)
+
+      -              ? data.map(item => <TableRow key={item.id} item={item}
+      isSelected={selectedItem?.id === item.id} onItemSelect={onItemSelect} />)
+
+      -              : Object.entries(data).flatMap(([groupName, items]) => [
+
+      -                  <tr key={groupName} data-group-header="true"
+      className="sticky top-0 z-10">
+
+      -                    <td colSpan={8} className="p-2 bg-muted/50
+      backdrop-blur-sm">
+
+      -                      <div className="flex items-center gap-2">
+
+      -                        <h3 className="font-semibold
+      text-sm">{capitalize(groupName)}</h3>
+
+      -                        <span className="text-xs px-2 py-0.5
+      bg-background rounded-full font-medium">{items.length}</span>
+
+      -                      </div>
+
+      -                    </td>
+
+      -                  </tr>,
+
+      -                  ...items.map(item => <TableRow key={item.id}
+      item={item} isSelected={selectedItem?.id === item.id}
+      onItemSelect={onItemSelect} />)
+
+      -                ])
+
+      -            }
+
+      +            {data.map(item => <TableRow key={item.id} item={item}
+      isSelected={selectedItem?.id === item.id} onItemSelect={onItemSelect} />)}
+                 </tbody>
+               </table>
+             </div>
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/DataDemo/index.tsx
+    content: >+
+      --- src/pages/DataDemo/index.tsx
+
+      +++ src/pages/DataDemo/index.tsx
+
+      @@ -4,7 +4,8 @@
+         Layers, 
+         AlertTriangle, 
+         PlayCircle, 
+         TrendingUp,
+      -  Loader2
+
+      +  Loader2,
+
+      +  ChevronDown
+       } from 'lucide-react'
+       import { gsap } from 'gsap'
+       import { capitalize } from '@/lib/utils'
+      @@ -16,6 +17,14 @@
+       import { AnimatedLoadingSkeleton } from './components/AnimatedLoadingSkeleton'
+       import { StatChartCard } from './components/StatChartCard'
+       import { DataToolbar, FilterConfig } from './components/DataToolbar'
+      +import {
+
+      +  DropdownMenu,
+
+      +  DropdownMenuContent,
+
+      +  DropdownMenuRadioGroup,
+
+      +  DropdownMenuRadioItem,
+
+      +  DropdownMenuTrigger,
+
+      +} from '@/components/ui/dropdown-menu'
+
+      +import { Button } from '@/components/ui/button'
+       import { mockDataItems } from './data/mockData'
+       import type { DataItem, ViewMode, SortConfig, SortableField, GroupableField } from './types'
+       
+      @@ -47,6 +56,7 @@
+         })
+         const [sortConfig, setSortConfig] = useState<SortConfig | null>({ key: 'updatedAt', direction: 'desc' })
+         const [groupBy, setGroupBy] = useState<GroupableField | 'none'>('none')
+      +  const [activeGroupTab, setActiveGroupTab] = useState('all')
+         
+         const groupOptions: { id: GroupableField | 'none'; label: string }[] = [
+           { id: 'none', label: 'None' }, { id: 'status', label: 'Status' }, { id: 'priority', label: 'Priority' }, { id: 'category', label: 'Category' }
+      @@ -176,6 +186,11 @@
+           }
+         }, [isInitialLoading])
+       
+      +  // Reset active tab when grouping changes
+
+      +  useEffect(() => {
+
+      +    setActiveGroupTab('all')
+
+      +  }, [groupBy])
+
+      +
+         const handleSortChange = (config: SortConfig | null) => {
+           setSortConfig(config)
+         }
+      @@ -201,7 +216,7 @@
+           navigate(`/data-demo/${item.id}`)
+         }
+       
+      -  // Step 2: Group the currently displayed items (paginated or full list)
+      for rendering
+
+      +  // Group the currently displayed items (paginated or full list) for
+      rendering
+         const displayedData = useMemo(() => {
+           if (groupBy === 'none') {
+             return items;
+      @@ -216,6 +231,34 @@
+           }, {} as Record<string, DataItem[]>)
+         }, [items, groupBy]);
+       
+      +  // Generate tabs for grouped data
+
+      +  const groupTabs = useMemo(() => {
+
+      +    if (groupBy === 'none' || Array.isArray(displayedData)) {
+
+      +      return [];
+
+      +    }
+
+      +    
+
+      +    const groups = Object.keys(displayedData).sort();
+
+      +    
+
+      +    const allTab = { id: 'all', label: `All (${items.length})` };
+
+      +    const otherTabs = groups.map(groupName => ({
+
+      +      id: groupName,
+
+      +      label: `${capitalize(groupName)}
+      (${displayedData[groupName].length})`
+
+      +    }));
+
+      +    
+
+      +    return [allTab, ...otherTabs];
+
+      +  }, [groupBy, displayedData, items.length]);
+
+      +
+
+      +  // Select the final data to be rendered in views
+
+      +  const dataToRender = useMemo(() => {
+
+      +    if (groupBy === 'none') return items
+
+      +    if (activeGroupTab === 'all') return items
+
+      +    if (Array.isArray(displayedData)) {
+
+      +      // This case should not be hit when groupBy is active, but as a
+      fallback:
+
+      +      return []
+
+      +    }
+
+      +    return displayedData[activeGroupTab] || []
+
+      +  }, [groupBy, activeGroupTab, items, displayedData]);
+
+      +
+         const commonViewProps = {
+           onItemSelect: handleItemSelect,
+           selectedItem,
+      @@ -259,42 +302,52 @@
+                 </div>
+               )}
+       
+      -        <div className="flex flex-col sm:flex-row sm:items-center
+      sm:gap-4">
+
+      -          <span className="text-sm font-medium text-muted-foreground mb-2
+      sm:mb-0 shrink-0">Group by:</span>
+
+      -          <AnimatedTabs
+
+      -            tabs={groupOptions}
+
+      -            activeTab={groupBy}
+
+      -            onTabChange={(id) => setGroupBy(id as GroupableField |
+      'none')}
+
+      +        <div className="flex flex-col md:flex-row md:items-center
+      md:justify-between gap-4">
+
+      +          <DataToolbar
+
+      +            filters={filters}
+
+      +            onFiltersChange={handleFilterChange}
+
+      +            sortConfig={sortConfig}
+
+      +            onSortChange={handleSortChange}
+                 />
+      -        </div>
+
+      -
+
+      -        <DataToolbar
+
+      -          filters={filters}
+
+      -          onFiltersChange={handleFilterChange}
+
+      -          sortConfig={sortConfig}
+
+      -          onSortChange={handleSortChange}
+
+      -        />
+
+      +          <div className="flex items-center gap-2">
+
+      +            <span className="text-sm font-medium
+      text-muted-foreground">Group by:</span>
+
+      +            <DropdownMenu>
+
+      +              <DropdownMenuTrigger asChild>
+
+      +                <Button variant="outline" className="w-[120px]
+      justify-between">
+
+      +                  <span>{groupOptions.find(o => o.id === groupBy)?.label
+      || 'None'}</span>
+
+      +                  <ChevronDown className="w-4 h-4 opacity-50" />
+
+      +                </Button>
+
+      +              </DropdownMenuTrigger>
+
+      +              <DropdownMenuContent className="w-[120px]">
+
+      +                <DropdownMenuRadioGroup value={groupBy}
+      onValueChange={(value) => setGroupBy(value as GroupableField | 'none')}>
+
+      +                  {groupOptions.map(option => (
+
+      +                    <DropdownMenuRadioItem key={option.id}
+      value={option.id}>
+
+      +                      {option.label}
+
+      +                    </DropdownMenuRadioItem>
+
+      +                  ))}
+
+      +                </DropdownMenuRadioGroup>
+
+      +              </DropdownMenuContent>
+
+      +            </DropdownMenu>
+
+      +          </div>
+
+      +        </div>
+       
+               <div ref={contentRef} className="min-h-[500px]">
+                 {isInitialLoading ? <AnimatedLoadingSkeleton viewMode={viewMode} /> : (
+      -            <div className="space-y-8">
+
+      -              {viewMode === 'table' ? (
+
+      -                 <DataTableView 
+
+      -                    data={displayedData} 
+
+      -                    {...commonViewProps}
+
+      -                    sortConfig={sortConfig} 
+
+      -                    onSort={handleTableSort} 
+
+      -                  />
+
+      -              ) : groupBy !== 'none' && !Array.isArray(displayedData) ? (
+
+      -                Object.entries(displayedData).map(([groupName,
+      groupItems]) => (
+
+      -                  <GroupWrapper key={groupName} title={groupName}
+      count={groupItems.length}>
+
+      -                    {viewMode === 'list' && <DataListView
+      data={groupItems} {...commonViewProps} />}
+
+      -                    {viewMode === 'cards' && <DataCardView
+      data={groupItems} {...commonViewProps} />}
+
+      -                    {viewMode === 'grid' && <DataCardView
+      data={groupItems} {...commonViewProps} isGrid />}
+
+      -                  </GroupWrapper>
+
+      -                ))
+
+      -              ) : (
+
+      -                <>
+
+      -                  {viewMode === 'list' && <DataListView
+      data={displayedData as DataItem[]} {...commonViewProps} />}
+
+      -                  {viewMode === 'cards' && <DataCardView
+      data={displayedData as DataItem[]} {...commonViewProps} />}
+
+      -                  {viewMode === 'grid' && <DataCardView
+      data={displayedData as DataItem[]} {...commonViewProps} isGrid />}
+
+      -                </>
+
+      -              )}
+
+      +            <div className="space-y-4">
+
+      +              {groupBy !== 'none' && (
+
+      +                <AnimatedTabs
+
+      +                  tabs={groupTabs}
+
+      +                  activeTab={activeGroupTab}
+
+      +                  onTabChange={setActiveGroupTab}
+
+      +                  variant="underline"
+
+      +                  className="mb-2"
+
+      +                />
+
+      +              )}
+
+      +
+
+      +              {viewMode === 'list' && <DataListView data={dataToRender as
+      DataItem[]} {...commonViewProps} />}
+
+      +              {viewMode === 'cards' && <DataCardView data={dataToRender
+      as DataItem[]} {...commonViewProps} />}
+
+      +              {viewMode === 'grid' && <DataCardView data={dataToRender as
+      DataItem[]} {...commonViewProps} isGrid />}
+
+      +              {viewMode === 'table' && <DataTableView data={dataToRender
+      as DataItem[]} {...commonViewProps} sortConfig={sortConfig}
+      onSort={handleTableSort} />}
+                   </div>
+                 )}
+               </div>
+      @@ -314,26 +367,4 @@
+           </PageLayout>
+         )
+       }
+      -
+
+      -function GroupWrapper({ title, count, children }: { title: string, count:
+      number, children: React.ReactNode }) {
+
+      -  const groupRef = useRef<HTMLDivElement>(null);
+
+      -
+
+      -  useLayoutEffect(() => {
+
+      -    if (groupRef.current) {
+
+      -      gsap.fromTo(groupRef.current, 
+
+      -        { opacity: 0, y: 30 }, 
+
+      -        { opacity: 1, y: 0, duration: 0.6, ease: 'power2.out' }
+
+      -      );
+
+      -    }
+
+      -  }, []);
+
+      -
+
+      -  return (
+
+      -    <div ref={groupRef} className="space-y-4">
+
+      -      <div className="flex items-center gap-3 px-2">
+
+      -        <h2 className="text-lg font-semibold
+      tracking-tight">{capitalize(title)}</h2>
+
+      -        <span className="text-sm font-medium px-2.5 py-1 bg-muted
+      rounded-full">{count}</span>
+
+      -      </div>
+
+      -      {children}
+
+      -    </div>
+
+      -  );
+
+      -}
+
+    patchStrategy: standard-diff
+snapshot:
+  src/components/ui/animated-tabs.tsx: |-
+    "use client"
+
+    import * as React from "react"
+    import { useState, useRef, useEffect, useLayoutEffect } from "react"
+    import { cn } from "@/lib/utils"
+
+    interface Tab {
+      id: string
+      label: string
+    }
+
+    interface AnimatedTabsProps extends React.HTMLAttributes<HTMLDivElement> {
+      tabs: Tab[]
+      activeTab: string
+      onTabChange: (tabId: string) => void
+    }
+
+    const AnimatedTabs = React.forwardRef<HTMLDivElement, AnimatedTabsProps>(
+      ({ className, tabs, activeTab, onTabChange, ...props }, ref) => {
+        const [hoveredIndex, setHoveredIndex] = useState<number | null>(null)
+        const [activeIndex, setActiveIndex] = useState(0)
+        const [hoverStyle, setHoverStyle] = useState({})
+        const [activeStyle, setActiveStyle] = useState({ left: "0px", width: "0px" })
+        const tabRefs = useRef<(HTMLButtonElement | null)[]>([])
+
+        // Update active index when controlled prop changes
+        useEffect(() => {
+          const newActiveIndex = tabs.findIndex(tab => tab.id === activeTab)
+          if (newActiveIndex !== -1 && newActiveIndex !== activeIndex) {
+            setActiveIndex(newActiveIndex)
+          }
+        }, [activeTab, tabs, activeIndex])
+        
+        // Update hover indicator position
+        useEffect(() => {
+          if (hoveredIndex !== null) {
+            const hoveredElement = tabRefs.current[hoveredIndex]
+            if (hoveredElement) {
+              const { offsetLeft, offsetWidth } = hoveredElement
+              setHoverStyle({
+                left: `${offsetLeft}px`,
+                width: `${offsetWidth}px`,
+              })
+            }
+          }
+        }, [hoveredIndex])
+
+        // Update active indicator position
+        useEffect(() => {
+          const activeElement = tabRefs.current[activeIndex]
+          if (activeElement) {
+            const { offsetLeft, offsetWidth } = activeElement
+            setActiveStyle({
+              left: `${offsetLeft}px`,
+              width: `${offsetWidth}px`,
+            })
+          }
+        }, [activeIndex, tabs])
+
+        // Set initial position of active indicator
+        useLayoutEffect(() => {
+            const initialActiveIndex = activeTab ? tabs.findIndex(tab => tab.id === activeTab) : 0
+            const indexToUse = initialActiveIndex !== -1 ? initialActiveIndex : 0
+            
+            const firstElement = tabRefs.current[indexToUse]
+            if (firstElement) {
+              const { offsetLeft, offsetWidth } = firstElement
+              setActiveStyle({
+                left: `${offsetLeft}px`,
+                width: `${offsetWidth}px`,
+              })
+            }
+        }, [tabs, activeTab])
+
+        return (
+          <div 
+            ref={ref} 
+            className={cn("relative p-1 bg-muted/60 rounded-xl", className)} 
+            onMouseLeave={() => setHoveredIndex(null)}
+            {...props}
+          >
+            <div className="relative flex items-center">
+              {/* Hover Highlight */}
+              <div
+                className="absolute h-full transition-all duration-300 ease-out bg-background/70 rounded-lg shadow-sm pointer-events-none"
+                style={{
+                  ...hoverStyle,
+                  opacity: hoveredIndex !== null && hoveredIndex !== activeIndex ? 1 : 0,
+                }}
+              />
+
+              {/* Active Indicator */}
+              <div
+                className="absolute h-full bg-background rounded-lg shadow-sm transition-all duration-300 ease-out pointer-events-none"
+                style={activeStyle}
+              />
+
+              {/* Tabs */}
+              <div className="relative flex items-center">
+                {tabs.map((tab, index) => (
+                  <button
+                    key={tab.id}
+                    ref={(el) => (tabRefs.current[index] = el)}
+                    className={cn(
+                      "relative px-4 py-1.5 cursor-pointer transition-colors duration-300 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                      index === activeIndex 
+                        ? "text-foreground" 
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                    onMouseEnter={() => setHoveredIndex(index)}
+                    onClick={() => {
+                      onTabChange(tab.id)
+                    }}
+                  >
+                    <span className="text-sm font-semibold whitespace-nowrap">
+                      {tab.label}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )
+      }
+    )
+    AnimatedTabs.displayName = "AnimatedTabs"
+
+    export { AnimatedTabs }
+  src/pages/DataDemo/types.ts: >
+    export type ViewMode = 'list' | 'cards' | 'grid' | 'table'
+
+
+    export type GroupableField = 'status' | 'priority' | 'category'
+
+
+    export type SortableField = 'title' | 'status' | 'priority' | 'updatedAt' |
+    'assignee.name' | 'metrics.views' | 'metrics.completion' | 'createdAt'
+
+    export type SortDirection = 'asc' | 'desc'
+
+    export interface SortConfig {
+      key: SortableField
+      direction: SortDirection
+    }
+
+
+    export interface DataItem {
+      id: string
+      title: string
+      description: string
+      category: string
+      status: 'active' | 'pending' | 'completed' | 'archived'
+      priority: 'low' | 'medium' | 'high' | 'critical'
+      assignee: {
+        name: string
+        avatar: string
+        email: string
+      }
+      metrics: {
+        views: number
+        likes: number
+        shares: number
+        completion: number
+      }
+      tags: string[]
+      createdAt: string
+      updatedAt: string
+      dueDate?: string
+      thumbnail?: string
+      content?: {
+        summary: string
+        details: string
+        attachments?: Array<{
+          name: string
+          type: string
+          size: string
+          url: string
+        }>
+      }
+    }
+
+
+    export interface ViewProps {
+      data: DataItem[] | Record<string, DataItem[]>
+      onItemSelect: (item: DataItem) => void
+      selectedItem: DataItem | null
+      isGrid?: boolean
+
+      // Props for table view specifically
+      sortConfig?: SortConfig | null
+      onSort?: (field: SortableField) => void
+    }
+
+
+    export type Status = DataItem['status']
+
+    export type Priority = DataItem['priority']
+  src/pages/DataDemo/components/DataTableView.tsx: >-
+    import { useState, useRef, useLayoutEffect } from 'react'
+
+    import { gsap } from 'gsap'
+
+    import { cn } from '@/lib/utils'
+
+    import { Badge } from '@/components/ui/badge'
+
+    import { Avatar } from '@/components/ui/avatar'
+
+    import { 
+      Calendar, 
+      Eye, 
+      Heart, 
+      Share, 
+      ArrowUpDown, 
+      ArrowUp, 
+      ArrowDown,
+      MoreHorizontal,
+      ExternalLink
+    } from 'lucide-react'
+
+    import type { ViewProps, DataItem, SortableField } from '../types'
+
+    import { getStatusColor, getPriorityColor } from '../utils'
+
+    import { EmptyState } from './EmptyState'
+
+    import { capitalize } from '@/lib/utils'
+
+
+    export function DataTableView({ data, onItemSelect, selectedItem,
+    sortConfig, onSort }: ViewProps) {
+      const tableRef = useRef<HTMLTableElement>(null)
+      const animatedItemsCount = useRef(0)
+
+      useLayoutEffect(() => {
+        if (tableRef.current) {
+          // Only select item rows for animation, not group headers
+          const newItems = Array.from( 
+            tableRef.current.querySelectorAll('tbody tr')
+          ).filter(tr => !tr.dataset.groupHeader)
+           .slice(animatedItemsCount.current);
+          gsap.fromTo(newItems,
+            { y: 20, opacity: 0 },
+            {
+              duration: 0.5,
+              y: 0,
+              opacity: 1,
+              stagger: 0.05,
+              ease: "power2.out",
+            },
+          );
+          animatedItemsCount.current = Array.isArray(data) 
+            ? data.length 
+            : Object.values(data).reduce((sum, items) => sum + items.length, 0);
+        }
+      }, [data]);
+
+      const SortIcon = ({ field }: { field: SortableField }) => {
+        if (sortConfig?.key !== field) {
+          return <ArrowUpDown className="w-4 h-4 opacity-50" />
+        }
+        if (sortConfig.direction === 'asc') {
+          return <ArrowUp className="w-4 h-4 text-primary" />
+        }
+        if (sortConfig.direction === 'desc') {
+          return <ArrowDown className="w-4 h-4 text-primary" />
+        }
+        return <ArrowUpDown className="w-4 h-4 opacity-50" />
+      }
+
+      const handleSortClick = (field: SortableField) => {
+        onSort?.(field)
+      }
+
+      if ((Array.isArray(data) && data.length === 0) || (!Array.isArray(data) && Object.keys(data).length === 0)) {
+        return <EmptyState />
+      }
+
+      return (
+        <div className="relative overflow-hidden rounded-2xl border bg-card/50 backdrop-blur-sm">
+          <div className="overflow-x-auto">
+            <table ref={tableRef} className="w-full">
+              <thead>
+                <tr className="border-b border-border/50 bg-muted/20">
+                  <th className="text-left p-4 font-semibold text-sm">
+                    <button
+                      onClick={() => handleSortClick('title')}
+                      className="flex items-center gap-2 hover:text-primary transition-colors"
+                    >
+                      Project
+                      <SortIcon field="title" />
+                    </button>
+                  </th>
+                  <th className="text-left p-4 font-semibold text-sm">
+                    <button
+                      onClick={() => handleSortClick('status')}
+                      className="flex items-center gap-2 hover:text-primary transition-colors"
+                    >
+                      Status
+                      <SortIcon field="status" />
+                    </button>
+                  </th>
+                  <th className="text-left p-4 font-semibold text-sm">
+                    <button
+                      onClick={() => handleSortClick('priority')}
+                      className="flex items-center gap-2 hover:text-primary transition-colors"
+                    >
+                      Priority
+                      <SortIcon field="priority" />
+                    </button>
+                  </th>
+                  <th className="text-left p-4 font-semibold text-sm">
+                    <button
+                      onClick={() => handleSortClick('assignee.name')}
+                      className="flex items-center gap-2 hover:text-primary transition-colors"
+                    >
+                      Assignee
+                      <SortIcon field="assignee.name" />
+                    </button>
+                  </th>
+                  <th className="text-left p-4 font-semibold text-sm">
+                    <button
+                      onClick={() => handleSortClick('metrics.completion')}
+                      className="flex items-center gap-2 hover:text-primary transition-colors"
+                    >
+                      Progress
+                      <SortIcon field="metrics.completion" />
+                    </button>
+                  </th>
+                  <th className="text-left p-4 font-semibold text-sm">
+                    <button
+                      onClick={() => handleSortClick('metrics.views')}
+                      className="flex items-center gap-2 hover:text-primary transition-colors"
+                    >
+                      Engagement
+                      <SortIcon field="metrics.views" />
+                    </button>
+                  </th>
+                  <th className="text-left p-4 font-semibold text-sm">Last Updated</th>
+                  <th className="text-center p-4 font-semibold text-sm w-16">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {Array.isArray(data)
+                  ? data.map(item => <TableRow key={item.id} item={item} isSelected={selectedItem?.id === item.id} onItemSelect={onItemSelect} />)
+                  : Object.entries(data).flatMap(([groupName, items]) => [
+                      <tr key={groupName} data-group-header="true" className="sticky top-0 z-10">
+                        <td colSpan={8} className="p-2 bg-muted/50 backdrop-blur-sm">
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-semibold text-sm">{capitalize(groupName)}</h3>
+                            <span className="text-xs px-2 py-0.5 bg-background rounded-full font-medium">{items.length}</span>
+                          </div>
+                        </td>
+                      </tr>,
+                      ...items.map(item => <TableRow key={item.id} item={item} isSelected={selectedItem?.id === item.id} onItemSelect={onItemSelect} />)
+                    ])
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )
+    }
+
+
+    function TableRow({ item, isSelected, onItemSelect }: { item: DataItem;
+    isSelected: boolean; onItemSelect: (item: DataItem) => void }) {
+      return (
+        <tr
+          onClick={() => onItemSelect(item)}
+          className={cn(
+            "group border-b border-border/30 transition-all duration-200 cursor-pointer",
+            "hover:bg-accent/20 hover:border-primary/20",
+            isSelected && "bg-primary/5 border-primary/30"
+          )}
+        >
+          {/* Project Column */}
+          <td className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-primary/20 to-primary/10 rounded-lg flex items-center justify-center text-lg flex-shrink-0">
+                {item.thumbnail}
+              </div>
+              <div className="min-w-0 flex-1">
+                <h4 className="font-medium group-hover:text-primary transition-colors truncate">
+                  {item.title}
+                </h4>
+                <p className="text-sm text-muted-foreground truncate">
+                  {item.category}
+                </p>
+              </div>
+            </div>
+          </td>
+
+          {/* Status Column */}
+          <td className="p-4">
+            <Badge variant="outline" className={getStatusColor(item.status)}>
+              {item.status}
+            </Badge>
+          </td>
+
+          {/* Priority Column */}
+          <td className="p-4">
+            <Badge variant="outline" className={getPriorityColor(item.priority)}>
+              {item.priority}
+            </Badge>
+          </td>
+
+          {/* Assignee Column */}
+          <td className="p-4">
+            <div className="flex items-center gap-2">
+              <Avatar className="w-8 h-8 text-sm">
+                {item.assignee.avatar}
+              </Avatar>
+              <div className="min-w-0">
+                <p className="text-sm font-medium truncate">
+                  {item.assignee.name}
+                </p>
+              </div>
+            </div>
+          </td>
+
+          {/* Progress Column */}
+          <td className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="flex-1 min-w-0">
+                <div className="w-full bg-muted rounded-full h-2">
+                  <div 
+                    className="bg-gradient-to-r from-primary to-primary/80 h-2 rounded-full transition-all duration-500"
+                    style={{ width: `${item.metrics.completion}%` }}
+                  />
+                </div>
+              </div>
+              <span className="text-sm font-medium text-muted-foreground">
+                {item.metrics.completion}%
+              </span>
+            </div>
+          </td>
+
+          {/* Engagement Column */}
+          <td className="p-4">
+            <div className="flex items-center gap-4 text-xs text-muted-foreground">
+              <div className="flex items-center gap-1">
+                <Eye className="w-3 h-3" />
+                {item.metrics.views}
+              </div>
+              <div className="flex items-center gap-1">
+                <Heart className="w-3 h-3" />
+                {item.metrics.likes}
+              </div>
+              <div className="flex items-center gap-1">
+                <Share className="w-3 h-3" />
+                {item.metrics.shares}
+              </div>
+            </div>
+          </td>
+
+          {/* Date Column */}
+          <td className="p-4">
+            <div className="flex items-center gap-1 text-sm text-muted-foreground">
+              <Calendar className="w-3 h-3" />
+              {new Date(item.updatedAt).toLocaleDateString()}
+            </div>
+          </td>
+
+          {/* Actions Column */}
+          <td className="p-4">
+            <button 
+              onClick={(e) => {
+                e.stopPropagation()
+                onItemSelect(item)
+              }}
+              className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-accent transition-colors"
+              title="View details"
+            >
+              <ExternalLink className="w-4 h-4" />
+            </button>
+          </td>
+        </tr>
+      )
+    }
+  src/pages/DataDemo/index.tsx: >-
+    import { useState, useRef, useEffect, useCallback, useMemo, useLayoutEffect
+    } from 'react'
+
+    import { useParams, useNavigate } from 'react-router-dom'
+
+    import { 
+      Layers, 
+      AlertTriangle, 
+      PlayCircle, 
+      TrendingUp,
+      Loader2
+    } from 'lucide-react'
+
+    import { gsap } from 'gsap'
+
+    import { capitalize } from '@/lib/utils'
+
+    import { PageLayout } from '@/components/shared/PageLayout'
+
+    import { DataListView } from './components/DataListView'
+
+    import { DataCardView } from './components/DataCardView'
+
+    import { DataTableView } from './components/DataTableView'
+
+    import { DataViewModeSelector } from './components/DataViewModeSelector'
+
+    import { AnimatedTabs } from '@/components/ui/animated-tabs'
+
+    import { AnimatedLoadingSkeleton } from
+    './components/AnimatedLoadingSkeleton'
+
+    import { StatChartCard } from './components/StatChartCard'
+
+    import { DataToolbar, FilterConfig } from './components/DataToolbar'
+
+    import { mockDataItems } from './data/mockData'
+
+    import type { DataItem, ViewMode, SortConfig, SortableField, GroupableField
+    } from './types'
+
+
+    type Stat = {
+      title: string;
+      value: string;
+      icon: React.ReactNode;
+      change: string;
+      trend: 'up' | 'down';
+      type?: 'card';
+    };
+
+
+    type ChartStat = {
+      title: string;
+      value: string;
+      icon: React.ReactNode;
+      change: string;
+      trend: 'up' | 'down';
+      type: 'chart';
+      chartData: number[];
+    };
+
+
+    type StatItem = Stat | ChartStat;
+
+
+    export default function DataDemoPage() {
+      const [viewMode, setViewMode] = useState<ViewMode>('list')
+      const [filters, setFilters] = useState<FilterConfig>({
+        searchTerm: '',
+        status: [],
+        priority: [],
+      })
+      const [sortConfig, setSortConfig] = useState<SortConfig | null>({ key: 'updatedAt', direction: 'desc' })
+      const [groupBy, setGroupBy] = useState<GroupableField | 'none'>('none')
+      
+      const groupOptions: { id: GroupableField | 'none'; label: string }[] = [
+        { id: 'none', label: 'None' }, { id: 'status', label: 'Status' }, { id: 'priority', label: 'Priority' }, { id: 'category', label: 'Category' }
+      ]
+      const [items, setItems] = useState<DataItem[]>([])
+      const [page, setPage] = useState(0) // Start at 0 to trigger initial load effect
+      const [hasMore, setHasMore] = useState(true)
+      const [isLoading, setIsLoading] = useState(true)
+      const contentRef = useRef<HTMLDivElement>(null)
+      const statsRef = useRef<HTMLDivElement>(null)
+      const observer = useRef<IntersectionObserver>()
+      const navigate = useNavigate()
+      const { itemId } = useParams<{ itemId: string }>()
+
+      const selectedItem = useMemo(() => {
+        if (!itemId) return null
+        return mockDataItems.find(item => item.id === itemId) ?? null
+      }, [itemId])
+
+      const isInitialLoading = isLoading && items.length === 0
+
+      // Step 1: Centralized data filtering and sorting from the master list
+      const filteredAndSortedData = useMemo(() => {
+        let filteredItems = mockDataItems.filter(item => {
+          const searchTermMatch =
+            item.title.toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
+            item.description.toLowerCase().includes(filters.searchTerm.toLowerCase())
+
+          const statusMatch = filters.status.length === 0 || filters.status.includes(item.status)
+          const priorityMatch = filters.priority.length === 0 || filters.priority.includes(item.priority)
+
+          return searchTermMatch && statusMatch && priorityMatch
+        })
+
+        if (sortConfig) {
+          filteredItems.sort((a, b) => {
+            let aValue: any
+            let bValue: any
+
+            const getNestedValue = (obj: any, path: string) => path.split('.').reduce((o, k) => (o || {})[k], obj)
+
+            aValue = getNestedValue(a, sortConfig.key)
+            bValue = getNestedValue(b, sortConfig.key)
+
+            if (aValue === undefined || bValue === undefined) return 0;
+
+            if (typeof aValue === 'string' && typeof bValue === 'string') {
+              return sortConfig.direction === 'asc'
+                ? aValue.localeCompare(bValue)
+                : bValue.localeCompare(aValue)
+            }
+            if (typeof aValue === 'number' && typeof bValue === 'number') {
+              return sortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue
+            }
+            // Date sorting (assuming ISO strings)
+            if (sortConfig.key === 'updatedAt' || sortConfig.key === 'createdAt') {
+                return sortConfig.direction === 'asc'
+                    ? new Date(aValue).getTime() - new Date(aValue).getTime()
+                    : new Date(bValue).getTime() - new Date(bValue).getTime()
+            }
+            return 0
+          })
+        }
+
+        return filteredItems
+      }, [filters, sortConfig, groupBy])
+
+      // Calculate stats from data
+      const totalItems = mockDataItems.length
+      const activeItems = mockDataItems.filter(item => item.status === 'active').length
+      const highPriorityItems = mockDataItems.filter(item => item.priority === 'high' || item.priority === 'critical').length
+      const avgCompletion = totalItems > 0 ? Math.round(
+        mockDataItems.reduce((acc, item) => acc + item.metrics.completion, 0) / totalItems
+      ) : 0
+
+      // Reset pagination when filters or sort change
+      useEffect(() => {
+        setItems([])
+        setPage(0) // This will be incremented to 1 in the loader `useEffect`, triggering a fresh load
+        setHasMore(true)
+        setIsLoading(true)
+        // Timeout prevents flicker and ensures loading state is visible for new filter/sort/group
+        setTimeout(() => {
+          if (groupBy !== 'none') {
+            setItems(filteredAndSortedData);
+            setHasMore(false);
+            setIsLoading(false);
+          } else {
+            setPage(1)
+          }
+        }, 100);
+      }, [filteredAndSortedData, groupBy])
+
+      // Infinite scroll logic
+      useEffect(() => {
+        if (page === 0) return;
+        if (groupBy !== 'none') return; // Pagination is disabled when grouping
+
+        const fetchItems = () => {
+          setIsLoading(true);
+          const isFirstPage = page === 1
+          
+          const pageSize = 12;
+          const newItems = filteredAndSortedData.slice((page - 1) * pageSize, page * pageSize);
+          
+          // Simulate network delay, longer for initial load to showcase skeleton
+          setTimeout(() => {
+            // Double-check in case groupBy changed during timeout
+            if (groupBy === 'none') {
+              setItems(prev => (isFirstPage ? newItems : [...prev, ...newItems]))
+              setHasMore(filteredAndSortedData.length > page * pageSize)
+              setIsLoading(false)
+            }
+          }, isFirstPage && items.length === 0 ? 1500 : 500)
+        };
+
+        if (hasMore) fetchItems();
+      }, [page, groupBy, filteredAndSortedData, hasMore]);
+
+      const loaderRef = useCallback(node => {
+        if (isLoading) return;
+        if (observer.current) observer.current.disconnect();
+        
+        observer.current = new IntersectionObserver(entries => {
+          if (entries[0].isIntersecting && hasMore) {
+            setPage(prevPage => prevPage + 1);
+          }
+        });
+        if (node) observer.current.observe(node);
+      }, [isLoading, hasMore]);
+
+      const stats: StatItem[] = [
+        {
+          title: "Total Projects",
+          value: totalItems.toString(),
+          icon: <Layers className="w-5 h-5" />,
+          change: "+5.2% this month",
+          trend: "up" as const,
+          type: 'chart',
+          chartData: [120, 125, 122, 130, 135, 138, 142]
+        },
+        {
+          title: "Active Projects",
+          value: activeItems.toString(),
+          icon: <PlayCircle className="w-5 h-5" />,
+          change: "+2 this week", 
+          trend: "up" as const,
+          type: 'chart',
+          chartData: [45, 50, 48, 55, 53, 60, 58]
+        },
+        {
+          title: "High Priority",
+          value: highPriorityItems.toString(),
+          icon: <AlertTriangle className="w-5 h-5" />,
+          change: "-1 from last week",
+          trend: "down" as const,
+          type: 'chart',
+          chartData: [25, 26, 28, 27, 26, 24, 23]
+        },
+        {
+          title: "Avg. Completion",
+          value: `${avgCompletion}%`,
+          icon: <TrendingUp className="w-5 h-5" />,
+          change: "+3.2%",
+          trend: "up" as const,
+          type: 'chart',
+          chartData: [65, 68, 70, 69, 72, 75, 78]
+        }
+      ]
+
+      useEffect(() => {
+        // Animate stats cards in
+        if (!isInitialLoading && statsRef.current) {
+          gsap.fromTo(statsRef.current.children,
+            { y: 30, opacity: 0 },
+            {
+              duration: 0.6,
+              y: 0,
+              opacity: 1,
+              stagger: 0.1,
+              ease: "power2.out"
+            }
+          )
+        }
+      }, [isInitialLoading])
+
+      const handleSortChange = (config: SortConfig | null) => {
+        setSortConfig(config)
+      }
+
+      // For table view header clicks
+      const handleTableSort = (field: SortableField) => {
+        if (sortConfig?.key === field) {
+          if (sortConfig.direction === 'desc') {
+            // Cycle: desc -> asc
+            setSortConfig({ key: field, direction: 'asc' })
+          } else {
+            // Cycle: asc -> default
+            setSortConfig(null)
+          }
+        } else {
+          // New field, default to desc
+          setSortConfig({ key: field, direction: 'desc' })
+        }
+      }
+
+      const handleFilterChange = (newFilters: FilterConfig) => {
+        setFilters(newFilters)
+      }
+      
+      // Handle item selection and open side panel
+      const handleItemSelect = (item: DataItem) => {
+        navigate(`/data-demo/${item.id}`)
+      }
+
+      // Step 2: Group the currently displayed items (paginated or full list) for rendering
+      const displayedData = useMemo(() => {
+        if (groupBy === 'none') {
+          return items;
+        }
+        return items.reduce((acc, item) => {
+          const key = item[groupBy as GroupableField] as string
+          if (!acc[key]) {
+            acc[key] = []
+          }
+          acc[key].push(item)
+          return acc
+        }, {} as Record<string, DataItem[]>)
+      }, [items, groupBy]);
+
+      const commonViewProps = {
+        onItemSelect: handleItemSelect,
+        selectedItem,
+      };
+
+      const totalItemCount = filteredAndSortedData.length;
+
+      return (
+        <PageLayout
+          // Note: Search functionality is handled by a separate SearchBar in the TopBar
+        >
+          <div className="space-y-8">
+            {/* Header */}
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div className="flex-1">
+                <h1 className="text-2xl font-bold tracking-tight">Data Showcase</h1>
+                <p className="text-muted-foreground">
+                  {isInitialLoading 
+                    ? "Loading projects..." 
+                    : `Showing ${totalItemCount} item(s)`}
+                </p>
+              </div>
+              <DataViewModeSelector viewMode={viewMode} onChange={setViewMode} />
+            </div>
+
+            {/* Stats Section */}
+            {!isInitialLoading && (
+              <div ref={statsRef} className="grid grid-cols-[repeat(auto-fit,minmax(250px,1fr))] gap-6">
+                {stats.map((stat) =>
+                  stat.type === 'chart' ? (
+                    <StatChartCard
+                      key={stat.title}
+                      title={stat.title}
+                      value={stat.value}
+                      change={stat.change}
+                      trend={stat.trend}
+                      icon={stat.icon}
+                      chartData={stat.chartData}
+                    />
+                  ) : null
+                )}
+              </div>
+            )}
+
+            <div className="flex flex-col sm:flex-row sm:items-center sm:gap-4">
+              <span className="text-sm font-medium text-muted-foreground mb-2 sm:mb-0 shrink-0">Group by:</span>
+              <AnimatedTabs
+                tabs={groupOptions}
+                activeTab={groupBy}
+                onTabChange={(id) => setGroupBy(id as GroupableField | 'none')}
+              />
+            </div>
+
+            <DataToolbar
+              filters={filters}
+              onFiltersChange={handleFilterChange}
+              sortConfig={sortConfig}
+              onSortChange={handleSortChange}
+            />
+
+            <div ref={contentRef} className="min-h-[500px]">
+              {isInitialLoading ? <AnimatedLoadingSkeleton viewMode={viewMode} /> : (
+                <div className="space-y-8">
+                  {viewMode === 'table' ? (
+                     <DataTableView 
+                        data={displayedData} 
+                        {...commonViewProps}
+                        sortConfig={sortConfig} 
+                        onSort={handleTableSort} 
+                      />
+                  ) : groupBy !== 'none' && !Array.isArray(displayedData) ? (
+                    Object.entries(displayedData).map(([groupName, groupItems]) => (
+                      <GroupWrapper key={groupName} title={groupName} count={groupItems.length}>
+                        {viewMode === 'list' && <DataListView data={groupItems} {...commonViewProps} />}
+                        {viewMode === 'cards' && <DataCardView data={groupItems} {...commonViewProps} />}
+                        {viewMode === 'grid' && <DataCardView data={groupItems} {...commonViewProps} isGrid />}
+                      </GroupWrapper>
+                    ))
+                  ) : (
+                    <>
+                      {viewMode === 'list' && <DataListView data={displayedData as DataItem[]} {...commonViewProps} />}
+                      {viewMode === 'cards' && <DataCardView data={displayedData as DataItem[]} {...commonViewProps} />}
+                      {viewMode === 'grid' && <DataCardView data={displayedData as DataItem[]} {...commonViewProps} isGrid />}
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Loader for infinite scroll */}
+            <div ref={loaderRef} className="flex justify-center items-center py-6">
+              {isLoading && !isInitialLoading && groupBy === 'none' && (
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span>Loading more...</span>
+                </div>
+              )}
+              {!isLoading && !hasMore && totalItemCount > 0 && !isInitialLoading && groupBy === 'none' && (
+                <p className="text-muted-foreground">You've reached the end.</p>
+              )}
+            </div>
+          </div>
+        </PageLayout>
+      )
+    }
+
+
+    function GroupWrapper({ title, count, children }: { title: string, count:
+    number, children: React.ReactNode }) {
+      const groupRef = useRef<HTMLDivElement>(null);
+
+      useLayoutEffect(() => {
+        if (groupRef.current) {
+          gsap.fromTo(groupRef.current, 
+            { opacity: 0, y: 30 }, 
+            { opacity: 1, y: 0, duration: 0.6, ease: 'power2.out' }
+          );
+        }
+      }, []);
+
+      return (
+        <div ref={groupRef} className="space-y-4">
+          <div className="flex items-center gap-3 px-2">
+            <h2 className="text-lg font-semibold tracking-tight">{capitalize(title)}</h2>
+            <span className="text-sm font-medium px-2.5 py-1 bg-muted rounded-full">{count}</span>
+          </div>
+          {children}
+        </div>
+      );
+    }
+approved: false
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: undone
+id: 242

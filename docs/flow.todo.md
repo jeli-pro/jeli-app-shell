@@ -13,13 +13,48 @@ make the codebase highly DRY without UI UX regression
 
 ===
 
+split view: loosing switch animation, there was cool gsap sliding left/right animation while switching pane
+
+===
+
+1. login state should be persisted
+2. also on refresh the login page forget the dark/light mode
+
+===
+
+create amazing kanban view
+calendar view
+
+===
+
+data demo page:
+
+we want the view mode, data view mode, search, sort, filter, pagination, grouping: all managed by react router as insensitive case
+
+=== DONE
+
+1. disable vertical scroll on group tab title... only horizontal
+2. hide line when group by is none
+
+=== DONE
+
+data demo page: we need amazing grouping feature for all view (list, card grid , table , tree)
+
+make sure the UI amazing and UX so cohesive
+
+=== DONE
+
 implement the react route 7.9.4
 
 ===
 
 data demo page: table view header should be sticky on scroll
 
-===
+make sure the sticky header is below top bar with some gap
+
+also make sure the row not overloading top of the header while scroll down
+
+=== DONE
 
 1. demo data page: opening data item detail should defaulting as overlay side pane mode.
 

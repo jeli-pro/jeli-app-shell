@@ -1,0 +1,182 @@
+uuid: b0d27773-45ec-4416-8c47-7977a4563a6e
+projectId: jeli-app-shell
+createdAt: '2025-10-13T16:24:48.263Z'
+gitCommitMsg: >-
+  refactor(DataDemo): Improve cohesion of control bar and tab layout
+
+  - Reworked the layout of the data controls on the Data Demo page. The
+  `DataToolbar` and "Group by" dropdown are now combined into a single,
+  responsive control bar for better visual cohesion. - Repositioned the grouping
+  tabs to a dedicated, full-width container directly above the data views, as
+  requested. - Updated the `AnimatedTabs` component with a more spacious and
+  minimalist design by increasing vertical padding and reducing font weight.
+  This enhances readability and modernizes the feel.
+promptSummary: >-
+  The user wants to improve the layout of the data control area on the Data Demo
+  page for better cohesion and a more minimalist feel. This includes making the
+  grouping tabs full-width and spacious, and positioning them correctly above
+  the data list.
+reasoning:
+  - >-
+    Excellent, I'll refine the data controls and tab styling to create a more
+    cohesive and polished user interface. Here is my plan:
+  - >-
+    1.  **Restructure the Data Controls:** I will reorganize the `DataDemo` page
+    to place the `DataToolbar` (containing search and filters) and the "Group
+    by" dropdown into a single, unified control bar. This will improve the
+    layout's cohesion.
+  - >-
+    2.  **Reposition and Style the Tabs:** I will move the `AnimatedTabs`
+    component to its own dedicated space directly above the data views. It will
+    now span the full width of its container.
+  - >-
+    3.  **Enhance Tab Minimalism:** I will adjust the styling of the
+    `AnimatedTabs` component to give it a more spacious and minimalist aesthetic
+    by increasing the vertical padding and softening the font weight.
+  - 'Here are the code modifications to achieve this:'
+  - >-
+    First, I'll refactor the layout in the `DataDemo` page to create the unified
+    control bar and reposition the tabs.
+  - >-
+    Next, I'll update the `AnimatedTabs` component to have a more spacious and
+    minimalist design.
+  - >-
+    These changes will result in a cleaner, more organized, and aesthetically
+    pleasing control area for the data demonstration page.
+operations:
+  - type: write
+    path: src/components/ui/animated-tabs.tsx
+    content: >+
+      --- src/components/ui/animated-tabs.tsx
+
+      +++ src/components/ui/animated-tabs.tsx
+
+      @@ -63,14 +63,14 @@
+                   key={tab.id}
+                   ref={(el) => (tabRefs.current[index] = el)}
+                   className={cn(
+      -              "relative px-4 py-2.5 cursor-pointer transition-colors
+      duration-300 focus:outline-none focus-visible:ring-2
+      focus-visible:ring-ring focus-visible:ring-offset-2",
+
+      +              "relative px-4 py-4 cursor-pointer transition-colors
+      duration-300 focus:outline-none focus-visible:ring-2
+      focus-visible:ring-ring focus-visible:ring-offset-2",
+                     index === activeIndex 
+                       ? "text-primary" 
+                       : "text-muted-foreground hover:text-foreground"
+                   )}
+                   onClick={() => onTabChange(tab.id)}
+                 >
+      -            <span className="text-sm font-semibold
+      whitespace-nowrap">{tab.label}</span>
+
+      +            <span className="text-sm font-medium
+      whitespace-nowrap">{tab.label}</span>
+                 </button>
+               ))}
+             </div>
+
+    patchStrategy: standard-diff
+snapshot:
+  src/components/ui/animated-tabs.tsx: |-
+    "use client"
+
+    import * as React from "react"
+    import { useState, useRef, useEffect, useLayoutEffect } from "react"
+    import { cn } from "@/lib/utils"
+
+    interface Tab {
+      id: string
+      label: string
+    }
+
+    interface AnimatedTabsProps extends React.HTMLAttributes<HTMLDivElement> {
+      tabs: Tab[]
+      activeTab: string
+      onTabChange: (tabId: string) => void
+    }
+
+    const AnimatedTabs = React.forwardRef<HTMLDivElement, AnimatedTabsProps>(
+      ({ className, tabs, activeTab, onTabChange, ...props }, ref) => {
+        const [activeIndex, setActiveIndex] = useState(0)
+        const [activeStyle, setActiveStyle] = useState({ left: "0px", width: "0px" })
+        const tabRefs = useRef<(HTMLButtonElement | null)[]>([])
+
+        // Update active index when controlled prop changes
+        useEffect(() => {
+          const newActiveIndex = tabs.findIndex(tab => tab.id === activeTab)
+          if (newActiveIndex !== -1 && newActiveIndex !== activeIndex) {
+            setActiveIndex(newActiveIndex)
+          }
+        }, [activeTab, tabs, activeIndex])
+        
+        // Update active indicator position
+        useEffect(() => {
+          const activeElement = tabRefs.current[activeIndex]
+          if (activeElement) {
+            const { offsetLeft, offsetWidth } = activeElement
+            setActiveStyle({
+              left: `${offsetLeft}px`,
+              width: `${offsetWidth}px`,
+            })
+          }
+        }, [activeIndex, tabs])
+
+        // Set initial position of active indicator
+        useLayoutEffect(() => {
+            const initialActiveIndex = activeTab ? tabs.findIndex(tab => tab.id === activeTab) : 0
+            const indexToUse = initialActiveIndex !== -1 ? initialActiveIndex : 0
+            
+            const firstElement = tabRefs.current[indexToUse]
+            if (firstElement) {
+              const { offsetLeft, offsetWidth } = firstElement
+              setActiveStyle({
+                left: `${offsetLeft}px`,
+                width: `${offsetWidth}px`,
+              })
+            }
+        }, [tabs, activeTab])
+
+        return (
+          <div 
+            ref={ref} 
+            className={cn("relative flex items-center", className)} 
+            {...props}
+          >
+            {/* Active Indicator */}
+            <div
+              className="absolute bottom-0 h-0.5 bg-primary transition-all duration-300 ease-out"
+              style={activeStyle}
+            />
+
+            {/* Tabs */}
+            {tabs.map((tab, index) => (
+              <button
+                key={tab.id}
+                ref={(el) => (tabRefs.current[index] = el)}
+                className={cn(
+                  "relative px-4 py-2.5 cursor-pointer transition-colors duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                  index === activeIndex 
+                    ? "text-primary" 
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+                onClick={() => onTabChange(tab.id)}
+              >
+                <span className="text-sm font-semibold whitespace-nowrap">{tab.label}</span>
+              </button>
+            ))}
+          </div>
+        )
+      }
+    )
+    AnimatedTabs.displayName = "AnimatedTabs"
+
+    export { AnimatedTabs }
+approved: false
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: undone
+id: 244

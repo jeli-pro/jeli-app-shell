@@ -1,0 +1,795 @@
+uuid: c32eb321-c24c-4740-8f9f-6e8644e59f42
+projectId: jeli-app-shell
+createdAt: '2025-10-13T16:36:05.426Z'
+gitCommitMsg: >-
+  feat(DataDemo): Enhance tabs with scrolling and improved styling
+
+  - Increased the height and font size of the `AnimatedTabs` component for
+  better readability and a more spacious feel. - Enabled horizontal scrolling on
+  the tabs container in the Data Demo page to accommodate a large number of
+  groups. - Added a `no-scrollbar` utility via a Tailwind plugin to hide the
+  scrollbar, maintaining a clean UI. - Adjusted the placeholder height in the
+  Data Demo page to match the new tab dimensions for consistent layout.
+promptSummary: >-
+  The user requested to increase the height and font size of the tabs in the
+  `AnimatedTabs` component. They also wanted to enable horizontal scrolling for
+  the tabs when they overflow, but without showing a visible scrollbar.
+reasoning:
+  - >-
+    Based on your request to refine the tab component, I'll make the following
+    adjustments:
+  - >-
+    1.  **Increase Tab Height & Font Size**: I will modify
+    `src/components/ui/animated-tabs.tsx` to increase the vertical padding and
+    font size of the tabs, making them taller and more prominent.
+  - >-
+    2.  **Enable Horizontal Scrolling**: In `src/pages/DataDemo/index.tsx`, I'll
+    update the container for the tabs to allow horizontal scrolling when there
+    are too many groups to fit on the screen.
+  - >-
+    3.  **Hide Scroll Indicator**: To maintain a clean, minimalist look, I'll
+    add a custom utility plugin to `tailwind.config.js` that provides a
+    `.no-scrollbar` class to hide the browser's default scrollbar.
+  - >-
+    These changes will enhance the usability and aesthetics of the data grouping
+    feature.
+  - >-
+    First, I'll update the `AnimatedTabs` component to have more height and a
+    larger font.
+  - >-
+    Next, I'll add a small plugin to `tailwind.config.js` to create a utility
+    class for hiding scrollbars.
+  - >-
+    Finally, I'll apply the new scroll utility to the tabs container in the Data
+    Demo page and adjust the placeholder height to match the new, taller tabs.
+  - '---'
+operations:
+  - type: write
+    path: src/components/ui/animated-tabs.tsx
+    content: >+
+      --- src/components/ui/animated-tabs.tsx
+
+      +++ src/components/ui/animated-tabs.tsx
+
+      @@ -73,14 +73,14 @@
+                   key={tab.id}
+                   ref={(el) => (tabRefs.current[index] = el)}
+                   className={cn(
+      -              "relative cursor-pointer px-4 py-3 text-center
+      transition-colors duration-300 focus:outline-none focus-visible:ring-2
+      focus-visible:ring-ring focus-visible:ring-offset-2",
+
+      +              "relative cursor-pointer px-4 py-4 text-center
+      transition-colors duration-300 focus:outline-none focus-visible:ring-2
+      focus-visible:ring-ring focus-visible:ring-offset-2",
+                     index === activeIndex 
+                       ? "text-primary" 
+                       : "text-muted-foreground hover:text-foreground"
+                   )}
+                   onClick={() => onTabChange(tab.id)}
+                 >
+      -            <span className="text-sm font-semibold
+      whitespace-nowrap">{tab.label}</span>
+
+      +            <span className="text-base font-semibold
+      whitespace-nowrap">{tab.label}</span>
+                 </button>
+               ))}
+             </div>
+
+    patchStrategy: standard-diff
+  - type: write
+    path: tailwind.config.js
+    content: |+
+      --- tailwind.config.js
+      +++ tailwind.config.js
+      @@ -87,5 +87,17 @@
+             },
+           },
+         },
+      -  plugins: [require("tailwindcss-animate")],
+      +  plugins: [
+      +    require("tailwindcss-animate"),
+      +    require("tailwindcss/plugin")(function ({ addUtilities }) {
+      +      addUtilities({
+      +        ".no-scrollbar::-webkit-scrollbar": {
+      +          display: "none",
+      +        },
+      +        ".no-scrollbar": {
+      +          "-ms-overflow-style": "none",
+      +          "scrollbar-width": "none",
+      +        },
+      +      });
+      +    }),
+      +  ],
+       }
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/DataDemo/index.tsx
+    content: >+
+      --- src/pages/DataDemo/index.tsx
+
+      +++ src/pages/DataDemo/index.tsx
+
+      @@ -424,14 +424,14 @@
+               {/* Group by and Tabs section */}
+               <div className="flex items-center justify-between gap-4 border-b">
+                 {/* Tabs on the left, takes up available space */}
+      -          <div className="flex-grow">
+
+      +          <div className="flex-grow overflow-x-auto no-scrollbar">
+                   {groupBy !== 'none' && groupTabs.length > 1 ? (
+                     <AnimatedTabs
+                       tabs={groupTabs}
+                       activeTab={activeGroupTab}
+                       onTabChange={setActiveGroupTab}
+                     />
+                   ) : (
+      -              <div className="h-[52px]" /> // Placeholder for consistent
+      height.
+
+      +              <div className="h-[56px]" /> // Placeholder for consistent
+      height.
+                   )}
+                 </div>
+                 
+
+    patchStrategy: standard-diff
+snapshot:
+  tailwind.config.js: |-
+    /** @type {import('tailwindcss').Config} */
+    export default {
+      content: [
+        "./index.html",
+        "./src/**/*.{js,ts,jsx,tsx}",
+      ],
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            border: "hsl(var(--border))",
+            input: "hsl(var(--input))",
+            ring: "hsl(var(--ring))",
+            background: "hsl(var(--background))",
+            foreground: "hsl(var(--foreground))",
+            primary: {
+              DEFAULT: "hsl(var(--primary))",
+              foreground: "hsl(var(--primary-foreground))",
+            },
+            secondary: {
+              DEFAULT: "hsl(var(--secondary))",
+              foreground: "hsl(var(--secondary-foreground))",
+            },
+            destructive: {
+              DEFAULT: "hsl(var(--destructive))",
+              foreground: "hsl(var(--destructive-foreground))",
+            },
+            muted: {
+              DEFAULT: "hsl(var(--muted))",
+              foreground: "hsl(var(--muted-foreground))",
+            },
+            accent: {
+              DEFAULT: "hsl(var(--accent))",
+              foreground: "hsl(var(--accent-foreground))",
+            },
+            popover: {
+              DEFAULT: "hsl(var(--popover))",
+              foreground: "hsl(var(--popover-foreground))",
+            },
+            card: {
+              DEFAULT: "hsl(var(--card))",
+              foreground: "hsl(var(--card-foreground))",
+            },
+          },
+          borderRadius: {
+            lg: "var(--radius)",
+            md: "calc(var(--radius) - 4px)",
+            sm: "calc(var(--radius) - 8px)",
+            DEFAULT: "0.5rem",
+          },
+          boxShadow: {
+            input: [
+              "0px 2px 3px -1px rgba(0, 0, 0, 0.1)",
+              "0px 1px 0px 0px rgba(25, 28, 33, 0.02)",
+              "0px 0px 0px 1px rgba(25, 28, 33, 0.08)",
+            ].join(", "),
+          },
+          animation: {
+            "fade-in": "fadeIn 0.5s ease-in-out",
+            "slide-in": "slideIn 0.3s ease-out",
+            "scale-in": "scaleIn 0.2s ease-out",
+            ripple: "ripple 2s ease calc(var(--i, 0) * 0.2s) infinite",
+            orbit: "orbit calc(var(--duration) * 1s) linear infinite",
+          },
+          keyframes: {
+            fadeIn: {
+              "0%": { opacity: "0" },
+              "100%": { opacity: "1" },
+            },
+            slideIn: {
+              "0%": { transform: "translateX(-100%)" },
+              "100%": { transform: "translateX(0)" },
+            },
+            scaleIn: {
+              "0%": { transform: "scale(0.95)", opacity: "0" },
+              "100%": { transform: "scale(1)", opacity: "1" },
+            },
+            ripple: {
+              "0%, 100%": { transform: "translate(-50%, -50%) scale(1)" },
+              "50%": { transform: "translate(-50%, -50%) scale(0.9)" },
+            },
+            orbit: {
+              "0%": {
+                transform:
+                  "rotate(0deg) translateY(calc(var(--radius) * 1px)) rotate(0deg)",
+              },
+              "100%": {
+                transform:
+                  "rotate(360deg) translateY(calc(var(--radius) * 1px)) rotate(-360deg)",
+              },
+            }
+          },
+        },
+      },
+      plugins: [require("tailwindcss-animate")],
+    }
+  src/components/ui/animated-tabs.tsx: |-
+    "use client"
+
+    import * as React from "react"
+    import { useState, useRef, useEffect, useLayoutEffect } from "react"
+    import { cn } from "@/lib/utils"
+
+    interface Tab {
+      id: string
+      label: string
+    }
+
+    interface AnimatedTabsProps extends React.HTMLAttributes<HTMLDivElement> {
+      tabs: Tab[]
+      activeTab: string
+      onTabChange: (tabId: string) => void
+    }
+
+    const AnimatedTabs = React.forwardRef<HTMLDivElement, AnimatedTabsProps>(
+      ({ className, tabs, activeTab, onTabChange, ...props }, ref) => {
+        const [activeIndex, setActiveIndex] = useState(0)
+        const [activeStyle, setActiveStyle] = useState({ left: "0px", width: "0px" })
+        const tabRefs = useRef<(HTMLButtonElement | null)[]>([])
+
+        // Update active index when controlled prop changes
+        useEffect(() => {
+          const newActiveIndex = tabs.findIndex(tab => tab.id === activeTab)
+          if (newActiveIndex !== -1 && newActiveIndex !== activeIndex) {
+            setActiveIndex(newActiveIndex)
+          }
+        }, [activeTab, tabs, activeIndex])
+        
+        // Update active indicator position
+        useEffect(() => {
+          const activeElement = tabRefs.current[activeIndex]
+          if (activeElement) {
+            const { offsetLeft, offsetWidth } = activeElement
+            setActiveStyle({
+              left: `${offsetLeft}px`,
+              width: `${offsetWidth}px`,
+            })
+          }
+        }, [activeIndex, tabs])
+
+        // Set initial position of active indicator
+        useLayoutEffect(() => {
+            const initialActiveIndex = activeTab ? tabs.findIndex(tab => tab.id === activeTab) : 0
+            const indexToUse = initialActiveIndex !== -1 ? initialActiveIndex : 0
+            
+            const firstElement = tabRefs.current[indexToUse]
+            if (firstElement) {
+              const { offsetLeft, offsetWidth } = firstElement
+              setActiveStyle({
+                left: `${offsetLeft}px`,
+                width: `${offsetWidth}px`,
+              })
+            }
+        }, [tabs, activeTab])
+
+        return (
+          <div 
+            ref={ref} 
+            className={cn("relative flex w-full items-center", className)} 
+            {...props}
+          >
+            {/* Active Indicator */}
+            <div
+              className="absolute -bottom-px h-0.5 bg-primary transition-all duration-300 ease-out"
+              style={activeStyle}
+            />
+
+            {/* Tabs */}
+            {tabs.map((tab, index) => (
+              <button
+                key={tab.id}
+                ref={(el) => (tabRefs.current[index] = el)}
+                className={cn(
+                  "relative cursor-pointer px-4 py-3 text-center transition-colors duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                  index === activeIndex 
+                    ? "text-primary" 
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+                onClick={() => onTabChange(tab.id)}
+              >
+                <span className="text-sm font-semibold whitespace-nowrap">{tab.label}</span>
+              </button>
+            ))}
+          </div>
+        )
+      }
+    )
+    AnimatedTabs.displayName = "AnimatedTabs"
+
+    export { AnimatedTabs }
+  src/pages/DataDemo/index.tsx: >
+    import { useState, useRef, useEffect, useCallback, useMemo, useLayoutEffect
+    } from 'react'
+
+    import { useParams, useNavigate } from 'react-router-dom'
+
+    import { 
+      Layers, 
+      AlertTriangle, 
+      PlayCircle, 
+      TrendingUp,
+      Loader2,
+      ChevronsUpDown
+    } from 'lucide-react'
+
+    import { gsap } from 'gsap'
+
+    import { capitalize } from '@/lib/utils'
+
+    import { Button } from '@/components/ui/button'
+
+    import { 
+      DropdownMenu, 
+      DropdownMenuContent, 
+      DropdownMenuRadioGroup, 
+      DropdownMenuRadioItem, 
+      DropdownMenuTrigger 
+    } from '@/components/ui/dropdown-menu'
+
+    import { PageLayout } from '@/components/shared/PageLayout'
+
+    import { DataListView } from './components/DataListView'
+
+    import { DataCardView } from './components/DataCardView'
+
+    import { DataTableView } from './components/DataTableView'
+
+    import { DataViewModeSelector } from './components/DataViewModeSelector'
+
+    import { AnimatedTabs } from '@/components/ui/animated-tabs'
+
+    import { AnimatedLoadingSkeleton } from
+    './components/AnimatedLoadingSkeleton'
+
+    import { StatChartCard } from './components/StatChartCard'
+
+    import { DataToolbar, FilterConfig } from './components/DataToolbar'
+
+    import { mockDataItems } from './data/mockData'
+
+    import type { DataItem, ViewMode, SortConfig, SortableField, GroupableField
+    } from './types'
+
+
+    type Stat = {
+      title: string;
+      value: string;
+      icon: React.ReactNode;
+      change: string;
+      trend: 'up' | 'down';
+      type?: 'card';
+    };
+
+
+    type ChartStat = {
+      title: string;
+      value: string;
+      icon: React.ReactNode;
+      change: string;
+      trend: 'up' | 'down';
+      type: 'chart';
+      chartData: number[];
+    };
+
+
+    type StatItem = Stat | ChartStat;
+
+
+    export default function DataDemoPage() {
+      const [viewMode, setViewMode] = useState<ViewMode>('list')
+      const [filters, setFilters] = useState<FilterConfig>({
+        searchTerm: '',
+        status: [],
+        priority: [],
+      })
+      const [sortConfig, setSortConfig] = useState<SortConfig | null>({ key: 'updatedAt', direction: 'desc' })
+      const [groupBy, setGroupBy] = useState<GroupableField | 'none'>('none')
+      const [activeGroupTab, setActiveGroupTab] = useState('all')
+      
+      const groupOptions: { id: GroupableField | 'none'; label: string }[] = [
+        { id: 'none', label: 'None' }, { id: 'status', label: 'Status' }, { id: 'priority', label: 'Priority' }, { id: 'category', label: 'Category' }
+      ]
+      const [items, setItems] = useState<DataItem[]>([])
+      const [page, setPage] = useState(0) // Start at 0 to trigger initial load effect
+      const [hasMore, setHasMore] = useState(true)
+      const [isLoading, setIsLoading] = useState(true)
+      const contentRef = useRef<HTMLDivElement>(null)
+      const statsRef = useRef<HTMLDivElement>(null)
+      const observer = useRef<IntersectionObserver>()
+      const navigate = useNavigate()
+      const { itemId } = useParams<{ itemId: string }>()
+
+      const selectedItem = useMemo(() => {
+        if (!itemId) return null
+        return mockDataItems.find(item => item.id === itemId) ?? null
+      }, [itemId])
+
+      const isInitialLoading = isLoading && items.length === 0
+
+      // Step 1: Centralized data filtering and sorting from the master list
+      const filteredAndSortedData = useMemo(() => {
+        let filteredItems = mockDataItems.filter(item => {
+          const searchTermMatch =
+            item.title.toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
+            item.description.toLowerCase().includes(filters.searchTerm.toLowerCase())
+
+          const statusMatch = filters.status.length === 0 || filters.status.includes(item.status)
+          const priorityMatch = filters.priority.length === 0 || filters.priority.includes(item.priority)
+
+          return searchTermMatch && statusMatch && priorityMatch
+        })
+
+        if (sortConfig) {
+          filteredItems.sort((a, b) => {
+            let aValue: any
+            let bValue: any
+
+            const getNestedValue = (obj: any, path: string) => path.split('.').reduce((o, k) => (o || {})[k], obj)
+
+            aValue = getNestedValue(a, sortConfig.key)
+            bValue = getNestedValue(b, sortConfig.key)
+
+            if (aValue === undefined || bValue === undefined) return 0;
+
+            if (typeof aValue === 'string' && typeof bValue === 'string') {
+              return sortConfig.direction === 'asc'
+                ? aValue.localeCompare(bValue)
+                : bValue.localeCompare(aValue)
+            }
+            if (typeof aValue === 'number' && typeof bValue === 'number') {
+              return sortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue
+            }
+            // Date sorting (assuming ISO strings)
+            if (sortConfig.key === 'updatedAt' || sortConfig.key === 'createdAt') {
+                return sortConfig.direction === 'asc'
+                    ? new Date(aValue).getTime() - new Date(aValue).getTime()
+                    : new Date(bValue).getTime() - new Date(bValue).getTime()
+            }
+            return 0
+          })
+        }
+
+        return filteredItems
+      }, [filters, sortConfig, groupBy])
+
+      // Calculate stats from data
+      const totalItems = mockDataItems.length
+      const activeItems = mockDataItems.filter(item => item.status === 'active').length
+      const highPriorityItems = mockDataItems.filter(item => item.priority === 'high' || item.priority === 'critical').length
+      const avgCompletion = totalItems > 0 ? Math.round(
+        mockDataItems.reduce((acc, item) => acc + item.metrics.completion, 0) / totalItems
+      ) : 0
+
+      // Reset pagination when filters or sort change
+      useEffect(() => {
+        setItems([])
+        setActiveGroupTab('all')
+        setPage(0) // This will be incremented to 1 in the loader `useEffect`, triggering a fresh load
+        setHasMore(true)
+        setIsLoading(true)
+        // Timeout prevents flicker and ensures loading state is visible for new filter/sort/group
+        setTimeout(() => {
+          if (groupBy !== 'none') {
+            setItems(filteredAndSortedData);
+            setHasMore(false);
+            setIsLoading(false);
+          } else {
+            setPage(1)
+          }
+        }, 100);
+      }, [filteredAndSortedData, groupBy])
+
+      // Infinite scroll logic
+      useEffect(() => {
+        if (page === 0) return;
+        if (groupBy !== 'none') return; // Pagination is disabled when grouping
+
+        const fetchItems = () => {
+          setIsLoading(true);
+          const isFirstPage = page === 1
+          
+          const pageSize = 12;
+          const newItems = filteredAndSortedData.slice((page - 1) * pageSize, page * pageSize);
+          
+          // Simulate network delay, longer for initial load to showcase skeleton
+          setTimeout(() => {
+            // Double-check in case groupBy changed during timeout
+            if (groupBy === 'none') {
+              setItems(prev => (isFirstPage ? newItems : [...prev, ...newItems]))
+              setHasMore(filteredAndSortedData.length > page * pageSize)
+              setIsLoading(false)
+            }
+          }, isFirstPage && items.length === 0 ? 1500 : 500)
+        };
+
+        if (hasMore) fetchItems();
+      }, [page, groupBy, filteredAndSortedData, hasMore]);
+
+      const loaderRef = useCallback(node => {
+        if (isLoading) return;
+        if (observer.current) observer.current.disconnect();
+        
+        observer.current = new IntersectionObserver(entries => {
+          if (entries[0].isIntersecting && hasMore) {
+            setPage(prevPage => prevPage + 1);
+          }
+        });
+        if (node) observer.current.observe(node);
+      }, [isLoading, hasMore]);
+
+      const stats: StatItem[] = [
+        {
+          title: "Total Projects",
+          value: totalItems.toString(),
+          icon: <Layers className="w-5 h-5" />,
+          change: "+5.2% this month",
+          trend: "up" as const,
+          type: 'chart',
+          chartData: [120, 125, 122, 130, 135, 138, 142]
+        },
+        {
+          title: "Active Projects",
+          value: activeItems.toString(),
+          icon: <PlayCircle className="w-5 h-5" />,
+          change: "+2 this week", 
+          trend: "up" as const,
+          type: 'chart',
+          chartData: [45, 50, 48, 55, 53, 60, 58]
+        },
+        {
+          title: "High Priority",
+          value: highPriorityItems.toString(),
+          icon: <AlertTriangle className="w-5 h-5" />,
+          change: "-1 from last week",
+          trend: "down" as const,
+          type: 'chart',
+          chartData: [25, 26, 28, 27, 26, 24, 23]
+        },
+        {
+          title: "Avg. Completion",
+          value: `${avgCompletion}%`,
+          icon: <TrendingUp className="w-5 h-5" />,
+          change: "+3.2%",
+          trend: "up" as const,
+          type: 'chart',
+          chartData: [65, 68, 70, 69, 72, 75, 78]
+        }
+      ]
+
+      useEffect(() => {
+        // Animate stats cards in
+        if (!isInitialLoading && statsRef.current) {
+          gsap.fromTo(statsRef.current.children,
+            { y: 30, opacity: 0 },
+            {
+              duration: 0.6,
+              y: 0,
+              opacity: 1,
+              stagger: 0.1,
+              ease: "power2.out"
+            }
+          )
+        }
+      }, [isInitialLoading])
+
+      const handleSortChange = (config: SortConfig | null) => {
+        setSortConfig(config)
+      }
+
+      // For table view header clicks
+      const handleTableSort = (field: SortableField) => {
+        if (sortConfig?.key === field) {
+          if (sortConfig.direction === 'desc') {
+            // Cycle: desc -> asc
+            setSortConfig({ key: field, direction: 'asc' })
+          } else {
+            // Cycle: asc -> default
+            setSortConfig(null)
+          }
+        } else {
+          // New field, default to desc
+          setSortConfig({ key: field, direction: 'desc' })
+        }
+      }
+
+      const handleFilterChange = (newFilters: FilterConfig) => {
+        setFilters(newFilters)
+      }
+      
+      // Handle item selection and open side panel
+      const handleItemSelect = (item: DataItem) => {
+        navigate(`/data-demo/${item.id}`)
+      }
+
+      const groupTabs = useMemo(() => {
+        if (groupBy === 'none' || !filteredAndSortedData.length) return [];
+
+        const groups = [...new Set(filteredAndSortedData.map(item => item[groupBy as GroupableField]))];
+        const sortedGroups = groups.sort((a, b) => String(a).localeCompare(String(b)));
+        
+        return [
+            { id: 'all', label: 'All' }, 
+            ...sortedGroups.map(g => ({ id: String(g), label: capitalize(String(g)) }))
+        ];
+      }, [filteredAndSortedData, groupBy]);
+
+      // Data to be rendered in the current view, after grouping and tab selection is applied
+      const dataToRender = useMemo(() => {
+        if (groupBy === 'none') {
+          return items; // This is the paginated list.
+        }
+        
+        // When grouped, `items` contains ALL filtered/sorted data.
+        if (activeGroupTab === 'all') {
+          return items;
+        }
+        return items.filter(item => String(item[groupBy as GroupableField]) === activeGroupTab);
+      }, [items, groupBy, activeGroupTab]);
+
+      const commonViewProps = {
+        onItemSelect: handleItemSelect,
+        selectedItem,
+      };
+
+      const totalItemCount = filteredAndSortedData.length;
+
+      return (
+        <PageLayout
+          // Note: Search functionality is handled by a separate SearchBar in the TopBar
+        >
+          <div className="space-y-8">
+            {/* Header */}
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div className="flex-1">
+                <h1 className="text-2xl font-bold tracking-tight">Data Showcase</h1>
+                <p className="text-muted-foreground">
+                  {isInitialLoading 
+                    ? "Loading projects..." 
+                    : `Showing ${totalItemCount} item(s)`}
+                </p>
+              </div>
+              <DataViewModeSelector viewMode={viewMode} onChange={setViewMode} />
+            </div>
+
+            {/* Stats Section */}
+            {!isInitialLoading && (
+              <div ref={statsRef} className="grid grid-cols-[repeat(auto-fit,minmax(250px,1fr))] gap-6">
+                {stats.map((stat) =>
+                  stat.type === 'chart' ? (
+                    <StatChartCard
+                      key={stat.title}
+                      title={stat.title}
+                      value={stat.value}
+                      change={stat.change}
+                      trend={stat.trend}
+                      icon={stat.icon}
+                      chartData={stat.chartData}
+                    />
+                  ) : null
+                )}
+              </div>
+            )}
+
+            {/* Controls Area */}
+            <div className="space-y-6">
+              <DataToolbar
+                filters={filters}
+                onFiltersChange={handleFilterChange}
+                sortConfig={sortConfig}
+                onSortChange={handleSortChange}
+              />
+            </div>
+
+            {/* Group by and Tabs section */}
+            <div className="flex items-center justify-between gap-4 border-b">
+              {/* Tabs on the left, takes up available space */}
+              <div className="flex-grow">
+                {groupBy !== 'none' && groupTabs.length > 1 ? (
+                  <AnimatedTabs
+                    tabs={groupTabs}
+                    activeTab={activeGroupTab}
+                    onTabChange={setActiveGroupTab}
+                  />
+                ) : (
+                  <div className="h-11" /> // Placeholder for consistent height. h-11 is 44px, approx height of tabs.
+                )}
+              </div>
+              
+              {/* Group by dropdown on the right */}
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="text-sm font-medium text-muted-foreground shrink-0">Group by:</span>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" className="w-[180px] justify-between">
+                      {groupOptions.find(o => o.id === groupBy)?.label}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-[180px]">
+                    <DropdownMenuRadioGroup value={groupBy} onValueChange={(val) => setGroupBy(val as GroupableField | 'none')}>
+                      {groupOptions.map(option => (
+                        <DropdownMenuRadioItem key={option.id} value={option.id}>
+                          {option.label}
+                        </DropdownMenuRadioItem>
+                      ))}
+                    </DropdownMenuRadioGroup>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </div>
+
+            <div ref={contentRef} className="min-h-[500px]">
+              {isInitialLoading ? <AnimatedLoadingSkeleton viewMode={viewMode} /> : (
+                <div>
+                  {viewMode === 'table' ? (
+                     <DataTableView 
+                        data={dataToRender} 
+                        {...commonViewProps}
+                        sortConfig={sortConfig} 
+                        onSort={handleTableSort} 
+                      />
+                  ) : (
+                    <>
+                      {viewMode === 'list' && <DataListView data={dataToRender} {...commonViewProps} />}
+                      {viewMode === 'cards' && <DataCardView data={dataToRender} {...commonViewProps} />}
+                      {viewMode === 'grid' && <DataCardView data={dataToRender} {...commonViewProps} isGrid />}
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Loader for infinite scroll */}
+            <div ref={loaderRef} className="flex justify-center items-center py-6">
+              {isLoading && !isInitialLoading && groupBy === 'none' && (
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span>Loading more...</span>
+                </div>
+              )}
+              {!isLoading && !hasMore && totalItemCount > 0 && !isInitialLoading && groupBy === 'none' && (
+                <p className="text-muted-foreground">You've reached the end.</p>
+              )}
+            </div>
+          </div>
+        </PageLayout>
+      )
+    }
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 247

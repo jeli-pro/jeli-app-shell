@@ -1,23 +1,35 @@
-import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
+import { useState, useRef, useEffect, useCallback, useMemo, useLayoutEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { 
   Layers, 
   AlertTriangle, 
   PlayCircle, 
   TrendingUp,
-  Loader2
+  Loader2,
+  ChevronsUpDown
 } from 'lucide-react'
 import { gsap } from 'gsap'
+import { capitalize, cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuRadioGroup, 
+  DropdownMenuRadioItem, 
+  DropdownMenuTrigger 
+} from '@/components/ui/dropdown-menu'
 import { PageLayout } from '@/components/shared/PageLayout'
 import { DataListView } from './components/DataListView'
 import { DataCardView } from './components/DataCardView'
 import { DataTableView } from './components/DataTableView'
 import { DataViewModeSelector } from './components/DataViewModeSelector'
+import { AnimatedTabs } from '@/components/ui/animated-tabs'
 import { AnimatedLoadingSkeleton } from './components/AnimatedLoadingSkeleton'
 import { StatChartCard } from './components/StatChartCard'
 import { DataToolbar, FilterConfig } from './components/DataToolbar'
 import { mockDataItems } from './data/mockData'
-import type { DataItem, ViewMode, SortConfig, SortableField } from './types'
+import type { DataItem, ViewMode, SortConfig, SortableField, GroupableField } from './types'
 
 type Stat = {
   title: string;
@@ -48,6 +60,12 @@ export default function DataDemoPage() {
     priority: [],
   })
   const [sortConfig, setSortConfig] = useState<SortConfig | null>({ key: 'updatedAt', direction: 'desc' })
+  const [groupBy, setGroupBy] = useState<GroupableField | 'none'>('none')
+  const [activeGroupTab, setActiveGroupTab] = useState('all')
+  
+  const groupOptions: { id: GroupableField | 'none'; label: string }[] = [
+    { id: 'none', label: 'None' }, { id: 'status', label: 'Status' }, { id: 'priority', label: 'Priority' }, { id: 'category', label: 'Category' }
+  ]
   const [items, setItems] = useState<DataItem[]>([])
   const [page, setPage] = useState(0) // Start at 0 to trigger initial load effect
   const [hasMore, setHasMore] = useState(true)
@@ -65,8 +83,8 @@ export default function DataDemoPage() {
 
   const isInitialLoading = isLoading && items.length === 0
 
-  // Centralized data processing
-  const processedData = useMemo(() => {
+  // Step 1: Centralized data filtering and sorting from the master list
+  const filteredAndSortedData = useMemo(() => {
     let filteredItems = mockDataItems.filter(item => {
       const searchTermMatch =
         item.title.toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
@@ -107,8 +125,9 @@ export default function DataDemoPage() {
         return 0
       })
     }
+
     return filteredItems
-  }, [filters, sortConfig])
+  }, [filters, sortConfig, groupBy])
 
   // Calculate stats from data
   const totalItems = mockDataItems.length
@@ -121,33 +140,47 @@ export default function DataDemoPage() {
   // Reset pagination when filters or sort change
   useEffect(() => {
     setItems([])
+    setActiveGroupTab('all')
     setPage(0) // This will be incremented to 1 in the loader `useEffect`, triggering a fresh load
     setHasMore(true)
-    // This timeout helps prevent a flicker between old and new filtered data
-    setTimeout(() => setPage(1), 50)
-  }, [processedData])
+    setIsLoading(true)
+    // Timeout prevents flicker and ensures loading state is visible for new filter/sort/group
+    setTimeout(() => {
+      if (groupBy !== 'none') {
+        setItems(filteredAndSortedData);
+        setHasMore(false);
+        setIsLoading(false);
+      } else {
+        setPage(1)
+      }
+    }, 100);
+  }, [filteredAndSortedData, groupBy])
 
   // Infinite scroll logic
-  useEffect(() => { // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
     if (page === 0) return;
+    if (groupBy !== 'none') return; // Pagination is disabled when grouping
 
     const fetchItems = () => {
       setIsLoading(true);
       const isFirstPage = page === 1
       
       const pageSize = 12;
-      const newItems = processedData.slice((page - 1) * pageSize, page * pageSize);
+      const newItems = filteredAndSortedData.slice((page - 1) * pageSize, page * pageSize);
       
       // Simulate network delay, longer for initial load to showcase skeleton
       setTimeout(() => {
-        setItems(prev => (isFirstPage ? newItems : [...prev, ...newItems]))
-        setHasMore(processedData.length > page * pageSize)
-        setIsLoading(false)
+        // Double-check in case groupBy changed during timeout
+        if (groupBy === 'none') {
+          setItems(prev => (isFirstPage ? newItems : [...prev, ...newItems]))
+          setHasMore(filteredAndSortedData.length > page * pageSize)
+          setIsLoading(false)
+        }
       }, isFirstPage && items.length === 0 ? 1500 : 500)
     };
 
     if (hasMore) fetchItems();
-  }, [page]);
+  }, [page, groupBy, filteredAndSortedData, hasMore]);
 
   const loaderRef = useCallback(node => {
     if (isLoading) return;
@@ -245,29 +278,60 @@ export default function DataDemoPage() {
     navigate(`/data-demo/${item.id}`)
   }
 
+  const groupTabs = useMemo(() => {
+    if (groupBy === 'none' || !filteredAndSortedData.length) return []
 
-  const renderView = () => {
-    const commonProps = {
-      data: items,
-      onItemSelect: handleItemSelect,
-      selectedItem,
-      sortConfig,
-      onSort: handleTableSort,
-    }
+    const groupCounts = filteredAndSortedData.reduce((acc, item) => {
+      const groupKey = String(item[groupBy as GroupableField])
+      acc[groupKey] = (acc[groupKey] || 0) + 1
+      return acc
+    }, {} as Record<string, number>)
 
-    switch (viewMode) {
-      case 'list':
-        return <DataListView {...commonProps} />
-      case 'cards':
-        return <DataCardView {...commonProps} />
-      case 'grid':
-        return <DataCardView {...commonProps} isGrid />
-      case 'table':
-        return <DataTableView {...commonProps} />
-      default:
-        return <DataListView {...commonProps} />
+    const sortedGroups = Object.keys(groupCounts).sort((a, b) => a.localeCompare(b))
+
+    const createLabel = (text: string, count: number, isActive: boolean) => (
+      <>
+        {text}
+        <Badge
+          variant={isActive ? "default" : "secondary"}
+          className={cn(
+            "transition-colors duration-300 text-xs font-semibold",
+            !isActive && "group-hover:bg-accent group-hover:text-accent-foreground"
+          )}
+        >
+          {count}
+        </Badge>
+      </>
+    )
+
+    return [
+      { id: 'all', label: createLabel('All', filteredAndSortedData.length, activeGroupTab === 'all') },
+      ...sortedGroups.map(g => ({
+        id: g,
+        label: createLabel(capitalize(g), groupCounts[g], activeGroupTab === g),
+      })),
+    ]
+  }, [filteredAndSortedData, groupBy, activeGroupTab]);
+
+  // Data to be rendered in the current view, after grouping and tab selection is applied
+  const dataToRender = useMemo(() => {
+    if (groupBy === 'none') {
+      return items; // This is the paginated list.
     }
-  }
+    
+    // When grouped, `items` contains ALL filtered/sorted data.
+    if (activeGroupTab === 'all') {
+      return items;
+    }
+    return items.filter(item => String(item[groupBy as GroupableField]) === activeGroupTab);
+  }, [items, groupBy, activeGroupTab]);
+
+  const commonViewProps = {
+    onItemSelect: handleItemSelect,
+    selectedItem,
+  };
+
+  const totalItemCount = filteredAndSortedData.length;
 
   return (
     <PageLayout
@@ -281,7 +345,7 @@ export default function DataDemoPage() {
             <p className="text-muted-foreground">
               {isInitialLoading 
                 ? "Loading projects..." 
-                : `Showing ${processedData.length} item(s)`}
+                : `Showing ${totalItemCount} item(s)`}
             </p>
           </div>
           <DataViewModeSelector viewMode={viewMode} onChange={setViewMode} />
@@ -306,26 +370,87 @@ export default function DataDemoPage() {
           </div>
         )}
 
-        <DataToolbar
-          filters={filters}
-          onFiltersChange={handleFilterChange}
-          sortConfig={sortConfig}
-          onSortChange={handleSortChange}
-        />
+        {/* Controls Area */}
+        <div className="space-y-6">
+          <DataToolbar
+            filters={filters}
+            onFiltersChange={handleFilterChange}
+            sortConfig={sortConfig}
+            onSortChange={handleSortChange}
+          />
+        </div>
+
+        {/* Group by and Tabs section */}
+        <div className={cn(
+          "flex items-center justify-between gap-4",
+          groupBy !== 'none' && "border-b"
+        )}>
+          {/* Tabs on the left, takes up available space */}
+          <div className="flex-grow overflow-x-auto overflow-y-hidden no-scrollbar">
+            {groupBy !== 'none' && groupTabs.length > 1 ? (
+              <AnimatedTabs
+                tabs={groupTabs}
+                activeTab={activeGroupTab}
+                onTabChange={setActiveGroupTab}
+              />
+            ) : (
+              <div className="h-[68px]" /> // Placeholder for consistent height.
+            )}
+          </div>
+          
+          {/* Group by dropdown on the right */}
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="text-sm font-medium text-muted-foreground shrink-0">Group by:</span>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="w-[180px] justify-between">
+                  {groupOptions.find(o => o.id === groupBy)?.label}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-[180px]">
+                <DropdownMenuRadioGroup value={groupBy} onValueChange={(val) => setGroupBy(val as GroupableField | 'none')}>
+                  {groupOptions.map(option => (
+                    <DropdownMenuRadioItem key={option.id} value={option.id}>
+                      {option.label}
+                    </DropdownMenuRadioItem>
+                  ))}
+                </DropdownMenuRadioGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
 
         <div ref={contentRef} className="min-h-[500px]">
-          {isInitialLoading ? <AnimatedLoadingSkeleton viewMode={viewMode} /> : renderView()}
+          {isInitialLoading ? <AnimatedLoadingSkeleton viewMode={viewMode} /> : (
+            <div>
+              {viewMode === 'table' ? (
+                 <DataTableView 
+                    data={dataToRender} 
+                    {...commonViewProps}
+                    sortConfig={sortConfig} 
+                    onSort={handleTableSort} 
+                  />
+              ) : (
+                <>
+                  {viewMode === 'list' && <DataListView data={dataToRender} {...commonViewProps} />}
+                  {viewMode === 'cards' && <DataCardView data={dataToRender} {...commonViewProps} />}
+                  {viewMode === 'grid' && <DataCardView data={dataToRender} {...commonViewProps} isGrid />}
+                </>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Loader for infinite scroll */}
         <div ref={loaderRef} className="flex justify-center items-center py-6">
-          {isLoading && !isInitialLoading && (
+          {isLoading && !isInitialLoading && groupBy === 'none' && (
             <div className="flex items-center gap-2 text-muted-foreground">
               <Loader2 className="w-5 h-5 animate-spin" />
               <span>Loading more...</span>
             </div>
           )}
-          {!isLoading && !hasMore && processedData.length > 0 && !isInitialLoading && (
+          {!isLoading && !hasMore && totalItemCount > 0 && !isInitialLoading && groupBy === 'none' && (
             <p className="text-muted-foreground">You've reached the end.</p>
           )}
         </div>

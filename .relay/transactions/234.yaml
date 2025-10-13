@@ -1,0 +1,368 @@
+uuid: 457a44f8-5813-441d-a0bb-26514798bca4
+projectId: jeli-app-shell
+createdAt: '2025-10-13T15:47:14.991Z'
+gitCommitMsg: >-
+  fix(app-shell): align side pane closing logic with URL state management
+
+  Refactored the `RightPane` close button and the backdrop click handler in
+  `useAppShellAnimations` to use `useSearchParams` for closing the side pane.
+  Previously, they used a `dispatch` call with an invalid action type
+  `CLOSE_SIDE_PANE`, causing TypeScript errors.
+
+  This change makes the side pane state management consistent with other parts
+  of the application (like `TopBar`), where the URL is the source of truth. This
+  resolves the compilation errors and prevents potential state desynchronization
+  bugs on page refresh.
+promptSummary: >-
+  The user received TSC errors related to an invalid dispatch action
+  'CLOSE_SIDE_PANE'. I'm fixing this by refactoring the code to use URL search
+  parameters for managing the side pane state, which aligns with the existing
+  architecture and prevents state synchronization issues.
+reasoning:
+  - >-
+    I've analyzed the TypeScript errors. They indicate that the action
+    `CLOSE_SIDE_PANE` is not recognized by the application's state reducer.
+    While simply changing the action type to something valid like
+    `SET_BODY_STATE` would fix the compile error, it would likely introduce a
+    runtime bug where the URL and application state become desynchronized.
+  - >-
+    A closer look at other components like `TopBar` and `EnhancedSidebar`
+    reveals a consistent pattern: navigational state, such as which side pane is
+    open, is controlled by URL search parameters (e.g., `?sidePane=settings`).
+    The application's context then listens to these URL changes and updates its
+    internal state accordingly.
+  - >-
+    Therefore, the correct fix is to refactor the parts of the code that were
+    incorrectly using `dispatch` for this purpose. Instead, they should modify
+    the URL search parameters, aligning them with the established pattern in the
+    codebase. This ensures the URL remains the single source of truth for this
+    state, preventing synchronization issues.
+  - >-
+    Here are the changes to align `RightPane.tsx` and
+    `useAppShellAnimations.hook.ts` with this architectural pattern.
+  - '### Step 1: Update Right Pane Close Button Logic'
+  - >-
+    I'll modify the `RightPane` component. The close button will now use the
+    `useSearchParams` hook to remove the `sidePane` parameter from the URL,
+    which will trigger the correct state update throughout the application.
+  - '### Step 2: Update Backdrop Click Logic in Animations Hook'
+  - >-
+    Similarly, I'll update the `useAppShellAnimations` hook. The click handler
+    for the backdrop overlay (which appears when a side pane is open) will also
+    use `useSearchParams` to clear the `sidePane` parameter, ensuring a
+    consistent closing behavior.
+operations:
+  - type: write
+    path: src/components/layout/RightPane.tsx
+    content: |+
+      --- src/components/layout/RightPane.tsx
+      +++ src/components/layout/RightPane.tsx
+      @@ -1,4 +1,5 @@
+       import { forwardRef, type ReactNode } from 'react'
+      +import { useSearchParams } from 'react-router-dom'
+       import { ChevronRight, X } from 'lucide-react'
+       import { cn, BODY_STATES } from '@/lib/utils'
+       import { useAppShell } from '@/context/AppShellContext'
+      @@ -11,6 +12,7 @@
+       
+       export const RightPane = forwardRef<HTMLDivElement, RightPaneProps>(({ children, header, className }, ref) => {
+         const { dispatch, bodyState, fullscreenTarget, toggleFullscreen } = useAppShell();
+      +  const [, setSearchParams] = useSearchParams()
+         const isSplitView = bodyState === BODY_STATES.SPLIT_VIEW;
+         const isFullscreen = bodyState === BODY_STATES.FULLSCREEN;
+       
+      @@ -34,7 +36,13 @@
+             )}
+             {bodyState !== BODY_STATES.SPLIT_VIEW && !isFullscreen && (
+               <button
+      -          onClick={() => dispatch({ type: 'CLOSE_SIDE_PANE' })}
+      +          onClick={() => {
+      +            setSearchParams(prev => {
+      +              const newParams = new URLSearchParams(prev)
+      +              newParams.delete('sidePane')
+      +              return newParams
+      +            }, { replace: true })
+      +          }}
+                 className="absolute top-1/2 -left-px -translate-y-1/2 -translate-x-full w-8 h-16 bg-card border border-r-0 border-border rounded-l-lg flex items-center justify-center hover:bg-accent transition-colors group z-10"
+                 title="Close pane"
+               >
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/hooks/useAppShellAnimations.hook.ts
+    content: |+
+      --- src/hooks/useAppShellAnimations.hook.ts
+      +++ src/hooks/useAppShellAnimations.hook.ts
+      @@ -1,5 +1,6 @@
+       import { useEffect, useRef } from 'react';
+       import { gsap } from 'gsap';
+      +import { useSearchParams } from 'react-router-dom';
+       import { useAppShell } from '@/context/AppShellContext';
+       import { SIDEBAR_STATES, BODY_STATES } from '@/lib/utils';
+       
+      @@ -75,6 +76,7 @@
+         const { bodyState, reducedMotion, rightPaneWidth, isTopBarVisible, dispatch, fullscreenTarget } = useAppShell();
+         const animationDuration = reducedMotion ? 0.1 : 0.4;
+         const prevBodyState = usePrevious(bodyState);
+      +  const [, setSearchParams] = useSearchParams();
+       
+         useEffect(() => {
+           if (!mainContentRef.current || !rightPaneRef.current || !topBarContainerRef.current || !mainAreaRef.current) return;
+      @@ -131,7 +133,13 @@
+               el.className = 'app-backdrop fixed inset-0 bg-black/30 z-[55]';
+               appRef.current?.appendChild(el);
+               gsap.fromTo(el, { opacity: 0 }, { opacity: 1, duration: animationDuration });
+      -        el.onclick = () => dispatch({ type: 'CLOSE_SIDE_PANE' });
+      +        el.onclick = () => {
+      +          setSearchParams(prev => {
+      +            const newParams = new URLSearchParams(prev);
+      +            newParams.delete('sidePane');
+      +            return newParams;
+      +          }, { replace: true });
+      +        };
+             }
+           } else {
+             if (backdrop) {
+
+    patchStrategy: standard-diff
+snapshot:
+  src/components/layout/RightPane.tsx: >-
+    import { forwardRef, type ReactNode } from 'react'
+
+    import { ChevronRight, X } from 'lucide-react'
+
+    import { cn, BODY_STATES } from '@/lib/utils'
+
+    import { useAppShell } from '@/context/AppShellContext'
+
+
+    interface RightPaneProps {
+      children?: ReactNode
+      header?: ReactNode
+      className?: string
+    }
+
+
+    export const RightPane = forwardRef<HTMLDivElement, RightPaneProps>(({
+    children, header, className }, ref) => {
+      const { dispatch, bodyState, fullscreenTarget, toggleFullscreen } = useAppShell();
+      const isSplitView = bodyState === BODY_STATES.SPLIT_VIEW;
+      const isFullscreen = bodyState === BODY_STATES.FULLSCREEN;
+
+      if (isFullscreen && fullscreenTarget !== 'right') {
+        return null;
+      }
+
+      return (
+        <aside
+          ref={ref}
+          className={cn(
+            "border-l border-border flex flex-col h-full overflow-hidden",
+            isSplitView && "relative bg-background",
+            !isSplitView && !isFullscreen && "fixed top-0 right-0 z-[60] bg-card", // side pane overlay
+            isFullscreen && fullscreenTarget === 'right' && "fixed inset-0 z-[60] bg-card", // fullscreen
+            className,
+          )}
+        >
+          {isFullscreen && fullscreenTarget === 'right' && (
+            <button
+              onClick={() => toggleFullscreen()}
+              className="fixed top-6 right-6 lg:right-12 z-[100] h-12 w-12 flex items-center justify-center rounded-full bg-card/50 backdrop-blur-sm hover:bg-card/75 transition-colors group"
+              title="Exit Fullscreen"
+            >
+              <X className="w-6 h-6 group-hover:scale-110 group-hover:rotate-90 transition-all duration-300" />
+            </button>
+          )}
+          {bodyState !== BODY_STATES.SPLIT_VIEW && !isFullscreen && (
+            <button
+              onClick={() => dispatch({ type: 'CLOSE_SIDE_PANE' })}
+              className="absolute top-1/2 -left-px -translate-y-1/2 -translate-x-full w-8 h-16 bg-card border border-r-0 border-border rounded-l-lg flex items-center justify-center hover:bg-accent transition-colors group z-10"
+              title="Close pane"
+            >
+              <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-foreground transition-colors" />
+            </button>
+          )}
+          <div 
+            className={cn(
+              "absolute top-0 left-0 w-2 h-full bg-transparent hover:bg-primary/20 cursor-col-resize z-50 transition-colors duration-200 group -translate-x-1/2"
+            )}
+            onMouseDown={(e) => {
+              e.preventDefault()
+              dispatch({ type: 'SET_IS_RESIZING_RIGHT_PANE', payload: true });
+            }}
+          >
+            <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200 mx-auto" />
+          </div>
+          {header && (
+            <div className="flex items-center justify-between p-4 border-b border-border h-20 flex-shrink-0 pl-6">
+              {header}
+            </div>
+          )}
+          <div className={cn("flex-1 overflow-y-auto")}>
+            {children}
+          </div>
+        </aside>
+      )
+    })
+
+    RightPane.displayName = "RightPane"
+  src/hooks/useAppShellAnimations.hook.ts: |-
+    import { useEffect, useRef } from 'react';
+    import { gsap } from 'gsap';
+    import { useAppShell } from '@/context/AppShellContext';
+    import { SIDEBAR_STATES, BODY_STATES } from '@/lib/utils';
+
+    function usePrevious<T>(value: T): T | undefined {
+      const ref = useRef<T>();
+      useEffect(() => {
+        ref.current = value;
+      }, [value]);
+      return ref.current;
+    }
+
+    export function useSidebarAnimations(
+      sidebarRef: React.RefObject<HTMLDivElement>,
+      resizeHandleRef: React.RefObject<HTMLDivElement>
+    ) {
+      const { sidebarState, sidebarWidth, bodyState, reducedMotion } = useAppShell();
+      const animationDuration = reducedMotion ? 0.1 : 0.4;
+
+      useEffect(() => {
+        if (!sidebarRef.current || !resizeHandleRef.current) return;
+
+        const sidebar = sidebarRef.current;
+        const handle = resizeHandleRef.current;
+        
+        let targetWidth = 0;
+        let targetOpacity = 1;
+
+        if (bodyState === BODY_STATES.FULLSCREEN) {
+          targetWidth = 0;
+          targetOpacity = 0;
+        } else {
+          switch (sidebarState) {
+            case SIDEBAR_STATES.HIDDEN:
+              targetWidth = 0;
+              targetOpacity = 0;
+              break;
+            case SIDEBAR_STATES.COLLAPSED:
+              targetWidth = 64;
+              targetOpacity = 1;
+              break;
+            case SIDEBAR_STATES.EXPANDED:
+              targetWidth = sidebarWidth;
+              targetOpacity = 1;
+              break;
+            case SIDEBAR_STATES.PEEK:
+              targetWidth = sidebarWidth * 0.8;
+              targetOpacity = 0.95;
+              break;
+          }
+        }
+
+        const tl = gsap.timeline({ ease: "power3.out" });
+        
+        tl.to(sidebar, {
+          width: targetWidth,
+          opacity: targetOpacity,
+          duration: animationDuration,
+        });
+        tl.to(handle, {
+          left: targetWidth,
+          duration: animationDuration,
+        }, 0);
+
+      }, [sidebarState, sidebarWidth, bodyState, animationDuration, sidebarRef, resizeHandleRef]);
+    }
+
+    export function useBodyStateAnimations(
+      appRef: React.RefObject<HTMLDivElement>,
+      mainContentRef: React.RefObject<HTMLDivElement>,
+      rightPaneRef: React.RefObject<HTMLDivElement>,
+      topBarContainerRef: React.RefObject<HTMLDivElement>,
+      mainAreaRef: React.RefObject<HTMLDivElement>
+    ) {
+      const { bodyState, reducedMotion, rightPaneWidth, isTopBarVisible, dispatch, fullscreenTarget } = useAppShell();
+      const animationDuration = reducedMotion ? 0.1 : 0.4;
+      const prevBodyState = usePrevious(bodyState);
+
+      useEffect(() => {
+        if (!mainContentRef.current || !rightPaneRef.current || !topBarContainerRef.current || !mainAreaRef.current) return;
+
+        const ease = "power3.out";
+        const isSidePane = bodyState === BODY_STATES.SIDE_PANE;
+        const isSplitView = bodyState === BODY_STATES.SPLIT_VIEW;
+
+        // Kill any existing animations on the right pane to prevent conflicts
+        gsap.killTweensOf(rightPaneRef.current);
+
+        // Right pane animation
+        if (isSidePane) {
+          // SHOW AS OVERLAY: Set width immediately, animate transform for performance.
+          gsap.set(rightPaneRef.current, { width: rightPaneWidth, x: '0%' });
+          gsap.fromTo(rightPaneRef.current, { x: '100%' }, {
+              x: '0%',
+              duration: animationDuration,
+              ease,
+          });
+        } else if (isSplitView) {
+            // SHOW AS SPLIT: Set transform immediately, animate width.
+            gsap.set(rightPaneRef.current, { x: '0%' });
+            gsap.to(rightPaneRef.current, {
+                width: rightPaneWidth,
+                duration: animationDuration,
+                ease,
+            });
+        } else {
+            // HIDE PANE: Determine how to hide based on the state we are coming FROM.
+            if (prevBodyState === BODY_STATES.SIDE_PANE) {
+                // It was an overlay, so slide it out.
+                gsap.to(rightPaneRef.current, {
+              x: '100%',
+              duration: animationDuration,
+              ease,
+                });
+            } else { // Covers coming from SPLIT_VIEW, FULLSCREEN, or NORMAL
+                // It was docked or fullscreen, so shrink its width.
+                gsap.to(rightPaneRef.current, { width: 0, duration: animationDuration, ease });
+            }
+        }
+
+        // Determine top bar position based on state
+        let topBarY = '0%';
+        if (bodyState === BODY_STATES.FULLSCREEN) {
+          topBarY = '-100%'; // Always hide in fullscreen
+        } else if (bodyState === BODY_STATES.NORMAL && !isTopBarVisible) {
+          topBarY = '-100%'; // Hide only in normal mode when scrolled
+        }
+
+        gsap.to(topBarContainerRef.current, {
+          y: topBarY,
+          duration: animationDuration,
+          ease,
+        });
+        
+        // Add backdrop for side pane
+        const backdrop = document.querySelector('.app-backdrop');
+        if (isSidePane) { // This is correct because isSidePane is false when bodyState is split_view
+          if (!backdrop) {
+            const el = document.createElement('div');
+            el.className = 'app-backdrop fixed inset-0 bg-black/30 z-[55]';
+            appRef.current?.appendChild(el);
+            gsap.fromTo(el, { opacity: 0 }, { opacity: 1, duration: animationDuration });
+            el.onclick = () => dispatch({ type: 'CLOSE_SIDE_PANE' });
+          }
+        } else {
+          if (backdrop) {
+            gsap.to(backdrop, { opacity: 0, duration: animationDuration, onComplete: () => backdrop.remove() });
+          }
+        }
+      }, [bodyState, prevBodyState, animationDuration, rightPaneWidth, isTopBarVisible, appRef, mainContentRef, rightPaneRef, topBarContainerRef, mainAreaRef, fullscreenTarget, dispatch]);
+    }
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 234

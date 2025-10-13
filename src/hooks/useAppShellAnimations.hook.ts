@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { gsap } from 'gsap';
+import { useSearchParams } from 'react-router-dom';
 import { useAppShell } from '@/context/AppShellContext';
 import { SIDEBAR_STATES, BODY_STATES } from '@/lib/utils';
 
@@ -73,15 +74,15 @@ export function useBodyStateAnimations(
   topBarContainerRef: React.RefObject<HTMLDivElement>,
   mainAreaRef: React.RefObject<HTMLDivElement>
 ) {
-  const { bodyState, reducedMotion, rightPaneWidth, isTopBarVisible, closeSidePane, fullscreenTarget } = useAppShell();
+  const { bodyState, reducedMotion, rightPaneWidth, isTopBarVisible, dispatch, fullscreenTarget } = useAppShell();
   const animationDuration = reducedMotion ? 0.1 : 0.4;
   const prevBodyState = usePrevious(bodyState);
+  const [, setSearchParams] = useSearchParams();
 
   useEffect(() => {
     if (!mainContentRef.current || !rightPaneRef.current || !topBarContainerRef.current || !mainAreaRef.current) return;
 
     const ease = "power3.out";
-    const isFullscreen = bodyState === BODY_STATES.FULLSCREEN;
     const isSidePane = bodyState === BODY_STATES.SIDE_PANE;
     const isSplitView = bodyState === BODY_STATES.SPLIT_VIEW;
 
@@ -142,12 +143,18 @@ export function useBodyStateAnimations(
         el.className = 'app-backdrop fixed inset-0 bg-black/30 z-[55]';
         appRef.current?.appendChild(el);
         gsap.fromTo(el, { opacity: 0 }, { opacity: 1, duration: animationDuration });
-        el.onclick = () => closeSidePane();
+        el.onclick = () => {
+          setSearchParams(prev => {
+            const newParams = new URLSearchParams(prev);
+            newParams.delete('sidePane');
+            return newParams;
+          }, { replace: true });
+        };
       }
     } else {
       if (backdrop) {
         gsap.to(backdrop, { opacity: 0, duration: animationDuration, onComplete: () => backdrop.remove() });
       }
     }
-  }, [bodyState, prevBodyState, animationDuration, rightPaneWidth, closeSidePane, isTopBarVisible, appRef, mainContentRef, rightPaneRef, topBarContainerRef, mainAreaRef, fullscreenTarget]);
+  }, [bodyState, prevBodyState, animationDuration, rightPaneWidth, isTopBarVisible, appRef, mainContentRef, rightPaneRef, topBarContainerRef, mainAreaRef, fullscreenTarget, dispatch]);
 }

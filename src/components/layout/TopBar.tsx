@@ -26,7 +26,7 @@ export function TopBar({
   children,
 }: TopBarProps) {
   const { bodyState } = useAppShell()
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [, setSearchParams] = useSearchParams();
   const location = useLocation();
   const navigate = useNavigate();
   const { 

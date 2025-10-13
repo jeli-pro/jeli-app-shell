@@ -1,0 +1,304 @@
+uuid: c6e42b82-8984-406c-843b-286820ff569d
+projectId: jeli-app-shell
+createdAt: '2025-10-13T15:33:39.703Z'
+gitCommitMsg: >-
+  feat(ui): create AnimatedTabs component
+
+  Introduces a new `AnimatedTabs` component based on the provided design. This
+  component features a sleek, animated indicator for active and hovered tabs,
+  providing a modern and fluid user experience.
+
+  - Created as a controlled component for flexible state management. - Styled to
+  align with the existing design system. - Enhanced accessibility using button
+  elements. - Exported from the main library entry point for easy consumption.
+promptSummary: Create an animated tabs component for data grouping based on provided code.
+reasoning:
+  - Executing Part 1 of the plan to forge the new animated tabs component.
+  - '### Part 1, Step 1: Create and Implement AnimatedTabs Component'
+  - >-
+    First, I'll create the new `AnimatedTabs` component. I'm using the
+    user-provided code as a foundation but refining it to be a fully controlled
+    component, improving accessibility by using `<button>` elements, and
+    tweaking the styles to perfectly match the existing UI kit. This results in
+    a more robust and visually cohesive component.
+  - '### Part 1, Step 2: Export the New Component'
+  - >-
+    To make the `AnimatedTabs` component accessible to the rest of the library
+    and to consumers, I will add it to the main export file, `src/index.ts`.
+  - >-
+    This completes the first part of our plan. We now have a beautiful,
+    animated, and reusable tabs component ready for integration into the data
+    demo page.
+operations:
+  - type: write
+    path: src/components/ui/animated-tabs.tsx
+    content: |-
+      "use client"
+
+      import * as React from "react"
+      import { useState, useRef, useEffect, useLayoutEffect } from "react"
+      import { cn } from "@/lib/utils"
+
+      interface Tab {
+        id: string
+        label: string
+      }
+
+      interface AnimatedTabsProps extends React.HTMLAttributes<HTMLDivElement> {
+        tabs: Tab[]
+        activeTab: string
+        onTabChange: (tabId: string) => void
+      }
+
+      const AnimatedTabs = React.forwardRef<HTMLDivElement, AnimatedTabsProps>(
+        ({ className, tabs, activeTab, onTabChange, ...props }, ref) => {
+          const [hoveredIndex, setHoveredIndex] = useState<number | null>(null)
+          const [activeIndex, setActiveIndex] = useState(0)
+          const [hoverStyle, setHoverStyle] = useState({})
+          const [activeStyle, setActiveStyle] = useState({ left: "0px", width: "0px" })
+          const tabRefs = useRef<(HTMLButtonElement | null)[]>([])
+
+          // Update active index when controlled prop changes
+          useEffect(() => {
+            const newActiveIndex = tabs.findIndex(tab => tab.id === activeTab)
+            if (newActiveIndex !== -1 && newActiveIndex !== activeIndex) {
+              setActiveIndex(newActiveIndex)
+            }
+          }, [activeTab, tabs, activeIndex])
+          
+          // Update hover indicator position
+          useEffect(() => {
+            if (hoveredIndex !== null) {
+              const hoveredElement = tabRefs.current[hoveredIndex]
+              if (hoveredElement) {
+                const { offsetLeft, offsetWidth } = hoveredElement
+                setHoverStyle({
+                  left: `${offsetLeft}px`,
+                  width: `${offsetWidth}px`,
+                })
+              }
+            }
+          }, [hoveredIndex])
+
+          // Update active indicator position
+          useEffect(() => {
+            const activeElement = tabRefs.current[activeIndex]
+            if (activeElement) {
+              const { offsetLeft, offsetWidth } = activeElement
+              setActiveStyle({
+                left: `${offsetLeft}px`,
+                width: `${offsetWidth}px`,
+              })
+            }
+          }, [activeIndex, tabs])
+
+          // Set initial position of active indicator
+          useLayoutEffect(() => {
+              const initialActiveIndex = activeTab ? tabs.findIndex(tab => tab.id === activeTab) : 0
+              const indexToUse = initialActiveIndex !== -1 ? initialActiveIndex : 0
+              
+              const firstElement = tabRefs.current[indexToUse]
+              if (firstElement) {
+                const { offsetLeft, offsetWidth } = firstElement
+                setActiveStyle({
+                  left: `${offsetLeft}px`,
+                  width: `${offsetWidth}px`,
+                })
+              }
+          }, [tabs, activeTab])
+
+          return (
+            <div 
+              ref={ref} 
+              className={cn("relative p-1 bg-muted/60 rounded-xl", className)} 
+              onMouseLeave={() => setHoveredIndex(null)}
+              {...props}
+            >
+              <div className="relative flex items-center">
+                {/* Hover Highlight */}
+                <div
+                  className="absolute h-full transition-all duration-300 ease-out bg-background/70 rounded-lg shadow-sm pointer-events-none"
+                  style={{
+                    ...hoverStyle,
+                    opacity: hoveredIndex !== null && hoveredIndex !== activeIndex ? 1 : 0,
+                  }}
+                />
+
+                {/* Active Indicator */}
+                <div
+                  className="absolute h-full bg-background rounded-lg shadow-sm transition-all duration-300 ease-out pointer-events-none"
+                  style={activeStyle}
+                />
+
+                {/* Tabs */}
+                <div className="relative flex items-center">
+                  {tabs.map((tab, index) => (
+                    <button
+                      key={tab.id}
+                      ref={(el) => (tabRefs.current[index] = el)}
+                      className={cn(
+                        "relative px-4 py-1.5 cursor-pointer transition-colors duration-300 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                        index === activeIndex 
+                          ? "text-foreground" 
+                          : "text-muted-foreground hover:text-foreground"
+                      )}
+                      onMouseEnter={() => setHoveredIndex(index)}
+                      onClick={() => {
+                        onTabChange(tab.id)
+                      }}
+                    >
+                      <span className="text-sm font-semibold whitespace-nowrap">
+                        {tab.label}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )
+        }
+      )
+      AnimatedTabs.displayName = "AnimatedTabs"
+
+      export { AnimatedTabs }
+    patchStrategy: replace
+  - type: write
+    path: src/index.ts
+    content: |+
+      --- src/index.ts
+      +++ src/index.ts
+      @@ -46,6 +46,7 @@
+       export * from './components/ui/popover';
+       export * from './components/ui/tabs';
+       export * from './components/ui/toast';
+      +export { AnimatedTabs } from './components/ui/animated-tabs';
+       
+       // Global Components
+       export { CommandPalette } from './components/global/CommandPalette';
+
+    patchStrategy: standard-diff
+snapshot:
+  src/components/ui/animated-tabs.tsx: null
+  src/index.ts: >-
+    // Context
+
+    export { AppShellProvider, useAppShell } from './context/AppShellContext';
+
+
+    // Layout Components
+
+    export { AppShell } from './components/layout/AppShell';
+
+    export { MainContent } from './components/layout/MainContent';
+
+    export { ViewModeSwitcher } from './components/layout/ViewModeSwitcher';
+
+    export { RightPane } from './components/layout/RightPane';
+
+    export { TopBar } from './components/layout/TopBar';
+
+    export { UserDropdown } from './components/layout/UserDropdown';
+
+    export { Workspaces as WorkspaceProvider, WorkspaceTrigger, WorkspaceContent
+    } from './components/layout/WorkspaceSwitcher';
+
+
+    // Sidebar Primitives
+
+    export {
+      Sidebar,
+      SidebarBody,
+      SidebarContent,
+      SidebarFooter,
+      SidebarHeader,
+      SidebarSection,
+      SidebarTitle,
+      SidebarMenuItem,
+      SidebarMenuButton,
+      SidebarMenuAction,
+      SidebarLabel,
+      SidebarBadge,
+      SidebarTooltip,
+      SidebarIcon,
+      useSidebar,
+    } from './components/layout/Sidebar';
+
+
+    // Shared Components
+
+    export { ContentInSidePanePlaceholder } from
+    './components/shared/ContentInSidePanePlaceholder';
+
+    export { PageHeader } from './components/shared/PageHeader';
+
+    export { PageLayout } from './components/shared/PageLayout';
+
+
+    // Feature Components
+
+    export { SettingsContent } from './features/settings/SettingsContent';
+
+    export { SettingsSection } from './features/settings/SettingsSection';
+
+    export { SettingsToggle } from './features/settings/SettingsToggle';
+
+    export { LoginPage } from './components/auth/LoginPage';
+
+
+    // UI Components
+
+    export * from './components/ui/avatar';
+
+    export * from './components/ui/badge';
+
+    export * from './components/ui/button';
+
+    export * from './components/ui/card';
+
+    export * from './components/ui/command';
+
+    export * from './components/ui/dialog';
+
+    export * from './components/ui/dropdown-menu';
+
+    export * from './components/ui/input';
+
+    export * from './components/ui/label';
+
+    export * from './components/ui/popover';
+
+    export * from './components/ui/tabs';
+
+    export * from './components/ui/toast';
+
+
+    // Global Components
+
+    export { CommandPalette } from './components/global/CommandPalette';
+
+
+    // Hooks
+
+    export { useAutoAnimateTopBar } from './hooks/useAutoAnimateTopBar';
+
+    export { useCommandPaletteToggle } from
+    './hooks/useCommandPaletteToggle.hook';
+
+
+    // Lib
+
+    export * from './lib/utils';
+
+
+    // Store
+
+    export { useAppStore, type ActivePage } from './store/appStore';
+
+    export { useAuthStore } from './store/authStore';
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 230

@@ -1,4 +1,5 @@
 import { forwardRef, type ReactNode } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { ChevronRight, X } from 'lucide-react'
 import { cn, BODY_STATES } from '@/lib/utils'
 import { useAppShell } from '@/context/AppShellContext'
@@ -10,7 +11,8 @@ interface RightPaneProps {
 }
 
 export const RightPane = forwardRef<HTMLDivElement, RightPaneProps>(({ children, header, className }, ref) => {
-  const { closeSidePane, dispatch, bodyState, fullscreenTarget, toggleFullscreen } = useAppShell();
+  const { dispatch, bodyState, fullscreenTarget, toggleFullscreen } = useAppShell();
+  const [, setSearchParams] = useSearchParams()
   const isSplitView = bodyState === BODY_STATES.SPLIT_VIEW;
   const isFullscreen = bodyState === BODY_STATES.FULLSCREEN;
 
@@ -40,7 +42,13 @@ export const RightPane = forwardRef<HTMLDivElement, RightPaneProps>(({ children,
       )}
       {bodyState !== BODY_STATES.SPLIT_VIEW && !isFullscreen && (
         <button
-          onClick={closeSidePane}
+          onClick={() => {
+            setSearchParams(prev => {
+              const newParams = new URLSearchParams(prev)
+              newParams.delete('sidePane')
+              return newParams
+            }, { replace: true })
+          }}
           className="absolute top-1/2 -left-px -translate-y-1/2 -translate-x-full w-8 h-16 bg-card border border-r-0 border-border rounded-l-lg flex items-center justify-center hover:bg-accent transition-colors group z-10"
           title="Close pane"
         >

@@ -1,5 +1,7 @@
 export type ViewMode = 'list' | 'cards' | 'grid' | 'table'
 
+export type GroupableField = 'status' | 'priority' | 'category'
+
 export type SortableField = 'title' | 'status' | 'priority' | 'updatedAt' | 'assignee.name' | 'metrics.views' | 'metrics.completion' | 'createdAt'
 export type SortDirection = 'asc' | 'desc'
 export interface SortConfig {
@@ -43,7 +45,7 @@ export interface DataItem {
 }
 
 export interface ViewProps {
-  data: DataItem[]
+  data: DataItem[] | Record<string, DataItem[]>
   onItemSelect: (item: DataItem) => void
   selectedItem: DataItem | null
   isGrid?: boolean

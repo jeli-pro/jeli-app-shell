@@ -21,3 +21,8 @@ export const BODY_STATES = {
 
 export type SidebarState = typeof SIDEBAR_STATES[keyof typeof SIDEBAR_STATES]
 export type BodyState = typeof BODY_STATES[keyof typeof BODY_STATES]
+
+export function capitalize(str: string): string {
+  if (!str) return str
+  return str.charAt(0).toUpperCase() + str.slice(1)
+}

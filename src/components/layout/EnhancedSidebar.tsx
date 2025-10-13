@@ -191,7 +191,7 @@ const AppMenuItem: React.FC<AppMenuItemProps> = ({ icon: Icon, label, badge, has
     settings: 'settings',
     toaster: 'toaster',
     notifications: 'notifications',
-    'data-demo': 'dataDemo',
+    'data-demo': 'data-demo',
   };
   const paneContentForPage = page ? pageToPaneMap[page] : undefined;
 
