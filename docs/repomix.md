@@ -2,22 +2,26 @@
 ```
 src/
   components/
-    shared/
-      PageLayout.tsx
-  lib/
-    utils.ts
+    ui/
+      badge.tsx
+      button.tsx
+      command.tsx
+      dropdown-menu.tsx
+      input.tsx
+      popover.tsx
   pages/
     DataDemo/
       components/
         DataCardView.tsx
-        DataDetailPanel.tsx
         DataListView.tsx
         DataTableView.tsx
+        DataToolbar.tsx
         DataViewModeSelector.tsx
         EmptyState.tsx
+      data/
+        mockData.ts
       index.tsx
       types.ts
-      utils.ts
 index.html
 package.json
 postcss.config.js
@@ -30,44 +34,558 @@ vite.config.ts
 
 # Files
 
-## File: src/components/shared/PageLayout.tsx
+## File: src/pages/DataDemo/components/DataToolbar.tsx
 ````typescript
-import React from 'react';
-import { cn } from '@/lib/utils';
-import { useAppShell } from '@/context/AppShellContext';
+import * as React from 'react'
+import { Check, ListFilter, Search, SortAsc, X } from 'lucide-react'
 
-interface PageLayoutProps extends React.HTMLAttributes<HTMLDivElement> {
-  children: React.ReactNode;
-  scrollRef?: React.RefObject<HTMLDivElement>;
-  isInSidePane?: boolean;
+import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Badge } from '@/components/ui/badge'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+  CommandSeparator,
+} from '@/components/ui/command'
+
+import { DataViewModeSelector } from './DataViewModeSelector'
+import type { ViewMode, SortConfig, SortableField, Status, Priority } from '../types'
+
+export interface FilterConfig {
+  searchTerm: string
+  status: Status[]
+  priority: Priority[]
 }
 
-export const PageLayout = React.forwardRef<HTMLDivElement, PageLayoutProps>(
-  ({ children, onScroll, scrollRef, className, isInSidePane = false, ...props }, ref) => {
-    const { isTopBarVisible, bodyState } = useAppShell();
-    const isFullscreen = bodyState === 'fullscreen';
+interface DataToolbarProps {
+  viewMode: ViewMode
+  onViewModeChange: (mode: ViewMode) => void
+  filters: FilterConfig
+  onFiltersChange: (filters: FilterConfig) => void
+  sortConfig: SortConfig | null
+  onSortChange: (config: SortConfig | null) => void
+}
 
-    return (
-      <div
-        ref={scrollRef}
-        className={cn("h-full overflow-y-auto", className)}
-        onScroll={onScroll}
-      >
-        <div ref={ref} className={cn(
-          "space-y-8 transition-all duration-300",
-          !isInSidePane ? "px-6 lg:px-12 pb-6" : "px-6 pb-6",
-          isTopBarVisible && !isFullscreen ? "pt-24" : "pt-6"
-        )}
-        {...props}
-        >
-          {children}
-        </div>
-      </div>
-    );
+const statusOptions: { value: Status; label: string }[] = [
+  { value: 'active', label: 'Active' },
+  { value: 'pending', label: 'Pending' },
+  { value: 'completed', label: 'Completed' },
+  { value: 'archived', label: 'Archived' },
+]
+
+const priorityOptions: { value: Priority; label: string }[] = [
+  { value: 'critical', label: 'Critical' },
+  { value: 'high', label: 'High' },
+  { value: 'medium', label: 'Medium' },
+  { value: 'low', label: 'Low' },
+]
+
+const sortOptions: { value: SortableField, label: string }[] = [
+  { value: 'updatedAt', label: 'Last Updated' },
+  { value: 'title', label: 'Title' },
+  { value: 'status', label: 'Status' },
+  { value: 'priority', label: 'Priority' },
+  { value: 'metrics.completion', label: 'Progress' },
+]
+
+
+export function DataToolbar({
+  viewMode,
+  onViewModeChange,
+  filters,
+  onFiltersChange,
+  sortConfig,
+  onSortChange,
+}: DataToolbarProps) {
+  const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    onFiltersChange({ ...filters, searchTerm: event.target.value })
   }
-);
+  
+  const activeFilterCount =
+    (filters.status.length > 0 ? 1 : 0) +
+    (filters.priority.length > 0 ? 1 : 0)
 
-PageLayout.displayName = 'PageLayout';
+  return (
+    <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+      {/* Left side: Search and Filters */}
+      <div className="flex flex-col sm:flex-row items-center gap-2 w-full md:w-auto">
+        <div className="relative w-full sm:w-auto">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search projects..."
+            size="sm"
+            className="pl-9 w-full sm:w-64"
+            value={filters.searchTerm}
+            onChange={handleSearchChange}
+          />
+        </div>
+
+        {/* Status Filter */}
+        <MultiSelectFilter
+          title="Status"
+          options={statusOptions}
+          selected={filters.status}
+          onChange={(selected) => onFiltersChange({ ...filters, status: selected as Status[] })}
+        />
+
+        {/* Priority Filter */}
+        <MultiSelectFilter
+          title="Priority"
+          options={priorityOptions}
+          selected={filters.priority}
+          onChange={(selected) => onFiltersChange({ ...filters, priority: selected as Priority[] })}
+        />
+
+        {activeFilterCount > 0 && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onFiltersChange({ searchTerm: filters.searchTerm, status: [], priority: [] })}
+            className="px-2 lg:px-3"
+          >
+            Reset
+            <X className="ml-2 h-4 w-4" />
+          </Button>
+        )}
+      </div>
+
+      {/* Right side: Sorter and View Mode */}
+      <div className="flex items-center gap-2 w-full md:w-auto justify-end">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" className="w-full sm:w-auto justify-start">
+              <SortAsc className="mr-2 h-4 w-4" />
+              Sort by: {sortOptions.find(o => o.value === sortConfig?.key)?.label || 'Default'}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-[200px]">
+            <DropdownMenuLabel>Sort by</DropdownMenuLabel>
+            <DropdownMenuRadioGroup
+              value={`${sortConfig?.key || 'default'}-${sortConfig?.direction || ''}`}
+              onValueChange={(value) => {
+                if (value.startsWith('default')) {
+                  onSortChange(null)
+                } else {
+                  const [key, direction] = value.split('-')
+                  onSortChange({ key: key as SortableField, direction: direction as 'asc' | 'desc' })
+                }
+              }}
+            >
+              <DropdownMenuRadioItem value="default-">Default</DropdownMenuRadioItem>
+              <DropdownMenuSeparator />
+              {sortOptions.map(option => (
+                <React.Fragment key={option.value}>
+                  <DropdownMenuRadioItem value={`${option.value}-desc`}>{option.label} (Desc)</DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value={`${option.value}-asc`}>{option.label} (Asc)</DropdownMenuRadioItem>
+                </React.Fragment>
+              ))}
+            </DropdownMenuRadioGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        <DataViewModeSelector viewMode={viewMode} onChange={onViewModeChange} />
+      </div>
+    </div>
+  )
+}
+
+function MultiSelectFilter({
+  title,
+  options,
+  selected,
+  onChange,
+}: {
+  title: string
+  options: { value: string; label: string }[]
+  selected: string[]
+  onChange: (selected: string[]) => void
+}) {
+  const selectedSet = new Set(selected)
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="outline" size="sm" className="w-full sm:w-auto justify-start border-dashed">
+          <ListFilter className="mr-2 h-4 w-4" />
+          {title}
+          {selected.length > 0 && (
+            <>
+              <div className="mx-2 h-4 w-px bg-muted-foreground/50" />
+              <Badge variant="secondary" className="rounded-sm px-1 font-normal">
+                {selected.length}
+              </Badge>
+            </>
+          )}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[220px] p-0" align="start">
+        <Command>
+          <CommandInput placeholder={`Filter ${title.toLowerCase()}...`} />
+          <CommandList>
+            <CommandEmpty>No results found.</CommandEmpty>
+            <CommandGroup>
+              {options.map((option) => {
+                const isSelected = selectedSet.has(option.value)
+                return (
+                  <CommandItem
+                    key={option.value}
+                    onSelect={() => {
+                      if (isSelected) {
+                        selectedSet.delete(option.value)
+                      } else {
+                        selectedSet.add(option.value)
+                      }
+                      onChange(Array.from(selectedSet))
+                    }}
+                  >
+                    <div
+                      className={cn(
+                        'mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary',
+                        isSelected ? 'bg-primary text-primary-foreground' : 'opacity-50 [&_svg]:invisible'
+                      )}
+                    >
+                      <Check className={cn('h-4 w-4')} />
+                    </div>
+                    <span>{option.label}</span>
+                  </CommandItem>
+                )
+              })}
+            </CommandGroup>
+            {selected.length > 0 && (
+              <>
+                <CommandSeparator />
+                <CommandGroup>
+                  <CommandItem
+                    onSelect={() => onChange([])}
+                    className="justify-center text-center"
+                  >
+                    Clear filters
+                  </CommandItem>
+                </CommandGroup>
+              </>
+            )}
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  )
+}
+````
+
+## File: src/components/ui/badge.tsx
+````typescript
+import * as React from "react"
+import { cva, type VariantProps } from "class-variance-authority"
+
+import { cn } from "@/lib/utils"
+
+const badgeVariants = cva(
+  "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+  {
+    variants: {
+      variant: {
+        default:
+          "border-transparent bg-primary text-primary-foreground hover:bg-primary/80",
+        secondary:
+          "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80",
+        destructive:
+          "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80",
+        outline: "text-foreground",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+    },
+  },
+)
+
+export interface BadgeProps
+  extends React.HTMLAttributes<HTMLDivElement>,
+    VariantProps<typeof badgeVariants> {}
+
+function Badge({ className, variant, ...props }: BadgeProps) {
+  return (
+    <div className={cn(badgeVariants({ variant }), className)} {...props} />
+  )
+}
+
+export { Badge, badgeVariants }
+````
+
+## File: src/components/ui/button.tsx
+````typescript
+import * as React from "react"
+import { Slot } from "@radix-ui/react-slot"
+import { cva, type VariantProps } from "class-variance-authority"
+
+import { cn } from "@/lib/utils"
+
+const buttonVariants = cva(
+  "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+  {
+    variants: {
+      variant: {
+        default: "bg-primary text-primary-foreground hover:bg-primary/90",
+        destructive:
+          "bg-destructive text-destructive-foreground hover:bg-destructive/90",
+        outline:
+          "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
+        secondary:
+          "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+        ghost: "hover:bg-accent hover:text-accent-foreground",
+        link: "text-primary underline-offset-4 hover:underline",
+      },
+      size: {
+        default: "h-10 px-4 py-2",
+        sm: "h-9 rounded-md px-3",
+        lg: "h-11 rounded-md px-8",
+        icon: "h-10 w-10",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+      size: "default",
+    },
+  }
+)
+
+export interface ButtonProps
+  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
+    VariantProps<typeof buttonVariants> {
+  asChild?: boolean
+}
+
+const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
+  ({ className, variant, size, asChild = false, ...props }, ref) => {
+    const Comp = asChild ? Slot : "button"
+    return (
+      <Comp
+        className={cn(buttonVariants({ variant, size, className }))}
+        ref={ref}
+        {...props}
+      />
+    )
+  }
+)
+Button.displayName = "Button"
+
+export { Button, buttonVariants }
+````
+
+## File: src/components/ui/command.tsx
+````typescript
+import * as React from "react"
+import { type DialogProps } from "@radix-ui/react-dialog"
+import { Command as CommandPrimitive } from "cmdk"
+import { Search } from "lucide-react"
+
+import { cn } from "@/lib/utils"
+import { Dialog, DialogContent } from "@/components/ui/dialog"
+
+const Command = React.forwardRef<
+  React.ElementRef<typeof CommandPrimitive>,
+  React.ComponentPropsWithoutRef<typeof CommandPrimitive>
+>(({ className, ...props }, ref) => (
+  <CommandPrimitive
+    ref={ref}
+    className={cn(
+      "flex h-full w-full flex-col overflow-hidden bg-popover text-popover-foreground",
+      className
+    )}
+    {...props}
+  />
+))
+Command.displayName = CommandPrimitive.displayName
+
+interface CommandDialogProps extends DialogProps {}
+
+const CommandDialog = ({ children, ...props }: CommandDialogProps) => {
+  return (
+    <Dialog {...props}>
+      <DialogContent className="overflow-hidden p-0">
+        <Command className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group]:not([hidden])_~[cmdk-group]]:pt-0 [&_[cmdk-input-wrapper]_svg]:h-5 [&_[cmdk-input-wrapper]_svg]:w-5 [&_[cmdk-item]_svg]:h-5 [&_[cmdk-item]_svg]:w-5">
+          {children}
+        </Command>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+const CommandInput = React.forwardRef<
+  React.ElementRef<typeof CommandPrimitive.Input>,
+  React.ComponentPropsWithoutRef<typeof CommandPrimitive.Input>
+>(({ className, ...props }, ref) => (
+  <div className="flex h-14 items-center border-b px-4" cmdk-input-wrapper="">
+    <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+    <CommandPrimitive.Input
+      ref={ref}
+      className={cn(
+        "flex h-full w-full rounded-md bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50",
+        className
+      )}
+      {...props}
+    />
+  </div>
+))
+
+CommandInput.displayName = CommandPrimitive.Input.displayName
+
+const CommandList = React.forwardRef<
+  React.ElementRef<typeof CommandPrimitive.List>,
+  React.ComponentPropsWithoutRef<typeof CommandPrimitive.List>
+>(({ className, ...props }, ref) => (
+  <CommandPrimitive.List
+    ref={ref}
+    className={cn("max-h-[450px] overflow-y-auto overflow-x-hidden p-2", className)}
+    {...props}
+  />
+))
+
+CommandList.displayName = CommandPrimitive.List.displayName
+
+const CommandEmpty = React.forwardRef<
+  React.ElementRef<typeof CommandPrimitive.Empty>,
+  React.ComponentPropsWithoutRef<typeof CommandPrimitive.Empty>
+>((props, ref) => (
+  <CommandPrimitive.Empty
+    ref={ref}
+    className="py-6 text-center text-sm"
+    {...props}
+  />
+))
+
+CommandEmpty.displayName = CommandPrimitive.Empty.displayName
+
+const CommandGroup = React.forwardRef<
+  React.ElementRef<typeof CommandPrimitive.Group>,
+  React.ComponentPropsWithoutRef<typeof CommandPrimitive.Group>
+>(({ className, ...props }, ref) => (
+  <CommandPrimitive.Group
+    ref={ref}
+    className={cn(
+      "overflow-hidden text-foreground [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground",
+      className
+    )}
+    {...props}
+  />
+))
+
+CommandGroup.displayName = CommandPrimitive.Group.displayName
+
+const CommandSeparator = React.forwardRef<
+  React.ElementRef<typeof CommandPrimitive.Separator>,
+  React.ComponentPropsWithoutRef<typeof CommandPrimitive.Separator>
+>(({ className, ...props }, ref) => (
+  <CommandPrimitive.Separator
+    ref={ref}
+    className={cn("-mx-1 h-px bg-border", className)}
+    {...props}
+  />
+))
+CommandSeparator.displayName = CommandPrimitive.Separator.displayName
+
+const CommandItem = React.forwardRef<
+  React.ElementRef<typeof CommandPrimitive.Item>,
+  React.ComponentPropsWithoutRef<typeof CommandPrimitive.Item>
+>(({ className, ...props }, ref) => (
+  <CommandPrimitive.Item
+    ref={ref}
+    className={cn(
+      "relative flex cursor-default select-none items-center rounded-lg px-4 py-2.5 text-sm outline-none aria-selected:bg-accent aria-selected:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      className
+    )}
+    {...props}
+  />
+))
+
+CommandItem.displayName = CommandPrimitive.Item.displayName
+
+const CommandShortcut = ({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLSpanElement>) => {
+  return (
+    <span
+      className={cn(
+        "ml-auto text-xs tracking-widest text-muted-foreground",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+CommandShortcut.displayName = "CommandShortcut"
+
+export {
+  Command,
+  CommandDialog,
+  CommandInput,
+  CommandList,
+  CommandEmpty,
+  CommandGroup,
+  CommandItem,
+  CommandShortcut,
+  CommandSeparator,
+}
+````
+
+## File: src/components/ui/input.tsx
+````typescript
+import * as React from "react"
+import { cva, type VariantProps } from "class-variance-authority"
+
+import { cn } from "@/lib/utils"
+
+const inputVariants = cva(
+  "flex w-full rounded-md border border-input bg-background px-3 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+  {
+    variants: {
+      size: {
+        default: "h-10 py-2",
+        sm: "h-9 py-1",
+        lg: "h-11 py-2",
+      },
+    },
+    defaultVariants: {
+      size: "default",
+    },
+  }
+)
+
+export interface InputProps
+  extends React.InputHTMLAttributes<HTMLInputElement>,
+    VariantProps<typeof inputVariants> {}
+
+const Input = React.forwardRef<HTMLInputElement, InputProps>(
+  ({ className, type, size, ...props }, ref) => {
+    return (
+      <input
+        type={type}
+        className={cn(inputVariants({ size, className }))}
+        ref={ref}
+        {...props}
+      />
+    )
+  }
+)
+Input.displayName = "Input"
+
+export { Input }
 ````
 
 ## File: src/pages/DataDemo/components/EmptyState.tsx
@@ -90,6 +608,13 @@ export function EmptyState() {
 ## File: src/pages/DataDemo/types.ts
 ````typescript
 export type ViewMode = 'list' | 'cards' | 'grid' | 'table'
+
+export type SortableField = 'title' | 'status' | 'priority' | 'updatedAt' | 'assignee.name' | 'metrics.views' | 'metrics.completion' | 'createdAt'
+export type SortDirection = 'asc' | 'desc'
+export interface SortConfig {
+  key: SortableField
+  direction: SortDirection
+}
 
 export interface DataItem {
   id: string
@@ -131,30 +656,14 @@ export interface ViewProps {
   onItemSelect: (item: DataItem) => void
   selectedItem: DataItem | null
   isGrid?: boolean
-}
-````
 
-## File: src/pages/DataDemo/utils.ts
-````typescript
-export const getStatusColor = (status: string) => {
-  switch (status) {
-    case 'active': return 'bg-green-500/20 text-green-700 border-green-500/30'
-    case 'pending': return 'bg-yellow-500/20 text-yellow-700 border-yellow-500/30'
-    case 'completed': return 'bg-blue-500/20 text-blue-700 border-blue-500/30'
-    case 'archived': return 'bg-gray-500/20 text-gray-700 border-gray-500/30'
-    default: return 'bg-gray-500/20 text-gray-700 border-gray-500/30'
-  }
+  // Props for table view specifically
+  sortConfig?: SortConfig | null
+  onSort?: (field: SortableField) => void
 }
 
-export const getPriorityColor = (priority: string) => {
-  switch (priority) {
-    case 'critical': return 'bg-red-500/20 text-red-700 border-red-500/30'
-    case 'high': return 'bg-orange-500/20 text-orange-700 border-orange-500/30'
-    case 'medium': return 'bg-blue-500/20 text-blue-700 border-blue-500/30'
-    case 'low': return 'bg-green-500/20 text-green-700 border-green-500/30'
-    default: return 'bg-gray-500/20 text-gray-700 border-gray-500/30'
-  }
-}
+export type Status = DataItem['status']
+export type Priority = DataItem['priority']
 ````
 
 ## File: postcss.config.js
@@ -167,353 +676,253 @@ export default {
 }
 ````
 
-## File: src/lib/utils.ts
+## File: src/components/ui/dropdown-menu.tsx
 ````typescript
-import { type ClassValue, clsx } from "clsx"
-import { twMerge } from "tailwind-merge"
+import * as React from "react"
+import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu"
+import { Check, ChevronRight, Circle } from "lucide-react"
 
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
-}
+import { cn } from "@/lib/utils"
 
-export const SIDEBAR_STATES = {
-  HIDDEN: 'hidden',
-  COLLAPSED: 'collapsed', 
-  EXPANDED: 'expanded',
-  PEEK: 'peek'
-} as const
+const DropdownMenu = DropdownMenuPrimitive.Root
 
-export const BODY_STATES = {
-  NORMAL: 'normal',
-  FULLSCREEN: 'fullscreen',
-  SIDE_PANE: 'side_pane',
-  SPLIT_VIEW: 'split_view'
-} as const
+const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger
 
-export type SidebarState = typeof SIDEBAR_STATES[keyof typeof SIDEBAR_STATES]
-export type BodyState = typeof BODY_STATES[keyof typeof BODY_STATES]
-````
+const DropdownMenuGroup = DropdownMenuPrimitive.Group
 
-## File: src/pages/DataDemo/components/DataDetailPanel.tsx
-````typescript
-import React, { useLayoutEffect, useRef } from 'react'
-import { gsap } from 'gsap'
-import { cn } from '@/lib/utils'
-import { Badge } from '@/components/ui/badge'
-import { Avatar } from '@/components/ui/avatar'
-import { Button } from '@/components/ui/button'
-import { 
-  Calendar, 
-  Clock, 
-  Eye, 
-  Heart, 
-  Share, 
-  Download,
-  FileText,
-  Image,
-  Video,
-  File,
-  ExternalLink,
-  Tag,
-  User,
-  BarChart3,
-  TrendingUp,
-  CheckCircle,
-  AlertCircle,
-  Circle
-} from 'lucide-react'
-import { useAppShell } from '@/context/AppShellContext'
-import type { DataItem } from '../types'
-import { getStatusColor, getPriorityColor } from '../utils'
+const DropdownMenuPortal = DropdownMenuPrimitive.Portal
 
-interface DataDetailPanelProps {
-  item: DataItem | null
-  onClose: () => void
-}
+const DropdownMenuSub = DropdownMenuPrimitive.Sub
 
-export function DataDetailPanel({ item, onClose }: DataDetailPanelProps) {
-  const { bodyState, sidePaneContent } = useAppShell()
-  const contentRef = useRef<HTMLDivElement>(null)
+const DropdownMenuRadioGroup = DropdownMenuPrimitive.RadioGroup
 
-  useLayoutEffect(() => {
-    if (item && contentRef.current && sidePaneContent === 'data-details') {
-      gsap.fromTo(contentRef.current.children,
-        { y: 30, opacity: 0 },
-        {
-          duration: 0.6,
-          y: 0,
-          opacity: 1,
-          stagger: 0.1,
-          ease: "power2.out"
-        }
-      )
-    }
-  }, [item, sidePaneContent])
-
-  if (!item || sidePaneContent !== 'data-details') {
-    return null
+const DropdownMenuSubTrigger = React.forwardRef<
+  React.ElementRef<typeof DropdownMenuPrimitive.SubTrigger>,
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.SubTrigger> & {
+    inset?: boolean
   }
+>(({ className, inset, children, ...props }, ref) => (
+  <DropdownMenuPrimitive.SubTrigger
+    ref={ref}
+    className={cn(
+      "flex cursor-default select-none items-center rounded-lg px-3 py-2 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[state=open]:bg-accent",
+      inset && "pl-8",
+      className
+    )}
+    {...props}
+  >
+    {children}
+    <ChevronRight className="ml-auto h-4 w-4" />
+  </DropdownMenuPrimitive.SubTrigger>
+))
+DropdownMenuSubTrigger.displayName =
+  DropdownMenuPrimitive.SubTrigger.displayName
 
-  const getFileIcon = (type: string) => {
-    switch (type.toLowerCase()) {
-      case 'pdf': return FileText
-      case 'image':
-      case 'png':
-      case 'jpg':
-      case 'jpeg': return Image
-      case 'video':
-      case 'mp4': return Video
-      default: return File
-    }
+const DropdownMenuSubContent = React.forwardRef<
+  React.ElementRef<typeof DropdownMenuPrimitive.SubContent>,
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.SubContent>
+>(({ className, ...props }, ref) => (
+  <DropdownMenuPrimitive.SubContent
+    ref={ref}
+    className={cn(
+      "z-50 min-w-[8rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-lg data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
+      className
+    )}
+    {...props}
+  />
+))
+DropdownMenuSubContent.displayName =
+  DropdownMenuPrimitive.SubContent.displayName
+
+const DropdownMenuContent = React.forwardRef<
+  React.ElementRef<typeof DropdownMenuPrimitive.Content>,
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content>
+>(({ className, sideOffset = 4, ...props }, ref) => (
+  <DropdownMenuPrimitive.Portal>
+    <DropdownMenuPrimitive.Content
+      ref={ref}
+      sideOffset={sideOffset}
+      className={cn(
+        "z-50 min-w-[8rem] overflow-hidden rounded-xl border bg-popover p-1 text-popover-foreground shadow-xl outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
+        className
+      )}
+      {...props}
+    />
+  </DropdownMenuPrimitive.Portal>
+))
+DropdownMenuContent.displayName = DropdownMenuPrimitive.Content.displayName
+
+const DropdownMenuItem = React.forwardRef<
+  React.ElementRef<typeof DropdownMenuPrimitive.Item>,
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Item> & {
+    inset?: boolean
   }
+>(({ className, inset, ...props }, ref) => (
+  <DropdownMenuPrimitive.Item
+    ref={ref}
+    className={cn(
+      "relative flex cursor-default select-none items-center rounded-lg px-3 py-2 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      inset && "pl-8",
+      className
+    )}
+    {...props}
+  />
+))
+DropdownMenuItem.displayName = DropdownMenuPrimitive.Item.displayName
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'completed': return CheckCircle
-      case 'active': return Circle
-      case 'pending': return AlertCircle
-      default: return Circle
-    }
+const DropdownMenuCheckboxItem = React.forwardRef<
+  React.ElementRef<typeof DropdownMenuPrimitive.CheckboxItem>,
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.CheckboxItem>
+>(({ className, children, checked, ...props }, ref) => (
+  <DropdownMenuPrimitive.CheckboxItem
+    ref={ref}
+    className={cn(
+      "relative flex cursor-default select-none items-center rounded-lg py-2 pl-8 pr-3 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      className
+    )}
+    checked={checked}
+    {...props}
+  >
+    <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
+      <DropdownMenuPrimitive.ItemIndicator>
+        <Check className="h-4 w-4" />
+      </DropdownMenuPrimitive.ItemIndicator>
+    </span>
+    {children}
+  </DropdownMenuPrimitive.CheckboxItem>
+))
+DropdownMenuCheckboxItem.displayName =
+  DropdownMenuPrimitive.CheckboxItem.displayName
+
+const DropdownMenuRadioItem = React.forwardRef<
+  React.ElementRef<typeof DropdownMenuPrimitive.RadioItem>,
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.RadioItem>
+>(({ className, children, ...props }, ref) => (
+  <DropdownMenuPrimitive.RadioItem
+    ref={ref}
+    className={cn(
+      "relative flex cursor-default select-none items-center rounded-lg py-2 pl-8 pr-3 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      className
+    )}
+    {...props}
+  >
+    <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
+      <DropdownMenuPrimitive.ItemIndicator>
+        <Circle className="h-2 w-2 fill-current" />
+      </DropdownMenuPrimitive.ItemIndicator>
+    </span>
+    {children}
+  </DropdownMenuPrimitive.RadioItem>
+))
+DropdownMenuRadioItem.displayName = DropdownMenuPrimitive.RadioItem.displayName
+
+const DropdownMenuLabel = React.forwardRef<
+  React.ElementRef<typeof DropdownMenuPrimitive.Label>,
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Label> & {
+    inset?: boolean
   }
+>(({ className, inset, ...props }, ref) => (
+  <DropdownMenuPrimitive.Label
+    ref={ref}
+    className={cn(
+      "px-2 py-1.5 text-sm font-semibold",
+      inset && "pl-8",
+      className
+    )}
+    {...props}
+  />
+))
+DropdownMenuLabel.displayName = DropdownMenuPrimitive.Label.displayName
 
+const DropdownMenuSeparator = React.forwardRef<
+  React.ElementRef<typeof DropdownMenuPrimitive.Separator>,
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Separator>
+>(({ className, ...props }, ref) => (
+  <DropdownMenuPrimitive.Separator
+    ref={ref}
+    className={cn("-mx-1 my-1 h-px bg-muted", className)}
+    {...props}
+  />
+))
+DropdownMenuSeparator.displayName = DropdownMenuPrimitive.Separator.displayName
+
+const DropdownMenuShortcut = ({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLSpanElement>) => {
   return (
-    <div ref={contentRef} className="h-full flex flex-col">
-      {/* Header */}
-      <div className="p-6 border-b border-border/50 bg-gradient-to-r from-card/50 to-card/30 backdrop-blur-sm">
-        <div className="flex items-start gap-4 mb-4">
-          <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-primary/10 rounded-2xl flex items-center justify-center text-3xl flex-shrink-0">
-            {item.thumbnail}
-          </div>
-          <div className="flex-1 min-w-0">
-            <h1 className="text-2xl font-bold mb-2 leading-tight">
-              {item.title}
-            </h1>
-            <p className="text-muted-foreground">
-              {item.description}
-            </p>
-          </div>
-        </div>
-
-        {/* Status badges */}
-        <div className="flex items-center gap-2 mb-4">
-          <Badge variant="outline" className={getStatusColor(item.status)}>
-            {React.createElement(getStatusIcon(item.status), { className: "w-3 h-3 mr-1" })}
-            {item.status}
-          </Badge>
-          <Badge variant="outline" className={getPriorityColor(item.priority)}>
-            {item.priority}
-          </Badge>
-          <Badge variant="outline" className="bg-accent/50">
-            {item.category}
-          </Badge>
-        </div>
-
-        {/* Progress */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium">Progress</span>
-            <span className="text-sm font-bold">{item.metrics.completion}%</span>
-          </div>
-          <div className="w-full bg-muted rounded-full h-3">
-            <div 
-              className="bg-gradient-to-r from-primary to-primary/80 h-3 rounded-full transition-all duration-1000 ease-out"
-              style={{ width: `${item.metrics.completion}%` }}
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="p-6 space-y-6">
-          {/* Assignee Info */}
-          <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
-            <div className="flex items-center gap-1 mb-3">
-              <User className="w-4 h-4 text-muted-foreground" />
-              <h3 className="font-semibold text-sm">Assigned to</h3>
-            </div>
-            <div className="flex items-center gap-3">
-              <Avatar className="w-12 h-12">
-                {item.assignee.avatar}
-              </Avatar>
-              <div>
-                <p className="font-medium">{item.assignee.name}</p>
-                <p className="text-sm text-muted-foreground">{item.assignee.email}</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Metrics */}
-          <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
-            <div className="flex items-center gap-1 mb-3">
-              <BarChart3 className="w-4 h-4 text-muted-foreground" />
-              <h3 className="font-semibold text-sm">Engagement Metrics</h3>
-            </div>
-            <div className="grid grid-cols-3 gap-4">
-              <div className="text-center">
-                <div className="flex items-center justify-center gap-1 mb-1">
-                  <Eye className="w-4 h-4 text-blue-500" />
-                </div>
-                <p className="text-2xl font-bold">{item.metrics.views}</p>
-                <p className="text-xs text-muted-foreground">Views</p>
-              </div>
-              <div className="text-center">
-                <div className="flex items-center justify-center gap-1 mb-1">
-                  <Heart className="w-4 h-4 text-red-500" />
-                </div>
-                <p className="text-2xl font-bold">{item.metrics.likes}</p>
-                <p className="text-xs text-muted-foreground">Likes</p>
-              </div>
-              <div className="text-center">
-                <div className="flex items-center justify-center gap-1 mb-1">
-                  <Share className="w-4 h-4 text-green-500" />
-                </div>
-                <p className="text-2xl font-bold">{item.metrics.shares}</p>
-                <p className="text-xs text-muted-foreground">Shares</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Tags */}
-          <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
-            <div className="flex items-center gap-1 mb-3">
-              <Tag className="w-4 h-4 text-muted-foreground" />
-              <h3 className="font-semibold text-sm">Tags</h3>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {item.tags.map((tag, index) => (
-                <span
-                  key={index}
-                  className="bg-muted/50 text-muted-foreground px-3 py-1 rounded-full text-xs font-medium"
-                >
-                  {tag}
-                </span>
-              ))}
-            </div>
-          </div>
-
-          {/* Content Details */}
-          {item.content && (
-            <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
-              <h3 className="font-semibold text-sm mb-3">Project Details</h3>
-              <div className="space-y-4">
-                <div>
-                  <h4 className="font-medium text-sm mb-2">Summary</h4>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    {item.content.summary}
-                  </p>
-                </div>
-                <div>
-                  <h4 className="font-medium text-sm mb-2">Description</h4>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    {item.content.details}
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Attachments */}
-          {item.content?.attachments && item.content.attachments.length > 0 && (
-            <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
-              <h3 className="font-semibold text-sm mb-3">Attachments</h3>
-              <div className="space-y-2">
-                {item.content.attachments.map((attachment, index) => {
-                  const IconComponent = getFileIcon(attachment.type)
-                  return (
-                    <div
-                      key={index}
-                      className="flex items-center gap-3 p-3 bg-muted/30 rounded-xl hover:bg-muted/50 transition-colors cursor-pointer group"
-                    >
-                      <IconComponent className="w-5 h-5 text-muted-foreground" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">
-                          {attachment.name}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {attachment.type} • {attachment.size}
-                        </p>
-                      </div>
-                      <Button size="sm" variant="ghost" className="opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Download className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Timeline */}
-          <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
-            <div className="flex items-center gap-1 mb-3">
-              <Clock className="w-4 h-4 text-muted-foreground" />
-              <h3 className="font-semibold text-sm">Timeline</h3>
-            </div>
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 text-sm">
-                <Calendar className="w-3 h-3 text-muted-foreground" />
-                <span className="text-muted-foreground">Created:</span>
-                <span className="font-medium">
-                  {new Date(item.createdAt).toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                  })}
-                </span>
-              </div>
-              <div className="flex items-center gap-2 text-sm">
-                <TrendingUp className="w-3 h-3 text-muted-foreground" />
-                <span className="text-muted-foreground">Last updated:</span>
-                <span className="font-medium">
-                  {new Date(item.updatedAt).toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                  })}
-                </span>
-              </div>
-              {item.dueDate && (
-                <div className="flex items-center gap-2 text-sm">
-                  <AlertCircle className="w-3 h-3 text-orange-500" />
-                  <span className="text-muted-foreground">Due date:</span>
-                  <span className="font-medium text-orange-600">
-                    {new Date(item.dueDate).toLocaleDateString('en-US', {
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric'
-                    })}
-                  </span>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Footer Actions */}
-      <div className="p-6 border-t border-border/50 bg-card/30">
-        <div className="flex gap-3">
-          <Button className="flex-1" size="sm">
-            <ExternalLink className="w-4 h-4 mr-2" />
-            Open Project
-          </Button>
-          <Button variant="outline" size="sm">
-            <Share className="w-4 h-4 mr-2" />
-            Share
-          </Button>
-        </div>
-      </div>
-    </div>
+    <span
+      className={cn("ml-auto text-xs tracking-widest opacity-60", className)}
+      {...props}
+    />
   )
 }
+DropdownMenuShortcut.displayName = "DropdownMenuShortcut"
+
+export {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuCheckboxItem,
+  DropdownMenuRadioItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuShortcut,
+  DropdownMenuGroup,
+  DropdownMenuPortal,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuRadioGroup,
+}
+````
+
+## File: src/components/ui/popover.tsx
+````typescript
+import * as React from "react"
+import * as PopoverPrimitive from "@radix-ui/react-popover"
+
+import { cn } from "@/lib/utils"
+
+const Popover = PopoverPrimitive.Root
+
+const PopoverTrigger = PopoverPrimitive.Trigger
+
+interface PopoverContentProps
+  extends React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Content> {
+  useTriggerWidth?: boolean
+}
+
+const PopoverContent = React.forwardRef<
+  React.ElementRef<typeof PopoverPrimitive.Content>,
+  PopoverContentProps
+>(
+  ({ className, align = "center", sideOffset = 4, useTriggerWidth = false, ...props }, ref) => (
+  <PopoverPrimitive.Portal>
+    <PopoverPrimitive.Content
+      ref={ref}
+      align={align}
+      sideOffset={sideOffset}
+      className={cn(
+        "z-50 w-72 rounded-xl border bg-popover p-4 text-popover-foreground shadow-xl outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
+        useTriggerWidth && "w-[var(--radix-popover-trigger-width)]",
+        className
+      )}
+      {...props}
+    />
+  </PopoverPrimitive.Portal>
+))
+PopoverContent.displayName = PopoverPrimitive.Content.displayName
+
+export { Popover, PopoverTrigger, PopoverContent }
+export type { PopoverContentProps }
 ````
 
 ## File: src/pages/DataDemo/components/DataViewModeSelector.tsx
 ````typescript
-import { useEffect, useRef } from 'react'
-import { gsap } from 'gsap'
 import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
 import { List, Grid3X3, LayoutGrid, Table } from 'lucide-react'
 import type { ViewMode } from '../types'
 
@@ -523,83 +932,823 @@ interface DataViewModeSelectorProps {
 }
 
 const viewModes = [
-  { id: 'list' as ViewMode, label: 'List', icon: List, description: 'Compact list with details' },
-  { id: 'cards' as ViewMode, label: 'Cards', icon: LayoutGrid, description: 'Rich card layout' },
-  { id: 'grid' as ViewMode, label: 'Grid', icon: Grid3X3, description: 'Masonry grid view' },
-  { id: 'table' as ViewMode, label: 'Table', icon: Table, description: 'Structured data table' }
+  { id: 'list' as ViewMode, label: 'List', icon: List },
+  { id: 'cards' as ViewMode, label: 'Cards', icon: LayoutGrid },
+  { id: 'grid' as ViewMode, label: 'Grid', icon: Grid3X3 },
+  { id: 'table' as ViewMode, label: 'Table', icon: Table }
 ]
 
 export function DataViewModeSelector({ viewMode, onChange }: DataViewModeSelectorProps) {
-  const indicatorRef = useRef<HTMLDivElement>(null)
-  const containerRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (!indicatorRef.current || !containerRef.current) return
-
-    const activeButton = containerRef.current.querySelector(`[data-mode="${viewMode}"]`) as HTMLElement
-    if (!activeButton) return
-
-    const containerRect = containerRef.current.getBoundingClientRect()
-    const buttonRect = activeButton.getBoundingClientRect()
-    
-    const left = buttonRect.left - containerRect.left
-    const width = buttonRect.width
-
-    gsap.to(indicatorRef.current, {
-      duration: 0.3,
-      x: left,
-      width: width,
-      ease: "power2.out"
-    })
-  }, [viewMode])
-
   return (
-    <div 
-      ref={containerRef}
-      className="relative flex items-center bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-1.5 shadow-lg"
-    >
-      {/* Animated indicator */}
-      <div
-        ref={indicatorRef}
-        className="absolute inset-y-1.5 bg-gradient-to-r from-primary/20 to-primary/10 border border-primary/20 rounded-xl transition-all duration-300"
-        style={{ left: 0, width: 0 }}
-      />
-      
-      {/* Mode buttons */}
+    <div className="flex items-center gap-1 bg-muted p-1 rounded-xl">
       {viewModes.map((mode) => {
         const IconComponent = mode.icon
         const isActive = viewMode === mode.id
         
         return (
-          <button
+          <Button
             key={mode.id}
-            data-mode={mode.id}
+            variant={isActive ? "secondary" : "ghost"}
+            size="icon"
             onClick={() => onChange(mode.id)}
             className={cn(
-              "relative flex items-center gap-3 px-6 py-3 rounded-xl transition-all duration-300 group min-w-[120px]",
-              "hover:bg-accent/20 active:scale-95",
-              isActive && "text-primary"
+              "h-7 w-7 rounded-lg",
+              isActive && "shadow-sm"
             )}
-            title={mode.description}
+            title={mode.label}
           >
-            <IconComponent className={cn(
-              "w-5 h-5 transition-all duration-300",
-              isActive && "scale-110",
-              "group-hover:scale-105"
-            )} />
-            <span className={cn(
-              "font-medium transition-all duration-300",
-              isActive ? "text-primary" : "text-muted-foreground",
-              "group-hover:text-foreground"
-            )}>
-              {mode.label}
-            </span>
-          </button>
+            <IconComponent className="w-4 h-4" />
+          </Button>
         )
       })}
     </div>
   )
 }
+````
+
+## File: src/pages/DataDemo/data/mockData.ts
+````typescript
+import type { DataItem } from '../types'
+
+export const mockDataItems: DataItem[] = [
+  {
+    id: '1',
+    title: 'Mobile App Redesign Project',
+    description: 'Complete overhaul of the mobile application user interface with focus on accessibility and modern design patterns.',
+    category: 'Design',
+    status: 'active',
+    priority: 'high',
+    assignee: {
+      name: 'Sarah Chen',
+      avatar: '🎨',
+      email: 'sarah.chen@company.com'
+    },
+    metrics: {
+      views: 1247,
+      likes: 89,
+      shares: 23,
+      completion: 65
+    },
+    tags: ['UI/UX', 'Mobile', 'Accessibility', 'Figma'],
+    createdAt: '2024-01-15T09:00:00Z',
+    updatedAt: '2024-01-20T14:30:00Z',
+    dueDate: '2024-02-28T23:59:59Z',
+    thumbnail: '🎨',
+    content: {
+      summary: 'Redesigning the mobile app to improve user experience and accessibility compliance.',
+      details: 'This project involves a complete redesign of our mobile application interface. The focus is on creating a more intuitive user experience while ensuring full accessibility compliance. We\'re implementing modern design patterns and conducting extensive user testing.',
+      attachments: [
+        { name: 'Design_Mockups_v2.fig', type: 'Figma', size: '2.4 MB', url: '#' },
+        { name: 'User_Research_Report.pdf', type: 'PDF', size: '1.8 MB', url: '#' },
+        { name: 'Accessibility_Guidelines.docx', type: 'Document', size: '850 KB', url: '#' }
+      ]
+    }
+  },
+  {
+    id: '2',
+    title: 'API Performance Optimization',
+    description: 'Optimize backend API endpoints to reduce response times and improve scalability for high-traffic scenarios.',
+    category: 'Development',
+    status: 'pending',
+    priority: 'critical',
+    assignee: {
+      name: 'Marcus Rodriguez',
+      avatar: '⚡',
+      email: 'marcus.rodriguez@company.com'
+    },
+    metrics: {
+      views: 892,
+      likes: 156,
+      shares: 45,
+      completion: 25
+    },
+    tags: ['Backend', 'Performance', 'API', 'Optimization'],
+    createdAt: '2024-01-18T11:15:00Z',
+    updatedAt: '2024-01-22T16:45:00Z',
+    dueDate: '2024-01-30T23:59:59Z',
+    thumbnail: '⚡',
+    content: {
+      summary: 'Critical performance improvements needed for API endpoints experiencing high latency.',
+      details: 'Our API endpoints are experiencing significant performance issues during peak traffic. This optimization project will focus on database query optimization, caching strategies, and implementing rate limiting to ensure consistent performance.',
+      attachments: [
+        { name: 'Performance_Analysis.xlsx', type: 'Spreadsheet', size: '3.2 MB', url: '#' },
+        { name: 'Database_Schema_Updates.sql', type: 'SQL', size: '45 KB', url: '#' }
+      ]
+    }
+  },
+  {
+    id: '3',
+    title: 'Customer Feedback Dashboard',
+    description: 'Build a comprehensive dashboard for analyzing customer feedback trends and sentiment analysis.',
+    category: 'Analytics',
+    status: 'completed',
+    priority: 'medium',
+    assignee: {
+      name: 'Emma Thompson',
+      avatar: '📊',
+      email: 'emma.thompson@company.com'
+    },
+    metrics: {
+      views: 2341,
+      likes: 234,
+      shares: 67,
+      completion: 100
+    },
+    tags: ['Dashboard', 'Analytics', 'Customer Experience', 'Data Viz'],
+    createdAt: '2024-01-05T08:30:00Z',
+    updatedAt: '2024-01-19T17:20:00Z',
+    thumbnail: '📊',
+    content: {
+      summary: 'Successfully launched customer feedback dashboard with real-time analytics.',
+      details: 'Completed the development of a comprehensive customer feedback dashboard that provides real-time insights into customer sentiment, trending topics, and satisfaction metrics. The dashboard includes interactive visualizations and automated reporting.',
+      attachments: [
+        { name: 'Dashboard_Demo.mp4', type: 'Video', size: '15.7 MB', url: '#' },
+        { name: 'User_Guide.pdf', type: 'PDF', size: '2.1 MB', url: '#' },
+        { name: 'Technical_Specs.md', type: 'Markdown', size: '23 KB', url: '#' }
+      ]
+    }
+  },
+  {
+    id: '4',
+    title: 'Security Audit & Compliance',
+    description: 'Comprehensive security audit of all systems and implementation of compliance measures for data protection.',
+    category: 'Security',
+    status: 'active',
+    priority: 'critical',
+    assignee: {
+      name: 'David Kim',
+      avatar: '🔒',
+      email: 'david.kim@company.com'
+    },
+    metrics: {
+      views: 567,
+      likes: 78,
+      shares: 12,
+      completion: 45
+    },
+    tags: ['Security', 'Compliance', 'GDPR', 'Audit'],
+    createdAt: '2024-01-20T10:00:00Z',
+    updatedAt: '2024-01-23T13:15:00Z',
+    dueDate: '2024-03-15T23:59:59Z',
+    thumbnail: '🔒',
+    content: {
+      summary: 'Ongoing security audit to ensure compliance with data protection regulations.',
+      details: 'Comprehensive security assessment covering all systems, applications, and data handling processes. The audit includes penetration testing, vulnerability assessments, and implementation of GDPR compliance measures.',
+      attachments: [
+        { name: 'Security_Checklist.xlsx', type: 'Spreadsheet', size: '1.5 MB', url: '#' },
+        { name: 'Compliance_Report_Draft.pdf', type: 'PDF', size: '4.2 MB', url: '#' }
+      ]
+    }
+  },
+  {
+    id: '5',
+    title: 'AI-Powered Content Recommendations',
+    description: 'Implement machine learning algorithms to provide personalized content recommendations for users.',
+    category: 'AI/ML',
+    status: 'pending',
+    priority: 'medium',
+    assignee: {
+      name: 'Priya Patel',
+      avatar: '🤖',
+      email: 'priya.patel@company.com'
+    },
+    metrics: {
+      views: 1456,
+      likes: 201,
+      shares: 89,
+      completion: 15
+    },
+    tags: ['Machine Learning', 'AI', 'Recommendations', 'Personalization'],
+    createdAt: '2024-01-22T14:20:00Z',
+    updatedAt: '2024-01-24T09:10:00Z',
+    dueDate: '2024-04-10T23:59:59Z',
+    thumbnail: '🤖',
+    content: {
+      summary: 'Building AI-driven recommendation system to enhance user engagement.',
+      details: 'Development of a sophisticated recommendation engine using machine learning algorithms. The system will analyze user behavior patterns, content preferences, and engagement metrics to provide highly personalized content suggestions.',
+      attachments: [
+        { name: 'ML_Model_Proposal.pdf', type: 'PDF', size: '3.8 MB', url: '#' },
+        { name: 'Training_Data_Analysis.ipynb', type: 'Jupyter Notebook', size: '892 KB', url: '#' }
+      ]
+    }
+  },
+  {
+    id: '6',
+    title: 'Cloud Infrastructure Migration',
+    description: 'Migrate legacy systems to cloud infrastructure for improved scalability and cost efficiency.',
+    category: 'Infrastructure',
+    status: 'active',
+    priority: 'high',
+    assignee: {
+      name: 'Alex Johnson',
+      avatar: '☁️',
+      email: 'alex.johnson@company.com'
+    },
+    metrics: {
+      views: 734,
+      likes: 92,
+      shares: 34,
+      completion: 70
+    },
+    tags: ['Cloud', 'Migration', 'AWS', 'Infrastructure'],
+    createdAt: '2024-01-10T07:45:00Z',
+    updatedAt: '2024-01-24T11:30:00Z',
+    dueDate: '2024-02-15T23:59:59Z',
+    thumbnail: '☁️',
+    content: {
+      summary: 'Migrating critical systems to cloud infrastructure for better performance and scalability.',
+      details: 'Comprehensive migration of our legacy on-premise infrastructure to AWS cloud services. This includes database migration, application containerization, and implementation of auto-scaling capabilities.',
+      attachments: [
+        { name: 'Migration_Plan.pdf', type: 'PDF', size: '5.1 MB', url: '#' },
+        { name: 'Cost_Analysis.xlsx', type: 'Spreadsheet', size: '1.9 MB', url: '#' },
+        { name: 'Architecture_Diagram.png', type: 'Image', size: '2.3 MB', url: '#' }
+      ]
+    }
+  },
+  {
+    id: '7',
+    title: 'User Onboarding Experience',
+    description: 'Design and implement an intuitive onboarding flow to improve new user activation rates.',
+    category: 'Product',
+    status: 'completed',
+    priority: 'medium',
+    assignee: {
+      name: 'Lisa Zhang',
+      avatar: '🚀',
+      email: 'lisa.zhang@company.com'
+    },
+    metrics: {
+      views: 1876,
+      likes: 298,
+      shares: 156,
+      completion: 100
+    },
+    tags: ['Onboarding', 'UX', 'Product', 'Conversion'],
+    createdAt: '2024-01-02T12:00:00Z',
+    updatedAt: '2024-01-16T18:45:00Z',
+    thumbnail: '🚀',
+    content: {
+      summary: 'Successfully launched new user onboarding experience with 40% improvement in activation rates.',
+      details: 'Designed and implemented a streamlined onboarding flow that guides new users through key product features. The new experience includes interactive tutorials, progress tracking, and personalized setup recommendations.',
+      attachments: [
+        { name: 'Onboarding_Flow.sketch', type: 'Sketch', size: '4.7 MB', url: '#' },
+        { name: 'A_B_Test_Results.pdf', type: 'PDF', size: '1.4 MB', url: '#' },
+        { name: 'User_Journey_Map.png', type: 'Image', size: '3.2 MB', url: '#' }
+      ]
+    }
+  },
+  {
+    id: '8',
+    title: 'Real-time Collaboration Features',
+    description: 'Implement real-time collaborative editing and communication features for team productivity.',
+    category: 'Development',
+    status: 'active',
+    priority: 'high',
+    assignee: {
+      name: 'Jordan Miller',
+      avatar: '👥',
+      email: 'jordan.miller@company.com'
+    },
+    metrics: {
+      views: 1123,
+      likes: 167,
+      shares: 78,
+      completion: 55
+    },
+    tags: ['Collaboration', 'Real-time', 'WebSocket', 'Team Tools'],
+    createdAt: '2024-01-14T15:30:00Z',
+    updatedAt: '2024-01-25T10:20:00Z',
+    dueDate: '2024-03-01T23:59:59Z',
+    thumbnail: '👥',
+    content: {
+      summary: 'Building real-time collaboration features to enhance team productivity and communication.',
+      details: 'Development of real-time collaborative editing capabilities using WebSocket technology. Features include live cursor tracking, simultaneous editing, instant messaging, and presence indicators for team members.',
+      attachments: [
+        { name: 'Technical_Architecture.pdf', type: 'PDF', size: '2.8 MB', url: '#' },
+        { name: 'WebSocket_Implementation.js', type: 'JavaScript', size: '67 KB', url: '#' },
+        { name: 'UI_Mockups.fig', type: 'Figma', size: '3.1 MB', url: '#' }
+      ]
+    }
+  },
+  {
+    id: '9',
+    title: 'Mobile App Redesign Project',
+    description: 'Complete overhaul of the mobile application user interface with focus on accessibility and modern design patterns.',
+    category: 'Design',
+    status: 'active',
+    priority: 'high',
+    assignee: {
+      name: 'Sarah Chen',
+      avatar: '🎨',
+      email: 'sarah.chen@company.com'
+    },
+    metrics: {
+      views: 1247,
+      likes: 89,
+      shares: 23,
+      completion: 65
+    },
+    tags: ['UI/UX', 'Mobile', 'Accessibility', 'Figma'],
+    createdAt: '2024-01-15T09:00:00Z',
+    updatedAt: '2024-01-20T14:30:00Z',
+    dueDate: '2024-02-28T23:59:59Z',
+    thumbnail: '🎨',
+    content: {
+      summary: 'Redesigning the mobile app to improve user experience and accessibility compliance.',
+      details: 'This project involves a complete redesign of our mobile application interface. The focus is on creating a more intuitive user experience while ensuring full accessibility compliance. We\'re implementing modern design patterns and conducting extensive user testing.',
+      attachments: [
+        { name: 'Design_Mockups_v2.fig', type: 'Figma', size: '2.4 MB', url: '#' },
+        { name: 'User_Research_Report.pdf', type: 'PDF', size: '1.8 MB', url: '#' },
+        { name: 'Accessibility_Guidelines.docx', type: 'Document', size: '850 KB', url: '#' }
+      ]
+    }
+  },
+  {
+    id: '10',
+    title: 'API Performance Optimization',
+    description: 'Optimize backend API endpoints to reduce response times and improve scalability for high-traffic scenarios.',
+    category: 'Development',
+    status: 'pending',
+    priority: 'critical',
+    assignee: {
+      name: 'Marcus Rodriguez',
+      avatar: '⚡',
+      email: 'marcus.rodriguez@company.com'
+    },
+    metrics: {
+      views: 892,
+      likes: 156,
+      shares: 45,
+      completion: 25
+    },
+    tags: ['Backend', 'Performance', 'API', 'Optimization'],
+    createdAt: '2024-01-18T11:15:00Z',
+    updatedAt: '2024-01-22T16:45:00Z',
+    dueDate: '2024-01-30T23:59:59Z',
+    thumbnail: '⚡',
+    content: {
+      summary: 'Critical performance improvements needed for API endpoints experiencing high latency.',
+      details: 'Our API endpoints are experiencing significant performance issues during peak traffic. This optimization project will focus on database query optimization, caching strategies, and implementing rate limiting to ensure consistent performance.',
+      attachments: [
+        { name: 'Performance_Analysis.xlsx', type: 'Spreadsheet', size: '3.2 MB', url: '#' },
+        { name: 'Database_Schema_Updates.sql', type: 'SQL', size: '45 KB', url: '#' }
+      ]
+    }
+  },
+  {
+    id: '11',
+    title: 'Customer Feedback Dashboard',
+    description: 'Build a comprehensive dashboard for analyzing customer feedback trends and sentiment analysis.',
+    category: 'Analytics',
+    status: 'completed',
+    priority: 'medium',
+    assignee: {
+      name: 'Emma Thompson',
+      avatar: '📊',
+      email: 'emma.thompson@company.com'
+    },
+    metrics: {
+      views: 2341,
+      likes: 234,
+      shares: 67,
+      completion: 100
+    },
+    tags: ['Dashboard', 'Analytics', 'Customer Experience', 'Data Viz'],
+    createdAt: '2024-01-05T08:30:00Z',
+    updatedAt: '2024-01-19T17:20:00Z',
+    thumbnail: '📊',
+    content: {
+      summary: 'Successfully launched customer feedback dashboard with real-time analytics.',
+      details: 'Completed the development of a comprehensive customer feedback dashboard that provides real-time insights into customer sentiment, trending topics, and satisfaction metrics. The dashboard includes interactive visualizations and automated reporting.',
+      attachments: [
+        { name: 'Dashboard_Demo.mp4', type: 'Video', size: '15.7 MB', url: '#' },
+        { name: 'User_Guide.pdf', type: 'PDF', size: '2.1 MB', url: '#' },
+        { name: 'Technical_Specs.md', type: 'Markdown', size: '23 KB', url: '#' }
+      ]
+    }
+  },
+  {
+    id: '12',
+    title: 'Security Audit & Compliance',
+    description: 'Comprehensive security audit of all systems and implementation of compliance measures for data protection.',
+    category: 'Security',
+    status: 'active',
+    priority: 'critical',
+    assignee: {
+      name: 'David Kim',
+      avatar: '🔒',
+      email: 'david.kim@company.com'
+    },
+    metrics: {
+      views: 567,
+      likes: 78,
+      shares: 12,
+      completion: 45
+    },
+    tags: ['Security', 'Compliance', 'GDPR', 'Audit'],
+    createdAt: '2024-01-20T10:00:00Z',
+    updatedAt: '2024-01-23T13:15:00Z',
+    dueDate: '2024-03-15T23:59:59Z',
+    thumbnail: '🔒',
+    content: {
+      summary: 'Ongoing security audit to ensure compliance with data protection regulations.',
+      details: 'Comprehensive security assessment covering all systems, applications, and data handling processes. The audit includes penetration testing, vulnerability assessments, and implementation of GDPR compliance measures.',
+      attachments: [
+        { name: 'Security_Checklist.xlsx', type: 'Spreadsheet', size: '1.5 MB', url: '#' },
+        { name: 'Compliance_Report_Draft.pdf', type: 'PDF', size: '4.2 MB', url: '#' }
+      ]
+    }
+  },
+  {
+    id: '13',
+    title: 'AI-Powered Content Recommendations',
+    description: 'Implement machine learning algorithms to provide personalized content recommendations for users.',
+    category: 'AI/ML',
+    status: 'pending',
+    priority: 'medium',
+    assignee: {
+      name: 'Priya Patel',
+      avatar: '🤖',
+      email: 'priya.patel@company.com'
+    },
+    metrics: {
+      views: 1456,
+      likes: 201,
+      shares: 89,
+      completion: 15
+    },
+    tags: ['Machine Learning', 'AI', 'Recommendations', 'Personalization'],
+    createdAt: '2024-01-22T14:20:00Z',
+    updatedAt: '2024-01-24T09:10:00Z',
+    dueDate: '2024-04-10T23:59:59Z',
+    thumbnail: '🤖',
+    content: {
+      summary: 'Building AI-driven recommendation system to enhance user engagement.',
+      details: 'Development of a sophisticated recommendation engine using machine learning algorithms. The system will analyze user behavior patterns, content preferences, and engagement metrics to provide highly personalized content suggestions.',
+      attachments: [
+        { name: 'ML_Model_Proposal.pdf', type: 'PDF', size: '3.8 MB', url: '#' },
+        { name: 'Training_Data_Analysis.ipynb', type: 'Jupyter Notebook', size: '892 KB', url: '#' }
+      ]
+    }
+  },
+  {
+    id: '14',
+    title: 'Cloud Infrastructure Migration',
+    description: 'Migrate legacy systems to cloud infrastructure for improved scalability and cost efficiency.',
+    category: 'Infrastructure',
+    status: 'active',
+    priority: 'high',
+    assignee: {
+      name: 'Alex Johnson',
+      avatar: '☁️',
+      email: 'alex.johnson@company.com'
+    },
+    metrics: {
+      views: 734,
+      likes: 92,
+      shares: 34,
+      completion: 70
+    },
+    tags: ['Cloud', 'Migration', 'AWS', 'Infrastructure'],
+    createdAt: '2024-01-10T07:45:00Z',
+    updatedAt: '2024-01-24T11:30:00Z',
+    dueDate: '2024-02-15T23:59:59Z',
+    thumbnail: '☁️',
+    content: {
+      summary: 'Migrating critical systems to cloud infrastructure for better performance and scalability.',
+      details: 'Comprehensive migration of our legacy on-premise infrastructure to AWS cloud services. This includes database migration, application containerization, and implementation of auto-scaling capabilities.',
+      attachments: [
+        { name: 'Migration_Plan.pdf', type: 'PDF', size: '5.1 MB', url: '#' },
+        { name: 'Cost_Analysis.xlsx', type: 'Spreadsheet', size: '1.9 MB', url: '#' },
+        { name: 'Architecture_Diagram.png', type: 'Image', size: '2.3 MB', url: '#' }
+      ]
+    }
+  },
+  {
+    id: '15',
+    title: 'User Onboarding Experience',
+    description: 'Design and implement an intuitive onboarding flow to improve new user activation rates.',
+    category: 'Product',
+    status: 'completed',
+    priority: 'medium',
+    assignee: {
+      name: 'Lisa Zhang',
+      avatar: '🚀',
+      email: 'lisa.zhang@company.com'
+    },
+    metrics: {
+      views: 1876,
+      likes: 298,
+      shares: 156,
+      completion: 100
+    },
+    tags: ['Onboarding', 'UX', 'Product', 'Conversion'],
+    createdAt: '2024-01-02T12:00:00Z',
+    updatedAt: '2024-01-16T18:45:00Z',
+    thumbnail: '🚀',
+    content: {
+      summary: 'Successfully launched new user onboarding experience with 40% improvement in activation rates.',
+      details: 'Designed and implemented a streamlined onboarding flow that guides new users through key product features. The new experience includes interactive tutorials, progress tracking, and personalized setup recommendations.',
+      attachments: [
+        { name: 'Onboarding_Flow.sketch', type: 'Sketch', size: '4.7 MB', url: '#' },
+        { name: 'A_B_Test_Results.pdf', type: 'PDF', size: '1.4 MB', url: '#' },
+        { name: 'User_Journey_Map.png', type: 'Image', size: '3.2 MB', url: '#' }
+      ]
+    }
+  },
+  {
+    id: '16',
+    title: 'Real-time Collaboration Features',
+    description: 'Implement real-time collaborative editing and communication features for team productivity.',
+    category: 'Development',
+    status: 'active',
+    priority: 'high',
+    assignee: {
+      name: 'Jordan Miller',
+      avatar: '👥',
+      email: 'jordan.miller@company.com'
+    },
+    metrics: {
+      views: 1123,
+      likes: 167,
+      shares: 78,
+      completion: 55
+    },
+    tags: ['Collaboration', 'Real-time', 'WebSocket', 'Team Tools'],
+    createdAt: '2024-01-14T15:30:00Z',
+    updatedAt: '2024-01-25T10:20:00Z',
+    dueDate: '2024-03-01T23:59:59Z',
+    thumbnail: '👥',
+    content: {
+      summary: 'Building real-time collaboration features to enhance team productivity and communication.',
+      details: 'Development of real-time collaborative editing capabilities using WebSocket technology. Features include live cursor tracking, simultaneous editing, instant messaging, and presence indicators for team members.',
+      attachments: [
+        { name: 'Technical_Architecture.pdf', type: 'PDF', size: '2.8 MB', url: '#' },
+        { name: 'WebSocket_Implementation.js', type: 'JavaScript', size: '67 KB', url: '#' },
+        { name: 'UI_Mockups.fig', type: 'Figma', size: '3.1 MB', url: '#' }
+      ]
+    }
+  },
+  {
+    id: '17',
+    title: 'Mobile App Redesign Project',
+    description: 'Complete overhaul of the mobile application user interface with focus on accessibility and modern design patterns.',
+    category: 'Design',
+    status: 'active',
+    priority: 'high',
+    assignee: {
+      name: 'Sarah Chen',
+      avatar: '🎨',
+      email: 'sarah.chen@company.com'
+    },
+    metrics: {
+      views: 1247,
+      likes: 89,
+      shares: 23,
+      completion: 65
+    },
+    tags: ['UI/UX', 'Mobile', 'Accessibility', 'Figma'],
+    createdAt: '2024-01-15T09:00:00Z',
+    updatedAt: '2024-01-20T14:30:00Z',
+    dueDate: '2024-02-28T23:59:59Z',
+    thumbnail: '🎨',
+    content: {
+      summary: 'Redesigning the mobile app to improve user experience and accessibility compliance.',
+      details: 'This project involves a complete redesign of our mobile application interface. The focus is on creating a more intuitive user experience while ensuring full accessibility compliance. We\'re implementing modern design patterns and conducting extensive user testing.',
+      attachments: [
+        { name: 'Design_Mockups_v2.fig', type: 'Figma', size: '2.4 MB', url: '#' },
+        { name: 'User_Research_Report.pdf', type: 'PDF', size: '1.8 MB', url: '#' },
+        { name: 'Accessibility_Guidelines.docx', type: 'Document', size: '850 KB', url: '#' }
+      ]
+    }
+  },
+  {
+    id: '18',
+    title: 'API Performance Optimization',
+    description: 'Optimize backend API endpoints to reduce response times and improve scalability for high-traffic scenarios.',
+    category: 'Development',
+    status: 'pending',
+    priority: 'critical',
+    assignee: {
+      name: 'Marcus Rodriguez',
+      avatar: '⚡',
+      email: 'marcus.rodriguez@company.com'
+    },
+    metrics: {
+      views: 892,
+      likes: 156,
+      shares: 45,
+      completion: 25
+    },
+    tags: ['Backend', 'Performance', 'API', 'Optimization'],
+    createdAt: '2024-01-18T11:15:00Z',
+    updatedAt: '2024-01-22T16:45:00Z',
+    dueDate: '2024-01-30T23:59:59Z',
+    thumbnail: '⚡',
+    content: {
+      summary: 'Critical performance improvements needed for API endpoints experiencing high latency.',
+      details: 'Our API endpoints are experiencing significant performance issues during peak traffic. This optimization project will focus on database query optimization, caching strategies, and implementing rate limiting to ensure consistent performance.',
+      attachments: [
+        { name: 'Performance_Analysis.xlsx', type: 'Spreadsheet', size: '3.2 MB', url: '#' },
+        { name: 'Database_Schema_Updates.sql', type: 'SQL', size: '45 KB', url: '#' }
+      ]
+    }
+  },
+  {
+    id: '19',
+    title: 'Customer Feedback Dashboard',
+    description: 'Build a comprehensive dashboard for analyzing customer feedback trends and sentiment analysis.',
+    category: 'Analytics',
+    status: 'completed',
+    priority: 'medium',
+    assignee: {
+      name: 'Emma Thompson',
+      avatar: '📊',
+      email: 'emma.thompson@company.com'
+    },
+    metrics: {
+      views: 2341,
+      likes: 234,
+      shares: 67,
+      completion: 100
+    },
+    tags: ['Dashboard', 'Analytics', 'Customer Experience', 'Data Viz'],
+    createdAt: '2024-01-05T08:30:00Z',
+    updatedAt: '2024-01-19T17:20:00Z',
+    thumbnail: '📊',
+    content: {
+      summary: 'Successfully launched customer feedback dashboard with real-time analytics.',
+      details: 'Completed the development of a comprehensive customer feedback dashboard that provides real-time insights into customer sentiment, trending topics, and satisfaction metrics. The dashboard includes interactive visualizations and automated reporting.',
+      attachments: [
+        { name: 'Dashboard_Demo.mp4', type: 'Video', size: '15.7 MB', url: '#' },
+        { name: 'User_Guide.pdf', type: 'PDF', size: '2.1 MB', url: '#' },
+        { name: 'Technical_Specs.md', type: 'Markdown', size: '23 KB', url: '#' }
+      ]
+    }
+  },
+  {
+    id: '20',
+    title: 'Security Audit & Compliance',
+    description: 'Comprehensive security audit of all systems and implementation of compliance measures for data protection.',
+    category: 'Security',
+    status: 'active',
+    priority: 'critical',
+    assignee: {
+      name: 'David Kim',
+      avatar: '🔒',
+      email: 'david.kim@company.com'
+    },
+    metrics: {
+      views: 567,
+      likes: 78,
+      shares: 12,
+      completion: 45
+    },
+    tags: ['Security', 'Compliance', 'GDPR', 'Audit'],
+    createdAt: '2024-01-20T10:00:00Z',
+    updatedAt: '2024-01-23T13:15:00Z',
+    dueDate: '2024-03-15T23:59:59Z',
+    thumbnail: '🔒',
+    content: {
+      summary: 'Ongoing security audit to ensure compliance with data protection regulations.',
+      details: 'Comprehensive security assessment covering all systems, applications, and data handling processes. The audit includes penetration testing, vulnerability assessments, and implementation of GDPR compliance measures.',
+      attachments: [
+        { name: 'Security_Checklist.xlsx', type: 'Spreadsheet', size: '1.5 MB', url: '#' },
+        { name: 'Compliance_Report_Draft.pdf', type: 'PDF', size: '4.2 MB', url: '#' }
+      ]
+    }
+  },
+  {
+    id: '21',
+    title: 'AI-Powered Content Recommendations',
+    description: 'Implement machine learning algorithms to provide personalized content recommendations for users.',
+    category: 'AI/ML',
+    status: 'pending',
+    priority: 'medium',
+    assignee: {
+      name: 'Priya Patel',
+      avatar: '🤖',
+      email: 'priya.patel@company.com'
+    },
+    metrics: {
+      views: 1456,
+      likes: 201,
+      shares: 89,
+      completion: 15
+    },
+    tags: ['Machine Learning', 'AI', 'Recommendations', 'Personalization'],
+    createdAt: '2024-01-22T14:20:00Z',
+    updatedAt: '2024-01-24T09:10:00Z',
+    dueDate: '2024-04-10T23:59:59Z',
+    thumbnail: '🤖',
+    content: {
+      summary: 'Building AI-driven recommendation system to enhance user engagement.',
+      details: 'Development of a sophisticated recommendation engine using machine learning algorithms. The system will analyze user behavior patterns, content preferences, and engagement metrics to provide highly personalized content suggestions.',
+      attachments: [
+        { name: 'ML_Model_Proposal.pdf', type: 'PDF', size: '3.8 MB', url: '#' },
+        { name: 'Training_Data_Analysis.ipynb', type: 'Jupyter Notebook', size: '892 KB', url: '#' }
+      ]
+    }
+  },
+  {
+    id: '22',
+    title: 'Cloud Infrastructure Migration',
+    description: 'Migrate legacy systems to cloud infrastructure for improved scalability and cost efficiency.',
+    category: 'Infrastructure',
+    status: 'active',
+    priority: 'high',
+    assignee: {
+      name: 'Alex Johnson',
+      avatar: '☁️',
+      email: 'alex.johnson@company.com'
+    },
+    metrics: {
+      views: 734,
+      likes: 92,
+      shares: 34,
+      completion: 70
+    },
+    tags: ['Cloud', 'Migration', 'AWS', 'Infrastructure'],
+    createdAt: '2024-01-10T07:45:00Z',
+    updatedAt: '2024-01-24T11:30:00Z',
+    dueDate: '2024-02-15T23:59:59Z',
+    thumbnail: '☁️',
+    content: {
+      summary: 'Migrating critical systems to cloud infrastructure for better performance and scalability.',
+      details: 'Comprehensive migration of our legacy on-premise infrastructure to AWS cloud services. This includes database migration, application containerization, and implementation of auto-scaling capabilities.',
+      attachments: [
+        { name: 'Migration_Plan.pdf', type: 'PDF', size: '5.1 MB', url: '#' },
+        { name: 'Cost_Analysis.xlsx', type: 'Spreadsheet', size: '1.9 MB', url: '#' },
+        { name: 'Architecture_Diagram.png', type: 'Image', size: '2.3 MB', url: '#' }
+      ]
+    }
+  },
+  {
+    id: '23',
+    title: 'User Onboarding Experience',
+    description: 'Design and implement an intuitive onboarding flow to improve new user activation rates.',
+    category: 'Product',
+    status: 'completed',
+    priority: 'medium',
+    assignee: {
+      name: 'Lisa Zhang',
+      avatar: '🚀',
+      email: 'lisa.zhang@company.com'
+    },
+    metrics: {
+      views: 1876,
+      likes: 298,
+      shares: 156,
+      completion: 100
+    },
+    tags: ['Onboarding', 'UX', 'Product', 'Conversion'],
+    createdAt: '2024-01-02T12:00:00Z',
+    updatedAt: '2024-01-16T18:45:00Z',
+    thumbnail: '🚀',
+    content: {
+      summary: 'Successfully launched new user onboarding experience with 40% improvement in activation rates.',
+      details: 'Designed and implemented a streamlined onboarding flow that guides new users through key product features. The new experience includes interactive tutorials, progress tracking, and personalized setup recommendations.',
+      attachments: [
+        { name: 'Onboarding_Flow.sketch', type: 'Sketch', size: '4.7 MB', url: '#' },
+        { name: 'A_B_Test_Results.pdf', type: 'PDF', size: '1.4 MB', url: '#' },
+        { name: 'User_Journey_Map.png', type: 'Image', size: '3.2 MB', url: '#' }
+      ]
+    }
+  },
+  {
+    id: '24',
+    title: 'Real-time Collaboration Features',
+    description: 'Implement real-time collaborative editing and communication features for team productivity.',
+    category: 'Development',
+    status: 'active',
+    priority: 'high',
+    assignee: {
+      name: 'Jordan Miller',
+      avatar: '👥',
+      email: 'jordan.miller@company.com'
+    },
+    metrics: {
+      views: 1123,
+      likes: 167,
+      shares: 78,
+      completion: 55
+    },
+    tags: ['Collaboration', 'Real-time', 'WebSocket', 'Team Tools'],
+    createdAt: '2024-01-14T15:30:00Z',
+    updatedAt: '2024-01-25T10:20:00Z',
+    dueDate: '2024-03-01T23:59:59Z',
+    thumbnail: '👥',
+    content: {
+      summary: 'Building real-time collaboration features to enhance team productivity and communication.',
+      details: 'Development of real-time collaborative editing capabilities using WebSocket technology. Features include live cursor tracking, simultaneous editing, instant messaging, and presence indicators for team members.',
+      attachments: [
+        { name: 'Technical_Architecture.pdf', type: 'PDF', size: '2.8 MB', url: '#' },
+        { name: 'WebSocket_Implementation.js', type: 'JavaScript', size: '67 KB', url: '#' },
+        { name: 'UI_Mockups.fig', type: 'Figma', size: '3.1 MB', url: '#' }
+      ]
+    }
+  }
+]
 ````
 
 ## File: tsconfig.json
@@ -1009,16 +2158,11 @@ import {
   MoreHorizontal,
   ExternalLink
 } from 'lucide-react'
-import type { ViewProps, DataItem } from '../types'
+import type { ViewProps, DataItem, SortableField } from '../types'
 import { getStatusColor, getPriorityColor } from '../utils'
 import { EmptyState } from './EmptyState'
 
-type SortField = keyof DataItem | 'assignee.name' | 'metrics.views' | 'metrics.completion'
-type SortDirection = 'asc' | 'desc' | null
-
-export function DataTableView({ data, onItemSelect, selectedItem }: ViewProps) {
-  const [sortField, setSortField] = useState<SortField | null>(null)
-  const [sortDirection, setSortDirection] = useState<SortDirection>(null)
+export function DataTableView({ data, onItemSelect, selectedItem, sortConfig, onSort }: ViewProps) {
   const tableRef = useRef<HTMLTableElement>(null)
   const animatedItemsCount = useRef(0)
 
@@ -1041,69 +2185,22 @@ export function DataTableView({ data, onItemSelect, selectedItem }: ViewProps) {
     }
   }, [data]);
 
-  const handleSort = (field: SortField) => {
-    if (sortField === field) {
-      setSortDirection(prev => 
-        prev === 'asc' ? 'desc' : prev === 'desc' ? null : 'asc'
-      )
-      if (sortDirection === 'desc') {
-        setSortField(null)
-      }
-    } else {
-      setSortField(field)
-      setSortDirection('asc')
-    }
-  }
-
-  const getSortedData = () => {
-    if (!sortField || !sortDirection) return data
-
-    return [...data].sort((a, b) => {
-      let aValue: any
-      let bValue: any
-
-      if (sortField === 'assignee.name') {
-        aValue = a.assignee.name
-        bValue = b.assignee.name
-      } else if (sortField === 'metrics.views') {
-        aValue = a.metrics.views
-        bValue = b.metrics.views
-      } else if (sortField === 'metrics.completion') {
-        aValue = a.metrics.completion
-        bValue = b.metrics.completion
-      } else {
-        aValue = a[sortField as keyof DataItem]
-        bValue = b[sortField as keyof DataItem]
-      }
-
-      if (typeof aValue === 'string' && typeof bValue === 'string') {
-        return sortDirection === 'asc' 
-          ? aValue.localeCompare(bValue)
-          : bValue.localeCompare(aValue)
-      }
-
-      if (typeof aValue === 'number' && typeof bValue === 'number') {
-        return sortDirection === 'asc' ? aValue - bValue : bValue - aValue
-      }
-
-      return 0
-    })
-  }
-
-  const SortIcon = ({ field }: { field: SortField }) => {
-    if (sortField !== field) {
+  const SortIcon = ({ field }: { field: SortableField }) => {
+    if (sortConfig?.key !== field) {
       return <ArrowUpDown className="w-4 h-4 opacity-50" />
     }
-    if (sortDirection === 'asc') {
+    if (sortConfig.direction === 'asc') {
       return <ArrowUp className="w-4 h-4 text-primary" />
     }
-    if (sortDirection === 'desc') {
+    if (sortConfig.direction === 'desc') {
       return <ArrowDown className="w-4 h-4 text-primary" />
     }
     return <ArrowUpDown className="w-4 h-4 opacity-50" />
   }
 
-  const sortedData = getSortedData()
+  const handleSortClick = (field: SortableField) => {
+    onSort?.(field)
+  }
 
   if (data.length === 0) {
     return <EmptyState />
@@ -1117,7 +2214,7 @@ export function DataTableView({ data, onItemSelect, selectedItem }: ViewProps) {
             <tr className="border-b border-border/50 bg-muted/20">
               <th className="text-left p-4 font-semibold text-sm">
                 <button
-                  onClick={() => handleSort('title')}
+                  onClick={() => handleSortClick('title')}
                   className="flex items-center gap-2 hover:text-primary transition-colors"
                 >
                   Project
@@ -1126,7 +2223,7 @@ export function DataTableView({ data, onItemSelect, selectedItem }: ViewProps) {
               </th>
               <th className="text-left p-4 font-semibold text-sm">
                 <button
-                  onClick={() => handleSort('status')}
+                  onClick={() => handleSortClick('status')}
                   className="flex items-center gap-2 hover:text-primary transition-colors"
                 >
                   Status
@@ -1135,7 +2232,7 @@ export function DataTableView({ data, onItemSelect, selectedItem }: ViewProps) {
               </th>
               <th className="text-left p-4 font-semibold text-sm">
                 <button
-                  onClick={() => handleSort('priority')}
+                  onClick={() => handleSortClick('priority')}
                   className="flex items-center gap-2 hover:text-primary transition-colors"
                 >
                   Priority
@@ -1144,7 +2241,7 @@ export function DataTableView({ data, onItemSelect, selectedItem }: ViewProps) {
               </th>
               <th className="text-left p-4 font-semibold text-sm">
                 <button
-                  onClick={() => handleSort('assignee.name')}
+                  onClick={() => handleSortClick('assignee.name')}
                   className="flex items-center gap-2 hover:text-primary transition-colors"
                 >
                   Assignee
@@ -1153,7 +2250,7 @@ export function DataTableView({ data, onItemSelect, selectedItem }: ViewProps) {
               </th>
               <th className="text-left p-4 font-semibold text-sm">
                 <button
-                  onClick={() => handleSort('metrics.completion')}
+                  onClick={() => handleSortClick('metrics.completion')}
                   className="flex items-center gap-2 hover:text-primary transition-colors"
                 >
                   Progress
@@ -1162,19 +2259,19 @@ export function DataTableView({ data, onItemSelect, selectedItem }: ViewProps) {
               </th>
               <th className="text-left p-4 font-semibold text-sm">
                 <button
-                  onClick={() => handleSort('metrics.views')}
+                  onClick={() => handleSortClick('metrics.views')}
                   className="flex items-center gap-2 hover:text-primary transition-colors"
                 >
                   Engagement
                   <SortIcon field="metrics.views" />
                 </button>
               </th>
-              <th className="text-left p-4 font-semibold text-sm">Date</th>
+              <th className="text-left p-4 font-semibold text-sm">Last Updated</th>
               <th className="text-center p-4 font-semibold text-sm w-16">Actions</th>
             </tr>
           </thead>
           <tbody>
-            {sortedData.map((item, index) => {
+            {data.map((item) => {
               const isSelected = selectedItem?.id === item.id
               
               return (
@@ -1434,7 +2531,7 @@ export default {
 
 ## File: src/pages/DataDemo/index.tsx
 ````typescript
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { 
   Layers, 
   AlertTriangle, 
@@ -1442,18 +2539,18 @@ import {
   TrendingUp,
   Loader2
 } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { gsap } from 'gsap'
 import { PageLayout } from '@/components/shared/PageLayout'
-import { DataViewModeSelector } from './components/DataViewModeSelector'
 import { DataListView } from './components/DataListView'
 import { DataCardView } from './components/DataCardView'
 import { DataTableView } from './components/DataTableView'
 import { DataDetailPanel } from './components/DataDetailPanel'
+import { AnimatedLoadingSkeleton } from './components/AnimatedLoadingSkeleton'
 import { StatChartCard } from './components/StatChartCard'
+import { DataToolbar, FilterConfig } from './components/DataToolbar'
 import { useAppShell } from '@/context/AppShellContext'
 import { mockDataItems } from './data/mockData'
-import { Card } from '@/components/ui/card'
-import type { DataItem, ViewMode } from './types'
+import type { DataItem, ViewMode, SortConfig, SortableField } from './types'
 
 type Stat = {
   title: string;
@@ -1478,14 +2575,68 @@ type StatItem = Stat | ChartStat;
 
 export default function DataDemoPage() {
   const [viewMode, setViewMode] = useState<ViewMode>('list')
+  const [filters, setFilters] = useState<FilterConfig>({
+    searchTerm: '',
+    status: [],
+    priority: [],
+  })
+  const [sortConfig, setSortConfig] = useState<SortConfig | null>({ key: 'updatedAt', direction: 'desc' })
   const [selectedItem, setSelectedItem] = useState<DataItem | null>(null)  
   const [items, setItems] = useState<DataItem[]>([])
   const [page, setPage] = useState(0) // Start at 0 to trigger initial load effect
   const [hasMore, setHasMore] = useState(true)
-  const [isLoading, setIsLoading] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
   const contentRef = useRef<HTMLDivElement>(null)
+  const statsRef = useRef<HTMLDivElement>(null)
   const observer = useRef<IntersectionObserver>()
   const { openSidePane } = useAppShell()
+
+  const isInitialLoading = isLoading && items.length === 0
+
+  // Centralized data processing
+  const processedData = useMemo(() => {
+    let filteredItems = mockDataItems.filter(item => {
+      const searchTermMatch =
+        item.title.toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
+        item.description.toLowerCase().includes(filters.searchTerm.toLowerCase())
+
+      const statusMatch = filters.status.length === 0 || filters.status.includes(item.status)
+      const priorityMatch = filters.priority.length === 0 || filters.priority.includes(item.priority)
+
+      return searchTermMatch && statusMatch && priorityMatch
+    })
+
+    if (sortConfig) {
+      filteredItems.sort((a, b) => {
+        let aValue: any
+        let bValue: any
+
+        const getNestedValue = (obj: any, path: string) => path.split('.').reduce((o, k) => (o || {})[k], obj)
+
+        aValue = getNestedValue(a, sortConfig.key)
+        bValue = getNestedValue(b, sortConfig.key)
+
+        if (aValue === undefined || bValue === undefined) return 0;
+
+        if (typeof aValue === 'string' && typeof bValue === 'string') {
+          return sortConfig.direction === 'asc'
+            ? aValue.localeCompare(bValue)
+            : bValue.localeCompare(aValue)
+        }
+        if (typeof aValue === 'number' && typeof bValue === 'number') {
+          return sortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue
+        }
+        // Date sorting (assuming ISO strings)
+        if (sortConfig.key === 'updatedAt' || sortConfig.key === 'createdAt') {
+            return sortConfig.direction === 'asc'
+                ? new Date(aValue).getTime() - new Date(aValue).getTime()
+                : new Date(bValue).getTime() - new Date(bValue).getTime()
+        }
+        return 0
+      })
+    }
+    return filteredItems
+  }, [filters, sortConfig])
 
   // Calculate stats from data
   const totalItems = mockDataItems.length
@@ -1495,28 +2646,35 @@ export default function DataDemoPage() {
     mockDataItems.reduce((acc, item) => acc + item.metrics.completion, 0) / totalItems
   ) : 0
 
-  // Infinite scroll logic
+  // Reset pagination when filters or sort change
   useEffect(() => {
-    // This effect handles fetching data when page changes
-    if (page === 0 || isLoading || !hasMore) return;
+    setItems([])
+    setPage(0) // This will be incremented to 1 in the loader `useEffect`, triggering a fresh load
+    setHasMore(true)
+    // This timeout helps prevent a flicker between old and new filtered data
+    setTimeout(() => setPage(1), 50)
+  }, [processedData])
 
-    const fetchItems = async () => {
+  // Infinite scroll logic
+  useEffect(() => { // eslint-disable-line react-hooks/exhaustive-deps
+    if (page === 0) return;
+
+    const fetchItems = () => {
       setIsLoading(true);
-      await new Promise(resolve => setTimeout(resolve, 500)); // Simulate network delay
+      const isFirstPage = page === 1
       
       const pageSize = 12;
-      const newItems = mockDataItems.slice((page - 1) * pageSize, page * pageSize);
+      const newItems = processedData.slice((page - 1) * pageSize, page * pageSize);
       
-      if (newItems.length > 0) {
-        setItems(prev => [...prev, ...newItems]);
-      }
-      if (newItems.length < pageSize) {
-        setHasMore(false);
-      }
-      setIsLoading(false);
+      // Simulate network delay, longer for initial load to showcase skeleton
+      setTimeout(() => {
+        setItems(prev => (isFirstPage ? newItems : [...prev, ...newItems]))
+        setHasMore(processedData.length > page * pageSize)
+        setIsLoading(false)
+      }, isFirstPage && items.length === 0 ? 1500 : 500)
     };
 
-    fetchItems();
+    if (hasMore) fetchItems();
   }, [page]);
 
   const loaderRef = useCallback(node => {
@@ -1571,10 +2729,45 @@ export default function DataDemoPage() {
   ]
 
   useEffect(() => {
-    // Initial load by setting page to 1
-    setPage(1);
-  }, []);
+    // Animate stats cards in
+    if (!isInitialLoading && statsRef.current) {
+      gsap.fromTo(statsRef.current.children,
+        { y: 30, opacity: 0 },
+        {
+          duration: 0.6,
+          y: 0,
+          opacity: 1,
+          stagger: 0.1,
+          ease: "power2.out"
+        }
+      )
+    }
+  }, [isInitialLoading])
 
+  const handleSortChange = (config: SortConfig | null) => {
+    setSortConfig(config)
+  }
+
+  // For table view header clicks
+  const handleTableSort = (field: SortableField) => {
+    if (sortConfig?.key === field) {
+      if (sortConfig.direction === 'desc') {
+        // Cycle: desc -> asc
+        setSortConfig({ key: field, direction: 'asc' })
+      } else {
+        // Cycle: asc -> default
+        setSortConfig(null)
+      }
+    } else {
+      // New field, default to desc
+      setSortConfig({ key: field, direction: 'desc' })
+    }
+  }
+
+  const handleFilterChange = (newFilters: FilterConfig) => {
+    setFilters(newFilters)
+  }
+  
   // Handle item selection and open side panel
   const handleItemSelect = (item: DataItem) => {
     setSelectedItem(item)
@@ -1585,7 +2778,9 @@ export default function DataDemoPage() {
     const commonProps = {
       data: items,
       onItemSelect: handleItemSelect,
-      selectedItem
+      selectedItem,
+      sortConfig,
+      onSort: handleTableSort,
     }
 
     switch (viewMode) {
@@ -1612,66 +2807,57 @@ export default function DataDemoPage() {
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Data Showcase</h1>
             <p className="text-muted-foreground">
-              Showing {items.length} of {mockDataItems.length} items
+              {isInitialLoading 
+                ? "Loading projects..." 
+                : `Showing ${processedData.length} item(s)`}
             </p>
           </div>
-          <DataViewModeSelector 
-            viewMode={viewMode} 
-            onChange={setViewMode}
-          />
         </div>
 
         {/* Stats Section */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {stats.map((stat) => {
-            if (stat.type === 'chart') {
-              return (
-                <StatChartCard
-                  key={stat.title}
-                  title={stat.title}
-                  value={stat.value}
-                  change={stat.change}
-                  trend={stat.trend}
-                  icon={stat.icon}
-                  chartData={stat.chartData}
-                />
-              )
-            }
-            return (
-              <Card
-                key={stat.title}
-                className="p-6 border-border/50 hover:border-primary/30 transition-all duration-300 group cursor-pointer"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="p-3 bg-primary/10 rounded-full group-hover:bg-primary/20 transition-colors">
-                    {stat.icon}
-                  </div>
-                  <div className={cn("text-sm font-medium", stat.trend === 'up' ? "text-green-600" : "text-red-600")}>
-                    {stat.change}
-                  </div>
-                </div>
-                <div className="mt-4">
-                  <h3 className="text-2xl font-bold">{stat.value}</h3>
-                  <p className="text-sm text-muted-foreground mt-1">{stat.title}</p>
-                </div>
-              </Card>
-            )
-          })}
-        </div>
+        {!isInitialLoading && (
+          <div ref={statsRef} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {stats.map((stat) => {
+              if (stat.type === 'chart') {
+                return (
+                  <StatChartCard
+                    key={stat.title}
+                    title={stat.title}
+                    value={stat.value}
+                    change={stat.change}
+                    trend={stat.trend}
+                    icon={stat.icon}
+                    chartData={stat.chartData}
+                  />
+                )
+              }
+            })}
+          </div>
+        )}
 
-        <div ref={contentRef} className="min-h-[500px]">
-          {renderView()}
+        <div className="space-y-6">
+          <DataToolbar
+            viewMode={viewMode}
+            onViewModeChange={setViewMode}
+            filters={filters}
+            onFiltersChange={handleFilterChange}
+            sortConfig={sortConfig}
+            onSortChange={handleSortChange}
+          />
+          <div ref={contentRef} className="min-h-[500px]">
+            {isInitialLoading ? <AnimatedLoadingSkeleton viewMode={viewMode} /> : renderView()}
+          </div>
         </div>
 
         {/* Loader for infinite scroll */}
         <div ref={loaderRef} className="flex justify-center items-center py-6">
-          {isLoading && (
+          {isLoading && !isInitialLoading && (
             <div className="flex items-center gap-2 text-muted-foreground">
               <Loader2 className="w-5 h-5 animate-spin" />
               <span>Loading more...</span>
             </div>
           )}
-          {!isLoading && !hasMore && items.length > 0 && (
+          {!isLoading && !hasMore && processedData.length > 0 && !isInitialLoading && (
             <p className="text-muted-foreground">You've reached the end.</p>
           )}
         </div>

@@ -1,5 +1,12 @@
 export type ViewMode = 'list' | 'cards' | 'grid' | 'table'
 
+export type SortableField = 'title' | 'status' | 'priority' | 'updatedAt' | 'assignee.name' | 'metrics.views' | 'metrics.completion' | 'createdAt'
+export type SortDirection = 'asc' | 'desc'
+export interface SortConfig {
+  key: SortableField
+  direction: SortDirection
+}
+
 export interface DataItem {
   id: string
   title: string
@@ -40,4 +47,11 @@ export interface ViewProps {
   onItemSelect: (item: DataItem) => void
   selectedItem: DataItem | null
   isGrid?: boolean
+
+  // Props for table view specifically
+  sortConfig?: SortConfig | null
+  onSort?: (field: SortableField) => void
 }
+
+export type Status = DataItem['status']
+export type Priority = DataItem['priority']

@@ -32,17 +32,21 @@
     "postcss.config.js",
     "index.html",
     // "src"
-    "src/components/shared/PageLayout.tsx",
+    "src/components/ui/badge.tsx",
+    "src/components/ui/button.tsx",
+    "src/components/ui/command.tsx",
+    "src/components/ui/dropdown-menu.tsx",
+    "src/components/ui/input.tsx",
+    "src/components/ui/popover.tsx",
     "src/pages/DataDemo/components/DataCardView.tsx",
-    "src/pages/DataDemo/components/DataDetailPanel.tsx",
     "src/pages/DataDemo/components/DataListView.tsx",
     "src/pages/DataDemo/components/DataTableView.tsx",
+    "src/pages/DataDemo/components/DataViewModeSelector.tsx",
+    "src/pages/DataDemo/components/EmptyState.tsx",
+    "src/pages/DataDemo/data/mockData.ts",
     "src/pages/DataDemo/index.tsx",
     "src/pages/DataDemo/types.ts",
-    "src/lib/utils.ts",
-    "src/pages/DataDemo/utils.ts",
-    "src/pages/DataDemo/components/EmptyState.tsx",
-    "src/pages/DataDemo/components/DataViewModeSelector.tsx"
+    "src/pages/DataDemo/components/DataToolbar.tsx"
     // "src/pages/DataDemo/data"
     // "src/App.tsx",
     // "src/components/layout/AppShell.tsx",

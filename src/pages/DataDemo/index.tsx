@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { 
   Layers, 
   AlertTriangle, 
@@ -6,19 +6,19 @@ import {
   TrendingUp,
   Loader2
 } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { gsap } from 'gsap'
 import { PageLayout } from '@/components/shared/PageLayout'
-import { DataViewModeSelector } from './components/DataViewModeSelector'
 import { DataListView } from './components/DataListView'
 import { DataCardView } from './components/DataCardView'
 import { DataTableView } from './components/DataTableView'
+import { DataViewModeSelector } from './components/DataViewModeSelector'
 import { DataDetailPanel } from './components/DataDetailPanel'
 import { AnimatedLoadingSkeleton } from './components/AnimatedLoadingSkeleton'
 import { StatChartCard } from './components/StatChartCard'
+import { DataToolbar, FilterConfig } from './components/DataToolbar'
 import { useAppShell } from '@/context/AppShellContext'
 import { mockDataItems } from './data/mockData'
-import { Card } from '@/components/ui/card'
-import type { DataItem, ViewMode } from './types'
+import type { DataItem, ViewMode, SortConfig, SortableField } from './types'
 
 type Stat = {
   title: string;
@@ -43,14 +43,68 @@ type StatItem = Stat | ChartStat;
 
 export default function DataDemoPage() {
   const [viewMode, setViewMode] = useState<ViewMode>('list')
+  const [filters, setFilters] = useState<FilterConfig>({
+    searchTerm: '',
+    status: [],
+    priority: [],
+  })
+  const [sortConfig, setSortConfig] = useState<SortConfig | null>({ key: 'updatedAt', direction: 'desc' })
   const [selectedItem, setSelectedItem] = useState<DataItem | null>(null)  
   const [items, setItems] = useState<DataItem[]>([])
   const [page, setPage] = useState(0) // Start at 0 to trigger initial load effect
   const [hasMore, setHasMore] = useState(true)
   const [isLoading, setIsLoading] = useState(true)
   const contentRef = useRef<HTMLDivElement>(null)
+  const statsRef = useRef<HTMLDivElement>(null)
   const observer = useRef<IntersectionObserver>()
   const { openSidePane } = useAppShell()
+
+  const isInitialLoading = isLoading && items.length === 0
+
+  // Centralized data processing
+  const processedData = useMemo(() => {
+    let filteredItems = mockDataItems.filter(item => {
+      const searchTermMatch =
+        item.title.toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
+        item.description.toLowerCase().includes(filters.searchTerm.toLowerCase())
+
+      const statusMatch = filters.status.length === 0 || filters.status.includes(item.status)
+      const priorityMatch = filters.priority.length === 0 || filters.priority.includes(item.priority)
+
+      return searchTermMatch && statusMatch && priorityMatch
+    })
+
+    if (sortConfig) {
+      filteredItems.sort((a, b) => {
+        let aValue: any
+        let bValue: any
+
+        const getNestedValue = (obj: any, path: string) => path.split('.').reduce((o, k) => (o || {})[k], obj)
+
+        aValue = getNestedValue(a, sortConfig.key)
+        bValue = getNestedValue(b, sortConfig.key)
+
+        if (aValue === undefined || bValue === undefined) return 0;
+
+        if (typeof aValue === 'string' && typeof bValue === 'string') {
+          return sortConfig.direction === 'asc'
+            ? aValue.localeCompare(bValue)
+            : bValue.localeCompare(aValue)
+        }
+        if (typeof aValue === 'number' && typeof bValue === 'number') {
+          return sortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue
+        }
+        // Date sorting (assuming ISO strings)
+        if (sortConfig.key === 'updatedAt' || sortConfig.key === 'createdAt') {
+            return sortConfig.direction === 'asc'
+                ? new Date(aValue).getTime() - new Date(aValue).getTime()
+                : new Date(bValue).getTime() - new Date(bValue).getTime()
+        }
+        return 0
+      })
+    }
+    return filteredItems
+  }, [filters, sortConfig])
 
   // Calculate stats from data
   const totalItems = mockDataItems.length
@@ -60,26 +114,32 @@ export default function DataDemoPage() {
     mockDataItems.reduce((acc, item) => acc + item.metrics.completion, 0) / totalItems
   ) : 0
 
+  // Reset pagination when filters or sort change
+  useEffect(() => {
+    setItems([])
+    setPage(0) // This will be incremented to 1 in the loader `useEffect`, triggering a fresh load
+    setHasMore(true)
+    // This timeout helps prevent a flicker between old and new filtered data
+    setTimeout(() => setPage(1), 50)
+  }, [processedData])
+
   // Infinite scroll logic
   useEffect(() => { // eslint-disable-line react-hooks/exhaustive-deps
     if (page === 0) return;
 
-    const fetchItems = async () => {
+    const fetchItems = () => {
       setIsLoading(true);
-      // Add a longer delay for the initial load to showcase the skeleton
-      const delay = page === 1 ? 1500 : 500
-      await new Promise(resolve => setTimeout(resolve, delay)); // Simulate network delay
+      const isFirstPage = page === 1
       
       const pageSize = 12;
-      const newItems = mockDataItems.slice((page - 1) * pageSize, page * pageSize);
+      const newItems = processedData.slice((page - 1) * pageSize, page * pageSize);
       
-      if (newItems.length > 0) {
-        setItems(prev => [...prev, ...newItems]);
-      }
-      if (items.length + newItems.length >= mockDataItems.length) {
-        setHasMore(false);
-      }
-      setIsLoading(false);
+      // Simulate network delay, longer for initial load to showcase skeleton
+      setTimeout(() => {
+        setItems(prev => (isFirstPage ? newItems : [...prev, ...newItems]))
+        setHasMore(processedData.length > page * pageSize)
+        setIsLoading(false)
+      }, isFirstPage && items.length === 0 ? 1500 : 500)
     };
 
     if (hasMore) fetchItems();
@@ -137,23 +197,58 @@ export default function DataDemoPage() {
   ]
 
   useEffect(() => {
-    // Initial load by setting page to 1
-    setPage(1);
-  }, []);
+    // Animate stats cards in
+    if (!isInitialLoading && statsRef.current) {
+      gsap.fromTo(statsRef.current.children,
+        { y: 30, opacity: 0 },
+        {
+          duration: 0.6,
+          y: 0,
+          opacity: 1,
+          stagger: 0.1,
+          ease: "power2.out"
+        }
+      )
+    }
+  }, [isInitialLoading])
 
+  const handleSortChange = (config: SortConfig | null) => {
+    setSortConfig(config)
+  }
+
+  // For table view header clicks
+  const handleTableSort = (field: SortableField) => {
+    if (sortConfig?.key === field) {
+      if (sortConfig.direction === 'desc') {
+        // Cycle: desc -> asc
+        setSortConfig({ key: field, direction: 'asc' })
+      } else {
+        // Cycle: asc -> default
+        setSortConfig(null)
+      }
+    } else {
+      // New field, default to desc
+      setSortConfig({ key: field, direction: 'desc' })
+    }
+  }
+
+  const handleFilterChange = (newFilters: FilterConfig) => {
+    setFilters(newFilters)
+  }
+  
   // Handle item selection and open side panel
   const handleItemSelect = (item: DataItem) => {
     setSelectedItem(item)
     openSidePane('data-details')
   }
 
-  const isInitialLoading = isLoading && items.length === 0
-
   const renderView = () => {
     const commonProps = {
       data: items,
       onItemSelect: handleItemSelect,
-      selectedItem
+      selectedItem,
+      sortConfig,
+      onSort: handleTableSort,
     }
 
     switch (viewMode) {
@@ -177,25 +272,22 @@ export default function DataDemoPage() {
       <div className="space-y-8">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
+          <div className="flex-1">
             <h1 className="text-2xl font-bold tracking-tight">Data Showcase</h1>
             <p className="text-muted-foreground">
               {isInitialLoading 
                 ? "Loading projects..." 
-                : `Showing ${items.length} of ${mockDataItems.length} items`}
+                : `Showing ${processedData.length} item(s)`}
             </p>
           </div>
-          <DataViewModeSelector 
-            viewMode={viewMode} 
-            onChange={setViewMode}
-          />
+          <DataViewModeSelector viewMode={viewMode} onChange={setViewMode} />
         </div>
 
         {/* Stats Section */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {stats.map((stat) => {
-            if (stat.type === 'chart') {
-              return (
+        {!isInitialLoading && (
+          <div ref={statsRef} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {stats.map((stat) =>
+              stat.type === 'chart' ? (
                 <StatChartCard
                   key={stat.title}
                   title={stat.title}
@@ -205,29 +297,17 @@ export default function DataDemoPage() {
                   icon={stat.icon}
                   chartData={stat.chartData}
                 />
-              )
-            }
-            return (
-              <Card
-                key={stat.title}
-                className="p-6 border-border/50 hover:border-primary/30 transition-all duration-300 group cursor-pointer"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="p-3 bg-primary/10 rounded-full group-hover:bg-primary/20 transition-colors">
-                    {stat.icon}
-                  </div>
-                  <div className={cn("text-sm font-medium", stat.trend === 'up' ? "text-green-600" : "text-red-600")}>
-                    {stat.change}
-                  </div>
-                </div>
-                <div className="mt-4">
-                  <h3 className="text-2xl font-bold">{stat.value}</h3>
-                  <p className="text-sm text-muted-foreground mt-1">{stat.title}</p>
-                </div>
-              </Card>
-            )
-          })}
-        </div>
+              ) : null
+            )}
+          </div>
+        )}
+
+        <DataToolbar
+          filters={filters}
+          onFiltersChange={handleFilterChange}
+          sortConfig={sortConfig}
+          onSortChange={handleSortChange}
+        />
 
         <div ref={contentRef} className="min-h-[500px]">
           {isInitialLoading ? <AnimatedLoadingSkeleton viewMode={viewMode} /> : renderView()}
@@ -241,7 +321,7 @@ export default function DataDemoPage() {
               <span>Loading more...</span>
             </div>
           )}
-          {!isLoading && !hasMore && items.length > 0 && !isInitialLoading && (
+          {!isLoading && !hasMore && processedData.length > 0 && !isInitialLoading && (
             <p className="text-muted-foreground">You've reached the end.</p>
           )}
         </div>

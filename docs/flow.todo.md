@@ -1,4 +1,27 @@
- create a page to demonstrate presenting data to four view mode (list, card grid , table , tree). make sure the UI UX so amazing█
+===
+
+scroll to bottom in dashboard is not stick to right bottom.
+also why not auto applied to another page like demo data?
+
+===
+
+viewmodeswitcher: no need to show all iconbuttons, just let user hover first then gsap spread the iconbuttons to make the UI feel minimalism
+
+===
+
+demo data page: opening data item detail not working , the overlay side pane blank
+
+===
+
+demo data page: not working on overlay side pane mode. also not working in split pane right side. just blank
+
+===
+
+demo data page: we need feature like sort, filter for all the view mode (list, card grid , table , tree)
+
+=== DONE
+
+create a page to demonstrate presenting data to four view mode (list, card grid , table , tree). make sure the UI UX so amazing█
 
 === DONE
 
