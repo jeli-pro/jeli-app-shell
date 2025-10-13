@@ -51,6 +51,7 @@ import {
   SidebarIcon,
   useSidebar,
 } from './Sidebar';
+import { ViewModeSwitcher } from './ViewModeSwitcher';
 import { cn } from '@/lib/utils';
 
 interface MyWorkspace extends Workspace {
@@ -238,6 +239,18 @@ const AppMenuItem: React.FC<AppMenuItemProps> = ({ icon: Icon, label, badge, has
           {badge && <SidebarBadge>{badge}</SidebarBadge>}
           <SidebarTooltip label={label} badge={badge} />
         </SidebarMenuButton>
+
+        {page && !isCollapsed && ( // Always render switcher if there's a page
+          <div className={cn(
+            "absolute top-1/2 -translate-y-1/2 z-10",
+            "opacity-0 group-hover/item:opacity-100 group-focus-within/item:opacity-100",
+            "transition-opacity pointer-events-none group-hover/item:pointer-events-auto",
+            // If there are actions, move left to make space for the action button
+            hasActions ? "right-10" : "right-2"
+          )}>
+            <ViewModeSwitcher targetPage={page} />
+          </div>
+        )}
 
         {hasActions && (
           <DropdownMenu>

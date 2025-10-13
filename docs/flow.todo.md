@@ -25,7 +25,7 @@ also the breadcrumb navigation should aware of the content position
 
 sidebar item: while hover, show ViewModeSwitcher so user can open page with desired view mode
 
-===
+=== DONE
 
 viewmodeswitcher: no need to show all iconbuttons, just let user hover first then gsap spread the iconbuttons to make the UI feel minimalism
 

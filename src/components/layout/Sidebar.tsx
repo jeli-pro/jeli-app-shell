@@ -243,7 +243,7 @@ const SidebarMenuAction = React.forwardRef<
       variant="ghost"
       size="icon"
       className={cn(
-        'h-full w-8 rounded-l-none opacity-0 group-hover/item:opacity-100 transition-opacity',
+        'absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 rounded-md opacity-0 group-hover/item:opacity-100 transition-opacity',
         'focus:opacity-100', // show on focus for accessibility
         className
       )}

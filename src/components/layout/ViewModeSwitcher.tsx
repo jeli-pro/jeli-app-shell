@@ -24,7 +24,7 @@ const pageToPaneMap: Record<ActivePage, AppShellState['sidePaneContent']> = {
   'data-demo': 'dataDemo',
 };
 
-export function ViewModeSwitcher({ pane }: { pane?: 'main' | 'right' }) {
+export function ViewModeSwitcher({ pane, targetPage }: { pane?: 'main' | 'right', targetPage?: ActivePage }) {
   const {
     bodyState,
     sidePaneContent,
@@ -35,8 +35,9 @@ export function ViewModeSwitcher({ pane }: { pane?: 'main' | 'right' }) {
     fullscreenTarget,
     dispatch,
   } = useAppShell()
-  const { activePage, setActivePage } = useAppStore()
+  const { activePage: currentActivePage, setActivePage } = useAppStore()
 
+  const activePage = targetPage || currentActivePage;
   const [isExpanded, setIsExpanded] = useState(false);
   const buttonRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
@@ -134,6 +135,9 @@ export function ViewModeSwitcher({ pane }: { pane?: 'main' | 'right' }) {
     if (isFullscreen) {
       toggleFullscreen();
     }
+    if (targetPage) {
+      setActivePage(targetPage);
+    }
   }
 
   const buttons = [
@@ -160,7 +164,14 @@ export function ViewModeSwitcher({ pane }: { pane?: 'main' | 'right' }) {
     },
     {
       id: 'fullscreen',
-      onClick: () => toggleFullscreen(pane),
+      onClick: () => {
+        if (targetPage && targetPage !== currentActivePage) {
+          setActivePage(targetPage);
+          setTimeout(() => toggleFullscreen(pane), 50);
+        } else {
+          toggleFullscreen(pane);
+        }
+      },
       active: isThisPaneFullscreen,
       title: "Toggle Fullscreen",
       icon: isThisPaneFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />

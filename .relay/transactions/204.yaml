@@ -1,0 +1,419 @@
+uuid: 4423528f-7d6f-42e1-889a-0e0600a75f28
+projectId: jeli-app-shell
+createdAt: '2025-10-13T03:57:47.122Z'
+gitCommitMsg: >-
+  refactor(sidebar): absolutely position ViewModeSwitcher on hover
+
+  This commit refactors the placement of the `ViewModeSwitcher` within sidebar
+  menu items to address UI layout issues.
+
+  - The `ViewModeSwitcher` is now absolutely positioned within the
+    `SidebarMenuItem` instead of being a flex-item sibling to the main button.
+  - This prevents the switcher from affecting the layout of other elements
+    within the menu item, eliminating any unwanted pushing or resizing on hover.
+  - A `z-index` is applied to ensure the switcher appears above other
+    sidebar content.
+  - The position is dynamically adjusted to avoid overlapping with the "more
+    actions" button when it's present.
+promptSummary: >-
+  The user was unhappy with the `ViewModeSwitcher` placement in the sidebar.
+  They requested it be placed *inside* the menu item and have a high z-index to
+  avoid being constrained.
+reasoning:
+  - >-
+    Of course. I understand the feedback. Placing the switcher as a suffix
+    breaks the flow and looks awkward. Positioning it absolutely *within* the
+    item, on a higher z-index, will solve the layout issue and give it a much
+    cleaner, "floating" appearance on hover. The overflow clipping is an
+    unavoidable consequence of the sidebar being a scrollable container, but
+    this change will fix the primary layout problem.
+  - 'Here are the adjustments to achieve this:'
+  - >-
+    1.  **Modify `EnhancedSidebar.tsx`:** I'll reposition the `ViewModeSwitcher`
+    to be an absolutely positioned element within each `SidebarMenuItem`. This
+    removes it from the flex layout, preventing any layout shifts. I'll also add
+    a high `z-index` so it appears on top of other sidebar content. It will also
+    adjust its position to avoid overlapping the "more actions" button when
+    present.
+  - '### 1. Update `EnhancedSidebar.tsx`'
+  - >-
+    I will modify the `AppMenuItem` component to reposition and restyle the
+    `ViewModeSwitcher` container.
+  - >-
+    This change ensures the `ViewModeSwitcher` appears seamlessly over the
+    sidebar item on hover without disrupting the layout, providing a much better
+    user experience.
+  - '---'
+operations:
+  - type: write
+    path: src/components/layout/EnhancedSidebar.tsx
+    content: >+
+      --- src/components/layout/EnhancedSidebar.tsx
+
+      +++ src/components/layout/EnhancedSidebar.tsx
+
+      @@ -176,6 +176,8 @@
+         const { handleNavigation, activePage } = useAppStore()
+         const { compactMode, bodyState, sidePaneContent, openSidePane, dispatch } = useAppShell()
+         const { isCollapsed } = useSidebar();
+      +
+
+      +  const switcherRightPosition = hasActions ? 'right-11' : 'right-3';
+       
+         const isPageActive = (page: ActivePage) => {
+           const pageToSidePaneContent: { [key in ActivePage]?: 'main' | 'settings' | 'toaster' | 'notifications' } = {
+      @@ -220,15 +222,17 @@
+                 <SidebarTooltip label={label} badge={badge} />
+               </SidebarMenuButton>
+       
+      -        {page && !isCollapsed && (
+
+      -          <div className={cn(
+
+      -            "opacity-0 group-hover/item:opacity-100
+      group-focus-within/item:opacity-100",
+
+      -            "transition-opacity pointer-events-none
+      group-hover/item:pointer-events-auto shrink-0"
+
+      -          )}>
+
+      -            <ViewModeSwitcher targetPage={page} />
+
+      -          </div>
+
+      -        )}
+
+      +        {page && !isCollapsed &&
+
+      +          <div
+
+      +            className={cn(
+
+      +              "absolute top-1/2 z-20 -translate-y-1/2",
+
+      +              switcherRightPosition,
+
+      +              "opacity-0 transition-all duration-200 ease-in-out
+      group-hover/item:opacity-100",
+
+      +              "pointer-events-none group-hover/item:pointer-events-auto",
+
+      +            )}
+
+      +          >
+
+      +            <ViewModeSwitcher targetPage={page} />
+
+      +          </div>}
+       
+               {hasActions && (
+                 <DropdownMenu>
+
+    patchStrategy: standard-diff
+snapshot:
+  src/components/layout/EnhancedSidebar.tsx: >-
+    import React from 'react';
+
+    import {
+      Home,
+      Settings,
+      HelpCircle,
+      Component,
+      Rocket,
+      MoreHorizontal,
+      Bell,
+      Search,
+      FileText,
+      Star,
+      Trash2,
+      FolderOpen,
+      Mail,
+      Bookmark,
+      Download,
+      User,
+      Plus,
+      Database
+    } from 'lucide-react';
+
+    import { useAppStore, type ActivePage } from '@/store/appStore';
+
+    import { useAppShell } from '@/context/AppShellContext';
+
+    import { BODY_STATES } from '@/lib/utils';
+
+    import {
+      Workspaces,
+      WorkspaceTrigger,
+      WorkspaceContent,
+      type Workspace,
+    } from './WorkspaceSwitcher';
+
+    import {
+      DropdownMenu,
+      DropdownMenuContent,
+      DropdownMenuItem,
+      DropdownMenuTrigger,
+    } from '@/components/ui/dropdown-menu';
+
+    import {
+      Sidebar,
+      SidebarContent,
+      SidebarHeader,
+      SidebarTitle,
+      SidebarBody,
+      SidebarFooter,
+      SidebarSection,
+      SidebarMenuItem,
+      SidebarMenuButton,
+      SidebarMenuAction,
+      SidebarLabel,
+      SidebarBadge,
+      SidebarTooltip,
+      SidebarIcon,
+      useSidebar,
+    } from './Sidebar';
+
+    import { ViewModeSwitcher } from './ViewModeSwitcher';
+
+    import { cn } from '@/lib/utils';
+
+
+    interface MyWorkspace extends Workspace {
+      logo: string;
+      plan: string;
+    }
+
+
+    const mockWorkspaces: MyWorkspace[] = [
+      { id: 'ws1', name: 'Acme Inc.', logo: 'https://avatar.vercel.sh/acme.png', plan: 'Pro' },
+      { id: 'ws2', name: 'Monsters Inc.', logo: 'https://avatar.vercel.sh/monsters.png', plan: 'Free' },
+      { id: 'ws3', name: 'Stark Industries', logo: 'https://avatar.vercel.sh/stark.png', plan: 'Enterprise' },
+    ];
+
+
+    const SidebarWorkspaceTrigger = () => {
+      const { isCollapsed, compactMode } = useSidebar();
+
+      return (
+        <WorkspaceTrigger
+          collapsed={isCollapsed}
+          className={cn(
+            'rounded-xl transition-colors hover:bg-accent/50 w-full',
+            isCollapsed ? 'p-2' : 'p-3 bg-accent/50',
+          )}
+          avatarClassName={cn(compactMode ? 'h-8 w-8' : 'h-10 w-10')}
+        />
+      );
+    };
+
+
+    interface SidebarProps {
+      onMouseEnter?: () => void;
+      onMouseLeave?: () => void;
+    }
+
+
+    export const EnhancedSidebar = React.forwardRef<HTMLDivElement,
+    SidebarProps>(
+      ({ onMouseEnter, onMouseLeave }, ref) => {
+        const { sidebarWidth, compactMode, appName, appLogo } = useAppShell();
+        const [selectedWorkspace, setSelectedWorkspace] = React.useState(mockWorkspaces[0]);
+
+        return (
+          <Sidebar
+            ref={ref}
+            style={{ width: sidebarWidth }}
+            onMouseEnter={onMouseEnter}
+            onMouseLeave={onMouseLeave}
+          >
+            <SidebarContent>
+              <SidebarHeader>
+                {appLogo || (
+                  <div className="p-2 bg-primary/20 rounded-lg">
+                    <Rocket className="w-5 h-5 text-primary" />
+                  </div>
+                )}
+                <SidebarTitle>{appName}</SidebarTitle>
+              </SidebarHeader>
+
+              <SidebarBody>
+                <SidebarSection title="Main">
+                  <AppMenuItem icon={Home} label="Dashboard" page="dashboard" />
+                  <AppMenuItem icon={Database} label="Data Demo" page="data-demo" />
+                  <AppMenuItem icon={Search} label="Search" />
+                  <AppMenuItem icon={Bell} label="Notifications" badge={3} page="notifications" opensInSidePane />
+                </SidebarSection>
+                
+                <SidebarSection title="Workspace" collapsible defaultExpanded>
+                  <AppMenuItem icon={FileText} label="Documents" hasActions>
+                    <AppMenuItem icon={FileText} label="Recent" isSubItem />
+                    <AppMenuItem icon={Star} label="Starred" isSubItem />
+                    <AppMenuItem icon={Trash2} label="Trash" isSubItem />
+                  </AppMenuItem>
+                  <AppMenuItem icon={FolderOpen} label="Projects" hasActions />
+                  <AppMenuItem icon={Mail} label="Messages" badge={12} />
+                </SidebarSection>
+                
+                <SidebarSection title="Personal" collapsible>
+                  <AppMenuItem icon={Bookmark} label="Bookmarks" />
+                  <AppMenuItem icon={Star} label="Favorites" />
+                  <AppMenuItem icon={Download} label="Downloads" />
+                </SidebarSection>
+
+                <SidebarSection title="Components" collapsible defaultExpanded>
+                  <AppMenuItem icon={Component} label="Toaster" page="toaster" />
+                </SidebarSection>
+              </SidebarBody>
+
+              <SidebarFooter>
+                <SidebarSection>
+                  <AppMenuItem icon={User} label="Profile" />
+                  <AppMenuItem icon={Settings} label="Settings" page="settings" />
+                  <AppMenuItem icon={HelpCircle} label="Help" />
+                </SidebarSection>
+
+                <div className={cn(compactMode ? 'mt-4' : 'mt-6')}>
+                  <Workspaces
+                    workspaces={mockWorkspaces}
+                    selectedWorkspaceId={selectedWorkspace.id}
+                    onWorkspaceChange={setSelectedWorkspace}
+                  >
+                    <SidebarWorkspaceTrigger />
+                    <WorkspaceContent>
+                      <button className="flex w-full items-center gap-2 rounded-sm px-2 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground focus:outline-none">
+                        <Plus className="h-4 w-4" />
+                        <span>Create Workspace</span>
+                      </button>
+                    </WorkspaceContent>
+                  </Workspaces>
+                </div>
+              </SidebarFooter>
+            </SidebarContent>
+          </Sidebar>
+        );
+      },
+    );
+
+    EnhancedSidebar.displayName = 'EnhancedSidebar';
+
+
+
+    // Example of a reusable menu item component built with the new Sidebar
+    primitives
+
+    interface AppMenuItemProps {
+      icon: React.ElementType;
+      label: string;
+      badge?: number;
+      hasActions?: boolean;
+      children?: React.ReactNode;
+      isSubItem?: boolean;
+      page?: ActivePage;
+      opensInSidePane?: boolean;
+    }
+
+
+    const AppMenuItem: React.FC<AppMenuItemProps> = ({ icon: Icon, label, badge,
+    hasActions, children, isSubItem = false, page, opensInSidePane = false }) =>
+    {
+      const { handleNavigation, activePage } = useAppStore()
+      const { compactMode, bodyState, sidePaneContent, openSidePane, dispatch } = useAppShell()
+      const { isCollapsed } = useSidebar();
+
+      const isPageActive = (page: ActivePage) => {
+        const pageToSidePaneContent: { [key in ActivePage]?: 'main' | 'settings' | 'toaster' | 'notifications' } = {
+          dashboard: 'main',
+          settings: 'settings',
+          toaster: 'toaster',
+          notifications: 'notifications',
+          'data-demo': 'main',
+        };
+        return activePage === page || (bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === pageToSidePaneContent[page]);
+      };
+      
+      const isActive = page ? isPageActive(page) : false;
+
+      const handleClick = () => {
+        if (page) {
+          if (opensInSidePane) {
+            const pageToPaneMap: { [key in ActivePage]?: 'main' | 'settings' | 'toaster' | 'notifications' } = {
+              dashboard: 'main',
+              settings: 'settings',
+              toaster: 'toaster',
+              notifications: 'notifications',
+              'data-demo': 'main',
+            };
+            if (pageToPaneMap[page]) openSidePane(pageToPaneMap[page]!)
+          } else {
+            handleNavigation(page);
+          }
+        }
+      };
+
+      return (
+        <div className={isSubItem ? (compactMode ? 'ml-4' : 'ml-6') : ''}>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              onClick={handleClick}
+              isActive={isActive}
+              draggable={!!page}
+              onDragStart={(_e) => {
+                if (page) {
+                  // set dragged page in AppShell context
+                  dispatch({ type: 'SET_DRAGGED_PAGE', payload: page });
+                }
+              }}
+              onDragEnd={() => {
+                dispatch({ type: 'SET_DRAGGED_PAGE', payload: null });
+                dispatch({ type: 'SET_DRAG_HOVER_TARGET', payload: null });
+              }}
+            >
+              <SidebarIcon>
+                <Icon className={isSubItem ? "w-3 h-3" : "w-4 h-4"}/>
+              </SidebarIcon>
+              <SidebarLabel>{label}</SidebarLabel>
+              {badge && <SidebarBadge>{badge}</SidebarBadge>}
+              <SidebarTooltip label={label} badge={badge} />
+            </SidebarMenuButton>
+
+            {page && !isCollapsed && (
+              <div className={cn(
+                "opacity-0 group-hover/item:opacity-100 group-focus-within/item:opacity-100",
+                "transition-opacity pointer-events-none group-hover/item:pointer-events-auto shrink-0"
+              )}>
+                <ViewModeSwitcher targetPage={page} />
+              </div>
+            )}
+
+            {hasActions && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <SidebarMenuAction>
+                    <MoreHorizontal className="h-4 w-4" />
+                  </SidebarMenuAction>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent side="right" align="start">
+                  <DropdownMenuItem>
+                    <span>Edit {label}</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem>
+                    <span>Delete {label}</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </SidebarMenuItem>
+          {!isCollapsed && children && (
+            <div className="space-y-1 mt-1">{children}</div>
+          )}
+        </div>
+      );
+    };
+approved: false
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: undone
+id: 204
