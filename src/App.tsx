@@ -1,4 +1,14 @@
 import React, { useEffect } from "react";
+import {
+  createBrowserRouter,
+  RouterProvider,
+  Outlet,
+  Navigate,
+  useNavigate,
+  useLocation,
+  useSearchParams,
+} from "react-router-dom";
+
 import { AppShell } from "./components/layout/AppShell";
 import { AppShellProvider, useAppShell } from "./context/AppShellContext";
 import { useAppStore } from "./store/appStore";
@@ -11,6 +21,7 @@ import { MainContent } from "./components/layout/MainContent";
 import { RightPane } from "./components/layout/RightPane";
 import { TopBar } from "./components/layout/TopBar";
 import { CommandPalette } from "./components/global/CommandPalette";
+import { ToasterProvider } from "./components/ui/toast";
 
 // Import page/content components
 import { DashboardContent } from "./pages/Dashboard";
@@ -18,8 +29,6 @@ import { SettingsPage } from "./pages/Settings";
 import { ToasterDemo } from "./pages/ToasterDemo";
 import { NotificationsPage } from "./pages/Notifications";
 import DataDemoPage from "./pages/DataDemo";
-import { DataDetailPanel } from "./pages/DataDemo/components/DataDetailPanel";
-import { ContentInSidePanePlaceholder } from "./components/shared/ContentInSidePanePlaceholder";
 import { SettingsContent } from "./features/settings/SettingsContent";
 import { LoginPage } from "./components/auth/LoginPage";
 
@@ -34,7 +43,6 @@ import {
   Search,
   Filter,
   Plus,
-  PanelRight,
   ChevronRight,
   Rocket,
   Layers,
@@ -44,84 +52,83 @@ import {
 import { BODY_STATES } from "./lib/utils";
 import { cn } from "./lib/utils";
 
-// The content for the main area, with page routing logic
-function AppContent() {
-  const { activePage, setActivePage } = useAppStore();
-  const { bodyState, sidePaneContent, openSidePane } = useAppShell();
+// Wrapper for LoginPage to provide auth handlers
+function LoginPageWrapper() {
+  const { login, forgotPassword } = useAuthStore();
+  const navigate = useNavigate();
 
-  const pageMap = {
-    dashboard: {
-      component: <DashboardContent />,
-      sidePaneContent: "main",
-      icon: LayoutDashboard,
-      name: "dashboard",
-    },
-    settings: {
-      component: <SettingsPage />,
-      sidePaneContent: "settings",
-      icon: Settings,
-      name: "settings",
-    },
-    toaster: {
-      component: <ToasterDemo />,
-      sidePaneContent: "toaster",
-      icon: Component,
-      name: "toaster demo",
-    },
-    notifications: {
-      component: <NotificationsPage />,
-      sidePaneContent: "notifications",
-      icon: Bell,
-      name: "notifications",
-    },
-    "data-demo": {
-      component: <DataDemoPage />,
-      sidePaneContent: "dataDemo",
-      icon: Database,
-      name: "data demo",
-    },
-  } as const;
+  const handleLogin = async (email: string, password: string) => {
+    try {
+      await login(email, password);
+      navigate("/");
+    } catch (error) {
+      console.error("Login failed:", error);
+      // In a real app, you'd show an error message to the user
+    }
+  };
 
-  const currentPage = pageMap[activePage];
+  const handleForgotPassword = async (email: string) => {
+    try {
+      await forgotPassword(email);
+    } catch (error) {
+      console.error("Forgot password failed:", error);
+    }
+  };
 
-  if (!currentPage) {
-    // This can happen if the persisted state for activePage is invalid.
-    // We'll reset it to the dashboard.
-    useEffect(() => {
-      setActivePage("dashboard");
-    }, [setActivePage]);
+  const handleSignUp = () => {
+    // In a real app, navigate to sign up page
+    console.log("Navigate to sign up page");
+  };
 
-    // Return null or a loading indicator while the state is being corrected.
-    return null;
-    ``;
-  }
-
-  if (
-    sidePaneContent === currentPage.sidePaneContent &&
-    (bodyState === BODY_STATES.SIDE_PANE ||
-      bodyState === BODY_STATES.SPLIT_VIEW)
-  ) {
-    return (
-      <ContentInSidePanePlaceholder
-        icon={currentPage.icon}
-        title={`${currentPage.name.charAt(0).toUpperCase() + currentPage.name.slice(1)} is in Side Pane`}
-        pageName={currentPage.name}
-        onBringBack={() => {
-          openSidePane(currentPage.sidePaneContent);
-          setActivePage(activePage);
-        }}
-      />
-    );
-  }
-
-  return currentPage.component;
+  return (
+    <LoginPage
+      onLogin={handleLogin}
+      onForgotPassword={handleForgotPassword}
+      onSignUp={handleSignUp}
+    />
+  );
 }
 
-// Content for the Top Bar
+// Checks for authentication and redirects to login if needed
+function ProtectedRoute() {
+  const { isAuthenticated } = useAuthStore();
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+  return <Outlet />;
+}
+
+// The main layout for authenticated parts of the application
+function ProtectedLayout() {
+  const isDarkMode = useAppStore((state) => state.isDarkMode);
+
+  useEffect(() => {
+    document.documentElement.classList.toggle("dark", isDarkMode);
+  }, [isDarkMode]);
+
+  return (
+    <div className="h-screen w-screen overflow-hidden bg-background">
+      <AppShellProvider
+        appName="Jeli App"
+        appLogo={
+          <div className="p-2 bg-primary/20 rounded-lg">
+            <Rocket className="w-5 h-5 text-primary" />
+          </div>
+        }
+      >
+        <ComposedApp />
+      </AppShellProvider>
+    </div>
+  );
+}
+
+// Content for the Top Bar (will be fully refactored in Part 2)
 function AppTopBar() {
-  const { activePage, searchTerm, setSearchTerm } = useAppStore();
+  const { searchTerm, setSearchTerm } = useAppStore();
   const { openSidePane } = useAppShell();
   const [isSearchFocused, setIsSearchFocused] = React.useState(false);
+  const location = useLocation();
+  const activePage = location.pathname.split('/').filter(Boolean).pop()?.replace('-', ' ') || 'dashboard';
 
   return (
     <div className="flex items-center gap-3 flex-1">
@@ -190,10 +197,36 @@ function AppTopBar() {
 
 // The main App component that composes the shell
 function ComposedApp() {
-  const { sidePaneContent, closeSidePane, bodyState, toggleSplitView } =
-    useAppShell();
-  const { setActivePage } = useAppStore();
+  const {
+    sidePaneContent,
+    closeSidePane,
+    bodyState,
+    openSidePane,
+    dispatch,
+  } = useAppShell();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
 
+  useEffect(() => {
+    const pane = searchParams.get('sidePane') as 'settings' | 'notifications' | null;
+    const view = searchParams.get('view');
+    const right = searchParams.get('right');
+
+    if (pane) {
+      if (bodyState !== BODY_STATES.SIDE_PANE || sidePaneContent !== pane) {
+        openSidePane(pane);
+      }
+    } else if (view === 'split' && right) {
+      if (bodyState !== BODY_STATES.SPLIT_VIEW || sidePaneContent !== right) {
+        dispatch({ type: 'SET_SIDE_PANE_CONTENT', payload: right as any });
+        dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.SPLIT_VIEW });
+      }
+    } else if (bodyState !== BODY_STATES.NORMAL) {
+      closeSidePane();
+    }
+  }, [searchParams, bodyState, sidePaneContent, openSidePane, closeSidePane, dispatch]);
+  
   const isOverlaySidePane = bodyState === BODY_STATES.SIDE_PANE;
 
   const contentMap = {
@@ -227,11 +260,11 @@ function ComposedApp() {
       page: "notifications",
       content: <NotificationsPage isInSidePane={isOverlaySidePane} />,
     },
-    "dataDemo": {
+    dataDemo: {
       title: "Data Showcase",
       icon: Database,
       page: "data-demo",
-      content: <DataDemoPage isInSidePane={isOverlaySidePane} />
+      content: <DataDemoPage isInSidePane={isOverlaySidePane} />,
     },
     details: {
       title: "Details Panel",
@@ -254,9 +287,22 @@ function ComposedApp() {
 
   const handleMaximize = () => {
     if ("page" in currentContent && currentContent.page) {
-      setActivePage(currentContent.page as any);
+      navigate(`/${currentContent.page}`, { replace: true });
+    } else {
+      setSearchParams({}, { replace: true });
     }
-    closeSidePane();
+  };
+
+  const handleToggleSplitView = () => {
+    if (bodyState === BODY_STATES.SIDE_PANE) {
+      const newParams = new URLSearchParams(location.search);
+      newParams.set('view', 'split');
+      newParams.set('right', sidePaneContent);
+      newParams.delete('sidePane');
+      setSearchParams(newParams, { replace: true });
+    } else if (bodyState === BODY_STATES.SPLIT_VIEW) {
+      setSearchParams({ sidePane: sidePaneContent }, { replace: true });
+    }
   };
 
   const rightPaneHeader =
@@ -272,7 +318,7 @@ function ComposedApp() {
           {(bodyState === BODY_STATES.SIDE_PANE ||
             bodyState === BODY_STATES.SPLIT_VIEW) && (
             <button
-              onClick={toggleSplitView}
+              onClick={handleToggleSplitView}
               className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors"
               title={
                 bodyState === BODY_STATES.SIDE_PANE
@@ -310,7 +356,7 @@ function ComposedApp() {
       }
       mainContent={
         <MainContent>
-          <AppContent />
+          <Outlet />
         </MainContent>
       }
       rightPane={
@@ -322,58 +368,36 @@ function ComposedApp() {
 }
 
 function App() {
-  const isDarkMode = useAppStore((state) => state.isDarkMode);
-  const { isAuthenticated, login, forgotPassword } = useAuthStore();
-
-  useEffect(() => {
-    document.documentElement.classList.toggle("dark", isDarkMode);
-  }, [isDarkMode]);
-
-  const handleLogin = async (email: string, password: string) => {
-    try {
-      await login(email, password);
-    } catch (error) {
-      console.error("Login failed:", error);
-      // In a real app, you'd show an error message to the user
-    }
-  };
-
-  const handleForgotPassword = async (email: string) => {
-    try {
-      await forgotPassword(email);
-    } catch (error) {
-      console.error("Forgot password failed:", error);
-    }
-  };
-
-  const handleSignUp = () => {
-    // In a real app, navigate to sign up page
-    console.log("Navigate to sign up page");
-  };
-
-  if (!isAuthenticated) {
-    return (
-      <LoginPage
-        onLogin={handleLogin}
-        onForgotPassword={handleForgotPassword}
-        onSignUp={handleSignUp}
-      />
-    );
-  }
+  const router = createBrowserRouter([
+    {
+      path: "/login",
+      element: <LoginPageWrapper />,
+    },
+    {
+      path: "/",
+      element: <ProtectedRoute />,
+      children: [
+        {
+          path: "/",
+          element: <ProtectedLayout />,
+          children: [
+            { index: true, element: <Navigate to="/dashboard" replace /> },
+            { path: "dashboard", element: <DashboardContent /> },
+            { path: "settings", element: <SettingsPage /> },
+            { path: "toaster", element: <ToasterDemo /> },
+            { path: "notifications", element: <NotificationsPage /> },
+            { path: "data-demo", element: <DataDemoPage /> },
+            { path: "data-demo/:itemId", element: <DataDemoPage /> },
+          ],
+        },
+      ],
+    },
+  ]);
 
   return (
-    <div className="h-screen w-screen overflow-hidden bg-background">
-      <AppShellProvider
-        appName="Jeli App"
-        appLogo={
-          <div className="p-2 bg-primary/20 rounded-lg">
-            <Rocket className="w-5 h-5 text-primary" />
-          </div>
-        }
-      >
-        <ComposedApp />
-      </AppShellProvider>
-    </div>
+    <ToasterProvider>
+      <RouterProvider router={router} />
+    </ToasterProvider>
   );
 }
 

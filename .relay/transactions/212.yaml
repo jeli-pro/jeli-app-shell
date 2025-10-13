@@ -1,0 +1,588 @@
+uuid: d8e02d06-1218-472e-848e-282121e4215f
+projectId: jeli-app-shell
+createdAt: '2025-10-13T07:27:25.611Z'
+gitCommitMsg: >-
+  refactor: Make content rendering route-based
+
+  Removes the `activePage` state from the Zustand store, making React Router's
+  URL the single source of truth for the current page.
+
+  - Replaced `useAppStore`'s `activePage` with `useLocation` from
+    `react-router-dom` in `AppTopBar` to derive the current page for
+    breadcrumbs.
+  - Replaced `setActivePage` with the `useNavigate` hook in `ComposedApp`
+    for programmatic navigation.
+promptSummary: >-
+  The user requested to execute Part 2 of the plan to refactor the application
+  to use React Router for content rendering.
+reasoning:
+  - >-
+    Executing Part 2 of the plan to make the application's content rendering
+    fully route-based.
+  - '### Step 1: Remove `activePage` from Zustand Store'
+  - >-
+    First, I will remove the now-redundant `activePage` state and its related
+    actions (`setActivePage`, `handleNavigation`) from the Zustand store. The
+    URL, managed by React Router, is now the single source of truth for which
+    page is active.
+  - '### Step 2: Refactor `App.tsx` for Route-Aware Content'
+  - >-
+    Next, I'll update the `App.tsx` component. The `AppTopBar` will now derive
+    the active page from the URL for its breadcrumb display using the
+    `useLocation` hook. The `ComposedApp` component will use the `useNavigate`
+    hook for programmatic navigation, such as when maximizing a side pane to the
+    main view. This completes the removal of the old state-based navigation
+    logic.
+operations:
+  - type: write
+    path: src/store/appStore.ts
+    content: |+
+      --- src/store/appStore.ts
+      +++ src/store/appStore.ts
+      @@ -5,28 +5,19 @@
+       
+       interface AppState {
+         // UI States
+      -  activePage: ActivePage
+         isCommandPaletteOpen: boolean
+         searchTerm: string
+         isDarkMode: boolean
+         
+         // Actions
+      -  setActivePage: (page: ActivePage) => void
+         setCommandPaletteOpen: (open: boolean) => void
+         setSearchTerm: (term: string) => void
+         toggleDarkMode: () => void
+      -  
+      -  // Composite Actions
+      -  handleNavigation: (page: ActivePage) => void
+       }
+       
+       const defaultState = {
+      -  activePage: 'dashboard' as ActivePage,
+         isCommandPaletteOpen: false,
+         searchTerm: '',
+         isDarkMode: false,
+       }
+      @@ -37,18 +28,12 @@
+           (set) => ({
+             ...defaultState,
+             
+             // Basic setters
+      -      setActivePage: (page) => set({ activePage: page }),
+             setCommandPaletteOpen: (open) => set({ isCommandPaletteOpen: open }),
+             setSearchTerm: (term) => set({ searchTerm: term }),
+             toggleDarkMode: () => set((state) => ({ isDarkMode: !state.isDarkMode })),
+      -      
+      -      // Composite actions
+      -      handleNavigation: (page) => {
+      -        set({ activePage: page });
+      -      },
+           }),
+           {
+             name: 'app-preferences',
+             partialize: (state) => ({
+      -        activePage: state.activePage,
+               isDarkMode: state.isDarkMode,
+               // searchTerm is not persisted
+             }),
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/App.tsx
+    content: >+
+      --- src/App.tsx
+
+      +++ src/App.tsx
+
+      @@ -2,8 +2,10 @@
+       import {
+         createBrowserRouter,
+         RouterProvider,
+         Outlet,
+         Navigate,
+      +  useLocation,
+
+      +  useNavigate,
+       } from "react-router-dom";
+       
+       import { AppShell } from "./components/layout/AppShell";
+      @@ -141,9 +143,11 @@
+       
+       // Content for the Top Bar (will be fully refactored in Part 2)
+       function AppTopBar() {
+      -  const { activePage, searchTerm, setSearchTerm } = useAppStore();
+
+      +  const { searchTerm, setSearchTerm } = useAppStore();
+         const { openSidePane } = useAppShell();
+         const [isSearchFocused, setIsSearchFocused] = React.useState(false);
+      +  const location = useLocation();
+
+      +  const activePage =
+      location.pathname.split('/').filter(Boolean).pop()?.replace('-', ' ') ||
+      'dashboard';
+       
+         return (
+           <div className="flex items-center gap-3 flex-1">
+      @@ -165,7 +169,7 @@
+               </a>
+               <ChevronRight className="w-4 h-4 text-muted-foreground" />
+               <span className="font-medium text-foreground capitalize">
+      -          {activePage}
+
+      +          {activePage}
+               </span>
+             </div>
+       
+      @@ -211,8 +215,8 @@
+       function ComposedApp() {
+         const { sidePaneContent, closeSidePane, bodyState, toggleSplitView } =
+           useAppShell();
+      -  const { setActivePage } = useAppStore();
+
+      +  const navigate = useNavigate();
+       
+         const isOverlaySidePane = bodyState === BODY_STATES.SIDE_PANE;
+       
+      @@ -271,7 +275,7 @@
+       
+         const handleMaximize = () => {
+           if ("page" in currentContent && currentContent.page) {
+      -      setActivePage(currentContent.page as any);
+
+      +      navigate(`/${currentContent.page}`);
+           }
+           closeSidePane();
+         };
+
+    patchStrategy: standard-diff
+snapshot:
+  src/store/appStore.ts: >-
+    import { create } from 'zustand'
+
+    import { persist } from 'zustand/middleware'
+
+
+    export type ActivePage = 'dashboard' | 'settings' | 'toaster' |
+    'notifications' | 'data-demo';
+
+
+    interface AppState {
+      // UI States
+      activePage: ActivePage
+      isCommandPaletteOpen: boolean
+      searchTerm: string
+      isDarkMode: boolean
+      
+      // Actions
+      setActivePage: (page: ActivePage) => void
+      setCommandPaletteOpen: (open: boolean) => void
+      setSearchTerm: (term: string) => void
+      toggleDarkMode: () => void
+      
+      // Composite Actions
+      handleNavigation: (page: ActivePage) => void
+    }
+
+
+    const defaultState = {
+      activePage: 'dashboard' as ActivePage,
+      isCommandPaletteOpen: false,
+      searchTerm: '',
+      isDarkMode: false,
+    }
+
+
+    export const useAppStore = create<AppState>()(
+      persist(
+        (set) => ({
+          ...defaultState,
+          
+          // Basic setters
+          setActivePage: (page) => set({ activePage: page }),
+          setCommandPaletteOpen: (open) => set({ isCommandPaletteOpen: open }),
+          setSearchTerm: (term) => set({ searchTerm: term }),
+          toggleDarkMode: () => set((state) => ({ isDarkMode: !state.isDarkMode })),
+          
+          // Composite actions
+          handleNavigation: (page) => {
+            set({ activePage: page });
+          },
+        }),
+        {
+          name: 'app-preferences',
+          partialize: (state) => ({
+            activePage: state.activePage,
+            isDarkMode: state.isDarkMode,
+            // searchTerm is not persisted
+          }),
+        }
+      )
+    )
+  src/App.tsx: |-
+    import React, { useEffect } from "react";
+    import {
+      createBrowserRouter,
+      RouterProvider,
+      Outlet,
+      Navigate,
+    } from "react-router-dom";
+
+    import { AppShell } from "./components/layout/AppShell";
+    import { AppShellProvider, useAppShell } from "./context/AppShellContext";
+    import { useAppStore } from "./store/appStore";
+    import { useAuthStore } from "./store/authStore";
+    import "./index.css";
+
+    // Import library components
+    import { EnhancedSidebar } from "./components/layout/EnhancedSidebar";
+    import { MainContent } from "./components/layout/MainContent";
+    import { RightPane } from "./components/layout/RightPane";
+    import { TopBar } from "./components/layout/TopBar";
+    import { CommandPalette } from "./components/global/CommandPalette";
+    import { ToasterProvider } from "./components/ui/toast";
+
+    // Import page/content components
+    import { DashboardContent } from "./pages/Dashboard";
+    import { SettingsPage } from "./pages/Settings";
+    import { ToasterDemo } from "./pages/ToasterDemo";
+    import { NotificationsPage } from "./pages/Notifications";
+    import DataDemoPage from "./pages/DataDemo";
+    import { SettingsContent } from "./features/settings/SettingsContent";
+    import { LoginPage } from "./components/auth/LoginPage";
+
+    // Import icons
+    import {
+      LayoutDashboard,
+      Settings,
+      Component,
+      Bell,
+      SlidersHorizontal,
+      ChevronsLeftRight,
+      Search,
+      Filter,
+      Plus,
+      ChevronRight,
+      Rocket,
+      Layers,
+      SplitSquareHorizontal,
+      Database,
+    } from "lucide-react";
+    import { BODY_STATES } from "./lib/utils";
+    import { cn } from "./lib/utils";
+
+    // Wrapper for LoginPage to provide auth handlers
+    function LoginPageWrapper() {
+      const { login, forgotPassword } = useAuthStore();
+      const navigate = useNavigate();
+
+      const handleLogin = async (email: string, password: string) => {
+        try {
+          await login(email, password);
+          navigate("/");
+        } catch (error) {
+          console.error("Login failed:", error);
+          // In a real app, you'd show an error message to the user
+        }
+      };
+
+      const handleForgotPassword = async (email: string) => {
+        try {
+          await forgotPassword(email);
+        } catch (error)
+          console.error("Forgot password failed:", error);
+        }
+      };
+
+      const handleSignUp = () => {
+        // In a real app, navigate to sign up page
+        console.log("Navigate to sign up page");
+      };
+
+      return (
+        <LoginPage
+          onLogin={handleLogin}
+          onForgotPassword={handleForgotPassword}
+          onSignUp={handleSignUp}
+        />
+      );
+    }
+
+    // Checks for authentication and redirects to login if needed
+    function ProtectedRoute() {
+      const { isAuthenticated } = useAuthStore();
+      if (!isAuthenticated) {
+        return <Navigate to="/login" replace />;
+      }
+      return <Outlet />;
+    }
+
+    // The main layout for authenticated parts of the application
+    function ProtectedLayout() {
+      const isDarkMode = useAppStore((state) => state.isDarkMode);
+
+      useEffect(() => {
+        document.documentElement.classList.toggle("dark", isDarkMode);
+      }, [isDarkMode]);
+
+      return (
+        <div className="h-screen w-screen overflow-hidden bg-background">
+          <AppShellProvider
+            appName="Jeli App"
+            appLogo={
+              <div className="p-2 bg-primary/20 rounded-lg">
+                <Rocket className="w-5 h-5 text-primary" />
+              </div>
+            }
+          >
+            <ComposedApp />
+          </AppShellProvider>
+        </div>
+      );
+    }
+
+    // Content for the Top Bar (will be fully refactored in Part 2)
+    function AppTopBar() {
+      const { activePage, searchTerm, setSearchTerm } = useAppStore();
+      const { openSidePane } = useAppShell();
+      const [isSearchFocused, setIsSearchFocused] = React.useState(false);
+
+      return (
+        <div className="flex items-center gap-3 flex-1">
+          <div
+            className={cn(
+              "hidden md:flex items-center gap-2 text-sm transition-opacity",
+              {
+                "opacity-0 pointer-events-none":
+                  isSearchFocused && activePage === "dashboard",
+              },
+            )}
+          >
+            <a
+              href="#"
+              className="text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Home
+            </a>
+            <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            <span className="font-medium text-foreground capitalize">
+              {activePage}
+            </span>
+          </div>
+
+          <div className="flex-1" />
+
+          {/* Page-specific: Dashboard search and actions */}
+          {activePage === "dashboard" && (
+            <div className="flex items-center gap-2 flex-1 justify-end">
+              <div
+                className={cn(
+                  "relative transition-all duration-300 ease-in-out",
+                  isSearchFocused ? "flex-1 max-w-lg" : "w-auto",
+                )}
+              >
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4 pointer-events-none" />
+                <input
+                  type="text"
+                  placeholder="Search..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onFocus={() => setIsSearchFocused(true)}
+                  onBlur={() => setIsSearchFocused(false)}
+                  className={cn(
+                    "pl-9 pr-4 py-2 h-10 border-none rounded-lg bg-card focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300 ease-in-out w-full",
+                    isSearchFocused ? "bg-background" : "w-48",
+                  )}
+                />
+              </div>
+              <button className="h-10 w-10 flex-shrink-0 flex items-center justify-center hover:bg-accent rounded-full transition-colors">
+                <Filter className="w-5 h-5" />
+              </button>
+              <button className="bg-primary text-primary-foreground px-4 py-2 rounded-full hover:bg-primary/90 transition-colors flex items-center gap-2 h-10 flex-shrink-0">
+                <Plus className="w-5 h-5" />
+                <span
+                  className={cn(isSearchFocused ? "hidden sm:inline" : "inline")}
+                >
+                  New Project
+                </span>
+              </button>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // The main App component that composes the shell
+    function ComposedApp() {
+      const { sidePaneContent, closeSidePane, bodyState, toggleSplitView } =
+        useAppShell();
+      const { setActivePage } = useAppStore();
+
+      const isOverlaySidePane = bodyState === BODY_STATES.SIDE_PANE;
+
+      const contentMap = {
+        main: {
+          title: "Dashboard",
+          icon: LayoutDashboard,
+          page: "dashboard",
+          content: <DashboardContent isInSidePane={isOverlaySidePane} />,
+        },
+        settings: {
+          title: "Settings",
+          icon: Settings,
+          page: "settings",
+          content: isOverlaySidePane ? (
+            <div className="p-6">
+              <SettingsContent />
+            </div>
+          ) : (
+            <SettingsPage />
+          ),
+        },
+        toaster: {
+          title: "Toaster Demo",
+          icon: Component,
+          page: "toaster",
+          content: <ToasterDemo isInSidePane={isOverlaySidePane} />,
+        },
+        notifications: {
+          title: "Notifications",
+          icon: Bell,
+          page: "notifications",
+          content: <NotificationsPage isInSidePane={isOverlaySidePane} />,
+        },
+        dataDemo: {
+          title: "Data Showcase",
+          icon: Database,
+          page: "data-demo",
+          content: <DataDemoPage isInSidePane={isOverlaySidePane} />,
+        },
+        details: {
+          title: "Details Panel",
+          icon: SlidersHorizontal,
+          content: (
+            <div className="p-6">
+              <p className="text-muted-foreground">
+                This is the side pane. It can be used to display contextual
+                information, forms, or actions related to the main content.
+              </p>
+            </div>
+          ),
+        },
+      } as const;
+
+      const currentContent =
+        contentMap[sidePaneContent as keyof typeof contentMap] ||
+        contentMap.details;
+      const CurrentIcon = currentContent.icon;
+
+      const handleMaximize = () => {
+        if ("page" in currentContent && currentContent.page) {
+          setActivePage(currentContent.page as any);
+        }
+        closeSidePane();
+      };
+
+      const rightPaneHeader =
+        bodyState !== BODY_STATES.SPLIT_VIEW ? (
+          <>
+            <div className="flex items-center gap-2">
+              <CurrentIcon className="w-5 h-5" />
+              <h2 className="text-lg font-semibold whitespace-nowrap">
+                {currentContent.title}
+              </h2>
+            </div>
+            <div className="flex items-center">
+              {(bodyState === BODY_STATES.SIDE_PANE ||
+                bodyState === BODY_STATES.SPLIT_VIEW) && (
+                <button
+                  onClick={toggleSplitView}
+                  className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors"
+                  title={
+                    bodyState === BODY_STATES.SIDE_PANE
+                      ? "Switch to Split View"
+                      : "Switch to Overlay View"
+                  }
+                >
+                  {bodyState === BODY_STATES.SPLIT_VIEW ? (
+                    <Layers className="w-5 h-5" />
+                  ) : (
+                    <SplitSquareHorizontal className="w-5 h-5" />
+                  )}
+                </button>
+              )}
+              {"page" in currentContent && currentContent.page && (
+                <button
+                  onClick={handleMaximize}
+                  className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors mr-2"
+                  title="Move to Main View"
+                >
+                  <ChevronsLeftRight className="w-5 h-5" />
+                </button>
+              )}
+            </div>
+          </>
+        ) : undefined;
+
+      return (
+        <AppShell
+          sidebar={<EnhancedSidebar />}
+          topBar={
+            <TopBar>
+              <AppTopBar />
+            </TopBar>
+          }
+          mainContent={
+            <MainContent>
+              <Outlet />
+            </MainContent>
+          }
+          rightPane={
+            <RightPane header={rightPaneHeader}>{currentContent.content}</RightPane>
+          }
+          commandPalette={<CommandPalette />}
+        />
+      );
+    }
+
+    function App() {
+      const router = createBrowserRouter([
+        {
+          path: "/login",
+          element: <LoginPageWrapper />,
+        },
+        {
+          path: "/",
+          element: <ProtectedRoute />,
+          children: [
+            {
+              path: "/",
+              element: <ProtectedLayout />,
+              children: [
+                { index: true, element: <Navigate to="/dashboard" replace /> },
+                { path: "dashboard", element: <DashboardContent /> },
+                { path: "settings", element: <SettingsPage /> },
+                { path: "toaster", element: <ToasterDemo /> },
+                { path: "notifications", element: <NotificationsPage /> },
+                { path: "data-demo", element: <DataDemoPage /> },
+              ],
+            },
+          ],
+        },
+      ]);
+
+      return (
+        <ToasterProvider>
+          <RouterProvider router={router} />
+        </ToasterProvider>
+      );
+    }
+
+    export default App;
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 212

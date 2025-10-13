@@ -19,9 +19,9 @@ import {
   Plus,
   Database
 } from 'lucide-react';
-import { useAppStore, type ActivePage } from '@/store/appStore';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { type ActivePage } from '@/store/appStore';
 import { useAppShell } from '@/context/AppShellContext';
-import { BODY_STATES } from '@/lib/utils';
 import {
   Workspaces,
   WorkspaceTrigger,
@@ -180,36 +180,41 @@ interface AppMenuItemProps {
 }
 
 const AppMenuItem: React.FC<AppMenuItemProps> = ({ icon: Icon, label, badge, hasActions, children, isSubItem = false, page, opensInSidePane = false }) => {
-  const { handleNavigation, activePage } = useAppStore()
-  const { compactMode, bodyState, sidePaneContent, openSidePane, dispatch } = useAppShell()
+  const { compactMode, dispatch } = useAppShell()
   const { isCollapsed } = useSidebar();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  const isPageActive = (page: ActivePage) => {
-    const pageToSidePaneContent: { [key in ActivePage]?: 'main' | 'settings' | 'toaster' | 'notifications' } = {
-      dashboard: 'main',
-      settings: 'settings',
-      toaster: 'toaster',
-      notifications: 'notifications',
-      'data-demo': 'main',
-    };
-    return activePage === page || (bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === pageToSidePaneContent[page]);
+  const pageToPaneMap: { [key in ActivePage]?: 'main' | 'settings' | 'toaster' | 'notifications' | 'data-demo' } = {
+    dashboard: 'main',
+    settings: 'settings',
+    toaster: 'toaster',
+    notifications: 'notifications',
+    'data-demo': 'main',
   };
-  
-  const isActive = page ? isPageActive(page) : false;
+  const paneContentForPage = page ? pageToPaneMap[page] : undefined;
+
+  const isActive = (
+    (!opensInSidePane && page && location.pathname === `/${page}`)
+  ) || (
+    opensInSidePane && paneContentForPage && searchParams.get('sidePane') === paneContentForPage
+  );
 
   const handleClick = () => {
     if (page) {
       if (opensInSidePane) {
-        const pageToPaneMap: { [key in ActivePage]?: 'main' | 'settings' | 'toaster' | 'notifications' } = {
-          dashboard: 'main',
-          settings: 'settings',
-          toaster: 'toaster',
-          notifications: 'notifications',
-          'data-demo': 'main',
-        };
-        if (pageToPaneMap[page]) openSidePane(pageToPaneMap[page]!)
+        if (paneContentForPage) {
+          const newParams = new URLSearchParams(searchParams);
+          if (searchParams.get('sidePane') === paneContentForPage) {
+            newParams.delete('sidePane');
+          } else {
+            newParams.set('sidePane', paneContentForPage);
+          }
+          setSearchParams(newParams, { replace: true });
+        }
       } else {
-        handleNavigation(page);
+        navigate(`/${page}`);
       }
     }
   };

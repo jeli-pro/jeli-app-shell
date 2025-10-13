@@ -1,0 +1,950 @@
+uuid: c25f9b4c-974a-4e89-a29d-40505cd9c2a6
+projectId: jeli-app-shell
+createdAt: '2025-10-13T07:25:29.517Z'
+gitCommitMsg: >-
+  feat: Integrate React Router for navigation
+
+  This commit introduces `react-router-dom` to handle application routing,
+  replacing the previous state-based navigation system.
+
+  - Adds `react-router-dom` as a peer dependency. - Refactors `main.tsx` and
+  `App.tsx` to set up the router, provider,
+    and route configuration.
+  - Implements a `ProtectedRoute` to guard authenticated routes and redirect
+    unauthenticated users to a new `/login` route.
+  - Creates a `ProtectedLayout` to house the main `AppShell` for all
+    authenticated pages.
+  - Replaces the manual page rendering component with React Router's `<Outlet
+  />`.
+promptSummary: >-
+  Implement React Router v6 into the application according to Part 1 of the
+  refactor plan.
+reasoning:
+  - >-
+    Executing Part 1 of the plan to integrate React Router. This involves
+    installing the dependency, setting up the router in the application's entry
+    point, and defining the route structure with protected routes for
+    authenticated users and a public route for the login page.
+  - '### Step 1: Install `react-router-dom`'
+  - First, I'll add `react-router-dom` as a peer dependency to the project.
+  - '### Step 2: Update Application Entry Point'
+  - >-
+    Next, I'll modify `src/main.tsx` to simply render the `App` component. The
+    router setup will be centralized within `App.tsx`. This also involves moving
+    the `ToasterProvider`.
+  - '### Step 3: Define Routes and Protected Layout'
+  - >-
+    This is the main part of the refactor. I am completely overhauling
+    `src/App.tsx`. The new structure introduces a router that handles all page
+    navigation. It defines a protected layout for the main application shell,
+    which is only accessible after authentication, and a separate route for the
+    login page. The old state-based routing logic (`AppContent`) is removed and
+    replaced by React Router's `<Outlet />`.
+operations:
+  - type: write
+    path: package.json
+    content: |
+      <<<<<<< SEARCH
+          "lucide-react": "^0.294.0",
+          "react": "^18.2.0",
+          "react-dom": "^18.2.0",
+          "sonner": "^1.2.4",
+      =======
+          "lucide-react": "^0.294.0",
+          "react": "^18.2.0",
+          "react-dom": "^18.2.0",
+          "react-router-dom": "^6.22.3",
+          "sonner": "^1.2.4",
+      >>>>>>> REPLACE
+    patchStrategy: search-replace
+  - type: write
+    path: src/main.tsx
+    content: |+
+      --- src/main.tsx
+      +++ src/main.tsx
+      @@ -1,13 +1,9 @@
+       import React from 'react'
+       import ReactDOM from 'react-dom/client'
+       import App from './App.tsx'
+      -import { ToasterProvider } from './components/ui/toast'
+       import './index.css'
+       
+       ReactDOM.createRoot(document.getElementById('root')!).render(
+         <React.StrictMode>
+      -    <ToasterProvider>
+      -      <App />
+      -    </ToasterProvider>
+      +    <App />
+         </React.StrictMode>,
+       )
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/App.tsx
+    content: |-
+      import React, { useEffect } from "react";
+      import {
+        createBrowserRouter,
+        RouterProvider,
+        Outlet,
+        Navigate,
+      } from "react-router-dom";
+
+      import { AppShell } from "./components/layout/AppShell";
+      import { AppShellProvider, useAppShell } from "./context/AppShellContext";
+      import { useAppStore } from "./store/appStore";
+      import { useAuthStore } from "./store/authStore";
+      import "./index.css";
+
+      // Import library components
+      import { EnhancedSidebar } from "./components/layout/EnhancedSidebar";
+      import { MainContent } from "./components/layout/MainContent";
+      import { RightPane } from "./components/layout/RightPane";
+      import { TopBar } from "./components/layout/TopBar";
+      import { CommandPalette } from "./components/global/CommandPalette";
+      import { ToasterProvider } from "./components/ui/toast";
+
+      // Import page/content components
+      import { DashboardContent } from "./pages/Dashboard";
+      import { SettingsPage } from "./pages/Settings";
+      import { ToasterDemo } from "./pages/ToasterDemo";
+      import { NotificationsPage } from "./pages/Notifications";
+      import DataDemoPage from "./pages/DataDemo";
+      import { SettingsContent } from "./features/settings/SettingsContent";
+      import { LoginPage } from "./components/auth/LoginPage";
+
+      // Import icons
+      import {
+        LayoutDashboard,
+        Settings,
+        Component,
+        Bell,
+        SlidersHorizontal,
+        ChevronsLeftRight,
+        Search,
+        Filter,
+        Plus,
+        ChevronRight,
+        Rocket,
+        Layers,
+        SplitSquareHorizontal,
+        Database,
+      } from "lucide-react";
+      import { BODY_STATES } from "./lib/utils";
+      import { cn } from "./lib/utils";
+
+      // Wrapper for LoginPage to provide auth handlers
+      function LoginPageWrapper() {
+        const { login, forgotPassword } = useAuthStore();
+        const navigate = useNavigate();
+
+        const handleLogin = async (email: string, password: string) => {
+          try {
+            await login(email, password);
+            navigate("/");
+          } catch (error) {
+            console.error("Login failed:", error);
+            // In a real app, you'd show an error message to the user
+          }
+        };
+
+        const handleForgotPassword = async (email: string) => {
+          try {
+            await forgotPassword(email);
+          } catch (error)
+            console.error("Forgot password failed:", error);
+          }
+        };
+
+        const handleSignUp = () => {
+          // In a real app, navigate to sign up page
+          console.log("Navigate to sign up page");
+        };
+
+        return (
+          <LoginPage
+            onLogin={handleLogin}
+            onForgotPassword={handleForgotPassword}
+            onSignUp={handleSignUp}
+          />
+        );
+      }
+
+      // Checks for authentication and redirects to login if needed
+      function ProtectedRoute() {
+        const { isAuthenticated } = useAuthStore();
+        if (!isAuthenticated) {
+          return <Navigate to="/login" replace />;
+        }
+        return <Outlet />;
+      }
+
+      // The main layout for authenticated parts of the application
+      function ProtectedLayout() {
+        const isDarkMode = useAppStore((state) => state.isDarkMode);
+
+        useEffect(() => {
+          document.documentElement.classList.toggle("dark", isDarkMode);
+        }, [isDarkMode]);
+
+        return (
+          <div className="h-screen w-screen overflow-hidden bg-background">
+            <AppShellProvider
+              appName="Jeli App"
+              appLogo={
+                <div className="p-2 bg-primary/20 rounded-lg">
+                  <Rocket className="w-5 h-5 text-primary" />
+                </div>
+              }
+            >
+              <ComposedApp />
+            </AppShellProvider>
+          </div>
+        );
+      }
+
+      // Content for the Top Bar (will be fully refactored in Part 2)
+      function AppTopBar() {
+        const { activePage, searchTerm, setSearchTerm } = useAppStore();
+        const { openSidePane } = useAppShell();
+        const [isSearchFocused, setIsSearchFocused] = React.useState(false);
+
+        return (
+          <div className="flex items-center gap-3 flex-1">
+            <div
+              className={cn(
+                "hidden md:flex items-center gap-2 text-sm transition-opacity",
+                {
+                  "opacity-0 pointer-events-none":
+                    isSearchFocused && activePage === "dashboard",
+                },
+              )}
+            >
+              <a
+                href="#"
+                className="text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Home
+              </a>
+              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+              <span className="font-medium text-foreground capitalize">
+                {activePage}
+              </span>
+            </div>
+
+            <div className="flex-1" />
+
+            {/* Page-specific: Dashboard search and actions */}
+            {activePage === "dashboard" && (
+              <div className="flex items-center gap-2 flex-1 justify-end">
+                <div
+                  className={cn(
+                    "relative transition-all duration-300 ease-in-out",
+                    isSearchFocused ? "flex-1 max-w-lg" : "w-auto",
+                  )}
+                >
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4 pointer-events-none" />
+                  <input
+                    type="text"
+                    placeholder="Search..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    onFocus={() => setIsSearchFocused(true)}
+                    onBlur={() => setIsSearchFocused(false)}
+                    className={cn(
+                      "pl-9 pr-4 py-2 h-10 border-none rounded-lg bg-card focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300 ease-in-out w-full",
+                      isSearchFocused ? "bg-background" : "w-48",
+                    )}
+                  />
+                </div>
+                <button className="h-10 w-10 flex-shrink-0 flex items-center justify-center hover:bg-accent rounded-full transition-colors">
+                  <Filter className="w-5 h-5" />
+                </button>
+                <button className="bg-primary text-primary-foreground px-4 py-2 rounded-full hover:bg-primary/90 transition-colors flex items-center gap-2 h-10 flex-shrink-0">
+                  <Plus className="w-5 h-5" />
+                  <span
+                    className={cn(isSearchFocused ? "hidden sm:inline" : "inline")}
+                  >
+                    New Project
+                  </span>
+                </button>
+              </div>
+            )}
+          </div>
+        );
+      }
+
+      // The main App component that composes the shell
+      function ComposedApp() {
+        const { sidePaneContent, closeSidePane, bodyState, toggleSplitView } =
+          useAppShell();
+        const { setActivePage } = useAppStore();
+
+        const isOverlaySidePane = bodyState === BODY_STATES.SIDE_PANE;
+
+        const contentMap = {
+          main: {
+            title: "Dashboard",
+            icon: LayoutDashboard,
+            page: "dashboard",
+            content: <DashboardContent isInSidePane={isOverlaySidePane} />,
+          },
+          settings: {
+            title: "Settings",
+            icon: Settings,
+            page: "settings",
+            content: isOverlaySidePane ? (
+              <div className="p-6">
+                <SettingsContent />
+              </div>
+            ) : (
+              <SettingsPage />
+            ),
+          },
+          toaster: {
+            title: "Toaster Demo",
+            icon: Component,
+            page: "toaster",
+            content: <ToasterDemo isInSidePane={isOverlaySidePane} />,
+          },
+          notifications: {
+            title: "Notifications",
+            icon: Bell,
+            page: "notifications",
+            content: <NotificationsPage isInSidePane={isOverlaySidePane} />,
+          },
+          dataDemo: {
+            title: "Data Showcase",
+            icon: Database,
+            page: "data-demo",
+            content: <DataDemoPage isInSidePane={isOverlaySidePane} />,
+          },
+          details: {
+            title: "Details Panel",
+            icon: SlidersHorizontal,
+            content: (
+              <div className="p-6">
+                <p className="text-muted-foreground">
+                  This is the side pane. It can be used to display contextual
+                  information, forms, or actions related to the main content.
+                </p>
+              </div>
+            ),
+          },
+        } as const;
+
+        const currentContent =
+          contentMap[sidePaneContent as keyof typeof contentMap] ||
+          contentMap.details;
+        const CurrentIcon = currentContent.icon;
+
+        const handleMaximize = () => {
+          if ("page" in currentContent && currentContent.page) {
+            setActivePage(currentContent.page as any);
+          }
+          closeSidePane();
+        };
+
+        const rightPaneHeader =
+          bodyState !== BODY_STATES.SPLIT_VIEW ? (
+            <>
+              <div className="flex items-center gap-2">
+                <CurrentIcon className="w-5 h-5" />
+                <h2 className="text-lg font-semibold whitespace-nowrap">
+                  {currentContent.title}
+                </h2>
+              </div>
+              <div className="flex items-center">
+                {(bodyState === BODY_STATES.SIDE_PANE ||
+                  bodyState === BODY_STATES.SPLIT_VIEW) && (
+                  <button
+                    onClick={toggleSplitView}
+                    className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors"
+                    title={
+                      bodyState === BODY_STATES.SIDE_PANE
+                        ? "Switch to Split View"
+                        : "Switch to Overlay View"
+                    }
+                  >
+                    {bodyState === BODY_STATES.SPLIT_VIEW ? (
+                      <Layers className="w-5 h-5" />
+                    ) : (
+                      <SplitSquareHorizontal className="w-5 h-5" />
+                    )}
+                  </button>
+                )}
+                {"page" in currentContent && currentContent.page && (
+                  <button
+                    onClick={handleMaximize}
+                    className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors mr-2"
+                    title="Move to Main View"
+                  >
+                    <ChevronsLeftRight className="w-5 h-5" />
+                  </button>
+                )}
+              </div>
+            </>
+          ) : undefined;
+
+        return (
+          <AppShell
+            sidebar={<EnhancedSidebar />}
+            topBar={
+              <TopBar>
+                <AppTopBar />
+              </TopBar>
+            }
+            mainContent={
+              <MainContent>
+                <Outlet />
+              </MainContent>
+            }
+            rightPane={
+              <RightPane header={rightPaneHeader}>{currentContent.content}</RightPane>
+            }
+            commandPalette={<CommandPalette />}
+          />
+        );
+      }
+
+      function App() {
+        const router = createBrowserRouter([
+          {
+            path: "/login",
+            element: <LoginPageWrapper />,
+          },
+          {
+            path: "/",
+            element: <ProtectedRoute />,
+            children: [
+              {
+                path: "/",
+                element: <ProtectedLayout />,
+                children: [
+                  { index: true, element: <Navigate to="/dashboard" replace /> },
+                  { path: "dashboard", element: <DashboardContent /> },
+                  { path: "settings", element: <SettingsPage /> },
+                  { path: "toaster", element: <ToasterDemo /> },
+                  { path: "notifications", element: <NotificationsPage /> },
+                  { path: "data-demo", element: <DataDemoPage /> },
+                ],
+              },
+            ],
+          },
+        ]);
+
+        return (
+          <ToasterProvider>
+            <RouterProvider router={router} />
+          </ToasterProvider>
+        );
+      }
+
+      export default App;
+    patchStrategy: replace
+snapshot:
+  package.json: |
+    {
+      "name": "jeli-app-shell",
+      "private": false,
+      "version": "1.0.1",
+      "type": "module",
+      "files": [
+        "dist"
+      ],
+      "main": "./dist/jeli-app-shell.umd.js",
+      "module": "./dist/jeli-app-shell.es.js",
+      "types": "./dist/index.d.ts",
+      "exports": {
+        ".": {
+          "import": "./dist/jeli-app-shell.es.js",
+          "require": "./dist/jeli-app-shell.umd.js"
+        },
+        "./dist/style.css": "./dist/style.css"
+      },
+      "sideEffects": [
+        "**/*.css"
+      ],
+      "scripts": {
+        "dev": "vite",
+        "build": "tsc && vite build",
+        "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+        "preview": "vite preview"
+      },
+      "dependencies": {},
+      "peerDependencies": {
+        "@iconify/react": "^4.1.1",
+        "@radix-ui/react-avatar": "^1.0.4",
+        "@radix-ui/react-dialog": "^1.0.5",
+        "@radix-ui/react-dropdown-menu": "^2.0.6",
+        "@radix-ui/react-label": "^2.1.7",
+        "@radix-ui/react-popover": "^1.0.7",
+        "@radix-ui/react-slot": "^1.0.2",
+        "@radix-ui/react-tabs": "^1.0.4",
+        "class-variance-authority": "^0.7.0",
+        "clsx": "^2.0.0",
+        "cmdk": "^0.2.0",
+        "gsap": "^3.12.2",
+        "lucide-react": "^0.294.0",
+        "react": "^18.2.0",
+        "react-dom": "^18.2.0",
+        "sonner": "^1.2.4",
+        "tailwind-merge": "^2.0.0",
+        "tailwindcss": "^3.3.5",
+        "zustand": "^4.5.7"
+      },
+      "devDependencies": {
+        "@types/node": "^20.10.0",
+        "@types/react": "^18.2.37",
+        "@types/react-dom": "^18.2.15",
+        "@typescript-eslint/eslint-plugin": "^6.10.0",
+        "@typescript-eslint/parser": "^6.10.0",
+        "@vitejs/plugin-react": "^4.1.1",
+        "autoprefixer": "^10.4.16",
+        "eslint": "^8.53.0",
+        "eslint-plugin-react-hooks": "^4.6.0",
+        "eslint-plugin-react-refresh": "^0.4.4",
+        "postcss": "^8.4.31",
+        "tailwindcss": "^3.3.5",
+        "tailwindcss-animate": "^1.0.7",
+        "typescript": "^5.2.2",
+        "vite": "^4.5.0"
+      }
+    }
+  src/main.tsx: |-
+    import React from 'react'
+    import ReactDOM from 'react-dom/client'
+    import App from './App.tsx'
+    import { ToasterProvider } from './components/ui/toast'
+    import './index.css'
+
+    ReactDOM.createRoot(document.getElementById('root')!).render(
+      <React.StrictMode>
+        <ToasterProvider>
+          <App />
+        </ToasterProvider>
+      </React.StrictMode>,
+    )
+  src/App.tsx: >
+    import React, { useEffect } from "react";
+
+    import { AppShell } from "./components/layout/AppShell";
+
+    import { AppShellProvider, useAppShell } from "./context/AppShellContext";
+
+    import { useAppStore } from "./store/appStore";
+
+    import { useAuthStore } from "./store/authStore";
+
+    import "./index.css";
+
+
+    // Import library components
+
+    import { EnhancedSidebar } from "./components/layout/EnhancedSidebar";
+
+    import { MainContent } from "./components/layout/MainContent";
+
+    import { RightPane } from "./components/layout/RightPane";
+
+    import { TopBar } from "./components/layout/TopBar";
+
+    import { CommandPalette } from "./components/global/CommandPalette";
+
+
+    // Import page/content components
+
+    import { DashboardContent } from "./pages/Dashboard";
+
+    import { SettingsPage } from "./pages/Settings";
+
+    import { ToasterDemo } from "./pages/ToasterDemo";
+
+    import { NotificationsPage } from "./pages/Notifications";
+
+    import DataDemoPage from "./pages/DataDemo";
+
+    import { DataDetailPanel } from
+    "./pages/DataDemo/components/DataDetailPanel";
+
+    import { ContentInSidePanePlaceholder } from
+    "./components/shared/ContentInSidePanePlaceholder";
+
+    import { SettingsContent } from "./features/settings/SettingsContent";
+
+    import { LoginPage } from "./components/auth/LoginPage";
+
+
+    // Import icons
+
+    import {
+      LayoutDashboard,
+      Settings,
+      Component,
+      Bell,
+      SlidersHorizontal,
+      ChevronsLeftRight,
+      Search,
+      Filter,
+      Plus,
+      PanelRight,
+      ChevronRight,
+      Rocket,
+      Layers,
+      SplitSquareHorizontal,
+      Database,
+    } from "lucide-react";
+
+    import { BODY_STATES } from "./lib/utils";
+
+    import { cn } from "./lib/utils";
+
+
+    // The content for the main area, with page routing logic
+
+    function AppContent() {
+      const { activePage, setActivePage } = useAppStore();
+      const { bodyState, sidePaneContent, openSidePane } = useAppShell();
+
+      const pageMap = {
+        dashboard: {
+          component: <DashboardContent />,
+          sidePaneContent: "main",
+          icon: LayoutDashboard,
+          name: "dashboard",
+        },
+        settings: {
+          component: <SettingsPage />,
+          sidePaneContent: "settings",
+          icon: Settings,
+          name: "settings",
+        },
+        toaster: {
+          component: <ToasterDemo />,
+          sidePaneContent: "toaster",
+          icon: Component,
+          name: "toaster demo",
+        },
+        notifications: {
+          component: <NotificationsPage />,
+          sidePaneContent: "notifications",
+          icon: Bell,
+          name: "notifications",
+        },
+        "data-demo": {
+          component: <DataDemoPage />,
+          sidePaneContent: "dataDemo",
+          icon: Database,
+          name: "data demo",
+        },
+      } as const;
+
+      const currentPage = pageMap[activePage];
+
+      if (!currentPage) {
+        // This can happen if the persisted state for activePage is invalid.
+        // We'll reset it to the dashboard.
+        useEffect(() => {
+          setActivePage("dashboard");
+        }, [setActivePage]);
+
+        // Return null or a loading indicator while the state is being corrected.
+        return null;
+        ``;
+      }
+
+      if (
+        sidePaneContent === currentPage.sidePaneContent &&
+        (bodyState === BODY_STATES.SIDE_PANE ||
+          bodyState === BODY_STATES.SPLIT_VIEW)
+      ) {
+        return (
+          <ContentInSidePanePlaceholder
+            icon={currentPage.icon}
+            title={`${currentPage.name.charAt(0).toUpperCase() + currentPage.name.slice(1)} is in Side Pane`}
+            pageName={currentPage.name}
+            onBringBack={() => {
+              openSidePane(currentPage.sidePaneContent);
+              setActivePage(activePage);
+            }}
+          />
+        );
+      }
+
+      return currentPage.component;
+    }
+
+
+    // Content for the Top Bar
+
+    function AppTopBar() {
+      const { activePage, searchTerm, setSearchTerm } = useAppStore();
+      const { openSidePane } = useAppShell();
+      const [isSearchFocused, setIsSearchFocused] = React.useState(false);
+
+      return (
+        <div className="flex items-center gap-3 flex-1">
+          <div
+            className={cn(
+              "hidden md:flex items-center gap-2 text-sm transition-opacity",
+              {
+                "opacity-0 pointer-events-none":
+                  isSearchFocused && activePage === "dashboard",
+              },
+            )}
+          >
+            <a
+              href="#"
+              className="text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Home
+            </a>
+            <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            <span className="font-medium text-foreground capitalize">
+              {activePage}
+            </span>
+          </div>
+
+          <div className="flex-1" />
+
+          {/* Page-specific: Dashboard search and actions */}
+          {activePage === "dashboard" && (
+            <div className="flex items-center gap-2 flex-1 justify-end">
+              <div
+                className={cn(
+                  "relative transition-all duration-300 ease-in-out",
+                  isSearchFocused ? "flex-1 max-w-lg" : "w-auto",
+                )}
+              >
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4 pointer-events-none" />
+                <input
+                  type="text"
+                  placeholder="Search..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onFocus={() => setIsSearchFocused(true)}
+                  onBlur={() => setIsSearchFocused(false)}
+                  className={cn(
+                    "pl-9 pr-4 py-2 h-10 border-none rounded-lg bg-card focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300 ease-in-out w-full",
+                    isSearchFocused ? "bg-background" : "w-48",
+                  )}
+                />
+              </div>
+              <button className="h-10 w-10 flex-shrink-0 flex items-center justify-center hover:bg-accent rounded-full transition-colors">
+                <Filter className="w-5 h-5" />
+              </button>
+              <button className="bg-primary text-primary-foreground px-4 py-2 rounded-full hover:bg-primary/90 transition-colors flex items-center gap-2 h-10 flex-shrink-0">
+                <Plus className="w-5 h-5" />
+                <span
+                  className={cn(isSearchFocused ? "hidden sm:inline" : "inline")}
+                >
+                  New Project
+                </span>
+              </button>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+
+    // The main App component that composes the shell
+
+    function ComposedApp() {
+      const { sidePaneContent, closeSidePane, bodyState, toggleSplitView } =
+        useAppShell();
+      const { setActivePage } = useAppStore();
+
+      const isOverlaySidePane = bodyState === BODY_STATES.SIDE_PANE;
+
+      const contentMap = {
+        main: {
+          title: "Dashboard",
+          icon: LayoutDashboard,
+          page: "dashboard",
+          content: <DashboardContent isInSidePane={isOverlaySidePane} />,
+        },
+        settings: {
+          title: "Settings",
+          icon: Settings,
+          page: "settings",
+          content: isOverlaySidePane ? (
+            <div className="p-6">
+              <SettingsContent />
+            </div>
+          ) : (
+            <SettingsPage />
+          ),
+        },
+        toaster: {
+          title: "Toaster Demo",
+          icon: Component,
+          page: "toaster",
+          content: <ToasterDemo isInSidePane={isOverlaySidePane} />,
+        },
+        notifications: {
+          title: "Notifications",
+          icon: Bell,
+          page: "notifications",
+          content: <NotificationsPage isInSidePane={isOverlaySidePane} />,
+        },
+        "dataDemo": {
+          title: "Data Showcase",
+          icon: Database,
+          page: "data-demo",
+          content: <DataDemoPage isInSidePane={isOverlaySidePane} />
+        },
+        details: {
+          title: "Details Panel",
+          icon: SlidersHorizontal,
+          content: (
+            <div className="p-6">
+              <p className="text-muted-foreground">
+                This is the side pane. It can be used to display contextual
+                information, forms, or actions related to the main content.
+              </p>
+            </div>
+          ),
+        },
+      } as const;
+
+      const currentContent =
+        contentMap[sidePaneContent as keyof typeof contentMap] ||
+        contentMap.details;
+      const CurrentIcon = currentContent.icon;
+
+      const handleMaximize = () => {
+        if ("page" in currentContent && currentContent.page) {
+          setActivePage(currentContent.page as any);
+        }
+        closeSidePane();
+      };
+
+      const rightPaneHeader =
+        bodyState !== BODY_STATES.SPLIT_VIEW ? (
+          <>
+            <div className="flex items-center gap-2">
+              <CurrentIcon className="w-5 h-5" />
+              <h2 className="text-lg font-semibold whitespace-nowrap">
+                {currentContent.title}
+              </h2>
+            </div>
+            <div className="flex items-center">
+              {(bodyState === BODY_STATES.SIDE_PANE ||
+                bodyState === BODY_STATES.SPLIT_VIEW) && (
+                <button
+                  onClick={toggleSplitView}
+                  className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors"
+                  title={
+                    bodyState === BODY_STATES.SIDE_PANE
+                      ? "Switch to Split View"
+                      : "Switch to Overlay View"
+                  }
+                >
+                  {bodyState === BODY_STATES.SPLIT_VIEW ? (
+                    <Layers className="w-5 h-5" />
+                  ) : (
+                    <SplitSquareHorizontal className="w-5 h-5" />
+                  )}
+                </button>
+              )}
+              {"page" in currentContent && currentContent.page && (
+                <button
+                  onClick={handleMaximize}
+                  className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors mr-2"
+                  title="Move to Main View"
+                >
+                  <ChevronsLeftRight className="w-5 h-5" />
+                </button>
+              )}
+            </div>
+          </>
+        ) : undefined;
+
+      return (
+        <AppShell
+          sidebar={<EnhancedSidebar />}
+          topBar={
+            <TopBar>
+              <AppTopBar />
+            </TopBar>
+          }
+          mainContent={
+            <MainContent>
+              <AppContent />
+            </MainContent>
+          }
+          rightPane={
+            <RightPane header={rightPaneHeader}>{currentContent.content}</RightPane>
+          }
+          commandPalette={<CommandPalette />}
+        />
+      );
+    }
+
+
+    function App() {
+      const isDarkMode = useAppStore((state) => state.isDarkMode);
+      const { isAuthenticated, login, forgotPassword } = useAuthStore();
+
+      useEffect(() => {
+        document.documentElement.classList.toggle("dark", isDarkMode);
+      }, [isDarkMode]);
+
+      const handleLogin = async (email: string, password: string) => {
+        try {
+          await login(email, password);
+        } catch (error) {
+          console.error("Login failed:", error);
+          // In a real app, you'd show an error message to the user
+        }
+      };
+
+      const handleForgotPassword = async (email: string) => {
+        try {
+          await forgotPassword(email);
+        } catch (error) {
+          console.error("Forgot password failed:", error);
+        }
+      };
+
+      const handleSignUp = () => {
+        // In a real app, navigate to sign up page
+        console.log("Navigate to sign up page");
+      };
+
+      if (!isAuthenticated) {
+        return (
+          <LoginPage
+            onLogin={handleLogin}
+            onForgotPassword={handleForgotPassword}
+            onSignUp={handleSignUp}
+          />
+        );
+      }
+
+      return (
+        <div className="h-screen w-screen overflow-hidden bg-background">
+          <AppShellProvider
+            appName="Jeli App"
+            appLogo={
+              <div className="p-2 bg-primary/20 rounded-lg">
+                <Rocket className="w-5 h-5 text-primary" />
+              </div>
+            }
+          >
+            <ComposedApp />
+          </AppShellProvider>
+        </div>
+      );
+    }
+
+
+    export default App;
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 211

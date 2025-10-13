@@ -1,0 +1,669 @@
+uuid: 133b38c2-005d-4f1b-a579-2cf23908f5d0
+projectId: jeli-app-shell
+createdAt: '2025-10-13T07:30:11.807Z'
+gitCommitMsg: >-
+  refactor(navigation): update sidebar and command palette to use react-router
+
+  Refactors the primary navigation components to use hooks from
+  `react-router-dom` instead of the legacy Zustand state actions.
+
+  - In `EnhancedSidebar`, `AppMenuItem` now uses `useNavigate` for page
+  transitions and `useSearchParams` to toggle side panes. The active state is
+  derived from `useLocation` and `useSearchParams` to ensure it is always in
+  sync with the URL.
+
+  - In `CommandPalette`, navigation commands are updated to call
+  `navigate('/path')`, and actions that open side panes now manipulate URL
+  search parameters via `setSearchParams`.
+
+  This change decouples navigation from global state and makes the URL the
+  single source of truth, completing a major step in the routing refactor.
+promptSummary: The user wants to execute Part 3 of the React Router refactoring plan.
+reasoning:
+  - 'Executing Part 3: Updating Navigation Actions.'
+  - >-
+    This part refactors the application's navigation controls—specifically the
+    sidebar and command palette—to use `react-router-dom` for navigation instead
+    of the old state management system. This decouples the UI from the state
+    store and makes the URL the single source of truth for navigation.
+  - '### Step 1: Refactor Command Palette'
+  - >-
+    I will update the `CommandPalette` to use `useNavigate` for changing pages
+    and `useSearchParams` for actions that open content in a side pane. This
+    replaces the now-removed `setActivePage` action from the Zustand store.
+  - '### Step 2: Refactor Sidebar Navigation'
+  - >-
+    Next, I'll refactor the `EnhancedSidebar`'s `AppMenuItem` component. Instead
+    of calling a state action, `onClick` will now use `useNavigate` for direct
+    page transitions and `useSearchParams` to toggle side panes. The item's
+    "active" state will be derived directly from the URL and search parameters,
+    ensuring it's always in sync with the router.
+  - '---'
+operations:
+  - type: write
+    path: src/components/global/CommandPalette.tsx
+    content: >+
+      --- src/components/global/CommandPalette.tsx
+
+      +++ src/components/global/CommandPalette.tsx
+
+      @@ -7,21 +7,22 @@
+         CommandList,
+         CommandSeparator,
+         CommandShortcut,
+       } from '@/components/ui/command'
+      +import { useNavigate, useSearchParams } from 'react-router-dom'
+       import { useAppStore, type ActivePage } from '@/store/appStore'
+       import { useAppShell } from '@/context/AppShellContext'
+       import { useCommandPaletteToggle } from '@/hooks/useCommandPaletteToggle.hook'
+       import { Home, Settings, Moon, Sun, Monitor, Smartphone, PanelRight, Maximize, Component, Bell } from 'lucide-react'
+       
+       export function CommandPalette() {
+         const { dispatch, toggleFullscreen, openSidePane } = useAppShell();
+      +  const navigate = useNavigate();
+
+      +  const [, setSearchParams] = useSearchParams();
+         const {
+           isCommandPaletteOpen,
+           setCommandPaletteOpen,
+      -    setActivePage,
+           isDarkMode,
+           toggleDarkMode,
+         } = useAppStore()
+      @@ -37,22 +38,22 @@
+             <CommandList>
+               <CommandEmpty>No results found.</CommandEmpty>
+               <CommandGroup heading="Navigation">
+      -          <CommandItem onSelect={() => runCommand(() =>
+      setActivePage('dashboard'))}>
+
+      +          <CommandItem onSelect={() => runCommand(() =>
+      navigate('/dashboard'))}>
+                   <Home className="mr-2 h-4 w-4" />
+                   <span>Go to Dashboard</span>
+                   <CommandShortcut>G D</CommandShortcut>
+                 </CommandItem>
+      -          <CommandItem onSelect={() => runCommand(() =>
+      setActivePage('settings'))}>
+
+      +          <CommandItem onSelect={() => runCommand(() =>
+      navigate('/settings'))}>
+                   <Settings className="mr-2 h-4 w-4" />
+                   <span>Go to Settings</span>
+                   <CommandShortcut>G S</CommandShortcut>
+                 </CommandItem>
+      -          <CommandItem onSelect={() => runCommand(() =>
+      setActivePage('toaster'))}>
+
+      +          <CommandItem onSelect={() => runCommand(() =>
+      navigate('/toaster'))}>
+                   <Component className="mr-2 h-4 w-4" />
+                   <span>Go to Toaster Demo</span>
+                   <CommandShortcut>G T</CommandShortcut>
+                 </CommandItem>
+      -          <CommandItem onSelect={() => runCommand(() =>
+      setActivePage('notifications' as ActivePage))}>
+
+      +          <CommandItem onSelect={() => runCommand(() =>
+      navigate('/notifications'))}>
+                   <Bell className="mr-2 h-4 w-4" />
+                   <span>Go to Notifications</span>
+                   <CommandShortcut>G N</CommandShortcut>
+      @@ -69,7 +70,7 @@
+                   <span>Toggle Fullscreen</span>
+                   <CommandShortcut>⌘F</CommandShortcut>
+                 </CommandItem>
+      -          <CommandItem onSelect={() => runCommand(() =>
+      openSidePane('settings'))}>
+
+      +          <CommandItem onSelect={() => runCommand(() => setSearchParams({
+      sidePane: 'settings' }))}>
+                   <PanelRight className="mr-2 h-4 w-4" />
+                   <span>Open Settings in Side Pane</span>
+                   <CommandShortcut>⌥S</CommandShortcut>
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/components/layout/EnhancedSidebar.tsx
+    content: >+
+      --- src/components/layout/EnhancedSidebar.tsx
+
+      +++ src/components/layout/EnhancedSidebar.tsx
+
+      @@ -22,7 +22,8 @@
+         User,
+         Plus,
+         Database
+       } from 'lucide-react';
+      +import { useLocation, useNavigate, useSearchParams } from
+      'react-router-dom';
+       import { useAppStore, type ActivePage } from '@/store/appStore';
+       import { useAppShell } from '@/context/AppShellContext';
+       import { BODY_STATES } from '@/lib/utils';
+      @@ -165,47 +166,45 @@
+       }
+       
+       const AppMenuItem: React.FC<AppMenuItemProps> = ({ icon: Icon, label, badge, hasActions, children, isSubItem = false, page, opensInSidePane = false }) => {
+      -  const { handleNavigation, activePage } = useAppStore()
+         const { compactMode, bodyState, sidePaneContent, openSidePane, dispatch } = useAppShell()
+         const { isCollapsed } = useSidebar();
+      +  const navigate = useNavigate();
+
+      +  const location = useLocation();
+
+      +  const [searchParams, setSearchParams] = useSearchParams();
+       
+      -  const isPageActive = (page: ActivePage) => {
+
+      -    const pageToSidePaneContent: { [key in ActivePage]?: 'main' |
+      'settings' | 'toaster' | 'notifications' } = {
+
+      -      dashboard: 'main',
+
+      -      settings: 'settings',
+
+      -      toaster: 'toaster',
+
+      -      notifications: 'notifications',
+
+      -      'data-demo': 'main',
+
+      -    };
+
+      -    return activePage === page || (bodyState === BODY_STATES.SIDE_PANE &&
+      sidePaneContent === pageToSidePaneContent[page]);
+
+      -  };
+
+      -  
+
+      -  const isActive = page ? isPageActive(page) : false;
+
+      +  const pageToPaneMap: { [key in ActivePage]?: 'main' | 'settings' |
+      'toaster' | 'notifications' | 'data-demo' } = {
+
+      +    dashboard: 'main',
+
+      +    settings: 'settings',
+
+      +    toaster: 'toaster',
+
+      +    notifications: 'notifications',
+
+      +    'data-demo': 'main',
+
+      +  };
+
+      +  const paneContentForPage = page ? pageToPaneMap[page] : undefined;
+
+      +
+
+      +  const isActive = (
+
+      +    (!opensInSidePane && page && location.pathname === `/${page}`)
+
+      +  ) || (
+
+      +    opensInSidePane && paneContentForPage && searchParams.get('sidePane')
+      === paneContentForPage
+
+      +  );
+       
+         const handleClick = () => {
+           if (page) {
+             if (opensInSidePane) {
+      -        const pageToPaneMap: { [key in ActivePage]?: 'main' | 'settings'
+      | 'toaster' | 'notifications' } = {
+
+      -          dashboard: 'main',
+
+      -          settings: 'settings',
+
+      -          toaster: 'toaster',
+
+      -          notifications: 'notifications',
+
+      -          'data-demo': 'main',
+
+      -        };
+
+      -        if (pageToPaneMap[page]) openSidePane(pageToPaneMap[page]!)
+
+      +        if (paneContentForPage) {
+
+      +          if (searchParams.get('sidePane') === paneContentForPage) {
+
+      +            searchParams.delete('sidePane');
+
+      +          } else {
+
+      +            searchParams.set('sidePane', paneContentForPage);
+
+      +          }
+
+      +          setSearchParams(searchParams, { replace: true });
+
+      +        }
+             } else {
+      -        handleNavigation(page);
+
+      +        navigate(`/${page}`);
+             }
+           }
+         };
+       
+         return (
+           <div className={isSubItem ? (compactMode ? 'ml-4' : 'ml-6') : ''}>
+             <SidebarMenuItem>
+
+    patchStrategy: standard-diff
+snapshot:
+  src/components/global/CommandPalette.tsx: >-
+    import {
+      CommandDialog,
+      CommandEmpty,
+      CommandGroup,
+      CommandInput,
+      CommandItem,
+      CommandList,
+      CommandSeparator,
+      CommandShortcut,
+    } from '@/components/ui/command'
+
+    import { useAppStore, type ActivePage } from '@/store/appStore'
+
+    import { useAppShell } from '@/context/AppShellContext'
+
+    import { useCommandPaletteToggle } from
+    '@/hooks/useCommandPaletteToggle.hook'
+
+    import { Home, Settings, Moon, Sun, Monitor, Smartphone, PanelRight,
+    Maximize, Component, Bell } from 'lucide-react'
+
+
+    export function CommandPalette() {
+      const { dispatch, toggleFullscreen, openSidePane } = useAppShell();
+      const {
+        isCommandPaletteOpen,
+        setCommandPaletteOpen,
+        setActivePage,
+        isDarkMode,
+        toggleDarkMode,
+      } = useAppStore()
+      useCommandPaletteToggle()
+      
+      const runCommand = (command: () => void) => {
+        setCommandPaletteOpen(false)
+        command()
+      }
+
+      return (
+        <CommandDialog open={isCommandPaletteOpen} onOpenChange={setCommandPaletteOpen}>
+          <CommandInput placeholder="Type a command or search..." />
+          <CommandList>
+            <CommandEmpty>No results found.</CommandEmpty>
+            <CommandGroup heading="Navigation">
+              <CommandItem onSelect={() => runCommand(() => setActivePage('dashboard'))}>
+                <Home className="mr-2 h-4 w-4" />
+                <span>Go to Dashboard</span>
+                <CommandShortcut>G D</CommandShortcut>
+              </CommandItem>
+              <CommandItem onSelect={() => runCommand(() => setActivePage('settings'))}>
+                <Settings className="mr-2 h-4 w-4" />
+                <span>Go to Settings</span>
+                <CommandShortcut>G S</CommandShortcut>
+              </CommandItem>
+              <CommandItem onSelect={() => runCommand(() => setActivePage('toaster'))}>
+                <Component className="mr-2 h-4 w-4" />
+                <span>Go to Toaster Demo</span>
+                <CommandShortcut>G T</CommandShortcut>
+              </CommandItem>
+              <CommandItem onSelect={() => runCommand(() => setActivePage('notifications' as ActivePage))}>
+                <Bell className="mr-2 h-4 w-4" />
+                <span>Go to Notifications</span>
+                <CommandShortcut>G N</CommandShortcut>
+              </CommandItem>
+            </CommandGroup>
+            <CommandSeparator />
+            <CommandGroup heading="Actions">
+              <CommandItem onSelect={() => runCommand(toggleDarkMode)}>
+                {isDarkMode ? <Sun className="mr-2 h-4 w-4" /> : <Moon className="mr-2 h-4 w-4" />}
+                <span>Toggle Theme</span>
+                <CommandShortcut>⌘T</CommandShortcut>
+              </CommandItem>
+              <CommandItem onSelect={() => runCommand(toggleFullscreen)}>
+                <Maximize className="mr-2 h-4 w-4" />
+                <span>Toggle Fullscreen</span>
+                <CommandShortcut>⌘F</CommandShortcut>
+              </CommandItem>
+              <CommandItem onSelect={() => runCommand(() => openSidePane('settings'))}>
+                <PanelRight className="mr-2 h-4 w-4" />
+                <span>Open Settings in Side Pane</span>
+                <CommandShortcut>⌥S</CommandShortcut>
+              </CommandItem>
+            </CommandGroup>
+            <CommandSeparator />
+            <CommandGroup heading="Preferences">
+              <CommandItem onSelect={() => runCommand(() => dispatch({ type: 'SET_COMPACT_MODE', payload: true }))}>
+                <Smartphone className="mr-2 h-4 w-4" />
+                <span>Enable Compact Mode</span>
+                <CommandShortcut>⌘C</CommandShortcut>
+              </CommandItem>
+              <CommandItem onSelect={() => runCommand(() => dispatch({ type: 'SET_COMPACT_MODE', payload: false }))}>
+                <Monitor className="mr-2 h-4 w-4" />
+                <span>Disable Compact Mode</span>
+                <CommandShortcut>⇧⌘C</CommandShortcut>
+              </CommandItem>
+            </CommandGroup>
+          </CommandList>
+        </CommandDialog>
+      )
+    }
+  src/components/layout/EnhancedSidebar.tsx: >-
+    import React from 'react';
+
+    import {
+      Home,
+      Settings,
+      HelpCircle,
+      Component,
+      Rocket,
+      MoreHorizontal,
+      Bell,
+      Search,
+      FileText,
+      Star,
+      Trash2,
+      FolderOpen,
+      Mail,
+      Bookmark,
+      Download,
+      User,
+      Plus,
+      Database
+    } from 'lucide-react';
+
+    import { useAppStore, type ActivePage } from '@/store/appStore';
+
+    import { useAppShell } from '@/context/AppShellContext';
+
+    import { BODY_STATES } from '@/lib/utils';
+
+    import {
+      Workspaces,
+      WorkspaceTrigger,
+      WorkspaceContent,
+      type Workspace,
+    } from './WorkspaceSwitcher';
+
+    import {
+      DropdownMenu,
+      DropdownMenuContent,
+      DropdownMenuItem,
+      DropdownMenuTrigger,
+    } from '@/components/ui/dropdown-menu';
+
+    import {
+      Sidebar,
+      SidebarContent,
+      SidebarHeader,
+      SidebarTitle,
+      SidebarBody,
+      SidebarFooter,
+      SidebarSection,
+      SidebarMenuItem,
+      SidebarMenuButton,
+      SidebarMenuAction,
+      SidebarLabel,
+      SidebarBadge,
+      SidebarTooltip,
+      SidebarIcon,
+      useSidebar,
+    } from './Sidebar';
+
+    import { ViewModeSwitcher } from './ViewModeSwitcher';
+
+    import { cn } from '@/lib/utils';
+
+
+    interface MyWorkspace extends Workspace {
+      logo: string;
+      plan: string;
+    }
+
+
+    const mockWorkspaces: MyWorkspace[] = [
+      { id: 'ws1', name: 'Acme Inc.', logo: 'https://avatar.vercel.sh/acme.png', plan: 'Pro' },
+      { id: 'ws2', name: 'Monsters Inc.', logo: 'https://avatar.vercel.sh/monsters.png', plan: 'Free' },
+      { id: 'ws3', name: 'Stark Industries', logo: 'https://avatar.vercel.sh/stark.png', plan: 'Enterprise' },
+    ];
+
+
+    const SidebarWorkspaceTrigger = () => {
+      const { isCollapsed, compactMode } = useSidebar();
+
+      return (
+        <WorkspaceTrigger
+          collapsed={isCollapsed}
+          className={cn(
+            'rounded-xl transition-colors hover:bg-accent/50 w-full',
+            isCollapsed ? 'p-2' : 'p-3 bg-accent/50',
+          )}
+          avatarClassName={cn(compactMode ? 'h-8 w-8' : 'h-10 w-10')}
+        />
+      );
+    };
+
+
+    interface SidebarProps {
+      onMouseEnter?: () => void;
+      onMouseLeave?: () => void;
+    }
+
+
+    export const EnhancedSidebar = React.forwardRef<HTMLDivElement,
+    SidebarProps>(
+      ({ onMouseEnter, onMouseLeave }, ref) => {
+        const { sidebarWidth, compactMode, appName, appLogo } = useAppShell();
+        const [selectedWorkspace, setSelectedWorkspace] = React.useState(mockWorkspaces[0]);
+
+        return (
+          <Sidebar
+            ref={ref}
+            style={{ width: sidebarWidth }}
+            onMouseEnter={onMouseEnter}
+            onMouseLeave={onMouseLeave}
+          >
+            <SidebarContent>
+              <SidebarHeader>
+                {appLogo || (
+                  <div className="p-2 bg-primary/20 rounded-lg">
+                    <Rocket className="w-5 h-5 text-primary" />
+                  </div>
+                )}
+                <SidebarTitle>{appName}</SidebarTitle>
+              </SidebarHeader>
+
+              <SidebarBody>
+                <SidebarSection title="Main">
+                  <AppMenuItem icon={Home} label="Dashboard" page="dashboard" />
+                  <AppMenuItem icon={Database} label="Data Demo" page="data-demo" />
+                  <AppMenuItem icon={Search} label="Search" />
+                  <AppMenuItem icon={Bell} label="Notifications" badge={3} page="notifications" opensInSidePane />
+                </SidebarSection>
+                
+                <SidebarSection title="Workspace" collapsible defaultExpanded>
+                  <AppMenuItem icon={FileText} label="Documents" hasActions>
+                    <AppMenuItem icon={FileText} label="Recent" isSubItem />
+                    <AppMenuItem icon={Star} label="Starred" isSubItem />
+                    <AppMenuItem icon={Trash2} label="Trash" isSubItem />
+                  </AppMenuItem>
+                  <AppMenuItem icon={FolderOpen} label="Projects" hasActions />
+                  <AppMenuItem icon={Mail} label="Messages" badge={12} />
+                </SidebarSection>
+                
+                <SidebarSection title="Personal" collapsible>
+                  <AppMenuItem icon={Bookmark} label="Bookmarks" />
+                  <AppMenuItem icon={Star} label="Favorites" />
+                  <AppMenuItem icon={Download} label="Downloads" />
+                </SidebarSection>
+
+                <SidebarSection title="Components" collapsible defaultExpanded>
+                  <AppMenuItem icon={Component} label="Toaster" page="toaster" />
+                </SidebarSection>
+              </SidebarBody>
+
+              <SidebarFooter>
+                <SidebarSection>
+                  <AppMenuItem icon={User} label="Profile" />
+                  <AppMenuItem icon={Settings} label="Settings" page="settings" />
+                  <AppMenuItem icon={HelpCircle} label="Help" />
+                </SidebarSection>
+
+                <div className={cn(compactMode ? 'mt-4' : 'mt-6')}>
+                  <Workspaces
+                    workspaces={mockWorkspaces}
+                    selectedWorkspaceId={selectedWorkspace.id}
+                    onWorkspaceChange={setSelectedWorkspace}
+                  >
+                    <SidebarWorkspaceTrigger />
+                    <WorkspaceContent>
+                      <button className="flex w-full items-center gap-2 rounded-sm px-2 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground focus:outline-none">
+                        <Plus className="h-4 w-4" />
+                        <span>Create Workspace</span>
+                      </button>
+                    </WorkspaceContent>
+                  </Workspaces>
+                </div>
+              </SidebarFooter>
+            </SidebarContent>
+          </Sidebar>
+        );
+      },
+    );
+
+    EnhancedSidebar.displayName = 'EnhancedSidebar';
+
+
+
+    // Example of a reusable menu item component built with the new Sidebar
+    primitives
+
+    interface AppMenuItemProps {
+      icon: React.ElementType;
+      label: string;
+      badge?: number;
+      hasActions?: boolean;
+      children?: React.ReactNode;
+      isSubItem?: boolean;
+      page?: ActivePage;
+      opensInSidePane?: boolean;
+    }
+
+
+    const AppMenuItem: React.FC<AppMenuItemProps> = ({ icon: Icon, label, badge,
+    hasActions, children, isSubItem = false, page, opensInSidePane = false }) =>
+    {
+      const { handleNavigation, activePage } = useAppStore()
+      const { compactMode, bodyState, sidePaneContent, openSidePane, dispatch } = useAppShell()
+      const { isCollapsed } = useSidebar();
+
+      const isPageActive = (page: ActivePage) => {
+        const pageToSidePaneContent: { [key in ActivePage]?: 'main' | 'settings' | 'toaster' | 'notifications' } = {
+          dashboard: 'main',
+          settings: 'settings',
+          toaster: 'toaster',
+          notifications: 'notifications',
+          'data-demo': 'main',
+        };
+        return activePage === page || (bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === pageToSidePaneContent[page]);
+      };
+      
+      const isActive = page ? isPageActive(page) : false;
+
+      const handleClick = () => {
+        if (page) {
+          if (opensInSidePane) {
+            const pageToPaneMap: { [key in ActivePage]?: 'main' | 'settings' | 'toaster' | 'notifications' } = {
+              dashboard: 'main',
+              settings: 'settings',
+              toaster: 'toaster',
+              notifications: 'notifications',
+              'data-demo': 'main',
+            };
+            if (pageToPaneMap[page]) openSidePane(pageToPaneMap[page]!)
+          } else {
+            handleNavigation(page);
+          }
+        }
+      };
+
+      return (
+        <div className={isSubItem ? (compactMode ? 'ml-4' : 'ml-6') : ''}>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              onClick={handleClick}
+              isActive={isActive}
+              draggable={!!page}
+              onDragStart={(_e) => {
+                if (page) {
+                  // set dragged page in AppShell context
+                  dispatch({ type: 'SET_DRAGGED_PAGE', payload: page });
+                }
+              }}
+              onDragEnd={() => {
+                dispatch({ type: 'SET_DRAGGED_PAGE', payload: null });
+                dispatch({ type: 'SET_DRAG_HOVER_TARGET', payload: null });
+              }}
+            >
+              <SidebarIcon>
+                <Icon className={isSubItem ? "w-3 h-3" : "w-4 h-4"}/>
+              </SidebarIcon>
+              <SidebarLabel>{label}</SidebarLabel>
+              {badge && <SidebarBadge>{badge}</SidebarBadge>}
+              <SidebarTooltip label={label} badge={badge} />
+            </SidebarMenuButton>
+
+            {page && !isCollapsed && ( // Always render switcher if there's a page
+              <div className={cn(
+                "absolute top-1/2 -translate-y-1/2 z-10",
+                "opacity-0 group-hover/item:opacity-100 group-focus-within/item:opacity-100",
+                "transition-opacity pointer-events-none group-hover/item:pointer-events-auto",
+                // If there are actions, move left to make space for the action button
+                hasActions ? "right-10" : "right-2"
+              )}>
+                <ViewModeSwitcher targetPage={page} />
+              </div>
+            )}
+
+            {hasActions && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <SidebarMenuAction>
+                    <MoreHorizontal className="h-4 w-4" />
+                  </SidebarMenuAction>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent side="right" align="start">
+                  <DropdownMenuItem>
+                    <span>Edit {label}</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem>
+                    <span>Delete {label}</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </SidebarMenuItem>
+          {!isCollapsed && children && (
+            <div className="space-y-1 mt-1">{children}</div>
+          )}
+        </div>
+      );
+    };
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 213

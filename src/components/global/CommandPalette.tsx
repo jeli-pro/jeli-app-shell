@@ -8,17 +8,19 @@ import {
   CommandSeparator,
   CommandShortcut,
 } from '@/components/ui/command'
-import { useAppStore, type ActivePage } from '@/store/appStore'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useAppStore } from '@/store/appStore'
 import { useAppShell } from '@/context/AppShellContext'
 import { useCommandPaletteToggle } from '@/hooks/useCommandPaletteToggle.hook'
 import { Home, Settings, Moon, Sun, Monitor, Smartphone, PanelRight, Maximize, Component, Bell } from 'lucide-react'
 
 export function CommandPalette() {
-  const { dispatch, toggleFullscreen, openSidePane } = useAppShell();
+  const { dispatch, toggleFullscreen } = useAppShell();
+  const navigate = useNavigate();
+  const [, setSearchParams] = useSearchParams();
   const {
     isCommandPaletteOpen,
     setCommandPaletteOpen,
-    setActivePage,
     isDarkMode,
     toggleDarkMode,
   } = useAppStore()
@@ -35,22 +37,22 @@ export function CommandPalette() {
       <CommandList>
         <CommandEmpty>No results found.</CommandEmpty>
         <CommandGroup heading="Navigation">
-          <CommandItem onSelect={() => runCommand(() => setActivePage('dashboard'))}>
+          <CommandItem onSelect={() => runCommand(() => navigate('/dashboard'))}>
             <Home className="mr-2 h-4 w-4" />
             <span>Go to Dashboard</span>
             <CommandShortcut>G D</CommandShortcut>
           </CommandItem>
-          <CommandItem onSelect={() => runCommand(() => setActivePage('settings'))}>
+          <CommandItem onSelect={() => runCommand(() => navigate('/settings'))}>
             <Settings className="mr-2 h-4 w-4" />
             <span>Go to Settings</span>
             <CommandShortcut>G S</CommandShortcut>
           </CommandItem>
-          <CommandItem onSelect={() => runCommand(() => setActivePage('toaster'))}>
+          <CommandItem onSelect={() => runCommand(() => navigate('/toaster'))}>
             <Component className="mr-2 h-4 w-4" />
             <span>Go to Toaster Demo</span>
             <CommandShortcut>G T</CommandShortcut>
           </CommandItem>
-          <CommandItem onSelect={() => runCommand(() => setActivePage('notifications' as ActivePage))}>
+          <CommandItem onSelect={() => runCommand(() => navigate('/notifications'))}>
             <Bell className="mr-2 h-4 w-4" />
             <span>Go to Notifications</span>
             <CommandShortcut>G N</CommandShortcut>
@@ -68,7 +70,7 @@ export function CommandPalette() {
             <span>Toggle Fullscreen</span>
             <CommandShortcut>⌘F</CommandShortcut>
           </CommandItem>
-          <CommandItem onSelect={() => runCommand(() => openSidePane('settings'))}>
+          <CommandItem onSelect={() => runCommand(() => setSearchParams({ sidePane: 'settings' }))}>
             <PanelRight className="mr-2 h-4 w-4" />
             <span>Open Settings in Side Pane</span>
             <CommandShortcut>⌥S</CommandShortcut>

@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
 import { gsap } from 'gsap';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { cn } from '@/lib/utils'
 import { useAppShell } from '@/context/AppShellContext'
-import { useAppStore, type ActivePage } from '@/store/appStore'
+import { type ActivePage } from '@/store/appStore'
 import { BODY_STATES } from '@/lib/utils'
 import { type AppShellState } from '@/context/AppShellContext'
 import {
@@ -28,14 +29,13 @@ export function ViewModeSwitcher({ pane, targetPage }: { pane?: 'main' | 'right'
   const {
     bodyState,
     sidePaneContent,
-    openSidePane,
-    closeSidePane,
     toggleFullscreen,
-    toggleSplitView,
     fullscreenTarget,
-    dispatch,
   } = useAppShell()
-  const { activePage: currentActivePage, setActivePage } = useAppStore()
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [, setSearchParams] = useSearchParams();
+  const currentActivePage = (location.pathname.split('/')[1] || 'dashboard') as ActivePage;
 
   const activePage = targetPage || currentActivePage;
   const [isExpanded, setIsExpanded] = useState(false);
@@ -86,58 +86,76 @@ export function ViewModeSwitcher({ pane, targetPage }: { pane?: 'main' | 'right'
   const handleSidePaneClick = () => {
     const paneContent = pageToPaneMap[activePage] || 'details';
     if (pane === 'right') return;
+
+    const newSearchParams = new URLSearchParams(location.search);
     if (bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === paneContent) {
-      closeSidePane();
+      newSearchParams.delete('sidePane');
+      newSearchParams.delete('view');
+      newSearchParams.delete('right');
     } else {
-      openSidePane(paneContent);
+      newSearchParams.set('sidePane', paneContent);
+      newSearchParams.delete('view');
+      newSearchParams.delete('right');
     }
+    setSearchParams(newSearchParams, { replace: true });
   };
   
   const handleSplitViewClick = () => {
-      const paneContent = pageToPaneMap[activePage] || 'details';
-      if (pane === 'right') return;
-      toggleSplitView(paneContent);
+    const paneContent = pageToPaneMap[activePage] || 'details';
+    if (pane === 'right') return;
+
+    const newSearchParams = new URLSearchParams(location.search);
+    if (bodyState === BODY_STATES.SPLIT_VIEW) {
+        // from split to overlay
+        newSearchParams.set('sidePane', sidePaneContent);
+        newSearchParams.delete('view');
+        newSearchParams.delete('right');
+    } else {
+        // from normal/overlay to split
+        newSearchParams.set('view', 'split');
+        newSearchParams.set('right', bodyState === BODY_STATES.SIDE_PANE ? sidePaneContent : paneContent);
+        newSearchParams.delete('sidePane');
+    }
+    setSearchParams(newSearchParams, { replace: true });
   }
 
   const handleSwitchPanes = () => {
     if (bodyState !== BODY_STATES.SPLIT_VIEW) return;
-    const newSidePaneContent = pageToPaneMap[activePage];
+    const newSidePaneContent = pageToPaneMap[currentActivePage];
     const newActivePage = Object.entries(pageToPaneMap).find(
       ([, value]) => value === sidePaneContent
     )?.[0] as ActivePage | undefined;
 
     if (newActivePage && newSidePaneContent) {
-      setActivePage(newActivePage);
-      dispatch({ type: 'SET_SIDE_PANE_CONTENT', payload: newSidePaneContent });
+      navigate(`/${newActivePage}?view=split&right=${newSidePaneContent}`, { replace: true });
     }
   };
 
   const handleClosePane = () => {
     if (bodyState !== BODY_STATES.SPLIT_VIEW) return;
     if (pane === 'right') {
-      closeSidePane();
+      setSearchParams({}, { replace: true });
     } else if (pane === 'main') {
       const pageToBecomeActive = Object.entries(pageToPaneMap).find(
         ([, value]) => value === sidePaneContent
       )?.[0] as ActivePage | undefined;
       
       if (pageToBecomeActive) {
-        setActivePage(pageToBecomeActive);
+        navigate(`/${pageToBecomeActive}`, { replace: true });
+      } else {
+        setSearchParams({}, { replace: true });
       }
-      closeSidePane();
     }
   }
 
   const handleNormalViewClick = () => {
-    if (bodyState === BODY_STATES.SIDE_PANE || bodyState === BODY_STATES.SPLIT_VIEW) {
-      closeSidePane();
-    }
     if (isFullscreen) {
       toggleFullscreen();
     }
-    if (targetPage) {
-      setActivePage(targetPage);
+    if (targetPage && targetPage !== currentActivePage) {
+      navigate(`/${targetPage}`, { replace: true });
     }
+      setSearchParams({}, { replace: true });
   }
 
   const buttons = [
@@ -165,8 +183,8 @@ export function ViewModeSwitcher({ pane, targetPage }: { pane?: 'main' | 'right'
     {
       id: 'fullscreen',
       onClick: () => {
-        if (targetPage && targetPage !== currentActivePage) {
-          setActivePage(targetPage);
+        if (targetPage && targetPage !== currentActivePage ) {
+          navigate(`/${targetPage}`);
           setTimeout(() => toggleFullscreen(pane), 50);
         } else {
           toggleFullscreen(pane);

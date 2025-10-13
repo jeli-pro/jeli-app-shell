@@ -1,8 +1,9 @@
 import React, { useRef, type ReactElement, useCallback, useEffect, useLayoutEffect } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils'
 import { gsap } from 'gsap';
 import { CommandPalette } from '@/components/global/CommandPalette';
-import { useAppStore } from '@/store/appStore';
+import { useAppStore } from '@/store/appStore'
 import { useAppShell } from '@/context/AppShellContext';
 import { SIDEBAR_STATES, BODY_STATES } from '@/lib/utils'
 import { useResizableSidebar, useResizableRightPane } from '@/hooks/useResizablePanes.hook'
@@ -17,11 +18,12 @@ interface AppShellProps {
   commandPalette?: ReactElement;
 }
 
-const pageToPaneMap: Record<string, 'main' | 'settings' | 'toaster' | 'notifications'> = {
+const pageToPaneMap: Record<string, 'main' | 'settings' | 'toaster' | 'notifications' | 'dataDemo'> = {
   dashboard: 'main',
   settings: 'settings',
   toaster: 'toaster',
   notifications: 'notifications',
+  'data-demo': 'dataDemo',
 };
 
 // Helper hook to get the previous value of a prop or state
@@ -44,17 +46,18 @@ export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalet
     peekSidebar,
     draggedPage,
     dragHoverTarget,
-    toggleSplitView,
     bodyState,
     sidePaneContent,
-    closeSidePane,
     reducedMotion,
     isTopBarVisible,
   } = useAppShell();
   
   const isFullscreen = bodyState === BODY_STATES.FULLSCREEN;
 
-  const { isDarkMode, toggleDarkMode, handleNavigation, activePage } = useAppStore();
+  const { isDarkMode, toggleDarkMode } = useAppStore();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const activePage = location.pathname.split('/')[1] || 'dashboard';
   const appRef = useRef<HTMLDivElement>(null)
   const sidebarRef = useRef<HTMLDivElement>(null)
   const mainContentRef = useRef<HTMLDivElement>(null)
@@ -144,36 +147,36 @@ export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalet
 
   const handleDropLeft = useCallback(() => {
     if (!draggedPage) return;
-    
-    const originalActivePage = activePage;
-    const originalActivePagePaneContent = pageToPaneMap[originalActivePage];
 
     // If we drop the page that's already in the side pane, just make it the main view.
     const paneContentOfDraggedPage = pageToPaneMap[draggedPage];
     if (paneContentOfDraggedPage === sidePaneContent && (bodyState === BODY_STATES.SIDE_PANE || bodyState === BODY_STATES.SPLIT_VIEW)) {
-      closeSidePane();
-      handleNavigation(draggedPage);
+      navigate(`/${draggedPage}`, { replace: true });
     } 
     // New context-aware logic: if we are in normal view and drop a NEW page on the left
-    else if (bodyState === BODY_STATES.NORMAL && draggedPage !== originalActivePage) {
+    else if (bodyState === BODY_STATES.NORMAL && draggedPage !== activePage) {
+        const originalActivePagePaneContent = pageToPaneMap[activePage];
         if (originalActivePagePaneContent) {
-            // 1. Set the right pane content to be the original page
-            dispatch({ type: 'SET_SIDE_PANE_CONTENT', payload: originalActivePagePaneContent });
-            // 2. Set the main page to be the new dragged page
-            handleNavigation(draggedPage);
-            // 3. Switch to split view
-            dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.SPLIT_VIEW });
+            navigate(`/${draggedPage}?view=split&right=${originalActivePagePaneContent}`, { replace: true });
         } else {
             // Fallback for pages that can't be in a pane
-            handleNavigation(draggedPage);
+            navigate(`/${draggedPage}`, { replace: true });
         }
     } else { // Default behavior: just make the dropped page the main one
-      handleNavigation(draggedPage);
+      // If in split view, replace the main content and keep the right pane
+      if (bodyState === BODY_STATES.SPLIT_VIEW) {
+        const rightPane = location.search.split('right=')[1];
+        if (rightPane) {
+          navigate(`/${draggedPage}?view=split&right=${rightPane}`, { replace: true });
+          return;
+        }
+      }
+      navigate(`/${draggedPage}`, { replace: true });
     }
     
     dispatch({ type: 'SET_DRAGGED_PAGE', payload: null });
     dispatch({ type: 'SET_DRAG_HOVER_TARGET', payload: null });
-  }, [draggedPage, activePage, bodyState, sidePaneContent, handleNavigation, dispatch, closeSidePane]);
+  }, [draggedPage, activePage, bodyState, sidePaneContent, navigate, dispatch, location]);
 
   const handleDragOverRight = useCallback((e: React.DragEvent) => {
     if (!draggedPage) return;
@@ -187,23 +190,18 @@ export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalet
     if (!draggedPage) return;
     const pane = pageToPaneMap[draggedPage as keyof typeof pageToPaneMap];
     if (pane) {
+      let mainPage = activePage;
       // If dropping the currently active page to the right,
       // set a default page (e.g., dashboard) as the new active page.
       if (draggedPage === activePage) {
-        handleNavigation('dashboard');
+        mainPage = 'dashboard';
       }
 
-      // Set the right pane content and ensure split view
-      dispatch({ type: 'SET_SIDE_PANE_CONTENT', payload: pane });
-      if (bodyState === BODY_STATES.NORMAL) {
-        toggleSplitView(pane);
-      } else if (bodyState === BODY_STATES.SIDE_PANE) {
-        toggleSplitView();
-      }
+      navigate(`/${mainPage}?view=split&right=${pane}`, { replace: true });
     }
     dispatch({ type: 'SET_DRAGGED_PAGE', payload: null });
     dispatch({ type: 'SET_DRAG_HOVER_TARGET', payload: null });
-  }, [draggedPage, toggleSplitView, dispatch, bodyState, activePage, handleNavigation]);
+  }, [draggedPage, dispatch, bodyState, activePage, navigate]);
 
   return (
     <div 

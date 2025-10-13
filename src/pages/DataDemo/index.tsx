@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
 import { 
   Layers, 
   AlertTriangle, 
@@ -48,7 +49,6 @@ export default function DataDemoPage({ isInSidePane = false }: { isInSidePane?: 
     priority: [],
   })
   const [sortConfig, setSortConfig] = useState<SortConfig | null>({ key: 'updatedAt', direction: 'desc' })
-  const [selectedItem, setSelectedItem] = useState<DataItem | null>(null)  
   const [items, setItems] = useState<DataItem[]>([])
   const [page, setPage] = useState(0) // Start at 0 to trigger initial load effect
   const [hasMore, setHasMore] = useState(true)
@@ -56,6 +56,13 @@ export default function DataDemoPage({ isInSidePane = false }: { isInSidePane?: 
   const contentRef = useRef<HTMLDivElement>(null)
   const statsRef = useRef<HTMLDivElement>(null)
   const observer = useRef<IntersectionObserver>()
+  const navigate = useNavigate()
+  const { itemId } = useParams<{ itemId: string }>()
+
+  const selectedItem = useMemo(() => {
+    if (!itemId) return null
+    return mockDataItems.find(item => item.id === itemId) ?? null
+  }, [itemId])
 
   const isInitialLoading = isLoading && items.length === 0
 
@@ -236,16 +243,21 @@ export default function DataDemoPage({ isInSidePane = false }: { isInSidePane?: 
   
   // Handle item selection and open side panel
   const handleItemSelect = (item: DataItem) => {
-    setSelectedItem(item)
+    navigate(`/data-demo/${item.id}`)
   }
 
-  if (selectedItem) {
-    return (
-      <DataDetailPanel
-        item={selectedItem}
-        onClose={() => setSelectedItem(null)}
-      />
-    )
+  if (itemId) {
+    if (!selectedItem) {
+      return (
+        <PageLayout>
+          <div className="text-center py-20">
+            <h2 className="text-xl font-semibold">Item Not Found</h2>
+            <p className="text-muted-foreground">The item you are looking for does not exist.</p>
+          </div>
+        </PageLayout>
+      )
+    }
+    return <DataDetailPanel item={selectedItem} onClose={() => navigate('/data-demo')} />
   }
 
   const renderView = () => {

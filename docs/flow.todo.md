@@ -13,15 +13,23 @@ make the codebase highly DRY without UI UX regression
 
 ===
 
+implement the react route 7.9.4
+
+===
+
 data demo page: table view header should be sticky on scroll
 
 ===
 
-demo data page: opening data item detail should defaulting as overlay side pane mode.
+1. demo data page: opening data item detail should defaulting as overlay side pane mode.
 
-also the breadcrumb navigation should aware of the content position
+2. make sure the mental model is that the data item detail view should be distinct page with its address bar url. so user can enjoy in all view mode format
 
-===
+3. also the breadcrumb navigation should aware the data detail page
+
+4. when data item detail overlay side pane opened, the normal view should persist state of data list page so user can explore another data from list while viewing the data item detail in overlay side pane mode
+
+=== DONE
 
 sidebar item: while hover, show ViewModeSwitcher so user can open page with desired view mode
 
