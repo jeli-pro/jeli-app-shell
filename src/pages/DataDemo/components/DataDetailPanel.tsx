@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { Avatar } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { 
+  ArrowLeft,
   Calendar, 
   Clock, 
   Eye, 
@@ -23,8 +24,7 @@ import {
   CheckCircle,
   AlertCircle,
   Circle
-} from 'lucide-react'
-import { useAppShell } from '@/context/AppShellContext'
+} from 'lucide-react' 
 import type { DataItem } from '../types'
 import { getStatusColor, getPriorityColor } from '../utils'
 
@@ -34,25 +34,24 @@ interface DataDetailPanelProps {
 }
 
 export function DataDetailPanel({ item, onClose }: DataDetailPanelProps) {
-  const { bodyState, sidePaneContent } = useAppShell()
   const contentRef = useRef<HTMLDivElement>(null)
 
   useLayoutEffect(() => {
-    if (item && contentRef.current && sidePaneContent === 'data-details') {
+    if (item && contentRef.current) {
       gsap.fromTo(contentRef.current.children,
         { y: 30, opacity: 0 },
         {
           duration: 0.6,
           y: 0,
           opacity: 1,
-          stagger: 0.1,
+          stagger: 0.08,
           ease: "power2.out"
         }
       )
     }
-  }, [item, sidePaneContent])
+  }, [item])
 
-  if (!item || sidePaneContent !== 'data-details') {
+  if (!item) {
     return null
   }
 
@@ -82,6 +81,10 @@ export function DataDetailPanel({ item, onClose }: DataDetailPanelProps) {
     <div ref={contentRef} className="h-full flex flex-col">
       {/* Header */}
       <div className="p-6 border-b border-border/50 bg-gradient-to-r from-card/50 to-card/30 backdrop-blur-sm">
+        <Button variant="ghost" onClick={onClose} className="mb-4 -ml-4">
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Back to list
+        </Button>
         <div className="flex items-start gap-4 mb-4">
           <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-primary/10 rounded-2xl flex items-center justify-center text-3xl flex-shrink-0">
             {item.thumbnail}

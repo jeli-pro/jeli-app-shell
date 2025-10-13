@@ -15,7 +15,7 @@ demo data page: opening data item detail not working , the overlay side pane bla
 
 demo data page: not working on overlay side pane mode. also not working in split pane right side. just blank
 
-===
+=== DONE
 
 demo data page: we need feature like sort, filter for all the view mode (list, card grid , table , tree)
 

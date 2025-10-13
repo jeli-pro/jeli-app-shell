@@ -16,7 +16,6 @@ import { DataDetailPanel } from './components/DataDetailPanel'
 import { AnimatedLoadingSkeleton } from './components/AnimatedLoadingSkeleton'
 import { StatChartCard } from './components/StatChartCard'
 import { DataToolbar, FilterConfig } from './components/DataToolbar'
-import { useAppShell } from '@/context/AppShellContext'
 import { mockDataItems } from './data/mockData'
 import type { DataItem, ViewMode, SortConfig, SortableField } from './types'
 
@@ -41,7 +40,7 @@ type ChartStat = {
 
 type StatItem = Stat | ChartStat;
 
-export default function DataDemoPage() {
+export default function DataDemoPage({ isInSidePane = false }: { isInSidePane?: boolean }) {
   const [viewMode, setViewMode] = useState<ViewMode>('list')
   const [filters, setFilters] = useState<FilterConfig>({
     searchTerm: '',
@@ -57,7 +56,6 @@ export default function DataDemoPage() {
   const contentRef = useRef<HTMLDivElement>(null)
   const statsRef = useRef<HTMLDivElement>(null)
   const observer = useRef<IntersectionObserver>()
-  const { openSidePane } = useAppShell()
 
   const isInitialLoading = isLoading && items.length === 0
 
@@ -239,7 +237,15 @@ export default function DataDemoPage() {
   // Handle item selection and open side panel
   const handleItemSelect = (item: DataItem) => {
     setSelectedItem(item)
-    openSidePane('data-details')
+  }
+
+  if (selectedItem) {
+    return (
+      <DataDetailPanel
+        item={selectedItem}
+        onClose={() => setSelectedItem(null)}
+      />
+    )
   }
 
   const renderView = () => {
@@ -326,12 +332,6 @@ export default function DataDemoPage() {
           )}
         </div>
       </div>
-
-      {/* Detail Panel */}
-      <DataDetailPanel 
-        item={selectedItem}
-        onClose={() => setSelectedItem(null)}
-      />
     </PageLayout>
   )
 }

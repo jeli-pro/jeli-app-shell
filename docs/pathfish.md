@@ -1,154 +1,131 @@
-Here's the master plan for refactoring the Data Demo page.
+yo, let's get this done. the `DataDemoPage` is borked when it's not in the main content pane. it's basically a scope issue. the page and its detail panel are too tightly coupled with the main app shell logic, and it breaks when you try to render it somewhere else.
+
+the plan is to make the `DataDemoPage` a self-contained unit. it should handle its own master-detail view internally. if you click an item, it should show the detail view *inside its own container*, not by telling the whole app to open a different component in a different pane. this makes it way more portable and fixes the bug for good. we'll rip out the cross-pane state logic for this feature and just let the component manage itself. cleaner, simpler, works everywhere.
+
+here's the playbook.
 
 ```yaml
 plan:
-  uuid: 'c8d4a9e1-5b7f-4f9a-8e2c-1a3b9f0d6c5e'
+  uuid: 'c8a2b1f0-3e9a-4d7c-8f2b-9e4a1b0c6d7a'
   status: 'todo'
-  title: 'Implement Global Sorting & Filtering for Data Demo Page'
+  title: 'Refactor DataDemo for Self-Contained Pane Rendering'
   introduction: |
-    The current DataDemo page is a static beast. We're gonna juice it up with dynamic client-side sorting and filtering that works across all view modes (list, cards, grid, table).
+    The `DataDemoPage` currently fails to render correctly when placed in an overlay side pane or a split-view pane. This is due to its detail view logic being improperly coupled with the global `AppShell` state, expecting a cross-pane (master-detail) interaction that isn't set up for when the page itself is in a secondary pane.
 
-    Right now, the table view has its own siloed sorting logic, which is a no-go for a unified experience. The plan is to rip that out, hoist all data-massaging logic into the main `DataDemoPage` component, and create a single source of truth for data processing. We'll build a new `DataToolbar` component to house all the user controls, keeping the main component clean.
-
-    This refactor will make the page feel alive and actually useful, transforming it from a simple showcase into an interactive data exploration tool.
+    This refactor will decouple this logic by making `DataDemoPage` a fully self-contained component. It will manage its own master-detail view internally, switching between its list/grid view and the detail panel within its own boundaries. This approach resolves the rendering bugs, significantly simplifies state management by removing the need for a shared context item, and improves component encapsulation, allowing `DataDemoPage` to function correctly anywhere in the layout.
   parts:
-    - uuid: 'a1b2c3d4-e5f6-7890-1234-567890abcdef'
+    - uuid: 'a1b2c3d4-e5f6-a7b8-c9d0-e1f2a3b4c5d6'
       status: 'todo'
-      name: 'Part 1: Centralize Data Processing Logic'
+      name: 'Part 1: Internalize Master-Detail Logic in DataDemoPage'
       reason: |
-        To make sorting and filtering global across all views, all data manipulation logic must be hoisted into the parent `DataDemoPage` component. This creates a single source of truth and makes the view components "dumber" and more reusable. We'll start by lifting the existing sort logic from `DataTableView` and expanding on it.
+        To make the component independent of the `AppShell`'s pane state, we need to move the master-detail view logic inside `DataDemoPage`. This will allow it to function correctly whether it's in the main content area or a side pane.
       steps:
-        - uuid: 'e1f2a3b4-c5d6-7890-e1f2-a3b4c5d67890'
+        - uuid: 'b1c2d3e4-f5a6-b7c8-d9e0-f1a2b3c4d5e6'
           status: 'todo'
-          name: '1. Update Data Types'
+          name: '1. Conditionally Render Views'
           reason: |
-            We need to define the shapes for our new sorting and filtering state to ensure type safety throughout the implementation.
-          files:
-            - src/pages/DataDemo/types.ts
-          operations:
-            - 'Add new type `SortConfig` with properties `key: SortableField` and `direction: "asc" | "desc"`.
-            - 'Add a new type `SortableField` which is a union of strings for the fields we can sort by, like `"title"`, `"status"`, `"priority"`, `"updatedAt"`, `"assignee.name"`, etc.'
-            - 'Add a new type `FilterConfig` with properties like `searchTerm: string`, `status: string[]`, `priority: string[]`.
-        - uuid: 'b4c5d6e7-f8a9-0b1c-d2e3-f4a5b6c7d8e9'
-          status: 'todo'
-          name: '2. Hoist State and Logic to DataDemoPage'
-          reason: |
-            This is the core of the refactor. We'll move all data processing to the main page component to act as the single source of truth.
+            The core of this refactor is to switch between the list/grid view and the detail panel based on local state (`selectedItem`), rather than global app shell state.
           files:
             - src/pages/DataDemo/index.tsx
           operations:
-            - 'Import the new `SortConfig` and `FilterConfig` types.'
-            - 'Introduce new states: `const [filters, setFilters] = useState<FilterConfig>(...)` and `const [sortConfig, setSortConfig] = useState<SortConfig | null>(...)`.
-            - 'Create a `useMemo` hook named `processedData`. This hook will take `mockDataItems`, `filters`, and `sortConfig` as dependencies.'
-            - 'Inside `processedData`, first apply filtering based on `filters.searchTerm`, `filters.status`, and `filters.priority`.'
-            - 'Then, sort the filtered array based on `sortConfig.key` and `sortConfig.direction`. Handle nested keys like `"assignee.name"`.
-            - 'Create a `useEffect` that listens for changes in `filters` or `sortConfig`. When they change, it should reset `setItems([])` and `setPage(1)` to trigger a fresh load of the newly processed data.'
-            - 'Update the infinite scroll `useEffect` to slice from `processedData` instead of `mockDataItems`.'
-        - uuid: 'f6a7b8c9-d0e1-f2a3-b4c5-d6e7f8a90b1c'
+            - 'Wrap the main return statement in a condition: if `selectedItem` exists, render `<DataDetailPanel />`.'
+            - 'If `selectedItem` is `null`, render the existing `PageLayout` containing the list/grid views.'
+            - 'Pass `selectedItem` as the `item` prop to `DataDetailPanel`.'
+            - 'Pass a callback `() => setSelectedItem(null)` to the `onClose` prop of `DataDetailPanel`.'
+        - uuid: 'c2d3e4f5-a6b7-c8d9-e0f1-a2b3c4d5e6f7'
           status: 'todo'
-          name: '3. Refactor DataTableView'
+          name: '2. Simplify Item Selection Logic'
           reason: |
-            Make `DataTableView` a "dumb" component that receives its data and state from its parent, removing its internal sorting logic.
-          files:
-            - src/pages/DataDemo/components/DataTableView.tsx
-          operations:
-            - 'Remove the internal `sortField` and `sortDirection` state.'
-            - 'Add new props: `sortConfig: SortConfig | null` and `onSort: (field: SortableField) => void`.
-            - 'Update the `handleSort` function to be a simple callback `(field) => onSort(field)`.
-            - 'Modify the `SortIcon` component to determine its state from the `sortConfig` prop instead of internal state.'
-            - 'The component should now render `data` directly without calling an internal `getSortedData` function.'
-    - uuid: '09876543-21fe-dcba-0987-654321fedcba'
-      status: 'todo'
-      name: 'Part 2: Build the Data Toolbar'
-      reason: |
-        A dedicated `DataToolbar` component is needed to house the filter and sort controls. This keeps the UI for data manipulation separate from the main page logic, promoting separation of concerns and a cleaner `DataDemoPage` component.
-      steps:
-        - uuid: 'cba98765-4321-fedc-ba98-76543210fedc'
-          status: 'todo'
-          name: '1. Create DataToolbar Component'
-          reason: |
-            Scaffold the new component and define its API.
-          files:
-            - src/pages/DataDemo/components/DataToolbar.tsx
-          operations:
-            - 'Create a new file `src/pages/DataDemo/components/DataToolbar.tsx`.
-            - 'The component should accept props: `filters`, `onFiltersChange`, `sortConfig`, `onSortChange`, and `viewMode`, `onViewModeChange`.
-            - 'Move the existing `DataViewModeSelector` inside this new toolbar component.'
-        - uuid: '1234abcd-efgh-5678-ijkl-mnopqrstuv'
-          status: 'todo'
-          name: '2. Implement Filter and Sort Controls'
-          reason: |
-            Build out the UI elements for searching, filtering, and sorting within the toolbar.
-          files:
-            - src/pages/DataDemo/components/DataToolbar.tsx
-          operations:
-            - 'Add an `Input` component with a `Search` icon for the `searchTerm` filter.'
-            - 'Use a `Popover` containing a `Command` component to create a multi-select dropdown for filtering by `status`. It should display a `Badge` with the count of active filters.'
-            - 'Implement a similar multi-select `Popover` for filtering by `priority`.
-            - 'Add a `DropdownMenu` to control sorting. It should have options like "Last Updated", "Title A-Z", "Priority", etc. and reflect the current `sortConfig`.'
-            - 'Arrange all controls in a responsive flex layout.'
-    - uuid: 'fedcba09-8765-4321-fedc-ba0987654321'
-      status: 'todo'
-      name: 'Part 3: Integrate and Finalize'
-      reason: |
-        Wire up the new `DataToolbar` and the centralized data processing logic to create the final, interactive experience.
-      steps:
-        - uuid: '543210fe-dcba-9876-5432-10fedcba9876'
-          status: 'todo'
-          name: '1. Integrate DataToolbar into DataDemoPage'
-          reason: |
-            Connect the new toolbar to the main page's state and logic.
+            The component should no longer interact with the global `openSidePane` function for its internal navigation. The selection handler should only manage local state.
           files:
             - src/pages/DataDemo/index.tsx
           operations:
-            - 'Remove the `DataViewModeSelector` from `index.tsx`.
-            - 'Import and render the new `DataToolbar` component in its place.'
-            - 'Pass the `filters`, `sortConfig`, and `viewMode` state down to the `DataToolbar` as props.'
-            - 'Pass callback handlers (`setFilters`, `setSortConfig`, `setViewMode`) to `DataToolbar` to update the state.'
-        - uuid: 'abcdef12-3456-7890-abcd-ef1234567890'
+            - 'In `handleItemSelect`, remove the call to `openSidePane()`.'
+            - 'The function should now only call `setSelectedItem(item)`. The `useAppShell` hook might no longer be needed here unless for other reasons.'
+        - uuid: 'd3e4f5a6-b7c8-d9e0-f1a2-b3c4d5e6f7a8'
           status: 'todo'
-          name: '2. Update View Components Props'
+          name: '3. Remove Redundant Detail Panel Instance'
           reason: |
-            Ensure all view components receive the correctly processed data and props.
+            The `DataDetailPanel` was previously rendered persistently at the bottom of the component, which is now incorrect. It should only be rendered when an item is selected.
           files:
             - src/pages/DataDemo/index.tsx
-            - src/pages/DataDemo/components/DataTableView.tsx
-            - src/pages/DataDemo/components/DataCardView.tsx
-            - src/pages/DataDemo/components/DataListView.tsx
           operations:
-            - 'In `DataDemoPage`, make sure the `renderView` function passes the paginated `items` state to all view components.'
-            - 'Pass the new `onSort` handler and `sortConfig` state down to `DataTableView`.
-            - 'Check that `EmptyState` is correctly displayed by all views when the `processedData` array is empty after filtering.'
+            - 'Delete the `<DataDetailPanel />` instance from the bottom of the component JSX, as it is now rendered conditionally at the top level.'
+    - uuid: 'e6f7a8b9-c0d1-e2f3-a4b5-c6d7e8f9a0b1'
+      status: 'todo'
+      name: 'Part 2: Adapt DataDetailPanel for Internal Navigation'
+      reason: |
+        Since the detail panel is now part of a view stack within its parent, it needs a clear UI element for the user to navigate back to the list.
+      steps:
+        - uuid: 'f7a8b9c0-d1e2-f3a4-b5c6-d7e8f9a0b1c2'
+          status: 'todo'
+          name: '1. Add Back Button to Detail Panel'
+          reason: |
+            To allow users to return to the list/grid view from the detail view, a back button is necessary. This button will trigger the `onClose` callback.
+          files:
+            - src/pages/DataDemo/components/DataDetailPanel.tsx
+          operations:
+            - 'Import the `Button` component and the `ArrowLeft` icon from `lucide-react`.'
+            - 'In the header section of `DataDetailPanel`, before the main content, add a `Button` with the `ArrowLeft` icon.'
+            - 'The `onClick` handler for this button should call the `onClose` prop.'
+            - 'Style the button appropriately (e.g., variant `ghost`) and add text like "Back to list".'
+    - uuid: 'a0b1c2d3-e4f5-a6b7-c8d9-e0f1a2b3c4d5'
+      status: 'todo'
+      name: 'Part 3: Update App Shell and Context'
+      reason: |
+        The global shell configuration needs to be updated to remove the old, incorrect logic for handling the data demo detail view and simply treat `DataDemoPage` as a standard page content type.
+      steps:
+        - uuid: 'b1c2d3e4-f5a6-b7c8-d9e0-f1a2b3c4d5e6'
+          status: 'todo'
+          name: '1. Simplify sidePaneContent Type'
+          reason: |
+            The `'data-details'` type is now redundant as the detail view is handled internally. We need a new type for placing the entire `DataDemoPage` in the side pane.
+          files:
+            - src/context/AppShellContext.tsx
+          operations:
+            - 'In the `AppShellState` interface, find the `sidePaneContent` union type.'
+            - 'Remove the `'data-details'` type and replace it with `'dataDemo'`.'
+        - uuid: 'c2d3e4f5-a6b7-c8d9-e0f1-a2b3c4d5e7f8'
+          status: 'todo'
+          name: '2. Adjust Page-to-Pane Mappings'
+          reason: |
+            The mapping that tells the app which pane content to open for a given page needs to be updated to use the new `'dataDemo'` type.
+          files:
+            - src/components/layout/ViewModeSwitcher.tsx
+            - src/App.tsx
+          operations:
+            - "In `src/components/layout/ViewModeSwitcher.tsx`, find `pageToPaneMap` and change the value for `'data-demo'` from `'data-details'` to `'dataDemo'`."
+            - "In `src/App.tsx`, find the `pageMap` object and update its `sidePaneContent` for `'data-demo'` to `'dataDemo'`."
+        - uuid: 'd3e4f5a6-b7c8-d9e0-f1a2-b3c4d5e6f7a8'
+          status: 'todo'
+          name: '3. Revise App.tsx Content Map'
+          reason: |
+            The main application router needs to know what to render when the `sidePaneContent` is set to `'dataDemo'` and must be cleansed of the old `'data-details'` logic.
+          files:
+            - src/App.tsx
+          operations:
+            - "In `ComposedApp`, find the `contentMap` object."
+            - "Delete the entire entry for `'data-details'`."
+            - "Create a new entry for `'dataDemo'` that renders `<DataDemoPage isInSidePane={true} />`."
   conclusion: |
-    Upon completion, we'll have a much more powerful and maintainable data page. The logic will be centralized in `DataDemoPage`, the UI for controls will be decoupled into its own `DataToolbar` component, and the user gets a vastly improved, interactive experience that feels like a proper application. This structured approach makes future enhancements, like adding more filters or sort options, trivial.
+    By executing this plan, we will successfully decouple the `DataDemoPage` from the `AppShell`'s pane-switching logic. The component will become a self-contained module, capable of managing its own master-detail view. This not only fixes the critical bug preventing it from rendering in side panes but also simplifies the overall application state and improves code maintainability. The user experience for the data demo feature will be consistent and reliable, regardless of where it is rendered in the layout.
   context_files:
     compact:
       - src/pages/DataDemo/index.tsx
-      - src/pages/DataDemo/components/DataTableView.tsx
-      - src/pages/DataDemo/types.ts
+      - src/pages/DataDemo/components/DataDetailPanel.tsx
+      - src/App.tsx
     medium:
       - src/pages/DataDemo/index.tsx
-      - src/pages/DataDemo/components/DataTableView.tsx
-      - src/pages/DataDemo/components/DataCardView.tsx
-      - src/pages/DataDemo/components/DataListView.tsx
-      - src/pages/DataDemo/components/DataViewModeSelector.tsx
-      - src/pages/DataDemo/types.ts
-      - src/components/ui/input.tsx
-      - src/components/ui/popover.tsx
-      - src/components/ui/command.tsx
+      - src/pages/DataDemo/components/DataDetailPanel.tsx
+      - src/App.tsx
+      - src/context/AppShellContext.tsx
+      - src/components/layout/ViewModeSwitcher.tsx
     extended:
       - src/pages/DataDemo/index.tsx
-      - src/pages/DataDemo/components/DataTableView.tsx
-      - src/pages/DataDemo/components/DataCardView.tsx
-      - src/pages/DataDemo/components/DataListView.tsx
-      - src/pages/DataDemo/components/DataViewModeSelector.tsx
-      - src/pages/DataDemo/components/EmptyState.tsx
-      - src/pages/DataDemo/types.ts
-      - src/pages/DataDemo/data/mockData.ts
-      - src/components/ui/input.tsx
-      - src/components/ui/popover.tsx
-      - src/components/ui/command.tsx
-      - src/components/ui/dropdown-menu.tsx
-      - src/components/ui/badge.tsx
-      - src/components/ui/button.tsx
+      - src/pages/DataDemo/components/DataDetailPanel.tsx
+      - src/App.tsx
+      - src/context/AppShellContext.tsx
+      - src/components/layout/ViewModeSwitcher.tsx
+      - src/components/layout/EnhancedSidebar.tsx
+      - src/components/layout/AppShell.tsx
 ```

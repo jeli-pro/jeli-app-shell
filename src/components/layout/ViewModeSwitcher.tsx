@@ -19,7 +19,7 @@ const pageToPaneMap: Record<ActivePage, AppShellState['sidePaneContent']> = {
   settings: 'settings',
   toaster: 'toaster',
   notifications: 'notifications',
-  'data-demo': 'data-details',
+  'data-demo': 'dataDemo',
 };
 
 export function ViewModeSwitcher({ pane }: { pane?: 'main' | 'right' }) {

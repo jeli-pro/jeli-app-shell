@@ -1,0 +1,1826 @@
+uuid: 4a25a914-f565-4f33-8742-b883049185a8
+projectId: jeli-app-shell
+createdAt: '2025-10-13T01:55:29.298Z'
+gitCommitMsg: >-
+  fix(DataDemo): Refactor for self-contained pane rendering
+
+  Refactored the `DataDemoPage` to manage its own master-detail view internally.
+  This decouples it from the global `AppShellContext` pane state, resolving a
+  critical bug where the page would appear blank when rendered in an overlay or
+  split-view side pane.
+
+  - `DataDemoPage` now conditionally renders `DataDetailPanel` based on its
+    local `selectedItem` state.
+  - Removed the dependency on `openSidePane` from `DataDemoPage`. - Added a
+  "Back" button to `DataDetailPanel` for internal navigation. - Updated
+  `AppShellContext` and related mappings to use a new `'dataDemo'`
+    side pane content type, which renders the entire `DataDemoPage`
+    component.
+promptSummary: >-
+  The user wanted to fix a bug where the Data Demo page was blank when opened in
+  an overlay or split-view side pane. The solution was to refactor the page to
+  be self-contained, managing its own master-detail view internally instead of
+  relying on the global app shell state.
+reasoning:
+  - >-
+    This is a great request. That bug with the `DataDemoPage` is a classic case
+    of a component being too coupled with the global layout state. By making it
+    self-contained, it will be far more robust and reusable. Here is the plan in
+    action.
+  - '### Part 1 & 2: Decouple Data Demo Page'
+  - >-
+    First, I'll refactor `DataDemoPage` to manage its own master-detail view.
+    Instead of telling the main app shell to open a side pane, it will now
+    conditionally render either the list of items or the detail panel based on
+    its own internal state (`selectedItem`).
+  - >-
+    To support this, I'll add a "Back" button to the `DataDetailPanel` so the
+    user can navigate from the detail view back to the list view within the
+    component. I'm also simplifying some of its internal logic that was tied to
+    the global `sidePaneContent` state, as it's no longer needed.
+  - '### Part 3: Update App Shell and Context'
+  - >-
+    With the component logic fixed, the final step is to update the global app
+    shell configuration. I'll replace the now-obsolete `'data-details'` side
+    pane content type with a new `'dataDemo'` type. This new type will be used
+    to render the entire self-contained `DataDemoPage` component within a side
+    pane, ensuring it works correctly in all view modes.
+  - >-
+    These changes make the Data Demo feature robust and independent of its
+    location in the UI, fixing the rendering bugs and improving the overall
+    architecture.
+  - '---'
+operations:
+  - type: write
+    path: src/pages/DataDemo/index.tsx
+    content: >
+      --- src/pages/DataDemo/index.tsx
+
+      +++ src/pages/DataDemo/index.tsx
+
+      @@ -13,7 +13,6 @@
+       import { AnimatedLoadingSkeleton } from './components/AnimatedLoadingSkeleton'
+       import { StatChartCard } from './components/StatChartCard'
+       import { DataToolbar, FilterConfig } from './components/DataToolbar'
+      -import { useAppShell } from '@/context/AppShellContext'
+       import { mockDataItems } from './data/mockData'
+       import type { DataItem, ViewMode, SortConfig, SortableField } from './types'
+       
+      @@ -38,7 +37,7 @@
+       
+       type StatItem = Stat | ChartStat;
+       
+      -export default function DataDemoPage() {
+
+      +export default function DataDemoPage({ isInSidePane = false }: {
+      isInSidePane?: boolean }) {
+         const [viewMode, setViewMode] = useState<ViewMode>('list')
+         const [filters, setFilters] = useState<FilterConfig>({
+           searchTerm: '',
+      @@ -53,7 +52,6 @@
+         const contentRef = useRef<HTMLDivElement>(null)
+         const statsRef = useRef<HTMLDivElement>(null)
+         const observer = useRef<IntersectionObserver>()
+      -  const { openSidePane } = useAppShell()
+       
+         const isInitialLoading = isLoading && items.length === 0
+       
+      @@ -213,8 +211,16 @@
+         
+         // Handle item selection and open side panel
+         const handleItemSelect = (item: DataItem) => {
+           setSelectedItem(item)
+      -    openSidePane('data-details')
+         }
+      +
+
+      +  if (selectedItem) {
+
+      +    return (
+
+      +      <DataDetailPanel
+
+      +        item={selectedItem}
+
+      +        onClose={() => setSelectedItem(null)}
+
+      +      />
+
+      +    )
+
+      +  }
+       
+         const renderView = () => {
+           const commonProps = {
+      @@ -293,12 +299,6 @@
+                 )}
+               </div>
+             </div>
+      -
+
+      -      {/* Detail Panel */}
+
+      -      <DataDetailPanel 
+
+      -        item={selectedItem}
+
+      -        onClose={() => setSelectedItem(null)}
+
+      -      />
+           </PageLayout>
+         )
+       }
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/DataDemo/components/DataDetailPanel.tsx
+    content: >
+      --- src/pages/DataDemo/components/DataDetailPanel.tsx
+
+      +++ src/pages/DataDemo/components/DataDetailPanel.tsx
+
+      @@ -5,8 +5,9 @@
+       import { Avatar } from '@/components/ui/avatar'
+       import { Button } from '@/components/ui/button'
+       import { 
+      +  ArrowLeft,
+         Calendar, 
+         Clock, 
+         Eye, 
+      @@ -24,8 +25,7 @@
+         CheckCircle,
+         AlertCircle,
+         Circle
+      -} from 'lucide-react'
+
+      -import { useAppShell } from '@/context/AppShellContext'
+
+      +} from 'lucide-react' 
+       import type { DataItem } from '../types'
+       import { getStatusColor, getPriorityColor } from '../utils'
+       
+      @@ -35,22 +35,20 @@
+       }
+       
+       export function DataDetailPanel({ item, onClose }: DataDetailPanelProps) {
+      -  const { bodyState, sidePaneContent } = useAppShell()
+         const contentRef = useRef<HTMLDivElement>(null)
+       
+         useLayoutEffect(() => {
+      -    if (item && contentRef.current && sidePaneContent === 'data-details')
+      {
+
+      +    if (item && contentRef.current) {
+             gsap.fromTo(contentRef.current.children,
+               { y: 30, opacity: 0 },
+               {
+                 duration: 0.6,
+                 y: 0,
+                 opacity: 1,
+      -          stagger: 0.1,
+
+      +          stagger: 0.08,
+                 ease: "power2.out"
+               }
+             )
+           }
+      -  }, [item, sidePaneContent])
+
+      +  }, [item])
+       
+      -  if (!item || sidePaneContent !== 'data-details') {
+
+      +  if (!item) {
+           return null
+         }
+       
+      @@ -79,6 +77,10 @@
+           <div ref={contentRef} className="h-full flex flex-col">
+             {/* Header */}
+             <div className="p-6 border-b border-border/50 bg-gradient-to-r from-card/50 to-card/30 backdrop-blur-sm">
+      +        <Button variant="ghost" onClick={onClose} className="mb-4 -ml-4">
+
+      +          <ArrowLeft className="w-4 h-4 mr-2" />
+
+      +          Back to list
+
+      +        </Button>
+               <div className="flex items-start gap-4 mb-4">
+                 <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-primary/10 rounded-2xl flex items-center justify-center text-3xl flex-shrink-0">
+                   {item.thumbnail}
+    patchStrategy: standard-diff
+  - type: write
+    path: src/context/AppShellContext.tsx
+    content: >
+      --- src/context/AppShellContext.tsx
+
+      +++ src/context/AppShellContext.tsx
+
+      @@ -10,7 +10,7 @@
+       export interface AppShellState {
+         sidebarState: SidebarState;
+         bodyState: BodyState;
+      -  sidePaneContent: 'details' | 'settings' | 'main' | 'toaster' |
+      'notifications' | 'data-details';
+
+      +  sidePaneContent: 'details' | 'settings' | 'main' | 'toaster' |
+      'notifications' | 'dataDemo';
+         sidebarWidth: number;
+         sidePaneWidth: number;
+         splitPaneWidth: number;
+    patchStrategy: standard-diff
+  - type: write
+    path: src/components/layout/ViewModeSwitcher.tsx
+    content: |
+      --- src/components/layout/ViewModeSwitcher.tsx
+      +++ src/components/layout/ViewModeSwitcher.tsx
+      @@ -16,7 +16,7 @@
+         settings: 'settings',
+         toaster: 'toaster',
+         notifications: 'notifications',
+      -  'data-demo': 'data-details',
+      +  'data-demo': 'dataDemo',
+       };
+       
+       export function ViewModeSwitcher({ pane }: { pane?: 'main' | 'right' }) {
+    patchStrategy: standard-diff
+  - type: write
+    path: src/App.tsx
+    content: |
+      --- src/App.tsx
+      +++ src/App.tsx
+      @@ -51,7 +51,7 @@
+           },
+           "data-demo": {
+             component: <DataDemoPage />,
+      -      sidePaneContent: "data-details",
+      +      sidePaneContent: "dataDemo",
+             icon: Database,
+             name: "data demo",
+           },
+      @@ -194,12 +194,13 @@
+             page: "notifications",
+             content: <NotificationsPage isInSidePane={isOverlaySidePane} />,
+           },
+      -    "data-details": {
+      -      title: "Data Details",
+      +    "dataDemo": {
+      +      title: "Data Showcase",
+             icon: Database,
+             page: "data-demo",
+      -      content: <DataDetailPanel item={null} onClose={() => {}} />,
+      +      content: <DataDemoPage isInSidePane={isOverlaySidePane} />
+           },
+           details: {
+             title: "Details Panel",
+             icon: SlidersHorizontal,
+    patchStrategy: standard-diff
+snapshot:
+  src/pages/DataDemo/index.tsx: >-
+    import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
+
+    import { 
+      Layers, 
+      AlertTriangle, 
+      PlayCircle, 
+      TrendingUp,
+      Loader2
+    } from 'lucide-react'
+
+    import { gsap } from 'gsap'
+
+    import { PageLayout } from '@/components/shared/PageLayout'
+
+    import { DataListView } from './components/DataListView'
+
+    import { DataCardView } from './components/DataCardView'
+
+    import { DataTableView } from './components/DataTableView'
+
+    import { DataViewModeSelector } from './components/DataViewModeSelector'
+
+    import { DataDetailPanel } from './components/DataDetailPanel'
+
+    import { AnimatedLoadingSkeleton } from
+    './components/AnimatedLoadingSkeleton'
+
+    import { StatChartCard } from './components/StatChartCard'
+
+    import { DataToolbar, FilterConfig } from './components/DataToolbar'
+
+    import { useAppShell } from '@/context/AppShellContext'
+
+    import { mockDataItems } from './data/mockData'
+
+    import type { DataItem, ViewMode, SortConfig, SortableField } from './types'
+
+
+    type Stat = {
+      title: string;
+      value: string;
+      icon: React.ReactNode;
+      change: string;
+      trend: 'up' | 'down';
+      type?: 'card';
+    };
+
+
+    type ChartStat = {
+      title: string;
+      value: string;
+      icon: React.ReactNode;
+      change: string;
+      trend: 'up' | 'down';
+      type: 'chart';
+      chartData: number[];
+    };
+
+
+    type StatItem = Stat | ChartStat;
+
+
+    export default function DataDemoPage() {
+      const [viewMode, setViewMode] = useState<ViewMode>('list')
+      const [filters, setFilters] = useState<FilterConfig>({
+        searchTerm: '',
+        status: [],
+        priority: [],
+      })
+      const [sortConfig, setSortConfig] = useState<SortConfig | null>({ key: 'updatedAt', direction: 'desc' })
+      const [selectedItem, setSelectedItem] = useState<DataItem | null>(null)  
+      const [items, setItems] = useState<DataItem[]>([])
+      const [page, setPage] = useState(0) // Start at 0 to trigger initial load effect
+      const [hasMore, setHasMore] = useState(true)
+      const [isLoading, setIsLoading] = useState(true)
+      const contentRef = useRef<HTMLDivElement>(null)
+      const statsRef = useRef<HTMLDivElement>(null)
+      const observer = useRef<IntersectionObserver>()
+      const { openSidePane } = useAppShell()
+
+      const isInitialLoading = isLoading && items.length === 0
+
+      // Centralized data processing
+      const processedData = useMemo(() => {
+        let filteredItems = mockDataItems.filter(item => {
+          const searchTermMatch =
+            item.title.toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
+            item.description.toLowerCase().includes(filters.searchTerm.toLowerCase())
+
+          const statusMatch = filters.status.length === 0 || filters.status.includes(item.status)
+          const priorityMatch = filters.priority.length === 0 || filters.priority.includes(item.priority)
+
+          return searchTermMatch && statusMatch && priorityMatch
+        })
+
+        if (sortConfig) {
+          filteredItems.sort((a, b) => {
+            let aValue: any
+            let bValue: any
+
+            const getNestedValue = (obj: any, path: string) => path.split('.').reduce((o, k) => (o || {})[k], obj)
+
+            aValue = getNestedValue(a, sortConfig.key)
+            bValue = getNestedValue(b, sortConfig.key)
+
+            if (aValue === undefined || bValue === undefined) return 0;
+
+            if (typeof aValue === 'string' && typeof bValue === 'string') {
+              return sortConfig.direction === 'asc'
+                ? aValue.localeCompare(bValue)
+                : bValue.localeCompare(aValue)
+            }
+            if (typeof aValue === 'number' && typeof bValue === 'number') {
+              return sortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue
+            }
+            // Date sorting (assuming ISO strings)
+            if (sortConfig.key === 'updatedAt' || sortConfig.key === 'createdAt') {
+                return sortConfig.direction === 'asc'
+                    ? new Date(aValue).getTime() - new Date(aValue).getTime()
+                    : new Date(bValue).getTime() - new Date(bValue).getTime()
+            }
+            return 0
+          })
+        }
+        return filteredItems
+      }, [filters, sortConfig])
+
+      // Calculate stats from data
+      const totalItems = mockDataItems.length
+      const activeItems = mockDataItems.filter(item => item.status === 'active').length
+      const highPriorityItems = mockDataItems.filter(item => item.priority === 'high' || item.priority === 'critical').length
+      const avgCompletion = totalItems > 0 ? Math.round(
+        mockDataItems.reduce((acc, item) => acc + item.metrics.completion, 0) / totalItems
+      ) : 0
+
+      // Reset pagination when filters or sort change
+      useEffect(() => {
+        setItems([])
+        setPage(0) // This will be incremented to 1 in the loader `useEffect`, triggering a fresh load
+        setHasMore(true)
+        // This timeout helps prevent a flicker between old and new filtered data
+        setTimeout(() => setPage(1), 50)
+      }, [processedData])
+
+      // Infinite scroll logic
+      useEffect(() => { // eslint-disable-line react-hooks/exhaustive-deps
+        if (page === 0) return;
+
+        const fetchItems = () => {
+          setIsLoading(true);
+          const isFirstPage = page === 1
+          
+          const pageSize = 12;
+          const newItems = processedData.slice((page - 1) * pageSize, page * pageSize);
+          
+          // Simulate network delay, longer for initial load to showcase skeleton
+          setTimeout(() => {
+            setItems(prev => (isFirstPage ? newItems : [...prev, ...newItems]))
+            setHasMore(processedData.length > page * pageSize)
+            setIsLoading(false)
+          }, isFirstPage && items.length === 0 ? 1500 : 500)
+        };
+
+        if (hasMore) fetchItems();
+      }, [page]);
+
+      const loaderRef = useCallback(node => {
+        if (isLoading) return;
+        if (observer.current) observer.current.disconnect();
+        
+        observer.current = new IntersectionObserver(entries => {
+          if (entries[0].isIntersecting && hasMore) {
+            setPage(prevPage => prevPage + 1);
+          }
+        });
+        if (node) observer.current.observe(node);
+      }, [isLoading, hasMore]);
+
+      const stats: StatItem[] = [
+        {
+          title: "Total Projects",
+          value: totalItems.toString(),
+          icon: <Layers className="w-5 h-5" />,
+          change: "+5.2% this month",
+          trend: "up" as const,
+          type: 'chart',
+          chartData: [120, 125, 122, 130, 135, 138, 142]
+        },
+        {
+          title: "Active Projects",
+          value: activeItems.toString(),
+          icon: <PlayCircle className="w-5 h-5" />,
+          change: "+2 this week", 
+          trend: "up" as const,
+          type: 'chart',
+          chartData: [45, 50, 48, 55, 53, 60, 58]
+        },
+        {
+          title: "High Priority",
+          value: highPriorityItems.toString(),
+          icon: <AlertTriangle className="w-5 h-5" />,
+          change: "-1 from last week",
+          trend: "down" as const,
+          type: 'chart',
+          chartData: [25, 26, 28, 27, 26, 24, 23]
+        },
+        {
+          title: "Avg. Completion",
+          value: `${avgCompletion}%`,
+          icon: <TrendingUp className="w-5 h-5" />,
+          change: "+3.2%",
+          trend: "up" as const,
+          type: 'chart',
+          chartData: [65, 68, 70, 69, 72, 75, 78]
+        }
+      ]
+
+      useEffect(() => {
+        // Animate stats cards in
+        if (!isInitialLoading && statsRef.current) {
+          gsap.fromTo(statsRef.current.children,
+            { y: 30, opacity: 0 },
+            {
+              duration: 0.6,
+              y: 0,
+              opacity: 1,
+              stagger: 0.1,
+              ease: "power2.out"
+            }
+          )
+        }
+      }, [isInitialLoading])
+
+      const handleSortChange = (config: SortConfig | null) => {
+        setSortConfig(config)
+      }
+
+      // For table view header clicks
+      const handleTableSort = (field: SortableField) => {
+        if (sortConfig?.key === field) {
+          if (sortConfig.direction === 'desc') {
+            // Cycle: desc -> asc
+            setSortConfig({ key: field, direction: 'asc' })
+          } else {
+            // Cycle: asc -> default
+            setSortConfig(null)
+          }
+        } else {
+          // New field, default to desc
+          setSortConfig({ key: field, direction: 'desc' })
+        }
+      }
+
+      const handleFilterChange = (newFilters: FilterConfig) => {
+        setFilters(newFilters)
+      }
+      
+      // Handle item selection and open side panel
+      const handleItemSelect = (item: DataItem) => {
+        setSelectedItem(item)
+        openSidePane('data-details')
+      }
+
+      const renderView = () => {
+        const commonProps = {
+          data: items,
+          onItemSelect: handleItemSelect,
+          selectedItem,
+          sortConfig,
+          onSort: handleTableSort,
+        }
+
+        switch (viewMode) {
+          case 'list':
+            return <DataListView {...commonProps} />
+          case 'cards':
+            return <DataCardView {...commonProps} />
+          case 'grid':
+            return <DataCardView {...commonProps} isGrid />
+          case 'table':
+            return <DataTableView {...commonProps} />
+          default:
+            return <DataListView {...commonProps} />
+        }
+      }
+
+      return (
+        <PageLayout
+          // Note: Search functionality is handled by a separate SearchBar in the TopBar
+        >
+          <div className="space-y-8">
+            {/* Header */}
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div className="flex-1">
+                <h1 className="text-2xl font-bold tracking-tight">Data Showcase</h1>
+                <p className="text-muted-foreground">
+                  {isInitialLoading 
+                    ? "Loading projects..." 
+                    : `Showing ${processedData.length} item(s)`}
+                </p>
+              </div>
+              <DataViewModeSelector viewMode={viewMode} onChange={setViewMode} />
+            </div>
+
+            {/* Stats Section */}
+            {!isInitialLoading && (
+              <div ref={statsRef} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                {stats.map((stat) =>
+                  stat.type === 'chart' ? (
+                    <StatChartCard
+                      key={stat.title}
+                      title={stat.title}
+                      value={stat.value}
+                      change={stat.change}
+                      trend={stat.trend}
+                      icon={stat.icon}
+                      chartData={stat.chartData}
+                    />
+                  ) : null
+                )}
+              </div>
+            )}
+
+            <DataToolbar
+              filters={filters}
+              onFiltersChange={handleFilterChange}
+              sortConfig={sortConfig}
+              onSortChange={handleSortChange}
+            />
+
+            <div ref={contentRef} className="min-h-[500px]">
+              {isInitialLoading ? <AnimatedLoadingSkeleton viewMode={viewMode} /> : renderView()}
+            </div>
+
+            {/* Loader for infinite scroll */}
+            <div ref={loaderRef} className="flex justify-center items-center py-6">
+              {isLoading && !isInitialLoading && (
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span>Loading more...</span>
+                </div>
+              )}
+              {!isLoading && !hasMore && processedData.length > 0 && !isInitialLoading && (
+                <p className="text-muted-foreground">You've reached the end.</p>
+              )}
+            </div>
+          </div>
+
+          {/* Detail Panel */}
+          <DataDetailPanel 
+            item={selectedItem}
+            onClose={() => setSelectedItem(null)}
+          />
+        </PageLayout>
+      )
+    }
+  src/components/layout/ViewModeSwitcher.tsx: >-
+    import { cn } from '@/lib/utils'
+
+    import { useAppShell } from '@/context/AppShellContext'
+
+    import { useAppStore, type ActivePage } from '@/store/appStore'
+
+    import { BODY_STATES } from '@/lib/utils'
+
+    import { type AppShellState } from '@/context/AppShellContext'
+
+    import {
+      Columns,
+      PanelRightOpen,
+      SplitSquareHorizontal,
+      Maximize,
+      Minimize,
+      Layers,
+      X,
+      ArrowLeftRight
+    } from 'lucide-react'
+
+
+    const pageToPaneMap: Record<ActivePage, AppShellState['sidePaneContent']> =
+    {
+      dashboard: 'main',
+      settings: 'settings',
+      toaster: 'toaster',
+      notifications: 'notifications',
+      'data-demo': 'data-details',
+    };
+
+
+    export function ViewModeSwitcher({ pane }: { pane?: 'main' | 'right' }) {
+      const {
+        bodyState,
+        sidePaneContent,
+        openSidePane,
+        closeSidePane,
+        toggleFullscreen,
+        toggleSplitView,
+        fullscreenTarget,
+        dispatch,
+      } = useAppShell()
+      const { activePage, setActivePage } = useAppStore()
+
+      const isFullscreen = bodyState === BODY_STATES.FULLSCREEN;
+      const isThisPaneFullscreen = isFullscreen && (
+        (pane === 'main' && fullscreenTarget !== 'right') ||
+        (pane === 'right' && fullscreenTarget === 'right') ||
+        (!pane && !fullscreenTarget) // Global switcher, global fullscreen
+      );
+
+      const handleSidePaneClick = () => {
+        const paneContent = pageToPaneMap[activePage] || 'details';
+        if (pane === 'right') return; // Don't allow opening a side pane from a side pane
+        // If side pane is already open with the current page's content, clicking again should close it.
+        if (bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === paneContent) {
+          closeSidePane();
+        } else {
+          openSidePane(paneContent);
+        }
+      };
+      
+      const handleSplitViewClick = () => {
+          const paneContent = pageToPaneMap[activePage] || 'details';
+          if (pane === 'right') return; // Don't allow splitting from a side pane in this simple case
+          toggleSplitView(paneContent);
+      }
+
+      const handleSwitchPanes = () => {
+        if (bodyState !== BODY_STATES.SPLIT_VIEW) return;
+
+        // 1. Get current active page's corresponding pane content
+        const newSidePaneContent = pageToPaneMap[activePage];
+
+        // 2. Find the page that corresponds to the current side pane content
+        const newActivePage = Object.entries(pageToPaneMap).find(
+          ([, value]) => value === sidePaneContent
+        )?.[0] as ActivePage | undefined;
+
+        if (newActivePage && newSidePaneContent) {
+          // 3. Swap them
+          setActivePage(newActivePage);
+          dispatch({ type: 'SET_SIDE_PANE_CONTENT', payload: newSidePaneContent });
+        }
+      };
+
+      const handleClosePane = () => {
+        if (bodyState !== BODY_STATES.SPLIT_VIEW) return;
+        if (pane === 'right') {
+          closeSidePane();
+        } else if (pane === 'main') {
+          const pageToBecomeActive = Object.entries(pageToPaneMap).find(
+            ([, value]) => value === sidePaneContent
+          )?.[0] as ActivePage | undefined;
+          
+          if (pageToBecomeActive) {
+            setActivePage(pageToBecomeActive);
+          }
+          closeSidePane();
+        }
+      }
+
+      return (
+        <div className="flex items-center gap-1 p-1 bg-card rounded-full border border-border">
+          <button
+            onClick={() => {
+                // "Normal view" button should always just close any open panes.
+                if (bodyState === BODY_STATES.SIDE_PANE || bodyState === BODY_STATES.SPLIT_VIEW) {
+                  closeSidePane();
+                }
+                // This button is hidden in fullscreen, but as a fallback, it should exit.
+                if (isFullscreen) {
+                  toggleFullscreen();
+                }
+            }}
+            className={cn(
+              'h-8 w-8 flex items-center justify-center rounded-full hover:bg-accent transition-colors group',
+              bodyState === BODY_STATES.NORMAL && 'bg-accent text-accent-foreground'
+            )}
+            title="Normal View"
+          >
+            <Columns className="w-4 h-4" />
+          </button>
+          <button
+            onClick={handleSidePaneClick}
+            className={cn(
+              'h-8 w-8 flex items-center justify-center rounded-full hover:bg-accent transition-colors group',
+              bodyState === BODY_STATES.SIDE_PANE && 'bg-accent text-accent-foreground'
+            )}
+            title="Side Pane View"
+          >
+            <PanelRightOpen className="w-4 h-4" />
+          </button>
+          <button
+            onClick={handleSplitViewClick}
+            className={cn(
+              'h-8 w-8 flex items-center justify-center rounded-full hover:bg-accent transition-colors group',
+              bodyState === BODY_STATES.SPLIT_VIEW && 'bg-accent text-accent-foreground'
+            )}
+            title={bodyState === BODY_STATES.SPLIT_VIEW ? 'Switch to Overlay View' : 'Switch to Split View'}
+          >
+            {bodyState === BODY_STATES.SPLIT_VIEW ? <Layers className="w-4 h-4" /> : <SplitSquareHorizontal className="w-4 h-4" />}
+          </button>
+          <button
+            onClick={() => toggleFullscreen(pane)}
+            className={cn(
+              'h-8 w-8 flex items-center justify-center rounded-full hover:bg-accent transition-colors group',
+              isThisPaneFullscreen && 'bg-accent text-accent-foreground'
+            )}
+            title="Toggle Fullscreen"
+          >
+            {isThisPaneFullscreen ? (
+              <Minimize className="w-4 h-4" />
+            ) : (
+              <Maximize className="w-4 h-4" />
+            )}
+          </button>
+          {bodyState === BODY_STATES.SPLIT_VIEW && (
+            <button
+              onClick={handleSwitchPanes}
+              className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+              title="Switch Panes"
+            >
+              <ArrowLeftRight className="w-4 h-4" />
+            </button>
+          )}
+          {bodyState === BODY_STATES.SPLIT_VIEW && (
+            <button
+              onClick={handleClosePane}
+              className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-destructive/20 transition-colors group"
+              title="Close Pane"
+            >
+              <X className="w-4 h-4 text-muted-foreground group-hover:text-destructive" />
+            </button>
+          )}
+        </div>
+      )
+    }
+  src/pages/DataDemo/components/DataDetailPanel.tsx: |-
+    import React, { useLayoutEffect, useRef } from 'react'
+    import { gsap } from 'gsap'
+    import { cn } from '@/lib/utils'
+    import { Badge } from '@/components/ui/badge'
+    import { Avatar } from '@/components/ui/avatar'
+    import { Button } from '@/components/ui/button'
+    import { 
+      Calendar, 
+      Clock, 
+      Eye, 
+      Heart, 
+      Share, 
+      Download,
+      FileText,
+      Image,
+      Video,
+      File,
+      ExternalLink,
+      Tag,
+      User,
+      BarChart3,
+      TrendingUp,
+      CheckCircle,
+      AlertCircle,
+      Circle
+    } from 'lucide-react'
+    import { useAppShell } from '@/context/AppShellContext'
+    import type { DataItem } from '../types'
+    import { getStatusColor, getPriorityColor } from '../utils'
+
+    interface DataDetailPanelProps {
+      item: DataItem | null
+      onClose: () => void
+    }
+
+    export function DataDetailPanel({ item, onClose }: DataDetailPanelProps) {
+      const { bodyState, sidePaneContent } = useAppShell()
+      const contentRef = useRef<HTMLDivElement>(null)
+
+      useLayoutEffect(() => {
+        if (item && contentRef.current && sidePaneContent === 'data-details') {
+          gsap.fromTo(contentRef.current.children,
+            { y: 30, opacity: 0 },
+            {
+              duration: 0.6,
+              y: 0,
+              opacity: 1,
+              stagger: 0.1,
+              ease: "power2.out"
+            }
+          )
+        }
+      }, [item, sidePaneContent])
+
+      if (!item || sidePaneContent !== 'data-details') {
+        return null
+      }
+
+      const getFileIcon = (type: string) => {
+        switch (type.toLowerCase()) {
+          case 'pdf': return FileText
+          case 'image':
+          case 'png':
+          case 'jpg':
+          case 'jpeg': return Image
+          case 'video':
+          case 'mp4': return Video
+          default: return File
+        }
+      }
+
+      const getStatusIcon = (status: string) => {
+        switch (status) {
+          case 'completed': return CheckCircle
+          case 'active': return Circle
+          case 'pending': return AlertCircle
+          default: return Circle
+        }
+      }
+
+      return (
+        <div ref={contentRef} className="h-full flex flex-col">
+          {/* Header */}
+          <div className="p-6 border-b border-border/50 bg-gradient-to-r from-card/50 to-card/30 backdrop-blur-sm">
+            <div className="flex items-start gap-4 mb-4">
+              <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-primary/10 rounded-2xl flex items-center justify-center text-3xl flex-shrink-0">
+                {item.thumbnail}
+              </div>
+              <div className="flex-1 min-w-0">
+                <h1 className="text-2xl font-bold mb-2 leading-tight">
+                  {item.title}
+                </h1>
+                <p className="text-muted-foreground">
+                  {item.description}
+                </p>
+              </div>
+            </div>
+
+            {/* Status badges */}
+            <div className="flex items-center gap-2 mb-4">
+              <Badge variant="outline" className={getStatusColor(item.status)}>
+                {React.createElement(getStatusIcon(item.status), { className: "w-3 h-3 mr-1" })}
+                {item.status}
+              </Badge>
+              <Badge variant="outline" className={getPriorityColor(item.priority)}>
+                {item.priority}
+              </Badge>
+              <Badge variant="outline" className="bg-accent/50">
+                {item.category}
+              </Badge>
+            </div>
+
+            {/* Progress */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Progress</span>
+                <span className="text-sm font-bold">{item.metrics.completion}%</span>
+              </div>
+              <div className="w-full bg-muted rounded-full h-3">
+                <div 
+                  className="bg-gradient-to-r from-primary to-primary/80 h-3 rounded-full transition-all duration-1000 ease-out"
+                  style={{ width: `${item.metrics.completion}%` }}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Content */}
+          <div className="flex-1 overflow-y-auto">
+            <div className="p-6 space-y-6">
+              {/* Assignee Info */}
+              <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
+                <div className="flex items-center gap-1 mb-3">
+                  <User className="w-4 h-4 text-muted-foreground" />
+                  <h3 className="font-semibold text-sm">Assigned to</h3>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Avatar className="w-12 h-12">
+                    {item.assignee.avatar}
+                  </Avatar>
+                  <div>
+                    <p className="font-medium">{item.assignee.name}</p>
+                    <p className="text-sm text-muted-foreground">{item.assignee.email}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Metrics */}
+              <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
+                <div className="flex items-center gap-1 mb-3">
+                  <BarChart3 className="w-4 h-4 text-muted-foreground" />
+                  <h3 className="font-semibold text-sm">Engagement Metrics</h3>
+                </div>
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="text-center">
+                    <div className="flex items-center justify-center gap-1 mb-1">
+                      <Eye className="w-4 h-4 text-blue-500" />
+                    </div>
+                    <p className="text-2xl font-bold">{item.metrics.views}</p>
+                    <p className="text-xs text-muted-foreground">Views</p>
+                  </div>
+                  <div className="text-center">
+                    <div className="flex items-center justify-center gap-1 mb-1">
+                      <Heart className="w-4 h-4 text-red-500" />
+                    </div>
+                    <p className="text-2xl font-bold">{item.metrics.likes}</p>
+                    <p className="text-xs text-muted-foreground">Likes</p>
+                  </div>
+                  <div className="text-center">
+                    <div className="flex items-center justify-center gap-1 mb-1">
+                      <Share className="w-4 h-4 text-green-500" />
+                    </div>
+                    <p className="text-2xl font-bold">{item.metrics.shares}</p>
+                    <p className="text-xs text-muted-foreground">Shares</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Tags */}
+              <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
+                <div className="flex items-center gap-1 mb-3">
+                  <Tag className="w-4 h-4 text-muted-foreground" />
+                  <h3 className="font-semibold text-sm">Tags</h3>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {item.tags.map((tag, index) => (
+                    <span
+                      key={index}
+                      className="bg-muted/50 text-muted-foreground px-3 py-1 rounded-full text-xs font-medium"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Content Details */}
+              {item.content && (
+                <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
+                  <h3 className="font-semibold text-sm mb-3">Project Details</h3>
+                  <div className="space-y-4">
+                    <div>
+                      <h4 className="font-medium text-sm mb-2">Summary</h4>
+                      <p className="text-sm text-muted-foreground leading-relaxed">
+                        {item.content.summary}
+                      </p>
+                    </div>
+                    <div>
+                      <h4 className="font-medium text-sm mb-2">Description</h4>
+                      <p className="text-sm text-muted-foreground leading-relaxed">
+                        {item.content.details}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Attachments */}
+              {item.content?.attachments && item.content.attachments.length > 0 && (
+                <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
+                  <h3 className="font-semibold text-sm mb-3">Attachments</h3>
+                  <div className="space-y-2">
+                    {item.content.attachments.map((attachment, index) => {
+                      const IconComponent = getFileIcon(attachment.type)
+                      return (
+                        <div
+                          key={index}
+                          className="flex items-center gap-3 p-3 bg-muted/30 rounded-xl hover:bg-muted/50 transition-colors cursor-pointer group"
+                        >
+                          <IconComponent className="w-5 h-5 text-muted-foreground" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">
+                              {attachment.name}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {attachment.type} • {attachment.size}
+                            </p>
+                          </div>
+                          <Button size="sm" variant="ghost" className="opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Download className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Timeline */}
+              <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
+                <div className="flex items-center gap-1 mb-3">
+                  <Clock className="w-4 h-4 text-muted-foreground" />
+                  <h3 className="font-semibold text-sm">Timeline</h3>
+                </div>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-sm">
+                    <Calendar className="w-3 h-3 text-muted-foreground" />
+                    <span className="text-muted-foreground">Created:</span>
+                    <span className="font-medium">
+                      {new Date(item.createdAt).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                      })}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <TrendingUp className="w-3 h-3 text-muted-foreground" />
+                    <span className="text-muted-foreground">Last updated:</span>
+                    <span className="font-medium">
+                      {new Date(item.updatedAt).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                      })}
+                    </span>
+                  </div>
+                  {item.dueDate && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <AlertCircle className="w-3 h-3 text-orange-500" />
+                      <span className="text-muted-foreground">Due date:</span>
+                      <span className="font-medium text-orange-600">
+                        {new Date(item.dueDate).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric'
+                        })}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Footer Actions */}
+          <div className="p-6 border-t border-border/50 bg-card/30">
+            <div className="flex gap-3">
+              <Button className="flex-1" size="sm">
+                <ExternalLink className="w-4 h-4 mr-2" />
+                Open Project
+              </Button>
+              <Button variant="outline" size="sm">
+                <Share className="w-4 h-4 mr-2" />
+                Share
+              </Button>
+            </div>
+          </div>
+        </div>
+      )
+    }
+  src/App.tsx: >
+    import React, { useEffect } from "react";
+
+    import { AppShell } from "./components/layout/AppShell";
+
+    import { AppShellProvider, useAppShell } from "./context/AppShellContext";
+
+    import { useAppStore } from "./store/appStore";
+
+    import { useAuthStore } from "./store/authStore";
+
+    import "./index.css";
+
+
+    // Import library components
+
+    import { EnhancedSidebar } from "./components/layout/EnhancedSidebar";
+
+    import { MainContent } from "./components/layout/MainContent";
+
+    import { RightPane } from "./components/layout/RightPane";
+
+    import { TopBar } from "./components/layout/TopBar";
+
+    import { CommandPalette } from "./components/global/CommandPalette";
+
+
+    // Import page/content components
+
+    import { DashboardContent } from "./pages/Dashboard";
+
+    import { SettingsPage } from "./pages/Settings";
+
+    import { ToasterDemo } from "./pages/ToasterDemo";
+
+    import { NotificationsPage } from "./pages/Notifications";
+
+    import DataDemoPage from "./pages/DataDemo";
+
+    import { DataDetailPanel } from
+    "./pages/DataDemo/components/DataDetailPanel";
+
+    import { ContentInSidePanePlaceholder } from
+    "./components/shared/ContentInSidePanePlaceholder";
+
+    import { SettingsContent } from "./features/settings/SettingsContent";
+
+    import { LoginPage } from "./components/auth/LoginPage";
+
+
+    // Import icons
+
+    import {
+      LayoutDashboard,
+      Settings,
+      Component,
+      Bell,
+      SlidersHorizontal,
+      ChevronsLeftRight,
+      Search,
+      Filter,
+      Plus,
+      PanelRight,
+      ChevronRight,
+      Rocket,
+      Layers,
+      SplitSquareHorizontal,
+      Database,
+    } from "lucide-react";
+
+    import { BODY_STATES } from "./lib/utils";
+
+    import { cn } from "./lib/utils";
+
+
+    // The content for the main area, with page routing logic
+
+    function AppContent() {
+      const { activePage, setActivePage } = useAppStore();
+      const { bodyState, sidePaneContent, openSidePane } = useAppShell();
+
+      const pageMap = {
+        dashboard: {
+          component: <DashboardContent />,
+          sidePaneContent: "main",
+          icon: LayoutDashboard,
+          name: "dashboard",
+        },
+        settings: {
+          component: <SettingsPage />,
+          sidePaneContent: "settings",
+          icon: Settings,
+          name: "settings",
+        },
+        toaster: {
+          component: <ToasterDemo />,
+          sidePaneContent: "toaster",
+          icon: Component,
+          name: "toaster demo",
+        },
+        notifications: {
+          component: <NotificationsPage />,
+          sidePaneContent: "notifications",
+          icon: Bell,
+          name: "notifications",
+        },
+        "data-demo": {
+          component: <DataDemoPage />,
+          sidePaneContent: "data-details",
+          icon: Database,
+          name: "data demo",
+        },
+      } as const;
+
+      const currentPage = pageMap[activePage];
+
+      if (!currentPage) {
+        // This can happen if the persisted state for activePage is invalid.
+        // We'll reset it to the dashboard.
+        useEffect(() => {
+          setActivePage("dashboard");
+        }, [setActivePage]);
+
+        // Return null or a loading indicator while the state is being corrected.
+        return null;
+        ``;
+      }
+
+      if (
+        sidePaneContent === currentPage.sidePaneContent &&
+        (bodyState === BODY_STATES.SIDE_PANE ||
+          bodyState === BODY_STATES.SPLIT_VIEW)
+      ) {
+        return (
+          <ContentInSidePanePlaceholder
+            icon={currentPage.icon}
+            title={`${currentPage.name.charAt(0).toUpperCase() + currentPage.name.slice(1)} is in Side Pane`}
+            pageName={currentPage.name}
+            onBringBack={() => {
+              openSidePane(currentPage.sidePaneContent);
+              setActivePage(activePage);
+            }}
+          />
+        );
+      }
+
+      return currentPage.component;
+    }
+
+
+    // Content for the Top Bar
+
+    function AppTopBar() {
+      const { activePage, searchTerm, setSearchTerm } = useAppStore();
+      const { openSidePane } = useAppShell();
+      const [isSearchFocused, setIsSearchFocused] = React.useState(false);
+
+      return (
+        <div className="flex items-center gap-3 flex-1">
+          <div
+            className={cn(
+              "hidden md:flex items-center gap-2 text-sm transition-opacity",
+              {
+                "opacity-0 pointer-events-none":
+                  isSearchFocused && activePage === "dashboard",
+              },
+            )}
+          >
+            <a
+              href="#"
+              className="text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Home
+            </a>
+            <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            <span className="font-medium text-foreground capitalize">
+              {activePage}
+            </span>
+          </div>
+
+          <div className="flex-1" />
+
+          {/* Page-specific: Dashboard search and actions */}
+          {activePage === "dashboard" && (
+            <div className="flex items-center gap-2 flex-1 justify-end">
+              <div
+                className={cn(
+                  "relative transition-all duration-300 ease-in-out",
+                  isSearchFocused ? "flex-1 max-w-lg" : "w-auto",
+                )}
+              >
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4 pointer-events-none" />
+                <input
+                  type="text"
+                  placeholder="Search..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onFocus={() => setIsSearchFocused(true)}
+                  onBlur={() => setIsSearchFocused(false)}
+                  className={cn(
+                    "pl-9 pr-4 py-2 h-10 border-none rounded-lg bg-card focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300 ease-in-out w-full",
+                    isSearchFocused ? "bg-background" : "w-48",
+                  )}
+                />
+              </div>
+              <button className="h-10 w-10 flex-shrink-0 flex items-center justify-center hover:bg-accent rounded-full transition-colors">
+                <Filter className="w-5 h-5" />
+              </button>
+              <button className="bg-primary text-primary-foreground px-4 py-2 rounded-full hover:bg-primary/90 transition-colors flex items-center gap-2 h-10 flex-shrink-0">
+                <Plus className="w-5 h-5" />
+                <span
+                  className={cn(isSearchFocused ? "hidden sm:inline" : "inline")}
+                >
+                  New Project
+                </span>
+              </button>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+
+    // The main App component that composes the shell
+
+    function ComposedApp() {
+      const { sidePaneContent, closeSidePane, bodyState, toggleSplitView } =
+        useAppShell();
+      const { setActivePage } = useAppStore();
+
+      const isOverlaySidePane = bodyState === BODY_STATES.SIDE_PANE;
+
+      const contentMap = {
+        main: {
+          title: "Dashboard",
+          icon: LayoutDashboard,
+          page: "dashboard",
+          content: <DashboardContent isInSidePane={isOverlaySidePane} />,
+        },
+        settings: {
+          title: "Settings",
+          icon: Settings,
+          page: "settings",
+          content: isOverlaySidePane ? (
+            <div className="p-6">
+              <SettingsContent />
+            </div>
+          ) : (
+            <SettingsPage />
+          ),
+        },
+        toaster: {
+          title: "Toaster Demo",
+          icon: Component,
+          page: "toaster",
+          content: <ToasterDemo isInSidePane={isOverlaySidePane} />,
+        },
+        notifications: {
+          title: "Notifications",
+          icon: Bell,
+          page: "notifications",
+          content: <NotificationsPage isInSidePane={isOverlaySidePane} />,
+        },
+        "data-details": {
+          title: "Data Details",
+          icon: Database,
+          page: "data-demo",
+          content: <DataDetailPanel item={null} onClose={() => {}} />,
+        },
+        details: {
+          title: "Details Panel",
+          icon: SlidersHorizontal,
+          content: (
+            <div className="p-6">
+              <p className="text-muted-foreground">
+                This is the side pane. It can be used to display contextual
+                information, forms, or actions related to the main content.
+              </p>
+            </div>
+          ),
+        },
+      } as const;
+
+      const currentContent =
+        contentMap[sidePaneContent as keyof typeof contentMap] ||
+        contentMap.details;
+      const CurrentIcon = currentContent.icon;
+
+      const handleMaximize = () => {
+        if ("page" in currentContent && currentContent.page) {
+          setActivePage(currentContent.page as any);
+        }
+        closeSidePane();
+      };
+
+      const rightPaneHeader =
+        bodyState !== BODY_STATES.SPLIT_VIEW ? (
+          <>
+            <div className="flex items-center gap-2">
+              <CurrentIcon className="w-5 h-5" />
+              <h2 className="text-lg font-semibold whitespace-nowrap">
+                {currentContent.title}
+              </h2>
+            </div>
+            <div className="flex items-center">
+              {(bodyState === BODY_STATES.SIDE_PANE ||
+                bodyState === BODY_STATES.SPLIT_VIEW) && (
+                <button
+                  onClick={toggleSplitView}
+                  className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors"
+                  title={
+                    bodyState === BODY_STATES.SIDE_PANE
+                      ? "Switch to Split View"
+                      : "Switch to Overlay View"
+                  }
+                >
+                  {bodyState === BODY_STATES.SPLIT_VIEW ? (
+                    <Layers className="w-5 h-5" />
+                  ) : (
+                    <SplitSquareHorizontal className="w-5 h-5" />
+                  )}
+                </button>
+              )}
+              {"page" in currentContent && currentContent.page && (
+                <button
+                  onClick={handleMaximize}
+                  className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors mr-2"
+                  title="Move to Main View"
+                >
+                  <ChevronsLeftRight className="w-5 h-5" />
+                </button>
+              )}
+            </div>
+          </>
+        ) : undefined;
+
+      return (
+        <AppShell
+          sidebar={<EnhancedSidebar />}
+          topBar={
+            <TopBar>
+              <AppTopBar />
+            </TopBar>
+          }
+          mainContent={
+            <MainContent>
+              <AppContent />
+            </MainContent>
+          }
+          rightPane={
+            <RightPane header={rightPaneHeader}>{currentContent.content}</RightPane>
+          }
+          commandPalette={<CommandPalette />}
+        />
+      );
+    }
+
+
+    function App() {
+      const isDarkMode = useAppStore((state) => state.isDarkMode);
+      const { isAuthenticated, login, forgotPassword } = useAuthStore();
+
+      useEffect(() => {
+        document.documentElement.classList.toggle("dark", isDarkMode);
+      }, [isDarkMode]);
+
+      const handleLogin = async (email: string, password: string) => {
+        try {
+          await login(email, password);
+        } catch (error) {
+          console.error("Login failed:", error);
+          // In a real app, you'd show an error message to the user
+        }
+      };
+
+      const handleForgotPassword = async (email: string) => {
+        try {
+          await forgotPassword(email);
+        } catch (error) {
+          console.error("Forgot password failed:", error);
+        }
+      };
+
+      const handleSignUp = () => {
+        // In a real app, navigate to sign up page
+        console.log("Navigate to sign up page");
+      };
+
+      if (!isAuthenticated) {
+        return (
+          <LoginPage
+            onLogin={handleLogin}
+            onForgotPassword={handleForgotPassword}
+            onSignUp={handleSignUp}
+          />
+        );
+      }
+
+      return (
+        <div className="h-screen w-screen overflow-hidden bg-background">
+          <AppShellProvider
+            appName="Jeli App"
+            appLogo={
+              <div className="p-2 bg-primary/20 rounded-lg">
+                <Rocket className="w-5 h-5 text-primary" />
+              </div>
+            }
+          >
+            <ComposedApp />
+          </AppShellProvider>
+        </div>
+      );
+    }
+
+
+    export default App;
+  src/context/AppShellContext.tsx: >-
+    import {
+      createContext,
+      useContext,
+      useReducer,
+      useEffect,
+      useMemo,
+      useCallback,
+      type ReactNode,
+      type ReactElement,
+      type Dispatch,
+    } from 'react';
+
+    import { SIDEBAR_STATES, BODY_STATES, type SidebarState, type BodyState }
+    from '@/lib/utils';
+
+
+    // --- State and Action Types ---
+
+
+    export interface AppShellState {
+      sidebarState: SidebarState;
+      bodyState: BodyState;
+      sidePaneContent: 'details' | 'settings' | 'main' | 'toaster' | 'notifications' | 'data-details';
+      sidebarWidth: number;
+      sidePaneWidth: number;
+      splitPaneWidth: number;
+      previousBodyState: BodyState;
+      fullscreenTarget: 'main' | 'right' | null;
+      isResizing: boolean;
+      isResizingRightPane: boolean;
+      isTopBarVisible: boolean;
+      autoExpandSidebar: boolean;
+      reducedMotion: boolean;
+      compactMode: boolean;
+      primaryColor: string;
+      appName?: string;
+      appLogo?: ReactElement;
+     draggedPage: 'dashboard' | 'settings' | 'toaster' | 'notifications' | 'data-demo' | null;
+     dragHoverTarget: 'left' | 'right' | null;
+     hoveredPane: 'left' | 'right' | null;
+    }
+
+
+    type AppShellAction =
+      | { type: 'SET_SIDEBAR_STATE'; payload: SidebarState }
+      | { type: 'SET_BODY_STATE'; payload: BodyState }
+      | { type: 'SET_SIDE_PANE_CONTENT'; payload: AppShellState['sidePaneContent'] }
+      | { type: 'SET_SIDEBAR_WIDTH'; payload: number }
+      | { type: 'SET_SIDE_PANE_WIDTH'; payload: number }
+      | { type: 'SET_SPLIT_PANE_WIDTH'; payload: number }
+      | { type: 'SET_IS_RESIZING'; payload: boolean }
+      | { type: 'SET_PREVIOUS_BODY_STATE'; payload: BodyState }
+      | { type: 'SET_FULLSCREEN_TARGET'; payload: 'main' | 'right' | null }
+      | { type: 'SET_IS_RESIZING_RIGHT_PANE'; payload: boolean }
+      | { type: 'SET_TOP_BAR_VISIBLE'; payload: boolean }
+      | { type: 'SET_AUTO_EXPAND_SIDEBAR'; payload: boolean }
+      | { type: 'SET_REDUCED_MOTION'; payload: boolean }
+      | { type: 'SET_COMPACT_MODE'; payload: boolean }
+      | { type: 'SET_PRIMARY_COLOR'; payload: string }
+      | { type: 'SET_DRAGGED_PAGE'; payload: 'dashboard' | 'settings' | 'toaster' | 'notifications' | 'data-demo' | null }
+      | { type: 'SET_DRAG_HOVER_TARGET'; payload: 'left' | 'right' | null }
+      | { type: 'SET_HOVERED_PANE'; payload: 'left' | 'right' | null }
+      | { type: 'RESET_TO_DEFAULTS' };
+
+    // --- Reducer ---
+
+
+    const defaultState: AppShellState = {
+      sidebarState: SIDEBAR_STATES.EXPANDED,
+      bodyState: BODY_STATES.NORMAL,
+      sidePaneContent: 'details',
+      sidebarWidth: 280,
+      sidePaneWidth: typeof window !== 'undefined' ? Math.max(300, Math.round(window.innerWidth * 0.6)) : 400,
+      splitPaneWidth: typeof window !== 'undefined' ? Math.max(300, Math.round(window.innerWidth * 0.35)) : 400,
+      previousBodyState: BODY_STATES.NORMAL,
+      fullscreenTarget: null,
+      isResizing: false,
+      isResizingRightPane: false,
+      isTopBarVisible: true,
+      autoExpandSidebar: true,
+      reducedMotion: false,
+      compactMode: false,
+      primaryColor: '220 84% 60%',
+      appName: 'Jeli App',
+      appLogo: undefined,
+      draggedPage: null,
+      dragHoverTarget: null,
+      hoveredPane: null,
+    };
+
+
+    function appShellReducer(state: AppShellState, action: AppShellAction):
+    AppShellState {
+      switch (action.type) {
+        case 'SET_SIDEBAR_STATE': return { ...state, sidebarState: action.payload };
+        case 'SET_BODY_STATE':
+          // If we're leaving fullscreen, reset the target and previous state
+          if (state.bodyState === BODY_STATES.FULLSCREEN && action.payload !== BODY_STATES.FULLSCREEN) {
+            return { ...state, bodyState: action.payload, fullscreenTarget: null, previousBodyState: BODY_STATES.NORMAL };
+          }
+          return { ...state, bodyState: action.payload };
+        case 'SET_SIDE_PANE_CONTENT': return { ...state, sidePaneContent: action.payload };
+        case 'SET_SIDEBAR_WIDTH': return { ...state, sidebarWidth: Math.max(200, Math.min(500, action.payload)) };
+        case 'SET_SIDE_PANE_WIDTH': return { ...state, sidePaneWidth: Math.max(300, Math.min(window.innerWidth * 0.8, action.payload)) };
+        case 'SET_SPLIT_PANE_WIDTH': return { ...state, splitPaneWidth: Math.max(300, Math.min(window.innerWidth * 0.8, action.payload)) };
+        case 'SET_IS_RESIZING': return { ...state, isResizing: action.payload };
+        case 'SET_PREVIOUS_BODY_STATE': return { ...state, previousBodyState: action.payload };
+        case 'SET_FULLSCREEN_TARGET': return { ...state, fullscreenTarget: action.payload };
+        case 'SET_IS_RESIZING_RIGHT_PANE': return { ...state, isResizingRightPane: action.payload };
+        case 'SET_TOP_BAR_VISIBLE': return { ...state, isTopBarVisible: action.payload };
+        case 'SET_AUTO_EXPAND_SIDEBAR': return { ...state, autoExpandSidebar: action.payload };
+        case 'SET_REDUCED_MOTION': return { ...state, reducedMotion: action.payload };
+        case 'SET_COMPACT_MODE': return { ...state, compactMode: action.payload };
+        case 'SET_PRIMARY_COLOR': return { ...state, primaryColor: action.payload };
+        case 'SET_DRAGGED_PAGE': return { ...state, draggedPage: action.payload };
+        case 'SET_DRAG_HOVER_TARGET': return { ...state, dragHoverTarget: action.payload };
+        case 'SET_HOVERED_PANE': return { ...state, hoveredPane: action.payload };
+        case 'RESET_TO_DEFAULTS':
+          return {
+            ...defaultState,
+            appName: state.appName, // Preserve props passed to provider
+            appLogo: state.appLogo,   // Preserve props passed to provider
+          };
+        default: return state;
+      }
+    }
+
+
+    // --- Context and Provider ---
+
+
+    interface AppShellContextValue extends AppShellState {
+      dispatch: Dispatch<AppShellAction>;
+      rightPaneWidth: number;
+      // Composite actions for convenience
+      toggleSidebar: () => void;
+      hideSidebar: () => void;
+      showSidebar: () => void;
+      peekSidebar: () => void;
+      toggleFullscreen: (target?: 'main' | 'right' | null) => void;
+      toggleSplitView: (content?: AppShellState['sidePaneContent']) => void;
+      openSidePane: (content: AppShellState['sidePaneContent']) => void;
+      closeSidePane: () => void;
+      resetToDefaults: () => void;
+    }
+
+
+    const AppShellContext = createContext<AppShellContextValue | null>(null);
+
+
+    interface AppShellProviderProps {
+      children: ReactNode;
+      appName?: string;
+      appLogo?: ReactElement;
+      defaultSplitPaneWidth?: number;
+    }
+
+
+    export function AppShellProvider({ children, appName, appLogo,
+    defaultSplitPaneWidth }: AppShellProviderProps) {
+      const [state, dispatch] = useReducer(appShellReducer, {
+        ...defaultState,
+        ...(appName && { appName }),
+        ...(appLogo && { appLogo }),
+        ...(defaultSplitPaneWidth && { splitPaneWidth: defaultSplitPaneWidth }),
+      });
+
+      // Side effect for primary color
+      useEffect(() => {
+        document.documentElement.style.setProperty('--primary-hsl', state.primaryColor);
+      }, [state.primaryColor]);
+
+      // Memoized composite actions using useCallback for stable function identities
+      const toggleSidebar = useCallback(() => {
+        const current = state.sidebarState;
+        if (current === SIDEBAR_STATES.HIDDEN) dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.COLLAPSED });
+        else if (current === SIDEBAR_STATES.COLLAPSED) dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.EXPANDED });
+        else if (current === SIDEBAR_STATES.EXPANDED) dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.COLLAPSED });
+      }, [state.sidebarState]);
+
+      const hideSidebar = useCallback(() => dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.HIDDEN }), []);
+      const showSidebar = useCallback(() => dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.EXPANDED }), []);
+      const peekSidebar = useCallback(() => dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.PEEK }), []);
+      
+      const toggleFullscreen = useCallback((target: 'main' | 'right' | null = null) => {
+        const current = state.bodyState;
+        if (current === BODY_STATES.FULLSCREEN) {
+          // Exiting fullscreen, go back to the previous state
+          dispatch({ type: 'SET_BODY_STATE', payload: state.previousBodyState || BODY_STATES.NORMAL });
+        } else {
+          // Entering fullscreen
+          dispatch({ type: 'SET_PREVIOUS_BODY_STATE', payload: current });
+          dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.FULLSCREEN });
+          dispatch({ type: 'SET_FULLSCREEN_TARGET', payload: target });
+        }
+      }, [state.bodyState, state.previousBodyState]);
+
+      const toggleSplitView = useCallback((content?: AppShellState['sidePaneContent']) => {
+        const current = state.bodyState;
+        if (current === BODY_STATES.SIDE_PANE) {
+          dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.SPLIT_VIEW });
+          if (state.sidebarState === SIDEBAR_STATES.EXPANDED) {
+            dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.COLLAPSED });
+          }
+        } else if (current === BODY_STATES.SPLIT_VIEW) {
+          dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.SIDE_PANE });
+        } else if (current === BODY_STATES.NORMAL && content) {
+          // If we're in normal view, open the pane and switch to split view
+          dispatch({ type: 'SET_SIDE_PANE_CONTENT', payload: content });
+          dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.SPLIT_VIEW });
+        }
+      }, [state.bodyState, state.sidebarState]);
+
+      const openSidePane = useCallback((content: AppShellState['sidePaneContent']) => {
+        if (state.bodyState === BODY_STATES.SIDE_PANE && state.sidePaneContent === content) {
+          // If it's open with same content, close it.
+          dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.NORMAL });
+        } else {
+          // If closed, or different content, open with new content.
+          dispatch({ type: 'SET_SIDE_PANE_CONTENT', payload: content });
+          dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.SIDE_PANE });
+        }
+      }, [state.bodyState, state.sidePaneContent]);
+
+      const closeSidePane = useCallback(() => dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.NORMAL }), []);
+      const resetToDefaults = useCallback(() => dispatch({ type: 'RESET_TO_DEFAULTS' }), []);
+
+      const rightPaneWidth = useMemo(() => (
+        state.bodyState === BODY_STATES.SPLIT_VIEW ? state.splitPaneWidth : state.sidePaneWidth
+      ), [state.bodyState, state.splitPaneWidth, state.sidePaneWidth]);
+
+      const value = useMemo(() => ({ 
+        ...state, 
+        dispatch,
+        rightPaneWidth,
+        toggleSidebar,
+        hideSidebar,
+        showSidebar,
+        peekSidebar,
+        toggleFullscreen,
+        toggleSplitView,
+        openSidePane,
+        closeSidePane,
+        resetToDefaults,
+      }), [
+        state, 
+        rightPaneWidth,
+        toggleSidebar,
+        hideSidebar,
+        showSidebar,
+        peekSidebar,
+        toggleFullscreen,
+        toggleSplitView,
+        openSidePane,
+        closeSidePane,
+        resetToDefaults
+      ]);
+
+      return (
+        <AppShellContext.Provider value={value}>
+          {children}
+        </AppShellContext.Provider>
+      );
+    }
+
+
+    // --- Hook ---
+
+
+    export function useAppShell() {
+      const context = useContext(AppShellContext);
+      if (!context) {
+        throw new Error('useAppShell must be used within an AppShellProvider');
+      }
+      return context;
+    }
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 183

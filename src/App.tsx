@@ -76,7 +76,7 @@ function AppContent() {
     },
     "data-demo": {
       component: <DataDemoPage />,
-      sidePaneContent: "data-details",
+      sidePaneContent: "dataDemo",
       icon: Database,
       name: "data demo",
     },
@@ -227,11 +227,11 @@ function ComposedApp() {
       page: "notifications",
       content: <NotificationsPage isInSidePane={isOverlaySidePane} />,
     },
-    "data-details": {
-      title: "Data Details",
+    "dataDemo": {
+      title: "Data Showcase",
       icon: Database,
       page: "data-demo",
-      content: <DataDetailPanel item={null} onClose={() => {}} />,
+      content: <DataDemoPage isInSidePane={isOverlaySidePane} />
     },
     details: {
       title: "Details Panel",
