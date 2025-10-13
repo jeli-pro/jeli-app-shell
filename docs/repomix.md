@@ -1555,31 +1555,45 @@ interface GridConfig {
 }
 
 export const AnimatedLoadingSkeleton = ({ viewMode }: { viewMode: ViewMode }) => {
-  const [windowWidth, setWindowWidth] = useState(0)
+  const [containerWidth, setContainerWidth] = useState(0)
   const containerRef = useRef<HTMLDivElement>(null)
   const iconRef = useRef<HTMLDivElement>(null)
   const timelineRef = useRef<gsap.core.Timeline | null>(null)
 
   const getGridConfig = (width: number): GridConfig => {
+    if (width === 0) return { numCards: 8, cols: 2 }; // Default before measurement
     if (viewMode === 'list' || viewMode === 'table') {
       return { numCards: 5, cols: 1 }
     }
-    const cols = width >= 1280 ? 4 : width >= 1024 ? 3 : width >= 768 ? 2 : 1
+    // For card view
+    if (viewMode === 'cards') {
+      const cols = Math.max(1, Math.floor(width / 340)); // Approx 320px card + 24px gap
+      return { numCards: Math.max(8, cols * 2), cols }
+    }
+    // For grid (masonry) view
+    const cols = width >= 1024 ? 3 : width >= 768 ? 2 : 1;
     return { numCards: Math.max(8, cols * 2), cols }
   }
 
   useEffect(() => {
-    const handleResize = () => setWindowWidth(window.innerWidth)
-    handleResize()
-    window.addEventListener('resize', handleResize)
-    return () => window.removeEventListener('resize', handleResize)
-  }, [])
+    const container = containerRef.current;
+    if (!container) return;
+
+    const resizeObserver = new ResizeObserver(entries => {
+      if (entries[0]) {
+        setContainerWidth(entries[0].contentRect.width);
+      }
+    });
+
+    resizeObserver.observe(container);
+    return () => resizeObserver.disconnect();
+  }, []);
 
   useEffect(() => {
     if (timelineRef.current) {
       timelineRef.current.kill()
     }
-    if (!iconRef.current || !containerRef.current || windowWidth === 0) return
+    if (!iconRef.current || !containerRef.current || containerWidth === 0) return
 
     // Allow DOM to update with new skeleton cards
     const timeoutId = setTimeout(() => {
@@ -1632,9 +1646,9 @@ export const AnimatedLoadingSkeleton = ({ viewMode }: { viewMode: ViewMode }) =>
       }
     }
 
-  }, [windowWidth, viewMode])
+  }, [containerWidth, viewMode])
 
-  const config = getGridConfig(windowWidth)
+  const config = getGridConfig(containerWidth)
 
   const renderSkeletonCard = (key: number) => {
     if (viewMode === 'list' || viewMode === 'table') {
@@ -1684,8 +1698,8 @@ export const AnimatedLoadingSkeleton = ({ viewMode }: { viewMode: ViewMode }) =>
   const gridClasses = {
     list: "space-y-4",
     table: "space-y-4",
-    cards: "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6",
-    grid: "columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-6 space-y-6"
+    cards: "grid grid-cols-[repeat(auto-fit,minmax(320px,1fr))] gap-6",
+    grid: "columns-1 md:columns-2 xl:columns-3 gap-6 space-y-6"
   }
 
   return (
@@ -3810,324 +3824,6 @@ export function useDashboardAnimations(
 }
 ````
 
-## File: src/pages/DataDemo/components/DataDetailPanel.tsx
-````typescript
-import React, { useLayoutEffect, useRef } from 'react'
-import { gsap } from 'gsap'
-import { cn } from '@/lib/utils'
-import { Badge } from '@/components/ui/badge'
-import { Avatar } from '@/components/ui/avatar'
-import { Button } from '@/components/ui/button'
-import { 
-  ArrowLeft,
-  Calendar, 
-  Clock, 
-  Eye, 
-  Heart, 
-  Share, 
-  Download,
-  FileText,
-  Image,
-  Video,
-  File,
-  ExternalLink,
-  Tag,
-  User,
-  BarChart3,
-  TrendingUp,
-  CheckCircle,
-  AlertCircle,
-  Circle
-} from 'lucide-react' 
-import type { DataItem } from '../types'
-import { getStatusColor, getPriorityColor } from '../utils'
-
-interface DataDetailPanelProps {
-  item: DataItem | null
-  onClose: () => void
-}
-
-export function DataDetailPanel({ item, onClose }: DataDetailPanelProps) {
-  const contentRef = useRef<HTMLDivElement>(null)
-
-  useLayoutEffect(() => {
-    if (item && contentRef.current) {
-      gsap.fromTo(contentRef.current.children,
-        { y: 30, opacity: 0 },
-        {
-          duration: 0.6,
-          y: 0,
-          opacity: 1,
-          stagger: 0.08,
-          ease: "power2.out"
-        }
-      )
-    }
-  }, [item])
-
-  if (!item) {
-    return null
-  }
-
-  const getFileIcon = (type: string) => {
-    switch (type.toLowerCase()) {
-      case 'pdf': return FileText
-      case 'image':
-      case 'png':
-      case 'jpg':
-      case 'jpeg': return Image
-      case 'video':
-      case 'mp4': return Video
-      default: return File
-    }
-  }
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'completed': return CheckCircle
-      case 'active': return Circle
-      case 'pending': return AlertCircle
-      default: return Circle
-    }
-  }
-
-  return (
-    <div ref={contentRef} className="h-full flex flex-col">
-      {/* Header */}
-      <div className="p-6 border-b border-border/50 bg-gradient-to-r from-card/50 to-card/30 backdrop-blur-sm">
-        <Button variant="ghost" onClick={onClose} className="mb-4 -ml-4">
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to list
-        </Button>
-        <div className="flex items-start gap-4 mb-4">
-          <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-primary/10 rounded-2xl flex items-center justify-center text-3xl flex-shrink-0">
-            {item.thumbnail}
-          </div>
-          <div className="flex-1 min-w-0">
-            <h1 className="text-2xl font-bold mb-2 leading-tight">
-              {item.title}
-            </h1>
-            <p className="text-muted-foreground">
-              {item.description}
-            </p>
-          </div>
-        </div>
-
-        {/* Status badges */}
-        <div className="flex items-center gap-2 mb-4">
-          <Badge variant="outline" className={getStatusColor(item.status)}>
-            {React.createElement(getStatusIcon(item.status), { className: "w-3 h-3 mr-1" })}
-            {item.status}
-          </Badge>
-          <Badge variant="outline" className={getPriorityColor(item.priority)}>
-            {item.priority}
-          </Badge>
-          <Badge variant="outline" className="bg-accent/50">
-            {item.category}
-          </Badge>
-        </div>
-
-        {/* Progress */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium">Progress</span>
-            <span className="text-sm font-bold">{item.metrics.completion}%</span>
-          </div>
-          <div className="w-full bg-muted rounded-full h-3">
-            <div 
-              className="bg-gradient-to-r from-primary to-primary/80 h-3 rounded-full transition-all duration-1000 ease-out"
-              style={{ width: `${item.metrics.completion}%` }}
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="p-6 space-y-6">
-          {/* Assignee Info */}
-          <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
-            <div className="flex items-center gap-1 mb-3">
-              <User className="w-4 h-4 text-muted-foreground" />
-              <h3 className="font-semibold text-sm">Assigned to</h3>
-            </div>
-            <div className="flex items-center gap-3">
-              <Avatar className="w-12 h-12">
-                {item.assignee.avatar}
-              </Avatar>
-              <div>
-                <p className="font-medium">{item.assignee.name}</p>
-                <p className="text-sm text-muted-foreground">{item.assignee.email}</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Metrics */}
-          <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
-            <div className="flex items-center gap-1 mb-3">
-              <BarChart3 className="w-4 h-4 text-muted-foreground" />
-              <h3 className="font-semibold text-sm">Engagement Metrics</h3>
-            </div>
-            <div className="grid grid-cols-3 gap-4">
-              <div className="text-center">
-                <div className="flex items-center justify-center gap-1 mb-1">
-                  <Eye className="w-4 h-4 text-blue-500" />
-                </div>
-                <p className="text-2xl font-bold">{item.metrics.views}</p>
-                <p className="text-xs text-muted-foreground">Views</p>
-              </div>
-              <div className="text-center">
-                <div className="flex items-center justify-center gap-1 mb-1">
-                  <Heart className="w-4 h-4 text-red-500" />
-                </div>
-                <p className="text-2xl font-bold">{item.metrics.likes}</p>
-                <p className="text-xs text-muted-foreground">Likes</p>
-              </div>
-              <div className="text-center">
-                <div className="flex items-center justify-center gap-1 mb-1">
-                  <Share className="w-4 h-4 text-green-500" />
-                </div>
-                <p className="text-2xl font-bold">{item.metrics.shares}</p>
-                <p className="text-xs text-muted-foreground">Shares</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Tags */}
-          <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
-            <div className="flex items-center gap-1 mb-3">
-              <Tag className="w-4 h-4 text-muted-foreground" />
-              <h3 className="font-semibold text-sm">Tags</h3>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {item.tags.map((tag, index) => (
-                <span
-                  key={index}
-                  className="bg-muted/50 text-muted-foreground px-3 py-1 rounded-full text-xs font-medium"
-                >
-                  {tag}
-                </span>
-              ))}
-            </div>
-          </div>
-
-          {/* Content Details */}
-          {item.content && (
-            <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
-              <h3 className="font-semibold text-sm mb-3">Project Details</h3>
-              <div className="space-y-4">
-                <div>
-                  <h4 className="font-medium text-sm mb-2">Summary</h4>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    {item.content.summary}
-                  </p>
-                </div>
-                <div>
-                  <h4 className="font-medium text-sm mb-2">Description</h4>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    {item.content.details}
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Attachments */}
-          {item.content?.attachments && item.content.attachments.length > 0 && (
-            <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
-              <h3 className="font-semibold text-sm mb-3">Attachments</h3>
-              <div className="space-y-2">
-                {item.content.attachments.map((attachment, index) => {
-                  const IconComponent = getFileIcon(attachment.type)
-                  return (
-                    <div
-                      key={index}
-                      className="flex items-center gap-3 p-3 bg-muted/30 rounded-xl hover:bg-muted/50 transition-colors cursor-pointer group"
-                    >
-                      <IconComponent className="w-5 h-5 text-muted-foreground" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">
-                          {attachment.name}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {attachment.type} • {attachment.size}
-                        </p>
-                      </div>
-                      <Button size="sm" variant="ghost" className="opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Download className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Timeline */}
-          <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
-            <div className="flex items-center gap-1 mb-3">
-              <Clock className="w-4 h-4 text-muted-foreground" />
-              <h3 className="font-semibold text-sm">Timeline</h3>
-            </div>
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 text-sm">
-                <Calendar className="w-3 h-3 text-muted-foreground" />
-                <span className="text-muted-foreground">Created:</span>
-                <span className="font-medium">
-                  {new Date(item.createdAt).toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                  })}
-                </span>
-              </div>
-              <div className="flex items-center gap-2 text-sm">
-                <TrendingUp className="w-3 h-3 text-muted-foreground" />
-                <span className="text-muted-foreground">Last updated:</span>
-                <span className="font-medium">
-                  {new Date(item.updatedAt).toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                  })}
-                </span>
-              </div>
-              {item.dueDate && (
-                <div className="flex items-center gap-2 text-sm">
-                  <AlertCircle className="w-3 h-3 text-orange-500" />
-                  <span className="text-muted-foreground">Due date:</span>
-                  <span className="font-medium text-orange-600">
-                    {new Date(item.dueDate).toLocaleDateString('en-US', {
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric'
-                    })}
-                  </span>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Footer Actions */}
-      <div className="p-6 border-t border-border/50 bg-card/30">
-        <div className="flex gap-3">
-          <Button className="flex-1" size="sm">
-            <ExternalLink className="w-4 h-4 mr-2" />
-            Open Project
-          </Button>
-          <Button variant="outline" size="sm">
-            <Share className="w-4 h-4 mr-2" />
-            Share
-          </Button>
-        </div>
-      </div>
-    </div>
-  )
-}
-````
-
 ## File: src/pages/DataDemo/components/DataViewModeSelector.tsx
 ````typescript
 import { useEffect, useRef } from 'react'
@@ -4175,7 +3871,7 @@ export function DataViewModeSelector({ viewMode, onChange }: DataViewModeSelecto
   return (
     <div 
       ref={containerRef}
-      className="relative flex items-center bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-1.5 shadow-lg"
+      className="relative flex flex-wrap justify-center items-center bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-1.5 shadow-lg"
     >
       {/* Animated indicator */}
       <div
@@ -4195,7 +3891,7 @@ export function DataViewModeSelector({ viewMode, onChange }: DataViewModeSelecto
             data-mode={mode.id}
             onClick={() => onChange(mode.id)}
             className={cn(
-              "relative flex items-center gap-3 px-6 py-3 rounded-xl transition-all duration-300 group min-w-[120px]",
+              "relative flex items-center justify-center gap-2 sm:gap-3 px-4 py-2 sm:px-6 sm:py-3 rounded-xl transition-all duration-300 group min-w-[100px] sm:min-w-[120px]",
               "hover:bg-accent/20 active:scale-95",
               isActive && "text-primary"
             )}
@@ -5272,9 +4968,9 @@ export function DataCardView({ data, onItemSelect, selectedItem, isGrid = false 
       ref={containerRef}
       className={cn(
         "gap-6",
-        isGrid 
-          ? "columns-1 sm:columns-2 lg:columns-3 xl:columns-4 space-y-6" 
-          : "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
+        isGrid
+          ? "columns-1 md:columns-2 xl:columns-3 space-y-6"
+          : "grid grid-cols-[repeat(auto-fit,minmax(320px,1fr))]"
       )}
     >
       {data.map((item) => {
@@ -5412,6 +5108,324 @@ export function DataCardView({ data, onItemSelect, selectedItem, isGrid = false 
           </div>
         )
       })}
+    </div>
+  )
+}
+````
+
+## File: src/pages/DataDemo/components/DataDetailPanel.tsx
+````typescript
+import React, { useLayoutEffect, useRef } from 'react'
+import { gsap } from 'gsap'
+import { cn } from '@/lib/utils'
+import { Badge } from '@/components/ui/badge'
+import { Avatar } from '@/components/ui/avatar'
+import { Button } from '@/components/ui/button'
+import { 
+  ArrowLeft,
+  Calendar, 
+  Clock, 
+  Eye, 
+  Heart, 
+  Share, 
+  Download,
+  FileText,
+  Image,
+  Video,
+  File,
+  ExternalLink,
+  Tag,
+  User,
+  BarChart3,
+  TrendingUp,
+  CheckCircle,
+  AlertCircle,
+  Circle
+} from 'lucide-react' 
+import type { DataItem } from '../types'
+import { getStatusColor, getPriorityColor } from '../utils'
+
+interface DataDetailPanelProps {
+  item: DataItem | null
+  onClose: () => void
+}
+
+export function DataDetailPanel({ item, onClose }: DataDetailPanelProps) {
+  const contentRef = useRef<HTMLDivElement>(null)
+
+  useLayoutEffect(() => {
+    if (item && contentRef.current) {
+      gsap.fromTo(contentRef.current.children,
+        { y: 30, opacity: 0 },
+        {
+          duration: 0.6,
+          y: 0,
+          opacity: 1,
+          stagger: 0.08,
+          ease: "power2.out"
+        }
+      )
+    }
+  }, [item])
+
+  if (!item) {
+    return null
+  }
+
+  const getFileIcon = (type: string) => {
+    switch (type.toLowerCase()) {
+      case 'pdf': return FileText
+      case 'image':
+      case 'png':
+      case 'jpg':
+      case 'jpeg': return Image
+      case 'video':
+      case 'mp4': return Video
+      default: return File
+    }
+  }
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'completed': return CheckCircle
+      case 'active': return Circle
+      case 'pending': return AlertCircle
+      default: return Circle
+    }
+  }
+
+  return (
+    <div ref={contentRef} className="h-full flex flex-col">
+      {/* Header */}
+      <div className="p-6 border-b border-border/50 bg-gradient-to-r from-card/50 to-card/30 backdrop-blur-sm">
+        <Button variant="ghost" onClick={onClose} className="mb-4 -ml-4">
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Back to list
+        </Button>
+        <div className="flex items-start gap-4 mb-4">
+          <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-primary/10 rounded-2xl flex items-center justify-center text-3xl flex-shrink-0">
+            {item.thumbnail}
+          </div>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-2xl font-bold mb-2 leading-tight">
+              {item.title}
+            </h1>
+            <p className="text-muted-foreground">
+              {item.description}
+            </p>
+          </div>
+        </div>
+
+        {/* Status badges */}
+        <div className="flex items-center gap-2 mb-4">
+          <Badge variant="outline" className={getStatusColor(item.status)}>
+            {React.createElement(getStatusIcon(item.status), { className: "w-3 h-3 mr-1" })}
+            {item.status}
+          </Badge>
+          <Badge variant="outline" className={getPriorityColor(item.priority)}>
+            {item.priority}
+          </Badge>
+          <Badge variant="outline" className="bg-accent/50">
+            {item.category}
+          </Badge>
+        </div>
+
+        {/* Progress */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium">Progress</span>
+            <span className="text-sm font-bold">{item.metrics.completion}%</span>
+          </div>
+          <div className="w-full bg-muted rounded-full h-3">
+            <div 
+              className="bg-gradient-to-r from-primary to-primary/80 h-3 rounded-full transition-all duration-1000 ease-out"
+              style={{ width: `${item.metrics.completion}%` }}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="p-6 space-y-6">
+          {/* Assignee Info */}
+          <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
+            <div className="flex items-center gap-1 mb-3">
+              <User className="w-4 h-4 text-muted-foreground" />
+              <h3 className="font-semibold text-sm">Assigned to</h3>
+            </div>
+            <div className="flex items-center gap-3">
+              <Avatar className="w-12 h-12">
+                {item.assignee.avatar}
+              </Avatar>
+              <div>
+                <p className="font-medium">{item.assignee.name}</p>
+                <p className="text-sm text-muted-foreground">{item.assignee.email}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Metrics */}
+          <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
+            <div className="flex items-center gap-1 mb-3">
+              <BarChart3 className="w-4 h-4 text-muted-foreground" />
+              <h3 className="font-semibold text-sm">Engagement Metrics</h3>
+            </div>
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(80px,1fr))] gap-4">
+              <div className="text-center">
+                <div className="flex items-center justify-center gap-1 mb-1">
+                  <Eye className="w-4 h-4 text-blue-500" />
+                </div>
+                <p className="text-2xl font-bold">{item.metrics.views}</p>
+                <p className="text-xs text-muted-foreground">Views</p>
+              </div>
+              <div className="text-center">
+                <div className="flex items-center justify-center gap-1 mb-1">
+                  <Heart className="w-4 h-4 text-red-500" />
+                </div>
+                <p className="text-2xl font-bold">{item.metrics.likes}</p>
+                <p className="text-xs text-muted-foreground">Likes</p>
+              </div>
+              <div className="text-center">
+                <div className="flex items-center justify-center gap-1 mb-1">
+                  <Share className="w-4 h-4 text-green-500" />
+                </div>
+                <p className="text-2xl font-bold">{item.metrics.shares}</p>
+                <p className="text-xs text-muted-foreground">Shares</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Tags */}
+          <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
+            <div className="flex items-center gap-1 mb-3">
+              <Tag className="w-4 h-4 text-muted-foreground" />
+              <h3 className="font-semibold text-sm">Tags</h3>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {item.tags.map((tag, index) => (
+                <span
+                  key={index}
+                  className="bg-muted/50 text-muted-foreground px-3 py-1 rounded-full text-xs font-medium"
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {/* Content Details */}
+          {item.content && (
+            <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
+              <h3 className="font-semibold text-sm mb-3">Project Details</h3>
+              <div className="space-y-4">
+                <div>
+                  <h4 className="font-medium text-sm mb-2">Summary</h4>
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    {item.content.summary}
+                  </p>
+                </div>
+                <div>
+                  <h4 className="font-medium text-sm mb-2">Description</h4>
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    {item.content.details}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Attachments */}
+          {item.content?.attachments && item.content.attachments.length > 0 && (
+            <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
+              <h3 className="font-semibold text-sm mb-3">Attachments</h3>
+              <div className="space-y-2">
+                {item.content.attachments.map((attachment, index) => {
+                  const IconComponent = getFileIcon(attachment.type)
+                  return (
+                    <div
+                      key={index}
+                      className="flex items-center gap-3 p-3 bg-muted/30 rounded-xl hover:bg-muted/50 transition-colors cursor-pointer group"
+                    >
+                      <IconComponent className="w-5 h-5 text-muted-foreground" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">
+                          {attachment.name}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {attachment.type} • {attachment.size}
+                        </p>
+                      </div>
+                      <Button size="sm" variant="ghost" className="opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Download className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Timeline */}
+          <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
+            <div className="flex items-center gap-1 mb-3">
+              <Clock className="w-4 h-4 text-muted-foreground" />
+              <h3 className="font-semibold text-sm">Timeline</h3>
+            </div>
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 text-sm">
+                <Calendar className="w-3 h-3 text-muted-foreground" />
+                <span className="text-muted-foreground">Created:</span>
+                <span className="font-medium">
+                  {new Date(item.createdAt).toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                  })}
+                </span>
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                <TrendingUp className="w-3 h-3 text-muted-foreground" />
+                <span className="text-muted-foreground">Last updated:</span>
+                <span className="font-medium">
+                  {new Date(item.updatedAt).toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                  })}
+                </span>
+              </div>
+              {item.dueDate && (
+                <div className="flex items-center gap-2 text-sm">
+                  <AlertCircle className="w-3 h-3 text-orange-500" />
+                  <span className="text-muted-foreground">Due date:</span>
+                  <span className="font-medium text-orange-600">
+                    {new Date(item.dueDate).toLocaleDateString('en-US', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric'
+                    })}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Footer Actions */}
+      <div className="p-6 border-t border-border/50 bg-card/30">
+        <div className="flex gap-3">
+          <Button className="flex-1" size="sm">
+            <ExternalLink className="w-4 h-4 mr-2" />
+            Open Project
+          </Button>
+          <Button variant="outline" size="sm">
+            <Share className="w-4 h-4 mr-2" />
+            Share
+          </Button>
+        </div>
+      </div>
     </div>
   )
 }
@@ -5723,181 +5737,6 @@ export default {
     "resolveJsonModule": true
   },
   "include": ["vite.config.ts"]
-}
-````
-
-## File: src/components/layout/ViewModeSwitcher.tsx
-````typescript
-import { cn } from '@/lib/utils'
-import { useAppShell } from '@/context/AppShellContext'
-import { useAppStore, type ActivePage } from '@/store/appStore'
-import { BODY_STATES } from '@/lib/utils'
-import { type AppShellState } from '@/context/AppShellContext'
-import {
-  Columns,
-  PanelRightOpen,
-  SplitSquareHorizontal,
-  Maximize,
-  Minimize,
-  Layers,
-  X,
-  ArrowLeftRight
-} from 'lucide-react'
-
-const pageToPaneMap: Record<ActivePage, AppShellState['sidePaneContent']> = {
-  dashboard: 'main',
-  settings: 'settings',
-  toaster: 'toaster',
-  notifications: 'notifications',
-  'data-demo': 'dataDemo',
-};
-
-export function ViewModeSwitcher({ pane }: { pane?: 'main' | 'right' }) {
-  const {
-    bodyState,
-    sidePaneContent,
-    openSidePane,
-    closeSidePane,
-    toggleFullscreen,
-    toggleSplitView,
-    fullscreenTarget,
-    dispatch,
-  } = useAppShell()
-  const { activePage, setActivePage } = useAppStore()
-
-  const isFullscreen = bodyState === BODY_STATES.FULLSCREEN;
-  const isThisPaneFullscreen = isFullscreen && (
-    (pane === 'main' && fullscreenTarget !== 'right') ||
-    (pane === 'right' && fullscreenTarget === 'right') ||
-    (!pane && !fullscreenTarget) // Global switcher, global fullscreen
-  );
-
-  const handleSidePaneClick = () => {
-    const paneContent = pageToPaneMap[activePage] || 'details';
-    if (pane === 'right') return; // Don't allow opening a side pane from a side pane
-    // If side pane is already open with the current page's content, clicking again should close it.
-    if (bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === paneContent) {
-      closeSidePane();
-    } else {
-      openSidePane(paneContent);
-    }
-  };
-  
-  const handleSplitViewClick = () => {
-      const paneContent = pageToPaneMap[activePage] || 'details';
-      if (pane === 'right') return; // Don't allow splitting from a side pane in this simple case
-      toggleSplitView(paneContent);
-  }
-
-  const handleSwitchPanes = () => {
-    if (bodyState !== BODY_STATES.SPLIT_VIEW) return;
-
-    // 1. Get current active page's corresponding pane content
-    const newSidePaneContent = pageToPaneMap[activePage];
-
-    // 2. Find the page that corresponds to the current side pane content
-    const newActivePage = Object.entries(pageToPaneMap).find(
-      ([, value]) => value === sidePaneContent
-    )?.[0] as ActivePage | undefined;
-
-    if (newActivePage && newSidePaneContent) {
-      // 3. Swap them
-      setActivePage(newActivePage);
-      dispatch({ type: 'SET_SIDE_PANE_CONTENT', payload: newSidePaneContent });
-    }
-  };
-
-  const handleClosePane = () => {
-    if (bodyState !== BODY_STATES.SPLIT_VIEW) return;
-    if (pane === 'right') {
-      closeSidePane();
-    } else if (pane === 'main') {
-      const pageToBecomeActive = Object.entries(pageToPaneMap).find(
-        ([, value]) => value === sidePaneContent
-      )?.[0] as ActivePage | undefined;
-      
-      if (pageToBecomeActive) {
-        setActivePage(pageToBecomeActive);
-      }
-      closeSidePane();
-    }
-  }
-
-  return (
-    <div className="flex items-center gap-1 p-1 bg-card rounded-full border border-border">
-      <button
-        onClick={() => {
-            // "Normal view" button should always just close any open panes.
-            if (bodyState === BODY_STATES.SIDE_PANE || bodyState === BODY_STATES.SPLIT_VIEW) {
-              closeSidePane();
-            }
-            // This button is hidden in fullscreen, but as a fallback, it should exit.
-            if (isFullscreen) {
-              toggleFullscreen();
-            }
-        }}
-        className={cn(
-          'h-8 w-8 flex items-center justify-center rounded-full hover:bg-accent transition-colors group',
-          bodyState === BODY_STATES.NORMAL && 'bg-accent text-accent-foreground'
-        )}
-        title="Normal View"
-      >
-        <Columns className="w-4 h-4" />
-      </button>
-      <button
-        onClick={handleSidePaneClick}
-        className={cn(
-          'h-8 w-8 flex items-center justify-center rounded-full hover:bg-accent transition-colors group',
-          bodyState === BODY_STATES.SIDE_PANE && 'bg-accent text-accent-foreground'
-        )}
-        title="Side Pane View"
-      >
-        <PanelRightOpen className="w-4 h-4" />
-      </button>
-      <button
-        onClick={handleSplitViewClick}
-        className={cn(
-          'h-8 w-8 flex items-center justify-center rounded-full hover:bg-accent transition-colors group',
-          bodyState === BODY_STATES.SPLIT_VIEW && 'bg-accent text-accent-foreground'
-        )}
-        title={bodyState === BODY_STATES.SPLIT_VIEW ? 'Switch to Overlay View' : 'Switch to Split View'}
-      >
-        {bodyState === BODY_STATES.SPLIT_VIEW ? <Layers className="w-4 h-4" /> : <SplitSquareHorizontal className="w-4 h-4" />}
-      </button>
-      <button
-        onClick={() => toggleFullscreen(pane)}
-        className={cn(
-          'h-8 w-8 flex items-center justify-center rounded-full hover:bg-accent transition-colors group',
-          isThisPaneFullscreen && 'bg-accent text-accent-foreground'
-        )}
-        title="Toggle Fullscreen"
-      >
-        {isThisPaneFullscreen ? (
-          <Minimize className="w-4 h-4" />
-        ) : (
-          <Maximize className="w-4 h-4" />
-        )}
-      </button>
-      {bodyState === BODY_STATES.SPLIT_VIEW && (
-        <button
-          onClick={handleSwitchPanes}
-          className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
-          title="Switch Panes"
-        >
-          <ArrowLeftRight className="w-4 h-4" />
-        </button>
-      )}
-      {bodyState === BODY_STATES.SPLIT_VIEW && (
-        <button
-          onClick={handleClosePane}
-          className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-destructive/20 transition-colors group"
-          title="Close Pane"
-        >
-          <X className="w-4 h-4 text-muted-foreground group-hover:text-destructive" />
-        </button>
-      )}
-    </div>
-  )
 }
 ````
 
@@ -7014,6 +6853,181 @@ export { useAppStore, type ActivePage } from './store/appStore';
 export { useAuthStore } from './store/authStore';
 ````
 
+## File: src/components/layout/ViewModeSwitcher.tsx
+````typescript
+import { cn } from '@/lib/utils'
+import { useAppShell } from '@/context/AppShellContext'
+import { useAppStore, type ActivePage } from '@/store/appStore'
+import { BODY_STATES } from '@/lib/utils'
+import { type AppShellState } from '@/context/AppShellContext'
+import {
+  Columns,
+  PanelRightOpen,
+  SplitSquareHorizontal,
+  Maximize,
+  Minimize,
+  Layers,
+  X,
+  ArrowLeftRight
+} from 'lucide-react'
+
+const pageToPaneMap: Record<ActivePage, AppShellState['sidePaneContent']> = {
+  dashboard: 'main',
+  settings: 'settings',
+  toaster: 'toaster',
+  notifications: 'notifications',
+  'data-demo': 'dataDemo',
+};
+
+export function ViewModeSwitcher({ pane }: { pane?: 'main' | 'right' }) {
+  const {
+    bodyState,
+    sidePaneContent,
+    openSidePane,
+    closeSidePane,
+    toggleFullscreen,
+    toggleSplitView,
+    fullscreenTarget,
+    dispatch,
+  } = useAppShell()
+  const { activePage, setActivePage } = useAppStore()
+
+  const isFullscreen = bodyState === BODY_STATES.FULLSCREEN;
+  const isThisPaneFullscreen = isFullscreen && (
+    (pane === 'main' && fullscreenTarget !== 'right') ||
+    (pane === 'right' && fullscreenTarget === 'right') ||
+    (!pane && !fullscreenTarget) // Global switcher, global fullscreen
+  );
+
+  const handleSidePaneClick = () => {
+    const paneContent = pageToPaneMap[activePage] || 'details';
+    if (pane === 'right') return; // Don't allow opening a side pane from a side pane
+    // If side pane is already open with the current page's content, clicking again should close it.
+    if (bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === paneContent) {
+      closeSidePane();
+    } else {
+      openSidePane(paneContent);
+    }
+  };
+  
+  const handleSplitViewClick = () => {
+      const paneContent = pageToPaneMap[activePage] || 'details';
+      if (pane === 'right') return; // Don't allow splitting from a side pane in this simple case
+      toggleSplitView(paneContent);
+  }
+
+  const handleSwitchPanes = () => {
+    if (bodyState !== BODY_STATES.SPLIT_VIEW) return;
+
+    // 1. Get current active page's corresponding pane content
+    const newSidePaneContent = pageToPaneMap[activePage];
+
+    // 2. Find the page that corresponds to the current side pane content
+    const newActivePage = Object.entries(pageToPaneMap).find(
+      ([, value]) => value === sidePaneContent
+    )?.[0] as ActivePage | undefined;
+
+    if (newActivePage && newSidePaneContent) {
+      // 3. Swap them
+      setActivePage(newActivePage);
+      dispatch({ type: 'SET_SIDE_PANE_CONTENT', payload: newSidePaneContent });
+    }
+  };
+
+  const handleClosePane = () => {
+    if (bodyState !== BODY_STATES.SPLIT_VIEW) return;
+    if (pane === 'right') {
+      closeSidePane();
+    } else if (pane === 'main') {
+      const pageToBecomeActive = Object.entries(pageToPaneMap).find(
+        ([, value]) => value === sidePaneContent
+      )?.[0] as ActivePage | undefined;
+      
+      if (pageToBecomeActive) {
+        setActivePage(pageToBecomeActive);
+      }
+      closeSidePane();
+    }
+  }
+
+  return (
+    <div className="flex items-center gap-1 p-1 bg-card rounded-full border border-border">
+      <button
+        onClick={() => {
+            // "Normal view" button should always just close any open panes.
+            if (bodyState === BODY_STATES.SIDE_PANE || bodyState === BODY_STATES.SPLIT_VIEW) {
+              closeSidePane();
+            }
+            // This button is hidden in fullscreen, but as a fallback, it should exit.
+            if (isFullscreen) {
+              toggleFullscreen();
+            }
+        }}
+        className={cn(
+          'h-8 w-8 flex items-center justify-center rounded-full hover:bg-accent transition-colors group',
+          bodyState === BODY_STATES.NORMAL && 'bg-accent text-accent-foreground'
+        )}
+        title="Normal View"
+      >
+        <Columns className="w-4 h-4" />
+      </button>
+      <button
+        onClick={handleSidePaneClick}
+        className={cn(
+          'h-8 w-8 flex items-center justify-center rounded-full hover:bg-accent transition-colors group',
+          bodyState === BODY_STATES.SIDE_PANE && 'bg-accent text-accent-foreground'
+        )}
+        title="Side Pane View"
+      >
+        <PanelRightOpen className="w-4 h-4" />
+      </button>
+      <button
+        onClick={handleSplitViewClick}
+        className={cn(
+          'h-8 w-8 flex items-center justify-center rounded-full hover:bg-accent transition-colors group',
+          bodyState === BODY_STATES.SPLIT_VIEW && 'bg-accent text-accent-foreground'
+        )}
+        title={bodyState === BODY_STATES.SPLIT_VIEW ? 'Switch to Overlay View' : 'Switch to Split View'}
+      >
+        {bodyState === BODY_STATES.SPLIT_VIEW ? <Layers className="w-4 h-4" /> : <SplitSquareHorizontal className="w-4 h-4" />}
+      </button>
+      <button
+        onClick={() => toggleFullscreen(pane)}
+        className={cn(
+          'h-8 w-8 flex items-center justify-center rounded-full hover:bg-accent transition-colors group',
+          isThisPaneFullscreen && 'bg-accent text-accent-foreground'
+        )}
+        title="Toggle Fullscreen"
+      >
+        {isThisPaneFullscreen ? (
+          <Minimize className="w-4 h-4" />
+        ) : (
+          <Maximize className="w-4 h-4" />
+        )}
+      </button>
+      {bodyState === BODY_STATES.SPLIT_VIEW && (
+        <button
+          onClick={handleSwitchPanes}
+          className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+          title="Switch Panes"
+        >
+          <ArrowLeftRight className="w-4 h-4" />
+        </button>
+      )}
+      {bodyState === BODY_STATES.SPLIT_VIEW && (
+        <button
+          onClick={handleClosePane}
+          className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-destructive/20 transition-colors group"
+          title="Close Pane"
+        >
+          <X className="w-4 h-4 text-muted-foreground group-hover:text-destructive" />
+        </button>
+      )}
+    </div>
+  )
+}
+````
+
 ## File: src/hooks/useAutoAnimateTopBar.ts
 ````typescript
 import { useRef, useCallback, useEffect } from 'react';
@@ -7802,347 +7816,6 @@ export function DashboardContent({ isInSidePane = false }: DashboardContentProps
 }
 ````
 
-## File: src/pages/DataDemo/index.tsx
-````typescript
-import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
-import { 
-  Layers, 
-  AlertTriangle, 
-  PlayCircle, 
-  TrendingUp,
-  Loader2
-} from 'lucide-react'
-import { gsap } from 'gsap'
-import { PageLayout } from '@/components/shared/PageLayout'
-import { DataListView } from './components/DataListView'
-import { DataCardView } from './components/DataCardView'
-import { DataTableView } from './components/DataTableView'
-import { DataViewModeSelector } from './components/DataViewModeSelector'
-import { DataDetailPanel } from './components/DataDetailPanel'
-import { AnimatedLoadingSkeleton } from './components/AnimatedLoadingSkeleton'
-import { StatChartCard } from './components/StatChartCard'
-import { DataToolbar, FilterConfig } from './components/DataToolbar'
-import { mockDataItems } from './data/mockData'
-import type { DataItem, ViewMode, SortConfig, SortableField } from './types'
-
-type Stat = {
-  title: string;
-  value: string;
-  icon: React.ReactNode;
-  change: string;
-  trend: 'up' | 'down';
-  type?: 'card';
-};
-
-type ChartStat = {
-  title: string;
-  value: string;
-  icon: React.ReactNode;
-  change: string;
-  trend: 'up' | 'down';
-  type: 'chart';
-  chartData: number[];
-};
-
-type StatItem = Stat | ChartStat;
-
-export default function DataDemoPage({ isInSidePane = false }: { isInSidePane?: boolean }) {
-  const [viewMode, setViewMode] = useState<ViewMode>('list')
-  const [filters, setFilters] = useState<FilterConfig>({
-    searchTerm: '',
-    status: [],
-    priority: [],
-  })
-  const [sortConfig, setSortConfig] = useState<SortConfig | null>({ key: 'updatedAt', direction: 'desc' })
-  const [selectedItem, setSelectedItem] = useState<DataItem | null>(null)  
-  const [items, setItems] = useState<DataItem[]>([])
-  const [page, setPage] = useState(0) // Start at 0 to trigger initial load effect
-  const [hasMore, setHasMore] = useState(true)
-  const [isLoading, setIsLoading] = useState(true)
-  const contentRef = useRef<HTMLDivElement>(null)
-  const statsRef = useRef<HTMLDivElement>(null)
-  const observer = useRef<IntersectionObserver>()
-
-  const isInitialLoading = isLoading && items.length === 0
-
-  // Centralized data processing
-  const processedData = useMemo(() => {
-    let filteredItems = mockDataItems.filter(item => {
-      const searchTermMatch =
-        item.title.toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
-        item.description.toLowerCase().includes(filters.searchTerm.toLowerCase())
-
-      const statusMatch = filters.status.length === 0 || filters.status.includes(item.status)
-      const priorityMatch = filters.priority.length === 0 || filters.priority.includes(item.priority)
-
-      return searchTermMatch && statusMatch && priorityMatch
-    })
-
-    if (sortConfig) {
-      filteredItems.sort((a, b) => {
-        let aValue: any
-        let bValue: any
-
-        const getNestedValue = (obj: any, path: string) => path.split('.').reduce((o, k) => (o || {})[k], obj)
-
-        aValue = getNestedValue(a, sortConfig.key)
-        bValue = getNestedValue(b, sortConfig.key)
-
-        if (aValue === undefined || bValue === undefined) return 0;
-
-        if (typeof aValue === 'string' && typeof bValue === 'string') {
-          return sortConfig.direction === 'asc'
-            ? aValue.localeCompare(bValue)
-            : bValue.localeCompare(aValue)
-        }
-        if (typeof aValue === 'number' && typeof bValue === 'number') {
-          return sortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue
-        }
-        // Date sorting (assuming ISO strings)
-        if (sortConfig.key === 'updatedAt' || sortConfig.key === 'createdAt') {
-            return sortConfig.direction === 'asc'
-                ? new Date(aValue).getTime() - new Date(aValue).getTime()
-                : new Date(bValue).getTime() - new Date(bValue).getTime()
-        }
-        return 0
-      })
-    }
-    return filteredItems
-  }, [filters, sortConfig])
-
-  // Calculate stats from data
-  const totalItems = mockDataItems.length
-  const activeItems = mockDataItems.filter(item => item.status === 'active').length
-  const highPriorityItems = mockDataItems.filter(item => item.priority === 'high' || item.priority === 'critical').length
-  const avgCompletion = totalItems > 0 ? Math.round(
-    mockDataItems.reduce((acc, item) => acc + item.metrics.completion, 0) / totalItems
-  ) : 0
-
-  // Reset pagination when filters or sort change
-  useEffect(() => {
-    setItems([])
-    setPage(0) // This will be incremented to 1 in the loader `useEffect`, triggering a fresh load
-    setHasMore(true)
-    // This timeout helps prevent a flicker between old and new filtered data
-    setTimeout(() => setPage(1), 50)
-  }, [processedData])
-
-  // Infinite scroll logic
-  useEffect(() => { // eslint-disable-line react-hooks/exhaustive-deps
-    if (page === 0) return;
-
-    const fetchItems = () => {
-      setIsLoading(true);
-      const isFirstPage = page === 1
-      
-      const pageSize = 12;
-      const newItems = processedData.slice((page - 1) * pageSize, page * pageSize);
-      
-      // Simulate network delay, longer for initial load to showcase skeleton
-      setTimeout(() => {
-        setItems(prev => (isFirstPage ? newItems : [...prev, ...newItems]))
-        setHasMore(processedData.length > page * pageSize)
-        setIsLoading(false)
-      }, isFirstPage && items.length === 0 ? 1500 : 500)
-    };
-
-    if (hasMore) fetchItems();
-  }, [page]);
-
-  const loaderRef = useCallback(node => {
-    if (isLoading) return;
-    if (observer.current) observer.current.disconnect();
-    
-    observer.current = new IntersectionObserver(entries => {
-      if (entries[0].isIntersecting && hasMore) {
-        setPage(prevPage => prevPage + 1);
-      }
-    });
-    if (node) observer.current.observe(node);
-  }, [isLoading, hasMore]);
-
-  const stats: StatItem[] = [
-    {
-      title: "Total Projects",
-      value: totalItems.toString(),
-      icon: <Layers className="w-5 h-5" />,
-      change: "+5.2% this month",
-      trend: "up" as const,
-      type: 'chart',
-      chartData: [120, 125, 122, 130, 135, 138, 142]
-    },
-    {
-      title: "Active Projects",
-      value: activeItems.toString(),
-      icon: <PlayCircle className="w-5 h-5" />,
-      change: "+2 this week", 
-      trend: "up" as const,
-      type: 'chart',
-      chartData: [45, 50, 48, 55, 53, 60, 58]
-    },
-    {
-      title: "High Priority",
-      value: highPriorityItems.toString(),
-      icon: <AlertTriangle className="w-5 h-5" />,
-      change: "-1 from last week",
-      trend: "down" as const,
-      type: 'chart',
-      chartData: [25, 26, 28, 27, 26, 24, 23]
-    },
-    {
-      title: "Avg. Completion",
-      value: `${avgCompletion}%`,
-      icon: <TrendingUp className="w-5 h-5" />,
-      change: "+3.2%",
-      trend: "up" as const,
-      type: 'chart',
-      chartData: [65, 68, 70, 69, 72, 75, 78]
-    }
-  ]
-
-  useEffect(() => {
-    // Animate stats cards in
-    if (!isInitialLoading && statsRef.current) {
-      gsap.fromTo(statsRef.current.children,
-        { y: 30, opacity: 0 },
-        {
-          duration: 0.6,
-          y: 0,
-          opacity: 1,
-          stagger: 0.1,
-          ease: "power2.out"
-        }
-      )
-    }
-  }, [isInitialLoading])
-
-  const handleSortChange = (config: SortConfig | null) => {
-    setSortConfig(config)
-  }
-
-  // For table view header clicks
-  const handleTableSort = (field: SortableField) => {
-    if (sortConfig?.key === field) {
-      if (sortConfig.direction === 'desc') {
-        // Cycle: desc -> asc
-        setSortConfig({ key: field, direction: 'asc' })
-      } else {
-        // Cycle: asc -> default
-        setSortConfig(null)
-      }
-    } else {
-      // New field, default to desc
-      setSortConfig({ key: field, direction: 'desc' })
-    }
-  }
-
-  const handleFilterChange = (newFilters: FilterConfig) => {
-    setFilters(newFilters)
-  }
-  
-  // Handle item selection and open side panel
-  const handleItemSelect = (item: DataItem) => {
-    setSelectedItem(item)
-  }
-
-  if (selectedItem) {
-    return (
-      <DataDetailPanel
-        item={selectedItem}
-        onClose={() => setSelectedItem(null)}
-      />
-    )
-  }
-
-  const renderView = () => {
-    const commonProps = {
-      data: items,
-      onItemSelect: handleItemSelect,
-      selectedItem,
-      sortConfig,
-      onSort: handleTableSort,
-    }
-
-    switch (viewMode) {
-      case 'list':
-        return <DataListView {...commonProps} />
-      case 'cards':
-        return <DataCardView {...commonProps} />
-      case 'grid':
-        return <DataCardView {...commonProps} isGrid />
-      case 'table':
-        return <DataTableView {...commonProps} />
-      default:
-        return <DataListView {...commonProps} />
-    }
-  }
-
-  return (
-    <PageLayout
-      // Note: Search functionality is handled by a separate SearchBar in the TopBar
-    >
-      <div className="space-y-8">
-        {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div className="flex-1">
-            <h1 className="text-2xl font-bold tracking-tight">Data Showcase</h1>
-            <p className="text-muted-foreground">
-              {isInitialLoading 
-                ? "Loading projects..." 
-                : `Showing ${processedData.length} item(s)`}
-            </p>
-          </div>
-          <DataViewModeSelector viewMode={viewMode} onChange={setViewMode} />
-        </div>
-
-        {/* Stats Section */}
-        {!isInitialLoading && (
-          <div ref={statsRef} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {stats.map((stat) =>
-              stat.type === 'chart' ? (
-                <StatChartCard
-                  key={stat.title}
-                  title={stat.title}
-                  value={stat.value}
-                  change={stat.change}
-                  trend={stat.trend}
-                  icon={stat.icon}
-                  chartData={stat.chartData}
-                />
-              ) : null
-            )}
-          </div>
-        )}
-
-        <DataToolbar
-          filters={filters}
-          onFiltersChange={handleFilterChange}
-          sortConfig={sortConfig}
-          onSortChange={handleSortChange}
-        />
-
-        <div ref={contentRef} className="min-h-[500px]">
-          {isInitialLoading ? <AnimatedLoadingSkeleton viewMode={viewMode} /> : renderView()}
-        </div>
-
-        {/* Loader for infinite scroll */}
-        <div ref={loaderRef} className="flex justify-center items-center py-6">
-          {isLoading && !isInitialLoading && (
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <Loader2 className="w-5 h-5 animate-spin" />
-              <span>Loading more...</span>
-            </div>
-          )}
-          {!isLoading && !hasMore && processedData.length > 0 && !isInitialLoading && (
-            <p className="text-muted-foreground">You've reached the end.</p>
-          )}
-        </div>
-      </div>
-    </PageLayout>
-  )
-}
-````
-
 ## File: src/index.css
 ````css
 @import 'tailwindcss/base';
@@ -8759,6 +8432,347 @@ export function useBodyStateAnimations(
       }
     }
   }, [bodyState, prevBodyState, animationDuration, rightPaneWidth, closeSidePane, isTopBarVisible, appRef, mainContentRef, rightPaneRef, topBarContainerRef, mainAreaRef, fullscreenTarget]);
+}
+````
+
+## File: src/pages/DataDemo/index.tsx
+````typescript
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
+import { 
+  Layers, 
+  AlertTriangle, 
+  PlayCircle, 
+  TrendingUp,
+  Loader2
+} from 'lucide-react'
+import { gsap } from 'gsap'
+import { PageLayout } from '@/components/shared/PageLayout'
+import { DataListView } from './components/DataListView'
+import { DataCardView } from './components/DataCardView'
+import { DataTableView } from './components/DataTableView'
+import { DataViewModeSelector } from './components/DataViewModeSelector'
+import { DataDetailPanel } from './components/DataDetailPanel'
+import { AnimatedLoadingSkeleton } from './components/AnimatedLoadingSkeleton'
+import { StatChartCard } from './components/StatChartCard'
+import { DataToolbar, FilterConfig } from './components/DataToolbar'
+import { mockDataItems } from './data/mockData'
+import type { DataItem, ViewMode, SortConfig, SortableField } from './types'
+
+type Stat = {
+  title: string;
+  value: string;
+  icon: React.ReactNode;
+  change: string;
+  trend: 'up' | 'down';
+  type?: 'card';
+};
+
+type ChartStat = {
+  title: string;
+  value: string;
+  icon: React.ReactNode;
+  change: string;
+  trend: 'up' | 'down';
+  type: 'chart';
+  chartData: number[];
+};
+
+type StatItem = Stat | ChartStat;
+
+export default function DataDemoPage({ isInSidePane = false }: { isInSidePane?: boolean }) {
+  const [viewMode, setViewMode] = useState<ViewMode>('list')
+  const [filters, setFilters] = useState<FilterConfig>({
+    searchTerm: '',
+    status: [],
+    priority: [],
+  })
+  const [sortConfig, setSortConfig] = useState<SortConfig | null>({ key: 'updatedAt', direction: 'desc' })
+  const [selectedItem, setSelectedItem] = useState<DataItem | null>(null)  
+  const [items, setItems] = useState<DataItem[]>([])
+  const [page, setPage] = useState(0) // Start at 0 to trigger initial load effect
+  const [hasMore, setHasMore] = useState(true)
+  const [isLoading, setIsLoading] = useState(true)
+  const contentRef = useRef<HTMLDivElement>(null)
+  const statsRef = useRef<HTMLDivElement>(null)
+  const observer = useRef<IntersectionObserver>()
+
+  const isInitialLoading = isLoading && items.length === 0
+
+  // Centralized data processing
+  const processedData = useMemo(() => {
+    let filteredItems = mockDataItems.filter(item => {
+      const searchTermMatch =
+        item.title.toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
+        item.description.toLowerCase().includes(filters.searchTerm.toLowerCase())
+
+      const statusMatch = filters.status.length === 0 || filters.status.includes(item.status)
+      const priorityMatch = filters.priority.length === 0 || filters.priority.includes(item.priority)
+
+      return searchTermMatch && statusMatch && priorityMatch
+    })
+
+    if (sortConfig) {
+      filteredItems.sort((a, b) => {
+        let aValue: any
+        let bValue: any
+
+        const getNestedValue = (obj: any, path: string) => path.split('.').reduce((o, k) => (o || {})[k], obj)
+
+        aValue = getNestedValue(a, sortConfig.key)
+        bValue = getNestedValue(b, sortConfig.key)
+
+        if (aValue === undefined || bValue === undefined) return 0;
+
+        if (typeof aValue === 'string' && typeof bValue === 'string') {
+          return sortConfig.direction === 'asc'
+            ? aValue.localeCompare(bValue)
+            : bValue.localeCompare(aValue)
+        }
+        if (typeof aValue === 'number' && typeof bValue === 'number') {
+          return sortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue
+        }
+        // Date sorting (assuming ISO strings)
+        if (sortConfig.key === 'updatedAt' || sortConfig.key === 'createdAt') {
+            return sortConfig.direction === 'asc'
+                ? new Date(aValue).getTime() - new Date(aValue).getTime()
+                : new Date(bValue).getTime() - new Date(bValue).getTime()
+        }
+        return 0
+      })
+    }
+    return filteredItems
+  }, [filters, sortConfig])
+
+  // Calculate stats from data
+  const totalItems = mockDataItems.length
+  const activeItems = mockDataItems.filter(item => item.status === 'active').length
+  const highPriorityItems = mockDataItems.filter(item => item.priority === 'high' || item.priority === 'critical').length
+  const avgCompletion = totalItems > 0 ? Math.round(
+    mockDataItems.reduce((acc, item) => acc + item.metrics.completion, 0) / totalItems
+  ) : 0
+
+  // Reset pagination when filters or sort change
+  useEffect(() => {
+    setItems([])
+    setPage(0) // This will be incremented to 1 in the loader `useEffect`, triggering a fresh load
+    setHasMore(true)
+    // This timeout helps prevent a flicker between old and new filtered data
+    setTimeout(() => setPage(1), 50)
+  }, [processedData])
+
+  // Infinite scroll logic
+  useEffect(() => { // eslint-disable-line react-hooks/exhaustive-deps
+    if (page === 0) return;
+
+    const fetchItems = () => {
+      setIsLoading(true);
+      const isFirstPage = page === 1
+      
+      const pageSize = 12;
+      const newItems = processedData.slice((page - 1) * pageSize, page * pageSize);
+      
+      // Simulate network delay, longer for initial load to showcase skeleton
+      setTimeout(() => {
+        setItems(prev => (isFirstPage ? newItems : [...prev, ...newItems]))
+        setHasMore(processedData.length > page * pageSize)
+        setIsLoading(false)
+      }, isFirstPage && items.length === 0 ? 1500 : 500)
+    };
+
+    if (hasMore) fetchItems();
+  }, [page]);
+
+  const loaderRef = useCallback(node => {
+    if (isLoading) return;
+    if (observer.current) observer.current.disconnect();
+    
+    observer.current = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting && hasMore) {
+        setPage(prevPage => prevPage + 1);
+      }
+    });
+    if (node) observer.current.observe(node);
+  }, [isLoading, hasMore]);
+
+  const stats: StatItem[] = [
+    {
+      title: "Total Projects",
+      value: totalItems.toString(),
+      icon: <Layers className="w-5 h-5" />,
+      change: "+5.2% this month",
+      trend: "up" as const,
+      type: 'chart',
+      chartData: [120, 125, 122, 130, 135, 138, 142]
+    },
+    {
+      title: "Active Projects",
+      value: activeItems.toString(),
+      icon: <PlayCircle className="w-5 h-5" />,
+      change: "+2 this week", 
+      trend: "up" as const,
+      type: 'chart',
+      chartData: [45, 50, 48, 55, 53, 60, 58]
+    },
+    {
+      title: "High Priority",
+      value: highPriorityItems.toString(),
+      icon: <AlertTriangle className="w-5 h-5" />,
+      change: "-1 from last week",
+      trend: "down" as const,
+      type: 'chart',
+      chartData: [25, 26, 28, 27, 26, 24, 23]
+    },
+    {
+      title: "Avg. Completion",
+      value: `${avgCompletion}%`,
+      icon: <TrendingUp className="w-5 h-5" />,
+      change: "+3.2%",
+      trend: "up" as const,
+      type: 'chart',
+      chartData: [65, 68, 70, 69, 72, 75, 78]
+    }
+  ]
+
+  useEffect(() => {
+    // Animate stats cards in
+    if (!isInitialLoading && statsRef.current) {
+      gsap.fromTo(statsRef.current.children,
+        { y: 30, opacity: 0 },
+        {
+          duration: 0.6,
+          y: 0,
+          opacity: 1,
+          stagger: 0.1,
+          ease: "power2.out"
+        }
+      )
+    }
+  }, [isInitialLoading])
+
+  const handleSortChange = (config: SortConfig | null) => {
+    setSortConfig(config)
+  }
+
+  // For table view header clicks
+  const handleTableSort = (field: SortableField) => {
+    if (sortConfig?.key === field) {
+      if (sortConfig.direction === 'desc') {
+        // Cycle: desc -> asc
+        setSortConfig({ key: field, direction: 'asc' })
+      } else {
+        // Cycle: asc -> default
+        setSortConfig(null)
+      }
+    } else {
+      // New field, default to desc
+      setSortConfig({ key: field, direction: 'desc' })
+    }
+  }
+
+  const handleFilterChange = (newFilters: FilterConfig) => {
+    setFilters(newFilters)
+  }
+  
+  // Handle item selection and open side panel
+  const handleItemSelect = (item: DataItem) => {
+    setSelectedItem(item)
+  }
+
+  if (selectedItem) {
+    return (
+      <DataDetailPanel
+        item={selectedItem}
+        onClose={() => setSelectedItem(null)}
+      />
+    )
+  }
+
+  const renderView = () => {
+    const commonProps = {
+      data: items,
+      onItemSelect: handleItemSelect,
+      selectedItem,
+      sortConfig,
+      onSort: handleTableSort,
+    }
+
+    switch (viewMode) {
+      case 'list':
+        return <DataListView {...commonProps} />
+      case 'cards':
+        return <DataCardView {...commonProps} />
+      case 'grid':
+        return <DataCardView {...commonProps} isGrid />
+      case 'table':
+        return <DataTableView {...commonProps} />
+      default:
+        return <DataListView {...commonProps} />
+    }
+  }
+
+  return (
+    <PageLayout
+      // Note: Search functionality is handled by a separate SearchBar in the TopBar
+    >
+      <div className="space-y-8">
+        {/* Header */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="flex-1">
+            <h1 className="text-2xl font-bold tracking-tight">Data Showcase</h1>
+            <p className="text-muted-foreground">
+              {isInitialLoading 
+                ? "Loading projects..." 
+                : `Showing ${processedData.length} item(s)`}
+            </p>
+          </div>
+          <DataViewModeSelector viewMode={viewMode} onChange={setViewMode} />
+        </div>
+
+        {/* Stats Section */}
+        {!isInitialLoading && (
+          <div ref={statsRef} className="grid grid-cols-[repeat(auto-fit,minmax(250px,1fr))] gap-6">
+            {stats.map((stat) =>
+              stat.type === 'chart' ? (
+                <StatChartCard
+                  key={stat.title}
+                  title={stat.title}
+                  value={stat.value}
+                  change={stat.change}
+                  trend={stat.trend}
+                  icon={stat.icon}
+                  chartData={stat.chartData}
+                />
+              ) : null
+            )}
+          </div>
+        )}
+
+        <DataToolbar
+          filters={filters}
+          onFiltersChange={handleFilterChange}
+          sortConfig={sortConfig}
+          onSortChange={handleSortChange}
+        />
+
+        <div ref={contentRef} className="min-h-[500px]">
+          {isInitialLoading ? <AnimatedLoadingSkeleton viewMode={viewMode} /> : renderView()}
+        </div>
+
+        {/* Loader for infinite scroll */}
+        <div ref={loaderRef} className="flex justify-center items-center py-6">
+          {isLoading && !isInitialLoading && (
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Loader2 className="w-5 h-5 animate-spin" />
+              <span>Loading more...</span>
+            </div>
+          )}
+          {!isLoading && !hasMore && processedData.length > 0 && !isInitialLoading && (
+            <p className="text-muted-foreground">You've reached the end.</p>
+          )}
+        </div>
+      </div>
+    </PageLayout>
+  )
 }
 ````
 
@@ -9515,6 +9529,77 @@ export const useAppStore = create<AppState>()(
 )
 ````
 
+## File: package.json
+````json
+{
+  "name": "jeli-app-shell",
+  "private": false,
+  "version": "1.0.1",
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "main": "./dist/jeli-app-shell.umd.js",
+  "module": "./dist/jeli-app-shell.es.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/jeli-app-shell.es.js",
+      "require": "./dist/jeli-app-shell.umd.js"
+    },
+    "./dist/style.css": "./dist/style.css"
+  },
+  "sideEffects": [
+    "**/*.css"
+  ],
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "preview": "vite preview"
+  },
+  "dependencies": {},
+  "peerDependencies": {
+    "@iconify/react": "^4.1.1",
+    "@radix-ui/react-avatar": "^1.0.4",
+    "@radix-ui/react-dialog": "^1.0.5",
+    "@radix-ui/react-dropdown-menu": "^2.0.6",
+    "@radix-ui/react-label": "^2.1.7",
+    "@radix-ui/react-popover": "^1.0.7",
+    "@radix-ui/react-slot": "^1.0.2",
+    "@radix-ui/react-tabs": "^1.0.4",
+    "class-variance-authority": "^0.7.0",
+    "clsx": "^2.0.0",
+    "cmdk": "^0.2.0",
+    "gsap": "^3.12.2",
+    "lucide-react": "^0.294.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "sonner": "^1.2.4",
+    "tailwind-merge": "^2.0.0",
+    "tailwindcss": "^3.3.5",
+    "zustand": "^4.5.7"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@types/react": "^18.2.37",
+    "@types/react-dom": "^18.2.15",
+    "@typescript-eslint/eslint-plugin": "^6.10.0",
+    "@typescript-eslint/parser": "^6.10.0",
+    "@vitejs/plugin-react": "^4.1.1",
+    "autoprefixer": "^10.4.16",
+    "eslint": "^8.53.0",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint-plugin-react-refresh": "^0.4.4",
+    "postcss": "^8.4.31",
+    "tailwindcss": "^3.3.5",
+    "tailwindcss-animate": "^1.0.7",
+    "typescript": "^5.2.2",
+    "vite": "^4.5.0"
+  }
+}
+````
+
 ## File: src/App.tsx
 ````typescript
 import React, { useEffect } from "react";
@@ -9897,75 +9982,4 @@ function App() {
 }
 
 export default App;
-````
-
-## File: package.json
-````json
-{
-  "name": "jeli-app-shell",
-  "private": false,
-  "version": "1.0.1",
-  "type": "module",
-  "files": [
-    "dist"
-  ],
-  "main": "./dist/jeli-app-shell.umd.js",
-  "module": "./dist/jeli-app-shell.es.js",
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "import": "./dist/jeli-app-shell.es.js",
-      "require": "./dist/jeli-app-shell.umd.js"
-    },
-    "./dist/style.css": "./dist/style.css"
-  },
-  "sideEffects": [
-    "**/*.css"
-  ],
-  "scripts": {
-    "dev": "vite",
-    "build": "tsc && vite build",
-    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "preview": "vite preview"
-  },
-  "dependencies": {},
-  "peerDependencies": {
-    "@iconify/react": "^4.1.1",
-    "@radix-ui/react-avatar": "^1.0.4",
-    "@radix-ui/react-dialog": "^1.0.5",
-    "@radix-ui/react-dropdown-menu": "^2.0.6",
-    "@radix-ui/react-label": "^2.1.7",
-    "@radix-ui/react-popover": "^1.0.7",
-    "@radix-ui/react-slot": "^1.0.2",
-    "@radix-ui/react-tabs": "^1.0.4",
-    "class-variance-authority": "^0.7.0",
-    "clsx": "^2.0.0",
-    "cmdk": "^0.2.0",
-    "gsap": "^3.12.2",
-    "lucide-react": "^0.294.0",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "sonner": "^1.2.4",
-    "tailwind-merge": "^2.0.0",
-    "tailwindcss": "^3.3.5",
-    "zustand": "^4.5.7"
-  },
-  "devDependencies": {
-    "@types/node": "^20.10.0",
-    "@types/react": "^18.2.37",
-    "@types/react-dom": "^18.2.15",
-    "@typescript-eslint/eslint-plugin": "^6.10.0",
-    "@typescript-eslint/parser": "^6.10.0",
-    "@vitejs/plugin-react": "^4.1.1",
-    "autoprefixer": "^10.4.16",
-    "eslint": "^8.53.0",
-    "eslint-plugin-react-hooks": "^4.6.0",
-    "eslint-plugin-react-refresh": "^0.4.4",
-    "postcss": "^8.4.31",
-    "tailwindcss": "^3.3.5",
-    "tailwindcss-animate": "^1.0.7",
-    "typescript": "^5.2.2",
-    "vite": "^4.5.0"
-  }
-}
 ````

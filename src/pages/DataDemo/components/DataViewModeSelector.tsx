@@ -43,7 +43,7 @@ export function DataViewModeSelector({ viewMode, onChange }: DataViewModeSelecto
   return (
     <div 
       ref={containerRef}
-      className="relative flex items-center bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-1.5 shadow-lg"
+      className="relative flex flex-wrap justify-center items-center bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-1.5 shadow-lg"
     >
       {/* Animated indicator */}
       <div
@@ -63,7 +63,7 @@ export function DataViewModeSelector({ viewMode, onChange }: DataViewModeSelecto
             data-mode={mode.id}
             onClick={() => onChange(mode.id)}
             className={cn(
-              "relative flex items-center gap-3 px-6 py-3 rounded-xl transition-all duration-300 group min-w-[120px]",
+              "relative flex items-center justify-center gap-2 sm:gap-3 px-4 py-2 sm:px-6 sm:py-3 rounded-xl transition-all duration-300 group min-w-[100px] sm:min-w-[120px]",
               "hover:bg-accent/20 active:scale-95",
               isActive && "text-primary"
             )}

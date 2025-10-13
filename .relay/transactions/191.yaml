@@ -1,0 +1,516 @@
+uuid: b508933b-8285-484c-b26a-85b376b36a6e
+projectId: jeli-app-shell
+createdAt: '2025-10-13T03:02:13.537Z'
+gitCommitMsg: >-
+  fix(DataDemo): ensure grid view is container-responsive
+
+  The previous implementation for the "Grid" (masonry) view used viewport-based
+  Tailwind classes (`columns-1`, `md:columns-2`, etc.), which resulted in a
+  broken layout when placed in a narrow container on a wide screen (e.g., a side
+  pane).
+
+  This commit replaces the `columns-*` utility with a fully container-aware CSS
+  grid layout using `grid-cols-[repeat(auto-fit,minmax(...))]`. This ensures the
+  grid correctly reflows based on the available width of its parent element, not
+  the entire viewport.
+
+  The animated loading skeleton has also been updated to match this new
+  responsive behavior, providing a consistent user experience.
+promptSummary: >-
+  The user reported that the grid view was not responsive in narrow containers,
+  showing too many columns. I've fixed this by replacing the viewport-based
+  `columns-*` utility with a container-aware
+  `grid-cols-[repeat(auto-fit,minmax(...))]` layout for both the `DataCardView`
+  and its corresponding `AnimatedLoadingSkeleton`.
+reasoning:
+  - >-
+    Of course. You are right, my apologies. The masonry layout using `columns-*`
+    utilities is indeed based on viewport breakpoints and won't adapt correctly
+    in a narrow side pane on a wide screen. I've corrected this by switching the
+    "Grid" view to use a responsive CSS grid layout, similar to the "Cards"
+    view, which will solve the issue.
+  - '### 1. Update `DataCardView` to use a responsive CSS grid'
+  - >-
+    I'll modify `DataCardView.tsx` to use
+    `grid-cols-[repeat(auto-fit,minmax(...))]` for the masonry-style "Grid"
+    view. This makes it container-aware. I'll use a slightly smaller minimum
+    width for items in "Grid" view to differentiate it from "Cards" view, making
+    it appear denser. I will also remove the now-unnecessary masonry-specific
+    classes from the grid items.
+  - '### 2. Update `AnimatedLoadingSkeleton` to match'
+  - >-
+    To ensure the loading state is consistent with the final layout, I'll update
+    `AnimatedLoadingSkeleton.tsx` to use the same responsive grid for its "Grid"
+    view mode and adjust its internal logic for calculating the number of
+    skeleton items to show.
+  - >-
+    These changes will ensure that both the "Cards" and "Grid" views are
+    properly responsive to their parent container's size, fixing the layout
+    issue in narrow views like the side pane.
+operations:
+  - type: write
+    path: src/pages/DataDemo/components/DataCardView.tsx
+    content: |+
+      --- src/pages/DataDemo/components/DataCardView.tsx
+      +++ src/pages/DataDemo/components/DataCardView.tsx
+      @@ -40,7 +40,7 @@
+             className={cn(
+               "gap-6",
+               isGrid
+      -          ? "columns-1 md:columns-2 xl:columns-3 space-y-6"
+      +          ? "grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))]"
+                 : "grid grid-cols-[repeat(auto-fit,minmax(320px,1fr))]"
+             )}
+           >
+      @@ -54,7 +54,6 @@
+                     "hover:bg-card/80 hover:shadow-xl hover:shadow-primary/10 hover:border-primary/30 hover:-translate-y-2",
+                     "active:scale-[0.98]",
+                     isSelected && "ring-2 ring-primary/30 border-primary/40 bg-card/90 shadow-lg shadow-primary/20",
+      -              isGrid && "break-inside-avoid mb-6"
+                   )}
+                 >
+                   {/* Card Header with Thumbnail */}
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/DataDemo/components/AnimatedLoadingSkeleton.tsx
+    content: >+
+      --- src/pages/DataDemo/components/AnimatedLoadingSkeleton.tsx
+
+      +++ src/pages/DataDemo/components/AnimatedLoadingSkeleton.tsx
+
+      @@ -21,13 +21,12 @@
+           }
+           // For card view
+           if (viewMode === 'cards') {
+      -      const cols = Math.max(1, Math.floor(width / 340)); // Approx 320px
+      card + 24px gap
+
+      +      const cols = Math.max(1, Math.floor(width / 344)); // 320px card +
+      24px gap
+             return { numCards: Math.max(8, cols * 2), cols }
+           }
+      -    // For grid (masonry) view
+
+      -    const cols = width >= 1024 ? 3 : width >= 768 ? 2 : 1;
+
+      +    // For grid view
+
+      +    const cols = Math.max(1, Math.floor(width / 304)); // 280px card +
+      24px gap
+           return { numCards: Math.max(8, cols * 2), cols }
+         }
+       
+      @@ -124,7 +123,6 @@
+               key={key} 
+               className={cn(
+                 "bg-card/30 border border-border/30 rounded-3xl p-6 space-y-4 animate-pulse",
+      -          viewMode === 'grid' && "break-inside-avoid mb-6"
+               )}
+             >
+               <div className="flex items-start justify-between">
+      @@ -148,7 +146,7 @@
+           list: "space-y-4",
+           table: "space-y-4",
+           cards: "grid grid-cols-[repeat(auto-fit,minmax(320px,1fr))] gap-6",
+      -    grid: "columns-1 md:columns-2 xl:columns-3 gap-6 space-y-6"
+
+      +    grid: "grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-6"
+         }
+       
+         return (
+
+    patchStrategy: standard-diff
+snapshot:
+  src/pages/DataDemo/components/DataCardView.tsx: >-
+    import { useRef, useLayoutEffect } from 'react'
+
+    import { gsap } from 'gsap'
+
+    import { cn } from '@/lib/utils'
+
+    import { Badge } from '@/components/ui/badge'
+
+    import { Avatar } from '@/components/ui/avatar'
+
+    import { Calendar, Eye, Heart, Share, ArrowUpRight, Tag } from
+    'lucide-react'
+
+    import type { ViewProps } from '../types'
+
+    import { getStatusColor, getPriorityColor } from '../utils'
+
+    import { EmptyState } from './EmptyState'
+
+
+    export function DataCardView({ data, onItemSelect, selectedItem, isGrid =
+    false }: ViewProps) {
+      const containerRef = useRef<HTMLDivElement>(null)
+      const animatedItemsCount = useRef(0)
+
+      useLayoutEffect(() => {
+        if (containerRef.current && data.length > animatedItemsCount.current) {
+          const newItems = Array.from(containerRef.current.children).slice(
+            animatedItemsCount.current
+          );
+          gsap.fromTo(
+            newItems,
+            { y: 40, opacity: 0, scale: 0.95 },
+            {
+              duration: 0.6,
+              y: 0,
+              opacity: 1,
+              scale: 1,
+              stagger: 0.1,
+              ease: 'power2.out',
+            },
+          );
+          animatedItemsCount.current = data.length;
+        }
+      }, [data]);
+
+      if (data.length === 0) {
+        return <EmptyState />
+      }
+
+      return (
+        <div 
+          ref={containerRef}
+          className={cn(
+            "gap-6",
+            isGrid
+              ? "columns-1 md:columns-2 xl:columns-3 space-y-6"
+              : "grid grid-cols-[repeat(auto-fit,minmax(320px,1fr))]"
+          )}
+        >
+          {data.map((item) => {
+            const isSelected = selectedItem?.id === item.id
+            
+            return (
+              <div
+                key={item.id}
+                onClick={() => onItemSelect(item)}
+                className={cn(
+                  "group relative overflow-hidden rounded-3xl border bg-card/50 backdrop-blur-sm transition-all duration-500 cursor-pointer",
+                  "hover:bg-card/80 hover:shadow-xl hover:shadow-primary/10 hover:border-primary/30 hover:-translate-y-2",
+                  "active:scale-[0.98]",
+                  isSelected && "ring-2 ring-primary/30 border-primary/40 bg-card/90 shadow-lg shadow-primary/20",
+                  isGrid && "break-inside-avoid mb-6"
+                )}
+              >
+                {/* Card Header with Thumbnail */}
+                <div className="relative p-6 pb-4">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-primary/10 rounded-2xl flex items-center justify-center text-3xl group-hover:scale-110 transition-transform duration-300">
+                      {item.thumbnail}
+                    </div>
+                    <ArrowUpRight className="w-5 h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 group-hover:-translate-y-1 transition-all duration-300" />
+                  </div>
+
+                  {/* Priority indicator */}
+                  <div className="absolute top-4 right-4">
+                    <div className={cn(
+                      "w-3 h-3 rounded-full",
+                      item.priority === 'critical' && "bg-red-500",
+                      item.priority === 'high' && "bg-orange-500",
+                      item.priority === 'medium' && "bg-blue-500",
+                      item.priority === 'low' && "bg-green-500"
+                    )} />
+                  </div>
+                </div>
+
+                {/* Card Content */}
+                <div className="px-6 pb-6">
+                  {/* Title and Description */}
+                  <h3 className="font-semibold text-lg mb-2 group-hover:text-primary transition-colors line-clamp-2">
+                    {item.title}
+                  </h3>
+                  <p className="text-muted-foreground text-sm mb-4 line-clamp-3">
+                    {item.description}
+                  </p>
+
+                  {/* Status and Category */}
+                  <div className="flex items-center gap-2 mb-4">
+                    <Badge variant="outline" className={getStatusColor(item.status)}>
+                      {item.status}
+                    </Badge>
+                    <Badge variant="outline" className="bg-accent/50 text-xs">
+                      {item.category}
+                    </Badge>
+                  </div>
+
+                  {/* Tags */}
+                  <div className="flex items-center gap-1 mb-4">
+                    <Tag className="w-3 h-3 text-muted-foreground" />
+                    <div className="flex flex-wrap gap-1">
+                      {item.tags.slice(0, 3).map((tag, index) => (
+                        <span key={index} className="text-xs text-muted-foreground bg-muted/50 px-2 py-1 rounded-md">
+                          {tag}
+                        </span>
+                      ))}
+                      {item.tags.length > 3 && (
+                        <span className="text-xs text-muted-foreground">
+                          +{item.tags.length - 3}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Progress */}
+                  <div className="mb-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs text-muted-foreground">Progress</span>
+                      <span className="text-xs font-semibold">{item.metrics.completion}%</span>
+                    </div>
+                    <div className="w-full bg-muted rounded-full h-2">
+                      <div 
+                        className="bg-gradient-to-r from-primary to-primary/80 h-2 rounded-full transition-all duration-700 ease-out"
+                        style={{ width: `${item.metrics.completion}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Assignee */}
+                  <div className="flex items-center gap-3 mb-4">
+                    <Avatar className="w-8 h-8 text-sm">
+                      {item.assignee.avatar}
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">
+                        {item.assignee.name}
+                      </p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {item.assignee.email}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Metrics */}
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-1">
+                        <Eye className="w-3 h-3" />
+                        {item.metrics.views}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Heart className="w-3 h-3" />
+                        {item.metrics.likes}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Share className="w-3 h-3" />
+                        {item.metrics.shares}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Calendar className="w-3 h-3" />
+                      {new Date(item.updatedAt).toLocaleDateString()}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Hover gradient overlay */}
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+                
+                {/* Selection indicator */}
+                {isSelected && (
+                  <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-primary/5 pointer-events-none" />
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )
+    }
+  src/pages/DataDemo/components/AnimatedLoadingSkeleton.tsx: >-
+    import React, { useEffect, useRef, useState } from 'react'
+
+    import { gsap } from 'gsap'
+
+    import { Search } from 'lucide-react'
+
+    import { cn } from '@/lib/utils'
+
+    import type { ViewMode } from '../types'
+
+
+    interface GridConfig {
+      numCards: number
+      cols: number
+    }
+
+
+    export const AnimatedLoadingSkeleton = ({ viewMode }: { viewMode: ViewMode
+    }) => {
+      const [containerWidth, setContainerWidth] = useState(0)
+      const containerRef = useRef<HTMLDivElement>(null)
+      const iconRef = useRef<HTMLDivElement>(null)
+      const timelineRef = useRef<gsap.core.Timeline | null>(null)
+
+      const getGridConfig = (width: number): GridConfig => {
+        if (width === 0) return { numCards: 8, cols: 2 }; // Default before measurement
+        if (viewMode === 'list' || viewMode === 'table') {
+          return { numCards: 5, cols: 1 }
+        }
+        // For card view
+        if (viewMode === 'cards') {
+          const cols = Math.max(1, Math.floor(width / 340)); // Approx 320px card + 24px gap
+          return { numCards: Math.max(8, cols * 2), cols }
+        }
+        // For grid (masonry) view
+        const cols = width >= 1024 ? 3 : width >= 768 ? 2 : 1;
+        return { numCards: Math.max(8, cols * 2), cols }
+      }
+
+      useEffect(() => {
+        const container = containerRef.current;
+        if (!container) return;
+
+        const resizeObserver = new ResizeObserver(entries => {
+          if (entries[0]) {
+            setContainerWidth(entries[0].contentRect.width);
+          }
+        });
+
+        resizeObserver.observe(container);
+        return () => resizeObserver.disconnect();
+      }, []);
+
+      useEffect(() => {
+        if (timelineRef.current) {
+          timelineRef.current.kill()
+        }
+        if (!iconRef.current || !containerRef.current || containerWidth === 0) return
+
+        // Allow DOM to update with new skeleton cards
+        const timeoutId = setTimeout(() => {
+          const cards = Array.from(containerRef.current!.children)
+          if (cards.length === 0) return
+
+          const shuffledCards = gsap.utils.shuffle(cards)
+
+          const getCardPosition = (card: Element) => {
+            const rect = card.getBoundingClientRect()
+            const containerRect = containerRef.current!.getBoundingClientRect()
+            const iconRect = iconRef.current!.getBoundingClientRect()
+
+            return {
+              x: rect.left - containerRect.left + rect.width / 2 - iconRect.width / 2,
+              y: rect.top - containerRect.top + rect.height / 2 - iconRect.height / 2,
+            }
+          }
+          
+          const tl = gsap.timeline({
+            repeat: -1,
+            repeatDelay: 0.5,
+            defaults: { duration: 1, ease: 'power2.inOut' }
+          });
+          timelineRef.current = tl
+
+          // Animate to a few random cards
+          shuffledCards.slice(0, 5).forEach(card => {
+            const pos = getCardPosition(card)
+            tl.to(iconRef.current, { 
+              x: pos.x,
+              y: pos.y,
+              scale: 1.2,
+              duration: 0.8
+            }).to(iconRef.current, {
+              scale: 1,
+              duration: 0.2
+            })
+          });
+
+          // Loop back to the start
+          const firstPos = getCardPosition(shuffledCards[0]);
+          tl.to(iconRef.current, { x: firstPos.x, y: firstPos.y, duration: 0.8 });
+        }, 100) // Small delay to ensure layout is calculated
+
+        return () => {
+          clearTimeout(timeoutId)
+          if (timelineRef.current) {
+            timelineRef.current.kill()
+          }
+        }
+
+      }, [containerWidth, viewMode])
+
+      const config = getGridConfig(containerWidth)
+
+      const renderSkeletonCard = (key: number) => {
+        if (viewMode === 'list' || viewMode === 'table') {
+          return (
+            <div key={key} className="bg-card/30 border border-border/30 rounded-2xl p-6 flex items-start gap-4 animate-pulse">
+              <div className="w-14 h-14 bg-muted rounded-xl flex-shrink-0"></div>
+              <div className="flex-1 space-y-3">
+                <div className="h-4 bg-muted rounded w-3/4"></div>
+                <div className="h-3 bg-muted rounded w-full"></div>
+                <div className="h-3 bg-muted rounded w-5/6"></div>
+                <div className="flex gap-2 pt-2">
+                  <div className="h-6 bg-muted rounded-full w-20"></div>
+                  <div className="h-6 bg-muted rounded-full w-20"></div>
+                </div>
+              </div>
+            </div>
+          )
+        }
+
+        return (
+          <div 
+            key={key} 
+            className={cn(
+              "bg-card/30 border border-border/30 rounded-3xl p-6 space-y-4 animate-pulse",
+              viewMode === 'grid' && "break-inside-avoid mb-6"
+            )}
+          >
+            <div className="flex items-start justify-between">
+              <div className="w-16 h-16 bg-muted rounded-2xl"></div>
+              <div className="w-4 h-4 bg-muted rounded-full"></div>
+            </div>
+            <div className="h-4 bg-muted rounded w-3/4"></div>
+            <div className="h-3 bg-muted rounded w-full"></div>
+            <div className="h-3 bg-muted rounded w-5/6"></div>
+            <div className="h-2 w-full bg-muted rounded-full my-4"></div>
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-muted rounded-full"></div>
+              <div className="flex-1 space-y-2">
+                <div className="h-3 bg-muted rounded w-1/2"></div>
+                <div className="h-2 bg-muted rounded w-1/3"></div>
+              </div>
+            </div>
+          </div>
+        )
+      }
+
+      const gridClasses = {
+        list: "space-y-4",
+        table: "space-y-4",
+        cards: "grid grid-cols-[repeat(auto-fit,minmax(320px,1fr))] gap-6",
+        grid: "columns-1 md:columns-2 xl:columns-3 gap-6 space-y-6"
+      }
+
+      return (
+        <div className="relative overflow-hidden rounded-lg min-h-[500px]">
+          <div 
+            ref={iconRef}
+            className="absolute z-10 p-3 bg-primary/20 rounded-full backdrop-blur-sm"
+            style={{ willChange: 'transform' }}
+          >
+            <Search className="w-6 h-6 text-primary" />
+          </div>
+
+          <div 
+            ref={containerRef}
+            className={cn(gridClasses[viewMode])}
+          >
+            {[...Array(config.numCards)].map((_, i) => renderSkeletonCard(i))}
+          </div>
+        </div>
+      )
+    }
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 191

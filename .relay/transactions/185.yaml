@@ -1,0 +1,418 @@
+uuid: a1e2d3c4-b5f6-7890-1234-567890abcdef
+projectId: jeli-app-shell
+createdAt: '2025-10-13T02:43:40.406Z'
+gitCommitMsg: >-
+  refactor(DataDemo): improve responsive layout of stats cards
+
+  Adjusts the grid breakpoints for the stats card section to be more
+  conservative. The layout now uses two columns for large screens and only
+  expands to four columns on extra-large screens.
+
+  This change prevents the stats cards from appearing cramped when the Data Demo
+  page is displayed in narrower containers, such as a side pane, improving
+  overall layout robustness and readability.
+promptSummary: >-
+  The user requested that the stats cards at the top of the Data Demo page also
+  be responsive and not show four columns in narrow viewports.
+reasoning:
+  - >-
+    Of course. You're right, the top-level stats cards also need to adapt
+    gracefully. A four-column layout can look cramped in anything but a
+    full-width view.
+  - >-
+    I'll adjust the responsive breakpoints for the stats grid to be more
+    conservative. The four-column layout will now only trigger on extra-large
+    (`xl`) screens, defaulting to a more robust two-column layout for large
+    (`lg`) screens. This ensures the stats are always presented clearly, even
+    when the data page is viewed within a narrower container like a side pane.
+  - 'Here is the change:'
+  - >-
+    This single change will make the stats section much more adaptable to
+    different container sizes.
+operations:
+  - type: write
+    path: src/pages/DataDemo/index.tsx
+    content: >+
+      --- src/pages/DataDemo/index.tsx
+
+      +++ src/pages/DataDemo/index.tsx
+
+      @@ -216,7 +216,7 @@
+       
+               {/* Stats Section */}
+               {!isInitialLoading && (
+      -          <div ref={statsRef} className="grid grid-cols-1 md:grid-cols-2
+      lg:grid-cols-4 gap-6">
+
+      +          <div ref={statsRef} className="grid grid-cols-1 md:grid-cols-2
+      xl:grid-cols-4 gap-6">
+                   {stats.map((stat) =>
+                     stat.type === 'chart' ? (
+                       <StatChartCard
+
+    patchStrategy: standard-diff
+snapshot:
+  src/pages/DataDemo/index.tsx: >-
+    import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
+
+    import { 
+      Layers, 
+      AlertTriangle, 
+      PlayCircle, 
+      TrendingUp,
+      Loader2
+    } from 'lucide-react'
+
+    import { gsap } from 'gsap'
+
+    import { PageLayout } from '@/components/shared/PageLayout'
+
+    import { DataListView } from './components/DataListView'
+
+    import { DataCardView } from './components/DataCardView'
+
+    import { DataTableView } from './components/DataTableView'
+
+    import { DataViewModeSelector } from './components/DataViewModeSelector'
+
+    import { DataDetailPanel } from './components/DataDetailPanel'
+
+    import { AnimatedLoadingSkeleton } from
+    './components/AnimatedLoadingSkeleton'
+
+    import { StatChartCard } from './components/StatChartCard'
+
+    import { DataToolbar, FilterConfig } from './components/DataToolbar'
+
+    import { mockDataItems } from './data/mockData'
+
+    import type { DataItem, ViewMode, SortConfig, SortableField } from './types'
+
+
+    type Stat = {
+      title: string;
+      value: string;
+      icon: React.ReactNode;
+      change: string;
+      trend: 'up' | 'down';
+      type?: 'card';
+    };
+
+
+    type ChartStat = {
+      title: string;
+      value: string;
+      icon: React.ReactNode;
+      change: string;
+      trend: 'up' | 'down';
+      type: 'chart';
+      chartData: number[];
+    };
+
+
+    type StatItem = Stat | ChartStat;
+
+
+    export default function DataDemoPage({ isInSidePane = false }: {
+    isInSidePane?: boolean }) {
+      const [viewMode, setViewMode] = useState<ViewMode>('list')
+      const [filters, setFilters] = useState<FilterConfig>({
+        searchTerm: '',
+        status: [],
+        priority: [],
+      })
+      const [sortConfig, setSortConfig] = useState<SortConfig | null>({ key: 'updatedAt', direction: 'desc' })
+      const [selectedItem, setSelectedItem] = useState<DataItem | null>(null)  
+      const [items, setItems] = useState<DataItem[]>([])
+      const [page, setPage] = useState(0) // Start at 0 to trigger initial load effect
+      const [hasMore, setHasMore] = useState(true)
+      const [isLoading, setIsLoading] = useState(true)
+      const contentRef = useRef<HTMLDivElement>(null)
+      const statsRef = useRef<HTMLDivElement>(null)
+      const observer = useRef<IntersectionObserver>()
+
+      const isInitialLoading = isLoading && items.length === 0
+
+      // Centralized data processing
+      const processedData = useMemo(() => {
+        let filteredItems = mockDataItems.filter(item => {
+          const searchTermMatch =
+            item.title.toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
+            item.description.toLowerCase().includes(filters.searchTerm.toLowerCase())
+
+          const statusMatch = filters.status.length === 0 || filters.status.includes(item.status)
+          const priorityMatch = filters.priority.length === 0 || filters.priority.includes(item.priority)
+
+          return searchTermMatch && statusMatch && priorityMatch
+        })
+
+        if (sortConfig) {
+          filteredItems.sort((a, b) => {
+            let aValue: any
+            let bValue: any
+
+            const getNestedValue = (obj: any, path: string) => path.split('.').reduce((o, k) => (o || {})[k], obj)
+
+            aValue = getNestedValue(a, sortConfig.key)
+            bValue = getNestedValue(b, sortConfig.key)
+
+            if (aValue === undefined || bValue === undefined) return 0;
+
+            if (typeof aValue === 'string' && typeof bValue === 'string') {
+              return sortConfig.direction === 'asc'
+                ? aValue.localeCompare(bValue)
+                : bValue.localeCompare(aValue)
+            }
+            if (typeof aValue === 'number' && typeof bValue === 'number') {
+              return sortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue
+            }
+            // Date sorting (assuming ISO strings)
+            if (sortConfig.key === 'updatedAt' || sortConfig.key === 'createdAt') {
+                return sortConfig.direction === 'asc'
+                    ? new Date(aValue).getTime() - new Date(aValue).getTime()
+                    : new Date(bValue).getTime() - new Date(bValue).getTime()
+            }
+            return 0
+          })
+        }
+        return filteredItems
+      }, [filters, sortConfig])
+
+      // Calculate stats from data
+      const totalItems = mockDataItems.length
+      const activeItems = mockDataItems.filter(item => item.status === 'active').length
+      const highPriorityItems = mockDataItems.filter(item => item.priority === 'high' || item.priority === 'critical').length
+      const avgCompletion = totalItems > 0 ? Math.round(
+        mockDataItems.reduce((acc, item) => acc + item.metrics.completion, 0) / totalItems
+      ) : 0
+
+      // Reset pagination when filters or sort change
+      useEffect(() => {
+        setItems([])
+        setPage(0) // This will be incremented to 1 in the loader `useEffect`, triggering a fresh load
+        setHasMore(true)
+        // This timeout helps prevent a flicker between old and new filtered data
+        setTimeout(() => setPage(1), 50)
+      }, [processedData])
+
+      // Infinite scroll logic
+      useEffect(() => { // eslint-disable-line react-hooks/exhaustive-deps
+        if (page === 0) return;
+
+        const fetchItems = () => {
+          setIsLoading(true);
+          const isFirstPage = page === 1
+          
+          const pageSize = 12;
+          const newItems = processedData.slice((page - 1) * pageSize, page * pageSize);
+          
+          // Simulate network delay, longer for initial load to showcase skeleton
+          setTimeout(() => {
+            setItems(prev => (isFirstPage ? newItems : [...prev, ...newItems]))
+            setHasMore(processedData.length > page * pageSize)
+            setIsLoading(false)
+          }, isFirstPage && items.length === 0 ? 1500 : 500)
+        };
+
+        if (hasMore) fetchItems();
+      }, [page]);
+
+      const loaderRef = useCallback(node => {
+        if (isLoading) return;
+        if (observer.current) observer.current.disconnect();
+        
+        observer.current = new IntersectionObserver(entries => {
+          if (entries[0].isIntersecting && hasMore) {
+            setPage(prevPage => prevPage + 1);
+          }
+        });
+        if (node) observer.current.observe(node);
+      }, [isLoading, hasMore]);
+
+      const stats: StatItem[] = [
+        {
+          title: "Total Projects",
+          value: totalItems.toString(),
+          icon: <Layers className="w-5 h-5" />,
+          change: "+5.2% this month",
+          trend: "up" as const,
+          type: 'chart',
+          chartData: [120, 125, 122, 130, 135, 138, 142]
+        },
+        {
+          title: "Active Projects",
+          value: activeItems.toString(),
+          icon: <PlayCircle className="w-5 h-5" />,
+          change: "+2 this week", 
+          trend: "up" as const,
+          type: 'chart',
+          chartData: [45, 50, 48, 55, 53, 60, 58]
+        },
+        {
+          title: "High Priority",
+          value: highPriorityItems.toString(),
+          icon: <AlertTriangle className="w-5 h-5" />,
+          change: "-1 from last week",
+          trend: "down" as const,
+          type: 'chart',
+          chartData: [25, 26, 28, 27, 26, 24, 23]
+        },
+        {
+          title: "Avg. Completion",
+          value: `${avgCompletion}%`,
+          icon: <TrendingUp className="w-5 h-5" />,
+          change: "+3.2%",
+          trend: "up" as const,
+          type: 'chart',
+          chartData: [65, 68, 70, 69, 72, 75, 78]
+        }
+      ]
+
+      useEffect(() => {
+        // Animate stats cards in
+        if (!isInitialLoading && statsRef.current) {
+          gsap.fromTo(statsRef.current.children,
+            { y: 30, opacity: 0 },
+            {
+              duration: 0.6,
+              y: 0,
+              opacity: 1,
+              stagger: 0.1,
+              ease: "power2.out"
+            }
+          )
+        }
+      }, [isInitialLoading])
+
+      const handleSortChange = (config: SortConfig | null) => {
+        setSortConfig(config)
+      }
+
+      // For table view header clicks
+      const handleTableSort = (field: SortableField) => {
+        if (sortConfig?.key === field) {
+          if (sortConfig.direction === 'desc') {
+            // Cycle: desc -> asc
+            setSortConfig({ key: field, direction: 'asc' })
+          } else {
+            // Cycle: asc -> default
+            setSortConfig(null)
+          }
+        } else {
+          // New field, default to desc
+          setSortConfig({ key: field, direction: 'desc' })
+        }
+      }
+
+      const handleFilterChange = (newFilters: FilterConfig) => {
+        setFilters(newFilters)
+      }
+      
+      // Handle item selection and open side panel
+      const handleItemSelect = (item: DataItem) => {
+        setSelectedItem(item)
+      }
+
+      if (selectedItem) {
+        return (
+          <DataDetailPanel
+            item={selectedItem}
+            onClose={() => setSelectedItem(null)}
+          />
+        )
+      }
+
+      const renderView = () => {
+        const commonProps = {
+          data: items,
+          onItemSelect: handleItemSelect,
+          selectedItem,
+          sortConfig,
+          onSort: handleTableSort,
+        }
+
+        switch (viewMode) {
+          case 'list':
+            return <DataListView {...commonProps} />
+          case 'cards':
+            return <DataCardView {...commonProps} />
+          case 'grid':
+            return <DataCardView {...commonProps} isGrid />
+          case 'table':
+            return <DataTableView {...commonProps} />
+          default:
+            return <DataListView {...commonProps} />
+        }
+      }
+
+      return (
+        <PageLayout
+          // Note: Search functionality is handled by a separate SearchBar in the TopBar
+        >
+          <div className="space-y-8">
+            {/* Header */}
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div className="flex-1">
+                <h1 className="text-2xl font-bold tracking-tight">Data Showcase</h1>
+                <p className="text-muted-foreground">
+                  {isInitialLoading 
+                    ? "Loading projects..." 
+                    : `Showing ${processedData.length} item(s)`}
+                </p>
+              </div>
+              <DataViewModeSelector viewMode={viewMode} onChange={setViewMode} />
+            </div>
+
+            {/* Stats Section */}
+            {!isInitialLoading && (
+              <div ref={statsRef} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                {stats.map((stat) =>
+                  stat.type === 'chart' ? (
+                    <StatChartCard
+                      key={stat.title}
+                      title={stat.title}
+                      value={stat.value}
+                      change={stat.change}
+                      trend={stat.trend}
+                      icon={stat.icon}
+                      chartData={stat.chartData}
+                    />
+                  ) : null
+                )}
+              </div>
+            )}
+
+            <DataToolbar
+              filters={filters}
+              onFiltersChange={handleFilterChange}
+              sortConfig={sortConfig}
+              onSortChange={handleSortChange}
+            />
+
+            <div ref={contentRef} className="min-h-[500px]">
+              {isInitialLoading ? <AnimatedLoadingSkeleton viewMode={viewMode} /> : renderView()}
+            </div>
+
+            {/* Loader for infinite scroll */}
+            <div ref={loaderRef} className="flex justify-center items-center py-6">
+              {isLoading && !isInitialLoading && (
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span>Loading more...</span>
+                </div>
+              )}
+              {!isLoading && !hasMore && processedData.length > 0 && !isInitialLoading && (
+                <p className="text-muted-foreground">You've reached the end.</p>
+              )}
+            </div>
+          </div>
+        </PageLayout>
+      )
+    }
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 185

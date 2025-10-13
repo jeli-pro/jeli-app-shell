@@ -42,9 +42,9 @@ export function DataCardView({ data, onItemSelect, selectedItem, isGrid = false 
       ref={containerRef}
       className={cn(
         "gap-6",
-        isGrid 
-          ? "columns-1 sm:columns-2 lg:columns-3 xl:columns-4 space-y-6" 
-          : "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
+        isGrid
+          ? "grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))]"
+          : "grid grid-cols-[repeat(auto-fit,minmax(320px,1fr))]"
       )}
     >
       {data.map((item) => {
@@ -59,7 +59,6 @@ export function DataCardView({ data, onItemSelect, selectedItem, isGrid = false 
               "hover:bg-card/80 hover:shadow-xl hover:shadow-primary/10 hover:border-primary/30 hover:-translate-y-2",
               "active:scale-[0.98]",
               isSelected && "ring-2 ring-primary/30 border-primary/40 bg-card/90 shadow-lg shadow-primary/20",
-              isGrid && "break-inside-avoid mb-6"
             )}
           >
             {/* Card Header with Thumbnail */}

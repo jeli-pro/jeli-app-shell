@@ -1,0 +1,476 @@
+uuid: 4f5e7d6c-1a2b-3c4d-5e6f-7a8b9c0d1e2f
+projectId: jeli-app-shell
+createdAt: '2025-10-13T02:49:24.636Z'
+gitCommitMsg: >-
+  fix(DataDemo): cap card and grid views at two columns for responsiveness
+
+  Further refactors the responsive behavior of the Data Demo page by capping the
+  `cards` and `grid` view modes at a maximum of two columns. This applies to
+  both the `DataCardView` component and its corresponding
+  `AnimatedLoadingSkeleton`.
+
+  This change ensures that the card-based layouts remain clean, readable, and
+  user-friendly, even in highly constrained viewports like a narrow side pane,
+  resolving the issue of content appearing too cramped.
+promptSummary: >-
+  The user reported that the card and grid views were still showing too many
+  columns in narrow viewports. I have updated the components to use a maximum of
+  two columns.
+reasoning:
+  - >-
+    Understood. My apologies, the previous adjustments were clearly not
+    aggressive enough for side-pane contexts. You are right to point this out;
+    the breakpoints need to be much more conservative.
+  - >-
+    I will now modify both the `cards` and `grid` views to use a maximum of two
+    columns. This change will be applied to both the `DataCardView` component
+    and its corresponding `AnimatedLoadingSkeleton` to ensure a consistent,
+    robust, and visually clean layout in all viewports, especially narrow ones.
+  - First, I'll update the `DataCardView` to cap the columns at two.
+  - >-
+    Next, I'll apply the corresponding changes to the `AnimatedLoadingSkeleton`
+    to ensure the loading state perfectly matches the final layout. This
+    involves updating both the JavaScript logic that calculates the number of
+    columns and the CSS classes for the skeleton grid.
+  - >-
+    These changes definitively remove the three- and four-column layouts from
+    the card and grid views, guaranteeing a much better presentation in
+    constrained spaces.
+operations:
+  - type: write
+    path: src/pages/DataDemo/components/DataCardView.tsx
+    content: |
+      <<<<<<< SEARCH
+            className={cn(
+              "gap-6",
+              isGrid 
+                ? "columns-1 md:columns-2 xl:columns-3 space-y-6" 
+                : "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3"
+            )}
+      =======
+            className={cn(
+              "gap-6",
+              isGrid 
+                ? "columns-1 md:columns-2 space-y-6" 
+                : "grid grid-cols-1 md:grid-cols-2"
+            )}
+      >>>>>>> REPLACE
+    patchStrategy: search-replace
+  - type: write
+    path: src/pages/DataDemo/components/AnimatedLoadingSkeleton.tsx
+    content: |
+      <<<<<<< SEARCH
+          // Conservative column calculation to match responsive layouts in side panes
+          let cols = 1;
+          if (width >= 768) cols = 2;
+          if (viewMode === 'cards' && width >= 1024) cols = 3;
+          if (viewMode === 'grid' && width >= 1280) cols = 3;
+          
+          return { numCards: Math.max(6, cols * 2), cols }
+      =======
+          // Conservative column calculation to match responsive layouts in side panes
+          let cols = 1;
+          if (width >= 768) cols = 2; // md breakpoint
+          
+          return { numCards: Math.max(6, cols * 2), cols }
+      >>>>>>> REPLACE
+      <<<<<<< SEARCH
+        const gridClasses = {
+          list: "space-y-4",
+          table: "space-y-4",
+          cards: "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6",
+          grid: "columns-1 md:columns-2 xl:columns-3 gap-6 space-y-6"
+        }
+      =======
+        const gridClasses = {
+          list: "space-y-4",
+          table: "space-y-4",
+          cards: "grid grid-cols-1 md:grid-cols-2 gap-6",
+          grid: "columns-1 md:columns-2 gap-6 space-y-6"
+        }
+      >>>>>>> REPLACE
+    patchStrategy: search-replace
+snapshot:
+  src/pages/DataDemo/components/AnimatedLoadingSkeleton.tsx: >
+    import React, { useEffect, useRef, useState } from 'react'
+
+    import { gsap } from 'gsap'
+
+    import { Search } from 'lucide-react'
+
+    import { cn } from '@/lib/utils'
+
+    import type { ViewMode } from '../types'
+
+
+    interface GridConfig {
+      numCards: number
+      cols: number
+    }
+
+
+    export const AnimatedLoadingSkeleton = ({ viewMode }: { viewMode: ViewMode
+    }) => {
+      const [windowWidth, setWindowWidth] = useState(0)
+      const containerRef = useRef<HTMLDivElement>(null)
+      const iconRef = useRef<HTMLDivElement>(null)
+      const timelineRef = useRef<gsap.core.Timeline | null>(null)
+
+      const getGridConfig = (width: number): GridConfig => {
+        if (viewMode === 'list' || viewMode === 'table') {
+          return { numCards: 5, cols: 1 }
+        }
+        // Conservative column calculation to match responsive layouts in side panes
+        let cols = 1;
+        if (width >= 768) cols = 2;
+        if (viewMode === 'cards' && width >= 1024) cols = 3;
+        if (viewMode === 'grid' && width >= 1280) cols = 3;
+        
+        return { numCards: Math.max(6, cols * 2), cols }
+      }
+
+      useEffect(() => {
+        const handleResize = () => setWindowWidth(window.innerWidth)
+        handleResize()
+        window.addEventListener('resize', handleResize)
+        return () => window.removeEventListener('resize', handleResize)
+      }, [])
+
+      useEffect(() => {
+        if (timelineRef.current) {
+          timelineRef.current.kill()
+        }
+        if (!iconRef.current || !containerRef.current || windowWidth === 0) return
+
+        // Allow DOM to update with new skeleton cards
+        const timeoutId = setTimeout(() => {
+          const cards = Array.from(containerRef.current!.children)
+          if (cards.length === 0) return
+
+          const shuffledCards = gsap.utils.shuffle(cards)
+
+          const getCardPosition = (card: Element) => {
+            const rect = card.getBoundingClientRect()
+            const containerRect = containerRef.current!.getBoundingClientRect()
+            const iconRect = iconRef.current!.getBoundingClientRect()
+
+            return {
+              x: rect.left - containerRect.left + rect.width / 2 - iconRect.width / 2,
+              y: rect.top - containerRect.top + rect.height / 2 - iconRect.height / 2,
+            }
+          }
+          
+          const tl = gsap.timeline({
+            repeat: -1,
+            repeatDelay: 0.5,
+            defaults: { duration: 1, ease: 'power2.inOut' }
+          });
+          timelineRef.current = tl
+
+          // Animate to a few random cards
+          shuffledCards.slice(0, 5).forEach(card => {
+            const pos = getCardPosition(card)
+            tl.to(iconRef.current, { 
+              x: pos.x,
+              y: pos.y,
+              scale: 1.2,
+              duration: 0.8
+            }).to(iconRef.current, {
+              scale: 1,
+              duration: 0.2
+            })
+          });
+
+          // Loop back to the start
+          const firstPos = getCardPosition(shuffledCards[0]);
+          tl.to(iconRef.current, { x: firstPos.x, y: firstPos.y, duration: 0.8 });
+        }, 100) // Small delay to ensure layout is calculated
+
+        return () => {
+          clearTimeout(timeoutId)
+          if (timelineRef.current) {
+            timelineRef.current.kill()
+          }
+        }
+
+      }, [windowWidth, viewMode])
+
+      const config = getGridConfig(windowWidth)
+
+      const renderSkeletonCard = (key: number) => {
+        if (viewMode === 'list' || viewMode === 'table') {
+          return (
+            <div key={key} className="bg-card/30 border border-border/30 rounded-2xl p-6 flex items-start gap-4 animate-pulse">
+              <div className="w-14 h-14 bg-muted rounded-xl flex-shrink-0"></div>
+              <div className="flex-1 space-y-3">
+                <div className="h-4 bg-muted rounded w-3/4"></div>
+                <div className="h-3 bg-muted rounded w-full"></div>
+                <div className="h-3 bg-muted rounded w-5/6"></div>
+                <div className="flex gap-2 pt-2">
+                  <div className="h-6 bg-muted rounded-full w-20"></div>
+                  <div className="h-6 bg-muted rounded-full w-20"></div>
+                </div>
+              </div>
+            </div>
+          )
+        }
+
+        return (
+          <div 
+            key={key} 
+            className={cn(
+              "bg-card/30 border border-border/30 rounded-3xl p-6 space-y-4 animate-pulse",
+              viewMode === 'grid' && "break-inside-avoid mb-6"
+            )}
+          >
+            <div className="flex items-start justify-between">
+              <div className="w-16 h-16 bg-muted rounded-2xl"></div>
+              <div className="w-4 h-4 bg-muted rounded-full"></div>
+            </div>
+            <div className="h-4 bg-muted rounded w-3/4"></div>
+            <div className="h-3 bg-muted rounded w-full"></div>
+            <div className="h-3 bg-muted rounded w-5/6"></div>
+            <div className="h-2 w-full bg-muted rounded-full my-4"></div>
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-muted rounded-full"></div>
+              <div className="flex-1 space-y-2">
+                <div className="h-3 bg-muted rounded w-1/2"></div>
+                <div className="h-2 bg-muted rounded w-1/3"></div>
+              </div>
+            </div>
+          </div>
+        )
+      }
+
+      const gridClasses = {
+        list: "space-y-4",
+        table: "space-y-4",
+        cards: "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6",
+        grid: "columns-1 md:columns-2 xl:columns-3 gap-6 space-y-6"
+      }
+
+      return (
+        <div className="relative overflow-hidden rounded-lg min-h-[500px]">
+          <div 
+            ref={iconRef}
+            className="absolute z-10 p-3 bg-primary/20 rounded-full backdrop-blur-sm"
+            style={{ willChange: 'transform' }}
+          >
+            <Search className="w-6 h-6 text-primary" />
+          </div>
+
+          <div 
+            ref={containerRef}
+            className={cn(gridClasses[viewMode])}
+          >
+            {[...Array(config.numCards)].map((_, i) => renderSkeletonCard(i))}
+          </div>
+        </div>
+      )
+    }
+  src/pages/DataDemo/components/DataCardView.tsx: >-
+    import { useRef, useLayoutEffect } from 'react'
+
+    import { gsap } from 'gsap'
+
+    import { cn } from '@/lib/utils'
+
+    import { Badge } from '@/components/ui/badge'
+
+    import { Avatar } from '@/components/ui/avatar'
+
+    import { Calendar, Eye, Heart, Share, ArrowUpRight, Tag } from
+    'lucide-react'
+
+    import type { ViewProps } from '../types'
+
+    import { getStatusColor, getPriorityColor } from '../utils'
+
+    import { EmptyState } from './EmptyState'
+
+
+    export function DataCardView({ data, onItemSelect, selectedItem, isGrid =
+    false }: ViewProps) {
+      const containerRef = useRef<HTMLDivElement>(null)
+      const animatedItemsCount = useRef(0)
+
+      useLayoutEffect(() => {
+        if (containerRef.current && data.length > animatedItemsCount.current) {
+          const newItems = Array.from(containerRef.current.children).slice(
+            animatedItemsCount.current
+          );
+          gsap.fromTo(
+            newItems,
+            { y: 40, opacity: 0, scale: 0.95 },
+            {
+              duration: 0.6,
+              y: 0,
+              opacity: 1,
+              scale: 1,
+              stagger: 0.1,
+              ease: 'power2.out',
+            },
+          );
+          animatedItemsCount.current = data.length;
+        }
+      }, [data]);
+
+      if (data.length === 0) {
+        return <EmptyState />
+      }
+
+      return (
+        <div 
+          ref={containerRef}
+          className={cn(
+            "gap-6",
+            isGrid 
+              ? "columns-1 md:columns-2 xl:columns-3 space-y-6" 
+              : "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3"
+          )}
+        >
+          {data.map((item) => {
+            const isSelected = selectedItem?.id === item.id
+            
+            return (
+              <div
+                key={item.id}
+                onClick={() => onItemSelect(item)}
+                className={cn(
+                  "group relative overflow-hidden rounded-3xl border bg-card/50 backdrop-blur-sm transition-all duration-500 cursor-pointer",
+                  "hover:bg-card/80 hover:shadow-xl hover:shadow-primary/10 hover:border-primary/30 hover:-translate-y-2",
+                  "active:scale-[0.98]",
+                  isSelected && "ring-2 ring-primary/30 border-primary/40 bg-card/90 shadow-lg shadow-primary/20",
+                  isGrid && "break-inside-avoid mb-6"
+                )}
+              >
+                {/* Card Header with Thumbnail */}
+                <div className="relative p-6 pb-4">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-primary/10 rounded-2xl flex items-center justify-center text-3xl group-hover:scale-110 transition-transform duration-300">
+                      {item.thumbnail}
+                    </div>
+                    <ArrowUpRight className="w-5 h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 group-hover:-translate-y-1 transition-all duration-300" />
+                  </div>
+
+                  {/* Priority indicator */}
+                  <div className="absolute top-4 right-4">
+                    <div className={cn(
+                      "w-3 h-3 rounded-full",
+                      item.priority === 'critical' && "bg-red-500",
+                      item.priority === 'high' && "bg-orange-500",
+                      item.priority === 'medium' && "bg-blue-500",
+                      item.priority === 'low' && "bg-green-500"
+                    )} />
+                  </div>
+                </div>
+
+                {/* Card Content */}
+                <div className="px-6 pb-6">
+                  {/* Title and Description */}
+                  <h3 className="font-semibold text-lg mb-2 group-hover:text-primary transition-colors line-clamp-2">
+                    {item.title}
+                  </h3>
+                  <p className="text-muted-foreground text-sm mb-4 line-clamp-3">
+                    {item.description}
+                  </p>
+
+                  {/* Status and Category */}
+                  <div className="flex items-center gap-2 mb-4">
+                    <Badge variant="outline" className={getStatusColor(item.status)}>
+                      {item.status}
+                    </Badge>
+                    <Badge variant="outline" className="bg-accent/50 text-xs">
+                      {item.category}
+                    </Badge>
+                  </div>
+
+                  {/* Tags */}
+                  <div className="flex items-center gap-1 mb-4">
+                    <Tag className="w-3 h-3 text-muted-foreground" />
+                    <div className="flex flex-wrap gap-1">
+                      {item.tags.slice(0, 3).map((tag, index) => (
+                        <span key={index} className="text-xs text-muted-foreground bg-muted/50 px-2 py-1 rounded-md">
+                          {tag}
+                        </span>
+                      ))}
+                      {item.tags.length > 3 && (
+                        <span className="text-xs text-muted-foreground">
+                          +{item.tags.length - 3}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Progress */}
+                  <div className="mb-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs text-muted-foreground">Progress</span>
+                      <span className="text-xs font-semibold">{item.metrics.completion}%</span>
+                    </div>
+                    <div className="w-full bg-muted rounded-full h-2">
+                      <div 
+                        className="bg-gradient-to-r from-primary to-primary/80 h-2 rounded-full transition-all duration-700 ease-out"
+                        style={{ width: `${item.metrics.completion}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Assignee */}
+                  <div className="flex items-center gap-3 mb-4">
+                    <Avatar className="w-8 h-8 text-sm">
+                      {item.assignee.avatar}
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">
+                        {item.assignee.name}
+                      </p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {item.assignee.email}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Metrics */}
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-1">
+                        <Eye className="w-3 h-3" />
+                        {item.metrics.views}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Heart className="w-3 h-3" />
+                        {item.metrics.likes}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Share className="w-3 h-3" />
+                        {item.metrics.shares}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Calendar className="w-3 h-3" />
+                      {new Date(item.updatedAt).toLocaleDateString()}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Hover gradient overlay */}
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+                
+                {/* Selection indicator */}
+                {isSelected && (
+                  <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-primary/5 pointer-events-none" />
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )
+    }
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 187

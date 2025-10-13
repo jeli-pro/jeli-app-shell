@@ -1,0 +1,1298 @@
+uuid: d8e5e34b-4861-419b-b9f0-2f22b7245bb3
+projectId: jeli-app-shell
+createdAt: '2025-10-13T02:19:11.029Z'
+gitCommitMsg: >-
+  refactor(DataDemo): implement full responsiveness for all components
+
+  Overhauls the Data Demo page to be fully responsive, ensuring a seamless and
+  polished user experience across all viewports, including the narrow side pane
+  and split view modes.
+
+  - `DataTableView`: Added min-widths to columns and prevented header
+    wrapping to improve readability on smaller screens.
+  - `DataCardView`: Adjusted responsive breakpoints for both card and
+    masonry grid layouts to prevent content from becoming cramped.
+  - `DataDetailPanel`: Made internal layouts responsive, stacking metric
+    cards and footer buttons on smaller viewports.
+  - `AnimatedLoadingSkeleton`: Updated CSS classes and column calculation
+    logic to align with the new responsive layouts, preventing layout shifts
+    during data loading.
+promptSummary: >-
+  The user wants to make the Data Demo page and all its components fully
+  responsive to work well in narrow viewports like the side pane.
+reasoning:
+  - >-
+    Excellent. Executing the master plan to refactor the Data Demo page for full
+    responsiveness. I will modify the table view, card views, detail panel, and
+    the loading skeleton in a single transaction to ensure a consistent and
+    fluid user experience across all viewports.
+  - >-
+    First, I'll make the `DataTableView` more robust in narrow containers by
+    setting minimum column widths and preventing header text from wrapping. This
+    will ensure readability even when horizontal scrolling is necessary.
+  - >-
+    Next, I'll adjust the responsive breakpoints for the `DataCardView` to
+    prevent the cards from becoming too cramped in narrower viewports like the
+    side pane. Both the standard grid and masonry layouts will be updated.
+  - >-
+    Now, I'll make the `DataDetailPanel` more adaptive. The engagement metrics
+    grid will stack into two columns, and footer buttons will stack vertically
+    on small screens, ensuring the layout remains clean and usable.
+  - >-
+    Finally, to prevent layout shifts and provide an accurate loading state, I
+    will update the `AnimatedLoadingSkeleton` to perfectly mirror the new
+    responsive layouts of the card views, both in its CSS classes and its
+    JavaScript logic for calculating columns.
+  - >-
+    With these changes, the Data Demo page is now fully responsive and will
+    adapt gracefully to any container width, providing a seamless experience in
+    all App Shell view modes.
+operations:
+  - type: write
+    path: src/pages/DataDemo/components/DataTableView.tsx
+    content: >+
+      --- src/pages/DataDemo/components/DataTableView.tsx
+
+      +++ src/pages/DataDemo/components/DataTableView.tsx
+
+      @@ -73,63 +73,63 @@
+               <table ref={tableRef} className="w-full">
+                 <thead>
+                   <tr className="border-b border-border/50 bg-muted/20">
+      -              <th className="text-left p-4 font-semibold text-sm">
+
+      +              <th className="text-left p-4 font-semibold text-sm
+      min-w-[150px]">
+                       <button
+                         onClick={() => handleSortClick('title')}
+      -                  className="flex items-center gap-2 hover:text-primary
+      transition-colors"
+
+      +                  className="flex items-center gap-2 hover:text-primary
+      transition-colors whitespace-nowrap"
+                       >
+                         Project
+                         <SortIcon field="title" />
+                       </button>
+                     </th>
+      -              <th className="text-left p-4 font-semibold text-sm">
+
+      +              <th className="text-left p-4 font-semibold text-sm
+      min-w-[120px]">
+                       <button
+                         onClick={() => handleSortClick('status')}
+      -                  className="flex items-center gap-2 hover:text-primary
+      transition-colors"
+
+      +                  className="flex items-center gap-2 hover:text-primary
+      transition-colors whitespace-nowrap"
+                       >
+                         Status
+                         <SortIcon field="status" />
+                       </button>
+                     </th>
+      -              <th className="text-left p-4 font-semibold text-sm">
+
+      +              <th className="text-left p-4 font-semibold text-sm
+      min-w-[120px]">
+                       <button
+                         onClick={() => handleSortClick('priority')}
+      -                  className="flex items-center gap-2 hover:text-primary
+      transition-colors"
+
+      +                  className="flex items-center gap-2 hover:text-primary
+      transition-colors whitespace-nowrap"
+                       >
+                         Priority
+                         <SortIcon field="priority" />
+                       </button>
+                     </th>
+      -              <th className="text-left p-4 font-semibold text-sm">
+
+      +              <th className="text-left p-4 font-semibold text-sm
+      min-w-[200px]">
+                       <button
+                         onClick={() => handleSortClick('assignee.name')}
+      -                  className="flex items-center gap-2 hover:text-primary
+      transition-colors"
+
+      +                  className="flex items-center gap-2 hover:text-primary
+      transition-colors whitespace-nowrap"
+                       >
+                         Assignee
+                         <SortIcon field="assignee.name" />
+                       </button>
+                     </th>
+      -              <th className="text-left p-4 font-semibold text-sm">
+
+      +              <th className="text-left p-4 font-semibold text-sm
+      min-w-[120px]">
+                       <button
+                         onClick={() => handleSortClick('metrics.completion')}
+      -                  className="flex items-center gap-2 hover:text-primary
+      transition-colors"
+
+      +                  className="flex items-center gap-2 hover:text-primary
+      transition-colors whitespace-nowrap"
+                       >
+                         Progress
+                         <SortIcon field="metrics.completion" />
+                       </button>
+                     </th>
+      -              <th className="text-left p-4 font-semibold text-sm">
+
+      +              <th className="text-left p-4 font-semibold text-sm
+      min-w-[200px]">
+                       <button
+                         onClick={() => handleSortClick('metrics.views')}
+      -                  className="flex items-center gap-2 hover:text-primary
+      transition-colors"
+
+      +                  className="flex items-center gap-2 hover:text-primary
+      transition-colors whitespace-nowrap"
+                       >
+                         Engagement
+                         <SortIcon field="metrics.views" />
+                       </button>
+                     </th>
+      -              <th className="text-left p-4 font-semibold text-sm">Last
+      Updated</th>
+
+      -              <th className="text-center p-4 font-semibold text-sm
+      w-16">Actions</th>
+
+      +              <th className="text-left p-4 font-semibold text-sm
+      min-w-[120px] whitespace-nowrap">Last Updated</th>
+
+      +              <th className="text-center p-4 font-semibold text-sm w-16
+      whitespace-nowrap">Actions</th>
+                   </tr>
+                 </thead>
+                 <tbody>
+      @@ -214,7 +214,7 @@
+                         )}
+                       >
+                         {/* Project Column */}
+      -                  <td className="p-4">
+
+      +                  <td className="p-4 min-w-[150px]">
+                           <div className="flex items-center gap-3">
+                             <div className="w-10 h-10 bg-gradient-to-br from-primary/20 to-primary/10 rounded-lg flex items-center justify-center text-lg flex-shrink-0">
+                               {item.thumbnail}
+      @@ -231,21 +231,21 @@
+                         </td>
+       
+                         {/* Status Column */}
+      -                  <td className="p-4">
+
+      +                  <td className="p-4 min-w-[120px]">
+                           <Badge variant="outline" className={getStatusColor(item.status)}>
+                             {item.status}
+                           </Badge>
+                         </td>
+       
+                         {/* Priority Column */}
+      -                  <td className="p-4">
+
+      +                  <td className="p-4 min-w-[120px]">
+                           <Badge variant="outline" className={getPriorityColor(item.priority)}>
+                             {item.priority}
+                           </Badge>
+                         </td>
+       
+                         {/* Assignee Column */}
+      -                  <td className="p-4">
+
+      +                  <td className="p-4 min-w-[200px]">
+                           <div className="flex items-center gap-2">
+                             <Avatar className="w-8 h-8 text-sm">
+                               {item.assignee.avatar}
+      @@ -259,7 +259,7 @@
+                         </td>
+       
+                         {/* Progress Column */}
+      -                  <td className="p-4">
+
+      +                  <td className="p-4 min-w-[120px]">
+                           <div className="flex items-center gap-3">
+                             <div className="flex-1 min-w-0">
+                               <div className="w-full bg-muted rounded-full h-2">
+      @@ -276,7 +276,7 @@
+                         </td>
+       
+                         {/* Engagement Column */}
+      -                  <td className="p-4">
+
+      +                  <td className="p-4 min-w-[200px]">
+                           <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                             <div className="flex items-center gap-1">
+                               <Eye className="w-3 h-3" />
+      @@ -293,7 +293,7 @@
+                         </td>
+       
+                         {/* Date Column */}
+      -                  <td className="p-4">
+
+      +                  <td className="p-4 min-w-[120px]">
+                           <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                             <Calendar className="w-3 h-3" />
+                             {new Date(item.updatedAt).toLocaleDateString()}
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/DataDemo/components/DataCardView.tsx
+    content: >+
+      --- src/pages/DataDemo/components/DataCardView.tsx
+
+      +++ src/pages/DataDemo/components/DataCardView.tsx
+
+      @@ -40,8 +40,8 @@
+             className={cn(
+               "gap-6",
+               isGrid 
+      -          ? "columns-1 sm:columns-2 lg:columns-3 xl:columns-4 space-y-6" 
+
+      -          : "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3
+      2xl:grid-cols-4"
+
+      +          ? "columns-1 md:columns-2 xl:columns-3 space-y-6" 
+
+      +          : "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3"
+             )}
+           >
+             {data.map((item) => {
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/DataDemo/components/DataDetailPanel.tsx
+    content: |+
+      --- src/pages/DataDemo/components/DataDetailPanel.tsx
+      +++ src/pages/DataDemo/components/DataDetailPanel.tsx
+      @@ -179,7 +179,7 @@
+                     <BarChart3 className="w-4 h-4 text-muted-foreground" />
+                     <h3 className="font-semibold text-sm">Engagement Metrics</h3>
+                   </div>
+      -            <div className="grid grid-cols-3 gap-4">
+      +            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                     <div className="text-center">
+                       <div className="flex items-center justify-center gap-1 mb-1">
+                         <Eye className="w-4 h-4 text-blue-500" />
+      @@ -321,7 +321,7 @@
+       
+             {/* Footer Actions */}
+             <div className="p-6 border-t border-border/50 bg-card/30">
+      -        <div className="flex gap-3">
+      +        <div className="flex flex-col sm:flex-row gap-3">
+                 <Button className="flex-1" size="sm">
+                   <ExternalLink className="w-4 h-4 mr-2" />
+                   Open Project
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/DataDemo/components/AnimatedLoadingSkeleton.tsx
+    content: >+
+      --- src/pages/DataDemo/components/AnimatedLoadingSkeleton.tsx
+
+      +++ src/pages/DataDemo/components/AnimatedLoadingSkeleton.tsx
+
+      @@ -19,8 +19,13 @@
+           if (viewMode === 'list' || viewMode === 'table') {
+             return { numCards: 5, cols: 1 }
+           }
+      -    const cols = width >= 1280 ? 4 : width >= 1024 ? 3 : width >= 768 ? 2
+      : 1
+
+      -    return { numCards: Math.max(8, cols * 2), cols }
+
+      +    // Conservative column calculation to match responsive layouts in
+      side panes
+
+      +    let cols = 1;
+
+      +    if (width >= 768) cols = 2;
+
+      +    if (viewMode === 'cards' && width >= 1024) cols = 3;
+
+      +    if (viewMode === 'grid' && width >= 1280) cols = 3;
+
+      +    
+
+      +    return { numCards: Math.max(6, cols * 2), cols }
+         }
+       
+         useEffect(() => {
+      @@ -141,8 +146,8 @@
+         const gridClasses = {
+           list: "space-y-4",
+           table: "space-y-4",
+      -    cards: "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3
+      2xl:grid-cols-4 gap-6",
+
+      -    grid: "columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-6
+      space-y-6"
+
+      +    cards: "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6",
+
+      +    grid: "columns-1 md:columns-2 xl:columns-3 gap-6 space-y-6"
+         }
+       
+         return (
+
+    patchStrategy: standard-diff
+snapshot:
+  src/pages/DataDemo/components/DataCardView.tsx: >-
+    import { useRef, useLayoutEffect } from 'react'
+
+    import { gsap } from 'gsap'
+
+    import { cn } from '@/lib/utils'
+
+    import { Badge } from '@/components/ui/badge'
+
+    import { Avatar } from '@/components/ui/avatar'
+
+    import { Calendar, Eye, Heart, Share, ArrowUpRight, Tag } from
+    'lucide-react'
+
+    import type { ViewProps } from '../types'
+
+    import { getStatusColor, getPriorityColor } from '../utils'
+
+    import { EmptyState } from './EmptyState'
+
+
+    export function DataCardView({ data, onItemSelect, selectedItem, isGrid =
+    false }: ViewProps) {
+      const containerRef = useRef<HTMLDivElement>(null)
+      const animatedItemsCount = useRef(0)
+
+      useLayoutEffect(() => {
+        if (containerRef.current && data.length > animatedItemsCount.current) {
+          const newItems = Array.from(containerRef.current.children).slice(
+            animatedItemsCount.current
+          );
+          gsap.fromTo(
+            newItems,
+            { y: 40, opacity: 0, scale: 0.95 },
+            {
+              duration: 0.6,
+              y: 0,
+              opacity: 1,
+              scale: 1,
+              stagger: 0.1,
+              ease: 'power2.out',
+            },
+          );
+          animatedItemsCount.current = data.length;
+        }
+      }, [data]);
+
+      if (data.length === 0) {
+        return <EmptyState />
+      }
+
+      return (
+        <div 
+          ref={containerRef}
+          className={cn(
+            "gap-6",
+            isGrid 
+              ? "columns-1 sm:columns-2 lg:columns-3 xl:columns-4 space-y-6" 
+              : "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
+          )}
+        >
+          {data.map((item) => {
+            const isSelected = selectedItem?.id === item.id
+            
+            return (
+              <div
+                key={item.id}
+                onClick={() => onItemSelect(item)}
+                className={cn(
+                  "group relative overflow-hidden rounded-3xl border bg-card/50 backdrop-blur-sm transition-all duration-500 cursor-pointer",
+                  "hover:bg-card/80 hover:shadow-xl hover:shadow-primary/10 hover:border-primary/30 hover:-translate-y-2",
+                  "active:scale-[0.98]",
+                  isSelected && "ring-2 ring-primary/30 border-primary/40 bg-card/90 shadow-lg shadow-primary/20",
+                  isGrid && "break-inside-avoid mb-6"
+                )}
+              >
+                {/* Card Header with Thumbnail */}
+                <div className="relative p-6 pb-4">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-primary/10 rounded-2xl flex items-center justify-center text-3xl group-hover:scale-110 transition-transform duration-300">
+                      {item.thumbnail}
+                    </div>
+                    <ArrowUpRight className="w-5 h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 group-hover:-translate-y-1 transition-all duration-300" />
+                  </div>
+
+                  {/* Priority indicator */}
+                  <div className="absolute top-4 right-4">
+                    <div className={cn(
+                      "w-3 h-3 rounded-full",
+                      item.priority === 'critical' && "bg-red-500",
+                      item.priority === 'high' && "bg-orange-500",
+                      item.priority === 'medium' && "bg-blue-500",
+                      item.priority === 'low' && "bg-green-500"
+                    )} />
+                  </div>
+                </div>
+
+                {/* Card Content */}
+                <div className="px-6 pb-6">
+                  {/* Title and Description */}
+                  <h3 className="font-semibold text-lg mb-2 group-hover:text-primary transition-colors line-clamp-2">
+                    {item.title}
+                  </h3>
+                  <p className="text-muted-foreground text-sm mb-4 line-clamp-3">
+                    {item.description}
+                  </p>
+
+                  {/* Status and Category */}
+                  <div className="flex items-center gap-2 mb-4">
+                    <Badge variant="outline" className={getStatusColor(item.status)}>
+                      {item.status}
+                    </Badge>
+                    <Badge variant="outline" className="bg-accent/50 text-xs">
+                      {item.category}
+                    </Badge>
+                  </div>
+
+                  {/* Tags */}
+                  <div className="flex items-center gap-1 mb-4">
+                    <Tag className="w-3 h-3 text-muted-foreground" />
+                    <div className="flex flex-wrap gap-1">
+                      {item.tags.slice(0, 3).map((tag, index) => (
+                        <span key={index} className="text-xs text-muted-foreground bg-muted/50 px-2 py-1 rounded-md">
+                          {tag}
+                        </span>
+                      ))}
+                      {item.tags.length > 3 && (
+                        <span className="text-xs text-muted-foreground">
+                          +{item.tags.length - 3}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Progress */}
+                  <div className="mb-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs text-muted-foreground">Progress</span>
+                      <span className="text-xs font-semibold">{item.metrics.completion}%</span>
+                    </div>
+                    <div className="w-full bg-muted rounded-full h-2">
+                      <div 
+                        className="bg-gradient-to-r from-primary to-primary/80 h-2 rounded-full transition-all duration-700 ease-out"
+                        style={{ width: `${item.metrics.completion}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Assignee */}
+                  <div className="flex items-center gap-3 mb-4">
+                    <Avatar className="w-8 h-8 text-sm">
+                      {item.assignee.avatar}
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">
+                        {item.assignee.name}
+                      </p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {item.assignee.email}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Metrics */}
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-1">
+                        <Eye className="w-3 h-3" />
+                        {item.metrics.views}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Heart className="w-3 h-3" />
+                        {item.metrics.likes}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Share className="w-3 h-3" />
+                        {item.metrics.shares}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Calendar className="w-3 h-3" />
+                      {new Date(item.updatedAt).toLocaleDateString()}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Hover gradient overlay */}
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+                
+                {/* Selection indicator */}
+                {isSelected && (
+                  <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-primary/5 pointer-events-none" />
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )
+    }
+  src/pages/DataDemo/components/DataDetailPanel.tsx: |-
+    import React, { useLayoutEffect, useRef } from 'react'
+    import { gsap } from 'gsap'
+    import { cn } from '@/lib/utils'
+    import { Badge } from '@/components/ui/badge'
+    import { Avatar } from '@/components/ui/avatar'
+    import { Button } from '@/components/ui/button'
+    import { 
+      ArrowLeft,
+      Calendar, 
+      Clock, 
+      Eye, 
+      Heart, 
+      Share, 
+      Download,
+      FileText,
+      Image,
+      Video,
+      File,
+      ExternalLink,
+      Tag,
+      User,
+      BarChart3,
+      TrendingUp,
+      CheckCircle,
+      AlertCircle,
+      Circle
+    } from 'lucide-react' 
+    import type { DataItem } from '../types'
+    import { getStatusColor, getPriorityColor } from '../utils'
+
+    interface DataDetailPanelProps {
+      item: DataItem | null
+      onClose: () => void
+    }
+
+    export function DataDetailPanel({ item, onClose }: DataDetailPanelProps) {
+      const contentRef = useRef<HTMLDivElement>(null)
+
+      useLayoutEffect(() => {
+        if (item && contentRef.current) {
+          gsap.fromTo(contentRef.current.children,
+            { y: 30, opacity: 0 },
+            {
+              duration: 0.6,
+              y: 0,
+              opacity: 1,
+              stagger: 0.08,
+              ease: "power2.out"
+            }
+          )
+        }
+      }, [item])
+
+      if (!item) {
+        return null
+      }
+
+      const getFileIcon = (type: string) => {
+        switch (type.toLowerCase()) {
+          case 'pdf': return FileText
+          case 'image':
+          case 'png':
+          case 'jpg':
+          case 'jpeg': return Image
+          case 'video':
+          case 'mp4': return Video
+          default: return File
+        }
+      }
+
+      const getStatusIcon = (status: string) => {
+        switch (status) {
+          case 'completed': return CheckCircle
+          case 'active': return Circle
+          case 'pending': return AlertCircle
+          default: return Circle
+        }
+      }
+
+      return (
+        <div ref={contentRef} className="h-full flex flex-col">
+          {/* Header */}
+          <div className="p-6 border-b border-border/50 bg-gradient-to-r from-card/50 to-card/30 backdrop-blur-sm">
+            <Button variant="ghost" onClick={onClose} className="mb-4 -ml-4">
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back to list
+            </Button>
+            <div className="flex items-start gap-4 mb-4">
+              <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-primary/10 rounded-2xl flex items-center justify-center text-3xl flex-shrink-0">
+                {item.thumbnail}
+              </div>
+              <div className="flex-1 min-w-0">
+                <h1 className="text-2xl font-bold mb-2 leading-tight">
+                  {item.title}
+                </h1>
+                <p className="text-muted-foreground">
+                  {item.description}
+                </p>
+              </div>
+            </div>
+
+            {/* Status badges */}
+            <div className="flex items-center gap-2 mb-4">
+              <Badge variant="outline" className={getStatusColor(item.status)}>
+                {React.createElement(getStatusIcon(item.status), { className: "w-3 h-3 mr-1" })}
+                {item.status}
+              </Badge>
+              <Badge variant="outline" className={getPriorityColor(item.priority)}>
+                {item.priority}
+              </Badge>
+              <Badge variant="outline" className="bg-accent/50">
+                {item.category}
+              </Badge>
+            </div>
+
+            {/* Progress */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Progress</span>
+                <span className="text-sm font-bold">{item.metrics.completion}%</span>
+              </div>
+              <div className="w-full bg-muted rounded-full h-3">
+                <div 
+                  className="bg-gradient-to-r from-primary to-primary/80 h-3 rounded-full transition-all duration-1000 ease-out"
+                  style={{ width: `${item.metrics.completion}%` }}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Content */}
+          <div className="flex-1 overflow-y-auto">
+            <div className="p-6 space-y-6">
+              {/* Assignee Info */}
+              <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
+                <div className="flex items-center gap-1 mb-3">
+                  <User className="w-4 h-4 text-muted-foreground" />
+                  <h3 className="font-semibold text-sm">Assigned to</h3>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Avatar className="w-12 h-12">
+                    {item.assignee.avatar}
+                  </Avatar>
+                  <div>
+                    <p className="font-medium">{item.assignee.name}</p>
+                    <p className="text-sm text-muted-foreground">{item.assignee.email}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Metrics */}
+              <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
+                <div className="flex items-center gap-1 mb-3">
+                  <BarChart3 className="w-4 h-4 text-muted-foreground" />
+                  <h3 className="font-semibold text-sm">Engagement Metrics</h3>
+                </div>
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="text-center">
+                    <div className="flex items-center justify-center gap-1 mb-1">
+                      <Eye className="w-4 h-4 text-blue-500" />
+                    </div>
+                    <p className="text-2xl font-bold">{item.metrics.views}</p>
+                    <p className="text-xs text-muted-foreground">Views</p>
+                  </div>
+                  <div className="text-center">
+                    <div className="flex items-center justify-center gap-1 mb-1">
+                      <Heart className="w-4 h-4 text-red-500" />
+                    </div>
+                    <p className="text-2xl font-bold">{item.metrics.likes}</p>
+                    <p className="text-xs text-muted-foreground">Likes</p>
+                  </div>
+                  <div className="text-center">
+                    <div className="flex items-center justify-center gap-1 mb-1">
+                      <Share className="w-4 h-4 text-green-500" />
+                    </div>
+                    <p className="text-2xl font-bold">{item.metrics.shares}</p>
+                    <p className="text-xs text-muted-foreground">Shares</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Tags */}
+              <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
+                <div className="flex items-center gap-1 mb-3">
+                  <Tag className="w-4 h-4 text-muted-foreground" />
+                  <h3 className="font-semibold text-sm">Tags</h3>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {item.tags.map((tag, index) => (
+                    <span
+                      key={index}
+                      className="bg-muted/50 text-muted-foreground px-3 py-1 rounded-full text-xs font-medium"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Content Details */}
+              {item.content && (
+                <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
+                  <h3 className="font-semibold text-sm mb-3">Project Details</h3>
+                  <div className="space-y-4">
+                    <div>
+                      <h4 className="font-medium text-sm mb-2">Summary</h4>
+                      <p className="text-sm text-muted-foreground leading-relaxed">
+                        {item.content.summary}
+                      </p>
+                    </div>
+                    <div>
+                      <h4 className="font-medium text-sm mb-2">Description</h4>
+                      <p className="text-sm text-muted-foreground leading-relaxed">
+                        {item.content.details}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Attachments */}
+              {item.content?.attachments && item.content.attachments.length > 0 && (
+                <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
+                  <h3 className="font-semibold text-sm mb-3">Attachments</h3>
+                  <div className="space-y-2">
+                    {item.content.attachments.map((attachment, index) => {
+                      const IconComponent = getFileIcon(attachment.type)
+                      return (
+                        <div
+                          key={index}
+                          className="flex items-center gap-3 p-3 bg-muted/30 rounded-xl hover:bg-muted/50 transition-colors cursor-pointer group"
+                        >
+                          <IconComponent className="w-5 h-5 text-muted-foreground" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">
+                              {attachment.name}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {attachment.type} • {attachment.size}
+                            </p>
+                          </div>
+                          <Button size="sm" variant="ghost" className="opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Download className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Timeline */}
+              <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
+                <div className="flex items-center gap-1 mb-3">
+                  <Clock className="w-4 h-4 text-muted-foreground" />
+                  <h3 className="font-semibold text-sm">Timeline</h3>
+                </div>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-sm">
+                    <Calendar className="w-3 h-3 text-muted-foreground" />
+                    <span className="text-muted-foreground">Created:</span>
+                    <span className="font-medium">
+                      {new Date(item.createdAt).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                      })}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <TrendingUp className="w-3 h-3 text-muted-foreground" />
+                    <span className="text-muted-foreground">Last updated:</span>
+                    <span className="font-medium">
+                      {new Date(item.updatedAt).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                      })}
+                    </span>
+                  </div>
+                  {item.dueDate && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <AlertCircle className="w-3 h-3 text-orange-500" />
+                      <span className="text-muted-foreground">Due date:</span>
+                      <span className="font-medium text-orange-600">
+                        {new Date(item.dueDate).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric'
+                        })}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Footer Actions */}
+          <div className="p-6 border-t border-border/50 bg-card/30">
+            <div className="flex gap-3">
+              <Button className="flex-1" size="sm">
+                <ExternalLink className="w-4 h-4 mr-2" />
+                Open Project
+              </Button>
+              <Button variant="outline" size="sm">
+                <Share className="w-4 h-4 mr-2" />
+                Share
+              </Button>
+            </div>
+          </div>
+        </div>
+      )
+    }
+  src/pages/DataDemo/components/AnimatedLoadingSkeleton.tsx: >
+    import React, { useEffect, useRef, useState } from 'react'
+
+    import { gsap } from 'gsap'
+
+    import { Search } from 'lucide-react'
+
+    import { cn } from '@/lib/utils'
+
+    import type { ViewMode } from '../types'
+
+
+    interface GridConfig {
+      numCards: number
+      cols: number
+    }
+
+
+    export const AnimatedLoadingSkeleton = ({ viewMode }: { viewMode: ViewMode
+    }) => {
+      const [windowWidth, setWindowWidth] = useState(0)
+      const containerRef = useRef<HTMLDivElement>(null)
+      const iconRef = useRef<HTMLDivElement>(null)
+      const timelineRef = useRef<gsap.core.Timeline | null>(null)
+
+      const getGridConfig = (width: number): GridConfig => {
+        if (viewMode === 'list' || viewMode === 'table') {
+          return { numCards: 5, cols: 1 }
+        }
+        const cols = width >= 1280 ? 4 : width >= 1024 ? 3 : width >= 768 ? 2 : 1
+        return { numCards: Math.max(8, cols * 2), cols }
+      }
+
+      useEffect(() => {
+        const handleResize = () => setWindowWidth(window.innerWidth)
+        handleResize()
+        window.addEventListener('resize', handleResize)
+        return () => window.removeEventListener('resize', handleResize)
+      }, [])
+
+      useEffect(() => {
+        if (timelineRef.current) {
+          timelineRef.current.kill()
+        }
+        if (!iconRef.current || !containerRef.current || windowWidth === 0) return
+
+        // Allow DOM to update with new skeleton cards
+        const timeoutId = setTimeout(() => {
+          const cards = Array.from(containerRef.current!.children)
+          if (cards.length === 0) return
+
+          const shuffledCards = gsap.utils.shuffle(cards)
+
+          const getCardPosition = (card: Element) => {
+            const rect = card.getBoundingClientRect()
+            const containerRect = containerRef.current!.getBoundingClientRect()
+            const iconRect = iconRef.current!.getBoundingClientRect()
+
+            return {
+              x: rect.left - containerRect.left + rect.width / 2 - iconRect.width / 2,
+              y: rect.top - containerRect.top + rect.height / 2 - iconRect.height / 2,
+            }
+          }
+          
+          const tl = gsap.timeline({
+            repeat: -1,
+            repeatDelay: 0.5,
+            defaults: { duration: 1, ease: 'power2.inOut' }
+          });
+          timelineRef.current = tl
+
+          // Animate to a few random cards
+          shuffledCards.slice(0, 5).forEach(card => {
+            const pos = getCardPosition(card)
+            tl.to(iconRef.current, { 
+              x: pos.x,
+              y: pos.y,
+              scale: 1.2,
+              duration: 0.8
+            }).to(iconRef.current, {
+              scale: 1,
+              duration: 0.2
+            })
+          });
+
+          // Loop back to the start
+          const firstPos = getCardPosition(shuffledCards[0]);
+          tl.to(iconRef.current, { x: firstPos.x, y: firstPos.y, duration: 0.8 });
+        }, 100) // Small delay to ensure layout is calculated
+
+        return () => {
+          clearTimeout(timeoutId)
+          if (timelineRef.current) {
+            timelineRef.current.kill()
+          }
+        }
+
+      }, [windowWidth, viewMode])
+
+      const config = getGridConfig(windowWidth)
+
+      const renderSkeletonCard = (key: number) => {
+        if (viewMode === 'list' || viewMode === 'table') {
+          return (
+            <div key={key} className="bg-card/30 border border-border/30 rounded-2xl p-6 flex items-start gap-4 animate-pulse">
+              <div className="w-14 h-14 bg-muted rounded-xl flex-shrink-0"></div>
+              <div className="flex-1 space-y-3">
+                <div className="h-4 bg-muted rounded w-3/4"></div>
+                <div className="h-3 bg-muted rounded w-full"></div>
+                <div className="h-3 bg-muted rounded w-5/6"></div>
+                <div className="flex gap-2 pt-2">
+                  <div className="h-6 bg-muted rounded-full w-20"></div>
+                  <div className="h-6 bg-muted rounded-full w-20"></div>
+                </div>
+              </div>
+            </div>
+          )
+        }
+
+        return (
+          <div 
+            key={key} 
+            className={cn(
+              "bg-card/30 border border-border/30 rounded-3xl p-6 space-y-4 animate-pulse",
+              viewMode === 'grid' && "break-inside-avoid mb-6"
+            )}
+          >
+            <div className="flex items-start justify-between">
+              <div className="w-16 h-16 bg-muted rounded-2xl"></div>
+              <div className="w-4 h-4 bg-muted rounded-full"></div>
+            </div>
+            <div className="h-4 bg-muted rounded w-3/4"></div>
+            <div className="h-3 bg-muted rounded w-full"></div>
+            <div className="h-3 bg-muted rounded w-5/6"></div>
+            <div className="h-2 w-full bg-muted rounded-full my-4"></div>
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-muted rounded-full"></div>
+              <div className="flex-1 space-y-2">
+                <div className="h-3 bg-muted rounded w-1/2"></div>
+                <div className="h-2 bg-muted rounded w-1/3"></div>
+              </div>
+            </div>
+          </div>
+        )
+      }
+
+      const gridClasses = {
+        list: "space-y-4",
+        table: "space-y-4",
+        cards: "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6",
+        grid: "columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-6 space-y-6"
+      }
+
+      return (
+        <div className="relative overflow-hidden rounded-lg min-h-[500px]">
+          <div 
+            ref={iconRef}
+            className="absolute z-10 p-3 bg-primary/20 rounded-full backdrop-blur-sm"
+            style={{ willChange: 'transform' }}
+          >
+            <Search className="w-6 h-6 text-primary" />
+          </div>
+
+          <div 
+            ref={containerRef}
+            className={cn(gridClasses[viewMode])}
+          >
+            {[...Array(config.numCards)].map((_, i) => renderSkeletonCard(i))}
+          </div>
+        </div>
+      )
+    }
+  src/pages/DataDemo/components/DataTableView.tsx: >-
+    import { useState, useRef, useLayoutEffect } from 'react'
+
+    import { gsap } from 'gsap'
+
+    import { cn } from '@/lib/utils'
+
+    import { Badge } from '@/components/ui/badge'
+
+    import { Avatar } from '@/components/ui/avatar'
+
+    import { 
+      Calendar, 
+      Eye, 
+      Heart, 
+      Share, 
+      ArrowUpDown, 
+      ArrowUp, 
+      ArrowDown,
+      MoreHorizontal,
+      ExternalLink
+    } from 'lucide-react'
+
+    import type { ViewProps, DataItem, SortableField } from '../types'
+
+    import { getStatusColor, getPriorityColor } from '../utils'
+
+    import { EmptyState } from './EmptyState'
+
+
+    export function DataTableView({ data, onItemSelect, selectedItem,
+    sortConfig, onSort }: ViewProps) {
+      const tableRef = useRef<HTMLTableElement>(null)
+      const animatedItemsCount = useRef(0)
+
+      useLayoutEffect(() => {
+        if (tableRef.current && data.length > animatedItemsCount.current) {
+          const newItems = Array.from(
+            tableRef.current.querySelectorAll('tbody tr')
+          ).slice(animatedItemsCount.current);
+          gsap.fromTo(newItems,
+            { y: 20, opacity: 0 },
+            {
+              duration: 0.5,
+              y: 0,
+              opacity: 1,
+              stagger: 0.05,
+              ease: "power2.out",
+            },
+          );
+          animatedItemsCount.current = data.length;
+        }
+      }, [data]);
+
+      const SortIcon = ({ field }: { field: SortableField }) => {
+        if (sortConfig?.key !== field) {
+          return <ArrowUpDown className="w-4 h-4 opacity-50" />
+        }
+        if (sortConfig.direction === 'asc') {
+          return <ArrowUp className="w-4 h-4 text-primary" />
+        }
+        if (sortConfig.direction === 'desc') {
+          return <ArrowDown className="w-4 h-4 text-primary" />
+        }
+        return <ArrowUpDown className="w-4 h-4 opacity-50" />
+      }
+
+      const handleSortClick = (field: SortableField) => {
+        onSort?.(field)
+      }
+
+      if (data.length === 0) {
+        return <EmptyState />
+      }
+
+      return (
+        <div className="relative overflow-hidden rounded-2xl border bg-card/50 backdrop-blur-sm">
+          <div className="overflow-x-auto">
+            <table ref={tableRef} className="w-full">
+              <thead>
+                <tr className="border-b border-border/50 bg-muted/20">
+                  <th className="text-left p-4 font-semibold text-sm">
+                    <button
+                      onClick={() => handleSortClick('title')}
+                      className="flex items-center gap-2 hover:text-primary transition-colors"
+                    >
+                      Project
+                      <SortIcon field="title" />
+                    </button>
+                  </th>
+                  <th className="text-left p-4 font-semibold text-sm">
+                    <button
+                      onClick={() => handleSortClick('status')}
+                      className="flex items-center gap-2 hover:text-primary transition-colors"
+                    >
+                      Status
+                      <SortIcon field="status" />
+                    </button>
+                  </th>
+                  <th className="text-left p-4 font-semibold text-sm">
+                    <button
+                      onClick={() => handleSortClick('priority')}
+                      className="flex items-center gap-2 hover:text-primary transition-colors"
+                    >
+                      Priority
+                      <SortIcon field="priority" />
+                    </button>
+                  </th>
+                  <th className="text-left p-4 font-semibold text-sm">
+                    <button
+                      onClick={() => handleSortClick('assignee.name')}
+                      className="flex items-center gap-2 hover:text-primary transition-colors"
+                    >
+                      Assignee
+                      <SortIcon field="assignee.name" />
+                    </button>
+                  </th>
+                  <th className="text-left p-4 font-semibold text-sm">
+                    <button
+                      onClick={() => handleSortClick('metrics.completion')}
+                      className="flex items-center gap-2 hover:text-primary transition-colors"
+                    >
+                      Progress
+                      <SortIcon field="metrics.completion" />
+                    </button>
+                  </th>
+                  <th className="text-left p-4 font-semibold text-sm">
+                    <button
+                      onClick={() => handleSortClick('metrics.views')}
+                      className="flex items-center gap-2 hover:text-primary transition-colors"
+                    >
+                      Engagement
+                      <SortIcon field="metrics.views" />
+                    </button>
+                  </th>
+                  <th className="text-left p-4 font-semibold text-sm">Last Updated</th>
+                  <th className="text-center p-4 font-semibold text-sm w-16">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.map((item) => {
+                  const isSelected = selectedItem?.id === item.id
+                  
+                  return (
+                    <tr
+                      key={item.id}
+                      onClick={() => onItemSelect(item)}
+                      className={cn(
+                        "group border-b border-border/30 transition-all duration-200 cursor-pointer",
+                        "hover:bg-accent/20 hover:border-primary/20",
+                        isSelected && "bg-primary/5 border-primary/30"
+                      )}
+                    >
+                      {/* Project Column */}
+                      <td className="p-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-gradient-to-br from-primary/20 to-primary/10 rounded-lg flex items-center justify-center text-lg flex-shrink-0">
+                            {item.thumbnail}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <h4 className="font-medium group-hover:text-primary transition-colors truncate">
+                              {item.title}
+                            </h4>
+                            <p className="text-sm text-muted-foreground truncate">
+                              {item.category}
+                            </p>
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Status Column */}
+                      <td className="p-4">
+                        <Badge variant="outline" className={getStatusColor(item.status)}>
+                          {item.status}
+                        </Badge>
+                      </td>
+
+                      {/* Priority Column */}
+                      <td className="p-4">
+                        <Badge variant="outline" className={getPriorityColor(item.priority)}>
+                          {item.priority}
+                        </Badge>
+                      </td>
+
+                      {/* Assignee Column */}
+                      <td className="p-4">
+                        <div className="flex items-center gap-2">
+                          <Avatar className="w-8 h-8 text-sm">
+                            {item.assignee.avatar}
+                          </Avatar>
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium truncate">
+                              {item.assignee.name}
+                            </p>
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Progress Column */}
+                      <td className="p-4">
+                        <div className="flex items-center gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="w-full bg-muted rounded-full h-2">
+                              <div 
+                                className="bg-gradient-to-r from-primary to-primary/80 h-2 rounded-full transition-all duration-500"
+                                style={{ width: `${item.metrics.completion}%` }}
+                              />
+                            </div>
+                          </div>
+                          <span className="text-sm font-medium text-muted-foreground">
+                            {item.metrics.completion}%
+                          </span>
+                        </div>
+                      </td>
+
+                      {/* Engagement Column */}
+                      <td className="p-4">
+                        <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                          <div className="flex items-center gap-1">
+                            <Eye className="w-3 h-3" />
+                            {item.metrics.views}
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Heart className="w-3 h-3" />
+                            {item.metrics.likes}
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Share className="w-3 h-3" />
+                            {item.metrics.shares}
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Date Column */}
+                      <td className="p-4">
+                        <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                          <Calendar className="w-3 h-3" />
+                          {new Date(item.updatedAt).toLocaleDateString()}
+                        </div>
+                      </td>
+
+                      {/* Actions Column */}
+                      <td className="p-4">
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            onItemSelect(item)
+                          }}
+                          className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-accent transition-colors"
+                          title="View details"
+                        >
+                          <ExternalLink className="w-4 h-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )
+    }
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 184

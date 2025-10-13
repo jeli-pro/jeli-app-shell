@@ -10,31 +10,45 @@ interface GridConfig {
 }
 
 export const AnimatedLoadingSkeleton = ({ viewMode }: { viewMode: ViewMode }) => {
-  const [windowWidth, setWindowWidth] = useState(0)
+  const [containerWidth, setContainerWidth] = useState(0)
   const containerRef = useRef<HTMLDivElement>(null)
   const iconRef = useRef<HTMLDivElement>(null)
   const timelineRef = useRef<gsap.core.Timeline | null>(null)
 
   const getGridConfig = (width: number): GridConfig => {
+    if (width === 0) return { numCards: 8, cols: 2 }; // Default before measurement
     if (viewMode === 'list' || viewMode === 'table') {
       return { numCards: 5, cols: 1 }
     }
-    const cols = width >= 1280 ? 4 : width >= 1024 ? 3 : width >= 768 ? 2 : 1
+    // For card view
+    if (viewMode === 'cards') {
+      const cols = Math.max(1, Math.floor(width / 344)); // 320px card + 24px gap
+      return { numCards: Math.max(8, cols * 2), cols }
+    }
+    // For grid view
+    const cols = Math.max(1, Math.floor(width / 304)); // 280px card + 24px gap
     return { numCards: Math.max(8, cols * 2), cols }
   }
 
   useEffect(() => {
-    const handleResize = () => setWindowWidth(window.innerWidth)
-    handleResize()
-    window.addEventListener('resize', handleResize)
-    return () => window.removeEventListener('resize', handleResize)
-  }, [])
+    const container = containerRef.current;
+    if (!container) return;
+
+    const resizeObserver = new ResizeObserver(entries => {
+      if (entries[0]) {
+        setContainerWidth(entries[0].contentRect.width);
+      }
+    });
+
+    resizeObserver.observe(container);
+    return () => resizeObserver.disconnect();
+  }, []);
 
   useEffect(() => {
     if (timelineRef.current) {
       timelineRef.current.kill()
     }
-    if (!iconRef.current || !containerRef.current || windowWidth === 0) return
+    if (!iconRef.current || !containerRef.current || containerWidth === 0) return
 
     // Allow DOM to update with new skeleton cards
     const timeoutId = setTimeout(() => {
@@ -87,9 +101,9 @@ export const AnimatedLoadingSkeleton = ({ viewMode }: { viewMode: ViewMode }) =>
       }
     }
 
-  }, [windowWidth, viewMode])
+  }, [containerWidth, viewMode])
 
-  const config = getGridConfig(windowWidth)
+  const config = getGridConfig(containerWidth)
 
   const renderSkeletonCard = (key: number) => {
     if (viewMode === 'list' || viewMode === 'table') {
@@ -114,7 +128,6 @@ export const AnimatedLoadingSkeleton = ({ viewMode }: { viewMode: ViewMode }) =>
         key={key} 
         className={cn(
           "bg-card/30 border border-border/30 rounded-3xl p-6 space-y-4 animate-pulse",
-          viewMode === 'grid' && "break-inside-avoid mb-6"
         )}
       >
         <div className="flex items-start justify-between">
@@ -139,8 +152,8 @@ export const AnimatedLoadingSkeleton = ({ viewMode }: { viewMode: ViewMode }) =>
   const gridClasses = {
     list: "space-y-4",
     table: "space-y-4",
-    cards: "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6",
-    grid: "columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-6 space-y-6"
+    cards: "grid grid-cols-[repeat(auto-fit,minmax(320px,1fr))] gap-6",
+    grid: "grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-6"
   }
 
   return (

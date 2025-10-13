@@ -1,0 +1,1518 @@
+uuid: c2e2936a-297c-4ab9-9689-32215c0e7b23
+projectId: jeli-app-shell
+createdAt: '2025-10-13T02:56:33.150Z'
+gitCommitMsg: >-
+  feat(DataDemo): implement container-aware responsive layouts
+
+  Refactored the Data Demo page and its components to be highly responsive to
+  their parent container's size, not just the viewport. This significantly
+  improves usability in side pane and split-view modes.
+
+  Key changes: - Replaced viewport-based grid classes (`md:grid-cols-2`) with
+  `grid-cols-[repeat(auto-fit,minmax(...))]` for stat cards and the card view. -
+  Re-implemented the `AnimatedLoadingSkeleton` to use a `ResizeObserver`,
+  ensuring it generates a skeleton that accurately reflects the final layout in
+  any container size. - Adjusted the `DataViewModeSelector` to wrap its buttons
+  gracefully in narrow spaces. - Made the metrics grid in the `DataDetailPanel`
+  responsive.
+promptSummary: >-
+  Make the Data Demo page and its components highly responsive, especially for
+  use in side panes and split view, by implementing container-aware layouts.
+reasoning:
+  - >-
+    I understand you want to improve the responsiveness of the `DataDemoPage`
+    and its subcomponents, making them adapt gracefully to the available space,
+    especially when used within a side pane or split view. I will implement
+    container-aware responsive layouts to achieve this.
+  - 'Here are the changes I''ll make:'
+  - >-
+    1.  **Stats Cards (`DataDemoPage`):** I'll update the grid for the
+    statistics cards to use an `auto-fit` layout, allowing them to wrap based on
+    container width rather than viewport breakpoints.
+  - >-
+    2.  **Data Card View (`DataCardView`):** Similarly, I'll modify the "Cards"
+    view mode to use a container-aware `auto-fit` grid. This will ensure the
+    cards reflow beautifully even in a narrow side pane. The masonry "Grid" view
+    will also have its breakpoints adjusted for better performance in smaller
+    containers.
+  - >-
+    3.  **Loading Skeleton (`AnimatedLoadingSkeleton`):** I'll refactor the
+    skeleton loader to use a `ResizeObserver`. This will make it calculate the
+    number of skeleton cards to show based on its actual container size,
+    providing a much more accurate and responsive loading preview.
+  - >-
+    4.  **View Mode Switcher (`DataViewModeSelector`):** I will adjust the view
+    mode switcher to wrap its buttons and use slightly smaller sizing on narrow
+    screens, preventing layout overflow.
+  - >-
+    5.  **Detail Panel (`DataDetailPanel`):** I'll make the engagement metrics
+    grid within the detail panel responsive, ensuring the stats wrap nicely when
+    the panel is narrow.
+  - >-
+    These changes will significantly improve the user experience of the data
+    demo across all layout modes and screen sizes.
+  - '### 1. Make Stat Cards Responsive'
+  - >-
+    I'll start by updating the main `DataDemoPage` to make the four main
+    statistic cards responsive to their container's width.
+  - '### 2. Make Data Card & Grid Views Responsive'
+  - >-
+    Next, I'll update the `DataCardView` to ensure both the standard "Cards" and
+    masonry "Grid" layouts are responsive within their parent container.
+  - '### 3. Implement Container-Aware Loading Skeleton'
+  - >-
+    I'll refactor the `AnimatedLoadingSkeleton` to be fully aware of its
+    container's dimensions using a `ResizeObserver`, ensuring it generates a
+    layout-accurate skeleton.
+  - '### 4. Adjust View Mode Switcher for Small Spaces'
+  - >-
+    I'll make the `DataViewModeSelector` more compact and allow it to wrap when
+    space is limited.
+  - '### 5. Make Detail Panel Metrics Responsive'
+  - Finally, I'll update the `DataDetailPanel`'s metrics grid to be responsive.
+  - >-
+    These changes will ensure the Data Demo page is highly responsive and
+    provides an excellent user experience in any layout configuration.
+operations:
+  - type: write
+    path: src/pages/DataDemo/index.tsx
+    content: >+
+      --- src/pages/DataDemo/index.tsx
+
+      +++ src/pages/DataDemo/index.tsx
+
+      @@ -218,7 +218,7 @@
+       
+               {/* Stats Section */}
+               {!isInitialLoading && (
+      -          <div ref={statsRef} className="grid grid-cols-1 md:grid-cols-2
+      lg:grid-cols-4 gap-6">
+
+      +          <div ref={statsRef} className="grid
+      grid-cols-[repeat(auto-fit,minmax(250px,1fr))] gap-6">
+                   {stats.map((stat) =>
+                     stat.type === 'chart' ? (
+                       <StatChartCard
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/DataDemo/components/DataCardView.tsx
+    content: >+
+      --- src/pages/DataDemo/components/DataCardView.tsx
+
+      +++ src/pages/DataDemo/components/DataCardView.tsx
+
+      @@ -40,9 +40,9 @@
+             ref={containerRef}
+             className={cn(
+               "gap-6",
+      -        isGrid 
+
+      -          ? "columns-1 sm:columns-2 lg:columns-3 xl:columns-4 space-y-6" 
+
+      -          : "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3
+      2xl:grid-cols-4"
+
+      +        isGrid
+
+      +          ? "columns-1 md:columns-2 xl:columns-3 space-y-6"
+
+      +          : "grid grid-cols-[repeat(auto-fit,minmax(320px,1fr))]"
+             )}
+           >
+             {data.map((item) => {
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/DataDemo/components/AnimatedLoadingSkeleton.tsx
+    content: >-
+      import React, { useEffect, useRef, useState } from 'react'
+
+      import { gsap } from 'gsap'
+
+      import { Search } from 'lucide-react'
+
+      import { cn } from '@/lib/utils'
+
+      import type { ViewMode } from '../types'
+
+
+      interface GridConfig {
+        numCards: number
+        cols: number
+      }
+
+
+      export const AnimatedLoadingSkeleton = ({ viewMode }: { viewMode: ViewMode
+      }) => {
+        const [containerWidth, setContainerWidth] = useState(0)
+        const containerRef = useRef<HTMLDivElement>(null)
+        const iconRef = useRef<HTMLDivElement>(null)
+        const timelineRef = useRef<gsap.core.Timeline | null>(null)
+
+        const getGridConfig = (width: number): GridConfig => {
+          if (width === 0) return { numCards: 8, cols: 2 }; // Default before measurement
+          if (viewMode === 'list' || viewMode === 'table') {
+            return { numCards: 5, cols: 1 }
+          }
+          // For card view
+          if (viewMode === 'cards') {
+            const cols = Math.max(1, Math.floor(width / 340)); // Approx 320px card + 24px gap
+            return { numCards: Math.max(8, cols * 2), cols }
+          }
+          // For grid (masonry) view
+          const cols = width >= 1024 ? 3 : width >= 768 ? 2 : 1;
+          return { numCards: Math.max(8, cols * 2), cols }
+        }
+
+        useEffect(() => {
+          const container = containerRef.current;
+          if (!container) return;
+
+          const resizeObserver = new ResizeObserver(entries => {
+            if (entries[0]) {
+              setContainerWidth(entries[0].contentRect.width);
+            }
+          });
+
+          resizeObserver.observe(container);
+          return () => resizeObserver.disconnect();
+        }, []);
+
+        useEffect(() => {
+          if (timelineRef.current) {
+            timelineRef.current.kill()
+          }
+          if (!iconRef.current || !containerRef.current || containerWidth === 0) return
+
+          // Allow DOM to update with new skeleton cards
+          const timeoutId = setTimeout(() => {
+            const cards = Array.from(containerRef.current!.children)
+            if (cards.length === 0) return
+
+            const shuffledCards = gsap.utils.shuffle(cards)
+
+            const getCardPosition = (card: Element) => {
+              const rect = card.getBoundingClientRect()
+              const containerRect = containerRef.current!.getBoundingClientRect()
+              const iconRect = iconRef.current!.getBoundingClientRect()
+
+              return {
+                x: rect.left - containerRect.left + rect.width / 2 - iconRect.width / 2,
+                y: rect.top - containerRect.top + rect.height / 2 - iconRect.height / 2,
+              }
+            }
+            
+            const tl = gsap.timeline({
+              repeat: -1,
+              repeatDelay: 0.5,
+              defaults: { duration: 1, ease: 'power2.inOut' }
+            });
+            timelineRef.current = tl
+
+            // Animate to a few random cards
+            shuffledCards.slice(0, 5).forEach(card => {
+              const pos = getCardPosition(card)
+              tl.to(iconRef.current, { 
+                x: pos.x,
+                y: pos.y,
+                scale: 1.2,
+                duration: 0.8
+              }).to(iconRef.current, {
+                scale: 1,
+                duration: 0.2
+              })
+            });
+
+            // Loop back to the start
+            const firstPos = getCardPosition(shuffledCards[0]);
+            tl.to(iconRef.current, { x: firstPos.x, y: firstPos.y, duration: 0.8 });
+          }, 100) // Small delay to ensure layout is calculated
+
+          return () => {
+            clearTimeout(timeoutId)
+            if (timelineRef.current) {
+              timelineRef.current.kill()
+            }
+          }
+
+        }, [containerWidth, viewMode])
+
+        const config = getGridConfig(containerWidth)
+
+        const renderSkeletonCard = (key: number) => {
+          if (viewMode === 'list' || viewMode === 'table') {
+            return (
+              <div key={key} className="bg-card/30 border border-border/30 rounded-2xl p-6 flex items-start gap-4 animate-pulse">
+                <div className="w-14 h-14 bg-muted rounded-xl flex-shrink-0"></div>
+                <div className="flex-1 space-y-3">
+                  <div className="h-4 bg-muted rounded w-3/4"></div>
+                  <div className="h-3 bg-muted rounded w-full"></div>
+                  <div className="h-3 bg-muted rounded w-5/6"></div>
+                  <div className="flex gap-2 pt-2">
+                    <div className="h-6 bg-muted rounded-full w-20"></div>
+                    <div className="h-6 bg-muted rounded-full w-20"></div>
+                  </div>
+                </div>
+              </div>
+            )
+          }
+
+          return (
+            <div 
+              key={key} 
+              className={cn(
+                "bg-card/30 border border-border/30 rounded-3xl p-6 space-y-4 animate-pulse",
+                viewMode === 'grid' && "break-inside-avoid mb-6"
+              )}
+            >
+              <div className="flex items-start justify-between">
+                <div className="w-16 h-16 bg-muted rounded-2xl"></div>
+                <div className="w-4 h-4 bg-muted rounded-full"></div>
+              </div>
+              <div className="h-4 bg-muted rounded w-3/4"></div>
+              <div className="h-3 bg-muted rounded w-full"></div>
+              <div className="h-3 bg-muted rounded w-5/6"></div>
+              <div className="h-2 w-full bg-muted rounded-full my-4"></div>
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 bg-muted rounded-full"></div>
+                <div className="flex-1 space-y-2">
+                  <div className="h-3 bg-muted rounded w-1/2"></div>
+                  <div className="h-2 bg-muted rounded w-1/3"></div>
+                </div>
+              </div>
+            </div>
+          )
+        }
+
+        const gridClasses = {
+          list: "space-y-4",
+          table: "space-y-4",
+          cards: "grid grid-cols-[repeat(auto-fit,minmax(320px,1fr))] gap-6",
+          grid: "columns-1 md:columns-2 xl:columns-3 gap-6 space-y-6"
+        }
+
+        return (
+          <div className="relative overflow-hidden rounded-lg min-h-[500px]">
+            <div 
+              ref={iconRef}
+              className="absolute z-10 p-3 bg-primary/20 rounded-full backdrop-blur-sm"
+              style={{ willChange: 'transform' }}
+            >
+              <Search className="w-6 h-6 text-primary" />
+            </div>
+
+            <div 
+              ref={containerRef}
+              className={cn(gridClasses[viewMode])}
+            >
+              {[...Array(config.numCards)].map((_, i) => renderSkeletonCard(i))}
+            </div>
+          </div>
+        )
+      }
+    patchStrategy: replace
+  - type: write
+    path: src/pages/DataDemo/components/DataViewModeSelector.tsx
+    content: >+
+      --- src/pages/DataDemo/components/DataViewModeSelector.tsx
+
+      +++ src/pages/DataDemo/components/DataViewModeSelector.tsx
+
+      @@ -43,7 +43,7 @@
+         return (
+           <div 
+             ref={containerRef}
+      -      className="relative flex items-center bg-card/50 backdrop-blur-sm
+      border border-border/50 rounded-2xl p-1.5 shadow-lg"
+
+      +      className="relative flex flex-wrap justify-center items-center
+      bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-1.5
+      shadow-lg"
+           >
+             {/* Animated indicator */}
+             <div
+      @@ -62,7 +62,7 @@
+                   data-mode={mode.id}
+                   onClick={() => onChange(mode.id)}
+                   className={cn(
+      -              "relative flex items-center gap-3 px-6 py-3 rounded-xl
+      transition-all duration-300 group min-w-[120px]",
+
+      +              "relative flex items-center justify-center gap-2 sm:gap-3
+      px-4 py-2 sm:px-6 sm:py-3 rounded-xl transition-all duration-300 group
+      min-w-[100px] sm:min-w-[120px]",
+                     "hover:bg-accent/20 active:scale-95",
+                     isActive && "text-primary"
+                   )}
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/DataDemo/components/DataDetailPanel.tsx
+    content: >+
+      --- src/pages/DataDemo/components/DataDetailPanel.tsx
+
+      +++ src/pages/DataDemo/components/DataDetailPanel.tsx
+
+      @@ -148,7 +148,7 @@
+                     <BarChart3 className="w-4 h-4 text-muted-foreground" />
+                     <h3 className="font-semibold text-sm">Engagement Metrics</h3>
+                   </div>
+      -            <div className="grid grid-cols-3 gap-4">
+
+      +            <div className="grid
+      grid-cols-[repeat(auto-fit,minmax(80px,1fr))] gap-4">
+                     <div className="text-center">
+                       <div className="flex items-center justify-center gap-1 mb-1">
+                         <Eye className="w-4 h-4 text-blue-500" />
+
+    patchStrategy: standard-diff
+snapshot:
+  src/pages/DataDemo/components/DataCardView.tsx: >-
+    import { useRef, useLayoutEffect } from 'react'
+
+    import { gsap } from 'gsap'
+
+    import { cn } from '@/lib/utils'
+
+    import { Badge } from '@/components/ui/badge'
+
+    import { Avatar } from '@/components/ui/avatar'
+
+    import { Calendar, Eye, Heart, Share, ArrowUpRight, Tag } from
+    'lucide-react'
+
+    import type { ViewProps } from '../types'
+
+    import { getStatusColor, getPriorityColor } from '../utils'
+
+    import { EmptyState } from './EmptyState'
+
+
+    export function DataCardView({ data, onItemSelect, selectedItem, isGrid =
+    false }: ViewProps) {
+      const containerRef = useRef<HTMLDivElement>(null)
+      const animatedItemsCount = useRef(0)
+
+      useLayoutEffect(() => {
+        if (containerRef.current && data.length > animatedItemsCount.current) {
+          const newItems = Array.from(containerRef.current.children).slice(
+            animatedItemsCount.current
+          );
+          gsap.fromTo(
+            newItems,
+            { y: 40, opacity: 0, scale: 0.95 },
+            {
+              duration: 0.6,
+              y: 0,
+              opacity: 1,
+              scale: 1,
+              stagger: 0.1,
+              ease: 'power2.out',
+            },
+          );
+          animatedItemsCount.current = data.length;
+        }
+      }, [data]);
+
+      if (data.length === 0) {
+        return <EmptyState />
+      }
+
+      return (
+        <div 
+          ref={containerRef}
+          className={cn(
+            "gap-6",
+            isGrid 
+              ? "columns-1 sm:columns-2 lg:columns-3 xl:columns-4 space-y-6" 
+              : "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
+          )}
+        >
+          {data.map((item) => {
+            const isSelected = selectedItem?.id === item.id
+            
+            return (
+              <div
+                key={item.id}
+                onClick={() => onItemSelect(item)}
+                className={cn(
+                  "group relative overflow-hidden rounded-3xl border bg-card/50 backdrop-blur-sm transition-all duration-500 cursor-pointer",
+                  "hover:bg-card/80 hover:shadow-xl hover:shadow-primary/10 hover:border-primary/30 hover:-translate-y-2",
+                  "active:scale-[0.98]",
+                  isSelected && "ring-2 ring-primary/30 border-primary/40 bg-card/90 shadow-lg shadow-primary/20",
+                  isGrid && "break-inside-avoid mb-6"
+                )}
+              >
+                {/* Card Header with Thumbnail */}
+                <div className="relative p-6 pb-4">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-primary/10 rounded-2xl flex items-center justify-center text-3xl group-hover:scale-110 transition-transform duration-300">
+                      {item.thumbnail}
+                    </div>
+                    <ArrowUpRight className="w-5 h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 group-hover:-translate-y-1 transition-all duration-300" />
+                  </div>
+
+                  {/* Priority indicator */}
+                  <div className="absolute top-4 right-4">
+                    <div className={cn(
+                      "w-3 h-3 rounded-full",
+                      item.priority === 'critical' && "bg-red-500",
+                      item.priority === 'high' && "bg-orange-500",
+                      item.priority === 'medium' && "bg-blue-500",
+                      item.priority === 'low' && "bg-green-500"
+                    )} />
+                  </div>
+                </div>
+
+                {/* Card Content */}
+                <div className="px-6 pb-6">
+                  {/* Title and Description */}
+                  <h3 className="font-semibold text-lg mb-2 group-hover:text-primary transition-colors line-clamp-2">
+                    {item.title}
+                  </h3>
+                  <p className="text-muted-foreground text-sm mb-4 line-clamp-3">
+                    {item.description}
+                  </p>
+
+                  {/* Status and Category */}
+                  <div className="flex items-center gap-2 mb-4">
+                    <Badge variant="outline" className={getStatusColor(item.status)}>
+                      {item.status}
+                    </Badge>
+                    <Badge variant="outline" className="bg-accent/50 text-xs">
+                      {item.category}
+                    </Badge>
+                  </div>
+
+                  {/* Tags */}
+                  <div className="flex items-center gap-1 mb-4">
+                    <Tag className="w-3 h-3 text-muted-foreground" />
+                    <div className="flex flex-wrap gap-1">
+                      {item.tags.slice(0, 3).map((tag, index) => (
+                        <span key={index} className="text-xs text-muted-foreground bg-muted/50 px-2 py-1 rounded-md">
+                          {tag}
+                        </span>
+                      ))}
+                      {item.tags.length > 3 && (
+                        <span className="text-xs text-muted-foreground">
+                          +{item.tags.length - 3}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Progress */}
+                  <div className="mb-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs text-muted-foreground">Progress</span>
+                      <span className="text-xs font-semibold">{item.metrics.completion}%</span>
+                    </div>
+                    <div className="w-full bg-muted rounded-full h-2">
+                      <div 
+                        className="bg-gradient-to-r from-primary to-primary/80 h-2 rounded-full transition-all duration-700 ease-out"
+                        style={{ width: `${item.metrics.completion}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Assignee */}
+                  <div className="flex items-center gap-3 mb-4">
+                    <Avatar className="w-8 h-8 text-sm">
+                      {item.assignee.avatar}
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">
+                        {item.assignee.name}
+                      </p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {item.assignee.email}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Metrics */}
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-1">
+                        <Eye className="w-3 h-3" />
+                        {item.metrics.views}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Heart className="w-3 h-3" />
+                        {item.metrics.likes}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Share className="w-3 h-3" />
+                        {item.metrics.shares}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Calendar className="w-3 h-3" />
+                      {new Date(item.updatedAt).toLocaleDateString()}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Hover gradient overlay */}
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+                
+                {/* Selection indicator */}
+                {isSelected && (
+                  <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-primary/5 pointer-events-none" />
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )
+    }
+  src/pages/DataDemo/components/DataViewModeSelector.tsx: >-
+    import { useEffect, useRef } from 'react'
+
+    import { gsap } from 'gsap'
+
+    import { cn } from '@/lib/utils'
+
+    import { List, Grid3X3, LayoutGrid, Table } from 'lucide-react'
+
+    import type { ViewMode } from '../types'
+
+
+    interface DataViewModeSelectorProps {
+      viewMode: ViewMode
+      onChange: (mode: ViewMode) => void
+    }
+
+
+    const viewModes = [
+      { id: 'list' as ViewMode, label: 'List', icon: List, description: 'Compact list with details' },
+      { id: 'cards' as ViewMode, label: 'Cards', icon: LayoutGrid, description: 'Rich card layout' },
+      { id: 'grid' as ViewMode, label: 'Grid', icon: Grid3X3, description: 'Masonry grid view' },
+      { id: 'table' as ViewMode, label: 'Table', icon: Table, description: 'Structured data table' }
+    ]
+
+
+    export function DataViewModeSelector({ viewMode, onChange }:
+    DataViewModeSelectorProps) {
+      const indicatorRef = useRef<HTMLDivElement>(null)
+      const containerRef = useRef<HTMLDivElement>(null)
+
+      useEffect(() => {
+        if (!indicatorRef.current || !containerRef.current) return
+
+        const activeButton = containerRef.current.querySelector(`[data-mode="${viewMode}"]`) as HTMLElement
+        if (!activeButton) return
+
+        const containerRect = containerRef.current.getBoundingClientRect()
+        const buttonRect = activeButton.getBoundingClientRect()
+        
+        const left = buttonRect.left - containerRect.left
+        const width = buttonRect.width
+
+        gsap.to(indicatorRef.current, {
+          duration: 0.3,
+          x: left,
+          width: width,
+          ease: "power2.out"
+        })
+      }, [viewMode])
+
+      return (
+        <div 
+          ref={containerRef}
+          className="relative flex items-center bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-1.5 shadow-lg"
+        >
+          {/* Animated indicator */}
+          <div
+            ref={indicatorRef}
+            className="absolute inset-y-1.5 bg-gradient-to-r from-primary/20 to-primary/10 border border-primary/20 rounded-xl transition-all duration-300"
+            style={{ left: 0, width: 0 }}
+          />
+          
+          {/* Mode buttons */}
+          {viewModes.map((mode) => {
+            const IconComponent = mode.icon
+            const isActive = viewMode === mode.id
+            
+            return (
+              <button
+                key={mode.id}
+                data-mode={mode.id}
+                onClick={() => onChange(mode.id)}
+                className={cn(
+                  "relative flex items-center gap-3 px-6 py-3 rounded-xl transition-all duration-300 group min-w-[120px]",
+                  "hover:bg-accent/20 active:scale-95",
+                  isActive && "text-primary"
+                )}
+                title={mode.description}
+              >
+                <IconComponent className={cn(
+                  "w-5 h-5 transition-all duration-300",
+                  isActive && "scale-110",
+                  "group-hover:scale-105"
+                )} />
+                <span className={cn(
+                  "font-medium transition-all duration-300",
+                  isActive ? "text-primary" : "text-muted-foreground",
+                  "group-hover:text-foreground"
+                )}>
+                  {mode.label}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+      )
+    }
+  src/pages/DataDemo/index.tsx: >-
+    import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
+
+    import { 
+      Layers, 
+      AlertTriangle, 
+      PlayCircle, 
+      TrendingUp,
+      Loader2
+    } from 'lucide-react'
+
+    import { gsap } from 'gsap'
+
+    import { PageLayout } from '@/components/shared/PageLayout'
+
+    import { DataListView } from './components/DataListView'
+
+    import { DataCardView } from './components/DataCardView'
+
+    import { DataTableView } from './components/DataTableView'
+
+    import { DataViewModeSelector } from './components/DataViewModeSelector'
+
+    import { DataDetailPanel } from './components/DataDetailPanel'
+
+    import { AnimatedLoadingSkeleton } from
+    './components/AnimatedLoadingSkeleton'
+
+    import { StatChartCard } from './components/StatChartCard'
+
+    import { DataToolbar, FilterConfig } from './components/DataToolbar'
+
+    import { mockDataItems } from './data/mockData'
+
+    import type { DataItem, ViewMode, SortConfig, SortableField } from './types'
+
+
+    type Stat = {
+      title: string;
+      value: string;
+      icon: React.ReactNode;
+      change: string;
+      trend: 'up' | 'down';
+      type?: 'card';
+    };
+
+
+    type ChartStat = {
+      title: string;
+      value: string;
+      icon: React.ReactNode;
+      change: string;
+      trend: 'up' | 'down';
+      type: 'chart';
+      chartData: number[];
+    };
+
+
+    type StatItem = Stat | ChartStat;
+
+
+    export default function DataDemoPage({ isInSidePane = false }: {
+    isInSidePane?: boolean }) {
+      const [viewMode, setViewMode] = useState<ViewMode>('list')
+      const [filters, setFilters] = useState<FilterConfig>({
+        searchTerm: '',
+        status: [],
+        priority: [],
+      })
+      const [sortConfig, setSortConfig] = useState<SortConfig | null>({ key: 'updatedAt', direction: 'desc' })
+      const [selectedItem, setSelectedItem] = useState<DataItem | null>(null)  
+      const [items, setItems] = useState<DataItem[]>([])
+      const [page, setPage] = useState(0) // Start at 0 to trigger initial load effect
+      const [hasMore, setHasMore] = useState(true)
+      const [isLoading, setIsLoading] = useState(true)
+      const contentRef = useRef<HTMLDivElement>(null)
+      const statsRef = useRef<HTMLDivElement>(null)
+      const observer = useRef<IntersectionObserver>()
+
+      const isInitialLoading = isLoading && items.length === 0
+
+      // Centralized data processing
+      const processedData = useMemo(() => {
+        let filteredItems = mockDataItems.filter(item => {
+          const searchTermMatch =
+            item.title.toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
+            item.description.toLowerCase().includes(filters.searchTerm.toLowerCase())
+
+          const statusMatch = filters.status.length === 0 || filters.status.includes(item.status)
+          const priorityMatch = filters.priority.length === 0 || filters.priority.includes(item.priority)
+
+          return searchTermMatch && statusMatch && priorityMatch
+        })
+
+        if (sortConfig) {
+          filteredItems.sort((a, b) => {
+            let aValue: any
+            let bValue: any
+
+            const getNestedValue = (obj: any, path: string) => path.split('.').reduce((o, k) => (o || {})[k], obj)
+
+            aValue = getNestedValue(a, sortConfig.key)
+            bValue = getNestedValue(b, sortConfig.key)
+
+            if (aValue === undefined || bValue === undefined) return 0;
+
+            if (typeof aValue === 'string' && typeof bValue === 'string') {
+              return sortConfig.direction === 'asc'
+                ? aValue.localeCompare(bValue)
+                : bValue.localeCompare(aValue)
+            }
+            if (typeof aValue === 'number' && typeof bValue === 'number') {
+              return sortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue
+            }
+            // Date sorting (assuming ISO strings)
+            if (sortConfig.key === 'updatedAt' || sortConfig.key === 'createdAt') {
+                return sortConfig.direction === 'asc'
+                    ? new Date(aValue).getTime() - new Date(aValue).getTime()
+                    : new Date(bValue).getTime() - new Date(bValue).getTime()
+            }
+            return 0
+          })
+        }
+        return filteredItems
+      }, [filters, sortConfig])
+
+      // Calculate stats from data
+      const totalItems = mockDataItems.length
+      const activeItems = mockDataItems.filter(item => item.status === 'active').length
+      const highPriorityItems = mockDataItems.filter(item => item.priority === 'high' || item.priority === 'critical').length
+      const avgCompletion = totalItems > 0 ? Math.round(
+        mockDataItems.reduce((acc, item) => acc + item.metrics.completion, 0) / totalItems
+      ) : 0
+
+      // Reset pagination when filters or sort change
+      useEffect(() => {
+        setItems([])
+        setPage(0) // This will be incremented to 1 in the loader `useEffect`, triggering a fresh load
+        setHasMore(true)
+        // This timeout helps prevent a flicker between old and new filtered data
+        setTimeout(() => setPage(1), 50)
+      }, [processedData])
+
+      // Infinite scroll logic
+      useEffect(() => { // eslint-disable-line react-hooks/exhaustive-deps
+        if (page === 0) return;
+
+        const fetchItems = () => {
+          setIsLoading(true);
+          const isFirstPage = page === 1
+          
+          const pageSize = 12;
+          const newItems = processedData.slice((page - 1) * pageSize, page * pageSize);
+          
+          // Simulate network delay, longer for initial load to showcase skeleton
+          setTimeout(() => {
+            setItems(prev => (isFirstPage ? newItems : [...prev, ...newItems]))
+            setHasMore(processedData.length > page * pageSize)
+            setIsLoading(false)
+          }, isFirstPage && items.length === 0 ? 1500 : 500)
+        };
+
+        if (hasMore) fetchItems();
+      }, [page]);
+
+      const loaderRef = useCallback(node => {
+        if (isLoading) return;
+        if (observer.current) observer.current.disconnect();
+        
+        observer.current = new IntersectionObserver(entries => {
+          if (entries[0].isIntersecting && hasMore) {
+            setPage(prevPage => prevPage + 1);
+          }
+        });
+        if (node) observer.current.observe(node);
+      }, [isLoading, hasMore]);
+
+      const stats: StatItem[] = [
+        {
+          title: "Total Projects",
+          value: totalItems.toString(),
+          icon: <Layers className="w-5 h-5" />,
+          change: "+5.2% this month",
+          trend: "up" as const,
+          type: 'chart',
+          chartData: [120, 125, 122, 130, 135, 138, 142]
+        },
+        {
+          title: "Active Projects",
+          value: activeItems.toString(),
+          icon: <PlayCircle className="w-5 h-5" />,
+          change: "+2 this week", 
+          trend: "up" as const,
+          type: 'chart',
+          chartData: [45, 50, 48, 55, 53, 60, 58]
+        },
+        {
+          title: "High Priority",
+          value: highPriorityItems.toString(),
+          icon: <AlertTriangle className="w-5 h-5" />,
+          change: "-1 from last week",
+          trend: "down" as const,
+          type: 'chart',
+          chartData: [25, 26, 28, 27, 26, 24, 23]
+        },
+        {
+          title: "Avg. Completion",
+          value: `${avgCompletion}%`,
+          icon: <TrendingUp className="w-5 h-5" />,
+          change: "+3.2%",
+          trend: "up" as const,
+          type: 'chart',
+          chartData: [65, 68, 70, 69, 72, 75, 78]
+        }
+      ]
+
+      useEffect(() => {
+        // Animate stats cards in
+        if (!isInitialLoading && statsRef.current) {
+          gsap.fromTo(statsRef.current.children,
+            { y: 30, opacity: 0 },
+            {
+              duration: 0.6,
+              y: 0,
+              opacity: 1,
+              stagger: 0.1,
+              ease: "power2.out"
+            }
+          )
+        }
+      }, [isInitialLoading])
+
+      const handleSortChange = (config: SortConfig | null) => {
+        setSortConfig(config)
+      }
+
+      // For table view header clicks
+      const handleTableSort = (field: SortableField) => {
+        if (sortConfig?.key === field) {
+          if (sortConfig.direction === 'desc') {
+            // Cycle: desc -> asc
+            setSortConfig({ key: field, direction: 'asc' })
+          } else {
+            // Cycle: asc -> default
+            setSortConfig(null)
+          }
+        } else {
+          // New field, default to desc
+          setSortConfig({ key: field, direction: 'desc' })
+        }
+      }
+
+      const handleFilterChange = (newFilters: FilterConfig) => {
+        setFilters(newFilters)
+      }
+      
+      // Handle item selection and open side panel
+      const handleItemSelect = (item: DataItem) => {
+        setSelectedItem(item)
+      }
+
+      if (selectedItem) {
+        return (
+          <DataDetailPanel
+            item={selectedItem}
+            onClose={() => setSelectedItem(null)}
+          />
+        )
+      }
+
+      const renderView = () => {
+        const commonProps = {
+          data: items,
+          onItemSelect: handleItemSelect,
+          selectedItem,
+          sortConfig,
+          onSort: handleTableSort,
+        }
+
+        switch (viewMode) {
+          case 'list':
+            return <DataListView {...commonProps} />
+          case 'cards':
+            return <DataCardView {...commonProps} />
+          case 'grid':
+            return <DataCardView {...commonProps} isGrid />
+          case 'table':
+            return <DataTableView {...commonProps} />
+          default:
+            return <DataListView {...commonProps} />
+        }
+      }
+
+      return (
+        <PageLayout
+          // Note: Search functionality is handled by a separate SearchBar in the TopBar
+        >
+          <div className="space-y-8">
+            {/* Header */}
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div className="flex-1">
+                <h1 className="text-2xl font-bold tracking-tight">Data Showcase</h1>
+                <p className="text-muted-foreground">
+                  {isInitialLoading 
+                    ? "Loading projects..." 
+                    : `Showing ${processedData.length} item(s)`}
+                </p>
+              </div>
+              <DataViewModeSelector viewMode={viewMode} onChange={setViewMode} />
+            </div>
+
+            {/* Stats Section */}
+            {!isInitialLoading && (
+              <div ref={statsRef} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                {stats.map((stat) =>
+                  stat.type === 'chart' ? (
+                    <StatChartCard
+                      key={stat.title}
+                      title={stat.title}
+                      value={stat.value}
+                      change={stat.change}
+                      trend={stat.trend}
+                      icon={stat.icon}
+                      chartData={stat.chartData}
+                    />
+                  ) : null
+                )}
+              </div>
+            )}
+
+            <DataToolbar
+              filters={filters}
+              onFiltersChange={handleFilterChange}
+              sortConfig={sortConfig}
+              onSortChange={handleSortChange}
+            />
+
+            <div ref={contentRef} className="min-h-[500px]">
+              {isInitialLoading ? <AnimatedLoadingSkeleton viewMode={viewMode} /> : renderView()}
+            </div>
+
+            {/* Loader for infinite scroll */}
+            <div ref={loaderRef} className="flex justify-center items-center py-6">
+              {isLoading && !isInitialLoading && (
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span>Loading more...</span>
+                </div>
+              )}
+              {!isLoading && !hasMore && processedData.length > 0 && !isInitialLoading && (
+                <p className="text-muted-foreground">You've reached the end.</p>
+              )}
+            </div>
+          </div>
+        </PageLayout>
+      )
+    }
+  src/pages/DataDemo/components/AnimatedLoadingSkeleton.tsx: >
+    import React, { useEffect, useRef, useState } from 'react'
+
+    import { gsap } from 'gsap'
+
+    import { Search } from 'lucide-react'
+
+    import { cn } from '@/lib/utils'
+
+    import type { ViewMode } from '../types'
+
+
+    interface GridConfig {
+      numCards: number
+      cols: number
+    }
+
+
+    export const AnimatedLoadingSkeleton = ({ viewMode }: { viewMode: ViewMode
+    }) => {
+      const [windowWidth, setWindowWidth] = useState(0)
+      const containerRef = useRef<HTMLDivElement>(null)
+      const iconRef = useRef<HTMLDivElement>(null)
+      const timelineRef = useRef<gsap.core.Timeline | null>(null)
+
+      const getGridConfig = (width: number): GridConfig => {
+        if (viewMode === 'list' || viewMode === 'table') {
+          return { numCards: 5, cols: 1 }
+        }
+        const cols = width >= 1280 ? 4 : width >= 1024 ? 3 : width >= 768 ? 2 : 1
+        return { numCards: Math.max(8, cols * 2), cols }
+      }
+
+      useEffect(() => {
+        const handleResize = () => setWindowWidth(window.innerWidth)
+        handleResize()
+        window.addEventListener('resize', handleResize)
+        return () => window.removeEventListener('resize', handleResize)
+      }, [])
+
+      useEffect(() => {
+        if (timelineRef.current) {
+          timelineRef.current.kill()
+        }
+        if (!iconRef.current || !containerRef.current || windowWidth === 0) return
+
+        // Allow DOM to update with new skeleton cards
+        const timeoutId = setTimeout(() => {
+          const cards = Array.from(containerRef.current!.children)
+          if (cards.length === 0) return
+
+          const shuffledCards = gsap.utils.shuffle(cards)
+
+          const getCardPosition = (card: Element) => {
+            const rect = card.getBoundingClientRect()
+            const containerRect = containerRef.current!.getBoundingClientRect()
+            const iconRect = iconRef.current!.getBoundingClientRect()
+
+            return {
+              x: rect.left - containerRect.left + rect.width / 2 - iconRect.width / 2,
+              y: rect.top - containerRect.top + rect.height / 2 - iconRect.height / 2,
+            }
+          }
+          
+          const tl = gsap.timeline({
+            repeat: -1,
+            repeatDelay: 0.5,
+            defaults: { duration: 1, ease: 'power2.inOut' }
+          });
+          timelineRef.current = tl
+
+          // Animate to a few random cards
+          shuffledCards.slice(0, 5).forEach(card => {
+            const pos = getCardPosition(card)
+            tl.to(iconRef.current, { 
+              x: pos.x,
+              y: pos.y,
+              scale: 1.2,
+              duration: 0.8
+            }).to(iconRef.current, {
+              scale: 1,
+              duration: 0.2
+            })
+          });
+
+          // Loop back to the start
+          const firstPos = getCardPosition(shuffledCards[0]);
+          tl.to(iconRef.current, { x: firstPos.x, y: firstPos.y, duration: 0.8 });
+        }, 100) // Small delay to ensure layout is calculated
+
+        return () => {
+          clearTimeout(timeoutId)
+          if (timelineRef.current) {
+            timelineRef.current.kill()
+          }
+        }
+
+      }, [windowWidth, viewMode])
+
+      const config = getGridConfig(windowWidth)
+
+      const renderSkeletonCard = (key: number) => {
+        if (viewMode === 'list' || viewMode === 'table') {
+          return (
+            <div key={key} className="bg-card/30 border border-border/30 rounded-2xl p-6 flex items-start gap-4 animate-pulse">
+              <div className="w-14 h-14 bg-muted rounded-xl flex-shrink-0"></div>
+              <div className="flex-1 space-y-3">
+                <div className="h-4 bg-muted rounded w-3/4"></div>
+                <div className="h-3 bg-muted rounded w-full"></div>
+                <div className="h-3 bg-muted rounded w-5/6"></div>
+                <div className="flex gap-2 pt-2">
+                  <div className="h-6 bg-muted rounded-full w-20"></div>
+                  <div className="h-6 bg-muted rounded-full w-20"></div>
+                </div>
+              </div>
+            </div>
+          )
+        }
+
+        return (
+          <div 
+            key={key} 
+            className={cn(
+              "bg-card/30 border border-border/30 rounded-3xl p-6 space-y-4 animate-pulse",
+              viewMode === 'grid' && "break-inside-avoid mb-6"
+            )}
+          >
+            <div className="flex items-start justify-between">
+              <div className="w-16 h-16 bg-muted rounded-2xl"></div>
+              <div className="w-4 h-4 bg-muted rounded-full"></div>
+            </div>
+            <div className="h-4 bg-muted rounded w-3/4"></div>
+            <div className="h-3 bg-muted rounded w-full"></div>
+            <div className="h-3 bg-muted rounded w-5/6"></div>
+            <div className="h-2 w-full bg-muted rounded-full my-4"></div>
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-muted rounded-full"></div>
+              <div className="flex-1 space-y-2">
+                <div className="h-3 bg-muted rounded w-1/2"></div>
+                <div className="h-2 bg-muted rounded w-1/3"></div>
+              </div>
+            </div>
+          </div>
+        )
+      }
+
+      const gridClasses = {
+        list: "space-y-4",
+        table: "space-y-4",
+        cards: "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6",
+        grid: "columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-6 space-y-6"
+      }
+
+      return (
+        <div className="relative overflow-hidden rounded-lg min-h-[500px]">
+          <div 
+            ref={iconRef}
+            className="absolute z-10 p-3 bg-primary/20 rounded-full backdrop-blur-sm"
+            style={{ willChange: 'transform' }}
+          >
+            <Search className="w-6 h-6 text-primary" />
+          </div>
+
+          <div 
+            ref={containerRef}
+            className={cn(gridClasses[viewMode])}
+          >
+            {[...Array(config.numCards)].map((_, i) => renderSkeletonCard(i))}
+          </div>
+        </div>
+      )
+    }
+  src/pages/DataDemo/components/DataDetailPanel.tsx: |-
+    import React, { useLayoutEffect, useRef } from 'react'
+    import { gsap } from 'gsap'
+    import { cn } from '@/lib/utils'
+    import { Badge } from '@/components/ui/badge'
+    import { Avatar } from '@/components/ui/avatar'
+    import { Button } from '@/components/ui/button'
+    import { 
+      ArrowLeft,
+      Calendar, 
+      Clock, 
+      Eye, 
+      Heart, 
+      Share, 
+      Download,
+      FileText,
+      Image,
+      Video,
+      File,
+      ExternalLink,
+      Tag,
+      User,
+      BarChart3,
+      TrendingUp,
+      CheckCircle,
+      AlertCircle,
+      Circle
+    } from 'lucide-react' 
+    import type { DataItem } from '../types'
+    import { getStatusColor, getPriorityColor } from '../utils'
+
+    interface DataDetailPanelProps {
+      item: DataItem | null
+      onClose: () => void
+    }
+
+    export function DataDetailPanel({ item, onClose }: DataDetailPanelProps) {
+      const contentRef = useRef<HTMLDivElement>(null)
+
+      useLayoutEffect(() => {
+        if (item && contentRef.current) {
+          gsap.fromTo(contentRef.current.children,
+            { y: 30, opacity: 0 },
+            {
+              duration: 0.6,
+              y: 0,
+              opacity: 1,
+              stagger: 0.08,
+              ease: "power2.out"
+            }
+          )
+        }
+      }, [item])
+
+      if (!item) {
+        return null
+      }
+
+      const getFileIcon = (type: string) => {
+        switch (type.toLowerCase()) {
+          case 'pdf': return FileText
+          case 'image':
+          case 'png':
+          case 'jpg':
+          case 'jpeg': return Image
+          case 'video':
+          case 'mp4': return Video
+          default: return File
+        }
+      }
+
+      const getStatusIcon = (status: string) => {
+        switch (status) {
+          case 'completed': return CheckCircle
+          case 'active': return Circle
+          case 'pending': return AlertCircle
+          default: return Circle
+        }
+      }
+
+      return (
+        <div ref={contentRef} className="h-full flex flex-col">
+          {/* Header */}
+          <div className="p-6 border-b border-border/50 bg-gradient-to-r from-card/50 to-card/30 backdrop-blur-sm">
+            <Button variant="ghost" onClick={onClose} className="mb-4 -ml-4">
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back to list
+            </Button>
+            <div className="flex items-start gap-4 mb-4">
+              <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-primary/10 rounded-2xl flex items-center justify-center text-3xl flex-shrink-0">
+                {item.thumbnail}
+              </div>
+              <div className="flex-1 min-w-0">
+                <h1 className="text-2xl font-bold mb-2 leading-tight">
+                  {item.title}
+                </h1>
+                <p className="text-muted-foreground">
+                  {item.description}
+                </p>
+              </div>
+            </div>
+
+            {/* Status badges */}
+            <div className="flex items-center gap-2 mb-4">
+              <Badge variant="outline" className={getStatusColor(item.status)}>
+                {React.createElement(getStatusIcon(item.status), { className: "w-3 h-3 mr-1" })}
+                {item.status}
+              </Badge>
+              <Badge variant="outline" className={getPriorityColor(item.priority)}>
+                {item.priority}
+              </Badge>
+              <Badge variant="outline" className="bg-accent/50">
+                {item.category}
+              </Badge>
+            </div>
+
+            {/* Progress */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Progress</span>
+                <span className="text-sm font-bold">{item.metrics.completion}%</span>
+              </div>
+              <div className="w-full bg-muted rounded-full h-3">
+                <div 
+                  className="bg-gradient-to-r from-primary to-primary/80 h-3 rounded-full transition-all duration-1000 ease-out"
+                  style={{ width: `${item.metrics.completion}%` }}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Content */}
+          <div className="flex-1 overflow-y-auto">
+            <div className="p-6 space-y-6">
+              {/* Assignee Info */}
+              <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
+                <div className="flex items-center gap-1 mb-3">
+                  <User className="w-4 h-4 text-muted-foreground" />
+                  <h3 className="font-semibold text-sm">Assigned to</h3>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Avatar className="w-12 h-12">
+                    {item.assignee.avatar}
+                  </Avatar>
+                  <div>
+                    <p className="font-medium">{item.assignee.name}</p>
+                    <p className="text-sm text-muted-foreground">{item.assignee.email}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Metrics */}
+              <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
+                <div className="flex items-center gap-1 mb-3">
+                  <BarChart3 className="w-4 h-4 text-muted-foreground" />
+                  <h3 className="font-semibold text-sm">Engagement Metrics</h3>
+                </div>
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="text-center">
+                    <div className="flex items-center justify-center gap-1 mb-1">
+                      <Eye className="w-4 h-4 text-blue-500" />
+                    </div>
+                    <p className="text-2xl font-bold">{item.metrics.views}</p>
+                    <p className="text-xs text-muted-foreground">Views</p>
+                  </div>
+                  <div className="text-center">
+                    <div className="flex items-center justify-center gap-1 mb-1">
+                      <Heart className="w-4 h-4 text-red-500" />
+                    </div>
+                    <p className="text-2xl font-bold">{item.metrics.likes}</p>
+                    <p className="text-xs text-muted-foreground">Likes</p>
+                  </div>
+                  <div className="text-center">
+                    <div className="flex items-center justify-center gap-1 mb-1">
+                      <Share className="w-4 h-4 text-green-500" />
+                    </div>
+                    <p className="text-2xl font-bold">{item.metrics.shares}</p>
+                    <p className="text-xs text-muted-foreground">Shares</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Tags */}
+              <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
+                <div className="flex items-center gap-1 mb-3">
+                  <Tag className="w-4 h-4 text-muted-foreground" />
+                  <h3 className="font-semibold text-sm">Tags</h3>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {item.tags.map((tag, index) => (
+                    <span
+                      key={index}
+                      className="bg-muted/50 text-muted-foreground px-3 py-1 rounded-full text-xs font-medium"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Content Details */}
+              {item.content && (
+                <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
+                  <h3 className="font-semibold text-sm mb-3">Project Details</h3>
+                  <div className="space-y-4">
+                    <div>
+                      <h4 className="font-medium text-sm mb-2">Summary</h4>
+                      <p className="text-sm text-muted-foreground leading-relaxed">
+                        {item.content.summary}
+                      </p>
+                    </div>
+                    <div>
+                      <h4 className="font-medium text-sm mb-2">Description</h4>
+                      <p className="text-sm text-muted-foreground leading-relaxed">
+                        {item.content.details}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Attachments */}
+              {item.content?.attachments && item.content.attachments.length > 0 && (
+                <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
+                  <h3 className="font-semibold text-sm mb-3">Attachments</h3>
+                  <div className="space-y-2">
+                    {item.content.attachments.map((attachment, index) => {
+                      const IconComponent = getFileIcon(attachment.type)
+                      return (
+                        <div
+                          key={index}
+                          className="flex items-center gap-3 p-3 bg-muted/30 rounded-xl hover:bg-muted/50 transition-colors cursor-pointer group"
+                        >
+                          <IconComponent className="w-5 h-5 text-muted-foreground" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">
+                              {attachment.name}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {attachment.type} • {attachment.size}
+                            </p>
+                          </div>
+                          <Button size="sm" variant="ghost" className="opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Download className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Timeline */}
+              <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
+                <div className="flex items-center gap-1 mb-3">
+                  <Clock className="w-4 h-4 text-muted-foreground" />
+                  <h3 className="font-semibold text-sm">Timeline</h3>
+                </div>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-sm">
+                    <Calendar className="w-3 h-3 text-muted-foreground" />
+                    <span className="text-muted-foreground">Created:</span>
+                    <span className="font-medium">
+                      {new Date(item.createdAt).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                      })}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <TrendingUp className="w-3 h-3 text-muted-foreground" />
+                    <span className="text-muted-foreground">Last updated:</span>
+                    <span className="font-medium">
+                      {new Date(item.updatedAt).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                      })}
+                    </span>
+                  </div>
+                  {item.dueDate && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <AlertCircle className="w-3 h-3 text-orange-500" />
+                      <span className="text-muted-foreground">Due date:</span>
+                      <span className="font-medium text-orange-600">
+                        {new Date(item.dueDate).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric'
+                        })}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Footer Actions */}
+          <div className="p-6 border-t border-border/50 bg-card/30">
+            <div className="flex gap-3">
+              <Button className="flex-1" size="sm">
+                <ExternalLink className="w-4 h-4 mr-2" />
+                Open Project
+              </Button>
+              <Button variant="outline" size="sm">
+                <Share className="w-4 h-4 mr-2" />
+                Share
+              </Button>
+            </div>
+          </div>
+        </div>
+      )
+    }
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 189

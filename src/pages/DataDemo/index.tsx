@@ -291,7 +291,7 @@ export default function DataDemoPage({ isInSidePane = false }: { isInSidePane?: 
 
         {/* Stats Section */}
         {!isInitialLoading && (
-          <div ref={statsRef} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div ref={statsRef} className="grid grid-cols-[repeat(auto-fit,minmax(250px,1fr))] gap-6">
             {stats.map((stat) =>
               stat.type === 'chart' ? (
                 <StatChartCard

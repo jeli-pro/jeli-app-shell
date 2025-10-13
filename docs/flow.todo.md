@@ -3,13 +3,18 @@
 scroll to bottom in dashboard is not stick to right bottom.
 also why not auto applied to another page like demo data?
 
-===
-
-viewmodeswitcher: no need to show all iconbuttons, just let user hover first then gsap spread the iconbuttons to make the UI feel minimalism
 
 ===
 
 demo data page: opening data item detail not working , the overlay side pane blank
+
+===
+
+sidebar item: while hover, show ViewModeSwitcher so user can open page with desired view mode
+
+===
+
+viewmodeswitcher: no need to show all iconbuttons, just let user hover first then gsap spread the iconbuttons to make the UI feel minimalism
 
 ===
 
