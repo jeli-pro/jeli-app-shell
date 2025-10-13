@@ -7,6 +7,7 @@ import {
   Zap,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useSearchParams, useLocation, useNavigate } from 'react-router-dom';
 import { BODY_STATES } from '@/lib/utils'
 import { useAppStore } from '@/store/appStore'
 import { useAppShell } from '@/context/AppShellContext'
@@ -24,22 +25,30 @@ export function TopBar({
   onToggleDarkMode,
   children,
 }: TopBarProps) {
-  const { bodyState, openSidePane, sidePaneContent } = useAppShell();
+  const { bodyState } = useAppShell()
+  const [searchParams, setSearchParams] = useSearchParams();
+  const location = useLocation();
+  const navigate = useNavigate();
   const { 
     setCommandPaletteOpen,
     isDarkMode,
   } = useAppStore()
 
   const handleSettingsClick = () => {
-    const isSettingsInSidePane = bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === 'settings'
-
-    // If we're on the settings page and it's not in the side pane, treat this as a "minimize" action.
-    if (!isSettingsInSidePane) {
-      openSidePane('settings');
+    if (location.pathname === '/settings') {
+      navigate({ pathname: '/dashboard', search: '?sidePane=settings' }, { replace: true });
     } else {
-      // In all other cases (on dashboard page, or settings already in pane),
-      // just toggle the settings side pane.
-      openSidePane('settings')
+      setSearchParams(prev => {
+        const newParams = new URLSearchParams(prev);
+        if (newParams.get('sidePane') === 'settings') {
+          newParams.delete('sidePane');
+        } else {
+          newParams.set('sidePane', 'settings');
+          newParams.delete('view');
+          newParams.delete('right');
+        }
+        return newParams;
+      }, { replace: true });
     }
   };
 

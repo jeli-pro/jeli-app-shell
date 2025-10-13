@@ -2,24 +2,15 @@
 ```
 src/
   components/
-    auth/
-      LoginPage.tsx
-    global/
-      CommandPalette.tsx
     layout/
       AppShell.tsx
       EnhancedSidebar.tsx
       MainContent.tsx
-      TopBar.tsx
       ViewModeSwitcher.tsx
   context/
     AppShellContext.tsx
   pages/
     DataDemo/
-      components/
-        DataCardView.tsx
-        DataDetailPanel.tsx
-        DataListView.tsx
       index.tsx
   store/
     appStore.ts
@@ -101,514 +92,6 @@ export default {
 }
 ```
 
-## File: src/components/auth/LoginPage.tsx
-```typescript
-import React, {
-	useState,
-	ChangeEvent,
-	FormEvent,
-	ReactNode,
-	useEffect,
-	useRef,
-	forwardRef,
-	memo,
-} from 'react';
-import { Eye, EyeOff, Mail, ArrowLeft } from 'lucide-react';
-import { gsap } from 'gsap';
-import { cn } from '@/lib/utils';
-
-// ==================== Input Component ====================
-const Input = memo(
-	forwardRef(function Input(
-		{ className, type, ...props }: React.InputHTMLAttributes<HTMLInputElement>,
-		ref: React.ForwardedRef<HTMLInputElement>,
-	) {
-		const radius = 100;
-		const wrapperRef = useRef<HTMLDivElement>(null);
-
-		useEffect(() => {
-			const wrapper = wrapperRef.current;
-			if (!wrapper) return;
-
-			let animationFrameId: number | null = null;
-
-			const handleMouseMove = (e: MouseEvent) => {
-				if (animationFrameId) {
-					cancelAnimationFrame(animationFrameId);
-				}
-
-				animationFrameId = requestAnimationFrame(() => {
-					if (!wrapper) return;
-					const { left, top } = wrapper.getBoundingClientRect();
-					const x = e.clientX - left;
-					const y = e.clientY - top;
-					wrapper.style.setProperty('--mouse-x', `${x}px`);
-					wrapper.style.setProperty('--mouse-y', `${y}px`);
-				});
-			};
-
-			const handleMouseEnter = () => {
-				if (!wrapper) return;
-				wrapper.style.setProperty('--radius', `${radius}px`);
-			};
-
-			const handleMouseLeave = () => {
-				if (!wrapper) return;
-				wrapper.style.setProperty('--radius', '0px');
-				if (animationFrameId) {
-					cancelAnimationFrame(animationFrameId);
-					animationFrameId = null;
-				}
-			};
-
-			wrapper.addEventListener('mousemove', handleMouseMove);
-			wrapper.addEventListener('mouseenter', handleMouseEnter);
-			wrapper.addEventListener('mouseleave', handleMouseLeave);
-
-			return () => {
-				wrapper.removeEventListener('mousemove', handleMouseMove);
-				wrapper.removeEventListener('mouseenter', handleMouseEnter);
-				wrapper.removeEventListener('mouseleave', handleMouseLeave);
-				if (animationFrameId) {
-					cancelAnimationFrame(animationFrameId);
-				}
-			};
-		}, [radius]);
-
-		return (
-			<div
-				ref={wrapperRef}
-				style={
-					{
-						'--radius': '0px',
-						'--mouse-x': '0px',
-						'--mouse-y': '0px',
-						background: `radial-gradient(var(--radius) circle at var(--mouse-x) var(--mouse-y), #3b82f6, transparent 80%)`,
-					} as React.CSSProperties
-				}
-				className="group/input rounded-lg p-[2px] transition duration-300"
-			>
-				<input
-					type={type}
-					className={cn(
-						`shadow-input dark:placeholder-text-neutral-600 flex h-10 w-full rounded-md border-none bg-gray-50 px-3 py-2 text-sm text-black transition duration-400 group-hover/input:shadow-none file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-neutral-400 focus-visible:ring-[2px] focus-visible:ring-neutral-400 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 dark:bg-zinc-800 dark:text-white dark:shadow-[0px_0px_1px_1px_#404040] dark:focus-visible:ring-neutral-600`,
-						className,
-					)}
-					ref={ref}
-					{...props}
-				/>
-			</div>
-		);
-	}),
-);
-
-// ==================== BoxReveal Component ====================
-type BoxRevealProps = {
-	children: ReactNode;
-	width?: string;
-	boxColor?: string;
-	duration?: number;
-	className?: string;
-};
-
-const BoxReveal = memo(function BoxReveal({
-	children,
-	width = 'fit-content',
-	boxColor,
-	duration,
-	className,
-}: BoxRevealProps) {
-	const sectionRef = useRef<HTMLDivElement>(null);
-	const boxRef = useRef<HTMLDivElement>(null);
-	const childRef = useRef<HTMLDivElement>(null);
-
-	useEffect(() => {
-		const section = sectionRef.current;
-		if (!section) return;
-
-		const observer = new IntersectionObserver(
-			(entries) => {
-				entries.forEach((entry) => {
-					if (entry.isIntersecting) {
-						gsap.timeline()
-							.set(childRef.current, { opacity: 0, y: 50 })
-							.set(boxRef.current, { transformOrigin: 'right' })
-							.to(boxRef.current, {
-								scaleX: 0,
-								duration: duration ?? 0.5,
-								ease: 'power3.inOut',
-							})
-							.to(
-								childRef.current,
-								{ y: 0, opacity: 1, duration: duration ?? 0.5, ease: 'power3.out' },
-								'-=0.3',
-							);
-						observer.unobserve(section);
-					}
-				});
-			},
-			{ threshold: 0.1 },
-		);
-
-		observer.observe(section);
-
-		return () => {
-			if (section) {
-				observer.unobserve(section);
-			}
-		};
-	}, [duration]);
-
-	return (
-		<div ref={sectionRef} style={{ width }} className={cn('relative overflow-hidden', className)}>
-			<div ref={childRef}>{children}</div>
-			<div
-				ref={boxRef}
-				style={{
-					background: boxColor ?? 'hsl(var(--skeleton))',
-				}}
-				className="absolute top-1 bottom-1 left-0 right-0 z-20 rounded-sm"
-			/>
-		</div>
-	);
-});
-
-// ==================== Ripple Component ====================
-interface RippleProps {
-	mainCircleSize?: number;
-	mainCircleOpacity?: number;
-	numCircles?: number;
-}
-const Ripple = memo(function Ripple({
-	mainCircleSize = 210,
-	mainCircleOpacity = 0.24,
-	numCircles = 11,
-}: RippleProps) {
-	return (
-		<div className="absolute inset-0 flex items-center justify-center [mask-image:linear-gradient(to_bottom,white,transparent)]">
-			{Array.from({ length: numCircles }, (_, i) => {
-				const size = mainCircleSize + i * 70;
-				const opacity = mainCircleOpacity - i * 0.03;
-				const animationDelay = `${i * 0.06}s`;
-				const borderStyle = i === numCircles - 1 ? 'dashed' : 'solid';
-				const borderOpacity = 5 + i * 5;
-
-				return (
-					<div
-						key={i}
-						className="absolute animate-ripple rounded-full border"
-						style={
-							{
-								width: `${size}px`,
-								height: `${size}px`,
-								opacity: opacity,
-								animationDelay: animationDelay,
-								borderStyle: borderStyle,
-								borderWidth: '1px',
-								borderColor: `hsl(var(--foreground) / ${borderOpacity / 100})`,
-								top: '50%',
-								left: '50%',
-								transform: 'translate(-50%, -50%)',
-							} as React.CSSProperties
-						}
-					/>
-				);
-			})}
-		</div>
-	);
-});
-
-// ==================== OrbitingCircles Component ====================
-const OrbitingCircles = memo(function OrbitingCircles({
-	className,
-	children,
-	reverse = false,
-	duration = 20,
-	delay = 10,
-	radius = 50,
-	path = true,
-}: {
-	className?: string;
-	children?: React.ReactNode;
-	reverse?: boolean;
-	duration?: number;
-	delay?: number;
-	radius?: number;
-	path?: boolean;
-}) {
-	return (
-		<>
-			{path && (
-				<svg
-					xmlns="http://www.w3.org/2000/svg"
-					version="1.1"
-					className="pointer-events-none absolute inset-0 size-full"
-				>
-					<circle
-						className="stroke-black/10 stroke-1 dark:stroke-white/10"
-						cx="50%"
-						cy="50%"
-						r={radius}
-						fill="none"
-					/>
-				</svg>
-			)}
-			<div
-				style={
-					{
-						'--duration': duration,
-						'--radius': radius,
-						'--delay': -delay,
-					} as React.CSSProperties
-				}
-				className={cn(
-					'absolute flex size-full transform-gpu animate-orbit items-center justify-center rounded-full border bg-black/10 [animation-delay:calc(var(--delay)*1s)] dark:bg-white/10',
-					{ '[animation-direction:reverse]': reverse },
-					className,
-				)}
-			>
-				{children}
-			</div>
-		</>
-	);
-});
-
-// ==================== TechOrbitDisplay Component ====================
-interface OrbitIcon {
-	component: () => ReactNode;
-	className: string;
-	duration?: number;
-	delay?: number;
-	radius?: number;
-	path?: boolean;
-	reverse?: boolean;
-}
-
-const iconsArray: OrbitIcon[] = [
-	{ component: () => <img width={30} height={30} src='https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/html5/html5-original.svg' alt='HTML5' />, className: 'size-[30px] border-none bg-transparent', duration: 20, delay: 20, radius: 100, path: false, reverse: false },
-	{ component: () => <img width={30} height={30} src='https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/css3/css3-original.svg' alt='CSS3' />, className: 'size-[30px] border-none bg-transparent', duration: 20, delay: 10, radius: 100, path: false, reverse: false },
-	{ component: () => <img width={50} height={50} src='https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/typescript/typescript-original.svg' alt='TypeScript' />, className: 'size-[50px] border-none bg-transparent', radius: 210, duration: 20, path: false, reverse: false },
-	{ component: () => <img width={50} height={50} src='https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/javascript/javascript-original.svg' alt='JavaScript' />, className: 'size-[50px] border-none bg-transparent', radius: 210, duration: 20, delay: 20, path: false, reverse: false },
-	{ component: () => <img width={30} height={30} src='https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/tailwindcss/tailwindcss-original.svg' alt='TailwindCSS' />, className: 'size-[30px] border-none bg-transparent', duration: 20, delay: 20, radius: 150, path: false, reverse: true },
-	{ component: () => <img width={30} height={30} src='https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/nextjs/nextjs-original.svg' alt='Nextjs' />, className: 'size-[30px] border-none bg-transparent', duration: 20, delay: 10, radius: 150, path: false, reverse: true },
-	{ component: () => <img width={50} height={50} src='https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/react/react-original.svg' alt='React' />, className: 'size-[50px] border-none bg-transparent', radius: 270, duration: 20, path: false, reverse: true },
-	{ component: () => <img width={50} height={50} src='https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/figma/figma-original.svg' alt='Figma' />, className: 'size-[50px] border-none bg-transparent', radius: 270, duration: 20, delay: 60, path: false, reverse: true },
-	{ component: () => <img width={50} height={50} src='https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/git/git-original.svg' alt='Git' />, className: 'size-[50px] border-none bg-transparent', radius: 320, duration: 20, delay: 20, path: false, reverse: false },
-];
-
-const TechOrbitDisplay = memo(function TechOrbitDisplay({ text = 'Jeli App Shell' }: { text?: string }) {
-	return (
-		<div className="relative flex size-full flex-col items-center justify-center overflow-hidden rounded-lg">
-			<span className="pointer-events-none whitespace-pre-wrap bg-gradient-to-b from-black to-gray-300/80 bg-clip-text text-center text-7xl font-semibold leading-none text-transparent dark:from-white dark:to-slate-900/10">
-				{text}
-			</span>
-			{iconsArray.map((icon, index) => (
-				<OrbitingCircles key={index} {...icon}>
-					{icon.component()}
-				</OrbitingCircles>
-			))}
-		</div>
-	);
-});
-
-// ==================== AnimatedForm Components ====================
-const BottomGradient = () => (
-	<>
-		<span className="group-hover/btn:opacity-100 block transition duration-500 opacity-0 absolute h-px w-full -bottom-px inset-x-0 bg-gradient-to-r from-transparent via-cyan-500 to-transparent" />
-		<span className="group-hover/btn:opacity-100 blur-sm block transition duration-500 opacity-0 absolute h-px w-1/2 mx-auto -bottom-px inset-x-10 bg-gradient-to-r from-transparent via-indigo-500 to-transparent" />
-	</>
-);
-
-const Label = memo(function Label({ className, ...props }: React.LabelHTMLAttributes<HTMLLabelElement>) {
-	return <label className={cn('text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70', className)} {...props} />;
-});
-
-// ==================== Main LoginPage Component ====================
-interface LoginPageProps {
-	onLogin?: (email: string, password: string) => void;
-	onForgotPassword?: (email: string) => void;
-	onSignUp?: () => void;
-}
-
-type LoginState = 'login' | 'forgot-password' | 'reset-sent';
-
-export function LoginPage({ onLogin, onForgotPassword }: LoginPageProps) {
-	const [state, setState] = useState<LoginState>('login');
-	const [email, setEmail] = useState('');
-	const [password, setPassword] = useState('');
-	const [isLoading, setIsLoading] = useState(false);
-	const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
-	const [showPassword, setShowPassword] = useState(false);
-
-	const handleLoginSubmit = async (e: FormEvent) => {
-		e.preventDefault();
-		setErrors({});
-		const newErrors: typeof errors = {};
-		if (!email) newErrors.email = 'Email is required';
-		if (!password) newErrors.password = 'Password is required';
-		if (Object.keys(newErrors).length > 0) {
-			setErrors(newErrors);
-			return;
-		}
-		setIsLoading(true);
-		await onLogin?.(email, password);
-		setIsLoading(false);
-	};
-
-	const handleForgotSubmit = async (e: FormEvent) => {
-		e.preventDefault();
-		setErrors({});
-		if (!email) {
-			setErrors({ email: 'Email is required' });
-			return;
-		}
-		setIsLoading(true);
-		await onForgotPassword?.(email);
-		setIsLoading(false);
-		setState('reset-sent');
-	};
-
-	const renderContent = () => {
-		if (state === 'reset-sent') {
-			return (
-				<div className="w-full max-w-md mx-auto text-center flex flex-col gap-4">
-					<BoxReveal boxColor="hsl(var(--skeleton))" duration={0.5}>
-						<div className="w-16 h-16 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center mx-auto">
-							<Mail className="w-8 h-8 text-green-600 dark:text-green-400" />
-						</div>
-					</BoxReveal>
-					<BoxReveal boxColor="hsl(var(--skeleton))" duration={0.5}>
-						<h1 className="text-3xl font-bold tracking-tight">Check your email</h1>
-					</BoxReveal>
-					<BoxReveal boxColor="hsl(var(--skeleton))" duration={0.5}>
-						<p className="text-muted-foreground">We've sent a password reset link to <strong>{email}</strong></p>
-					</BoxReveal>
-					<BoxReveal width="100%" boxColor="hsl(var(--skeleton))" duration={0.5}>
-						<button onClick={() => setState('login')} className="text-sm text-blue-500 hover:underline">
-							<div className="flex items-center justify-center gap-2">
-								<ArrowLeft className="w-4 h-4" /> Back to login
-							</div>
-						</button>
-					</BoxReveal>
-				</div>
-			);
-		}
-
-		const isLogin = state === 'login';
-		const formFields = isLogin
-			? [
-				{ label: 'Email', required: true, type: 'email', placeholder: 'Enter your email address', onChange: (e: ChangeEvent<HTMLInputElement>) => setEmail(e.target.value) },
-				{ label: 'Password', required: true, type: 'password', placeholder: 'Enter your password', onChange: (e: ChangeEvent<HTMLInputElement>) => setPassword(e.target.value) },
-			]
-			: [{ label: 'Email', required: true, type: 'email', placeholder: 'Enter your email address', onChange: (e: ChangeEvent<HTMLInputElement>) => setEmail(e.target.value) }];
-
-		return (
-			<div className="w-full max-w-md mx-auto flex flex-col gap-4">
-				<BoxReveal boxColor="hsl(var(--skeleton))" duration={0.3}>
-					<h2 className="font-bold text-3xl text-neutral-800 dark:text-neutral-200">{isLogin ? 'Welcome back' : 'Reset Password'}</h2>
-				</BoxReveal>
-				<BoxReveal boxColor="hsl(var(--skeleton))" duration={0.3} className="pb-2">
-					<p className="text-neutral-600 text-sm max-w-sm dark:text-neutral-300">{isLogin ? 'Sign in to your account to continue' : 'Enter your email to receive a reset link'}</p>
-				</BoxReveal>
-				{isLogin && (
-					<BoxReveal boxColor="hsl(var(--skeleton))" duration={0.3} width="100%" className="overflow-visible">
-						<button className="g-button group/btn bg-transparent w-full rounded-md border h-10 font-medium outline-hidden hover:cursor-pointer" type="button">
-							<span className="flex items-center justify-center w-full h-full gap-3">
-								<img src="https://cdn1.iconfinder.com/data/icons/google-s-logo/150/Google_Icons-09-512.png" width={26} height={26} alt="Google Icon" />
-								Sign in with Google
-							</span>
-							<BottomGradient />
-						</button>
-					</BoxReveal>
-				)}
-				{isLogin && (
-					<BoxReveal boxColor="hsl(var(--skeleton))" duration={0.3} width="100%">
-						<div className="flex items-center gap-4">
-							<hr className="flex-1 border-1 border-dashed border-neutral-300 dark:border-neutral-700" />
-							<p className="text-neutral-700 text-sm dark:text-neutral-300">or</p>
-							<hr className="flex-1 border-1 border-dashed border-neutral-300 dark:border-neutral-700" />
-						</div>
-					</BoxReveal>
-				)}
-				<form onSubmit={isLogin ? handleLoginSubmit : handleForgotSubmit}>
-					{formFields.map((field) => (
-						<div key={field.label} className="flex flex-col gap-2 mb-4">
-							<BoxReveal boxColor="hsl(var(--skeleton))" duration={0.3}>
-								<Label htmlFor={field.label}>{field.label} <span className="text-red-500">*</span></Label>
-							</BoxReveal>
-							<BoxReveal width="100%" boxColor="hsl(var(--skeleton))" duration={0.3} className="flex flex-col space-y-2 w-full">
-								<div className="relative">
-									<Input type={field.type === 'password' ? (showPassword ? 'text' : 'password') : field.type} id={field.label} placeholder={field.placeholder} onChange={field.onChange} />
-									{field.type === 'password' && (
-										<button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5">
-											{showPassword ? <EyeOff className="h-5 w-5 text-gray-500" /> : <Eye className="h-5 w-5 text-gray-500" />}
-										</button>
-									)}
-								</div>
-								<div className="h-4">{errors[field.label as keyof typeof errors] && <p className="text-red-500 text-xs">{errors[field.label as keyof typeof errors]}</p>}</div>
-							</BoxReveal>
-						</div>
-					))}
-
-					<BoxReveal width="100%" boxColor="hsl(var(--skeleton))" duration={0.3} className="overflow-visible">
-						<button
-							className="bg-gradient-to-br relative group/btn from-zinc-200 dark:from-zinc-900 dark:to-zinc-900 to-zinc-200 block dark:bg-zinc-800 w-full text-black dark:text-white rounded-md h-10 font-medium shadow-[0px_1px_0px_0px_#ffffff40_inset,0px_-1px_0px_0px_#ffffff40_inset] dark:shadow-[0px_1px_0px_0px_var(--zinc-800)_inset,0px_-1px_0px_0px_var(--zinc-800)_inset] outline-hidden hover:cursor-pointer disabled:opacity-50"
-							type="submit" disabled={isLoading}
-						>
-							{isLoading ? (
-								<div className="flex items-center justify-center gap-2">
-									<div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-									<span>Processing...</span>
-								</div>
-							) : (
-								<>{isLogin ? 'Sign in' : 'Send reset link'} &rarr;</>
-							)}
-							<BottomGradient />
-						</button>
-					</BoxReveal>
-					<BoxReveal boxColor="hsl(var(--skeleton))" duration={0.3}>
-						<div className="mt-4 text-center">
-							<button type="button" className="text-sm text-blue-500 hover:underline" onClick={() => setState(isLogin ? 'forgot-password' : 'login')}>
-								{isLogin ? 'Forgot password?' : 'Back to login'}
-							</button>
-						</div>
-					</BoxReveal>
-				</form>
-			</div>
-		);
-	};
-
-	return (
-		<section className="flex max-lg:justify-center min-h-screen w-full login-page-theme bg-background text-foreground">
-			{/* Left Side */}
-			<div className="flex flex-col justify-center w-1/2 max-lg:hidden relative">
-				<Ripple />
-				<TechOrbitDisplay />
-			</div>
-
-			{/* Right Side */}
-			<div className="w-1/2 h-screen flex flex-col justify-center items-center max-lg:w-full max-lg:px-[10%]">
-				{renderContent()}
-			</div>
-		</section>
-	);
-}
-```
-
-## File: src/main.tsx
-```typescript
-import React from 'react'
-import ReactDOM from 'react-dom/client'
-import App from './App.tsx'
-import './index.css'
-
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>,
-)
-```
-
 ## File: tsconfig.json
 ```json
 {
@@ -654,256 +137,18 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
 }
 ```
 
-## File: src/components/global/CommandPalette.tsx
+## File: src/main.tsx
 ```typescript
-import {
-  CommandDialog,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-  CommandSeparator,
-  CommandShortcut,
-} from '@/components/ui/command'
-import { useNavigate, useSearchParams } from 'react-router-dom'
-import { useAppStore } from '@/store/appStore'
-import { useAppShell } from '@/context/AppShellContext'
-import { useCommandPaletteToggle } from '@/hooks/useCommandPaletteToggle.hook'
-import { Home, Settings, Moon, Sun, Monitor, Smartphone, PanelRight, Maximize, Component, Bell } from 'lucide-react'
+import React from 'react'
+import ReactDOM from 'react-dom/client'
+import App from './App.tsx'
+import './index.css'
 
-export function CommandPalette() {
-  const { dispatch, toggleFullscreen } = useAppShell();
-  const navigate = useNavigate();
-  const [, setSearchParams] = useSearchParams();
-  const {
-    isCommandPaletteOpen,
-    setCommandPaletteOpen,
-    isDarkMode,
-    toggleDarkMode,
-  } = useAppStore()
-  useCommandPaletteToggle()
-  
-  const runCommand = (command: () => void) => {
-    setCommandPaletteOpen(false)
-    command()
-  }
-
-  return (
-    <CommandDialog open={isCommandPaletteOpen} onOpenChange={setCommandPaletteOpen}>
-      <CommandInput placeholder="Type a command or search..." />
-      <CommandList>
-        <CommandEmpty>No results found.</CommandEmpty>
-        <CommandGroup heading="Navigation">
-          <CommandItem onSelect={() => runCommand(() => navigate('/dashboard'))}>
-            <Home className="mr-2 h-4 w-4" />
-            <span>Go to Dashboard</span>
-            <CommandShortcut>G D</CommandShortcut>
-          </CommandItem>
-          <CommandItem onSelect={() => runCommand(() => navigate('/settings'))}>
-            <Settings className="mr-2 h-4 w-4" />
-            <span>Go to Settings</span>
-            <CommandShortcut>G S</CommandShortcut>
-          </CommandItem>
-          <CommandItem onSelect={() => runCommand(() => navigate('/toaster'))}>
-            <Component className="mr-2 h-4 w-4" />
-            <span>Go to Toaster Demo</span>
-            <CommandShortcut>G T</CommandShortcut>
-          </CommandItem>
-          <CommandItem onSelect={() => runCommand(() => navigate('/notifications'))}>
-            <Bell className="mr-2 h-4 w-4" />
-            <span>Go to Notifications</span>
-            <CommandShortcut>G N</CommandShortcut>
-          </CommandItem>
-        </CommandGroup>
-        <CommandSeparator />
-        <CommandGroup heading="Actions">
-          <CommandItem onSelect={() => runCommand(toggleDarkMode)}>
-            {isDarkMode ? <Sun className="mr-2 h-4 w-4" /> : <Moon className="mr-2 h-4 w-4" />}
-            <span>Toggle Theme</span>
-            <CommandShortcut>⌘T</CommandShortcut>
-          </CommandItem>
-          <CommandItem onSelect={() => runCommand(toggleFullscreen)}>
-            <Maximize className="mr-2 h-4 w-4" />
-            <span>Toggle Fullscreen</span>
-            <CommandShortcut>⌘F</CommandShortcut>
-          </CommandItem>
-          <CommandItem onSelect={() => runCommand(() => setSearchParams({ sidePane: 'settings' }))}>
-            <PanelRight className="mr-2 h-4 w-4" />
-            <span>Open Settings in Side Pane</span>
-            <CommandShortcut>⌥S</CommandShortcut>
-          </CommandItem>
-        </CommandGroup>
-        <CommandSeparator />
-        <CommandGroup heading="Preferences">
-          <CommandItem onSelect={() => runCommand(() => dispatch({ type: 'SET_COMPACT_MODE', payload: true }))}>
-            <Smartphone className="mr-2 h-4 w-4" />
-            <span>Enable Compact Mode</span>
-            <CommandShortcut>⌘C</CommandShortcut>
-          </CommandItem>
-          <CommandItem onSelect={() => runCommand(() => dispatch({ type: 'SET_COMPACT_MODE', payload: false }))}>
-            <Monitor className="mr-2 h-4 w-4" />
-            <span>Disable Compact Mode</span>
-            <CommandShortcut>⇧⌘C</CommandShortcut>
-          </CommandItem>
-        </CommandGroup>
-      </CommandList>
-    </CommandDialog>
-  )
-}
-```
-
-## File: src/pages/DataDemo/components/DataListView.tsx
-```typescript
-import { useRef, useLayoutEffect } from 'react'
-import { gsap } from 'gsap'
-import { cn } from '@/lib/utils'
-import { Badge } from '@/components/ui/badge'
-import { Avatar } from '@/components/ui/avatar'
-import { Calendar, Eye, Heart, Share, ArrowRight } from 'lucide-react'
-import type { ViewProps } from '../types'
-import { getStatusColor, getPriorityColor } from '../utils'
-import { EmptyState } from './EmptyState'
-
-export function DataListView({ data, onItemSelect, selectedItem }: ViewProps) {
-  const listRef = useRef<HTMLDivElement>(null)
-  const animatedItemsCount = useRef(0)
-
-  useLayoutEffect(() => {
-    if (listRef.current && data.length > animatedItemsCount.current) {
-      const newItems = Array.from(listRef.current.children).slice(animatedItemsCount.current);
-      gsap.fromTo(newItems,
-        { y: 30, opacity: 0 },
-        {
-          duration: 0.5,
-          y: 0,
-          opacity: 1,
-          stagger: 0.08,
-          ease: "power2.out",
-        },
-      );
-      animatedItemsCount.current = data.length;
-    }
-  }, [data]);
-
-  if (data.length === 0) {
-    return <EmptyState />
-  }
-
-  return (
-    <div ref={listRef} className="space-y-4">
-      {data.map((item) => {
-        const isSelected = selectedItem?.id === item.id
-        
-        return (
-          <div
-            key={item.id}
-            onClick={() => onItemSelect(item)}
-            className={cn(
-              "group relative overflow-hidden rounded-2xl border bg-card/50 backdrop-blur-sm transition-all duration-300 cursor-pointer",
-              "hover:bg-card/80 hover:shadow-lg hover:shadow-primary/5 hover:border-primary/20",
-              "active:scale-[0.99]",
-              isSelected && "ring-2 ring-primary/20 border-primary/30 bg-card/90"
-            )}
-          >
-            <div className="p-6">
-              <div className="flex items-start gap-4">
-                {/* Thumbnail */}
-                <div className="flex-shrink-0">
-                  <div className="w-14 h-14 bg-gradient-to-br from-primary/20 to-primary/10 rounded-xl flex items-center justify-center text-2xl">
-                    {item.thumbnail}
-                  </div>
-                </div>
-
-                {/* Content */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-lg mb-1 group-hover:text-primary transition-colors">
-                        {item.title}
-                      </h3>
-                      <p className="text-muted-foreground text-sm mb-3 line-clamp-2">
-                        {item.description}
-                      </p>
-                    </div>
-                    <ArrowRight className="w-5 h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all duration-300 ml-4 flex-shrink-0" />
-                  </div>
-
-                  {/* Badges */}
-                  <div className="flex items-center gap-2 mb-4">
-                    <Badge variant="outline" className={getStatusColor(item.status)}>
-                      {item.status}
-                    </Badge>
-                    <Badge variant="outline" className={getPriorityColor(item.priority)}>
-                      {item.priority}
-                    </Badge>
-                    <Badge variant="outline" className="bg-accent/50">
-                      {item.category}
-                    </Badge>
-                  </div>
-
-                  {/* Meta info */}
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      {/* Assignee */}
-                      <div className="flex items-center gap-2">
-                        <Avatar className="w-7 h-7 text-sm">
-                          {item.assignee.avatar}
-                        </Avatar>
-                        <span className="text-sm text-muted-foreground font-medium">
-                          {item.assignee.name}
-                        </span>
-                      </div>
-
-                      {/* Date */}
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <Calendar className="w-3 h-3" />
-                        {new Date(item.updatedAt).toLocaleDateString()}
-                      </div>
-                    </div>
-
-                    {/* Metrics */}
-                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                      <div className="flex items-center gap-1">
-                        <Eye className="w-3 h-3" />
-                        {item.metrics.views}
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Heart className="w-3 h-3" />
-                        {item.metrics.likes}
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Share className="w-3 h-3" />
-                        {item.metrics.shares}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Progress bar */}
-                  <div className="mt-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs text-muted-foreground">Progress</span>
-                      <span className="text-xs font-medium">{item.metrics.completion}%</span>
-                    </div>
-                    <div className="w-full bg-muted rounded-full h-1.5">
-                      <div 
-                        className="bg-gradient-to-r from-primary to-primary/80 h-1.5 rounded-full transition-all duration-500 ease-out"
-                        style={{ width: `${item.metrics.completion}%` }}
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Hover gradient overlay */}
-            <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
-          </div>
-        )
-      })}
-    </div>
-  )
-}
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>,
+)
 ```
 
 ## File: index.html
@@ -1039,514 +284,6 @@ export default {
 }
 ```
 
-## File: src/pages/DataDemo/components/DataCardView.tsx
-```typescript
-import { useRef, useLayoutEffect } from 'react'
-import { gsap } from 'gsap'
-import { cn } from '@/lib/utils'
-import { Badge } from '@/components/ui/badge'
-import { Avatar } from '@/components/ui/avatar'
-import { Calendar, Eye, Heart, Share, ArrowUpRight, Tag } from 'lucide-react'
-import type { ViewProps } from '../types'
-import { getStatusColor, getPriorityColor } from '../utils'
-import { EmptyState } from './EmptyState'
-
-export function DataCardView({ data, onItemSelect, selectedItem, isGrid = false }: ViewProps) {
-  const containerRef = useRef<HTMLDivElement>(null)
-  const animatedItemsCount = useRef(0)
-
-  useLayoutEffect(() => {
-    if (containerRef.current && data.length > animatedItemsCount.current) {
-      const newItems = Array.from(containerRef.current.children).slice(
-        animatedItemsCount.current
-      );
-      gsap.fromTo(
-        newItems,
-        { y: 40, opacity: 0, scale: 0.95 },
-        {
-          duration: 0.6,
-          y: 0,
-          opacity: 1,
-          scale: 1,
-          stagger: 0.1,
-          ease: 'power2.out',
-        },
-      );
-      animatedItemsCount.current = data.length;
-    }
-  }, [data]);
-
-  if (data.length === 0) {
-    return <EmptyState />
-  }
-
-  return (
-    <div 
-      ref={containerRef}
-      className={cn(
-        "gap-6",
-        isGrid
-          ? "grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))]"
-          : "grid grid-cols-[repeat(auto-fit,minmax(320px,1fr))]"
-      )}
-    >
-      {data.map((item) => {
-        const isSelected = selectedItem?.id === item.id
-        
-        return (
-          <div
-            key={item.id}
-            onClick={() => onItemSelect(item)}
-            className={cn(
-              "group relative overflow-hidden rounded-3xl border bg-card/50 backdrop-blur-sm transition-all duration-500 cursor-pointer",
-              "hover:bg-card/80 hover:shadow-xl hover:shadow-primary/10 hover:border-primary/30 hover:-translate-y-2",
-              "active:scale-[0.98]",
-              isSelected && "ring-2 ring-primary/30 border-primary/40 bg-card/90 shadow-lg shadow-primary/20",
-            )}
-          >
-            {/* Card Header with Thumbnail */}
-            <div className="relative p-6 pb-4">
-              <div className="flex items-start justify-between mb-4">
-                <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-primary/10 rounded-2xl flex items-center justify-center text-3xl group-hover:scale-110 transition-transform duration-300">
-                  {item.thumbnail}
-                </div>
-                <ArrowUpRight className="w-5 h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 group-hover:-translate-y-1 transition-all duration-300" />
-              </div>
-
-              {/* Priority indicator */}
-              <div className="absolute top-4 right-4">
-                <div className={cn(
-                  "w-3 h-3 rounded-full",
-                  item.priority === 'critical' && "bg-red-500",
-                  item.priority === 'high' && "bg-orange-500",
-                  item.priority === 'medium' && "bg-blue-500",
-                  item.priority === 'low' && "bg-green-500"
-                )} />
-              </div>
-            </div>
-
-            {/* Card Content */}
-            <div className="px-6 pb-6">
-              {/* Title and Description */}
-              <h3 className="font-semibold text-lg mb-2 group-hover:text-primary transition-colors line-clamp-2">
-                {item.title}
-              </h3>
-              <p className="text-muted-foreground text-sm mb-4 line-clamp-3">
-                {item.description}
-              </p>
-
-              {/* Status and Category */}
-              <div className="flex items-center gap-2 mb-4">
-                <Badge variant="outline" className={getStatusColor(item.status)}>
-                  {item.status}
-                </Badge>
-                <Badge variant="outline" className="bg-accent/50 text-xs">
-                  {item.category}
-                </Badge>
-              </div>
-
-              {/* Tags */}
-              <div className="flex items-center gap-1 mb-4">
-                <Tag className="w-3 h-3 text-muted-foreground" />
-                <div className="flex flex-wrap gap-1">
-                  {item.tags.slice(0, 3).map((tag, index) => (
-                    <span key={index} className="text-xs text-muted-foreground bg-muted/50 px-2 py-1 rounded-md">
-                      {tag}
-                    </span>
-                  ))}
-                  {item.tags.length > 3 && (
-                    <span className="text-xs text-muted-foreground">
-                      +{item.tags.length - 3}
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {/* Progress */}
-              <div className="mb-4">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs text-muted-foreground">Progress</span>
-                  <span className="text-xs font-semibold">{item.metrics.completion}%</span>
-                </div>
-                <div className="w-full bg-muted rounded-full h-2">
-                  <div 
-                    className="bg-gradient-to-r from-primary to-primary/80 h-2 rounded-full transition-all duration-700 ease-out"
-                    style={{ width: `${item.metrics.completion}%` }}
-                  />
-                </div>
-              </div>
-
-              {/* Assignee */}
-              <div className="flex items-center gap-3 mb-4">
-                <Avatar className="w-8 h-8 text-sm">
-                  {item.assignee.avatar}
-                </Avatar>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">
-                    {item.assignee.name}
-                  </p>
-                  <p className="text-xs text-muted-foreground truncate">
-                    {item.assignee.email}
-                  </p>
-                </div>
-              </div>
-
-              {/* Metrics */}
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-1">
-                    <Eye className="w-3 h-3" />
-                    {item.metrics.views}
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Heart className="w-3 h-3" />
-                    {item.metrics.likes}
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Share className="w-3 h-3" />
-                    {item.metrics.shares}
-                  </div>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Calendar className="w-3 h-3" />
-                  {new Date(item.updatedAt).toLocaleDateString()}
-                </div>
-              </div>
-            </div>
-
-            {/* Hover gradient overlay */}
-            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
-            
-            {/* Selection indicator */}
-            {isSelected && (
-              <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-primary/5 pointer-events-none" />
-            )}
-          </div>
-        )
-      })}
-    </div>
-  )
-}
-```
-
-## File: src/pages/DataDemo/components/DataDetailPanel.tsx
-```typescript
-import React, { useLayoutEffect, useRef } from 'react'
-import { gsap } from 'gsap'
-import { cn } from '@/lib/utils'
-import { Badge } from '@/components/ui/badge'
-import { Avatar } from '@/components/ui/avatar'
-import { Button } from '@/components/ui/button'
-import { 
-  ArrowLeft,
-  Calendar, 
-  Clock, 
-  Eye, 
-  Heart, 
-  Share, 
-  Download,
-  FileText,
-  Image,
-  Video,
-  File,
-  ExternalLink,
-  Tag,
-  User,
-  BarChart3,
-  TrendingUp,
-  CheckCircle,
-  AlertCircle,
-  Circle
-} from 'lucide-react' 
-import type { DataItem } from '../types'
-import { getStatusColor, getPriorityColor } from '../utils'
-
-interface DataDetailPanelProps {
-  item: DataItem | null
-  onClose: () => void
-}
-
-export function DataDetailPanel({ item, onClose }: DataDetailPanelProps) {
-  const contentRef = useRef<HTMLDivElement>(null)
-
-  useLayoutEffect(() => {
-    if (item && contentRef.current) {
-      gsap.fromTo(contentRef.current.children,
-        { y: 30, opacity: 0 },
-        {
-          duration: 0.6,
-          y: 0,
-          opacity: 1,
-          stagger: 0.08,
-          ease: "power2.out"
-        }
-      )
-    }
-  }, [item])
-
-  if (!item) {
-    return null
-  }
-
-  const getFileIcon = (type: string) => {
-    switch (type.toLowerCase()) {
-      case 'pdf': return FileText
-      case 'image':
-      case 'png':
-      case 'jpg':
-      case 'jpeg': return Image
-      case 'video':
-      case 'mp4': return Video
-      default: return File
-    }
-  }
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'completed': return CheckCircle
-      case 'active': return Circle
-      case 'pending': return AlertCircle
-      default: return Circle
-    }
-  }
-
-  return (
-    <div ref={contentRef} className="h-full flex flex-col">
-      {/* Header */}
-      <div className="p-6 border-b border-border/50 bg-gradient-to-r from-card/50 to-card/30 backdrop-blur-sm">
-        <Button variant="ghost" onClick={onClose} className="mb-4 -ml-4">
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to list
-        </Button>
-        <div className="flex items-start gap-4 mb-4">
-          <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-primary/10 rounded-2xl flex items-center justify-center text-3xl flex-shrink-0">
-            {item.thumbnail}
-          </div>
-          <div className="flex-1 min-w-0">
-            <h1 className="text-2xl font-bold mb-2 leading-tight">
-              {item.title}
-            </h1>
-            <p className="text-muted-foreground">
-              {item.description}
-            </p>
-          </div>
-        </div>
-
-        {/* Status badges */}
-        <div className="flex items-center gap-2 mb-4">
-          <Badge variant="outline" className={getStatusColor(item.status)}>
-            {React.createElement(getStatusIcon(item.status), { className: "w-3 h-3 mr-1" })}
-            {item.status}
-          </Badge>
-          <Badge variant="outline" className={getPriorityColor(item.priority)}>
-            {item.priority}
-          </Badge>
-          <Badge variant="outline" className="bg-accent/50">
-            {item.category}
-          </Badge>
-        </div>
-
-        {/* Progress */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium">Progress</span>
-            <span className="text-sm font-bold">{item.metrics.completion}%</span>
-          </div>
-          <div className="w-full bg-muted rounded-full h-3">
-            <div 
-              className="bg-gradient-to-r from-primary to-primary/80 h-3 rounded-full transition-all duration-1000 ease-out"
-              style={{ width: `${item.metrics.completion}%` }}
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="p-6 space-y-6">
-          {/* Assignee Info */}
-          <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
-            <div className="flex items-center gap-1 mb-3">
-              <User className="w-4 h-4 text-muted-foreground" />
-              <h3 className="font-semibold text-sm">Assigned to</h3>
-            </div>
-            <div className="flex items-center gap-3">
-              <Avatar className="w-12 h-12">
-                {item.assignee.avatar}
-              </Avatar>
-              <div>
-                <p className="font-medium">{item.assignee.name}</p>
-                <p className="text-sm text-muted-foreground">{item.assignee.email}</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Metrics */}
-          <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
-            <div className="flex items-center gap-1 mb-3">
-              <BarChart3 className="w-4 h-4 text-muted-foreground" />
-              <h3 className="font-semibold text-sm">Engagement Metrics</h3>
-            </div>
-            <div className="grid grid-cols-[repeat(auto-fit,minmax(80px,1fr))] gap-4">
-              <div className="text-center">
-                <div className="flex items-center justify-center gap-1 mb-1">
-                  <Eye className="w-4 h-4 text-blue-500" />
-                </div>
-                <p className="text-2xl font-bold">{item.metrics.views}</p>
-                <p className="text-xs text-muted-foreground">Views</p>
-              </div>
-              <div className="text-center">
-                <div className="flex items-center justify-center gap-1 mb-1">
-                  <Heart className="w-4 h-4 text-red-500" />
-                </div>
-                <p className="text-2xl font-bold">{item.metrics.likes}</p>
-                <p className="text-xs text-muted-foreground">Likes</p>
-              </div>
-              <div className="text-center">
-                <div className="flex items-center justify-center gap-1 mb-1">
-                  <Share className="w-4 h-4 text-green-500" />
-                </div>
-                <p className="text-2xl font-bold">{item.metrics.shares}</p>
-                <p className="text-xs text-muted-foreground">Shares</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Tags */}
-          <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
-            <div className="flex items-center gap-1 mb-3">
-              <Tag className="w-4 h-4 text-muted-foreground" />
-              <h3 className="font-semibold text-sm">Tags</h3>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {item.tags.map((tag, index) => (
-                <span
-                  key={index}
-                  className="bg-muted/50 text-muted-foreground px-3 py-1 rounded-full text-xs font-medium"
-                >
-                  {tag}
-                </span>
-              ))}
-            </div>
-          </div>
-
-          {/* Content Details */}
-          {item.content && (
-            <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
-              <h3 className="font-semibold text-sm mb-3">Project Details</h3>
-              <div className="space-y-4">
-                <div>
-                  <h4 className="font-medium text-sm mb-2">Summary</h4>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    {item.content.summary}
-                  </p>
-                </div>
-                <div>
-                  <h4 className="font-medium text-sm mb-2">Description</h4>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    {item.content.details}
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Attachments */}
-          {item.content?.attachments && item.content.attachments.length > 0 && (
-            <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
-              <h3 className="font-semibold text-sm mb-3">Attachments</h3>
-              <div className="space-y-2">
-                {item.content.attachments.map((attachment, index) => {
-                  const IconComponent = getFileIcon(attachment.type)
-                  return (
-                    <div
-                      key={index}
-                      className="flex items-center gap-3 p-3 bg-muted/30 rounded-xl hover:bg-muted/50 transition-colors cursor-pointer group"
-                    >
-                      <IconComponent className="w-5 h-5 text-muted-foreground" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">
-                          {attachment.name}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {attachment.type} • {attachment.size}
-                        </p>
-                      </div>
-                      <Button size="sm" variant="ghost" className="opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Download className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Timeline */}
-          <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
-            <div className="flex items-center gap-1 mb-3">
-              <Clock className="w-4 h-4 text-muted-foreground" />
-              <h3 className="font-semibold text-sm">Timeline</h3>
-            </div>
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 text-sm">
-                <Calendar className="w-3 h-3 text-muted-foreground" />
-                <span className="text-muted-foreground">Created:</span>
-                <span className="font-medium">
-                  {new Date(item.createdAt).toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                  })}
-                </span>
-              </div>
-              <div className="flex items-center gap-2 text-sm">
-                <TrendingUp className="w-3 h-3 text-muted-foreground" />
-                <span className="text-muted-foreground">Last updated:</span>
-                <span className="font-medium">
-                  {new Date(item.updatedAt).toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                  })}
-                </span>
-              </div>
-              {item.dueDate && (
-                <div className="flex items-center gap-2 text-sm">
-                  <AlertCircle className="w-3 h-3 text-orange-500" />
-                  <span className="text-muted-foreground">Due date:</span>
-                  <span className="font-medium text-orange-600">
-                    {new Date(item.dueDate).toLocaleDateString('en-US', {
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric'
-                    })}
-                  </span>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Footer Actions */}
-      <div className="p-6 border-t border-border/50 bg-card/30">
-        <div className="flex gap-3">
-          <Button className="flex-1" size="sm">
-            <ExternalLink className="w-4 h-4 mr-2" />
-            Open Project
-          </Button>
-          <Button variant="outline" size="sm">
-            <Share className="w-4 h-4 mr-2" />
-            Share
-          </Button>
-        </div>
-      </div>
-    </div>
-  )
-}
-```
-
 ## File: vite.config.ts
 ```typescript
 import { defineConfig } from 'vite'
@@ -1591,127 +328,53 @@ export default defineConfig({
 })
 ```
 
-## File: src/components/layout/TopBar.tsx
+## File: src/components/layout/MainContent.tsx
 ```typescript
-import {
-  Menu, 
-  Moon, 
-  Sun,
-  Settings,
-  Command,
-  Zap,
-} from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { forwardRef } from 'react'
+import { X } from 'lucide-react'
+import { cn } from '@/lib/utils';
 import { BODY_STATES } from '@/lib/utils'
-import { useAppStore } from '@/store/appStore'
 import { useAppShell } from '@/context/AppShellContext'
-import { UserDropdown } from './UserDropdown'
-import { ViewModeSwitcher } from './ViewModeSwitcher'
 
-interface TopBarProps {
-  onToggleSidebar?: () => void
-  onToggleDarkMode?: () => void
-  children?: React.ReactNode
+interface MainContentProps {
+  children?: React.ReactNode;
 }
 
-export function TopBar({
-  onToggleSidebar,
-  onToggleDarkMode,
-  children,
-}: TopBarProps) {
-  const { bodyState, openSidePane, sidePaneContent } = useAppShell();
-  const { 
-    setCommandPaletteOpen,
-    isDarkMode,
-  } = useAppStore()
+export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
+  ({ children }, ref) => {
+    const { bodyState, fullscreenTarget, toggleFullscreen } = useAppShell();
+    const isFullscreen = bodyState === BODY_STATES.FULLSCREEN;
 
-  const handleSettingsClick = () => {
-    const isSettingsInSidePane = bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === 'settings'
-
-    // If we're on the settings page and it's not in the side pane, treat this as a "minimize" action.
-    if (!isSettingsInSidePane) {
-      openSidePane('settings');
-    } else {
-      // In all other cases (on dashboard page, or settings already in pane),
-      // just toggle the settings side pane.
-      openSidePane('settings')
+    if (isFullscreen && fullscreenTarget === 'right') {
+      return null;
     }
-  };
 
-  return (
-    <div className={cn(
-      "h-20 bg-background border-b border-border flex items-center justify-between px-6 z-50 gap-4"
-    )}>
-      {/* Left Section - Sidebar Controls & Breadcrumbs */}
-      <div className="flex items-center gap-4">
-        {/* Sidebar Controls */}
-        <button
-          onClick={() => onToggleSidebar?.()}
-          className={cn(
-            "h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors"
-          )}
-          title="Toggle Sidebar"
-        >
-          <Menu className="w-5 h-5" />
-        </button>
-
-      </div>
-
-      {/* Right Section - page controls, and global controls */}
-      <div className="flex items-center gap-3">
-        {children}
-
-        {/* Separator */}
-        <div className="w-px h-6 bg-border mx-2" />
-
-        {/* Quick Actions */}
-        <div className="flex items-center gap-3">
-
+    return (
+      <div
+        ref={ref}
+        className={cn(
+        "flex flex-col h-full overflow-hidden bg-background",
+        isFullscreen && "fixed inset-0 z-[60]"
+        )}
+      >
+        {isFullscreen && (
           <button
-            onClick={() => setCommandPaletteOpen(true)}
-            className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
-            title="Command Palette (Ctrl+K)"
+            onClick={() => toggleFullscreen()}
+            className="fixed top-6 right-6 lg:right-12 z-[100] h-12 w-12 flex items-center justify-center rounded-full bg-card/50 backdrop-blur-sm hover:bg-card/75 transition-colors group"
+            title="Exit Fullscreen"
           >
-            <Command className="w-5 h-5 group-hover:scale-110 transition-transform" />
+            <X className="w-6 h-6 group-hover:scale-110 group-hover:rotate-90 transition-all duration-300" />
           </button>
+        )}
 
-        <button
-          className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
-          title="Quick Actions"
-        >
-          <Zap className="w-5 h-5 group-hover:scale-110 transition-transform" />
-        </button>
-
-        {bodyState !== BODY_STATES.SPLIT_VIEW && <ViewModeSwitcher />}
-
-        <div className="w-px h-6 bg-border mx-2" />
-
-        {/* Theme and Settings */}
-        <button
-          onClick={() => onToggleDarkMode?.()}
-          className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
-          title="Toggle Dark Mode"
-        >
-          {isDarkMode ? (
-            <Sun className="w-5 h-5 group-hover:scale-110 transition-transform" />
-          ) : (
-            <Moon className="w-5 h-5 group-hover:scale-110 transition-transform" />
-          )}
-        </button>
-
-        <button
-          onClick={handleSettingsClick}
-          className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
-          title="Settings"
-        >
-          <Settings className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
-        </button>
-        <UserDropdown />
+        <div className="flex-1 min-h-0 flex flex-col">
+          {children}
         </div>
       </div>
-    </div>
-  )
-}
+    )
+  }
+)
+MainContent.displayName = 'MainContent'
 ```
 
 ## File: src/components/layout/EnhancedSidebar.tsx
@@ -1922,14 +585,25 @@ const AppMenuItem: React.FC<AppMenuItemProps> = ({ icon: Icon, label, badge, has
   const handleClick = () => {
     if (page) {
       if (opensInSidePane) {
-        if (paneContentForPage) {
+        const isCurrentlyInSidePane = searchParams.get('sidePane') === paneContentForPage;
+
+        if (isCurrentlyInSidePane) {
           const newParams = new URLSearchParams(searchParams);
-          if (searchParams.get('sidePane') === paneContentForPage) {
-            newParams.delete('sidePane');
-          } else {
-            newParams.set('sidePane', paneContentForPage);
-          }
+          newParams.delete('sidePane');
           setSearchParams(newParams, { replace: true });
+        } else if (paneContentForPage) {
+          // If opening a side pane for a page that is the current main view,
+          // navigate main view to dashboard to avoid content duplication.
+          if (location.pathname === `/${page}`) {
+            navigate({ pathname: '/dashboard', search: `?sidePane=${paneContentForPage}` }, { replace: true });
+          } else {
+            const newParams = new URLSearchParams(searchParams);
+            newParams.set('sidePane', paneContentForPage);
+            // When setting a side pane, always clear split view params to avoid invalid URL state
+            newParams.delete('view');
+            newParams.delete('right');
+            setSearchParams(newParams, { replace: true });
+          }
         }
       } else {
         navigate(`/${page}`);
@@ -1999,55 +673,6 @@ const AppMenuItem: React.FC<AppMenuItemProps> = ({ icon: Icon, label, badge, has
     </div>
   );
 };
-```
-
-## File: src/components/layout/MainContent.tsx
-```typescript
-import { forwardRef } from 'react'
-import { X } from 'lucide-react'
-import { cn } from '@/lib/utils';
-import { BODY_STATES } from '@/lib/utils'
-import { useAppShell } from '@/context/AppShellContext'
-
-interface MainContentProps {
-  children?: React.ReactNode;
-}
-
-export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
-  ({ children }, ref) => {
-    const { bodyState, fullscreenTarget, toggleFullscreen } = useAppShell();
-    const isFullscreen = bodyState === BODY_STATES.FULLSCREEN;
-
-    if (isFullscreen && fullscreenTarget === 'right') {
-      return null;
-    }
-
-    return (
-      <div
-        ref={ref}
-        className={cn(
-        "flex flex-col h-full overflow-hidden bg-background",
-        isFullscreen && "fixed inset-0 z-[60]"
-        )}
-      >
-        {isFullscreen && (
-          <button
-            onClick={() => toggleFullscreen()}
-            className="fixed top-6 right-6 lg:right-12 z-[100] h-12 w-12 flex items-center justify-center rounded-full bg-card/50 backdrop-blur-sm hover:bg-card/75 transition-colors group"
-            title="Exit Fullscreen"
-          >
-            <X className="w-6 h-6 group-hover:scale-110 group-hover:rotate-90 transition-all duration-300" />
-          </button>
-        )}
-
-        <div className="flex-1 min-h-0 flex flex-col">
-          {children}
-        </div>
-      </div>
-    )
-  }
-)
-MainContent.displayName = 'MainContent'
 ```
 
 ## File: src/components/layout/ViewModeSwitcher.tsx
@@ -2787,9 +1412,6 @@ interface AppShellContextValue extends AppShellState {
   showSidebar: () => void;
   peekSidebar: () => void;
   toggleFullscreen: (target?: 'main' | 'right' | null) => void;
-  toggleSplitView: (content?: AppShellState['sidePaneContent']) => void;
-  openSidePane: (content: AppShellState['sidePaneContent']) => void;
-  closeSidePane: () => void;
   resetToDefaults: () => void;
 }
 
@@ -2840,34 +1462,6 @@ export function AppShellProvider({ children, appName, appLogo, defaultSplitPaneW
     }
   }, [state.bodyState, state.previousBodyState]);
 
-  const toggleSplitView = useCallback((content?: AppShellState['sidePaneContent']) => {
-    const current = state.bodyState;
-    if (current === BODY_STATES.SIDE_PANE) {
-      dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.SPLIT_VIEW });
-      if (state.sidebarState === SIDEBAR_STATES.EXPANDED) {
-        dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.COLLAPSED });
-      }
-    } else if (current === BODY_STATES.SPLIT_VIEW) {
-      dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.SIDE_PANE });
-    } else if (current === BODY_STATES.NORMAL && content) {
-      // If we're in normal view, open the pane and switch to split view
-      dispatch({ type: 'SET_SIDE_PANE_CONTENT', payload: content });
-      dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.SPLIT_VIEW });
-    }
-  }, [state.bodyState, state.sidebarState]);
-
-  const openSidePane = useCallback((content: AppShellState['sidePaneContent']) => {
-    if (state.bodyState === BODY_STATES.SIDE_PANE && state.sidePaneContent === content) {
-      // If it's open with same content, close it.
-      dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.NORMAL });
-    } else {
-      // If closed, or different content, open with new content.
-      dispatch({ type: 'SET_SIDE_PANE_CONTENT', payload: content });
-      dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.SIDE_PANE });
-    }
-  }, [state.bodyState, state.sidePaneContent]);
-
-  const closeSidePane = useCallback(() => dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.NORMAL }), []);
   const resetToDefaults = useCallback(() => dispatch({ type: 'RESET_TO_DEFAULTS' }), []);
 
   const rightPaneWidth = useMemo(() => (
@@ -2883,9 +1477,6 @@ export function AppShellProvider({ children, appName, appLogo, defaultSplitPaneW
     showSidebar,
     peekSidebar,
     toggleFullscreen,
-    toggleSplitView,
-    openSidePane,
-    closeSidePane,
     resetToDefaults,
   }), [
     state, 
@@ -2895,9 +1486,6 @@ export function AppShellProvider({ children, appName, appLogo, defaultSplitPaneW
     showSidebar,
     peekSidebar,
     toggleFullscreen,
-    toggleSplitView,
-    openSidePane,
-    closeSidePane,
     resetToDefaults
   ]);
 
@@ -2939,6 +1527,7 @@ interface AppShellProps {
   mainContent: ReactElement;
   rightPane: ReactElement;
   commandPalette?: ReactElement;
+  onOverlayClick?: () => void;
 }
 
 const pageToPaneMap: Record<string, 'main' | 'settings' | 'toaster' | 'notifications' | 'dataDemo'> = {
@@ -2959,7 +1548,7 @@ function usePrevious<T>(value: T): T | undefined {
 }
 
 
-export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalette }: AppShellProps) {
+export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalette, onOverlayClick }: AppShellProps) {
   const {
     sidebarState,
     dispatch,
@@ -2976,6 +1565,7 @@ export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalet
   } = useAppShell();
   
   const isFullscreen = bodyState === BODY_STATES.FULLSCREEN;
+  const isSidePaneOpen = bodyState === BODY_STATES.SIDE_PANE;
 
   const { isDarkMode, toggleDarkMode } = useAppStore();
   const navigate = useNavigate();
@@ -3174,6 +1764,19 @@ export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalet
               onMouseEnter={() => { if (isSplitView && !draggedPage) dispatch({ type: 'SET_HOVERED_PANE', payload: 'left' }); }}
               onMouseLeave={() => { if (isSplitView && !draggedPage) dispatch({ type: 'SET_HOVERED_PANE', payload: null }); }}
             >
+              {/* Side Pane Overlay */}
+              <div
+                role="button"
+                aria-label="Close side pane"
+                tabIndex={isSidePaneOpen ? 0 : -1}
+                className={cn(
+                  "absolute inset-0 bg-black/40 z-40 transition-opacity duration-300",
+                  isSidePaneOpen
+                    ? "opacity-100 pointer-events-auto"
+                    : "opacity-0 pointer-events-none"
+                )}
+                onClick={onOverlayClick}
+              />
               {/* Left drop overlay */}
               <div
                 className={cn(
@@ -3518,7 +2121,6 @@ function ProtectedLayout() {
 // Content for the Top Bar (will be fully refactored in Part 2)
 function AppTopBar() {
   const { searchTerm, setSearchTerm } = useAppStore();
-  const { openSidePane } = useAppShell();
   const [isSearchFocused, setIsSearchFocused] = React.useState(false);
   const location = useLocation();
   const activePage = location.pathname.split('/').filter(Boolean).pop()?.replace('-', ' ') || 'dashboard';
@@ -3591,10 +2193,7 @@ function AppTopBar() {
 // The main App component that composes the shell
 function ComposedApp() {
   const {
-    sidePaneContent,
-    closeSidePane,
     bodyState,
-    openSidePane,
     dispatch,
   } = useAppShell();
   const navigate = useNavigate();
@@ -3602,23 +2201,22 @@ function ComposedApp() {
   const [searchParams, setSearchParams] = useSearchParams();
 
   useEffect(() => {
-    const pane = searchParams.get('sidePane') as 'settings' | 'notifications' | null;
+    const pane = searchParams.get('sidePane');
     const view = searchParams.get('view');
     const right = searchParams.get('right');
 
     if (pane) {
-      if (bodyState !== BODY_STATES.SIDE_PANE || sidePaneContent !== pane) {
-        openSidePane(pane);
-      }
+      dispatch({ type: 'SET_SIDE_PANE_CONTENT', payload: pane as any });
+      dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.SIDE_PANE });
     } else if (view === 'split' && right) {
-      if (bodyState !== BODY_STATES.SPLIT_VIEW || sidePaneContent !== right) {
-        dispatch({ type: 'SET_SIDE_PANE_CONTENT', payload: right as any });
-        dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.SPLIT_VIEW });
-      }
-    } else if (bodyState !== BODY_STATES.NORMAL) {
-      closeSidePane();
+      dispatch({ type: 'SET_SIDE_PANE_CONTENT', payload: right as any });
+      dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.SPLIT_VIEW });
+    } else {
+      dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.NORMAL });
+      // Clean up side pane content when not in use
+      dispatch({ type: 'SET_SIDE_PANE_CONTENT', payload: 'details' });
     }
-  }, [searchParams, bodyState, sidePaneContent, openSidePane, closeSidePane, dispatch]);
+  }, [searchParams, dispatch]);
   
   const isOverlaySidePane = bodyState === BODY_STATES.SIDE_PANE;
 
@@ -3673,6 +2271,8 @@ function ComposedApp() {
     },
   } as const;
 
+  // Derive content directly from URL to prevent flashes of incorrect content
+  const sidePaneContent = searchParams.get('sidePane') || searchParams.get('right') || 'details';
   const currentContent =
     contentMap[sidePaneContent as keyof typeof contentMap] ||
     contentMap.details;
@@ -3684,6 +2284,15 @@ function ComposedApp() {
     } else {
       setSearchParams({}, { replace: true });
     }
+  };
+
+  const handleCloseSidePane = () => {
+    // Use functional update to avoid stale closures with searchParams
+    setSearchParams(prev => {
+      const newParams = new URLSearchParams(prev);
+      newParams.delete('sidePane');
+      return newParams;
+    }, { replace: true });
   };
 
   const handleToggleSplitView = () => {
@@ -3742,6 +2351,7 @@ function ComposedApp() {
   return (
     <AppShell
       sidebar={<EnhancedSidebar />}
+      onOverlayClick={handleCloseSidePane}
       topBar={
         <TopBar>
           <AppTopBar />
@@ -3753,7 +2363,7 @@ function ComposedApp() {
         </MainContent>
       }
       rightPane={
-        <RightPane header={rightPaneHeader}>{currentContent.content}</RightPane>
+        <RightPane onClose={handleCloseSidePane} header={rightPaneHeader}>{currentContent.content}</RightPane>
       }
       commandPalette={<CommandPalette />}
     />

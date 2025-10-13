@@ -16,6 +16,7 @@ interface AppShellProps {
   mainContent: ReactElement;
   rightPane: ReactElement;
   commandPalette?: ReactElement;
+  onOverlayClick?: () => void;
 }
 
 const pageToPaneMap: Record<string, 'main' | 'settings' | 'toaster' | 'notifications' | 'dataDemo'> = {
@@ -36,7 +37,7 @@ function usePrevious<T>(value: T): T | undefined {
 }
 
 
-export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalette }: AppShellProps) {
+export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalette, onOverlayClick }: AppShellProps) {
   const {
     sidebarState,
     dispatch,
@@ -53,6 +54,7 @@ export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalet
   } = useAppShell();
   
   const isFullscreen = bodyState === BODY_STATES.FULLSCREEN;
+  const isSidePaneOpen = bodyState === BODY_STATES.SIDE_PANE;
 
   const { isDarkMode, toggleDarkMode } = useAppStore();
   const navigate = useNavigate();
@@ -251,6 +253,19 @@ export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalet
               onMouseEnter={() => { if (isSplitView && !draggedPage) dispatch({ type: 'SET_HOVERED_PANE', payload: 'left' }); }}
               onMouseLeave={() => { if (isSplitView && !draggedPage) dispatch({ type: 'SET_HOVERED_PANE', payload: null }); }}
             >
+              {/* Side Pane Overlay */}
+              <div
+                role="button"
+                aria-label="Close side pane"
+                tabIndex={isSidePaneOpen ? 0 : -1}
+                className={cn(
+                  "absolute inset-0 bg-black/40 z-40 transition-opacity duration-300",
+                  isSidePaneOpen
+                    ? "opacity-100 pointer-events-auto"
+                    : "opacity-0 pointer-events-none"
+                )}
+                onClick={onOverlayClick}
+              />
               {/* Left drop overlay */}
               <div
                 className={cn(

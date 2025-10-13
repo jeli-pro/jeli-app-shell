@@ -1,0 +1,1063 @@
+uuid: 177b9410-b97f-431e-b851-f763261a8779
+projectId: jeli-app-shell
+createdAt: '2025-10-13T08:15:31.088Z'
+gitCommitMsg: >-
+  fix(routing): eliminate stale state bugs with functional search param updates
+
+  Resolved a critical race condition that caused inconsistent UI behavior when
+  rapidly switching between view modes and side panes. The root cause was event
+  handlers using stale `searchParams` closures.
+
+  The fix involves refactoring all `setSearchParams` calls across `App.tsx`,
+  `TopBar.tsx`, and `EnhancedSidebar.tsx` to use the functional update form
+  (e.g., `setSearchParams(prev => ...)`). This ensures that all URL
+  modifications are atomic and operate on the most recent state, making the
+  application's routing logic robust and predictable.
+promptSummary: >-
+  The user has identified a specific sequence of actions (opening settings pane,
+  maximizing it, then opening notifications pane) that reliably causes the UI to
+  break, indicating a race condition or stale state issue with URL parameters.
+reasoning:
+  - >-
+    You have pinpointed the exact sequence to reproduce the bug, which is
+    fantastic—it points to a classic state management issue involving stale
+    closures.
+  - >-
+    The root cause is that some of our URL manipulation functions were reading
+    the `searchParams` object from the render scope. When state changes happen
+    quickly (like a `navigate` followed by a user clicking another button), that
+    `searchParams` object can be stale, leading to an incorrect or broken URL.
+  - >-
+    The solution is to **_always_** use the functional update form of
+    `setSearchParams` (`setSearchParams(prev => { ... })`). This guarantees that
+    our logic is always working with the absolute latest URL state, eliminating
+    the race condition.
+  - >-
+    I will now apply this fix to all the places that modify the side pane or
+    view state.
+  - '### Step 1: Fortify `handleToggleSplitView` in `App.tsx`'
+  - >-
+    This function was the most likely culprit, as it was reading derived state
+    (`sidePaneContent`) which could easily become stale. I'll rewrite it to
+    safely read the previous state from within the updater function.
+  - '### Step 2: Fortify `handleSettingsClick` in `TopBar.tsx`'
+  - >-
+    For consistency and robustness, I will update the settings toggle to also
+    use the functional update form.
+  - '### Step 3: Fortify `handleClick` in `EnhancedSidebar.tsx`'
+  - >-
+    Finally, I'll update the sidebar menu item handler, which is the last piece
+    of the puzzle, to ensure it never operates on stale URL data.
+  - >-
+    By making all `setSearchParams` calls use the functional update pattern, we
+    have eliminated the entire class of stale state bugs that were causing this
+    issue. The side pane and view mode navigation will now be completely stable
+    and reliable.
+  - '---'
+operations:
+  - type: write
+    path: src/App.tsx
+    content: |
+      --- src/App.tsx
+      +++ src/App.tsx
+      @@ -357,13 +357,20 @@
+       
+         const handleToggleSplitView = () => {
+           if (bodyState === BODY_STATES.SIDE_PANE) {
+      -      const newParams = new URLSearchParams(location.search);
+      -      newParams.set('view', 'split');
+      -      newParams.set('right', sidePaneContent);
+      -      newParams.delete('sidePane');
+      -      setSearchParams(newParams, { replace: true });
+      +      setSearchParams(prev => {
+      +        const newParams = new URLSearchParams(prev);
+      +        const currentPane = newParams.get('sidePane');
+      +        if (currentPane) {
+      +          newParams.set('view', 'split');
+      +          newParams.set('right', currentPane);
+      +          newParams.delete('sidePane');
+      +        }
+      +        return newParams;
+      +      }, { replace: true });
+           } else if (bodyState === BODY_STATES.SPLIT_VIEW) {
+      -      setSearchParams({ sidePane: sidePaneContent }, { replace: true });
+      +      setSearchParams(prev => {
+      +        return { sidePane: prev.get('right') || 'details' }
+      +      }, { replace: true });
+           }
+         };
+       
+    patchStrategy: standard-diff
+  - type: write
+    path: src/components/layout/TopBar.tsx
+    content: |
+      --- src/components/layout/TopBar.tsx
+      +++ src/components/layout/TopBar.tsx
+      @@ -25,17 +25,18 @@
+         } = useAppStore()
+       
+         const handleSettingsClick = () => {
+      -    const newParams = new URLSearchParams(searchParams);
+      -    if (newParams.get('sidePane') === 'settings') {
+      -      newParams.delete('sidePane');
+      -    } else {
+      -      newParams.set('sidePane', 'settings');
+      -      // When opening, ensure we exit split view.
+      -      newParams.delete('view');
+      -      newParams.delete('right');
+      -    }
+      -    setSearchParams(newParams, { replace: true });
+      +    setSearchParams(prev => {
+      +      const newParams = new URLSearchParams(prev);
+      +      if (newParams.get('sidePane') === 'settings') {
+      +        newParams.delete('sidePane');
+      +      } else {
+      +        newParams.set('sidePane', 'settings');
+      +        newParams.delete('view');
+      +        newParams.delete('right');
+      +      }
+      +      return newParams;
+      +    }, { replace: true });
+         };
+       
+         return (
+    patchStrategy: standard-diff
+  - type: write
+    path: src/components/layout/EnhancedSidebar.tsx
+    content: >
+      --- src/components/layout/EnhancedSidebar.tsx
+
+      +++ src/components/layout/EnhancedSidebar.tsx
+
+      @@ -204,22 +204,24 @@
+           const isCurrentlyInSidePane = searchParams.get('sidePane') === paneContentForPage;
+       
+           if (isCurrentlyInSidePane) {
+      -      const newParams = new URLSearchParams(searchParams);
+
+      -      newParams.delete('sidePane');
+
+      -      setSearchParams(newParams, { replace: true });
+
+      +      setSearchParams(prev => {
+
+      +        const newParams = new URLSearchParams(prev);
+
+      +        newParams.delete('sidePane');
+
+      +        return newParams;
+
+      +      }, { replace: true });
+           } else if (paneContentForPage) {
+             // If opening a side pane for a page that is the current main view,
+             // navigate main view to dashboard to avoid content duplication.
+             if (location.pathname === `/${page}`) {
+               navigate({ pathname: '/dashboard', search: `?sidePane=${paneContentForPage}` }, { replace: true });
+             } else {
+      -        const newParams = new URLSearchParams(searchParams);
+
+      -        newParams.set('sidePane', paneContentForPage);
+
+      -        // When setting a side pane, always clear split view params to
+      avoid invalid URL state
+
+      -        newParams.delete('view');
+
+      -        newParams.delete('right');
+
+      -        setSearchParams(newParams, { replace: true });
+
+      +        setSearchParams(prev => {
+
+      +          const newParams = new URLSearchParams(prev);
+
+      +          newParams.set('sidePane', paneContentForPage);
+
+      +          newParams.delete('view');
+
+      +          newParams.delete('right');
+
+      +          return newParams;
+
+      +        }, { replace: true });
+             }
+           }
+         } else {
+    patchStrategy: standard-diff
+snapshot:
+  src/components/layout/TopBar.tsx: >-
+    import {
+      Menu, 
+      Moon, 
+      Sun,
+      Settings,
+      Command,
+      Zap,
+    } from 'lucide-react'
+
+    import { cn } from '@/lib/utils'
+
+    import { useSearchParams, useLocation, useNavigate } from
+    'react-router-dom';
+
+    import { BODY_STATES } from '@/lib/utils'
+
+    import { useAppStore } from '@/store/appStore'
+
+    import { useAppShell } from '@/context/AppShellContext'
+
+    import { UserDropdown } from './UserDropdown'
+
+    import { ViewModeSwitcher } from './ViewModeSwitcher'
+
+
+    interface TopBarProps {
+      onToggleSidebar?: () => void
+      onToggleDarkMode?: () => void
+      children?: React.ReactNode
+    }
+
+
+    export function TopBar({
+      onToggleSidebar,
+      onToggleDarkMode,
+      children,
+    }: TopBarProps) {
+      const { bodyState } = useAppShell()
+      const [searchParams, setSearchParams] = useSearchParams();
+      const location = useLocation();
+      const navigate = useNavigate();
+      const { 
+        setCommandPaletteOpen,
+        isDarkMode,
+      } = useAppStore()
+
+      const handleSettingsClick = () => {
+        const isSettingsInSidePane = searchParams.get('sidePane') === 'settings';
+
+        if (isSettingsInSidePane) {
+          const newParams = new URLSearchParams(searchParams);
+          newParams.delete('sidePane');
+          setSearchParams(newParams, { replace: true });
+        } else if (location.pathname === '/settings') {
+          navigate({ pathname: '/dashboard', search: '?sidePane=settings' }, { replace: true });
+        } else {
+          const newParams = new URLSearchParams(searchParams);
+          newParams.set('sidePane', 'settings');
+          newParams.delete('view');
+          newParams.delete('right');
+          setSearchParams(newParams, { replace: true });
+        }
+      };
+
+      return (
+        <div className={cn(
+          "h-20 bg-background border-b border-border flex items-center justify-between px-6 z-50 gap-4"
+        )}>
+          {/* Left Section - Sidebar Controls & Breadcrumbs */}
+          <div className="flex items-center gap-4">
+            {/* Sidebar Controls */}
+            <button
+              onClick={() => onToggleSidebar?.()}
+              className={cn(
+                "h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors"
+              )}
+              title="Toggle Sidebar"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+
+          </div>
+
+          {/* Right Section - page controls, and global controls */}
+          <div className="flex items-center gap-3">
+            {children}
+
+            {/* Separator */}
+            <div className="w-px h-6 bg-border mx-2" />
+
+            {/* Quick Actions */}
+            <div className="flex items-center gap-3">
+
+              <button
+                onClick={() => setCommandPaletteOpen(true)}
+                className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+                title="Command Palette (Ctrl+K)"
+              >
+                <Command className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              </button>
+
+            <button
+              className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+              title="Quick Actions"
+            >
+              <Zap className="w-5 h-5 group-hover:scale-110 transition-transform" />
+            </button>
+
+            {bodyState !== BODY_STATES.SPLIT_VIEW && <ViewModeSwitcher />}
+
+            <div className="w-px h-6 bg-border mx-2" />
+
+            {/* Theme and Settings */}
+            <button
+              onClick={() => onToggleDarkMode?.()}
+              className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+              title="Toggle Dark Mode"
+            >
+              {isDarkMode ? (
+                <Sun className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              ) : (
+                <Moon className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              )}
+            </button>
+
+            <button
+              onClick={handleSettingsClick}
+              className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+              title="Settings"
+            >
+              <Settings className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
+            </button>
+            <UserDropdown />
+            </div>
+          </div>
+        </div>
+      )
+    }
+  src/components/layout/EnhancedSidebar.tsx: >-
+    import React from 'react';
+
+    import {
+      Home,
+      Settings,
+      HelpCircle,
+      Component,
+      Rocket,
+      MoreHorizontal,
+      Bell,
+      Search,
+      FileText,
+      Star,
+      Trash2,
+      FolderOpen,
+      Mail,
+      Bookmark,
+      Download,
+      User,
+      Plus,
+      Database
+    } from 'lucide-react';
+
+    import { useLocation, useNavigate, useSearchParams } from
+    'react-router-dom';
+
+    import { type ActivePage } from '@/store/appStore';
+
+    import { useAppShell } from '@/context/AppShellContext';
+
+    import {
+      Workspaces,
+      WorkspaceTrigger,
+      WorkspaceContent,
+      type Workspace,
+    } from './WorkspaceSwitcher';
+
+    import {
+      DropdownMenu,
+      DropdownMenuContent,
+      DropdownMenuItem,
+      DropdownMenuTrigger,
+    } from '@/components/ui/dropdown-menu';
+
+    import {
+      Sidebar,
+      SidebarContent,
+      SidebarHeader,
+      SidebarTitle,
+      SidebarBody,
+      SidebarFooter,
+      SidebarSection,
+      SidebarMenuItem,
+      SidebarMenuButton,
+      SidebarMenuAction,
+      SidebarLabel,
+      SidebarBadge,
+      SidebarTooltip,
+      SidebarIcon,
+      useSidebar,
+    } from './Sidebar';
+
+    import { ViewModeSwitcher } from './ViewModeSwitcher';
+
+    import { cn } from '@/lib/utils';
+
+
+    interface MyWorkspace extends Workspace {
+      logo: string;
+      plan: string;
+    }
+
+
+    const mockWorkspaces: MyWorkspace[] = [
+      { id: 'ws1', name: 'Acme Inc.', logo: 'https://avatar.vercel.sh/acme.png', plan: 'Pro' },
+      { id: 'ws2', name: 'Monsters Inc.', logo: 'https://avatar.vercel.sh/monsters.png', plan: 'Free' },
+      { id: 'ws3', name: 'Stark Industries', logo: 'https://avatar.vercel.sh/stark.png', plan: 'Enterprise' },
+    ];
+
+
+    const SidebarWorkspaceTrigger = () => {
+      const { isCollapsed, compactMode } = useSidebar();
+
+      return (
+        <WorkspaceTrigger
+          collapsed={isCollapsed}
+          className={cn(
+            'rounded-xl transition-colors hover:bg-accent/50 w-full',
+            isCollapsed ? 'p-2' : 'p-3 bg-accent/50',
+          )}
+          avatarClassName={cn(compactMode ? 'h-8 w-8' : 'h-10 w-10')}
+        />
+      );
+    };
+
+
+    interface SidebarProps {
+      onMouseEnter?: () => void;
+      onMouseLeave?: () => void;
+    }
+
+
+    export const EnhancedSidebar = React.forwardRef<HTMLDivElement,
+    SidebarProps>(
+      ({ onMouseEnter, onMouseLeave }, ref) => {
+        const { sidebarWidth, compactMode, appName, appLogo } = useAppShell();
+        const [selectedWorkspace, setSelectedWorkspace] = React.useState(mockWorkspaces[0]);
+
+        return (
+          <Sidebar
+            ref={ref}
+            style={{ width: sidebarWidth }}
+            onMouseEnter={onMouseEnter}
+            onMouseLeave={onMouseLeave}
+          >
+            <SidebarContent>
+              <SidebarHeader>
+                {appLogo || (
+                  <div className="p-2 bg-primary/20 rounded-lg">
+                    <Rocket className="w-5 h-5 text-primary" />
+                  </div>
+                )}
+                <SidebarTitle>{appName}</SidebarTitle>
+              </SidebarHeader>
+
+              <SidebarBody>
+                <SidebarSection title="Main">
+                  <AppMenuItem icon={Home} label="Dashboard" page="dashboard" />
+                  <AppMenuItem icon={Database} label="Data Demo" page="data-demo" />
+                  <AppMenuItem icon={Search} label="Search" />
+                  <AppMenuItem icon={Bell} label="Notifications" badge={3} page="notifications" opensInSidePane />
+                </SidebarSection>
+                
+                <SidebarSection title="Workspace" collapsible defaultExpanded>
+                  <AppMenuItem icon={FileText} label="Documents" hasActions>
+                    <AppMenuItem icon={FileText} label="Recent" isSubItem />
+                    <AppMenuItem icon={Star} label="Starred" isSubItem />
+                    <AppMenuItem icon={Trash2} label="Trash" isSubItem />
+                  </AppMenuItem>
+                  <AppMenuItem icon={FolderOpen} label="Projects" hasActions />
+                  <AppMenuItem icon={Mail} label="Messages" badge={12} />
+                </SidebarSection>
+                
+                <SidebarSection title="Personal" collapsible>
+                  <AppMenuItem icon={Bookmark} label="Bookmarks" />
+                  <AppMenuItem icon={Star} label="Favorites" />
+                  <AppMenuItem icon={Download} label="Downloads" />
+                </SidebarSection>
+
+                <SidebarSection title="Components" collapsible defaultExpanded>
+                  <AppMenuItem icon={Component} label="Toaster" page="toaster" />
+                </SidebarSection>
+              </SidebarBody>
+
+              <SidebarFooter>
+                <SidebarSection>
+                  <AppMenuItem icon={User} label="Profile" />
+                  <AppMenuItem icon={Settings} label="Settings" page="settings" />
+                  <AppMenuItem icon={HelpCircle} label="Help" />
+                </SidebarSection>
+
+                <div className={cn(compactMode ? 'mt-4' : 'mt-6')}>
+                  <Workspaces
+                    workspaces={mockWorkspaces}
+                    selectedWorkspaceId={selectedWorkspace.id}
+                    onWorkspaceChange={setSelectedWorkspace}
+                  >
+                    <SidebarWorkspaceTrigger />
+                    <WorkspaceContent>
+                      <button className="flex w-full items-center gap-2 rounded-sm px-2 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground focus:outline-none">
+                        <Plus className="h-4 w-4" />
+                        <span>Create Workspace</span>
+                      </button>
+                    </WorkspaceContent>
+                  </Workspaces>
+                </div>
+              </SidebarFooter>
+            </SidebarContent>
+          </Sidebar>
+        );
+      },
+    );
+
+    EnhancedSidebar.displayName = 'EnhancedSidebar';
+
+
+
+    // Example of a reusable menu item component built with the new Sidebar
+    primitives
+
+    interface AppMenuItemProps {
+      icon: React.ElementType;
+      label: string;
+      badge?: number;
+      hasActions?: boolean;
+      children?: React.ReactNode;
+      isSubItem?: boolean;
+      page?: ActivePage;
+      opensInSidePane?: boolean;
+    }
+
+
+    const AppMenuItem: React.FC<AppMenuItemProps> = ({ icon: Icon, label, badge,
+    hasActions, children, isSubItem = false, page, opensInSidePane = false }) =>
+    {
+      const { compactMode, dispatch } = useAppShell()
+      const { isCollapsed } = useSidebar();
+      const navigate = useNavigate();
+      const location = useLocation();
+      const [searchParams, setSearchParams] = useSearchParams();
+
+      const pageToPaneMap: { [key in ActivePage]?: 'main' | 'settings' | 'toaster' | 'notifications' | 'data-demo' } = {
+        dashboard: 'main',
+        settings: 'settings',
+        toaster: 'toaster',
+        notifications: 'notifications',
+        'data-demo': 'main',
+      };
+      const paneContentForPage = page ? pageToPaneMap[page] : undefined;
+
+      const isActive = (
+        (!opensInSidePane && page && location.pathname === `/${page}`)
+      ) || (
+        opensInSidePane && paneContentForPage && searchParams.get('sidePane') === paneContentForPage
+      );
+
+      const handleClick = () => {
+        if (page) {
+          if (opensInSidePane) {
+            const isCurrentlyInSidePane = searchParams.get('sidePane') === paneContentForPage;
+
+            if (isCurrentlyInSidePane) {
+              const newParams = new URLSearchParams(searchParams);
+              newParams.delete('sidePane');
+              setSearchParams(newParams, { replace: true });
+            } else if (paneContentForPage) {
+              // If opening a side pane for a page that is the current main view,
+              // navigate main view to dashboard to avoid content duplication.
+              if (location.pathname === `/${page}`) {
+                navigate({ pathname: '/dashboard', search: `?sidePane=${paneContentForPage}` }, { replace: true });
+              } else {
+                const newParams = new URLSearchParams(searchParams);
+                newParams.set('sidePane', paneContentForPage);
+                // When setting a side pane, always clear split view params to avoid invalid URL state
+                newParams.delete('view');
+                newParams.delete('right');
+                setSearchParams(newParams, { replace: true });
+              }
+            }
+          } else {
+            navigate(`/${page}`);
+          }
+        }
+      };
+
+      return (
+        <div className={isSubItem ? (compactMode ? 'ml-4' : 'ml-6') : ''}>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              onClick={handleClick}
+              isActive={isActive}
+              draggable={!!page}
+              onDragStart={(_e) => {
+                if (page) {
+                  // set dragged page in AppShell context
+                  dispatch({ type: 'SET_DRAGGED_PAGE', payload: page });
+                }
+              }}
+              onDragEnd={() => {
+                dispatch({ type: 'SET_DRAGGED_PAGE', payload: null });
+                dispatch({ type: 'SET_DRAG_HOVER_TARGET', payload: null });
+              }}
+            >
+              <SidebarIcon>
+                <Icon className={isSubItem ? "w-3 h-3" : "w-4 h-4"}/>
+              </SidebarIcon>
+              <SidebarLabel>{label}</SidebarLabel>
+              {badge && <SidebarBadge>{badge}</SidebarBadge>}
+              <SidebarTooltip label={label} badge={badge} />
+            </SidebarMenuButton>
+
+            {page && !isCollapsed && ( // Always render switcher if there's a page
+              <div className={cn(
+                "absolute top-1/2 -translate-y-1/2 z-10",
+                "opacity-0 group-hover/item:opacity-100 group-focus-within/item:opacity-100",
+                "transition-opacity pointer-events-none group-hover/item:pointer-events-auto",
+                // If there are actions, move left to make space for the action button
+                hasActions ? "right-10" : "right-2"
+              )}>
+                <ViewModeSwitcher targetPage={page} />
+              </div>
+            )}
+
+            {hasActions && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <SidebarMenuAction>
+                    <MoreHorizontal className="h-4 w-4" />
+                  </SidebarMenuAction>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent side="right" align="start">
+                  <DropdownMenuItem>
+                    <span>Edit {label}</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem>
+                    <span>Delete {label}</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </SidebarMenuItem>
+          {!isCollapsed && children && (
+            <div className="space-y-1 mt-1">{children}</div>
+          )}
+        </div>
+      );
+    };
+  src/App.tsx: |-
+    import React, { useEffect } from "react";
+    import {
+      createBrowserRouter,
+      RouterProvider,
+      Outlet,
+      Navigate,
+      useNavigate,
+      useLocation,
+      useSearchParams,
+    } from "react-router-dom";
+
+    import { AppShell } from "./components/layout/AppShell";
+    import { AppShellProvider, useAppShell } from "./context/AppShellContext";
+    import { useAppStore } from "./store/appStore";
+    import { useAuthStore } from "./store/authStore";
+    import "./index.css";
+
+    // Import library components
+    import { EnhancedSidebar } from "./components/layout/EnhancedSidebar";
+    import { MainContent } from "./components/layout/MainContent";
+    import { RightPane } from "./components/layout/RightPane";
+    import { TopBar } from "./components/layout/TopBar";
+    import { CommandPalette } from "./components/global/CommandPalette";
+    import { ToasterProvider } from "./components/ui/toast";
+
+    // Import page/content components
+    import { DashboardContent } from "./pages/Dashboard";
+    import { SettingsPage } from "./pages/Settings";
+    import { ToasterDemo } from "./pages/ToasterDemo";
+    import { NotificationsPage } from "./pages/Notifications";
+    import DataDemoPage from "./pages/DataDemo";
+    import { SettingsContent } from "./features/settings/SettingsContent";
+    import { LoginPage } from "./components/auth/LoginPage";
+
+    // Import icons
+    import {
+      LayoutDashboard,
+      Settings,
+      Component,
+      Bell,
+      SlidersHorizontal,
+      ChevronsLeftRight,
+      Search,
+      Filter,
+      Plus,
+      ChevronRight,
+      Rocket,
+      Layers,
+      SplitSquareHorizontal,
+      Database,
+    } from "lucide-react";
+    import { BODY_STATES } from "./lib/utils";
+    import { cn } from "./lib/utils";
+
+    // Wrapper for LoginPage to provide auth handlers
+    function LoginPageWrapper() {
+      const { login, forgotPassword } = useAuthStore();
+      const navigate = useNavigate();
+
+      const handleLogin = async (email: string, password: string) => {
+        try {
+          await login(email, password);
+          navigate("/");
+        } catch (error) {
+          console.error("Login failed:", error);
+          // In a real app, you'd show an error message to the user
+        }
+      };
+
+      const handleForgotPassword = async (email: string) => {
+        try {
+          await forgotPassword(email);
+        } catch (error) {
+          console.error("Forgot password failed:", error);
+        }
+      };
+
+      const handleSignUp = () => {
+        // In a real app, navigate to sign up page
+        console.log("Navigate to sign up page");
+      };
+
+      return (
+        <LoginPage
+          onLogin={handleLogin}
+          onForgotPassword={handleForgotPassword}
+          onSignUp={handleSignUp}
+        />
+      );
+    }
+
+    // Checks for authentication and redirects to login if needed
+    function ProtectedRoute() {
+      const { isAuthenticated } = useAuthStore();
+      if (!isAuthenticated) {
+        return <Navigate to="/login" replace />;
+      }
+      return <Outlet />;
+    }
+
+    // The main layout for authenticated parts of the application
+    function ProtectedLayout() {
+      const isDarkMode = useAppStore((state) => state.isDarkMode);
+
+      useEffect(() => {
+        document.documentElement.classList.toggle("dark", isDarkMode);
+      }, [isDarkMode]);
+
+      return (
+        <div className="h-screen w-screen overflow-hidden bg-background">
+          <AppShellProvider
+            appName="Jeli App"
+            appLogo={
+              <div className="p-2 bg-primary/20 rounded-lg">
+                <Rocket className="w-5 h-5 text-primary" />
+              </div>
+            }
+          >
+            <ComposedApp />
+          </AppShellProvider>
+        </div>
+      );
+    }
+
+    // Content for the Top Bar (will be fully refactored in Part 2)
+    function AppTopBar() {
+      const { searchTerm, setSearchTerm } = useAppStore();
+      const [isSearchFocused, setIsSearchFocused] = React.useState(false);
+      const location = useLocation();
+      const activePage = location.pathname.split('/').filter(Boolean).pop()?.replace('-', ' ') || 'dashboard';
+
+      return (
+        <div className="flex items-center gap-3 flex-1">
+          <div
+            className={cn(
+              "hidden md:flex items-center gap-2 text-sm transition-opacity",
+              {
+                "opacity-0 pointer-events-none":
+                  isSearchFocused && activePage === "dashboard",
+              },
+            )}
+          >
+            <a
+              href="#"
+              className="text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Home
+            </a>
+            <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            <span className="font-medium text-foreground capitalize">
+              {activePage}
+            </span>
+          </div>
+
+          <div className="flex-1" />
+
+          {/* Page-specific: Dashboard search and actions */}
+          {activePage === "dashboard" && (
+            <div className="flex items-center gap-2 flex-1 justify-end">
+              <div
+                className={cn(
+                  "relative transition-all duration-300 ease-in-out",
+                  isSearchFocused ? "flex-1 max-w-lg" : "w-auto",
+                )}
+              >
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4 pointer-events-none" />
+                <input
+                  type="text"
+                  placeholder="Search..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onFocus={() => setIsSearchFocused(true)}
+                  onBlur={() => setIsSearchFocused(false)}
+                  className={cn(
+                    "pl-9 pr-4 py-2 h-10 border-none rounded-lg bg-card focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300 ease-in-out w-full",
+                    isSearchFocused ? "bg-background" : "w-48",
+                  )}
+                />
+              </div>
+              <button className="h-10 w-10 flex-shrink-0 flex items-center justify-center hover:bg-accent rounded-full transition-colors">
+                <Filter className="w-5 h-5" />
+              </button>
+              <button className="bg-primary text-primary-foreground px-4 py-2 rounded-full hover:bg-primary/90 transition-colors flex items-center gap-2 h-10 flex-shrink-0">
+                <Plus className="w-5 h-5" />
+                <span
+                  className={cn(isSearchFocused ? "hidden sm:inline" : "inline")}
+                >
+                  New Project
+                </span>
+              </button>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // The main App component that composes the shell
+    function ComposedApp() {
+      const {
+        bodyState,
+        dispatch,
+      } = useAppShell();
+      const navigate = useNavigate();
+      const location = useLocation();
+      const [searchParams, setSearchParams] = useSearchParams();
+
+      useEffect(() => {
+        const pane = searchParams.get('sidePane');
+        const view = searchParams.get('view');
+        const right = searchParams.get('right');
+
+        if (pane) {
+          dispatch({ type: 'SET_SIDE_PANE_CONTENT', payload: pane as any });
+          dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.SIDE_PANE });
+        } else if (view === 'split' && right) {
+          dispatch({ type: 'SET_SIDE_PANE_CONTENT', payload: right as any });
+          dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.SPLIT_VIEW });
+        } else {
+          dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.NORMAL });
+          // Clean up side pane content when not in use
+          dispatch({ type: 'SET_SIDE_PANE_CONTENT', payload: 'details' });
+        }
+      }, [searchParams, dispatch]);
+      
+      const isOverlaySidePane = bodyState === BODY_STATES.SIDE_PANE;
+
+      const contentMap = {
+        main: {
+          title: "Dashboard",
+          icon: LayoutDashboard,
+          page: "dashboard",
+          content: <DashboardContent isInSidePane={isOverlaySidePane} />,
+        },
+        settings: {
+          title: "Settings",
+          icon: Settings,
+          page: "settings",
+          content: isOverlaySidePane ? (
+            <div className="p-6">
+              <SettingsContent />
+            </div>
+          ) : (
+            <SettingsPage />
+          ),
+        },
+        toaster: {
+          title: "Toaster Demo",
+          icon: Component,
+          page: "toaster",
+          content: <ToasterDemo isInSidePane={isOverlaySidePane} />,
+        },
+        notifications: {
+          title: "Notifications",
+          icon: Bell,
+          page: "notifications",
+          content: <NotificationsPage isInSidePane={isOverlaySidePane} />,
+        },
+        dataDemo: {
+          title: "Data Showcase",
+          icon: Database,
+          page: "data-demo",
+          content: <DataDemoPage isInSidePane={isOverlaySidePane} />,
+        },
+        details: {
+          title: "Details Panel",
+          icon: SlidersHorizontal,
+          content: (
+            <div className="p-6">
+              <p className="text-muted-foreground">
+                This is the side pane. It can be used to display contextual
+                information, forms, or actions related to the main content.
+              </p>
+            </div>
+          ),
+        },
+      } as const;
+
+      // Derive content directly from URL to prevent flashes of incorrect content
+      const sidePaneContent = searchParams.get('sidePane') || searchParams.get('right') || 'details';
+      const currentContent =
+        contentMap[sidePaneContent as keyof typeof contentMap] ||
+        contentMap.details;
+      const CurrentIcon = currentContent.icon;
+
+      const handleMaximize = () => {
+        if ("page" in currentContent && currentContent.page) {
+          navigate(`/${currentContent.page}`, { replace: true });
+        } else {
+          setSearchParams({}, { replace: true });
+        }
+      };
+
+      const handleCloseSidePane = () => {
+        // Use functional update to avoid stale closures with searchParams
+        setSearchParams(prev => {
+          const newParams = new URLSearchParams(prev);
+          newParams.delete('sidePane');
+          return newParams;
+        }, { replace: true });
+      };
+
+      const handleToggleSplitView = () => {
+        if (bodyState === BODY_STATES.SIDE_PANE) {
+          const newParams = new URLSearchParams(location.search);
+          newParams.set('view', 'split');
+          newParams.set('right', sidePaneContent);
+          newParams.delete('sidePane');
+          setSearchParams(newParams, { replace: true });
+        } else if (bodyState === BODY_STATES.SPLIT_VIEW) {
+          setSearchParams({ sidePane: sidePaneContent }, { replace: true });
+        }
+      };
+
+      const rightPaneHeader =
+        bodyState !== BODY_STATES.SPLIT_VIEW ? (
+          <>
+            <div className="flex items-center gap-2">
+              <CurrentIcon className="w-5 h-5" />
+              <h2 className="text-lg font-semibold whitespace-nowrap">
+                {currentContent.title}
+              </h2>
+            </div>
+            <div className="flex items-center">
+              {(bodyState === BODY_STATES.SIDE_PANE ||
+                bodyState === BODY_STATES.SPLIT_VIEW) && (
+                <button
+                  onClick={handleToggleSplitView}
+                  className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors"
+                  title={
+                    bodyState === BODY_STATES.SIDE_PANE
+                      ? "Switch to Split View"
+                      : "Switch to Overlay View"
+                  }
+                >
+                  {bodyState === BODY_STATES.SPLIT_VIEW ? (
+                    <Layers className="w-5 h-5" />
+                  ) : (
+                    <SplitSquareHorizontal className="w-5 h-5" />
+                  )}
+                </button>
+              )}
+              {"page" in currentContent && currentContent.page && (
+                <button
+                  onClick={handleMaximize}
+                  className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors mr-2"
+                  title="Move to Main View"
+                >
+                  <ChevronsLeftRight className="w-5 h-5" />
+                </button>
+              )}
+            </div>
+          </>
+        ) : undefined;
+
+      return (
+        <AppShell
+          sidebar={<EnhancedSidebar />}
+          onOverlayClick={handleCloseSidePane}
+          topBar={
+            <TopBar>
+              <AppTopBar />
+            </TopBar>
+          }
+          mainContent={
+            <MainContent>
+              <Outlet />
+            </MainContent>
+          }
+          rightPane={
+            <RightPane onClose={handleCloseSidePane} header={rightPaneHeader}>{currentContent.content}</RightPane>
+          }
+          commandPalette={<CommandPalette />}
+        />
+      );
+    }
+
+    function App() {
+      const router = createBrowserRouter([
+        {
+          path: "/login",
+          element: <LoginPageWrapper />,
+        },
+        {
+          path: "/",
+          element: <ProtectedRoute />,
+          children: [
+            {
+              path: "/",
+              element: <ProtectedLayout />,
+              children: [
+                { index: true, element: <Navigate to="/dashboard" replace /> },
+                { path: "dashboard", element: <DashboardContent /> },
+                { path: "settings", element: <SettingsPage /> },
+                { path: "toaster", element: <ToasterDemo /> },
+                { path: "notifications", element: <NotificationsPage /> },
+                { path: "data-demo", element: <DataDemoPage /> },
+                { path: "data-demo/:itemId", element: <DataDemoPage /> },
+              ],
+            },
+          ],
+        },
+      ]);
+
+      return (
+        <ToasterProvider>
+          <RouterProvider router={router} />
+        </ToasterProvider>
+      );
+    }
+
+    export default App;
+approved: false
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: undone
+id: 224

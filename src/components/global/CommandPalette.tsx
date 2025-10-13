@@ -7,8 +7,8 @@ import {
   CommandList,
   CommandSeparator,
   CommandShortcut,
-} from '@/components/ui/command'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+} from '@/components/ui/command';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { useAppStore } from '@/store/appStore'
 import { useAppShell } from '@/context/AppShellContext'
 import { useCommandPaletteToggle } from '@/hooks/useCommandPaletteToggle.hook'
@@ -17,7 +17,8 @@ import { Home, Settings, Moon, Sun, Monitor, Smartphone, PanelRight, Maximize, C
 export function CommandPalette() {
   const { dispatch, toggleFullscreen } = useAppShell();
   const navigate = useNavigate();
-  const [, setSearchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const location = useLocation();
   const {
     isCommandPaletteOpen,
     setCommandPaletteOpen,
@@ -29,6 +30,22 @@ export function CommandPalette() {
   const runCommand = (command: () => void) => {
     setCommandPaletteOpen(false)
     command()
+  }
+
+  const handleOpenSidePane = (paneContent: 'settings') => {
+    // This command is to open, not toggle, so we don't handle the close case.
+    if (searchParams.get('sidePane') === paneContent) return;
+
+    // Avoid content duplication
+    if (location.pathname === `/${paneContent}`) {
+      navigate({ pathname: '/dashboard', search: `?sidePane=${paneContent}` }, { replace: true });
+    } else {
+      const newParams = new URLSearchParams(searchParams);
+      newParams.set('sidePane', paneContent);
+      newParams.delete('view');
+      newParams.delete('right');
+      setSearchParams(newParams, { replace: true });
+    }
   }
 
   return (
@@ -70,7 +87,7 @@ export function CommandPalette() {
             <span>Toggle Fullscreen</span>
             <CommandShortcut>⌘F</CommandShortcut>
           </CommandItem>
-          <CommandItem onSelect={() => runCommand(() => setSearchParams({ sidePane: 'settings' }))}>
+          <CommandItem onSelect={() => runCommand(() => handleOpenSidePane('settings'))}>
             <PanelRight className="mr-2 h-4 w-4" />
             <span>Open Settings in Side Pane</span>
             <CommandShortcut>⌥S</CommandShortcut>

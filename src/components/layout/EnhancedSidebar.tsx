@@ -205,13 +205,27 @@ const AppMenuItem: React.FC<AppMenuItemProps> = ({ icon: Icon, label, badge, has
     if (page) {
       if (opensInSidePane) {
         if (paneContentForPage) {
-          const newParams = new URLSearchParams(searchParams);
-          if (searchParams.get('sidePane') === paneContentForPage) {
-            newParams.delete('sidePane');
-          } else {
-            newParams.set('sidePane', paneContentForPage);
-          }
-          setSearchParams(newParams, { replace: true });
+          setSearchParams(prev => {
+            const newParams = new URLSearchParams(prev);
+            const isCurrentlyInSidePane = newParams.get('sidePane') === paneContentForPage;
+
+            if (isCurrentlyInSidePane) {
+              newParams.delete('sidePane');
+            } else {
+              // If opening a side pane for a page that is the current main view,
+              // navigate main view to dashboard to avoid content duplication.
+              if (location.pathname === `/${page}`) {
+                navigate({ pathname: '/dashboard', search: `?sidePane=${paneContentForPage}` }, { replace: true });
+                return newParams; // Don't modify params when navigating
+              } else {
+                newParams.set('sidePane', paneContentForPage);
+                // When setting a side pane, always clear split view params to avoid invalid URL state
+                newParams.delete('view');
+                newParams.delete('right');
+              }
+            }
+            return newParams;
+          }, { replace: true });
         }
       } else {
         navigate(`/${page}`);

@@ -125,7 +125,6 @@ function ProtectedLayout() {
 // Content for the Top Bar (will be fully refactored in Part 2)
 function AppTopBar() {
   const { searchTerm, setSearchTerm } = useAppStore();
-  const { openSidePane } = useAppShell();
   const [isSearchFocused, setIsSearchFocused] = React.useState(false);
   const location = useLocation();
   const activePage = location.pathname.split('/').filter(Boolean).pop()?.replace('-', ' ') || 'dashboard';
@@ -198,10 +197,7 @@ function AppTopBar() {
 // The main App component that composes the shell
 function ComposedApp() {
   const {
-    sidePaneContent,
-    closeSidePane,
     bodyState,
-    openSidePane,
     dispatch,
   } = useAppShell();
   const navigate = useNavigate();
@@ -209,23 +205,22 @@ function ComposedApp() {
   const [searchParams, setSearchParams] = useSearchParams();
 
   useEffect(() => {
-    const pane = searchParams.get('sidePane') as 'settings' | 'notifications' | null;
+    const pane = searchParams.get('sidePane');
     const view = searchParams.get('view');
     const right = searchParams.get('right');
 
     if (pane) {
-      if (bodyState !== BODY_STATES.SIDE_PANE || sidePaneContent !== pane) {
-        openSidePane(pane);
-      }
+      dispatch({ type: 'SET_SIDE_PANE_CONTENT', payload: pane as any });
+      dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.SIDE_PANE });
     } else if (view === 'split' && right) {
-      if (bodyState !== BODY_STATES.SPLIT_VIEW || sidePaneContent !== right) {
-        dispatch({ type: 'SET_SIDE_PANE_CONTENT', payload: right as any });
-        dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.SPLIT_VIEW });
-      }
-    } else if (bodyState !== BODY_STATES.NORMAL) {
-      closeSidePane();
+      dispatch({ type: 'SET_SIDE_PANE_CONTENT', payload: right as any });
+      dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.SPLIT_VIEW });
+    } else {
+      dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.NORMAL });
+      // Clean up side pane content when not in use
+      dispatch({ type: 'SET_SIDE_PANE_CONTENT', payload: 'details' });
     }
-  }, [searchParams, bodyState, sidePaneContent, openSidePane, closeSidePane, dispatch]);
+  }, [searchParams, dispatch]);
   
   const isOverlaySidePane = bodyState === BODY_STATES.SIDE_PANE;
 
@@ -280,6 +275,8 @@ function ComposedApp() {
     },
   } as const;
 
+  // Derive content directly from URL to prevent flashes of incorrect content
+  const sidePaneContent = searchParams.get('sidePane') || searchParams.get('right') || 'details';
   const currentContent =
     contentMap[sidePaneContent as keyof typeof contentMap] ||
     contentMap.details;
@@ -293,15 +290,31 @@ function ComposedApp() {
     }
   };
 
+  const handleCloseSidePane = () => {
+    // Use functional update to avoid stale closures with searchParams
+    setSearchParams(prev => {
+      const newParams = new URLSearchParams(prev);
+      newParams.delete('sidePane');
+      return newParams;
+    }, { replace: true });
+  };
+
   const handleToggleSplitView = () => {
     if (bodyState === BODY_STATES.SIDE_PANE) {
-      const newParams = new URLSearchParams(location.search);
-      newParams.set('view', 'split');
-      newParams.set('right', sidePaneContent);
-      newParams.delete('sidePane');
-      setSearchParams(newParams, { replace: true });
+      setSearchParams(prev => {
+        const newParams = new URLSearchParams(prev);
+        const currentPane = newParams.get('sidePane');
+        if (currentPane) {
+          newParams.set('view', 'split');
+          newParams.set('right', currentPane);
+          newParams.delete('sidePane');
+        }
+        return newParams;
+      }, { replace: true });
     } else if (bodyState === BODY_STATES.SPLIT_VIEW) {
-      setSearchParams({ sidePane: sidePaneContent }, { replace: true });
+      setSearchParams(prev => {
+        return { sidePane: prev.get('right') || 'details' }
+      }, { replace: true });
     }
   };
 
@@ -349,6 +362,7 @@ function ComposedApp() {
   return (
     <AppShell
       sidebar={<EnhancedSidebar />}
+      onOverlayClick={handleCloseSidePane}
       topBar={
         <TopBar>
           <AppTopBar />
@@ -360,7 +374,7 @@ function ComposedApp() {
         </MainContent>
       }
       rightPane={
-        <RightPane header={rightPaneHeader}>{currentContent.content}</RightPane>
+        <RightPane onClose={handleCloseSidePane} header={rightPaneHeader}>{currentContent.content}</RightPane>
       }
       commandPalette={<CommandPalette />}
     />

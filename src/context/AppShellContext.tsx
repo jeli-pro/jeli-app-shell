@@ -128,9 +128,6 @@ interface AppShellContextValue extends AppShellState {
   showSidebar: () => void;
   peekSidebar: () => void;
   toggleFullscreen: (target?: 'main' | 'right' | null) => void;
-  toggleSplitView: (content?: AppShellState['sidePaneContent']) => void;
-  openSidePane: (content: AppShellState['sidePaneContent']) => void;
-  closeSidePane: () => void;
   resetToDefaults: () => void;
 }
 
@@ -181,34 +178,6 @@ export function AppShellProvider({ children, appName, appLogo, defaultSplitPaneW
     }
   }, [state.bodyState, state.previousBodyState]);
 
-  const toggleSplitView = useCallback((content?: AppShellState['sidePaneContent']) => {
-    const current = state.bodyState;
-    if (current === BODY_STATES.SIDE_PANE) {
-      dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.SPLIT_VIEW });
-      if (state.sidebarState === SIDEBAR_STATES.EXPANDED) {
-        dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.COLLAPSED });
-      }
-    } else if (current === BODY_STATES.SPLIT_VIEW) {
-      dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.SIDE_PANE });
-    } else if (current === BODY_STATES.NORMAL && content) {
-      // If we're in normal view, open the pane and switch to split view
-      dispatch({ type: 'SET_SIDE_PANE_CONTENT', payload: content });
-      dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.SPLIT_VIEW });
-    }
-  }, [state.bodyState, state.sidebarState]);
-
-  const openSidePane = useCallback((content: AppShellState['sidePaneContent']) => {
-    if (state.bodyState === BODY_STATES.SIDE_PANE && state.sidePaneContent === content) {
-      // If it's open with same content, close it.
-      dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.NORMAL });
-    } else {
-      // If closed, or different content, open with new content.
-      dispatch({ type: 'SET_SIDE_PANE_CONTENT', payload: content });
-      dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.SIDE_PANE });
-    }
-  }, [state.bodyState, state.sidePaneContent]);
-
-  const closeSidePane = useCallback(() => dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.NORMAL }), []);
   const resetToDefaults = useCallback(() => dispatch({ type: 'RESET_TO_DEFAULTS' }), []);
 
   const rightPaneWidth = useMemo(() => (
@@ -224,9 +193,6 @@ export function AppShellProvider({ children, appName, appLogo, defaultSplitPaneW
     showSidebar,
     peekSidebar,
     toggleFullscreen,
-    toggleSplitView,
-    openSidePane,
-    closeSidePane,
     resetToDefaults,
   }), [
     state, 
@@ -236,9 +202,6 @@ export function AppShellProvider({ children, appName, appLogo, defaultSplitPaneW
     showSidebar,
     peekSidebar,
     toggleFullscreen,
-    toggleSplitView,
-    openSidePane,
-    closeSidePane,
     resetToDefaults
   ]);
 
