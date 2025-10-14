@@ -166,7 +166,7 @@ const iconMap: { [key: string]: React.ElementType } = {
   system_update: ShieldCheck,
 };
 
-function NotificationItem({ notification, onMarkAsRead, isInSidePane }: { notification: Notification; onMarkAsRead: (id: number) => void; isInSidePane?: boolean; }) {
+function NotificationItem({ notification, onMarkAsRead }: { notification: Notification; onMarkAsRead: (id: number) => void; }) {
   const Icon = iconMap[notification.type];
 
   return (
@@ -232,7 +232,7 @@ function NotificationItem({ notification, onMarkAsRead, isInSidePane }: { notifi
   );
 }
 
-export function NotificationsPage({ isInSidePane = false }: { isInSidePane?: boolean }) {
+export function NotificationsPage({ isInSidePane = false }: { isInSidePane?: boolean; }) {
   const [notifications, setNotifications] = React.useState<Notification[]>(initialNotifications);
   const [activeTab, setActiveTab] = React.useState<string>("all");
   const { show: showToast } = useToast();
@@ -315,7 +315,7 @@ export function NotificationsPage({ isInSidePane = false }: { isInSidePane?: boo
         <div className="space-y-2 divide-y divide-border">
           {filteredNotifications.length > 0 ? (
             filteredNotifications.map((notification) => (
-              <NotificationItem key={notification.id} notification={notification} onMarkAsRead={handleMarkAsRead} isInSidePane={isInSidePane} />
+              <NotificationItem key={notification.id} notification={notification} onMarkAsRead={handleMarkAsRead} />
             ))
           ) : (
             <div className="flex flex-col items-center justify-center space-y-2.5 py-12 text-center">
@@ -341,4 +341,4 @@ export function NotificationsPage({ isInSidePane = false }: { isInSidePane?: boo
       {content}
     </PageLayout>
   );
-};
+}

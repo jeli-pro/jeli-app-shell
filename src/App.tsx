@@ -53,6 +53,7 @@ import {
   Database,
 } from "lucide-react";
 import { BODY_STATES } from "./lib/utils";
+import type { AppShellState } from "./context/AppShellContext";
 import { cn } from "./lib/utils";
 
 // Wrapper for LoginPage to provide auth handlers
@@ -213,7 +214,6 @@ function ComposedApp() {
     dispatch,
   } = useAppShell();
   const navigate = useNavigate();
-  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const { itemId } = useParams<{ itemId: string }>();
 
@@ -221,6 +221,8 @@ function ComposedApp() {
     const pane = searchParams.get('sidePane');
     const view = searchParams.get('view');
     const right = searchParams.get('right');
+
+    const validPanes: AppShellState['sidePaneContent'][] = ['details', 'settings', 'main', 'toaster', 'notifications', 'dataDemo'];
 
     // Case 1: A specific item is selected via URL path. This takes precedence.
     // This will render the data list in main content, and item detail in a pane.
@@ -234,13 +236,13 @@ function ComposedApp() {
       }
     } 
     // Case 2: A generic side pane is requested via query param.
-    else if (pane) {
-      dispatch({ type: 'SET_SIDE_PANE_CONTENT', payload: pane as any });
+    else if (pane && validPanes.includes(pane as AppShellState['sidePaneContent'])) {
+      dispatch({ type: 'SET_SIDE_PANE_CONTENT', payload: pane as AppShellState['sidePaneContent'] });
       dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.SIDE_PANE });
     } 
     // Case 3: Split view is requested via query param.
-    else if (view === 'split' && right) {
-      dispatch({ type: 'SET_SIDE_PANE_CONTENT', payload: right as any });
+    else if (view === 'split' && right && validPanes.includes(right as AppShellState['sidePaneContent'])) {
+      dispatch({ type: 'SET_SIDE_PANE_CONTENT', payload: right as AppShellState['sidePaneContent'] });
       dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.SPLIT_VIEW });
     } 
     // Case 4: Default state, no panes.

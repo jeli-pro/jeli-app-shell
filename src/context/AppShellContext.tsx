@@ -214,6 +214,7 @@ export function AppShellProvider({ children, appName, appLogo, defaultSplitPaneW
 
 // --- Hook ---
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAppShell() {
   const context = useContext(AppShellContext);
   if (!context) {

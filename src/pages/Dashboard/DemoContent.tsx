@@ -17,7 +17,7 @@ import { useAppStore } from '@/store/appStore'
 import { useAppShell } from '@/context/AppShellContext'
 import { Card } from '@/components/ui/card'
 
-export const DemoContent = React.forwardRef<HTMLDivElement, {}>(function DemoContent(props, ref) {
+export const DemoContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(function DemoContent(props, ref) {
   const { bodyState, sidebarState, compactMode } = useAppShell()
   const { isDarkMode } = useAppStore()
   const contentRef = useRef<HTMLDivElement>(null)
@@ -69,7 +69,7 @@ export const DemoContent = React.forwardRef<HTMLDivElement, {}>(function DemoCon
   ]
 
   return (
-    <div ref={contentRef} className="p-8 space-y-12">
+    <div ref={contentRef} className="p-8 space-y-12" {...props}>
       {/* Hero Section */}
       <div className="text-center space-y-4">
         <div className="flex items-center justify-center gap-2 mb-4">
@@ -94,7 +94,7 @@ export const DemoContent = React.forwardRef<HTMLDivElement, {}>(function DemoCon
 
       {/* Feature Cards */}
       <div ref={ref} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {features.map((feature, index) => (
+        {features.map((feature) => (
           <Card
             key={feature.title}
             className="group relative overflow-hidden border-border/50 p-6 hover:border-primary/30 hover:bg-accent/30 transition-all duration-300 cursor-pointer"

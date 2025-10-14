@@ -144,7 +144,7 @@ export function DashboardContent({ isInSidePane = false }: DashboardContentProps
         )}
           {/* Stats Cards */}
         <div ref={statsCardsContainerRef} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {statsCards.map((stat, index) => (
+          {statsCards.map((stat) => (
             <Card
             key={stat.title}
             className="p-6 border-border/50 hover:border-primary/30 transition-all duration-300 group cursor-pointer"

@@ -1,4 +1,4 @@
-import { useState, useRef, useLayoutEffect } from 'react'
+import { useRef, useLayoutEffect } from 'react'
 import { gsap } from 'gsap'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
@@ -11,7 +11,6 @@ import {
   ArrowUpDown, 
   ArrowUp, 
   ArrowDown,
-  MoreHorizontal,
   ExternalLink
 } from 'lucide-react'
 import type { ViewProps, DataItem, SortableField } from '../types'

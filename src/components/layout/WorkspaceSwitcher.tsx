@@ -13,7 +13,9 @@ import {
 export interface Workspace {
 	id: string;
 	name: string;
-	[key: string]: any; // Allow additional properties
+	logo?: string;
+	plan?: string;
+	[key: string]: unknown; // Allow additional properties
 }
 
 // Context for workspace state management
@@ -27,6 +29,7 @@ interface WorkspaceContextValue<T extends Workspace> {
 	getWorkspaceName: (workspace: T) => string;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const WorkspaceContext = React.createContext<WorkspaceContextValue<any> | null>(
 	null,
 );
@@ -147,7 +150,7 @@ function WorkspaceTrigger({
 				<div className={cn("flex items-center gap-3", collapsed ? "w-full justify-center" : "min-w-0 flex-1")}>
 					<Avatar className={cn(avatarClassName)}>
 						<AvatarImage
-							src={(selectedWorkspace as any).logo}
+							src={selectedWorkspace.logo}
 							alt={getWorkspaceName(selectedWorkspace)}
 						/>
 						<AvatarFallback className="text-xs">
@@ -157,7 +160,7 @@ function WorkspaceTrigger({
 					{!collapsed && (
 						<div className="flex min-w-0 flex-1 flex-col items-start">
 							<span className="truncate font-medium">{getWorkspaceName(selectedWorkspace)}</span>
-							<span className="text-muted-foreground truncate text-xs">{(selectedWorkspace as any).plan}</span>
+							<span className="text-muted-foreground truncate text-xs">{selectedWorkspace.plan}</span>
 						</div>
 					)}
 				</div>
@@ -220,7 +223,7 @@ function WorkspaceContent({
 		<div className="flex min-w-0 flex-1 items-center gap-2">
 			<Avatar className="h-6 w-6">
 				<AvatarImage
-					src={(workspace as any).logo}
+					src={workspace.logo}
 					alt={getWorkspaceName(workspace)}
 				/>
 				<AvatarFallback className="text-xs">
@@ -229,9 +232,9 @@ function WorkspaceContent({
 			</Avatar>
 			<div className="flex min-w-0 flex-1 flex-col items-start">
 				<span className="truncate text-sm">{getWorkspaceName(workspace)}</span>
-				{(workspace as any).plan && (
+				{workspace.plan && (
 					<span className="text-muted-foreground text-xs">
-						{(workspace as any).plan}
+						{workspace.plan}
 					</span>
 				)}
 			</div>

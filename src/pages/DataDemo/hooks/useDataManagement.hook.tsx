@@ -79,7 +79,7 @@ export function useDataManagement() {
 
 	// Centralized data filtering and sorting from the master list
 	const filteredAndSortedData = useMemo(() => {
-		let filteredItems = mockDataItems.filter((item) => {
+		const filteredItems = mockDataItems.filter((item) => {
 			const searchTermMatch =
 				item.title.toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
 				item.description.toLowerCase().includes(filters.searchTerm.toLowerCase());
@@ -92,13 +92,12 @@ export function useDataManagement() {
 
 		if (sortConfig) {
 			filteredItems.sort((a, b) => {
-				let aValue: any;
-				let bValue: any;
-
-				const getNestedValue = (obj: any, path: string) => path.split('.').reduce((o, k) => (o || {})[k], obj);
-
-				aValue = getNestedValue(a, sortConfig.key);
-				bValue = getNestedValue(b, sortConfig.key);
+				const getNestedValue = (obj: DataItem, path: string): unknown => 
+					// eslint-disable-next-line @typescript-eslint/no-explicit-any
+					path.split('.').reduce((o: any, k) => (o || {})[k], obj);
+				
+				const aValue = getNestedValue(a, sortConfig.key);
+				const bValue = getNestedValue(b, sortConfig.key);
 
 				if (aValue === undefined || bValue === undefined) return 0;
 

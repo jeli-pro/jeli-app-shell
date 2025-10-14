@@ -56,13 +56,14 @@ export function DataViewModeSelector({ viewMode, onChange }: DataViewModeSelecto
       updateIndicatorPosition(true)
     }, 0)
     return () => clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []) // Only run once on mount
 
   useEffect(() => {
     if (!isTransitioning) {
       updateIndicatorPosition()
     }
-  }, [updateIndicatorPosition, viewMode, isTransitioning])
+  }, [viewMode, isTransitioning, updateIndicatorPosition])
 
   const handleMouseEnter = () => {
     setIsTransitioning(true)

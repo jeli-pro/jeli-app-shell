@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge'
 import { Avatar } from '@/components/ui/avatar'
 import { Calendar, Eye, Heart, Share, ArrowUpRight, Tag } from 'lucide-react'
 import type { ViewProps } from '../types'
-import { getStatusColor, getPriorityColor } from '../utils'
+import { getStatusColor } from '../utils'
 import { useIncrementalStaggeredAnimation } from '@/hooks/useStaggeredAnimation.motion.hook'
 import { EmptyState } from './EmptyState'
 

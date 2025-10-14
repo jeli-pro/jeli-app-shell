@@ -2,33 +2,22 @@
 ```
 src/
   components/
-    auth/
-      LoginPage.tsx
-    effects/
-      AnimatedInput.tsx
-      BottomGradient.tsx
-      BoxReveal.tsx
-      OrbitingCircles.tsx
-      Ripple.tsx
+    layout/
+      AppShell.tsx
+      Sidebar.tsx
+      WorkspaceSwitcher.tsx
     ui/
-      label.tsx
-  hooks/
-    useStaggeredAnimation.motion.ts
+      badge.tsx
+      button.tsx
+      toast.tsx
+  context/
+    AppShellContext.tsx
   pages/
-    Dashboard/
-      hooks/
-        useDashboardAnimations.motion.ts
-      DemoContent.tsx
-      index.tsx
     DataDemo/
       components/
-        DataCardView.tsx
-        DataDetailPanel.tsx
-        DataListView.tsx
-        DataToolbar.tsx
-      index.tsx
-      types.ts
-  index.ts
+        DataViewModeSelector.tsx
+      hooks/
+        useDataManagement.hook.tsx
 index.html
 package.json
 postcss.config.js
@@ -40,739 +29,932 @@ vite.config.ts
 
 # Files
 
-## File: src/components/effects/AnimatedInput.tsx
+## File: src/components/layout/WorkspaceSwitcher.tsx
 ```typescript
-import React, { memo, forwardRef, useRef, useEffect } from 'react';
+import * as React from 'react';
+import { CheckIcon, ChevronsUpDownIcon, Search } from 'lucide-react';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
+import {
+	Popover,
+	PopoverTrigger,
+	PopoverContent,
+	type PopoverContentProps,
+} from '@/components/ui/popover';
 
-export const AnimatedInput = memo(
-	forwardRef(function Input(
-		{ className, type, ...props }: React.InputHTMLAttributes<HTMLInputElement>,
-		ref: React.ForwardedRef<HTMLInputElement>,
-	) {
-		const radius = 100;
-		const wrapperRef = useRef<HTMLDivElement>(null);
+// Generic workspace interface - can be extended
+export interface Workspace {
+	id: string;
+	name: string;
+	logo?: string;
+	plan?: string;
+	[key: string]: any; // Allow additional properties
+}
 
-		useEffect(() => {
-			const wrapper = wrapperRef.current;
-			if (!wrapper) return;
+// Context for workspace state management
+interface WorkspaceContextValue<T extends Workspace> {
+	open: boolean;
+	setOpen: (open: boolean) => void;
+	selectedWorkspace: T | undefined;
+	workspaces: T[];
+	onWorkspaceSelect: (workspace: T) => void;
+	getWorkspaceId: (workspace: T) => string;
+	getWorkspaceName: (workspace: T) => string;
+}
 
-			let animationFrameId: number | null = null;
+const WorkspaceContext = React.createContext<WorkspaceContextValue<any> | null>(
+	null,
+);
 
-			const handleMouseMove = (e: MouseEvent) => {
-				if (animationFrameId) {
-					cancelAnimationFrame(animationFrameId);
-				}
+function useWorkspaceContext<T extends Workspace>() {
+	const context = React.useContext(
+		WorkspaceContext,
+	) as WorkspaceContextValue<T> | null;
+	if (!context) {
+		throw new Error(
+			'Workspace components must be used within WorkspaceProvider',
+		);
+	}
+	return context;
+}
 
-				animationFrameId = requestAnimationFrame(() => {
-					if (!wrapper) return;
-					const { left, top } = wrapper.getBoundingClientRect();
-					const x = e.clientX - left;
-					const y = e.clientY - top;
-					wrapper.style.setProperty('--mouse-x', `${x}px`);
-					wrapper.style.setProperty('--mouse-y', `${y}px`);
-				});
-			};
+// Main provider component
+interface WorkspaceProviderProps<T extends Workspace> {
+	children: React.ReactNode;
+	workspaces: T[];
+	selectedWorkspaceId?: string;
+	onWorkspaceChange?: (workspace: T) => void;
+	open?: boolean;
+	onOpenChange?: (open: boolean) => void;
+	getWorkspaceId?: (workspace: T) => string;
+	getWorkspaceName?: (workspace: T) => string;
+}
 
-			const handleMouseEnter = () => {
-				if (!wrapper) return;
-				wrapper.style.setProperty('--radius', `${radius}px`);
-			};
+function WorkspaceProvider<T extends Workspace>({
+	children,
+	workspaces,
+	selectedWorkspaceId,
+	onWorkspaceChange,
+	open: controlledOpen,
+	onOpenChange,
+	getWorkspaceId = (workspace) => workspace.id,
+	getWorkspaceName = (workspace) => workspace.name,
+}: WorkspaceProviderProps<T>) {
+	const [internalOpen, setInternalOpen] = React.useState(false);
 
-			const handleMouseLeave = () => {
-				if (!wrapper) return;
-				wrapper.style.setProperty('--radius', '0px');
-				if (animationFrameId) {
-					cancelAnimationFrame(animationFrameId);
-					animationFrameId = null;
-				}
-			};
+	const open = controlledOpen ?? internalOpen;
+	const setOpen = onOpenChange ?? setInternalOpen;
 
-			wrapper.addEventListener('mousemove', handleMouseMove);
-			wrapper.addEventListener('mouseenter', handleMouseEnter);
-			wrapper.addEventListener('mouseleave', handleMouseLeave);
-
-			return () => {
-				wrapper.removeEventListener('mousemove', handleMouseMove);
-				wrapper.removeEventListener('mouseenter', handleMouseEnter);
-				wrapper.removeEventListener('mouseleave', handleMouseLeave);
-				if (animationFrameId) {
-					cancelAnimationFrame(animationFrameId);
-				}
-			};
-		}, [radius]);
-
+	const selectedWorkspace = React.useMemo(() => {
+		if (!selectedWorkspaceId) return workspaces[0];
 		return (
-			<div
-				ref={wrapperRef}
-				style={
-					{
-						'--radius': '0px',
-						'--mouse-x': '0px',
-						'--mouse-y': '0px',
-						background: `radial-gradient(var(--radius) circle at var(--mouse-x) var(--mouse-y), #3b82f6, transparent 80%)`,
-					} as React.CSSProperties
-				}
-				className="group/input rounded-lg p-[2px] transition duration-300"
-			>
-				<input
-					type={type}
-					className={cn(
-						`shadow-input dark:placeholder-text-neutral-600 flex h-10 w-full rounded-md border-none bg-gray-50 px-3 py-2 text-sm text-black transition duration-400 group-hover/input:shadow-none file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-neutral-400 focus-visible:ring-[2px] focus-visible:ring-neutral-400 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 dark:bg-zinc-800 dark:text-white dark:shadow-[0px_0px_1px_1px_#404040] dark:focus-visible:ring-neutral-600`,
-						className,
-					)}
-					ref={ref}
-					{...props}
-				/>
-			</div>
+			workspaces.find((ws) => getWorkspaceId(ws) === selectedWorkspaceId) ||
+			workspaces[0]
 		);
-	}),
-);
-```
+	}, [workspaces, selectedWorkspaceId, getWorkspaceId]);
 
-## File: src/components/effects/BottomGradient.tsx
-```typescript
-export const BottomGradient = () => (
-	<>
-		<span className="group-hover/btn:opacity-100 block transition duration-500 opacity-0 absolute h-px w-full -bottom-px inset-x-0 bg-gradient-to-r from-transparent via-cyan-500 to-transparent" />
-		<span className="group-hover/btn:opacity-100 blur-sm block transition duration-500 opacity-0 absolute h-px w-1/2 mx-auto -bottom-px inset-x-10 bg-gradient-to-r from-transparent via-indigo-500 to-transparent" />
-	</>
-);
-```
-
-## File: src/components/effects/BoxReveal.tsx
-```typescript
-import { ReactNode, useEffect, useRef, memo } from 'react';
-import { gsap } from 'gsap';
-import { cn } from '@/lib/utils';
-
-type BoxRevealProps = {
-	children: ReactNode;
-	width?: string;
-	boxColor?: string;
-	duration?: number;
-	className?: string;
-};
-
-export const BoxReveal = memo(function BoxReveal({
-	children,
-	width = 'fit-content',
-	boxColor,
-	duration,
-	className,
-}: BoxRevealProps) {
-	const sectionRef = useRef<HTMLDivElement>(null);
-	const boxRef = useRef<HTMLDivElement>(null);
-	const childRef = useRef<HTMLDivElement>(null);
-
-	useEffect(() => {
-		const section = sectionRef.current;
-		if (!section) return;
-
-		const observer = new IntersectionObserver(
-			(entries) => {
-				entries.forEach((entry) => {
-					if (entry.isIntersecting) {
-						gsap.timeline()
-							.set(childRef.current, { opacity: 0, y: 50 })
-							.set(boxRef.current, { transformOrigin: 'right' })
-							.to(boxRef.current, {
-								scaleX: 0,
-								duration: duration ?? 0.5,
-								ease: 'power3.inOut',
-							})
-							.to(
-								childRef.current,
-								{ y: 0, opacity: 1, duration: duration ?? 0.5, ease: 'power3.out' },
-								'-=0.3',
-							);
-						observer.unobserve(section);
-					}
-				});
-			},
-			{ threshold: 0.1 },
-		);
-
-		observer.observe(section);
-
-		return () => {
-			if (section) {
-				observer.unobserve(section);
-			}
-		};
-	}, [duration]);
-
-	return (
-		<div ref={sectionRef} style={{ width }} className={cn('relative overflow-hidden', className)}>
-			<div ref={childRef}>{children}</div>
-			<div
-				ref={boxRef}
-				style={{
-					background: boxColor ?? 'hsl(var(--skeleton))',
-				}}
-				className="absolute top-1 bottom-1 left-0 right-0 z-20 rounded-sm"
-			/>
-		</div>
+	const handleWorkspaceSelect = React.useCallback(
+		(workspace: T) => {
+			onWorkspaceChange?.(workspace);
+			setOpen(false);
+		},
+		[onWorkspaceChange, setOpen],
 	);
-});
-```
 
-## File: src/components/effects/OrbitingCircles.tsx
-```typescript
-import React, { ReactNode, memo } from 'react';
-import { cn } from '@/lib/utils';
+	const value: WorkspaceContextValue<T> = {
+		open,
+		setOpen,
+		selectedWorkspace,
+		workspaces,
+		onWorkspaceSelect: handleWorkspaceSelect,
+		getWorkspaceId,
+		getWorkspaceName,
+	};
 
-export const OrbitingCircles = memo(function OrbitingCircles({
-	className,
-	children,
-	reverse = false,
-	duration = 20,
-	delay = 10,
-	radius = 50,
-	path = true,
-}: {
-	className?: string;
-	children?: React.ReactNode;
-	reverse?: boolean;
-	duration?: number;
-	delay?: number;
-	radius?: number;
-	path?: boolean;
-}) {
 	return (
-		<>
-			{path && (
-				<svg
-					xmlns="http://www.w3.org/2000/svg"
-					version="1.1"
-					className="pointer-events-none absolute inset-0 size-full"
-				>
-					<circle
-						className="stroke-black/10 stroke-1 dark:stroke-white/10"
-						cx="50%"
-						cy="50%"
-						r={radius}
-						fill="none"
-					/>
-				</svg>
-			)}
-			<div
-				style={
-					{
-						'--duration': duration,
-						'--radius': radius,
-						'--delay': -delay,
-					} as React.CSSProperties
-				}
+		<WorkspaceContext.Provider value={value}>
+			<Popover open={open} onOpenChange={setOpen}>
+				{children}
+			</Popover>
+		</WorkspaceContext.Provider>
+	);
+}
+
+// Trigger component
+interface WorkspaceTriggerProps extends React.ComponentProps<'button'> {
+	renderTrigger?: (workspace: Workspace, isOpen: boolean) => React.ReactNode;
+  collapsed?: boolean;
+  avatarClassName?: string;
+}
+
+function WorkspaceTrigger({
+	className,
+	renderTrigger,
+  collapsed = false,
+  avatarClassName,
+	...props
+}: WorkspaceTriggerProps) {
+	const { open, selectedWorkspace, getWorkspaceName } = useWorkspaceContext();
+
+	if (!selectedWorkspace) return null;
+
+	if (renderTrigger) {
+		return (
+			<PopoverTrigger asChild>
+				<button className={className} {...props}>
+					{renderTrigger(selectedWorkspace, open)}
+				</button>
+			</PopoverTrigger>
+		);
+	}
+
+	return (
+		<PopoverTrigger asChild>
+			<button
+				data-state={open ? 'open' : 'closed'}
 				className={cn(
-					'absolute flex size-full transform-gpu animate-orbit items-center justify-center rounded-full border bg-black/10 [animation-delay:calc(var(--delay)*1s)] dark:bg-white/10',
-					{ '[animation-direction:reverse]': reverse },
+					'flex w-full items-center justify-between text-sm',
+					'focus:ring-ring focus:ring-2 focus:ring-offset-2 focus:outline-none',
 					className,
 				)}
+				{...props}
 			>
-				{children}
+				<div className={cn("flex items-center gap-3", collapsed ? "w-full justify-center" : "min-w-0 flex-1")}>
+					<Avatar className={cn(avatarClassName)}>
+						<AvatarImage
+							src={selectedWorkspace.logo}
+							alt={getWorkspaceName(selectedWorkspace)}
+						/>
+						<AvatarFallback className="text-xs">
+							{getWorkspaceName(selectedWorkspace).charAt(0).toUpperCase()}
+						</AvatarFallback>
+					</Avatar>
+					{!collapsed && (
+						<div className="flex min-w-0 flex-1 flex-col items-start">
+							<span className="truncate font-medium">{getWorkspaceName(selectedWorkspace)}</span>
+							<span className="text-muted-foreground truncate text-xs">{selectedWorkspace.plan}</span>
+						</div>
+					)}
+				</div>
+				{!collapsed && <ChevronsUpDownIcon className="h-4 w-4 shrink-0 opacity-50" />}
+			</button>
+		</PopoverTrigger>
+	);
+}
+
+// Content component
+interface WorkspaceContentProps
+	extends PopoverContentProps {
+	renderWorkspace?: (
+		workspace: Workspace,
+		isSelected: boolean,
+	) => React.ReactNode;
+	title?: string;
+	searchable?: boolean;
+	onSearch?: (query: string) => void;
+}
+
+function WorkspaceContent({
+	className,
+	children,
+	renderWorkspace,
+	title = 'Workspaces',
+	searchable = false,
+	onSearch,
+	side = 'right',
+	align = 'start',
+	sideOffset = 8,
+	useTriggerWidth = false,
+	...props
+}: WorkspaceContentProps) {
+	const {
+		workspaces,
+		selectedWorkspace,
+		onWorkspaceSelect,
+		getWorkspaceId,
+		getWorkspaceName,
+	} = useWorkspaceContext();
+
+	const [searchQuery, setSearchQuery] = React.useState('');
+
+	const filteredWorkspaces = React.useMemo(() => {
+		if (!searchQuery) return workspaces;
+		return workspaces.filter((ws) =>
+			getWorkspaceName(ws).toLowerCase().includes(searchQuery.toLowerCase()),
+		);
+	}, [workspaces, searchQuery, getWorkspaceName]);
+
+	React.useEffect(() => {
+		onSearch?.(searchQuery);
+	}, [searchQuery, onSearch]);
+
+	const defaultRenderWorkspace = (
+		workspace: Workspace,
+		isSelected: boolean,
+	) => (
+		<div className="flex min-w-0 flex-1 items-center gap-2">
+			<Avatar className="h-6 w-6">
+				<AvatarImage
+					src={workspace.logo}
+					alt={getWorkspaceName(workspace)}
+				/>
+				<AvatarFallback className="text-xs">
+					{getWorkspaceName(workspace).charAt(0).toUpperCase()}
+				</AvatarFallback>
+			</Avatar>
+			<div className="flex min-w-0 flex-1 flex-col items-start">
+				<span className="truncate text-sm">{getWorkspaceName(workspace)}</span>
+				{workspace.plan && (
+					<span className="text-muted-foreground text-xs">
+						{(workspace as any).plan}
+					</span>
+				)}
 			</div>
-		</>
-	);
-});
-
-
-interface OrbitIcon {
-	component: () => ReactNode;
-	className: string;
-	duration?: number;
-	delay?: number;
-	radius?: number;
-	path?: boolean;
-	reverse?: boolean;
-}
-
-const iconsArray: OrbitIcon[] = [
-	{ component: () => <img width={30} height={30} src='https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/html5/html5-original.svg' alt='HTML5' />, className: 'size-[30px] border-none bg-transparent', duration: 20, delay: 20, radius: 100, path: false, reverse: false },
-	{ component: () => <img width={30} height={30} src='https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/css3/css3-original.svg' alt='CSS3' />, className: 'size-[30px] border-none bg-transparent', duration: 20, delay: 10, radius: 100, path: false, reverse: false },
-	{ component: () => <img width={50} height={50} src='https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/typescript/typescript-original.svg' alt='TypeScript' />, className: 'size-[50px] border-none bg-transparent', radius: 210, duration: 20, path: false, reverse: false },
-	{ component: () => <img width={50} height={50} src='https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/javascript/javascript-original.svg' alt='JavaScript' />, className: 'size-[50px] border-none bg-transparent', radius: 210, duration: 20, delay: 20, path: false, reverse: false },
-	{ component: () => <img width={30} height={30} src='https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/tailwindcss/tailwindcss-original.svg' alt='TailwindCSS' />, className: 'size-[30px] border-none bg-transparent', duration: 20, delay: 20, radius: 150, path: false, reverse: true },
-	{ component: () => <img width={30} height={30} src='https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/nextjs/nextjs-original.svg' alt='Nextjs' />, className: 'size-[30px] border-none bg-transparent', duration: 20, delay: 10, radius: 150, path: false, reverse: true },
-	{ component: () => <img width={50} height={50} src='https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/react/react-original.svg' alt='React' />, className: 'size-[50px] border-none bg-transparent', radius: 270, duration: 20, path: false, reverse: true },
-	{ component: () => <img width={50} height={50} src='https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/figma/figma-original.svg' alt='Figma' />, className: 'size-[50px] border-none bg-transparent', radius: 270, duration: 20, delay: 60, path: false, reverse: true },
-	{ component: () => <img width={50} height={50} src='https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/git/git-original.svg' alt='Git' />, className: 'size-[50px] border-none bg-transparent', radius: 320, duration: 20, delay: 20, path: false, reverse: false },
-];
-
-export const TechOrbitDisplay = memo(function TechOrbitDisplay({ text = 'Jeli App Shell' }: { text?: string }) {
-	return (
-		<div className="relative flex size-full flex-col items-center justify-center overflow-hidden rounded-lg">
-			<span className="pointer-events-none whitespace-pre-wrap bg-gradient-to-b from-black to-gray-300/80 bg-clip-text text-center text-7xl font-semibold leading-none text-transparent dark:from-white dark:to-slate-900/10">
-				{text}
-			</span>
-			{iconsArray.map((icon, index) => (
-				<OrbitingCircles key={index} {...icon}>
-					{icon.component()}
-				</OrbitingCircles>
-			))}
+			{isSelected && <CheckIcon className="ml-auto h-4 w-4" />}
 		</div>
 	);
-});
-```
 
-## File: src/components/effects/Ripple.tsx
-```typescript
-import React, { memo } from 'react';
-
-interface RippleProps {
-	mainCircleSize?: number;
-	mainCircleOpacity?: number;
-	numCircles?: number;
-}
-
-export const Ripple = memo(function Ripple({
-	mainCircleSize = 210,
-	mainCircleOpacity = 0.24,
-	numCircles = 11,
-}: RippleProps) {
 	return (
-		<div className="absolute inset-0 flex items-center justify-center [mask-image:linear-gradient(to_bottom,white,transparent)]">
-			{Array.from({ length: numCircles }, (_, i) => {
-				const size = mainCircleSize + i * 70;
-				const opacity = mainCircleOpacity - i * 0.03;
-				const animationDelay = `${i * 0.06}s`;
-				const borderStyle = i === numCircles - 1 ? 'dashed' : 'solid';
-				const borderOpacity = 5 + i * 5;
+		<PopoverContent
+			className={cn('p-0', className)}
+			align={align}
+			sideOffset={sideOffset}
+			useTriggerWidth={useTriggerWidth}
+			{...{ ...props, side }}
+		>
+			<div className="border-b px-4 py-3">
+				<h3 className="text-sm font-semibold text-foreground">{title}</h3>
+			</div>
 
-				return (
-					<div
-						key={i}
-						className="absolute animate-ripple rounded-full border"
-						style={
-							{
-								width: `${size}px`,
-								height: `${size}px`,
-								opacity: opacity,
-								animationDelay: animationDelay,
-								borderStyle: borderStyle,
-								borderWidth: '1px',
-								borderColor: `hsl(var(--foreground) / ${borderOpacity / 100})`,
-								top: '50%',
-								left: '50%',
-								transform: 'translate(-50%, -50%)',
-							} as React.CSSProperties
-						}
-					/>
-				);
-			})}
-		</div>
+			{searchable && (
+				<div className="border-b p-2">
+					<div className="relative">
+						<Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+						<input
+							type="text"
+							placeholder="Search workspaces..."
+							value={searchQuery}
+							onChange={(e) => setSearchQuery(e.target.value)}
+							className="h-9 w-full rounded-md bg-transparent pl-9 text-sm placeholder:text-muted-foreground focus:bg-accent focus:outline-none"
+						/>
+					</div>
+				</div>
+			)}
+
+			<div className="max-h-[300px] overflow-y-auto">
+				{filteredWorkspaces.length === 0 ? (
+					<div className="text-muted-foreground px-3 py-2 text-center text-sm">
+						No workspaces found
+					</div>
+				) : (
+					<div className="space-y-1 p-2">
+						{filteredWorkspaces.map((workspace) => {
+							const isSelected =
+								selectedWorkspace &&
+								getWorkspaceId(selectedWorkspace) === getWorkspaceId(workspace);
+
+							return (
+								<button
+									key={getWorkspaceId(workspace)}
+									onClick={() => onWorkspaceSelect(workspace)}
+									className={cn(
+										'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm',
+										'hover:bg-accent hover:text-accent-foreground',
+										'focus:outline-none',
+										isSelected && 'bg-accent text-accent-foreground',
+									)}
+								>
+									{renderWorkspace
+										? renderWorkspace(workspace, !!isSelected)
+										: defaultRenderWorkspace(workspace, !!isSelected)}
+								</button>
+							);
+						})}
+					</div>
+				)}
+			</div>
+
+			{children && (
+				<>
+					<div className="border-t" />
+					<div className="p-1">{children}</div>
+				</>
+			)}
+		</PopoverContent>
 	);
-});
+}
+
+export { WorkspaceProvider as Workspaces, WorkspaceTrigger, WorkspaceContent };
 ```
 
-## File: src/hooks/useStaggeredAnimation.motion.ts
-```typescript
-import { useLayoutEffect, useRef } from 'react';
-import { gsap } from 'gsap';
-
-interface StaggeredAnimationOptions {
-	stagger?: number;
-	duration?: number;
-	y?: number;
-	scale?: number;
-	ease?: string;
-}
-
-/**
- * Animates the direct children of a container element with a staggered fade-in effect.
- * This version is for lists that might grow (e.g., infinite scroll). It only
- * animates new elements that are added to the container.
- *
- * @param containerRef Ref to the container element.
- * @param deps Dependency array. A change here that adds items will trigger the animation on the new items.
- * @param options Animation options.
- */
-export function useIncrementalStaggeredAnimation<T extends HTMLElement>(
-	containerRef: React.RefObject<T>,
-	deps: React.DependencyList,
-	options: StaggeredAnimationOptions = {},
-) {
-	const animatedItemsCount = useRef(0);
-
-	const { stagger = 0.1, duration = 0.5, y = 30, scale = 0.95, ease = 'power2.out' } = options;
-
-	useLayoutEffect(() => {
-		if (!containerRef.current) return;
-
-		const children = Array.from(containerRef.current.children);
-		// On dependency change, if the number of children is less than what we've animated,
-		// it's a list reset (e.g., filtering), so reset the counter.
-		if (children.length < animatedItemsCount.current) {
-			animatedItemsCount.current = 0;
-		}
-
-		const newItems = children.slice(animatedItemsCount.current);
-
-		if (newItems.length > 0) {
-			gsap.fromTo(
-				newItems,
-				{ y, opacity: 0, scale },
-				{
-					duration,
-					y: 0,
-					opacity: 1,
-					scale: 1,
-					stagger,
-					ease,
-				},
-			);
-			animatedItemsCount.current = children.length;
-		}
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [containerRef, ...deps]);
-}
-
-/**
- * Animates the direct children of a container element with a staggered fade-in effect.
- * This version animates all children every time the dependencies change.
- * Ideal for content that is replaced, not appended to.
- *
- * @param containerRef Ref to the container element.
- * @param deps Dependency array to trigger the animation.
- * @param options Animation options.
- */
-export function useStaggeredAnimation<T extends HTMLElement>(
-	containerRef: React.RefObject<T>,
-	deps: React.DependencyList,
-	options: StaggeredAnimationOptions = {},
-) {
-	const { stagger = 0.08, duration = 0.6, y = 30, scale = 1, ease = 'power3.out' } = options;
-
-	useLayoutEffect(() => {
-		if (containerRef.current?.children.length) {
-			gsap.fromTo(
-				containerRef.current.children,
-				{ y, opacity: 0, scale },
-				{
-					duration,
-					y: 0,
-					opacity: 1,
-					scale: 1,
-					stagger,
-					ease,
-				},
-			);
-		}
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [containerRef, ...deps]);
-}
-```
-
-## File: src/pages/Dashboard/hooks/useDashboardAnimations.motion.ts
-```typescript
-import { useEffect } from 'react';
-import { gsap } from 'gsap';
-import { useAppShell } from '@/context/AppShellContext';
-import { BODY_STATES } from '@/lib/utils';
-import { useStaggeredAnimation } from '@/hooks/useStaggeredAnimation.motion';
-
-export function useDashboardAnimations(
-  contentRef: React.RefObject<HTMLDivElement>,
-  statsCardsContainerRef: React.RefObject<HTMLDivElement>,
-  featureCardsContainerRef: React.RefObject<HTMLDivElement>,
-) {
-  const { bodyState } = useAppShell();
-
-  // Animate cards on mount
-  useStaggeredAnimation(statsCardsContainerRef, [], { y: 20, scale: 0.95 });
-  useStaggeredAnimation(featureCardsContainerRef, [], { y: 30, scale: 0.95, stagger: 0.05 });
-
-  useEffect(() => {
-    if (!contentRef.current) return;
-
-    const content = contentRef.current;
-
-    switch (bodyState) {
-      case BODY_STATES.FULLSCREEN:
-        gsap.to(content, { scale: 1.02, duration: 0.4, ease: 'power3.out' });
-        break;
-      default:
-        gsap.to(content, { scale: 1, duration: 0.4, ease: 'power3.out' });
-        break;
-    }
-  }, [bodyState, contentRef]);
-}
-```
-
-## File: src/components/ui/label.tsx
+## File: src/components/ui/badge.tsx
 ```typescript
 import * as React from "react"
-import * as LabelPrimitive from "@radix-ui/react-label"
 import { cva, type VariantProps } from "class-variance-authority"
 
 import { cn } from "@/lib/utils"
 
-const labelVariants = cva(
-  "text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+const badgeVariants = cva(
+  "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+  {
+    variants: {
+      variant: {
+        default:
+          "border-transparent bg-primary text-primary-foreground hover:bg-primary/80",
+        secondary:
+          "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80",
+        destructive:
+          "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80",
+        outline: "text-foreground",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+    },
+  },
 )
 
-const Label = React.forwardRef<
-  React.ElementRef<typeof LabelPrimitive.Root>,
-  React.ComponentPropsWithoutRef<typeof LabelPrimitive.Root> &
-    VariantProps<typeof labelVariants>
->(({ className, ...props }, ref) => (
-  <LabelPrimitive.Root
-    ref={ref}
-    className={cn(labelVariants(), className)}
-    {...props}
-  />
-))
-Label.displayName = LabelPrimitive.Root.displayName
+export interface BadgeProps
+  extends React.HTMLAttributes<HTMLDivElement>,
+    VariantProps<typeof badgeVariants> {}
 
-export { Label }
+function Badge({ className, variant, ...props }: BadgeProps) {
+  return (
+    <div className={cn(badgeVariants({ variant }), className)} {...props} />
+  )
+}
+
+export { Badge, badgeVariants }
 ```
 
-## File: src/pages/DataDemo/components/DataToolbar.tsx
+## File: src/components/ui/button.tsx
 ```typescript
-import * as React from 'react'
-import { Check, ListFilter, Search, SortAsc } from 'lucide-react'
+import * as React from "react"
+import { Slot } from "@radix-ui/react-slot"
+import { cva, type VariantProps } from "class-variance-authority"
 
-import { cn } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Badge } from '@/components/ui/badge'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuSeparator,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-  CommandSeparator,
-} from '@/components/ui/command'
+import { cn } from "@/lib/utils"
 
-import type { SortConfig, SortableField, Status, Priority } from '../types'
-
-export interface FilterConfig {
-  searchTerm: string
-  status: Status[]
-  priority: Priority[]
-}
-
-interface DataToolbarProps {
-  filters: FilterConfig
-  onFiltersChange: (filters: FilterConfig) => void
-  sortConfig: SortConfig | null
-  onSortChange: (config: SortConfig | null) => void
-}
-
-const statusOptions: { value: Status; label: string }[] = [
-  { value: 'active', label: 'Active' },
-  { value: 'pending', label: 'Pending' },
-  { value: 'completed', label: 'Completed' },
-  { value: 'archived', label: 'Archived' },
-]
-
-const priorityOptions: { value: Priority; label: string }[] = [
-  { value: 'critical', label: 'Critical' },
-  { value: 'high', label: 'High' },
-  { value: 'medium', label: 'Medium' },
-  { value: 'low', label: 'Low' },
-]
-
-const sortOptions: { value: SortableField, label: string }[] = [
-  { value: 'updatedAt', label: 'Last Updated' },
-  { value: 'title', label: 'Title' },
-  { value: 'status', label: 'Status' },
-  { value: 'priority', label: 'Priority' },
-  { value: 'metrics.completion', label: 'Progress' },
-]
-
-
-export function DataToolbar({
-  filters,
-  onFiltersChange,
-  sortConfig,
-  onSortChange,
-}: DataToolbarProps) {
-  const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    onFiltersChange({ ...filters, searchTerm: event.target.value })
+const buttonVariants = cva(
+  "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+  {
+    variants: {
+      variant: {
+        default: "bg-primary text-primary-foreground hover:bg-primary/90",
+        destructive:
+          "bg-destructive text-destructive-foreground hover:bg-destructive/90",
+        outline:
+          "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
+        secondary:
+          "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+        ghost: "hover:bg-accent hover:text-accent-foreground",
+        link: "text-primary underline-offset-4 hover:underline",
+      },
+      size: {
+        default: "h-10 px-4 py-2",
+        sm: "h-9 rounded-md px-3",
+        lg: "h-11 rounded-md px-8",
+        icon: "h-10 w-10",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+      size: "default",
+    },
   }
-  
-  const activeFilterCount = filters.status.length + filters.priority.length
+)
+
+export interface ButtonProps
+  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
+    VariantProps<typeof buttonVariants> {
+  asChild?: boolean
+}
+
+const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
+  ({ className, variant, size, asChild = false, ...props }, ref) => {
+    const Comp = asChild ? Slot : "button"
+    return (
+      <Comp
+        className={cn(buttonVariants({ variant, size, className }))}
+        ref={ref}
+        {...props}
+      />
+    )
+  }
+)
+Button.displayName = "Button"
+
+export { Button, buttonVariants }
+```
+
+## File: src/components/ui/toast.tsx
+```typescript
+import {
+  forwardRef,
+  useImperativeHandle,
+  createContext,
+  useContext,
+  useCallback,
+  useRef,
+  type ReactNode,
+} from "react";
+import { Toaster as SonnerToaster, toast as sonnerToast } from "sonner";
+import { CheckCircle, AlertCircle, Info, AlertTriangle, X } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+
+type Variant = "default" | "success" | "error" | "warning";
+type Position =
+  | "top-left"
+  | "top-center"
+  | "top-right"
+  | "bottom-left"
+  | "bottom-center"
+  | "bottom-right";
+
+interface ActionButton {
+  label: string;
+  onClick: () => void;
+  variant?: "default" | "outline" | "ghost";
+}
+
+export interface ToasterProps {
+  title?: string;
+  message: string;
+  variant?: Variant;
+  duration?: number;
+  position?: Position;
+  actions?: ActionButton;
+  onDismiss?: () => void;
+  highlightTitle?: boolean;
+}
+
+export interface ToasterRef {
+  show: (props: ToasterProps) => void;
+}
+
+const variantStyles: Record<Variant, string> = {
+  default: "border-border",
+  success: "border-green-600/50",
+  error: "border-destructive/50",
+  warning: "border-amber-600/50",
+};
+
+const titleColor: Record<Variant, string> = {
+  default: "text-foreground",
+  success: "text-green-600 dark:text-green-400",
+  error: "text-destructive",
+  warning: "text-amber-600 dark:text-amber-400",
+};
+
+const iconColor: Record<Variant, string> = {
+  default: "text-muted-foreground",
+  success: "text-green-600 dark:text-green-400",
+  error: "text-destructive",
+  warning: "text-amber-600 dark:text-amber-400",
+};
+
+const variantIcons: Record<
+  Variant,
+  React.ComponentType<{ className?: string }>
+> = {
+  default: Info,
+  success: CheckCircle,
+  error: AlertCircle,
+  warning: AlertTriangle,
+};
+
+const CustomToast = ({
+  toastId,
+  title,
+  message,
+  variant = "default",
+  actions,
+  highlightTitle,
+}: Omit<ToasterProps, "duration" | "position" | "onDismiss"> & {
+  toastId: number | string;
+}) => {
+  const Icon = variantIcons[variant];
+
+  const handleDismiss = () => {
+    sonnerToast.dismiss(toastId);
+  };
 
   return (
-    <div className="flex flex-col md:flex-row items-center justify-between gap-4 w-full">
-      {/* Left side: Search, Filters */}
-      <div className="flex flex-col sm:flex-row items-center gap-2 w-full md:w-auto">
-        <div className="relative w-full sm:w-auto">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search projects..."
-            className="pl-9 w-full sm:w-64"
-            value={filters.searchTerm}
-            onChange={handleSearchChange}
-          />
-        </div>
-
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button variant="outline" size="sm" className="h-9 w-full sm:w-auto justify-start border-dashed">
-              <ListFilter className="mr-2 h-4 w-4" />
-              Filters
-              {activeFilterCount > 0 && (
-                <>
-                  <div className="mx-2 h-4 w-px bg-muted-foreground/50" />
-                  <Badge variant="secondary" className="rounded-sm px-1 font-normal">
-                    {activeFilterCount}
-                  </Badge>
-                </>
+    <div
+      className={cn(
+        "flex items-center justify-between w-full max-w-sm p-4 rounded-lg border shadow-xl bg-popover text-popover-foreground",
+        variantStyles[variant],
+      )}
+    >
+      <div className="flex items-start gap-3">
+        <Icon
+          className={cn("h-5 w-5 mt-0.5 flex-shrink-0", iconColor[variant])}
+        />
+        <div className="space-y-1">
+          {title && (
+            <h3
+              className={cn(
+                "text-sm font-semibold leading-none",
+                titleColor[variant],
+                highlightTitle && titleColor["success"],
               )}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-[240px] p-0" align="start">
-            <CombinedFilter filters={filters} onFiltersChange={onFiltersChange} />
-          </PopoverContent>
-        </Popover>
-
-        {activeFilterCount > 0 && (
-          <Button variant="ghost" onClick={() => onFiltersChange({ searchTerm: filters.searchTerm, status: [], priority: [] })}>Reset</Button>
-        )}
+            >
+              {title}
+            </h3>
+          )}
+          <p className="text-sm text-muted-foreground">{message}</p>
+        </div>
       </div>
 
-      {/* Right side: Sorter */}
-      <div className="flex items-center gap-2 w-full md:w-auto justify-start md:justify-end">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="w-full sm:w-auto justify-start">
-              <SortAsc className="mr-2 h-4 w-4" />
-              Sort by: {sortOptions.find(o => o.value === sortConfig?.key)?.label || 'Default'}
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-[200px]">
-            <DropdownMenuLabel>Sort by</DropdownMenuLabel>
-            <DropdownMenuRadioGroup
-              value={`${sortConfig?.key || 'default'}-${sortConfig?.direction || ''}`}
-              onValueChange={(value) => {
-                if (value.startsWith('default')) {
-                  onSortChange(null)
-                } else {
-                  const [key, direction] = value.split('-')
-                  onSortChange({ key: key as SortableField, direction: direction as 'asc' | 'desc' })
-                }
-              }}
-            >
-              <DropdownMenuRadioItem value="default-">Default</DropdownMenuRadioItem>
-              <DropdownMenuSeparator />
-              {sortOptions.map(option => (
-                <React.Fragment key={option.value}>
-                  <DropdownMenuRadioItem value={`${option.value}-desc`}>{option.label} (Desc)</DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value={`${option.value}-asc`}>{option.label} (Asc)</DropdownMenuRadioItem>
-                </React.Fragment>
-              ))}
-            </DropdownMenuRadioGroup>
-          </DropdownMenuContent>
-        </DropdownMenu>
+      <div className="flex items-center gap-2">
+        {actions?.label && (
+          <Button
+            variant={actions.variant || "outline"}
+            size="sm"
+            onClick={() => {
+              actions.onClick();
+              handleDismiss();
+            }}
+            className={cn(
+              "h-8 px-3 text-xs cursor-pointer",
+              variant === "success"
+                ? "text-green-600 border-green-600 hover:bg-green-600/10 dark:hover:bg-green-400/20"
+                : variant === "error"
+                  ? "text-destructive border-destructive hover:bg-destructive/10 dark:hover:bg-destructive/20"
+                  : variant === "warning"
+                    ? "text-amber-600 border-amber-600 hover:bg-amber-600/10 dark:hover:bg-amber-400/20"
+                    : "text-foreground border-border hover:bg-muted/10 dark:hover:bg-muted/20",
+            )}
+          >
+            {actions.label}
+          </Button>
+        )}
+        <button
+          onClick={handleDismiss}
+          className="rounded-md p-1 hover:bg-muted/50 dark:hover:bg-muted/30 transition-colors focus:outline-none focus:ring-2 focus:ring-ring"
+          aria-label="Dismiss notification"
+        >
+          <X className="h-4 w-4 text-muted-foreground" />
+        </button>
       </div>
     </div>
-  )
-}
+  );
+};
 
-function CombinedFilter({
-  filters,
-  onFiltersChange,
-}: {
-  filters: FilterConfig;
-  onFiltersChange: (filters: FilterConfig) => void;
-}) {
-  const selectedStatus = new Set(filters.status);
-  const selectedPriority = new Set(filters.priority);
+const Toaster = forwardRef<ToasterRef, { defaultPosition?: Position }>(
+  ({ defaultPosition = "bottom-right" }, ref) => {
+    useImperativeHandle(ref, () => ({
+      show({
+        title,
+        message,
+        variant = "default",
+        duration = 4000,
+        position = defaultPosition,
+        actions,
+        onDismiss,
+        highlightTitle,
+      }) {
+        sonnerToast.custom(
+          (toastId) => (
+            <CustomToast
+              toastId={toastId}
+              title={title}
+              message={message}
+              variant={variant}
+              actions={actions}
+              highlightTitle={highlightTitle}
+            />
+          ),
+          {
+            duration,
+            position,
+            onDismiss,
+          },
+        );
+      },
+    }));
 
-  const handleStatusSelect = (status: Status) => {
-    selectedStatus.has(status) ? selectedStatus.delete(status) : selectedStatus.add(status);
-    onFiltersChange({ ...filters, status: Array.from(selectedStatus) });
-  };
+    return (
+      <SonnerToaster
+        position={defaultPosition}
+        toastOptions={{
+          // By removing `unstyled`, sonner handles positioning and animations.
+          // We then use `classNames` to override only the styles we don't want,
+          // allowing our custom component to define the appearance.
+          classNames: {
+            toast: "p-0 border-none shadow-none bg-transparent", // Neutralize wrapper styles
+            // We can add specific styling to other parts if needed
+            // closeButton: '...',
+          },
+        }}
+        // The z-index is still useful as a safeguard
+        className="z-[2147483647]"
+      />
+    );
+  },
+);
+Toaster.displayName = "Toaster";
 
-  const handlePrioritySelect = (priority: Priority) => {
-    selectedPriority.has(priority) ? selectedPriority.delete(priority) : selectedPriority.add(priority);
-    onFiltersChange({ ...filters, priority: Array.from(selectedPriority) });
-  };
+const ToasterContext = createContext<((props: ToasterProps) => void) | null>(
+  null,
+);
 
-  const hasActiveFilters = filters.status.length > 0 || filters.priority.length > 0;
+export const useToast = () => {
+  const context = useContext(ToasterContext);
+  if (!context) {
+    throw new Error("useToast must be used within a ToasterProvider");
+  }
+  return { show: context };
+};
+
+export const ToasterProvider = ({ children }: { children: ReactNode }) => {
+  const toasterRef = useRef<ToasterRef>(null);
+
+  const showToast = useCallback((props: ToasterProps) => {
+    toasterRef.current?.show(props);
+  }, []);
 
   return (
-    <Command>
-      <CommandInput placeholder="Filter by..." />
-      <CommandList>
-        <CommandEmpty>No results found.</CommandEmpty>
+    <ToasterContext.Provider value={showToast}>
+      {children}
+      <Toaster ref={toasterRef} />
+    </ToasterContext.Provider>
+  );
+};
+```
 
-        <CommandGroup heading="Status">
-          {statusOptions.map((option) => {
-            const isSelected = selectedStatus.has(option.value);
-            return (
-              <CommandItem
-                key={option.value}
-                onSelect={() => handleStatusSelect(option.value)}
-              >
-                <div
-                  className={cn(
-                    'mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary',
-                    isSelected ? 'bg-primary text-primary-foreground' : 'opacity-50 [&_svg]:invisible'
-                  )}
-                >
-                  <Check className={cn('h-4 w-4')} />
-                </div>
-                <span>{option.label}</span>
-              </CommandItem>
-            );
-          })}
-        </CommandGroup>
+## File: src/pages/DataDemo/hooks/useDataManagement.hook.tsx
+```typescript
+import { useState, useRef, useEffect, useCallback, useMemo, ReactNode } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { capitalize, cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
+import { mockDataItems } from '../data/mockData';
+import type { DataItem, ViewMode, SortConfig, SortableField, GroupableField, Status, Priority } from '../types';
+import type { FilterConfig } from '../components/DataToolbar';
 
-        <CommandSeparator />
+export function useDataManagement() {
+	const [searchParams, setSearchParams] = useSearchParams();
 
-        <CommandGroup heading="Priority">
-          {priorityOptions.map((option) => {
-            const isSelected = selectedPriority.has(option.value);
-            return (
-              <CommandItem
-                key={option.value}
-                onSelect={() => handlePrioritySelect(option.value)}
-              >
-                <div
-                  className={cn(
-                    'mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary',
-                    isSelected ? 'bg-primary text-primary-foreground' : 'opacity-50 [&_svg]:invisible'
-                  )}
-                >
-                  <Check className={cn('h-4 w-4')} />
-                </div>
-                <span>{option.label}</span>
-              </CommandItem>
-            );
-          })}
-        </CommandGroup>
+	// Derive state from URL search params
+	const viewMode = useMemo(() => (searchParams.get('view') as ViewMode) || 'list', [searchParams]);
+	const page = useMemo(() => parseInt(searchParams.get('page') || '1', 10), [searchParams]);
+	const groupBy = useMemo(() => (searchParams.get('groupBy') as GroupableField | 'none') || 'none', [searchParams]);
+	const activeGroupTab = useMemo(() => searchParams.get('tab') || 'all', [searchParams]);
 
-        {hasActiveFilters && (
-          <>
-            <CommandSeparator />
-            <CommandGroup>
-              <CommandItem
-                onSelect={() => onFiltersChange({ ...filters, status: [], priority: [] })}
-                className="justify-center text-center text-sm"
-              >
-                Clear filters
-              </CommandItem>
-            </CommandGroup>
-          </>
-        )}
-      </CommandList>
-    </Command>
-  )
+	const filters = useMemo<FilterConfig>(
+		() => ({
+			searchTerm: searchParams.get('q') || '',
+			status: (searchParams.get('status')?.split(',') || []).filter(Boolean) as Status[],
+			priority: (searchParams.get('priority')?.split(',') || []).filter(Boolean) as Priority[],
+		}),
+		[searchParams],
+	);
+
+	const sortConfig = useMemo<SortConfig | null>(() => {
+		const sortParam = searchParams.get('sort');
+		if (!sortParam) return { key: 'updatedAt', direction: 'desc' }; // Default sort
+		if (sortParam === 'default') return null;
+
+		const [key, direction] = sortParam.split('-');
+		return { key: key as SortableField, direction: direction as 'asc' | 'desc' };
+	}, [searchParams]);
+
+	// Centralized handler for updating URL search params
+	const handleParamsChange = useCallback(
+		(newParams: Record<string, string | string[] | null | undefined>) => {
+			setSearchParams(
+				(prev) => {
+					const updated = new URLSearchParams(prev);
+					let pageReset = false;
+
+					for (const [key, value] of Object.entries(newParams)) {
+						const isFilterOrSort = ['q', 'status', 'priority', 'sort', 'groupBy'].includes(key);
+
+						if (value === null || value === undefined || (Array.isArray(value) && value.length === 0) || value === '') {
+							updated.delete(key);
+						} else if (Array.isArray(value)) {
+							updated.set(key, value.join(','));
+						} else {
+							updated.set(key, String(value));
+						}
+
+						if (isFilterOrSort) {
+							pageReset = true;
+						}
+					}
+
+					if (pageReset) {
+						updated.delete('page');
+					}
+					if ('groupBy' in newParams) {
+						updated.delete('tab');
+					}
+
+					return updated;
+				},
+				{ replace: true },
+			);
+		},
+		[setSearchParams],
+	);
+
+	const [items, setItems] = useState<DataItem[]>([]);
+	const [hasMore, setHasMore] = useState(true);
+	const [isLoading, setIsLoading] = useState(true);
+	const observer = useRef<IntersectionObserver>();
+
+	// Centralized data filtering and sorting from the master list
+	const filteredAndSortedData = useMemo(() => {
+		const filteredItems = mockDataItems.filter((item) => {
+			const searchTermMatch =
+				item.title.toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
+				item.description.toLowerCase().includes(filters.searchTerm.toLowerCase());
+
+			const statusMatch = filters.status.length === 0 || filters.status.includes(item.status);
+			const priorityMatch = filters.priority.length === 0 || filters.priority.includes(item.priority);
+
+			return searchTermMatch && statusMatch && priorityMatch;
+		});
+
+		if (sortConfig) {
+			filteredItems.sort((a, b) => {
+				const getNestedValue = (obj: DataItem, path: string): unknown => 
+					path.split('.').reduce((o: any, k) => (o || {})[k], obj);
+
+				const aValue = getNestedValue(a, sortConfig.key);
+				const bValue = getNestedValue(b, sortConfig.key);
+
+				if (aValue === undefined || bValue === undefined) return 0;
+
+				if (typeof aValue === 'string' && typeof bValue === 'string') {
+					return sortConfig.direction === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
+				}
+				if (typeof aValue === 'number' && typeof bValue === 'number') {
+					return sortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue;
+				}
+				// Date sorting (assuming ISO strings)
+				if (sortConfig.key === 'updatedAt' || sortConfig.key === 'createdAt') {
+					return sortConfig.direction === 'asc'
+						? new Date(aValue).getTime() - new Date(bValue).getTime()
+						: new Date(bValue).getTime() - new Date(aValue).getTime();
+				}
+				return 0;
+			});
+		}
+
+		return filteredItems;
+	}, [filters, sortConfig]);
+
+	// Data loading effect
+	useEffect(() => {
+		setIsLoading(true);
+		const isFirstPage = page === 1;
+
+		const loadData = () => {
+			if (groupBy !== 'none') {
+				// For grouped views, load all data at once, pagination is disabled.
+				setItems(filteredAndSortedData);
+				setHasMore(false);
+				setIsLoading(false);
+				return;
+			}
+
+			// Handle paginated view
+			const pageSize = 12;
+			const newItems = filteredAndSortedData.slice((page - 1) * pageSize, page * pageSize);
+
+			setTimeout(() => {
+				// Double-check in case groupBy changed during the timeout
+				if (groupBy === 'none') {
+					setItems((prev) => (isFirstPage ? newItems : [...prev, ...newItems]));
+					setHasMore(filteredAndSortedData.length > page * pageSize);
+					setIsLoading(false);
+				}
+			}, isFirstPage && items.length === 0 ? 1500 : 500); // Longer delay for initial skeleton
+		};
+
+		loadData();
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [searchParams, filteredAndSortedData]); // Reacts to any URL change
+
+	const loaderRef = useCallback(
+		(node: Element | null) => {
+			if (isLoading) return;
+			if (observer.current) observer.current.disconnect();
+
+			observer.current = new IntersectionObserver((entries) => {
+				if (entries[0].isIntersecting && hasMore) {
+					// Instead of setting local state, we update the URL, which triggers the data loading effect.
+					handleParamsChange({ page: (page + 1).toString() });
+				}
+			});
+			if (node) observer.current.observe(node);
+		},
+		[isLoading, hasMore, page, handleParamsChange],
+	);
+
+	const groupTabs = useMemo(() => {
+		if (groupBy === 'none' || !filteredAndSortedData.length) return [];
+
+		const groupCounts = filteredAndSortedData.reduce((acc, item) => {
+			const groupKey = String(item[groupBy as GroupableField]);
+			acc[groupKey] = (acc[groupKey] || 0) + 1;
+			return acc;
+		}, {} as Record<string, number>);
+
+		const sortedGroups = Object.keys(groupCounts).sort((a, b) => a.localeCompare(b));
+
+		const createLabel = (text: string, count: number, isActive: boolean): ReactNode => (
+			<>
+				{text}
+				<Badge
+					variant={isActive ? 'default' : 'secondary'}
+					className={cn(
+						'transition-colors duration-300 text-xs font-semibold',
+						!isActive && 'group-hover:bg-accent group-hover:text-accent-foreground',
+					)}
+				>
+					{count}
+				</Badge>
+			</>
+		);
+
+		return [
+			{ id: 'all', label: createLabel('All', filteredAndSortedData.length, activeGroupTab === 'all') },
+			...sortedGroups.map((g) => ({
+				id: g,
+				label: createLabel(capitalize(g), groupCounts[g], activeGroupTab === g),
+			})),
+		];
+	}, [filteredAndSortedData, groupBy, activeGroupTab]);
+
+	// Data to be rendered in the current view, after grouping and tab selection is applied
+	const dataToRender = useMemo(() => {
+		if (groupBy === 'none') {
+			return items; // This is the paginated list.
+		}
+
+		// When grouped, `items` contains ALL filtered/sorted data.
+		if (activeGroupTab === 'all') {
+			return items;
+		}
+		return items.filter((item) => String(item[groupBy as GroupableField]) === activeGroupTab);
+	}, [items, groupBy, activeGroupTab]);
+
+	const totalItemCount = filteredAndSortedData.length;
+	const isInitialLoading = isLoading && items.length === 0;
+
+  const setViewMode = (mode: ViewMode) => handleParamsChange({ view: mode });
+  const setGroupBy = (val: string) => handleParamsChange({ groupBy: val === 'none' ? null : val });
+  const setActiveGroupTab = (tab: string) => handleParamsChange({ tab: tab === 'all' ? null : tab });
+  const setFilters = (newFilters: FilterConfig) => {
+    handleParamsChange({ q: newFilters.searchTerm, status: newFilters.status, priority: newFilters.priority });
+  }
+  const setSort = (config: SortConfig | null) => {
+    if (!config) {
+      handleParamsChange({ sort: 'default' });
+    } else {
+      handleParamsChange({ sort: `${config.key}-${config.direction}` });
+    }
+  }
+  const setTableSort = (field: SortableField) => {
+    if (sortConfig?.key === field) {
+      if (sortConfig.direction === 'desc') {
+        // Cycle: desc -> asc
+        handleParamsChange({ sort: `${field}-asc` });
+      } else {
+        // Cycle: asc -> default (by removing param)
+        handleParamsChange({ sort: 'default' });
+      }
+    } else {
+      // New field, default to desc
+      handleParamsChange({ sort: `${field}-desc` });
+    }
+  }
+
+	return {
+		viewMode,
+		groupBy,
+		activeGroupTab,
+		filters,
+		sortConfig,
+		hasMore,
+		isLoading,
+		loaderRef,
+		groupTabs,
+		dataToRender,
+		totalItemCount,
+		isInitialLoading,
+    setViewMode,
+    setGroupBy,
+    setActiveGroupTab,
+    setFilters,
+    setSort,
+    setTableSort
+	};
 }
 ```
 
@@ -783,192 +965,6 @@ export default {
     tailwindcss: {},
     autoprefixer: {},
   },
-}
-```
-
-## File: src/components/auth/LoginPage.tsx
-```typescript
-import React, { useState, ChangeEvent, FormEvent } from 'react';
-import { Eye, EyeOff, Mail, ArrowLeft } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { Label } from '@/components/ui/label';
-import { AnimatedInput } from '../effects/AnimatedInput';
-import { BoxReveal } from '../effects/BoxReveal';
-import { Ripple } from '../effects/Ripple';
-import { TechOrbitDisplay } from '../effects/OrbitingCircles';
-import { BottomGradient } from '../effects/BottomGradient';
-
-// ==================== AnimatedForm Components ====================
-
-// ==================== Main LoginPage Component ====================
-interface LoginPageProps {
-	onLogin?: (email: string, password: string) => void;
-	onForgotPassword?: (email: string) => void;
-	onSignUp?: () => void;
-}
-
-type LoginState = 'login' | 'forgot-password' | 'reset-sent';
-
-export function LoginPage({ onLogin, onForgotPassword }: LoginPageProps) {
-	const [state, setState] = useState<LoginState>('login');
-	const [email, setEmail] = useState('');
-	const [password, setPassword] = useState('');
-	const [isLoading, setIsLoading] = useState(false);
-	const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
-	const [showPassword, setShowPassword] = useState(false);
-
-	const handleLoginSubmit = async (e: FormEvent) => {
-		e.preventDefault();
-		setErrors({});
-		const newErrors: typeof errors = {};
-		if (!email) newErrors.email = 'Email is required';
-		if (!password) newErrors.password = 'Password is required';
-		if (Object.keys(newErrors).length > 0) {
-			setErrors(newErrors);
-			return;
-		}
-		setIsLoading(true);
-		await onLogin?.(email, password);
-		setIsLoading(false);
-	};
-
-	const handleForgotSubmit = async (e: FormEvent) => {
-		e.preventDefault();
-		setErrors({});
-		if (!email) {
-			setErrors({ email: 'Email is required' });
-			return;
-		}
-		setIsLoading(true);
-		await onForgotPassword?.(email);
-		setIsLoading(false);
-		setState('reset-sent');
-	};
-
-	const renderContent = () => {
-		if (state === 'reset-sent') {
-			return (
-				<div className="w-full max-w-md mx-auto text-center flex flex-col gap-4">
-					<BoxReveal boxColor="hsl(var(--skeleton))" duration={0.5}>
-						<div className="w-16 h-16 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center mx-auto">
-							<Mail className="w-8 h-8 text-green-600 dark:text-green-400" />
-						</div>
-					</BoxReveal>
-					<BoxReveal boxColor="hsl(var(--skeleton))" duration={0.5}>
-						<h1 className="text-3xl font-bold tracking-tight">Check your email</h1>
-					</BoxReveal>
-					<BoxReveal boxColor="hsl(var(--skeleton))" duration={0.5}>
-						<p className="text-muted-foreground">We've sent a password reset link to <strong>{email}</strong></p>
-					</BoxReveal>
-					<BoxReveal width="100%" boxColor="hsl(var(--skeleton))" duration={0.5}>
-						<button onClick={() => setState('login')} className="text-sm text-blue-500 hover:underline">
-							<div className="flex items-center justify-center gap-2">
-								<ArrowLeft className="w-4 h-4" /> Back to login
-							</div>
-						</button>
-					</BoxReveal>
-				</div>
-			);
-		}
-
-		const isLogin = state === 'login';
-		const formFields = isLogin
-			? [
-				{ label: 'Email', required: true, type: 'email', placeholder: 'Enter your email address', onChange: (e: ChangeEvent<HTMLInputElement>) => setEmail(e.target.value) },
-				{ label: 'Password', required: true, type: 'password', placeholder: 'Enter your password', onChange: (e: ChangeEvent<HTMLInputElement>) => setPassword(e.target.value) },
-			]
-			: [{ label: 'Email', required: true, type: 'email', placeholder: 'Enter your email address', onChange: (e: ChangeEvent<HTMLInputElement>) => setEmail(e.target.value) }];
-
-		return (
-			<div className="w-full max-w-md mx-auto flex flex-col gap-4">
-				<BoxReveal boxColor="hsl(var(--skeleton))" duration={0.3}>
-					<h2 className="font-bold text-3xl text-neutral-800 dark:text-neutral-200">{isLogin ? 'Welcome back' : 'Reset Password'}</h2>
-				</BoxReveal>
-				<BoxReveal boxColor="hsl(var(--skeleton))" duration={0.3} className="pb-2">
-					<p className="text-neutral-600 text-sm max-w-sm dark:text-neutral-300">{isLogin ? 'Sign in to your account to continue' : 'Enter your email to receive a reset link'}</p>
-				</BoxReveal>
-				{isLogin && (
-					<BoxReveal boxColor="hsl(var(--skeleton))" duration={0.3} width="100%" className="overflow-visible">
-						<button className="g-button group/btn bg-transparent w-full rounded-md border h-10 font-medium outline-hidden hover:cursor-pointer" type="button">
-							<span className="flex items-center justify-center w-full h-full gap-3">
-								<img src="https://cdn1.iconfinder.com/data/icons/google-s-logo/150/Google_Icons-09-512.png" width={26} height={26} alt="Google Icon" />
-								Sign in with Google
-							</span>
-							<BottomGradient />
-						</button>
-					</BoxReveal>
-				)}
-				{isLogin && (
-					<BoxReveal boxColor="hsl(var(--skeleton))" duration={0.3} width="100%">
-						<div className="flex items-center gap-4">
-							<hr className="flex-1 border-1 border-dashed border-neutral-300 dark:border-neutral-700" />
-							<p className="text-neutral-700 text-sm dark:text-neutral-300">or</p>
-							<hr className="flex-1 border-1 border-dashed border-neutral-300 dark:border-neutral-700" />
-						</div>
-					</BoxReveal>
-				)}
-				<form onSubmit={isLogin ? handleLoginSubmit : handleForgotSubmit}>
-					{formFields.map((field) => (
-						<div key={field.label} className="flex flex-col gap-2 mb-4">
-							<BoxReveal boxColor="hsl(var(--skeleton))" duration={0.3}>
-								<Label htmlFor={field.label}>{field.label} <span className="text-red-500">*</span></Label>
-							</BoxReveal>
-							<BoxReveal width="100%" boxColor="hsl(var(--skeleton))" duration={0.3} className="flex flex-col space-y-2 w-full">
-								<div className="relative">
-									<AnimatedInput type={field.type === 'password' ? (showPassword ? 'text' : 'password') : field.type} id={field.label} placeholder={field.placeholder} onChange={field.onChange} />
-									{field.type === 'password' && (
-										<button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5">
-											{showPassword ? <EyeOff className="h-5 w-5 text-gray-500" /> : <Eye className="h-5 w-5 text-gray-500" />}
-										</button>
-									)}
-								</div>
-								<div className="h-4">{errors[field.label as keyof typeof errors] && <p className="text-red-500 text-xs">{errors[field.label as keyof typeof errors]}</p>}</div>
-							</BoxReveal>
-						</div>
-					))}
-
-					<BoxReveal width="100%" boxColor="hsl(var(--skeleton))" duration={0.3} className="overflow-visible">
-						<button
-							className="bg-gradient-to-br relative group/btn from-zinc-200 dark:from-zinc-900 dark:to-zinc-900 to-zinc-200 block dark:bg-zinc-800 w-full text-black dark:text-white rounded-md h-10 font-medium shadow-[0px_1px_0px_0px_#ffffff40_inset,0px_-1px_0px_0px_#ffffff40_inset] dark:shadow-[0px_1px_0px_0px_var(--zinc-800)_inset,0px_-1px_0px_0px_var(--zinc-800)_inset] outline-hidden hover:cursor-pointer disabled:opacity-50"
-							type="submit" disabled={isLoading}
-						>
-							{isLoading ? (
-								<div className="flex items-center justify-center gap-2">
-									<div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-									<span>Processing...</span>
-								</div>
-							) : (
-								<>{isLogin ? 'Sign in' : 'Send reset link'} &rarr;</>
-							)}
-							<BottomGradient />
-						</button>
-					</BoxReveal>
-					<BoxReveal boxColor="hsl(var(--skeleton))" duration={0.3}>
-						<div className="mt-4 text-center">
-							<button type="button" className="text-sm text-blue-500 hover:underline" onClick={() => setState(isLogin ? 'forgot-password' : 'login')}>
-								{isLogin ? 'Forgot password?' : 'Back to login'}
-							</button>
-						</div>
-					</BoxReveal>
-				</form>
-			</div>
-		);
-	};
-
-	return (
-		<section className="flex max-lg:justify-center min-h-screen w-full login-page-theme bg-background text-foreground">
-			{/* Left Side */}
-			<div className="flex flex-col justify-center w-1/2 max-lg:hidden relative">
-				<Ripple />
-				<TechOrbitDisplay />
-			</div>
-
-			{/* Right Side */}
-			<div className="w-1/2 h-screen flex flex-col justify-center items-center max-lg:w-full max-lg:px-[10%]">
-				{renderContent()}
-			</div>
-		</section>
-	);
 }
 ```
 
@@ -1017,203 +1013,358 @@ export function LoginPage({ onLogin, onForgotPassword }: LoginPageProps) {
 }
 ```
 
-## File: src/pages/DataDemo/components/DataListView.tsx
+## File: src/components/layout/Sidebar.tsx
 ```typescript
-import { useRef } from 'react'
-import { cn } from '@/lib/utils'
-import { Badge } from '@/components/ui/badge'
-import { Avatar } from '@/components/ui/avatar'
-import { Calendar, Eye, Heart, Share, ArrowRight } from 'lucide-react'
-import type { ViewProps } from '../types'
-import { getStatusColor, getPriorityColor } from '../utils'
-import { useIncrementalStaggeredAnimation } from '@/hooks/useStaggeredAnimation.motion'
-import { EmptyState } from './EmptyState'
+import * as React from 'react';
+import { ChevronDown } from 'lucide-react';
+import { Slot } from '@radix-ui/react-slot';
+import { useAppShell } from '@/context/AppShellContext';
+import { SIDEBAR_STATES } from '@/lib/utils';
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
 
-export function DataListView({ data, onItemSelect, selectedItem }: ViewProps) {
-  const listRef = useRef<HTMLDivElement>(null)
-  useIncrementalStaggeredAnimation(listRef, [data], { scale: 1, y: 30, stagger: 0.08, duration: 0.5 });
+// --- Context ---
+interface SidebarContextValue {
+  isCollapsed: boolean;
+  isPeek: boolean;
+  compactMode: boolean;
+}
 
-  if (data.length === 0) {
-    return <EmptyState />
+const SidebarContext = React.createContext<SidebarContextValue | null>(null);
+
+export const useSidebar = () => {
+  const context = React.useContext(SidebarContext);
+  if (!context) {
+    throw new Error('useSidebar must be used within a Sidebar component');
   }
+  return context;
+};
+
+// --- Main Sidebar Component ---
+interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
+  children: React.ReactNode;
+}
+
+const Sidebar = React.forwardRef<HTMLDivElement, SidebarProps>(
+  ({ children, className, ...props }, ref) => {
+    const { sidebarState, compactMode } = useAppShell();
+    const isCollapsed = sidebarState === SIDEBAR_STATES.COLLAPSED;
+    const isPeek = sidebarState === SIDEBAR_STATES.PEEK;
+
+    return (
+      <SidebarContext.Provider value={{ isCollapsed, isPeek, compactMode }}>
+        <div
+          ref={ref}
+          className={cn(
+            'relative bg-card flex-shrink-0',
+            'h-full',
+            isPeek && 'shadow-xl z-40',
+            compactMode && 'text-sm',
+            className,
+          )}
+          {...props}
+        >
+          {isPeek && <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" />}
+          {children}
+        </div>
+      </SidebarContext.Provider>
+    );
+  },
+);
+Sidebar.displayName = 'Sidebar';
+
+// --- Sidebar Content Wrapper ---
+const SidebarContent = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => {
+  const { compactMode } = useSidebar();
+  return (
+    <div
+      ref={ref}
+      className={cn(
+        'relative z-10 h-full flex flex-col',
+        compactMode ? 'p-3' : 'p-4',
+        className,
+      )}
+      {...props}
+    />
+  );
+});
+SidebarContent.displayName = 'SidebarContent';
+
+// --- Sidebar Header ---
+const SidebarHeader = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => {
+  const { isCollapsed } = useSidebar();
+  return (
+    <div
+      ref={ref}
+      className={cn(
+        'flex items-center gap-3',
+        isCollapsed ? 'justify-center' : 'px-3',
+        'h-16',
+        className,
+      )}
+      {...props}
+    />
+  );
+});
+SidebarHeader.displayName = 'SidebarHeader';
+
+const SidebarTitle = React.forwardRef<
+  HTMLParagraphElement,
+  React.HTMLAttributes<HTMLParagraphElement>
+>(({ className, ...props }, ref) => {
+  const { isCollapsed } = useSidebar();
+  if (isCollapsed) return null;
+  return (
+    <h1
+      ref={ref}
+      className={cn('text-lg font-bold nav-label', className)}
+      {...props}
+    />
+  );
+});
+SidebarTitle.displayName = 'SidebarTitle';
+
+// --- Sidebar Body ---
+const SidebarBody = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => (
+  <div
+    ref={ref}
+    className={cn(
+      'flex-1 overflow-y-auto space-y-6 pt-4',
+      className,
+    )}
+    {...props}
+  />
+));
+SidebarBody.displayName = 'SidebarBody';
+
+// --- Sidebar Footer ---
+const SidebarFooter = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => {
+  const { compactMode } = useSidebar();
+  return (
+    <div
+      ref={ref}
+      className={cn('pt-4 border-t border-border', compactMode && 'pt-3', className)}
+      {...props}
+    />
+  );
+});
+SidebarFooter.displayName = 'SidebarFooter';
+
+// --- Sidebar Section ---
+const SidebarSection = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement> & {
+    title?: string;
+    collapsible?: boolean;
+    defaultExpanded?: boolean;
+  }
+>(({ title, collapsible = false, defaultExpanded = true, children, ...props }, ref) => {
+  const { isCollapsed } = useSidebar();
+  const [isExpanded, setIsExpanded] = React.useState(defaultExpanded);
+
+  const handleToggle = () => {
+    if (collapsible) {
+      setIsExpanded(!isExpanded);
+    }
+  };
 
   return (
-    <div ref={listRef} className="space-y-4">
-      {data.map((item) => {
-        const isSelected = selectedItem?.id === item.id
-        
-        return (
-          <div
-            key={item.id}
-            onClick={() => onItemSelect(item)}
-            className={cn(
-              "group relative overflow-hidden rounded-2xl border bg-card/50 backdrop-blur-sm transition-all duration-300 cursor-pointer",
-              "hover:bg-card/80 hover:shadow-lg hover:shadow-primary/5 hover:border-primary/20",
-              "active:scale-[0.99]",
-              isSelected && "ring-2 ring-primary/20 border-primary/30 bg-card/90"
-            )}
-          >
-            <div className="p-6">
-              <div className="flex items-start gap-4">
-                {/* Thumbnail */}
-                <div className="flex-shrink-0">
-                  <div className="w-14 h-14 bg-gradient-to-br from-primary/20 to-primary/10 rounded-xl flex items-center justify-center text-2xl">
-                    {item.thumbnail}
-                  </div>
-                </div>
+    <div ref={ref} className="space-y-1" {...props}>
+      {!isCollapsed && title && (
+        <div
+          className={cn(
+            'flex items-center justify-between px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider',
+            collapsible && 'cursor-pointer hover:text-foreground transition-colors',
+          )}
+          onClick={handleToggle}
+        >
+          <span className="section-title">{title}</span>
+          {collapsible && (
+            <ChevronDown
+              className={cn(
+                'section-chevron w-3 h-3 transition-transform',
+                isExpanded ? 'rotate-0' : '-rotate-90',
+              )}
+            />
+          )}
+        </div>
+      )}
+      {(!collapsible || isExpanded || isCollapsed) && (
+        <nav className="space-y-1">{children}</nav>
+      )}
+    </div>
+  );
+});
+SidebarSection.displayName = 'SidebarSection';
 
-                {/* Content */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-lg mb-1 group-hover:text-primary transition-colors">
-                        {item.title}
-                      </h3>
-                      <p className="text-muted-foreground text-sm mb-3 line-clamp-2">
-                        {item.description}
-                      </p>
-                    </div>
-                    <ArrowRight className="w-5 h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all duration-300 ml-4 flex-shrink-0" />
-                  </div>
+// --- Sidebar Menu Item ---
+const SidebarMenuItem = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => {
+  return <div ref={ref} className={cn('group/item relative flex items-stretch', className)} {...props} />;
+});
+SidebarMenuItem.displayName = 'SidebarMenuItem';
 
-                  {/* Badges */}
-                  <div className="flex items-center gap-2 mb-4">
-                    <Badge variant="outline" className={getStatusColor(item.status)}>
-                      {item.status}
-                    </Badge>
-                    <Badge variant="outline" className={getPriorityColor(item.priority)}>
-                      {item.priority}
-                    </Badge>
-                    <Badge variant="outline" className="bg-accent/50">
-                      {item.category}
-                    </Badge>
-                  </div>
 
-                  {/* Meta info */}
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      {/* Assignee */}
-                      <div className="flex items-center gap-2">
-                        <Avatar className="w-7 h-7 text-sm">
-                          {item.assignee.avatar}
-                        </Avatar>
-                        <span className="text-sm text-muted-foreground font-medium">
-                          {item.assignee.name}
-                        </span>
-                      </div>
+// --- Sidebar Menu Button ---
+interface SidebarMenuButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  asChild?: boolean;
+  isActive?: boolean;
+}
+const SidebarMenuButton = React.forwardRef<HTMLButtonElement, SidebarMenuButtonProps>(
+  ({ className, asChild = false, isActive, ...props }, ref) => {
+    const { isCollapsed, compactMode } = useSidebar();
+    const Comp = asChild ? Slot : 'button';
 
-                      {/* Date */}
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <Calendar className="w-3 h-3" />
-                        {new Date(item.updatedAt).toLocaleDateString()}
-                      </div>
-                    </div>
+    return (
+      <Comp
+        ref={ref}
+        className={cn(
+          'group flex items-center gap-3 rounded-lg cursor-pointer transition-all duration-200 w-full text-left flex-1',
+          compactMode ? 'px-2 py-1.5' : 'px-4 py-2.5',
+          'hover:bg-accent',
+          isActive && 'bg-primary text-primary-foreground hover:bg-primary/90',
+          isCollapsed && 'justify-center',
+          className
+        )}
+        {...props}
+      />
+    );
+  }
+);
+SidebarMenuButton.displayName = 'SidebarMenuButton';
 
-                    {/* Metrics */}
-                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                      <div className="flex items-center gap-1">
-                        <Eye className="w-3 h-3" />
-                        {item.metrics.views}
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Heart className="w-3 h-3" />
-                        {item.metrics.likes}
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Share className="w-3 h-3" />
-                        {item.metrics.shares}
-                      </div>
-                    </div>
-                  </div>
+// --- Sidebar Menu Action ---
+const SidebarMenuAction = React.forwardRef<
+  HTMLButtonElement,
+  React.ButtonHTMLAttributes<HTMLButtonElement>
+>(({ className, ...props }, ref) => {
+  const { isCollapsed } = useSidebar();
+  if (isCollapsed) return null;
+  return (
+    <Button
+      ref={ref}
+      variant="ghost"
+      size="icon"
+      className={cn(
+        'absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 rounded-md opacity-0 group-hover/item:opacity-100 transition-opacity',
+        'focus:opacity-100', // show on focus for accessibility
+        className
+      )}
+      {...props}
+    />
+  );
+});
+SidebarMenuAction.displayName = 'SidebarMenuAction';
 
-                  {/* Progress bar */}
-                  <div className="mt-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs text-muted-foreground">Progress</span>
-                      <span className="text-xs font-medium">{item.metrics.completion}%</span>
-                    </div>
-                    <div className="w-full bg-muted rounded-full h-1.5">
-                      <div 
-                        className="bg-gradient-to-r from-primary to-primary/80 h-1.5 rounded-full transition-all duration-500 ease-out"
-                        style={{ width: `${item.metrics.completion}%` }}
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+// --- Sidebar Menu Label ---
+const SidebarLabel = React.forwardRef<
+  HTMLSpanElement,
+  React.HTMLAttributes<HTMLSpanElement>
+>(({ className, ...props }, ref) => {
+  const { isCollapsed } = useSidebar();
+  if (isCollapsed) return null;
+  return (
+    <span
+      ref={ref}
+      className={cn('nav-label flex-1 font-medium truncate', className)}
+      {...props}
+    />
+  );
+});
+SidebarLabel.displayName = 'SidebarLabel';
 
-            {/* Hover gradient overlay */}
-            <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
-          </div>
-        )
-      })}
+
+// --- Sidebar Menu Badge ---
+const SidebarBadge = React.forwardRef<
+  HTMLSpanElement,
+  React.HTMLAttributes<HTMLSpanElement>
+>(({ className, children, ...props }, ref) => {
+  const { isCollapsed } = useSidebar();
+  if (isCollapsed) return null;
+  const badgeContent = typeof children === 'number' && children > 99 ? '99+' : children;
+  return (
+    <span
+      ref={ref}
+      className={cn(
+        'nav-badge bg-destructive text-destructive-foreground text-xs px-1.5 py-0.5 rounded-full min-w-[1.25rem] text-center',
+        className
+      )}
+      {...props}
+    >
+      {badgeContent}
+    </span>
+  );
+});
+SidebarBadge.displayName = 'SidebarBadge';
+
+
+// --- Sidebar Tooltip ---
+interface SidebarTooltipProps extends React.HTMLAttributes<HTMLDivElement> {
+  label: string;
+  badge?: number | string;
+}
+const SidebarTooltip = ({ label, badge, className, ...props }: SidebarTooltipProps) => {
+  const { isCollapsed } = useSidebar();
+  if (!isCollapsed) return null;
+  return (
+    <div
+      className={cn(
+        'absolute left-full ml-2 px-2 py-1 bg-popover text-popover-foreground text-sm rounded-md shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50',
+        className
+      )}
+      {...props}
+    >
+      {label}
+      {badge && (
+        <span className="ml-2 bg-destructive text-destructive-foreground text-xs px-1.5 py-0.5 rounded-full">
+          {typeof badge === 'number' && badge > 99 ? '99+' : badge}
+        </span>
+      )}
+    </div>
+  );
+};
+SidebarTooltip.displayName = 'SidebarTooltip';
+
+
+// --- Icon Wrapper for consistent sizing ---
+const SidebarIcon = ({ children, className }: { children: React.ReactNode, className?: string }) => {
+  return (
+    <div className={cn("flex-shrink-0 w-4 h-4", className)}>
+      {children}
     </div>
   )
 }
-```
 
-## File: src/pages/DataDemo/types.ts
-```typescript
-export type ViewMode = 'list' | 'cards' | 'grid' | 'table'
-
-export type GroupableField = 'status' | 'priority' | 'category'
-
-export type SortableField = 'title' | 'status' | 'priority' | 'updatedAt' | 'assignee.name' | 'metrics.views' | 'metrics.completion' | 'createdAt'
-export type SortDirection = 'asc' | 'desc'
-export interface SortConfig {
-  key: SortableField
-  direction: SortDirection
-}
-
-export interface DataItem {
-  id: string
-  title: string
-  description: string
-  category: string
-  status: 'active' | 'pending' | 'completed' | 'archived'
-  priority: 'low' | 'medium' | 'high' | 'critical'
-  assignee: {
-    name: string
-    avatar: string
-    email: string
-  }
-  metrics: {
-    views: number
-    likes: number
-    shares: number
-    completion: number
-  }
-  tags: string[]
-  createdAt: string
-  updatedAt: string
-  dueDate?: string
-  thumbnail?: string
-  content?: {
-    summary: string
-    details: string
-    attachments?: Array<{
-      name: string
-      type: string
-      size: string
-      url: string
-    }>
-  }
-}
-
-export interface ViewProps {
-  data: DataItem[] | Record<string, DataItem[]>
-  onItemSelect: (item: DataItem) => void
-  selectedItem: DataItem | null
-  isGrid?: boolean
-
-  // Props for table view specifically
-  sortConfig?: SortConfig | null
-  onSort?: (field: SortableField) => void
-}
-
-export type Status = DataItem['status']
-export type Priority = DataItem['priority']
+export {
+  Sidebar,
+  SidebarContent,
+  SidebarHeader,
+  SidebarTitle,
+  SidebarBody,
+  SidebarFooter,
+  SidebarSection,
+  SidebarMenuItem,
+  SidebarMenuButton,
+  SidebarMenuAction,
+  SidebarLabel,
+  SidebarBadge,
+  SidebarTooltip,
+  SidebarIcon
+};
 ```
 
 ## File: index.html
@@ -1249,673 +1400,156 @@ export type Priority = DataItem['priority']
 }
 ```
 
-## File: src/pages/Dashboard/DemoContent.tsx
+## File: src/pages/DataDemo/components/DataViewModeSelector.tsx
 ```typescript
-import React, { useRef } from 'react'
-import { 
-  Sparkles, 
-  Zap, 
-  Rocket, 
-  Star, 
-  Heart,
-  Layers,
-  Code,
-  Palette,
-  Smartphone,
-  Monitor,
-  Settings
-} from 'lucide-react'
+import { useEffect, useRef, useState, useCallback } from 'react'
+import { gsap } from 'gsap'
 import { cn } from '@/lib/utils'
-import { useAppStore } from '@/store/appStore'
-import { useAppShell } from '@/context/AppShellContext'
-import { Card } from '@/components/ui/card'
+import { List, Grid3X3, LayoutGrid, Table } from 'lucide-react'
+import type { ViewMode } from '../types'
 
-export const DemoContent = React.forwardRef<HTMLDivElement, {}>(function DemoContent(props, ref) {
-  const { bodyState, sidebarState, compactMode } = useAppShell()
-  const { isDarkMode } = useAppStore()
-  const contentRef = useRef<HTMLDivElement>(null)
+interface DataViewModeSelectorProps {
+  viewMode: ViewMode
+  onChange: (mode: ViewMode) => void
+}
 
-  const features = [
-    {
-      icon: <Sparkles className="w-6 h-6" />,
-      title: "Amazing Animations",
-      description: "Powered by GSAP for smooth, buttery animations",
-      color: "from-emerald-500 to-teal-500"
-    },
-    {
-      icon: <Zap className="w-6 h-6" />,
-      title: "Lightning Fast",
-      description: "Built with Vite and optimized for performance",
-      color: "from-amber-500 to-orange-500"
-    },
-    {
-      icon: <Layers className="w-6 h-6" />,
-      title: "Multiple States",
-      description: "Fullscreen, side pane, and normal viewing modes",
-      color: "from-emerald-500 to-green-500"
-    },
-    {
-      icon: <Code className="w-6 h-6" />,
-      title: "TypeScript",
-      description: "Fully typed with excellent developer experience",
-      color: "from-green-500 to-emerald-500"
-    },
-    {
-      icon: <Palette className="w-6 h-6" />,
-      title: "Beautiful Design",
-      description: "Shadcn/ui components with Tailwind CSS",
-      color: "from-teal-500 to-emerald-500"
-    },
-    {
-      icon: <Settings className="w-6 h-6" />,
-      title: "Customizable",
-      description: "Extensive settings and preferences panel",
-      color: "from-slate-500 to-gray-500"
-    }
-  ]
+const viewModes = [
+  { id: 'list' as ViewMode, label: 'List', icon: List, description: 'Compact list with details' },
+  { id: 'cards' as ViewMode, label: 'Cards', icon: LayoutGrid, description: 'Rich card layout' },
+  { id: 'grid' as ViewMode, label: 'Grid', icon: Grid3X3, description: 'Masonry grid view' },
+  { id: 'table' as ViewMode, label: 'Table', icon: Table, description: 'Structured data table' }
+]
 
-  const stats = [
-    { label: "Components", value: "12+", color: "text-emerald-600" },
-    { label: "Animations", value: "25+", color: "text-teal-600" },
-    { label: "States", value: "7", color: "text-primary" },
-    { label: "Settings", value: "10+", color: "text-amber-600" }
-  ]
-
-  return (
-    <div ref={contentRef} className="p-8 space-y-12">
-      {/* Hero Section */}
-      <div className="text-center space-y-4">
-        <div className="flex items-center justify-center gap-2 mb-4">
-          <Rocket className="w-8 h-8 text-primary" />
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">Jeli App Shell</h1>
-        </div>
-        <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-          A super flexible application shell with resizable sidebar, multiple body states, 
-          smooth animations, and comprehensive settings - all built with modern web technologies.
-        </p>
-        
-        {/* Quick Stats */}
-        <div className="flex items-center justify-center gap-12 mt-8">
-          {stats.map((stat) => (
-            <div key={stat.label} className="text-center">
-              <div className={cn("text-2xl font-bold", stat.color)}>{stat.value}</div>
-              <div className="text-sm text-muted-foreground">{stat.label}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Feature Cards */}
-      <div ref={ref} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {features.map((feature, index) => (
-          <Card
-            key={feature.title}
-            className="group relative overflow-hidden border-border/50 p-6 hover:border-primary/30 hover:bg-accent/30 transition-all duration-300 cursor-pointer"
-          >
-            <div className="relative z-10">
-              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-4 group-hover:scale-110 group-hover:bg-primary/20 transition-transform">
-                {feature.icon}
-              </div>
-              
-              <h3 className="text-lg font-semibold mb-2">{feature.title}</h3>
-              <p className="text-muted-foreground text-sm">{feature.description}</p>
-            </div>
-          </Card>
-        ))}
-      </div>
-
-      {/* Technology Stack */}
-      <Card className="border-border/50 p-6">
-        <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
-          <Star className="w-6 h-6 text-yellow-500" />
-          Technology Stack
-        </h2>
-        
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {[
-            { name: "React 18", desc: "Latest React with hooks" },
-            { name: "TypeScript", desc: "Type-safe development" },
-            { name: "Vite", desc: "Lightning fast build tool" },
-            { name: "Tailwind CSS", desc: "Utility-first styling" },
-            { name: "GSAP", desc: "Professional animations" },
-            { name: "Zustand", desc: "Lightweight state management" },
-            { name: "Shadcn/ui", desc: "Beautiful components" },
-            { name: "Lucide Icons", desc: "Consistent iconography" }
-          ].map((tech) => (
-            <div key={tech.name} className="bg-background rounded-xl p-4 border border-border/50">
-              <h4 className="font-medium">{tech.name}</h4>
-              <p className="text-sm text-muted-foreground">{tech.desc}</p>
-            </div>
-          ))}
-        </div>
-      </Card>
-
-      {/* Current State Display */}
-      <Card className="border-border/50 p-6">
-        <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-          <Monitor className="w-5 h-5" />
-          Current App State
-        </h2>
-        
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="text-center p-3 bg-background rounded-xl">
-            <div className="text-sm text-muted-foreground">Sidebar</div>
-            <div className="font-medium capitalize">{sidebarState}</div>
-          </div>
-          <div className="text-center p-3 bg-background rounded-xl">
-            <div className="text-sm text-muted-foreground">Body State</div>
-            <div className="font-medium capitalize">{bodyState.replace('_', ' ')}</div>
-          </div>
-          <div className="text-center p-3 bg-background rounded-xl">
-            <div className="text-sm text-muted-foreground">Theme</div>
-            <div className="font-medium">{isDarkMode ? 'Dark' : 'Light'}</div>
-          </div>
-          <div className="text-center p-3 bg-background rounded-xl">
-            <div className="text-sm text-muted-foreground">Mode</div>
-            <div className="font-medium">{compactMode ? 'Compact' : 'Normal'}</div>
-          </div>
-        </div>
-      </Card>
-
-      {/* Interactive Demo */}
-      <div className="text-center space-y-4">
-        <h2 className="text-2xl font-bold flex items-center justify-center gap-2">
-          <Heart className="w-6 h-6 text-red-500" />
-          Try It Out!
-        </h2>
-        <p className="text-muted-foreground">
-          Use the controls in the top bar to explore different states, toggle the sidebar, 
-          or open settings to customize the experience. The sidebar is resizable by dragging the edge!
-        </p>
-        
-        <div className="flex items-center justify-center gap-4 pt-4">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Smartphone className="w-4 h-4" />
-            <span>Responsive</span>
-          </div>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Zap className="w-4 h-4" />
-            <span>Fast</span>
-          </div>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Star className="w-4 h-4" />
-            <span>Beautiful</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-})
-```
-
-## File: src/pages/DataDemo/components/DataCardView.tsx
-```typescript
-import { useRef } from 'react'
-import { cn } from '@/lib/utils'
-import { Badge } from '@/components/ui/badge'
-import { Avatar } from '@/components/ui/avatar'
-import { Calendar, Eye, Heart, Share, ArrowUpRight, Tag } from 'lucide-react'
-import type { ViewProps } from '../types'
-import { getStatusColor, getPriorityColor } from '../utils'
-import { useIncrementalStaggeredAnimation } from '@/hooks/useStaggeredAnimation.motion'
-import { EmptyState } from './EmptyState'
-
-export function DataCardView({ data, onItemSelect, selectedItem, isGrid = false }: ViewProps) {
+export function DataViewModeSelector({ viewMode, onChange }: DataViewModeSelectorProps) {
+  const indicatorRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
-  useIncrementalStaggeredAnimation(containerRef, [data], { y: 40 });
+  const [isExpanded, setIsExpanded] = useState(false)
+  const [isTransitioning, setIsTransitioning] = useState(false)
 
-  if (data.length === 0) {
-    return <EmptyState />
+  const updateIndicatorPosition = useCallback((immediate = false) => {
+    if (!indicatorRef.current || !containerRef.current || isTransitioning) return
+
+    const activeButton = containerRef.current.querySelector(`[data-mode="${viewMode}"]`) as HTMLElement
+    if (!activeButton) return
+
+    const containerRect = containerRef.current.getBoundingClientRect()
+    const buttonRect = activeButton.getBoundingClientRect()
+    
+    const left = buttonRect.left - containerRect.left
+    const width = buttonRect.width
+
+    if (immediate) {
+      // Set position immediately without animation for initial load
+      gsap.set(indicatorRef.current, {
+        x: left,
+        width: width
+      })
+    } else {
+      gsap.to(indicatorRef.current, {
+        duration: 0.3,
+        x: left,
+        width: width,
+        ease: "power2.out"
+      })
+    }
+  }, [viewMode, isTransitioning])
+
+  // Initial setup - set position immediately without animation
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      updateIndicatorPosition(true)
+    }, 0)
+    return () => clearTimeout(timer)
+  }, []) // Only run once on mount
+
+  useEffect(() => {
+    if (!isTransitioning) {
+      updateIndicatorPosition()
+    }
+  }, [viewMode, isTransitioning, updateIndicatorPosition])
+
+  const handleMouseEnter = () => {
+    setIsTransitioning(true)
+    setIsExpanded(true)
+    
+    // Wait for expand animation to complete
+    setTimeout(() => {
+      setIsTransitioning(false)
+    }, 500)
+  }
+
+  const handleMouseLeave = () => {
+    setIsTransitioning(true)
+    setIsExpanded(false)
+    
+    // Wait for collapse animation to complete
+    setTimeout(() => {
+      setIsTransitioning(false)
+    }, 500)
   }
 
   return (
     <div 
       ref={containerRef}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
       className={cn(
-        "gap-6",
-        isGrid
-          ? "grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))]"
-          : "grid grid-cols-[repeat(auto-fit,minmax(320px,1fr))]"
+        "relative flex items-center bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-1.5 shadow-lg transition-all duration-500 ease-out",
+        "hover:shadow-xl hover:bg-card/70",
+        isExpanded ? "gap-1" : "gap-0"
       )}
     >
-      {data.map((item) => {
-        const isSelected = selectedItem?.id === item.id
+      {/* Animated indicator */}
+      <div
+        ref={indicatorRef}
+        className="absolute inset-y-1.5 bg-gradient-to-r from-primary/20 to-primary/10 border border-primary/20 rounded-xl transition-all duration-300"
+        style={{ left: 0, width: 0 }}
+      />
+      
+      {/* Mode buttons */}
+      {viewModes.map((mode, index) => {
+        const IconComponent = mode.icon
+        const isActive = viewMode === mode.id
         
         return (
-          <div
-            key={item.id}
-            onClick={() => onItemSelect(item)}
+          <button
+            key={mode.id}
+            data-mode={mode.id}
+            onClick={() => onChange(mode.id)}
             className={cn(
-              "group relative overflow-hidden rounded-3xl border bg-card/50 backdrop-blur-sm transition-all duration-500 cursor-pointer",
-              "hover:bg-card/80 hover:shadow-xl hover:shadow-primary/10 hover:border-primary/30 hover:-translate-y-2",
-              "active:scale-[0.98]",
-              isSelected && "ring-2 ring-primary/30 border-primary/40 bg-card/90 shadow-lg shadow-primary/20",
+              "relative flex items-center justify-center rounded-xl transition-all duration-500 ease-out group overflow-hidden",
+              "hover:bg-accent/20 active:scale-95",
+              isActive && "text-primary",
+              isExpanded ? "gap-3 px-4 py-2.5" : "gap-0 px-3 py-2.5"
             )}
+            title={mode.description}
+            style={{
+              transitionDelay: isExpanded ? `${index * 50}ms` : `${(viewModes.length - index - 1) * 30}ms`
+            }}
           >
-            {/* Card Header with Thumbnail */}
-            <div className="relative p-6 pb-4">
-              <div className="flex items-start justify-between mb-4">
-                <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-primary/10 rounded-2xl flex items-center justify-center text-3xl group-hover:scale-110 transition-transform duration-300">
-                  {item.thumbnail}
-                </div>
-                <ArrowUpRight className="w-5 h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 group-hover:-translate-y-1 transition-all duration-300" />
-              </div>
-
-              {/* Priority indicator */}
-              <div className="absolute top-4 right-4">
-                <div className={cn(
-                  "w-3 h-3 rounded-full",
-                  item.priority === 'critical' && "bg-red-500",
-                  item.priority === 'high' && "bg-orange-500",
-                  item.priority === 'medium' && "bg-blue-500",
-                  item.priority === 'low' && "bg-green-500"
-                )} />
-              </div>
-            </div>
-
-            {/* Card Content */}
-            <div className="px-6 pb-6">
-              {/* Title and Description */}
-              <h3 className="font-semibold text-lg mb-2 group-hover:text-primary transition-colors line-clamp-2">
-                {item.title}
-              </h3>
-              <p className="text-muted-foreground text-sm mb-4 line-clamp-3">
-                {item.description}
-              </p>
-
-              {/* Status and Category */}
-              <div className="flex items-center gap-2 mb-4">
-                <Badge variant="outline" className={getStatusColor(item.status)}>
-                  {item.status}
-                </Badge>
-                <Badge variant="outline" className="bg-accent/50 text-xs">
-                  {item.category}
-                </Badge>
-              </div>
-
-              {/* Tags */}
-              <div className="flex items-center gap-1 mb-4">
-                <Tag className="w-3 h-3 text-muted-foreground" />
-                <div className="flex flex-wrap gap-1">
-                  {item.tags.slice(0, 3).map((tag, index) => (
-                    <span key={index} className="text-xs text-muted-foreground bg-muted/50 px-2 py-1 rounded-md">
-                      {tag}
-                    </span>
-                  ))}
-                  {item.tags.length > 3 && (
-                    <span className="text-xs text-muted-foreground">
-                      +{item.tags.length - 3}
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {/* Progress */}
-              <div className="mb-4">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs text-muted-foreground">Progress</span>
-                  <span className="text-xs font-semibold">{item.metrics.completion}%</span>
-                </div>
-                <div className="w-full bg-muted rounded-full h-2">
-                  <div 
-                    className="bg-gradient-to-r from-primary to-primary/80 h-2 rounded-full transition-all duration-700 ease-out"
-                    style={{ width: `${item.metrics.completion}%` }}
-                  />
-                </div>
-              </div>
-
-              {/* Assignee */}
-              <div className="flex items-center gap-3 mb-4">
-                <Avatar className="w-8 h-8 text-sm">
-                  {item.assignee.avatar}
-                </Avatar>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">
-                    {item.assignee.name}
-                  </p>
-                  <p className="text-xs text-muted-foreground truncate">
-                    {item.assignee.email}
-                  </p>
-                </div>
-              </div>
-
-              {/* Metrics */}
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-1">
-                    <Eye className="w-3 h-3" />
-                    {item.metrics.views}
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Heart className="w-3 h-3" />
-                    {item.metrics.likes}
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Share className="w-3 h-3" />
-                    {item.metrics.shares}
-                  </div>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Calendar className="w-3 h-3" />
-                  {new Date(item.updatedAt).toLocaleDateString()}
-                </div>
-              </div>
-            </div>
-
-            {/* Hover gradient overlay */}
-            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+            <IconComponent className={cn(
+              "w-5 h-5 transition-all duration-300 flex-shrink-0",
+              isActive && "scale-110",
+              "group-hover:scale-105",
+              isExpanded ? "rotate-0" : "rotate-0"
+            )} />
             
-            {/* Selection indicator */}
-            {isSelected && (
-              <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-primary/5 pointer-events-none" />
-            )}
-          </div>
+            {/* Label with smooth expand/collapse */}
+            <div className={cn(
+              "overflow-hidden transition-all duration-500 ease-out",
+              isExpanded ? "max-w-[80px] opacity-100" : "max-w-0 opacity-0"
+            )}>
+              <span className={cn(
+                "font-medium whitespace-nowrap transition-all duration-300",
+                isActive ? "text-primary" : "text-muted-foreground",
+                "group-hover:text-foreground"
+              )}>
+                {mode.label}
+              </span>
+            </div>
+          </button>
         )
       })}
-    </div>
-  )
-}
-```
-
-## File: src/pages/DataDemo/components/DataDetailPanel.tsx
-```typescript
-import React, { useRef } from 'react'
-import { cn } from '@/lib/utils'
-import { Badge } from '@/components/ui/badge'
-import { Avatar } from '@/components/ui/avatar'
-import { Button } from '@/components/ui/button'
-import { 
-  ArrowLeft,
-  Calendar, 
-  Clock, 
-  Eye, 
-  Heart, 
-  Share, 
-  Download,
-  FileText,
-  Image,
-  Video,
-  File,
-  ExternalLink,
-  Tag,
-  User,
-  BarChart3,
-  TrendingUp,
-  CheckCircle,
-  AlertCircle,
-  Circle
-} from 'lucide-react' 
-import type { DataItem } from '../types'
-import { useStaggeredAnimation } from '@/hooks/useStaggeredAnimation.motion'
-import { getStatusColor, getPriorityColor } from '../utils'
-
-interface DataDetailPanelProps {
-  item: DataItem | null
-  onClose: () => void
-}
-
-export function DataDetailPanel({ item, onClose }: DataDetailPanelProps) {
-  const contentRef = useRef<HTMLDivElement>(null)
-  useStaggeredAnimation(contentRef, [item]);
-
-  if (!item) {
-    return null
-  }
-
-  const getFileIcon = (type: string) => {
-    switch (type.toLowerCase()) {
-      case 'pdf': return FileText
-      case 'image':
-      case 'png':
-      case 'jpg':
-      case 'jpeg': return Image
-      case 'video':
-      case 'mp4': return Video
-      default: return File
-    }
-  }
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'completed': return CheckCircle
-      case 'active': return Circle
-      case 'pending': return AlertCircle
-      default: return Circle
-    }
-  }
-
-  return (
-    <div ref={contentRef} className="h-full flex flex-col">
-      {/* Header */}
-      <div className="p-6 border-b border-border/50 bg-gradient-to-r from-card/50 to-card/30 backdrop-blur-sm">
-        <Button variant="ghost" onClick={onClose} className="mb-4 -ml-4">
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to list
-        </Button>
-        <div className="flex items-start gap-4 mb-4">
-          <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-primary/10 rounded-2xl flex items-center justify-center text-3xl flex-shrink-0">
-            {item.thumbnail}
-          </div>
-          <div className="flex-1 min-w-0">
-            <h1 className="text-2xl font-bold mb-2 leading-tight">
-              {item.title}
-            </h1>
-            <p className="text-muted-foreground">
-              {item.description}
-            </p>
-          </div>
-        </div>
-
-        {/* Status badges */}
-        <div className="flex items-center gap-2 mb-4">
-          <Badge variant="outline" className={getStatusColor(item.status)}>
-            {React.createElement(getStatusIcon(item.status), { className: "w-3 h-3 mr-1" })}
-            {item.status}
-          </Badge>
-          <Badge variant="outline" className={getPriorityColor(item.priority)}>
-            {item.priority}
-          </Badge>
-          <Badge variant="outline" className="bg-accent/50">
-            {item.category}
-          </Badge>
-        </div>
-
-        {/* Progress */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium">Progress</span>
-            <span className="text-sm font-bold">{item.metrics.completion}%</span>
-          </div>
-          <div className="w-full bg-muted rounded-full h-3">
-            <div 
-              className="bg-gradient-to-r from-primary to-primary/80 h-3 rounded-full transition-all duration-1000 ease-out"
-              style={{ width: `${item.metrics.completion}%` }}
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="p-6 space-y-6">
-          {/* Assignee Info */}
-          <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
-            <div className="flex items-center gap-1 mb-3">
-              <User className="w-4 h-4 text-muted-foreground" />
-              <h3 className="font-semibold text-sm">Assigned to</h3>
-            </div>
-            <div className="flex items-center gap-3">
-              <Avatar className="w-12 h-12">
-                {item.assignee.avatar}
-              </Avatar>
-              <div>
-                <p className="font-medium">{item.assignee.name}</p>
-                <p className="text-sm text-muted-foreground">{item.assignee.email}</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Metrics */}
-          <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
-            <div className="flex items-center gap-1 mb-3">
-              <BarChart3 className="w-4 h-4 text-muted-foreground" />
-              <h3 className="font-semibold text-sm">Engagement Metrics</h3>
-            </div>
-            <div className="grid grid-cols-[repeat(auto-fit,minmax(80px,1fr))] gap-4">
-              <div className="text-center">
-                <div className="flex items-center justify-center gap-1 mb-1">
-                  <Eye className="w-4 h-4 text-blue-500" />
-                </div>
-                <p className="text-2xl font-bold">{item.metrics.views}</p>
-                <p className="text-xs text-muted-foreground">Views</p>
-              </div>
-              <div className="text-center">
-                <div className="flex items-center justify-center gap-1 mb-1">
-                  <Heart className="w-4 h-4 text-red-500" />
-                </div>
-                <p className="text-2xl font-bold">{item.metrics.likes}</p>
-                <p className="text-xs text-muted-foreground">Likes</p>
-              </div>
-              <div className="text-center">
-                <div className="flex items-center justify-center gap-1 mb-1">
-                  <Share className="w-4 h-4 text-green-500" />
-                </div>
-                <p className="text-2xl font-bold">{item.metrics.shares}</p>
-                <p className="text-xs text-muted-foreground">Shares</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Tags */}
-          <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
-            <div className="flex items-center gap-1 mb-3">
-              <Tag className="w-4 h-4 text-muted-foreground" />
-              <h3 className="font-semibold text-sm">Tags</h3>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {item.tags.map((tag, index) => (
-                <span
-                  key={index}
-                  className="bg-muted/50 text-muted-foreground px-3 py-1 rounded-full text-xs font-medium"
-                >
-                  {tag}
-                </span>
-              ))}
-            </div>
-          </div>
-
-          {/* Content Details */}
-          {item.content && (
-            <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
-              <h3 className="font-semibold text-sm mb-3">Project Details</h3>
-              <div className="space-y-4">
-                <div>
-                  <h4 className="font-medium text-sm mb-2">Summary</h4>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    {item.content.summary}
-                  </p>
-                </div>
-                <div>
-                  <h4 className="font-medium text-sm mb-2">Description</h4>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    {item.content.details}
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Attachments */}
-          {item.content?.attachments && item.content.attachments.length > 0 && (
-            <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
-              <h3 className="font-semibold text-sm mb-3">Attachments</h3>
-              <div className="space-y-2">
-                {item.content.attachments.map((attachment, index) => {
-                  const IconComponent = getFileIcon(attachment.type)
-                  return (
-                    <div
-                      key={index}
-                      className="flex items-center gap-3 p-3 bg-muted/30 rounded-xl hover:bg-muted/50 transition-colors cursor-pointer group"
-                    >
-                      <IconComponent className="w-5 h-5 text-muted-foreground" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">
-                          {attachment.name}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {attachment.type} • {attachment.size}
-                        </p>
-                      </div>
-                      <Button size="sm" variant="ghost" className="opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Download className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Timeline */}
-          <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
-            <div className="flex items-center gap-1 mb-3">
-              <Clock className="w-4 h-4 text-muted-foreground" />
-              <h3 className="font-semibold text-sm">Timeline</h3>
-            </div>
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 text-sm">
-                <Calendar className="w-3 h-3 text-muted-foreground" />
-                <span className="text-muted-foreground">Created:</span>
-                <span className="font-medium">
-                  {new Date(item.createdAt).toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                  })}
-                </span>
-              </div>
-              <div className="flex items-center gap-2 text-sm">
-                <TrendingUp className="w-3 h-3 text-muted-foreground" />
-                <span className="text-muted-foreground">Last updated:</span>
-                <span className="font-medium">
-                  {new Date(item.updatedAt).toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                  })}
-                </span>
-              </div>
-              {item.dueDate && (
-                <div className="flex items-center gap-2 text-sm">
-                  <AlertCircle className="w-3 h-3 text-orange-500" />
-                  <span className="text-muted-foreground">Due date:</span>
-                  <span className="font-medium text-orange-600">
-                    {new Date(item.dueDate).toLocaleDateString('en-US', {
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric'
-                    })}
-                  </span>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Footer Actions */}
-      <div className="p-6 border-t border-border/50 bg-card/30">
-        <div className="flex gap-3">
-          <Button className="flex-1" size="sm">
-            <ExternalLink className="w-4 h-4 mr-2" />
-            Open Project
-          </Button>
-          <Button variant="outline" size="sm">
-            <Share className="w-4 h-4 mr-2" />
-            Share
-          </Button>
-        </div>
-      </div>
     </div>
   )
 }
@@ -2034,88 +1668,6 @@ export default {
 }
 ```
 
-## File: src/index.ts
-```typescript
-// Context
-export { AppShellProvider, useAppShell } from './context/AppShellContext';
-
-// Layout Components
-export { AppShell } from './components/layout/AppShell';
-export { MainContent } from './components/layout/MainContent';
-export { ViewModeSwitcher } from './components/layout/ViewModeSwitcher';
-export { RightPane } from './components/layout/RightPane';
-export { TopBar } from './components/layout/TopBar';
-export { UserDropdown } from './components/layout/UserDropdown';
-export { Workspaces as WorkspaceProvider, WorkspaceTrigger, WorkspaceContent } from './components/layout/WorkspaceSwitcher';
-
-// Sidebar Primitives
-export {
-  Sidebar,
-  SidebarBody,
-  SidebarContent,
-  SidebarFooter,
-  SidebarHeader,
-  SidebarSection,
-  SidebarTitle,
-  SidebarMenuItem,
-  SidebarMenuButton,
-  SidebarMenuAction,
-  SidebarLabel,
-  SidebarBadge,
-  SidebarTooltip,
-  SidebarIcon,
-  useSidebar,
-} from './components/layout/Sidebar';
-
-// Shared Components
-export { ContentInSidePanePlaceholder } from './components/shared/ContentInSidePanePlaceholder';
-export { PageHeader } from './components/shared/PageHeader';
-export { PageLayout } from './components/shared/PageLayout';
-
-// Feature Components
-export { SettingsContent } from './features/settings/SettingsContent';
-export { SettingsSection } from './features/settings/SettingsSection';
-export { SettingsToggle } from './features/settings/SettingsToggle';
-export { LoginPage } from './components/auth/LoginPage';
-
-// UI Components
-export * from './components/ui/avatar';
-export * from './components/ui/badge';
-export * from './components/ui/button';
-export * from './components/ui/card';
-export * from './components/ui/command';
-export * from './components/ui/dialog';
-export * from './components/ui/dropdown-menu';
-export * from './components/ui/input';
-export * from './components/ui/label';
-export * from './components/ui/popover';
-export * from './components/ui/tabs';
-export * from './components/ui/toast';
-export { AnimatedTabs } from './components/ui/animated-tabs';
-
-// Effects Components
-export { AnimatedInput } from './components/effects/AnimatedInput';
-export { BottomGradient } from './components/effects/BottomGradient';
-export { BoxReveal } from './components/effects/BoxReveal';
-export { OrbitingCircles, TechOrbitDisplay } from './components/effects/OrbitingCircles';
-export { Ripple } from './components/effects/Ripple';
-
-
-// Global Components
-export { CommandPalette } from './components/global/CommandPalette';
-
-// Hooks
-export { useAutoAnimateTopBar } from './hooks/useAutoAnimateTopBar';
-export { useCommandPaletteToggle } from './hooks/useCommandPaletteToggle.hook';
-
-// Lib
-export * from './lib/utils';
-
-// Store
-export { useAppStore, type ActivePage } from './store/appStore';
-export { useAuthStore } from './store/authStore';
-```
-
 ## File: vite.config.ts
 ```typescript
 import { defineConfig } from 'vite'
@@ -2160,592 +1712,596 @@ export default defineConfig({
 })
 ```
 
-## File: src/pages/Dashboard/index.tsx
+## File: src/context/AppShellContext.tsx
 ```typescript
-import { useRef } from 'react'
-import { 
-  BarChart3, 
-  TrendingUp, 
-  Users, 
-  DollarSign, 
-  Activity,
-  Calendar,
-  Clock,
-  MessageSquare,
-  FileText,
-  Star,
-  ChevronRight,
-  MoreVertical,
-  ArrowDown
-} from 'lucide-react'
-import { cn } from '@/lib/utils'
-import { DemoContent } from './DemoContent';
-import { useDashboardAnimations } from './hooks/useDashboardAnimations.motion'
-import { useDashboardScroll } from './hooks/useDashboardScroll.hook'
-import { PageHeader } from '@/components/shared/PageHeader';
-import { Card } from '@/components/ui/card';
-import { PageLayout } from '@/components/shared/PageLayout';
+import {
+  createContext,
+  useContext,
+  useReducer,
+  useEffect,
+  useMemo,
+  useCallback,
+  type ReactNode,
+  type ReactElement,
+  type Dispatch,
+} from 'react';
+import { SIDEBAR_STATES, BODY_STATES, type SidebarState, type BodyState } from '@/lib/utils';
 
-interface StatsCard {
-  title: string
-  value: string
-  change: string
-  trend: 'up' | 'down'
-  icon: React.ReactNode
+// --- State and Action Types ---
+
+export interface AppShellState {
+  sidebarState: SidebarState;
+  bodyState: BodyState;
+  sidePaneContent: 'details' | 'settings' | 'main' | 'toaster' | 'notifications' | 'dataDemo' | 'dataItem';
+  sidebarWidth: number;
+  sidePaneWidth: number;
+  splitPaneWidth: number;
+  previousBodyState: BodyState;
+  fullscreenTarget: 'main' | 'right' | null;
+  isResizing: boolean;
+  isResizingRightPane: boolean;
+  isTopBarVisible: boolean;
+  autoExpandSidebar: boolean;
+  reducedMotion: boolean;
+  compactMode: boolean;
+  primaryColor: string;
+  appName?: string;
+  appLogo?: ReactElement;
+ draggedPage: 'dashboard' | 'settings' | 'toaster' | 'notifications' | 'data-demo' | null;
+ dragHoverTarget: 'left' | 'right' | null;
+ hoveredPane: 'left' | 'right' | null;
 }
 
-interface ActivityItem {
-  id: string
-  type: 'comment' | 'file' | 'meeting' | 'task'
-  title: string
-  description: string
-  time: string
-  user: string
-}
+type AppShellAction =
+  | { type: 'SET_SIDEBAR_STATE'; payload: SidebarState }
+  | { type: 'SET_BODY_STATE'; payload: BodyState }
+  | { type: 'SET_SIDE_PANE_CONTENT'; payload: AppShellState['sidePaneContent'] }
+  | { type: 'SET_SIDEBAR_WIDTH'; payload: number }
+  | { type: 'SET_SIDE_PANE_WIDTH'; payload: number }
+  | { type: 'SET_SPLIT_PANE_WIDTH'; payload: number }
+  | { type: 'SET_IS_RESIZING'; payload: boolean }
+  | { type: 'SET_PREVIOUS_BODY_STATE'; payload: BodyState }
+  | { type: 'SET_FULLSCREEN_TARGET'; payload: 'main' | 'right' | null }
+  | { type: 'SET_IS_RESIZING_RIGHT_PANE'; payload: boolean }
+  | { type: 'SET_TOP_BAR_VISIBLE'; payload: boolean }
+  | { type: 'SET_AUTO_EXPAND_SIDEBAR'; payload: boolean }
+  | { type: 'SET_REDUCED_MOTION'; payload: boolean }
+  | { type: 'SET_COMPACT_MODE'; payload: boolean }
+  | { type: 'SET_PRIMARY_COLOR'; payload: string }
+  | { type: 'SET_DRAGGED_PAGE'; payload: 'dashboard' | 'settings' | 'toaster' | 'notifications' | 'data-demo' | null }
+  | { type: 'SET_DRAG_HOVER_TARGET'; payload: 'left' | 'right' | null }
+  | { type: 'SET_HOVERED_PANE'; payload: 'left' | 'right' | null }
+  | { type: 'RESET_TO_DEFAULTS' };
 
-const statsCards: StatsCard[] = [
-  {
-    title: "Total Revenue",
-    value: "$45,231.89",
-    change: "+20.1%",
-    trend: "up",
-    icon: <DollarSign className="w-5 h-5" />
-  },
-  {
-    title: "Active Users",
-    value: "2,350",
-    change: "+180.1%",
-    trend: "up",
-    icon: <Users className="w-5 h-5" />
-  },
-  {
-    title: "Conversion Rate",
-    value: "12.5%",
-    change: "+19%",
-    trend: "up",
-    icon: <TrendingUp className="w-5 h-5" />
-  },
-  {
-    title: "Performance",
-    value: "573ms",
-    change: "-5.3%",
-    trend: "down",
-    icon: <Activity className="w-5 h-5" />
-  }
-]
+// --- Reducer ---
 
-const recentActivity: ActivityItem[] = [
-  {
-    id: "1",
-    type: "comment",
-    title: "New comment on Project Alpha",
-    description: "Sarah Johnson added a comment to the design review",
-    time: "2 minutes ago",
-    user: "SJ"
-  },
-  {
-    id: "2",
-    type: "file",
-    title: "Document uploaded",
-    description: "quarterly-report.pdf was uploaded to Documents",
-    time: "15 minutes ago",
-    user: "MD"
-  },
-  {
-    id: "3",
-    type: "meeting",
-    title: "Meeting scheduled",
-    description: "Weekly standup meeting scheduled for tomorrow 9 AM",
-    time: "1 hour ago",
-    user: "RW"
-  },
-  {
-    id: "4",
-    type: "task",
-    title: "Task completed",
-    description: "UI wireframes for mobile app completed",
-    time: "2 hours ago",
-    user: "AL"
-  }
-]
+const defaultState: AppShellState = {
+  sidebarState: SIDEBAR_STATES.EXPANDED,
+  bodyState: BODY_STATES.NORMAL,
+  sidePaneContent: 'details',
+  sidebarWidth: 280,
+  sidePaneWidth: typeof window !== 'undefined' ? Math.max(300, Math.round(window.innerWidth * 0.6)) : 400,
+  splitPaneWidth: typeof window !== 'undefined' ? Math.max(300, Math.round(window.innerWidth * 0.35)) : 400,
+  previousBodyState: BODY_STATES.NORMAL,
+  fullscreenTarget: null,
+  isResizing: false,
+  isResizingRightPane: false,
+  isTopBarVisible: true,
+  autoExpandSidebar: true,
+  reducedMotion: false,
+  compactMode: false,
+  primaryColor: '220 84% 60%',
+  appName: 'Jeli App',
+  appLogo: undefined,
+  draggedPage: null,
+  dragHoverTarget: null,
+  hoveredPane: null,
+};
 
-interface DashboardContentProps {
-  isInSidePane?: boolean;
-}
-
-export function DashboardContent({ isInSidePane = false }: DashboardContentProps) {
-    const scrollRef = useRef<HTMLDivElement>(null)
-    const contentRef = useRef<HTMLDivElement>(null);
-    const statsCardsContainerRef = useRef<HTMLDivElement>(null);
-    const featureCardsContainerRef = useRef<HTMLDivElement>(null);
-    const { showScrollToBottom, handleScroll, scrollToBottom } = useDashboardScroll(scrollRef, isInSidePane);
-
-    useDashboardAnimations(contentRef, statsCardsContainerRef, featureCardsContainerRef);
-
-    const getTypeIcon = (type: ActivityItem['type']) => {
-      switch (type) {
-        case 'comment':
-          return <MessageSquare className="w-4 h-4" />
-        case 'file':
-          return <FileText className="w-4 h-4" />
-        case 'meeting':
-          return <Calendar className="w-4 h-4" />
-        case 'task':
-          return <Star className="w-4 h-4" />
-        default:
-          return <Activity className="w-4 h-4" />
+function appShellReducer(state: AppShellState, action: AppShellAction): AppShellState {
+  switch (action.type) {
+    case 'SET_SIDEBAR_STATE': return { ...state, sidebarState: action.payload };
+    case 'SET_BODY_STATE':
+      // If we're leaving fullscreen, reset the target and previous state
+      if (state.bodyState === BODY_STATES.FULLSCREEN && action.payload !== BODY_STATES.FULLSCREEN) {
+        return { ...state, bodyState: action.payload, fullscreenTarget: null, previousBodyState: BODY_STATES.NORMAL };
       }
+      return { ...state, bodyState: action.payload };
+    case 'SET_SIDE_PANE_CONTENT': return { ...state, sidePaneContent: action.payload };
+    case 'SET_SIDEBAR_WIDTH': return { ...state, sidebarWidth: Math.max(200, Math.min(500, action.payload)) };
+    case 'SET_SIDE_PANE_WIDTH': return { ...state, sidePaneWidth: Math.max(300, Math.min(window.innerWidth * 0.8, action.payload)) };
+    case 'SET_SPLIT_PANE_WIDTH': return { ...state, splitPaneWidth: Math.max(300, Math.min(window.innerWidth * 0.8, action.payload)) };
+    case 'SET_IS_RESIZING': return { ...state, isResizing: action.payload };
+    case 'SET_PREVIOUS_BODY_STATE': return { ...state, previousBodyState: action.payload };
+    case 'SET_FULLSCREEN_TARGET': return { ...state, fullscreenTarget: action.payload };
+    case 'SET_IS_RESIZING_RIGHT_PANE': return { ...state, isResizingRightPane: action.payload };
+    case 'SET_TOP_BAR_VISIBLE': return { ...state, isTopBarVisible: action.payload };
+    case 'SET_AUTO_EXPAND_SIDEBAR': return { ...state, autoExpandSidebar: action.payload };
+    case 'SET_REDUCED_MOTION': return { ...state, reducedMotion: action.payload };
+    case 'SET_COMPACT_MODE': return { ...state, compactMode: action.payload };
+    case 'SET_PRIMARY_COLOR': return { ...state, primaryColor: action.payload };
+    case 'SET_DRAGGED_PAGE': return { ...state, draggedPage: action.payload };
+    case 'SET_DRAG_HOVER_TARGET': return { ...state, dragHoverTarget: action.payload };
+    case 'SET_HOVERED_PANE': return { ...state, hoveredPane: action.payload };
+    case 'RESET_TO_DEFAULTS':
+      return {
+        ...defaultState,
+        appName: state.appName, // Preserve props passed to provider
+        appLogo: state.appLogo,   // Preserve props passed to provider
+      };
+    default: return state;
+  }
+}
+
+// --- Context and Provider ---
+
+interface AppShellContextValue extends AppShellState {
+  dispatch: Dispatch<AppShellAction>;
+  rightPaneWidth: number;
+  // Composite actions for convenience
+  toggleSidebar: () => void;
+  hideSidebar: () => void;
+  showSidebar: () => void;
+  peekSidebar: () => void;
+  toggleFullscreen: (target?: 'main' | 'right' | null) => void;
+  resetToDefaults: () => void;
+}
+
+const AppShellContext = createContext<AppShellContextValue | null>(null);
+
+interface AppShellProviderProps {
+  children: ReactNode;
+  appName?: string;
+  appLogo?: ReactElement;
+  defaultSplitPaneWidth?: number;
+}
+
+export function AppShellProvider({ children, appName, appLogo, defaultSplitPaneWidth }: AppShellProviderProps) {
+  const [state, dispatch] = useReducer(appShellReducer, {
+    ...defaultState,
+    ...(appName && { appName }),
+    ...(appLogo && { appLogo }),
+    ...(defaultSplitPaneWidth && { splitPaneWidth: defaultSplitPaneWidth }),
+  });
+
+  // Side effect for primary color
+  useEffect(() => {
+    document.documentElement.style.setProperty('--primary-hsl', state.primaryColor);
+  }, [state.primaryColor]);
+
+  // Memoized composite actions using useCallback for stable function identities
+  const toggleSidebar = useCallback(() => {
+    const current = state.sidebarState;
+    if (current === SIDEBAR_STATES.HIDDEN) dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.COLLAPSED });
+    else if (current === SIDEBAR_STATES.COLLAPSED) dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.EXPANDED });
+    else if (current === SIDEBAR_STATES.EXPANDED) dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.COLLAPSED });
+  }, [state.sidebarState]);
+
+  const hideSidebar = useCallback(() => dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.HIDDEN }), []);
+  const showSidebar = useCallback(() => dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.EXPANDED }), []);
+  const peekSidebar = useCallback(() => dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.PEEK }), []);
+  
+  const toggleFullscreen = useCallback((target: 'main' | 'right' | null = null) => {
+    const current = state.bodyState;
+    if (current === BODY_STATES.FULLSCREEN) {
+      // Exiting fullscreen, go back to the previous state
+      dispatch({ type: 'SET_BODY_STATE', payload: state.previousBodyState || BODY_STATES.NORMAL });
+    } else {
+      // Entering fullscreen
+      dispatch({ type: 'SET_PREVIOUS_BODY_STATE', payload: current });
+      dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.FULLSCREEN });
+      dispatch({ type: 'SET_FULLSCREEN_TARGET', payload: target });
     }
+  }, [state.bodyState, state.previousBodyState]);
 
-    return (
-      <PageLayout scrollRef={scrollRef} onScroll={handleScroll} ref={contentRef} isInSidePane={isInSidePane}>
-        {/* Header */}
-        {!isInSidePane && (
-          <PageHeader
-            title="Dashboard"
-            description="Welcome to the Jeli App Shell demo! Explore all the features and customization options."
-          />
-        )}
-          {/* Stats Cards */}
-        <div ref={statsCardsContainerRef} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {statsCards.map((stat, index) => (
-            <Card
-            key={stat.title}
-            className="p-6 border-border/50 hover:border-primary/30 transition-all duration-300 group cursor-pointer"
-          >
-            <div className="flex items-center justify-between">
-              <div className="p-3 bg-primary/10 rounded-full group-hover:bg-primary/20 transition-colors">
-                {stat.icon}
-              </div>
-              <div className={cn(
-                "text-sm font-medium",
-                stat.trend === 'up' ? "text-green-600" : "text-red-600"
-              )}>
-                {stat.change}
-              </div>
-            </div>
-            <div className="mt-4">
-              <h3 className="text-2xl font-bold">{stat.value}</h3>
-              <p className="text-sm text-muted-foreground mt-1">{stat.title}</p>
-            </div>
-          </Card>
-          ))}
-        </div>
+  const resetToDefaults = useCallback(() => dispatch({ type: 'RESET_TO_DEFAULTS' }), []);
 
-        {/* Demo Content */}
-        <DemoContent ref={featureCardsContainerRef} />
+  const rightPaneWidth = useMemo(() => (
+    state.bodyState === BODY_STATES.SPLIT_VIEW ? state.splitPaneWidth : state.sidePaneWidth
+  ), [state.bodyState, state.splitPaneWidth, state.sidePaneWidth]);
 
-        {/* Main Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Chart Area */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Analytics Chart */}
-          <Card className="p-6 border-border/50">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-semibold">Analytics Overview</h3>
-              <button className="h-8 w-8 flex items-center justify-center hover:bg-accent rounded-full transition-colors">
-                <MoreVertical className="w-5 h-5" />
-              </button>
-            </div>
-            
-            {/* Mock Chart */}
-            <div className="h-64 bg-gradient-to-br from-primary/10 to-transparent rounded-xl flex items-center justify-center border border-border/50">
-              <div className="text-center">
-                <BarChart3 className="w-12 h-12 text-primary mx-auto mb-2" />
-                <p className="text-muted-foreground">Chart visualization would go here</p>
-              </div>
-            </div>
-          </Card>
+  const value = useMemo(() => ({ 
+    ...state, 
+    dispatch,
+    rightPaneWidth,
+    toggleSidebar,
+    hideSidebar,
+    showSidebar,
+    peekSidebar,
+    toggleFullscreen,
+    resetToDefaults,
+  }), [
+    state, 
+    rightPaneWidth,
+    toggleSidebar,
+    hideSidebar,
+    showSidebar,
+    peekSidebar,
+    toggleFullscreen,
+    resetToDefaults
+  ]);
 
-          {/* Recent Projects */}
-          <Card className="p-6 border-border/50">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-semibold">Recent Projects</h3>
-              <button className="text-primary hover:text-primary/80 text-sm font-medium flex items-center gap-1">
-                View All
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-            
-            <div className="space-y-4">
-              {[
-                { name: "E-commerce Platform", progress: 75, team: 5, deadline: "Dec 15" },
-                { name: "Mobile App Redesign", progress: 45, team: 3, deadline: "Jan 20" },
-                { name: "Marketing Website", progress: 90, team: 4, deadline: "Dec 5" }
-              ].map((project) => (
-                <div key={project.name} className="p-4 bg-accent/30 rounded-xl hover:bg-accent/50 transition-colors cursor-pointer">
-                  <div className="flex items-center justify-between mb-2">
-                    <h4 className="font-medium">{project.name}</h4>
-                    <span className="text-sm text-muted-foreground">{project.progress}%</span>
-                  </div>
-                  <div className="w-full bg-muted rounded-full h-2 mb-3">
-                    <div 
-                      className="bg-primary h-2 rounded-full transition-all duration-500"
-                      style={{ width: `${project.progress}%` }}
-                    />
-                  </div>
-                  <div className="flex items-center justify-between text-sm text-muted-foreground">
-                    <span>{project.team} team members</span>
-                    <span>Due {project.deadline}</span>
-                    </div>
-                </div>
-              ))}
-            </div>
-          </Card>
-        </div>
+  return (
+    <AppShellContext.Provider value={value}>
+      {children}
+    </AppShellContext.Provider>
+  );
+}
 
-        {/* Sidebar Content */}
-        <div className="space-y-6">
-          {/* Quick Actions */}
-          <Card className="p-6 border-border/50">
-            <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
-            <div className="space-y-3">
-              {[
-                { icon: <FileText className="w-4 h-4" />, label: "Create Document", color: "bg-blue-500/10 text-blue-600" },
-                { icon: <Calendar className="w-4 h-4" />, label: "Schedule Meeting", color: "bg-green-500/10 text-green-600" },
-                { icon: <Users className="w-4 h-4" />, label: "Invite Team", color: "bg-purple-500/10 text-purple-600" },
-                { icon: <BarChart3 className="w-4 h-4" />, label: "View Reports", color: "bg-orange-500/10 text-orange-600" }
-              ].map((action) => (
-                <button
-                  key={action.label}
-                  className="w-full flex items-center gap-3 p-3 hover:bg-accent rounded-lg transition-colors text-left"
-                >
-                  <div className={cn("p-2 rounded-full", action.color)}>
-                    {action.icon}
-                  </div>
-                  <span className="font-medium">{action.label}</span>
-                </button>
-              ))}
-            </div>
-          </Card>
+// --- Hook ---
 
-          {/* Recent Activity */}
-          <Card className="p-6 border-border/50">
-            <h3 className="text-lg font-semibold mb-4">Recent Activity</h3>
-            <div className="space-y-4">
-              {recentActivity.map((activity) => (
-                <div key={activity.id} className="flex items-start gap-3 p-3 hover:bg-accent/30 rounded-xl transition-colors cursor-pointer">
-                  <div className="p-2 bg-primary/10 rounded-full flex-shrink-0">
-                    {getTypeIcon(activity.type)}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h4 className="font-medium text-sm mb-1">{activity.title}</h4>
-                    <p className="text-xs text-muted-foreground mb-2">{activity.description}</p>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <Clock className="w-3 h-3" />
-                      <span>{activity.time}</span>
-                      <div className="w-5 h-5 bg-primary rounded-full flex items-center justify-center text-primary-foreground text-xs font-medium">
-                        {activity.user}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Card>
-        </div>
-      </div>
-      {showScrollToBottom && (
-        <button
-          onClick={scrollToBottom}
-          className="fixed bottom-8 right-8 w-12 h-12 bg-primary text-primary-foreground rounded-full flex items-center justify-center shadow-lg hover:bg-primary/90 transition-all animate-fade-in z-[51]"
-          style={{ animation: 'bounce 2s infinite' }}
-          title="Scroll to bottom"
-        >
-          <ArrowDown className="w-6 h-6" />
-        </button>
-      )}
-      </PageLayout>
-    )
+export function useAppShell() {
+  const context = useContext(AppShellContext);
+  if (!context) {
+    throw new Error('useAppShell must be used within an AppShellProvider');
+  }
+  return context;
 }
 ```
 
-## File: src/pages/DataDemo/index.tsx
+## File: src/components/layout/AppShell.tsx
 ```typescript
-import { useRef, useEffect, useMemo } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
-import {
-  Layers, 
-  AlertTriangle, 
-  PlayCircle, 
-  TrendingUp,
-  Loader2,
-  ChevronsUpDown
-} from 'lucide-react'
-import { gsap } from 'gsap'
+import React, { useRef, type ReactElement, useCallback, useEffect, useLayoutEffect } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuRadioGroup, 
-  DropdownMenuRadioItem, 
-  DropdownMenuTrigger 
-} from '@/components/ui/dropdown-menu'
-import { PageLayout } from '@/components/shared/PageLayout'
-import { DataListView } from './components/DataListView'
-import { DataCardView } from './components/DataCardView'
-import { DataTableView } from './components/DataTableView'
-import { DataViewModeSelector } from './components/DataViewModeSelector'
-import { AnimatedTabs } from '@/components/ui/animated-tabs'
-import { AnimatedLoadingSkeleton } from './components/AnimatedLoadingSkeleton'
-import { StatChartCard } from './components/StatChartCard'
-import { DataToolbar } from './components/DataToolbar'
-import { mockDataItems } from './data/mockData'
-import type { DataItem, SortConfig, SortableField, GroupableField } from './types'
-import { useDataManagement } from './hooks/useDataManagement.hook'
+import { gsap } from 'gsap';
+import { CommandPalette } from '@/components/global/CommandPalette';
+import { useAppStore } from '@/store/appStore'
+import { useAppShell } from '@/context/AppShellContext';
+import { SIDEBAR_STATES, BODY_STATES } from '@/lib/utils'
+import { useResizableSidebar, useResizableRightPane } from '@/hooks/useResizablePanes.hook'
+import { useSidebarAnimations, useBodyStateAnimations } from '@/hooks/useAppShellAnimations.hook'
+import { ViewModeSwitcher } from './ViewModeSwitcher';
 
-type Stat = {
-  title: string;
-  value: string;
-  icon: React.ReactNode;
-  change: string;
-  trend: 'up' | 'down';
-  type?: 'card';
+interface AppShellProps {
+  sidebar: ReactElement;
+  topBar: ReactElement;
+  mainContent: ReactElement;
+  rightPane: ReactElement;
+  commandPalette?: ReactElement;
+  onOverlayClick?: () => void;
+}
+
+const pageToPaneMap: Record<string, 'main' | 'settings' | 'toaster' | 'notifications' | 'dataDemo'> = {
+  dashboard: 'main',
+  settings: 'settings',
+  toaster: 'toaster',
+  notifications: 'notifications',
+  'data-demo': 'dataDemo',
 };
 
-type ChartStat = {
-  title: string;
-  value: string;
-  icon: React.ReactNode;
-  change: string;
-  trend: 'up' | 'down';
-  type: 'chart';
-  chartData: number[];
-};
-
-type StatItem = Stat | ChartStat;
-
-export default function DataDemoPage() {
-  const {
-    viewMode,
-    groupBy,
-    activeGroupTab,
-    filters,
-    sortConfig,
-    hasMore,
-    isLoading,
-    loaderRef,
-    groupTabs,
-    dataToRender,
-    totalItemCount,
-    isInitialLoading,
-    setViewMode,
-    setGroupBy,
-    setActiveGroupTab,
-    setFilters,
-    setSort,
-    setTableSort,
-  } = useDataManagement();
-
-  const groupOptions: { id: GroupableField | 'none'; label: string }[] = [
-    { id: 'none', label: 'None' }, { id: 'status', label: 'Status' }, { id: 'priority', label: 'Priority' }, { id: 'category', label: 'Category' }
-  ]
-  const contentRef = useRef<HTMLDivElement>(null)
-  const statsRef = useRef<HTMLDivElement>(null)
-  const navigate = useNavigate()
-  const { itemId } = useParams<{ itemId: string }>()
-
-  const handleItemSelect = (item: DataItem) => {
-    navigate(`/data-demo/${item.id}`)
-  }
-
-  const selectedItem = useMemo(() => {
-    if (!itemId) return null
-    return mockDataItems.find(item => item.id === itemId) ?? null
-  }, [itemId])
-
-  // Calculate stats from data
-  const totalItems = mockDataItems.length
-  const activeItems = mockDataItems.filter(item => item.status === 'active').length
-  const highPriorityItems = mockDataItems.filter(item => item.priority === 'high' || item.priority === 'critical').length
-  const avgCompletion = totalItems > 0 ? Math.round(
-    mockDataItems.reduce((acc, item) => acc + item.metrics.completion, 0) / totalItems
-  ) : 0
-
-  const stats: StatItem[] = [
-    {
-      title: "Total Projects",
-      value: totalItems.toString(),
-      icon: <Layers className="w-5 h-5" />,
-      change: "+5.2% this month",
-      trend: "up" as const,
-      type: 'chart',
-      chartData: [120, 125, 122, 130, 135, 138, 142]
-    },
-    {
-      title: "Active Projects",
-      value: activeItems.toString(),
-      icon: <PlayCircle className="w-5 h-5" />,
-      change: "+2 this week", 
-      trend: "up" as const,
-      type: 'chart',
-      chartData: [45, 50, 48, 55, 53, 60, 58]
-    },
-    {
-      title: "High Priority",
-      value: highPriorityItems.toString(),
-      icon: <AlertTriangle className="w-5 h-5" />,
-      change: "-1 from last week",
-      trend: "down" as const,
-      type: 'chart',
-      chartData: [25, 26, 28, 27, 26, 24, 23]
-    },
-    {
-      title: "Avg. Completion",
-      value: `${avgCompletion}%`,
-      icon: <TrendingUp className="w-5 h-5" />,
-      change: "+3.2%",
-      trend: "up" as const,
-      type: 'chart',
-      chartData: [65, 68, 70, 69, 72, 75, 78]
-    }
-  ]
-
+// Helper hook to get the previous value of a prop or state
+function usePrevious<T>(value: T): T | undefined {
+  const ref = useRef<T>();
   useEffect(() => {
-    // Animate stats cards in
-    if (!isInitialLoading && statsRef.current) {
-      gsap.fromTo(statsRef.current.children,
-        { y: 30, opacity: 0 },
-        {
-          duration: 0.6,
-          y: 0,
-          opacity: 1,
-          stagger: 0.1,
-          ease: "power2.out"
-        }
-      )
-    }
-  }, [isInitialLoading])
+    ref.current = value;
+  }, [value]);
+  return ref.current;
+}
 
-  const commonViewProps = {
-    onItemSelect: handleItemSelect,
-    selectedItem,
-  };
+
+export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalette, onOverlayClick }: AppShellProps) {
+  const {
+    sidebarState,
+    dispatch,
+    autoExpandSidebar,
+    toggleSidebar,
+    hoveredPane,
+    peekSidebar,
+    draggedPage,
+    dragHoverTarget,
+    bodyState,
+    sidePaneContent,
+    reducedMotion,
+    isTopBarVisible,
+  } = useAppShell();
+  
+  const isFullscreen = bodyState === BODY_STATES.FULLSCREEN;
+  const isSidePaneOpen = bodyState === BODY_STATES.SIDE_PANE;
+
+  const { isDarkMode, toggleDarkMode } = useAppStore();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const activePage = location.pathname.split('/')[1] || 'dashboard';
+  const appRef = useRef<HTMLDivElement>(null)
+  const sidebarRef = useRef<HTMLDivElement>(null)
+  const mainContentRef = useRef<HTMLDivElement>(null)
+  const rightPaneRef = useRef<HTMLDivElement>(null)
+  const resizeHandleRef = useRef<HTMLDivElement>(null)
+  const topBarContainerRef = useRef<HTMLDivElement>(null)
+  const mainAreaRef = useRef<HTMLDivElement>(null)
+
+  const prevActivePage = usePrevious(activePage);
+  const prevSidePaneContent = usePrevious(sidePaneContent);
+
+  const isSplitView = bodyState === BODY_STATES.SPLIT_VIEW;
+
+  // Custom hooks for logic
+  useResizableSidebar(sidebarRef, resizeHandleRef);
+  useResizableRightPane();
+  useSidebarAnimations(sidebarRef, resizeHandleRef);
+  useBodyStateAnimations(appRef, mainContentRef, rightPaneRef, topBarContainerRef, mainAreaRef);
+  
+  // Animation for pane swapping
+  useLayoutEffect(() => {
+    if (reducedMotion || bodyState !== BODY_STATES.SPLIT_VIEW || !prevActivePage || !prevSidePaneContent) {
+      return;
+    }
+
+    const pageForPrevSidePane = Object.keys(pageToPaneMap).find(
+      key => pageToPaneMap[key as keyof typeof pageToPaneMap] === prevSidePaneContent
+    );
+
+    // Check if a swap occurred by comparing current state with previous state
+    if (activePage === pageForPrevSidePane && sidePaneContent === pageToPaneMap[prevActivePage as keyof typeof pageToPaneMap]) {
+      const mainEl = mainAreaRef.current;
+      const rightEl = rightPaneRef.current;
+
+      if (mainEl && rightEl) {
+        const mainWidth = mainEl.offsetWidth;
+        const rightWidth = rightEl.offsetWidth;
+
+        const tl = gsap.timeline();
+        
+        // Animate main content FROM where right pane was TO its new place
+        tl.from(mainEl, {
+          x: rightWidth, duration: 0.4, ease: 'power3.inOut'
+        });
+
+        // Animate right pane FROM where main content was TO its new place
+        tl.from(rightEl, {
+          x: -mainWidth, duration: 0.4, ease: 'power3.inOut'
+        }, 0); // Start at the same time
+      }
+    }
+  }, [activePage, sidePaneContent, bodyState, prevActivePage, prevSidePaneContent, reducedMotion]);
+  
+  const sidebarWithProps = React.cloneElement(sidebar, { 
+    ref: sidebarRef,
+    onMouseEnter: () => {
+      if (autoExpandSidebar && sidebarState === SIDEBAR_STATES.COLLAPSED) {
+        peekSidebar()
+      }
+    },
+    onMouseLeave: () => {
+      if (autoExpandSidebar && sidebarState === SIDEBAR_STATES.PEEK) {
+        dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.COLLAPSED });
+      }
+    }
+  });
+
+  const topBarWithProps = React.cloneElement(topBar, {
+    onToggleSidebar: toggleSidebar,
+    onToggleDarkMode: toggleDarkMode,
+  });
+
+  const mainContentWithProps = React.cloneElement(mainContent, {
+    ref: mainContentRef,
+  });
+
+  const rightPaneWithProps = React.cloneElement(rightPane, { ref: rightPaneRef });
+
+  // Drag and drop handlers for docking
+  const handleDragOverLeft = useCallback((e: React.DragEvent) => {
+    if (!draggedPage) return;
+    e.preventDefault();
+    if (dragHoverTarget !== 'left') {
+      dispatch({ type: 'SET_DRAG_HOVER_TARGET', payload: 'left' });
+    }
+  }, [draggedPage, dragHoverTarget, dispatch]);
+
+  const handleDropLeft = useCallback(() => {
+    if (!draggedPage) return;
+
+    // If we drop the page that's already in the side pane, just make it the main view.
+    const paneContentOfDraggedPage = pageToPaneMap[draggedPage];
+    if (paneContentOfDraggedPage === sidePaneContent && (bodyState === BODY_STATES.SIDE_PANE || bodyState === BODY_STATES.SPLIT_VIEW)) {
+      navigate(`/${draggedPage}`, { replace: true });
+    } 
+    // New context-aware logic: if we are in normal view and drop a NEW page on the left
+    else if (bodyState === BODY_STATES.NORMAL && draggedPage !== activePage) {
+        const originalActivePagePaneContent = pageToPaneMap[activePage];
+        if (originalActivePagePaneContent) {
+            navigate(`/${draggedPage}?view=split&right=${originalActivePagePaneContent}`, { replace: true });
+        } else {
+            // Fallback for pages that can't be in a pane
+            navigate(`/${draggedPage}`, { replace: true });
+        }
+    } else { // Default behavior: just make the dropped page the main one
+      // If in split view, replace the main content and keep the right pane
+      if (bodyState === BODY_STATES.SPLIT_VIEW) {
+        const rightPane = location.search.split('right=')[1];
+        if (rightPane) {
+          navigate(`/${draggedPage}?view=split&right=${rightPane}`, { replace: true });
+          return;
+        }
+      }
+      navigate(`/${draggedPage}`, { replace: true });
+    }
+    
+    dispatch({ type: 'SET_DRAGGED_PAGE', payload: null });
+    dispatch({ type: 'SET_DRAG_HOVER_TARGET', payload: null });
+  }, [draggedPage, activePage, bodyState, sidePaneContent, navigate, dispatch, location]);
+
+  const handleDragOverRight = useCallback((e: React.DragEvent) => {
+    if (!draggedPage) return;
+    e.preventDefault();
+    if (dragHoverTarget !== 'right') {
+      dispatch({ type: 'SET_DRAG_HOVER_TARGET', payload: 'right' });
+    }
+  }, [draggedPage, dragHoverTarget, dispatch]);
+
+  const handleDropRight = useCallback(() => {
+    if (!draggedPage) return;
+    const pane = pageToPaneMap[draggedPage as keyof typeof pageToPaneMap];
+    if (pane) {
+      let mainPage = activePage;
+      // If dropping the currently active page to the right,
+      // set a default page (e.g., dashboard) as the new active page.
+      if (draggedPage === activePage) {
+        mainPage = 'dashboard';
+      }
+
+      navigate(`/${mainPage}?view=split&right=${pane}`, { replace: true });
+    }
+    dispatch({ type: 'SET_DRAGGED_PAGE', payload: null });
+    dispatch({ type: 'SET_DRAG_HOVER_TARGET', payload: null });
+  }, [draggedPage, dispatch, bodyState, activePage, navigate]);
 
   return (
-    <PageLayout
-      // Note: Search functionality is handled by a separate SearchBar in the TopBar
+    <div 
+      ref={appRef}
+      className={cn(
+        "relative h-screen w-screen overflow-hidden bg-background transition-colors duration-300",
+        isDarkMode && "dark"
+      )}
     >
-      <div className="space-y-8">
-        {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div className="flex-1">
-            <h1 className="text-2xl font-bold tracking-tight">Data Showcase</h1>
-            <p className="text-muted-foreground">
-              {isInitialLoading 
-                ? "Loading projects..." 
-                : `Showing ${dataToRender.length} of ${totalItemCount} item(s)`}
-            </p>
-          </div>
-          <DataViewModeSelector viewMode={viewMode} onChange={setViewMode} />
-        </div>
+      <div className="flex h-screen overflow-hidden">
+        {/* Enhanced Sidebar */}
+        {sidebarWithProps}
 
-        {/* Stats Section */}
-        {!isInitialLoading && (
-          <div ref={statsRef} className="grid grid-cols-[repeat(auto-fit,minmax(250px,1fr))] gap-6">
-            {stats.map((stat) =>
-              stat.type === 'chart' ? (
-                <StatChartCard
-                  key={stat.title}
-                  title={stat.title}
-                  value={stat.value}
-                  change={stat.change}
-                  trend={stat.trend}
-                  icon={stat.icon}
-                  chartData={stat.chartData}
-                />
-              ) : null
+        {/* Resize Handle */}
+        {sidebarState !== SIDEBAR_STATES.HIDDEN && (
+          <div
+            ref={resizeHandleRef}
+            className={cn(
+              "absolute top-0 w-2 h-full bg-transparent hover:bg-primary/20 cursor-col-resize z-50 transition-colors duration-200 group -translate-x-1/2"
             )}
+            onMouseDown={(e) => {
+              e.preventDefault()
+              dispatch({ type: 'SET_IS_RESIZING', payload: true });
+            }}
+          >
+            <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200 mx-auto" />
           </div>
         )}
 
-        {/* Controls Area */}
-        <div className="space-y-6">
-          <DataToolbar
-            filters={filters}
-            onFiltersChange={setFilters}
-            sortConfig={sortConfig}
-            onSortChange={setSort}
-          />
-        </div>
-
-        {/* Group by and Tabs section */}
-        <div className={cn(
-          "flex items-center justify-between gap-4",
-          groupBy !== 'none' && "border-b"
-        )}>
-          {/* Tabs on the left, takes up available space */}
-          <div className="flex-grow overflow-x-auto overflow-y-hidden no-scrollbar">
-            {groupBy !== 'none' && groupTabs.length > 1 ? (
-              <AnimatedTabs
-                tabs={groupTabs}
-                activeTab={activeGroupTab}
-                onTabChange={setActiveGroupTab}
-              />
-            ) : (
-              <div className="h-[68px]" /> // Placeholder for consistent height.
+        {/* Main area wrapper */}
+        <div className="flex-1 flex flex-col overflow-hidden relative">
+          <div
+            ref={topBarContainerRef}
+            className={cn(
+              "absolute top-0 left-0 right-0 z-30",
+              isFullscreen && "z-0"
             )}
+            onMouseEnter={() => { if (isSplitView) dispatch({ type: 'SET_HOVERED_PANE', payload: null }); }}
+          >
+            {topBarWithProps}
           </div>
-          
-          {/* Group by dropdown on the right */}
-          <div className="flex items-center gap-2 shrink-0">
-            <span className="text-sm font-medium text-muted-foreground shrink-0">Group by:</span>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="w-[180px] justify-between">
-                  {groupOptions.find(o => o.id === groupBy)?.label}
-                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-[180px]">
-                <DropdownMenuRadioGroup value={groupBy} onValueChange={setGroupBy}>
-                  {groupOptions.map(option => (
-                    <DropdownMenuRadioItem key={option.id} value={option.id}>
-                      {option.label}
-                    </DropdownMenuRadioItem>
-                  ))}
-                </DropdownMenuRadioGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </div>
 
-        <div ref={contentRef} className="min-h-[500px]">
-          {isInitialLoading ? <AnimatedLoadingSkeleton viewMode={viewMode} /> : (
-            <div>
-              {viewMode === 'table' ? (
-                 <DataTableView 
-                    data={dataToRender} 
-                    {...commonViewProps}
-                    sortConfig={sortConfig} 
-                    onSort={setTableSort} 
-                  />
-              ) : (
-                <>
-                  {viewMode === 'list' && <DataListView data={dataToRender} {...commonViewProps} />}
-                  {viewMode === 'cards' && <DataCardView data={dataToRender} {...commonViewProps} />}
-                  {viewMode === 'grid' && <DataCardView data={dataToRender} {...commonViewProps} isGrid />}
-                </>
+          <div className="flex flex-1 min-h-0">
+            <div
+              ref={mainAreaRef}
+              className="relative flex-1 overflow-hidden bg-background"
+              onMouseEnter={() => { if (isSplitView && !draggedPage) dispatch({ type: 'SET_HOVERED_PANE', payload: 'left' }); }}
+              onMouseLeave={() => { if (isSplitView && !draggedPage) dispatch({ type: 'SET_HOVERED_PANE', payload: null }); }}
+            >
+              {/* Side Pane Overlay */}
+              <div
+                role="button"
+                aria-label="Close side pane"
+                tabIndex={isSidePaneOpen ? 0 : -1}
+                className={cn(
+                  "absolute inset-0 bg-black/40 z-40 transition-opacity duration-300",
+                  isSidePaneOpen
+                    ? "opacity-100 pointer-events-auto"
+                    : "opacity-0 pointer-events-none"
+                )}
+                onClick={onOverlayClick}
+              />
+              {/* Left drop overlay */}
+              <div
+                className={cn(
+                  "absolute inset-y-0 left-0 z-40 border-2 border-transparent transition-all",
+                  draggedPage
+                    ? cn("pointer-events-auto", isSplitView ? 'w-full' : 'w-1/2')
+                    : "pointer-events-none w-0",
+                  dragHoverTarget === 'left' && "bg-primary/10 border-primary"
+                )}
+                onDragOver={handleDragOverLeft}
+                onDrop={handleDropLeft}
+                onDragLeave={() => {
+                  if (dragHoverTarget === 'left') dispatch({ type: 'SET_DRAG_HOVER_TARGET', payload: null });
+                }}
+              >
+                {draggedPage && dragHoverTarget === 'left' && (
+                  <div className="absolute inset-0 flex items-center justify-center text-sm font-medium text-primary-foreground/80 pointer-events-none">
+                    <span className="px-3 py-1 rounded-md bg-primary/70">{isSplitView ? 'Drop to Replace' : 'Drop to Left'}</span>
+                  </div>
+                )}
+              </div>
+              {mainContentWithProps}
+              {isSplitView && hoveredPane === 'left' && !draggedPage && (
+                <div className={cn("absolute right-4 z-50 transition-all", isTopBarVisible ? 'top-24' : 'top-4')}>
+                  <ViewModeSwitcher pane="main" />
+                </div>
+              )}
+              {/* Right drop overlay (over main area, ONLY when NOT in split view) */}
+              {!isSplitView && (
+                <div
+                  className={cn(
+                    "absolute inset-y-0 right-0 z-40 border-2 border-transparent",
+                    draggedPage ? "pointer-events-auto w-1/2" : "pointer-events-none",
+                    dragHoverTarget === 'right' && "bg-primary/10 border-primary"
+                  )}
+                  onDragOver={handleDragOverRight}
+                  onDrop={handleDropRight}
+                  onDragLeave={() => {
+                    if (dragHoverTarget === 'right') dispatch({ type: 'SET_DRAG_HOVER_TARGET', payload: null });
+                  }}
+                >
+                  {draggedPage && dragHoverTarget === 'right' && (
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                      <span className="px-3 py-1 rounded-md bg-primary/70 text-sm font-medium text-primary-foreground/80">Drop to Right</span>
+                    </div>
+                  )}
+                </div>
               )}
             </div>
-          )}
-        </div>
-
-        {/* Loader for infinite scroll */}
-        <div ref={loaderRef} className="flex justify-center items-center py-6">
-          {isLoading && !isInitialLoading && groupBy === 'none' && (
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <Loader2 className="w-5 h-5 animate-spin" />
-              <span>Loading more...</span>
-            </div>
-          )}
-          {!isLoading && !hasMore && dataToRender.length > 0 && !isInitialLoading && groupBy === 'none' && (
-            <p className="text-muted-foreground">You've reached the end.</p>
-          )}
+            {isSplitView ? (
+              <div
+                className="relative"
+                onMouseEnter={() => { if (isSplitView && !draggedPage) dispatch({ type: 'SET_HOVERED_PANE', payload: 'right' }); }}
+                onMouseLeave={() => { if (isSplitView && !draggedPage) dispatch({ type: 'SET_HOVERED_PANE', payload: null }); }}
+                onDragOver={handleDragOverRight}
+              >
+                {rightPaneWithProps}
+                {draggedPage && (
+                  <div
+                    className={cn(
+                      'absolute inset-0 z-50 transition-all',
+                      dragHoverTarget === 'right'
+                        ? 'bg-primary/10 border-2 border-primary'
+                        : 'pointer-events-none'
+                    )}
+                    onDragLeave={() => {
+                      if (dragHoverTarget === 'right')
+                        dispatch({ type: 'SET_DRAG_HOVER_TARGET', payload: null });
+                    }}
+                    onDrop={handleDropRight}
+                    onDragOver={(e) => e.preventDefault()}
+                  >
+                    {dragHoverTarget === 'right' && (
+                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <span className="px-3 py-1 rounded-md bg-primary/70 text-sm font-medium text-primary-foreground/80">
+                          Drop to Replace
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
+                {hoveredPane === 'right' && !draggedPage && (
+                  <div className={cn("absolute right-4 z-[70] transition-all", isTopBarVisible ? 'top-24' : 'top-4')}>
+                    <ViewModeSwitcher pane="right" />
+                  </div>
+                )}
+              </div>
+            ) : rightPaneWithProps}
+          </div>
         </div>
       </div>
-    </PageLayout>
+      {commandPalette || <CommandPalette />}
+    </div>
   )
 }
 ```

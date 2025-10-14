@@ -1,0 +1,87 @@
+uuid: b8596637-2938-4e89-be23-573531b262d2
+projectId: jeli-app-shell
+createdAt: '2025-10-14T01:51:10.471Z'
+gitCommitMsg: >-
+  chore: add ESLint configuration
+
+  Introduces an ESLint configuration file (`.eslintrc.cjs`) to enforce code
+  quality and consistency across the project.
+
+  - Configured for React, TypeScript, and Vite. - Enables recommended rule sets
+  from `eslint`, `@typescript-eslint`, and
+    `eslint-plugin-react-hooks`.
+  - Includes the `eslint-plugin-react-refresh` for better HMR support. - Adds
+  warnings for explicit `any` types and unused variables. - Ignores build
+  outputs and configuration files.
+promptSummary: The user asked to configure ESLint.
+reasoning:
+  - >-
+    Based on your request to configure ESLint for your project, I will create a
+    standard `.eslintrc.cjs` configuration file. This file will be set up for a
+    modern Vite-based React and TypeScript project, utilizing the ESLint-related
+    dependencies already present in your `package.json`.
+  - 'The configuration will:'
+  - >-
+    -   Enable recommended rules from ESLint, TypeScript-ESLint, and React
+    Hooks.
+  - '-   Set up the correct parser for TypeScript.'
+  - >-
+    -   Enable the `react-refresh` plugin for a better development experience
+    with Hot Module Replacement (HMR).
+  - >-
+    -   Add a rule to warn about the use of `any` types, encouraging better type
+    safety.
+  - >-
+    -   Add a rule to warn about unused variables, aligning with your
+    `tsconfig.json` settings.
+  - '-   Ignore build artifacts and configuration files from linting.'
+  - >-
+    This will provide you with a solid foundation for code quality and
+    consistency.
+operations:
+  - type: write
+    path: .eslintrc.cjs
+    content: |-
+      module.exports = {
+        root: true,
+        env: { browser: true, es2020: true, node: true },
+        extends: [
+          'eslint:recommended',
+          'plugin:@typescript-eslint/recommended',
+          'plugin:react-hooks/recommended',
+        ],
+        ignorePatterns: [
+          'dist',
+          '.eslintrc.cjs',
+          'vite.config.ts',
+          'postcss.config.js',
+          'tailwind.config.js',
+        ],
+        parser: '@typescript-eslint/parser',
+        plugins: ['react-refresh'],
+        rules: {
+          'react-refresh/only-export-components': [
+            'warn',
+            { allowConstantExport: true },
+          ],
+          '@typescript-eslint/no-explicit-any': 'warn',
+          '@typescript-eslint/no-unused-vars': [
+            'warn',
+            {
+              argsIgnorePattern: '^_',
+              varsIgnorePattern: '^_',
+              caughtErrorsIgnorePattern: '^_',
+            },
+          ],
+        },
+      };
+    patchStrategy: replace
+snapshot:
+  .eslintrc.cjs: null
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 259

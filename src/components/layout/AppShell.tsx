@@ -203,7 +203,7 @@ export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalet
     }
     dispatch({ type: 'SET_DRAGGED_PAGE', payload: null });
     dispatch({ type: 'SET_DRAG_HOVER_TARGET', payload: null });
-  }, [draggedPage, dispatch, bodyState, activePage, navigate]);
+  }, [draggedPage, dispatch, activePage, navigate]);
 
   return (
     <div 

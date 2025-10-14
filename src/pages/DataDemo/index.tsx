@@ -28,7 +28,7 @@ import { AnimatedLoadingSkeleton } from './components/AnimatedLoadingSkeleton'
 import { StatChartCard } from './components/StatChartCard'
 import { DataToolbar } from './components/DataToolbar'
 import { mockDataItems } from './data/mockData'
-import type { DataItem, SortConfig, SortableField, GroupableField } from './types'
+import type { DataItem, GroupableField } from './types'
 import { useDataManagement } from './hooks/useDataManagement.hook'
 
 type Stat = {

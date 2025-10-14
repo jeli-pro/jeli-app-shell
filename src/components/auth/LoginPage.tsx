@@ -1,6 +1,5 @@
 import React, { useState, ChangeEvent, FormEvent } from 'react';
 import { Eye, EyeOff, Mail, ArrowLeft } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import { Label } from '@/components/ui/label';
 import { AnimatedInput } from '../effects/AnimatedInput';
 import { BoxReveal } from '../effects/BoxReveal';

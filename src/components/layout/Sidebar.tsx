@@ -15,6 +15,7 @@ interface SidebarContextValue {
 
 const SidebarContext = React.createContext<SidebarContextValue | null>(null);
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useSidebar = () => {
   const context = React.useContext(SidebarContext);
   if (!context) {
