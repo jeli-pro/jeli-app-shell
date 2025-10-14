@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { ArrowUpRight } from 'lucide-react'
 import type { ViewProps, DataItem } from '../types'
-import { useIncrementalStaggeredAnimation } from '@/hooks/useStaggeredAnimation.motion.hook'
+import { useStaggeredAnimation } from '@/hooks/useStaggeredAnimation.motion.hook'
 import { EmptyState } from './EmptyState'
 import {
   AssigneeInfo,
@@ -16,7 +16,7 @@ import {
 
 export function DataCardView({ data, onItemSelect, selectedItem, isGrid = false }: ViewProps) {
   const containerRef = useRef<HTMLDivElement>(null)
-  useIncrementalStaggeredAnimation(containerRef, [data], { y: 40 });
+  useStaggeredAnimation(containerRef, [data], { mode: 'incremental', y: 40 });
 
   if (!Array.isArray(data) || data.length === 0) {
     return <EmptyState />

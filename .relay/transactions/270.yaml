@@ -1,0 +1,360 @@
+uuid: c25ecb02-772c-4ef1-948f-2878b273b57f
+projectId: jeli-app-shell
+createdAt: '2025-10-14T02:31:07.601Z'
+gitCommitMsg: >-
+  refactor(animations): consolidate staggered animation hooks
+
+  Merged `useIncrementalStaggeredAnimation` and `useStaggeredAnimation` into a
+  single, unified `useStaggeredAnimation` hook.
+
+  The new hook accepts a `mode` option ('full' or 'incremental') to control its
+  behavior, reducing code duplication and simplifying the animation utility API.
+  Updated all call sites to use the new consolidated hook, ensuring no change in
+  animation behavior.
+promptSummary: >-
+  I want to make the codebase highly DRY without UI UX regression... focus on
+  the logic and state management. not on components rendering. This is part 2 of
+  the plan.
+reasoning:
+  - >-
+    Excellent. Part 1 is complete. Now, let's execute Part 2: consolidating the
+    staggered animation hooks to make the codebase more DRY.
+  - '### Part 2: Consolidate Staggered Animation Hooks'
+  - >-
+    I will merge the two animation hooks, `useStaggeredAnimation` and
+    `useIncrementalStaggeredAnimation`, into a single, more versatile
+    `useStaggeredAnimation` hook. This new hook will accept a `mode` option to
+    switch between animating all children (`'full'`) and only new ones
+    (`'incremental'`). This eliminates code duplication and provides a cleaner
+    API.
+  - >-
+    First, I will replace the content of
+    `src/hooks/useStaggeredAnimation.motion.hook.ts` with the new consolidated
+    hook.
+  - >-
+    Next, I will update `DataCardView.tsx` to use the new unified hook,
+    specifying `mode: 'incremental'` to retain the previous behavior.
+  - >-
+    Similarly, I will update `DataListView.tsx` to call the consolidated hook
+    with the correct mode and options.
+  - >-
+    The other components using `useStaggeredAnimation` for full animations
+    (`DataDetailPanel` and `DashboardContent` via its hook) will continue to
+    work without changes, as `'full'` is the default mode. This completes the
+    refactor.
+operations:
+  - type: write
+    path: src/hooks/useStaggeredAnimation.motion.hook.ts
+    content: "import { useLayoutEffect, useRef } from 'react';\nimport { gsap } from 'gsap';\n\ninterface StaggeredAnimationOptions {\n\tstagger?: number;\n\tduration?: number;\n\ty?: number;\n\tscale?: number;\n\tease?: string;\n\tmode?: 'full' | 'incremental';\n}\n\n/**\n * Animates the direct children of a container element with a staggered fade-in effect.\n *\n * @param containerRef Ref to the container element.\n * @param deps Dependency array to trigger the animation.\n * @param options Animation options.\n * @param options.mode - 'full' (default): animates all children every time deps change.\n *                       'incremental': only animates new children added to the container.\n */\nexport function useStaggeredAnimation<T extends HTMLElement>(\n\tcontainerRef: React.RefObject<T>,\n\tdeps: React.DependencyList,\n\toptions: StaggeredAnimationOptions = {},\n) {\n\tconst {\n\t\tstagger = 0.08,\n\t\tduration = 0.6,\n\t\ty = 30,\n\t\tscale = 1,\n\t\tease = 'power3.out',\n\t\tmode = 'full',\n\t} = options;\n\n\tconst animatedItemsCount = useRef(0);\n\n\tuseLayoutEffect(() => {\n\t\tif (!containerRef.current) return;\n\n\t\tconst children = Array.from(containerRef.current.children) as HTMLElement[];\n\n\t\tif (mode === 'incremental') {\n\t\t\t// On dependency change, if the number of children is less than what we've animated,\n\t\t\t// it's a list reset (e.g., filtering), so reset the counter.\n\t\t\tif (children.length < animatedItemsCount.current) {\n\t\t\t\tanimatedItemsCount.current = 0;\n\t\t\t}\n\n\t\t\tconst newItems = children.slice(animatedItemsCount.current);\n\n\t\t\tif (newItems.length > 0) {\n\t\t\t\tgsap.fromTo(\n\t\t\t\t\tnewItems,\n\t\t\t\t\t{ y, opacity: 0, scale },\n\t\t\t\t\t{\n\t\t\t\t\t\tduration,\n\t\t\t\t\t\ty: 0,\n\t\t\t\t\t\topacity: 1,\n\t\t\t\t\t\tscale: 1,\n\t\t\t\t\t\tstagger,\n\t\t\t\t\t\tease,\n\t\t\t\t\t},\n\t\t\t\t);\n\t\t\t\tanimatedItemsCount.current = children.length;\n\t\t\t}\n\t\t} else {\n\t\t\tif (children.length) {\n\t\t\t\tgsap.fromTo(\n\t\t\t\t\tchildren,\n\t\t\t\t\t{ y, opacity: 0, scale },\n\t\t\t\t\t{\n\t\t\t\t\t\tduration,\n\t\t\t\t\t\ty: 0,\n\t\t\t\t\t\topacity: 1,\n\t\t\t\t\t\tscale: 1,\n\t\t\t\t\t\tstagger,\n\t\t\t\t\t\tease,\n\t\t\t\t\t},\n\t\t\t\t);\n\t\t\t}\n\t\t}\n\t\t// eslint-disable-next-line react-hooks/exhaustive-deps\n\t}, [containerRef, ...deps]);\n}"
+    patchStrategy: replace
+  - type: write
+    path: src/pages/DataDemo/components/DataCardView.tsx
+    content: >+
+      --- src/pages/DataDemo/components/DataCardView.tsx
+
+      +++ src/pages/DataDemo/components/DataCardView.tsx
+
+      @@ -4,7 +4,7 @@
+       import { Badge } from '@/components/ui/badge'
+       import { ArrowUpRight } from 'lucide-react'
+       import type { ViewProps, DataItem } from '../types'
+      -import { useIncrementalStaggeredAnimation } from
+      '@/hooks/useStaggeredAnimation.motion.hook'
+
+      +import { useStaggeredAnimation } from
+      '@/hooks/useStaggeredAnimation.motion.hook'
+       import { EmptyState } from './EmptyState'
+       import {
+         AssigneeInfo,
+      @@ -17,7 +17,7 @@
+       
+       export function DataCardView({ data, onItemSelect, selectedItem, isGrid = false }: ViewProps) {
+         const containerRef = useRef<HTMLDivElement>(null)
+      -  useIncrementalStaggeredAnimation(containerRef, [data], { y: 40 });
+
+      +  useStaggeredAnimation(containerRef, [data], { mode: 'incremental', y:
+      40 });
+       
+         if (!Array.isArray(data) || data.length === 0) {
+           return <EmptyState />
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/DataDemo/components/DataListView.tsx
+    content: >+
+      --- src/pages/DataDemo/components/DataListView.tsx
+
+      +++ src/pages/DataDemo/components/DataListView.tsx
+
+      @@ -4,7 +4,7 @@
+       import { Badge } from '@/components/ui/badge'
+       import { ArrowRight } from 'lucide-react'
+       import type { ViewProps, DataItem } from '../types'
+      -import { useIncrementalStaggeredAnimation } from
+      '@/hooks/useStaggeredAnimation.motion.hook'
+
+      +import { useStaggeredAnimation } from
+      '@/hooks/useStaggeredAnimation.motion.hook'
+       import { EmptyState } from './EmptyState'
+       import {
+         AssigneeInfo,
+      @@ -18,7 +18,7 @@
+       
+       export function DataListView({ data, onItemSelect, selectedItem }: ViewProps) {
+         const listRef = useRef<HTMLDivElement>(null)
+      -  useIncrementalStaggeredAnimation(listRef, [data], { scale: 1, y: 30,
+      stagger: 0.08, duration: 0.5 });
+
+      +  useStaggeredAnimation(listRef, [data], { mode: 'incremental', scale: 1,
+      y: 30, stagger: 0.08, duration: 0.5 });
+       
+         if (!Array.isArray(data) || data.length === 0) {
+           return <EmptyState />
+
+    patchStrategy: standard-diff
+snapshot:
+  src/hooks/useStaggeredAnimation.motion.hook.ts: "import { useLayoutEffect, useRef } from 'react';\nimport { gsap } from 'gsap';\n\ninterface StaggeredAnimationOptions {\n\tstagger?: number;\n\tduration?: number;\n\ty?: number;\n\tscale?: number;\n\tease?: string;\n}\n\n/**\n * Animates the direct children of a container element with a staggered fade-in effect.\n * This version is for lists that might grow (e.g., infinite scroll). It only\n * animates new elements that are added to the container.\n *\n * @param containerRef Ref to the container element.\n * @param deps Dependency array. A change here that adds items will trigger the animation on the new items.\n * @param options Animation options.\n */\nexport function useIncrementalStaggeredAnimation<T extends HTMLElement>(\n\tcontainerRef: React.RefObject<T>,\n\tdeps: React.DependencyList,\n\toptions: StaggeredAnimationOptions = {},\n) {\n\tconst animatedItemsCount = useRef(0);\n\n\tconst { stagger = 0.1, duration = 0.5, y = 30, scale = 0.95, ease = 'power2.out' } = options;\n\n\tuseLayoutEffect(() => {\n\t\tif (!containerRef.current) return;\n\n\t\tconst children = Array.from(containerRef.current.children);\n\t\t// On dependency change, if the number of children is less than what we've animated,\n\t\t// it's a list reset (e.g., filtering), so reset the counter.\n\t\tif (children.length < animatedItemsCount.current) {\n\t\t\tanimatedItemsCount.current = 0;\n\t\t}\n\n\t\tconst newItems = children.slice(animatedItemsCount.current);\n\n\t\tif (newItems.length > 0) {\n\t\t\tgsap.fromTo(\n\t\t\t\tnewItems,\n\t\t\t\t{ y, opacity: 0, scale },\n\t\t\t\t{\n\t\t\t\t\tduration,\n\t\t\t\t\ty: 0,\n\t\t\t\t\topacity: 1,\n\t\t\t\t\tscale: 1,\n\t\t\t\t\tstagger,\n\t\t\t\t\tease,\n\t\t\t\t},\n\t\t\t);\n\t\t\tanimatedItemsCount.current = children.length;\n\t\t}\n\t\t// eslint-disable-next-line react-hooks/exhaustive-deps\n\t}, [containerRef, ...deps]);\n}\n\n/**\n * Animates the direct children of a container element with a staggered fade-in effect.\n * This version animates all children every time the dependencies change.\n * Ideal for content that is replaced, not appended to.\n *\n * @param containerRef Ref to the container element.\n * @param deps Dependency array to trigger the animation.\n * @param options Animation options.\n */\nexport function useStaggeredAnimation<T extends HTMLElement>(\n\tcontainerRef: React.RefObject<T>,\n\tdeps: React.DependencyList,\n\toptions: StaggeredAnimationOptions = {},\n) {\n\tconst { stagger = 0.08, duration = 0.6, y = 30, scale = 1, ease = 'power3.out' } = options;\n\n\tuseLayoutEffect(() => {\n\t\tif (containerRef.current?.children.length) {\n\t\t\tgsap.fromTo(\n\t\t\t\tcontainerRef.current.children,\n\t\t\t\t{ y, opacity: 0, scale },\n\t\t\t\t{\n\t\t\t\t\tduration,\n\t\t\t\t\ty: 0,\n\t\t\t\t\topacity: 1,\n\t\t\t\t\tscale: 1,\n\t\t\t\t\tstagger,\n\t\t\t\t\tease,\n\t\t\t\t},\n\t\t\t);\n\t\t}\n\t\t// eslint-disable-next-line react-hooks/exhaustive-deps\n\t}, [containerRef, ...deps]);\n}"
+  src/pages/DataDemo/components/DataListView.tsx: >-
+    import { useRef } from 'react'
+
+    import { cn } from '@/lib/utils'
+
+    import { Badge } from '@/components/ui/badge'
+
+    import { ArrowRight } from 'lucide-react'
+
+    import type { ViewProps, DataItem } from '../types'
+
+    import { useIncrementalStaggeredAnimation } from
+    '@/hooks/useStaggeredAnimation.motion.hook'
+
+    import { EmptyState } from './EmptyState'
+
+    import {
+      AssigneeInfo,
+      ItemMetrics,
+      ItemProgressBar,
+      ItemStatusBadge,
+      ItemPriorityBadge,
+      ItemDateInfo,
+    } from './shared/DataItemParts'
+
+
+    export function DataListView({ data, onItemSelect, selectedItem }:
+    ViewProps) {
+      const listRef = useRef<HTMLDivElement>(null)
+      useIncrementalStaggeredAnimation(listRef, [data], { scale: 1, y: 30, stagger: 0.08, duration: 0.5 });
+
+      if (!Array.isArray(data) || data.length === 0) {
+        return <EmptyState />
+      }
+
+      return (
+        <div ref={listRef} className="space-y-4">
+          {data.map((item: DataItem) => {
+            const isSelected = selectedItem?.id === item.id
+            
+            return (
+              <div
+                key={item.id}
+                onClick={() => onItemSelect(item)}
+                className={cn(
+                  "group relative overflow-hidden rounded-2xl border bg-card/50 backdrop-blur-sm transition-all duration-300 cursor-pointer",
+                  "hover:bg-card/80 hover:shadow-lg hover:shadow-primary/5 hover:border-primary/20",
+                  "active:scale-[0.99]",
+                  isSelected && "ring-2 ring-primary/20 border-primary/30 bg-card/90"
+                )}
+              >
+                <div className="p-6">
+                  <div className="flex items-start gap-4">
+                    {/* Thumbnail */}
+                    <div className="flex-shrink-0">
+                      <div className="w-14 h-14 bg-gradient-to-br from-primary/20 to-primary/10 rounded-xl flex items-center justify-center text-2xl">
+                        {item.thumbnail}
+                      </div>
+                    </div>
+
+                    {/* Content */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-semibold text-lg mb-1 group-hover:text-primary transition-colors">
+                            {item.title}
+                          </h3>
+                          <p className="text-muted-foreground text-sm mb-3 line-clamp-2">
+                            {item.description}
+                          </p>
+                        </div>
+                        <ArrowRight className="w-5 h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all duration-300 ml-4 flex-shrink-0" />
+                      </div>
+
+                      {/* Badges */}
+                      <div className="flex items-center gap-2 mb-4">
+                        <ItemStatusBadge status={item.status} />
+                        <ItemPriorityBadge priority={item.priority} />
+                        <Badge variant="outline" className="bg-accent/50">
+                          {item.category}
+                        </Badge>
+                      </div>
+
+                      {/* Meta info */}
+                      <div className="flex items-center justify-between text-muted-foreground">
+                        <div className="flex items-center gap-4">
+                          {/* Assignee */}
+                          <AssigneeInfo assignee={item.assignee} avatarClassName="w-7 h-7" />
+                          {/* Date */}
+                          <ItemDateInfo date={item.updatedAt} />
+                        </div>
+
+                        {/* Metrics */}
+                        <ItemMetrics metrics={item.metrics} />
+                      </div>
+
+                      {/* Progress bar */}
+                      <div className="mt-4"><ItemProgressBar completion={item.metrics.completion} /></div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Hover gradient overlay */}
+                <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+              </div>
+            )
+          })}
+        </div>
+      )
+    }
+  src/pages/DataDemo/components/DataCardView.tsx: >-
+    import { useRef } from 'react'
+
+    import { cn } from '@/lib/utils'
+
+    import { Badge } from '@/components/ui/badge'
+
+    import { ArrowUpRight } from 'lucide-react'
+
+    import type { ViewProps, DataItem } from '../types'
+
+    import { useIncrementalStaggeredAnimation } from
+    '@/hooks/useStaggeredAnimation.motion.hook'
+
+    import { EmptyState } from './EmptyState'
+
+    import {
+      AssigneeInfo,
+      ItemMetrics,
+      ItemProgressBar,
+      ItemStatusBadge,
+      ItemTags,
+      ItemDateInfo,
+    } from './shared/DataItemParts'
+
+
+    export function DataCardView({ data, onItemSelect, selectedItem, isGrid =
+    false }: ViewProps) {
+      const containerRef = useRef<HTMLDivElement>(null)
+      useIncrementalStaggeredAnimation(containerRef, [data], { y: 40 });
+
+      if (!Array.isArray(data) || data.length === 0) {
+        return <EmptyState />
+      }
+
+      return (
+        <div 
+          ref={containerRef}
+          className={cn(
+            "gap-6",
+            isGrid
+              ? "grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))]"
+              : "grid grid-cols-[repeat(auto-fit,minmax(320px,1fr))]"
+          )}
+        >
+          {data.map((item: DataItem) => {
+            const isSelected = selectedItem?.id === item.id
+            
+            return (
+              <div
+                key={item.id}
+                onClick={() => onItemSelect(item)}
+                className={cn(
+                  "group relative overflow-hidden rounded-3xl border bg-card/50 backdrop-blur-sm transition-all duration-500 cursor-pointer",
+                  "hover:bg-card/80 hover:shadow-xl hover:shadow-primary/10 hover:border-primary/30 hover:-translate-y-2",
+                  "active:scale-[0.98]",
+                  isSelected && "ring-2 ring-primary/30 border-primary/40 bg-card/90 shadow-lg shadow-primary/20",
+                )}
+              >
+                {/* Card Header with Thumbnail */}
+                <div className="relative p-6 pb-4">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-primary/10 rounded-2xl flex items-center justify-center text-3xl group-hover:scale-110 transition-transform duration-300">
+                      {item.thumbnail}
+                    </div>
+                    <ArrowUpRight className="w-5 h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 group-hover:-translate-y-1 transition-all duration-300" />
+                  </div>
+
+                  {/* Priority indicator */}
+                  <div className="absolute top-4 right-4">
+                    <div className={cn(
+                      "w-3 h-3 rounded-full",
+                      item.priority === 'critical' && "bg-red-500",
+                      item.priority === 'high' && "bg-orange-500",
+                      item.priority === 'medium' && "bg-blue-500",
+                      item.priority === 'low' && "bg-green-500"
+                    )} />
+                  </div>
+                </div>
+
+                {/* Card Content */}
+                <div className="px-6 pb-6">
+                  {/* Title and Description */}
+                  <h3 className="font-semibold text-lg mb-2 group-hover:text-primary transition-colors line-clamp-2">
+                    {item.title}
+                  </h3>
+                  <p className="text-muted-foreground text-sm mb-4 line-clamp-3">
+                    {item.description}
+                  </p>
+
+                  {/* Status and Category */}
+                  <div className="flex items-center gap-2 mb-4">
+                    <ItemStatusBadge status={item.status} />
+                    <Badge variant="outline" className="bg-accent/50 text-xs">
+                      {item.category}
+                    </Badge>
+                  </div>
+
+                  {/* Tags */}
+                  <div className="mb-4"><ItemTags tags={item.tags} /></div>
+
+                  {/* Progress */}
+                  <div className="mb-4"><ItemProgressBar completion={item.metrics.completion} /></div>
+
+                  {/* Assignee */}
+                  <div className="mb-4"><AssigneeInfo assignee={item.assignee} /></div>
+
+                  {/* Metrics */}
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <ItemMetrics metrics={item.metrics} />
+                    <ItemDateInfo date={item.updatedAt} />
+                  </div>
+                </div>
+
+                {/* Hover gradient overlay */}
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+                
+                {/* Selection indicator */}
+                {isSelected && (
+                  <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-primary/5 pointer-events-none" />
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )
+    }
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 270

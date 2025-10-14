@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useMemo, useCallback } from "react";
 import {
   createBrowserRouter,
   RouterProvider,
@@ -6,6 +6,8 @@ import {
   Navigate,
   useNavigate,
   useLocation,
+  useParams,
+  useSearchParams,
 } from "react-router-dom";
 
 import { AppShell } from "./components/layout/AppShell";
@@ -22,24 +24,38 @@ import { TopBar } from "./components/layout/TopBar";
 import { CommandPalette } from "./components/global/CommandPalette";
 import { ToasterProvider } from "./components/ui/toast";
 
-// Import page/content components
+// --- Page/Content Components for Pages and Panes ---
 import { DashboardContent } from "./pages/Dashboard";
 import { SettingsPage } from "./pages/Settings";
+import { SettingsContent } from "./features/settings/SettingsContent";
 import { ToasterDemo } from "./pages/ToasterDemo";
 import { NotificationsPage } from "./pages/Notifications";
 import DataDemoPage from "./pages/DataDemo";
+import { DataDetailPanel } from "./pages/DataDemo/components/DataDetailPanel";
+import { mockDataItems } from "./pages/DataDemo/data/mockData";
 import { LoginPage } from "./components/auth/LoginPage";
 
-// Import icons
+// --- Icons ---
 import {
   Search,
   Filter,
   Plus,
   ChevronRight,
   Rocket,
+  LayoutDashboard,
+  Settings,
+  Component,
+  Bell,
+  SlidersHorizontal,
+  ChevronsLeftRight,
+  Layers,
+  SplitSquareHorizontal,
+  Database,
 } from "lucide-react";
-import { cn } from "./lib/utils";
-import { usePageContent } from "./hooks/usePageContent.hook";
+
+// --- Utils & Hooks ---
+import { cn, BODY_STATES } from "./lib/utils";
+import { useUrlStateSync } from "./hooks/useUrlStateSync.hook";
 
 // Wrapper for LoginPage to provide auth handlers
 function LoginPageWrapper() {
@@ -194,8 +210,150 @@ function AppTopBar() {
 
 // The main App component that composes the shell
 function ComposedApp() {
-  const { rightPaneContent, rightPaneHeader, handleCloseSidePane } =
-    usePageContent();
+  // --- State from Context & Router ---
+  const { bodyState, sidePaneContent } = useAppShell();
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { itemId } = useParams<{ itemId: string }>();
+
+  // --- Sync URL with App Shell State ---
+  useUrlStateSync();
+
+  // --- Content Mapping for Side/Right Panes ---
+  const contentMap = useMemo(() => ({
+    main: {
+      title: "Dashboard",
+      icon: LayoutDashboard,
+      page: "dashboard",
+      content: <DashboardContent isInSidePane />,
+    },
+    settings: {
+      title: "Settings",
+      icon: Settings,
+      page: "settings",
+      content: <div className="p-6"><SettingsContent /></div>
+    },
+    toaster: {
+      title: "Toaster Demo",
+      icon: Component,
+      page: "toaster",
+      content: <ToasterDemo isInSidePane />,
+    },
+    notifications: {
+      title: "Notifications",
+      icon: Bell,
+      page: "notifications",
+      content: <NotificationsPage isInSidePane />,
+    },
+    dataDemo: {
+      title: "Data Showcase",
+      icon: Database,
+      page: "data-demo",
+      content: <DataDemoPage />,
+    },
+    details: {
+      title: "Details Panel",
+      icon: SlidersHorizontal,
+      content: (
+        <div className="p-6">
+          <p className="text-muted-foreground">
+            This is the side pane. It can be used to display contextual
+            information, forms, or actions related to the main content.
+          </p>
+        </div>
+      ),
+    },
+  }), []);
+
+  // --- Derived State for Content ---
+  const selectedItem = useMemo(() => {
+    if (!itemId) return null
+    return mockDataItems.find(item => item.id === itemId) ?? null
+  }, [itemId]);
+
+  const { currentContent, rightPaneContent } = useMemo(() => {
+    if (sidePaneContent === 'dataItem' && selectedItem) {
+      return {
+        currentContent: { title: "Item Details", icon: Database, page: `data-demo/${itemId}` },
+        rightPaneContent: <DataDetailPanel item={selectedItem} onClose={() => navigate('/data-demo')} />,
+      };
+    }
+    const mappedContent = contentMap[sidePaneContent as keyof typeof contentMap] || contentMap.details;
+    return {
+      currentContent: mappedContent,
+      rightPaneContent: mappedContent.content,
+    };
+  }, [sidePaneContent, selectedItem, navigate, contentMap, itemId]);
+
+  const CurrentIcon = currentContent.icon;
+
+  // --- Callbacks for Right Pane Actions ---
+  const handleMaximize = useCallback(() => {
+    if ("page" in currentContent && currentContent.page) {
+      navigate(`/${currentContent.page}`, { replace: true });
+    } else {
+      setSearchParams({}, { replace: true });
+    }
+  }, [currentContent, navigate, setSearchParams]);
+
+  const handleCloseSidePane = useCallback(() => {
+    if (itemId) {
+      navigate('/data-demo');
+    } else {
+      setSearchParams(prev => {
+        const newParams = new URLSearchParams(prev);
+        newParams.delete('sidePane');
+        newParams.delete('right');
+        newParams.delete('view');
+        return newParams;
+      }, { replace: true });
+    }
+  }, [setSearchParams, itemId, navigate]);
+
+  const handleToggleSplitView = useCallback(() => {
+    if (bodyState === BODY_STATES.SIDE_PANE) {
+      setSearchParams(prev => {
+        const newParams = new URLSearchParams(prev);
+        const currentPane = newParams.get('sidePane');
+        if (currentPane) {
+          newParams.set('view', 'split');
+          newParams.set('right', currentPane);
+          newParams.delete('sidePane');
+        }
+        return newParams;
+      }, { replace: true });
+    } else if (bodyState === BODY_STATES.SPLIT_VIEW) {
+      setSearchParams(prev => {
+        return { sidePane: prev.get('right') || 'details' }
+      }, { replace: true });
+    }
+  }, [bodyState, setSearchParams]);
+
+  // --- Right Pane Header UI ---
+  const rightPaneHeader = useMemo(() => (
+    <>
+      {bodyState !== BODY_STATES.SPLIT_VIEW ? (
+        <div className="flex items-center gap-2">
+          <CurrentIcon className="w-5 h-5" />
+          <h2 className="text-lg font-semibold whitespace-nowrap">
+            {currentContent.title}
+          </h2>
+        </div>
+      ) : <div />} {/* Placeholder to make justify-between work */}
+      <div className="flex items-center">
+        {(bodyState === BODY_STATES.SIDE_PANE || bodyState === BODY_STATES.SPLIT_VIEW) && (
+          <button onClick={handleToggleSplitView} className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors" title={bodyState === BODY_STATES.SIDE_PANE ? "Switch to Split View" : "Switch to Overlay View"}>
+            {bodyState === BODY_STATES.SPLIT_VIEW ? <Layers className="w-5 h-5" /> : <SplitSquareHorizontal className="w-5 h-5" />}
+          </button>
+        )}
+        {bodyState !== BODY_STATES.SPLIT_VIEW && "page" in currentContent && currentContent.page && (
+          <button onClick={handleMaximize} className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors mr-2" title="Move to Main View">
+            <ChevronsLeftRight className="w-5 h-5" />
+          </button>
+        )}
+      </div>
+    </>
+  ), [bodyState, currentContent, CurrentIcon, handleToggleSplitView, handleMaximize]);
 
   return (
     <AppShell

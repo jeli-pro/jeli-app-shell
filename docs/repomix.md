@@ -2,41 +2,28 @@
 ```
 src/
   components/
-    auth/
-      LoginPage.tsx
-    ui/
-      avatar.tsx
-      badge.tsx
-      card.tsx
+    layout/
+      RightPane.tsx
   context/
     AppShellContext.tsx
   features/
     settings/
       SettingsContent.tsx
   hooks/
-    usePageContent.hook.tsx
+    useStaggeredAnimation.motion.hook.ts
+    useUrlStateSync.hook.ts
   lib/
     utils.ts
   pages/
     Dashboard/
+      hooks/
+        useDashboardAnimations.motion.hook.ts
       index.tsx
     DataDemo/
       components/
-        AnimatedLoadingSkeleton.tsx
         DataCardView.tsx
         DataDetailPanel.tsx
         DataListView.tsx
-        DataTableView.tsx
-      hooks/
-        useDataManagement.hook.tsx
-      index.tsx
-      types.ts
-    Notifications/
-      index.tsx
-    Settings/
-      index.tsx
-    ToasterDemo/
-      index.tsx
   App.tsx
 index.html
 package.json
@@ -49,11 +36,10 @@ vite.config.ts
 
 # Files
 
-## File: src/hooks/usePageContent.hook.tsx
+## File: src/hooks/useUrlStateSync.hook.ts
 ```typescript
-import React, { useEffect, useMemo, useCallback } from "react";
+import { useEffect } from "react";
 import {
-  useNavigate,
   useParams,
   useSearchParams,
 } from "react-router-dom";
@@ -61,35 +47,16 @@ import { useAppShell } from "@/context/AppShellContext";
 import type { AppShellState } from "@/context/AppShellContext";
 import { BODY_STATES } from "@/lib/utils";
 
-// Import page/content components
-import { DashboardContent } from "@/pages/Dashboard";
-import { ToasterDemo } from "@/pages/ToasterDemo";
-import { NotificationsPage } from "@/pages/Notifications";
-import { DataDetailPanel } from "@/pages/DataDemo/components/DataDetailPanel";
-import { mockDataItems } from "@/pages/DataDemo/data/mockData";
-import DataDemoPage from "@/pages/DataDemo";
-import { SettingsContent } from "@/features/settings/SettingsContent";
-
-// Import icons
-import {
-  LayoutDashboard,
-  Settings,
-  Component,
-  Bell,
-  SlidersHorizontal,
-  ChevronsLeftRight,
-  Layers,
-  SplitSquareHorizontal,
-  Database,
-} from "lucide-react";
-
-export function usePageContent() {
-  const { bodyState, dispatch } = useAppShell();
-  const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
+/**
+ * A hook to synchronize the URL state (params and search query) with the AppShellContext.
+ * This hook is responsible for setting the body state and side pane content based on the URL.
+ * It does not return anything.
+ */
+export function useUrlStateSync() {
+  const { dispatch } = useAppShell();
+  const [searchParams] = useSearchParams();
   const { itemId } = useParams<{ itemId: string }>();
 
-  // Effect to sync app shell state (bodyState, sidePaneContent) with URL
   useEffect(() => {
     const pane = searchParams.get('sidePane');
     const view = searchParams.get('view');
@@ -114,301 +81,141 @@ export function usePageContent() {
       dispatch({ type: 'SET_SIDE_PANE_CONTENT', payload: 'details' });
     }
   }, [itemId, searchParams, dispatch]);
-
-  const contentMap = useMemo(() => ({
-    main: {
-      title: "Dashboard",
-      icon: LayoutDashboard,
-      page: "dashboard",
-      content: <DashboardContent isInSidePane />,
-    },
-    settings: {
-      title: "Settings",
-      icon: Settings,
-      page: "settings",
-      content: <div className="p-6"><SettingsContent /></div>
-    },
-    toaster: {
-      title: "Toaster Demo",
-      icon: Component,
-      page: "toaster",
-      content: <ToasterDemo isInSidePane />,
-    },
-    notifications: {
-      title: "Notifications",
-      icon: Bell,
-      page: "notifications",
-      content: <NotificationsPage isInSidePane />,
-    },
-    dataDemo: {
-      title: "Data Showcase",
-      icon: Database,
-      page: "data-demo",
-      content: <DataDemoPage />,
-    },
-    details: {
-      title: "Details Panel",
-      icon: SlidersHorizontal,
-      content: (
-        <div className="p-6">
-          <p className="text-muted-foreground">
-            This is the side pane. It can be used to display contextual
-            information, forms, or actions related to the main content.
-          </p>
-        </div>
-      ),
-    },
-  }), []);
-
-  const selectedItem = useMemo(() => {
-    if (!itemId) return null
-    return mockDataItems.find(item => item.id === itemId) ?? null
-  }, [itemId]);
-
-  const sidePaneIdentifier = itemId
-    ? 'dataItem'
-    : searchParams.get('sidePane') || searchParams.get('right') || 'details';
-
-  const { currentContent, rightPaneContent } = useMemo(() => {
-    if (sidePaneIdentifier === 'dataItem') {
-      return {
-        currentContent: { title: "Item Details", icon: Database, page: `data-demo/${itemId}` },
-        rightPaneContent: <DataDetailPanel item={selectedItem} onClose={() => navigate('/data-demo')} />,
-      };
-    }
-    const mappedContent = contentMap[sidePaneIdentifier as keyof typeof contentMap] || contentMap.details;
-    return {
-      currentContent: mappedContent,
-      rightPaneContent: mappedContent.content,
-    };
-  }, [sidePaneIdentifier, selectedItem, navigate, contentMap, itemId]);
-
-  const CurrentIcon = currentContent.icon;
-
-  const handleMaximize = useCallback(() => {
-    if ("page" in currentContent && currentContent.page) {
-      navigate(`/${currentContent.page}`, { replace: true });
-    } else {
-      setSearchParams({}, { replace: true });
-    }
-  }, [currentContent, navigate, setSearchParams]);
-
-  const handleCloseSidePane = useCallback(() => {
-    if (itemId) {
-      navigate('/data-demo');
-    } else {
-      setSearchParams(prev => {
-        const newParams = new URLSearchParams(prev);
-        newParams.delete('sidePane');
-        newParams.delete('right');
-        newParams.delete('view');
-        return newParams;
-      }, { replace: true });
-    }
-  }, [setSearchParams, itemId, navigate]);
-
-  const handleToggleSplitView = useCallback(() => {
-    if (bodyState === BODY_STATES.SIDE_PANE) {
-      setSearchParams(prev => {
-        const newParams = new URLSearchParams(prev);
-        const currentPane = newParams.get('sidePane');
-        if (currentPane) {
-          newParams.set('view', 'split');
-          newParams.set('right', currentPane);
-          newParams.delete('sidePane');
-        }
-        return newParams;
-      }, { replace: true });
-    } else if (bodyState === BODY_STATES.SPLIT_VIEW) {
-      setSearchParams(prev => {
-        return { sidePane: prev.get('right') || 'details' }
-      }, { replace: true });
-    }
-  }, [bodyState, setSearchParams]);
-
-  const rightPaneHeader = useMemo(() => (
-    bodyState !== BODY_STATES.SPLIT_VIEW ? (
-      <>
-        <div className="flex items-center gap-2">
-          <CurrentIcon className="w-5 h-5" />
-          <h2 className="text-lg font-semibold whitespace-nowrap">
-            {currentContent.title}
-          </h2>
-        </div>
-        <div className="flex items-center">
-          {(bodyState === BODY_STATES.SIDE_PANE ||
-            bodyState === BODY_STATES.SPLIT_VIEW) && (
-            <button
-              onClick={handleToggleSplitView}
-              className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors"
-              title={
-                bodyState === BODY_STATES.SIDE_PANE
-                  ? "Switch to Split View"
-                  : "Switch to Overlay View"
-              }
-            >
-              {bodyState === BODY_STATES.SPLIT_VIEW ? (
-                <Layers className="w-5 h-5" />
-              ) : (
-                <SplitSquareHorizontal className="w-5 h-5" />
-              )}
-            </button>
-          )}
-          {"page" in currentContent && currentContent.page && (
-            <button
-              onClick={handleMaximize}
-              className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors mr-2"
-              title="Move to Main View"
-            >
-              <ChevronsLeftRight className="w-5 h-5" />
-            </button>
-          )}
-        </div>
-      </>
-    ) : undefined
-  ), [bodyState, currentContent, CurrentIcon, handleToggleSplitView, handleMaximize]);
-
-  return {
-    rightPaneContent,
-    rightPaneHeader,
-    handleCloseSidePane
-  };
 }
 ```
 
-## File: src/components/ui/avatar.tsx
+## File: src/hooks/useStaggeredAnimation.motion.hook.ts
 ```typescript
-import * as React from "react"
-import * as AvatarPrimitive from "@radix-ui/react-avatar"
+import { useLayoutEffect, useRef } from 'react';
+import { gsap } from 'gsap';
 
-import { cn } from "@/lib/utils"
+interface StaggeredAnimationOptions {
+	stagger?: number;
+	duration?: number;
+	y?: number;
+	scale?: number;
+	ease?: string;
+}
 
-const Avatar = React.forwardRef<
-  React.ElementRef<typeof AvatarPrimitive.Root>,
-  React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Root>
->(({ className, ...props }, ref) => (
-  <AvatarPrimitive.Root
-    ref={ref}
-    className={cn(
-      "relative flex h-10 w-10 shrink-0 overflow-hidden rounded-full",
-      className
-    )}
-    {...props}
-  />
-))
-Avatar.displayName = AvatarPrimitive.Root.displayName
+/**
+ * Animates the direct children of a container element with a staggered fade-in effect.
+ * This version is for lists that might grow (e.g., infinite scroll). It only
+ * animates new elements that are added to the container.
+ *
+ * @param containerRef Ref to the container element.
+ * @param deps Dependency array. A change here that adds items will trigger the animation on the new items.
+ * @param options Animation options.
+ */
+export function useIncrementalStaggeredAnimation<T extends HTMLElement>(
+	containerRef: React.RefObject<T>,
+	deps: React.DependencyList,
+	options: StaggeredAnimationOptions = {},
+) {
+	const animatedItemsCount = useRef(0);
 
-const AvatarImage = React.forwardRef<
-  React.ElementRef<typeof AvatarPrimitive.Image>,
-  React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Image>
->(({ className, ...props }, ref) => (
-  <AvatarPrimitive.Image
-    ref={ref}
-    className={cn("aspect-square h-full w-full", className)}
-    {...props}
-  />
-))
-AvatarImage.displayName = AvatarPrimitive.Image.displayName
+	const { stagger = 0.1, duration = 0.5, y = 30, scale = 0.95, ease = 'power2.out' } = options;
 
-const AvatarFallback = React.forwardRef<
-  React.ElementRef<typeof AvatarPrimitive.Fallback>,
-  React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Fallback>
->(({ className, ...props }, ref) => (
-  <AvatarPrimitive.Fallback
-    ref={ref}
-    className={cn(
-      "flex h-full w-full items-center justify-center rounded-full bg-muted",
-      className
-    )}
-    {...props}
-  />
-))
-AvatarFallback.displayName = AvatarPrimitive.Fallback.displayName
+	useLayoutEffect(() => {
+		if (!containerRef.current) return;
 
-export { Avatar, AvatarImage, AvatarFallback }
+		const children = Array.from(containerRef.current.children);
+		// On dependency change, if the number of children is less than what we've animated,
+		// it's a list reset (e.g., filtering), so reset the counter.
+		if (children.length < animatedItemsCount.current) {
+			animatedItemsCount.current = 0;
+		}
+
+		const newItems = children.slice(animatedItemsCount.current);
+
+		if (newItems.length > 0) {
+			gsap.fromTo(
+				newItems,
+				{ y, opacity: 0, scale },
+				{
+					duration,
+					y: 0,
+					opacity: 1,
+					scale: 1,
+					stagger,
+					ease,
+				},
+			);
+			animatedItemsCount.current = children.length;
+		}
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [containerRef, ...deps]);
+}
+
+/**
+ * Animates the direct children of a container element with a staggered fade-in effect.
+ * This version animates all children every time the dependencies change.
+ * Ideal for content that is replaced, not appended to.
+ *
+ * @param containerRef Ref to the container element.
+ * @param deps Dependency array to trigger the animation.
+ * @param options Animation options.
+ */
+export function useStaggeredAnimation<T extends HTMLElement>(
+	containerRef: React.RefObject<T>,
+	deps: React.DependencyList,
+	options: StaggeredAnimationOptions = {},
+) {
+	const { stagger = 0.08, duration = 0.6, y = 30, scale = 1, ease = 'power3.out' } = options;
+
+	useLayoutEffect(() => {
+		if (containerRef.current?.children.length) {
+			gsap.fromTo(
+				containerRef.current.children,
+				{ y, opacity: 0, scale },
+				{
+					duration,
+					y: 0,
+					opacity: 1,
+					scale: 1,
+					stagger,
+					ease,
+				},
+			);
+		}
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [containerRef, ...deps]);
+}
 ```
 
-## File: src/components/ui/card.tsx
+## File: src/pages/Dashboard/hooks/useDashboardAnimations.motion.hook.ts
 ```typescript
-import * as React from "react"
+import { useEffect } from 'react';
+import { gsap } from 'gsap';
+import { useAppShell } from '@/context/AppShellContext';
+import { BODY_STATES } from '@/lib/utils';
+import { useStaggeredAnimation } from '@/hooks/useStaggeredAnimation.motion.hook';
 
-import { cn } from "@/lib/utils"
+export function useDashboardAnimations(
+  contentRef: React.RefObject<HTMLDivElement>,
+  statsCardsContainerRef: React.RefObject<HTMLDivElement>,
+  featureCardsContainerRef: React.RefObject<HTMLDivElement>,
+) {
+  const { bodyState } = useAppShell();
 
-const Card = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn(
-      "rounded-2xl border bg-card text-card-foreground",
-      className
-    )}
-    {...props}
-  />
-))
-Card.displayName = "Card"
+  // Animate cards on mount
+  useStaggeredAnimation(statsCardsContainerRef, [], { y: 20, scale: 0.95 });
+  useStaggeredAnimation(featureCardsContainerRef, [], { y: 30, scale: 0.95, stagger: 0.05 });
 
-const CardHeader = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn("flex flex-col space-y-1.5 p-6", className)}
-    {...props}
-  />
-))
-CardHeader.displayName = "CardHeader"
+  useEffect(() => {
+    if (!contentRef.current) return;
 
-const CardTitle = React.forwardRef<
-  HTMLParagraphElement,
-  React.HTMLAttributes<HTMLHeadingElement>
->(({ className, ...props }, ref) => (
-  <h3
-    ref={ref}
-    className={cn(
-      "text-lg font-semibold leading-none tracking-tight",
-      className
-    )}
-    {...props}
-  />
-))
-CardTitle.displayName = "CardTitle"
+    const content = contentRef.current;
 
-const CardDescription = React.forwardRef<
-  HTMLParagraphElement,
-  React.HTMLAttributes<HTMLParagraphElement>
->(({ className, ...props }, ref) => (
-  <p
-    ref={ref}
-    className={cn("text-sm text-muted-foreground", className)}
-    {...props}
-  />
-))
-CardDescription.displayName = "CardDescription"
-
-const CardContent = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div ref={ref} className={cn("p-6 pt-0", className)} {...props} />
-))
-CardContent.displayName = "CardContent"
-
-const CardFooter = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn("flex items-center p-6 pt-0", className)}
-    {...props}
-  />
-))
-CardFooter.displayName = "CardFooter"
-
-export { Card, CardHeader, CardFooter, CardTitle, CardDescription, CardContent }
+    switch (bodyState) {
+      case BODY_STATES.FULLSCREEN:
+        gsap.to(content, { scale: 1.02, duration: 0.4, ease: 'power3.out' });
+        break;
+      default:
+        gsap.to(content, { scale: 1, duration: 0.4, ease: 'power3.out' });
+        break;
+    }
+  }, [bodyState, contentRef]);
+}
 ```
 
 ## File: postcss.config.js
@@ -419,47 +226,6 @@ export default {
     autoprefixer: {},
   },
 }
-```
-
-## File: src/components/ui/badge.tsx
-```typescript
-import * as React from "react"
-import { cva, type VariantProps } from "class-variance-authority"
-
-import { cn } from "@/lib/utils"
-
-const badgeVariants = cva(
-  "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
-  {
-    variants: {
-      variant: {
-        default:
-          "border-transparent bg-primary text-primary-foreground hover:bg-primary/80",
-        secondary:
-          "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        destructive:
-          "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80",
-        outline: "text-foreground",
-      },
-    },
-    defaultVariants: {
-      variant: "default",
-    },
-  },
-)
-
-export interface BadgeProps
-  extends React.HTMLAttributes<HTMLDivElement>,
-    VariantProps<typeof badgeVariants> {}
-
-function Badge({ className, variant, ...props }: BadgeProps) {
-  return (
-    <div className={cn(badgeVariants({ variant }), className)} {...props} />
-  )
-}
-
-// eslint-disable-next-line react-refresh/only-export-components
-export { Badge, badgeVariants }
 ```
 
 ## File: src/features/settings/SettingsContent.tsx
@@ -699,461 +465,6 @@ if (typeof document !== 'undefined') {
 }
 ```
 
-## File: src/pages/DataDemo/components/AnimatedLoadingSkeleton.tsx
-```typescript
-import React, { useEffect, useRef, useState } from 'react'
-import { gsap } from 'gsap'
-import { Search } from 'lucide-react'
-import { cn } from '@/lib/utils'
-import type { ViewMode } from '../types'
-
-interface GridConfig {
-  numCards: number
-  cols: number
-}
-
-export const AnimatedLoadingSkeleton = ({ viewMode }: { viewMode: ViewMode }) => {
-  const [containerWidth, setContainerWidth] = useState(0)
-  const containerRef = useRef<HTMLDivElement>(null)
-  const iconRef = useRef<HTMLDivElement>(null)
-  const timelineRef = useRef<gsap.core.Timeline | null>(null)
-
-  const getGridConfig = (width: number): GridConfig => {
-    if (width === 0) return { numCards: 8, cols: 2 }; // Default before measurement
-    if (viewMode === 'list' || viewMode === 'table') {
-      return { numCards: 5, cols: 1 }
-    }
-    // For card view
-    if (viewMode === 'cards') {
-      const cols = Math.max(1, Math.floor(width / 344)); // 320px card + 24px gap
-      return { numCards: Math.max(8, cols * 2), cols }
-    }
-    // For grid view
-    const cols = Math.max(1, Math.floor(width / 304)); // 280px card + 24px gap
-    return { numCards: Math.max(8, cols * 2), cols }
-  }
-
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-
-    const resizeObserver = new ResizeObserver(entries => {
-      if (entries[0]) {
-        setContainerWidth(entries[0].contentRect.width);
-      }
-    });
-
-    resizeObserver.observe(container);
-    return () => resizeObserver.disconnect();
-  }, []);
-
-  useEffect(() => {
-    if (timelineRef.current) {
-      timelineRef.current.kill()
-    }
-    if (!iconRef.current || !containerRef.current || containerWidth === 0) return
-
-    // Allow DOM to update with new skeleton cards
-    const timeoutId = setTimeout(() => {
-      const cards = Array.from(containerRef.current!.children)
-      if (cards.length === 0) return
-
-      const shuffledCards = gsap.utils.shuffle(cards)
-
-      const getCardPosition = (card: Element) => {
-        const rect = card.getBoundingClientRect()
-        const containerRect = containerRef.current!.getBoundingClientRect()
-        const iconRect = iconRef.current!.getBoundingClientRect()
-
-        return {
-          x: rect.left - containerRect.left + rect.width / 2 - iconRect.width / 2,
-          y: rect.top - containerRect.top + rect.height / 2 - iconRect.height / 2,
-        }
-      }
-      
-      const tl = gsap.timeline({
-        repeat: -1,
-        repeatDelay: 0.5,
-        defaults: { duration: 1, ease: 'power2.inOut' }
-      });
-      timelineRef.current = tl
-
-      // Animate to a few random cards
-      shuffledCards.slice(0, 5).forEach(card => {
-        const pos = getCardPosition(card)
-        tl.to(iconRef.current, { 
-          x: pos.x,
-          y: pos.y,
-          scale: 1.2,
-          duration: 0.8
-        }).to(iconRef.current, {
-          scale: 1,
-          duration: 0.2
-        })
-      });
-
-      // Loop back to the start
-      const firstPos = getCardPosition(shuffledCards[0]);
-      tl.to(iconRef.current, { x: firstPos.x, y: firstPos.y, duration: 0.8 });
-    }, 100) // Small delay to ensure layout is calculated
-
-    return () => {
-      clearTimeout(timeoutId)
-      if (timelineRef.current) {
-        timelineRef.current.kill()
-      }
-    }
-
-  }, [containerWidth, viewMode])
-
-  const config = getGridConfig(containerWidth)
-
-  const renderSkeletonCard = (key: number) => {
-    if (viewMode === 'list' || viewMode === 'table') {
-      return (
-        <div key={key} className="bg-card/30 border border-border/30 rounded-2xl p-6 flex items-start gap-4 animate-pulse">
-          <div className="w-14 h-14 bg-muted rounded-xl flex-shrink-0"></div>
-          <div className="flex-1 space-y-3">
-            <div className="h-4 bg-muted rounded w-3/4"></div>
-            <div className="h-3 bg-muted rounded w-full"></div>
-            <div className="h-3 bg-muted rounded w-5/6"></div>
-            <div className="flex gap-2 pt-2">
-              <div className="h-6 bg-muted rounded-full w-20"></div>
-              <div className="h-6 bg-muted rounded-full w-20"></div>
-            </div>
-          </div>
-        </div>
-      )
-    }
-
-    return (
-      <div 
-        key={key} 
-        className={cn(
-          "bg-card/30 border border-border/30 rounded-3xl p-6 space-y-4 animate-pulse",
-        )}
-      >
-        <div className="flex items-start justify-between">
-          <div className="w-16 h-16 bg-muted rounded-2xl"></div>
-          <div className="w-4 h-4 bg-muted rounded-full"></div>
-        </div>
-        <div className="h-4 bg-muted rounded w-3/4"></div>
-        <div className="h-3 bg-muted rounded w-full"></div>
-        <div className="h-3 bg-muted rounded w-5/6"></div>
-        <div className="h-2 w-full bg-muted rounded-full my-4"></div>
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-muted rounded-full"></div>
-          <div className="flex-1 space-y-2">
-            <div className="h-3 bg-muted rounded w-1/2"></div>
-            <div className="h-2 bg-muted rounded w-1/3"></div>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  const gridClasses = {
-    list: "space-y-4",
-    table: "space-y-4",
-    cards: "grid grid-cols-[repeat(auto-fit,minmax(320px,1fr))] gap-6",
-    grid: "grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-6"
-  }
-
-  return (
-    <div className="relative overflow-hidden rounded-lg min-h-[500px]">
-      <div 
-        ref={iconRef}
-        className="absolute z-10 p-3 bg-primary/20 rounded-full backdrop-blur-sm"
-        style={{ willChange: 'transform' }}
-      >
-        <Search className="w-6 h-6 text-primary" />
-      </div>
-
-      <div 
-        ref={containerRef}
-        className={cn(gridClasses[viewMode])}
-      >
-        {[...Array(config.numCards)].map((_, i) => renderSkeletonCard(i))}
-      </div>
-    </div>
-  )
-}
-```
-
-## File: src/pages/DataDemo/hooks/useDataManagement.hook.tsx
-```typescript
-import { useState, useRef, useEffect, useCallback, useMemo, ReactNode } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { capitalize, cn } from '@/lib/utils';
-import { Badge } from '@/components/ui/badge';
-import { mockDataItems } from '../data/mockData';
-import type { DataItem, ViewMode, SortConfig, SortableField, GroupableField, Status, Priority } from '../types';
-import type { FilterConfig } from '../components/DataToolbar';
-
-export function useDataManagement() {
-	const [searchParams, setSearchParams] = useSearchParams();
-
-	// Derive state from URL search params
-	const viewMode = useMemo(() => (searchParams.get('view') as ViewMode) || 'list', [searchParams]);
-	const page = useMemo(() => parseInt(searchParams.get('page') || '1', 10), [searchParams]);
-	const groupBy = useMemo(() => (searchParams.get('groupBy') as GroupableField | 'none') || 'none', [searchParams]);
-	const activeGroupTab = useMemo(() => searchParams.get('tab') || 'all', [searchParams]);
-
-	const filters = useMemo<FilterConfig>(
-		() => ({
-			searchTerm: searchParams.get('q') || '',
-			status: (searchParams.get('status')?.split(',') || []).filter(Boolean) as Status[],
-			priority: (searchParams.get('priority')?.split(',') || []).filter(Boolean) as Priority[],
-		}),
-		[searchParams],
-	);
-
-	const sortConfig = useMemo<SortConfig | null>(() => {
-		const sortParam = searchParams.get('sort');
-		if (!sortParam) return { key: 'updatedAt', direction: 'desc' }; // Default sort
-		if (sortParam === 'default') return null;
-
-		const [key, direction] = sortParam.split('-');
-		return { key: key as SortableField, direction: direction as 'asc' | 'desc' };
-	}, [searchParams]);
-
-	// Centralized handler for updating URL search params
-	const handleParamsChange = useCallback(
-		(newParams: Record<string, string | string[] | null | undefined>) => {
-			setSearchParams(
-				(prev) => {
-					const updated = new URLSearchParams(prev);
-					let pageReset = false;
-
-					for (const [key, value] of Object.entries(newParams)) {
-						const isFilterOrSort = ['q', 'status', 'priority', 'sort', 'groupBy'].includes(key);
-
-						if (value === null || value === undefined || (Array.isArray(value) && value.length === 0) || value === '') {
-							updated.delete(key);
-						} else if (Array.isArray(value)) {
-							updated.set(key, value.join(','));
-						} else {
-							updated.set(key, String(value));
-						}
-
-						if (isFilterOrSort) {
-							pageReset = true;
-						}
-					}
-
-					if (pageReset) {
-						updated.delete('page');
-					}
-					if ('groupBy' in newParams) {
-						updated.delete('tab');
-					}
-
-					return updated;
-				},
-				{ replace: true },
-			);
-		},
-		[setSearchParams],
-	);
-
-	const [items, setItems] = useState<DataItem[]>([]);
-	const [hasMore, setHasMore] = useState(true);
-	const [isLoading, setIsLoading] = useState(true);
-	const observer = useRef<IntersectionObserver>();
-
-	// Centralized data filtering and sorting from the master list
-	const filteredAndSortedData = useMemo(() => {
-		const filteredItems = mockDataItems.filter((item) => {
-			const searchTermMatch =
-				item.title.toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
-				item.description.toLowerCase().includes(filters.searchTerm.toLowerCase());
-
-			const statusMatch = filters.status.length === 0 || filters.status.includes(item.status);
-			const priorityMatch = filters.priority.length === 0 || filters.priority.includes(item.priority);
-
-			return searchTermMatch && statusMatch && priorityMatch;
-		});
-
-		if (sortConfig) {
-			filteredItems.sort((a, b) => {
-				const getNestedValue = (obj: DataItem, path: string): unknown => 
-					// eslint-disable-next-line @typescript-eslint/no-explicit-any
-					path.split('.').reduce((o: any, k) => (o || {})[k], obj);
-				
-				const aValue = getNestedValue(a, sortConfig.key);
-				const bValue = getNestedValue(b, sortConfig.key);
-
-				if (aValue === undefined || bValue === undefined) return 0;
-
-				if (typeof aValue === 'string' && typeof bValue === 'string') {
-					return sortConfig.direction === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
-				}
-				if (typeof aValue === 'number' && typeof bValue === 'number') {
-					return sortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue;
-				}
-				// Date sorting (assuming ISO strings)
-				if (sortConfig.key === 'updatedAt' || sortConfig.key === 'createdAt') {
-					return sortConfig.direction === 'asc'
-						? new Date(aValue).getTime() - new Date(bValue).getTime()
-						: new Date(bValue).getTime() - new Date(aValue).getTime();
-				}
-				return 0;
-			});
-		}
-
-		return filteredItems;
-	}, [filters, sortConfig]);
-
-	// Data loading effect
-	useEffect(() => {
-		setIsLoading(true);
-		const isFirstPage = page === 1;
-
-		const loadData = () => {
-			if (groupBy !== 'none') {
-				// For grouped views, load all data at once, pagination is disabled.
-				setItems(filteredAndSortedData);
-				setHasMore(false);
-				setIsLoading(false);
-				return;
-			}
-
-			// Handle paginated view
-			const pageSize = 12;
-			const newItems = filteredAndSortedData.slice((page - 1) * pageSize, page * pageSize);
-
-			setTimeout(() => {
-				// Double-check in case groupBy changed during the timeout
-				if (groupBy === 'none') {
-					setItems((prev) => (isFirstPage ? newItems : [...prev, ...newItems]));
-					setHasMore(filteredAndSortedData.length > page * pageSize);
-					setIsLoading(false);
-				}
-			}, isFirstPage && items.length === 0 ? 1500 : 500); // Longer delay for initial skeleton
-		};
-
-		loadData();
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [searchParams, filteredAndSortedData]); // Reacts to any URL change
-
-	const loaderRef = useCallback(
-		(node: Element | null) => {
-			if (isLoading) return;
-			if (observer.current) observer.current.disconnect();
-
-			observer.current = new IntersectionObserver((entries) => {
-				if (entries[0].isIntersecting && hasMore) {
-					// Instead of setting local state, we update the URL, which triggers the data loading effect.
-					handleParamsChange({ page: (page + 1).toString() });
-				}
-			});
-			if (node) observer.current.observe(node);
-		},
-		[isLoading, hasMore, page, handleParamsChange],
-	);
-
-	const groupTabs = useMemo(() => {
-		if (groupBy === 'none' || !filteredAndSortedData.length) return [];
-
-		const groupCounts = filteredAndSortedData.reduce((acc, item) => {
-			const groupKey = String(item[groupBy as GroupableField]);
-			acc[groupKey] = (acc[groupKey] || 0) + 1;
-			return acc;
-		}, {} as Record<string, number>);
-
-		const sortedGroups = Object.keys(groupCounts).sort((a, b) => a.localeCompare(b));
-
-		const createLabel = (text: string, count: number, isActive: boolean): ReactNode => (
-			<>
-				{text}
-				<Badge
-					variant={isActive ? 'default' : 'secondary'}
-					className={cn(
-						'transition-colors duration-300 text-xs font-semibold',
-						!isActive && 'group-hover:bg-accent group-hover:text-accent-foreground',
-					)}
-				>
-					{count}
-				</Badge>
-			</>
-		);
-
-		return [
-			{ id: 'all', label: createLabel('All', filteredAndSortedData.length, activeGroupTab === 'all') },
-			...sortedGroups.map((g) => ({
-				id: g,
-				label: createLabel(capitalize(g), groupCounts[g], activeGroupTab === g),
-			})),
-		];
-	}, [filteredAndSortedData, groupBy, activeGroupTab]);
-
-	// Data to be rendered in the current view, after grouping and tab selection is applied
-	const dataToRender = useMemo(() => {
-		if (groupBy === 'none') {
-			return items; // This is the paginated list.
-		}
-
-		// When grouped, `items` contains ALL filtered/sorted data.
-		if (activeGroupTab === 'all') {
-			return items;
-		}
-		return items.filter((item) => String(item[groupBy as GroupableField]) === activeGroupTab);
-	}, [items, groupBy, activeGroupTab]);
-
-	const totalItemCount = filteredAndSortedData.length;
-	const isInitialLoading = isLoading && items.length === 0;
-
-  const setViewMode = (mode: ViewMode) => handleParamsChange({ view: mode });
-  const setGroupBy = (val: string) => handleParamsChange({ groupBy: val === 'none' ? null : val });
-  const setActiveGroupTab = (tab: string) => handleParamsChange({ tab: tab === 'all' ? null : tab });
-  const setFilters = (newFilters: FilterConfig) => {
-    handleParamsChange({ q: newFilters.searchTerm, status: newFilters.status, priority: newFilters.priority });
-  }
-  const setSort = (config: SortConfig | null) => {
-    if (!config) {
-      handleParamsChange({ sort: 'default' });
-    } else {
-      handleParamsChange({ sort: `${config.key}-${config.direction}` });
-    }
-  }
-  const setTableSort = (field: SortableField) => {
-    if (sortConfig?.key === field) {
-      if (sortConfig.direction === 'desc') {
-        // Cycle: desc -> asc
-        handleParamsChange({ sort: `${field}-asc` });
-      } else {
-        // Cycle: asc -> default (by removing param)
-        handleParamsChange({ sort: 'default' });
-      }
-    } else {
-      // New field, default to desc
-      handleParamsChange({ sort: `${field}-desc` });
-    }
-  }
-
-	return {
-		viewMode,
-		groupBy,
-		activeGroupTab,
-		filters,
-		sortConfig,
-		hasMore,
-		isLoading,
-		loaderRef,
-		groupTabs,
-		dataToRender,
-		totalItemCount,
-		isInitialLoading,
-    setViewMode,
-    setGroupBy,
-    setActiveGroupTab,
-    setFilters,
-    setSort,
-    setTableSort
-	};
-}
-```
-
 ## File: tsconfig.json
 ```json
 {
@@ -1196,6 +507,39 @@ export function useDataManagement() {
     "src/pages"
   ],
   "references": [{ "path": "./tsconfig.node.json" }]
+}
+```
+
+## File: index.html
+```html
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Jeli App Shell</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <div id="toaster-container"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+```
+
+## File: tsconfig.node.json
+```json
+{
+  "compilerOptions": {
+    "composite": true,
+    "skipLibCheck": true,
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "allowSyntheticDefaultImports": true,
+    "resolveJsonModule": true
+  },
+  "include": ["vite.config.ts"]
 }
 ```
 
@@ -1248,561 +592,6 @@ export const getPriorityColor = (priority: string) => {
     case 'low': return 'bg-green-500/20 text-green-700 border-green-500/30'
     default: return 'bg-gray-500/20 text-gray-700 border-gray-500/30'
   }
-}
-```
-
-## File: src/pages/DataDemo/types.ts
-```typescript
-export type ViewMode = 'list' | 'cards' | 'grid' | 'table'
-
-export type GroupableField = 'status' | 'priority' | 'category'
-
-export type SortableField = 'title' | 'status' | 'priority' | 'updatedAt' | 'assignee.name' | 'metrics.views' | 'metrics.completion' | 'createdAt'
-export type SortDirection = 'asc' | 'desc'
-export interface SortConfig {
-  key: SortableField
-  direction: SortDirection
-}
-
-export interface DataItem {
-  id: string
-  title: string
-  description: string
-  category: string
-  status: 'active' | 'pending' | 'completed' | 'archived'
-  priority: 'low' | 'medium' | 'high' | 'critical'
-  assignee: {
-    name: string
-    avatar: string
-    email: string
-  }
-  metrics: {
-    views: number
-    likes: number
-    shares: number
-    completion: number
-  }
-  tags: string[]
-  createdAt: string
-  updatedAt: string
-  dueDate?: string
-  thumbnail?: string
-  content?: {
-    summary: string
-    details: string
-    attachments?: Array<{
-      name: string
-      type: string
-      size: string
-      url: string
-    }>
-  }
-}
-
-export interface ViewProps {
-  data: DataItem[] | Record<string, DataItem[]>
-  onItemSelect: (item: DataItem) => void
-  selectedItem: DataItem | null
-  isGrid?: boolean
-
-  // Props for table view specifically
-  sortConfig?: SortConfig | null
-  onSort?: (field: SortableField) => void
-}
-
-export type Status = DataItem['status']
-export type Priority = DataItem['priority']
-```
-
-## File: src/pages/Settings/index.tsx
-```typescript
-import { SettingsContent } from '@/features/settings/SettingsContent';
-import { useAutoAnimateTopBar } from '@/hooks/useAutoAnimateTopBar';
-import { PageHeader } from '@/components/shared/PageHeader';
-import { PageLayout } from '@/components/shared/PageLayout';
-
-export function SettingsPage() {
-  const { onScroll } = useAutoAnimateTopBar();
-
-  return (
-    <PageLayout onScroll={onScroll}>
-      {/* Header */}
-      <PageHeader
-        title="Settings"
-        description="Customize your experience. Changes are saved automatically."
-      />
-      <SettingsContent />
-    </PageLayout>
-  )
-}
-```
-
-## File: index.html
-```html
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Jeli App Shell</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <div id="toaster-container"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
-</html>
-```
-
-## File: tsconfig.node.json
-```json
-{
-  "compilerOptions": {
-    "composite": true,
-    "skipLibCheck": true,
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
-    "allowSyntheticDefaultImports": true,
-    "resolveJsonModule": true
-  },
-  "include": ["vite.config.ts"]
-}
-```
-
-## File: src/components/auth/LoginPage.tsx
-```typescript
-import React, { useState, ChangeEvent, FormEvent } from 'react';
-import { Eye, EyeOff, Mail, ArrowLeft } from 'lucide-react';
-import { Label } from '@/components/ui/label';
-import { AnimatedInput } from '../effects/AnimatedInput';
-import { BoxReveal } from '../effects/BoxReveal';
-import { Ripple } from '../effects/Ripple';
-import { TechOrbitDisplay } from '../effects/OrbitingCircles';
-import { BottomGradient } from '../effects/BottomGradient';
-
-// ==================== AnimatedForm Components ====================
-
-// ==================== Main LoginPage Component ====================
-interface LoginPageProps {
-	onLogin?: (email: string, password: string) => void;
-	onForgotPassword?: (email: string) => void;
-	onSignUp?: () => void;
-}
-
-type LoginState = 'login' | 'forgot-password' | 'reset-sent';
-
-export function LoginPage({ onLogin, onForgotPassword }: LoginPageProps) {
-	const [state, setState] = useState<LoginState>('login');
-	const [email, setEmail] = useState('');
-	const [password, setPassword] = useState('');
-	const [isLoading, setIsLoading] = useState(false);
-	const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
-	const [showPassword, setShowPassword] = useState(false);
-
-	const handleLoginSubmit = async (e: FormEvent) => {
-		e.preventDefault();
-		setErrors({});
-		const newErrors: typeof errors = {};
-		if (!email) newErrors.email = 'Email is required';
-		if (!password) newErrors.password = 'Password is required';
-		if (Object.keys(newErrors).length > 0) {
-			setErrors(newErrors);
-			return;
-		}
-		setIsLoading(true);
-		await onLogin?.(email, password);
-		setIsLoading(false);
-	};
-
-	const handleForgotSubmit = async (e: FormEvent) => {
-		e.preventDefault();
-		setErrors({});
-		if (!email) {
-			setErrors({ email: 'Email is required' });
-			return;
-		}
-		setIsLoading(true);
-		await onForgotPassword?.(email);
-		setIsLoading(false);
-		setState('reset-sent');
-	};
-
-	const renderContent = () => {
-		if (state === 'reset-sent') {
-			return (
-				<div className="w-full max-w-md mx-auto text-center flex flex-col gap-4">
-					<BoxReveal boxColor="hsl(var(--skeleton))" duration={0.5}>
-						<div className="w-16 h-16 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center mx-auto">
-							<Mail className="w-8 h-8 text-green-600 dark:text-green-400" />
-						</div>
-					</BoxReveal>
-					<BoxReveal boxColor="hsl(var(--skeleton))" duration={0.5}>
-						<h1 className="text-3xl font-bold tracking-tight">Check your email</h1>
-					</BoxReveal>
-					<BoxReveal boxColor="hsl(var(--skeleton))" duration={0.5}>
-						<p className="text-muted-foreground">We've sent a password reset link to <strong>{email}</strong></p>
-					</BoxReveal>
-					<BoxReveal width="100%" boxColor="hsl(var(--skeleton))" duration={0.5}>
-						<button onClick={() => setState('login')} className="text-sm text-blue-500 hover:underline">
-							<div className="flex items-center justify-center gap-2">
-								<ArrowLeft className="w-4 h-4" /> Back to login
-							</div>
-						</button>
-					</BoxReveal>
-				</div>
-			);
-		}
-
-		const isLogin = state === 'login';
-		const formFields = isLogin
-			? [
-				{ label: 'Email', required: true, type: 'email', placeholder: 'Enter your email address', onChange: (e: ChangeEvent<HTMLInputElement>) => setEmail(e.target.value) },
-				{ label: 'Password', required: true, type: 'password', placeholder: 'Enter your password', onChange: (e: ChangeEvent<HTMLInputElement>) => setPassword(e.target.value) },
-			]
-			: [{ label: 'Email', required: true, type: 'email', placeholder: 'Enter your email address', onChange: (e: ChangeEvent<HTMLInputElement>) => setEmail(e.target.value) }];
-
-		return (
-			<div className="w-full max-w-md mx-auto flex flex-col gap-4">
-				<BoxReveal boxColor="hsl(var(--skeleton))" duration={0.3}>
-					<h2 className="font-bold text-3xl text-neutral-800 dark:text-neutral-200">{isLogin ? 'Welcome back' : 'Reset Password'}</h2>
-				</BoxReveal>
-				<BoxReveal boxColor="hsl(var(--skeleton))" duration={0.3} className="pb-2">
-					<p className="text-neutral-600 text-sm max-w-sm dark:text-neutral-300">{isLogin ? 'Sign in to your account to continue' : 'Enter your email to receive a reset link'}</p>
-				</BoxReveal>
-				{isLogin && (
-					<BoxReveal boxColor="hsl(var(--skeleton))" duration={0.3} width="100%" className="overflow-visible">
-						<button className="g-button group/btn bg-transparent w-full rounded-md border h-10 font-medium outline-hidden hover:cursor-pointer" type="button">
-							<span className="flex items-center justify-center w-full h-full gap-3">
-								<img src="https://cdn1.iconfinder.com/data/icons/google-s-logo/150/Google_Icons-09-512.png" width={26} height={26} alt="Google Icon" />
-								Sign in with Google
-							</span>
-							<BottomGradient />
-						</button>
-					</BoxReveal>
-				)}
-				{isLogin && (
-					<BoxReveal boxColor="hsl(var(--skeleton))" duration={0.3} width="100%">
-						<div className="flex items-center gap-4">
-							<hr className="flex-1 border-1 border-dashed border-neutral-300 dark:border-neutral-700" />
-							<p className="text-neutral-700 text-sm dark:text-neutral-300">or</p>
-							<hr className="flex-1 border-1 border-dashed border-neutral-300 dark:border-neutral-700" />
-						</div>
-					</BoxReveal>
-				)}
-				<form onSubmit={isLogin ? handleLoginSubmit : handleForgotSubmit}>
-					{formFields.map((field) => (
-						<div key={field.label} className="flex flex-col gap-2 mb-4">
-							<BoxReveal boxColor="hsl(var(--skeleton))" duration={0.3}>
-								<Label htmlFor={field.label}>{field.label} <span className="text-red-500">*</span></Label>
-							</BoxReveal>
-							<BoxReveal width="100%" boxColor="hsl(var(--skeleton))" duration={0.3} className="flex flex-col space-y-2 w-full">
-								<div className="relative">
-									<AnimatedInput type={field.type === 'password' ? (showPassword ? 'text' : 'password') : field.type} id={field.label} placeholder={field.placeholder} onChange={field.onChange} />
-									{field.type === 'password' && (
-										<button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5">
-											{showPassword ? <EyeOff className="h-5 w-5 text-gray-500" /> : <Eye className="h-5 w-5 text-gray-500" />}
-										</button>
-									)}
-								</div>
-								<div className="h-4">{errors[field.label as keyof typeof errors] && <p className="text-red-500 text-xs">{errors[field.label as keyof typeof errors]}</p>}</div>
-							</BoxReveal>
-						</div>
-					))}
-
-					<BoxReveal width="100%" boxColor="hsl(var(--skeleton))" duration={0.3} className="overflow-visible">
-						<button
-							className="bg-gradient-to-br relative group/btn from-zinc-200 dark:from-zinc-900 dark:to-zinc-900 to-zinc-200 block dark:bg-zinc-800 w-full text-black dark:text-white rounded-md h-10 font-medium shadow-[0px_1px_0px_0px_#ffffff40_inset,0px_-1px_0px_0px_#ffffff40_inset] dark:shadow-[0px_1px_0px_0px_var(--zinc-800)_inset,0px_-1px_0px_0px_var(--zinc-800)_inset] outline-hidden hover:cursor-pointer disabled:opacity-50"
-							type="submit" disabled={isLoading}
-						>
-							{isLoading ? (
-								<div className="flex items-center justify-center gap-2">
-									<div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-									<span>Processing...</span>
-								</div>
-							) : (
-								<>{isLogin ? 'Sign in' : 'Send reset link'} &rarr;</>
-							)}
-							<BottomGradient />
-						</button>
-					</BoxReveal>
-					<BoxReveal boxColor="hsl(var(--skeleton))" duration={0.3}>
-						<div className="mt-4 text-center">
-							<button type="button" className="text-sm text-blue-500 hover:underline" onClick={() => setState(isLogin ? 'forgot-password' : 'login')}>
-								{isLogin ? 'Forgot password?' : 'Back to login'}
-							</button>
-						</div>
-					</BoxReveal>
-				</form>
-			</div>
-		);
-	};
-
-	return (
-		<section className="flex max-lg:justify-center min-h-screen w-full login-page-theme bg-background text-foreground">
-			{/* Left Side */}
-			<div className="flex flex-col justify-center w-1/2 max-lg:hidden relative">
-				<Ripple />
-				<TechOrbitDisplay />
-			</div>
-
-			{/* Right Side */}
-			<div className="w-1/2 h-screen flex flex-col justify-center items-center max-lg:w-full max-lg:px-[10%]">
-				{renderContent()}
-			</div>
-		</section>
-	);
-}
-```
-
-## File: src/pages/DataDemo/components/DataListView.tsx
-```typescript
-import { useRef } from 'react'
-import { cn } from '@/lib/utils'
-import { Badge } from '@/components/ui/badge'
-import { ArrowRight } from 'lucide-react'
-import type { ViewProps } from '../types'
-import { useIncrementalStaggeredAnimation } from '@/hooks/useStaggeredAnimation.motion.hook'
-import { EmptyState } from './EmptyState'
-import {
-  AssigneeInfo,
-  ItemMetrics,
-  ItemProgressBar,
-  ItemStatusBadge,
-  ItemPriorityBadge,
-  ItemDateInfo,
-} from './shared/DataItemParts'
-
-export function DataListView({ data, onItemSelect, selectedItem }: ViewProps) {
-  const listRef = useRef<HTMLDivElement>(null)
-  useIncrementalStaggeredAnimation(listRef, [data], { scale: 1, y: 30, stagger: 0.08, duration: 0.5 });
-
-  if (data.length === 0) {
-    return <EmptyState />
-  }
-
-  return (
-    <div ref={listRef} className="space-y-4">
-      {data.map((item) => {
-        const isSelected = selectedItem?.id === item.id
-        
-        return (
-          <div
-            key={item.id}
-            onClick={() => onItemSelect(item)}
-            className={cn(
-              "group relative overflow-hidden rounded-2xl border bg-card/50 backdrop-blur-sm transition-all duration-300 cursor-pointer",
-              "hover:bg-card/80 hover:shadow-lg hover:shadow-primary/5 hover:border-primary/20",
-              "active:scale-[0.99]",
-              isSelected && "ring-2 ring-primary/20 border-primary/30 bg-card/90"
-            )}
-          >
-            <div className="p-6">
-              <div className="flex items-start gap-4">
-                {/* Thumbnail */}
-                <div className="flex-shrink-0">
-                  <div className="w-14 h-14 bg-gradient-to-br from-primary/20 to-primary/10 rounded-xl flex items-center justify-center text-2xl">
-                    {item.thumbnail}
-                  </div>
-                </div>
-
-                {/* Content */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-lg mb-1 group-hover:text-primary transition-colors">
-                        {item.title}
-                      </h3>
-                      <p className="text-muted-foreground text-sm mb-3 line-clamp-2">
-                        {item.description}
-                      </p>
-                    </div>
-                    <ArrowRight className="w-5 h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all duration-300 ml-4 flex-shrink-0" />
-                  </div>
-
-                  {/* Badges */}
-                  <div className="flex items-center gap-2 mb-4">
-                    <ItemStatusBadge status={item.status} />
-                    <ItemPriorityBadge priority={item.priority} />
-                    <Badge variant="outline" className="bg-accent/50">
-                      {item.category}
-                    </Badge>
-                  </div>
-
-                  {/* Meta info */}
-                  <div className="flex items-center justify-between text-muted-foreground">
-                    <div className="flex items-center gap-4">
-                      {/* Assignee */}
-                      <AssigneeInfo assignee={item.assignee} avatarClassName="w-7 h-7" />
-                      {/* Date */}
-                      <ItemDateInfo date={item.updatedAt} />
-                    </div>
-
-                    {/* Metrics */}
-                    <ItemMetrics metrics={item.metrics} />
-                  </div>
-
-                  {/* Progress bar */}
-                  <div className="mt-4"><ItemProgressBar completion={item.metrics.completion} /></div>
-                </div>
-              </div>
-            </div>
-
-            {/* Hover gradient overlay */}
-            <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
-          </div>
-        )
-      })}
-    </div>
-  )
-}
-```
-
-## File: src/pages/ToasterDemo/index.tsx
-```typescript
-import { Button } from '@/components/ui/button';
-import { useToast } from '@/components/ui/toast';
-import { PageHeader } from '@/components/shared/PageHeader';
-import { PageLayout } from '@/components/shared/PageLayout';
-import { cn } from '@/lib/utils';
-
-type Variant = 'default' | 'success' | 'error' | 'warning';
-type Position =
-  | 'top-left'
-  | 'top-center'
-  | 'top-right'
-  | 'bottom-left'
-  | 'bottom-center'
-  | 'bottom-right';
-
-const variantColors = {
-  default: 'border-border text-foreground hover:bg-muted/10 dark:hover:bg-muted/20',
-  success: 'border-green-600 text-green-600 hover:bg-green-600/10 dark:hover:bg-green-400/20',
-  error: 'border-destructive text-destructive hover:bg-destructive/10 dark:hover:bg-destructive/20',
-  warning: 'border-amber-600 text-amber-600 hover:bg-amber-600/10 dark:hover:bg-amber-400/20',
-}
-
-const DemoSection: React.FC<{ title: string; children: React.ReactNode }> = ({
-  title,
-  children,
-}) => (
-  <section>
-    <h2 className="text-lg font-semibold mb-2">{title}</h2>
-    {children}
-  </section>
-);
-
-export function ToasterDemo({ isInSidePane = false }: { isInSidePane?: boolean }) {
-  const toast = useToast();
-
-  const showToast = (variant: Variant, position: Position = 'bottom-right') => {
-    toast.show({
-      title: `${variant.charAt(0).toUpperCase() + variant.slice(1)} Notification`,
-      message: `This is a ${variant} toast notification.`,
-      variant,
-      position,
-      duration: 3000,
-      onDismiss: () =>
-        console.log(`${variant} toast at ${position} dismissed`),
-    });
-  };
-
-  const simulateApiCall = async () => {
-    toast.show({
-      title: 'Scheduling...',
-      message: 'Please wait while we schedule your meeting.',
-      variant: 'default',
-      position: 'bottom-right',
-    });
-
-    try {
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-
-      toast.show({
-        title: 'Meeting Scheduled',
-        message: 'Your meeting is scheduled for July 4, 2025, at 3:42 PM IST.',
-        variant: 'success',
-        position: 'bottom-right',
-        highlightTitle: true,
-        actions: {
-          label: 'Undo',
-          onClick: () => console.log('Undoing meeting schedule'),
-          variant: 'outline',
-        },
-      });
-    } catch (error) {
-      toast.show({
-        title: 'Error Scheduling Meeting',
-        message: 'Failed to schedule the meeting. Please try again.',
-        variant: 'error',
-        position: 'bottom-right',
-      });
-    }
-  };
-
-  return (
-    <PageLayout isInSidePane={isInSidePane}>
-      {/* Header */}
-      {!isInSidePane && (
-        <PageHeader
-          title="Toaster"
-          description="A customizable toast component for notifications."
-        />
-      )}
-      <div className="space-y-6">
-        <DemoSection title="Toast Variants">
-          <div className="flex flex-wrap gap-4">
-            {(['default', 'success', 'error', 'warning'] as Variant[]).map((variantKey) => (
-              <Button
-                key={variantKey}
-                variant="outline"
-                onClick={() => showToast(variantKey as Variant)}
-                className={cn(variantColors[variantKey])}
-              >
-                {variantKey.charAt(0).toUpperCase() + variantKey.slice(1)} Toast
-              </Button>
-            ))}
-          </div>
-        </DemoSection>
-
-        <DemoSection title="Toast Positions">
-          <div className="flex flex-wrap gap-4">
-            {[
-              'top-left',
-              'top-center',
-              'top-right',
-              'bottom-left',
-              'bottom-center',
-              'bottom-right',
-            ].map((positionKey) => (
-              <Button
-                key={positionKey}
-                variant="outline"
-                onClick={() =>
-                  showToast('default', positionKey as Position)
-                }
-                className="border-border text-foreground hover:bg-muted/10 dark:hover:bg-muted/20"
-              >
-                {positionKey
-                  .replace('-', ' ')
-                  .replace(/\b\w/g, (char) => char.toUpperCase())}
-              </Button>
-            ))}
-          </div>
-        </DemoSection>
-
-        <DemoSection title="Real-World Example">
-          <Button
-            variant="outline"
-            onClick={simulateApiCall}
-            className="border-border text-foreground hover:bg-muted/10 dark:hover:bg-muted/20"
-          >
-            Schedule Meeting
-          </Button>
-        </DemoSection>
-      </div>
-    </PageLayout>
-  );
 }
 ```
 
@@ -1919,351 +708,106 @@ export default {
 }
 ```
 
-## File: src/pages/Notifications/index.tsx
+## File: src/pages/DataDemo/components/DataListView.tsx
 ```typescript
-import React from "react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { PageHeader } from "@/components/shared/PageHeader";
-import { useToast } from "@/components/ui/toast";
-import { PageLayout } from "@/components/shared/PageLayout";
-import { cn } from "@/lib/utils";
-import { 
-  CheckCheck, 
-  Download, 
-  Settings, 
-  Bell,
-  MessageSquare,
-  UserPlus,
-  Mail,
-  File as FileIcon,
-  Heart,
-  AtSign,
-  ClipboardCheck,
-  ShieldCheck,
-} from "lucide-react";
+import { useRef } from 'react'
+import { cn } from '@/lib/utils'
+import { Badge } from '@/components/ui/badge'
+import { ArrowRight } from 'lucide-react'
+import type { ViewProps, DataItem } from '../types'
+import { useIncrementalStaggeredAnimation } from '@/hooks/useStaggeredAnimation.motion.hook'
+import { EmptyState } from './EmptyState'
+import {
+  AssigneeInfo,
+  ItemMetrics,
+  ItemProgressBar,
+  ItemStatusBadge,
+  ItemPriorityBadge,
+  ItemDateInfo,
+} from './shared/DataItemParts'
 
+export function DataListView({ data, onItemSelect, selectedItem }: ViewProps) {
+  const listRef = useRef<HTMLDivElement>(null)
+  useIncrementalStaggeredAnimation(listRef, [data], { scale: 1, y: 30, stagger: 0.08, duration: 0.5 });
 
-type Notification = {
-  id: number;
-  type: string;
-  user: {
-    name: string;
-    avatar: string;
-    fallback: string;
-  };
-  action: string;
-  target?: string;
-  content?: string;
-  timestamp: string;
-  timeAgo: string;
-  isRead: boolean;
-  hasActions?: boolean;
-  file?: {
-    name: string;
-    size: string;
-    type: string;
-  };
-};
-
-const initialNotifications: Array<Notification> = [
-  {
-    id: 1,
-    type: "comment",
-    user: { name: "Amélie", avatar: "https://api.dicebear.com/7.x/notionists/svg?seed=Amélie", fallback: "A" },
-    action: "commented in",
-    target: "Dashboard 2.0",
-    content: "Really love this approach. I think this is the best solution for the document sync UX issue.",
-    timestamp: "Friday 3:12 PM",
-    timeAgo: "2 hours ago",
-    isRead: false,
-  },
-  {
-    id: 2,
-    type: "follow",
-    user: { name: "Sienna", avatar: "https://api.dicebear.com/7.x/notionists/svg?seed=Sienna", fallback: "S" },
-    action: "followed you",
-    timestamp: "Friday 3:04 PM",
-    timeAgo: "2 hours ago",
-    isRead: false,
-  },
-  {
-    id: 3,
-    type: "invitation",
-    user: { name: "Ammar", avatar: "https://api.dicebear.com/7.x/notionists/svg?seed=Ammar", fallback: "A" },
-    action: "invited you to",
-    target: "Blog design",
-    timestamp: "Friday 2:22 PM",
-    timeAgo: "3 hours ago",
-    isRead: true,
-    hasActions: true,
-  },
-  {
-    id: 4,
-    type: "file_share",
-    user: { name: "Mathilde", avatar: "https://api.dicebear.com/7.x/notionists/svg?seed=Mathilde", fallback: "M" },
-    action: "shared a file in",
-    target: "Dashboard 2.0",
-    file: { name: "Prototype recording 01.mp4", size: "14 MB", type: "MP4" },
-    timestamp: "Friday 1:40 PM",
-    timeAgo: "4 hours ago",
-    isRead: true,
-  },
-  {
-    id: 5,
-    type: "mention",
-    user: { name: "James", avatar: "https://api.dicebear.com/7.x/notionists/svg?seed=James", fallback: "J" },
-    action: "mentioned you in",
-    target: "Project Alpha",
-    content: "Hey @you, can you review the latest designs when you get a chance?",
-    timestamp: "Thursday 11:30 AM",
-    timeAgo: "1 day ago",
-    isRead: true,
-  },
-  {
-    id: 6,
-    type: "like",
-    user: { name: "Sofia", avatar: "https://api.dicebear.com/7.x/notionists/svg?seed=Sofia", fallback: "S" },
-    action: "liked your comment in",
-    target: "Team Meeting Notes",
-    timestamp: "Thursday 9:15 AM",
-    timeAgo: "1 day ago",
-    isRead: true,
-  },
-  {
-    id: 7,
-    type: "task_assignment",
-    user: { name: "Admin", avatar: "https://api.dicebear.com/7.x/bottts/svg?seed=Admin", fallback: "AD" },
-    action: "assigned you a new task in",
-    target: "Q3 Marketing",
-    content: "Finalize the social media campaign assets.",
-    timestamp: "Wednesday 5:00 PM",
-    timeAgo: "2 days ago",
-    isRead: true,
-  },
-  {
-    id: 8,
-    type: "system_update",
-    user: { name: "System", avatar: "https://api.dicebear.com/7.x/shapes/svg?seed=System", fallback: "SYS" },
-    action: "pushed a new update",
-    content: "Version 2.1.0 is now live with improved performance and new features. Check out the release notes for more details.",
-    timestamp: "Wednesday 9:00 AM",
-    timeAgo: "2 days ago",
-    isRead: true,
-  },
-  {
-    id: 9,
-    type: 'comment',
-    user: { name: 'Elena', avatar: 'https://api.dicebear.com/7.x/notionists/svg?seed=Elena', fallback: 'E' },
-    action: 'replied to your comment in',
-    target: 'Dashboard 2.0',
-    content: 'Thanks for the feedback! I\'ve updated the prototype.',
-    timestamp: 'Tuesday 4:30 PM',
-    timeAgo: '3 days ago',
-    isRead: false,
-  },
-  {
-    id: 10,
-    type: 'invitation',
-    user: { name: 'Carlos', avatar: 'https://api.dicebear.com/7.x/notionists/svg?seed=Carlos', fallback: 'C' },
-    action: 'invited you to',
-    target: 'API Integration',
-    timestamp: 'Tuesday 10:00 AM',
-    timeAgo: '3 days ago',
-    isRead: true,
-    hasActions: true,
-  },
-];
-
-const iconMap: { [key: string]: React.ElementType } = {
-  comment: MessageSquare,
-  follow: UserPlus,
-  invitation: Mail,
-  file_share: FileIcon,
-  mention: AtSign,
-  like: Heart,
-  task_assignment: ClipboardCheck,
-  system_update: ShieldCheck,
-};
-
-function NotificationItem({ notification, onMarkAsRead }: { notification: Notification; onMarkAsRead: (id: number) => void; }) {
-  const Icon = iconMap[notification.type];
+  if (!Array.isArray(data) || data.length === 0) {
+    return <EmptyState />
+  }
 
   return (
-    <div className={cn(
-      "group w-full p-4 hover:bg-accent/50 rounded-lg transition-colors duration-200"
-    )}>
-      <div className="flex gap-3">
-        <div className="relative h-10 w-10 shrink-0">
-          <Avatar className="h-10 w-10">
-            <AvatarImage src={notification.user.avatar} alt={`${notification.user.name}'s profile picture`} />
-            <AvatarFallback>{notification.user.fallback}</AvatarFallback>
-          </Avatar>
-          {Icon && (
-            <div className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full border-2 border-card bg-background">
-              <Icon className={cn("h-3 w-3", notification.type === 'like' ? 'text-red-500 fill-current' : 'text-muted-foreground')} />
-            </div>
-          )}
-        </div>
+    <div ref={listRef} className="space-y-4">
+      {data.map((item: DataItem) => {
+        const isSelected = selectedItem?.id === item.id
+        
+        return (
+          <div
+            key={item.id}
+            onClick={() => onItemSelect(item)}
+            className={cn(
+              "group relative overflow-hidden rounded-2xl border bg-card/50 backdrop-blur-sm transition-all duration-300 cursor-pointer",
+              "hover:bg-card/80 hover:shadow-lg hover:shadow-primary/5 hover:border-primary/20",
+              "active:scale-[0.99]",
+              isSelected && "ring-2 ring-primary/20 border-primary/30 bg-card/90"
+            )}
+          >
+            <div className="p-6">
+              <div className="flex items-start gap-4">
+                {/* Thumbnail */}
+                <div className="flex-shrink-0">
+                  <div className="w-14 h-14 bg-gradient-to-br from-primary/20 to-primary/10 rounded-xl flex items-center justify-center text-2xl">
+                    {item.thumbnail}
+                  </div>
+                </div>
 
-        <div className="flex flex-1 flex-col space-y-2">
-          <div className="flex items-start justify-between">
-            <div className="text-sm">
-              <span className="font-semibold">{notification.user.name}</span>
-              <span className="text-muted-foreground"> {notification.action} </span>
-              {notification.target && <span className="font-semibold">{notification.target}</span>}
-              <div className="mt-0.5 text-xs text-muted-foreground">{notification.timeAgo}</div>
+                {/* Content */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-lg mb-1 group-hover:text-primary transition-colors">
+                        {item.title}
+                      </h3>
+                      <p className="text-muted-foreground text-sm mb-3 line-clamp-2">
+                        {item.description}
+                      </p>
+                    </div>
+                    <ArrowRight className="w-5 h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all duration-300 ml-4 flex-shrink-0" />
+                  </div>
+
+                  {/* Badges */}
+                  <div className="flex items-center gap-2 mb-4">
+                    <ItemStatusBadge status={item.status} />
+                    <ItemPriorityBadge priority={item.priority} />
+                    <Badge variant="outline" className="bg-accent/50">
+                      {item.category}
+                    </Badge>
+                  </div>
+
+                  {/* Meta info */}
+                  <div className="flex items-center justify-between text-muted-foreground">
+                    <div className="flex items-center gap-4">
+                      {/* Assignee */}
+                      <AssigneeInfo assignee={item.assignee} avatarClassName="w-7 h-7" />
+                      {/* Date */}
+                      <ItemDateInfo date={item.updatedAt} />
+                    </div>
+
+                    {/* Metrics */}
+                    <ItemMetrics metrics={item.metrics} />
+                  </div>
+
+                  {/* Progress bar */}
+                  <div className="mt-4"><ItemProgressBar completion={item.metrics.completion} /></div>
+                </div>
+              </div>
             </div>
-            <button
-              onClick={() => !notification.isRead && onMarkAsRead(notification.id)}
-              title={notification.isRead ? "Read" : "Mark as read"}
-              className={cn("size-2.5 rounded-full mt-1 shrink-0 transition-all duration-300",
-                notification.isRead ? 'bg-transparent' : 'bg-primary hover:scale-125 cursor-pointer'
-              )}
-            ></button>
+
+            {/* Hover gradient overlay */}
+            <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
           </div>
-
-          {notification.content && <div className="rounded-lg border bg-muted/50 p-3 text-sm">{notification.content}</div>}
-
-          {notification.file && (
-            <div className="flex items-center gap-2 rounded-lg bg-muted/50 p-2 border border-border">
-              <div className="shrink-0 w-10 h-10 flex items-center justify-center bg-background rounded-md border border-border">
-                <FileIcon className="w-5 h-5 text-muted-foreground" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium truncate">{notification.file.name}</div>
-                <div className="text-xs text-muted-foreground">{notification.file.type} • {notification.file.size}</div>
-              </div>
-              <Button variant="ghost" size="icon" className="size-8 shrink-0">
-                <Download className="w-4 h-4" />
-              </Button>
-            </div>
-          )}
-
-          {notification.hasActions && (
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm">Decline</Button>
-              <Button size="sm">Accept</Button>
-            </div>
-          )}
-        </div>
-      </div>
+        )
+      })}
     </div>
-  );
-}
-
-export function NotificationsPage({ isInSidePane = false }: { isInSidePane?: boolean; }) {
-  const [notifications, setNotifications] = React.useState<Notification[]>(initialNotifications);
-  const [activeTab, setActiveTab] = React.useState<string>("all");
-  const { show: showToast } = useToast();
-
-  const handleMarkAsRead = (id: number) => {
-    setNotifications(prev =>
-      prev.map(n => (n.id === id ? { ...n, isRead: true } : n))
-    );
-  };
-
-  const handleMarkAllAsRead = () => {
-    const unreadCount = notifications.filter(n => !n.isRead).length;
-    if (unreadCount === 0) {
-      showToast({
-        title: "Already up to date!",
-        message: "You have no unread notifications.",
-        variant: "default",
-      });
-      return;
-    }
-    setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
-    showToast({
-        title: "All Caught Up!",
-        message: "All notifications have been marked as read.",
-        variant: "success",
-    });
-  };
-
-  const unreadCount = notifications.filter(n => !n.isRead).length;
-
-  const verifiedNotifications = notifications.filter((n) => n.type === "follow" || n.type === "like");
-  const mentionNotifications = notifications.filter((n) => n.type === "mention");
-
-  const verifiedCount = verifiedNotifications.filter(n => !n.isRead).length;
-  const mentionCount = mentionNotifications.filter(n => !n.isRead).length;
-
-  const getFilteredNotifications = () => {
-    switch (activeTab) {
-      case "verified": return verifiedNotifications;
-      case "mentions": return mentionNotifications;
-      default: return notifications;
-    }
-  };
-
-  const filteredNotifications = getFilteredNotifications();
-
-  const content = (
-    <Card className={cn("flex w-full flex-col shadow-none", isInSidePane ? "border-none" : "")}>
-      <CardHeader className={cn(isInSidePane ? "p-4" : "p-6")}>
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold">
-            Your notifications
-          </h3>
-          <div className="flex items-center gap-1">
-            <Button variant="ghost" size="icon" className="size-8" onClick={handleMarkAllAsRead} title="Mark all as read">
-              <CheckCheck className="size-4 text-muted-foreground" />
-            </Button>
-            <Button variant="ghost" size="icon" className="size-8">
-              <Settings className="size-4 text-muted-foreground" />
-            </Button>
-          </div>
-        </div>
-
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex-col justify-start mt-4">
-          <TabsList className="gap-1.5">
-            <TabsTrigger value="all" className="gap-1.5">
-              View all {unreadCount > 0 && <Badge variant="secondary" className="rounded-full">{unreadCount}</Badge>}
-            </TabsTrigger>
-            <TabsTrigger value="verified" className="gap-1.5">
-              Verified {verifiedCount > 0 && <Badge variant="secondary" className="rounded-full">{verifiedCount}</Badge>}
-            </TabsTrigger>
-            <TabsTrigger value="mentions" className="gap-1.5">
-              Mentions {mentionCount > 0 && <Badge variant="secondary" className="rounded-full">{mentionCount}</Badge>}
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
-      </CardHeader>
-
-      <CardContent className={cn("h-full p-0", isInSidePane ? "px-2" : "px-6")}>
-        <div className="space-y-2 divide-y divide-border">
-          {filteredNotifications.length > 0 ? (
-            filteredNotifications.map((notification) => (
-              <NotificationItem key={notification.id} notification={notification} onMarkAsRead={handleMarkAsRead} />
-            ))
-          ) : (
-            <div className="flex flex-col items-center justify-center space-y-2.5 py-12 text-center">
-              <div className="rounded-full bg-muted p-4">
-                <Bell className="text-muted-foreground" />
-              </div>
-              <p className="text-sm font-medium text-muted-foreground">No notifications yet.</p>
-            </div>
-          )}
-        </div>
-      </CardContent>
-    </Card>
-  );
-
-  return (
-    <PageLayout isInSidePane={isInSidePane}>
-      {!isInSidePane && (
-        <PageHeader
-          title="Notifications"
-          description="Manage your notifications and stay up-to-date."
-        />
-      )}
-      {content}
-    </PageLayout>
-  );
+  )
 }
 ```
 
@@ -2317,7 +861,7 @@ import { useRef } from 'react'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { ArrowUpRight } from 'lucide-react'
-import type { ViewProps } from '../types'
+import type { ViewProps, DataItem } from '../types'
 import { useIncrementalStaggeredAnimation } from '@/hooks/useStaggeredAnimation.motion.hook'
 import { EmptyState } from './EmptyState'
 import {
@@ -2333,7 +877,7 @@ export function DataCardView({ data, onItemSelect, selectedItem, isGrid = false 
   const containerRef = useRef<HTMLDivElement>(null)
   useIncrementalStaggeredAnimation(containerRef, [data], { y: 40 });
 
-  if (data.length === 0) {
+  if (!Array.isArray(data) || data.length === 0) {
     return <EmptyState />
   }
 
@@ -2347,7 +891,7 @@ export function DataCardView({ data, onItemSelect, selectedItem, isGrid = false 
           : "grid grid-cols-[repeat(auto-fit,minmax(320px,1fr))]"
       )}
     >
-      {data.map((item) => {
+      {data.map((item: DataItem) => {
         const isSelected = selectedItem?.id === item.id
         
         return (
@@ -2435,14 +979,10 @@ export function DataCardView({ data, onItemSelect, selectedItem, isGrid = false 
 ```typescript
 import React, { useRef } from 'react'
 import { Badge } from '@/components/ui/badge'
-import { Avatar } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { 
   ArrowLeft, 
   Clock, 
-  Eye, 
-  Heart, 
-  Share, 
   Download,
   FileText,
   Image,
@@ -2460,9 +1000,7 @@ import type { DataItem } from '../types'
 import { useStaggeredAnimation } from '@/hooks/useStaggeredAnimation.motion.hook'
 import {
   AssigneeInfo,
-  ItemMetrics,
   ItemProgressBar,
-  ItemStatusBadge,
   ItemPriorityBadge,
   ItemTags,
 } from './shared/DataItemParts'
@@ -2683,248 +1221,92 @@ export function DataDetailPanel({ item, onClose }: DataDetailPanelProps) {
 }
 ```
 
-## File: src/pages/DataDemo/components/DataTableView.tsx
+## File: src/components/layout/RightPane.tsx
 ```typescript
-import { useRef, useLayoutEffect } from 'react'
-import { gsap } from 'gsap'
-import { cn } from '@/lib/utils'
-import { 
-  ArrowUpDown, 
-  ArrowUp, 
-  ArrowDown,
-  ExternalLink
-} from 'lucide-react'
-import type { ViewProps, DataItem, SortableField } from '../types'
-import { EmptyState } from './EmptyState'
-import { capitalize } from '@/lib/utils'
-import {
-  AssigneeInfo,
-  ItemMetrics,
-  ItemStatusBadge,
-  ItemPriorityBadge,
-  ItemDateInfo,
-} from './shared/DataItemParts'
+import { forwardRef, type ReactNode } from 'react'
+import { useSearchParams } from 'react-router-dom'
+import { ChevronRight, X } from 'lucide-react'
+import { cn, BODY_STATES } from '@/lib/utils'
+import { useAppShell } from '@/context/AppShellContext'
 
-export function DataTableView({ data, onItemSelect, selectedItem, sortConfig, onSort }: ViewProps) {
-  const tableRef = useRef<HTMLTableElement>(null)
-  const animatedItemsCount = useRef(0)
-
-  useLayoutEffect(() => {
-    if (tableRef.current) {
-      // Only select item rows for animation, not group headers
-      const newItems = Array.from( 
-        tableRef.current.querySelectorAll('tbody tr')
-      ).filter(tr => !tr.dataset.groupHeader)
-       .slice(animatedItemsCount.current);
-      gsap.fromTo(newItems,
-        { y: 20, opacity: 0 },
-        {
-          duration: 0.5,
-          y: 0,
-          opacity: 1,
-          stagger: 0.05,
-          ease: "power2.out",
-        },
-      );
-      animatedItemsCount.current = Array.isArray(data) 
-        ? data.length 
-        : Object.values(data).reduce((sum, items) => sum + items.length, 0);
-    }
-  }, [data]);
-
-  const SortIcon = ({ field }: { field: SortableField }) => {
-    if (sortConfig?.key !== field) {
-      return <ArrowUpDown className="w-4 h-4 opacity-50" />
-    }
-    if (sortConfig.direction === 'asc') {
-      return <ArrowUp className="w-4 h-4 text-primary" />
-    }
-    if (sortConfig.direction === 'desc') {
-      return <ArrowDown className="w-4 h-4 text-primary" />
-    }
-    return <ArrowUpDown className="w-4 h-4 opacity-50" />
-  }
-
-  const handleSortClick = (field: SortableField) => {
-    onSort?.(field)
-  }
-
-  if ((Array.isArray(data) && data.length === 0) || (!Array.isArray(data) && Object.keys(data).length === 0)) {
-    return <EmptyState />
-  }
-
-  return (
-    <div className="relative overflow-hidden rounded-2xl border bg-card/50 backdrop-blur-sm">
-      <div className="overflow-x-auto">
-        <table ref={tableRef} className="w-full">
-          <thead>
-            <tr className="border-b border-border/50 bg-muted/20">
-              <th className="text-left p-4 font-semibold text-sm">
-                <button
-                  onClick={() => handleSortClick('title')}
-                  className="flex items-center gap-2 hover:text-primary transition-colors"
-                >
-                  Project
-                  <SortIcon field="title" />
-                </button>
-              </th>
-              <th className="text-left p-4 font-semibold text-sm">
-                <button
-                  onClick={() => handleSortClick('status')}
-                  className="flex items-center gap-2 hover:text-primary transition-colors"
-                >
-                  Status
-                  <SortIcon field="status" />
-                </button>
-              </th>
-              <th className="text-left p-4 font-semibold text-sm">
-                <button
-                  onClick={() => handleSortClick('priority')}
-                  className="flex items-center gap-2 hover:text-primary transition-colors"
-                >
-                  Priority
-                  <SortIcon field="priority" />
-                </button>
-              </th>
-              <th className="text-left p-4 font-semibold text-sm">
-                <button
-                  onClick={() => handleSortClick('assignee.name')}
-                  className="flex items-center gap-2 hover:text-primary transition-colors"
-                >
-                  Assignee
-                  <SortIcon field="assignee.name" />
-                </button>
-              </th>
-              <th className="text-left p-4 font-semibold text-sm">
-                <button
-                  onClick={() => handleSortClick('metrics.completion')}
-                  className="flex items-center gap-2 hover:text-primary transition-colors"
-                >
-                  Progress
-                  <SortIcon field="metrics.completion" />
-                </button>
-              </th>
-              <th className="text-left p-4 font-semibold text-sm">
-                <button
-                  onClick={() => handleSortClick('metrics.views')}
-                  className="flex items-center gap-2 hover:text-primary transition-colors"
-                >
-                  Engagement
-                  <SortIcon field="metrics.views" />
-                </button>
-              </th>
-              <th className="text-left p-4 font-semibold text-sm">Last Updated</th>
-              <th className="text-center p-4 font-semibold text-sm w-16">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {Array.isArray(data)
-              ? data.map(item => <TableRow key={item.id} item={item} isSelected={selectedItem?.id === item.id} onItemSelect={onItemSelect} />)
-              : Object.entries(data).flatMap(([groupName, items]) => [
-                  <tr key={groupName} data-group-header="true" className="sticky top-0 z-10">
-                    <td colSpan={8} className="p-2 bg-muted/50 backdrop-blur-sm">
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-semibold text-sm">{capitalize(groupName)}</h3>
-                        <span className="text-xs px-2 py-0.5 bg-background rounded-full font-medium">{items.length}</span>
-                      </div>
-                    </td>
-                  </tr>,
-                  ...items.map(item => <TableRow key={item.id} item={item} isSelected={selectedItem?.id === item.id} onItemSelect={onItemSelect} />)
-                ])
-            }
-          </tbody>
-        </table>
-      </div>
-    </div>
-  )
+interface RightPaneProps {
+  children?: ReactNode
+  header?: ReactNode
+  className?: string
+  onClose?: () => void;
 }
 
-function TableRow({ item, isSelected, onItemSelect }: { item: DataItem; isSelected: boolean; onItemSelect: (item: DataItem) => void }) {
+export const RightPane = forwardRef<HTMLDivElement, RightPaneProps>(({ children, header, className, onClose }, ref) => {
+  const { dispatch, bodyState, fullscreenTarget, toggleFullscreen } = useAppShell();
+  const [, setSearchParams] = useSearchParams()
+  const isSplitView = bodyState === BODY_STATES.SPLIT_VIEW;
+  const isFullscreen = bodyState === BODY_STATES.FULLSCREEN;
+
+  if (isFullscreen && fullscreenTarget !== 'right') {
+    return null;
+  }
+
   return (
-    <tr
-      onClick={() => onItemSelect(item)}
+    <aside
+      ref={ref}
       className={cn(
-        "group border-b border-border/30 transition-all duration-200 cursor-pointer",
-        "hover:bg-accent/20 hover:border-primary/20",
-        isSelected && "bg-primary/5 border-primary/30"
+        "border-l border-border flex flex-col h-full overflow-hidden",
+        isSplitView && "relative bg-background",
+        !isSplitView && !isFullscreen && "fixed top-0 right-0 z-[60] bg-card", // side pane overlay
+        isFullscreen && fullscreenTarget === 'right' && "fixed inset-0 z-[60] bg-card", // fullscreen
+        className,
       )}
     >
-      {/* Project Column */}
-      <td className="p-4">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-gradient-to-br from-primary/20 to-primary/10 rounded-lg flex items-center justify-center text-lg flex-shrink-0">
-            {item.thumbnail}
-          </div>
-          <div className="min-w-0 flex-1">
-            <h4 className="font-medium group-hover:text-primary transition-colors truncate">
-              {item.title}
-            </h4>
-            <p className="text-sm text-muted-foreground truncate">
-              {item.category}
-            </p>
-          </div>
-        </div>
-      </td>
-
-      {/* Status Column */}
-      <td className="p-4">
-        <ItemStatusBadge status={item.status} />
-      </td>
-
-      {/* Priority Column */}
-      <td className="p-4">
-        <ItemPriorityBadge priority={item.priority} />
-      </td>
-
-      {/* Assignee Column */}
-      <td className="p-4">
-        <AssigneeInfo assignee={item.assignee} />
-      </td>
-
-      {/* Progress Column */}
-      {/* Note: This progress bar is custom for the table, so we don't use the shared component here. */}
-      <td className="p-4">
-        <div className="flex items-center gap-3">
-          <div className="flex-1 min-w-0">
-            <div className="w-full bg-muted rounded-full h-2">
-              <div 
-                className="bg-gradient-to-r from-primary to-primary/80 h-2 rounded-full transition-all duration-500"
-                style={{ width: `${item.metrics.completion}%` }}
-              />
-            </div>
-          </div>
-          <span className="text-sm font-medium text-muted-foreground">
-            {item.metrics.completion}%
-          </span>
-        </div>
-      </td>
-
-      {/* Engagement Column */}
-      <td className="p-4">
-        <ItemMetrics metrics={item.metrics} />
-      </td>
-
-      {/* Date Column */}
-      <td className="p-4">
-        <ItemDateInfo date={item.updatedAt} />
-      </td>
-
-      {/* Actions Column */}
-      <td className="p-4">
-        <button 
-          onClick={(e) => {
-            e.stopPropagation()
-            onItemSelect(item)
-          }}
-          className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-accent transition-colors"
-          title="View details"
+      {isFullscreen && fullscreenTarget === 'right' && (
+        <button
+          onClick={() => toggleFullscreen()}
+          className="fixed top-6 right-6 lg:right-12 z-[100] h-12 w-12 flex items-center justify-center rounded-full bg-card/50 backdrop-blur-sm hover:bg-card/75 transition-colors group"
+          title="Exit Fullscreen"
         >
-          <ExternalLink className="w-4 h-4" />
+          <X className="w-6 h-6 group-hover:scale-110 group-hover:rotate-90 transition-all duration-300" />
         </button>
-      </td>
-    </tr>
+      )}
+      {bodyState !== BODY_STATES.SPLIT_VIEW && !isFullscreen && (
+        <button
+          onClick={onClose ?? (() => {
+              setSearchParams(prev => {
+                const newParams = new URLSearchParams(prev);
+                newParams.delete('sidePane');
+                newParams.delete('right');
+                newParams.delete('view');
+                return newParams;
+              }, { replace: true });
+            })
+          }
+          className="absolute top-1/2 -left-px -translate-y-1/2 -translate-x-full w-8 h-16 bg-card border border-r-0 border-border rounded-l-lg flex items-center justify-center hover:bg-accent transition-colors group z-10"
+          title="Close pane"
+        >
+          <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-foreground transition-colors" />
+        </button>
+      )}
+      <div 
+        className={cn(
+          "absolute top-0 left-0 w-2 h-full bg-transparent hover:bg-primary/20 cursor-col-resize z-50 transition-colors duration-200 group -translate-x-1/2"
+        )}
+        onMouseDown={(e) => {
+          e.preventDefault()
+          dispatch({ type: 'SET_IS_RESIZING_RIGHT_PANE', payload: true });
+        }}
+      >
+        <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200 mx-auto" />
+      </div>
+      {header && (
+        <div className="flex items-center justify-between p-4 border-b border-border h-20 flex-shrink-0 pl-6">
+          {header}
+        </div>
+      )}
+      <div className={cn("flex-1 overflow-y-auto")}>
+        {children}
+      </div>
+    </aside>
   )
-}
+})
+RightPane.displayName = "RightPane"
 ```
 
 ## File: src/pages/Dashboard/index.tsx
@@ -2951,6 +1333,7 @@ import { useDashboardAnimations } from './hooks/useDashboardAnimations.motion.ho
 import { useDashboardScroll } from './hooks/useDashboardScroll.hook'
 import { PageHeader } from '@/components/shared/PageHeader';
 import { StatCard } from '@/components/shared/StatCard';
+import { Card } from '@/components/ui/card';
 import { PageLayout } from '@/components/shared/PageLayout';
 
 interface StatsCard {
@@ -3212,294 +1595,6 @@ export function DashboardContent({ isInSidePane = false }: DashboardContentProps
       )}
       </PageLayout>
     )
-}
-```
-
-## File: src/pages/DataDemo/index.tsx
-```typescript
-import { useRef, useEffect, useMemo } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
-import {
-  Layers, 
-  AlertTriangle, 
-  PlayCircle, 
-  TrendingUp,
-  Loader2,
-  ChevronsUpDown
-} from 'lucide-react'
-import { gsap } from 'gsap'
-import { cn } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuRadioGroup, 
-  DropdownMenuRadioItem, 
-  DropdownMenuTrigger 
-} from '@/components/ui/dropdown-menu'
-import { PageLayout } from '@/components/shared/PageLayout'
-import { DataListView } from './components/DataListView'
-import { DataCardView } from './components/DataCardView'
-import { DataTableView } from './components/DataTableView'
-import { DataViewModeSelector } from './components/DataViewModeSelector'
-import { AnimatedTabs } from '@/components/ui/animated-tabs'
-import { StatCard } from '@/components/shared/StatCard'
-import { AnimatedLoadingSkeleton } from './components/AnimatedLoadingSkeleton'
-import { DataToolbar } from './components/DataToolbar'
-import { mockDataItems } from './data/mockData'
-import type { DataItem, GroupableField } from './types'
-import { useDataManagement } from './hooks/useDataManagement.hook'
-
-type Stat = {
-  title: string;
-  value: string;
-  icon: React.ReactNode;
-  change: string;
-  trend: 'up' | 'down';
-  type?: 'card';
-};
-
-type ChartStat = {
-  title: string;
-  value: string;
-  icon: React.ReactNode;
-  change: string;
-  trend: 'up' | 'down';
-  type: 'chart';
-  chartData: number[];
-};
-
-type StatItem = Stat | ChartStat;
-
-export default function DataDemoPage() {
-  const {
-    viewMode,
-    groupBy,
-    activeGroupTab,
-    filters,
-    sortConfig,
-    hasMore,
-    isLoading,
-    loaderRef,
-    groupTabs,
-    dataToRender,
-    totalItemCount,
-    isInitialLoading,
-    setViewMode,
-    setGroupBy,
-    setActiveGroupTab,
-    setFilters,
-    setSort,
-    setTableSort,
-  } = useDataManagement();
-
-  const groupOptions: { id: GroupableField | 'none'; label: string }[] = [
-    { id: 'none', label: 'None' }, { id: 'status', label: 'Status' }, { id: 'priority', label: 'Priority' }, { id: 'category', label: 'Category' }
-  ]
-  const contentRef = useRef<HTMLDivElement>(null)
-  const statsRef = useRef<HTMLDivElement>(null)
-  const navigate = useNavigate()
-  const { itemId } = useParams<{ itemId: string }>()
-
-  const handleItemSelect = (item: DataItem) => {
-    navigate(`/data-demo/${item.id}`)
-  }
-
-  const selectedItem = useMemo(() => {
-    if (!itemId) return null
-    return mockDataItems.find(item => item.id === itemId) ?? null
-  }, [itemId])
-
-  // Calculate stats from data
-  const totalItems = mockDataItems.length
-  const activeItems = mockDataItems.filter(item => item.status === 'active').length
-  const highPriorityItems = mockDataItems.filter(item => item.priority === 'high' || item.priority === 'critical').length
-  const avgCompletion = totalItems > 0 ? Math.round(
-    mockDataItems.reduce((acc, item) => acc + item.metrics.completion, 0) / totalItems
-  ) : 0
-
-  const stats: StatItem[] = [
-    {
-      title: "Total Projects",
-      value: totalItems.toString(),
-      icon: <Layers className="w-5 h-5" />,
-      change: "+5.2% this month",
-      trend: "up" as const,
-      type: 'chart',
-      chartData: [120, 125, 122, 130, 135, 138, 142]
-    },
-    {
-      title: "Active Projects",
-      value: activeItems.toString(),
-      icon: <PlayCircle className="w-5 h-5" />,
-      change: "+2 this week", 
-      trend: "up" as const,
-      type: 'chart',
-      chartData: [45, 50, 48, 55, 53, 60, 58]
-    },
-    {
-      title: "High Priority",
-      value: highPriorityItems.toString(),
-      icon: <AlertTriangle className="w-5 h-5" />,
-      change: "-1 from last week",
-      trend: "down" as const,
-      type: 'chart',
-      chartData: [25, 26, 28, 27, 26, 24, 23]
-    },
-    {
-      title: "Avg. Completion",
-      value: `${avgCompletion}%`,
-      icon: <TrendingUp className="w-5 h-5" />,
-      change: "+3.2%",
-      trend: "up" as const,
-      type: 'chart',
-      chartData: [65, 68, 70, 69, 72, 75, 78]
-    }
-  ]
-
-  useEffect(() => {
-    // Animate stats cards in
-    if (!isInitialLoading && statsRef.current) {
-      gsap.fromTo(statsRef.current.children,
-        { y: 30, opacity: 0 },
-        {
-          duration: 0.6,
-          y: 0,
-          opacity: 1,
-          stagger: 0.1,
-          ease: "power2.out"
-        }
-      )
-    }
-  }, [isInitialLoading])
-
-  const commonViewProps = {
-    onItemSelect: handleItemSelect,
-    selectedItem,
-  };
-
-  return (
-    <PageLayout
-      // Note: Search functionality is handled by a separate SearchBar in the TopBar
-    >
-      <div className="space-y-8">
-        {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div className="flex-1">
-            <h1 className="text-2xl font-bold tracking-tight">Data Showcase</h1>
-            <p className="text-muted-foreground">
-              {isInitialLoading 
-                ? "Loading projects..." 
-                : `Showing ${dataToRender.length} of ${totalItemCount} item(s)`}
-            </p>
-          </div>
-          <DataViewModeSelector viewMode={viewMode} onChange={setViewMode} />
-        </div>
-
-        {/* Stats Section */}
-        {!isInitialLoading && (
-          <div ref={statsRef} className="grid grid-cols-[repeat(auto-fit,minmax(250px,1fr))] gap-6">
-            {stats.map((stat) => (
-              <StatCard
-                key={stat.title}
-                title={stat.title}
-                value={stat.value}
-                change={stat.change}
-                trend={stat.trend}
-                icon={stat.icon}
-                chartData={stat.type === 'chart' ? stat.chartData : undefined}
-              />
-            ))}
-          </div>
-        )}
-
-        {/* Controls Area */}
-        <div className="space-y-6">
-          <DataToolbar
-            filters={filters}
-            onFiltersChange={setFilters}
-            sortConfig={sortConfig}
-            onSortChange={setSort}
-          />
-        </div>
-
-        {/* Group by and Tabs section */}
-        <div className={cn(
-          "flex items-center justify-between gap-4",
-          groupBy !== 'none' && "border-b"
-        )}>
-          {/* Tabs on the left, takes up available space */}
-          <div className="flex-grow overflow-x-auto overflow-y-hidden no-scrollbar">
-            {groupBy !== 'none' && groupTabs.length > 1 ? (
-              <AnimatedTabs
-                tabs={groupTabs}
-                activeTab={activeGroupTab}
-                onTabChange={setActiveGroupTab}
-              />
-            ) : (
-              <div className="h-[68px]" /> // Placeholder for consistent height.
-            )}
-          </div>
-          
-          {/* Group by dropdown on the right */}
-          <div className="flex items-center gap-2 shrink-0">
-            <span className="text-sm font-medium text-muted-foreground shrink-0">Group by:</span>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="w-[180px] justify-between">
-                  {groupOptions.find(o => o.id === groupBy)?.label}
-                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-[180px]">
-                <DropdownMenuRadioGroup value={groupBy} onValueChange={setGroupBy}>
-                  {groupOptions.map(option => (
-                    <DropdownMenuRadioItem key={option.id} value={option.id}>
-                      {option.label}
-                    </DropdownMenuRadioItem>
-                  ))}
-                </DropdownMenuRadioGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </div>
-
-        <div ref={contentRef} className="min-h-[500px]">
-          {isInitialLoading ? <AnimatedLoadingSkeleton viewMode={viewMode} /> : (
-            <div>
-              {viewMode === 'table' ? (
-                 <DataTableView 
-                    data={dataToRender} 
-                    {...commonViewProps}
-                    sortConfig={sortConfig} 
-                    onSort={setTableSort} 
-                  />
-              ) : (
-                <>
-                  {viewMode === 'list' && <DataListView data={dataToRender} {...commonViewProps} />}
-                  {viewMode === 'cards' && <DataCardView data={dataToRender} {...commonViewProps} />}
-                  {viewMode === 'grid' && <DataCardView data={dataToRender} {...commonViewProps} isGrid />}
-                </>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Loader for infinite scroll */}
-        <div ref={loaderRef} className="flex justify-center items-center py-6">
-          {isLoading && !isInitialLoading && groupBy === 'none' && (
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <Loader2 className="w-5 h-5 animate-spin" />
-              <span>Loading more...</span>
-            </div>
-          )}
-          {!isLoading && !hasMore && dataToRender.length > 0 && !isInitialLoading && groupBy === 'none' && (
-            <p className="text-muted-foreground">You've reached the end.</p>
-          )}
-        </div>
-      </div>
-    </PageLayout>
-  )
 }
 ```
 
@@ -3805,7 +1900,7 @@ export function useAppShell() {
 
 ## File: src/App.tsx
 ```typescript
-import React, { useEffect } from "react";
+import React, { useEffect, useMemo, useCallback } from "react";
 import {
   createBrowserRouter,
   RouterProvider,
@@ -3813,6 +1908,8 @@ import {
   Navigate,
   useNavigate,
   useLocation,
+  useParams,
+  useSearchParams,
 } from "react-router-dom";
 
 import { AppShell } from "./components/layout/AppShell";
@@ -3829,24 +1926,38 @@ import { TopBar } from "./components/layout/TopBar";
 import { CommandPalette } from "./components/global/CommandPalette";
 import { ToasterProvider } from "./components/ui/toast";
 
-// Import page/content components
+// --- Page/Content Components for Pages and Panes ---
 import { DashboardContent } from "./pages/Dashboard";
 import { SettingsPage } from "./pages/Settings";
+import { SettingsContent } from "./features/settings/SettingsContent";
 import { ToasterDemo } from "./pages/ToasterDemo";
 import { NotificationsPage } from "./pages/Notifications";
 import DataDemoPage from "./pages/DataDemo";
+import { DataDetailPanel } from "./pages/DataDemo/components/DataDetailPanel";
+import { mockDataItems } from "./pages/DataDemo/data/mockData";
 import { LoginPage } from "./components/auth/LoginPage";
 
-// Import icons
+// --- Icons ---
 import {
   Search,
   Filter,
   Plus,
   ChevronRight,
   Rocket,
+  LayoutDashboard,
+  Settings,
+  Component,
+  Bell,
+  SlidersHorizontal,
+  ChevronsLeftRight,
+  Layers,
+  SplitSquareHorizontal,
+  Database,
 } from "lucide-react";
-import { cn } from "./lib/utils";
-import { usePageContent } from "./hooks/usePageContent.hook";
+
+// --- Utils & Hooks ---
+import { cn, BODY_STATES } from "./lib/utils";
+import { useUrlStateSync } from "./hooks/useUrlStateSync.hook";
 
 // Wrapper for LoginPage to provide auth handlers
 function LoginPageWrapper() {
@@ -4001,8 +2112,150 @@ function AppTopBar() {
 
 // The main App component that composes the shell
 function ComposedApp() {
-  const { rightPaneContent, rightPaneHeader, handleCloseSidePane } =
-    usePageContent();
+  // --- State from Context & Router ---
+  const { bodyState, sidePaneContent } = useAppShell();
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { itemId } = useParams<{ itemId: string }>();
+
+  // --- Sync URL with App Shell State ---
+  useUrlStateSync();
+
+  // --- Content Mapping for Side/Right Panes ---
+  const contentMap = useMemo(() => ({
+    main: {
+      title: "Dashboard",
+      icon: LayoutDashboard,
+      page: "dashboard",
+      content: <DashboardContent isInSidePane />,
+    },
+    settings: {
+      title: "Settings",
+      icon: Settings,
+      page: "settings",
+      content: <div className="p-6"><SettingsContent /></div>
+    },
+    toaster: {
+      title: "Toaster Demo",
+      icon: Component,
+      page: "toaster",
+      content: <ToasterDemo isInSidePane />,
+    },
+    notifications: {
+      title: "Notifications",
+      icon: Bell,
+      page: "notifications",
+      content: <NotificationsPage isInSidePane />,
+    },
+    dataDemo: {
+      title: "Data Showcase",
+      icon: Database,
+      page: "data-demo",
+      content: <DataDemoPage />,
+    },
+    details: {
+      title: "Details Panel",
+      icon: SlidersHorizontal,
+      content: (
+        <div className="p-6">
+          <p className="text-muted-foreground">
+            This is the side pane. It can be used to display contextual
+            information, forms, or actions related to the main content.
+          </p>
+        </div>
+      ),
+    },
+  }), []);
+
+  // --- Derived State for Content ---
+  const selectedItem = useMemo(() => {
+    if (!itemId) return null
+    return mockDataItems.find(item => item.id === itemId) ?? null
+  }, [itemId]);
+
+  const { currentContent, rightPaneContent } = useMemo(() => {
+    if (sidePaneContent === 'dataItem' && selectedItem) {
+      return {
+        currentContent: { title: "Item Details", icon: Database, page: `data-demo/${itemId}` },
+        rightPaneContent: <DataDetailPanel item={selectedItem} onClose={() => navigate('/data-demo')} />,
+      };
+    }
+    const mappedContent = contentMap[sidePaneContent as keyof typeof contentMap] || contentMap.details;
+    return {
+      currentContent: mappedContent,
+      rightPaneContent: mappedContent.content,
+    };
+  }, [sidePaneContent, selectedItem, navigate, contentMap, itemId]);
+
+  const CurrentIcon = currentContent.icon;
+
+  // --- Callbacks for Right Pane Actions ---
+  const handleMaximize = useCallback(() => {
+    if ("page" in currentContent && currentContent.page) {
+      navigate(`/${currentContent.page}`, { replace: true });
+    } else {
+      setSearchParams({}, { replace: true });
+    }
+  }, [currentContent, navigate, setSearchParams]);
+
+  const handleCloseSidePane = useCallback(() => {
+    if (itemId) {
+      navigate('/data-demo');
+    } else {
+      setSearchParams(prev => {
+        const newParams = new URLSearchParams(prev);
+        newParams.delete('sidePane');
+        newParams.delete('right');
+        newParams.delete('view');
+        return newParams;
+      }, { replace: true });
+    }
+  }, [setSearchParams, itemId, navigate]);
+
+  const handleToggleSplitView = useCallback(() => {
+    if (bodyState === BODY_STATES.SIDE_PANE) {
+      setSearchParams(prev => {
+        const newParams = new URLSearchParams(prev);
+        const currentPane = newParams.get('sidePane');
+        if (currentPane) {
+          newParams.set('view', 'split');
+          newParams.set('right', currentPane);
+          newParams.delete('sidePane');
+        }
+        return newParams;
+      }, { replace: true });
+    } else if (bodyState === BODY_STATES.SPLIT_VIEW) {
+      setSearchParams(prev => {
+        return { sidePane: prev.get('right') || 'details' }
+      }, { replace: true });
+    }
+  }, [bodyState, setSearchParams]);
+
+  // --- Right Pane Header UI ---
+  const rightPaneHeader = useMemo(() => (
+    <>
+      {bodyState !== BODY_STATES.SPLIT_VIEW ? (
+        <div className="flex items-center gap-2">
+          <CurrentIcon className="w-5 h-5" />
+          <h2 className="text-lg font-semibold whitespace-nowrap">
+            {currentContent.title}
+          </h2>
+        </div>
+      ) : <div />} {/* Placeholder to make justify-between work */}
+      <div className="flex items-center">
+        {(bodyState === BODY_STATES.SIDE_PANE || bodyState === BODY_STATES.SPLIT_VIEW) && (
+          <button onClick={handleToggleSplitView} className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors" title={bodyState === BODY_STATES.SIDE_PANE ? "Switch to Split View" : "Switch to Overlay View"}>
+            {bodyState === BODY_STATES.SPLIT_VIEW ? <Layers className="w-5 h-5" /> : <SplitSquareHorizontal className="w-5 h-5" />}
+          </button>
+        )}
+        {bodyState !== BODY_STATES.SPLIT_VIEW && "page" in currentContent && currentContent.page && (
+          <button onClick={handleMaximize} className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors mr-2" title="Move to Main View">
+            <ChevronsLeftRight className="w-5 h-5" />
+          </button>
+        )}
+      </div>
+    </>
+  ), [bodyState, currentContent, CurrentIcon, handleToggleSplitView, handleMaximize]);
 
   return (
     <AppShell

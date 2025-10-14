@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { ArrowRight } from 'lucide-react'
 import type { ViewProps, DataItem } from '../types'
-import { useIncrementalStaggeredAnimation } from '@/hooks/useStaggeredAnimation.motion.hook'
+import { useStaggeredAnimation } from '@/hooks/useStaggeredAnimation.motion.hook'
 import { EmptyState } from './EmptyState'
 import {
   AssigneeInfo,
@@ -16,7 +16,7 @@ import {
 
 export function DataListView({ data, onItemSelect, selectedItem }: ViewProps) {
   const listRef = useRef<HTMLDivElement>(null)
-  useIncrementalStaggeredAnimation(listRef, [data], { scale: 1, y: 30, stagger: 0.08, duration: 0.5 });
+  useStaggeredAnimation(listRef, [data], { mode: 'incremental', scale: 1, y: 30, stagger: 0.08, duration: 0.5 });
 
   if (!Array.isArray(data) || data.length === 0) {
     return <EmptyState />

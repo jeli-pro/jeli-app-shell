@@ -8,9 +8,10 @@ interface RightPaneProps {
   children?: ReactNode
   header?: ReactNode
   className?: string
+  onClose?: () => void;
 }
 
-export const RightPane = forwardRef<HTMLDivElement, RightPaneProps>(({ children, header, className }, ref) => {
+export const RightPane = forwardRef<HTMLDivElement, RightPaneProps>(({ children, header, className, onClose }, ref) => {
   const { dispatch, bodyState, fullscreenTarget, toggleFullscreen } = useAppShell();
   const [, setSearchParams] = useSearchParams()
   const isSplitView = bodyState === BODY_STATES.SPLIT_VIEW;
@@ -42,13 +43,16 @@ export const RightPane = forwardRef<HTMLDivElement, RightPaneProps>(({ children,
       )}
       {bodyState !== BODY_STATES.SPLIT_VIEW && !isFullscreen && (
         <button
-          onClick={() => {
-            setSearchParams(prev => {
-              const newParams = new URLSearchParams(prev)
-              newParams.delete('sidePane')
-              return newParams
-            }, { replace: true })
-          }}
+          onClick={onClose ?? (() => {
+              setSearchParams(prev => {
+                const newParams = new URLSearchParams(prev);
+                newParams.delete('sidePane');
+                newParams.delete('right');
+                newParams.delete('view');
+                return newParams;
+              }, { replace: true });
+            })
+          }
           className="absolute top-1/2 -left-px -translate-y-1/2 -translate-x-full w-8 h-16 bg-card border border-r-0 border-border rounded-l-lg flex items-center justify-center hover:bg-accent transition-colors group z-10"
           title="Close pane"
         >
