@@ -8,17 +8,15 @@ import {
   CommandSeparator,
   CommandShortcut,
 } from '@/components/ui/command';
-import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { useAppStore } from '@/store/appStore'
 import { useAppShell } from '@/context/AppShellContext'
 import { useCommandPaletteToggle } from '@/hooks/useCommandPaletteToggle.hook'
+import { useAppViewManager } from '@/hooks/useAppViewManager.hook';
 import { Home, Settings, Moon, Sun, Monitor, Smartphone, PanelRight, Maximize, Component, Bell } from 'lucide-react'
 
 export function CommandPalette() {
   const { dispatch, toggleFullscreen } = useAppShell();
-  const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const location = useLocation();
+  const viewManager = useAppViewManager();
   const {
     isCommandPaletteOpen,
     setCommandPaletteOpen,
@@ -32,44 +30,28 @@ export function CommandPalette() {
     command()
   }
 
-  const handleOpenSidePane = (paneContent: 'settings') => {
-    // This command is to open, not toggle, so we don't handle the close case.
-    if (searchParams.get('sidePane') === paneContent) return;
-
-    // Avoid content duplication
-    if (location.pathname === `/${paneContent}`) {
-      navigate({ pathname: '/dashboard', search: `?sidePane=${paneContent}` }, { replace: true });
-    } else {
-      const newParams = new URLSearchParams(searchParams);
-      newParams.set('sidePane', paneContent);
-      newParams.delete('view');
-      newParams.delete('right');
-      setSearchParams(newParams, { replace: true });
-    }
-  }
-
   return (
     <CommandDialog open={isCommandPaletteOpen} onOpenChange={setCommandPaletteOpen}>
       <CommandInput placeholder="Type a command or search..." />
       <CommandList>
         <CommandEmpty>No results found.</CommandEmpty>
         <CommandGroup heading="Navigation">
-          <CommandItem onSelect={() => runCommand(() => navigate('/dashboard'))}>
+          <CommandItem onSelect={() => runCommand(() => viewManager.navigateTo('dashboard'))}>
             <Home className="mr-2 h-4 w-4" />
             <span>Go to Dashboard</span>
             <CommandShortcut>G D</CommandShortcut>
           </CommandItem>
-          <CommandItem onSelect={() => runCommand(() => navigate('/settings'))}>
+          <CommandItem onSelect={() => runCommand(() => viewManager.navigateTo('settings'))}>
             <Settings className="mr-2 h-4 w-4" />
             <span>Go to Settings</span>
             <CommandShortcut>G S</CommandShortcut>
           </CommandItem>
-          <CommandItem onSelect={() => runCommand(() => navigate('/toaster'))}>
+          <CommandItem onSelect={() => runCommand(() => viewManager.navigateTo('toaster'))}>
             <Component className="mr-2 h-4 w-4" />
             <span>Go to Toaster Demo</span>
             <CommandShortcut>G T</CommandShortcut>
           </CommandItem>
-          <CommandItem onSelect={() => runCommand(() => navigate('/notifications'))}>
+          <CommandItem onSelect={() => runCommand(() => viewManager.navigateTo('notifications'))}>
             <Bell className="mr-2 h-4 w-4" />
             <span>Go to Notifications</span>
             <CommandShortcut>G N</CommandShortcut>
@@ -87,7 +69,7 @@ export function CommandPalette() {
             <span>Toggle Fullscreen</span>
             <CommandShortcut>⌘F</CommandShortcut>
           </CommandItem>
-          <CommandItem onSelect={() => runCommand(() => handleOpenSidePane('settings'))}>
+          <CommandItem onSelect={() => runCommand(() => viewManager.openSidePane('settings'))}>
             <PanelRight className="mr-2 h-4 w-4" />
             <span>Open Settings in Side Pane</span>
             <CommandShortcut>⌥S</CommandShortcut>

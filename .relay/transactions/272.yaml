@@ -1,0 +1,140 @@
+uuid: c258b3e2-516d-4780-9288-75c12808c1d5
+projectId: jeli-app-shell
+createdAt: '2025-10-14T02:44:01.765Z'
+gitCommitMsg: >-
+  fix(build): rename useRightPaneContent hook to .tsx
+
+  The file `useRightPaneContent.hook.ts` contains JSX syntax, which requires a
+  `.tsx` file extension for the TypeScript compiler to parse it correctly.
+  Renaming the file resolves the compilation errors.
+promptSummary: >-
+  The user is reporting a large number of TypeScript errors in
+  `src/hooks/useRightPaneContent.hook.ts` after a previous refactoring. The
+  errors indicate a JSX parsing issue.
+reasoning:
+  - >-
+    Ah, the classic `.ts` vs `.tsx` showdown. The TypeScript compiler is seeing
+    JSX syntax (like `<div ...>`) in a file with a `.ts` extension, which it
+    tries to parse as standard TypeScript, leading to a cascade of syntax
+    errors.
+  - >-
+    The fix is simple: we just need to rename the file to have a `.tsx`
+    extension so the compiler knows how to handle the JSX within it.
+  - I will now rename the file.
+operations:
+  - type: rename
+    from: src/hooks/useRightPaneContent.hook.ts
+    to: src/hooks/useRightPaneContent.hook.tsx
+snapshot:
+  src/hooks/useRightPaneContent.hook.tsx: null
+  src/hooks/useRightPaneContent.hook.ts: >-
+    import { useMemo } from 'react';
+
+    import { useNavigate, useParams } from 'react-router-dom';
+
+    import {
+      LayoutDashboard,
+      Settings,
+      Component,
+      Bell,
+      SlidersHorizontal,
+      Database,
+    } from 'lucide-react';
+
+
+    import { DashboardContent } from "@/pages/Dashboard";
+
+    import { SettingsContent } from "@/features/settings/SettingsContent";
+
+    import { ToasterDemo } from "@/pages/ToasterDemo";
+
+    import { NotificationsPage } from "@/pages/Notifications";
+
+    import DataDemoPage from "@/pages/DataDemo";
+
+    import { DataDetailPanel } from
+    "@/pages/DataDemo/components/DataDetailPanel";
+
+    import { mockDataItems } from "@/pages/DataDemo/data/mockData";
+
+    import { AppShellState } from '@/context/AppShellContext';
+
+
+    export function useRightPaneContent(sidePaneContent:
+    AppShellState['sidePaneContent']) {
+      const navigate = useNavigate();
+      const { itemId } = useParams<{ itemId: string }>();
+
+      const contentMap = useMemo(() => ({
+        main: {
+          title: "Dashboard",
+          icon: LayoutDashboard,
+          page: "dashboard",
+          content: <DashboardContent isInSidePane />,
+        },
+        settings: {
+          title: "Settings",
+          icon: Settings,
+          page: "settings",
+          content: <div className="p-6"><SettingsContent /></div>
+        },
+        toaster: {
+          title: "Toaster Demo",
+          icon: Component,
+          page: "toaster",
+          content: <ToasterDemo isInSidePane />,
+        },
+        notifications: {
+          title: "Notifications",
+          icon: Bell,
+          page: "notifications",
+          content: <NotificationsPage isInSidePane />,
+        },
+        dataDemo: {
+          title: "Data Showcase",
+          icon: Database,
+          page: "data-demo",
+          content: <DataDemoPage />,
+        },
+        details: {
+          title: "Details Panel",
+          icon: SlidersHorizontal,
+          content: (
+            <div className="p-6">
+              <p className="text-muted-foreground">
+                This is the side pane. It can be used to display contextual
+                information, forms, or actions related to the main content.
+              </p>
+            </div>
+          ),
+        },
+      }), []);
+
+      const selectedItem = useMemo(() => {
+        if (!itemId) return null;
+        return mockDataItems.find(item => item.id === itemId) ?? null;
+      }, [itemId]);
+
+      const { meta, content } = useMemo(() => {
+        if (sidePaneContent === 'dataItem' && selectedItem) {
+          return {
+            meta: { title: "Item Details", icon: Database, page: `data-demo/${itemId}` },
+            content: <DataDetailPanel item={selectedItem} onClose={() => navigate('/data-demo')} />,
+          };
+        }
+        const mappedContent = contentMap[sidePaneContent as keyof typeof contentMap] || contentMap.details;
+        return {
+          meta: mappedContent,
+          content: mappedContent.content,
+        };
+      }, [sidePaneContent, selectedItem, navigate, contentMap, itemId]);
+
+      return { meta, content };
+    }
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 272

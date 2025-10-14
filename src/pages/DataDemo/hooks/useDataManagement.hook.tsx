@@ -1,76 +1,26 @@
 import { useState, useRef, useEffect, useCallback, useMemo, ReactNode } from 'react';
-import { useSearchParams } from 'react-router-dom';
 import { capitalize, cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { mockDataItems } from '../data/mockData';
-import type { DataItem, ViewMode, SortConfig, SortableField, GroupableField, Status, Priority } from '../types';
-import type { FilterConfig } from '../components/DataToolbar';
+import type { DataItem, GroupableField } from '../types';
+import { useAppViewManager } from '@/hooks/useAppViewManager.hook';
 
 export function useDataManagement() {
-	const [searchParams, setSearchParams] = useSearchParams();
-
-	// Derive state from URL search params
-	const viewMode = useMemo(() => (searchParams.get('view') as ViewMode) || 'list', [searchParams]);
-	const page = useMemo(() => parseInt(searchParams.get('page') || '1', 10), [searchParams]);
-	const groupBy = useMemo(() => (searchParams.get('groupBy') as GroupableField | 'none') || 'none', [searchParams]);
-	const activeGroupTab = useMemo(() => searchParams.get('tab') || 'all', [searchParams]);
-
-	const filters = useMemo<FilterConfig>(
-		() => ({
-			searchTerm: searchParams.get('q') || '',
-			status: (searchParams.get('status')?.split(',') || []).filter(Boolean) as Status[],
-			priority: (searchParams.get('priority')?.split(',') || []).filter(Boolean) as Priority[],
-		}),
-		[searchParams],
-	);
-
-	const sortConfig = useMemo<SortConfig | null>(() => {
-		const sortParam = searchParams.get('sort');
-		if (!sortParam) return { key: 'updatedAt', direction: 'desc' }; // Default sort
-		if (sortParam === 'default') return null;
-
-		const [key, direction] = sortParam.split('-');
-		return { key: key as SortableField, direction: direction as 'asc' | 'desc' };
-	}, [searchParams]);
-
-	// Centralized handler for updating URL search params
-	const handleParamsChange = useCallback(
-		(newParams: Record<string, string | string[] | null | undefined>) => {
-			setSearchParams(
-				(prev) => {
-					const updated = new URLSearchParams(prev);
-					let pageReset = false;
-
-					for (const [key, value] of Object.entries(newParams)) {
-						const isFilterOrSort = ['q', 'status', 'priority', 'sort', 'groupBy'].includes(key);
-
-						if (value === null || value === undefined || (Array.isArray(value) && value.length === 0) || value === '') {
-							updated.delete(key);
-						} else if (Array.isArray(value)) {
-							updated.set(key, value.join(','));
-						} else {
-							updated.set(key, String(value));
-						}
-
-						if (isFilterOrSort) {
-							pageReset = true;
-						}
-					}
-
-					if (pageReset) {
-						updated.delete('page');
-					}
-					if ('groupBy' in newParams) {
-						updated.delete('tab');
-					}
-
-					return updated;
-				},
-				{ replace: true },
-			);
-		},
-		[setSearchParams],
-	);
+	const {
+		viewMode,
+		page,
+		groupBy,
+		activeGroupTab,
+		filters,
+		sortConfig,
+		setPage,
+		setViewMode,
+		setGroupBy,
+		setActiveGroupTab,
+		setFilters,
+		setSort,
+		setTableSort,
+	} = useAppViewManager();
 
 	const [items, setItems] = useState<DataItem[]>([]);
 	const [hasMore, setHasMore] = useState(true);
@@ -152,7 +102,7 @@ export function useDataManagement() {
 
 		loadData();
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [searchParams, filteredAndSortedData]); // Reacts to any URL change
+	}, [page, groupBy, filteredAndSortedData]);
 
 	const loaderRef = useCallback(
 		(node: Element | null) => {
@@ -162,12 +112,12 @@ export function useDataManagement() {
 			observer.current = new IntersectionObserver((entries) => {
 				if (entries[0].isIntersecting && hasMore) {
 					// Instead of setting local state, we update the URL, which triggers the data loading effect.
-					handleParamsChange({ page: (page + 1).toString() });
+					setPage(page + 1);
 				}
 			});
 			if (node) observer.current.observe(node);
 		},
-		[isLoading, hasMore, page, handleParamsChange],
+		[isLoading, hasMore, page, setPage],
 	);
 
 	const groupTabs = useMemo(() => {
@@ -221,34 +171,6 @@ export function useDataManagement() {
 	const totalItemCount = filteredAndSortedData.length;
 	const isInitialLoading = isLoading && items.length === 0;
 
-  const setViewMode = (mode: ViewMode) => handleParamsChange({ view: mode });
-  const setGroupBy = (val: string) => handleParamsChange({ groupBy: val === 'none' ? null : val });
-  const setActiveGroupTab = (tab: string) => handleParamsChange({ tab: tab === 'all' ? null : tab });
-  const setFilters = (newFilters: FilterConfig) => {
-    handleParamsChange({ q: newFilters.searchTerm, status: newFilters.status, priority: newFilters.priority });
-  }
-  const setSort = (config: SortConfig | null) => {
-    if (!config) {
-      handleParamsChange({ sort: 'default' });
-    } else {
-      handleParamsChange({ sort: `${config.key}-${config.direction}` });
-    }
-  }
-  const setTableSort = (field: SortableField) => {
-    if (sortConfig?.key === field) {
-      if (sortConfig.direction === 'desc') {
-        // Cycle: desc -> asc
-        handleParamsChange({ sort: `${field}-asc` });
-      } else {
-        // Cycle: asc -> default (by removing param)
-        handleParamsChange({ sort: 'default' });
-      }
-    } else {
-      // New field, default to desc
-      handleParamsChange({ sort: `${field}-desc` });
-    }
-  }
-
 	return {
 		viewMode,
 		groupBy,
@@ -262,11 +184,11 @@ export function useDataManagement() {
 		dataToRender,
 		totalItemCount,
 		isInitialLoading,
-    setViewMode,
-    setGroupBy,
-    setActiveGroupTab,
-    setFilters,
-    setSort,
-    setTableSort
+		setViewMode,
+		setGroupBy,
+		setActiveGroupTab,
+		setFilters,
+		setSort,
+		setTableSort,
 	};
 }

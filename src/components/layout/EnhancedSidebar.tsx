@@ -19,7 +19,6 @@ import {
   Plus,
   Database
 } from 'lucide-react';
-import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { type ActivePage } from '@/store/appStore';
 import { useAppShell } from '@/context/AppShellContext';
 import {
@@ -53,6 +52,7 @@ import {
 } from './Sidebar';
 import { ViewModeSwitcher } from './ViewModeSwitcher';
 import { cn } from '@/lib/utils';
+import { useAppViewManager } from '@/hooks/useAppViewManager.hook';
 
 interface MyWorkspace extends Workspace {
   logo: string;
@@ -182,53 +182,21 @@ interface AppMenuItemProps {
 const AppMenuItem: React.FC<AppMenuItemProps> = ({ icon: Icon, label, badge, hasActions, children, isSubItem = false, page, opensInSidePane = false }) => {
   const { compactMode, dispatch } = useAppShell()
   const { isCollapsed } = useSidebar();
-  const navigate = useNavigate();
-  const location = useLocation();
-  const [searchParams, setSearchParams] = useSearchParams();
-
-  const pageToPaneMap: { [key in ActivePage]?: 'main' | 'settings' | 'toaster' | 'notifications' | 'data-demo' } = {
-    dashboard: 'main',
-    settings: 'settings',
-    toaster: 'toaster',
-    notifications: 'notifications',
-    'data-demo': 'data-demo',
-  };
-  const paneContentForPage = page ? pageToPaneMap[page] : undefined;
+  const viewManager = useAppViewManager();
 
   const isActive = (
-    (!opensInSidePane && page && location.pathname === `/${page}`)
+    (!opensInSidePane && page && viewManager.currentActivePage === page)
   ) || (
-    opensInSidePane && paneContentForPage && searchParams.get('sidePane') === paneContentForPage
+    opensInSidePane && page === 'notifications' && viewManager.sidePaneContent === 'notifications'
   );
 
   const handleClick = () => {
     if (page) {
       if (opensInSidePane) {
-        if (paneContentForPage) {
-          setSearchParams(prev => {
-            const newParams = new URLSearchParams(prev);
-            const isCurrentlyInSidePane = newParams.get('sidePane') === paneContentForPage;
-
-            if (isCurrentlyInSidePane) {
-              newParams.delete('sidePane');
-            } else {
-              // If opening a side pane for a page that is the current main view,
-              // navigate main view to dashboard to avoid content duplication.
-              if (location.pathname === `/${page}`) {
-                navigate({ pathname: '/dashboard', search: `?sidePane=${paneContentForPage}` }, { replace: true });
-                return newParams; // Don't modify params when navigating
-              } else {
-                newParams.set('sidePane', paneContentForPage);
-                // When setting a side pane, always clear split view params to avoid invalid URL state
-                newParams.delete('view');
-                newParams.delete('right');
-              }
-            }
-            return newParams;
-          }, { replace: true });
-        }
+        // The only item using this is Notifications
+        viewManager.toggleSidePane('notifications');
       } else {
-        navigate(`/${page}`);
+        viewManager.navigateTo(page);
       }
     }
   };

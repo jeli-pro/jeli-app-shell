@@ -1,11 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
 import { gsap } from 'gsap';
-import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { cn } from '@/lib/utils'
 import { useAppShell } from '@/context/AppShellContext'
 import { type ActivePage } from '@/store/appStore'
 import { BODY_STATES } from '@/lib/utils'
 import { type AppShellState } from '@/context/AppShellContext'
+import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
 import {
   Columns,
   PanelRightOpen,
@@ -17,25 +17,21 @@ import {
   ArrowLeftRight
 } from 'lucide-react'
 
-const pageToPaneMap: Record<ActivePage, AppShellState['sidePaneContent']> = {
-  dashboard: 'main',
-  settings: 'settings',
-  toaster: 'toaster',
-  notifications: 'notifications',
-  'data-demo': 'dataDemo',
-};
-
 export function ViewModeSwitcher({ pane, targetPage }: { pane?: 'main' | 'right', targetPage?: ActivePage }) {
   const {
     bodyState,
-    sidePaneContent,
     toggleFullscreen,
     fullscreenTarget,
   } = useAppShell()
-  const location = useLocation();
-  const navigate = useNavigate();
-  const [, setSearchParams] = useSearchParams();
-  const currentActivePage = (location.pathname.split('/')[1] || 'dashboard') as ActivePage;
+  const {
+    currentActivePage,
+    toggleSidePane,
+    toggleSplitView,
+    setNormalView,
+    navigateTo,
+    switchSplitPanes,
+    closeSplitPane,
+  } = useAppViewManager();
 
   const activePage = targetPage || currentActivePage;
   const [isExpanded, setIsExpanded] = useState(false);
@@ -83,69 +79,13 @@ export function ViewModeSwitcher({ pane, targetPage }: { pane?: 'main' | 'right'
     }
   }, [isExpanded, bodyState]); // re-run if bodyState changes to recalc buttons
 
-  const handleSidePaneClick = () => {
-    const paneContent = pageToPaneMap[activePage] || 'details';
-    if (pane === 'right') return;
-
-    const newSearchParams = new URLSearchParams(location.search);
-    if (bodyState === BODY_STATES.SIDE_PANE && sidePaneContent === paneContent) {
-      newSearchParams.delete('sidePane');
-      newSearchParams.delete('view');
-      newSearchParams.delete('right');
-    } else {
-      newSearchParams.set('sidePane', paneContent);
-      newSearchParams.delete('view');
-      newSearchParams.delete('right');
-    }
-    setSearchParams(newSearchParams, { replace: true });
-  };
-  
-  const handleSplitViewClick = () => {
-    const paneContent = pageToPaneMap[activePage] || 'details';
-    if (pane === 'right') return;
-
-    const newSearchParams = new URLSearchParams(location.search);
-    if (bodyState === BODY_STATES.SPLIT_VIEW) {
-        // from split to overlay
-        newSearchParams.set('sidePane', sidePaneContent);
-        newSearchParams.delete('view');
-        newSearchParams.delete('right');
-    } else {
-        // from normal/overlay to split
-        newSearchParams.set('view', 'split');
-        newSearchParams.set('right', bodyState === BODY_STATES.SIDE_PANE ? sidePaneContent : paneContent);
-        newSearchParams.delete('sidePane');
-    }
-    setSearchParams(newSearchParams, { replace: true });
-  }
-
-  const handleSwitchPanes = () => {
-    if (bodyState !== BODY_STATES.SPLIT_VIEW) return;
-    const newSidePaneContent = pageToPaneMap[currentActivePage];
-    const newActivePage = Object.entries(pageToPaneMap).find(
-      ([, value]) => value === sidePaneContent
-    )?.[0] as ActivePage | undefined;
-
-    if (newActivePage && newSidePaneContent) {
-      navigate(`/${newActivePage}?view=split&right=${newSidePaneContent}`, { replace: true });
-    }
-  };
-
-  const handleClosePane = () => {
-    if (bodyState !== BODY_STATES.SPLIT_VIEW) return;
-    if (pane === 'right') {
-      setSearchParams({}, { replace: true });
-    } else if (pane === 'main') {
-      const pageToBecomeActive = Object.entries(pageToPaneMap).find(
-        ([, value]) => value === sidePaneContent
-      )?.[0] as ActivePage | undefined;
-      
-      if (pageToBecomeActive) {
-        navigate(`/${pageToBecomeActive}`, { replace: true });
-      } else {
-        setSearchParams({}, { replace: true });
-      }
-    }
+  const handlePaneClick = (type: 'side-pane' | 'split-view') => {
+    const pageToPaneMap: Record<ActivePage, AppShellState['sidePaneContent']> = {
+      dashboard: 'main', settings: 'settings', toaster: 'toaster', notifications: 'notifications', 'data-demo': 'dataDemo',
+    };
+    const paneContent = pageToPaneMap[activePage];
+    if (type === 'side-pane') toggleSidePane(paneContent);
+    else toggleSplitView();
   }
 
   const handleNormalViewClick = () => {
@@ -153,9 +93,10 @@ export function ViewModeSwitcher({ pane, targetPage }: { pane?: 'main' | 'right'
       toggleFullscreen();
     }
     if (targetPage && targetPage !== currentActivePage) {
-      navigate(`/${targetPage}`, { replace: true });
+      navigateTo(targetPage);
+    } else {
+      setNormalView();
     }
-      setSearchParams({}, { replace: true });
   }
 
   const buttons = [
@@ -168,14 +109,14 @@ export function ViewModeSwitcher({ pane, targetPage }: { pane?: 'main' | 'right'
     },
     {
       id: 'side-pane',
-      onClick: handleSidePaneClick,
+      onClick: () => handlePaneClick('side-pane'),
       active: bodyState === BODY_STATES.SIDE_PANE,
       title: "Side Pane View",
       icon: <PanelRightOpen className="w-4 h-4" />
     },
     {
       id: 'split-view',
-      onClick: handleSplitViewClick,
+      onClick: () => handlePaneClick('split-view'),
       active: bodyState === BODY_STATES.SPLIT_VIEW,
       title: bodyState === BODY_STATES.SPLIT_VIEW ? 'Switch to Overlay View' : 'Switch to Split View',
       icon: bodyState === BODY_STATES.SPLIT_VIEW ? <Layers className="w-4 h-4" /> : <SplitSquareHorizontal className="w-4 h-4" />
@@ -184,7 +125,7 @@ export function ViewModeSwitcher({ pane, targetPage }: { pane?: 'main' | 'right'
       id: 'fullscreen',
       onClick: () => {
         if (targetPage && targetPage !== currentActivePage ) {
-          navigate(`/${targetPage}`);
+          navigateTo(targetPage);
           setTimeout(() => toggleFullscreen(pane), 50);
         } else {
           toggleFullscreen(pane);
@@ -199,14 +140,14 @@ export function ViewModeSwitcher({ pane, targetPage }: { pane?: 'main' | 'right'
   if (bodyState === BODY_STATES.SPLIT_VIEW) {
     buttons.push({
       id: 'switch',
-      onClick: handleSwitchPanes,
+      onClick: switchSplitPanes,
       active: false,
       title: "Switch Panes",
       icon: <ArrowLeftRight className="w-4 h-4" />
     });
     buttons.push({
       id: 'close',
-      onClick: handleClosePane,
+      onClick: () => closeSplitPane(pane || 'right'),
       active: false,
       title: "Close Pane",
       icon: <X className="w-4 h-4 text-muted-foreground group-hover:text-destructive" />

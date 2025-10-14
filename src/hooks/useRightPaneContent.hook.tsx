@@ -1,0 +1,90 @@
+import { useMemo } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import {
+  LayoutDashboard,
+  Settings,
+  Component,
+  Bell,
+  SlidersHorizontal,
+  Database,
+} from 'lucide-react';
+
+import { DashboardContent } from "@/pages/Dashboard";
+import { SettingsContent } from "@/features/settings/SettingsContent";
+import { ToasterDemo } from "@/pages/ToasterDemo";
+import { NotificationsPage } from "@/pages/Notifications";
+import DataDemoPage from "@/pages/DataDemo";
+import { DataDetailPanel } from "@/pages/DataDemo/components/DataDetailPanel";
+import { mockDataItems } from "@/pages/DataDemo/data/mockData";
+import { AppShellState } from '@/context/AppShellContext';
+
+export function useRightPaneContent(sidePaneContent: AppShellState['sidePaneContent']) {
+  const navigate = useNavigate();
+  const { itemId } = useParams<{ itemId: string }>();
+
+  const contentMap = useMemo(() => ({
+    main: {
+      title: "Dashboard",
+      icon: LayoutDashboard,
+      page: "dashboard",
+      content: <DashboardContent isInSidePane />,
+    },
+    settings: {
+      title: "Settings",
+      icon: Settings,
+      page: "settings",
+      content: <div className="p-6"><SettingsContent /></div>
+    },
+    toaster: {
+      title: "Toaster Demo",
+      icon: Component,
+      page: "toaster",
+      content: <ToasterDemo isInSidePane />,
+    },
+    notifications: {
+      title: "Notifications",
+      icon: Bell,
+      page: "notifications",
+      content: <NotificationsPage isInSidePane />,
+    },
+    dataDemo: {
+      title: "Data Showcase",
+      icon: Database,
+      page: "data-demo",
+      content: <DataDemoPage />,
+    },
+    details: {
+      title: "Details Panel",
+      icon: SlidersHorizontal,
+      content: (
+        <div className="p-6">
+          <p className="text-muted-foreground">
+            This is the side pane. It can be used to display contextual
+            information, forms, or actions related to the main content.
+          </p>
+        </div>
+      ),
+    },
+  }), []);
+
+  const selectedItem = useMemo(() => {
+    if (!itemId) return null;
+    return mockDataItems.find(item => item.id === itemId) ?? null;
+  }, [itemId]);
+
+  const { meta, content } = useMemo(() => {
+    if (sidePaneContent === 'dataItem' && selectedItem) {
+      return {
+        meta: { title: "Item Details", icon: Database, page: `data-demo/${itemId}` },
+        content: <DataDetailPanel item={selectedItem} onClose={() => navigate('/data-demo')} />,
+      };
+    }
+    const mappedContent = contentMap[sidePaneContent as keyof typeof contentMap] || contentMap.details;
+    return {
+      meta: mappedContent,
+      content: mappedContent.content,
+    };
+  }, [sidePaneContent, selectedItem, navigate, contentMap, itemId]);
+
+  return { meta, content };
+}

@@ -7,10 +7,10 @@ import {
   Zap,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useSearchParams, useLocation, useNavigate } from 'react-router-dom';
 import { BODY_STATES } from '@/lib/utils'
 import { useAppStore } from '@/store/appStore'
 import { useAppShell } from '@/context/AppShellContext'
+import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
 import { UserDropdown } from './UserDropdown'
 import { ViewModeSwitcher } from './ViewModeSwitcher'
 
@@ -26,31 +26,11 @@ export function TopBar({
   children,
 }: TopBarProps) {
   const { bodyState } = useAppShell()
-  const [, setSearchParams] = useSearchParams();
-  const location = useLocation();
-  const navigate = useNavigate();
+  const viewManager = useAppViewManager();
   const { 
     setCommandPaletteOpen,
     isDarkMode,
   } = useAppStore()
-
-  const handleSettingsClick = () => {
-    if (location.pathname === '/settings') {
-      navigate({ pathname: '/dashboard', search: '?sidePane=settings' }, { replace: true });
-    } else {
-      setSearchParams(prev => {
-        const newParams = new URLSearchParams(prev);
-        if (newParams.get('sidePane') === 'settings') {
-          newParams.delete('sidePane');
-        } else {
-          newParams.set('sidePane', 'settings');
-          newParams.delete('view');
-          newParams.delete('right');
-        }
-        return newParams;
-      }, { replace: true });
-    }
-  };
 
   return (
     <div className={cn(
@@ -114,7 +94,7 @@ export function TopBar({
         </button>
 
         <button
-          onClick={handleSettingsClick}
+          onClick={() => viewManager.toggleSidePane('settings')}
           className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
           title="Settings"
         >
