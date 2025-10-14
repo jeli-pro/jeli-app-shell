@@ -1,0 +1,927 @@
+uuid: 4402660d-773a-446a-8b89-a35978198904
+projectId: jeli-app-shell
+createdAt: '2025-10-13T17:19:13.352Z'
+gitCommitMsg: >-
+  feat(auth): implement persistent auth, global theme, and post-login redirect
+
+  Refactors the authentication flow to enhance user experience.
+
+  - The auth state is now persisted in local storage using Zustand's `persist`
+  middleware, keeping users logged in across page reloads. - Theme (dark/light
+  mode) is now applied globally from a root-level component, ensuring the login
+  page correctly reflects the user's theme preference. - Implemented a redirect
+  mechanism. If a user tries to access a protected URL, they are now redirected
+  to that specific URL after successful login, instead of the default dashboard.
+promptSummary: >-
+  The user wants to improve the authentication flow by persisting the login
+  state, applying the dark/light theme on the login page, and redirecting users
+  to their intended URL after login.
+reasoning:
+  - >-
+    This is a comprehensive fix for the authentication flow, addressing three
+    key issues: lack of state persistence, incorrect theme application, and a
+    missing post-login redirect.
+  - >-
+    First, I'm making the user's login session persistent across page reloads.
+    By integrating Zustand's `persist` middleware into `authStore.ts`, the
+    authentication state will now be saved to local storage. This eliminates the
+    annoyance of being logged out on every refresh.
+  - >-
+    Second, I'm ensuring the dark/light theme is applied globally, including on
+    the login page. I've created a new `Root` component in `App.tsx` that wraps
+    the entire application. This component is now responsible for applying the
+    theme class to the HTML document, guaranteeing a consistent look and feel
+    from the moment the app loads.
+  - >-
+    Finally, I'm implementing a proper redirect mechanism. If a user attempts to
+    access a specific page (e.g., `/data-demo?view=table`) while
+    unauthenticated, the app now remembers that destination. After a successful
+    login, it will redirect them to their intended page instead of defaulting to
+    the dashboard, creating a much smoother user journey.
+operations:
+  - type: write
+    path: src/store/authStore.ts
+    content: >+
+      --- src/store/authStore.ts
+
+      +++ src/store/authStore.ts
+
+      @@ -1,4 +1,5 @@
+       import { create } from 'zustand'
+      +import { persist } from 'zustand/middleware'
+       
+       interface AuthState {
+         isAuthenticated: boolean
+      @@ -11,40 +12,49 @@
+         forgotPassword: (email: string) => Promise<void>
+       }
+       
+      -export const useAuthStore = create<AuthState>()((set) => ({
+
+      -  isAuthenticated: false,
+
+      -  user: null,
+
+      -  
+
+      -  login: async (email: string, password: string) => {
+
+      -    // Simulate API call
+
+      -    await new Promise(resolve => setTimeout(resolve, 1000))
+
+      -    
+
+      -    // Mock authentication - in real app, validate with backend
+
+      -    if (email && password) {
+
+      -      set({
+
+      -        isAuthenticated: true,
+
+      -        user: {
+
+      -          email,
+
+      -          name: email.split('@')[0], // Simple name extraction
+
+      -        },
+
+      -      })
+
+      -    } else {
+
+      -      throw new Error('Invalid credentials')
+
+      -    }
+
+      -  },
+
+      -  
+
+      -  logout: () => {
+
+      -    set({
+
+      +export const useAuthStore = create<AuthState>()(
+
+      +  persist(
+
+      +    (set) => ({
+             isAuthenticated: false,
+             user: null,
+      -    })
+
+      -  },
+
+      -  
+
+      -  forgotPassword: async (email: string) => {
+
+      -    // Simulate API call
+
+      -    await new Promise(resolve => setTimeout(resolve, 1000))
+
+      -    
+
+      -    // In real app, send reset email via backend
+
+      -    console.log(`Password reset link sent to: ${email}`)
+
+      -  },
+
+      -}))
+
+      +
+
+      +      login: async (email: string, password: string) => {
+
+      +        // Simulate API call
+
+      +        await new Promise((resolve) => setTimeout(resolve, 1000))
+
+      +
+
+      +        // Mock authentication - in real app, validate with backend
+
+      +        if (email && password) {
+
+      +          set({
+
+      +            isAuthenticated: true,
+
+      +            user: {
+
+      +              email,
+
+      +              name: email.split('@')[0], // Simple name extraction
+
+      +            },
+
+      +          })
+
+      +        } else {
+
+      +          throw new Error('Invalid credentials')
+
+      +        }
+
+      +      },
+
+      +
+
+      +      logout: () => {
+
+      +        set({
+
+      +          isAuthenticated: false,
+
+      +          user: null,
+
+      +        })
+
+      +      },
+
+      +
+
+      +      forgotPassword: async (email: string) => {
+
+      +        // Simulate API call
+
+      +        await new Promise((resolve) => setTimeout(resolve, 1000))
+
+      +
+
+      +        // In real app, send reset email via backend
+
+      +        console.log(`Password reset link sent to: ${email}`)
+
+      +      },
+
+      +    }),
+
+      +    {
+
+      +      name: 'auth-storage',
+
+      +      partialize: (state) => ({ isAuthenticated: state.isAuthenticated,
+      user: state.user }),
+
+      +    },
+
+      +  ),
+
+      +)
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/App.tsx
+    content: >+
+      --- src/App.tsx
+
+      +++ src/App.tsx
+
+      @@ -52,11 +52,13 @@
+       // Wrapper for LoginPage to provide auth handlers
+       function LoginPageWrapper() {
+         const { login, forgotPassword } = useAuthStore();
+         const navigate = useNavigate();
+      +  const location = useLocation();
+
+      +  const from = location.state?.from?.pathname +
+      location.state?.from?.search || "/";
+       
+         const handleLogin = async (email: string, password: string) => {
+           try {
+             await login(email, password);
+      -      navigate("/");
+
+      +      navigate(from, { replace: true });
+           } catch (error) {
+             console.error("Login failed:", error);
+             // In a real app, you'd show an error message to the user
+      @@ -85,19 +87,27 @@
+       // Checks for authentication and redirects to login if needed
+       function ProtectedRoute() {
+         const { isAuthenticated } = useAuthStore();
+      +  const location = useLocation();
+         if (!isAuthenticated) {
+      -    return <Navigate to="/login" replace />;
+
+      +    return <Navigate to="/login" state={{ from: location }} replace />;
+         }
+         return <Outlet />;
+       }
+       
+      +// A root component to apply global styles and effects
+
+      +function Root() {
+
+      +  const isDarkMode = useAppStore((state) => state.isDarkMode);
+
+      +
+
+      +  useEffect(() => {
+
+      +    document.documentElement.classList.toggle("dark", isDarkMode);
+
+      +  }, [isDarkMode]);
+
+      +
+
+      +  return <Outlet />;
+
+      +}
+
+      +
+       // The main layout for authenticated parts of the application
+       function ProtectedLayout() {
+      -  const isDarkMode = useAppStore((state) => state.isDarkMode);
+
+      -
+
+      -  useEffect(() => {
+
+      -    document.documentElement.classList.toggle("dark", isDarkMode);
+
+      -  }, [isDarkMode]);
+       
+         return (
+           <div className="h-screen w-screen overflow-hidden bg-background">
+      @@ -351,26 +361,29 @@
+       
+       function App() {
+         const router = createBrowserRouter([
+           {
+      -      path: "/login",
+
+      -      element: <LoginPageWrapper />,
+
+      -    },
+
+      -    {
+
+      -      path: "/",
+
+      -      element: <ProtectedRoute />,
+
+      +      element: <Root />,
+             children: [
+               {
+      -          path: "/",
+
+      -          element: <ProtectedLayout />,
+
+      +          path: "/login",
+
+      +          element: <LoginPageWrapper />,
+
+      +        },
+
+      +        {
+
+      +          path: "/",
+
+      +          element: <ProtectedRoute />,
+                 children: [
+      -            { index: true, element: <Navigate to="/dashboard" replace />
+      },
+
+      -            { path: "dashboard", element: <DashboardContent /> },
+
+      -            { path: "settings", element: <SettingsPage /> },
+
+      -            { path: "toaster", element: <ToasterDemo /> },
+
+      -            { path: "notifications", element: <NotificationsPage /> },
+
+      -            { path: "data-demo", element: <DataDemoPage /> },
+
+      -            { path: "data-demo/:itemId", element: <DataDemoPage /> },
+
+      +            {
+
+      +              path: "/",
+
+      +              element: <ProtectedLayout />,
+
+      +              children: [
+
+      +                { index: true, element: <Navigate to="/dashboard" replace
+      /> },
+
+      +                { path: "dashboard", element: <DashboardContent /> },
+
+      +                { path: "settings", element: <SettingsPage /> },
+
+      +                { path: "toaster", element: <ToasterDemo /> },
+
+      +                { path: "notifications", element: <NotificationsPage />
+      },
+
+      +                { path: "data-demo", element: <DataDemoPage /> },
+
+      +                { path: "data-demo/:itemId", element: <DataDemoPage /> },
+
+      +              ],
+
+      +            },
+                 ],
+               },
+             ],
+
+    patchStrategy: standard-diff
+snapshot:
+  src/store/authStore.ts: |-
+    import { create } from 'zustand'
+
+    interface AuthState {
+      isAuthenticated: boolean
+      user: {
+        email: string
+        name: string
+      } | null
+      login: (email: string, password: string) => Promise<void>
+      logout: () => void
+      forgotPassword: (email: string) => Promise<void>
+    }
+
+    export const useAuthStore = create<AuthState>()((set) => ({
+      isAuthenticated: false,
+      user: null,
+      
+      login: async (email: string, password: string) => {
+        // Simulate API call
+        await new Promise(resolve => setTimeout(resolve, 1000))
+        
+        // Mock authentication - in real app, validate with backend
+        if (email && password) {
+          set({
+            isAuthenticated: true,
+            user: {
+              email,
+              name: email.split('@')[0], // Simple name extraction
+            },
+          })
+        } else {
+          throw new Error('Invalid credentials')
+        }
+      },
+      
+      logout: () => {
+        set({
+          isAuthenticated: false,
+          user: null,
+        })
+      },
+      
+      forgotPassword: async (email: string) => {
+        // Simulate API call
+        await new Promise(resolve => setTimeout(resolve, 1000))
+        
+        // In real app, send reset email via backend
+        console.log(`Password reset link sent to: ${email}`)
+      },
+    }))
+  src/App.tsx: >-
+    import React, { useEffect, useMemo } from "react";
+
+    import {
+      createBrowserRouter,
+      RouterProvider,
+      Outlet,
+      Navigate,
+      useNavigate,
+      useParams,
+      useLocation,
+      useSearchParams,
+    } from "react-router-dom";
+
+
+    import { AppShell } from "./components/layout/AppShell";
+
+    import { AppShellProvider, useAppShell } from "./context/AppShellContext";
+
+    import { useAppStore } from "./store/appStore";
+
+    import { useAuthStore } from "./store/authStore";
+
+    import "./index.css";
+
+
+    // Import library components
+
+    import { EnhancedSidebar } from "./components/layout/EnhancedSidebar";
+
+    import { MainContent } from "./components/layout/MainContent";
+
+    import { RightPane } from "./components/layout/RightPane";
+
+    import { TopBar } from "./components/layout/TopBar";
+
+    import { CommandPalette } from "./components/global/CommandPalette";
+
+    import { ToasterProvider } from "./components/ui/toast";
+
+
+    // Import page/content components
+
+    import { DashboardContent } from "./pages/Dashboard";
+
+    import { SettingsPage } from "./pages/Settings";
+
+    import { ToasterDemo } from "./pages/ToasterDemo";
+
+    import { NotificationsPage } from "./pages/Notifications";
+
+    import { DataDetailPanel } from
+    "./pages/DataDemo/components/DataDetailPanel";
+
+    import { mockDataItems } from "./pages/DataDemo/data/mockData";
+
+    import DataDemoPage from "./pages/DataDemo";
+
+    import { SettingsContent } from "./features/settings/SettingsContent";
+
+    import { LoginPage } from "./components/auth/LoginPage";
+
+
+    // Import icons
+
+    import {
+      LayoutDashboard,
+      Settings,
+      Component,
+      Bell,
+      SlidersHorizontal,
+      ChevronsLeftRight,
+      Search,
+      Filter,
+      Plus,
+      ChevronRight,
+      Rocket,
+      Layers,
+      SplitSquareHorizontal,
+      Database,
+    } from "lucide-react";
+
+    import { BODY_STATES } from "./lib/utils";
+
+    import { cn } from "./lib/utils";
+
+
+    // Wrapper for LoginPage to provide auth handlers
+
+    function LoginPageWrapper() {
+      const { login, forgotPassword } = useAuthStore();
+      const navigate = useNavigate();
+
+      const handleLogin = async (email: string, password: string) => {
+        try {
+          await login(email, password);
+          navigate("/");
+        } catch (error) {
+          console.error("Login failed:", error);
+          // In a real app, you'd show an error message to the user
+        }
+      };
+
+      const handleForgotPassword = async (email: string) => {
+        try {
+          await forgotPassword(email);
+        } catch (error) {
+          console.error("Forgot password failed:", error);
+        }
+      };
+
+      const handleSignUp = () => {
+        // In a real app, navigate to sign up page
+        console.log("Navigate to sign up page");
+      };
+
+      return (
+        <LoginPage
+          onLogin={handleLogin}
+          onForgotPassword={handleForgotPassword}
+          onSignUp={handleSignUp}
+        />
+      );
+    }
+
+
+    // Checks for authentication and redirects to login if needed
+
+    function ProtectedRoute() {
+      const { isAuthenticated } = useAuthStore();
+      if (!isAuthenticated) {
+        return <Navigate to="/login" replace />;
+      }
+      return <Outlet />;
+    }
+
+
+    // The main layout for authenticated parts of the application
+
+    function ProtectedLayout() {
+      const isDarkMode = useAppStore((state) => state.isDarkMode);
+
+      useEffect(() => {
+        document.documentElement.classList.toggle("dark", isDarkMode);
+      }, [isDarkMode]);
+
+      return (
+        <div className="h-screen w-screen overflow-hidden bg-background">
+          <AppShellProvider
+            appName="Jeli App"
+            appLogo={
+              <div className="p-2 bg-primary/20 rounded-lg">
+                <Rocket className="w-5 h-5 text-primary" />
+              </div>
+            }
+          >
+            <ComposedApp />
+          </AppShellProvider>
+        </div>
+      );
+    }
+
+
+    // Content for the Top Bar (will be fully refactored in Part 2)
+
+    function AppTopBar() {
+      const { searchTerm, setSearchTerm } = useAppStore();
+      const [isSearchFocused, setIsSearchFocused] = React.useState(false);
+      const location = useLocation();
+      const activePage = location.pathname.split('/').filter(Boolean).pop()?.replace('-', ' ') || 'dashboard';
+
+      return (
+        <div className="flex items-center gap-3 flex-1">
+          <div
+            className={cn(
+              "hidden md:flex items-center gap-2 text-sm transition-opacity",
+              {
+                "opacity-0 pointer-events-none":
+                  isSearchFocused && activePage === "dashboard",
+              },
+            )}
+          >
+            <a
+              href="#"
+              className="text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Home
+            </a>
+            <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            <span className="font-medium text-foreground capitalize">
+              {activePage}
+            </span>
+          </div>
+
+          <div className="flex-1" />
+
+          {/* Page-specific: Dashboard search and actions */}
+          {activePage === "dashboard" && (
+            <div className="flex items-center gap-2 flex-1 justify-end">
+              <div
+                className={cn(
+                  "relative transition-all duration-300 ease-in-out",
+                  isSearchFocused ? "flex-1 max-w-lg" : "w-auto",
+                )}
+              >
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4 pointer-events-none" />
+                <input
+                  type="text"
+                  placeholder="Search..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onFocus={() => setIsSearchFocused(true)}
+                  onBlur={() => setIsSearchFocused(false)}
+                  className={cn(
+                    "pl-9 pr-4 py-2 h-10 border-none rounded-lg bg-card focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300 ease-in-out w-full",
+                    isSearchFocused ? "bg-background" : "w-48",
+                  )}
+                />
+              </div>
+              <button className="h-10 w-10 flex-shrink-0 flex items-center justify-center hover:bg-accent rounded-full transition-colors">
+                <Filter className="w-5 h-5" />
+              </button>
+              <button className="bg-primary text-primary-foreground px-4 py-2 rounded-full hover:bg-primary/90 transition-colors flex items-center gap-2 h-10 flex-shrink-0">
+                <Plus className="w-5 h-5" />
+                <span
+                  className={cn(isSearchFocused ? "hidden sm:inline" : "inline")}
+                >
+                  New Project
+                </span>
+              </button>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+
+    // The main App component that composes the shell
+
+    function ComposedApp() {
+      const {
+        bodyState,
+        dispatch,
+      } = useAppShell();
+      const navigate = useNavigate();
+      const location = useLocation();
+      const [searchParams, setSearchParams] = useSearchParams();
+      const { itemId } = useParams<{ itemId: string }>();
+
+      useEffect(() => {
+        const pane = searchParams.get('sidePane');
+        const view = searchParams.get('view');
+        const right = searchParams.get('right');
+
+        // Case 1: A specific item is selected via URL path. This takes precedence.
+        // This will render the data list in main content, and item detail in a pane.
+        if (itemId) {
+          dispatch({ type: 'SET_SIDE_PANE_CONTENT', payload: 'dataItem' });
+          // Allow user to still use split view with a direct item link
+          if (view === 'split') {
+              dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.SPLIT_VIEW });
+          } else {
+              dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.SIDE_PANE });
+          }
+        } 
+        // Case 2: A generic side pane is requested via query param.
+        else if (pane) {
+          dispatch({ type: 'SET_SIDE_PANE_CONTENT', payload: pane as any });
+          dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.SIDE_PANE });
+        } 
+        // Case 3: Split view is requested via query param.
+        else if (view === 'split' && right) {
+          dispatch({ type: 'SET_SIDE_PANE_CONTENT', payload: right as any });
+          dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.SPLIT_VIEW });
+        } 
+        // Case 4: Default state, no panes.
+        else {
+          dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.NORMAL });
+          // Clean up side pane content when not in use
+          dispatch({ type: 'SET_SIDE_PANE_CONTENT', payload: 'details' });
+        }
+      }, [itemId, searchParams, dispatch]);
+
+      const contentMap = {
+        main: {
+          title: "Dashboard",
+          icon: LayoutDashboard,
+          page: "dashboard",
+          content: <DashboardContent />,
+        },
+        settings: {
+          title: "Settings",
+          icon: Settings,
+          page: "settings",
+          content: bodyState === BODY_STATES.SIDE_PANE ? (
+            <div className="p-6">
+              <SettingsContent />
+            </div>
+          ) : (
+            <SettingsPage />
+          ),
+        },
+        toaster: {
+          title: "Toaster Demo",
+          icon: Component,
+          page: "toaster",
+          content: <ToasterDemo />,
+        },
+        notifications: {
+          title: "Notifications",
+          icon: Bell,
+          page: "notifications",
+          content: <NotificationsPage />,
+        },
+        dataDemo: {
+          title: "Data Showcase",
+          icon: Database,
+          page: "data-demo",
+          content: <DataDemoPage />,
+        },
+        details: {
+          title: "Details Panel",
+          icon: SlidersHorizontal,
+          content: (
+            <div className="p-6">
+              <p className="text-muted-foreground">
+                This is the side pane. It can be used to display contextual
+                information, forms, or actions related to the main content.
+              </p>
+            </div>
+          ),
+        },
+      } as const;
+
+      const selectedItem = useMemo(() => {
+        if (!itemId) return null
+        return mockDataItems.find(item => item.id === itemId) ?? null
+      }, [itemId]);
+
+      // Derive content directly from URL to prevent flashes of incorrect content
+      const sidePaneIdentifier = itemId 
+        ? 'dataItem' 
+        : searchParams.get('sidePane') || searchParams.get('right') || 'details';
+
+      let rightPaneContent;
+      let currentContent: { title: string, icon: React.ElementType, page?: string };
+
+      if (sidePaneIdentifier === 'dataItem') {
+        currentContent = { title: "Item Details", icon: Database };
+        rightPaneContent = <DataDetailPanel item={selectedItem} onClose={() => navigate('/data-demo')} />;
+      } else {
+        const mappedContent = contentMap[sidePaneIdentifier as keyof typeof contentMap] || contentMap.details;
+        currentContent = mappedContent;
+        rightPaneContent = mappedContent.content;
+      }
+      
+      const CurrentIcon = currentContent.icon;
+
+      const handleMaximize = () => {
+        if ("page" in currentContent && currentContent.page) {
+          navigate(`/${currentContent.page}`, { replace: true });
+        } else {
+          setSearchParams({}, { replace: true });
+        }
+      };
+
+      const handleCloseSidePane = () => {
+        // Use functional update to avoid stale closures with searchParams
+        setSearchParams(prev => {
+          const newParams = new URLSearchParams(prev);
+          newParams.delete('sidePane');
+          return newParams;
+        }, { replace: true });
+      };
+
+      const handleToggleSplitView = () => {
+        if (bodyState === BODY_STATES.SIDE_PANE) {
+          setSearchParams(prev => {
+            const newParams = new URLSearchParams(prev);
+            const currentPane = newParams.get('sidePane');
+            if (currentPane) {
+              newParams.set('view', 'split');
+              newParams.set('right', currentPane);
+              newParams.delete('sidePane');
+            }
+            return newParams;
+          }, { replace: true });
+        } else if (bodyState === BODY_STATES.SPLIT_VIEW) {
+          setSearchParams(prev => {
+            return { sidePane: prev.get('right') || 'details' }
+          }, { replace: true });
+        }
+      };
+
+      const rightPaneHeader =
+        bodyState !== BODY_STATES.SPLIT_VIEW ? (
+          <>
+            <div className="flex items-center gap-2">
+              <CurrentIcon className="w-5 h-5" />
+              <h2 className="text-lg font-semibold whitespace-nowrap">
+                {currentContent.title}
+              </h2>
+            </div>
+            <div className="flex items-center">
+              {(bodyState === BODY_STATES.SIDE_PANE ||
+                bodyState === BODY_STATES.SPLIT_VIEW) && (
+                <button
+                  onClick={handleToggleSplitView}
+                  className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors"
+                  title={
+                    bodyState === BODY_STATES.SIDE_PANE
+                      ? "Switch to Split View"
+                      : "Switch to Overlay View"
+                  }
+                >
+                  {bodyState === BODY_STATES.SPLIT_VIEW ? (
+                    <Layers className="w-5 h-5" />
+                  ) : (
+                    <SplitSquareHorizontal className="w-5 h-5" />
+                  )}
+                </button>
+              )}
+              {"page" in currentContent && currentContent.page && (
+                <button
+                  onClick={handleMaximize}
+                  className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors mr-2"
+                  title="Move to Main View"
+                >
+                  <ChevronsLeftRight className="w-5 h-5" />
+                </button>
+              )}
+            </div>
+          </>
+        ) : undefined;
+
+      return (
+        <AppShell
+          sidebar={<EnhancedSidebar />}
+          onOverlayClick={handleCloseSidePane}
+          topBar={
+            <TopBar>
+              <AppTopBar />
+            </TopBar>
+          }
+          mainContent={
+            <MainContent>
+              <Outlet />
+            </MainContent>
+          }
+          rightPane={
+            <RightPane onClose={handleCloseSidePane} header={rightPaneHeader}>{rightPaneContent}</RightPane>
+          }
+          commandPalette={<CommandPalette />}
+        />
+      );
+    }
+
+
+    function App() {
+      const router = createBrowserRouter([
+        {
+          path: "/login",
+          element: <LoginPageWrapper />,
+        },
+        {
+          path: "/",
+          element: <ProtectedRoute />,
+          children: [
+            {
+              path: "/",
+              element: <ProtectedLayout />,
+              children: [
+                { index: true, element: <Navigate to="/dashboard" replace /> },
+                { path: "dashboard", element: <DashboardContent /> },
+                { path: "settings", element: <SettingsPage /> },
+                { path: "toaster", element: <ToasterDemo /> },
+                { path: "notifications", element: <NotificationsPage /> },
+                { path: "data-demo", element: <DataDemoPage /> },
+                { path: "data-demo/:itemId", element: <DataDemoPage /> },
+              ],
+            },
+          ],
+        },
+      ]);
+
+      return (
+        <ToasterProvider>
+          <RouterProvider router={router} />
+        </ToasterProvider>
+      );
+    }
+
+
+    export default App;
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 253

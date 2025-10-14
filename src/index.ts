@@ -55,6 +55,14 @@ export * from './components/ui/tabs';
 export * from './components/ui/toast';
 export { AnimatedTabs } from './components/ui/animated-tabs';
 
+// Effects Components
+export { AnimatedInput } from './components/effects/AnimatedInput';
+export { BottomGradient } from './components/effects/BottomGradient';
+export { BoxReveal } from './components/effects/BoxReveal';
+export { OrbitingCircles, TechOrbitDisplay } from './components/effects/OrbitingCircles';
+export { Ripple } from './components/effects/Ripple';
+
+
 // Global Components
 export { CommandPalette } from './components/global/CommandPalette';
 

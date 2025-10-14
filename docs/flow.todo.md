@@ -9,23 +9,28 @@ also why not auto applied to another page like demo data?
 
 ===
 
+implement the eslint
+
+===
+
 make the codebase highly DRY without UI UX regression
 
 ===
 
 split view: loosing switch animation, there was cool gsap sliding left/right animation while switching pane
 
-===
+=== DONE
 
 1. login state should be persisted
 2. also on refresh the login page forget the dark/light mode
+3. when user go to react route url like http://localhost:5173/data-demo?sort=title-asc&groupBy=priority&tab=critical&status=active&view=table while not login, then after succesful login should go to the route
 
 ===
 
 create amazing kanban view
 calendar view
 
-===
+=== DONE
 
 data demo page:
 

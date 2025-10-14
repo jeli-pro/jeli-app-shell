@@ -1,33 +1,16 @@
-import { useRef, useLayoutEffect } from 'react'
-import { gsap } from 'gsap'
+import { useRef } from 'react'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { Avatar } from '@/components/ui/avatar'
 import { Calendar, Eye, Heart, Share, ArrowRight } from 'lucide-react'
 import type { ViewProps } from '../types'
-import { getStatusColor, getPriorityColor } from '../utils'
+import { getStatusColor, getPriorityColor } from '../utils';
+import { useIncrementalStaggeredAnimation } from '@/hooks/useStaggeredAnimation.motion.hook'
 import { EmptyState } from './EmptyState'
 
 export function DataListView({ data, onItemSelect, selectedItem }: ViewProps) {
   const listRef = useRef<HTMLDivElement>(null)
-  const animatedItemsCount = useRef(0)
-
-  useLayoutEffect(() => {
-    if (listRef.current && data.length > animatedItemsCount.current) {
-      const newItems = Array.from(listRef.current.children).slice(animatedItemsCount.current);
-      gsap.fromTo(newItems,
-        { y: 30, opacity: 0 },
-        {
-          duration: 0.5,
-          y: 0,
-          opacity: 1,
-          stagger: 0.08,
-          ease: "power2.out",
-        },
-      );
-      animatedItemsCount.current = data.length;
-    }
-  }, [data]);
+  useIncrementalStaggeredAnimation(listRef, [data], { scale: 1, y: 30, stagger: 0.08, duration: 0.5 });
 
   if (data.length === 0) {
     return <EmptyState />

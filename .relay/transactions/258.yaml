@@ -1,0 +1,101 @@
+uuid: d8e5e608-5d2f-488f-9d9e-1e18d6f1c402
+projectId: jeli-app-shell
+createdAt: '2025-10-14T01:30:07.133Z'
+gitCommitMsg: >-
+  fix(imports): correct path for inter-hook dependency
+
+  After renaming `useStaggeredAnimation.motion.ts` to
+  `useStaggeredAnimation.motion.hook.ts`, an import statement within
+  `useDashboardAnimations.motion.hook.ts` was not updated. This caused a module
+  resolution failure in Vite.
+
+  This commit corrects the import path to resolve the build error.
+promptSummary: >-
+  The user is reporting a Vite "Failed to load url" error, indicating a broken
+  import path after a file rename.
+reasoning:
+  - >-
+    You've hit it exactly. The server error `Failed to load url ... Does the
+    file exist?` is a classic sign of a broken import path.
+  - >-
+    When I renamed the hook files in the previous step, I updated the imports in
+    the components that use them, but I missed updating an import *between the
+    hooks themselves*. The `useDashboardAnimations` hook imports
+    `useStaggeredAnimation`, and that path needs to be corrected.
+  - Here is the fix.
+  - '### Step 1: Fix the Broken Import Path'
+  - >-
+    I will patch the `useDashboardAnimations.motion.hook.ts` file to point its
+    import to the new location of `useStaggeredAnimation.motion.hook.ts`.
+  - >-
+    This single change corrects the reference and will resolve the Vite server
+    error.
+operations:
+  - type: write
+    path: src/pages/Dashboard/hooks/useDashboardAnimations.motion.hook.ts
+    content: >+
+      --- src/pages/Dashboard/hooks/useDashboardAnimations.motion.hook.ts
+
+      +++ src/pages/Dashboard/hooks/useDashboardAnimations.motion.hook.ts
+
+      @@ -2,7 +2,7 @@
+       import { gsap } from 'gsap';
+       import { useAppShell } from '@/context/AppShellContext';
+       import { BODY_STATES } from '@/lib/utils';
+      -import { useStaggeredAnimation } from
+      '@/hooks/useStaggeredAnimation.motion';
+
+      +import { useStaggeredAnimation } from
+      '@/hooks/useStaggeredAnimation.motion.hook';
+       
+       export function useDashboardAnimations(
+         contentRef: React.RefObject<HTMLDivElement>,
+
+    patchStrategy: standard-diff
+snapshot:
+  src/pages/Dashboard/hooks/useDashboardAnimations.motion.hook.ts: >-
+    import { useEffect } from 'react';
+
+    import { gsap } from 'gsap';
+
+    import { useAppShell } from '@/context/AppShellContext';
+
+    import { BODY_STATES } from '@/lib/utils';
+
+    import { useStaggeredAnimation } from
+    '@/hooks/useStaggeredAnimation.motion';
+
+
+    export function useDashboardAnimations(
+      contentRef: React.RefObject<HTMLDivElement>,
+      statsCardsContainerRef: React.RefObject<HTMLDivElement>,
+      featureCardsContainerRef: React.RefObject<HTMLDivElement>,
+    ) {
+      const { bodyState } = useAppShell();
+
+      // Animate cards on mount
+      useStaggeredAnimation(statsCardsContainerRef, [], { y: 20, scale: 0.95 });
+      useStaggeredAnimation(featureCardsContainerRef, [], { y: 30, scale: 0.95, stagger: 0.05 });
+
+      useEffect(() => {
+        if (!contentRef.current) return;
+
+        const content = contentRef.current;
+
+        switch (bodyState) {
+          case BODY_STATES.FULLSCREEN:
+            gsap.to(content, { scale: 1.02, duration: 0.4, ease: 'power3.out' });
+            break;
+          default:
+            gsap.to(content, { scale: 1, duration: 0.4, ease: 'power3.out' });
+            break;
+        }
+      }, [bodyState, contentRef]);
+    }
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 258

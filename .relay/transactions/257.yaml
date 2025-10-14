@@ -1,0 +1,1137 @@
+uuid: 4426d6a5-7b5c-4389-9b93-b1d501255e2d
+projectId: jeli-app-shell
+createdAt: '2025-10-14T01:29:15.057Z'
+gitCommitMsg: >-
+  fix(build): correct hook file extension to .tsx for JSX content
+
+  The `useDataManagement.hook.ts` file contained JSX syntax after refactoring,
+  which is not allowed in a standard `.ts` file, causing a build failure.
+
+  This commit renames the file to `useDataManagement.hook.tsx` to allow the
+  TypeScript compiler to correctly process the JSX.
+
+  Additionally, animation hook filenames have been standardized to
+  `*.motion.hook.ts` for better consistency with the established naming
+  convention, and all relevant import paths have been updated.
+promptSummary: >-
+  The user is experiencing a build error after a refactoring. The error message
+  indicates JSX is being used in a `.ts` file.
+reasoning:
+  - >-
+    Of course. It looks like the refactoring introduced a common issue when
+    moving component logic into hooks. Here's the fix.
+  - >-
+    The build error `Unexpected ">"` is a classic sign that a file contains JSX
+    syntax (like `<>...</>` or `<Badge />`) but has a `.ts` extension instead of
+    `.tsx`. The TypeScript compiler will only process JSX in files that end with
+    `.tsx`.
+  - >-
+    When the data management logic was extracted from `DataDemoPage` into
+    `useDataManagement.hook.ts`, it brought along the `createLabel` function
+    which returns JSX for the group tabs.
+  - >-
+    The solution is to simply rename the file to `useDataManagement.hook.tsx` to
+    correctly signal its contents to the compiler. I will also take this
+    opportunity to apply the user's naming convention (`.hook.ts` and
+    `.motion.ts`) more consistently to the other hook files.
+  - '### Step 1: Rename `useDataManagement.hook.ts` to `.tsx`'
+  - >-
+    I'll rename the hook file containing JSX to have a `.tsx` extension. This
+    directly resolves the build error. Modern bundlers like Vite will
+    automatically resolve the new file extension from extension-less import
+    statements, so no change is needed in `DataDemo/index.tsx`.
+  - '### Step 2: Standardize Animation Hook Naming'
+  - >-
+    To align with the convention that hooks end in `.hook.ts` (or `.tsx`), and
+    animation-related files use `.motion`, I'll rename the animation hooks for
+    better consistency. The convention will be `*.motion.hook.ts`.
+  - '### Step 3: Update Import Paths'
+  - >-
+    Now I'll update the files that import these renamed hooks to point to the
+    new file names.
+operations:
+  - type: rename
+    from: src/pages/DataDemo/hooks/useDataManagement.hook.ts
+    to: src/pages/DataDemo/hooks/useDataManagement.hook.tsx
+  - type: rename
+    from: src/hooks/useStaggeredAnimation.motion.ts
+    to: src/hooks/useStaggeredAnimation.motion.hook.ts
+  - type: rename
+    from: src/pages/Dashboard/hooks/useDashboardAnimations.motion.ts
+    to: src/pages/Dashboard/hooks/useDashboardAnimations.motion.hook.ts
+  - type: write
+    path: src/pages/Dashboard/index.tsx
+    content: >+
+      --- src/pages/Dashboard/index.tsx
+
+      +++ src/pages/Dashboard/index.tsx
+
+      @@ -14,7 +14,7 @@
+       } from 'lucide-react'
+       import { cn } from '@/lib/utils'
+       import { DemoContent } from './DemoContent';
+      -import { useDashboardAnimations } from
+      './hooks/useDashboardAnimations.motion'
+
+      +import { useDashboardAnimations } from
+      './hooks/useDashboardAnimations.motion.hook'
+       import { useDashboardScroll } from './hooks/useDashboardScroll.hook'
+       import { PageHeader } from '@/components/shared/PageHeader';
+       import { Card } from '@/components/ui/card';
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/DataDemo/components/DataCardView.tsx
+    content: >+
+      --- src/pages/DataDemo/components/DataCardView.tsx
+
+      +++ src/pages/DataDemo/components/DataCardView.tsx
+
+      @@ -4,7 +4,7 @@
+       import { Calendar, Eye, Heart, Share, ArrowUpRight, Tag } from 'lucide-react'
+       import type { ViewProps } from '../types'
+       import { getStatusColor, getPriorityColor } from '../utils'
+      -import { useIncrementalStaggeredAnimation } from
+      '@/hooks/useStaggeredAnimation.motion'
+
+      +import { useIncrementalStaggeredAnimation } from
+      '@/hooks/useStaggeredAnimation.motion.hook'
+       import { EmptyState } from './EmptyState'
+       
+       export function DataCardView({ data, onItemSelect, selectedItem, isGrid = false }: ViewProps) {
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/DataDemo/components/DataDetailPanel.tsx
+    content: >+
+      --- src/pages/DataDemo/components/DataDetailPanel.tsx
+
+      +++ src/pages/DataDemo/components/DataDetailPanel.tsx
+
+      @@ -19,7 +19,7 @@
+         Circle
+       } from 'lucide-react' 
+       import type { DataItem } from '../types'
+      -import { useStaggeredAnimation } from
+      '@/hooks/useStaggeredAnimation.motion'
+
+      +import { useStaggeredAnimation } from
+      '@/hooks/useStaggeredAnimation.motion.hook'
+       import { getStatusColor, getPriorityColor } from '../utils'
+       
+       interface DataDetailPanelProps {
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/DataDemo/components/DataListView.tsx
+    content: >+
+      --- src/pages/DataDemo/components/DataListView.tsx
+
+      +++ src/pages/DataDemo/components/DataListView.tsx
+
+      @@ -4,7 +4,7 @@
+       import { Avatar } from '@/components/ui/avatar'
+       import { Calendar, Eye, Heart, Share, ArrowRight } from 'lucide-react'
+       import type { ViewProps } from '../types'
+      -import { getStatusColor, getPriorityColor } from '../utils'
+
+      -import { useIncrementalStaggeredAnimation } from
+      '@/hooks/useStaggeredAnimation.motion'
+
+      +import { getStatusColor, getPriorityColor } from '../utils';
+
+      +import { useIncrementalStaggeredAnimation } from
+      '@/hooks/useStaggeredAnimation.motion.hook'
+       import { EmptyState } from './EmptyState'
+       
+       export function DataListView({ data, onItemSelect, selectedItem }: ViewProps) {
+
+    patchStrategy: standard-diff
+snapshot:
+  src/pages/DataDemo/hooks/useDataManagement.hook.tsx: null
+  src/pages/Dashboard/hooks/useDashboardAnimations.motion.hook.ts: null
+  src/hooks/useStaggeredAnimation.motion.hook.ts: null
+  src/hooks/useStaggeredAnimation.motion.ts: "import { useLayoutEffect, useRef } from 'react';\nimport { gsap } from 'gsap';\n\ninterface StaggeredAnimationOptions {\n\tstagger?: number;\n\tduration?: number;\n\ty?: number;\n\tscale?: number;\n\tease?: string;\n}\n\n/**\n * Animates the direct children of a container element with a staggered fade-in effect.\n * This version is for lists that might grow (e.g., infinite scroll). It only\n * animates new elements that are added to the container.\n *\n * @param containerRef Ref to the container element.\n * @param deps Dependency array. A change here that adds items will trigger the animation on the new items.\n * @param options Animation options.\n */\nexport function useIncrementalStaggeredAnimation<T extends HTMLElement>(\n\tcontainerRef: React.RefObject<T>,\n\tdeps: React.DependencyList,\n\toptions: StaggeredAnimationOptions = {},\n) {\n\tconst animatedItemsCount = useRef(0);\n\n\tconst { stagger = 0.1, duration = 0.5, y = 30, scale = 0.95, ease = 'power2.out' } = options;\n\n\tuseLayoutEffect(() => {\n\t\tif (!containerRef.current) return;\n\n\t\tconst children = Array.from(containerRef.current.children);\n\t\t// On dependency change, if the number of children is less than what we've animated,\n\t\t// it's a list reset (e.g., filtering), so reset the counter.\n\t\tif (children.length < animatedItemsCount.current) {\n\t\t\tanimatedItemsCount.current = 0;\n\t\t}\n\n\t\tconst newItems = children.slice(animatedItemsCount.current);\n\n\t\tif (newItems.length > 0) {\n\t\t\tgsap.fromTo(\n\t\t\t\tnewItems,\n\t\t\t\t{ y, opacity: 0, scale },\n\t\t\t\t{\n\t\t\t\t\tduration,\n\t\t\t\t\ty: 0,\n\t\t\t\t\topacity: 1,\n\t\t\t\t\tscale: 1,\n\t\t\t\t\tstagger,\n\t\t\t\t\tease,\n\t\t\t\t},\n\t\t\t);\n\t\t\tanimatedItemsCount.current = children.length;\n\t\t}\n\t\t// eslint-disable-next-line react-hooks/exhaustive-deps\n\t}, [containerRef, ...deps]);\n}\n\n/**\n * Animates the direct children of a container element with a staggered fade-in effect.\n * This version animates all children every time the dependencies change.\n * Ideal for content that is replaced, not appended to.\n *\n * @param containerRef Ref to the container element.\n * @param deps Dependency array to trigger the animation.\n * @param options Animation options.\n */\nexport function useStaggeredAnimation<T extends HTMLElement>(\n\tcontainerRef: React.RefObject<T>,\n\tdeps: React.DependencyList,\n\toptions: StaggeredAnimationOptions = {},\n) {\n\tconst { stagger = 0.08, duration = 0.6, y = 30, scale = 1, ease = 'power3.out' } = options;\n\n\tuseLayoutEffect(() => {\n\t\tif (containerRef.current?.children.length) {\n\t\t\tgsap.fromTo(\n\t\t\t\tcontainerRef.current.children,\n\t\t\t\t{ y, opacity: 0, scale },\n\t\t\t\t{\n\t\t\t\t\tduration,\n\t\t\t\t\ty: 0,\n\t\t\t\t\topacity: 1,\n\t\t\t\t\tscale: 1,\n\t\t\t\t\tstagger,\n\t\t\t\t\tease,\n\t\t\t\t},\n\t\t\t);\n\t\t}\n\t\t// eslint-disable-next-line react-hooks/exhaustive-deps\n\t}, [containerRef, ...deps]);\n}"
+  src/pages/Dashboard/hooks/useDashboardAnimations.motion.ts: >-
+    import { useEffect } from 'react';
+
+    import { gsap } from 'gsap';
+
+    import { useAppShell } from '@/context/AppShellContext';
+
+    import { BODY_STATES } from '@/lib/utils';
+
+    import { useStaggeredAnimation } from
+    '@/hooks/useStaggeredAnimation.motion';
+
+
+    export function useDashboardAnimations(
+      contentRef: React.RefObject<HTMLDivElement>,
+      statsCardsContainerRef: React.RefObject<HTMLDivElement>,
+      featureCardsContainerRef: React.RefObject<HTMLDivElement>,
+    ) {
+      const { bodyState } = useAppShell();
+
+      // Animate cards on mount
+      useStaggeredAnimation(statsCardsContainerRef, [], { y: 20, scale: 0.95 });
+      useStaggeredAnimation(featureCardsContainerRef, [], { y: 30, scale: 0.95, stagger: 0.05 });
+
+      useEffect(() => {
+        if (!contentRef.current) return;
+
+        const content = contentRef.current;
+
+        switch (bodyState) {
+          case BODY_STATES.FULLSCREEN:
+            gsap.to(content, { scale: 1.02, duration: 0.4, ease: 'power3.out' });
+            break;
+          default:
+            gsap.to(content, { scale: 1, duration: 0.4, ease: 'power3.out' });
+            break;
+        }
+      }, [bodyState, contentRef]);
+    }
+  src/pages/DataDemo/hooks/useDataManagement.hook.ts: "import { useState, useRef, useEffect, useCallback, useMemo, ReactNode } from 'react';\nimport { useSearchParams } from 'react-router-dom';\nimport { capitalize, cn } from '@/lib/utils';\nimport { Badge } from '@/components/ui/badge';\nimport { mockDataItems } from '../data/mockData';\nimport type { DataItem, ViewMode, SortConfig, SortableField, GroupableField, Status, Priority } from '../types';\nimport type { FilterConfig } from '../components/DataToolbar';\n\nexport function useDataManagement() {\n\tconst [searchParams, setSearchParams] = useSearchParams();\n\n\t// Derive state from URL search params\n\tconst viewMode = useMemo(() => (searchParams.get('view') as ViewMode) || 'list', [searchParams]);\n\tconst page = useMemo(() => parseInt(searchParams.get('page') || '1', 10), [searchParams]);\n\tconst groupBy = useMemo(() => (searchParams.get('groupBy') as GroupableField | 'none') || 'none', [searchParams]);\n\tconst activeGroupTab = useMemo(() => searchParams.get('tab') || 'all', [searchParams]);\n\n\tconst filters = useMemo<FilterConfig>(\n\t\t() => ({\n\t\t\tsearchTerm: searchParams.get('q') || '',\n\t\t\tstatus: (searchParams.get('status')?.split(',') || []).filter(Boolean) as Status[],\n\t\t\tpriority: (searchParams.get('priority')?.split(',') || []).filter(Boolean) as Priority[],\n\t\t}),\n\t\t[searchParams],\n\t);\n\n\tconst sortConfig = useMemo<SortConfig | null>(() => {\n\t\tconst sortParam = searchParams.get('sort');\n\t\tif (!sortParam) return { key: 'updatedAt', direction: 'desc' }; // Default sort\n\t\tif (sortParam === 'default') return null;\n\n\t\tconst [key, direction] = sortParam.split('-');\n\t\treturn { key: key as SortableField, direction: direction as 'asc' | 'desc' };\n\t}, [searchParams]);\n\n\t// Centralized handler for updating URL search params\n\tconst handleParamsChange = useCallback(\n\t\t(newParams: Record<string, string | string[] | null | undefined>) => {\n\t\t\tsetSearchParams(\n\t\t\t\t(prev) => {\n\t\t\t\t\tconst updated = new URLSearchParams(prev);\n\t\t\t\t\tlet pageReset = false;\n\n\t\t\t\t\tfor (const [key, value] of Object.entries(newParams)) {\n\t\t\t\t\t\tconst isFilterOrSort = ['q', 'status', 'priority', 'sort', 'groupBy'].includes(key);\n\n\t\t\t\t\t\tif (value === null || value === undefined || (Array.isArray(value) && value.length === 0) || value === '') {\n\t\t\t\t\t\t\tupdated.delete(key);\n\t\t\t\t\t\t} else if (Array.isArray(value)) {\n\t\t\t\t\t\t\tupdated.set(key, value.join(','));\n\t\t\t\t\t\t} else {\n\t\t\t\t\t\t\tupdated.set(key, String(value));\n\t\t\t\t\t\t}\n\n\t\t\t\t\t\tif (isFilterOrSort) {\n\t\t\t\t\t\t\tpageReset = true;\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\n\t\t\t\t\tif (pageReset) {\n\t\t\t\t\t\tupdated.delete('page');\n\t\t\t\t\t}\n\t\t\t\t\tif ('groupBy' in newParams) {\n\t\t\t\t\t\tupdated.delete('tab');\n\t\t\t\t\t}\n\n\t\t\t\t\treturn updated;\n\t\t\t\t},\n\t\t\t\t{ replace: true },\n\t\t\t);\n\t\t},\n\t\t[setSearchParams],\n\t);\n\n\tconst [items, setItems] = useState<DataItem[]>([]);\n\tconst [hasMore, setHasMore] = useState(true);\n\tconst [isLoading, setIsLoading] = useState(true);\n\tconst observer = useRef<IntersectionObserver>();\n\n\t// Centralized data filtering and sorting from the master list\n\tconst filteredAndSortedData = useMemo(() => {\n\t\tlet filteredItems = mockDataItems.filter((item) => {\n\t\t\tconst searchTermMatch =\n\t\t\t\titem.title.toLowerCase().includes(filters.searchTerm.toLowerCase()) ||\n\t\t\t\titem.description.toLowerCase().includes(filters.searchTerm.toLowerCase());\n\n\t\t\tconst statusMatch = filters.status.length === 0 || filters.status.includes(item.status);\n\t\t\tconst priorityMatch = filters.priority.length === 0 || filters.priority.includes(item.priority);\n\n\t\t\treturn searchTermMatch && statusMatch && priorityMatch;\n\t\t});\n\n\t\tif (sortConfig) {\n\t\t\tfilteredItems.sort((a, b) => {\n\t\t\t\tlet aValue: any;\n\t\t\t\tlet bValue: any;\n\n\t\t\t\tconst getNestedValue = (obj: any, path: string) => path.split('.').reduce((o, k) => (o || {})[k], obj);\n\n\t\t\t\taValue = getNestedValue(a, sortConfig.key);\n\t\t\t\tbValue = getNestedValue(b, sortConfig.key);\n\n\t\t\t\tif (aValue === undefined || bValue === undefined) return 0;\n\n\t\t\t\tif (typeof aValue === 'string' && typeof bValue === 'string') {\n\t\t\t\t\treturn sortConfig.direction === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);\n\t\t\t\t}\n\t\t\t\tif (typeof aValue === 'number' && typeof bValue === 'number') {\n\t\t\t\t\treturn sortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue;\n\t\t\t\t}\n\t\t\t\t// Date sorting (assuming ISO strings)\n\t\t\t\tif (sortConfig.key === 'updatedAt' || sortConfig.key === 'createdAt') {\n\t\t\t\t\treturn sortConfig.direction === 'asc'\n\t\t\t\t\t\t? new Date(aValue).getTime() - new Date(bValue).getTime()\n\t\t\t\t\t\t: new Date(bValue).getTime() - new Date(aValue).getTime();\n\t\t\t\t}\n\t\t\t\treturn 0;\n\t\t\t});\n\t\t}\n\n\t\treturn filteredItems;\n\t}, [filters, sortConfig]);\n\n\t// Data loading effect\n\tuseEffect(() => {\n\t\tsetIsLoading(true);\n\t\tconst isFirstPage = page === 1;\n\n\t\tconst loadData = () => {\n\t\t\tif (groupBy !== 'none') {\n\t\t\t\t// For grouped views, load all data at once, pagination is disabled.\n\t\t\t\tsetItems(filteredAndSortedData);\n\t\t\t\tsetHasMore(false);\n\t\t\t\tsetIsLoading(false);\n\t\t\t\treturn;\n\t\t\t}\n\n\t\t\t// Handle paginated view\n\t\t\tconst pageSize = 12;\n\t\t\tconst newItems = filteredAndSortedData.slice((page - 1) * pageSize, page * pageSize);\n\n\t\t\tsetTimeout(() => {\n\t\t\t\t// Double-check in case groupBy changed during the timeout\n\t\t\t\tif (groupBy === 'none') {\n\t\t\t\t\tsetItems((prev) => (isFirstPage ? newItems : [...prev, ...newItems]));\n\t\t\t\t\tsetHasMore(filteredAndSortedData.length > page * pageSize);\n\t\t\t\t\tsetIsLoading(false);\n\t\t\t\t}\n\t\t\t}, isFirstPage && items.length === 0 ? 1500 : 500); // Longer delay for initial skeleton\n\t\t};\n\n\t\tloadData();\n\t\t// eslint-disable-next-line react-hooks/exhaustive-deps\n\t}, [searchParams, filteredAndSortedData]); // Reacts to any URL change\n\n\tconst loaderRef = useCallback(\n\t\t(node: Element | null) => {\n\t\t\tif (isLoading) return;\n\t\t\tif (observer.current) observer.current.disconnect();\n\n\t\t\tobserver.current = new IntersectionObserver((entries) => {\n\t\t\t\tif (entries[0].isIntersecting && hasMore) {\n\t\t\t\t\t// Instead of setting local state, we update the URL, which triggers the data loading effect.\n\t\t\t\t\thandleParamsChange({ page: (page + 1).toString() });\n\t\t\t\t}\n\t\t\t});\n\t\t\tif (node) observer.current.observe(node);\n\t\t},\n\t\t[isLoading, hasMore, page, handleParamsChange],\n\t);\n\n\tconst groupTabs = useMemo(() => {\n\t\tif (groupBy === 'none' || !filteredAndSortedData.length) return [];\n\n\t\tconst groupCounts = filteredAndSortedData.reduce((acc, item) => {\n\t\t\tconst groupKey = String(item[groupBy as GroupableField]);\n\t\t\tacc[groupKey] = (acc[groupKey] || 0) + 1;\n\t\t\treturn acc;\n\t\t}, {} as Record<string, number>);\n\n\t\tconst sortedGroups = Object.keys(groupCounts).sort((a, b) => a.localeCompare(b));\n\n\t\tconst createLabel = (text: string, count: number, isActive: boolean): ReactNode => (\n\t\t\t<>\n\t\t\t\t{text}\n\t\t\t\t<Badge\n\t\t\t\t\tvariant={isActive ? 'default' : 'secondary'}\n\t\t\t\t\tclassName={cn(\n\t\t\t\t\t\t'transition-colors duration-300 text-xs font-semibold',\n\t\t\t\t\t\t!isActive && 'group-hover:bg-accent group-hover:text-accent-foreground',\n\t\t\t\t\t)}\n\t\t\t\t>\n\t\t\t\t\t{count}\n\t\t\t\t</Badge>\n\t\t\t</>\n\t\t);\n\n\t\treturn [\n\t\t\t{ id: 'all', label: createLabel('All', filteredAndSortedData.length, activeGroupTab === 'all') },\n\t\t\t...sortedGroups.map((g) => ({\n\t\t\t\tid: g,\n\t\t\t\tlabel: createLabel(capitalize(g), groupCounts[g], activeGroupTab === g),\n\t\t\t})),\n\t\t];\n\t}, [filteredAndSortedData, groupBy, activeGroupTab]);\n\n\t// Data to be rendered in the current view, after grouping and tab selection is applied\n\tconst dataToRender = useMemo(() => {\n\t\tif (groupBy === 'none') {\n\t\t\treturn items; // This is the paginated list.\n\t\t}\n\n\t\t// When grouped, `items` contains ALL filtered/sorted data.\n\t\tif (activeGroupTab === 'all') {\n\t\t\treturn items;\n\t\t}\n\t\treturn items.filter((item) => String(item[groupBy as GroupableField]) === activeGroupTab);\n\t}, [items, groupBy, activeGroupTab]);\n\n\tconst totalItemCount = filteredAndSortedData.length;\n\tconst isInitialLoading = isLoading && items.length === 0;\n\n  const setViewMode = (mode: ViewMode) => handleParamsChange({ view: mode });\n  const setGroupBy = (val: string) => handleParamsChange({ groupBy: val === 'none' ? null : val });\n  const setActiveGroupTab = (tab: string) => handleParamsChange({ tab: tab === 'all' ? null : tab });\n  const setFilters = (newFilters: FilterConfig) => {\n    handleParamsChange({ q: newFilters.searchTerm, status: newFilters.status, priority: newFilters.priority });\n  }\n  const setSort = (config: SortConfig | null) => {\n    if (!config) {\n      handleParamsChange({ sort: 'default' });\n    } else {\n      handleParamsChange({ sort: `${config.key}-${config.direction}` });\n    }\n  }\n  const setTableSort = (field: SortableField) => {\n    if (sortConfig?.key === field) {\n      if (sortConfig.direction === 'desc') {\n        // Cycle: desc -> asc\n        handleParamsChange({ sort: `${field}-asc` });\n      } else {\n        // Cycle: asc -> default (by removing param)\n        handleParamsChange({ sort: 'default' });\n      }\n    } else {\n      // New field, default to desc\n      handleParamsChange({ sort: `${field}-desc` });\n    }\n  }\n\n\treturn {\n\t\tviewMode,\n\t\tgroupBy,\n\t\tactiveGroupTab,\n\t\tfilters,\n\t\tsortConfig,\n\t\thasMore,\n\t\tisLoading,\n\t\tloaderRef,\n\t\tgroupTabs,\n\t\tdataToRender,\n\t\ttotalItemCount,\n\t\tisInitialLoading,\n    setViewMode,\n    setGroupBy,\n    setActiveGroupTab,\n    setFilters,\n    setSort,\n    setTableSort\n\t};\n}"
+  src/pages/DataDemo/components/DataCardView.tsx: >-
+    import { useRef } from 'react'
+
+    import { cn } from '@/lib/utils'
+
+    import { Badge } from '@/components/ui/badge'
+
+    import { Avatar } from '@/components/ui/avatar'
+
+    import { Calendar, Eye, Heart, Share, ArrowUpRight, Tag } from
+    'lucide-react'
+
+    import type { ViewProps } from '../types'
+
+    import { getStatusColor, getPriorityColor } from '../utils'
+
+    import { useIncrementalStaggeredAnimation } from
+    '@/hooks/useStaggeredAnimation.motion'
+
+    import { EmptyState } from './EmptyState'
+
+
+    export function DataCardView({ data, onItemSelect, selectedItem, isGrid =
+    false }: ViewProps) {
+      const containerRef = useRef<HTMLDivElement>(null)
+      useIncrementalStaggeredAnimation(containerRef, [data], { y: 40 });
+
+      if (data.length === 0) {
+        return <EmptyState />
+      }
+
+      return (
+        <div 
+          ref={containerRef}
+          className={cn(
+            "gap-6",
+            isGrid
+              ? "grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))]"
+              : "grid grid-cols-[repeat(auto-fit,minmax(320px,1fr))]"
+          )}
+        >
+          {data.map((item) => {
+            const isSelected = selectedItem?.id === item.id
+            
+            return (
+              <div
+                key={item.id}
+                onClick={() => onItemSelect(item)}
+                className={cn(
+                  "group relative overflow-hidden rounded-3xl border bg-card/50 backdrop-blur-sm transition-all duration-500 cursor-pointer",
+                  "hover:bg-card/80 hover:shadow-xl hover:shadow-primary/10 hover:border-primary/30 hover:-translate-y-2",
+                  "active:scale-[0.98]",
+                  isSelected && "ring-2 ring-primary/30 border-primary/40 bg-card/90 shadow-lg shadow-primary/20",
+                )}
+              >
+                {/* Card Header with Thumbnail */}
+                <div className="relative p-6 pb-4">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-primary/10 rounded-2xl flex items-center justify-center text-3xl group-hover:scale-110 transition-transform duration-300">
+                      {item.thumbnail}
+                    </div>
+                    <ArrowUpRight className="w-5 h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 group-hover:-translate-y-1 transition-all duration-300" />
+                  </div>
+
+                  {/* Priority indicator */}
+                  <div className="absolute top-4 right-4">
+                    <div className={cn(
+                      "w-3 h-3 rounded-full",
+                      item.priority === 'critical' && "bg-red-500",
+                      item.priority === 'high' && "bg-orange-500",
+                      item.priority === 'medium' && "bg-blue-500",
+                      item.priority === 'low' && "bg-green-500"
+                    )} />
+                  </div>
+                </div>
+
+                {/* Card Content */}
+                <div className="px-6 pb-6">
+                  {/* Title and Description */}
+                  <h3 className="font-semibold text-lg mb-2 group-hover:text-primary transition-colors line-clamp-2">
+                    {item.title}
+                  </h3>
+                  <p className="text-muted-foreground text-sm mb-4 line-clamp-3">
+                    {item.description}
+                  </p>
+
+                  {/* Status and Category */}
+                  <div className="flex items-center gap-2 mb-4">
+                    <Badge variant="outline" className={getStatusColor(item.status)}>
+                      {item.status}
+                    </Badge>
+                    <Badge variant="outline" className="bg-accent/50 text-xs">
+                      {item.category}
+                    </Badge>
+                  </div>
+
+                  {/* Tags */}
+                  <div className="flex items-center gap-1 mb-4">
+                    <Tag className="w-3 h-3 text-muted-foreground" />
+                    <div className="flex flex-wrap gap-1">
+                      {item.tags.slice(0, 3).map((tag, index) => (
+                        <span key={index} className="text-xs text-muted-foreground bg-muted/50 px-2 py-1 rounded-md">
+                          {tag}
+                        </span>
+                      ))}
+                      {item.tags.length > 3 && (
+                        <span className="text-xs text-muted-foreground">
+                          +{item.tags.length - 3}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Progress */}
+                  <div className="mb-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs text-muted-foreground">Progress</span>
+                      <span className="text-xs font-semibold">{item.metrics.completion}%</span>
+                    </div>
+                    <div className="w-full bg-muted rounded-full h-2">
+                      <div 
+                        className="bg-gradient-to-r from-primary to-primary/80 h-2 rounded-full transition-all duration-700 ease-out"
+                        style={{ width: `${item.metrics.completion}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Assignee */}
+                  <div className="flex items-center gap-3 mb-4">
+                    <Avatar className="w-8 h-8 text-sm">
+                      {item.assignee.avatar}
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">
+                        {item.assignee.name}
+                      </p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {item.assignee.email}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Metrics */}
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-1">
+                        <Eye className="w-3 h-3" />
+                        {item.metrics.views}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Heart className="w-3 h-3" />
+                        {item.metrics.likes}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Share className="w-3 h-3" />
+                        {item.metrics.shares}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Calendar className="w-3 h-3" />
+                      {new Date(item.updatedAt).toLocaleDateString()}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Hover gradient overlay */}
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+                
+                {/* Selection indicator */}
+                {isSelected && (
+                  <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-primary/5 pointer-events-none" />
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )
+    }
+  src/pages/DataDemo/components/DataDetailPanel.tsx: |-
+    import React, { useRef } from 'react'
+    import { cn } from '@/lib/utils'
+    import { Badge } from '@/components/ui/badge'
+    import { Avatar } from '@/components/ui/avatar'
+    import { Button } from '@/components/ui/button'
+    import { 
+      ArrowLeft,
+      Calendar, 
+      Clock, 
+      Eye, 
+      Heart, 
+      Share, 
+      Download,
+      FileText,
+      Image,
+      Video,
+      File,
+      ExternalLink,
+      Tag,
+      User,
+      BarChart3,
+      TrendingUp,
+      CheckCircle,
+      AlertCircle,
+      Circle
+    } from 'lucide-react' 
+    import type { DataItem } from '../types'
+    import { useStaggeredAnimation } from '@/hooks/useStaggeredAnimation.motion'
+    import { getStatusColor, getPriorityColor } from '../utils'
+
+    interface DataDetailPanelProps {
+      item: DataItem | null
+      onClose: () => void
+    }
+
+    export function DataDetailPanel({ item, onClose }: DataDetailPanelProps) {
+      const contentRef = useRef<HTMLDivElement>(null)
+      useStaggeredAnimation(contentRef, [item]);
+
+      if (!item) {
+        return null
+      }
+
+      const getFileIcon = (type: string) => {
+        switch (type.toLowerCase()) {
+          case 'pdf': return FileText
+          case 'image':
+          case 'png':
+          case 'jpg':
+          case 'jpeg': return Image
+          case 'video':
+          case 'mp4': return Video
+          default: return File
+        }
+      }
+
+      const getStatusIcon = (status: string) => {
+        switch (status) {
+          case 'completed': return CheckCircle
+          case 'active': return Circle
+          case 'pending': return AlertCircle
+          default: return Circle
+        }
+      }
+
+      return (
+        <div ref={contentRef} className="h-full flex flex-col">
+          {/* Header */}
+          <div className="p-6 border-b border-border/50 bg-gradient-to-r from-card/50 to-card/30 backdrop-blur-sm">
+            <Button variant="ghost" onClick={onClose} className="mb-4 -ml-4">
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back to list
+            </Button>
+            <div className="flex items-start gap-4 mb-4">
+              <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-primary/10 rounded-2xl flex items-center justify-center text-3xl flex-shrink-0">
+                {item.thumbnail}
+              </div>
+              <div className="flex-1 min-w-0">
+                <h1 className="text-2xl font-bold mb-2 leading-tight">
+                  {item.title}
+                </h1>
+                <p className="text-muted-foreground">
+                  {item.description}
+                </p>
+              </div>
+            </div>
+
+            {/* Status badges */}
+            <div className="flex items-center gap-2 mb-4">
+              <Badge variant="outline" className={getStatusColor(item.status)}>
+                {React.createElement(getStatusIcon(item.status), { className: "w-3 h-3 mr-1" })}
+                {item.status}
+              </Badge>
+              <Badge variant="outline" className={getPriorityColor(item.priority)}>
+                {item.priority}
+              </Badge>
+              <Badge variant="outline" className="bg-accent/50">
+                {item.category}
+              </Badge>
+            </div>
+
+            {/* Progress */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Progress</span>
+                <span className="text-sm font-bold">{item.metrics.completion}%</span>
+              </div>
+              <div className="w-full bg-muted rounded-full h-3">
+                <div 
+                  className="bg-gradient-to-r from-primary to-primary/80 h-3 rounded-full transition-all duration-1000 ease-out"
+                  style={{ width: `${item.metrics.completion}%` }}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Content */}
+          <div className="flex-1 overflow-y-auto">
+            <div className="p-6 space-y-6">
+              {/* Assignee Info */}
+              <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
+                <div className="flex items-center gap-1 mb-3">
+                  <User className="w-4 h-4 text-muted-foreground" />
+                  <h3 className="font-semibold text-sm">Assigned to</h3>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Avatar className="w-12 h-12">
+                    {item.assignee.avatar}
+                  </Avatar>
+                  <div>
+                    <p className="font-medium">{item.assignee.name}</p>
+                    <p className="text-sm text-muted-foreground">{item.assignee.email}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Metrics */}
+              <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
+                <div className="flex items-center gap-1 mb-3">
+                  <BarChart3 className="w-4 h-4 text-muted-foreground" />
+                  <h3 className="font-semibold text-sm">Engagement Metrics</h3>
+                </div>
+                <div className="grid grid-cols-[repeat(auto-fit,minmax(80px,1fr))] gap-4">
+                  <div className="text-center">
+                    <div className="flex items-center justify-center gap-1 mb-1">
+                      <Eye className="w-4 h-4 text-blue-500" />
+                    </div>
+                    <p className="text-2xl font-bold">{item.metrics.views}</p>
+                    <p className="text-xs text-muted-foreground">Views</p>
+                  </div>
+                  <div className="text-center">
+                    <div className="flex items-center justify-center gap-1 mb-1">
+                      <Heart className="w-4 h-4 text-red-500" />
+                    </div>
+                    <p className="text-2xl font-bold">{item.metrics.likes}</p>
+                    <p className="text-xs text-muted-foreground">Likes</p>
+                  </div>
+                  <div className="text-center">
+                    <div className="flex items-center justify-center gap-1 mb-1">
+                      <Share className="w-4 h-4 text-green-500" />
+                    </div>
+                    <p className="text-2xl font-bold">{item.metrics.shares}</p>
+                    <p className="text-xs text-muted-foreground">Shares</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Tags */}
+              <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
+                <div className="flex items-center gap-1 mb-3">
+                  <Tag className="w-4 h-4 text-muted-foreground" />
+                  <h3 className="font-semibold text-sm">Tags</h3>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {item.tags.map((tag, index) => (
+                    <span
+                      key={index}
+                      className="bg-muted/50 text-muted-foreground px-3 py-1 rounded-full text-xs font-medium"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Content Details */}
+              {item.content && (
+                <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
+                  <h3 className="font-semibold text-sm mb-3">Project Details</h3>
+                  <div className="space-y-4">
+                    <div>
+                      <h4 className="font-medium text-sm mb-2">Summary</h4>
+                      <p className="text-sm text-muted-foreground leading-relaxed">
+                        {item.content.summary}
+                      </p>
+                    </div>
+                    <div>
+                      <h4 className="font-medium text-sm mb-2">Description</h4>
+                      <p className="text-sm text-muted-foreground leading-relaxed">
+                        {item.content.details}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Attachments */}
+              {item.content?.attachments && item.content.attachments.length > 0 && (
+                <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
+                  <h3 className="font-semibold text-sm mb-3">Attachments</h3>
+                  <div className="space-y-2">
+                    {item.content.attachments.map((attachment, index) => {
+                      const IconComponent = getFileIcon(attachment.type)
+                      return (
+                        <div
+                          key={index}
+                          className="flex items-center gap-3 p-3 bg-muted/30 rounded-xl hover:bg-muted/50 transition-colors cursor-pointer group"
+                        >
+                          <IconComponent className="w-5 h-5 text-muted-foreground" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">
+                              {attachment.name}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {attachment.type} • {attachment.size}
+                            </p>
+                          </div>
+                          <Button size="sm" variant="ghost" className="opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Download className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Timeline */}
+              <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
+                <div className="flex items-center gap-1 mb-3">
+                  <Clock className="w-4 h-4 text-muted-foreground" />
+                  <h3 className="font-semibold text-sm">Timeline</h3>
+                </div>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-sm">
+                    <Calendar className="w-3 h-3 text-muted-foreground" />
+                    <span className="text-muted-foreground">Created:</span>
+                    <span className="font-medium">
+                      {new Date(item.createdAt).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                      })}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <TrendingUp className="w-3 h-3 text-muted-foreground" />
+                    <span className="text-muted-foreground">Last updated:</span>
+                    <span className="font-medium">
+                      {new Date(item.updatedAt).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                      })}
+                    </span>
+                  </div>
+                  {item.dueDate && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <AlertCircle className="w-3 h-3 text-orange-500" />
+                      <span className="text-muted-foreground">Due date:</span>
+                      <span className="font-medium text-orange-600">
+                        {new Date(item.dueDate).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric'
+                        })}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Footer Actions */}
+          <div className="p-6 border-t border-border/50 bg-card/30">
+            <div className="flex gap-3">
+              <Button className="flex-1" size="sm">
+                <ExternalLink className="w-4 h-4 mr-2" />
+                Open Project
+              </Button>
+              <Button variant="outline" size="sm">
+                <Share className="w-4 h-4 mr-2" />
+                Share
+              </Button>
+            </div>
+          </div>
+        </div>
+      )
+    }
+  src/pages/Dashboard/index.tsx: >-
+    import { useRef } from 'react'
+
+    import { 
+      BarChart3, 
+      TrendingUp, 
+      Users, 
+      DollarSign, 
+      Activity,
+      Calendar,
+      Clock,
+      MessageSquare,
+      FileText,
+      Star,
+      ChevronRight,
+      MoreVertical,
+      ArrowDown
+    } from 'lucide-react'
+
+    import { cn } from '@/lib/utils'
+
+    import { DemoContent } from './DemoContent';
+
+    import { useDashboardAnimations } from
+    './hooks/useDashboardAnimations.motion'
+
+    import { useDashboardScroll } from './hooks/useDashboardScroll.hook'
+
+    import { PageHeader } from '@/components/shared/PageHeader';
+
+    import { Card } from '@/components/ui/card';
+
+    import { PageLayout } from '@/components/shared/PageLayout';
+
+
+    interface StatsCard {
+      title: string
+      value: string
+      change: string
+      trend: 'up' | 'down'
+      icon: React.ReactNode
+    }
+
+
+    interface ActivityItem {
+      id: string
+      type: 'comment' | 'file' | 'meeting' | 'task'
+      title: string
+      description: string
+      time: string
+      user: string
+    }
+
+
+    const statsCards: StatsCard[] = [
+      {
+        title: "Total Revenue",
+        value: "$45,231.89",
+        change: "+20.1%",
+        trend: "up",
+        icon: <DollarSign className="w-5 h-5" />
+      },
+      {
+        title: "Active Users",
+        value: "2,350",
+        change: "+180.1%",
+        trend: "up",
+        icon: <Users className="w-5 h-5" />
+      },
+      {
+        title: "Conversion Rate",
+        value: "12.5%",
+        change: "+19%",
+        trend: "up",
+        icon: <TrendingUp className="w-5 h-5" />
+      },
+      {
+        title: "Performance",
+        value: "573ms",
+        change: "-5.3%",
+        trend: "down",
+        icon: <Activity className="w-5 h-5" />
+      }
+    ]
+
+
+    const recentActivity: ActivityItem[] = [
+      {
+        id: "1",
+        type: "comment",
+        title: "New comment on Project Alpha",
+        description: "Sarah Johnson added a comment to the design review",
+        time: "2 minutes ago",
+        user: "SJ"
+      },
+      {
+        id: "2",
+        type: "file",
+        title: "Document uploaded",
+        description: "quarterly-report.pdf was uploaded to Documents",
+        time: "15 minutes ago",
+        user: "MD"
+      },
+      {
+        id: "3",
+        type: "meeting",
+        title: "Meeting scheduled",
+        description: "Weekly standup meeting scheduled for tomorrow 9 AM",
+        time: "1 hour ago",
+        user: "RW"
+      },
+      {
+        id: "4",
+        type: "task",
+        title: "Task completed",
+        description: "UI wireframes for mobile app completed",
+        time: "2 hours ago",
+        user: "AL"
+      }
+    ]
+
+
+    interface DashboardContentProps {
+      isInSidePane?: boolean;
+    }
+
+
+    export function DashboardContent({ isInSidePane = false }:
+    DashboardContentProps) {
+        const scrollRef = useRef<HTMLDivElement>(null)
+        const contentRef = useRef<HTMLDivElement>(null);
+        const statsCardsContainerRef = useRef<HTMLDivElement>(null);
+        const featureCardsContainerRef = useRef<HTMLDivElement>(null);
+        const { showScrollToBottom, handleScroll, scrollToBottom } = useDashboardScroll(scrollRef, isInSidePane);
+
+        useDashboardAnimations(contentRef, statsCardsContainerRef, featureCardsContainerRef);
+
+        const getTypeIcon = (type: ActivityItem['type']) => {
+          switch (type) {
+            case 'comment':
+              return <MessageSquare className="w-4 h-4" />
+            case 'file':
+              return <FileText className="w-4 h-4" />
+            case 'meeting':
+              return <Calendar className="w-4 h-4" />
+            case 'task':
+              return <Star className="w-4 h-4" />
+            default:
+              return <Activity className="w-4 h-4" />
+          }
+        }
+
+        return (
+          <PageLayout scrollRef={scrollRef} onScroll={handleScroll} ref={contentRef} isInSidePane={isInSidePane}>
+            {/* Header */}
+            {!isInSidePane && (
+              <PageHeader
+                title="Dashboard"
+                description="Welcome to the Jeli App Shell demo! Explore all the features and customization options."
+              />
+            )}
+              {/* Stats Cards */}
+            <div ref={statsCardsContainerRef} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {statsCards.map((stat, index) => (
+                <Card
+                key={stat.title}
+                className="p-6 border-border/50 hover:border-primary/30 transition-all duration-300 group cursor-pointer"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="p-3 bg-primary/10 rounded-full group-hover:bg-primary/20 transition-colors">
+                    {stat.icon}
+                  </div>
+                  <div className={cn(
+                    "text-sm font-medium",
+                    stat.trend === 'up' ? "text-green-600" : "text-red-600"
+                  )}>
+                    {stat.change}
+                  </div>
+                </div>
+                <div className="mt-4">
+                  <h3 className="text-2xl font-bold">{stat.value}</h3>
+                  <p className="text-sm text-muted-foreground mt-1">{stat.title}</p>
+                </div>
+              </Card>
+              ))}
+            </div>
+
+            {/* Demo Content */}
+            <DemoContent ref={featureCardsContainerRef} />
+
+            {/* Main Content Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Chart Area */}
+            <div className="lg:col-span-2 space-y-6">
+              {/* Analytics Chart */}
+              <Card className="p-6 border-border/50">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-lg font-semibold">Analytics Overview</h3>
+                  <button className="h-8 w-8 flex items-center justify-center hover:bg-accent rounded-full transition-colors">
+                    <MoreVertical className="w-5 h-5" />
+                  </button>
+                </div>
+                
+                {/* Mock Chart */}
+                <div className="h-64 bg-gradient-to-br from-primary/10 to-transparent rounded-xl flex items-center justify-center border border-border/50">
+                  <div className="text-center">
+                    <BarChart3 className="w-12 h-12 text-primary mx-auto mb-2" />
+                    <p className="text-muted-foreground">Chart visualization would go here</p>
+                  </div>
+                </div>
+              </Card>
+
+              {/* Recent Projects */}
+              <Card className="p-6 border-border/50">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-lg font-semibold">Recent Projects</h3>
+                  <button className="text-primary hover:text-primary/80 text-sm font-medium flex items-center gap-1">
+                    View All
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+                
+                <div className="space-y-4">
+                  {[
+                    { name: "E-commerce Platform", progress: 75, team: 5, deadline: "Dec 15" },
+                    { name: "Mobile App Redesign", progress: 45, team: 3, deadline: "Jan 20" },
+                    { name: "Marketing Website", progress: 90, team: 4, deadline: "Dec 5" }
+                  ].map((project) => (
+                    <div key={project.name} className="p-4 bg-accent/30 rounded-xl hover:bg-accent/50 transition-colors cursor-pointer">
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="font-medium">{project.name}</h4>
+                        <span className="text-sm text-muted-foreground">{project.progress}%</span>
+                      </div>
+                      <div className="w-full bg-muted rounded-full h-2 mb-3">
+                        <div 
+                          className="bg-primary h-2 rounded-full transition-all duration-500"
+                          style={{ width: `${project.progress}%` }}
+                        />
+                      </div>
+                      <div className="flex items-center justify-between text-sm text-muted-foreground">
+                        <span>{project.team} team members</span>
+                        <span>Due {project.deadline}</span>
+                        </div>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            </div>
+
+            {/* Sidebar Content */}
+            <div className="space-y-6">
+              {/* Quick Actions */}
+              <Card className="p-6 border-border/50">
+                <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
+                <div className="space-y-3">
+                  {[
+                    { icon: <FileText className="w-4 h-4" />, label: "Create Document", color: "bg-blue-500/10 text-blue-600" },
+                    { icon: <Calendar className="w-4 h-4" />, label: "Schedule Meeting", color: "bg-green-500/10 text-green-600" },
+                    { icon: <Users className="w-4 h-4" />, label: "Invite Team", color: "bg-purple-500/10 text-purple-600" },
+                    { icon: <BarChart3 className="w-4 h-4" />, label: "View Reports", color: "bg-orange-500/10 text-orange-600" }
+                  ].map((action) => (
+                    <button
+                      key={action.label}
+                      className="w-full flex items-center gap-3 p-3 hover:bg-accent rounded-lg transition-colors text-left"
+                    >
+                      <div className={cn("p-2 rounded-full", action.color)}>
+                        {action.icon}
+                      </div>
+                      <span className="font-medium">{action.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </Card>
+
+              {/* Recent Activity */}
+              <Card className="p-6 border-border/50">
+                <h3 className="text-lg font-semibold mb-4">Recent Activity</h3>
+                <div className="space-y-4">
+                  {recentActivity.map((activity) => (
+                    <div key={activity.id} className="flex items-start gap-3 p-3 hover:bg-accent/30 rounded-xl transition-colors cursor-pointer">
+                      <div className="p-2 bg-primary/10 rounded-full flex-shrink-0">
+                        {getTypeIcon(activity.type)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-medium text-sm mb-1">{activity.title}</h4>
+                        <p className="text-xs text-muted-foreground mb-2">{activity.description}</p>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <Clock className="w-3 h-3" />
+                          <span>{activity.time}</span>
+                          <div className="w-5 h-5 bg-primary rounded-full flex items-center justify-center text-primary-foreground text-xs font-medium">
+                            {activity.user}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            </div>
+          </div>
+          {showScrollToBottom && (
+            <button
+              onClick={scrollToBottom}
+              className="fixed bottom-8 right-8 w-12 h-12 bg-primary text-primary-foreground rounded-full flex items-center justify-center shadow-lg hover:bg-primary/90 transition-all animate-fade-in z-[51]"
+              style={{ animation: 'bounce 2s infinite' }}
+              title="Scroll to bottom"
+            >
+              <ArrowDown className="w-6 h-6" />
+            </button>
+          )}
+          </PageLayout>
+        )
+    }
+  src/pages/DataDemo/components/DataListView.tsx: >-
+    import { useRef } from 'react'
+
+    import { cn } from '@/lib/utils'
+
+    import { Badge } from '@/components/ui/badge'
+
+    import { Avatar } from '@/components/ui/avatar'
+
+    import { Calendar, Eye, Heart, Share, ArrowRight } from 'lucide-react'
+
+    import type { ViewProps } from '../types'
+
+    import { getStatusColor, getPriorityColor } from '../utils'
+
+    import { useIncrementalStaggeredAnimation } from
+    '@/hooks/useStaggeredAnimation.motion'
+
+    import { EmptyState } from './EmptyState'
+
+
+    export function DataListView({ data, onItemSelect, selectedItem }:
+    ViewProps) {
+      const listRef = useRef<HTMLDivElement>(null)
+      useIncrementalStaggeredAnimation(listRef, [data], { scale: 1, y: 30, stagger: 0.08, duration: 0.5 });
+
+      if (data.length === 0) {
+        return <EmptyState />
+      }
+
+      return (
+        <div ref={listRef} className="space-y-4">
+          {data.map((item) => {
+            const isSelected = selectedItem?.id === item.id
+            
+            return (
+              <div
+                key={item.id}
+                onClick={() => onItemSelect(item)}
+                className={cn(
+                  "group relative overflow-hidden rounded-2xl border bg-card/50 backdrop-blur-sm transition-all duration-300 cursor-pointer",
+                  "hover:bg-card/80 hover:shadow-lg hover:shadow-primary/5 hover:border-primary/20",
+                  "active:scale-[0.99]",
+                  isSelected && "ring-2 ring-primary/20 border-primary/30 bg-card/90"
+                )}
+              >
+                <div className="p-6">
+                  <div className="flex items-start gap-4">
+                    {/* Thumbnail */}
+                    <div className="flex-shrink-0">
+                      <div className="w-14 h-14 bg-gradient-to-br from-primary/20 to-primary/10 rounded-xl flex items-center justify-center text-2xl">
+                        {item.thumbnail}
+                      </div>
+                    </div>
+
+                    {/* Content */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-semibold text-lg mb-1 group-hover:text-primary transition-colors">
+                            {item.title}
+                          </h3>
+                          <p className="text-muted-foreground text-sm mb-3 line-clamp-2">
+                            {item.description}
+                          </p>
+                        </div>
+                        <ArrowRight className="w-5 h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all duration-300 ml-4 flex-shrink-0" />
+                      </div>
+
+                      {/* Badges */}
+                      <div className="flex items-center gap-2 mb-4">
+                        <Badge variant="outline" className={getStatusColor(item.status)}>
+                          {item.status}
+                        </Badge>
+                        <Badge variant="outline" className={getPriorityColor(item.priority)}>
+                          {item.priority}
+                        </Badge>
+                        <Badge variant="outline" className="bg-accent/50">
+                          {item.category}
+                        </Badge>
+                      </div>
+
+                      {/* Meta info */}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                          {/* Assignee */}
+                          <div className="flex items-center gap-2">
+                            <Avatar className="w-7 h-7 text-sm">
+                              {item.assignee.avatar}
+                            </Avatar>
+                            <span className="text-sm text-muted-foreground font-medium">
+                              {item.assignee.name}
+                            </span>
+                          </div>
+
+                          {/* Date */}
+                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                            <Calendar className="w-3 h-3" />
+                            {new Date(item.updatedAt).toLocaleDateString()}
+                          </div>
+                        </div>
+
+                        {/* Metrics */}
+                        <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                          <div className="flex items-center gap-1">
+                            <Eye className="w-3 h-3" />
+                            {item.metrics.views}
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Heart className="w-3 h-3" />
+                            {item.metrics.likes}
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Share className="w-3 h-3" />
+                            {item.metrics.shares}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Progress bar */}
+                      <div className="mt-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-xs text-muted-foreground">Progress</span>
+                          <span className="text-xs font-medium">{item.metrics.completion}%</span>
+                        </div>
+                        <div className="w-full bg-muted rounded-full h-1.5">
+                          <div 
+                            className="bg-gradient-to-r from-primary to-primary/80 h-1.5 rounded-full transition-all duration-500 ease-out"
+                            style={{ width: `${item.metrics.completion}%` }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Hover gradient overlay */}
+                <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+              </div>
+            )
+          })}
+        </div>
+      )
+    }
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 257

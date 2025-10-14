@@ -1,37 +1,16 @@
-import { useRef, useLayoutEffect } from 'react'
-import { gsap } from 'gsap'
+import { useRef } from 'react'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { Avatar } from '@/components/ui/avatar'
 import { Calendar, Eye, Heart, Share, ArrowUpRight, Tag } from 'lucide-react'
 import type { ViewProps } from '../types'
 import { getStatusColor, getPriorityColor } from '../utils'
+import { useIncrementalStaggeredAnimation } from '@/hooks/useStaggeredAnimation.motion.hook'
 import { EmptyState } from './EmptyState'
 
 export function DataCardView({ data, onItemSelect, selectedItem, isGrid = false }: ViewProps) {
   const containerRef = useRef<HTMLDivElement>(null)
-  const animatedItemsCount = useRef(0)
-
-  useLayoutEffect(() => {
-    if (containerRef.current && data.length > animatedItemsCount.current) {
-      const newItems = Array.from(containerRef.current.children).slice(
-        animatedItemsCount.current
-      );
-      gsap.fromTo(
-        newItems,
-        { y: 40, opacity: 0, scale: 0.95 },
-        {
-          duration: 0.6,
-          y: 0,
-          opacity: 1,
-          scale: 1,
-          stagger: 0.1,
-          ease: 'power2.out',
-        },
-      );
-      animatedItemsCount.current = data.length;
-    }
-  }, [data]);
+  useIncrementalStaggeredAnimation(containerRef, [data], { y: 40 });
 
   if (data.length === 0) {
     return <EmptyState />

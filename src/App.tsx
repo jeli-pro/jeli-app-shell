@@ -59,11 +59,13 @@ import { cn } from "./lib/utils";
 function LoginPageWrapper() {
   const { login, forgotPassword } = useAuthStore();
   const navigate = useNavigate();
+  const location = useLocation();
+  const from = location.state?.from?.pathname + location.state?.from?.search || "/";
 
   const handleLogin = async (email: string, password: string) => {
     try {
       await login(email, password);
-      navigate("/");
+      navigate(from, { replace: true });
     } catch (error) {
       console.error("Login failed:", error);
       // In a real app, you'd show an error message to the user
@@ -95,19 +97,26 @@ function LoginPageWrapper() {
 // Checks for authentication and redirects to login if needed
 function ProtectedRoute() {
   const { isAuthenticated } = useAuthStore();
+  const location = useLocation();
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/login" state={{ from: location }} replace />;
   }
   return <Outlet />;
 }
 
-// The main layout for authenticated parts of the application
-function ProtectedLayout() {
+// A root component to apply global styles and effects
+function Root() {
   const isDarkMode = useAppStore((state) => state.isDarkMode);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", isDarkMode);
   }, [isDarkMode]);
+
+  return <Outlet />;
+}
+
+// The main layout for authenticated parts of the application
+function ProtectedLayout() {
 
   return (
     <div className="h-screen w-screen overflow-hidden bg-background">
@@ -419,24 +428,29 @@ function ComposedApp() {
 function App() {
   const router = createBrowserRouter([
     {
-      path: "/login",
-      element: <LoginPageWrapper />,
-    },
-    {
-      path: "/",
-      element: <ProtectedRoute />,
+      element: <Root />,
       children: [
         {
+          path: "/login",
+          element: <LoginPageWrapper />,
+        },
+        {
           path: "/",
-          element: <ProtectedLayout />,
+          element: <ProtectedRoute />,
           children: [
-            { index: true, element: <Navigate to="/dashboard" replace /> },
-            { path: "dashboard", element: <DashboardContent /> },
-            { path: "settings", element: <SettingsPage /> },
-            { path: "toaster", element: <ToasterDemo /> },
-            { path: "notifications", element: <NotificationsPage /> },
-            { path: "data-demo", element: <DataDemoPage /> },
-            { path: "data-demo/:itemId", element: <DataDemoPage /> },
+            {
+              path: "/",
+              element: <ProtectedLayout />,
+              children: [
+                { index: true, element: <Navigate to="/dashboard" replace /> },
+                { path: "dashboard", element: <DashboardContent /> },
+                { path: "settings", element: <SettingsPage /> },
+                { path: "toaster", element: <ToasterDemo /> },
+                { path: "notifications", element: <NotificationsPage /> },
+                { path: "data-demo", element: <DataDemoPage /> },
+                { path: "data-demo/:itemId", element: <DataDemoPage /> },
+              ],
+            },
           ],
         },
       ],

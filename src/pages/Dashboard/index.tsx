@@ -16,7 +16,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { DemoContent } from './DemoContent';
-import { useDashboardAnimations } from './hooks/useDashboardAnimations.hook'
+import { useDashboardAnimations } from './hooks/useDashboardAnimations.motion.hook'
 import { useDashboardScroll } from './hooks/useDashboardScroll.hook'
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Card } from '@/components/ui/card';
@@ -112,10 +112,11 @@ interface DashboardContentProps {
 export function DashboardContent({ isInSidePane = false }: DashboardContentProps) {
     const scrollRef = useRef<HTMLDivElement>(null)
     const contentRef = useRef<HTMLDivElement>(null);
-    const cardsRef = useRef<(HTMLDivElement | null)[]>([])
+    const statsCardsContainerRef = useRef<HTMLDivElement>(null);
+    const featureCardsContainerRef = useRef<HTMLDivElement>(null);
     const { showScrollToBottom, handleScroll, scrollToBottom } = useDashboardScroll(scrollRef, isInSidePane);
 
-    useDashboardAnimations(contentRef, cardsRef);
+    useDashboardAnimations(contentRef, statsCardsContainerRef, featureCardsContainerRef);
 
     const getTypeIcon = (type: ActivityItem['type']) => {
       switch (type) {
@@ -142,11 +143,10 @@ export function DashboardContent({ isInSidePane = false }: DashboardContentProps
           />
         )}
           {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div ref={statsCardsContainerRef} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {statsCards.map((stat, index) => (
             <Card
             key={stat.title}
-            ref={el => cardsRef.current[index] = el}
             className="p-6 border-border/50 hover:border-primary/30 transition-all duration-300 group cursor-pointer"
           >
             <div className="flex items-center justify-between">
@@ -169,7 +169,7 @@ export function DashboardContent({ isInSidePane = false }: DashboardContentProps
         </div>
 
         {/* Demo Content */}
-        <DemoContent />
+        <DemoContent ref={featureCardsContainerRef} />
 
         {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

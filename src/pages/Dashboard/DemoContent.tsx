@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import React, { useRef } from 'react'
 import { 
   Sparkles, 
   Zap, 
@@ -16,14 +16,11 @@ import { cn } from '@/lib/utils'
 import { useAppStore } from '@/store/appStore'
 import { useAppShell } from '@/context/AppShellContext'
 import { Card } from '@/components/ui/card'
-import { useDemoContentAnimations } from './hooks/useDemoContentAnimations.hook'
 
-export function DemoContent() {
+export const DemoContent = React.forwardRef<HTMLDivElement, {}>(function DemoContent(props, ref) {
   const { bodyState, sidebarState, compactMode } = useAppShell()
   const { isDarkMode } = useAppStore()
   const contentRef = useRef<HTMLDivElement>(null)
-  const cardsRef = useRef<(HTMLDivElement | null)[]>([])
-  useDemoContentAnimations(cardsRef);
 
   const features = [
     {
@@ -96,11 +93,10 @@ export function DemoContent() {
       </div>
 
       {/* Feature Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div ref={ref} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {features.map((feature, index) => (
           <Card
             key={feature.title}
-            ref={el => cardsRef.current[index] = el}
             className="group relative overflow-hidden border-border/50 p-6 hover:border-primary/30 hover:bg-accent/30 transition-all duration-300 cursor-pointer"
           >
             <div className="relative z-10">
@@ -196,4 +192,4 @@ export function DemoContent() {
       </div>
     </div>
   )
-}
+})

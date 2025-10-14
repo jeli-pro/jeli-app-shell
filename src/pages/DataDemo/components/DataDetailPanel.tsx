@@ -1,5 +1,4 @@
-import React, { useLayoutEffect, useRef } from 'react'
-import { gsap } from 'gsap'
+import React, { useRef } from 'react'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { Avatar } from '@/components/ui/avatar'
@@ -26,6 +25,7 @@ import {
   Circle
 } from 'lucide-react' 
 import type { DataItem } from '../types'
+import { useStaggeredAnimation } from '@/hooks/useStaggeredAnimation.motion.hook'
 import { getStatusColor, getPriorityColor } from '../utils'
 
 interface DataDetailPanelProps {
@@ -35,21 +35,7 @@ interface DataDetailPanelProps {
 
 export function DataDetailPanel({ item, onClose }: DataDetailPanelProps) {
   const contentRef = useRef<HTMLDivElement>(null)
-
-  useLayoutEffect(() => {
-    if (item && contentRef.current) {
-      gsap.fromTo(contentRef.current.children,
-        { y: 30, opacity: 0 },
-        {
-          duration: 0.6,
-          y: 0,
-          opacity: 1,
-          stagger: 0.08,
-          ease: "power2.out"
-        }
-      )
-    }
-  }, [item])
+  useStaggeredAnimation(contentRef, [item]);
 
   if (!item) {
     return null
