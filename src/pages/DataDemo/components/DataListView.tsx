@@ -2,9 +2,10 @@ import { useRef } from 'react'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { ArrowRight } from 'lucide-react'
-import type { ViewProps, DataItem } from '../types'
+import type { DataItem } from '../types'
 import { useStaggeredAnimation } from '@/hooks/useStaggeredAnimation.motion.hook'
 import { EmptyState } from './EmptyState'
+import { useDataDemo } from '../context/DataDemoContext'
 import {
   AssigneeInfo,
   ItemMetrics,
@@ -14,17 +15,19 @@ import {
   ItemDateInfo,
 } from './shared/DataItemParts'
 
-export function DataListView({ data, onItemSelect, selectedItem }: ViewProps) {
+export function DataListView() {
+  const { dataToRender: data, onItemSelect, selectedItem } = useDataDemo();
   const listRef = useRef<HTMLDivElement>(null)
   useStaggeredAnimation(listRef, [data], { mode: 'incremental', scale: 1, y: 30, stagger: 0.08, duration: 0.5 });
 
-  if (!Array.isArray(data) || data.length === 0) {
+  const items = Array.isArray(data) ? data : [];
+  if (items.length === 0) {
     return <EmptyState />
   }
 
   return (
     <div ref={listRef} className="space-y-4">
-      {data.map((item: DataItem) => {
+      {items.map((item: DataItem) => {
         const isSelected = selectedItem?.id === item.id
         
         return (

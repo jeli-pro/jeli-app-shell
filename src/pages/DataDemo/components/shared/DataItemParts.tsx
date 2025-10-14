@@ -51,13 +51,22 @@ export function ItemMetrics({ metrics }: { metrics: DataItem['metrics'] }) {
   )
 }
 
-export function ItemProgressBar({ completion }: { completion: number }) {
-  return (
+export function ItemProgressBar({ completion, showPercentage }: { completion: number; showPercentage?: boolean }) {
+  const bar = (
     <div className="w-full bg-muted rounded-full h-2.5">
       <div
         className="bg-gradient-to-r from-primary to-primary/80 h-2.5 rounded-full transition-all duration-500"
         style={{ width: `${completion}%` }}
       />
+    </div>
+  );
+
+  if (!showPercentage) return bar;
+
+  return (
+    <div className="flex items-center gap-3">
+      <div className="flex-1 min-w-0">{bar}</div>
+      <span className="text-sm font-medium text-muted-foreground">{completion}%</span>
     </div>
   )
 }

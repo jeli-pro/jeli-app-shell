@@ -3,11 +3,7 @@ import { gsap } from 'gsap'
 import { cn } from '@/lib/utils'
 import { List, Grid3X3, LayoutGrid, Table } from 'lucide-react'
 import type { ViewMode } from '../types'
-
-interface DataViewModeSelectorProps {
-  viewMode: ViewMode
-  onChange: (mode: ViewMode) => void
-}
+import { useDataDemo } from '../context/DataDemoContext'
 
 const viewModes = [
   { id: 'list' as ViewMode, label: 'List', icon: List, description: 'Compact list with details' },
@@ -16,7 +12,8 @@ const viewModes = [
   { id: 'table' as ViewMode, label: 'Table', icon: Table, description: 'Structured data table' }
 ]
 
-export function DataViewModeSelector({ viewMode, onChange }: DataViewModeSelectorProps) {
+export function DataViewModeSelector() {
+  const { viewMode, setViewMode: onChange } = useDataDemo();
   const indicatorRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const [isExpanded, setIsExpanded] = useState(false)

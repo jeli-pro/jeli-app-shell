@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback, useMemo, ReactNode } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { capitalize, cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { mockDataItems } from '../data/mockData';
@@ -13,6 +14,7 @@ export function useDataManagement() {
 		activeGroupTab,
 		filters,
 		sortConfig,
+		itemId,
 		setPage,
 		setViewMode,
 		setGroupBy,
@@ -21,6 +23,7 @@ export function useDataManagement() {
 		setSort,
 		setTableSort,
 	} = useAppViewManager();
+	const navigate = useNavigate();
 
 	const [items, setItems] = useState<DataItem[]>([]);
 	const [hasMore, setHasMore] = useState(true);
@@ -155,6 +158,16 @@ export function useDataManagement() {
 		];
 	}, [filteredAndSortedData, groupBy, activeGroupTab]);
 
+	const selectedItem = useMemo(() => {
+		if (!itemId) return null;
+		return mockDataItems.find(item => item.id === itemId) ?? null;
+	}, [itemId]);
+
+	const onItemSelect = useCallback((item: DataItem) => {
+		navigate(`/data-demo/${item.id}`);
+	}, [navigate]);
+
+
 	// Data to be rendered in the current view, after grouping and tab selection is applied
 	const dataToRender = useMemo(() => {
 		if (groupBy === 'none') {
@@ -184,6 +197,8 @@ export function useDataManagement() {
 		dataToRender,
 		totalItemCount,
 		isInitialLoading,
+		selectedItem,
+		onItemSelect,
 		setViewMode,
 		setGroupBy,
 		setActiveGroupTab,

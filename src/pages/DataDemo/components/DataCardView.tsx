@@ -2,9 +2,10 @@ import { useRef } from 'react'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { ArrowUpRight } from 'lucide-react'
-import type { ViewProps, DataItem } from '../types'
+import type { DataItem } from '../types'
 import { useStaggeredAnimation } from '@/hooks/useStaggeredAnimation.motion.hook'
 import { EmptyState } from './EmptyState'
+import { useDataDemo } from '../context/DataDemoContext'
 import {
   AssigneeInfo,
   ItemMetrics,
@@ -14,11 +15,13 @@ import {
   ItemDateInfo,
 } from './shared/DataItemParts'
 
-export function DataCardView({ data, onItemSelect, selectedItem, isGrid = false }: ViewProps) {
+export function DataCardView({ isGrid = false }: { isGrid?: boolean }) {
+  const { dataToRender: data, onItemSelect, selectedItem } = useDataDemo();
   const containerRef = useRef<HTMLDivElement>(null)
   useStaggeredAnimation(containerRef, [data], { mode: 'incremental', y: 40 });
 
-  if (!Array.isArray(data) || data.length === 0) {
+  const items = Array.isArray(data) ? data : [];
+  if (items.length === 0) {
     return <EmptyState />
   }
 
@@ -32,7 +35,7 @@ export function DataCardView({ data, onItemSelect, selectedItem, isGrid = false 
           : "grid grid-cols-[repeat(auto-fit,minmax(320px,1fr))]"
       )}
     >
-      {data.map((item: DataItem) => {
+      {items.map((item: DataItem) => {
         const isSelected = selectedItem?.id === item.id
         
         return (

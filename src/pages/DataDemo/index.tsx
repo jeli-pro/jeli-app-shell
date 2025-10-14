@@ -1,5 +1,4 @@
-import { useRef, useEffect, useMemo } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useRef, useEffect } from 'react'
 import {
   Layers, 
   AlertTriangle, 
@@ -28,8 +27,8 @@ import { StatCard } from '@/components/shared/StatCard'
 import { AnimatedLoadingSkeleton } from './components/AnimatedLoadingSkeleton'
 import { DataToolbar } from './components/DataToolbar'
 import { mockDataItems } from './data/mockData'
-import type { DataItem, GroupableField } from './types'
-import { useDataManagement } from './hooks/useDataManagement.hook'
+import type { GroupableField } from './types'
+import { useDataDemo, DataDemoProvider } from './context/DataDemoContext'
 
 type Stat = {
   title: string;
@@ -52,13 +51,11 @@ type ChartStat = {
 
 type StatItem = Stat | ChartStat;
 
-export default function DataDemoPage() {
+function DataDemoContent() {
   const {
     viewMode,
     groupBy,
     activeGroupTab,
-    filters,
-    sortConfig,
     hasMore,
     isLoading,
     loaderRef,
@@ -66,30 +63,14 @@ export default function DataDemoPage() {
     dataToRender,
     totalItemCount,
     isInitialLoading,
-    setViewMode,
     setGroupBy,
     setActiveGroupTab,
-    setFilters,
-    setSort,
-    setTableSort,
-  } = useDataManagement();
+  } = useDataDemo();
 
   const groupOptions: { id: GroupableField | 'none'; label: string }[] = [
     { id: 'none', label: 'None' }, { id: 'status', label: 'Status' }, { id: 'priority', label: 'Priority' }, { id: 'category', label: 'Category' }
   ]
-  const contentRef = useRef<HTMLDivElement>(null)
   const statsRef = useRef<HTMLDivElement>(null)
-  const navigate = useNavigate()
-  const { itemId } = useParams<{ itemId: string }>()
-
-  const handleItemSelect = (item: DataItem) => {
-    navigate(`/data-demo/${item.id}`)
-  }
-
-  const selectedItem = useMemo(() => {
-    if (!itemId) return null
-    return mockDataItems.find(item => item.id === itemId) ?? null
-  }, [itemId])
 
   // Calculate stats from data
   const totalItems = mockDataItems.length
@@ -154,11 +135,6 @@ export default function DataDemoPage() {
     }
   }, [isInitialLoading])
 
-  const commonViewProps = {
-    onItemSelect: handleItemSelect,
-    selectedItem,
-  };
-
   return (
     <PageLayout
       // Note: Search functionality is handled by a separate SearchBar in the TopBar
@@ -174,7 +150,7 @@ export default function DataDemoPage() {
                 : `Showing ${dataToRender.length} of ${totalItemCount} item(s)`}
             </p>
           </div>
-          <DataViewModeSelector viewMode={viewMode} onChange={setViewMode} />
+          <DataViewModeSelector />
         </div>
 
         {/* Stats Section */}
@@ -196,12 +172,7 @@ export default function DataDemoPage() {
 
         {/* Controls Area */}
         <div className="space-y-6">
-          <DataToolbar
-            filters={filters}
-            onFiltersChange={setFilters}
-            sortConfig={sortConfig}
-            onSortChange={setSort}
-          />
+          <DataToolbar />
         </div>
 
         {/* Group by and Tabs section */}
@@ -245,21 +216,14 @@ export default function DataDemoPage() {
           </div>
         </div>
 
-        <div ref={contentRef} className="min-h-[500px]">
+        <div className="min-h-[500px]">
           {isInitialLoading ? <AnimatedLoadingSkeleton viewMode={viewMode} /> : (
             <div>
-              {viewMode === 'table' ? (
-                 <DataTableView 
-                    data={dataToRender} 
-                    {...commonViewProps}
-                    sortConfig={sortConfig} 
-                    onSort={setTableSort} 
-                  />
-              ) : (
+              {viewMode === 'table' ? <DataTableView /> : (
                 <>
-                  {viewMode === 'list' && <DataListView data={dataToRender} {...commonViewProps} />}
-                  {viewMode === 'cards' && <DataCardView data={dataToRender} {...commonViewProps} />}
-                  {viewMode === 'grid' && <DataCardView data={dataToRender} {...commonViewProps} isGrid />}
+                  {viewMode === 'list' && <DataListView />}
+                  {viewMode === 'cards' && <DataCardView />}
+                  {viewMode === 'grid' && <DataCardView isGrid />}
                 </>
               )}
             </div>
@@ -281,4 +245,12 @@ export default function DataDemoPage() {
       </div>
     </PageLayout>
   )
+}
+
+export default function DataDemoPage() {
+  return (
+    <DataDemoProvider>
+      <DataDemoContent />
+    </DataDemoProvider>
+  );
 }

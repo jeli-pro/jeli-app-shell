@@ -9,27 +9,27 @@ import {
 import { cn } from '@/lib/utils'
 import { BODY_STATES } from '@/lib/utils'
 import { useAppStore } from '@/store/appStore'
-import { useAppShell } from '@/context/AppShellContext'
 import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
 import { UserDropdown } from './UserDropdown'
 import { ViewModeSwitcher } from './ViewModeSwitcher'
+import { useAppShell } from '@/context/AppShellContext'
 
 interface TopBarProps {
-  onToggleSidebar?: () => void
-  onToggleDarkMode?: () => void
   children?: React.ReactNode
 }
 
 export function TopBar({
-  onToggleSidebar,
-  onToggleDarkMode,
   children,
 }: TopBarProps) {
-  const { bodyState } = useAppShell()
+  const { 
+    bodyState,
+    toggleSidebar,
+  } = useAppShell()
   const viewManager = useAppViewManager();
   const { 
     setCommandPaletteOpen,
     isDarkMode,
+    toggleDarkMode,
   } = useAppStore()
 
   return (
@@ -40,7 +40,7 @@ export function TopBar({
       <div className="flex items-center gap-4">
         {/* Sidebar Controls */}
         <button
-          onClick={() => onToggleSidebar?.()}
+          onClick={toggleSidebar}
           className={cn(
             "h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors"
           )}
@@ -82,7 +82,7 @@ export function TopBar({
 
         {/* Theme and Settings */}
         <button
-          onClick={() => onToggleDarkMode?.()}
+          onClick={toggleDarkMode}
           className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
           title="Toggle Dark Mode"
         >

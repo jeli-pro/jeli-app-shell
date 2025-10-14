@@ -1,21 +1,54 @@
-import { forwardRef, type ReactNode } from 'react'
-import { useSearchParams } from 'react-router-dom'
-import { ChevronRight, X } from 'lucide-react'
+import { forwardRef, useMemo, useCallback, createElement } from 'react'
+import {
+  ChevronRight,
+  X,
+  Layers,
+  SplitSquareHorizontal,
+  ChevronsLeftRight,
+} from 'lucide-react'
 import { cn, BODY_STATES } from '@/lib/utils'
 import { useAppShell } from '@/context/AppShellContext'
+import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
+import { useRightPaneContent } from '@/hooks/useRightPaneContent.hook'
 
-interface RightPaneProps {
-  children?: ReactNode
-  header?: ReactNode
-  className?: string
-  onClose?: () => void;
-}
-
-export const RightPane = forwardRef<HTMLDivElement, RightPaneProps>(({ children, header, className, onClose }, ref) => {
-  const { dispatch, bodyState, fullscreenTarget, toggleFullscreen } = useAppShell();
-  const [, setSearchParams] = useSearchParams()
+export const RightPane = forwardRef<HTMLDivElement, { className?: string }>(({ className }, ref) => {
+  const { dispatch, fullscreenTarget, toggleFullscreen, bodyState } = useAppShell()
+  const viewManager = useAppViewManager()
+  const { sidePaneContent, closeSidePane, toggleSplitView, navigateTo } = viewManager
+  
+  const { meta, content: children } = useRightPaneContent(sidePaneContent)
+  
   const isSplitView = bodyState === BODY_STATES.SPLIT_VIEW;
   const isFullscreen = bodyState === BODY_STATES.FULLSCREEN;
+
+  const handleMaximize = useCallback(() => {
+    if ("page" in meta && meta.page) {
+      navigateTo(meta.page);
+    }
+  }, [meta, navigateTo]);
+
+  const header = useMemo(() => (
+    <div className="flex items-center justify-between p-4 border-b border-border h-20 flex-shrink-0 pl-6">
+      {bodyState !== BODY_STATES.SPLIT_VIEW && 'icon' in meta ? (
+        <div className="flex items-center gap-2">
+          {meta.icon && createElement(meta.icon, { className: "w-5 h-5" })}
+          <h2 className="text-lg font-semibold whitespace-nowrap">{meta.title}</h2>
+        </div>
+      ) : <div />}
+      <div className="flex items-center">
+        {(bodyState === BODY_STATES.SIDE_PANE || bodyState === BODY_STATES.SPLIT_VIEW) && (
+          <button onClick={toggleSplitView} className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors" title={bodyState === BODY_STATES.SIDE_PANE ? "Switch to Split View" : "Switch to Overlay View"}>
+            {bodyState === BODY_STATES.SPLIT_VIEW ? <Layers className="w-5 h-5" /> : <SplitSquareHorizontal className="w-5 h-5" />}
+          </button>
+        )}
+        {bodyState !== BODY_STATES.SPLIT_VIEW && "page" in meta && meta.page && (
+          <button onClick={handleMaximize} className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors mr-2" title="Move to Main View">
+            <ChevronsLeftRight className="w-5 h-5" />
+          </button>
+        )}
+      </div>
+    </div>
+  ), [bodyState, meta, handleMaximize, toggleSplitView]);
 
   if (isFullscreen && fullscreenTarget !== 'right') {
     return null;
@@ -43,16 +76,7 @@ export const RightPane = forwardRef<HTMLDivElement, RightPaneProps>(({ children,
       )}
       {bodyState !== BODY_STATES.SPLIT_VIEW && !isFullscreen && (
         <button
-          onClick={onClose ?? (() => {
-              setSearchParams(prev => {
-                const newParams = new URLSearchParams(prev);
-                newParams.delete('sidePane');
-                newParams.delete('right');
-                newParams.delete('view');
-                return newParams;
-              }, { replace: true });
-            })
-          }
+          onClick={closeSidePane}
           className="absolute top-1/2 -left-px -translate-y-1/2 -translate-x-full w-8 h-16 bg-card border border-r-0 border-border rounded-l-lg flex items-center justify-center hover:bg-accent transition-colors group z-10"
           title="Close pane"
         >
@@ -70,11 +94,7 @@ export const RightPane = forwardRef<HTMLDivElement, RightPaneProps>(({ children,
       >
         <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200 mx-auto" />
       </div>
-      {header && (
-        <div className="flex items-center justify-between p-4 border-b border-border h-20 flex-shrink-0 pl-6">
-          {header}
-        </div>
-      )}
+      {header}
       <div className={cn("flex-1 overflow-y-auto")}>
         {children}
       </div>

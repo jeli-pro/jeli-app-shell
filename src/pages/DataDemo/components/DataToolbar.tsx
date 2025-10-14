@@ -25,19 +25,13 @@ import {
   CommandSeparator,
 } from '@/components/ui/command'
 
-import type { SortConfig, SortableField, Status, Priority } from '../types'
+import type { SortableField, Status, Priority } from '../types'
+import { useDataDemo } from '../context/DataDemoContext'
 
 export interface FilterConfig {
   searchTerm: string
   status: Status[]
   priority: Priority[]
-}
-
-interface DataToolbarProps {
-  filters: FilterConfig
-  onFiltersChange: (filters: FilterConfig) => void
-  sortConfig: SortConfig | null
-  onSortChange: (config: SortConfig | null) => void
 }
 
 const statusOptions: { value: Status; label: string }[] = [
@@ -63,12 +57,14 @@ const sortOptions: { value: SortableField, label: string }[] = [
 ]
 
 
-export function DataToolbar({
-  filters,
-  onFiltersChange,
-  sortConfig,
-  onSortChange,
-}: DataToolbarProps) {
+export function DataToolbar() {
+  const {
+    filters,
+    setFilters: onFiltersChange,
+    sortConfig,
+    setSort: onSortChange,
+  } = useDataDemo();
+
   const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     onFiltersChange({ ...filters, searchTerm: event.target.value })
   }

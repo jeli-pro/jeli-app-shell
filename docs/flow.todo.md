@@ -13,7 +13,18 @@ implement the eslint
 
 ===
 
+make the codebase radically DRY without UI UX regression by;
+1. extract out all stores to [domain].store.ts file
+2. eliminating props drilling, so should use global state at leaf components
+3. tsx files only for renders
+
+===
+
 make the codebase highly DRY without UI UX regression
+
+===
+
+make the codebase highly DRY without UI UX regression... by eliminating props drilling, so should use global state at leaf components
 
 ===
 

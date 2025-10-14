@@ -1,216 +1,190 @@
-Here's the master plan, crafted in hacker news style.
-
----
-
-Alright, team. We've got a decent amount of React code here, but it's starting to smell. The same bits of URL-munging logic are popping up all over the place like whack-a-mole. Every time we want to open a side pane or switch a view, we're hand-rolling `URLSearchParams`. It's a recipe for drift and bugs. This is classic tech debt.
-
-The plan is to mercilessly refactor this into a DRY, state-driven machine. We're going to introduce a single source of truth for all view-state mutations—a `useAppViewManager` hook. This little beast will be our gatekeeper for the URL. Components will no longer talk to the router directly; they'll talk to our manager, which speaks router on their behalf. This makes components dumb and declarative, which is exactly what we want.
-
-We'll then gut all the redundant logic from the components and replace it with clean calls to our new hook. We'll also clean up the main `App` component, which is doing way too much thinking about what goes in the right pane. We'll delegate that to a dedicated hook. By the end, our codebase will be leaner, meaner, and a hell of a lot easier to reason about. Let's ship it.
-
 ```yaml
 plan:
-  uuid: 'f4b9c1d8-3e5a-4f7b-8a1e-9c0d2a3b4c5d'
+  uuid: 'e8a3c1b9-4f2d-4e9a-8c77-01b4c3b1a0d5'
   status: 'todo'
-  title: 'Refactor URL State Management to be DRY'
+  title: 'Refactor to Eliminate Prop Drilling via Global State & Context'
   introduction: |
-    The current codebase has logic for manipulating URL search parameters scattered across multiple components (`TopBar`, `CommandPalette`, `EnhancedSidebar`, `App`, `DataDemo`). This repetition makes the system difficult to maintain, reason about, and extend. State transitions are imperative and error-prone.
+    Alright, we're diving deep to refactor this app shell. The goal is to crank up the DRY principle and kill prop drilling dead. Right now, state is being passed down through component trees like a hot potato, which makes maintenance a headache and components brittle.
 
-    This master plan will centralize all URL-based view state management into a single custom hook: `useAppViewManager`. This hook will provide a declarative API for components to request state changes (e.g., `openSidePane('settings')`), abstracting away the underlying implementation of `useSearchParams` and `useNavigate`.
+    The plan is simple but powerful: we'll leverage the existing global state managers (Zustand, React Context) to their full potential. Components at the leaf of the tree will pull their own state and actions from these global hooks, making them self-sufficient and decoupled from their parents. We'll also spin up a feature-specific context for the complex "Data Demo" page to keep its state contained but accessible.
 
-    By refactoring components to use this centralized hook, we will significantly reduce code duplication, improve separation of concerns, and make the application's state flow predictable and robust. We will also streamline content rendering logic in the main `App` component for better clarity.
+    The outcome? A cleaner, more maintainable codebase where components are truly reusable and the flow of data is obvious. It's about making the architecture smarter, not just the components. Let's get this done.
   parts:
-    - uuid: 'a1b2c3d4-e5f6-7890-1234-567890abcdef'
+    - uuid: 'a1b2c3d4-5e6f-7a8b-9c0d-1e2f3a4b5c6d'
       status: 'todo'
-      name: 'Part 1: Create a Centralized View Manager Hook'
+      name: 'Part 1: Encapsulate Data Demo State with a Dedicated Context'
       reason: |
-        To eliminate redundant URL manipulation logic by creating a single, authoritative hook that manages all view-state changes. This is the cornerstone of the entire refactoring effort, establishing a DRY pattern for state management.
+        The `DataDemoPage` component is currently a "props factory," funneling state and handlers from `useDataManagement` down to a whole squad of child components. This is classic prop drilling and it's fragile. A minor change in a child's needs forces updates all the way up the chain.
+
+        We'll build a dedicated `DataDemoContext` to encapsulate all state and logic for this feature. This creates a clean boundary, makes the components within the feature more modular, and keeps the global `AppShellContext` from getting bloated with feature-specific cruft.
       steps:
-        - uuid: 'c9d8e7f6-5b4a-3c2b-1a09-f8e7d6c5b4a3'
+        - uuid: 'b1c2d3e4-f5a6-b7c8-d9e0-f1a2b3c4d5e6'
           status: 'todo'
-          name: '1. Create `useAppViewManager` Hook'
+          name: '1. Create DataDemoContext and Provider'
           reason: |
-            This new hook will encapsulate all interactions with `react-router-dom`'s `useSearchParams`, `useLocation`, and `useNavigate`. It will serve as the single interface for components to query and modify the application's view state.
+            We need a new context to hold the state from the `useDataManagement` hook. The provider will initialize the hook once and make its value available to all descendant components.
           files:
-            - 'src/hooks/useAppViewManager.hook.ts' # New file
+            - src/pages/DataDemo/index.tsx
           operations:
-            - 'Create a new file `src/hooks/useAppViewManager.hook.ts`.'
-            - 'Inside the hook, import and use `useSearchParams`, `useLocation`, and `useNavigate`.'
-            - 'Derive state from the URL: `viewMode`, `sidePaneContent`, `splitViewContent`, `itemId`, `filters`, `sortConfig`, etc.'
-            - 'Create and export functions for every state mutation, e.g., `openSidePane(pane)`, `toggleSplitView(pane)`, `navigateTo(page)`, `setFilters(filters)`. These functions will contain the logic for creating and setting new `URLSearchParams`.'
-            - 'Ensure mutation functions handle edge cases correctly, like clearing `view` and `right` params when `sidePane` is set, or resetting the page number when filters change.'
-            - 'The hook should return both the derived state and the mutator functions.'
-      context_files:
-        compact:
-          - src/hooks/useUrlStateSync.hook.ts
-          - src/context/AppShellContext.tsx
-        medium:
-          - src/hooks/useUrlStateSync.hook.ts
-          - src/context/AppShellContext.tsx
-          - src/App.tsx
-        extended:
-          - src/hooks/useUrlStateSync.hook.ts
-          - src/context/AppShellContext.tsx
-          - src/App.tsx
-          - src/pages/DataDemo/hooks/useDataManagement.hook.tsx
-          - src/components/layout/TopBar.tsx
-
-    - uuid: 'b2c3d4e5-f6a7-8901-2345-67890abcdef1'
-      status: 'todo'
-      name: 'Part 2: Integrate View Manager and Purge Redundant Logic'
-      reason: |
-        With the central hook in place, we need to refactor all components that currently perform manual URL manipulation. This will enforce the new DRY pattern, simplify component logic, and make them more declarative.
-      steps:
-        - uuid: '1a2b3c4d-5e6f-7890-1234-567890abcdef'
+            - 'Create a new file `src/pages/DataDemo/context/DataDemoContext.tsx` (you will have to create it).'
+            - 'In this new file, define `DataDemoContext` and a `useDataDemo` hook for consumers.'
+            - 'Create a `DataDemoProvider` component that internally calls the `useDataManagement` hook and provides its return value through the context.'
+            - 'In `src/pages/DataDemo/index.tsx`, wrap the main content (`PageLayout`) with your new `DataDemoProvider`.'
+        - uuid: 'c2d3e4f5-a6b7-c8d9-e0f1-a2b3c4d5e6f7'
           status: 'todo'
-          name: '1. Refactor `EnhancedSidebar`'
+          name: '2. Refactor DataDemoPage to remove prop drilling'
           reason: |
-            The `AppMenuItem` component contains complex logic to determine how to navigate or open a side pane. This will be replaced with simple calls to the new hook.
+            With the provider in place, the `DataDemoPage` component no longer needs to pass down dozens of props. It becomes a much simpler layout component.
           files:
-            - src/components/layout/EnhancedSidebar.tsx
+            - src/pages/DataDemo/index.tsx
           operations:
-            - 'In `AppMenuItem`, call `useAppViewManager()`.'
-            - "Simplify the `handleClick` function. Replace the conditional `setSearchParams` and `navigate` logic with calls like `viewManager.navigateTo('settings')` or `viewManager.toggleSidePane('notifications')`."
-            - 'Determine `isActive` state by using the state values returned from `useAppViewManager()`.'
-
-        - uuid: '2b3c4d5e-6f7a-8901-2345-67890abcdef1'
-          status: 'todo'
-          name: '2. Refactor `TopBar` and `CommandPalette`'
-          reason: |
-            These components have hardcoded logic for opening the settings side pane, which is a prime example of repeated code.
-          files:
-            - src/components/layout/TopBar.tsx
-            - src/components/global/CommandPalette.tsx
-          operations:
-            - 'In `TopBar`, import and use `useAppViewManager()`.'
-            - "Replace the `handleSettingsClick` body with a single call: `viewManager.toggleSidePane('settings')`."
-            - 'In `CommandPalette`, import and use `useAppViewManager()`.'
-            - "Replace navigation logic with `viewManager.navigateTo(...)` and side pane logic with `viewManager.openSidePane(...)`."
-
-        - uuid: '3c4d5e6f-7a8b-9012-3456-7890abcdef12'
-          status: 'todo'
-          name: '3. Refactor `ViewModeSwitcher`'
-          reason: |
-            This component's handlers are mini-implementations of the logic that now belongs in the view manager hook.
-          files:
-            - src/components/layout/ViewModeSwitcher.tsx
-          operations:
-            - 'In `ViewModeSwitcher`, call `useAppViewManager()` to get the current state and action functions.'
-            - "Rewrite all click handlers (`handleSidePaneClick`, `handleSplitViewClick`, etc.) to call the corresponding functions from the view manager, e.g., `viewManager.toggleSidePane()`, `viewManager.toggleSplitView()`."
-
+            - 'In `DataDemoPage`, remove the props being passed to `DataToolbar`, `DataViewModeSelector`, `DataListView`, `DataCardView`, and `DataTableView`.'
+            - 'The component should now primarily be responsible for layout and rendering the child components within the context provider.'
         - uuid: 'd3e4f5a6-b7c8-d9e0-f1a2-b3c4d5e6f7a8'
           status: 'todo'
-          name: '4. Refactor `useDataManagement` hook'
+          name: '3. Update Child Components to Consume Context'
           reason: |
-            This hook manages its own URL state. It should instead use the new view manager to stay in sync with the rest of the application and simplify its implementation.
+            The child components will now pull state and actions directly from our new `useDataDemo` hook, making them self-sufficient and decoupled from `DataDemoPage`.
           files:
-            - src/pages/DataDemo/hooks/useDataManagement.hook.tsx
+            - src/pages/DataDemo/components/DataToolbar.tsx
+            - src/pages/DataDemo/components/DataViewModeSelector.tsx
+            - src/pages/DataDemo/components/DataListView.tsx
+            - src/pages/DataDemo/components/DataCardView.tsx
+            - src/pages/DataDemo/components/DataTableView.tsx
           operations:
-            - 'Remove the direct usage of `useSearchParams` from `useDataManagement`.'
-            - 'Call `useAppViewManager()` inside `useDataManagement` to get derived state (`filters`, `sortConfig`, `page`, etc.).'
-            - "Update the hook's setter functions (`setFilters`, `setSort`, `setViewMode`, etc.) to call the corresponding setter functions from the `useAppViewManager` hook."
-            - 'The `handleParamsChange` utility function can now be removed entirely.'
-
-        - uuid: 'e8a9b0c1-d2e3-f4a5-b6c7-d8e9f0a1b2c3'
-          status: 'todo'
-          name: '5. Deprecate `useUrlStateSync` Hook'
-          reason: |
-            The new `useAppViewManager` hook will provide the derived state, and the `AppShellContext` will be updated directly from the `App.tsx` component. `useUrlStateSync` becomes redundant.
-          files:
-            - src/hooks/useUrlStateSync.hook.ts
-            - src/App.tsx
-          operations:
-            - 'Delete the `src/hooks/useUrlStateSync.hook.ts` file.'
-            - 'In `App.tsx`, inside `ComposedApp`, use `useAppViewManager()` to get the current state.'
-            - "Add a `useEffect` that listens to changes from the view manager's state and dispatches actions to the `AppShellContext`, e.g., `dispatch({ type: 'SET_BODY_STATE', payload: viewManager.bodyState })`."
-
+            - 'For each file, import and call the `useDataDemo` hook to get the necessary state (`viewMode`, `filters`, `sortConfig`, etc.) and actions (`setViewMode`, `setFilters`, etc.).'
+            - 'Remove the corresponding props from each component''s interface and function signature.'
       context_files:
         compact:
-          - src/hooks/useAppViewManager.hook.ts
-          - src/components/layout/EnhancedSidebar.tsx
-          - src/components/layout/TopBar.tsx
+          - src/pages/DataDemo/index.tsx
           - src/pages/DataDemo/hooks/useDataManagement.hook.tsx
         medium:
-          - src/hooks/useAppViewManager.hook.ts
-          - src/components/layout/EnhancedSidebar.tsx
-          - src/components/layout/TopBar.tsx
-          - src/components/global/CommandPalette.tsx
-          - src/components/layout/ViewModeSwitcher.tsx
+          - src/pages/DataDemo/index.tsx
           - src/pages/DataDemo/hooks/useDataManagement.hook.tsx
-          - src/App.tsx
+          - src/pages/DataDemo/components/DataToolbar.tsx
+          - src/pages/DataDemo/components/DataViewModeSelector.tsx
+          - src/pages/DataDemo/components/DataListView.tsx
+          - src/pages/DataDemo/components/DataTableView.tsx
+          - src/pages/DataDemo/components/DataCardView.tsx
         extended:
-          - src/hooks/useAppViewManager.hook.ts
-          - src/components/layout/EnhancedSidebar.tsx
-          - src/components/layout/TopBar.tsx
-          - src/components/global/CommandPalette.tsx
-          - src/components/layout/ViewModeSwitcher.tsx
+          - src/pages/DataDemo/index.tsx
           - src/pages/DataDemo/hooks/useDataManagement.hook.tsx
-          - src/App.tsx
-          - src/hooks/useUrlStateSync.hook.ts
+          - src/pages/DataDemo/components/DataToolbar.tsx
+          - src/pages/DataDemo/components/DataViewModeSelector.tsx
+          - src/pages/DataDemo/components/DataListView.tsx
+          - src/pages/DataDemo/components/DataTableView.tsx
+          - src/pages/DataDemo/components/DataCardView.tsx
+          - src/hooks/useAppViewManager.hook.ts
 
-    - uuid: 'c3d4e5f6-a7b8-9012-3456-7890abcdef12'
+    - uuid: 'f6a7b8c9-d0e1-f2a3-b4c5-d6e7f8a9b0c1'
       status: 'todo'
-      name: 'Part 3: Simplify Right Pane Content Logic in `App.tsx`'
+      name: 'Part 2: Make Core Layout Components Self-Sufficient'
       reason: |
-        The `ComposedApp` component is cluttered with complex `useMemo` hooks to determine what content and header to display in the `RightPane`. This logic can be extracted for better readability and separation of concerns.
+        Core layout components like `TopBar` and `RightPane` are tightly coupled to `App.tsx` because they receive their actions and data via props. This is unnecessary when that same information is available from global hooks. Making these components self-sufficient will dramatically simplify `App.tsx` and improve encapsulation.
       steps:
-        - uuid: '4d5e6f7a-8b9c-0123-4567-890abcdef123'
+        - uuid: '0a1b2c3d-e4f5-a6b7-c8d9-e0f1a2b3c4d5'
           status: 'todo'
-          name: '1. Create `useRightPaneContent` Hook'
+          name: '1. Refactor TopBar to use global hooks'
           reason: |
-            To encapsulate the logic for mapping `sidePaneContent` and `itemId` to the correct React components and header elements.
+            The `TopBar` receives `onToggleSidebar` and `onToggleDarkMode` as props, but it can get these functions directly from the `useAppShell` and `useAppStore` hooks.
           files:
-            - 'src/hooks/useRightPaneContent.hook.ts' # New file
+            - src/components/layout/TopBar.tsx
             - src/App.tsx
           operations:
-            - 'Create a new file `src/hooks/useRightPaneContent.hook.ts`.'
-            - 'Move the `contentMap` and the `useMemo` blocks for `selectedItem`, `currentContent`, and `rightPaneContent` from `App.tsx` into this new hook.'
-            - 'The hook should take `sidePaneContent` and `itemId` as arguments.'
-            - 'It should return an object containing the resolved `{ header, content }` for the right pane.'
-            - 'In `ComposedApp` (`App.tsx`), call `useRightPaneContent()` to get the header and content, and pass them as props to the `<RightPane>` component.'
-            - 'The callbacks for pane actions (`handleMaximize`, `handleCloseSidePane`, etc.) will also be simplified, as they will use the `useAppViewManager` hook.'
-
+            - 'In `TopBar.tsx`, remove the `onToggleSidebar` and `onToggleDarkMode` props.'
+            - 'Use the `useAppShell()` hook to get the `toggleSidebar` function and use it in the menu button''s `onClick`.'
+            - 'Use the `useAppStore()` hook to get the `toggleDarkMode` function and use it in the theme toggle button''s `onClick`.'
+            - 'In `App.tsx`, remove the corresponding props from the `<TopBar>` component inside `ComposedApp`.'
+        - uuid: '1b2c3d4e-f5a6-b7c8-d9e0-f1a2b3c4d5e6'
+          status: 'todo'
+          name: '2. Encapsulate RightPane logic'
+          reason: |
+            The `RightPane` is a prime example of logic bleeding out. Its header content and close behavior are being managed by its parent, `ComposedApp`. We will move all of that logic inside `RightPane` itself, making it a true self-contained component.
+          files:
+            - src/components/layout/RightPane.tsx
+            - src/App.tsx
+          operations:
+            - 'In `RightPane.tsx`, remove the `header` and `onClose` props.'
+            - 'Import and use the `useAppViewManager` hook to get `closeSidePane`, `toggleSplitView` etc.'
+            - 'Import and use the `useRightPaneContent` hook to get the `meta` object containing the title and icon.'
+            - 'Construct the header UI *inside* the `RightPane` component using the data from the hooks. This includes the title, icon, and the view-mode buttons.'
+            - 'Update the main close button''s `onClick` to call `closeSidePane()` from the hook.'
+            - 'In `App.tsx`, inside `ComposedApp`, find the `<RightPane>` component. Remove the `header` and `onClose` props. The `rightPaneHeader` constant and its associated `useMemo` can be deleted entirely.'
       context_files:
         compact:
           - src/App.tsx
-          - src/pages/DataDemo/components/DataDetailPanel.tsx
+          - src/components/layout/RightPane.tsx
+          - src/components/layout/TopBar.tsx
         medium:
           - src/App.tsx
-          - src/pages/DataDemo/components/DataDetailPanel.tsx
-          - src/features/settings/SettingsContent.tsx
-          - src/pages/ToasterDemo/index.tsx
+          - src/components/layout/RightPane.tsx
+          - src/components/layout/TopBar.tsx
+          - src/hooks/useAppViewManager.hook.ts
+          - src/hooks/useRightPaneContent.hook.tsx
+          - src/context/AppShellContext.tsx
+          - src/store/appStore.ts
         extended:
           - src/App.tsx
-          - src/pages/DataDemo/components/DataDetailPanel.tsx
-          - src/features/settings/SettingsContent.tsx
-          - src/pages/ToasterDemo/index.tsx
-          - src/pages/Notifications/index.tsx
-          - src/pages/Dashboard/index.tsx
+          - src/components/layout/RightPane.tsx
+          - src/components/layout/TopBar.tsx
+          - src/hooks/useAppViewManager.hook.ts
+          - src/hooks/useRightPaneContent.hook.tsx
+          - src/context/AppShellContext.tsx
+          - src/store/appStore.ts
+          - src/components/layout/ViewModeSwitcher.tsx
+
+    - uuid: '2c3d4e5f-6a7b-8c9d-0e1f-2a3b4c5d6e7f'
+      status: 'todo'
+      name: 'Part 3: Enhance Reusability of Shared Components'
+      reason: |
+        Small inconsistencies between components that do similar things lead to code duplication. The progress bar in the table view is slightly different from the shared one. We can make the shared component more flexible to cover both use cases.
+      steps:
+        - uuid: '3d4e5f6a-7b8c-9d0e-1f2a-3b4c5d6e7f8a'
+          status: 'todo'
+          name: '1. Generalize ItemProgressBar'
+          reason: |
+            `DataTableView` has its own progress bar implementation just to add a percentage label. We can add an optional prop to the shared `ItemProgressBar` to handle this, making it more reusable.
+          files:
+            - src/pages/DataDemo/components/shared/DataItemParts.tsx
+            - src/pages/DataDemo/components/DataTableView.tsx
+          operations:
+            - 'In `DataItemParts.tsx`, modify the `ItemProgressBar` component. Add a new prop `showPercentage?: boolean`.'
+            - 'When `showPercentage` is true, wrap the progress bar in a flex container and add a `<span>` to display the `{completion}%` text.'
+            - 'In `DataTableView.tsx`, replace the custom progress bar `div` with the shared `<ItemProgressBar completion={item.metrics.completion} showPercentage />` component.'
+      context_files:
+        compact:
+          - src/pages/DataDemo/components/shared/DataItemParts.tsx
+          - src/pages/DataDemo/components/DataTableView.tsx
+        medium:
+          - src/pages/DataDemo/components/shared/DataItemParts.tsx
+          - src/pages/DataDemo/components/DataTableView.tsx
+        extended:
+          - src/pages/DataDemo/components/shared/DataItemParts.tsx
+          - src/pages/DataDemo/components/DataTableView.tsx
 
   conclusion: |
-    Upon completion, the codebase will be significantly more maintainable. The introduction of `useAppViewManager` provides a single, clear API for state transitions, eliminating scattered and duplicated logic. Components will become simpler and more focused on their rendering responsibilities.
+    Once this refactor is complete, the codebase will be in a much stronger position. We'll have obliterated major instances of prop drilling, leading to cleaner component APIs and a more intuitive data flow.
 
-    This refactoring improves developer experience by making the state flow explicit and predictable. Future features involving new views or panes can be added with minimal effort by extending the view manager, ensuring the architecture remains clean and scalable.
+    Components will be more self-reliant and truly reusable, as they fetch their own dependencies from the global state. The separation of concerns will be clearer, especially with the `DataDemo` feature being neatly encapsulated in its own context. This makes the system easier to reason about, debug, and extend in the future. It's a solid architectural win.
   context_files:
     compact:
       - src/App.tsx
-      - src/hooks/useUrlStateSync.hook.ts
-      - src/pages/DataDemo/hooks/useDataManagement.hook.tsx
-      - src/components/layout/EnhancedSidebar.tsx
+      - src/pages/DataDemo/index.tsx
+      - src/components/layout/RightPane.tsx
     medium:
       - src/App.tsx
-      - src/hooks/useUrlStateSync.hook.ts
+      - src/pages/DataDemo/index.tsx
+      - src/components/layout/RightPane.tsx
       - src/pages/DataDemo/hooks/useDataManagement.hook.tsx
-      - src/components/layout/EnhancedSidebar.tsx
-      - src/components/layout/TopBar.tsx
-      - src/components/global/CommandPalette.tsx
+      - src/hooks/useAppViewManager.hook.ts
     extended:
       - src/App.tsx
-      - src/hooks/useUrlStateSync.hook.ts
+      - src/pages/DataDemo/index.tsx
+      - src/components/layout/RightPane.tsx
       - src/pages/DataDemo/hooks/useDataManagement.hook.tsx
-      - src/components/layout/EnhancedSidebar.tsx
-      - src/components/layout/TopBar.tsx
-      - src/components/global/CommandPalette.tsx
-      - src/components/layout/ViewModeSwitcher.tsx
+      - src/hooks/useAppViewManager.hook.ts
       - src/context/AppShellContext.tsx
+      - src/store/appStore.ts
+      - src/components/layout/TopBar.tsx
+      - src/pages/DataDemo/components/DataToolbar.tsx
 ```

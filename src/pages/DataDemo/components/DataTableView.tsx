@@ -1,4 +1,4 @@
-import { useRef, useLayoutEffect } from 'react'
+import { useRef, useLayoutEffect, useMemo } from 'react'
 import { gsap } from 'gsap'
 import { cn } from '@/lib/utils'
 import { 
@@ -7,8 +7,9 @@ import {
   ArrowDown,
   ExternalLink
 } from 'lucide-react'
-import type { ViewProps, DataItem, SortableField } from '../types'
+import type { DataItem, SortableField } from '../types'
 import { EmptyState } from './EmptyState'
+import { useDataDemo } from '../context/DataDemoContext'
 import { capitalize } from '@/lib/utils'
 import {
   AssigneeInfo,
@@ -16,9 +17,18 @@ import {
   ItemStatusBadge,
   ItemPriorityBadge,
   ItemDateInfo,
+  ItemProgressBar,
 } from './shared/DataItemParts'
 
-export function DataTableView({ data, onItemSelect, selectedItem, sortConfig, onSort }: ViewProps) {
+export function DataTableView() {
+  const {
+    dataToRender: data,
+    onItemSelect,
+    selectedItem,
+    sortConfig,
+    setTableSort: onSort,
+    groupBy,
+  } = useDataDemo();
   const tableRef = useRef<HTMLTableElement>(null)
   const animatedItemsCount = useRef(0)
 
@@ -39,9 +49,7 @@ export function DataTableView({ data, onItemSelect, selectedItem, sortConfig, on
           ease: "power2.out",
         },
       );
-      animatedItemsCount.current = Array.isArray(data) 
-        ? data.length 
-        : Object.values(data).reduce((sum, items) => sum + items.length, 0);
+      animatedItemsCount.current = data.length;
     }
   }, [data]);
 
@@ -62,7 +70,19 @@ export function DataTableView({ data, onItemSelect, selectedItem, sortConfig, on
     onSort?.(field)
   }
 
-  if ((Array.isArray(data) && data.length === 0) || (!Array.isArray(data) && Object.keys(data).length === 0)) {
+  const groupedData = useMemo(() => {
+    if (groupBy === 'none') return null;
+    return (data as DataItem[]).reduce((acc, item) => {
+      const groupKey = item[groupBy as 'status' | 'priority' | 'category'] || 'N/A';
+      if (!acc[groupKey]) {
+        acc[groupKey] = [];
+      }
+      acc[groupKey].push(item);
+      return acc;
+    }, {} as Record<string, DataItem[]>);
+  }, [data, groupBy]);
+
+  if (data.length === 0) {
     return <EmptyState />
   }
 
@@ -131,9 +151,8 @@ export function DataTableView({ data, onItemSelect, selectedItem, sortConfig, on
             </tr>
           </thead>
           <tbody>
-            {Array.isArray(data)
-              ? data.map(item => <TableRow key={item.id} item={item} isSelected={selectedItem?.id === item.id} onItemSelect={onItemSelect} />)
-              : Object.entries(data).flatMap(([groupName, items]) => [
+            {groupedData
+              ? Object.entries(groupedData).flatMap(([groupName, items]) => [
                   <tr key={groupName} data-group-header="true" className="sticky top-0 z-10">
                     <td colSpan={8} className="p-2 bg-muted/50 backdrop-blur-sm">
                       <div className="flex items-center gap-2">
@@ -144,6 +163,7 @@ export function DataTableView({ data, onItemSelect, selectedItem, sortConfig, on
                   </tr>,
                   ...items.map(item => <TableRow key={item.id} item={item} isSelected={selectedItem?.id === item.id} onItemSelect={onItemSelect} />)
                 ])
+              : data.map(item => <TableRow key={item.id} item={item} isSelected={selectedItem?.id === item.id} onItemSelect={onItemSelect} />)
             }
           </tbody>
         </table>
@@ -197,19 +217,7 @@ function TableRow({ item, isSelected, onItemSelect }: { item: DataItem; isSelect
       {/* Progress Column */}
       {/* Note: This progress bar is custom for the table, so we don't use the shared component here. */}
       <td className="p-4">
-        <div className="flex items-center gap-3">
-          <div className="flex-1 min-w-0">
-            <div className="w-full bg-muted rounded-full h-2">
-              <div 
-                className="bg-gradient-to-r from-primary to-primary/80 h-2 rounded-full transition-all duration-500"
-                style={{ width: `${item.metrics.completion}%` }}
-              />
-            </div>
-          </div>
-          <span className="text-sm font-medium text-muted-foreground">
-            {item.metrics.completion}%
-          </span>
-        </div>
+        <ItemProgressBar completion={item.metrics.completion} showPercentage />
       </td>
 
       {/* Engagement Column */}

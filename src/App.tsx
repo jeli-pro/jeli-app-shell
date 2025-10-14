@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useCallback } from "react";
+import React, { useEffect } from "react";
 import {
   createBrowserRouter,
   RouterProvider,
@@ -37,9 +37,6 @@ import {
   Plus,
   ChevronRight,
   Rocket,
-  ChevronsLeftRight,
-  Layers,
-  SplitSquareHorizontal,
 } from "lucide-react";
 
 // --- Utils & Hooks ---
@@ -210,40 +207,6 @@ function ComposedApp() {
     dispatch({ type: 'SET_SIDE_PANE_CONTENT', payload: viewManager.sidePaneContent });
   }, [viewManager.bodyState, viewManager.sidePaneContent, dispatch]);
 
-  const { meta: rightPaneMeta, content: rightPaneContent } = useRightPaneContent(viewManager.sidePaneContent);
-
-  const handleMaximize = useCallback(() => {
-    if ("page" in rightPaneMeta && rightPaneMeta.page) {
-      viewManager.navigateTo(rightPaneMeta.page);
-    }
-  }, [rightPaneMeta, viewManager]);
-
-  // --- Right Pane Header UI ---
-  const rightPaneHeader = useMemo(() => (
-    <>
-      {viewManager.bodyState !== BODY_STATES.SPLIT_VIEW ? (
-        <div className="flex items-center gap-2">
-          {rightPaneMeta.icon && React.createElement(rightPaneMeta.icon, { className: "w-5 h-5" })}
-          <h2 className="text-lg font-semibold whitespace-nowrap">
-            {rightPaneMeta.title}
-          </h2>
-        </div>
-      ) : <div />} {/* Placeholder to make justify-between work */}
-      <div className="flex items-center">
-        {(viewManager.bodyState === BODY_STATES.SIDE_PANE || viewManager.bodyState === BODY_STATES.SPLIT_VIEW) && (
-          <button onClick={viewManager.toggleSplitView} className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors" title={viewManager.bodyState === BODY_STATES.SIDE_PANE ? "Switch to Split View" : "Switch to Overlay View"}>
-            {viewManager.bodyState === BODY_STATES.SPLIT_VIEW ? <Layers className="w-5 h-5" /> : <SplitSquareHorizontal className="w-5 h-5" />}
-          </button>
-        )}
-        {viewManager.bodyState !== BODY_STATES.SPLIT_VIEW && "page" in rightPaneMeta && rightPaneMeta.page && (
-          <button onClick={handleMaximize} className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors mr-2" title="Move to Main View">
-            <ChevronsLeftRight className="w-5 h-5" />
-          </button>
-        )}
-      </div>
-    </>
-  ), [viewManager.bodyState, rightPaneMeta, handleMaximize, viewManager.toggleSplitView]);
-
   return (
     <AppShell
       sidebar={<EnhancedSidebar />}
@@ -258,11 +221,7 @@ function ComposedApp() {
           <Outlet />
         </MainContent>
       }
-      rightPane={
-        <RightPane onClose={viewManager.closeSidePane} header={rightPaneHeader}>
-          {rightPaneContent}
-        </RightPane>
-      }
+      rightPane={<RightPane />}
       commandPalette={<CommandPalette />}
     />
   );
