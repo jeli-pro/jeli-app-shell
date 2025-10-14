@@ -1,0 +1,1878 @@
+uuid: b0c9535e-c50d-4581-9b16-95e50f38b29d
+projectId: jeli-app-shell
+createdAt: '2025-10-14T02:20:28.038Z'
+gitCommitMsg: >-
+  fix(types): Resolve TypeScript errors post-refactor
+
+  This commit addresses 28 TypeScript errors that surfaced after the recent DRY
+  refactoring.
+
+  Key fixes include: - Removing unused `React` and component imports. - Adding
+  the missing `Card` component import in the Dashboard. - Correcting logic in
+  `usePageContent.hook` to fix type errors and a UX regression related to the
+  split-view toggle. - Adding type guards and explicit types in data view
+  components (`DataCardView`, `DataListView`) to handle props safely. - Fixing
+  type issues in `DataTableView` and `useDataManagement.hook` related to DOM
+  element properties and date parsing.
+promptSummary: Fix a series of TypeScript errors that appeared after a major refactoring.
+reasoning:
+  - >-
+    Of course. Dealing with a batch of compiler errors after a big refactor is
+    standard procedure. Let's get these fixed. The issues range from unused
+    imports and missing dependencies to some tricky type inference problems.
+    I'll address them systematically.
+  - '### Part 1: Cleaning Up Imports & Dependencies'
+  - >-
+    First, I'll fix the straightforward issues: removing unused imports and
+    adding missing ones. Modern JSX transforms make `import React` unnecessary
+    in many files. I'll also remove several component imports in
+    `DataDetailPanel` that became redundant after the refactor. Conversely,
+    `Dashboard/index.tsx` is missing an import for the `Card` component, which
+    I'll add back.
+  - '### Part 2: Fixing Type Errors and Logic'
+  - Now for the more complex issues.
+  - >-
+    1.  **`usePageContent.hook.tsx`**: The logic for rendering the right pane
+    header was flawed, leading to TypeScript errors and a UI regression where
+    you couldn't toggle back from split-view. I'll refactor the `useMemo` hook
+    to correctly render the header and its buttons based on the current
+    `bodyState`, ensuring the toggle button is always available when
+    appropriate.
+  - >-
+    2.  **`DataCardView.tsx` & `DataListView.tsx`**: These components were
+    receiving a prop `data` that could be an object, but they only knew how to
+    handle an array, causing a `not callable` error. I'll add a type guard
+    (`Array.isArray`) to handle this and explicitly type the `item` in the
+    `.map()` call.
+  - >-
+    3.  **`DataTableView.tsx`**: The code was trying to access `dataset` on a
+    generic `Element`, which isn't type-safe. I'll cast the element to
+    `HTMLElement` to resolve this.
+  - >-
+    4.  **`useDataManagement.hook.tsx`**: When sorting by date, the code didn't
+    ensure the values were strings before passing them to `new Date()`. I'll add
+    `typeof` checks to make the date parsing robust and satisfy the compiler.
+  - >-
+    These changes should resolve all the compiler errors and fix the minor UI
+    regression in the process. The codebase is now cleaner and more type-safe.
+operations:
+  - type: write
+    path: src/components/auth/LoginPage.tsx
+    content: |+
+      --- src/components/auth/LoginPage.tsx
+      +++ src/components/auth/LoginPage.tsx
+      @@ -1,4 +1,4 @@
+      -import React, { useState, ChangeEvent, FormEvent } from 'react';
+      +import { useState, ChangeEvent, FormEvent } from 'react';
+       import { Eye, EyeOff, Mail, ArrowLeft } from 'lucide-react';
+       import { Label } from '@/components/ui/label';
+       import { AnimatedInput } from '../effects/AnimatedInput';
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/hooks/usePageContent.hook.tsx
+    content: |+
+      --- src/hooks/usePageContent.hook.tsx
+      +++ src/hooks/usePageContent.hook.tsx
+      @@ -1,4 +1,4 @@
+      -import React, { useEffect, useMemo, useCallback } from "react";
+      +import { useEffect, useMemo, useCallback } from "react";
+       import {
+         useNavigate,
+         useParams,
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/Dashboard/index.tsx
+    content: |+
+      --- src/pages/Dashboard/index.tsx
+      +++ src/pages/Dashboard/index.tsx
+      @@ -15,6 +15,7 @@
+       import { useDashboardScroll } from './hooks/useDashboardScroll.hook'
+       import { PageHeader } from '@/components/shared/PageHeader';
+       import { StatCard } from '@/components/shared/StatCard';
+      +import { Card } from '@/components/ui/card';
+       import { PageLayout } from '@/components/shared/PageLayout';
+       
+       interface StatsCard {
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/DataDemo/components/AnimatedLoadingSkeleton.tsx
+    content: |+
+      --- src/pages/DataDemo/components/AnimatedLoadingSkeleton.tsx
+      +++ src/pages/DataDemo/components/AnimatedLoadingSkeleton.tsx
+      @@ -1,4 +1,4 @@
+      -import React, { useEffect, useRef, useState } from 'react'
+      +import { useEffect, useRef, useState } from 'react'
+       import { gsap } from 'gsap'
+       import { Search } from 'lucide-react'
+       import { cn } from '@/lib/utils'
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/DataDemo/components/DataDetailPanel.tsx
+    content: |+
+      --- src/pages/DataDemo/components/DataDetailPanel.tsx
+      +++ src/pages/DataDemo/components/DataDetailPanel.tsx
+      @@ -1,15 +1,11 @@
+       import React, { useRef } from 'react'
+       import { Badge } from '@/components/ui/badge'
+      -import { Avatar } from '@/components/ui/avatar'
+       import { Button } from '@/components/ui/button'
+       import { 
+         ArrowLeft, 
+         Clock, 
+      -  Eye, 
+      -  Heart, 
+      -  Share, 
+         Download,
+         FileText,
+         Image,
+      @@ -26,9 +22,7 @@
+       import type { DataItem } from '../types'
+       import { useStaggeredAnimation } from '@/hooks/useStaggeredAnimation.motion.hook'
+       import {
+         AssigneeInfo,
+      -  ItemMetrics,
+         ItemProgressBar,
+      -  ItemStatusBadge,
+         ItemPriorityBadge,
+         ItemTags,
+       } from './shared/DataItemParts'
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/hooks/usePageContent.hook.tsx
+    content: >+
+      --- src/hooks/usePageContent.hook.tsx
+
+      +++ src/hooks/usePageContent.hook.tsx
+
+      @@ -175,41 +175,44 @@
+         }, [bodyState, setSearchParams]);
+       
+         const rightPaneHeader = useMemo(() => (
+      -    bodyState !== BODY_STATES.SPLIT_VIEW ? (
+
+      -      <>
+
+      +    <>
+
+      +      {bodyState !== BODY_STATES.SPLIT_VIEW ? (
+               <div className="flex items-center gap-2">
+                 <CurrentIcon className="w-5 h-5" />
+                 <h2 className="text-lg font-semibold whitespace-nowrap">
+                   {currentContent.title}
+                 </h2>
+               </div>
+      -        <div className="flex items-center">
+
+      -          {(bodyState === BODY_STATES.SIDE_PANE ||
+
+      -            bodyState === BODY_STATES.SPLIT_VIEW) && (
+
+      -            <button
+
+      -              onClick={handleToggleSplitView}
+
+      -              className="h-10 w-10 flex items-center justify-center
+      hover:bg-accent rounded-full transition-colors"
+
+      -              title={
+
+      -                bodyState === BODY_STATES.SIDE_PANE
+
+      -                  ? "Switch to Split View"
+
+      -                  : "Switch to Overlay View"
+
+      -              }
+
+      -            >
+
+      -              {bodyState === BODY_STATES.SPLIT_VIEW ? (
+
+      -                <Layers className="w-5 h-5" />
+
+      -              ) : (
+
+      -                <SplitSquareHorizontal className="w-5 h-5" />
+
+      -              )}
+
+      -            </button>
+
+      -          )}
+
+      -          {"page" in currentContent && currentContent.page && (
+
+      -            <button
+
+      -              onClick={handleMaximize}
+
+      -              className="h-10 w-10 flex items-center justify-center
+      hover:bg-accent rounded-full transition-colors mr-2"
+
+      -              title="Move to Main View"
+
+      -            >
+
+      -              <ChevronsLeftRight className="w-5 h-5" />
+
+      -            </button>
+
+      -          )}
+
+      -        </div>
+
+      -      </>
+
+      -    ) : undefined
+
+      -  ), [bodyState, currentContent, CurrentIcon, handleToggleSplitView,
+      handleMaximize]);
+
+      +      ) : <div />} {/* Placeholder to make justify-between work */}
+
+      +      <div className="flex items-center">
+
+      +        {(bodyState === BODY_STATES.SIDE_PANE ||
+
+      +          bodyState === BODY_STATES.SPLIT_VIEW) && (
+
+      +          <button
+
+      +            onClick={handleToggleSplitView}
+
+      +            className="h-10 w-10 flex items-center justify-center
+      hover:bg-accent rounded-full transition-colors"
+
+      +            title={
+
+      +              bodyState === BODY_STATES.SIDE_PANE
+
+      +                ? "Switch to Split View"
+
+      +                : "Switch to Overlay View"
+
+      +            }
+
+      +          >
+
+      +            {bodyState === BODY_STATES.SPLIT_VIEW ? (
+
+      +              <Layers className="w-5 h-5" />
+
+      +            ) : (
+
+      +              <SplitSquareHorizontal className="w-5 h-5" />
+
+      +            )}
+
+      +          </button>
+
+      +        )}
+
+      +        {bodyState !== BODY_STATES.SPLIT_VIEW && "page" in currentContent
+      && currentContent.page && (
+
+      +          <button
+
+      +            onClick={handleMaximize}
+
+      +            className="h-10 w-10 flex items-center justify-center
+      hover:bg-accent rounded-full transition-colors mr-2"
+
+      +            title="Move to Main View"
+
+      +          >
+
+      +            <ChevronsLeftRight className="w-5 h-5" />
+
+      +          </button>
+
+      +        )}
+
+      +      </div>
+
+      +    </>
+
+      +  ), [bodyState, currentContent, CurrentIcon, handleToggleSplitView,
+      handleMaximize]);
+       
+         return {
+           rightPaneContent,
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/DataDemo/components/DataCardView.tsx
+    content: |+
+      --- src/pages/DataDemo/components/DataCardView.tsx
+      +++ src/pages/DataDemo/components/DataCardView.tsx
+      @@ -2,7 +2,7 @@
+       import { cn } from '@/lib/utils'
+       import { Badge } from '@/components/ui/badge'
+       import { ArrowUpRight } from 'lucide-react'
+      -import type { ViewProps } from '../types'
+      +import type { ViewProps, DataItem } from '../types'
+       import { useIncrementalStaggeredAnimation } from '@/hooks/useStaggeredAnimation.motion.hook'
+       import { EmptyState } from './EmptyState'
+       import {
+      @@ -17,7 +17,7 @@
+         const containerRef = useRef<HTMLDivElement>(null)
+         useIncrementalStaggeredAnimation(containerRef, [data], { y: 40 });
+       
+      -  if (data.length === 0) {
+      +  if (!Array.isArray(data) || data.length === 0) {
+           return <EmptyState />
+         }
+       
+      @@ -30,7 +30,7 @@
+                 : "grid grid-cols-[repeat(auto-fit,minmax(320px,1fr))]"
+             )}
+           >
+      -      {data.map((item) => {
+      +      {data.map((item: DataItem) => {
+               const isSelected = selectedItem?.id === item.id
+               
+               return (
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/DataDemo/components/DataListView.tsx
+    content: |+
+      --- src/pages/DataDemo/components/DataListView.tsx
+      +++ src/pages/DataDemo/components/DataListView.tsx
+      @@ -2,7 +2,7 @@
+       import { cn } from '@/lib/utils'
+       import { Badge } from '@/components/ui/badge'
+       import { ArrowRight } from 'lucide-react'
+      -import type { ViewProps } from '../types'
+      +import type { ViewProps, DataItem } from '../types'
+       import { useIncrementalStaggeredAnimation } from '@/hooks/useStaggeredAnimation.motion.hook'
+       import { EmptyState } from './EmptyState'
+       import {
+      @@ -17,14 +17,14 @@
+         const listRef = useRef<HTMLDivElement>(null)
+         useIncrementalStaggeredAnimation(listRef, [data], { scale: 1, y: 30, stagger: 0.08, duration: 0.5 });
+       
+      -  if (data.length === 0) {
+      +  if (!Array.isArray(data) || data.length === 0) {
+           return <EmptyState />
+         }
+       
+         return (
+           <div ref={listRef} className="space-y-4">
+      -      {data.map((item) => {
+      +      {data.map((item: DataItem) => {
+               const isSelected = selectedItem?.id === item.id
+               
+               return (
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/DataDemo/components/DataTableView.tsx
+    content: |+
+      --- src/pages/DataDemo/components/DataTableView.tsx
+      +++ src/pages/DataDemo/components/DataTableView.tsx
+      @@ -23,7 +23,7 @@
+             // Only select item rows for animation, not group headers
+             const newItems = Array.from( 
+               tableRef.current.querySelectorAll('tbody tr')
+      -      ).filter(tr => !tr.dataset.groupHeader)
+      +      ).filter(tr => !(tr as HTMLElement).dataset.groupHeader)
+              .slice(animatedItemsCount.current);
+             gsap.fromTo(newItems,
+               { y: 20, opacity: 0 },
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/DataDemo/hooks/useDataManagement.hook.tsx
+    content: "--- src/pages/DataDemo/hooks/useDataManagement.hook.tsx\n+++ src/pages/DataDemo/hooks/useDataManagement.hook.tsx\n@@ -109,10 +109,12 @@\n \t\t\t\t}\n \t\t\t\t// Date sorting (assuming ISO strings)\n \t\t\t\tif (sortConfig.key === 'updatedAt' || sortConfig.key === 'createdAt') {\n-\t\t\t\t\treturn sortConfig.direction === 'asc'\n-\t\t\t\t\t\t? new Date(aValue).getTime() - new Date(bValue).getTime()\n-\t\t\t\t\t\t: new Date(bValue).getTime() - new Date(aValue).getTime();\n-\t\t\t\t}\n+          if (typeof aValue === 'string' && typeof bValue === 'string') {\n+\t\t\t\t\t  return sortConfig.direction === 'asc'\n+\t\t\t\t\t\t  ? new Date(aValue).getTime() - new Date(bValue).getTime()\n+\t\t\t\t\t\t  : new Date(bValue).getTime() - new Date(aValue).getTime();\n+          }\n+        }\n \t\t\t\treturn 0;\n \t\t\t});\n \t\t}\n\n"
+    patchStrategy: standard-diff
+snapshot:
+  src/components/auth/LoginPage.tsx: "import React, { useState, ChangeEvent, FormEvent } from 'react';\nimport { Eye, EyeOff, Mail, ArrowLeft } from 'lucide-react';\nimport { Label } from '@/components/ui/label';\nimport { AnimatedInput } from '../effects/AnimatedInput';\nimport { BoxReveal } from '../effects/BoxReveal';\nimport { Ripple } from '../effects/Ripple';\nimport { TechOrbitDisplay } from '../effects/OrbitingCircles';\nimport { BottomGradient } from '../effects/BottomGradient';\n\n// ==================== AnimatedForm Components ====================\n\n// ==================== Main LoginPage Component ====================\ninterface LoginPageProps {\n\tonLogin?: (email: string, password: string) => void;\n\tonForgotPassword?: (email: string) => void;\n\tonSignUp?: () => void;\n}\n\ntype LoginState = 'login' | 'forgot-password' | 'reset-sent';\n\nexport function LoginPage({ onLogin, onForgotPassword }: LoginPageProps) {\n\tconst [state, setState] = useState<LoginState>('login');\n\tconst [email, setEmail] = useState('');\n\tconst [password, setPassword] = useState('');\n\tconst [isLoading, setIsLoading] = useState(false);\n\tconst [errors, setErrors] = useState<{ email?: string; password?: string }>({});\n\tconst [showPassword, setShowPassword] = useState(false);\n\n\tconst handleLoginSubmit = async (e: FormEvent) => {\n\t\te.preventDefault();\n\t\tsetErrors({});\n\t\tconst newErrors: typeof errors = {};\n\t\tif (!email) newErrors.email = 'Email is required';\n\t\tif (!password) newErrors.password = 'Password is required';\n\t\tif (Object.keys(newErrors).length > 0) {\n\t\t\tsetErrors(newErrors);\n\t\t\treturn;\n\t\t}\n\t\tsetIsLoading(true);\n\t\tawait onLogin?.(email, password);\n\t\tsetIsLoading(false);\n\t};\n\n\tconst handleForgotSubmit = async (e: FormEvent) => {\n\t\te.preventDefault();\n\t\tsetErrors({});\n\t\tif (!email) {\n\t\t\tsetErrors({ email: 'Email is required' });\n\t\t\treturn;\n\t\t}\n\t\tsetIsLoading(true);\n\t\tawait onForgotPassword?.(email);\n\t\tsetIsLoading(false);\n\t\tsetState('reset-sent');\n\t};\n\n\tconst renderContent = () => {\n\t\tif (state === 'reset-sent') {\n\t\t\treturn (\n\t\t\t\t<div className=\"w-full max-w-md mx-auto text-center flex flex-col gap-4\">\n\t\t\t\t\t<BoxReveal boxColor=\"hsl(var(--skeleton))\" duration={0.5}>\n\t\t\t\t\t\t<div className=\"w-16 h-16 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center mx-auto\">\n\t\t\t\t\t\t\t<Mail className=\"w-8 h-8 text-green-600 dark:text-green-400\" />\n\t\t\t\t\t\t</div>\n\t\t\t\t\t</BoxReveal>\n\t\t\t\t\t<BoxReveal boxColor=\"hsl(var(--skeleton))\" duration={0.5}>\n\t\t\t\t\t\t<h1 className=\"text-3xl font-bold tracking-tight\">Check your email</h1>\n\t\t\t\t\t</BoxReveal>\n\t\t\t\t\t<BoxReveal boxColor=\"hsl(var(--skeleton))\" duration={0.5}>\n\t\t\t\t\t\t<p className=\"text-muted-foreground\">We've sent a password reset link to <strong>{email}</strong></p>\n\t\t\t\t\t</BoxReveal>\n\t\t\t\t\t<BoxReveal width=\"100%\" boxColor=\"hsl(var(--skeleton))\" duration={0.5}>\n\t\t\t\t\t\t<button onClick={() => setState('login')} className=\"text-sm text-blue-500 hover:underline\">\n\t\t\t\t\t\t\t<div className=\"flex items-center justify-center gap-2\">\n\t\t\t\t\t\t\t\t<ArrowLeft className=\"w-4 h-4\" /> Back to login\n\t\t\t\t\t\t\t</div>\n\t\t\t\t\t\t</button>\n\t\t\t\t\t</BoxReveal>\n\t\t\t\t</div>\n\t\t\t);\n\t\t}\n\n\t\tconst isLogin = state === 'login';\n\t\tconst formFields = isLogin\n\t\t\t? [\n\t\t\t\t{ label: 'Email', required: true, type: 'email', placeholder: 'Enter your email address', onChange: (e: ChangeEvent<HTMLInputElement>) => setEmail(e.target.value) },\n\t\t\t\t{ label: 'Password', required: true, type: 'password', placeholder: 'Enter your password', onChange: (e: ChangeEvent<HTMLInputElement>) => setPassword(e.target.value) },\n\t\t\t]\n\t\t\t: [{ label: 'Email', required: true, type: 'email', placeholder: 'Enter your email address', onChange: (e: ChangeEvent<HTMLInputElement>) => setEmail(e.target.value) }];\n\n\t\treturn (\n\t\t\t<div className=\"w-full max-w-md mx-auto flex flex-col gap-4\">\n\t\t\t\t<BoxReveal boxColor=\"hsl(var(--skeleton))\" duration={0.3}>\n\t\t\t\t\t<h2 className=\"font-bold text-3xl text-neutral-800 dark:text-neutral-200\">{isLogin ? 'Welcome back' : 'Reset Password'}</h2>\n\t\t\t\t</BoxReveal>\n\t\t\t\t<BoxReveal boxColor=\"hsl(var(--skeleton))\" duration={0.3} className=\"pb-2\">\n\t\t\t\t\t<p className=\"text-neutral-600 text-sm max-w-sm dark:text-neutral-300\">{isLogin ? 'Sign in to your account to continue' : 'Enter your email to receive a reset link'}</p>\n\t\t\t\t</BoxReveal>\n\t\t\t\t{isLogin && (\n\t\t\t\t\t<BoxReveal boxColor=\"hsl(var(--skeleton))\" duration={0.3} width=\"100%\" className=\"overflow-visible\">\n\t\t\t\t\t\t<button className=\"g-button group/btn bg-transparent w-full rounded-md border h-10 font-medium outline-hidden hover:cursor-pointer\" type=\"button\">\n\t\t\t\t\t\t\t<span className=\"flex items-center justify-center w-full h-full gap-3\">\n\t\t\t\t\t\t\t\t<img src=\"https://cdn1.iconfinder.com/data/icons/google-s-logo/150/Google_Icons-09-512.png\" width={26} height={26} alt=\"Google Icon\" />\n\t\t\t\t\t\t\t\tSign in with Google\n\t\t\t\t\t\t\t</span>\n\t\t\t\t\t\t\t<BottomGradient />\n\t\t\t\t\t\t</button>\n\t\t\t\t\t</BoxReveal>\n\t\t\t\t)}\n\t\t\t\t{isLogin && (\n\t\t\t\t\t<BoxReveal boxColor=\"hsl(var(--skeleton))\" duration={0.3} width=\"100%\">\n\t\t\t\t\t\t<div className=\"flex items-center gap-4\">\n\t\t\t\t\t\t\t<hr className=\"flex-1 border-1 border-dashed border-neutral-300 dark:border-neutral-700\" />\n\t\t\t\t\t\t\t<p className=\"text-neutral-700 text-sm dark:text-neutral-300\">or</p>\n\t\t\t\t\t\t\t<hr className=\"flex-1 border-1 border-dashed border-neutral-300 dark:border-neutral-700\" />\n\t\t\t\t\t\t</div>\n\t\t\t\t\t</BoxReveal>\n\t\t\t\t)}\n\t\t\t\t<form onSubmit={isLogin ? handleLoginSubmit : handleForgotSubmit}>\n\t\t\t\t\t{formFields.map((field) => (\n\t\t\t\t\t\t<div key={field.label} className=\"flex flex-col gap-2 mb-4\">\n\t\t\t\t\t\t\t<BoxReveal boxColor=\"hsl(var(--skeleton))\" duration={0.3}>\n\t\t\t\t\t\t\t\t<Label htmlFor={field.label}>{field.label} <span className=\"text-red-500\">*</span></Label>\n\t\t\t\t\t\t\t</BoxReveal>\n\t\t\t\t\t\t\t<BoxReveal width=\"100%\" boxColor=\"hsl(var(--skeleton))\" duration={0.3} className=\"flex flex-col space-y-2 w-full\">\n\t\t\t\t\t\t\t\t<div className=\"relative\">\n\t\t\t\t\t\t\t\t\t<AnimatedInput type={field.type === 'password' ? (showPassword ? 'text' : 'password') : field.type} id={field.label} placeholder={field.placeholder} onChange={field.onChange} />\n\t\t\t\t\t\t\t\t\t{field.type === 'password' && (\n\t\t\t\t\t\t\t\t\t\t<button type=\"button\" onClick={() => setShowPassword(!showPassword)} className=\"absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5\">\n\t\t\t\t\t\t\t\t\t\t\t{showPassword ? <EyeOff className=\"h-5 w-5 text-gray-500\" /> : <Eye className=\"h-5 w-5 text-gray-500\" />}\n\t\t\t\t\t\t\t\t\t\t</button>\n\t\t\t\t\t\t\t\t\t)}\n\t\t\t\t\t\t\t\t</div>\n\t\t\t\t\t\t\t\t<div className=\"h-4\">{errors[field.label as keyof typeof errors] && <p className=\"text-red-500 text-xs\">{errors[field.label as keyof typeof errors]}</p>}</div>\n\t\t\t\t\t\t\t</BoxReveal>\n\t\t\t\t\t\t</div>\n\t\t\t\t\t))}\n\n\t\t\t\t\t<BoxReveal width=\"100%\" boxColor=\"hsl(var(--skeleton))\" duration={0.3} className=\"overflow-visible\">\n\t\t\t\t\t\t<button\n\t\t\t\t\t\t\tclassName=\"bg-gradient-to-br relative group/btn from-zinc-200 dark:from-zinc-900 dark:to-zinc-900 to-zinc-200 block dark:bg-zinc-800 w-full text-black dark:text-white rounded-md h-10 font-medium shadow-[0px_1px_0px_0px_#ffffff40_inset,0px_-1px_0px_0px_#ffffff40_inset] dark:shadow-[0px_1px_0px_0px_var(--zinc-800)_inset,0px_-1px_0px_0px_var(--zinc-800)_inset] outline-hidden hover:cursor-pointer disabled:opacity-50\"\n\t\t\t\t\t\t\ttype=\"submit\" disabled={isLoading}\n\t\t\t\t\t\t>\n\t\t\t\t\t\t\t{isLoading ? (\n\t\t\t\t\t\t\t\t<div className=\"flex items-center justify-center gap-2\">\n\t\t\t\t\t\t\t\t\t<div className=\"w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin\" />\n\t\t\t\t\t\t\t\t\t<span>Processing...</span>\n\t\t\t\t\t\t\t\t</div>\n\t\t\t\t\t\t\t) : (\n\t\t\t\t\t\t\t\t<>{isLogin ? 'Sign in' : 'Send reset link'} &rarr;</>\n\t\t\t\t\t\t\t)}\n\t\t\t\t\t\t\t<BottomGradient />\n\t\t\t\t\t\t</button>\n\t\t\t\t\t</BoxReveal>\n\t\t\t\t\t<BoxReveal boxColor=\"hsl(var(--skeleton))\" duration={0.3}>\n\t\t\t\t\t\t<div className=\"mt-4 text-center\">\n\t\t\t\t\t\t\t<button type=\"button\" className=\"text-sm text-blue-500 hover:underline\" onClick={() => setState(isLogin ? 'forgot-password' : 'login')}>\n\t\t\t\t\t\t\t\t{isLogin ? 'Forgot password?' : 'Back to login'}\n\t\t\t\t\t\t\t</button>\n\t\t\t\t\t\t</div>\n\t\t\t\t\t</BoxReveal>\n\t\t\t\t</form>\n\t\t\t</div>\n\t\t);\n\t};\n\n\treturn (\n\t\t<section className=\"flex max-lg:justify-center min-h-screen w-full login-page-theme bg-background text-foreground\">\n\t\t\t{/* Left Side */}\n\t\t\t<div className=\"flex flex-col justify-center w-1/2 max-lg:hidden relative\">\n\t\t\t\t<Ripple />\n\t\t\t\t<TechOrbitDisplay />\n\t\t\t</div>\n\n\t\t\t{/* Right Side */}\n\t\t\t<div className=\"w-1/2 h-screen flex flex-col justify-center items-center max-lg:w-full max-lg:px-[10%]\">\n\t\t\t\t{renderContent()}\n\t\t\t</div>\n\t\t</section>\n\t);\n}"
+  src/pages/Dashboard/index.tsx: >-
+    import { useRef } from 'react'
+
+    import { 
+      BarChart3, 
+      TrendingUp, 
+      Users, 
+      DollarSign, 
+      Activity,
+      Calendar,
+      Clock,
+      MessageSquare,
+      FileText,
+      Star,
+      ChevronRight,
+      MoreVertical,
+      ArrowDown
+    } from 'lucide-react'
+
+    import { cn } from '@/lib/utils'
+
+    import { DemoContent } from './DemoContent';
+
+    import { useDashboardAnimations } from
+    './hooks/useDashboardAnimations.motion.hook'
+
+    import { useDashboardScroll } from './hooks/useDashboardScroll.hook'
+
+    import { PageHeader } from '@/components/shared/PageHeader';
+
+    import { StatCard } from '@/components/shared/StatCard';
+
+    import { PageLayout } from '@/components/shared/PageLayout';
+
+
+    interface StatsCard {
+      title: string
+      value: string
+      change: string
+      trend: 'up' | 'down'
+      icon: React.ReactNode
+    }
+
+
+    interface ActivityItem {
+      id: string
+      type: 'comment' | 'file' | 'meeting' | 'task'
+      title: string
+      description: string
+      time: string
+      user: string
+    }
+
+
+    const statsCards: StatsCard[] = [
+      {
+        title: "Total Revenue",
+        value: "$45,231.89",
+        change: "+20.1%",
+        trend: "up",
+        icon: <DollarSign className="w-5 h-5" />
+      },
+      {
+        title: "Active Users",
+        value: "2,350",
+        change: "+180.1%",
+        trend: "up",
+        icon: <Users className="w-5 h-5" />
+      },
+      {
+        title: "Conversion Rate",
+        value: "12.5%",
+        change: "+19%",
+        trend: "up",
+        icon: <TrendingUp className="w-5 h-5" />
+      },
+      {
+        title: "Performance",
+        value: "573ms",
+        change: "-5.3%",
+        trend: "down",
+        icon: <Activity className="w-5 h-5" />
+      }
+    ]
+
+
+    const recentActivity: ActivityItem[] = [
+      {
+        id: "1",
+        type: "comment",
+        title: "New comment on Project Alpha",
+        description: "Sarah Johnson added a comment to the design review",
+        time: "2 minutes ago",
+        user: "SJ"
+      },
+      {
+        id: "2",
+        type: "file",
+        title: "Document uploaded",
+        description: "quarterly-report.pdf was uploaded to Documents",
+        time: "15 minutes ago",
+        user: "MD"
+      },
+      {
+        id: "3",
+        type: "meeting",
+        title: "Meeting scheduled",
+        description: "Weekly standup meeting scheduled for tomorrow 9 AM",
+        time: "1 hour ago",
+        user: "RW"
+      },
+      {
+        id: "4",
+        type: "task",
+        title: "Task completed",
+        description: "UI wireframes for mobile app completed",
+        time: "2 hours ago",
+        user: "AL"
+      }
+    ]
+
+
+    interface DashboardContentProps {
+      isInSidePane?: boolean;
+    }
+
+
+    export function DashboardContent({ isInSidePane = false }:
+    DashboardContentProps) {
+        const scrollRef = useRef<HTMLDivElement>(null)
+        const contentRef = useRef<HTMLDivElement>(null);
+        const statsCardsContainerRef = useRef<HTMLDivElement>(null);
+        const featureCardsContainerRef = useRef<HTMLDivElement>(null);
+        const { showScrollToBottom, handleScroll, scrollToBottom } = useDashboardScroll(scrollRef, isInSidePane);
+
+        useDashboardAnimations(contentRef, statsCardsContainerRef, featureCardsContainerRef);
+
+        const getTypeIcon = (type: ActivityItem['type']) => {
+          switch (type) {
+            case 'comment':
+              return <MessageSquare className="w-4 h-4" />
+            case 'file':
+              return <FileText className="w-4 h-4" />
+            case 'meeting':
+              return <Calendar className="w-4 h-4" />
+            case 'task':
+              return <Star className="w-4 h-4" />
+            default:
+              return <Activity className="w-4 h-4" />
+          }
+        }
+
+        return (
+          <PageLayout scrollRef={scrollRef} onScroll={handleScroll} ref={contentRef} isInSidePane={isInSidePane}>
+            {/* Header */}
+            {!isInSidePane && (
+              <PageHeader
+                title="Dashboard"
+                description="Welcome to the Jeli App Shell demo! Explore all the features and customization options."
+              />
+            )}
+              {/* Stats Cards */}
+            <div ref={statsCardsContainerRef} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {statsCards.map((stat) => (
+                <StatCard
+                  key={stat.title}
+                  title={stat.title}
+                  value={stat.value}
+                  change={stat.change}
+                  trend={stat.trend}
+                  icon={stat.icon}
+                />
+              ))}
+            </div>
+
+            {/* Demo Content */}
+            <DemoContent ref={featureCardsContainerRef} />
+
+            {/* Main Content Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Chart Area */}
+            <div className="lg:col-span-2 space-y-6">
+              {/* Analytics Chart */}
+              <Card className="p-6 border-border/50">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-lg font-semibold">Analytics Overview</h3>
+                  <button className="h-8 w-8 flex items-center justify-center hover:bg-accent rounded-full transition-colors">
+                    <MoreVertical className="w-5 h-5" />
+                  </button>
+                </div>
+                
+                {/* Mock Chart */}
+                <div className="h-64 bg-gradient-to-br from-primary/10 to-transparent rounded-xl flex items-center justify-center border border-border/50">
+                  <div className="text-center">
+                    <BarChart3 className="w-12 h-12 text-primary mx-auto mb-2" />
+                    <p className="text-muted-foreground">Chart visualization would go here</p>
+                  </div>
+                </div>
+              </Card>
+
+              {/* Recent Projects */}
+              <Card className="p-6 border-border/50">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-lg font-semibold">Recent Projects</h3>
+                  <button className="text-primary hover:text-primary/80 text-sm font-medium flex items-center gap-1">
+                    View All
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+                
+                <div className="space-y-4">
+                  {[
+                    { name: "E-commerce Platform", progress: 75, team: 5, deadline: "Dec 15" },
+                    { name: "Mobile App Redesign", progress: 45, team: 3, deadline: "Jan 20" },
+                    { name: "Marketing Website", progress: 90, team: 4, deadline: "Dec 5" }
+                  ].map((project) => (
+                    <div key={project.name} className="p-4 bg-accent/30 rounded-xl hover:bg-accent/50 transition-colors cursor-pointer">
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="font-medium">{project.name}</h4>
+                        <span className="text-sm text-muted-foreground">{project.progress}%</span>
+                      </div>
+                      <div className="w-full bg-muted rounded-full h-2 mb-3">
+                        <div 
+                          className="bg-primary h-2 rounded-full transition-all duration-500"
+                          style={{ width: `${project.progress}%` }}
+                        />
+                      </div>
+                      <div className="flex items-center justify-between text-sm text-muted-foreground">
+                        <span>{project.team} team members</span>
+                        <span>Due {project.deadline}</span>
+                        </div>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            </div>
+
+            {/* Sidebar Content */}
+            <div className="space-y-6">
+              {/* Quick Actions */}
+              <Card className="p-6 border-border/50">
+                <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
+                <div className="space-y-3">
+                  {[
+                    { icon: <FileText className="w-4 h-4" />, label: "Create Document", color: "bg-blue-500/10 text-blue-600" },
+                    { icon: <Calendar className="w-4 h-4" />, label: "Schedule Meeting", color: "bg-green-500/10 text-green-600" },
+                    { icon: <Users className="w-4 h-4" />, label: "Invite Team", color: "bg-purple-500/10 text-purple-600" },
+                    { icon: <BarChart3 className="w-4 h-4" />, label: "View Reports", color: "bg-orange-500/10 text-orange-600" }
+                  ].map((action) => (
+                    <button
+                      key={action.label}
+                      className="w-full flex items-center gap-3 p-3 hover:bg-accent rounded-lg transition-colors text-left"
+                    >
+                      <div className={cn("p-2 rounded-full", action.color)}>
+                        {action.icon}
+                      </div>
+                      <span className="font-medium">{action.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </Card>
+
+              {/* Recent Activity */}
+              <Card className="p-6 border-border/50">
+                <h3 className="text-lg font-semibold mb-4">Recent Activity</h3>
+                <div className="space-y-4">
+                  {recentActivity.map((activity) => (
+                    <div key={activity.id} className="flex items-start gap-3 p-3 hover:bg-accent/30 rounded-xl transition-colors cursor-pointer">
+                      <div className="p-2 bg-primary/10 rounded-full flex-shrink-0">
+                        {getTypeIcon(activity.type)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-medium text-sm mb-1">{activity.title}</h4>
+                        <p className="text-xs text-muted-foreground mb-2">{activity.description}</p>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <Clock className="w-3 h-3" />
+                          <span>{activity.time}</span>
+                          <div className="w-5 h-5 bg-primary rounded-full flex items-center justify-center text-primary-foreground text-xs font-medium">
+                            {activity.user}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            </div>
+          </div>
+          {showScrollToBottom && (
+            <button
+              onClick={scrollToBottom}
+              className="fixed bottom-8 right-8 w-12 h-12 bg-primary text-primary-foreground rounded-full flex items-center justify-center shadow-lg hover:bg-primary/90 transition-all animate-fade-in z-[51]"
+              style={{ animation: 'bounce 2s infinite' }}
+              title="Scroll to bottom"
+            >
+              <ArrowDown className="w-6 h-6" />
+            </button>
+          )}
+          </PageLayout>
+        )
+    }
+  src/hooks/usePageContent.hook.tsx: >-
+    import React, { useEffect, useMemo, useCallback } from "react";
+
+    import {
+      useNavigate,
+      useParams,
+      useSearchParams,
+    } from "react-router-dom";
+
+    import { useAppShell } from "@/context/AppShellContext";
+
+    import type { AppShellState } from "@/context/AppShellContext";
+
+    import { BODY_STATES } from "@/lib/utils";
+
+
+    // Import page/content components
+
+    import { DashboardContent } from "@/pages/Dashboard";
+
+    import { ToasterDemo } from "@/pages/ToasterDemo";
+
+    import { NotificationsPage } from "@/pages/Notifications";
+
+    import { DataDetailPanel } from
+    "@/pages/DataDemo/components/DataDetailPanel";
+
+    import { mockDataItems } from "@/pages/DataDemo/data/mockData";
+
+    import DataDemoPage from "@/pages/DataDemo";
+
+    import { SettingsContent } from "@/features/settings/SettingsContent";
+
+
+    // Import icons
+
+    import {
+      LayoutDashboard,
+      Settings,
+      Component,
+      Bell,
+      SlidersHorizontal,
+      ChevronsLeftRight,
+      Layers,
+      SplitSquareHorizontal,
+      Database,
+    } from "lucide-react";
+
+
+    export function usePageContent() {
+      const { bodyState, dispatch } = useAppShell();
+      const navigate = useNavigate();
+      const [searchParams, setSearchParams] = useSearchParams();
+      const { itemId } = useParams<{ itemId: string }>();
+
+      // Effect to sync app shell state (bodyState, sidePaneContent) with URL
+      useEffect(() => {
+        const pane = searchParams.get('sidePane');
+        const view = searchParams.get('view');
+        const right = searchParams.get('right');
+        const validPanes: AppShellState['sidePaneContent'][] = ['details', 'settings', 'main', 'toaster', 'notifications', 'dataDemo'];
+
+        if (itemId) {
+          dispatch({ type: 'SET_SIDE_PANE_CONTENT', payload: 'dataItem' });
+          if (view === 'split') {
+            dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.SPLIT_VIEW });
+          } else {
+            dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.SIDE_PANE });
+          }
+        } else if (pane && validPanes.includes(pane as AppShellState['sidePaneContent'])) {
+          dispatch({ type: 'SET_SIDE_PANE_CONTENT', payload: pane as AppShellState['sidePaneContent'] });
+          dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.SIDE_PANE });
+        } else if (view === 'split' && right && validPanes.includes(right as AppShellState['sidePaneContent'])) {
+          dispatch({ type: 'SET_SIDE_PANE_CONTENT', payload: right as AppShellState['sidePaneContent'] });
+          dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.SPLIT_VIEW });
+        } else {
+          dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.NORMAL });
+          dispatch({ type: 'SET_SIDE_PANE_CONTENT', payload: 'details' });
+        }
+      }, [itemId, searchParams, dispatch]);
+
+      const contentMap = useMemo(() => ({
+        main: {
+          title: "Dashboard",
+          icon: LayoutDashboard,
+          page: "dashboard",
+          content: <DashboardContent isInSidePane />,
+        },
+        settings: {
+          title: "Settings",
+          icon: Settings,
+          page: "settings",
+          content: <div className="p-6"><SettingsContent /></div>
+        },
+        toaster: {
+          title: "Toaster Demo",
+          icon: Component,
+          page: "toaster",
+          content: <ToasterDemo isInSidePane />,
+        },
+        notifications: {
+          title: "Notifications",
+          icon: Bell,
+          page: "notifications",
+          content: <NotificationsPage isInSidePane />,
+        },
+        dataDemo: {
+          title: "Data Showcase",
+          icon: Database,
+          page: "data-demo",
+          content: <DataDemoPage />,
+        },
+        details: {
+          title: "Details Panel",
+          icon: SlidersHorizontal,
+          content: (
+            <div className="p-6">
+              <p className="text-muted-foreground">
+                This is the side pane. It can be used to display contextual
+                information, forms, or actions related to the main content.
+              </p>
+            </div>
+          ),
+        },
+      }), []);
+
+      const selectedItem = useMemo(() => {
+        if (!itemId) return null
+        return mockDataItems.find(item => item.id === itemId) ?? null
+      }, [itemId]);
+
+      const sidePaneIdentifier = itemId
+        ? 'dataItem'
+        : searchParams.get('sidePane') || searchParams.get('right') || 'details';
+
+      const { currentContent, rightPaneContent } = useMemo(() => {
+        if (sidePaneIdentifier === 'dataItem') {
+          return {
+            currentContent: { title: "Item Details", icon: Database, page: `data-demo/${itemId}` },
+            rightPaneContent: <DataDetailPanel item={selectedItem} onClose={() => navigate('/data-demo')} />,
+          };
+        }
+        const mappedContent = contentMap[sidePaneIdentifier as keyof typeof contentMap] || contentMap.details;
+        return {
+          currentContent: mappedContent,
+          rightPaneContent: mappedContent.content,
+        };
+      }, [sidePaneIdentifier, selectedItem, navigate, contentMap, itemId]);
+
+      const CurrentIcon = currentContent.icon;
+
+      const handleMaximize = useCallback(() => {
+        if ("page" in currentContent && currentContent.page) {
+          navigate(`/${currentContent.page}`, { replace: true });
+        } else {
+          setSearchParams({}, { replace: true });
+        }
+      }, [currentContent, navigate, setSearchParams]);
+
+      const handleCloseSidePane = useCallback(() => {
+        if (itemId) {
+          navigate('/data-demo');
+        } else {
+          setSearchParams(prev => {
+            const newParams = new URLSearchParams(prev);
+            newParams.delete('sidePane');
+            newParams.delete('right');
+            newParams.delete('view');
+            return newParams;
+          }, { replace: true });
+        }
+      }, [setSearchParams, itemId, navigate]);
+
+      const handleToggleSplitView = useCallback(() => {
+        if (bodyState === BODY_STATES.SIDE_PANE) {
+          setSearchParams(prev => {
+            const newParams = new URLSearchParams(prev);
+            const currentPane = newParams.get('sidePane');
+            if (currentPane) {
+              newParams.set('view', 'split');
+              newParams.set('right', currentPane);
+              newParams.delete('sidePane');
+            }
+            return newParams;
+          }, { replace: true });
+        } else if (bodyState === BODY_STATES.SPLIT_VIEW) {
+          setSearchParams(prev => {
+            return { sidePane: prev.get('right') || 'details' }
+          }, { replace: true });
+        }
+      }, [bodyState, setSearchParams]);
+
+      const rightPaneHeader = useMemo(() => (
+        bodyState !== BODY_STATES.SPLIT_VIEW ? (
+          <>
+            <div className="flex items-center gap-2">
+              <CurrentIcon className="w-5 h-5" />
+              <h2 className="text-lg font-semibold whitespace-nowrap">
+                {currentContent.title}
+              </h2>
+            </div>
+            <div className="flex items-center">
+              {(bodyState === BODY_STATES.SIDE_PANE ||
+                bodyState === BODY_STATES.SPLIT_VIEW) && (
+                <button
+                  onClick={handleToggleSplitView}
+                  className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors"
+                  title={
+                    bodyState === BODY_STATES.SIDE_PANE
+                      ? "Switch to Split View"
+                      : "Switch to Overlay View"
+                  }
+                >
+                  {bodyState === BODY_STATES.SPLIT_VIEW ? (
+                    <Layers className="w-5 h-5" />
+                  ) : (
+                    <SplitSquareHorizontal className="w-5 h-5" />
+                  )}
+                </button>
+              )}
+              {"page" in currentContent && currentContent.page && (
+                <button
+                  onClick={handleMaximize}
+                  className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors mr-2"
+                  title="Move to Main View"
+                >
+                  <ChevronsLeftRight className="w-5 h-5" />
+                </button>
+              )}
+            </div>
+          </>
+        ) : undefined
+      ), [bodyState, currentContent, CurrentIcon, handleToggleSplitView, handleMaximize]);
+
+      return {
+        rightPaneContent,
+        rightPaneHeader,
+        handleCloseSidePane
+      };
+    }
+  src/pages/DataDemo/components/AnimatedLoadingSkeleton.tsx: >-
+    import React, { useEffect, useRef, useState } from 'react'
+
+    import { gsap } from 'gsap'
+
+    import { Search } from 'lucide-react'
+
+    import { cn } from '@/lib/utils'
+
+    import type { ViewMode } from '../types'
+
+
+    interface GridConfig {
+      numCards: number
+      cols: number
+    }
+
+
+    export const AnimatedLoadingSkeleton = ({ viewMode }: { viewMode: ViewMode
+    }) => {
+      const [containerWidth, setContainerWidth] = useState(0)
+      const containerRef = useRef<HTMLDivElement>(null)
+      const iconRef = useRef<HTMLDivElement>(null)
+      const timelineRef = useRef<gsap.core.Timeline | null>(null)
+
+      const getGridConfig = (width: number): GridConfig => {
+        if (width === 0) return { numCards: 8, cols: 2 }; // Default before measurement
+        if (viewMode === 'list' || viewMode === 'table') {
+          return { numCards: 5, cols: 1 }
+        }
+        // For card view
+        if (viewMode === 'cards') {
+          const cols = Math.max(1, Math.floor(width / 344)); // 320px card + 24px gap
+          return { numCards: Math.max(8, cols * 2), cols }
+        }
+        // For grid view
+        const cols = Math.max(1, Math.floor(width / 304)); // 280px card + 24px gap
+        return { numCards: Math.max(8, cols * 2), cols }
+      }
+
+      useEffect(() => {
+        const container = containerRef.current;
+        if (!container) return;
+
+        const resizeObserver = new ResizeObserver(entries => {
+          if (entries[0]) {
+            setContainerWidth(entries[0].contentRect.width);
+          }
+        });
+
+        resizeObserver.observe(container);
+        return () => resizeObserver.disconnect();
+      }, []);
+
+      useEffect(() => {
+        if (timelineRef.current) {
+          timelineRef.current.kill()
+        }
+        if (!iconRef.current || !containerRef.current || containerWidth === 0) return
+
+        // Allow DOM to update with new skeleton cards
+        const timeoutId = setTimeout(() => {
+          const cards = Array.from(containerRef.current!.children)
+          if (cards.length === 0) return
+
+          const shuffledCards = gsap.utils.shuffle(cards)
+
+          const getCardPosition = (card: Element) => {
+            const rect = card.getBoundingClientRect()
+            const containerRect = containerRef.current!.getBoundingClientRect()
+            const iconRect = iconRef.current!.getBoundingClientRect()
+
+            return {
+              x: rect.left - containerRect.left + rect.width / 2 - iconRect.width / 2,
+              y: rect.top - containerRect.top + rect.height / 2 - iconRect.height / 2,
+            }
+          }
+          
+          const tl = gsap.timeline({
+            repeat: -1,
+            repeatDelay: 0.5,
+            defaults: { duration: 1, ease: 'power2.inOut' }
+          });
+          timelineRef.current = tl
+
+          // Animate to a few random cards
+          shuffledCards.slice(0, 5).forEach(card => {
+            const pos = getCardPosition(card)
+            tl.to(iconRef.current, { 
+              x: pos.x,
+              y: pos.y,
+              scale: 1.2,
+              duration: 0.8
+            }).to(iconRef.current, {
+              scale: 1,
+              duration: 0.2
+            })
+          });
+
+          // Loop back to the start
+          const firstPos = getCardPosition(shuffledCards[0]);
+          tl.to(iconRef.current, { x: firstPos.x, y: firstPos.y, duration: 0.8 });
+        }, 100) // Small delay to ensure layout is calculated
+
+        return () => {
+          clearTimeout(timeoutId)
+          if (timelineRef.current) {
+            timelineRef.current.kill()
+          }
+        }
+
+      }, [containerWidth, viewMode])
+
+      const config = getGridConfig(containerWidth)
+
+      const renderSkeletonCard = (key: number) => {
+        if (viewMode === 'list' || viewMode === 'table') {
+          return (
+            <div key={key} className="bg-card/30 border border-border/30 rounded-2xl p-6 flex items-start gap-4 animate-pulse">
+              <div className="w-14 h-14 bg-muted rounded-xl flex-shrink-0"></div>
+              <div className="flex-1 space-y-3">
+                <div className="h-4 bg-muted rounded w-3/4"></div>
+                <div className="h-3 bg-muted rounded w-full"></div>
+                <div className="h-3 bg-muted rounded w-5/6"></div>
+                <div className="flex gap-2 pt-2">
+                  <div className="h-6 bg-muted rounded-full w-20"></div>
+                  <div className="h-6 bg-muted rounded-full w-20"></div>
+                </div>
+              </div>
+            </div>
+          )
+        }
+
+        return (
+          <div 
+            key={key} 
+            className={cn(
+              "bg-card/30 border border-border/30 rounded-3xl p-6 space-y-4 animate-pulse",
+            )}
+          >
+            <div className="flex items-start justify-between">
+              <div className="w-16 h-16 bg-muted rounded-2xl"></div>
+              <div className="w-4 h-4 bg-muted rounded-full"></div>
+            </div>
+            <div className="h-4 bg-muted rounded w-3/4"></div>
+            <div className="h-3 bg-muted rounded w-full"></div>
+            <div className="h-3 bg-muted rounded w-5/6"></div>
+            <div className="h-2 w-full bg-muted rounded-full my-4"></div>
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-muted rounded-full"></div>
+              <div className="flex-1 space-y-2">
+                <div className="h-3 bg-muted rounded w-1/2"></div>
+                <div className="h-2 bg-muted rounded w-1/3"></div>
+              </div>
+            </div>
+          </div>
+        )
+      }
+
+      const gridClasses = {
+        list: "space-y-4",
+        table: "space-y-4",
+        cards: "grid grid-cols-[repeat(auto-fit,minmax(320px,1fr))] gap-6",
+        grid: "grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-6"
+      }
+
+      return (
+        <div className="relative overflow-hidden rounded-lg min-h-[500px]">
+          <div 
+            ref={iconRef}
+            className="absolute z-10 p-3 bg-primary/20 rounded-full backdrop-blur-sm"
+            style={{ willChange: 'transform' }}
+          >
+            <Search className="w-6 h-6 text-primary" />
+          </div>
+
+          <div 
+            ref={containerRef}
+            className={cn(gridClasses[viewMode])}
+          >
+            {[...Array(config.numCards)].map((_, i) => renderSkeletonCard(i))}
+          </div>
+        </div>
+      )
+    }
+  src/pages/DataDemo/components/DataDetailPanel.tsx: >-
+    import React, { useRef } from 'react'
+
+    import { Badge } from '@/components/ui/badge'
+
+    import { Avatar } from '@/components/ui/avatar'
+
+    import { Button } from '@/components/ui/button'
+
+    import { 
+      ArrowLeft, 
+      Clock, 
+      Eye, 
+      Heart, 
+      Share, 
+      Download,
+      FileText,
+      Image,
+      Video,
+      File,
+      Tag,
+      User,
+      BarChart3,
+      TrendingUp,
+      CheckCircle,
+      AlertCircle,
+      Circle
+    } from 'lucide-react'
+
+    import type { DataItem } from '../types'
+
+    import { useStaggeredAnimation } from
+    '@/hooks/useStaggeredAnimation.motion.hook'
+
+    import {
+      AssigneeInfo,
+      ItemMetrics,
+      ItemProgressBar,
+      ItemStatusBadge,
+      ItemPriorityBadge,
+      ItemTags,
+    } from './shared/DataItemParts'
+
+    import { DataDetailActions } from './DataDetailActions'
+
+    interface DataDetailPanelProps {
+      item: DataItem | null
+      onClose: () => void
+    }
+
+
+    export function DataDetailPanel({ item, onClose }: DataDetailPanelProps) {
+      const contentRef = useRef<HTMLDivElement>(null)
+      useStaggeredAnimation(contentRef, [item]);
+
+      if (!item) {
+        return null
+      }
+
+      const getFileIcon = (type: string) => {
+        switch (type.toLowerCase()) {
+          case 'pdf': return FileText
+          case 'image':
+          case 'png':
+          case 'jpg':
+          case 'jpeg': return Image
+          case 'video':
+          case 'mp4': return Video
+          default: return File
+        }
+      }
+
+      const getStatusIcon = (status: string) => {
+        switch (status) {
+          case 'completed': return CheckCircle
+          case 'active': return Circle
+          case 'pending': return AlertCircle
+          default: return Circle
+        }
+      }
+
+      return (
+        <div ref={contentRef} className="h-full flex flex-col">
+          {/* Header */}
+          <div className="p-6 border-b border-border/50 bg-gradient-to-r from-card/50 to-card/30 backdrop-blur-sm">
+            <Button variant="ghost" onClick={onClose} className="mb-4 -ml-4">
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back to list
+            </Button>
+            <div className="flex items-start gap-4 mb-4">
+              <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-primary/10 rounded-2xl flex items-center justify-center text-3xl flex-shrink-0">
+                {item.thumbnail}
+              </div>
+              <div className="flex-1 min-w-0">
+                <h1 className="text-2xl font-bold mb-2 leading-tight">
+                  {item.title}
+                </h1>
+                <p className="text-muted-foreground">
+                  {item.description}
+                </p>
+              </div>
+            </div>
+
+            {/* Status badges */}
+            <div className="flex items-center gap-2 mb-4">
+              <Badge variant="outline">
+                {React.createElement(getStatusIcon(item.status), { className: "w-3 h-3 mr-1" })}
+                {item.status}
+              </Badge>
+              <ItemPriorityBadge priority={item.priority} />
+              <Badge variant="outline" className="bg-accent/50">
+                {item.category}
+              </Badge>
+            </div>
+
+            {/* Progress */}
+            <ItemProgressBar completion={item.metrics.completion} />
+          </div>
+
+          {/* Content */}
+          <div className="flex-1 overflow-y-auto">
+            <div className="p-6 space-y-6">
+              {/* Assignee Info */}
+              <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
+                <div className="flex items-center gap-1 mb-3">
+                  <User className="w-4 h-4 text-muted-foreground" />
+                  <h3 className="font-semibold text-sm">Assigned to</h3>
+                </div>
+                <AssigneeInfo assignee={item.assignee} avatarClassName="w-12 h-12" />
+              </div>
+
+              {/* Metrics */}
+              <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
+                <div className="flex items-center gap-1 mb-3">
+                  <BarChart3 className="w-4 h-4 text-muted-foreground" />
+                  <h3 className="font-semibold text-sm">Engagement Metrics</h3>
+                </div>
+                <div className="grid grid-cols-[repeat(auto-fit,minmax(80px,1fr))] gap-4">
+                  <div className="text-center">
+                    <p className="text-2xl font-bold">{item.metrics.views + item.metrics.likes + item.metrics.shares}</p>
+                    <p className="text-xs text-muted-foreground">Shares</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Tags */}
+              <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
+                <div className="flex items-center gap-1 mb-3">
+                  <Tag className="w-4 h-4 text-muted-foreground" />
+                  <h3 className="font-semibold text-sm">Tags</h3>
+                </div>
+                <ItemTags tags={item.tags} />
+              </div>
+
+              {/* Content Details */}
+              {item.content && (
+                <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
+                  <h3 className="font-semibold text-sm mb-3">Project Details</h3>
+                  <div className="space-y-4">
+                    <div>
+                      <h4 className="font-medium text-sm mb-2">Summary</h4>
+                      <p className="text-sm text-muted-foreground leading-relaxed">
+                        {item.content.summary}
+                      </p>
+                    </div>
+                    <div>
+                      <h4 className="font-medium text-sm mb-2">Description</h4>
+                      <p className="text-sm text-muted-foreground leading-relaxed">
+                        {item.content.details}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Attachments */}
+              {item.content?.attachments && item.content.attachments.length > 0 && (
+                <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
+                  <h3 className="font-semibold text-sm mb-3">Attachments</h3>
+                  <div className="space-y-2">
+                    {item.content.attachments.map((attachment, index) => {
+                      const IconComponent = getFileIcon(attachment.type)
+                      return (
+                        <div
+                          key={index}
+                          className="flex items-center gap-3 p-3 bg-muted/30 rounded-xl hover:bg-muted/50 transition-colors cursor-pointer group"
+                        >
+                          <IconComponent className="w-5 h-5 text-muted-foreground" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">
+                              {attachment.name}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {attachment.type} • {attachment.size}
+                            </p>
+                          </div>
+                          <Button size="sm" variant="ghost" className="opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Download className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Timeline */}
+              <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
+                <div className="flex items-center gap-1 mb-3">
+                  <Clock className="w-4 h-4 text-muted-foreground" />
+                  <h3 className="font-semibold text-sm">Timeline</h3>
+                </div>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-sm">
+                    <Clock className="w-3 h-3 text-muted-foreground" />
+                    <span className="text-muted-foreground">Created:</span>
+                    <span className="font-medium">
+                      {new Date(item.createdAt).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                      })}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <TrendingUp className="w-3 h-3 text-muted-foreground" />
+                    <span className="text-muted-foreground">Last updated:</span>
+                    <span className="font-medium">
+                      {new Date(item.updatedAt).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                      })}
+                    </span>
+                  </div>
+                  {item.dueDate && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <AlertCircle className="w-3 h-3 text-orange-500" />
+                      <span className="text-muted-foreground">Due date:</span>
+                      <span className="font-medium text-orange-600">
+                        {new Date(item.dueDate).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric'
+                        })}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Footer Actions */}
+          <div className="p-6 border-t border-border/50 bg-card/30">
+            <DataDetailActions />
+          </div>
+        </div>
+      )
+    }
+  src/pages/DataDemo/components/DataCardView.tsx: >-
+    import { useRef } from 'react'
+
+    import { cn } from '@/lib/utils'
+
+    import { Badge } from '@/components/ui/badge'
+
+    import { ArrowUpRight } from 'lucide-react'
+
+    import type { ViewProps } from '../types'
+
+    import { useIncrementalStaggeredAnimation } from
+    '@/hooks/useStaggeredAnimation.motion.hook'
+
+    import { EmptyState } from './EmptyState'
+
+    import {
+      AssigneeInfo,
+      ItemMetrics,
+      ItemProgressBar,
+      ItemStatusBadge,
+      ItemTags,
+      ItemDateInfo,
+    } from './shared/DataItemParts'
+
+
+    export function DataCardView({ data, onItemSelect, selectedItem, isGrid =
+    false }: ViewProps) {
+      const containerRef = useRef<HTMLDivElement>(null)
+      useIncrementalStaggeredAnimation(containerRef, [data], { y: 40 });
+
+      if (data.length === 0) {
+        return <EmptyState />
+      }
+
+      return (
+        <div 
+          ref={containerRef}
+          className={cn(
+            "gap-6",
+            isGrid
+              ? "grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))]"
+              : "grid grid-cols-[repeat(auto-fit,minmax(320px,1fr))]"
+          )}
+        >
+          {data.map((item) => {
+            const isSelected = selectedItem?.id === item.id
+            
+            return (
+              <div
+                key={item.id}
+                onClick={() => onItemSelect(item)}
+                className={cn(
+                  "group relative overflow-hidden rounded-3xl border bg-card/50 backdrop-blur-sm transition-all duration-500 cursor-pointer",
+                  "hover:bg-card/80 hover:shadow-xl hover:shadow-primary/10 hover:border-primary/30 hover:-translate-y-2",
+                  "active:scale-[0.98]",
+                  isSelected && "ring-2 ring-primary/30 border-primary/40 bg-card/90 shadow-lg shadow-primary/20",
+                )}
+              >
+                {/* Card Header with Thumbnail */}
+                <div className="relative p-6 pb-4">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-primary/10 rounded-2xl flex items-center justify-center text-3xl group-hover:scale-110 transition-transform duration-300">
+                      {item.thumbnail}
+                    </div>
+                    <ArrowUpRight className="w-5 h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 group-hover:-translate-y-1 transition-all duration-300" />
+                  </div>
+
+                  {/* Priority indicator */}
+                  <div className="absolute top-4 right-4">
+                    <div className={cn(
+                      "w-3 h-3 rounded-full",
+                      item.priority === 'critical' && "bg-red-500",
+                      item.priority === 'high' && "bg-orange-500",
+                      item.priority === 'medium' && "bg-blue-500",
+                      item.priority === 'low' && "bg-green-500"
+                    )} />
+                  </div>
+                </div>
+
+                {/* Card Content */}
+                <div className="px-6 pb-6">
+                  {/* Title and Description */}
+                  <h3 className="font-semibold text-lg mb-2 group-hover:text-primary transition-colors line-clamp-2">
+                    {item.title}
+                  </h3>
+                  <p className="text-muted-foreground text-sm mb-4 line-clamp-3">
+                    {item.description}
+                  </p>
+
+                  {/* Status and Category */}
+                  <div className="flex items-center gap-2 mb-4">
+                    <ItemStatusBadge status={item.status} />
+                    <Badge variant="outline" className="bg-accent/50 text-xs">
+                      {item.category}
+                    </Badge>
+                  </div>
+
+                  {/* Tags */}
+                  <div className="mb-4"><ItemTags tags={item.tags} /></div>
+
+                  {/* Progress */}
+                  <div className="mb-4"><ItemProgressBar completion={item.metrics.completion} /></div>
+
+                  {/* Assignee */}
+                  <div className="mb-4"><AssigneeInfo assignee={item.assignee} /></div>
+
+                  {/* Metrics */}
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <ItemMetrics metrics={item.metrics} />
+                    <ItemDateInfo date={item.updatedAt} />
+                  </div>
+                </div>
+
+                {/* Hover gradient overlay */}
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+                
+                {/* Selection indicator */}
+                {isSelected && (
+                  <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-primary/5 pointer-events-none" />
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )
+    }
+  src/pages/DataDemo/components/DataListView.tsx: >-
+    import { useRef } from 'react'
+
+    import { cn } from '@/lib/utils'
+
+    import { Badge } from '@/components/ui/badge'
+
+    import { ArrowRight } from 'lucide-react'
+
+    import type { ViewProps } from '../types'
+
+    import { useIncrementalStaggeredAnimation } from
+    '@/hooks/useStaggeredAnimation.motion.hook'
+
+    import { EmptyState } from './EmptyState'
+
+    import {
+      AssigneeInfo,
+      ItemMetrics,
+      ItemProgressBar,
+      ItemStatusBadge,
+      ItemPriorityBadge,
+      ItemDateInfo,
+    } from './shared/DataItemParts'
+
+
+    export function DataListView({ data, onItemSelect, selectedItem }:
+    ViewProps) {
+      const listRef = useRef<HTMLDivElement>(null)
+      useIncrementalStaggeredAnimation(listRef, [data], { scale: 1, y: 30, stagger: 0.08, duration: 0.5 });
+
+      if (data.length === 0) {
+        return <EmptyState />
+      }
+
+      return (
+        <div ref={listRef} className="space-y-4">
+          {data.map((item) => {
+            const isSelected = selectedItem?.id === item.id
+            
+            return (
+              <div
+                key={item.id}
+                onClick={() => onItemSelect(item)}
+                className={cn(
+                  "group relative overflow-hidden rounded-2xl border bg-card/50 backdrop-blur-sm transition-all duration-300 cursor-pointer",
+                  "hover:bg-card/80 hover:shadow-lg hover:shadow-primary/5 hover:border-primary/20",
+                  "active:scale-[0.99]",
+                  isSelected && "ring-2 ring-primary/20 border-primary/30 bg-card/90"
+                )}
+              >
+                <div className="p-6">
+                  <div className="flex items-start gap-4">
+                    {/* Thumbnail */}
+                    <div className="flex-shrink-0">
+                      <div className="w-14 h-14 bg-gradient-to-br from-primary/20 to-primary/10 rounded-xl flex items-center justify-center text-2xl">
+                        {item.thumbnail}
+                      </div>
+                    </div>
+
+                    {/* Content */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-semibold text-lg mb-1 group-hover:text-primary transition-colors">
+                            {item.title}
+                          </h3>
+                          <p className="text-muted-foreground text-sm mb-3 line-clamp-2">
+                            {item.description}
+                          </p>
+                        </div>
+                        <ArrowRight className="w-5 h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all duration-300 ml-4 flex-shrink-0" />
+                      </div>
+
+                      {/* Badges */}
+                      <div className="flex items-center gap-2 mb-4">
+                        <ItemStatusBadge status={item.status} />
+                        <ItemPriorityBadge priority={item.priority} />
+                        <Badge variant="outline" className="bg-accent/50">
+                          {item.category}
+                        </Badge>
+                      </div>
+
+                      {/* Meta info */}
+                      <div className="flex items-center justify-between text-muted-foreground">
+                        <div className="flex items-center gap-4">
+                          {/* Assignee */}
+                          <AssigneeInfo assignee={item.assignee} avatarClassName="w-7 h-7" />
+                          {/* Date */}
+                          <ItemDateInfo date={item.updatedAt} />
+                        </div>
+
+                        {/* Metrics */}
+                        <ItemMetrics metrics={item.metrics} />
+                      </div>
+
+                      {/* Progress bar */}
+                      <div className="mt-4"><ItemProgressBar completion={item.metrics.completion} /></div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Hover gradient overlay */}
+                <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+              </div>
+            )
+          })}
+        </div>
+      )
+    }
+  src/pages/DataDemo/components/DataTableView.tsx: >-
+    import { useRef, useLayoutEffect } from 'react'
+
+    import { gsap } from 'gsap'
+
+    import { cn } from '@/lib/utils'
+
+    import { 
+      ArrowUpDown, 
+      ArrowUp, 
+      ArrowDown,
+      ExternalLink
+    } from 'lucide-react'
+
+    import type { ViewProps, DataItem, SortableField } from '../types'
+
+    import { EmptyState } from './EmptyState'
+
+    import { capitalize } from '@/lib/utils'
+
+    import {
+      AssigneeInfo,
+      ItemMetrics,
+      ItemStatusBadge,
+      ItemPriorityBadge,
+      ItemDateInfo,
+    } from './shared/DataItemParts'
+
+
+    export function DataTableView({ data, onItemSelect, selectedItem,
+    sortConfig, onSort }: ViewProps) {
+      const tableRef = useRef<HTMLTableElement>(null)
+      const animatedItemsCount = useRef(0)
+
+      useLayoutEffect(() => {
+        if (tableRef.current) {
+          // Only select item rows for animation, not group headers
+          const newItems = Array.from( 
+            tableRef.current.querySelectorAll('tbody tr')
+          ).filter(tr => !tr.dataset.groupHeader)
+           .slice(animatedItemsCount.current);
+          gsap.fromTo(newItems,
+            { y: 20, opacity: 0 },
+            {
+              duration: 0.5,
+              y: 0,
+              opacity: 1,
+              stagger: 0.05,
+              ease: "power2.out",
+            },
+          );
+          animatedItemsCount.current = Array.isArray(data) 
+            ? data.length 
+            : Object.values(data).reduce((sum, items) => sum + items.length, 0);
+        }
+      }, [data]);
+
+      const SortIcon = ({ field }: { field: SortableField }) => {
+        if (sortConfig?.key !== field) {
+          return <ArrowUpDown className="w-4 h-4 opacity-50" />
+        }
+        if (sortConfig.direction === 'asc') {
+          return <ArrowUp className="w-4 h-4 text-primary" />
+        }
+        if (sortConfig.direction === 'desc') {
+          return <ArrowDown className="w-4 h-4 text-primary" />
+        }
+        return <ArrowUpDown className="w-4 h-4 opacity-50" />
+      }
+
+      const handleSortClick = (field: SortableField) => {
+        onSort?.(field)
+      }
+
+      if ((Array.isArray(data) && data.length === 0) || (!Array.isArray(data) && Object.keys(data).length === 0)) {
+        return <EmptyState />
+      }
+
+      return (
+        <div className="relative overflow-hidden rounded-2xl border bg-card/50 backdrop-blur-sm">
+          <div className="overflow-x-auto">
+            <table ref={tableRef} className="w-full">
+              <thead>
+                <tr className="border-b border-border/50 bg-muted/20">
+                  <th className="text-left p-4 font-semibold text-sm">
+                    <button
+                      onClick={() => handleSortClick('title')}
+                      className="flex items-center gap-2 hover:text-primary transition-colors"
+                    >
+                      Project
+                      <SortIcon field="title" />
+                    </button>
+                  </th>
+                  <th className="text-left p-4 font-semibold text-sm">
+                    <button
+                      onClick={() => handleSortClick('status')}
+                      className="flex items-center gap-2 hover:text-primary transition-colors"
+                    >
+                      Status
+                      <SortIcon field="status" />
+                    </button>
+                  </th>
+                  <th className="text-left p-4 font-semibold text-sm">
+                    <button
+                      onClick={() => handleSortClick('priority')}
+                      className="flex items-center gap-2 hover:text-primary transition-colors"
+                    >
+                      Priority
+                      <SortIcon field="priority" />
+                    </button>
+                  </th>
+                  <th className="text-left p-4 font-semibold text-sm">
+                    <button
+                      onClick={() => handleSortClick('assignee.name')}
+                      className="flex items-center gap-2 hover:text-primary transition-colors"
+                    >
+                      Assignee
+                      <SortIcon field="assignee.name" />
+                    </button>
+                  </th>
+                  <th className="text-left p-4 font-semibold text-sm">
+                    <button
+                      onClick={() => handleSortClick('metrics.completion')}
+                      className="flex items-center gap-2 hover:text-primary transition-colors"
+                    >
+                      Progress
+                      <SortIcon field="metrics.completion" />
+                    </button>
+                  </th>
+                  <th className="text-left p-4 font-semibold text-sm">
+                    <button
+                      onClick={() => handleSortClick('metrics.views')}
+                      className="flex items-center gap-2 hover:text-primary transition-colors"
+                    >
+                      Engagement
+                      <SortIcon field="metrics.views" />
+                    </button>
+                  </th>
+                  <th className="text-left p-4 font-semibold text-sm">Last Updated</th>
+                  <th className="text-center p-4 font-semibold text-sm w-16">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {Array.isArray(data)
+                  ? data.map(item => <TableRow key={item.id} item={item} isSelected={selectedItem?.id === item.id} onItemSelect={onItemSelect} />)
+                  : Object.entries(data).flatMap(([groupName, items]) => [
+                      <tr key={groupName} data-group-header="true" className="sticky top-0 z-10">
+                        <td colSpan={8} className="p-2 bg-muted/50 backdrop-blur-sm">
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-semibold text-sm">{capitalize(groupName)}</h3>
+                            <span className="text-xs px-2 py-0.5 bg-background rounded-full font-medium">{items.length}</span>
+                          </div>
+                        </td>
+                      </tr>,
+                      ...items.map(item => <TableRow key={item.id} item={item} isSelected={selectedItem?.id === item.id} onItemSelect={onItemSelect} />)
+                    ])
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )
+    }
+
+
+    function TableRow({ item, isSelected, onItemSelect }: { item: DataItem;
+    isSelected: boolean; onItemSelect: (item: DataItem) => void }) {
+      return (
+        <tr
+          onClick={() => onItemSelect(item)}
+          className={cn(
+            "group border-b border-border/30 transition-all duration-200 cursor-pointer",
+            "hover:bg-accent/20 hover:border-primary/20",
+            isSelected && "bg-primary/5 border-primary/30"
+          )}
+        >
+          {/* Project Column */}
+          <td className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-primary/20 to-primary/10 rounded-lg flex items-center justify-center text-lg flex-shrink-0">
+                {item.thumbnail}
+              </div>
+              <div className="min-w-0 flex-1">
+                <h4 className="font-medium group-hover:text-primary transition-colors truncate">
+                  {item.title}
+                </h4>
+                <p className="text-sm text-muted-foreground truncate">
+                  {item.category}
+                </p>
+              </div>
+            </div>
+          </td>
+
+          {/* Status Column */}
+          <td className="p-4">
+            <ItemStatusBadge status={item.status} />
+          </td>
+
+          {/* Priority Column */}
+          <td className="p-4">
+            <ItemPriorityBadge priority={item.priority} />
+          </td>
+
+          {/* Assignee Column */}
+          <td className="p-4">
+            <AssigneeInfo assignee={item.assignee} />
+          </td>
+
+          {/* Progress Column */}
+          {/* Note: This progress bar is custom for the table, so we don't use the shared component here. */}
+          <td className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="flex-1 min-w-0">
+                <div className="w-full bg-muted rounded-full h-2">
+                  <div 
+                    className="bg-gradient-to-r from-primary to-primary/80 h-2 rounded-full transition-all duration-500"
+                    style={{ width: `${item.metrics.completion}%` }}
+                  />
+                </div>
+              </div>
+              <span className="text-sm font-medium text-muted-foreground">
+                {item.metrics.completion}%
+              </span>
+            </div>
+          </td>
+
+          {/* Engagement Column */}
+          <td className="p-4">
+            <ItemMetrics metrics={item.metrics} />
+          </td>
+
+          {/* Date Column */}
+          <td className="p-4">
+            <ItemDateInfo date={item.updatedAt} />
+          </td>
+
+          {/* Actions Column */}
+          <td className="p-4">
+            <button 
+              onClick={(e) => {
+                e.stopPropagation()
+                onItemSelect(item)
+              }}
+              className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-accent transition-colors"
+              title="View details"
+            >
+              <ExternalLink className="w-4 h-4" />
+            </button>
+          </td>
+        </tr>
+      )
+    }
+  src/pages/DataDemo/hooks/useDataManagement.hook.tsx: "import { useState, useRef, useEffect, useCallback, useMemo, ReactNode } from 'react';\nimport { useSearchParams } from 'react-router-dom';\nimport { capitalize, cn } from '@/lib/utils';\nimport { Badge } from '@/components/ui/badge';\nimport { mockDataItems } from '../data/mockData';\nimport type { DataItem, ViewMode, SortConfig, SortableField, GroupableField, Status, Priority } from '../types';\nimport type { FilterConfig } from '../components/DataToolbar';\n\nexport function useDataManagement() {\n\tconst [searchParams, setSearchParams] = useSearchParams();\n\n\t// Derive state from URL search params\n\tconst viewMode = useMemo(() => (searchParams.get('view') as ViewMode) || 'list', [searchParams]);\n\tconst page = useMemo(() => parseInt(searchParams.get('page') || '1', 10), [searchParams]);\n\tconst groupBy = useMemo(() => (searchParams.get('groupBy') as GroupableField | 'none') || 'none', [searchParams]);\n\tconst activeGroupTab = useMemo(() => searchParams.get('tab') || 'all', [searchParams]);\n\n\tconst filters = useMemo<FilterConfig>(\n\t\t() => ({\n\t\t\tsearchTerm: searchParams.get('q') || '',\n\t\t\tstatus: (searchParams.get('status')?.split(',') || []).filter(Boolean) as Status[],\n\t\t\tpriority: (searchParams.get('priority')?.split(',') || []).filter(Boolean) as Priority[],\n\t\t}),\n\t\t[searchParams],\n\t);\n\n\tconst sortConfig = useMemo<SortConfig | null>(() => {\n\t\tconst sortParam = searchParams.get('sort');\n\t\tif (!sortParam) return { key: 'updatedAt', direction: 'desc' }; // Default sort\n\t\tif (sortParam === 'default') return null;\n\n\t\tconst [key, direction] = sortParam.split('-');\n\t\treturn { key: key as SortableField, direction: direction as 'asc' | 'desc' };\n\t}, [searchParams]);\n\n\t// Centralized handler for updating URL search params\n\tconst handleParamsChange = useCallback(\n\t\t(newParams: Record<string, string | string[] | null | undefined>) => {\n\t\t\tsetSearchParams(\n\t\t\t\t(prev) => {\n\t\t\t\t\tconst updated = new URLSearchParams(prev);\n\t\t\t\t\tlet pageReset = false;\n\n\t\t\t\t\tfor (const [key, value] of Object.entries(newParams)) {\n\t\t\t\t\t\tconst isFilterOrSort = ['q', 'status', 'priority', 'sort', 'groupBy'].includes(key);\n\n\t\t\t\t\t\tif (value === null || value === undefined || (Array.isArray(value) && value.length === 0) || value === '') {\n\t\t\t\t\t\t\tupdated.delete(key);\n\t\t\t\t\t\t} else if (Array.isArray(value)) {\n\t\t\t\t\t\t\tupdated.set(key, value.join(','));\n\t\t\t\t\t\t} else {\n\t\t\t\t\t\t\tupdated.set(key, String(value));\n\t\t\t\t\t\t}\n\n\t\t\t\t\t\tif (isFilterOrSort) {\n\t\t\t\t\t\t\tpageReset = true;\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\n\t\t\t\t\tif (pageReset) {\n\t\t\t\t\t\tupdated.delete('page');\n\t\t\t\t\t}\n\t\t\t\t\tif ('groupBy' in newParams) {\n\t\t\t\t\t\tupdated.delete('tab');\n\t\t\t\t\t}\n\n\t\t\t\t\treturn updated;\n\t\t\t\t},\n\t\t\t\t{ replace: true },\n\t\t\t);\n\t\t},\n\t\t[setSearchParams],\n\t);\n\n\tconst [items, setItems] = useState<DataItem[]>([]);\n\tconst [hasMore, setHasMore] = useState(true);\n\tconst [isLoading, setIsLoading] = useState(true);\n\tconst observer = useRef<IntersectionObserver>();\n\n\t// Centralized data filtering and sorting from the master list\n\tconst filteredAndSortedData = useMemo(() => {\n\t\tconst filteredItems = mockDataItems.filter((item) => {\n\t\t\tconst searchTermMatch =\n\t\t\t\titem.title.toLowerCase().includes(filters.searchTerm.toLowerCase()) ||\n\t\t\t\titem.description.toLowerCase().includes(filters.searchTerm.toLowerCase());\n\n\t\t\tconst statusMatch = filters.status.length === 0 || filters.status.includes(item.status);\n\t\t\tconst priorityMatch = filters.priority.length === 0 || filters.priority.includes(item.priority);\n\n\t\t\treturn searchTermMatch && statusMatch && priorityMatch;\n\t\t});\n\n\t\tif (sortConfig) {\n\t\t\tfilteredItems.sort((a, b) => {\n\t\t\t\tconst getNestedValue = (obj: DataItem, path: string): unknown => \n\t\t\t\t\t// eslint-disable-next-line @typescript-eslint/no-explicit-any\n\t\t\t\t\tpath.split('.').reduce((o: any, k) => (o || {})[k], obj);\n\t\t\t\t\n\t\t\t\tconst aValue = getNestedValue(a, sortConfig.key);\n\t\t\t\tconst bValue = getNestedValue(b, sortConfig.key);\n\n\t\t\t\tif (aValue === undefined || bValue === undefined) return 0;\n\n\t\t\t\tif (typeof aValue === 'string' && typeof bValue === 'string') {\n\t\t\t\t\treturn sortConfig.direction === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);\n\t\t\t\t}\n\t\t\t\tif (typeof aValue === 'number' && typeof bValue === 'number') {\n\t\t\t\t\treturn sortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue;\n\t\t\t\t}\n\t\t\t\t// Date sorting (assuming ISO strings)\n\t\t\t\tif (sortConfig.key === 'updatedAt' || sortConfig.key === 'createdAt') {\n\t\t\t\t\treturn sortConfig.direction === 'asc'\n\t\t\t\t\t\t? new Date(aValue).getTime() - new Date(bValue).getTime()\n\t\t\t\t\t\t: new Date(bValue).getTime() - new Date(aValue).getTime();\n\t\t\t\t}\n\t\t\t\treturn 0;\n\t\t\t});\n\t\t}\n\n\t\treturn filteredItems;\n\t}, [filters, sortConfig]);\n\n\t// Data loading effect\n\tuseEffect(() => {\n\t\tsetIsLoading(true);\n\t\tconst isFirstPage = page === 1;\n\n\t\tconst loadData = () => {\n\t\t\tif (groupBy !== 'none') {\n\t\t\t\t// For grouped views, load all data at once, pagination is disabled.\n\t\t\t\tsetItems(filteredAndSortedData);\n\t\t\t\tsetHasMore(false);\n\t\t\t\tsetIsLoading(false);\n\t\t\t\treturn;\n\t\t\t}\n\n\t\t\t// Handle paginated view\n\t\t\tconst pageSize = 12;\n\t\t\tconst newItems = filteredAndSortedData.slice((page - 1) * pageSize, page * pageSize);\n\n\t\t\tsetTimeout(() => {\n\t\t\t\t// Double-check in case groupBy changed during the timeout\n\t\t\t\tif (groupBy === 'none') {\n\t\t\t\t\tsetItems((prev) => (isFirstPage ? newItems : [...prev, ...newItems]));\n\t\t\t\t\tsetHasMore(filteredAndSortedData.length > page * pageSize);\n\t\t\t\t\tsetIsLoading(false);\n\t\t\t\t}\n\t\t\t}, isFirstPage && items.length === 0 ? 1500 : 500); // Longer delay for initial skeleton\n\t\t};\n\n\t\tloadData();\n\t\t// eslint-disable-next-line react-hooks/exhaustive-deps\n\t}, [searchParams, filteredAndSortedData]); // Reacts to any URL change\n\n\tconst loaderRef = useCallback(\n\t\t(node: Element | null) => {\n\t\t\tif (isLoading) return;\n\t\t\tif (observer.current) observer.current.disconnect();\n\n\t\t\tobserver.current = new IntersectionObserver((entries) => {\n\t\t\t\tif (entries[0].isIntersecting && hasMore) {\n\t\t\t\t\t// Instead of setting local state, we update the URL, which triggers the data loading effect.\n\t\t\t\t\thandleParamsChange({ page: (page + 1).toString() });\n\t\t\t\t}\n\t\t\t});\n\t\t\tif (node) observer.current.observe(node);\n\t\t},\n\t\t[isLoading, hasMore, page, handleParamsChange],\n\t);\n\n\tconst groupTabs = useMemo(() => {\n\t\tif (groupBy === 'none' || !filteredAndSortedData.length) return [];\n\n\t\tconst groupCounts = filteredAndSortedData.reduce((acc, item) => {\n\t\t\tconst groupKey = String(item[groupBy as GroupableField]);\n\t\t\tacc[groupKey] = (acc[groupKey] || 0) + 1;\n\t\t\treturn acc;\n\t\t}, {} as Record<string, number>);\n\n\t\tconst sortedGroups = Object.keys(groupCounts).sort((a, b) => a.localeCompare(b));\n\n\t\tconst createLabel = (text: string, count: number, isActive: boolean): ReactNode => (\n\t\t\t<>\n\t\t\t\t{text}\n\t\t\t\t<Badge\n\t\t\t\t\tvariant={isActive ? 'default' : 'secondary'}\n\t\t\t\t\tclassName={cn(\n\t\t\t\t\t\t'transition-colors duration-300 text-xs font-semibold',\n\t\t\t\t\t\t!isActive && 'group-hover:bg-accent group-hover:text-accent-foreground',\n\t\t\t\t\t)}\n\t\t\t\t>\n\t\t\t\t\t{count}\n\t\t\t\t</Badge>\n\t\t\t</>\n\t\t);\n\n\t\treturn [\n\t\t\t{ id: 'all', label: createLabel('All', filteredAndSortedData.length, activeGroupTab === 'all') },\n\t\t\t...sortedGroups.map((g) => ({\n\t\t\t\tid: g,\n\t\t\t\tlabel: createLabel(capitalize(g), groupCounts[g], activeGroupTab === g),\n\t\t\t})),\n\t\t];\n\t}, [filteredAndSortedData, groupBy, activeGroupTab]);\n\n\t// Data to be rendered in the current view, after grouping and tab selection is applied\n\tconst dataToRender = useMemo(() => {\n\t\tif (groupBy === 'none') {\n\t\t\treturn items; // This is the paginated list.\n\t\t}\n\n\t\t// When grouped, `items` contains ALL filtered/sorted data.\n\t\tif (activeGroupTab === 'all') {\n\t\t\treturn items;\n\t\t}\n\t\treturn items.filter((item) => String(item[groupBy as GroupableField]) === activeGroupTab);\n\t}, [items, groupBy, activeGroupTab]);\n\n\tconst totalItemCount = filteredAndSortedData.length;\n\tconst isInitialLoading = isLoading && items.length === 0;\n\n  const setViewMode = (mode: ViewMode) => handleParamsChange({ view: mode });\n  const setGroupBy = (val: string) => handleParamsChange({ groupBy: val === 'none' ? null : val });\n  const setActiveGroupTab = (tab: string) => handleParamsChange({ tab: tab === 'all' ? null : tab });\n  const setFilters = (newFilters: FilterConfig) => {\n    handleParamsChange({ q: newFilters.searchTerm, status: newFilters.status, priority: newFilters.priority });\n  }\n  const setSort = (config: SortConfig | null) => {\n    if (!config) {\n      handleParamsChange({ sort: 'default' });\n    } else {\n      handleParamsChange({ sort: `${config.key}-${config.direction}` });\n    }\n  }\n  const setTableSort = (field: SortableField) => {\n    if (sortConfig?.key === field) {\n      if (sortConfig.direction === 'desc') {\n        // Cycle: desc -> asc\n        handleParamsChange({ sort: `${field}-asc` });\n      } else {\n        // Cycle: asc -> default (by removing param)\n        handleParamsChange({ sort: 'default' });\n      }\n    } else {\n      // New field, default to desc\n      handleParamsChange({ sort: `${field}-desc` });\n    }\n  }\n\n\treturn {\n\t\tviewMode,\n\t\tgroupBy,\n\t\tactiveGroupTab,\n\t\tfilters,\n\t\tsortConfig,\n\t\thasMore,\n\t\tisLoading,\n\t\tloaderRef,\n\t\tgroupTabs,\n\t\tdataToRender,\n\t\ttotalItemCount,\n\t\tisInitialLoading,\n    setViewMode,\n    setGroupBy,\n    setActiveGroupTab,\n    setFilters,\n    setSort,\n    setTableSort\n\t};\n}"
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 267

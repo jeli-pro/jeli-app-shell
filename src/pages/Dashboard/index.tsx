@@ -19,6 +19,7 @@ import { DemoContent } from './DemoContent';
 import { useDashboardAnimations } from './hooks/useDashboardAnimations.motion.hook'
 import { useDashboardScroll } from './hooks/useDashboardScroll.hook'
 import { PageHeader } from '@/components/shared/PageHeader';
+import { StatCard } from '@/components/shared/StatCard';
 import { Card } from '@/components/ui/card';
 import { PageLayout } from '@/components/shared/PageLayout';
 
@@ -143,28 +144,16 @@ export function DashboardContent({ isInSidePane = false }: DashboardContentProps
           />
         )}
           {/* Stats Cards */}
-        <div ref={statsCardsContainerRef} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div ref={statsCardsContainerRef} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {statsCards.map((stat) => (
-            <Card
-            key={stat.title}
-            className="p-6 border-border/50 hover:border-primary/30 transition-all duration-300 group cursor-pointer"
-          >
-            <div className="flex items-center justify-between">
-              <div className="p-3 bg-primary/10 rounded-full group-hover:bg-primary/20 transition-colors">
-                {stat.icon}
-              </div>
-              <div className={cn(
-                "text-sm font-medium",
-                stat.trend === 'up' ? "text-green-600" : "text-red-600"
-              )}>
-                {stat.change}
-              </div>
-            </div>
-            <div className="mt-4">
-              <h3 className="text-2xl font-bold">{stat.value}</h3>
-              <p className="text-sm text-muted-foreground mt-1">{stat.title}</p>
-            </div>
-          </Card>
+            <StatCard
+              key={stat.title}
+              title={stat.title}
+              value={stat.value}
+              change={stat.change}
+              trend={stat.trend}
+              icon={stat.icon}
+            />
           ))}
         </div>
 

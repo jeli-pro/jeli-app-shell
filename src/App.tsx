@@ -1,13 +1,11 @@
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect } from "react";
 import {
   createBrowserRouter,
   RouterProvider,
   Outlet,
   Navigate,
   useNavigate,
-  useParams,
   useLocation,
-  useSearchParams,
 } from "react-router-dom";
 
 import { AppShell } from "./components/layout/AppShell";
@@ -29,32 +27,19 @@ import { DashboardContent } from "./pages/Dashboard";
 import { SettingsPage } from "./pages/Settings";
 import { ToasterDemo } from "./pages/ToasterDemo";
 import { NotificationsPage } from "./pages/Notifications";
-import { DataDetailPanel } from "./pages/DataDemo/components/DataDetailPanel";
-import { mockDataItems } from "./pages/DataDemo/data/mockData";
 import DataDemoPage from "./pages/DataDemo";
-import { SettingsContent } from "./features/settings/SettingsContent";
 import { LoginPage } from "./components/auth/LoginPage";
 
 // Import icons
 import {
-  LayoutDashboard,
-  Settings,
-  Component,
-  Bell,
-  SlidersHorizontal,
-  ChevronsLeftRight,
   Search,
   Filter,
   Plus,
   ChevronRight,
   Rocket,
-  Layers,
-  SplitSquareHorizontal,
-  Database,
 } from "lucide-react";
-import { BODY_STATES } from "./lib/utils";
-import type { AppShellState } from "./context/AppShellContext";
 import { cn } from "./lib/utils";
+import { usePageContent } from "./hooks/usePageContent.hook";
 
 // Wrapper for LoginPage to provide auth handlers
 function LoginPageWrapper() {
@@ -209,201 +194,8 @@ function AppTopBar() {
 
 // The main App component that composes the shell
 function ComposedApp() {
-  const {
-    bodyState,
-    dispatch,
-  } = useAppShell();
-  const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const { itemId } = useParams<{ itemId: string }>();
-
-  useEffect(() => {
-    const pane = searchParams.get('sidePane');
-    const view = searchParams.get('view');
-    const right = searchParams.get('right');
-
-    const validPanes: AppShellState['sidePaneContent'][] = ['details', 'settings', 'main', 'toaster', 'notifications', 'dataDemo'];
-
-    // Case 1: A specific item is selected via URL path. This takes precedence.
-    // This will render the data list in main content, and item detail in a pane.
-    if (itemId) {
-      dispatch({ type: 'SET_SIDE_PANE_CONTENT', payload: 'dataItem' });
-      // Allow user to still use split view with a direct item link
-      if (view === 'split') {
-          dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.SPLIT_VIEW });
-      } else {
-          dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.SIDE_PANE });
-      }
-    } 
-    // Case 2: A generic side pane is requested via query param.
-    else if (pane && validPanes.includes(pane as AppShellState['sidePaneContent'])) {
-      dispatch({ type: 'SET_SIDE_PANE_CONTENT', payload: pane as AppShellState['sidePaneContent'] });
-      dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.SIDE_PANE });
-    } 
-    // Case 3: Split view is requested via query param.
-    else if (view === 'split' && right && validPanes.includes(right as AppShellState['sidePaneContent'])) {
-      dispatch({ type: 'SET_SIDE_PANE_CONTENT', payload: right as AppShellState['sidePaneContent'] });
-      dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.SPLIT_VIEW });
-    } 
-    // Case 4: Default state, no panes.
-    else {
-      dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.NORMAL });
-      // Clean up side pane content when not in use
-      dispatch({ type: 'SET_SIDE_PANE_CONTENT', payload: 'details' });
-    }
-  }, [itemId, searchParams, dispatch]);
-
-  const contentMap = {
-    main: {
-      title: "Dashboard",
-      icon: LayoutDashboard,
-      page: "dashboard",
-      content: <DashboardContent />,
-    },
-    settings: {
-      title: "Settings",
-      icon: Settings,
-      page: "settings",
-      content: bodyState === BODY_STATES.SIDE_PANE ? (
-        <div className="p-6">
-          <SettingsContent />
-        </div>
-      ) : (
-        <SettingsPage />
-      ),
-    },
-    toaster: {
-      title: "Toaster Demo",
-      icon: Component,
-      page: "toaster",
-      content: <ToasterDemo />,
-    },
-    notifications: {
-      title: "Notifications",
-      icon: Bell,
-      page: "notifications",
-      content: <NotificationsPage />,
-    },
-    dataDemo: {
-      title: "Data Showcase",
-      icon: Database,
-      page: "data-demo",
-      content: <DataDemoPage />,
-    },
-    details: {
-      title: "Details Panel",
-      icon: SlidersHorizontal,
-      content: (
-        <div className="p-6">
-          <p className="text-muted-foreground">
-            This is the side pane. It can be used to display contextual
-            information, forms, or actions related to the main content.
-          </p>
-        </div>
-      ),
-    },
-  } as const;
-
-  const selectedItem = useMemo(() => {
-    if (!itemId) return null
-    return mockDataItems.find(item => item.id === itemId) ?? null
-  }, [itemId]);
-
-  // Derive content directly from URL to prevent flashes of incorrect content
-  const sidePaneIdentifier = itemId 
-    ? 'dataItem' 
-    : searchParams.get('sidePane') || searchParams.get('right') || 'details';
-
-  let rightPaneContent;
-  let currentContent: { title: string, icon: React.ElementType, page?: string };
-
-  if (sidePaneIdentifier === 'dataItem') {
-    currentContent = { title: "Item Details", icon: Database };
-    rightPaneContent = <DataDetailPanel item={selectedItem} onClose={() => navigate('/data-demo')} />;
-  } else {
-    const mappedContent = contentMap[sidePaneIdentifier as keyof typeof contentMap] || contentMap.details;
-    currentContent = mappedContent;
-    rightPaneContent = mappedContent.content;
-  }
-  
-  const CurrentIcon = currentContent.icon;
-
-  const handleMaximize = () => {
-    if ("page" in currentContent && currentContent.page) {
-      navigate(`/${currentContent.page}`, { replace: true });
-    } else {
-      setSearchParams({}, { replace: true });
-    }
-  };
-
-  const handleCloseSidePane = () => {
-    // Use functional update to avoid stale closures with searchParams
-    setSearchParams(prev => {
-      const newParams = new URLSearchParams(prev);
-      newParams.delete('sidePane');
-      return newParams;
-    }, { replace: true });
-  };
-
-  const handleToggleSplitView = () => {
-    if (bodyState === BODY_STATES.SIDE_PANE) {
-      setSearchParams(prev => {
-        const newParams = new URLSearchParams(prev);
-        const currentPane = newParams.get('sidePane');
-        if (currentPane) {
-          newParams.set('view', 'split');
-          newParams.set('right', currentPane);
-          newParams.delete('sidePane');
-        }
-        return newParams;
-      }, { replace: true });
-    } else if (bodyState === BODY_STATES.SPLIT_VIEW) {
-      setSearchParams(prev => {
-        return { sidePane: prev.get('right') || 'details' }
-      }, { replace: true });
-    }
-  };
-
-  const rightPaneHeader =
-    bodyState !== BODY_STATES.SPLIT_VIEW ? (
-      <>
-        <div className="flex items-center gap-2">
-          <CurrentIcon className="w-5 h-5" />
-          <h2 className="text-lg font-semibold whitespace-nowrap">
-            {currentContent.title}
-          </h2>
-        </div>
-        <div className="flex items-center">
-          {(bodyState === BODY_STATES.SIDE_PANE ||
-            bodyState === BODY_STATES.SPLIT_VIEW) && (
-            <button
-              onClick={handleToggleSplitView}
-              className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors"
-              title={
-                bodyState === BODY_STATES.SIDE_PANE
-                  ? "Switch to Split View"
-                  : "Switch to Overlay View"
-              }
-            >
-              {bodyState === BODY_STATES.SPLIT_VIEW ? (
-                <Layers className="w-5 h-5" />
-              ) : (
-                <SplitSquareHorizontal className="w-5 h-5" />
-              )}
-            </button>
-          )}
-          {"page" in currentContent && currentContent.page && (
-            <button
-              onClick={handleMaximize}
-              className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors mr-2"
-              title="Move to Main View"
-            >
-              <ChevronsLeftRight className="w-5 h-5" />
-            </button>
-          )}
-        </div>
-      </>
-    ) : undefined;
+  const { rightPaneContent, rightPaneHeader, handleCloseSidePane } =
+    usePageContent();
 
   return (
     <AppShell
@@ -420,7 +212,9 @@ function ComposedApp() {
         </MainContent>
       }
       rightPane={
-        <RightPane onClose={handleCloseSidePane} header={rightPaneHeader}>{rightPaneContent}</RightPane>
+        <RightPane onClose={handleCloseSidePane} header={rightPaneHeader}>
+          {rightPaneContent}
+        </RightPane>
       }
       commandPalette={<CommandPalette />}
     />

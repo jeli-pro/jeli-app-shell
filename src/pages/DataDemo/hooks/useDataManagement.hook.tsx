@@ -109,10 +109,12 @@ export function useDataManagement() {
 				}
 				// Date sorting (assuming ISO strings)
 				if (sortConfig.key === 'updatedAt' || sortConfig.key === 'createdAt') {
-					return sortConfig.direction === 'asc'
-						? new Date(aValue).getTime() - new Date(bValue).getTime()
-						: new Date(bValue).getTime() - new Date(aValue).getTime();
-				}
+          if (typeof aValue === 'string' && typeof bValue === 'string') {
+					  return sortConfig.direction === 'asc'
+						  ? new Date(aValue).getTime() - new Date(bValue).getTime()
+						  : new Date(bValue).getTime() - new Date(aValue).getTime();
+          }
+        }
 				return 0;
 			});
 		}

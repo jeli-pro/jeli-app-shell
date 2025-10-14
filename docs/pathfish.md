@@ -1,240 +1,264 @@
-Here's the master plan for refactoring the codebase.
+Here's the master plan to make this codebase highly DRY. We're gonna slash the boilerplate, crush duplication, and ship a leaner, meaner, more maintainable app shell.
 
 ```yaml
 plan:
-  uuid: '3a1e8c4d-9b5f-4a2e-8a7c-6f1b3d5e7a9f'
+  uuid: 'c8f7b1a0-3e5d-4f8a-9b1c-2d6f7e9b0a4e'
   status: 'todo'
-  title: 'Refactor Codebase for Maximum DRYness and Better Structure'
+  title: 'Refactor for DRYness: Consolidate UI and Logic'
   introduction: |
-    What's up, hackers. We've got a decent app shell here, but it's got some serious code duplication and a few monolithic components that are getting hard to wrangle. The goal of this operation is to aggressively refactor for DRY principles, abstract repeated logic into reusable hooks and utilities, and break down mega-components into a more modular, maintainable structure.
+    Alright, we've got a solid app shell here, but it's got some serious copy-pasta issues, especially in the data display components. The goal of this refactor is to ruthlessly eliminate duplication, create reusable, atomic components, and centralize logic. We'll be hitting the data views, stats cards, and core app composition hard.
 
-    We'll start by deconstructing the massive `LoginPage.tsx` into a collection of reusable, animated UI components. Then, we'll hunt down all the repeated GSAP animation logic and forge it into a single, powerful, reusable animation hook. We'll also tackle the `DataDemo` page, which is currently a beast, by extracting its complex data management logic into a dedicated hook.
+    The plan is four-pronged. First, we'll break down the monolithic data view components (`DataListView`, `DataCardView`, etc.) into a library of small, reusable parts. This is our biggest win for DRY. Second, we'll merge the two different implementations of "stat cards" into a single, flexible component. Third, we'll centralize some utility functions that are currently siloed. Finally, we'll clean up the main `App.tsx` by extracting its complex content-routing logic into a dedicated hook, adhering to the Single Responsibility Principle.
 
-    This overhaul will make the codebase cleaner, easier to navigate, and way faster to build on. We're doing this without any UI/UX regressions—the user won't see a thing, but our dev experience will be night and day. Let's ship it.
+    When we're done, the codebase will be more modular, easier to maintain, and faster to build upon. No UI/UX regressions allowed. Let's ship it.
   parts:
-    - uuid: 'c1b2a3d4-e5f6-7890-1234-567890abcdef'
+    - uuid: 'a1b2c3d4-e5f6-7890-1234-567890abcdef'
       status: 'todo'
-      name: 'Part 1: Deconstruct Monolithic LoginPage Component'
+      name: 'Part 1: Atomize Data Display Components'
       reason: |
-        The `LoginPage.tsx` is a classic example of a "God component." It defines multiple, complex, and potentially reusable components like `Input`, `BoxReveal`, `Ripple`, and `OrbitingCircles` within its own file. This makes them impossible to reuse elsewhere and bloats the login page component itself.
+        The `DataListView`, `DataCardView`, `DataTableView`, and `DataDetailPanel` components are a hot mess of repeated JSX for rendering things like assignee info, metrics, progress bars, and status badges. It's a maintenance nightmare.
 
-        By extracting these into their own files under a new `src/components/effects` directory, we'll create a library of powerful, reusable animation and UI components. This will dramatically simplify `LoginPage.tsx`, making it focused solely on authentication logic and layout, while making our component library richer.
+        We're going to create a set of small, focused components for each of these repeated UI blocks. This will nuke the duplication, ensure consistency across all data views, and make future updates a one-line change.
       steps:
-        - uuid: 'd1e2f3a4-b5c6-7890-1234-567890abcdef'
+        - uuid: 'b1c2d3e4-f5g6-7890-1234-567890abcdef'
           status: 'todo'
-          name: '1. Create Directory and Extract `BoxReveal`'
+          name: '1. Create Shared Data Item Components'
           reason: |
-            To begin deconstruction, we need a home for our new, specialized components. `BoxReveal` is a self-contained animation component perfect for the first extraction.
+            To begin, we need a place for these new atomic components to live. We'll create a new directory and populate it with components for each distinct, repeated piece of a `DataItem`.
           files:
-            - 'src/components/auth/LoginPage.tsx'
+            - src/pages/DataDemo/components/shared/DataItemParts.tsx # new file
           operations:
-            - 'Create a new directory: `src/components/effects`.'
-            - 'Create a new file: `src/components/effects/BoxReveal.tsx`.'
-            - 'Cut the entire `BoxReveal` component definition (including imports it needs like `gsap`, `cn`, `memo`, `useRef`, `useEffect`) from `src/components/auth/LoginPage.tsx` and paste it into the new file.'
-            - 'Export the `BoxReveal` component from `src/components/effects/BoxReveal.tsx`.'
-            - 'Update `src/components/auth/LoginPage.tsx` to import `BoxReveal` from its new location.'
-        - uuid: 'e2f3a4b5-c6d7-8901-2345-678901bcdefa'
+            - "Create a new file `src/pages/DataDemo/components/shared/DataItemParts.tsx`."
+            - "In this file, create and export the following React components:"
+            - "  - `AssigneeInfo({ assignee })`: Renders an `Avatar` with the assignee's name and email. Should accept `DataItem['assignee']`."
+            - "  - `ItemMetrics({ metrics })`: Renders the `Eye`, `Heart`, and `Share` icons with their corresponding counts. Should accept `DataItem['metrics']`."
+            - "  - `ItemProgressBar({ completion })`: Renders the progress bar UI. Should accept `completion` as a number."
+            - "  - `ItemStatusBadge({ status })`: Renders a `Badge` with the correct color for the status, using `getStatusColor`. Should accept `DataItem['status']`."
+            - "  - `ItemPriorityBadge({ priority })`: Renders a `Badge` with the correct color for the priority, using `getPriorityColor`. Should accept `DataItem['priority']`."
+            - "  - `ItemTags({ tags })`: Renders a list of tags, handling truncation (e.g., showing the first 3 and a '+N' indicator)."
+            - "  - `ItemDateInfo({ date, icon: Icon })`: A generic component to show a date with a leading icon (e.g., Calendar for updatedAt)."
+        - uuid: 'c2d3e4f5-g6h7-8901-2345-67890abcdef'
           status: 'todo'
-          name: '2. Extract `Ripple` and `OrbitingCircles` Components'
+          name: '2. Refactor Data View Components'
           reason: |
-            `Ripple` and `OrbitingCircles` are complex, decorative components. Extracting them makes them available for other pages and continues to clean up `LoginPage.tsx`. `TechOrbitDisplay` is a specific implementation using `OrbitingCircles`, so it should move with it.
+            With our new atomic components in hand, it's time to rip out the duplicated code from the high-level view components and replace it with our new, clean abstractions.
           files:
-            - 'src/components/auth/LoginPage.tsx'
+            - src/pages/DataDemo/components/DataListView.tsx
+            - src/pages/DataDemo/components/DataCardView.tsx
+            - src/pages/DataDemo/components/DataTableView.tsx
+            - src/pages/DataDemo/components/DataDetailPanel.tsx
           operations:
-            - 'Create a new file: `src/components/effects/Ripple.tsx`.'
-            - 'Move the `Ripple` component from `LoginPage.tsx` to `Ripple.tsx` and export it.'
-            - 'Create a new file: `src/components/effects/OrbitingCircles.tsx`.'
-            - 'Move the `OrbitingCircles` and `TechOrbitDisplay` components (and the `iconsArray` constant) from `LoginPage.tsx` to `OrbitingCircles.tsx`.'
-            - 'Export both `OrbitingCircles` and `TechOrbitDisplay` from the new file.'
-            - 'Update `LoginPage.tsx` to import `Ripple` and `TechOrbitDisplay` from their new locations.'
-        - uuid: 'f3a4b5c6-d7e8-9012-3456-789012cdefab'
-          status: 'todo'
-          name: '3. Extract `AnimatedInput` and Form Primitives'
-          reason: |
-            The animated `Input` in `LoginPage.tsx` is a unique component, different from the standard one in `ui/`. It deserves its own file. `BottomGradient` and `Label` are also part of this custom form aesthetic.
-          files:
-            - 'src/components/auth/LoginPage.tsx'
-          operations:
-            - 'Create a new file: `src/components/effects/AnimatedInput.tsx`.'
-            - 'Move the animated `Input` component from `LoginPage.tsx` to `AnimatedInput.tsx`. Export it.'
-            - 'Create a new file: `src/components/effects/BottomGradient.tsx`.'
-            - 'Move the `BottomGradient` component to `BottomGradient.tsx` and export it.'
-            - 'In `LoginPage.tsx`, rename the imported `Input` to `AnimatedInput` to avoid confusion with the UI library.'
-            - 'Update `LoginPage.tsx` to import `AnimatedInput` and `BottomGradient` from their new homes.'
-            - 'The `Label` component in `LoginPage.tsx` is a duplicate of the one in `src/components/ui/label.tsx`. Remove the local `Label` definition and import it from `src/components/ui/label.tsx` instead.'
-        - uuid: 'a4b5c6d7-e8f9-0123-4567-890123defabc'
-          status: 'todo'
-          name: '4. Update `index.ts` to Export New Components'
-          reason: |
-            To make these new components part of the library's public API, they must be exported from the main `index.ts` file.
-          files:
-            - 'src/index.ts'
-          operations:
-            - 'Create a new section in `src/index.ts` for "Effects Components".'
-            - 'Export `BoxReveal` from `./components/effects/BoxReveal`.'
-            - 'Export `Ripple` from `./components/effects/Ripple`.'
-            - 'Export `OrbitingCircles` and `TechOrbitDisplay` from `./components/effects/OrbitingCircles`.'
-            - 'Export `AnimatedInput` from `./components/effects/AnimatedInput`.'
-            - 'Export `BottomGradient` from `./components/effects/BottomGradient`.'
+            - "In `DataListView.tsx`, `DataCardView.tsx`, `DataTableView.tsx`, and `DataDetailPanel.tsx`, import the new components from `DataItemParts.tsx`."
+            - "Replace the JSX for assignee info with `<AssigneeInfo assignee={item.assignee} />`."
+            - "Replace the JSX for metrics with `<ItemMetrics metrics={item.metrics} />`."
+            - "Replace the JSX for the progress bar with `<ItemProgressBar completion={item.metrics.completion} />`."
+            - "Replace the status `Badge` with `<ItemStatusBadge status={item.status} />`."
+            - "Replace the priority `Badge` with `<ItemPriorityBadge priority={item.priority} />` in `DataListView.tsx` and `DataTableView.tsx`."
+            - "In `DataDetailPanel.tsx`, replace the detailed metrics display with the new `ItemMetrics` component, adapting the layout as needed."
+            - "Ensure all views now use the shared components, drastically reducing the lines of code in each file."
       context_files:
         compact:
-          - 'src/components/auth/LoginPage.tsx'
-          - 'src/index.ts'
+          - src/pages/DataDemo/components/DataListView.tsx
+          - src/pages/DataDemo/components/DataCardView.tsx
+          - src/pages/DataDemo/components/DataTableView.tsx
+          - src/pages/DataDemo/components/DataDetailPanel.tsx
+          - src/pages/DataDemo/utils.ts
+          - src/pages/DataDemo/types.ts
         medium:
-          - 'src/components/auth/LoginPage.tsx'
-          - 'src/components/ui/label.tsx'
-          - 'src/index.ts'
+          - src/pages/DataDemo/components/DataListView.tsx
+          - src/pages/DataDemo/components/DataCardView.tsx
+          - src/pages/DataDemo/components/DataTableView.tsx
+          - src/pages/DataDemo/components/DataDetailPanel.tsx
+          - src/pages/DataDemo/utils.ts
+          - src/pages/DataDemo/types.ts
+          - src/components/ui/badge.tsx
+          - src/components/ui/avatar.tsx
         extended:
-          - 'src/components/auth/LoginPage.tsx'
-          - 'src/components/ui/label.tsx'
-          - 'src/index.ts'
-          - 'tailwind.config.js'
-
-    - uuid: 'b2c3d4e5-f6a7-8901-2345-678901abcdef'
+          - src/pages/DataDemo/components/DataListView.tsx
+          - src/pages/DataDemo/components/DataCardView.tsx
+          - src/pages/DataDemo/components/DataTableView.tsx
+          - src/pages/DataDemo/components/DataDetailPanel.tsx
+          - src/pages/DataDemo/utils.ts
+          - src/pages/DataDemo/types.ts
+          - src/components/ui/badge.tsx
+          - src/components/ui/avatar.tsx
+          - src/lib/utils.ts
+    - uuid: 'd4e5f6g7-h8i9-j0k1-l2m3-n4o5p6qrstuv'
       status: 'todo'
-      name: 'Part 2: Abstract Repetitive GSAP Animations'
+      name: 'Part 2: Consolidate Stat Cards'
       reason: |
-        Several components (`DataListView`, `DataCardView`, `DataDetailPanel`, `DemoContent`) implement nearly identical `useLayoutEffect` hooks with GSAP to create a "staggered fade-in" animation for their child elements. This is a textbook violation of DRY.
-
-        We will create a single, reusable hook, `useStaggeredAnimation`, that encapsulates this logic. This will remove duplicated code, centralize the animation logic for easier maintenance, and ensure a consistent entrance animation across the application. We'll also consolidate the two redundant dashboard animation hooks.
+        We have two different stat card implementations: a simple one in `Dashboard/index.tsx` and a more complex one with a chart in `DataDemo/components/StatChartCard.tsx`. This is redundant. We will create a single, powerful `StatCard` component that can handle both cases.
       steps:
-        - uuid: 'c3d4e5f6-a7b8-9012-3456-789012abcdef'
+        - uuid: 'e5f6g7h8-i9j0-k1l2-m3n4-o5p6qrstuvw'
           status: 'todo'
-          name: '1. Create a Reusable Animation Hook'
+          name: '1. Create a Unified StatCard Component'
           reason: |
-            To centralize the repeated GSAP logic. This hook will be the single source of truth for staggered entrance animations.
-          files: []
-          operations:
-            - 'Create a new file: `src/hooks/useStaggeredAnimation.hook.ts`.'
-            - 'Inside, create a hook named `useStaggeredAnimation` that accepts a ref to a container element and an optional selector for child elements.'
-            - 'Move the `useLayoutEffect` logic with the `gsap.fromTo` call (staggering `y` and `opacity`) from `DataCardView.tsx` into this new hook. Make it generic to work with any container.'
-            - 'The hook should track the number of animated items to prevent re-animating elements that are already visible.'
-        - uuid: 'd4e5f6a7-b8c9-0123-4567-890123bcdefa'
-          status: 'todo'
-          name: '2. Refactor Data Components to Use the New Hook'
-          reason: |
-            To eliminate the duplicated animation code in the data view components.
+            We'll build a new `StatCard` component in the shared UI directory that can conditionally render a chart, making it versatile for both the dashboard and data demo pages.
           files:
-            - 'src/pages/DataDemo/components/DataListView.tsx'
-            - 'src/pages/DataDemo/components/DataCardView.tsx'
-            - 'src/pages/DataDemo/components/DataDetailPanel.tsx'
-            - 'src/hooks/useStaggeredAnimation.hook.ts'
+            - src/components/shared/StatCard.tsx # new file
+            - src/pages/DataDemo/components/StatChartCard.tsx
           operations:
-            - 'In `DataListView.tsx`, remove the `useLayoutEffect` and `animatedItemsCount` ref.'
-            - 'Call the new `useStaggeredAnimation(listRef)` hook instead.'
-            - 'In `DataCardView.tsx`, remove the `useLayoutEffect` and `animatedItemsCount` ref. Call `useStaggeredAnimation(containerRef)`.'
-            - 'In `DataDetailPanel.tsx`, remove the `useLayoutEffect` hook. Call `useStaggeredAnimation(contentRef)`.'
-        - uuid: 'e5f6a7b8-c9d0-1234-5678-901234cdefab'
+            - "Create a new file `src/components/shared/StatCard.tsx`."
+            - "Merge the logic and JSX from `StatChartCard.tsx` and the simple stat card from `Dashboard/index.tsx` into this new component."
+            - "The new `StatCard` component's props should include an optional `chartData` array. If `chartData` is provided, the component will render the line chart. Otherwise, it will render the simpler version."
+            - "Move the GSAP animation logic for the chart into the new `StatCard` component."
+        - uuid: 'f6g7h8i9-j0k1-l2m3-n4o5-p6qrstuvwx'
           status: 'todo'
-          name: '3. Consolidate Dashboard Animation Hooks'
+          name: '2. Refactor Pages to Use the New StatCard'
           reason: |
-            `useDashboardAnimations.hook.ts` and `useDemoContentAnimations.hook.ts` do almost the same thing (stagger card animations). We can merge them into one and have it also use the new generic hook.
+            Now we'll replace the old implementations with our new unified component and delete the redundant file.
           files:
-            - 'src/pages/Dashboard/hooks/useDashboardAnimations.hook.ts'
-            - 'src/pages/Dashboard/hooks/useDemoContentAnimations.hook.ts'
-            - 'src/pages/Dashboard/DemoContent.tsx'
-            - 'src/hooks/useStaggeredAnimation.hook.ts'
+            - src/pages/Dashboard/index.tsx
+            - src/pages/DataDemo/index.tsx
+            - src/pages/DataDemo/components/StatChartCard.tsx
           operations:
-            - 'Merge the logic from `useDemoContentAnimations.hook.ts` into `useDashboardAnimations.hook.ts`.'
-            - 'Refactor the stagger logic inside `useDashboardAnimations.hook.ts` to call the new `useStaggeredAnimation` hook for the cards animation.'
-            - 'Delete the now-redundant file: `src/pages/Dashboard/hooks/useDemoContentAnimations.hook.ts`.'
-            - 'Update `DemoContent.tsx` to remove its call to `useDemoContentAnimations` as this is now handled by the parent `DashboardContent` component via `useDashboardAnimations`.'
+            - "In `Dashboard/index.tsx`, replace the `Card` components used for stats with the new `<StatCard />`."
+            - "In `DataDemo/index.tsx`, replace `<StatChartCard />` with the new `<StatCard />`, passing the `chartData` prop."
+            - "Delete the now-redundant file `src/pages/DataDemo/components/StatChartCard.tsx`."
       context_files:
         compact:
-          - 'src/pages/DataDemo/components/DataListView.tsx'
-          - 'src/pages/DataDemo/components/DataCardView.tsx'
-          - 'src/pages/Dashboard/hooks/useDashboardAnimations.hook.ts'
-          - 'src/pages/Dashboard/hooks/useDemoContentAnimations.hook.ts'
+          - src/pages/Dashboard/index.tsx
+          - src/pages/DataDemo/index.tsx
+          - src/pages/DataDemo/components/StatChartCard.tsx
+          - src/components/ui/card.tsx
         medium:
-          - 'src/pages/DataDemo/components/DataListView.tsx'
-          - 'src/pages/DataDemo/components/DataCardView.tsx'
-          - 'src/pages/DataDemo/components/DataDetailPanel.tsx'
-          - 'src/pages/Dashboard/hooks/useDashboardAnimations.hook.ts'
-          - 'src/pages/Dashboard/hooks/useDemoContentAnimations.hook.ts'
-          - 'src/pages/Dashboard/DemoContent.tsx'
+          - src/pages/Dashboard/index.tsx
+          - src/pages/DataDemo/index.tsx
+          - src/pages/DataDemo/components/StatChartCard.tsx
+          - src/components/ui/card.tsx
+          - src/lib/utils.ts
         extended:
-          - 'src/pages/DataDemo/components/DataListView.tsx'
-          - 'src/pages/DataDemo/components/DataCardView.tsx'
-          - 'src/pages/DataDemo/components/DataDetailPanel.tsx'
-          - 'src/pages/Dashboard/hooks/useDashboardAnimations.hook.ts'
-          - 'src/pages/Dashboard/hooks/useDemoContentAnimations.hook.ts'
-          - 'src/pages/Dashboard/DemoContent.tsx'
-          - 'src/pages/Dashboard/index.tsx'
-
-    - uuid: 'a3b4c5d6-e7f8-9012-3456-789012abcdef'
+          - src/pages/Dashboard/index.tsx
+          - src/pages/DataDemo/index.tsx
+          - src/pages/DataDemo/components/StatChartCard.tsx
+          - src/components/ui/card.tsx
+          - src/lib/utils.ts
+          - src/pages/DataDemo/types.ts
+    - uuid: 'g7h8i9j0-k1l2-m3n4-o5p6-qrstuvwxyz'
       status: 'todo'
-      name: 'Part 3: Encapsulate DataDemo Page Logic'
+      name: 'Part 3: Centralize UI Utilities'
       reason: |
-        The `DataDemoPage` component in `src/pages/DataDemo/index.tsx` is overloaded with responsibilities. It handles URL parsing, state management, data filtering, sorting, grouping, and pagination simulation. This makes the component difficult to read and maintain.
-
-        By extracting all this data management logic into a dedicated `useDataManagement` hook, we can turn the `DataDemoPage` into a much cleaner, presentation-focused component. The hook will act as a controller, providing the view with the necessary data and state handlers, adhering to the separation of concerns principle.
+        The `getStatusColor` and `getPriorityColor` functions are utility functions that define UI logic. They are currently siloed inside `DataDemo/utils.ts`, but could be useful elsewhere. They belong in the global `lib/utils.ts`.
       steps:
-        - uuid: 'b4c5d6e7-f8a9-0123-4567-890123bcdefa'
+        - uuid: 'h8i9j0k1-l2m3-n4o5-p6q7-rstuvwxyz1'
           status: 'todo'
-          name: '1. Create `useDataManagement` Hook'
+          name: '1. Relocate Color Utility Functions'
           reason: |
-            To create a centralized place for all data-related logic for the DataDemo page.
+            Move the color utility functions to a central location to promote reusability across the entire application.
           files:
-            - 'src/pages/DataDemo/index.tsx'
+            - src/pages/DataDemo/utils.ts
+            - src/lib/utils.ts
+            - src/pages/DataDemo/components/DataListView.tsx
+            - src/pages/DataDemo/components/DataCardView.tsx
+            - src/pages/DataDemo/components/DataTableView.tsx
+            - src/pages/DataDemo/components/DataDetailPanel.tsx
           operations:
-            - 'Create a new file: `src/pages/DataDemo/hooks/useDataManagement.hook.ts`.'
-            - 'Define the `useDataManagement` hook within this file.'
-            - 'Move all data-related state and logic from `DataDemo/index.tsx` into the hook. This includes:'
-            - '  - All `useMemo` hooks for deriving state from URL (`viewMode`, `page`, `groupBy`, `filters`, `sortConfig`).'
-            - '  - The `handleParamsChange` `useCallback`.'
-            - '  - The large `useMemo` for `filteredAndSortedData`.'
-            - '  - The `useEffect` hook for loading/simulating data fetching.'
-            - '  - The `useCallback` for the infinite scroll `loaderRef`.'
-            - '  - The `useState` calls for `items`, `hasMore`, `isLoading`.'
-            - 'The hook should return an object containing all the necessary states and handlers for the component (e.g., `items`, `isLoading`, `hasMore`, `viewMode`, `handleParamsChange`, `loaderRef`, `dataToRender`, `totalItemCount`, etc.).'
-        - uuid: 'c5d6e7f8-a9b0-1234-5678-901234cdefab'
-          status: 'todo'
-          name: '2. Refactor `DataDemoPage` to Use the Hook'
-          reason: |
-            To simplify the page component and make it purely presentational.
-          files:
-            - 'src/pages/DataDemo/index.tsx'
-            - 'src/pages/DataDemo/hooks/useDataManagement.hook.ts'
-          operations:
-            - 'In `DataDemo/index.tsx`, import and call the `useDataManagement` hook at the top of the component.'
-            - 'Destructure all the returned values from the hook.'
-            - 'Remove all the logic that was moved to the hook from the page component.'
-            - 'The component should now primarily consist of the JSX structure, passing props from the hook down to child components like `DataToolbar`, `DataListView`, etc.'
-
+            - "Cut the `getStatusColor` and `getPriorityColor` functions from `src/pages/DataDemo/utils.ts`."
+            - "Paste these functions into `src/lib/utils.ts` and export them."
+            - "Update all files that were importing these functions (like the Data View components and the new `DataItemParts.tsx`) to import them from `@/lib/utils` instead."
+            - "Delete the file `src/pages/DataDemo/utils.ts` as it is now empty."
       context_files:
         compact:
-          - 'src/pages/DataDemo/index.tsx'
+          - src/pages/DataDemo/utils.ts
+          - src/lib/utils.ts
         medium:
-          - 'src/pages/DataDemo/index.tsx'
-          - 'src/pages/DataDemo/types.ts'
+          - src/pages/DataDemo/utils.ts
+          - src/lib/utils.ts
+          - src/pages/DataDemo/components/DataListView.tsx
+          - src/pages/DataDemo/components/DataCardView.tsx
+          - src/pages/DataDemo/components/DataTableView.tsx
         extended:
-          - 'src/pages/DataDemo/index.tsx'
-          - 'src/pages/DataDemo/types.ts'
-          - 'src/pages/DataDemo/components/DataToolbar.tsx'
+          - src/pages/DataDemo/utils.ts
+          - src/lib/utils.ts
+          - src/pages/DataDemo/components/DataListView.tsx
+          - src/pages/DataDemo/components/DataCardView.tsx
+          - src/pages/DataDemo/components/DataTableView.tsx
+          - src/pages/DataDemo/components/DataDetailPanel.tsx
+    - uuid: 'i9j0k1l2-m3n4-o5p6-q7r8-stuvwxyz12'
+      status: 'todo'
+      name: 'Part 4: Decouple App Composition Logic'
+      reason: |
+        The `ComposedApp` component in `App.tsx` is overloaded. It contains complex logic for mapping routes and URL params to the content displayed in the main and right panes. This violates the Single Responsibility Principle and makes the component hard to read and maintain.
 
+        We'll extract this logic into a dedicated custom hook, `usePageContent`. This will make `ComposedApp` a pure layout component, and the logic for what to display will be centralized and easier to manage.
+      steps:
+        - uuid: 'j0k1l2m3-n4o5-p6q7-r8s9-tuvwxyz123'
+          status: 'todo'
+          name: '1. Create usePageContent Hook'
+          reason: |
+            Create a hook to encapsulate all the logic for determining what content and headers to render based on the current URL.
+          files:
+            - src/hooks/usePageContent.hook.ts # new file
+            - src/App.tsx
+          operations:
+            - "Create a new file `src/hooks/usePageContent.hook.ts`."
+            - "Move the `contentMap` object from `App.tsx` into this new hook."
+            - "Move all logic for determining `rightPaneContent`, `currentContent`, and `rightPaneHeader` from `ComposedApp` into the `usePageContent` hook."
+            - "The hook should use `useLocation`, `useParams`, `useNavigate`, and `useSearchParams` internally."
+            - "The hook should return an object containing `mainContentComponent`, `rightPaneComponent`, `rightPaneHeaderComponent`, and any necessary callbacks like `handleCloseSidePane`."
+        - uuid: 'k1l2m3n4-o5p6-q7r8-s9t0-uvwxyz1234'
+          status: 'todo'
+          name: '2. Simplify ComposedApp in App.tsx'
+          reason: |
+            Refactor `ComposedApp` to be a declarative layout component that gets its state and content from the new hook.
+          files:
+            - src/App.tsx
+            - src/hooks/usePageContent.hook.ts
+          operations:
+            - "In `App.tsx`, import and call the `usePageContent` hook at the top of the `ComposedApp` component."
+            - "Remove all the logic that was moved to the hook."
+            - "Use the returned values from the hook to render the content in the `RightPane` and its header."
+            - "The `<Outlet />` will continue to render the main page content as determined by the router."
+            - "Ensure the `App.tsx` file is significantly smaller and more focused on the composition of the `AppShell`."
+      context_files:
+        compact:
+          - src/App.tsx
+          - src/context/AppShellContext.tsx
+          - src/pages/DataDemo/components/DataDetailPanel.tsx
+        medium:
+          - src/App.tsx
+          - src/context/AppShellContext.tsx
+          - src/pages/DataDemo/components/DataDetailPanel.tsx
+          - src/pages/Settings/index.tsx
+          - src/pages/Notifications/index.tsx
+        extended:
+          - src/App.tsx
+          - src/context/AppShellContext.tsx
+          - src/pages/DataDemo/components/DataDetailPanel.tsx
+          - src/pages/Settings/index.tsx
+          - src/pages/Notifications/index.tsx
+          - src/pages/ToasterDemo/index.tsx
+          - src/features/settings/SettingsContent.tsx
   conclusion: |
-    By executing this plan, we will have transformed the codebase into a much more professional and scalable state. The `LoginPage` will be a clean, focused component, backed by a new library of reusable effects components. Our animation system will be consistent and centralized, eliminating code rot and making it easy to apply our signature animations anywhere. Finally, the `DataDemo` page will serve as a blueprint for a clean separation of concerns between data logic and presentation.
+    By executing this plan, we'll have fundamentally improved the architecture of the application. The codebase will be significantly more DRY, making it easier to reason about, maintain, and extend.
 
-    These changes significantly improve developer experience, reduce the cognitive load required to understand any single part of the app, and set a strong precedent for future development. The result is a more robust, maintainable, and enjoyable codebase to work with.
+    Future feature development will be faster, as developers can compose UIs from our new atomic components. Consistency across the application will be enforced by design. This refactor is a major investment in the long-term health and velocity of the project.
   context_files:
     compact:
-      - 'src/components/auth/LoginPage.tsx'
-      - 'src/pages/DataDemo/index.tsx'
-      - 'src/pages/DataDemo/components/DataListView.tsx'
+      - src/pages/DataDemo/components/DataListView.tsx
+      - src/pages/DataDemo/components/DataCardView.tsx
+      - src/pages/DataDemo/components/StatChartCard.tsx
+      - src/pages/Dashboard/index.tsx
+      - src/App.tsx
     medium:
-      - 'src/components/auth/LoginPage.tsx'
-      - 'src/pages/DataDemo/index.tsx'
-      - 'src/pages/DataDemo/components/DataListView.tsx'
-      - 'src/pages/DataDemo/components/DataCardView.tsx'
-      - 'src/pages/Dashboard/hooks/useDashboardAnimations.hook.ts'
-      - 'src/pages/Dashboard/hooks/useDemoContentAnimations.hook.ts'
+      - src/pages/DataDemo/components/DataListView.tsx
+      - src/pages/DataDemo/components/DataCardView.tsx
+      - src/pages/DataDemo/components/DataTableView.tsx
+      - src/pages/DataDemo/components/DataDetailPanel.tsx
+      - src/pages/DataDemo/components/StatChartCard.tsx
+      - src/pages/Dashboard/index.tsx
+      - src/App.tsx
+      - src/lib/utils.ts
     extended:
-      - 'src/components/auth/LoginPage.tsx'
-      - 'src/pages/DataDemo/index.tsx'
-      - 'src/pages/DataDemo/components/DataListView.tsx'
-      - 'src/pages/DataDemo/components/DataCardView.tsx'
-      - 'src/pages/DataDemo/components/DataDetailPanel.tsx'
-      - 'src/pages/Dashboard/hooks/useDashboardAnimations.hook.ts'
-      - 'src/pages/Dashboard/hooks/useDemoContentAnimations.hook.ts'
-      - 'src/pages/Dashboard/DemoContent.tsx'
+      - src/pages/DataDemo/components/DataListView.tsx
+      - src/pages/DataDemo/components/DataCardView.tsx
+      - src/pages/DataDemo/components/DataTableView.tsx
+      - src/pages/DataDemo/components/DataDetailPanel.tsx
+      - src/pages/DataDemo/components/StatChartCard.tsx
+      - src/pages/DataDemo/utils.ts
+      - src/pages/Dashboard/index.tsx
+      - src/App.tsx
+      - src/lib/utils.ts
+      - src/context/AppShellContext.tsx
+      - src/pages/DataDemo/types.ts
 ```

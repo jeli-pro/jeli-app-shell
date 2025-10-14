@@ -1,0 +1,1068 @@
+uuid: 18182b85-056a-4b95-a226-c230bb3d4c38
+projectId: jeli-app-shell
+createdAt: '2025-10-14T02:10:31.389Z'
+gitCommitMsg: >-
+  refactor(ui): consolidate StatCard components
+
+  Created a single, unified `StatCard` component to replace the two separate
+  implementations in the Dashboard and Data Demo pages.
+
+  - Introduced a new `StatCard` component at
+  `src/components/shared/StatCard.tsx`. - This component conditionally renders a
+  line chart if `chartData` is provided, merging the functionality of the
+  previous simple and charted stat cards. - Refactored `Dashboard/index.tsx` and
+  `DataDemo/index.tsx` to use the new unified `StatCard`. - Deleted the
+  redundant `StatChartCard.tsx` component.
+
+  This change significantly reduces code duplication and improves
+  maintainability by centralizing the stat card UI and logic.
+promptSummary: >-
+  The user wants me to execute Part 2 of the DRY refactoring plan, which
+  involves consolidating two different Stat Card components into a single,
+  reusable component.
+reasoning:
+  - >-
+    Executing Part 2 of our DRY refactoring plan. We're consolidating the two
+    separate "Stat Card" components into a single, flexible component to
+    eliminate code duplication.
+  - '### Step 1: Create a Unified `StatCard` Component'
+  - >-
+    I'll start by creating a new `StatCard` component in
+    `src/components/shared/`. This component will merge the functionality of the
+    simple stat card from the Dashboard and the charted version from the Data
+    Demo page. It will conditionally render the chart based on whether
+    `chartData` is provided.
+  - '### Step 2: Refactor Pages to Use the New Component'
+  - >-
+    Now I'll update the Dashboard and Data Demo pages to use our new, unified
+    `StatCard` component.
+  - 'First, the Dashboard page:'
+  - 'Next, the Data Demo page:'
+  - '### Step 3: Delete the Redundant Component'
+  - >-
+    Finally, I'll delete the old `StatChartCard.tsx` file, as its functionality
+    is now fully covered by the new `StatCard` component.
+  - >-
+    This completes Part 2. Our stat cards are now DRY, managed by a single
+    reusable component.
+operations:
+  - type: write
+    path: src/components/shared/StatCard.tsx
+    content: >-
+      import React, { useLayoutEffect, useRef } from 'react';
+
+      import { gsap } from 'gsap';
+
+      import { cn } from '@/lib/utils';
+
+      import { Card } from '@/components/ui/card';
+
+
+      interface StatCardProps {
+        title: string;
+        value: string;
+        change: string;
+        trend: 'up' | 'down';
+        icon: React.ReactNode;
+        chartData?: number[];
+      }
+
+
+      export function StatCard({ title, value, change, trend, icon, chartData }:
+      StatCardProps) {
+        const chartRef = useRef<SVGSVGElement>(null);
+
+        useLayoutEffect(() => {
+          // Only run animation if chartData is present
+          if (chartRef.current && chartData) {
+            const line = chartRef.current.querySelector('.chart-line');
+            const area = chartRef.current.querySelector('.chart-area');
+            if (line instanceof SVGPathElement && area) {
+              const length = line.getTotalLength();
+              gsap.set(line, { strokeDasharray: length, strokeDashoffset: length });
+              gsap.to(line, { strokeDashoffset: 0, duration: 1.5, ease: 'power2.inOut' });
+              gsap.fromTo(area, { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 1, ease: 'power2.out', delay: 0.5 });
+            }
+          }
+        }, [chartData]);
+
+        // --- Chart rendering logic (only if chartData is provided) ---
+        const renderChart = () => {
+          if (!chartData || chartData.length < 2) return null;
+
+          // SVG dimensions
+          const width = 150;
+          const height = 60;
+
+          // Normalize data
+          const max = Math.max(...chartData);
+          const min = Math.min(...chartData);
+          const range = max - min === 0 ? 1 : max - min;
+
+          const points = chartData
+            .map((val, i) => {
+              const x = (i / (chartData.length - 1)) * width;
+              const y = height - ((val - min) / range) * (height - 10) + 5; // Add vertical padding
+              return `${x},${y}`;
+            });
+
+          const linePath = "M" + points.join(" L");
+          const areaPath = `${linePath} L${width},${height} L0,${height} Z`;
+
+          return (
+            <div className="mt-4 -mb-2 -mx-2">
+              <svg ref={chartRef} viewBox={`0 0 ${width} ${height}`} className="w-full h-auto" preserveAspectRatio="none">
+                <defs>
+                  <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" className="text-primary" stopColor="currentColor" stopOpacity={0.3} />
+                    <stop offset="100%" className="text-primary" stopColor="currentColor" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <path
+                  className="chart-area"
+                  d={areaPath}
+                  fill="url(#chartGradient)"
+                />
+                <path
+                  className="chart-line"
+                  d={linePath}
+                  fill="none"
+                  stroke="hsl(var(--primary))"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </div>
+          );
+        };
+        // --- End of chart rendering logic ---
+
+        return (
+          <Card className={cn(
+              "p-6 border-border/50 hover:border-primary/30 transition-all duration-300 group cursor-pointer flex flex-col justify-between",
+              !chartData && "h-full" // Ensure cards without charts have consistent height if needed
+          )}>
+            <div>
+              <div className="flex items-center justify-between">
+                <div className="p-3 bg-primary/10 rounded-full group-hover:bg-primary/20 transition-colors">
+                  {icon}
+                </div>
+                <div className={cn(
+                  "text-sm font-medium",
+                  trend === 'up' ? "text-green-600" : "text-red-600"
+                )}>
+                  {change}
+                </div>
+              </div>
+              <div className="mt-4">
+                <h3 className="text-2xl font-bold">{value}</h3>
+                <p className="text-sm text-muted-foreground mt-1">{title}</p>
+              </div>
+            </div>
+            {renderChart()}
+          </Card>
+        );
+      }
+    patchStrategy: replace
+  - type: write
+    path: src/pages/Dashboard/index.tsx
+    content: >+
+      --- src/pages/Dashboard/index.tsx
+
+      +++ src/pages/Dashboard/index.tsx
+
+      @@ -16,7 +16,7 @@
+       import { useDashboardAnimations } from './hooks/useDashboardAnimations.motion.hook'
+       import { useDashboardScroll } from './hooks/useDashboardScroll.hook'
+       import { PageHeader } from '@/components/shared/PageHeader';
+      -import { Card } from '@/components/ui/card';
+
+      +import { StatCard } from '@/components/shared/StatCard';
+       import { PageLayout } from '@/components/shared/PageLayout';
+       
+       interface StatsCard {
+      @@ -154,26 +154,16 @@
+                 />
+               )}
+                 {/* Stats Cards */}
+      -        <div ref={statsCardsContainerRef} className="grid grid-cols-1
+      md:grid-cols-2 lg:grid-cols-4 gap-6">
+
+      +        <div ref={statsCardsContainerRef} className="grid grid-cols-1
+      sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                 {statsCards.map((stat) => (
+      -            <Card
+
+      -            key={stat.title}
+
+      -            className="p-6 border-border/50 hover:border-primary/30
+      transition-all duration-300 group cursor-pointer"
+
+      -          >
+
+      -            <div className="flex items-center justify-between">
+
+      -              <div className="p-3 bg-primary/10 rounded-full
+      group-hover:bg-primary/20 transition-colors">
+
+      -                {stat.icon}
+
+      -              </div>
+
+      -              <div className={cn(
+
+      -                "text-sm font-medium",
+
+      -                stat.trend === 'up' ? "text-green-600" : "text-red-600"
+
+      -              )}>
+
+      -                {stat.change}
+
+      -              </div>
+
+      -            </div>
+
+      -            <div className="mt-4">
+
+      -              <h3 className="text-2xl font-bold">{stat.value}</h3>
+
+      -              <p className="text-sm text-muted-foreground
+      mt-1">{stat.title}</p>
+
+      -            </div>
+
+      -          </Card>
+
+      +            <StatCard
+
+      +              key={stat.title}
+
+      +              title={stat.title}
+
+      +              value={stat.value}
+
+      +              change={stat.change}
+
+      +              trend={stat.trend}
+
+      +              icon={stat.icon}
+
+      +            />
+                 ))}
+               </div>
+       
+               {/* Demo Content */}
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/DataDemo/index.tsx
+    content: >+
+      --- src/pages/DataDemo/index.tsx
+
+      +++ src/pages/DataDemo/index.tsx
+
+      @@ -18,8 +18,8 @@
+       import { DataTableView } from './components/DataTableView'
+       import { DataViewModeSelector } from './components/DataViewModeSelector'
+       import { AnimatedTabs } from '@/components/ui/animated-tabs'
+      +import { StatCard } from '@/components/shared/StatCard'
+       import { AnimatedLoadingSkeleton } from './components/AnimatedLoadingSkeleton'
+      -import { StatChartCard } from './components/StatChartCard'
+       import { DataToolbar } from './components/DataToolbar'
+       import { mockDataItems } from './data/mockData'
+       import type { DataItem, GroupableField } from './types'
+      @@ -164,19 +164,16 @@
+               {/* Stats Section */}
+               {!isInitialLoading && (
+                 <div ref={statsRef} className="grid grid-cols-[repeat(auto-fit,minmax(250px,1fr))] gap-6">
+      -            {stats.map((stat) =>
+
+      -              stat.type === 'chart' ? (
+
+      -                <StatChartCard
+
+      -                  key={stat.title}
+
+      -                  title={stat.title}
+
+      -                  value={stat.value}
+
+      -                  change={stat.change}
+
+      -                  trend={stat.trend}
+
+      -                  icon={stat.icon}
+
+      -                  chartData={stat.chartData}
+
+      -                />
+
+      -              ) : null
+
+      -            )}
+
+      +            {stats.map((stat) => (
+
+      +              <StatCard
+
+      +                key={stat.title}
+
+      +                title={stat.title}
+
+      +                value={stat.value}
+
+      +                change={stat.change}
+
+      +                trend={stat.trend}
+
+      +                icon={stat.icon}
+
+      +                chartData={stat.type === 'chart' ? stat.chartData :
+      undefined}
+
+      +              />
+
+      +            ))}
+                 </div>
+               )}
+       
+
+    patchStrategy: standard-diff
+  - type: delete
+    path: src/pages/DataDemo/components/StatChartCard.tsx
+snapshot:
+  src/components/shared/StatCard.tsx: null
+  src/pages/Dashboard/index.tsx: >-
+    import { useRef } from 'react'
+
+    import { 
+      BarChart3, 
+      TrendingUp, 
+      Users, 
+      DollarSign, 
+      Activity,
+      Calendar,
+      Clock,
+      MessageSquare,
+      FileText,
+      Star,
+      ChevronRight,
+      MoreVertical,
+      ArrowDown
+    } from 'lucide-react'
+
+    import { cn } from '@/lib/utils'
+
+    import { DemoContent } from './DemoContent';
+
+    import { useDashboardAnimations } from
+    './hooks/useDashboardAnimations.motion.hook'
+
+    import { useDashboardScroll } from './hooks/useDashboardScroll.hook'
+
+    import { PageHeader } from '@/components/shared/PageHeader';
+
+    import { Card } from '@/components/ui/card';
+
+    import { PageLayout } from '@/components/shared/PageLayout';
+
+
+    interface StatsCard {
+      title: string
+      value: string
+      change: string
+      trend: 'up' | 'down'
+      icon: React.ReactNode
+    }
+
+
+    interface ActivityItem {
+      id: string
+      type: 'comment' | 'file' | 'meeting' | 'task'
+      title: string
+      description: string
+      time: string
+      user: string
+    }
+
+
+    const statsCards: StatsCard[] = [
+      {
+        title: "Total Revenue",
+        value: "$45,231.89",
+        change: "+20.1%",
+        trend: "up",
+        icon: <DollarSign className="w-5 h-5" />
+      },
+      {
+        title: "Active Users",
+        value: "2,350",
+        change: "+180.1%",
+        trend: "up",
+        icon: <Users className="w-5 h-5" />
+      },
+      {
+        title: "Conversion Rate",
+        value: "12.5%",
+        change: "+19%",
+        trend: "up",
+        icon: <TrendingUp className="w-5 h-5" />
+      },
+      {
+        title: "Performance",
+        value: "573ms",
+        change: "-5.3%",
+        trend: "down",
+        icon: <Activity className="w-5 h-5" />
+      }
+    ]
+
+
+    const recentActivity: ActivityItem[] = [
+      {
+        id: "1",
+        type: "comment",
+        title: "New comment on Project Alpha",
+        description: "Sarah Johnson added a comment to the design review",
+        time: "2 minutes ago",
+        user: "SJ"
+      },
+      {
+        id: "2",
+        type: "file",
+        title: "Document uploaded",
+        description: "quarterly-report.pdf was uploaded to Documents",
+        time: "15 minutes ago",
+        user: "MD"
+      },
+      {
+        id: "3",
+        type: "meeting",
+        title: "Meeting scheduled",
+        description: "Weekly standup meeting scheduled for tomorrow 9 AM",
+        time: "1 hour ago",
+        user: "RW"
+      },
+      {
+        id: "4",
+        type: "task",
+        title: "Task completed",
+        description: "UI wireframes for mobile app completed",
+        time: "2 hours ago",
+        user: "AL"
+      }
+    ]
+
+
+    interface DashboardContentProps {
+      isInSidePane?: boolean;
+    }
+
+
+    export function DashboardContent({ isInSidePane = false }:
+    DashboardContentProps) {
+        const scrollRef = useRef<HTMLDivElement>(null)
+        const contentRef = useRef<HTMLDivElement>(null);
+        const statsCardsContainerRef = useRef<HTMLDivElement>(null);
+        const featureCardsContainerRef = useRef<HTMLDivElement>(null);
+        const { showScrollToBottom, handleScroll, scrollToBottom } = useDashboardScroll(scrollRef, isInSidePane);
+
+        useDashboardAnimations(contentRef, statsCardsContainerRef, featureCardsContainerRef);
+
+        const getTypeIcon = (type: ActivityItem['type']) => {
+          switch (type) {
+            case 'comment':
+              return <MessageSquare className="w-4 h-4" />
+            case 'file':
+              return <FileText className="w-4 h-4" />
+            case 'meeting':
+              return <Calendar className="w-4 h-4" />
+            case 'task':
+              return <Star className="w-4 h-4" />
+            default:
+              return <Activity className="w-4 h-4" />
+          }
+        }
+
+        return (
+          <PageLayout scrollRef={scrollRef} onScroll={handleScroll} ref={contentRef} isInSidePane={isInSidePane}>
+            {/* Header */}
+            {!isInSidePane && (
+              <PageHeader
+                title="Dashboard"
+                description="Welcome to the Jeli App Shell demo! Explore all the features and customization options."
+              />
+            )}
+              {/* Stats Cards */}
+            <div ref={statsCardsContainerRef} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {statsCards.map((stat) => (
+                <Card
+                key={stat.title}
+                className="p-6 border-border/50 hover:border-primary/30 transition-all duration-300 group cursor-pointer"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="p-3 bg-primary/10 rounded-full group-hover:bg-primary/20 transition-colors">
+                    {stat.icon}
+                  </div>
+                  <div className={cn(
+                    "text-sm font-medium",
+                    stat.trend === 'up' ? "text-green-600" : "text-red-600"
+                  )}>
+                    {stat.change}
+                  </div>
+                </div>
+                <div className="mt-4">
+                  <h3 className="text-2xl font-bold">{stat.value}</h3>
+                  <p className="text-sm text-muted-foreground mt-1">{stat.title}</p>
+                </div>
+              </Card>
+              ))}
+            </div>
+
+            {/* Demo Content */}
+            <DemoContent ref={featureCardsContainerRef} />
+
+            {/* Main Content Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Chart Area */}
+            <div className="lg:col-span-2 space-y-6">
+              {/* Analytics Chart */}
+              <Card className="p-6 border-border/50">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-lg font-semibold">Analytics Overview</h3>
+                  <button className="h-8 w-8 flex items-center justify-center hover:bg-accent rounded-full transition-colors">
+                    <MoreVertical className="w-5 h-5" />
+                  </button>
+                </div>
+                
+                {/* Mock Chart */}
+                <div className="h-64 bg-gradient-to-br from-primary/10 to-transparent rounded-xl flex items-center justify-center border border-border/50">
+                  <div className="text-center">
+                    <BarChart3 className="w-12 h-12 text-primary mx-auto mb-2" />
+                    <p className="text-muted-foreground">Chart visualization would go here</p>
+                  </div>
+                </div>
+              </Card>
+
+              {/* Recent Projects */}
+              <Card className="p-6 border-border/50">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-lg font-semibold">Recent Projects</h3>
+                  <button className="text-primary hover:text-primary/80 text-sm font-medium flex items-center gap-1">
+                    View All
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+                
+                <div className="space-y-4">
+                  {[
+                    { name: "E-commerce Platform", progress: 75, team: 5, deadline: "Dec 15" },
+                    { name: "Mobile App Redesign", progress: 45, team: 3, deadline: "Jan 20" },
+                    { name: "Marketing Website", progress: 90, team: 4, deadline: "Dec 5" }
+                  ].map((project) => (
+                    <div key={project.name} className="p-4 bg-accent/30 rounded-xl hover:bg-accent/50 transition-colors cursor-pointer">
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="font-medium">{project.name}</h4>
+                        <span className="text-sm text-muted-foreground">{project.progress}%</span>
+                      </div>
+                      <div className="w-full bg-muted rounded-full h-2 mb-3">
+                        <div 
+                          className="bg-primary h-2 rounded-full transition-all duration-500"
+                          style={{ width: `${project.progress}%` }}
+                        />
+                      </div>
+                      <div className="flex items-center justify-between text-sm text-muted-foreground">
+                        <span>{project.team} team members</span>
+                        <span>Due {project.deadline}</span>
+                        </div>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            </div>
+
+            {/* Sidebar Content */}
+            <div className="space-y-6">
+              {/* Quick Actions */}
+              <Card className="p-6 border-border/50">
+                <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
+                <div className="space-y-3">
+                  {[
+                    { icon: <FileText className="w-4 h-4" />, label: "Create Document", color: "bg-blue-500/10 text-blue-600" },
+                    { icon: <Calendar className="w-4 h-4" />, label: "Schedule Meeting", color: "bg-green-500/10 text-green-600" },
+                    { icon: <Users className="w-4 h-4" />, label: "Invite Team", color: "bg-purple-500/10 text-purple-600" },
+                    { icon: <BarChart3 className="w-4 h-4" />, label: "View Reports", color: "bg-orange-500/10 text-orange-600" }
+                  ].map((action) => (
+                    <button
+                      key={action.label}
+                      className="w-full flex items-center gap-3 p-3 hover:bg-accent rounded-lg transition-colors text-left"
+                    >
+                      <div className={cn("p-2 rounded-full", action.color)}>
+                        {action.icon}
+                      </div>
+                      <span className="font-medium">{action.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </Card>
+
+              {/* Recent Activity */}
+              <Card className="p-6 border-border/50">
+                <h3 className="text-lg font-semibold mb-4">Recent Activity</h3>
+                <div className="space-y-4">
+                  {recentActivity.map((activity) => (
+                    <div key={activity.id} className="flex items-start gap-3 p-3 hover:bg-accent/30 rounded-xl transition-colors cursor-pointer">
+                      <div className="p-2 bg-primary/10 rounded-full flex-shrink-0">
+                        {getTypeIcon(activity.type)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-medium text-sm mb-1">{activity.title}</h4>
+                        <p className="text-xs text-muted-foreground mb-2">{activity.description}</p>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <Clock className="w-3 h-3" />
+                          <span>{activity.time}</span>
+                          <div className="w-5 h-5 bg-primary rounded-full flex items-center justify-center text-primary-foreground text-xs font-medium">
+                            {activity.user}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            </div>
+          </div>
+          {showScrollToBottom && (
+            <button
+              onClick={scrollToBottom}
+              className="fixed bottom-8 right-8 w-12 h-12 bg-primary text-primary-foreground rounded-full flex items-center justify-center shadow-lg hover:bg-primary/90 transition-all animate-fade-in z-[51]"
+              style={{ animation: 'bounce 2s infinite' }}
+              title="Scroll to bottom"
+            >
+              <ArrowDown className="w-6 h-6" />
+            </button>
+          )}
+          </PageLayout>
+        )
+    }
+  src/pages/DataDemo/index.tsx: >
+    import { useRef, useEffect, useMemo } from 'react'
+
+    import { useParams, useNavigate } from 'react-router-dom'
+
+    import {
+      Layers, 
+      AlertTriangle, 
+      PlayCircle, 
+      TrendingUp,
+      Loader2,
+      ChevronsUpDown
+    } from 'lucide-react'
+
+    import { gsap } from 'gsap'
+
+    import { cn } from '@/lib/utils'
+
+    import { Button } from '@/components/ui/button'
+
+    import { 
+      DropdownMenu, 
+      DropdownMenuContent, 
+      DropdownMenuRadioGroup, 
+      DropdownMenuRadioItem, 
+      DropdownMenuTrigger 
+    } from '@/components/ui/dropdown-menu'
+
+    import { PageLayout } from '@/components/shared/PageLayout'
+
+    import { DataListView } from './components/DataListView'
+
+    import { DataCardView } from './components/DataCardView'
+
+    import { DataTableView } from './components/DataTableView'
+
+    import { DataViewModeSelector } from './components/DataViewModeSelector'
+
+    import { AnimatedTabs } from '@/components/ui/animated-tabs'
+
+    import { AnimatedLoadingSkeleton } from
+    './components/AnimatedLoadingSkeleton'
+
+    import { StatChartCard } from './components/StatChartCard'
+
+    import { DataToolbar } from './components/DataToolbar'
+
+    import { mockDataItems } from './data/mockData'
+
+    import type { DataItem, GroupableField } from './types'
+
+    import { useDataManagement } from './hooks/useDataManagement.hook'
+
+
+    type Stat = {
+      title: string;
+      value: string;
+      icon: React.ReactNode;
+      change: string;
+      trend: 'up' | 'down';
+      type?: 'card';
+    };
+
+
+    type ChartStat = {
+      title: string;
+      value: string;
+      icon: React.ReactNode;
+      change: string;
+      trend: 'up' | 'down';
+      type: 'chart';
+      chartData: number[];
+    };
+
+
+    type StatItem = Stat | ChartStat;
+
+
+    export default function DataDemoPage() {
+      const {
+        viewMode,
+        groupBy,
+        activeGroupTab,
+        filters,
+        sortConfig,
+        hasMore,
+        isLoading,
+        loaderRef,
+        groupTabs,
+        dataToRender,
+        totalItemCount,
+        isInitialLoading,
+        setViewMode,
+        setGroupBy,
+        setActiveGroupTab,
+        setFilters,
+        setSort,
+        setTableSort,
+      } = useDataManagement();
+
+      const groupOptions: { id: GroupableField | 'none'; label: string }[] = [
+        { id: 'none', label: 'None' }, { id: 'status', label: 'Status' }, { id: 'priority', label: 'Priority' }, { id: 'category', label: 'Category' }
+      ]
+      const contentRef = useRef<HTMLDivElement>(null)
+      const statsRef = useRef<HTMLDivElement>(null)
+      const navigate = useNavigate()
+      const { itemId } = useParams<{ itemId: string }>()
+
+      const handleItemSelect = (item: DataItem) => {
+        navigate(`/data-demo/${item.id}`)
+      }
+
+      const selectedItem = useMemo(() => {
+        if (!itemId) return null
+        return mockDataItems.find(item => item.id === itemId) ?? null
+      }, [itemId])
+
+      // Calculate stats from data
+      const totalItems = mockDataItems.length
+      const activeItems = mockDataItems.filter(item => item.status === 'active').length
+      const highPriorityItems = mockDataItems.filter(item => item.priority === 'high' || item.priority === 'critical').length
+      const avgCompletion = totalItems > 0 ? Math.round(
+        mockDataItems.reduce((acc, item) => acc + item.metrics.completion, 0) / totalItems
+      ) : 0
+
+      const stats: StatItem[] = [
+        {
+          title: "Total Projects",
+          value: totalItems.toString(),
+          icon: <Layers className="w-5 h-5" />,
+          change: "+5.2% this month",
+          trend: "up" as const,
+          type: 'chart',
+          chartData: [120, 125, 122, 130, 135, 138, 142]
+        },
+        {
+          title: "Active Projects",
+          value: activeItems.toString(),
+          icon: <PlayCircle className="w-5 h-5" />,
+          change: "+2 this week", 
+          trend: "up" as const,
+          type: 'chart',
+          chartData: [45, 50, 48, 55, 53, 60, 58]
+        },
+        {
+          title: "High Priority",
+          value: highPriorityItems.toString(),
+          icon: <AlertTriangle className="w-5 h-5" />,
+          change: "-1 from last week",
+          trend: "down" as const,
+          type: 'chart',
+          chartData: [25, 26, 28, 27, 26, 24, 23]
+        },
+        {
+          title: "Avg. Completion",
+          value: `${avgCompletion}%`,
+          icon: <TrendingUp className="w-5 h-5" />,
+          change: "+3.2%",
+          trend: "up" as const,
+          type: 'chart',
+          chartData: [65, 68, 70, 69, 72, 75, 78]
+        }
+      ]
+
+      useEffect(() => {
+        // Animate stats cards in
+        if (!isInitialLoading && statsRef.current) {
+          gsap.fromTo(statsRef.current.children,
+            { y: 30, opacity: 0 },
+            {
+              duration: 0.6,
+              y: 0,
+              opacity: 1,
+              stagger: 0.1,
+              ease: "power2.out"
+            }
+          )
+        }
+      }, [isInitialLoading])
+
+      const commonViewProps = {
+        onItemSelect: handleItemSelect,
+        selectedItem,
+      };
+
+      return (
+        <PageLayout
+          // Note: Search functionality is handled by a separate SearchBar in the TopBar
+        >
+          <div className="space-y-8">
+            {/* Header */}
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div className="flex-1">
+                <h1 className="text-2xl font-bold tracking-tight">Data Showcase</h1>
+                <p className="text-muted-foreground">
+                  {isInitialLoading 
+                    ? "Loading projects..." 
+                    : `Showing ${dataToRender.length} of ${totalItemCount} item(s)`}
+                </p>
+              </div>
+              <DataViewModeSelector viewMode={viewMode} onChange={setViewMode} />
+            </div>
+
+            {/* Stats Section */}
+            {!isInitialLoading && (
+              <div ref={statsRef} className="grid grid-cols-[repeat(auto-fit,minmax(250px,1fr))] gap-6">
+                {stats.map((stat) =>
+                  stat.type === 'chart' ? (
+                    <StatChartCard
+                      key={stat.title}
+                      title={stat.title}
+                      value={stat.value}
+                      change={stat.change}
+                      trend={stat.trend}
+                      icon={stat.icon}
+                      chartData={stat.chartData}
+                    />
+                  ) : null
+                )}
+              </div>
+            )}
+
+            {/* Controls Area */}
+            <div className="space-y-6">
+              <DataToolbar
+                filters={filters}
+                onFiltersChange={setFilters}
+                sortConfig={sortConfig}
+                onSortChange={setSort}
+              />
+            </div>
+
+            {/* Group by and Tabs section */}
+            <div className={cn(
+              "flex items-center justify-between gap-4",
+              groupBy !== 'none' && "border-b"
+            )}>
+              {/* Tabs on the left, takes up available space */}
+              <div className="flex-grow overflow-x-auto overflow-y-hidden no-scrollbar">
+                {groupBy !== 'none' && groupTabs.length > 1 ? (
+                  <AnimatedTabs
+                    tabs={groupTabs}
+                    activeTab={activeGroupTab}
+                    onTabChange={setActiveGroupTab}
+                  />
+                ) : (
+                  <div className="h-[68px]" /> // Placeholder for consistent height.
+                )}
+              </div>
+              
+              {/* Group by dropdown on the right */}
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="text-sm font-medium text-muted-foreground shrink-0">Group by:</span>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" className="w-[180px] justify-between">
+                      {groupOptions.find(o => o.id === groupBy)?.label}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-[180px]">
+                    <DropdownMenuRadioGroup value={groupBy} onValueChange={setGroupBy}>
+                      {groupOptions.map(option => (
+                        <DropdownMenuRadioItem key={option.id} value={option.id}>
+                          {option.label}
+                        </DropdownMenuRadioItem>
+                      ))}
+                    </DropdownMenuRadioGroup>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </div>
+
+            <div ref={contentRef} className="min-h-[500px]">
+              {isInitialLoading ? <AnimatedLoadingSkeleton viewMode={viewMode} /> : (
+                <div>
+                  {viewMode === 'table' ? (
+                     <DataTableView 
+                        data={dataToRender} 
+                        {...commonViewProps}
+                        sortConfig={sortConfig} 
+                        onSort={setTableSort} 
+                      />
+                  ) : (
+                    <>
+                      {viewMode === 'list' && <DataListView data={dataToRender} {...commonViewProps} />}
+                      {viewMode === 'cards' && <DataCardView data={dataToRender} {...commonViewProps} />}
+                      {viewMode === 'grid' && <DataCardView data={dataToRender} {...commonViewProps} isGrid />}
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Loader for infinite scroll */}
+            <div ref={loaderRef} className="flex justify-center items-center py-6">
+              {isLoading && !isInitialLoading && groupBy === 'none' && (
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span>Loading more...</span>
+                </div>
+              )}
+              {!isLoading && !hasMore && dataToRender.length > 0 && !isInitialLoading && groupBy === 'none' && (
+                <p className="text-muted-foreground">You've reached the end.</p>
+              )}
+            </div>
+          </div>
+        </PageLayout>
+      )
+    }
+  src/pages/DataDemo/components/StatChartCard.tsx: >-
+    import React, { useLayoutEffect, useRef } from 'react'
+
+    import { gsap } from 'gsap'
+
+    import { cn } from '@/lib/utils'
+
+    import { Card } from '@/components/ui/card'
+
+
+    interface StatChartCardProps {
+      title: string
+      value: string
+      change: string
+      trend: 'up' | 'down'
+      icon: React.ReactNode
+      chartData: number[]
+    }
+
+
+    export function StatChartCard({ title, value, change, trend, icon, chartData
+    }: StatChartCardProps) {
+      const chartRef = useRef<SVGSVGElement>(null)
+
+      useLayoutEffect(() => {
+        if (chartRef.current) {
+          const line = chartRef.current.querySelector('.chart-line')
+          const area = chartRef.current.querySelector('.chart-area')
+          if (line instanceof SVGPathElement && area) {
+            const length = line.getTotalLength()
+            gsap.set(line, { strokeDasharray: length, strokeDashoffset: length })
+            gsap.to(line, { strokeDashoffset: 0, duration: 1.5, ease: 'power2.inOut' })
+            gsap.fromTo(area, { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 1, ease: 'power2.out', delay: 0.5 })
+          }
+        }
+      }, [chartData])
+
+      // SVG dimensions
+      const width = 150
+      const height = 60
+
+      // Normalize data
+      const max = Math.max(...chartData)
+      const min = Math.min(...chartData)
+      const range = max - min === 0 ? 1 : max - min
+      
+      const points = chartData
+        .map((val, i) => {
+          const x = (i / (chartData.length - 1)) * width
+          const y = height - ((val - min) / range) * (height - 10) + 5 // Add vertical padding
+          return `${x},${y}`
+        })
+      
+      const linePath = "M" + points.join(" L");
+      const areaPath = `${linePath} L${width},${height} L0,${height} Z`
+
+      return (
+        <Card className="p-6 border-border/50 hover:border-primary/30 transition-all duration-300 group cursor-pointer flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between">
+              <div className="p-3 bg-primary/10 rounded-full group-hover:bg-primary/20 transition-colors">
+                {icon}
+              </div>
+              <div className={cn(
+                "text-sm font-medium",
+                trend === 'up' ? "text-green-600" : "text-red-600"
+              )}>
+                {change}
+              </div>
+            </div>
+            <div className="mt-4">
+              <h3 className="text-2xl font-bold">{value}</h3>
+              <p className="text-sm text-muted-foreground mt-1">{title}</p>
+            </div>
+          </div>
+          <div className="mt-4 -mb-2 -mx-2">
+            <svg ref={chartRef} viewBox={`0 0 ${width} ${height}`} className="w-full h-auto" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" className="text-primary" stopColor="currentColor" stopOpacity={0.3} />
+                  <stop offset="100%" className="text-primary" stopColor="currentColor" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <path
+                className="chart-area"
+                d={areaPath}
+                fill="url(#chartGradient)"
+              />
+              <path
+                className="chart-line"
+                d={linePath}
+                fill="none"
+                stroke="hsl(var(--primary))"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </div>
+        </Card>
+      )
+    }
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 263

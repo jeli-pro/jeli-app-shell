@@ -1,22 +1,22 @@
 import { useRef, useLayoutEffect } from 'react'
 import { gsap } from 'gsap'
 import { cn } from '@/lib/utils'
-import { Badge } from '@/components/ui/badge'
-import { Avatar } from '@/components/ui/avatar'
 import { 
-  Calendar, 
-  Eye, 
-  Heart, 
-  Share, 
   ArrowUpDown, 
   ArrowUp, 
   ArrowDown,
   ExternalLink
 } from 'lucide-react'
 import type { ViewProps, DataItem, SortableField } from '../types'
-import { getStatusColor, getPriorityColor } from '../utils'
 import { EmptyState } from './EmptyState'
 import { capitalize } from '@/lib/utils'
+import {
+  AssigneeInfo,
+  ItemMetrics,
+  ItemStatusBadge,
+  ItemPriorityBadge,
+  ItemDateInfo,
+} from './shared/DataItemParts'
 
 export function DataTableView({ data, onItemSelect, selectedItem, sortConfig, onSort }: ViewProps) {
   const tableRef = useRef<HTMLTableElement>(null)
@@ -27,7 +27,7 @@ export function DataTableView({ data, onItemSelect, selectedItem, sortConfig, on
       // Only select item rows for animation, not group headers
       const newItems = Array.from( 
         tableRef.current.querySelectorAll('tbody tr')
-      ).filter(tr => !tr.dataset.groupHeader)
+      ).filter(tr => !(tr as HTMLElement).dataset.groupHeader)
        .slice(animatedItemsCount.current);
       gsap.fromTo(newItems,
         { y: 20, opacity: 0 },
@@ -181,33 +181,21 @@ function TableRow({ item, isSelected, onItemSelect }: { item: DataItem; isSelect
 
       {/* Status Column */}
       <td className="p-4">
-        <Badge variant="outline" className={getStatusColor(item.status)}>
-          {item.status}
-        </Badge>
+        <ItemStatusBadge status={item.status} />
       </td>
 
       {/* Priority Column */}
       <td className="p-4">
-        <Badge variant="outline" className={getPriorityColor(item.priority)}>
-          {item.priority}
-        </Badge>
+        <ItemPriorityBadge priority={item.priority} />
       </td>
 
       {/* Assignee Column */}
       <td className="p-4">
-        <div className="flex items-center gap-2">
-          <Avatar className="w-8 h-8 text-sm">
-            {item.assignee.avatar}
-          </Avatar>
-          <div className="min-w-0">
-            <p className="text-sm font-medium truncate">
-              {item.assignee.name}
-            </p>
-          </div>
-        </div>
+        <AssigneeInfo assignee={item.assignee} />
       </td>
 
       {/* Progress Column */}
+      {/* Note: This progress bar is custom for the table, so we don't use the shared component here. */}
       <td className="p-4">
         <div className="flex items-center gap-3">
           <div className="flex-1 min-w-0">
@@ -226,28 +214,12 @@ function TableRow({ item, isSelected, onItemSelect }: { item: DataItem; isSelect
 
       {/* Engagement Column */}
       <td className="p-4">
-        <div className="flex items-center gap-4 text-xs text-muted-foreground">
-          <div className="flex items-center gap-1">
-            <Eye className="w-3 h-3" />
-            {item.metrics.views}
-          </div>
-          <div className="flex items-center gap-1">
-            <Heart className="w-3 h-3" />
-            {item.metrics.likes}
-          </div>
-          <div className="flex items-center gap-1">
-            <Share className="w-3 h-3" />
-            {item.metrics.shares}
-          </div>
-        </div>
+        <ItemMetrics metrics={item.metrics} />
       </td>
 
       {/* Date Column */}
       <td className="p-4">
-        <div className="flex items-center gap-1 text-sm text-muted-foreground">
-          <Calendar className="w-3 h-3" />
-          {new Date(item.updatedAt).toLocaleDateString()}
-        </div>
+        <ItemDateInfo date={item.updatedAt} />
       </td>
 
       {/* Actions Column */}

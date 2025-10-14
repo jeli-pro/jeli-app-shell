@@ -24,8 +24,8 @@ import { DataCardView } from './components/DataCardView'
 import { DataTableView } from './components/DataTableView'
 import { DataViewModeSelector } from './components/DataViewModeSelector'
 import { AnimatedTabs } from '@/components/ui/animated-tabs'
+import { StatCard } from '@/components/shared/StatCard'
 import { AnimatedLoadingSkeleton } from './components/AnimatedLoadingSkeleton'
-import { StatChartCard } from './components/StatChartCard'
 import { DataToolbar } from './components/DataToolbar'
 import { mockDataItems } from './data/mockData'
 import type { DataItem, GroupableField } from './types'
@@ -180,19 +180,17 @@ export default function DataDemoPage() {
         {/* Stats Section */}
         {!isInitialLoading && (
           <div ref={statsRef} className="grid grid-cols-[repeat(auto-fit,minmax(250px,1fr))] gap-6">
-            {stats.map((stat) =>
-              stat.type === 'chart' ? (
-                <StatChartCard
-                  key={stat.title}
-                  title={stat.title}
-                  value={stat.value}
-                  change={stat.change}
-                  trend={stat.trend}
-                  icon={stat.icon}
-                  chartData={stat.chartData}
-                />
-              ) : null
-            )}
+            {stats.map((stat) => (
+              <StatCard
+                key={stat.title}
+                title={stat.title}
+                value={stat.value}
+                change={stat.change}
+                trend={stat.trend}
+                icon={stat.icon}
+                chartData={stat.type === 'chart' ? stat.chartData : undefined}
+              />
+            ))}
           </div>
         )}
 

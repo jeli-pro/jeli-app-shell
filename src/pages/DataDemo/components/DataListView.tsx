@@ -1,24 +1,30 @@
 import { useRef } from 'react'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
-import { Avatar } from '@/components/ui/avatar'
-import { Calendar, Eye, Heart, Share, ArrowRight } from 'lucide-react'
-import type { ViewProps } from '../types'
-import { getStatusColor, getPriorityColor } from '../utils';
+import { ArrowRight } from 'lucide-react'
+import type { ViewProps, DataItem } from '../types'
 import { useIncrementalStaggeredAnimation } from '@/hooks/useStaggeredAnimation.motion.hook'
 import { EmptyState } from './EmptyState'
+import {
+  AssigneeInfo,
+  ItemMetrics,
+  ItemProgressBar,
+  ItemStatusBadge,
+  ItemPriorityBadge,
+  ItemDateInfo,
+} from './shared/DataItemParts'
 
 export function DataListView({ data, onItemSelect, selectedItem }: ViewProps) {
   const listRef = useRef<HTMLDivElement>(null)
   useIncrementalStaggeredAnimation(listRef, [data], { scale: 1, y: 30, stagger: 0.08, duration: 0.5 });
 
-  if (data.length === 0) {
+  if (!Array.isArray(data) || data.length === 0) {
     return <EmptyState />
   }
 
   return (
     <div ref={listRef} className="space-y-4">
-      {data.map((item) => {
+      {data.map((item: DataItem) => {
         const isSelected = selectedItem?.id === item.id
         
         return (
@@ -57,67 +63,28 @@ export function DataListView({ data, onItemSelect, selectedItem }: ViewProps) {
 
                   {/* Badges */}
                   <div className="flex items-center gap-2 mb-4">
-                    <Badge variant="outline" className={getStatusColor(item.status)}>
-                      {item.status}
-                    </Badge>
-                    <Badge variant="outline" className={getPriorityColor(item.priority)}>
-                      {item.priority}
-                    </Badge>
+                    <ItemStatusBadge status={item.status} />
+                    <ItemPriorityBadge priority={item.priority} />
                     <Badge variant="outline" className="bg-accent/50">
                       {item.category}
                     </Badge>
                   </div>
 
                   {/* Meta info */}
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between text-muted-foreground">
                     <div className="flex items-center gap-4">
                       {/* Assignee */}
-                      <div className="flex items-center gap-2">
-                        <Avatar className="w-7 h-7 text-sm">
-                          {item.assignee.avatar}
-                        </Avatar>
-                        <span className="text-sm text-muted-foreground font-medium">
-                          {item.assignee.name}
-                        </span>
-                      </div>
-
+                      <AssigneeInfo assignee={item.assignee} avatarClassName="w-7 h-7" />
                       {/* Date */}
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <Calendar className="w-3 h-3" />
-                        {new Date(item.updatedAt).toLocaleDateString()}
-                      </div>
+                      <ItemDateInfo date={item.updatedAt} />
                     </div>
 
                     {/* Metrics */}
-                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                      <div className="flex items-center gap-1">
-                        <Eye className="w-3 h-3" />
-                        {item.metrics.views}
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Heart className="w-3 h-3" />
-                        {item.metrics.likes}
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Share className="w-3 h-3" />
-                        {item.metrics.shares}
-                      </div>
-                    </div>
+                    <ItemMetrics metrics={item.metrics} />
                   </div>
 
                   {/* Progress bar */}
-                  <div className="mt-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs text-muted-foreground">Progress</span>
-                      <span className="text-xs font-medium">{item.metrics.completion}%</span>
-                    </div>
-                    <div className="w-full bg-muted rounded-full h-1.5">
-                      <div 
-                        className="bg-gradient-to-r from-primary to-primary/80 h-1.5 rounded-full transition-all duration-500 ease-out"
-                        style={{ width: `${item.metrics.completion}%` }}
-                      />
-                    </div>
-                  </div>
+                  <div className="mt-4"><ItemProgressBar completion={item.metrics.completion} /></div>
                 </div>
               </div>
             </div>

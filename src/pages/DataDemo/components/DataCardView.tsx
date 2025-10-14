@@ -1,18 +1,24 @@
 import { useRef } from 'react'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
-import { Avatar } from '@/components/ui/avatar'
-import { Calendar, Eye, Heart, Share, ArrowUpRight, Tag } from 'lucide-react'
-import type { ViewProps } from '../types'
-import { getStatusColor } from '../utils'
+import { ArrowUpRight } from 'lucide-react'
+import type { ViewProps, DataItem } from '../types'
 import { useIncrementalStaggeredAnimation } from '@/hooks/useStaggeredAnimation.motion.hook'
 import { EmptyState } from './EmptyState'
+import {
+  AssigneeInfo,
+  ItemMetrics,
+  ItemProgressBar,
+  ItemStatusBadge,
+  ItemTags,
+  ItemDateInfo,
+} from './shared/DataItemParts'
 
 export function DataCardView({ data, onItemSelect, selectedItem, isGrid = false }: ViewProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   useIncrementalStaggeredAnimation(containerRef, [data], { y: 40 });
 
-  if (data.length === 0) {
+  if (!Array.isArray(data) || data.length === 0) {
     return <EmptyState />
   }
 
@@ -26,7 +32,7 @@ export function DataCardView({ data, onItemSelect, selectedItem, isGrid = false 
           : "grid grid-cols-[repeat(auto-fit,minmax(320px,1fr))]"
       )}
     >
-      {data.map((item) => {
+      {data.map((item: DataItem) => {
         const isSelected = selectedItem?.id === item.id
         
         return (
@@ -73,80 +79,25 @@ export function DataCardView({ data, onItemSelect, selectedItem, isGrid = false 
 
               {/* Status and Category */}
               <div className="flex items-center gap-2 mb-4">
-                <Badge variant="outline" className={getStatusColor(item.status)}>
-                  {item.status}
-                </Badge>
+                <ItemStatusBadge status={item.status} />
                 <Badge variant="outline" className="bg-accent/50 text-xs">
                   {item.category}
                 </Badge>
               </div>
 
               {/* Tags */}
-              <div className="flex items-center gap-1 mb-4">
-                <Tag className="w-3 h-3 text-muted-foreground" />
-                <div className="flex flex-wrap gap-1">
-                  {item.tags.slice(0, 3).map((tag, index) => (
-                    <span key={index} className="text-xs text-muted-foreground bg-muted/50 px-2 py-1 rounded-md">
-                      {tag}
-                    </span>
-                  ))}
-                  {item.tags.length > 3 && (
-                    <span className="text-xs text-muted-foreground">
-                      +{item.tags.length - 3}
-                    </span>
-                  )}
-                </div>
-              </div>
+              <div className="mb-4"><ItemTags tags={item.tags} /></div>
 
               {/* Progress */}
-              <div className="mb-4">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs text-muted-foreground">Progress</span>
-                  <span className="text-xs font-semibold">{item.metrics.completion}%</span>
-                </div>
-                <div className="w-full bg-muted rounded-full h-2">
-                  <div 
-                    className="bg-gradient-to-r from-primary to-primary/80 h-2 rounded-full transition-all duration-700 ease-out"
-                    style={{ width: `${item.metrics.completion}%` }}
-                  />
-                </div>
-              </div>
+              <div className="mb-4"><ItemProgressBar completion={item.metrics.completion} /></div>
 
               {/* Assignee */}
-              <div className="flex items-center gap-3 mb-4">
-                <Avatar className="w-8 h-8 text-sm">
-                  {item.assignee.avatar}
-                </Avatar>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">
-                    {item.assignee.name}
-                  </p>
-                  <p className="text-xs text-muted-foreground truncate">
-                    {item.assignee.email}
-                  </p>
-                </div>
-              </div>
+              <div className="mb-4"><AssigneeInfo assignee={item.assignee} /></div>
 
               {/* Metrics */}
               <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-1">
-                    <Eye className="w-3 h-3" />
-                    {item.metrics.views}
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Heart className="w-3 h-3" />
-                    {item.metrics.likes}
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Share className="w-3 h-3" />
-                    {item.metrics.shares}
-                  </div>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Calendar className="w-3 h-3" />
-                  {new Date(item.updatedAt).toLocaleDateString()}
-                </div>
+                <ItemMetrics metrics={item.metrics} />
+                <ItemDateInfo date={item.updatedAt} />
               </div>
             </div>
 

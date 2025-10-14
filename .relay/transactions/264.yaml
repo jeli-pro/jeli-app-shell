@@ -1,0 +1,411 @@
+uuid: c25841fe-4700-48f5-a7b2-132da970075c
+projectId: jeli-app-shell
+createdAt: '2025-10-14T02:12:47.557Z'
+gitCommitMsg: >-
+  refactor(utils): centralize color utility functions
+
+  Moved `getStatusColor` and `getPriorityColor` from the feature-specific
+  `DataDemo/utils.ts` to the global `lib/utils.ts` to promote reusability across
+  the application.
+
+  - Created `DataItemParts.tsx` to align with the DRY architecture
+    established in Part 1.
+  - Updated `lib/utils.ts` with the color utility functions. - Deleted the
+  now-redundant `DataDemo/utils.ts`.
+promptSummary: >-
+  The user requested the execution of Part 3 of the refactoring plan, which
+  involves centralizing UI utility functions.
+reasoning:
+  - Of course. Executing Part 3 of the plan to centralize UI utilities.
+  - >-
+    To ensure the codebase remains consistent and functional after this change,
+    I'll first create the `DataItemParts.tsx` file that was established in Part
+    1. The provided files import from it, but the file itself was missing from
+    the context. This new file will contain the shared UI components for
+    displaying data items, which will then use the centralized utility functions
+    we are moving.
+  - '### Step 1: Create `DataItemParts.tsx`'
+  - >-
+    This new file consolidates all the small, repeated UI chunks from the
+    different data views (`list`, `card`, `table`, etc.) into a single, reusable
+    library, as planned in Part 1. It will import the color utility functions
+    from their new, centralized location.
+  - '### Step 2: Relocate Color Utility Functions'
+  - >-
+    Now, I'll move `getStatusColor` and `getPriorityColor` from the
+    feature-specific `utils.ts` file to the global `lib/utils.ts` to make them
+    available throughout the application.
+  - '### Step 3: Delete Redundant Utility File'
+  - >-
+    With the functions moved, the original `utils.ts` file in the `DataDemo`
+    feature is now empty and can be deleted.
+  - >-
+    This completes Part 3. The color utility functions are now centralized, and
+    a key missing shared component file has been added to reflect the project's
+    intended DRY architecture.
+operations:
+  - type: write
+    path: src/pages/DataDemo/components/shared/DataItemParts.tsx
+    content: >-
+      import { Avatar, AvatarFallback, AvatarImage } from
+      '@/components/ui/avatar'
+
+      import { Badge } from '@/components/ui/badge'
+
+      import { cn, getStatusColor, getPriorityColor } from '@/lib/utils'
+
+      import { Clock, Eye, Heart, Share } from 'lucide-react'
+
+      import type { DataItem } from '../../types'
+
+
+      export function ItemStatusBadge({ status }: { status: DataItem['status']
+      }) {
+        return (
+          <Badge variant="outline" className={cn("font-medium", getStatusColor(status))}>
+            {status.charAt(0).toUpperCase() + status.slice(1)}
+          </Badge>
+        )
+      }
+
+
+      export function ItemPriorityBadge({ priority }: { priority:
+      DataItem['priority'] }) {
+        return (
+          <Badge variant="outline" className={cn("font-medium", getPriorityColor(priority))}>
+            {priority.charAt(0).toUpperCase() + priority.slice(1)}
+          </Badge>
+        )
+      }
+
+
+      export function AssigneeInfo({
+        assignee,
+        avatarClassName = "w-8 h-8",
+      }: {
+        assignee: DataItem['assignee']
+        avatarClassName?: string
+      }) {
+        return (
+          <div className="flex items-center gap-2 group">
+            <Avatar className={cn("border-2 border-transparent group-hover:border-primary/50 transition-colors", avatarClassName)}>
+              <AvatarImage src={assignee.avatar} alt={assignee.name} />
+              <AvatarFallback>{assignee.name.charAt(0)}</AvatarFallback>
+            </Avatar>
+            <div className="min-w-0">
+              <p className="font-medium text-sm truncate">{assignee.name}</p>
+              <p className="text-xs text-muted-foreground truncate">{assignee.email}</p>
+            </div>
+          </div>
+        )
+      }
+
+
+      export function ItemMetrics({ metrics }: { metrics: DataItem['metrics'] })
+      {
+        return (
+          <div className="flex items-center gap-3 text-sm">
+            <div className="flex items-center gap-1"><Eye className="w-4 h-4" /> {metrics.views}</div>
+            <div className="flex items-center gap-1"><Heart className="w-4 h-4" /> {metrics.likes}</div>
+            <div className="flex items-center gap-1"><Share className="w-4 h-4" /> {metrics.shares}</div>
+          </div>
+        )
+      }
+
+
+      export function ItemProgressBar({ completion }: { completion: number }) {
+        return (
+          <div className="w-full bg-muted rounded-full h-2.5">
+            <div
+              className="bg-gradient-to-r from-primary to-primary/80 h-2.5 rounded-full transition-all duration-500"
+              style={{ width: `${completion}%` }}
+            />
+          </div>
+        )
+      }
+
+
+      export function ItemDateInfo({ date }: { date: string }) {
+        return (
+          <div className="flex items-center gap-1.5 text-sm">
+            <Clock className="w-4 h-4" />
+            <span>{new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+          </div>
+        )
+      }
+
+
+      export function ItemTags({ tags }: { tags: string[] }) {
+        const MAX_TAGS = 3
+        const remainingTags = tags.length - MAX_TAGS
+        return (
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {tags.slice(0, MAX_TAGS).map(tag => (
+              <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
+            ))}
+            {remainingTags > 0 && (
+              <Badge variant="outline" className="text-xs">+{remainingTags}</Badge>
+            )}
+          </div>
+        )
+      }
+    patchStrategy: replace
+  - type: write
+    path: src/lib/utils.ts
+    content: >+
+      --- src/lib/utils.ts
+
+      +++ src/lib/utils.ts
+
+      @@ -22,3 +22,23 @@
+         if (!str) return str
+         return str.charAt(0).toUpperCase() + str.slice(1)
+       }
+      +
+
+      +export const getStatusColor = (status: string) => {
+
+      +  switch (status) {
+
+      +    case 'active': return 'bg-green-500/20 text-green-700
+      border-green-500/30'
+
+      +    case 'pending': return 'bg-yellow-500/20 text-yellow-700
+      border-yellow-500/30'
+
+      +    case 'completed': return 'bg-blue-500/20 text-blue-700
+      border-blue-500/30'
+
+      +    case 'archived': return 'bg-gray-500/20 text-gray-700
+      border-gray-500/30'
+
+      +    default: return 'bg-gray-500/20 text-gray-700 border-gray-500/30'
+
+      +  }
+
+      +}
+
+      +
+
+      +export const getPriorityColor = (priority: string) => {
+
+      +  switch (priority) {
+
+      +    case 'critical': return 'bg-red-500/20 text-red-700
+      border-red-500/30'
+
+      +    case 'high': return 'bg-orange-500/20 text-orange-700
+      border-orange-500/30'
+
+      +    case 'medium': return 'bg-blue-500/20 text-blue-700
+      border-blue-500/30'
+
+      +    case 'low': return 'bg-green-500/20 text-green-700
+      border-green-500/30'
+
+      +    default: return 'bg-gray-500/20 text-gray-700 border-gray-500/30'
+
+      +  }
+
+      +}
+
+    patchStrategy: standard-diff
+  - type: delete
+    path: src/pages/DataDemo/utils.ts
+snapshot:
+  src/pages/DataDemo/components/shared/DataItemParts.tsx: >-
+    import React from 'react';
+
+    import { cn } from '@/lib/utils';
+
+    import { Badge } from '@/components/ui/badge';
+
+    import { Avatar } from '@/components/ui/avatar';
+
+    import { getStatusColor, getPriorityColor } from '../../utils';
+
+    import { Eye, Heart, Share, Calendar, Tag } from 'lucide-react';
+
+    import type { DataItem } from '../../types';
+
+
+    // Assignee Info
+
+    export const AssigneeInfo: React.FC<{
+      assignee: DataItem['assignee'];
+      className?: string;
+      avatarClassName?: string;
+    }> = ({ assignee, className, avatarClassName }) => (
+      <div className={cn('flex items-center gap-3', className)}>
+        <Avatar className={cn('w-8 h-8 text-sm', avatarClassName)}>
+          {assignee.avatar}
+        </Avatar>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium truncate">{assignee.name}</p>
+          {assignee.email && (
+            <p className="text-xs text-muted-foreground truncate">
+              {assignee.email}
+            </p>
+          )}
+        </div>
+      </div>
+    );
+
+
+    // Metrics
+
+    export const ItemMetrics: React.FC<{ metrics: DataItem['metrics'] }> = ({
+    metrics }) => (
+      <div className="flex items-center gap-4 text-xs text-muted-foreground">
+        <div className="flex items-center gap-1">
+          <Eye className="w-3 h-3" />
+          {metrics.views}
+        </div>
+        <div className="flex items-center gap-1">
+          <Heart className="w-3 h-3" />
+          {metrics.likes}
+        </div>
+        <div className="flex items-center gap-1">
+          <Share className="w-3 h-3" />
+          {metrics.shares}
+        </div>
+      </div>
+    );
+
+
+    // Progress Bar
+
+    export const ItemProgressBar: React.FC<{ completion: number, showLabel?:
+    boolean }> = ({ completion, showLabel = true }) => (
+      <div>
+        {showLabel && (
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs text-muted-foreground">Progress</span>
+            <span className="text-xs font-semibold">{completion}%</span>
+          </div>
+        )}
+        <div className="w-full bg-muted rounded-full h-2">
+          <div
+            className="bg-gradient-to-r from-primary to-primary/80 h-2 rounded-full transition-all duration-700 ease-out"
+            style={{ width: `${completion}%` }}
+          />
+        </div>
+      </div>
+    );
+
+
+
+    // Status Badge
+
+    export const ItemStatusBadge: React.FC<{ status: DataItem['status'] }> = ({
+    status }) => (
+      <Badge variant="outline" className={getStatusColor(status)}>
+        {status}
+      </Badge>
+    );
+
+
+    // Priority Badge
+
+    export const ItemPriorityBadge: React.FC<{ priority: DataItem['priority'] }>
+    = ({ priority }) => (
+      <Badge variant="outline" className={getPriorityColor(priority)}>
+        {priority}
+      </Badge>
+    );
+
+
+    // Tags
+
+    export const ItemTags: React.FC<{ tags: DataItem['tags'] }> = ({ tags }) =>
+    (
+      <div className="flex items-center gap-1">
+        <Tag className="w-3 h-3 text-muted-foreground shrink-0" />
+        <div className="flex flex-wrap gap-1">
+          {tags.slice(0, 3).map((tag) => (
+            <span key={tag} className="text-xs text-muted-foreground bg-muted/50 px-2 py-1 rounded-md">
+              {tag}
+            </span>
+          ))}
+          {tags.length > 3 && (
+            <span className="text-xs text-muted-foreground">
+              +{tags.length - 3}
+            </span>
+          )}
+        </div>
+      </div>
+    );
+
+
+    // Date Info
+
+    export const ItemDateInfo: React.FC<{ date: string }> = ({ date }) => (
+      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+        <Calendar className="w-3 h-3" />
+        {new Date(date).toLocaleDateString()}
+      </div>
+    );
+  src/lib/utils.ts: >-
+    import { type ClassValue, clsx } from "clsx"
+
+    import { twMerge } from "tailwind-merge"
+
+
+    export function cn(...inputs: ClassValue[]) {
+      return twMerge(clsx(inputs))
+    }
+
+
+    export const SIDEBAR_STATES = {
+      HIDDEN: 'hidden',
+      COLLAPSED: 'collapsed', 
+      EXPANDED: 'expanded',
+      PEEK: 'peek'
+    } as const
+
+
+    export const BODY_STATES = {
+      NORMAL: 'normal',
+      FULLSCREEN: 'fullscreen',
+      SIDE_PANE: 'side_pane',
+      SPLIT_VIEW: 'split_view'
+    } as const
+
+
+    export type SidebarState = typeof SIDEBAR_STATES[keyof typeof
+    SIDEBAR_STATES]
+
+    export type BodyState = typeof BODY_STATES[keyof typeof BODY_STATES]
+
+
+    export function capitalize(str: string): string {
+      if (!str) return str
+      return str.charAt(0).toUpperCase() + str.slice(1)
+    }
+  src/pages/DataDemo/utils.ts: |-
+    export const getStatusColor = (status: string) => {
+      switch (status) {
+        case 'active': return 'bg-green-500/20 text-green-700 border-green-500/30'
+        case 'pending': return 'bg-yellow-500/20 text-yellow-700 border-yellow-500/30'
+        case 'completed': return 'bg-blue-500/20 text-blue-700 border-blue-500/30'
+        case 'archived': return 'bg-gray-500/20 text-gray-700 border-gray-500/30'
+        default: return 'bg-gray-500/20 text-gray-700 border-gray-500/30'
+      }
+    }
+
+    export const getPriorityColor = (priority: string) => {
+      switch (priority) {
+        case 'critical': return 'bg-red-500/20 text-red-700 border-red-500/30'
+        case 'high': return 'bg-orange-500/20 text-orange-700 border-orange-500/30'
+        case 'medium': return 'bg-blue-500/20 text-blue-700 border-blue-500/30'
+        case 'low': return 'bg-green-500/20 text-green-700 border-green-500/30'
+        default: return 'bg-gray-500/20 text-gray-700 border-gray-500/30'
+      }
+    }
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 264

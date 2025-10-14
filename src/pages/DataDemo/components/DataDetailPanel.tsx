@@ -1,20 +1,14 @@
 import React, { useRef } from 'react'
 import { Badge } from '@/components/ui/badge'
-import { Avatar } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { 
-  ArrowLeft,
-  Calendar, 
+  ArrowLeft, 
   Clock, 
-  Eye, 
-  Heart, 
-  Share, 
   Download,
   FileText,
   Image,
   Video,
   File,
-  ExternalLink,
   Tag,
   User,
   BarChart3,
@@ -22,11 +16,16 @@ import {
   CheckCircle,
   AlertCircle,
   Circle
-} from 'lucide-react' 
+} from 'lucide-react'
 import type { DataItem } from '../types'
 import { useStaggeredAnimation } from '@/hooks/useStaggeredAnimation.motion.hook'
-import { getStatusColor, getPriorityColor } from '../utils'
-
+import {
+  AssigneeInfo,
+  ItemProgressBar,
+  ItemPriorityBadge,
+  ItemTags,
+} from './shared/DataItemParts'
+import { DataDetailActions } from './DataDetailActions'
 interface DataDetailPanelProps {
   item: DataItem | null
   onClose: () => void
@@ -86,31 +85,18 @@ export function DataDetailPanel({ item, onClose }: DataDetailPanelProps) {
 
         {/* Status badges */}
         <div className="flex items-center gap-2 mb-4">
-          <Badge variant="outline" className={getStatusColor(item.status)}>
+          <Badge variant="outline">
             {React.createElement(getStatusIcon(item.status), { className: "w-3 h-3 mr-1" })}
             {item.status}
           </Badge>
-          <Badge variant="outline" className={getPriorityColor(item.priority)}>
-            {item.priority}
-          </Badge>
+          <ItemPriorityBadge priority={item.priority} />
           <Badge variant="outline" className="bg-accent/50">
             {item.category}
           </Badge>
         </div>
 
         {/* Progress */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium">Progress</span>
-            <span className="text-sm font-bold">{item.metrics.completion}%</span>
-          </div>
-          <div className="w-full bg-muted rounded-full h-3">
-            <div 
-              className="bg-gradient-to-r from-primary to-primary/80 h-3 rounded-full transition-all duration-1000 ease-out"
-              style={{ width: `${item.metrics.completion}%` }}
-            />
-          </div>
-        </div>
+        <ItemProgressBar completion={item.metrics.completion} />
       </div>
 
       {/* Content */}
@@ -122,15 +108,7 @@ export function DataDetailPanel({ item, onClose }: DataDetailPanelProps) {
               <User className="w-4 h-4 text-muted-foreground" />
               <h3 className="font-semibold text-sm">Assigned to</h3>
             </div>
-            <div className="flex items-center gap-3">
-              <Avatar className="w-12 h-12">
-                {item.assignee.avatar}
-              </Avatar>
-              <div>
-                <p className="font-medium">{item.assignee.name}</p>
-                <p className="text-sm text-muted-foreground">{item.assignee.email}</p>
-              </div>
-            </div>
+            <AssigneeInfo assignee={item.assignee} avatarClassName="w-12 h-12" />
           </div>
 
           {/* Metrics */}
@@ -141,24 +119,7 @@ export function DataDetailPanel({ item, onClose }: DataDetailPanelProps) {
             </div>
             <div className="grid grid-cols-[repeat(auto-fit,minmax(80px,1fr))] gap-4">
               <div className="text-center">
-                <div className="flex items-center justify-center gap-1 mb-1">
-                  <Eye className="w-4 h-4 text-blue-500" />
-                </div>
-                <p className="text-2xl font-bold">{item.metrics.views}</p>
-                <p className="text-xs text-muted-foreground">Views</p>
-              </div>
-              <div className="text-center">
-                <div className="flex items-center justify-center gap-1 mb-1">
-                  <Heart className="w-4 h-4 text-red-500" />
-                </div>
-                <p className="text-2xl font-bold">{item.metrics.likes}</p>
-                <p className="text-xs text-muted-foreground">Likes</p>
-              </div>
-              <div className="text-center">
-                <div className="flex items-center justify-center gap-1 mb-1">
-                  <Share className="w-4 h-4 text-green-500" />
-                </div>
-                <p className="text-2xl font-bold">{item.metrics.shares}</p>
+                <p className="text-2xl font-bold">{item.metrics.views + item.metrics.likes + item.metrics.shares}</p>
                 <p className="text-xs text-muted-foreground">Shares</p>
               </div>
             </div>
@@ -170,16 +131,7 @@ export function DataDetailPanel({ item, onClose }: DataDetailPanelProps) {
               <Tag className="w-4 h-4 text-muted-foreground" />
               <h3 className="font-semibold text-sm">Tags</h3>
             </div>
-            <div className="flex flex-wrap gap-2">
-              {item.tags.map((tag, index) => (
-                <span
-                  key={index}
-                  className="bg-muted/50 text-muted-foreground px-3 py-1 rounded-full text-xs font-medium"
-                >
-                  {tag}
-                </span>
-              ))}
-            </div>
+            <ItemTags tags={item.tags} />
           </div>
 
           {/* Content Details */}
@@ -242,7 +194,7 @@ export function DataDetailPanel({ item, onClose }: DataDetailPanelProps) {
             </div>
             <div className="space-y-3">
               <div className="flex items-center gap-2 text-sm">
-                <Calendar className="w-3 h-3 text-muted-foreground" />
+                <Clock className="w-3 h-3 text-muted-foreground" />
                 <span className="text-muted-foreground">Created:</span>
                 <span className="font-medium">
                   {new Date(item.createdAt).toLocaleDateString('en-US', {
@@ -283,16 +235,7 @@ export function DataDetailPanel({ item, onClose }: DataDetailPanelProps) {
 
       {/* Footer Actions */}
       <div className="p-6 border-t border-border/50 bg-card/30">
-        <div className="flex gap-3">
-          <Button className="flex-1" size="sm">
-            <ExternalLink className="w-4 h-4 mr-2" />
-            Open Project
-          </Button>
-          <Button variant="outline" size="sm">
-            <Share className="w-4 h-4 mr-2" />
-            Share
-          </Button>
-        </div>
+        <DataDetailActions />
       </div>
     </div>
   )

@@ -1,0 +1,1315 @@
+uuid: d4a7b1b5-680f-488f-a49e-1f7c7569d12d
+projectId: jeli-app-shell
+createdAt: '2025-10-14T02:15:57.781Z'
+gitCommitMsg: >-
+  refactor(app): decouple layout from content logic with usePageContent hook
+
+  Extracted the complex logic for determining right-pane content from the
+  `ComposedApp` component into a new `usePageContent` custom hook.
+
+  This change dramatically simplifies `App.tsx`, making it a pure layout
+  composition component. The new hook centralizes all URL-parsing,
+  content-mapping, and side-pane state management, improving maintainability and
+  adhering to the Single Responsibility Principle.
+promptSummary: >-
+  I'm executing part 4 of the refactoring plan to make the codebase more DRY.
+  This involves creating a new `usePageContent` hook to centralize the logic for
+  determining the content of the right-hand pane based on the URL, and then
+  simplifying the main `App.tsx` component to use this hook.
+reasoning:
+  - 'Executing Part 4: Decoupling App Composition Logic.'
+  - >-
+    This is the final step in our DRY refactor. I'm extracting all the complex
+    content-routing and state-management logic from the main `ComposedApp`
+    component into a dedicated `usePageContent` hook. This adheres to the Single
+    Responsibility Principle, making `ComposedApp` a pure layout component and
+    centralizing the URL-to-content mapping logic in one place.
+  - '### Step 1: Create `usePageContent` Hook'
+  - >-
+    I'll create a new file, `src/hooks/usePageContent.hook.ts`, to house all the
+    logic for determining what content and headers to render based on the
+    current URL. This hook will manage the `contentMap`, handle URL parameters
+    (`itemId`, `sidePane`, etc.), and dispatch state changes to the
+    `AppShellContext`.
+  - '### Step 2: Simplify `ComposedApp` in `App.tsx`'
+  - >-
+    Now I will refactor `ComposedApp` to be a clean, declarative layout
+    component. It will get all its state and content for the right pane from the
+    new `usePageContent` hook, making it significantly smaller and easier to
+    understand. The router configuration remains untouched to ensure main page
+    routing continues to work as expected.
+operations:
+  - type: write
+    path: src/hooks/usePageContent.hook.ts
+    content: >-
+      import React, { useEffect, useMemo, useCallback } from "react";
+
+      import {
+        useNavigate,
+        useParams,
+        useSearchParams,
+      } from "react-router-dom";
+
+      import { useAppShell } from "@/context/AppShellContext";
+
+      import type { AppShellState } from "@/context/AppShellContext";
+
+      import { BODY_STATES } from "@/lib/utils";
+
+
+      // Import page/content components
+
+      import { DashboardContent } from "@/pages/Dashboard";
+
+      import { ToasterDemo } from "@/pages/ToasterDemo";
+
+      import { NotificationsPage } from "@/pages/Notifications";
+
+      import { DataDetailPanel } from
+      "@/pages/DataDemo/components/DataDetailPanel";
+
+      import { mockDataItems } from "@/pages/DataDemo/data/mockData";
+
+      import DataDemoPage from "@/pages/DataDemo";
+
+      import { SettingsContent } from "@/features/settings/SettingsContent";
+
+
+      // Import icons
+
+      import {
+        LayoutDashboard,
+        Settings,
+        Component,
+        Bell,
+        SlidersHorizontal,
+        ChevronsLeftRight,
+        Layers,
+        SplitSquareHorizontal,
+        Database,
+      } from "lucide-react";
+
+
+      export function usePageContent() {
+        const { bodyState, dispatch } = useAppShell();
+        const navigate = useNavigate();
+        const [searchParams, setSearchParams] = useSearchParams();
+        const { itemId } = useParams<{ itemId: string }>();
+
+        // Effect to sync app shell state (bodyState, sidePaneContent) with URL
+        useEffect(() => {
+          const pane = searchParams.get('sidePane');
+          const view = searchParams.get('view');
+          const right = searchParams.get('right');
+          const validPanes: AppShellState['sidePaneContent'][] = ['details', 'settings', 'main', 'toaster', 'notifications', 'dataDemo'];
+
+          if (itemId) {
+            dispatch({ type: 'SET_SIDE_PANE_CONTENT', payload: 'dataItem' });
+            if (view === 'split') {
+              dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.SPLIT_VIEW });
+            } else {
+              dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.SIDE_PANE });
+            }
+          } else if (pane && validPanes.includes(pane as AppShellState['sidePaneContent'])) {
+            dispatch({ type: 'SET_SIDE_PANE_CONTENT', payload: pane as AppShellState['sidePaneContent'] });
+            dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.SIDE_PANE });
+          } else if (view === 'split' && right && validPanes.includes(right as AppShellState['sidePaneContent'])) {
+            dispatch({ type: 'SET_SIDE_PANE_CONTENT', payload: right as AppShellState['sidePaneContent'] });
+            dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.SPLIT_VIEW });
+          } else {
+            dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.NORMAL });
+            dispatch({ type: 'SET_SIDE_PANE_CONTENT', payload: 'details' });
+          }
+        }, [itemId, searchParams, dispatch]);
+
+        const contentMap = useMemo(() => ({
+          main: {
+            title: "Dashboard",
+            icon: LayoutDashboard,
+            page: "dashboard",
+            content: <DashboardContent isInSidePane />,
+          },
+          settings: {
+            title: "Settings",
+            icon: Settings,
+            page: "settings",
+            content: <div className="p-6"><SettingsContent /></div>
+          },
+          toaster: {
+            title: "Toaster Demo",
+            icon: Component,
+            page: "toaster",
+            content: <ToasterDemo isInSidePane />,
+          },
+          notifications: {
+            title: "Notifications",
+            icon: Bell,
+            page: "notifications",
+            content: <NotificationsPage isInSidePane />,
+          },
+          dataDemo: {
+            title: "Data Showcase",
+            icon: Database,
+            page: "data-demo",
+            content: <DataDemoPage />,
+          },
+          details: {
+            title: "Details Panel",
+            icon: SlidersHorizontal,
+            content: (
+              <div className="p-6">
+                <p className="text-muted-foreground">
+                  This is the side pane. It can be used to display contextual
+                  information, forms, or actions related to the main content.
+                </p>
+              </div>
+            ),
+          },
+        }), []);
+
+        const selectedItem = useMemo(() => {
+          if (!itemId) return null
+          return mockDataItems.find(item => item.id === itemId) ?? null
+        }, [itemId]);
+
+        const sidePaneIdentifier = itemId
+          ? 'dataItem'
+          : searchParams.get('sidePane') || searchParams.get('right') || 'details';
+
+        const { currentContent, rightPaneContent } = useMemo(() => {
+          if (sidePaneIdentifier === 'dataItem') {
+            return {
+              currentContent: { title: "Item Details", icon: Database, page: `data-demo/${itemId}` },
+              rightPaneContent: <DataDetailPanel item={selectedItem} onClose={() => navigate('/data-demo')} />,
+            };
+          }
+          const mappedContent = contentMap[sidePaneIdentifier as keyof typeof contentMap] || contentMap.details;
+          return {
+            currentContent: mappedContent,
+            rightPaneContent: mappedContent.content,
+          };
+        }, [sidePaneIdentifier, selectedItem, navigate, contentMap, itemId]);
+
+        const CurrentIcon = currentContent.icon;
+
+        const handleMaximize = useCallback(() => {
+          if ("page" in currentContent && currentContent.page) {
+            navigate(`/${currentContent.page}`, { replace: true });
+          } else {
+            setSearchParams({}, { replace: true });
+          }
+        }, [currentContent, navigate, setSearchParams]);
+
+        const handleCloseSidePane = useCallback(() => {
+          if (itemId) {
+            navigate('/data-demo');
+          } else {
+            setSearchParams(prev => {
+              const newParams = new URLSearchParams(prev);
+              newParams.delete('sidePane');
+              newParams.delete('right');
+              newParams.delete('view');
+              return newParams;
+            }, { replace: true });
+          }
+        }, [setSearchParams, itemId, navigate]);
+
+        const handleToggleSplitView = useCallback(() => {
+          if (bodyState === BODY_STATES.SIDE_PANE) {
+            setSearchParams(prev => {
+              const newParams = new URLSearchParams(prev);
+              const currentPane = newParams.get('sidePane');
+              if (currentPane) {
+                newParams.set('view', 'split');
+                newParams.set('right', currentPane);
+                newParams.delete('sidePane');
+              }
+              return newParams;
+            }, { replace: true });
+          } else if (bodyState === BODY_STATES.SPLIT_VIEW) {
+            setSearchParams(prev => {
+              return { sidePane: prev.get('right') || 'details' }
+            }, { replace: true });
+          }
+        }, [bodyState, setSearchParams]);
+
+        const rightPaneHeader = useMemo(() => (
+          bodyState !== BODY_STATES.SPLIT_VIEW ? (
+            <>
+              <div className="flex items-center gap-2">
+                <CurrentIcon className="w-5 h-5" />
+                <h2 className="text-lg font-semibold whitespace-nowrap">
+                  {currentContent.title}
+                </h2>
+              </div>
+              <div className="flex items-center">
+                {(bodyState === BODY_STATES.SIDE_PANE ||
+                  bodyState === BODY_STATES.SPLIT_VIEW) && (
+                  <button
+                    onClick={handleToggleSplitView}
+                    className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors"
+                    title={
+                      bodyState === BODY_STATES.SIDE_PANE
+                        ? "Switch to Split View"
+                        : "Switch to Overlay View"
+                    }
+                  >
+                    {bodyState === BODY_STATES.SPLIT_VIEW ? (
+                      <Layers className="w-5 h-5" />
+                    ) : (
+                      <SplitSquareHorizontal className="w-5 h-5" />
+                    )}
+                  </button>
+                )}
+                {"page" in currentContent && currentContent.page && (
+                  <button
+                    onClick={handleMaximize}
+                    className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors mr-2"
+                    title="Move to Main View"
+                  >
+                    <ChevronsLeftRight className="w-5 h-5" />
+                  </button>
+                )}
+              </div>
+            </>
+          ) : undefined
+        ), [bodyState, currentContent, CurrentIcon, handleToggleSplitView, handleMaximize]);
+
+        return {
+          rightPaneContent,
+          rightPaneHeader,
+          handleCloseSidePane
+        };
+      }
+    patchStrategy: replace
+  - type: write
+    path: src/App.tsx
+    content: >
+      --- src/App.tsx
+
+      +++ src/App.tsx
+
+      @@ -1,13 +1,11 @@
+
+      -import React, { useEffect, useMemo } from "react";
+
+      +import React, { useEffect } from "react";
+       import {
+         createBrowserRouter,
+         RouterProvider,
+         Outlet,
+         Navigate,
+         useNavigate,
+      -  useParams,
+         useLocation,
+      -  useSearchParams,
+       } from "react-router-dom";
+       
+       import { AppShell } from "./components/layout/AppShell";
+      @@ -25,29 +23,17 @@
+       // Import page/content components
+       import { DashboardContent } from "./pages/Dashboard";
+       import { SettingsPage } from "./pages/Settings";
+       import { ToasterDemo } from "./pages/ToasterDemo";
+       import { NotificationsPage } from "./pages/Notifications";
+      -import { DataDetailPanel } from
+      "./pages/DataDemo/components/DataDetailPanel";
+
+      -import { mockDataItems } from "./pages/DataDemo/data/mockData";
+       import DataDemoPage from "./pages/DataDemo";
+      -import { SettingsContent } from "./features/settings/SettingsContent";
+       import { LoginPage } from "./components/auth/LoginPage";
+       
+       // Import icons
+       import {
+      -  LayoutDashboard,
+
+      -  Settings,
+
+      -  Component,
+
+      -  Bell,
+
+      -  SlidersHorizontal,
+
+      -  ChevronsLeftRight,
+         Search,
+         Filter,
+         Plus,
+         ChevronRight,
+         Rocket,
+      -  Layers,
+
+      -  SplitSquareHorizontal,
+
+      -  Database,
+       } from "lucide-react";
+      -import { BODY_STATES } from "./lib/utils";
+
+      -import type { AppShellState } from "./context/AppShellContext";
+       import { cn } from "./lib/utils";
+      +import { usePageContent } from "./hooks/usePageContent.hook";
+       
+       // Wrapper for LoginPage to provide auth handlers
+       function LoginPageWrapper() {
+      @@ -211,185 +197,16 @@
+       
+       // The main App component that composes the shell
+       function ComposedApp() {
+      -  const {
+
+      -    bodyState,
+
+      -    dispatch,
+
+      -  } = useAppShell();
+
+      -  const navigate = useNavigate();
+
+      -  const [searchParams, setSearchParams] = useSearchParams();
+
+      -  const { itemId } = useParams<{ itemId: string }>();
+
+      -
+
+      -  useEffect(() => {
+
+      -    const pane = searchParams.get('sidePane');
+
+      -    const view = searchParams.get('view');
+
+      -    const right = searchParams.get('right');
+
+      -
+
+      -    const validPanes: AppShellState['sidePaneContent'][] = ['details',
+      'settings', 'main', 'toaster', 'notifications', 'dataDemo'];
+
+      -
+
+      -    // Case 1: A specific item is selected via URL path. This takes
+      precedence.
+
+      -    // This will render the data list in main content, and item detail in
+      a pane.
+
+      -    if (itemId) {
+
+      -      dispatch({ type: 'SET_SIDE_PANE_CONTENT', payload: 'dataItem' });
+
+      -      // Allow user to still use split view with a direct item link
+
+      -      if (view === 'split') {
+
+      -          dispatch({ type: 'SET_BODY_STATE', payload:
+      BODY_STATES.SPLIT_VIEW });
+
+      -      } else {
+
+      -          dispatch({ type: 'SET_BODY_STATE', payload:
+      BODY_STATES.SIDE_PANE });
+
+      -      }
+
+      -    } 
+
+      -    // Case 2: A generic side pane is requested via query param.
+
+      -    else if (pane && validPanes.includes(pane as
+      AppShellState['sidePaneContent'])) {
+
+      -      dispatch({ type: 'SET_SIDE_PANE_CONTENT', payload: pane as
+      AppShellState['sidePaneContent'] });
+
+      -      dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.SIDE_PANE
+      });
+
+      -    } 
+
+      -    // Case 3: Split view is requested via query param.
+
+      -    else if (view === 'split' && right && validPanes.includes(right as
+      AppShellState['sidePaneContent'])) {
+
+      -      dispatch({ type: 'SET_SIDE_PANE_CONTENT', payload: right as
+      AppShellState['sidePaneContent'] });
+
+      -      dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.SPLIT_VIEW
+      });
+
+      -    } 
+
+      -    // Case 4: Default state, no panes.
+
+      -    else {
+
+      -      dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.NORMAL });
+
+      -      // Clean up side pane content when not in use
+
+      -      dispatch({ type: 'SET_SIDE_PANE_CONTENT', payload: 'details' });
+
+      -    }
+
+      -  }, [itemId, searchParams, dispatch]);
+
+      -
+
+      -  const contentMap = {
+
+      -    main: {
+
+      -      title: "Dashboard",
+
+      -      icon: LayoutDashboard,
+
+      -      page: "dashboard",
+
+      -      content: <DashboardContent />,
+
+      -    },
+
+      -    settings: {
+
+      -      title: "Settings",
+
+      -      icon: Settings,
+
+      -      page: "settings",
+
+      -      content: bodyState === BODY_STATES.SIDE_PANE ? (
+
+      -        <div className="p-6">
+
+      -          <SettingsContent />
+
+      -        </div>
+
+      -      ) : (
+
+      -        <SettingsPage />
+
+      -      ),
+
+      -    },
+
+      -    toaster: {
+
+      -      title: "Toaster Demo",
+
+      -      icon: Component,
+
+      -      page: "toaster",
+
+      -      content: <ToasterDemo />,
+
+      -    },
+
+      -    notifications: {
+
+      -      title: "Notifications",
+
+      -      icon: Bell,
+
+      -      page: "notifications",
+
+      -      content: <NotificationsPage />,
+
+      -    },
+
+      -    dataDemo: {
+
+      -      title: "Data Showcase",
+
+      -      icon: Database,
+
+      -      page: "data-demo",
+
+      -      content: <DataDemoPage />,
+
+      -    },
+
+      -    details: {
+
+      -      title: "Details Panel",
+
+      -      icon: SlidersHorizontal,
+
+      -      content: (
+
+      -        <div className="p-6">
+
+      -          <p className="text-muted-foreground">
+
+      -            This is the side pane. It can be used to display contextual
+
+      -            information, forms, or actions related to the main content.
+
+      -          </p>
+
+      -        </div>
+
+      -      ),
+
+      -    },
+
+      -  } as const;
+
+      -
+
+      -  const selectedItem = useMemo(() => {
+
+      -    if (!itemId) return null
+
+      -    return mockDataItems.find(item => item.id === itemId) ?? null
+
+      -  }, [itemId]);
+
+      -
+
+      -  // Derive content directly from URL to prevent flashes of incorrect
+      content
+
+      -  const sidePaneIdentifier = itemId 
+
+      -    ? 'dataItem' 
+
+      -    : searchParams.get('sidePane') || searchParams.get('right') ||
+      'details';
+
+      -
+
+      -  let rightPaneContent;
+
+      -  let currentContent: { title: string, icon: React.ElementType, page?:
+      string };
+
+      -
+
+      -  if (sidePaneIdentifier === 'dataItem') {
+
+      -    currentContent = { title: "Item Details", icon: Database };
+
+      -    rightPaneContent = <DataDetailPanel item={selectedItem} onClose={()
+      => navigate('/data-demo')} />;
+
+      -  } else {
+
+      -    const mappedContent = contentMap[sidePaneIdentifier as keyof typeof
+      contentMap] || contentMap.details;
+
+      -    currentContent = mappedContent;
+
+      -    rightPaneContent = mappedContent.content;
+
+      -  }
+
+      -  
+
+      -  const CurrentIcon = currentContent.icon;
+
+      -
+
+      -  const handleMaximize = () => {
+
+      -    if ("page" in currentContent && currentContent.page) {
+
+      -      navigate(`/${currentContent.page}`, { replace: true });
+
+      -    } else {
+
+      -      setSearchParams({}, { replace: true });
+
+      -    }
+
+      -  };
+
+      -
+
+      -  const handleCloseSidePane = () => {
+
+      -    // Use functional update to avoid stale closures with searchParams
+
+      -    setSearchParams(prev => {
+
+      -      const newParams = new URLSearchParams(prev);
+
+      -      newParams.delete('sidePane');
+
+      -      return newParams;
+
+      -    }, { replace: true });
+
+      -  };
+
+      -
+
+      -  const handleToggleSplitView = () => {
+
+      -    if (bodyState === BODY_STATES.SIDE_PANE) {
+
+      -      setSearchParams(prev => {
+
+      -        const newParams = new URLSearchParams(prev);
+
+      -        const currentPane = newParams.get('sidePane');
+
+      -        if (currentPane) {
+
+      -          newParams.set('view', 'split');
+
+      -          newParams.set('right', currentPane);
+
+      -          newParams.delete('sidePane');
+
+      -        }
+
+      -        return newParams;
+
+      -      }, { replace: true });
+
+      -    } else if (bodyState === BODY_STATES.SPLIT_VIEW) {
+
+      -      setSearchParams(prev => {
+
+      -        return { sidePane: prev.get('right') || 'details' }
+
+      -      }, { replace: true });
+
+      -    }
+
+      -  };
+
+      -
+
+      -  const rightPaneHeader =
+
+      -    bodyState !== BODY_STATES.SPLIT_VIEW ? (
+
+      -      <>
+
+      -        <div className="flex items-center gap-2">
+
+      -          <CurrentIcon className="w-5 h-5" />
+
+      -          <h2 className="text-lg font-semibold whitespace-nowrap">
+
+      -            {currentContent.title}
+
+      -          </h2>
+
+      -        </div>
+
+      -        <div className="flex items-center">
+
+      -          {(bodyState === BODY_STATES.SIDE_PANE ||
+
+      -            bodyState === BODY_STATES.SPLIT_VIEW) && (
+
+      -            <button
+
+      -              onClick={handleToggleSplitView}
+
+      -              className="h-10 w-10 flex items-center justify-center
+      hover:bg-accent rounded-full transition-colors"
+
+      -              title={
+
+      -                bodyState === BODY_STATES.SIDE_PANE
+
+      -                  ? "Switch to Split View"
+
+      -                  : "Switch to Overlay View"
+
+      -              }
+
+      -            >
+
+      -              {bodyState === BODY_STATES.SPLIT_VIEW ? (
+
+      -                <Layers className="w-5 h-5" />
+
+      -              ) : (
+
+      -                <SplitSquareHorizontal className="w-5 h-5" />
+
+      -              )}
+
+      -            </button>
+
+      -          )}
+
+      -          {"page" in currentContent && currentContent.page && (
+
+      -            <button
+
+      -              onClick={handleMaximize}
+
+      -              className="h-10 w-10 flex items-center justify-center
+      hover:bg-accent rounded-full transition-colors mr-2"
+
+      -              title="Move to Main View"
+
+      -            >
+
+      -              <ChevronsLeftRight className="w-5 h-5" />
+
+      -            </button>
+
+      -          )}
+
+      -        </div>
+
+      -      </>
+
+      -    ) : undefined;
+
+      +  const { rightPaneContent, rightPaneHeader, handleCloseSidePane } =
+
+      +    usePageContent();
+       
+         return (
+           <AppShell
+             sidebar={<EnhancedSidebar />}
+             onOverlayClick={handleCloseSidePane}
+             topBar={
+               <TopBar>
+      @@ -402,7 +209,9 @@
+               </MainContent>
+             }
+             rightPane={
+      -        <RightPane onClose={handleCloseSidePane}
+      header={rightPaneHeader}>{rightPaneContent}</RightPane>
+
+      +        <RightPane onClose={handleCloseSidePane}
+      header={rightPaneHeader}>
+
+      +          {rightPaneContent}
+
+      +        </RightPane>
+             }
+             commandPalette={<CommandPalette />}
+           />
+    patchStrategy: standard-diff
+snapshot:
+  src/hooks/usePageContent.hook.ts: null
+  src/App.tsx: >-
+    import React, { useEffect, useMemo } from "react";
+
+    import {
+      createBrowserRouter,
+      RouterProvider,
+      Outlet,
+      Navigate,
+      useNavigate,
+      useParams,
+      useLocation,
+      useSearchParams,
+    } from "react-router-dom";
+
+
+    import { AppShell } from "./components/layout/AppShell";
+
+    import { AppShellProvider, useAppShell } from "./context/AppShellContext";
+
+    import { useAppStore } from "./store/appStore";
+
+    import { useAuthStore } from "./store/authStore";
+
+    import "./index.css";
+
+
+    // Import library components
+
+    import { EnhancedSidebar } from "./components/layout/EnhancedSidebar";
+
+    import { MainContent } from "./components/layout/MainContent";
+
+    import { RightPane } from "./components/layout/RightPane";
+
+    import { TopBar } from "./components/layout/TopBar";
+
+    import { CommandPalette } from "./components/global/CommandPalette";
+
+    import { ToasterProvider } from "./components/ui/toast";
+
+
+    // Import page/content components
+
+    import { DashboardContent } from "./pages/Dashboard";
+
+    import { SettingsPage } from "./pages/Settings";
+
+    import { ToasterDemo } from "./pages/ToasterDemo";
+
+    import { NotificationsPage } from "./pages/Notifications";
+
+    import { DataDetailPanel } from
+    "./pages/DataDemo/components/DataDetailPanel";
+
+    import { mockDataItems } from "./pages/DataDemo/data/mockData";
+
+    import DataDemoPage from "./pages/DataDemo";
+
+    import { SettingsContent } from "./features/settings/SettingsContent";
+
+    import { LoginPage } from "./components/auth/LoginPage";
+
+
+    // Import icons
+
+    import {
+      LayoutDashboard,
+      Settings,
+      Component,
+      Bell,
+      SlidersHorizontal,
+      ChevronsLeftRight,
+      Search,
+      Filter,
+      Plus,
+      ChevronRight,
+      Rocket,
+      Layers,
+      SplitSquareHorizontal,
+      Database,
+    } from "lucide-react";
+
+    import { BODY_STATES } from "./lib/utils";
+
+    import type { AppShellState } from "./context/AppShellContext";
+
+    import { cn } from "./lib/utils";
+
+
+    // Wrapper for LoginPage to provide auth handlers
+
+    function LoginPageWrapper() {
+      const { login, forgotPassword } = useAuthStore();
+      const navigate = useNavigate();
+      const location = useLocation();
+      const from = location.state?.from?.pathname + location.state?.from?.search || "/";
+
+      const handleLogin = async (email: string, password: string) => {
+        try {
+          await login(email, password);
+          navigate(from, { replace: true });
+        } catch (error) {
+          console.error("Login failed:", error);
+          // In a real app, you'd show an error message to the user
+        }
+      };
+
+      const handleForgotPassword = async (email: string) => {
+        try {
+          await forgotPassword(email);
+        } catch (error) {
+          console.error("Forgot password failed:", error);
+        }
+      };
+
+      const handleSignUp = () => {
+        // In a real app, navigate to sign up page
+        console.log("Navigate to sign up page");
+      };
+
+      return (
+        <LoginPage
+          onLogin={handleLogin}
+          onForgotPassword={handleForgotPassword}
+          onSignUp={handleSignUp}
+        />
+      );
+    }
+
+
+    // Checks for authentication and redirects to login if needed
+
+    function ProtectedRoute() {
+      const { isAuthenticated } = useAuthStore();
+      const location = useLocation();
+      if (!isAuthenticated) {
+        return <Navigate to="/login" state={{ from: location }} replace />;
+      }
+      return <Outlet />;
+    }
+
+
+    // A root component to apply global styles and effects
+
+    function Root() {
+      const isDarkMode = useAppStore((state) => state.isDarkMode);
+
+      useEffect(() => {
+        document.documentElement.classList.toggle("dark", isDarkMode);
+      }, [isDarkMode]);
+
+      return <Outlet />;
+    }
+
+
+    // The main layout for authenticated parts of the application
+
+    function ProtectedLayout() {
+
+      return (
+        <div className="h-screen w-screen overflow-hidden bg-background">
+          <AppShellProvider
+            appName="Jeli App"
+            appLogo={
+              <div className="p-2 bg-primary/20 rounded-lg">
+                <Rocket className="w-5 h-5 text-primary" />
+              </div>
+            }
+          >
+            <ComposedApp />
+          </AppShellProvider>
+        </div>
+      );
+    }
+
+
+    // Content for the Top Bar (will be fully refactored in Part 2)
+
+    function AppTopBar() {
+      const { searchTerm, setSearchTerm } = useAppStore();
+      const [isSearchFocused, setIsSearchFocused] = React.useState(false);
+      const location = useLocation();
+      const activePage = location.pathname.split('/').filter(Boolean).pop()?.replace('-', ' ') || 'dashboard';
+
+      return (
+        <div className="flex items-center gap-3 flex-1">
+          <div
+            className={cn(
+              "hidden md:flex items-center gap-2 text-sm transition-opacity",
+              {
+                "opacity-0 pointer-events-none":
+                  isSearchFocused && activePage === "dashboard",
+              },
+            )}
+          >
+            <a
+              href="#"
+              className="text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Home
+            </a>
+            <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            <span className="font-medium text-foreground capitalize">
+              {activePage}
+            </span>
+          </div>
+
+          <div className="flex-1" />
+
+          {/* Page-specific: Dashboard search and actions */}
+          {activePage === "dashboard" && (
+            <div className="flex items-center gap-2 flex-1 justify-end">
+              <div
+                className={cn(
+                  "relative transition-all duration-300 ease-in-out",
+                  isSearchFocused ? "flex-1 max-w-lg" : "w-auto",
+                )}
+              >
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4 pointer-events-none" />
+                <input
+                  type="text"
+                  placeholder="Search..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onFocus={() => setIsSearchFocused(true)}
+                  onBlur={() => setIsSearchFocused(false)}
+                  className={cn(
+                    "pl-9 pr-4 py-2 h-10 border-none rounded-lg bg-card focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300 ease-in-out w-full",
+                    isSearchFocused ? "bg-background" : "w-48",
+                  )}
+                />
+              </div>
+              <button className="h-10 w-10 flex-shrink-0 flex items-center justify-center hover:bg-accent rounded-full transition-colors">
+                <Filter className="w-5 h-5" />
+              </button>
+              <button className="bg-primary text-primary-foreground px-4 py-2 rounded-full hover:bg-primary/90 transition-colors flex items-center gap-2 h-10 flex-shrink-0">
+                <Plus className="w-5 h-5" />
+                <span
+                  className={cn(isSearchFocused ? "hidden sm:inline" : "inline")}
+                >
+                  New Project
+                </span>
+              </button>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+
+    // The main App component that composes the shell
+
+    function ComposedApp() {
+      const {
+        bodyState,
+        dispatch,
+      } = useAppShell();
+      const navigate = useNavigate();
+      const [searchParams, setSearchParams] = useSearchParams();
+      const { itemId } = useParams<{ itemId: string }>();
+
+      useEffect(() => {
+        const pane = searchParams.get('sidePane');
+        const view = searchParams.get('view');
+        const right = searchParams.get('right');
+
+        const validPanes: AppShellState['sidePaneContent'][] = ['details', 'settings', 'main', 'toaster', 'notifications', 'dataDemo'];
+
+        // Case 1: A specific item is selected via URL path. This takes precedence.
+        // This will render the data list in main content, and item detail in a pane.
+        if (itemId) {
+          dispatch({ type: 'SET_SIDE_PANE_CONTENT', payload: 'dataItem' });
+          // Allow user to still use split view with a direct item link
+          if (view === 'split') {
+              dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.SPLIT_VIEW });
+          } else {
+              dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.SIDE_PANE });
+          }
+        } 
+        // Case 2: A generic side pane is requested via query param.
+        else if (pane && validPanes.includes(pane as AppShellState['sidePaneContent'])) {
+          dispatch({ type: 'SET_SIDE_PANE_CONTENT', payload: pane as AppShellState['sidePaneContent'] });
+          dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.SIDE_PANE });
+        } 
+        // Case 3: Split view is requested via query param.
+        else if (view === 'split' && right && validPanes.includes(right as AppShellState['sidePaneContent'])) {
+          dispatch({ type: 'SET_SIDE_PANE_CONTENT', payload: right as AppShellState['sidePaneContent'] });
+          dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.SPLIT_VIEW });
+        } 
+        // Case 4: Default state, no panes.
+        else {
+          dispatch({ type: 'SET_BODY_STATE', payload: BODY_STATES.NORMAL });
+          // Clean up side pane content when not in use
+          dispatch({ type: 'SET_SIDE_PANE_CONTENT', payload: 'details' });
+        }
+      }, [itemId, searchParams, dispatch]);
+
+      const contentMap = {
+        main: {
+          title: "Dashboard",
+          icon: LayoutDashboard,
+          page: "dashboard",
+          content: <DashboardContent />,
+        },
+        settings: {
+          title: "Settings",
+          icon: Settings,
+          page: "settings",
+          content: bodyState === BODY_STATES.SIDE_PANE ? (
+            <div className="p-6">
+              <SettingsContent />
+            </div>
+          ) : (
+            <SettingsPage />
+          ),
+        },
+        toaster: {
+          title: "Toaster Demo",
+          icon: Component,
+          page: "toaster",
+          content: <ToasterDemo />,
+        },
+        notifications: {
+          title: "Notifications",
+          icon: Bell,
+          page: "notifications",
+          content: <NotificationsPage />,
+        },
+        dataDemo: {
+          title: "Data Showcase",
+          icon: Database,
+          page: "data-demo",
+          content: <DataDemoPage />,
+        },
+        details: {
+          title: "Details Panel",
+          icon: SlidersHorizontal,
+          content: (
+            <div className="p-6">
+              <p className="text-muted-foreground">
+                This is the side pane. It can be used to display contextual
+                information, forms, or actions related to the main content.
+              </p>
+            </div>
+          ),
+        },
+      } as const;
+
+      const selectedItem = useMemo(() => {
+        if (!itemId) return null
+        return mockDataItems.find(item => item.id === itemId) ?? null
+      }, [itemId]);
+
+      // Derive content directly from URL to prevent flashes of incorrect content
+      const sidePaneIdentifier = itemId 
+        ? 'dataItem' 
+        : searchParams.get('sidePane') || searchParams.get('right') || 'details';
+
+      let rightPaneContent;
+      let currentContent: { title: string, icon: React.ElementType, page?: string };
+
+      if (sidePaneIdentifier === 'dataItem') {
+        currentContent = { title: "Item Details", icon: Database };
+        rightPaneContent = <DataDetailPanel item={selectedItem} onClose={() => navigate('/data-demo')} />;
+      } else {
+        const mappedContent = contentMap[sidePaneIdentifier as keyof typeof contentMap] || contentMap.details;
+        currentContent = mappedContent;
+        rightPaneContent = mappedContent.content;
+      }
+      
+      const CurrentIcon = currentContent.icon;
+
+      const handleMaximize = () => {
+        if ("page" in currentContent && currentContent.page) {
+          navigate(`/${currentContent.page}`, { replace: true });
+        } else {
+          setSearchParams({}, { replace: true });
+        }
+      };
+
+      const handleCloseSidePane = () => {
+        // Use functional update to avoid stale closures with searchParams
+        setSearchParams(prev => {
+          const newParams = new URLSearchParams(prev);
+          newParams.delete('sidePane');
+          return newParams;
+        }, { replace: true });
+      };
+
+      const handleToggleSplitView = () => {
+        if (bodyState === BODY_STATES.SIDE_PANE) {
+          setSearchParams(prev => {
+            const newParams = new URLSearchParams(prev);
+            const currentPane = newParams.get('sidePane');
+            if (currentPane) {
+              newParams.set('view', 'split');
+              newParams.set('right', currentPane);
+              newParams.delete('sidePane');
+            }
+            return newParams;
+          }, { replace: true });
+        } else if (bodyState === BODY_STATES.SPLIT_VIEW) {
+          setSearchParams(prev => {
+            return { sidePane: prev.get('right') || 'details' }
+          }, { replace: true });
+        }
+      };
+
+      const rightPaneHeader =
+        bodyState !== BODY_STATES.SPLIT_VIEW ? (
+          <>
+            <div className="flex items-center gap-2">
+              <CurrentIcon className="w-5 h-5" />
+              <h2 className="text-lg font-semibold whitespace-nowrap">
+                {currentContent.title}
+              </h2>
+            </div>
+            <div className="flex items-center">
+              {(bodyState === BODY_STATES.SIDE_PANE ||
+                bodyState === BODY_STATES.SPLIT_VIEW) && (
+                <button
+                  onClick={handleToggleSplitView}
+                  className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors"
+                  title={
+                    bodyState === BODY_STATES.SIDE_PANE
+                      ? "Switch to Split View"
+                      : "Switch to Overlay View"
+                  }
+                >
+                  {bodyState === BODY_STATES.SPLIT_VIEW ? (
+                    <Layers className="w-5 h-5" />
+                  ) : (
+                    <SplitSquareHorizontal className="w-5 h-5" />
+                  )}
+                </button>
+              )}
+              {"page" in currentContent && currentContent.page && (
+                <button
+                  onClick={handleMaximize}
+                  className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors mr-2"
+                  title="Move to Main View"
+                >
+                  <ChevronsLeftRight className="w-5 h-5" />
+                </button>
+              )}
+            </div>
+          </>
+        ) : undefined;
+
+      return (
+        <AppShell
+          sidebar={<EnhancedSidebar />}
+          onOverlayClick={handleCloseSidePane}
+          topBar={
+            <TopBar>
+              <AppTopBar />
+            </TopBar>
+          }
+          mainContent={
+            <MainContent>
+              <Outlet />
+            </MainContent>
+          }
+          rightPane={
+            <RightPane onClose={handleCloseSidePane} header={rightPaneHeader}>{rightPaneContent}</RightPane>
+          }
+          commandPalette={<CommandPalette />}
+        />
+      );
+    }
+
+
+    function App() {
+      const router = createBrowserRouter([
+        {
+          element: <Root />,
+          children: [
+            {
+              path: "/login",
+              element: <LoginPageWrapper />,
+            },
+            {
+              path: "/",
+              element: <ProtectedRoute />,
+              children: [
+                {
+                  path: "/",
+                  element: <ProtectedLayout />,
+                  children: [
+                    { index: true, element: <Navigate to="/dashboard" replace /> },
+                    { path: "dashboard", element: <DashboardContent /> },
+                    { path: "settings", element: <SettingsPage /> },
+                    { path: "toaster", element: <ToasterDemo /> },
+                    { path: "notifications", element: <NotificationsPage /> },
+                    { path: "data-demo", element: <DataDemoPage /> },
+                    { path: "data-demo/:itemId", element: <DataDemoPage /> },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ]);
+
+      return (
+        <ToasterProvider>
+          <RouterProvider router={router} />
+        </ToasterProvider>
+      );
+    }
+
+
+    export default App;
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 265
