@@ -1,3 +1,4 @@
+import React from 'react';
 import {
   Menu, 
   Moon, 
@@ -8,7 +9,6 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { BODY_STATES } from '@/lib/utils'
-import { useAppStore } from '@/store/appStore'
 import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
 import { UserDropdown } from './UserDropdown'
 import { ViewModeSwitcher } from './ViewModeSwitcher'
@@ -18,17 +18,17 @@ interface TopBarProps {
   children?: React.ReactNode
 }
 
-export function TopBar({
+export const TopBar = React.memo(({
   children,
-}: TopBarProps) {
-  const bodyState = useAppShellStore(s => s.bodyState);
-  const toggleSidebar = useAppShellStore(s => s.toggleSidebar);
-  const viewManager = useAppViewManager();
+}: TopBarProps) => {
+  const bodyState = useAppShellStore(s => s.bodyState)
+  const isDarkMode = useAppShellStore(s => s.isDarkMode);
   const { 
+    toggleSidebar, 
     setCommandPaletteOpen,
-    isDarkMode,
     toggleDarkMode,
-  } = useAppStore()
+  } = useAppShellStore.getState();
+  const viewManager = useAppViewManager();
 
   return (
     <div className={cn(
@@ -103,4 +103,4 @@ export function TopBar({
       </div>
     </div>
   )
-}
+});

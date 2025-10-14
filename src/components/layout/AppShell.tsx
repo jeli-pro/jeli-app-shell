@@ -3,7 +3,6 @@ import { useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils'
 import { gsap } from 'gsap';
 import { CommandPalette } from '@/components/global/CommandPalette';
-import { useAppStore } from '@/store/appStore'
 import { useAppShellStore } from '@/store/appShell.store';
 import { SIDEBAR_STATES, BODY_STATES } from '@/lib/utils'
 import { useResizableSidebar, useResizableRightPane } from '@/hooks/useResizablePanes.hook'
@@ -39,23 +38,20 @@ function usePrevious<T>(value: T): T | undefined {
 
 
 export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalette, onOverlayClick }: AppShellProps) {
-  const {
-    sidebarState, autoExpandSidebar, hoveredPane, draggedPage,
-    dragHoverTarget, bodyState, sidePaneContent, reducedMotion,
-    isTopBarVisible,
-  } = useAppShellStore(state => ({
-    sidebarState: state.sidebarState, autoExpandSidebar: state.autoExpandSidebar,
-    hoveredPane: state.hoveredPane, draggedPage: state.draggedPage,
-    dragHoverTarget: state.dragHoverTarget, bodyState: state.bodyState,
-    sidePaneContent: state.sidePaneContent, reducedMotion: state.reducedMotion,
-    isTopBarVisible: state.isTopBarVisible,
-  }));
-  const { setSidebarState, toggleSidebar, peekSidebar, setHoveredPane } = useAppShellStore.getState();
+  const sidebarState = useAppShellStore(s => s.sidebarState);
+  const autoExpandSidebar = useAppShellStore(s => s.autoExpandSidebar);
+  const hoveredPane = useAppShellStore(s => s.hoveredPane);
+  const draggedPage = useAppShellStore(s => s.draggedPage);
+  const dragHoverTarget = useAppShellStore(s => s.dragHoverTarget);
+  const bodyState = useAppShellStore(s => s.bodyState);
+  const sidePaneContent = useAppShellStore(s => s.sidePaneContent);
+  const reducedMotion = useAppShellStore(s => s.reducedMotion);
+  const isTopBarVisible = useAppShellStore(s => s.isTopBarVisible);
+  const isDarkMode = useAppShellStore(s => s.isDarkMode);
+  const { setSidebarState, peekSidebar, setHoveredPane } = useAppShellStore.getState();
   
   const isFullscreen = bodyState === BODY_STATES.FULLSCREEN;
   const isSidePaneOpen = bodyState === BODY_STATES.SIDE_PANE;
-
-  const { isDarkMode, toggleDarkMode } = useAppStore();
   const location = useLocation();
   const activePage = location.pathname.split('/')[1] || 'dashboard';
   const appRef = useRef<HTMLDivElement>(null)
@@ -126,11 +122,6 @@ export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalet
     }
   });
 
-  const topBarWithProps = React.cloneElement(topBar, {
-    onToggleSidebar: toggleSidebar,
-    onToggleDarkMode: toggleDarkMode,
-  });
-
   const mainContentWithProps = React.cloneElement(mainContent, {
     ref: mainContentRef,
   });
@@ -175,7 +166,7 @@ export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalet
             )}
             onMouseEnter={() => { if (isSplitView) setHoveredPane(null); }}
           >
-            {topBarWithProps}
+            {topBar}
           </div>
 
           <div className="flex flex-1 min-h-0">

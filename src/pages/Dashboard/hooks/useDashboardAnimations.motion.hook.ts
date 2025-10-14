@@ -10,13 +10,14 @@ export function useDashboardAnimations(
   featureCardsContainerRef: React.RefObject<HTMLDivElement>,
 ) {
   const bodyState = useAppShellStore(s => s.bodyState);
+  const reducedMotion = useAppShellStore(s => s.reducedMotion);
 
   // Animate cards on mount
   useStaggeredAnimation(statsCardsContainerRef, [], { y: 20, scale: 0.95 });
   useStaggeredAnimation(featureCardsContainerRef, [], { y: 30, scale: 0.95, stagger: 0.05 });
 
   useEffect(() => {
-    if (!contentRef.current) return;
+    if (reducedMotion || !contentRef.current) return;
 
     const content = contentRef.current;
 
@@ -28,5 +29,5 @@ export function useDashboardAnimations(
         gsap.to(content, { scale: 1, duration: 0.4, ease: 'power3.out' });
         break;
     }
-  }, [bodyState, contentRef]);
+  }, [bodyState, contentRef, reducedMotion]);
 }

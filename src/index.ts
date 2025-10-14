@@ -75,5 +75,5 @@ export { useCommandPaletteToggle } from './hooks/useCommandPaletteToggle.hook';
 export * from './lib/utils';
 
 // Store
-export { useAppStore, type ActivePage } from './store/appStore';
+export type { ActivePage } from './store/appShell.store';
 export { useAuthStore } from './store/authStore';

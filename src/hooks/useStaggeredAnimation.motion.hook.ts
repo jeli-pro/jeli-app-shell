@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef } from 'react';
 import { gsap } from 'gsap';
+import { useAppShellStore } from '@/store/appShell.store';
 
 interface StaggeredAnimationOptions {
 	stagger?: number;
@@ -24,6 +25,7 @@ export function useStaggeredAnimation<T extends HTMLElement>(
 	deps: React.DependencyList,
 	options: StaggeredAnimationOptions = {},
 ) {
+	const reducedMotion = useAppShellStore(s => s.reducedMotion);
 	const {
 		stagger = 0.08,
 		duration = 0.6,
@@ -36,7 +38,7 @@ export function useStaggeredAnimation<T extends HTMLElement>(
 	const animatedItemsCount = useRef(0);
 
 	useLayoutEffect(() => {
-		if (!containerRef.current) return;
+		if (reducedMotion || !containerRef.current) return;
 
 		const children = Array.from(containerRef.current.children) as HTMLElement[];
 

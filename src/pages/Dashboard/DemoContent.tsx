@@ -13,13 +13,14 @@ import {
   Settings
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useAppStore } from '@/store/appStore'
 import { useAppShellStore } from '@/store/appShell.store'
 import { Card } from '@/components/ui/card'
 
 export const DemoContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(function DemoContent(props, ref) {
-  const { bodyState, sidebarState, compactMode } = useAppShellStore()
-  const { isDarkMode } = useAppStore()
+  const bodyState = useAppShellStore(s => s.bodyState);
+  const sidebarState = useAppShellStore(s => s.sidebarState);
+  const compactMode = useAppShellStore(s => s.compactMode);
+  const isDarkMode = useAppShellStore(s => s.isDarkMode);
   const contentRef = useRef<HTMLDivElement>(null)
 
   const features = [

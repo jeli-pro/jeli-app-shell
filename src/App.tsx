@@ -11,7 +11,6 @@ import {
 import { AppShell } from "./components/layout/AppShell";
 import { AppShellProvider } from "./providers/AppShellProvider";
 import { useAppShellStore } from "./store/appShell.store";
-import { useAppStore } from "./store/appStore";
 import { useAuthStore } from "./store/authStore";
 import "./index.css";
 
@@ -58,7 +57,7 @@ function ProtectedRoute() {
 
 // A root component to apply global styles and effects
 function Root() {
-  const isDarkMode = useAppStore((state) => state.isDarkMode);
+  const isDarkMode = useAppShellStore((state) => state.isDarkMode);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", isDarkMode);
@@ -88,7 +87,7 @@ function ProtectedLayout() {
 
 // Content for the Top Bar (will be fully refactored in Part 2)
 function AppTopBar() {
-  const { searchTerm, setSearchTerm } = useAppStore();
+  const [searchTerm, setSearchTerm] = React.useState("");
   const [isSearchFocused, setIsSearchFocused] = React.useState(false);
   const location = useLocation();
   const activePage = location.pathname.split('/').filter(Boolean).pop()?.replace('-', ' ') || 'dashboard';

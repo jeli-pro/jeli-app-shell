@@ -16,8 +16,11 @@ export function useSidebarAnimations(
   sidebarRef: React.RefObject<HTMLDivElement>,
   resizeHandleRef: React.RefObject<HTMLDivElement>
 ) {
-  const { sidebarState, sidebarWidth, bodyState, reducedMotion } = useAppShellStore();
-  const animationDuration = reducedMotion ? 0.1 : 0.4;
+  const sidebarState = useAppShellStore(s => s.sidebarState);
+  const sidebarWidth = useAppShellStore(s => s.sidebarWidth);
+  const bodyState = useAppShellStore(s => s.bodyState);
+  const reducedMotion = useAppShellStore(s => s.reducedMotion);
+  const animationDuration = reducedMotion ? 0 : 0.4;
 
   useEffect(() => {
     if (!sidebarRef.current || !resizeHandleRef.current) return;
@@ -74,9 +77,12 @@ export function useBodyStateAnimations(
   topBarContainerRef: React.RefObject<HTMLDivElement>,
   mainAreaRef: React.RefObject<HTMLDivElement>
 ) {
-  const { bodyState, reducedMotion, isTopBarVisible, fullscreenTarget } = useAppShellStore();
+  const bodyState = useAppShellStore(s => s.bodyState);
+  const reducedMotion = useAppShellStore(s => s.reducedMotion);
+  const isTopBarVisible = useAppShellStore(s => s.isTopBarVisible);
+  const fullscreenTarget = useAppShellStore(s => s.fullscreenTarget);
   const rightPaneWidth = useRightPaneWidth();
-  const animationDuration = reducedMotion ? 0.1 : 0.4;
+  const animationDuration = reducedMotion ? 0 : 0.4;
   const prevBodyState = usePrevious(bodyState);
   const [, setSearchParams] = useSearchParams();
 

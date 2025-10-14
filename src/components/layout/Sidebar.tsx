@@ -31,7 +31,8 @@ interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
 
 const Sidebar = React.forwardRef<HTMLDivElement, SidebarProps>(
   ({ children, className, ...props }, ref) => {
-    const { sidebarState, compactMode } = useAppShellStore();
+    const sidebarState = useAppShellStore(s => s.sidebarState);
+    const compactMode = useAppShellStore(s => s.compactMode);
     const isCollapsed = sidebarState === SIDEBAR_STATES.COLLAPSED;
     const isPeek = sidebarState === SIDEBAR_STATES.PEEK;
 

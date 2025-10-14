@@ -10,7 +10,8 @@ interface PageLayoutProps extends React.HTMLAttributes<HTMLDivElement> {
 
 export const PageLayout = React.forwardRef<HTMLDivElement, PageLayoutProps>(
   ({ children, onScroll, scrollRef, className, ...props }, ref) => {
-    const { isTopBarVisible, bodyState } = useAppShellStore();
+    const isTopBarVisible = useAppShellStore(s => s.isTopBarVisible);
+    const bodyState = useAppShellStore(s => s.bodyState);
     const isFullscreen = bodyState === 'fullscreen';
     const isInSidePane = bodyState === BODY_STATES.SIDE_PANE;
 

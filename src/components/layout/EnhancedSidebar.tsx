@@ -17,10 +17,9 @@ import {
   Download,
   User,
   Plus,
-  Database
+  Database,
 } from 'lucide-react';
-import { type ActivePage } from '@/store/appStore';
-import { useAppShellStore } from '@/store/appShell.store';
+import { useAppShellStore, type ActivePage } from '@/store/appShell.store';
 import {
   Workspaces,
   WorkspaceTrigger,
@@ -85,9 +84,12 @@ interface SidebarProps {
   onMouseLeave?: () => void;
 }
 
-export const EnhancedSidebar = React.forwardRef<HTMLDivElement, SidebarProps>(
+export const EnhancedSidebar = React.memo(React.forwardRef<HTMLDivElement, SidebarProps>(
   ({ onMouseEnter, onMouseLeave }, ref) => {
-    const { sidebarWidth, compactMode, appName, appLogo } = useAppShellStore();
+    const sidebarWidth = useAppShellStore(s => s.sidebarWidth);
+    const compactMode = useAppShellStore(s => s.compactMode);
+    const appName = useAppShellStore(s => s.appName);
+    const appLogo = useAppShellStore(s => s.appLogo);
     const [selectedWorkspace, setSelectedWorkspace] = React.useState(mockWorkspaces[0]);
 
     return (
@@ -163,7 +165,7 @@ export const EnhancedSidebar = React.forwardRef<HTMLDivElement, SidebarProps>(
       </Sidebar>
     );
   },
-);
+));
 EnhancedSidebar.displayName = 'EnhancedSidebar';
 
 
@@ -180,8 +182,8 @@ interface AppMenuItemProps {
 }
 
 const AppMenuItem: React.FC<AppMenuItemProps> = ({ icon: Icon, label, badge, hasActions, children, isSubItem = false, page, opensInSidePane = false }) => {
-  const compactMode = useAppShellStore(s => s.compactMode);
-  const { setDraggedPage, setDragHoverTarget } = useAppShellStore.getState();
+  const compactMode = useAppShellStore(state => state.compactMode);
+  const { setDraggedPage, setDragHoverTarget } = useAppShellStore.getState()
   const { isCollapsed } = useSidebar();
   const viewManager = useAppViewManager();
 

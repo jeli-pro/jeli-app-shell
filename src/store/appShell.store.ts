@@ -2,6 +2,8 @@ import { create } from 'zustand';
 import { type ReactElement } from 'react';
 import { SIDEBAR_STATES, BODY_STATES, type SidebarState, type BodyState } from '@/lib/utils';
 
+export type ActivePage = 'dashboard' | 'settings' | 'toaster' | 'notifications' | 'data-demo';
+
 // --- State and Action Types ---
 
 export interface AppShellState {
@@ -20,6 +22,8 @@ export interface AppShellState {
   reducedMotion: boolean;
   compactMode: boolean;
   primaryColor: string;
+  isCommandPaletteOpen: boolean;
+  isDarkMode: boolean;
   appName?: string;
   appLogo?: ReactElement;
   draggedPage: 'dashboard' | 'settings' | 'toaster' | 'notifications' | 'data-demo' | null;
@@ -47,6 +51,8 @@ export interface AppShellActions {
     setCompactMode: (payload: boolean) => void;
     setPrimaryColor: (payload: string) => void;
     setDraggedPage: (payload: 'dashboard' | 'settings' | 'toaster' | 'notifications' | 'data-demo' | null) => void;
+    setCommandPaletteOpen: (open: boolean) => void;
+    toggleDarkMode: () => void;
     setDragHoverTarget: (payload: 'left' | 'right' | null) => void;
     setHoveredPane: (payload: 'left' | 'right' | null) => void;
     
@@ -75,6 +81,8 @@ const defaultState: AppShellState = {
   reducedMotion: false,
   compactMode: false,
   primaryColor: '220 84% 60%',
+  isCommandPaletteOpen: false,
+  isDarkMode: false,
   appName: 'Jeli App',
   appLogo: undefined,
   draggedPage: null,
@@ -120,6 +128,8 @@ export const useAppShellStore = create<AppShellState & AppShellActions>((set, ge
     set({ primaryColor: payload });
   },
   setDraggedPage: (payload) => set({ draggedPage: payload }),
+  setCommandPaletteOpen: (open) => set({ isCommandPaletteOpen: open }),
+  toggleDarkMode: () => set((state) => ({ isDarkMode: !state.isDarkMode })),
   setDragHoverTarget: (payload) => set({ dragHoverTarget: payload }),
   setHoveredPane: (payload) => set({ hoveredPane: payload }),
   

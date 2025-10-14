@@ -1,7 +1,6 @@
 import { useMemo, useCallback } from 'react';
 import { useSearchParams, useNavigate, useLocation, useParams } from 'react-router-dom';
-import type { AppShellState } from '@/store/appShell.store';
-import type { ActivePage } from '@/store/appStore';
+import type { AppShellState, ActivePage } from '@/store/appShell.store';
 import type { DataItem, ViewMode, SortConfig, SortableField, GroupableField, Status, Priority } from '@/pages/DataDemo/types';
 import type { FilterConfig } from '@/pages/DataDemo/components/DataToolbar';
 import { BODY_STATES } from '@/lib/utils';

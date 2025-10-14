@@ -10,7 +10,9 @@ interface MainContentProps {
 
 export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
   ({ children }, ref) => {
-    const { bodyState, fullscreenTarget, toggleFullscreen } = useAppShellStore();
+    const bodyState = useAppShellStore(s => s.bodyState);
+    const fullscreenTarget = useAppShellStore(s => s.fullscreenTarget);
+    const { toggleFullscreen } = useAppShellStore.getState();
     const isFullscreen = bodyState === BODY_STATES.FULLSCREEN;
 
     if (isFullscreen && fullscreenTarget === 'right') {

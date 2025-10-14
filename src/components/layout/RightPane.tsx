@@ -1,4 +1,4 @@
-import { forwardRef, useMemo, useCallback, createElement } from 'react'
+import { forwardRef, useMemo, useCallback, createElement, memo } from 'react'
 import {
   ChevronRight,
   X,
@@ -11,10 +11,11 @@ import { useAppShellStore } from '@/store/appShell.store';
 import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
 import { useRightPaneContent } from '@/hooks/useRightPaneContent.hook'
 
-export const RightPane = forwardRef<HTMLDivElement, { className?: string }>(({ className }, ref) => {
-  const fullscreenTarget = useAppShellStore(s => s.fullscreenTarget);
-  const bodyState = useAppShellStore(s => s.bodyState);
-  const { toggleFullscreen, setIsResizingRightPane } = useAppShellStore.getState();
+export const RightPane = memo(forwardRef<HTMLDivElement, { className?: string }>(({ className }, ref) => {
+  const fullscreenTarget = useAppShellStore(s => s.fullscreenTarget)
+  const bodyState = useAppShellStore(s => s.bodyState)
+  const { toggleFullscreen, setIsResizingRightPane } =
+    useAppShellStore.getState()
 
   const viewManager = useAppViewManager()
   const { sidePaneContent, closeSidePane, toggleSplitView, navigateTo } = viewManager
@@ -103,5 +104,5 @@ export const RightPane = forwardRef<HTMLDivElement, { className?: string }>(({ c
       </div>
     </aside>
   )
-})
+}));
 RightPane.displayName = "RightPane"

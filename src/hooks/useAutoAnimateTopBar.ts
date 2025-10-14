@@ -4,7 +4,6 @@ import { BODY_STATES } from '@/lib/utils';
 
 export function useAutoAnimateTopBar(isPane = false) {
   const bodyState = useAppShellStore(s => s.bodyState);
-  const setTopBarVisible = useAppShellStore(s => s.setTopBarVisible);
   const lastScrollTop = useRef(0);
   const scrollTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -17,6 +16,7 @@ export function useAutoAnimateTopBar(isPane = false) {
     }
 
     const { scrollTop } = event.currentTarget;
+    const { setTopBarVisible } = useAppShellStore.getState();
     
     if (scrollTop > lastScrollTop.current && scrollTop > 200) {
       setTopBarVisible(false);
@@ -34,7 +34,7 @@ export function useAutoAnimateTopBar(isPane = false) {
         setTopBarVisible(true);
       }
     }, 250); // Adjust timeout as needed
-  }, [isPane, setTopBarVisible, bodyState]);
+  }, [isPane, bodyState]);
 
   // Cleanup on unmount
   useEffect(() => {

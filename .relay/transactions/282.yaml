@@ -1,0 +1,678 @@
+uuid: d513835e-e471-4696-a885-3e284a1413df
+projectId: jeli-app-shell
+createdAt: '2025-10-14T03:33:35.092Z'
+gitCommitMsg: >-
+  perf: memoize layout components to reduce re-renders
+
+  Wrapped `RightPane`, `TopBar`, and `EnhancedSidebar` with `React.memo` to
+  prevent unnecessary re-renders caused by parent component updates. This
+  optimization improves UI performance, leading to smoother animations and a
+  more responsive application, especially during high-frequency state changes
+  like resizing.
+
+  The `useAppViewManager` hook was already memoized, so no changes were needed
+  there. This change completes the final step of the performance tuning plan.
+promptSummary: >-
+  The user wants to execute part 3 of the performance optimization plan, which
+  involves memoizing layout components to improve performance and prevent
+  unnecessary re-renders.
+reasoning:
+  - >-
+    Excellent, the core architecture is in place. Now, let's address the
+    performance bottlenecks by optimizing our components. The primary goal is to
+    prevent unnecessary re-renders that are causing the UI to feel sluggish,
+    especially during animations and interactions. We'll achieve this by
+    memoizing our larger layout components.
+  - >-
+    I've also reviewed `useAppViewManager.hook.ts` and confirmed that its return
+    value is already wrapped in `useMemo`. This is a crucial optimization that
+    prevents hooks from returning new object references on every render, and
+    it's great that it's already implemented. Therefore, no changes are needed
+    for that file.
+  - Here are the component optimizations.
+  - '### Memoizing the Right Pane'
+  - >-
+    I'll start by wrapping the `RightPane` component with `React.memo`. This
+    will prevent it from re-rendering unless its props change. Since it's a
+    `forwardRef` component, I'll add `memo` to the `react` import and use it to
+    wrap the component definition.
+  - '### Memoizing the Top Bar'
+  - >-
+    Next, I'll memoize the `TopBar`. This component contains several controls
+    and can be expensive to re-render. I'll convert it from a function
+    declaration to a `const` assignment and wrap it in `React.memo`. I'll also
+    add the `React` import, which is necessary for this change.
+  - '### Memoizing the Enhanced Sidebar'
+  - >-
+    Finally, the `EnhancedSidebar` is a complex component with many
+    sub-components and logic. Memoizing it is crucial for performance,
+    especially during layout shifts. I'll wrap the `React.forwardRef` call in
+    `React.memo` to prevent it from re-rendering unnecessarily when its parent
+    (`AppShell`) updates.
+  - >-
+    These changes will significantly reduce re-renders in our main layout
+    components, leading to smoother animations and a more responsive user
+    experience.
+operations:
+  - type: write
+    path: src/components/layout/RightPane.tsx
+    content: >+
+      --- src/components/layout/RightPane.tsx
+
+      +++ src/components/layout/RightPane.tsx
+
+      @@ -1,4 +1,4 @@
+
+      -import { forwardRef, useMemo, useCallback, createElement } from 'react'
+
+      +import { forwardRef, useMemo, useCallback, createElement, memo } from
+      'react'
+       import {
+         ChevronRight,
+         X,
+      @@ -12,7 +12,7 @@
+       import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
+       import { useRightPaneContent } from '@/hooks/useRightPaneContent.hook'
+       
+      -export const RightPane = forwardRef<HTMLDivElement, { className?: string
+      }>(({ className }, ref) => {
+
+      +export const RightPane = memo(forwardRef<HTMLDivElement, { className?:
+      string }>(({ className }, ref) => {
+         const fullscreenTarget = useAppShellStore(s => s.fullscreenTarget)
+         const bodyState = useAppShellStore(s => s.bodyState)
+         const { toggleFullscreen, setIsResizingRightPane } =
+      @@ -128,5 +128,5 @@
+             </div>
+           </aside>
+         )
+      -})
+
+      +}));
+       RightPane.displayName = "RightPane"
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/components/layout/TopBar.tsx
+    content: |+
+      --- src/components/layout/TopBar.tsx
+      +++ src/components/layout/TopBar.tsx
+      @@ -1,4 +1,5 @@
+      -import {
+      +import React from 'react';
+      +import {
+         Menu, 
+         Moon, 
+         Sun,
+      @@ -15,11 +16,11 @@
+         children?: React.ReactNode
+       }
+       
+      -export function TopBar({
+      +export const TopBar = React.memo(({
+         children,
+      -}: TopBarProps) {
+      +}: TopBarProps) => {
+         const bodyState = useAppShellStore(s => s.bodyState)
+         const isDarkMode = useAppShellStore(s => s.isDarkMode);
+         const { 
+      @@ -102,4 +103,4 @@
+             </div>
+           </div>
+         )
+      -}
+      +});
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/components/layout/EnhancedSidebar.tsx
+    content: >+
+      --- src/components/layout/EnhancedSidebar.tsx
+
+      +++ src/components/layout/EnhancedSidebar.tsx
+
+      @@ -73,7 +73,7 @@
+         onMouseLeave?: () => void;
+       }
+       
+      -export const EnhancedSidebar = React.forwardRef<HTMLDivElement,
+      SidebarProps>(
+
+      +export const EnhancedSidebar =
+      React.memo(React.forwardRef<HTMLDivElement, SidebarProps>(
+         ({ onMouseEnter, onMouseLeave }, ref) => {
+           const sidebarWidth = useAppShellStore(s => s.sidebarWidth);
+           const compactMode = useAppShellStore(s => s.compactMode);
+      @@ -142,7 +142,7 @@
+             </Sidebar>
+           );
+         },
+      -);
+
+      +));
+       EnhancedSidebar.displayName = 'EnhancedSidebar';
+       
+       
+
+    patchStrategy: standard-diff
+snapshot:
+  src/components/layout/RightPane.tsx: >-
+    import { forwardRef, useMemo, useCallback, createElement } from 'react'
+
+    import {
+      ChevronRight,
+      X,
+      Layers,
+      SplitSquareHorizontal,
+      ChevronsLeftRight,
+    } from 'lucide-react'
+
+    import { cn, BODY_STATES } from '@/lib/utils';
+
+    import { useAppShellStore } from '@/store/appShell.store';
+
+    import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
+
+    import { useRightPaneContent } from '@/hooks/useRightPaneContent.hook'
+
+
+    export const RightPane = forwardRef<HTMLDivElement, { className?: string
+    }>(({ className }, ref) => {
+      const fullscreenTarget = useAppShellStore(s => s.fullscreenTarget)
+      const bodyState = useAppShellStore(s => s.bodyState)
+      const { toggleFullscreen, setIsResizingRightPane } =
+        useAppShellStore.getState()
+
+      const viewManager = useAppViewManager()
+      const { sidePaneContent, closeSidePane, toggleSplitView, navigateTo } = viewManager
+      
+      const { meta, content: children } = useRightPaneContent(sidePaneContent)
+      
+      const isSplitView = bodyState === BODY_STATES.SPLIT_VIEW;
+      const isFullscreen = bodyState === BODY_STATES.FULLSCREEN;
+
+      const handleMaximize = useCallback(() => {
+        if ("page" in meta && meta.page) {
+          navigateTo(meta.page);
+        }
+      }, [meta, navigateTo]);
+
+      const header = useMemo(() => (
+        <div className="flex items-center justify-between p-4 border-b border-border h-20 flex-shrink-0 pl-6">
+          {bodyState !== BODY_STATES.SPLIT_VIEW && 'icon' in meta ? (
+            <div className="flex items-center gap-2">
+              {meta.icon && createElement(meta.icon, { className: "w-5 h-5" })}
+              <h2 className="text-lg font-semibold whitespace-nowrap">{meta.title}</h2>
+            </div>
+          ) : <div />}
+          <div className="flex items-center">
+            {(bodyState === BODY_STATES.SIDE_PANE || bodyState === BODY_STATES.SPLIT_VIEW) && (
+              <button onClick={toggleSplitView} className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors" title={bodyState === BODY_STATES.SIDE_PANE ? "Switch to Split View" : "Switch to Overlay View"}>
+                {bodyState === BODY_STATES.SPLIT_VIEW ? <Layers className="w-5 h-5" /> : <SplitSquareHorizontal className="w-5 h-5" />}
+              </button>
+            )}
+            {bodyState !== BODY_STATES.SPLIT_VIEW && "page" in meta && meta.page && (
+              <button onClick={handleMaximize} className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors mr-2" title="Move to Main View">
+                <ChevronsLeftRight className="w-5 h-5" />
+              </button>
+            )}
+          </div>
+        </div>
+      ), [bodyState, meta, handleMaximize, toggleSplitView]);
+
+      if (isFullscreen && fullscreenTarget !== 'right') {
+        return null;
+      }
+
+      return (
+        <aside
+          ref={ref}
+          className={cn(
+            "border-l border-border flex flex-col h-full overflow-hidden",
+            isSplitView && "relative bg-background",
+            !isSplitView && !isFullscreen && "fixed top-0 right-0 z-[60] bg-card", // side pane overlay
+            isFullscreen && fullscreenTarget === 'right' && "fixed inset-0 z-[60] bg-card", // fullscreen
+            className,
+          )}
+        >
+          {isFullscreen && fullscreenTarget === 'right' && (
+            <button
+              onClick={() => toggleFullscreen()}
+              className="fixed top-6 right-6 lg:right-12 z-[100] h-12 w-12 flex items-center justify-center rounded-full bg-card/50 backdrop-blur-sm hover:bg-card/75 transition-colors group"
+              title="Exit Fullscreen"
+            >
+              <X className="w-6 h-6 group-hover:scale-110 group-hover:rotate-90 transition-all duration-300" />
+            </button>
+          )}
+          {bodyState !== BODY_STATES.SPLIT_VIEW && !isFullscreen && (
+            <button
+              onClick={closeSidePane}
+              className="absolute top-1/2 -left-px -translate-y-1/2 -translate-x-full w-8 h-16 bg-card border border-r-0 border-border rounded-l-lg flex items-center justify-center hover:bg-accent transition-colors group z-10"
+              title="Close pane"
+            >
+              <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-foreground transition-colors" />
+            </button>
+          )}
+          <div 
+            className={cn(
+              "absolute top-0 left-0 w-2 h-full bg-transparent hover:bg-primary/20 cursor-col-resize z-50 transition-colors duration-200 group -translate-x-1/2"
+            )}
+            onMouseDown={(e) => {
+              e.preventDefault()
+              setIsResizingRightPane(true);
+            }}
+          >
+            <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200 mx-auto" />
+          </div>
+          {header}
+          <div className={cn("flex-1 overflow-y-auto")}>
+            {children}
+          </div>
+        </aside>
+      )
+    })
+
+    RightPane.displayName = "RightPane"
+  src/components/layout/TopBar.tsx: |-
+    import {
+      Menu, 
+      Moon, 
+      Sun,
+      Settings,
+      Command,
+      Zap,
+    } from 'lucide-react'
+    import { cn } from '@/lib/utils'
+    import { BODY_STATES } from '@/lib/utils'
+    import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
+    import { UserDropdown } from './UserDropdown'
+    import { ViewModeSwitcher } from './ViewModeSwitcher'
+    import { useAppShellStore } from '@/store/appShell.store'
+
+    interface TopBarProps {
+      children?: React.ReactNode
+    }
+
+    export function TopBar({
+      children,
+    }: TopBarProps) {
+      const bodyState = useAppShellStore(s => s.bodyState)
+      const isDarkMode = useAppShellStore(s => s.isDarkMode);
+      const { 
+        toggleSidebar, 
+        setCommandPaletteOpen,
+        toggleDarkMode,
+      } = useAppShellStore.getState();
+      const viewManager = useAppViewManager();
+
+      return (
+        <div className={cn(
+          "h-20 bg-background border-b border-border flex items-center justify-between px-6 z-50 gap-4"
+        )}>
+          {/* Left Section - Sidebar Controls & Breadcrumbs */}
+          <div className="flex items-center gap-4">
+            {/* Sidebar Controls */}
+            <button
+              onClick={toggleSidebar}
+              className={cn(
+                "h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors"
+              )}
+              title="Toggle Sidebar"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+
+          </div>
+
+          {/* Right Section - page controls, and global controls */}
+          <div className="flex items-center gap-3">
+            {children}
+
+            {/* Separator */}
+            <div className="w-px h-6 bg-border mx-2" />
+
+            {/* Quick Actions */}
+            <div className="flex items-center gap-3">
+
+              <button
+                onClick={() => setCommandPaletteOpen(true)}
+                className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+                title="Command Palette (Ctrl+K)"
+              >
+                <Command className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              </button>
+
+            <button
+              className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+              title="Quick Actions"
+            >
+              <Zap className="w-5 h-5 group-hover:scale-110 transition-transform" />
+            </button>
+
+            {bodyState !== BODY_STATES.SPLIT_VIEW && <ViewModeSwitcher />}
+
+            <div className="w-px h-6 bg-border mx-2" />
+
+            {/* Theme and Settings */}
+            <button
+              onClick={toggleDarkMode}
+              className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+              title="Toggle Dark Mode"
+            >
+              {isDarkMode ? (
+                <Sun className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              ) : (
+                <Moon className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              )}
+            </button>
+
+            <button
+              onClick={() => viewManager.toggleSidePane('settings')}
+              className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+              title="Settings"
+            >
+              <Settings className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
+            </button>
+            <UserDropdown />
+            </div>
+          </div>
+        </div>
+      )
+    }
+  src/components/layout/EnhancedSidebar.tsx: >-
+    import React from 'react';
+
+    import {
+      Home,
+      Settings,
+      HelpCircle,
+      Component,
+      Rocket,
+      MoreHorizontal,
+      Bell,
+      Search,
+      FileText,
+      Star,
+      Trash2,
+      FolderOpen,
+      Mail,
+      Bookmark,
+      Download,
+      User,
+      Plus,
+      Database,
+    } from 'lucide-react';
+
+    import { useAppShellStore, type ActivePage } from '@/store/appShell.store';
+
+    import {
+      Workspaces,
+      WorkspaceTrigger,
+      WorkspaceContent,
+      type Workspace,
+    } from './WorkspaceSwitcher';
+
+    import {
+      DropdownMenu,
+      DropdownMenuContent,
+      DropdownMenuItem,
+      DropdownMenuTrigger,
+    } from '@/components/ui/dropdown-menu';
+
+    import {
+      Sidebar,
+      SidebarContent,
+      SidebarHeader,
+      SidebarTitle,
+      SidebarBody,
+      SidebarFooter,
+      SidebarSection,
+      SidebarMenuItem,
+      SidebarMenuButton,
+      SidebarMenuAction,
+      SidebarLabel,
+      SidebarBadge,
+      SidebarTooltip,
+      SidebarIcon,
+      useSidebar,
+    } from './Sidebar';
+
+    import { ViewModeSwitcher } from './ViewModeSwitcher';
+
+    import { cn } from '@/lib/utils';
+
+    import { useAppViewManager } from '@/hooks/useAppViewManager.hook';
+
+
+    interface MyWorkspace extends Workspace {
+      logo: string;
+      plan: string;
+    }
+
+
+    const mockWorkspaces: MyWorkspace[] = [
+      { id: 'ws1', name: 'Acme Inc.', logo: 'https://avatar.vercel.sh/acme.png', plan: 'Pro' },
+      { id: 'ws2', name: 'Monsters Inc.', logo: 'https://avatar.vercel.sh/monsters.png', plan: 'Free' },
+      { id: 'ws3', name: 'Stark Industries', logo: 'https://avatar.vercel.sh/stark.png', plan: 'Enterprise' },
+    ];
+
+
+    const SidebarWorkspaceTrigger = () => {
+      const { isCollapsed, compactMode } = useSidebar();
+
+      return (
+        <WorkspaceTrigger
+          collapsed={isCollapsed}
+          className={cn(
+            'rounded-xl transition-colors hover:bg-accent/50 w-full',
+            isCollapsed ? 'p-2' : 'p-3 bg-accent/50',
+          )}
+          avatarClassName={cn(compactMode ? 'h-8 w-8' : 'h-10 w-10')}
+        />
+      );
+    };
+
+
+    interface SidebarProps {
+      onMouseEnter?: () => void;
+      onMouseLeave?: () => void;
+    }
+
+
+    export const EnhancedSidebar = React.forwardRef<HTMLDivElement,
+    SidebarProps>(
+      ({ onMouseEnter, onMouseLeave }, ref) => {
+        const sidebarWidth = useAppShellStore(s => s.sidebarWidth);
+        const compactMode = useAppShellStore(s => s.compactMode);
+        const appName = useAppShellStore(s => s.appName);
+        const appLogo = useAppShellStore(s => s.appLogo);
+        const [selectedWorkspace, setSelectedWorkspace] = React.useState(mockWorkspaces[0]);
+
+        return (
+          <Sidebar
+            ref={ref}
+            style={{ width: sidebarWidth }}
+            onMouseEnter={onMouseEnter}
+            onMouseLeave={onMouseLeave}
+          >
+            <SidebarContent>
+              <SidebarHeader>
+                {appLogo || (
+                  <div className="p-2 bg-primary/20 rounded-lg">
+                    <Rocket className="w-5 h-5 text-primary" />
+                  </div>
+                )}
+                <SidebarTitle>{appName}</SidebarTitle>
+              </SidebarHeader>
+
+              <SidebarBody>
+                <SidebarSection title="Main">
+                  <AppMenuItem icon={Home} label="Dashboard" page="dashboard" />
+                  <AppMenuItem icon={Database} label="Data Demo" page="data-demo" />
+                  <AppMenuItem icon={Search} label="Search" />
+                  <AppMenuItem icon={Bell} label="Notifications" badge={3} page="notifications" opensInSidePane />
+                </SidebarSection>
+                
+                <SidebarSection title="Workspace" collapsible defaultExpanded>
+                  <AppMenuItem icon={FileText} label="Documents" hasActions>
+                    <AppMenuItem icon={FileText} label="Recent" isSubItem />
+                    <AppMenuItem icon={Star} label="Starred" isSubItem />
+                    <AppMenuItem icon={Trash2} label="Trash" isSubItem />
+                  </AppMenuItem>
+                  <AppMenuItem icon={FolderOpen} label="Projects" hasActions />
+                  <AppMenuItem icon={Mail} label="Messages" badge={12} />
+                </SidebarSection>
+                
+                <SidebarSection title="Personal" collapsible>
+                  <AppMenuItem icon={Bookmark} label="Bookmarks" />
+                  <AppMenuItem icon={Star} label="Favorites" />
+                  <AppMenuItem icon={Download} label="Downloads" />
+                </SidebarSection>
+
+                <SidebarSection title="Components" collapsible defaultExpanded>
+                  <AppMenuItem icon={Component} label="Toaster" page="toaster" />
+                </SidebarSection>
+              </SidebarBody>
+
+              <SidebarFooter>
+                <SidebarSection>
+                  <AppMenuItem icon={User} label="Profile" />
+                  <AppMenuItem icon={Settings} label="Settings" page="settings" />
+                  <AppMenuItem icon={HelpCircle} label="Help" />
+                </SidebarSection>
+
+                <div className={cn(compactMode ? 'mt-4' : 'mt-6')}>
+                  <Workspaces
+                    workspaces={mockWorkspaces}
+                    selectedWorkspaceId={selectedWorkspace.id}
+                    onWorkspaceChange={setSelectedWorkspace}
+                  >
+                    <SidebarWorkspaceTrigger />
+                    <WorkspaceContent>
+                      <button className="flex w-full items-center gap-2 rounded-sm px-2 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground focus:outline-none">
+                        <Plus className="h-4 w-4" />
+                        <span>Create Workspace</span>
+                      </button>
+                    </WorkspaceContent>
+                  </Workspaces>
+                </div>
+              </SidebarFooter>
+            </SidebarContent>
+          </Sidebar>
+        );
+      },
+    );
+
+    EnhancedSidebar.displayName = 'EnhancedSidebar';
+
+
+
+    // Example of a reusable menu item component built with the new Sidebar
+    primitives
+
+    interface AppMenuItemProps {
+      icon: React.ElementType;
+      label: string;
+      badge?: number;
+      hasActions?: boolean;
+      children?: React.ReactNode;
+      isSubItem?: boolean;
+      page?: ActivePage;
+      opensInSidePane?: boolean;
+    }
+
+
+    const AppMenuItem: React.FC<AppMenuItemProps> = ({ icon: Icon, label, badge,
+    hasActions, children, isSubItem = false, page, opensInSidePane = false }) =>
+    {
+      const compactMode = useAppShellStore(state => state.compactMode);
+      const { setDraggedPage, setDragHoverTarget } = useAppShellStore.getState()
+      const { isCollapsed } = useSidebar();
+      const viewManager = useAppViewManager();
+
+      const isActive = (
+        (!opensInSidePane && page && viewManager.currentActivePage === page)
+      ) || (
+        opensInSidePane && page === 'notifications' && viewManager.sidePaneContent === 'notifications'
+      );
+
+      const handleClick = () => {
+        if (page) {
+          if (opensInSidePane) {
+            // The only item using this is Notifications
+            viewManager.toggleSidePane('notifications');
+          } else {
+            viewManager.navigateTo(page);
+          }
+        }
+      };
+
+      return (
+        <div className={isSubItem ? (compactMode ? 'ml-4' : 'ml-6') : ''}>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              onClick={handleClick}
+              isActive={isActive}
+              draggable={!!page}
+              onDragStart={(_e) => {
+                if (page) {
+                  // set dragged page in AppShell store
+                  setDraggedPage(page);
+                }
+              }}
+              onDragEnd={() => {
+                setDraggedPage(null);
+                setDragHoverTarget(null);
+              }}
+            >
+              <SidebarIcon>
+                <Icon className={isSubItem ? "w-3 h-3" : "w-4 h-4"}/>
+              </SidebarIcon>
+              <SidebarLabel>{label}</SidebarLabel>
+              {badge && <SidebarBadge>{badge}</SidebarBadge>}
+              <SidebarTooltip label={label} badge={badge} />
+            </SidebarMenuButton>
+
+            {page && !isCollapsed && ( // Always render switcher if there's a page
+              <div className={cn(
+                "absolute top-1/2 -translate-y-1/2 z-10",
+                "opacity-0 group-hover/item:opacity-100 group-focus-within/item:opacity-100",
+                "transition-opacity pointer-events-none group-hover/item:pointer-events-auto",
+                // If there are actions, move left to make space for the action button
+                hasActions ? "right-10" : "right-2"
+              )}>
+                <ViewModeSwitcher targetPage={page} />
+              </div>
+            )}
+
+            {hasActions && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <SidebarMenuAction>
+                    <MoreHorizontal className="h-4 w-4" />
+                  </SidebarMenuAction>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent side="right" align="start">
+                  <DropdownMenuItem>
+                    <span>Edit {label}</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem>
+                    <span>Delete {label}</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </SidebarMenuItem>
+          {!isCollapsed && children && (
+            <div className="space-y-1 mt-1">{children}</div>
+          )}
+        </div>
+      );
+    };
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 282

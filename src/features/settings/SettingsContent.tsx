@@ -14,7 +14,6 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAppShellStore } from '@/store/appShell.store'
-import { useAppStore } from '@/store/appStore'
 import { SettingsToggle } from './SettingsToggle'
 import { SettingsSection } from './SettingsSection'
 
@@ -28,12 +27,17 @@ const colorPresets = [
 ]
 
 export function SettingsContent() {
+  const sidebarWidth = useAppShellStore(s => s.sidebarWidth);
+  const compactMode = useAppShellStore(s => s.compactMode);
+  const primaryColor = useAppShellStore(s => s.primaryColor);
+  const autoExpandSidebar = useAppShellStore(s => s.autoExpandSidebar);
+  const reducedMotion = useAppShellStore(s => s.reducedMotion);
+  const isDarkMode = useAppShellStore(s => s.isDarkMode);
+  
   const {
-    sidebarWidth, compactMode, primaryColor, autoExpandSidebar, reducedMotion,
     setSidebarWidth, setCompactMode, setPrimaryColor, setAutoExpandSidebar,
-    setReducedMotion, resetToDefaults
-  } = useAppShellStore();
-  const { isDarkMode, toggleDarkMode } = useAppStore()
+    setReducedMotion, resetToDefaults, toggleDarkMode
+  } = useAppShellStore.getState();
 
   const [tempSidebarWidth, setTempSidebarWidth] = useState(sidebarWidth)
 

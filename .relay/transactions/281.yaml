@@ -1,0 +1,427 @@
+uuid: 13a4f6e1-9f9b-44c1-8b27-c196429f9872
+projectId: jeli-app-shell
+createdAt: '2025-10-14T03:31:59.075Z'
+gitCommitMsg: >-
+  perf: stabilize animation hooks and optimize high-frequency events
+
+  - Stabilized `useAutoAnimateTopBar` by using `getState()` to remove the state
+  setter from the `useCallback` dependency array, reducing re-creations of the
+  scroll handler. - Implemented `reducedMotion` checks in
+  `useStaggeredAnimation`, `useDashboardAnimations`, and `useAppShellAnimations`
+  to respect user accessibility settings and improve performance. - For purely
+  presentational animations, the effects now bail out early. - For core layout
+  animations that manage functional UI, the animation duration is set to 0 to
+  provide an instant, non-animated transition.
+promptSummary: >-
+  The user asked me to execute part 2 of the performance tuning plan, which
+  involves stabilizing animation and high-frequency hooks.
+reasoning:
+  - >-
+    Of course. We've cleaned up the state management, but now we need to ensure
+    our animations and high-frequency hooks are lean and performant. Let's
+    execute Part 2 of the performance tuning plan.
+  - >-
+    The main focus here is to prevent our animation hooks from running
+    unnecessarily and to make sure high-frequency events like scrolling are
+    handled efficiently.
+  - '### Step 1: Optimize High-Frequency Scroll Hook'
+  - >-
+    I'll start by optimizing `useAutoAnimateTopBar.ts`. The `onScroll` callback
+    is re-created whenever its dependencies change. By using `getState()` to
+    access the `setTopBarVisible` action, I can remove it from the dependency
+    array, making the callback more stable and preventing it from being
+    redefined on every render.
+  - '### Step 2: Add `reducedMotion` Checks to Animation Hooks'
+  - >-
+    To respect user accessibility preferences and gain performance, I will add
+    `reducedMotion` checks to all animation-specific hooks. For purely visual
+    animations, the hook will bail out early, preventing any GSAP code from
+    running.
+  - >-
+    First, `useStaggeredAnimation.motion.hook.ts`. This is a purely
+    presentational animation.
+  - >-
+    Next, `useDashboardAnimations.motion.hook.ts`. The staggered animations are
+    now handled by the updated hook, but I'll add the `reducedMotion` check to
+    the `useEffect` that handles the fullscreen scaling effect.
+  - '### Step 3: Stabilize Core Layout Animations'
+  - >-
+    Finally, I'll update the core layout animation hook,
+    `useAppShellAnimations.hook.ts`. This hook also manages functional UI
+    elements (like the side pane backdrop), so simply bailing out isn't an
+    option. Instead, I'll set the animation duration to `0` when `reducedMotion`
+    is enabled. This makes the state changes instant, respecting the user's
+    preference without breaking UI functionality.
+  - >-
+    These changes stabilize our animation and high-frequency hooks, directly
+    addressing the performance issues while building on our new, cleaner state
+    architecture.
+operations:
+  - type: write
+    path: src/hooks/useAutoAnimateTopBar.ts
+    content: |+
+      --- src/hooks/useAutoAnimateTopBar.ts
+      +++ src/hooks/useAutoAnimateTopBar.ts
+      @@ -2,7 +2,6 @@
+       import { useAppShellStore } from '@/store/appShell.store';
+       import { BODY_STATES } from '@/lib/utils';
+       
+       export function useAutoAnimateTopBar(isPane = false) {
+         const bodyState = useAppShellStore(s => s.bodyState);
+      -  const setTopBarVisible = useAppShellStore(s => s.setTopBarVisible);
+         const lastScrollTop = useRef(0);
+         const scrollTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+       
+      @@ -13,6 +12,8 @@
+             clearTimeout(scrollTimeout.current);
+           }
+       
+           const { scrollTop } = event.currentTarget;
+      +    const { setTopBarVisible } = useAppShellStore.getState();
+           
+           if (scrollTop > lastScrollTop.current && scrollTop > 200) {
+             setTopBarVisible(false);
+      @@ -28,7 +29,7 @@
+               setTopBarVisible(true);
+             }
+           }, 250); // Adjust timeout as needed
+      -  }, [isPane, setTopBarVisible, bodyState]);
+      +  }, [isPane, bodyState]);
+       
+         // Cleanup on unmount
+         useEffect(() => {
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/hooks/useStaggeredAnimation.motion.hook.ts
+    content: "--- src/hooks/useStaggeredAnimation.motion.hook.ts\n+++ src/hooks/useStaggeredAnimation.motion.hook.ts\n@@ -1,5 +1,6 @@\n import { useLayoutEffect, useRef } from 'react';\n import { gsap } from 'gsap';\n+import { useAppShellStore } from '@/store/appShell.store';\n \n interface StaggeredAnimationOptions {\n \tstagger?: number;\n@@ -21,6 +22,7 @@\n \tdeps: React.DependencyList,\n \toptions: StaggeredAnimationOptions = {},\n ) {\n+\tconst reducedMotion = useAppShellStore(s => s.reducedMotion);\n \tconst {\n \t\tstagger = 0.08,\n \t\tduration = 0.6,\n@@ -33,7 +35,7 @@\n \tconst animatedItemsCount = useRef(0);\n \n \tuseLayoutEffect(() => {\n-\t\tif (!containerRef.current) return;\n+\t\tif (reducedMotion || !containerRef.current) return;\n \n \t\tconst children = Array.from(containerRef.current.children) as HTMLElement[];\n \n\n"
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/Dashboard/hooks/useDashboardAnimations.motion.hook.ts
+    content: |+
+      --- src/pages/Dashboard/hooks/useDashboardAnimations.motion.hook.ts
+      +++ src/pages/Dashboard/hooks/useDashboardAnimations.motion.hook.ts
+      @@ -8,12 +8,13 @@
+         featureCardsContainerRef: React.RefObject<HTMLDivElement>,
+       ) {
+         const bodyState = useAppShellStore(s => s.bodyState);
+      +  const reducedMotion = useAppShellStore(s => s.reducedMotion);
+       
+         // Animate cards on mount
+         useStaggeredAnimation(statsCardsContainerRef, [], { y: 20, scale: 0.95 });
+         useStaggeredAnimation(featureCardsContainerRef, [], { y: 30, scale: 0.95, stagger: 0.05 });
+       
+         useEffect(() => {
+      -    if (!contentRef.current) return;
+      +    if (reducedMotion || !contentRef.current) return;
+       
+           const content = contentRef.current;
+       
+      @@ -24,5 +25,5 @@
+               gsap.to(content, { scale: 1, duration: 0.4, ease: 'power3.out' });
+               break;
+           }
+      -  }, [bodyState, contentRef]);
+      +  }, [bodyState, contentRef, reducedMotion]);
+       }
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/hooks/useAppShellAnimations.hook.ts
+    content: |+
+      --- src/hooks/useAppShellAnimations.hook.ts
+      +++ src/hooks/useAppShellAnimations.hook.ts
+      @@ -16,7 +16,7 @@
+         const sidebarWidth = useAppShellStore(s => s.sidebarWidth);
+         const bodyState = useAppShellStore(s => s.bodyState);
+         const reducedMotion = useAppShellStore(s => s.reducedMotion);
+      -  const animationDuration = reducedMotion ? 0.1 : 0.4;
+      +  const animationDuration = reducedMotion ? 0 : 0.4;
+       
+         useEffect(() => {
+           if (!sidebarRef.current || !resizeHandleRef.current) return;
+      @@ -73,7 +73,7 @@
+         const isTopBarVisible = useAppShellStore(s => s.isTopBarVisible);
+         const fullscreenTarget = useAppShellStore(s => s.fullscreenTarget);
+         const rightPaneWidth = useRightPaneWidth();
+      -  const animationDuration = reducedMotion ? 0.1 : 0.4;
+      +  const animationDuration = reducedMotion ? 0 : 0.4;
+         const prevBodyState = usePrevious(bodyState);
+         const [, setSearchParams] = useSearchParams();
+       
+
+    patchStrategy: standard-diff
+snapshot:
+  src/hooks/useAppShellAnimations.hook.ts: >-
+    import { useEffect, useRef } from 'react';
+
+    import { gsap } from 'gsap';
+
+    import { useSearchParams } from 'react-router-dom';
+
+    import { useAppShellStore, useRightPaneWidth } from
+    '@/store/appShell.store';
+
+    import { SIDEBAR_STATES, BODY_STATES } from '@/lib/utils';
+
+
+    function usePrevious<T>(value: T): T | undefined {
+      const ref = useRef<T>();
+      useEffect(() => {
+        ref.current = value;
+      }, [value]);
+      return ref.current;
+    }
+
+
+    export function useSidebarAnimations(
+      sidebarRef: React.RefObject<HTMLDivElement>,
+      resizeHandleRef: React.RefObject<HTMLDivElement>
+    ) {
+      const sidebarState = useAppShellStore(s => s.sidebarState);
+      const sidebarWidth = useAppShellStore(s => s.sidebarWidth);
+      const bodyState = useAppShellStore(s => s.bodyState);
+      const reducedMotion = useAppShellStore(s => s.reducedMotion);
+      const animationDuration = reducedMotion ? 0.1 : 0.4;
+
+      useEffect(() => {
+        if (!sidebarRef.current || !resizeHandleRef.current) return;
+
+        const sidebar = sidebarRef.current;
+        const handle = resizeHandleRef.current;
+        
+        let targetWidth = 0;
+        let targetOpacity = 1;
+
+        if (bodyState === BODY_STATES.FULLSCREEN) {
+          targetWidth = 0;
+          targetOpacity = 0;
+        } else {
+          switch (sidebarState) {
+            case SIDEBAR_STATES.HIDDEN:
+              targetWidth = 0;
+              targetOpacity = 0;
+              break;
+            case SIDEBAR_STATES.COLLAPSED:
+              targetWidth = 64;
+              targetOpacity = 1;
+              break;
+            case SIDEBAR_STATES.EXPANDED:
+              targetWidth = sidebarWidth;
+              targetOpacity = 1;
+              break;
+            case SIDEBAR_STATES.PEEK:
+              targetWidth = sidebarWidth * 0.8;
+              targetOpacity = 0.95;
+              break;
+          }
+        }
+
+        const tl = gsap.timeline({ ease: "power3.out" });
+        
+        tl.to(sidebar, {
+          width: targetWidth,
+          opacity: targetOpacity,
+          duration: animationDuration,
+        });
+        tl.to(handle, {
+          left: targetWidth,
+          duration: animationDuration,
+        }, 0);
+
+      }, [sidebarState, sidebarWidth, bodyState, animationDuration, sidebarRef, resizeHandleRef]);
+    }
+
+
+    export function useBodyStateAnimations(
+      appRef: React.RefObject<HTMLDivElement>,
+      mainContentRef: React.RefObject<HTMLDivElement>,
+      rightPaneRef: React.RefObject<HTMLDivElement>,
+      topBarContainerRef: React.RefObject<HTMLDivElement>,
+      mainAreaRef: React.RefObject<HTMLDivElement>
+    ) {
+      const bodyState = useAppShellStore(s => s.bodyState);
+      const reducedMotion = useAppShellStore(s => s.reducedMotion);
+      const isTopBarVisible = useAppShellStore(s => s.isTopBarVisible);
+      const fullscreenTarget = useAppShellStore(s => s.fullscreenTarget);
+      const rightPaneWidth = useRightPaneWidth();
+      const animationDuration = reducedMotion ? 0.1 : 0.4;
+      const prevBodyState = usePrevious(bodyState);
+      const [, setSearchParams] = useSearchParams();
+
+      useEffect(() => {
+        if (!mainContentRef.current || !rightPaneRef.current || !topBarContainerRef.current || !mainAreaRef.current) return;
+
+        const ease = "power3.out";
+        const isSidePane = bodyState === BODY_STATES.SIDE_PANE;
+        const isSplitView = bodyState === BODY_STATES.SPLIT_VIEW;
+
+        // Kill any existing animations on the right pane to prevent conflicts
+        gsap.killTweensOf(rightPaneRef.current);
+
+        // Right pane animation
+        if (isSidePane) {
+          // SHOW AS OVERLAY: Set width immediately, animate transform for performance.
+          gsap.set(rightPaneRef.current, { width: rightPaneWidth, x: '0%' });
+          gsap.fromTo(rightPaneRef.current, { x: '100%' }, {
+              x: '0%',
+              duration: animationDuration,
+              ease,
+          });
+        } else if (isSplitView) {
+            // SHOW AS SPLIT: Set transform immediately, animate width.
+            gsap.set(rightPaneRef.current, { x: '0%' });
+            gsap.to(rightPaneRef.current, {
+                width: rightPaneWidth,
+                duration: animationDuration,
+                ease,
+            });
+        } else {
+            // HIDE PANE: Determine how to hide based on the state we are coming FROM.
+            if (prevBodyState === BODY_STATES.SIDE_PANE) {
+                // It was an overlay, so slide it out.
+                gsap.to(rightPaneRef.current, {
+              x: '100%',
+              duration: animationDuration,
+              ease,
+                });
+            } else { // Covers coming from SPLIT_VIEW, FULLSCREEN, or NORMAL
+                // It was docked or fullscreen, so shrink its width.
+                gsap.to(rightPaneRef.current, { width: 0, duration: animationDuration, ease });
+            }
+        }
+
+        // Determine top bar position based on state
+        let topBarY = '0%';
+        if (bodyState === BODY_STATES.FULLSCREEN) {
+          topBarY = '-100%'; // Always hide in fullscreen
+        } else if (bodyState === BODY_STATES.NORMAL && !isTopBarVisible) {
+          topBarY = '-100%'; // Hide only in normal mode when scrolled
+        }
+
+        gsap.to(topBarContainerRef.current, {
+          y: topBarY,
+          duration: animationDuration,
+          ease,
+        });
+        
+        // Add backdrop for side pane
+        const backdrop = document.querySelector('.app-backdrop');
+        if (isSidePane) { // This is correct because isSidePane is false when bodyState is split_view
+          if (!backdrop) {
+            const el = document.createElement('div');
+            el.className = 'app-backdrop fixed inset-0 bg-black/30 z-[55]';
+            appRef.current?.appendChild(el);
+            gsap.fromTo(el, { opacity: 0 }, { opacity: 1, duration: animationDuration });
+            el.onclick = () => {
+              setSearchParams(prev => {
+                const newParams = new URLSearchParams(prev);
+                newParams.delete('sidePane');
+                return newParams;
+              }, { replace: true });
+            };
+          }
+        } else {
+          if (backdrop) {
+            gsap.to(backdrop, { opacity: 0, duration: animationDuration, onComplete: () => backdrop.remove() });
+          }
+        }
+      }, [bodyState, prevBodyState, animationDuration, rightPaneWidth, isTopBarVisible, appRef, mainContentRef, rightPaneRef, topBarContainerRef, mainAreaRef, fullscreenTarget, setSearchParams]);
+    }
+  src/hooks/useStaggeredAnimation.motion.hook.ts: "import { useLayoutEffect, useRef } from 'react';\nimport { gsap } from 'gsap';\n\ninterface StaggeredAnimationOptions {\n\tstagger?: number;\n\tduration?: number;\n\ty?: number;\n\tscale?: number;\n\tease?: string;\n\tmode?: 'full' | 'incremental';\n}\n\n/**\n * Animates the direct children of a container element with a staggered fade-in effect.\n *\n * @param containerRef Ref to the container element.\n * @param deps Dependency array to trigger the animation.\n * @param options Animation options.\n * @param options.mode - 'full' (default): animates all children every time deps change.\n *                       'incremental': only animates new children added to the container.\n */\nexport function useStaggeredAnimation<T extends HTMLElement>(\n\tcontainerRef: React.RefObject<T>,\n\tdeps: React.DependencyList,\n\toptions: StaggeredAnimationOptions = {},\n) {\n\tconst {\n\t\tstagger = 0.08,\n\t\tduration = 0.6,\n\t\ty = 30,\n\t\tscale = 1,\n\t\tease = 'power3.out',\n\t\tmode = 'full',\n\t} = options;\n\n\tconst animatedItemsCount = useRef(0);\n\n\tuseLayoutEffect(() => {\n\t\tif (!containerRef.current) return;\n\n\t\tconst children = Array.from(containerRef.current.children) as HTMLElement[];\n\n\t\tif (mode === 'incremental') {\n\t\t\t// On dependency change, if the number of children is less than what we've animated,\n\t\t\t// it's a list reset (e.g., filtering), so reset the counter.\n\t\t\tif (children.length < animatedItemsCount.current) {\n\t\t\t\tanimatedItemsCount.current = 0;\n\t\t\t}\n\n\t\t\tconst newItems = children.slice(animatedItemsCount.current);\n\n\t\t\tif (newItems.length > 0) {\n\t\t\t\tgsap.fromTo(\n\t\t\t\t\tnewItems,\n\t\t\t\t\t{ y, opacity: 0, scale },\n\t\t\t\t\t{\n\t\t\t\t\t\tduration,\n\t\t\t\t\t\ty: 0,\n\t\t\t\t\t\topacity: 1,\n\t\t\t\t\t\tscale: 1,\n\t\t\t\t\t\tstagger,\n\t\t\t\t\t\tease,\n\t\t\t\t\t},\n\t\t\t\t);\n\t\t\t\tanimatedItemsCount.current = children.length;\n\t\t\t}\n\t\t} else {\n\t\t\tif (children.length) {\n\t\t\t\tgsap.fromTo(\n\t\t\t\t\tchildren,\n\t\t\t\t\t{ y, opacity: 0, scale },\n\t\t\t\t\t{\n\t\t\t\t\t\tduration,\n\t\t\t\t\t\ty: 0,\n\t\t\t\t\t\topacity: 1,\n\t\t\t\t\t\tscale: 1,\n\t\t\t\t\t\tstagger,\n\t\t\t\t\t\tease,\n\t\t\t\t\t},\n\t\t\t\t);\n\t\t\t}\n\t\t}\n\t\t// eslint-disable-next-line react-hooks/exhaustive-deps\n\t}, [containerRef, ...deps]);\n}"
+  src/pages/Dashboard/hooks/useDashboardAnimations.motion.hook.ts: >-
+    import { useEffect } from 'react';
+
+    import { gsap } from 'gsap';
+
+    import { useAppShellStore } from '@/store/appShell.store';
+
+    import { BODY_STATES } from '@/lib/utils';
+
+    import { useStaggeredAnimation } from
+    '@/hooks/useStaggeredAnimation.motion.hook';
+
+
+    export function useDashboardAnimations(
+      contentRef: React.RefObject<HTMLDivElement>,
+      statsCardsContainerRef: React.RefObject<HTMLDivElement>,
+      featureCardsContainerRef: React.RefObject<HTMLDivElement>,
+    ) {
+      const bodyState = useAppShellStore(s => s.bodyState);
+
+      // Animate cards on mount
+      useStaggeredAnimation(statsCardsContainerRef, [], { y: 20, scale: 0.95 });
+      useStaggeredAnimation(featureCardsContainerRef, [], { y: 30, scale: 0.95, stagger: 0.05 });
+
+      useEffect(() => {
+        if (!contentRef.current) return;
+
+        const content = contentRef.current;
+
+        switch (bodyState) {
+          case BODY_STATES.FULLSCREEN:
+            gsap.to(content, { scale: 1.02, duration: 0.4, ease: 'power3.out' });
+            break;
+          default:
+            gsap.to(content, { scale: 1, duration: 0.4, ease: 'power3.out' });
+            break;
+        }
+      }, [bodyState, contentRef]);
+    }
+  src/hooks/useAutoAnimateTopBar.ts: |-
+    import { useRef, useCallback, useEffect } from 'react';
+    import { useAppShellStore } from '@/store/appShell.store';
+    import { BODY_STATES } from '@/lib/utils';
+
+    export function useAutoAnimateTopBar(isPane = false) {
+      const bodyState = useAppShellStore(s => s.bodyState);
+      const setTopBarVisible = useAppShellStore(s => s.setTopBarVisible);
+      const lastScrollTop = useRef(0);
+      const scrollTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+      const onScroll = useCallback((event: React.UIEvent<HTMLDivElement>) => {
+        if (isPane || bodyState === BODY_STATES.SPLIT_VIEW || bodyState === BODY_STATES.FULLSCREEN) return;
+
+        // Clear previous timeout
+        if (scrollTimeout.current) {
+          clearTimeout(scrollTimeout.current);
+        }
+
+        const { scrollTop } = event.currentTarget;
+        
+        if (scrollTop > lastScrollTop.current && scrollTop > 200) {
+          setTopBarVisible(false);
+        } else if (scrollTop < lastScrollTop.current || scrollTop <= 0) {
+          setTopBarVisible(true);
+        }
+        
+        lastScrollTop.current = scrollTop <= 0 ? 0 : scrollTop;
+
+        // Set new timeout to show top bar when scrolling stops
+        scrollTimeout.current = setTimeout(() => {
+          // Don't hide, just ensure it's visible after scrolling stops
+          // and we are not at the top of the page.
+          if (scrollTop > 0) {
+            setTopBarVisible(true);
+          }
+        }, 250); // Adjust timeout as needed
+      }, [isPane, setTopBarVisible, bodyState]);
+
+      // Cleanup on unmount
+      useEffect(() => {
+        return () => {
+          if (scrollTimeout.current) {
+            clearTimeout(scrollTimeout.current);
+          }
+        };
+      }, []);
+
+      return { onScroll };
+    }
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 281

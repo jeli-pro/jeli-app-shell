@@ -8,25 +8,20 @@ import {
   CommandSeparator,
   CommandShortcut,
 } from '@/components/ui/command';
-import { useAppStore } from '@/store/appStore'
 import { useCommandPaletteToggle } from '@/hooks/useCommandPaletteToggle.hook'
 import { useAppViewManager } from '@/hooks/useAppViewManager.hook';
 import { useAppShellStore } from '@/store/appShell.store';
 import { Home, Settings, Moon, Sun, Monitor, Smartphone, PanelRight, Maximize, Component, Bell } from 'lucide-react'
 
 export function CommandPalette() {
-  const { setCompactMode, toggleFullscreen } = useAppShellStore();
+  const { setCompactMode, toggleFullscreen, setCommandPaletteOpen, toggleDarkMode } = useAppShellStore.getState();
+  const isCommandPaletteOpen = useAppShellStore(s => s.isCommandPaletteOpen);
+  const isDarkMode = useAppShellStore(s => s.isDarkMode);
   const viewManager = useAppViewManager();
-  const {
-    isCommandPaletteOpen,
-    setCommandPaletteOpen,
-    isDarkMode,
-    toggleDarkMode,
-  } = useAppStore()
   useCommandPaletteToggle()
   
   const runCommand = (command: () => void) => {
-    setCommandPaletteOpen(false)
+    setCommandPaletteOpen(false);
     command()
   }
 

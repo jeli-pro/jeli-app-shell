@@ -5,6 +5,12 @@ src/
     auth/
       LoginPage.tsx
       useLoginForm.hook.ts
+    effects/
+      AnimatedInput.tsx
+      BottomGradient.tsx
+      BoxReveal.tsx
+      OrbitingCircles.tsx
+      Ripple.tsx
     global/
       CommandPalette.tsx
     layout/
@@ -14,33 +20,72 @@ src/
       RightPane.tsx
       Sidebar.tsx
       TopBar.tsx
+      UserDropdown.tsx
       ViewModeSwitcher.tsx
+      WorkspaceSwitcher.tsx
     shared/
+      ContentInSidePanePlaceholder.tsx
+      PageHeader.tsx
       PageLayout.tsx
+      StatCard.tsx
+    ui/
+      animated-tabs.tsx
+      avatar.tsx
+      badge.tsx
+      button.tsx
+      card.tsx
+      command.tsx
+      dialog.tsx
+      dropdown-menu.tsx
+      input.tsx
+      label.tsx
+      popover.tsx
+      tabs.tsx
+      toast.tsx
   features/
     settings/
       SettingsContent.tsx
+      SettingsSection.tsx
+      SettingsToggle.tsx
   hooks/
     useAppShellAnimations.hook.ts
     useAppViewManager.hook.ts
     useAutoAnimateTopBar.ts
+    useCommandPaletteToggle.hook.ts
+    usePaneDnd.hook.ts
     useResizablePanes.hook.ts
     useRightPaneContent.hook.tsx
+    useStaggeredAnimation.motion.hook.ts
+  lib/
+    utils.ts
   pages/
     Dashboard/
       hooks/
         useDashboardAnimations.motion.hook.ts
+        useDashboardScroll.hook.ts
       DemoContent.tsx
       index.tsx
     DataDemo/
       components/
+        shared/
+          DataItemParts.tsx
+        AnimatedLoadingSkeleton.tsx
         DataCardView.tsx
+        DataDetailActions.tsx
+        DataDetailPanel.tsx
         DataListView.tsx
         DataTableView.tsx
         DataToolbar.tsx
         DataViewModeSelector.tsx
+        EmptyState.tsx
+      store/
+        dataDemo.store.tsx
       index.tsx
+      types.ts
     Notifications/
+      index.tsx
+      notifications.store.ts
+    Settings/
       index.tsx
     ToasterDemo/
       index.tsx
@@ -48,10 +93,11 @@ src/
     AppShellProvider.tsx
   store/
     appShell.store.ts
-    appStore.ts
     authStore.ts
   App.tsx
+  index.css
   index.ts
+  main.tsx
 index.html
 package.json
 postcss.config.js
@@ -148,6 +194,1669 @@ export function useLoginForm() {
 }
 ```
 
+## File: src/components/effects/AnimatedInput.tsx
+```typescript
+import React, { memo, forwardRef, useRef, useEffect } from 'react';
+import { cn } from '@/lib/utils';
+
+export const AnimatedInput = memo(
+	forwardRef(function Input(
+		{ className, type, ...props }: React.InputHTMLAttributes<HTMLInputElement>,
+		ref: React.ForwardedRef<HTMLInputElement>,
+	) {
+		const radius = 100;
+		const wrapperRef = useRef<HTMLDivElement>(null);
+
+		useEffect(() => {
+			const wrapper = wrapperRef.current;
+			if (!wrapper) return;
+
+			let animationFrameId: number | null = null;
+
+			const handleMouseMove = (e: MouseEvent) => {
+				if (animationFrameId) {
+					cancelAnimationFrame(animationFrameId);
+				}
+
+				animationFrameId = requestAnimationFrame(() => {
+					if (!wrapper) return;
+					const { left, top } = wrapper.getBoundingClientRect();
+					const x = e.clientX - left;
+					const y = e.clientY - top;
+					wrapper.style.setProperty('--mouse-x', `${x}px`);
+					wrapper.style.setProperty('--mouse-y', `${y}px`);
+				});
+			};
+
+			const handleMouseEnter = () => {
+				if (!wrapper) return;
+				wrapper.style.setProperty('--radius', `${radius}px`);
+			};
+
+			const handleMouseLeave = () => {
+				if (!wrapper) return;
+				wrapper.style.setProperty('--radius', '0px');
+				if (animationFrameId) {
+					cancelAnimationFrame(animationFrameId);
+					animationFrameId = null;
+				}
+			};
+
+			wrapper.addEventListener('mousemove', handleMouseMove);
+			wrapper.addEventListener('mouseenter', handleMouseEnter);
+			wrapper.addEventListener('mouseleave', handleMouseLeave);
+
+			return () => {
+				wrapper.removeEventListener('mousemove', handleMouseMove);
+				wrapper.removeEventListener('mouseenter', handleMouseEnter);
+				wrapper.removeEventListener('mouseleave', handleMouseLeave);
+				if (animationFrameId) {
+					cancelAnimationFrame(animationFrameId);
+				}
+			};
+		}, [radius]);
+
+		return (
+			<div
+				ref={wrapperRef}
+				style={
+					{
+						'--radius': '0px',
+						'--mouse-x': '0px',
+						'--mouse-y': '0px',
+						background: `radial-gradient(var(--radius) circle at var(--mouse-x) var(--mouse-y), #3b82f6, transparent 80%)`,
+					} as React.CSSProperties
+				}
+				className="group/input rounded-lg p-[2px] transition duration-300"
+			>
+				<input
+					type={type}
+					className={cn(
+						`shadow-input dark:placeholder-text-neutral-600 flex h-10 w-full rounded-md border-none bg-gray-50 px-3 py-2 text-sm text-black transition duration-400 group-hover/input:shadow-none file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-neutral-400 focus-visible:ring-[2px] focus-visible:ring-neutral-400 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 dark:bg-zinc-800 dark:text-white dark:shadow-[0px_0px_1px_1px_#404040] dark:focus-visible:ring-neutral-600`,
+						className,
+					)}
+					ref={ref}
+					{...props}
+				/>
+			</div>
+		);
+	}),
+);
+```
+
+## File: src/components/effects/BottomGradient.tsx
+```typescript
+export const BottomGradient = () => (
+	<>
+		<span className="group-hover/btn:opacity-100 block transition duration-500 opacity-0 absolute h-px w-full -bottom-px inset-x-0 bg-gradient-to-r from-transparent via-cyan-500 to-transparent" />
+		<span className="group-hover/btn:opacity-100 blur-sm block transition duration-500 opacity-0 absolute h-px w-1/2 mx-auto -bottom-px inset-x-10 bg-gradient-to-r from-transparent via-indigo-500 to-transparent" />
+	</>
+);
+```
+
+## File: src/components/effects/BoxReveal.tsx
+```typescript
+import { ReactNode, useEffect, useRef, memo } from 'react';
+import { gsap } from 'gsap';
+import { cn } from '@/lib/utils';
+
+type BoxRevealProps = {
+	children: ReactNode;
+	width?: string;
+	boxColor?: string;
+	duration?: number;
+	className?: string;
+};
+
+export const BoxReveal = memo(function BoxReveal({
+	children,
+	width = 'fit-content',
+	boxColor,
+	duration,
+	className,
+}: BoxRevealProps) {
+	const sectionRef = useRef<HTMLDivElement>(null);
+	const boxRef = useRef<HTMLDivElement>(null);
+	const childRef = useRef<HTMLDivElement>(null);
+
+	useEffect(() => {
+		const section = sectionRef.current;
+		if (!section) return;
+
+		const observer = new IntersectionObserver(
+			(entries) => {
+				entries.forEach((entry) => {
+					if (entry.isIntersecting) {
+						gsap.timeline()
+							.set(childRef.current, { opacity: 0, y: 50 })
+							.set(boxRef.current, { transformOrigin: 'right' })
+							.to(boxRef.current, {
+								scaleX: 0,
+								duration: duration ?? 0.5,
+								ease: 'power3.inOut',
+							})
+							.to(
+								childRef.current,
+								{ y: 0, opacity: 1, duration: duration ?? 0.5, ease: 'power3.out' },
+								'-=0.3',
+							);
+						observer.unobserve(section);
+					}
+				});
+			},
+			{ threshold: 0.1 },
+		);
+
+		observer.observe(section);
+
+		return () => {
+			if (section) {
+				observer.unobserve(section);
+			}
+		};
+	}, [duration]);
+
+	return (
+		<div ref={sectionRef} style={{ width }} className={cn('relative overflow-hidden', className)}>
+			<div ref={childRef}>{children}</div>
+			<div
+				ref={boxRef}
+				style={{
+					background: boxColor ?? 'hsl(var(--skeleton))',
+				}}
+				className="absolute top-1 bottom-1 left-0 right-0 z-20 rounded-sm"
+			/>
+		</div>
+	);
+});
+```
+
+## File: src/components/effects/OrbitingCircles.tsx
+```typescript
+import React, { ReactNode, memo } from 'react';
+import { cn } from '@/lib/utils';
+
+export const OrbitingCircles = memo(function OrbitingCircles({
+	className,
+	children,
+	reverse = false,
+	duration = 20,
+	delay = 10,
+	radius = 50,
+	path = true,
+}: {
+	className?: string;
+	children?: React.ReactNode;
+	reverse?: boolean;
+	duration?: number;
+	delay?: number;
+	radius?: number;
+	path?: boolean;
+}) {
+	return (
+		<>
+			{path && (
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					version="1.1"
+					className="pointer-events-none absolute inset-0 size-full"
+				>
+					<circle
+						className="stroke-black/10 stroke-1 dark:stroke-white/10"
+						cx="50%"
+						cy="50%"
+						r={radius}
+						fill="none"
+					/>
+				</svg>
+			)}
+			<div
+				style={
+					{
+						'--duration': duration,
+						'--radius': radius,
+						'--delay': -delay,
+					} as React.CSSProperties
+				}
+				className={cn(
+					'absolute flex size-full transform-gpu animate-orbit items-center justify-center rounded-full border bg-black/10 [animation-delay:calc(var(--delay)*1s)] dark:bg-white/10',
+					{ '[animation-direction:reverse]': reverse },
+					className,
+				)}
+			>
+				{children}
+			</div>
+		</>
+	);
+});
+
+
+interface OrbitIcon {
+	component: () => ReactNode;
+	className: string;
+	duration?: number;
+	delay?: number;
+	radius?: number;
+	path?: boolean;
+	reverse?: boolean;
+}
+
+const iconsArray: OrbitIcon[] = [
+	{ component: () => <img width={30} height={30} src='https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/html5/html5-original.svg' alt='HTML5' />, className: 'size-[30px] border-none bg-transparent', duration: 20, delay: 20, radius: 100, path: false, reverse: false },
+	{ component: () => <img width={30} height={30} src='https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/css3/css3-original.svg' alt='CSS3' />, className: 'size-[30px] border-none bg-transparent', duration: 20, delay: 10, radius: 100, path: false, reverse: false },
+	{ component: () => <img width={50} height={50} src='https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/typescript/typescript-original.svg' alt='TypeScript' />, className: 'size-[50px] border-none bg-transparent', radius: 210, duration: 20, path: false, reverse: false },
+	{ component: () => <img width={50} height={50} src='https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/javascript/javascript-original.svg' alt='JavaScript' />, className: 'size-[50px] border-none bg-transparent', radius: 210, duration: 20, delay: 20, path: false, reverse: false },
+	{ component: () => <img width={30} height={30} src='https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/tailwindcss/tailwindcss-original.svg' alt='TailwindCSS' />, className: 'size-[30px] border-none bg-transparent', duration: 20, delay: 20, radius: 150, path: false, reverse: true },
+	{ component: () => <img width={30} height={30} src='https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/nextjs/nextjs-original.svg' alt='Nextjs' />, className: 'size-[30px] border-none bg-transparent', duration: 20, delay: 10, radius: 150, path: false, reverse: true },
+	{ component: () => <img width={50} height={50} src='https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/react/react-original.svg' alt='React' />, className: 'size-[50px] border-none bg-transparent', radius: 270, duration: 20, path: false, reverse: true },
+	{ component: () => <img width={50} height={50} src='https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/figma/figma-original.svg' alt='Figma' />, className: 'size-[50px] border-none bg-transparent', radius: 270, duration: 20, delay: 60, path: false, reverse: true },
+	{ component: () => <img width={50} height={50} src='https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/git/git-original.svg' alt='Git' />, className: 'size-[50px] border-none bg-transparent', radius: 320, duration: 20, delay: 20, path: false, reverse: false },
+];
+
+export const TechOrbitDisplay = memo(function TechOrbitDisplay({ text = 'Jeli App Shell' }: { text?: string }) {
+	return (
+		<div className="relative flex size-full flex-col items-center justify-center overflow-hidden rounded-lg">
+			<span className="pointer-events-none whitespace-pre-wrap bg-gradient-to-b from-black to-gray-300/80 bg-clip-text text-center text-7xl font-semibold leading-none text-transparent dark:from-white dark:to-slate-900/10">
+				{text}
+			</span>
+			{iconsArray.map((icon, index) => (
+				<OrbitingCircles key={index} {...icon}>
+					{icon.component()}
+				</OrbitingCircles>
+			))}
+		</div>
+	);
+});
+```
+
+## File: src/components/effects/Ripple.tsx
+```typescript
+import React, { memo } from 'react';
+
+interface RippleProps {
+	mainCircleSize?: number;
+	mainCircleOpacity?: number;
+	numCircles?: number;
+}
+
+export const Ripple = memo(function Ripple({
+	mainCircleSize = 210,
+	mainCircleOpacity = 0.24,
+	numCircles = 11,
+}: RippleProps) {
+	return (
+		<div className="absolute inset-0 flex items-center justify-center [mask-image:linear-gradient(to_bottom,white,transparent)]">
+			{Array.from({ length: numCircles }, (_, i) => {
+				const size = mainCircleSize + i * 70;
+				const opacity = mainCircleOpacity - i * 0.03;
+				const animationDelay = `${i * 0.06}s`;
+				const borderStyle = i === numCircles - 1 ? 'dashed' : 'solid';
+				const borderOpacity = 5 + i * 5;
+
+				return (
+					<div
+						key={i}
+						className="absolute animate-ripple rounded-full border"
+						style={
+							{
+								width: `${size}px`,
+								height: `${size}px`,
+								opacity: opacity,
+								animationDelay: animationDelay,
+								borderStyle: borderStyle,
+								borderWidth: '1px',
+								borderColor: `hsl(var(--foreground) / ${borderOpacity / 100})`,
+								top: '50%',
+								left: '50%',
+								transform: 'translate(-50%, -50%)',
+							} as React.CSSProperties
+						}
+					/>
+				);
+			})}
+		</div>
+	);
+});
+```
+
+## File: src/components/shared/ContentInSidePanePlaceholder.tsx
+```typescript
+import { ChevronsLeftRight } from 'lucide-react'
+
+interface ContentInSidePanePlaceholderProps {
+  icon: React.ElementType
+  title: string
+  pageName: string
+  onBringBack: () => void
+}
+
+export function ContentInSidePanePlaceholder({
+  icon: Icon,
+  title,
+  pageName,
+  onBringBack,
+}: ContentInSidePanePlaceholderProps) {
+  const capitalizedPageName = pageName
+    .split(' ')
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ')
+
+  return (
+    <div className="flex-1 flex flex-col items-center justify-center text-center p-4 h-full">
+      <Icon className="w-16 h-16 text-muted-foreground/50 mb-4" />
+      <h2 className="text-2xl font-bold">{title}</h2>
+      <p className="text-muted-foreground mt-2 max-w-md">
+        You've moved {pageName} to the side pane. You can bring it back or
+        continue to navigate.
+      </p>
+      <button
+        onClick={onBringBack}
+        className="mt-6 bg-primary text-primary-foreground px-4 py-2 rounded-full hover:bg-primary/90 transition-colors flex items-center gap-2 h-10"
+      >
+        <ChevronsLeftRight className="w-5 h-5" />
+        <span>Bring {capitalizedPageName} Back</span>
+      </button>
+    </div>
+  )
+}
+```
+
+## File: src/components/shared/PageHeader.tsx
+```typescript
+import * as React from 'react';
+
+interface PageHeaderProps {
+  title: string;
+  description: React.ReactNode;
+  children?: React.ReactNode;
+}
+
+export function PageHeader({ title, description, children }: PageHeaderProps) {
+  return (
+    <div className="flex items-center justify-between">
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">{title}</h1>
+        <p className="text-muted-foreground">{description}</p>
+      </div>
+      {children}
+    </div>
+  );
+}
+```
+
+## File: src/components/shared/StatCard.tsx
+```typescript
+import React, { useLayoutEffect, useRef } from 'react';
+import { gsap } from 'gsap';
+import { cn } from '@/lib/utils';
+import { Card } from '@/components/ui/card';
+
+interface StatCardProps {
+  title: string;
+  value: string;
+  change: string;
+  trend: 'up' | 'down';
+  icon: React.ReactNode;
+  chartData?: number[];
+}
+
+export function StatCard({ title, value, change, trend, icon, chartData }: StatCardProps) {
+  const chartRef = useRef<SVGSVGElement>(null);
+
+  useLayoutEffect(() => {
+    // Only run animation if chartData is present
+    if (chartRef.current && chartData) {
+      const line = chartRef.current.querySelector('.chart-line');
+      const area = chartRef.current.querySelector('.chart-area');
+      if (line instanceof SVGPathElement && area) {
+        const length = line.getTotalLength();
+        gsap.set(line, { strokeDasharray: length, strokeDashoffset: length });
+        gsap.to(line, { strokeDashoffset: 0, duration: 1.5, ease: 'power2.inOut' });
+        gsap.fromTo(area, { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 1, ease: 'power2.out', delay: 0.5 });
+      }
+    }
+  }, [chartData]);
+
+  // --- Chart rendering logic (only if chartData is provided) ---
+  const renderChart = () => {
+    if (!chartData || chartData.length < 2) return null;
+
+    // SVG dimensions
+    const width = 150;
+    const height = 60;
+
+    // Normalize data
+    const max = Math.max(...chartData);
+    const min = Math.min(...chartData);
+    const range = max - min === 0 ? 1 : max - min;
+
+    const points = chartData
+      .map((val, i) => {
+        const x = (i / (chartData.length - 1)) * width;
+        const y = height - ((val - min) / range) * (height - 10) + 5; // Add vertical padding
+        return `${x},${y}`;
+      });
+
+    const linePath = "M" + points.join(" L");
+    const areaPath = `${linePath} L${width},${height} L0,${height} Z`;
+
+    return (
+      <div className="mt-4 -mb-2 -mx-2">
+        <svg ref={chartRef} viewBox={`0 0 ${width} ${height}`} className="w-full h-auto" preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" className="text-primary" stopColor="currentColor" stopOpacity={0.3} />
+              <stop offset="100%" className="text-primary" stopColor="currentColor" stopOpacity={0} />
+            </linearGradient>
+          </defs>
+          <path
+            className="chart-area"
+            d={areaPath}
+            fill="url(#chartGradient)"
+          />
+          <path
+            className="chart-line"
+            d={linePath}
+            fill="none"
+            stroke="hsl(var(--primary))"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </div>
+    );
+  };
+  // --- End of chart rendering logic ---
+
+  return (
+    <Card className={cn(
+        "p-6 border-border/50 hover:border-primary/30 transition-all duration-300 group cursor-pointer flex flex-col justify-between",
+        !chartData && "h-full" // Ensure cards without charts have consistent height if needed
+    )}>
+      <div>
+        <div className="flex items-center justify-between">
+          <div className="p-3 bg-primary/10 rounded-full group-hover:bg-primary/20 transition-colors">
+            {icon}
+          </div>
+          <div className={cn(
+            "text-sm font-medium",
+            trend === 'up' ? "text-green-600" : "text-red-600"
+          )}>
+            {change}
+          </div>
+        </div>
+        <div className="mt-4">
+          <h3 className="text-2xl font-bold">{value}</h3>
+          <p className="text-sm text-muted-foreground mt-1">{title}</p>
+        </div>
+      </div>
+      {renderChart()}
+    </Card>
+  );
+}
+```
+
+## File: src/components/ui/animated-tabs.tsx
+```typescript
+"use client"
+
+import * as React from "react"
+import { useState, useRef, useEffect, useLayoutEffect } from "react"
+import { cn } from "@/lib/utils"
+
+interface Tab {
+  id: string
+  label: React.ReactNode
+}
+
+interface AnimatedTabsProps extends React.HTMLAttributes<HTMLDivElement> {
+  tabs: Tab[]
+  activeTab: string
+  onTabChange: (tabId: string) => void
+}
+
+const AnimatedTabs = React.forwardRef<HTMLDivElement, AnimatedTabsProps>(
+  ({ className, tabs, activeTab, onTabChange, ...props }, ref) => {
+    const [activeIndex, setActiveIndex] = useState(0)
+    const [activeStyle, setActiveStyle] = useState({ left: "0px", width: "0px" })
+    const tabRefs = useRef<(HTMLButtonElement | null)[]>([])
+
+    // Update active index when controlled prop changes
+    useEffect(() => {
+      const newActiveIndex = tabs.findIndex(tab => tab.id === activeTab)
+      if (newActiveIndex !== -1 && newActiveIndex !== activeIndex) {
+        setActiveIndex(newActiveIndex)
+      }
+    }, [activeTab, tabs, activeIndex])
+    
+    // Update active indicator position
+    useEffect(() => {
+      const activeElement = tabRefs.current[activeIndex]
+      if (activeElement) {
+        const { offsetLeft, offsetWidth } = activeElement
+        setActiveStyle({
+          left: `${offsetLeft}px`,
+          width: `${offsetWidth}px`,
+        })
+      }
+    }, [activeIndex, tabs])
+
+    // Set initial position of active indicator
+    useLayoutEffect(() => {
+        const initialActiveIndex = activeTab ? tabs.findIndex(tab => tab.id === activeTab) : 0
+        const indexToUse = initialActiveIndex !== -1 ? initialActiveIndex : 0
+        
+        const firstElement = tabRefs.current[indexToUse]
+        if (firstElement) {
+          const { offsetLeft, offsetWidth } = firstElement
+          setActiveStyle({
+            left: `${offsetLeft}px`,
+            width: `${offsetWidth}px`,
+          })
+        }
+    }, [tabs, activeTab])
+
+    return (
+      <div 
+        ref={ref} 
+        className={cn("relative flex w-full items-center", className)} 
+        {...props}
+      >
+        {/* Active Indicator */}
+        <div
+          className="absolute -bottom-px h-0.5 bg-primary transition-all duration-300 ease-out"
+          style={activeStyle}
+        />
+
+        {/* Tabs */}
+        {tabs.map((tab, index) => (
+          <button
+            key={tab.id}
+            ref={(el) => (tabRefs.current[index] = el)}
+            className={cn(
+              "group relative cursor-pointer px-4 py-5 text-center transition-colors duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+              index === activeIndex 
+                ? "text-primary" 
+                : "text-muted-foreground hover:text-foreground"
+            )}
+            onClick={() => onTabChange(tab.id)}
+          >
+            <span className="flex items-center gap-2 text-lg font-semibold whitespace-nowrap">{tab.label}</span>
+          </button>
+        ))}
+      </div>
+    )
+  }
+)
+AnimatedTabs.displayName = "AnimatedTabs"
+
+export { AnimatedTabs }
+```
+
+## File: src/components/ui/avatar.tsx
+```typescript
+import * as React from "react"
+import * as AvatarPrimitive from "@radix-ui/react-avatar"
+
+import { cn } from "@/lib/utils"
+
+const Avatar = React.forwardRef<
+  React.ElementRef<typeof AvatarPrimitive.Root>,
+  React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Root>
+>(({ className, ...props }, ref) => (
+  <AvatarPrimitive.Root
+    ref={ref}
+    className={cn(
+      "relative flex h-10 w-10 shrink-0 overflow-hidden rounded-full",
+      className
+    )}
+    {...props}
+  />
+))
+Avatar.displayName = AvatarPrimitive.Root.displayName
+
+const AvatarImage = React.forwardRef<
+  React.ElementRef<typeof AvatarPrimitive.Image>,
+  React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Image>
+>(({ className, ...props }, ref) => (
+  <AvatarPrimitive.Image
+    ref={ref}
+    className={cn("aspect-square h-full w-full", className)}
+    {...props}
+  />
+))
+AvatarImage.displayName = AvatarPrimitive.Image.displayName
+
+const AvatarFallback = React.forwardRef<
+  React.ElementRef<typeof AvatarPrimitive.Fallback>,
+  React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Fallback>
+>(({ className, ...props }, ref) => (
+  <AvatarPrimitive.Fallback
+    ref={ref}
+    className={cn(
+      "flex h-full w-full items-center justify-center rounded-full bg-muted",
+      className
+    )}
+    {...props}
+  />
+))
+AvatarFallback.displayName = AvatarPrimitive.Fallback.displayName
+
+export { Avatar, AvatarImage, AvatarFallback }
+```
+
+## File: src/components/ui/card.tsx
+```typescript
+import * as React from "react"
+
+import { cn } from "@/lib/utils"
+
+const Card = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => (
+  <div
+    ref={ref}
+    className={cn(
+      "rounded-2xl border bg-card text-card-foreground",
+      className
+    )}
+    {...props}
+  />
+))
+Card.displayName = "Card"
+
+const CardHeader = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => (
+  <div
+    ref={ref}
+    className={cn("flex flex-col space-y-1.5 p-6", className)}
+    {...props}
+  />
+))
+CardHeader.displayName = "CardHeader"
+
+const CardTitle = React.forwardRef<
+  HTMLParagraphElement,
+  React.HTMLAttributes<HTMLHeadingElement>
+>(({ className, ...props }, ref) => (
+  <h3
+    ref={ref}
+    className={cn(
+      "text-lg font-semibold leading-none tracking-tight",
+      className
+    )}
+    {...props}
+  />
+))
+CardTitle.displayName = "CardTitle"
+
+const CardDescription = React.forwardRef<
+  HTMLParagraphElement,
+  React.HTMLAttributes<HTMLParagraphElement>
+>(({ className, ...props }, ref) => (
+  <p
+    ref={ref}
+    className={cn("text-sm text-muted-foreground", className)}
+    {...props}
+  />
+))
+CardDescription.displayName = "CardDescription"
+
+const CardContent = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => (
+  <div ref={ref} className={cn("p-6 pt-0", className)} {...props} />
+))
+CardContent.displayName = "CardContent"
+
+const CardFooter = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => (
+  <div
+    ref={ref}
+    className={cn("flex items-center p-6 pt-0", className)}
+    {...props}
+  />
+))
+CardFooter.displayName = "CardFooter"
+
+export { Card, CardHeader, CardFooter, CardTitle, CardDescription, CardContent }
+```
+
+## File: src/components/ui/command.tsx
+```typescript
+import * as React from "react"
+import { type DialogProps } from "@radix-ui/react-dialog"
+import { Command as CommandPrimitive } from "cmdk"
+import { Search } from "lucide-react"
+
+import { cn } from "@/lib/utils"
+import { Dialog, DialogContent } from "@/components/ui/dialog"
+
+const Command = React.forwardRef<
+  React.ElementRef<typeof CommandPrimitive>,
+  React.ComponentPropsWithoutRef<typeof CommandPrimitive>
+>(({ className, ...props }, ref) => (
+  <CommandPrimitive
+    ref={ref}
+    className={cn(
+      "flex h-full w-full flex-col overflow-hidden bg-popover text-popover-foreground",
+      className
+    )}
+    {...props}
+  />
+))
+Command.displayName = CommandPrimitive.displayName
+
+interface CommandDialogProps extends DialogProps {}
+
+const CommandDialog = ({ children, ...props }: CommandDialogProps) => {
+  return (
+    <Dialog {...props}>
+      <DialogContent className="overflow-hidden p-0">
+        <Command className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group]:not([hidden])_~[cmdk-group]]:pt-0 [&_[cmdk-input-wrapper]_svg]:h-5 [&_[cmdk-input-wrapper]_svg]:w-5 [&_[cmdk-item]_svg]:h-5 [&_[cmdk-item]_svg]:w-5">
+          {children}
+        </Command>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+const CommandInput = React.forwardRef<
+  React.ElementRef<typeof CommandPrimitive.Input>,
+  React.ComponentPropsWithoutRef<typeof CommandPrimitive.Input>
+>(({ className, ...props }, ref) => (
+  <div className="flex h-14 items-center border-b px-4" cmdk-input-wrapper="">
+    <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+    <CommandPrimitive.Input
+      ref={ref}
+      className={cn(
+        "flex h-full w-full rounded-md bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50",
+        className
+      )}
+      {...props}
+    />
+  </div>
+))
+
+CommandInput.displayName = CommandPrimitive.Input.displayName
+
+const CommandList = React.forwardRef<
+  React.ElementRef<typeof CommandPrimitive.List>,
+  React.ComponentPropsWithoutRef<typeof CommandPrimitive.List>
+>(({ className, ...props }, ref) => (
+  <CommandPrimitive.List
+    ref={ref}
+    className={cn("max-h-[450px] overflow-y-auto overflow-x-hidden p-2", className)}
+    {...props}
+  />
+))
+
+CommandList.displayName = CommandPrimitive.List.displayName
+
+const CommandEmpty = React.forwardRef<
+  React.ElementRef<typeof CommandPrimitive.Empty>,
+  React.ComponentPropsWithoutRef<typeof CommandPrimitive.Empty>
+>((props, ref) => (
+  <CommandPrimitive.Empty
+    ref={ref}
+    className="py-6 text-center text-sm"
+    {...props}
+  />
+))
+
+CommandEmpty.displayName = CommandPrimitive.Empty.displayName
+
+const CommandGroup = React.forwardRef<
+  React.ElementRef<typeof CommandPrimitive.Group>,
+  React.ComponentPropsWithoutRef<typeof CommandPrimitive.Group>
+>(({ className, ...props }, ref) => (
+  <CommandPrimitive.Group
+    ref={ref}
+    className={cn(
+      "overflow-hidden text-foreground [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground",
+      className
+    )}
+    {...props}
+  />
+))
+
+CommandGroup.displayName = CommandPrimitive.Group.displayName
+
+const CommandSeparator = React.forwardRef<
+  React.ElementRef<typeof CommandPrimitive.Separator>,
+  React.ComponentPropsWithoutRef<typeof CommandPrimitive.Separator>
+>(({ className, ...props }, ref) => (
+  <CommandPrimitive.Separator
+    ref={ref}
+    className={cn("-mx-1 h-px bg-border", className)}
+    {...props}
+  />
+))
+CommandSeparator.displayName = CommandPrimitive.Separator.displayName
+
+const CommandItem = React.forwardRef<
+  React.ElementRef<typeof CommandPrimitive.Item>,
+  React.ComponentPropsWithoutRef<typeof CommandPrimitive.Item>
+>(({ className, ...props }, ref) => (
+  <CommandPrimitive.Item
+    ref={ref}
+    className={cn(
+      "relative flex cursor-default select-none items-center rounded-lg px-4 py-2.5 text-sm outline-none aria-selected:bg-accent aria-selected:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      className
+    )}
+    {...props}
+  />
+))
+
+CommandItem.displayName = CommandPrimitive.Item.displayName
+
+const CommandShortcut = ({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLSpanElement>) => {
+  return (
+    <span
+      className={cn(
+        "ml-auto text-xs tracking-widest text-muted-foreground",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+CommandShortcut.displayName = "CommandShortcut"
+
+export {
+  Command,
+  CommandDialog,
+  CommandInput,
+  CommandList,
+  CommandEmpty,
+  CommandGroup,
+  CommandItem,
+  CommandShortcut,
+  CommandSeparator,
+}
+```
+
+## File: src/components/ui/dialog.tsx
+```typescript
+import * as React from "react"
+import * as DialogPrimitive from "@radix-ui/react-dialog"
+import { X } from "lucide-react"
+
+import { cn } from "@/lib/utils"
+
+const Dialog = DialogPrimitive.Root
+
+const DialogTrigger = DialogPrimitive.Trigger
+
+const DialogPortal = DialogPrimitive.Portal
+
+const DialogClose = DialogPrimitive.Close
+
+const DialogOverlay = React.forwardRef<
+  React.ElementRef<typeof DialogPrimitive.Overlay>,
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay>
+>(({ className, ...props }, ref) => (
+  <DialogPrimitive.Overlay
+    ref={ref}
+    className={cn(
+      "fixed inset-0 z-50 bg-background/80 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+      className
+    )}
+    {...props}
+  />
+))
+DialogOverlay.displayName = DialogPrimitive.Overlay.displayName
+
+const DialogContent = React.forwardRef<
+  React.ElementRef<typeof DialogPrimitive.Content>,
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
+>(({ className, children, ...props }, ref) => (
+  <DialogPortal>
+    <DialogOverlay />
+    <DialogPrimitive.Content
+      ref={ref}
+      className={cn(
+        "fixed left-[50%] top-[50%] z-50 grid w-full max-w-xl translate-x-[-50%] translate-y-[-50%] gap-4 border bg-card p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]",
+        "sm:rounded-2xl",
+        className
+      )}
+      {...props}
+    >
+      {children}
+      <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
+        <X className="h-4 w-4" />
+        <span className="sr-only">Close</span>
+      </DialogPrimitive.Close>
+    </DialogPrimitive.Content>
+  </DialogPortal>
+))
+DialogContent.displayName = DialogPrimitive.Content.displayName
+
+const DialogHeader = ({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLDivElement>) => (
+  <div
+    className={cn(
+      "flex flex-col space-y-1.5 text-center sm:text-left",
+      className
+    )}
+    {...props}
+  />
+)
+DialogHeader.displayName = "DialogHeader"
+
+const DialogFooter = ({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLDivElement>) => (
+  <div
+    className={cn(
+      "flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2",
+      className
+    )}
+    {...props}
+  />
+)
+DialogFooter.displayName = "DialogFooter"
+
+const DialogTitle = React.forwardRef<
+  React.ElementRef<typeof DialogPrimitive.Title>,
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Title>
+>(({ className, ...props }, ref) => (
+  <DialogPrimitive.Title
+    ref={ref}
+    className={cn(
+      "text-lg font-semibold leading-none tracking-tight",
+      className
+    )}
+    {...props}
+  />
+))
+DialogTitle.displayName = DialogPrimitive.Title.displayName
+
+const DialogDescription = React.forwardRef<
+  React.ElementRef<typeof DialogPrimitive.Description>,
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Description>
+>(({ className, ...props }, ref) => (
+  <DialogPrimitive.Description
+    ref={ref}
+    className={cn("text-sm text-muted-foreground", className)}
+    {...props}
+  />
+))
+DialogDescription.displayName = DialogPrimitive.Description.displayName
+
+export {
+  Dialog,
+  DialogPortal,
+  DialogOverlay,
+  DialogClose,
+  DialogTrigger,
+  DialogContent,
+  DialogHeader,
+  DialogFooter,
+  DialogTitle,
+  DialogDescription,
+}
+```
+
+## File: src/components/ui/input.tsx
+```typescript
+import * as React from "react"
+
+import { cn } from "@/lib/utils"
+
+export interface InputProps
+  extends React.InputHTMLAttributes<HTMLInputElement> {}
+
+const Input = React.forwardRef<HTMLInputElement, InputProps>(
+  ({ className, type, ...props }, ref) => {
+    return (
+      <input
+        type={type}
+        className={cn(
+          "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+          className
+        )}
+        ref={ref}
+        {...props}
+      />
+    )
+  }
+)
+Input.displayName = "Input"
+
+export { Input }
+```
+
+## File: src/components/ui/label.tsx
+```typescript
+import * as React from "react"
+import * as LabelPrimitive from "@radix-ui/react-label"
+import { cva, type VariantProps } from "class-variance-authority"
+
+import { cn } from "@/lib/utils"
+
+const labelVariants = cva(
+  "text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+)
+
+const Label = React.forwardRef<
+  React.ElementRef<typeof LabelPrimitive.Root>,
+  React.ComponentPropsWithoutRef<typeof LabelPrimitive.Root> &
+    VariantProps<typeof labelVariants>
+>(({ className, ...props }, ref) => (
+  <LabelPrimitive.Root
+    ref={ref}
+    className={cn(labelVariants(), className)}
+    {...props}
+  />
+))
+Label.displayName = LabelPrimitive.Root.displayName
+
+export { Label }
+```
+
+## File: src/components/ui/tabs.tsx
+```typescript
+import * as React from "react"
+import * as TabsPrimitive from "@radix-ui/react-tabs"
+
+import { cn } from "@/lib/utils"
+
+const Tabs = TabsPrimitive.Root
+
+const TabsList = React.forwardRef<
+  React.ElementRef<typeof TabsPrimitive.List>,
+  React.ComponentPropsWithoutRef<typeof TabsPrimitive.List>
+>(({ className, ...props }, ref) => (
+  <TabsPrimitive.List
+    ref={ref}
+    className={cn(
+      "inline-flex h-10 items-center justify-center rounded-lg bg-muted p-1 text-muted-foreground",
+      className
+    )}
+    {...props}
+  />
+))
+TabsList.displayName = TabsPrimitive.List.displayName
+
+const TabsTrigger = React.forwardRef<
+  React.ElementRef<typeof TabsPrimitive.Trigger>,
+  React.ComponentPropsWithoutRef<typeof TabsPrimitive.Trigger>
+>(({ className, ...props }, ref) => (
+  <TabsPrimitive.Trigger
+    ref={ref}
+    className={cn(
+      "inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm",
+      className
+    )}
+    {...props}
+  />
+))
+TabsTrigger.displayName = TabsPrimitive.Trigger.displayName
+
+const TabsContent = React.forwardRef<
+  React.ElementRef<typeof TabsPrimitive.Content>,
+  React.ComponentPropsWithoutRef<typeof TabsPrimitive.Content>
+>(({ className, ...props }, ref) => (
+  <TabsPrimitive.Content
+    ref={ref}
+    className={cn(
+      "mt-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+      className
+    )}
+    {...props}
+  />
+))
+TabsContent.displayName = TabsPrimitive.Content.displayName
+
+export { Tabs, TabsList, TabsTrigger, TabsContent }
+```
+
+## File: src/features/settings/SettingsSection.tsx
+```typescript
+import * as React from 'react'
+
+interface SettingsSectionProps {
+  icon: React.ReactElement
+  title: string
+  children: React.ReactNode
+}
+
+export function SettingsSection({ icon, title, children }: SettingsSectionProps) {
+  return (
+    <div className="space-y-4">
+      <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+        {React.cloneElement(icon, { className: 'w-4 h-4' })}
+        {title}
+      </h3>
+      {children}
+    </div>
+  )
+}
+```
+
+## File: src/features/settings/SettingsToggle.tsx
+```typescript
+import * as React from 'react'
+import { cn } from '@/lib/utils'
+
+interface SettingsToggleProps {
+  icon: React.ReactNode
+  title: string
+  description: string
+  checked: boolean
+  onCheckedChange: (checked: boolean) => void
+}
+
+export function SettingsToggle({
+  icon,
+  title,
+  description,
+  checked,
+  onCheckedChange,
+}: SettingsToggleProps) {
+  return (
+    <div className="flex items-center justify-between">
+      <div className="flex items-center gap-3">
+        {icon}
+        <div>
+          <p className="font-medium">{title}</p>
+          <p className="text-sm text-muted-foreground">{description}</p>
+        </div>
+      </div>
+      <button
+        onClick={() => onCheckedChange(!checked)}
+        className={cn(
+          'relative inline-flex h-7 w-12 items-center rounded-full transition-colors',
+          checked ? 'bg-primary' : 'bg-muted'
+        )}
+      >
+        <span
+          className={cn(
+            'inline-block h-5 w-5 transform rounded-full bg-background transition-transform',
+            checked ? 'translate-x-6' : 'translate-x-1'
+          )}
+        />
+      </button>
+    </div>
+  )
+}
+```
+
+## File: src/hooks/useCommandPaletteToggle.hook.ts
+```typescript
+import { useEffect } from 'react';
+import { useAppShellStore } from '@/store/appShell.store';
+
+export function useCommandPaletteToggle() {
+  useEffect(() => {
+    const down = (e: KeyboardEvent) => {
+      if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        const { isCommandPaletteOpen, setCommandPaletteOpen } = useAppShellStore.getState();
+        setCommandPaletteOpen(!isCommandPaletteOpen);
+      }
+    };
+    document.addEventListener('keydown', down);
+    return () => document.removeEventListener('keydown', down);
+  }, []);
+}
+```
+
+## File: src/hooks/usePaneDnd.hook.ts
+```typescript
+import { useCallback } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { useAppShellStore } from '@/store/appShell.store';
+import { BODY_STATES } from '@/lib/utils';
+
+const pageToPaneMap: Record<string, 'main' | 'settings' | 'toaster' | 'notifications' | 'dataDemo'> = {
+  dashboard: 'main',
+  settings: 'settings',
+  toaster: 'toaster',
+  notifications: 'notifications',
+  'data-demo': 'dataDemo',
+};
+
+export function usePaneDnd() {
+  const {
+    draggedPage,
+    dragHoverTarget,
+    bodyState,
+    sidePaneContent,
+  } = useAppShellStore(state => ({
+    draggedPage: state.draggedPage,
+    dragHoverTarget: state.dragHoverTarget,
+    bodyState: state.bodyState,
+    sidePaneContent: state.sidePaneContent,
+  }));
+  const { setDraggedPage, setDragHoverTarget } = useAppShellStore.getState();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const activePage = location.pathname.split('/')[1] || 'dashboard';
+
+  const handleDragOverLeft = useCallback((e: React.DragEvent) => {
+    if (!draggedPage) return;
+    e.preventDefault();
+    if (dragHoverTarget !== 'left') {
+      setDragHoverTarget('left');
+    }
+  }, [draggedPage, dragHoverTarget, setDragHoverTarget]);
+
+  const handleDropLeft = useCallback(() => {
+    if (!draggedPage) return;
+
+    const paneContentOfDraggedPage = pageToPaneMap[draggedPage as keyof typeof pageToPaneMap];
+    if (paneContentOfDraggedPage === sidePaneContent && (bodyState === BODY_STATES.SIDE_PANE || bodyState === BODY_STATES.SPLIT_VIEW)) {
+      navigate(`/${draggedPage}`, { replace: true });
+    } 
+    else if (bodyState === BODY_STATES.NORMAL && draggedPage !== activePage) {
+        const originalActivePagePaneContent = pageToPaneMap[activePage as keyof typeof pageToPaneMap];
+        if (originalActivePagePaneContent) {
+            navigate(`/${draggedPage}?view=split&right=${originalActivePagePaneContent}`, { replace: true });
+        } else {
+            navigate(`/${draggedPage}`, { replace: true });
+        }
+    } else {
+      if (bodyState === BODY_STATES.SPLIT_VIEW) {
+        const rightPane = location.search.split('right=')[1];
+        if (rightPane) {
+          navigate(`/${draggedPage}?view=split&right=${rightPane}`, { replace: true });
+          return;
+        }
+      }
+      navigate(`/${draggedPage}`, { replace: true });
+    }
+    
+    setDraggedPage(null);
+    setDragHoverTarget(null);
+  }, [draggedPage, activePage, bodyState, sidePaneContent, navigate, location.search, setDraggedPage, setDragHoverTarget]);
+
+  const handleDragOverRight = useCallback((e: React.DragEvent) => {
+    if (!draggedPage) return;
+    e.preventDefault();
+    if (dragHoverTarget !== 'right') {
+      setDragHoverTarget('right');
+    }
+  }, [draggedPage, dragHoverTarget, setDragHoverTarget]);
+
+  const handleDropRight = useCallback(() => {
+    if (!draggedPage) return;
+    const pane = pageToPaneMap[draggedPage as keyof typeof pageToPaneMap];
+    if (pane) {
+      let mainPage = activePage;
+      if (draggedPage === activePage) {
+        mainPage = 'dashboard';
+      }
+      navigate(`/${mainPage}?view=split&right=${pane}`, { replace: true });
+    }
+    setDraggedPage(null);
+    setDragHoverTarget(null);
+  }, [draggedPage, activePage, navigate, setDraggedPage, setDragHoverTarget]);
+
+  const handleDragLeave = useCallback(() => {
+      setDragHoverTarget(null);
+  }, [setDragHoverTarget]);
+
+  return {
+    handleDragOverLeft,
+    handleDropLeft,
+    handleDragOverRight,
+    handleDropRight,
+    handleDragLeave,
+  };
+}
+```
+
+## File: src/pages/Dashboard/hooks/useDashboardScroll.hook.ts
+```typescript
+import { useState, useCallback } from 'react';
+import { useAutoAnimateTopBar } from '@/hooks/useAutoAnimateTopBar';
+
+export function useDashboardScroll(
+  contentRef: React.RefObject<HTMLDivElement>,
+  isInSidePane: boolean
+) {
+  const [showScrollToBottom, setShowScrollToBottom] = useState(false);
+  const { onScroll: handleTopBarScroll } = useAutoAnimateTopBar(isInSidePane);
+
+  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    handleTopBarScroll(e);
+    if (!contentRef.current) return;
+    const { scrollTop, scrollHeight, clientHeight } = contentRef.current;
+    setShowScrollToBottom(scrollTop > 200 && scrollTop < scrollHeight - clientHeight - 200);
+  }, [handleTopBarScroll, contentRef]);
+
+  const scrollToBottom = () => {
+    contentRef.current?.scrollTo({
+      top: contentRef.current.scrollHeight,
+      behavior: 'smooth'
+    });
+  };
+
+  return { showScrollToBottom, handleScroll, scrollToBottom };
+}
+```
+
+## File: src/pages/DataDemo/components/DataDetailActions.tsx
+```typescript
+import { Button } from '@/components/ui/button';
+import { ExternalLink, Share } from 'lucide-react';
+
+export function DataDetailActions() {
+    return (
+        <div className="flex gap-3">
+          <Button className="flex-1" size="sm">
+            <ExternalLink className="w-4 h-4 mr-2" />
+            Open Project
+          </Button>
+          <Button variant="outline" size="sm">
+            <Share className="w-4 h-4 mr-2" />
+            Share
+          </Button>
+        </div>
+    )
+}
+```
+
+## File: src/pages/DataDemo/components/EmptyState.tsx
+```typescript
+import { Eye } from 'lucide-react'
+
+export function EmptyState() {
+  return (
+    <div className="flex flex-col items-center justify-center py-20 text-center">
+      <div className="w-24 h-24 bg-muted rounded-full flex items-center justify-center mb-6">
+        <Eye className="w-10 h-10 text-muted-foreground" />
+      </div>
+      <h3 className="text-lg font-semibold mb-2">No items found</h3>
+      <p className="text-muted-foreground">Try adjusting your search criteria</p>
+    </div>
+  )
+}
+```
+
+## File: src/pages/DataDemo/store/dataDemo.store.tsx
+```typescript
+import { create } from 'zustand';
+import { type ReactNode } from 'react';
+import { capitalize, cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
+import { mockDataItems } from '../data/mockData';
+import type { DataItem, GroupableField, SortConfig } from '../types';
+import type { FilterConfig } from '../components/DataToolbar';
+
+// --- State and Actions ---
+interface DataDemoState {
+    items: DataItem[];
+    hasMore: boolean;
+    isLoading: boolean;
+    isInitialLoading: boolean;
+    totalItemCount: number;
+}
+
+interface DataDemoActions {
+    loadData: (params: {
+        page: number;
+        groupBy: GroupableField | 'none';
+        filters: FilterConfig;
+        sortConfig: SortConfig | null;
+    }) => void;
+}
+
+const defaultState: DataDemoState = {
+    items: [],
+    hasMore: true,
+    isLoading: true,
+    isInitialLoading: true,
+    totalItemCount: 0,
+};
+
+// --- Store Implementation ---
+export const useDataDemoStore = create<DataDemoState & DataDemoActions>((set) => ({
+    ...defaultState,
+
+    loadData: ({ page, groupBy, filters, sortConfig }) => {
+        set({ isLoading: true, ...(page === 1 && { isInitialLoading: true }) });
+        const isFirstPage = page === 1;
+
+        const filteredAndSortedData = (() => {
+            const filteredItems = mockDataItems.filter((item) => {
+                const searchTermMatch =
+                    item.title.toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
+                    item.description.toLowerCase().includes(filters.searchTerm.toLowerCase());
+                const statusMatch = filters.status.length === 0 || filters.status.includes(item.status);
+                const priorityMatch = filters.priority.length === 0 || filters.priority.includes(item.priority);
+                return searchTermMatch && statusMatch && priorityMatch;
+            });
+
+            if (sortConfig) {
+                filteredItems.sort((a, b) => {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const getNestedValue = (obj: DataItem, path: string): any =>
+                        path.split('.').reduce((o: any, k) => (o || {})[k], obj);
+
+                    const aValue = getNestedValue(a, sortConfig.key);
+                    const bValue = getNestedValue(b, sortConfig.key);
+
+                    if (aValue === undefined || bValue === undefined) return 0;
+                    if (typeof aValue === 'string' && typeof bValue === 'string') {
+                        return sortConfig.direction === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
+                    }
+                    if (typeof aValue === 'number' && typeof bValue === 'number') {
+                        return sortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue;
+                    }
+                    if (sortConfig.key === 'updatedAt' || sortConfig.key === 'createdAt') {
+                        if (typeof aValue === 'string' && typeof bValue === 'string') {
+                            return sortConfig.direction === 'asc'
+                                ? new Date(aValue).getTime() - new Date(bValue).getTime()
+                                : new Date(bValue).getTime() - new Date(aValue).getTime();
+                        }
+                    }
+                    return 0;
+                });
+            }
+            return filteredItems;
+        })();
+        
+        const totalItemCount = filteredAndSortedData.length;
+
+        setTimeout(() => {
+            if (groupBy !== 'none') {
+                set({
+                    items: filteredAndSortedData,
+                    hasMore: false,
+                    isLoading: false,
+                    isInitialLoading: false,
+                    totalItemCount,
+                });
+                return;
+            }
+
+            const pageSize = 12;
+            const newItems = filteredAndSortedData.slice((page - 1) * pageSize, page * pageSize);
+            
+            set(state => ({
+                items: isFirstPage ? newItems : [...state.items, ...newItems],
+                hasMore: totalItemCount > page * pageSize,
+                isLoading: false,
+                isInitialLoading: false,
+                totalItemCount,
+            }));
+
+        }, isFirstPage ? 1500 : 500);
+    }
+}));
+
+// --- Selectors ---
+export const useGroupTabs = (
+    groupBy: GroupableField | 'none',
+    activeGroupTab: string,
+) => useDataDemoStore(state => {
+    const items = state.items;
+    if (groupBy === 'none' || !items.length) return [];
+    
+    const groupCounts = items.reduce((acc, item) => {
+        const groupKey = String(item[groupBy as GroupableField]);
+        acc[groupKey] = (acc[groupKey] || 0) + 1;
+        return acc;
+    }, {} as Record<string, number>);
+
+    const sortedGroups = Object.keys(groupCounts).sort((a, b) => a.localeCompare(b));
+
+    const createLabel = (text: string, count: number, isActive: boolean): ReactNode => (
+        <>
+            {text}
+            <Badge variant={isActive ? 'default' : 'secondary'} className={cn('transition-colors duration-300 text-xs font-semibold', !isActive && 'group-hover:bg-accent group-hover:text-accent-foreground')}>
+                {count}
+            </Badge>
+        </>
+    );
+    
+    const totalCount = items.length;
+
+    return [
+        { id: 'all', label: createLabel('All', totalCount, activeGroupTab === 'all') },
+        ...sortedGroups.map((g) => ({
+            id: g,
+            label: createLabel(capitalize(g), groupCounts[g], activeGroupTab === g),
+        })),
+    ];
+});
+
+export const useDataToRender = (
+    groupBy: GroupableField | 'none',
+    activeGroupTab: string,
+) => useDataDemoStore(state => {
+    const items = state.items;
+    if (groupBy === 'none') {
+        return items;
+    }
+    if (activeGroupTab === 'all') {
+        return items;
+    }
+    return items.filter((item) => String(item[groupBy as GroupableField]) === activeGroupTab);
+});
+
+export const useSelectedItem = (itemId?: string) => {
+    if (!itemId) return null;
+    return mockDataItems.find(item => item.id === itemId) ?? null;
+};
+```
+
+## File: src/pages/Notifications/notifications.store.ts
+```typescript
+import { create } from 'zustand';
+
+// --- Types ---
+export type Notification = {
+  id: number;
+  type: string;
+  user: {
+    name: string;
+    avatar: string;
+    fallback: string;
+  };
+  action: string;
+  target?: string;
+  content?: string;
+  timestamp: string;
+  timeAgo: string;
+  isRead: boolean;
+  hasActions?: boolean;
+  file?: {
+    name: string;
+    size: string;
+    type: string;
+  };
+};
+
+const initialNotifications: Array<Notification> = [
+    { id: 1, type: "comment", user: { name: "Amélie", avatar: "https://api.dicebear.com/7.x/notionists/svg?seed=Amélie", fallback: "A" }, action: "commented in", target: "Dashboard 2.0", content: "Really love this approach. I think this is the best solution for the document sync UX issue.", timestamp: "Friday 3:12 PM", timeAgo: "2 hours ago", isRead: false },
+    { id: 2, type: "follow", user: { name: "Sienna", avatar: "https://api.dicebear.com/7.x/notionists/svg?seed=Sienna", fallback: "S" }, action: "followed you", timestamp: "Friday 3:04 PM", timeAgo: "2 hours ago", isRead: false },
+    { id: 3, type: "invitation", user: { name: "Ammar", avatar: "https://api.dicebear.com/7.x/notionists/svg?seed=Ammar", fallback: "A" }, action: "invited you to", target: "Blog design", timestamp: "Friday 2:22 PM", timeAgo: "3 hours ago", isRead: true, hasActions: true },
+    { id: 4, type: "file_share", user: { name: "Mathilde", avatar: "https://api.dicebear.com/7.x/notionists/svg?seed=Mathilde", fallback: "M" }, action: "shared a file in", target: "Dashboard 2.0", file: { name: "Prototype recording 01.mp4", size: "14 MB", type: "MP4" }, timestamp: "Friday 1:40 PM", timeAgo: "4 hours ago", isRead: true },
+    { id: 5, type: "mention", user: { name: "James", avatar: "https://api.dicebear.com/7.x/notionists/svg?seed=James", fallback: "J" }, action: "mentioned you in", target: "Project Alpha", content: "Hey @you, can you review the latest designs when you get a chance?", timestamp: "Thursday 11:30 AM", timeAgo: "1 day ago", isRead: true },
+    { id: 6, type: "like", user: { name: "Sofia", avatar: "https://api.dicebear.com/7.x/notionists/svg?seed=Sofia", fallback: "S" }, action: "liked your comment in", target: "Team Meeting Notes", timestamp: "Thursday 9:15 AM", timeAgo: "1 day ago", isRead: true },
+    { id: 7, type: "task_assignment", user: { name: "Admin", avatar: "https://api.dicebear.com/7.x/bottts/svg?seed=Admin", fallback: "AD" }, action: "assigned you a new task in", target: "Q3 Marketing", content: "Finalize the social media campaign assets.", timestamp: "Wednesday 5:00 PM", timeAgo: "2 days ago", isRead: true },
+    { id: 8, type: "system_update", user: { name: "System", avatar: "https://api.dicebear.com/7.x/shapes/svg?seed=System", fallback: "SYS" }, action: "pushed a new update", content: "Version 2.1.0 is now live with improved performance and new features. Check out the release notes for more details.", timestamp: "Wednesday 9:00 AM", timeAgo: "2 days ago", isRead: true },
+    { id: 9, type: 'comment', user: { name: 'Elena', avatar: 'https://api.dicebear.com/7.x/notionists/svg?seed=Elena', fallback: 'E' }, action: 'replied to your comment in', target: 'Dashboard 2.0', content: 'Thanks for the feedback! I\'ve updated the prototype.', timestamp: 'Tuesday 4:30 PM', timeAgo: '3 days ago', isRead: false },
+    { id: 10, type: 'invitation', user: { name: 'Carlos', avatar: 'https://api.dicebear.com/7.x/notionists/svg?seed=Carlos', fallback: 'C' }, action: 'invited you to', target: 'API Integration', timestamp: 'Tuesday 10:00 AM', timeAgo: '3 days ago', isRead: true, hasActions: true },
+];
+
+// --- State and Actions ---
+type ActiveTab = 'all' | 'verified' | 'mentions';
+
+interface NotificationsState {
+    notifications: Notification[];
+    activeTab: ActiveTab;
+}
+
+interface NotificationsActions {
+    markAsRead: (id: number) => void;
+    markAllAsRead: () => number; // Returns number of items marked as read
+    setActiveTab: (tab: ActiveTab) => void;
+}
+
+// --- Store ---
+export const useNotificationsStore = create<NotificationsState & NotificationsActions>((set, get) => ({
+    notifications: initialNotifications,
+    activeTab: 'all',
+
+    markAsRead: (id) => set(state => ({
+        notifications: state.notifications.map(n => n.id === id ? { ...n, isRead: true } : n)
+    })),
+
+    markAllAsRead: () => {
+        const unreadCount = get().notifications.filter(n => !n.isRead).length;
+        if (unreadCount > 0) {
+            set(state => ({
+                notifications: state.notifications.map(n => ({ ...n, isRead: true }))
+            }));
+        }
+        return unreadCount;
+    },
+
+    setActiveTab: (tab) => set({ activeTab: tab }),
+}));
+
+// --- Selectors ---
+const selectNotifications = (state: NotificationsState) => state.notifications;
+const selectActiveTab = (state: NotificationsState) => state.activeTab;
+
+export const useFilteredNotifications = () => useNotificationsStore(state => {
+    const notifications = selectNotifications(state);
+    const activeTab = selectActiveTab(state);
+
+    switch (activeTab) {
+        case 'verified': return notifications.filter(n => n.type === 'follow' || n.type === 'like');
+        case 'mentions': return notifications.filter(n => n.type === 'mention');
+        default: return notifications;
+    }
+});
+
+export const useNotificationCounts = () => useNotificationsStore(state => {
+    const notifications = selectNotifications(state);
+    const unreadCount = notifications.filter(n => !n.isRead).length;
+    const verifiedCount = notifications.filter(n => (n.type === 'follow' || n.type === 'like') && !n.isRead).length;
+    const mentionCount = notifications.filter(n => n.type === 'mention' && !n.isRead).length;
+    return { unreadCount, verifiedCount, mentionCount };
+});
+```
+
 ## File: src/providers/AppShellProvider.tsx
 ```typescript
 import { useEffect, type ReactNode, type ReactElement } from 'react';
@@ -186,6 +1895,8 @@ import { create } from 'zustand';
 import { type ReactElement } from 'react';
 import { SIDEBAR_STATES, BODY_STATES, type SidebarState, type BodyState } from '@/lib/utils';
 
+export type ActivePage = 'dashboard' | 'settings' | 'toaster' | 'notifications' | 'data-demo';
+
 // --- State and Action Types ---
 
 export interface AppShellState {
@@ -204,6 +1915,8 @@ export interface AppShellState {
   reducedMotion: boolean;
   compactMode: boolean;
   primaryColor: string;
+  isCommandPaletteOpen: boolean;
+  isDarkMode: boolean;
   appName?: string;
   appLogo?: ReactElement;
   draggedPage: 'dashboard' | 'settings' | 'toaster' | 'notifications' | 'data-demo' | null;
@@ -231,6 +1944,8 @@ export interface AppShellActions {
     setCompactMode: (payload: boolean) => void;
     setPrimaryColor: (payload: string) => void;
     setDraggedPage: (payload: 'dashboard' | 'settings' | 'toaster' | 'notifications' | 'data-demo' | null) => void;
+    setCommandPaletteOpen: (open: boolean) => void;
+    toggleDarkMode: () => void;
     setDragHoverTarget: (payload: 'left' | 'right' | null) => void;
     setHoveredPane: (payload: 'left' | 'right' | null) => void;
     
@@ -259,6 +1974,8 @@ const defaultState: AppShellState = {
   reducedMotion: false,
   compactMode: false,
   primaryColor: '220 84% 60%',
+  isCommandPaletteOpen: false,
+  isDarkMode: false,
   appName: 'Jeli App',
   appLogo: undefined,
   draggedPage: null,
@@ -304,6 +2021,8 @@ export const useAppShellStore = create<AppShellState & AppShellActions>((set, ge
     set({ primaryColor: payload });
   },
   setDraggedPage: (payload) => set({ draggedPage: payload }),
+  setCommandPaletteOpen: (open) => set({ isCommandPaletteOpen: open }),
+  toggleDarkMode: () => set((state) => ({ isDarkMode: !state.isDarkMode })),
   setDragHoverTarget: (payload) => set({ dragHoverTarget: payload }),
   setHoveredPane: (payload) => set({ hoveredPane: payload }),
   
@@ -351,6 +2070,577 @@ export const useRightPaneWidth = () => useAppShellStore(state =>
 );
 ```
 
+## File: postcss.config.js
+```javascript
+export default {
+  plugins: {
+    tailwindcss: {},
+    autoprefixer: {},
+  },
+}
+```
+
+## File: src/components/layout/UserDropdown.tsx
+```typescript
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuPortal,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { cn } from "@/lib/utils"
+import { Icon } from "@iconify/react";
+import { useAuthStore } from "@/store/authStore";
+
+const MENU_ITEMS = {
+  status: [
+    { value: "focus", icon: "solar:emoji-funny-circle-line-duotone", label: "Focus" },
+    { value: "offline", icon: "solar:moon-sleep-line-duotone", label: "Appear Offline" }
+  ],
+  profile: [
+    { icon: "solar:user-circle-line-duotone", label: "Your profile", action: "profile" },
+    { icon: "solar:sun-line-duotone", label: "Appearance", action: "appearance" },
+    { icon: "solar:settings-line-duotone", label: "Settings", action: "settings" },
+    { icon: "solar:bell-line-duotone", label: "Notifications", action: "notifications" }
+  ],
+  premium: [
+    { 
+      icon: "solar:star-bold", 
+      label: "Upgrade to Pro", 
+      action: "upgrade",
+      iconClass: "text-amber-500",
+      badge: { text: "20% off", className: "bg-amber-500 text-white text-[11px]" }
+    },
+    { icon: "solar:gift-line-duotone", label: "Referrals", action: "referrals" }
+  ],
+  support: [
+    { icon: "solar:download-line-duotone", label: "Download app", action: "download" },
+    { 
+      icon: "solar:letter-unread-line-duotone", 
+      label: "What's new?", 
+      action: "whats-new",
+      rightIcon: "solar:square-top-down-line-duotone"
+    },
+    { 
+      icon: "solar:question-circle-line-duotone", 
+      label: "Get help?", 
+      action: "help",
+      rightIcon: "solar:square-top-down-line-duotone"
+    }
+  ],
+  account: [
+    { 
+      icon: "solar:users-group-rounded-bold-duotone", 
+      label: "Switch account", 
+      action: "switch",
+      showAvatar: false
+    },
+    { icon: "solar:logout-2-bold-duotone", label: "Log out", action: "logout" }
+  ]
+};
+
+// Interface for menu item for better type safety
+interface MenuItem {
+  value?: string;
+  icon: string;
+  label: string;
+  action?: string;
+  iconClass?: string;
+  badge?: { text: string; className: string };
+  rightIcon?: string;
+  showAvatar?: boolean;
+}
+
+interface User {
+  name: string;
+  username: string;
+  avatar: string;
+  initials: string;
+  status: string;
+}
+
+interface UserDropdownProps {
+  user?: User;
+  onAction?: (action?: string) => void;
+  onStatusChange?: (status: string) => void;
+  selectedStatus?: string;
+  promoDiscount?: string;
+}
+
+export const UserDropdown = ({ 
+  user: propUser,
+  onAction = (_action?: string) => {},
+  onStatusChange = (_status: string) => {},
+  selectedStatus = "online",
+  promoDiscount = "20% off",
+}: UserDropdownProps) => {
+  const { user: authUser, logout } = useAuthStore();
+  
+  const user = propUser || {
+    name: authUser?.name || "User",
+    username: `@${authUser?.name?.toLowerCase() || "user"}`,
+    avatar: `https://ui-avatars.com/api/?name=${authUser?.name || "User"}&background=0ea5e9&color=fff`,
+    initials: authUser?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || "U",
+    status: "online"
+  };
+  const handleAction = (action?: string) => {
+    if (action === 'logout') {
+      logout();
+    } else {
+      onAction(action);
+    }
+  };
+
+  const renderMenuItem = (item: MenuItem, index: number) => (
+    <DropdownMenuItem 
+      key={index}
+      className={cn(
+        "px-3 py-2", // Consistent with base component
+        item.badge || item.showAvatar || item.rightIcon ? "justify-between" : ""
+      )}
+      onClick={() => item.action && handleAction(item.action)}
+    >
+      <span className="flex items-center gap-2 font-medium">
+        <Icon
+          icon={item.icon}
+          className={cn("h-5 w-5 text-muted-foreground", item.iconClass)}
+        />
+        {item.label}
+      </span>
+      {item.badge && (
+        <Badge className={item.badge.className}>
+          {promoDiscount || item.badge.text}
+        </Badge>
+      )}
+      {item.rightIcon && (
+        <Icon
+          icon={item.rightIcon}
+          className="h-4 w-4 text-muted-foreground"
+        />
+      )}
+      {item.showAvatar && (
+        <Avatar className="cursor-pointer h-6 w-6 shadow border-2 border-background">
+          <AvatarImage src={user.avatar} alt={user.name} />
+          <AvatarFallback>{user.initials}</AvatarFallback>
+        </Avatar>
+      )}
+    </DropdownMenuItem>
+  );
+
+  const getStatusColor = (status: string) => {
+    const colors = {
+      online: "text-green-600 bg-green-100 border-green-300 dark:text-green-400 dark:bg-green-900/30 dark:border-green-500/50",
+      offline: "text-muted-foreground bg-muted border-border",
+      busy: "text-destructive bg-destructive/20 border-destructive/30"
+    };
+    return colors[status.toLowerCase() as keyof typeof colors] || colors.online;
+  };
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Avatar className="cursor-pointer h-10 w-10 border-2 border-transparent hover:border-primary transition-colors">
+          <AvatarImage src={user.avatar} alt={user.name} />
+          <AvatarFallback>{user.initials}</AvatarFallback>
+        </Avatar>
+      </DropdownMenuTrigger>
+
+      <DropdownMenuContent className="no-scrollbar w-[310px] p-2" align="end">
+        <div className="flex items-center">
+          <div className="flex-1 flex items-center gap-3">
+            <Avatar className="cursor-pointer h-10 w-10">
+              <AvatarImage src={user.avatar} alt={user.name} />
+              <AvatarFallback>{user.initials}</AvatarFallback>
+            </Avatar>
+            <div>
+              <h3 className="font-semibold">{user.name}</h3>
+              <p className="text-muted-foreground text-sm">{user.username}</p>
+            </div>
+          </div>
+          <Badge variant="outline" className={cn("border-[0.5px] text-xs font-normal rounded-md capitalize", getStatusColor(user.status))}>
+            {user.status}
+          </Badge>
+        </div>
+        
+        <DropdownMenuSeparator className="my-2" />
+        
+        <DropdownMenuGroup>
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger className="w-full">
+              <span className="flex items-center gap-2 font-medium">
+                <Icon icon="solar:smile-circle-line-duotone" className="h-5 w-5" />
+                Update status
+              </span>
+            </DropdownMenuSubTrigger>
+            <DropdownMenuPortal>
+              <DropdownMenuSubContent>
+                <DropdownMenuRadioGroup value={selectedStatus} onValueChange={onStatusChange}>
+                  {MENU_ITEMS.status.map((status, index) => (
+                    <DropdownMenuRadioItem className="gap-2" key={index} value={status.value}>
+                      <Icon icon={status.icon} className="h-5 w-5 text-muted-foreground" />
+                      {status.label}
+                    </DropdownMenuRadioItem>
+                  ))}
+                </DropdownMenuRadioGroup>
+              </DropdownMenuSubContent>
+            </DropdownMenuPortal>
+          </DropdownMenuSub>
+        </DropdownMenuGroup>
+
+        <DropdownMenuSeparator className="my-2" />
+        <DropdownMenuGroup>
+          {MENU_ITEMS.profile.map(renderMenuItem)}
+        </DropdownMenuGroup>
+
+        <DropdownMenuSeparator className="my-2" />
+        <DropdownMenuGroup>
+          {MENU_ITEMS.premium.map(renderMenuItem)}
+        </DropdownMenuGroup>
+
+        <DropdownMenuSeparator className="my-2" />
+        <DropdownMenuGroup>
+          {MENU_ITEMS.support.map(renderMenuItem)}
+        </DropdownMenuGroup>
+     
+        <DropdownMenuSeparator className="my-2" />
+        <DropdownMenuGroup>
+          {MENU_ITEMS.account.map(renderMenuItem)}
+        </DropdownMenuGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+};
+```
+
+## File: src/components/layout/WorkspaceSwitcher.tsx
+```typescript
+import * as React from 'react';
+import { CheckIcon, ChevronsUpDownIcon, Search } from 'lucide-react';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { cn } from '@/lib/utils';
+import {
+	Popover,
+	PopoverTrigger,
+	PopoverContent,
+	type PopoverContentProps,
+} from '@/components/ui/popover';
+
+// Generic workspace interface - can be extended
+export interface Workspace {
+	id: string;
+	name: string;
+	logo?: string;
+	plan?: string;
+	[key: string]: unknown; // Allow additional properties
+}
+
+// Context for workspace state management
+interface WorkspaceContextValue<T extends Workspace> {
+	open: boolean;
+	setOpen: (open: boolean) => void;
+	selectedWorkspace: T | undefined;
+	workspaces: T[];
+	onWorkspaceSelect: (workspace: T) => void;
+	getWorkspaceId: (workspace: T) => string;
+	getWorkspaceName: (workspace: T) => string;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const WorkspaceContext = React.createContext<WorkspaceContextValue<any> | null>(
+	null,
+);
+
+function useWorkspaceContext<T extends Workspace>() {
+	const context = React.useContext(
+		WorkspaceContext,
+	) as WorkspaceContextValue<T> | null;
+	if (!context) {
+		throw new Error(
+			'Workspace components must be used within WorkspaceProvider',
+		);
+	}
+	return context;
+}
+
+// Main provider component
+interface WorkspaceProviderProps<T extends Workspace> {
+	children: React.ReactNode;
+	workspaces: T[];
+	selectedWorkspaceId?: string;
+	onWorkspaceChange?: (workspace: T) => void;
+	open?: boolean;
+	onOpenChange?: (open: boolean) => void;
+	getWorkspaceId?: (workspace: T) => string;
+	getWorkspaceName?: (workspace: T) => string;
+}
+
+function WorkspaceProvider<T extends Workspace>({
+	children,
+	workspaces,
+	selectedWorkspaceId,
+	onWorkspaceChange,
+	open: controlledOpen,
+	onOpenChange,
+	getWorkspaceId = (workspace) => workspace.id,
+	getWorkspaceName = (workspace) => workspace.name,
+}: WorkspaceProviderProps<T>) {
+	const [internalOpen, setInternalOpen] = React.useState(false);
+
+	const open = controlledOpen ?? internalOpen;
+	const setOpen = onOpenChange ?? setInternalOpen;
+
+	const selectedWorkspace = React.useMemo(() => {
+		if (!selectedWorkspaceId) return workspaces[0];
+		return (
+			workspaces.find((ws) => getWorkspaceId(ws) === selectedWorkspaceId) ||
+			workspaces[0]
+		);
+	}, [workspaces, selectedWorkspaceId, getWorkspaceId]);
+
+	const handleWorkspaceSelect = React.useCallback(
+		(workspace: T) => {
+			onWorkspaceChange?.(workspace);
+			setOpen(false);
+		},
+		[onWorkspaceChange, setOpen],
+	);
+
+	const value: WorkspaceContextValue<T> = {
+		open,
+		setOpen,
+		selectedWorkspace,
+		workspaces,
+		onWorkspaceSelect: handleWorkspaceSelect,
+		getWorkspaceId,
+		getWorkspaceName,
+	};
+
+	return (
+		<WorkspaceContext.Provider value={value}>
+			<Popover open={open} onOpenChange={setOpen}>
+				{children}
+			</Popover>
+		</WorkspaceContext.Provider>
+	);
+}
+
+// Trigger component
+interface WorkspaceTriggerProps extends React.ComponentProps<'button'> {
+	renderTrigger?: (workspace: Workspace, isOpen: boolean) => React.ReactNode;
+  collapsed?: boolean;
+  avatarClassName?: string;
+}
+
+function WorkspaceTrigger({
+	className,
+	renderTrigger,
+  collapsed = false,
+  avatarClassName,
+	...props
+}: WorkspaceTriggerProps) {
+	const { open, selectedWorkspace, getWorkspaceName } = useWorkspaceContext();
+
+	if (!selectedWorkspace) return null;
+
+	if (renderTrigger) {
+		return (
+			<PopoverTrigger asChild>
+				<button className={className} {...props}>
+					{renderTrigger(selectedWorkspace, open)}
+				</button>
+			</PopoverTrigger>
+		);
+	}
+
+	return (
+		<PopoverTrigger asChild>
+			<button
+				data-state={open ? 'open' : 'closed'}
+				className={cn(
+					'flex w-full items-center justify-between text-sm',
+					'focus:ring-ring focus:ring-2 focus:ring-offset-2 focus:outline-none',
+					className,
+				)}
+				{...props}
+			>
+				<div className={cn("flex items-center gap-3", collapsed ? "w-full justify-center" : "min-w-0 flex-1")}>
+					<Avatar className={cn(avatarClassName)}>
+						<AvatarImage
+							src={selectedWorkspace.logo}
+							alt={getWorkspaceName(selectedWorkspace)}
+						/>
+						<AvatarFallback className="text-xs">
+							{getWorkspaceName(selectedWorkspace).charAt(0).toUpperCase()}
+						</AvatarFallback>
+					</Avatar>
+					{!collapsed && (
+						<div className="flex min-w-0 flex-1 flex-col items-start">
+							<span className="truncate font-medium">{getWorkspaceName(selectedWorkspace)}</span>
+							<span className="text-muted-foreground truncate text-xs">{selectedWorkspace.plan}</span>
+						</div>
+					)}
+				</div>
+				{!collapsed && <ChevronsUpDownIcon className="h-4 w-4 shrink-0 opacity-50" />}
+			</button>
+		</PopoverTrigger>
+	);
+}
+
+// Content component
+interface WorkspaceContentProps
+	extends PopoverContentProps {
+	renderWorkspace?: (
+		workspace: Workspace,
+		isSelected: boolean,
+	) => React.ReactNode;
+	title?: string;
+	searchable?: boolean;
+	onSearch?: (query: string) => void;
+}
+
+function WorkspaceContent({
+	className,
+	children,
+	renderWorkspace,
+	title = 'Workspaces',
+	searchable = false,
+	onSearch,
+	side = 'right',
+	align = 'start',
+	sideOffset = 8,
+	useTriggerWidth = false,
+	...props
+}: WorkspaceContentProps) {
+	const {
+		workspaces,
+		selectedWorkspace,
+		onWorkspaceSelect,
+		getWorkspaceId,
+		getWorkspaceName,
+	} = useWorkspaceContext();
+
+	const [searchQuery, setSearchQuery] = React.useState('');
+
+	const filteredWorkspaces = React.useMemo(() => {
+		if (!searchQuery) return workspaces;
+		return workspaces.filter((ws) =>
+			getWorkspaceName(ws).toLowerCase().includes(searchQuery.toLowerCase()),
+		);
+	}, [workspaces, searchQuery, getWorkspaceName]);
+
+	React.useEffect(() => {
+		onSearch?.(searchQuery);
+	}, [searchQuery, onSearch]);
+
+	const defaultRenderWorkspace = (
+		workspace: Workspace,
+		isSelected: boolean,
+	) => (
+		<div className="flex min-w-0 flex-1 items-center gap-2">
+			<Avatar className="h-6 w-6">
+				<AvatarImage
+					src={workspace.logo}
+					alt={getWorkspaceName(workspace)}
+				/>
+				<AvatarFallback className="text-xs">
+					{getWorkspaceName(workspace).charAt(0).toUpperCase()}
+				</AvatarFallback>
+			</Avatar>
+			<div className="flex min-w-0 flex-1 flex-col items-start">
+				<span className="truncate text-sm">{getWorkspaceName(workspace)}</span>
+				{workspace.plan && (
+					<span className="text-muted-foreground text-xs">
+						{workspace.plan}
+					</span>
+				)}
+			</div>
+			{isSelected && <CheckIcon className="ml-auto h-4 w-4" />}
+		</div>
+	);
+
+	return (
+		<PopoverContent
+			className={cn('p-0', className)}
+			align={align}
+			sideOffset={sideOffset}
+			useTriggerWidth={useTriggerWidth}
+			{...{ ...props, side }}
+		>
+			<div className="border-b px-4 py-3">
+				<h3 className="text-sm font-semibold text-foreground">{title}</h3>
+			</div>
+
+			{searchable && (
+				<div className="border-b p-2">
+					<div className="relative">
+						<Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+						<input
+							type="text"
+							placeholder="Search workspaces..."
+							value={searchQuery}
+							onChange={(e) => setSearchQuery(e.target.value)}
+							className="h-9 w-full rounded-md bg-transparent pl-9 text-sm placeholder:text-muted-foreground focus:bg-accent focus:outline-none"
+						/>
+					</div>
+				</div>
+			)}
+
+			<div className="max-h-[300px] overflow-y-auto">
+				{filteredWorkspaces.length === 0 ? (
+					<div className="text-muted-foreground px-3 py-2 text-center text-sm">
+						No workspaces found
+					</div>
+				) : (
+					<div className="space-y-1 p-2">
+						{filteredWorkspaces.map((workspace) => {
+							const isSelected =
+								selectedWorkspace &&
+								getWorkspaceId(selectedWorkspace) === getWorkspaceId(workspace);
+
+							return (
+								<button
+									key={getWorkspaceId(workspace)}
+									onClick={() => onWorkspaceSelect(workspace)}
+									className={cn(
+										'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm',
+										'hover:bg-accent hover:text-accent-foreground',
+										'focus:outline-none',
+										isSelected && 'bg-accent text-accent-foreground',
+									)}
+								>
+									{renderWorkspace
+										? renderWorkspace(workspace, !!isSelected)
+										: defaultRenderWorkspace(workspace, !!isSelected)}
+								</button>
+							);
+						})}
+					</div>
+				)}
+			</div>
+
+			{children && (
+				<>
+					<div className="border-t" />
+					<div className="p-1">{children}</div>
+				</>
+			)}
+		</PopoverContent>
+	);
+}
+
+export { WorkspaceProvider as Workspaces, WorkspaceTrigger, WorkspaceContent };
+```
+
 ## File: src/components/shared/PageLayout.tsx
 ```typescript
 import React from 'react';
@@ -365,7 +2655,8 @@ interface PageLayoutProps extends React.HTMLAttributes<HTMLDivElement> {
 
 export const PageLayout = React.forwardRef<HTMLDivElement, PageLayoutProps>(
   ({ children, onScroll, scrollRef, className, ...props }, ref) => {
-    const { isTopBarVisible, bodyState } = useAppShellStore();
+    const isTopBarVisible = useAppShellStore(s => s.isTopBarVisible);
+    const bodyState = useAppShellStore(s => s.bodyState);
     const isFullscreen = bodyState === 'fullscreen';
     const isInSidePane = bodyState === BODY_STATES.SIDE_PANE;
 
@@ -392,12 +2683,595 @@ export const PageLayout = React.forwardRef<HTMLDivElement, PageLayoutProps>(
 PageLayout.displayName = 'PageLayout';
 ```
 
+## File: src/components/ui/badge.tsx
+```typescript
+import * as React from "react"
+import { cva, type VariantProps } from "class-variance-authority"
+
+import { cn } from "@/lib/utils"
+
+const badgeVariants = cva(
+  "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+  {
+    variants: {
+      variant: {
+        default:
+          "border-transparent bg-primary text-primary-foreground hover:bg-primary/80",
+        secondary:
+          "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80",
+        destructive:
+          "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80",
+        outline: "text-foreground",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+    },
+  },
+)
+
+export interface BadgeProps
+  extends React.HTMLAttributes<HTMLDivElement>,
+    VariantProps<typeof badgeVariants> {}
+
+function Badge({ className, variant, ...props }: BadgeProps) {
+  return (
+    <div className={cn(badgeVariants({ variant }), className)} {...props} />
+  )
+}
+
+// eslint-disable-next-line react-refresh/only-export-components
+export { Badge, badgeVariants }
+```
+
+## File: src/components/ui/button.tsx
+```typescript
+import * as React from "react"
+import { Slot } from "@radix-ui/react-slot"
+import { cva, type VariantProps } from "class-variance-authority"
+
+import { cn } from "@/lib/utils"
+
+const buttonVariants = cva(
+  "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+  {
+    variants: {
+      variant: {
+        default: "bg-primary text-primary-foreground hover:bg-primary/90",
+        destructive:
+          "bg-destructive text-destructive-foreground hover:bg-destructive/90",
+        outline:
+          "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
+        secondary:
+          "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+        ghost: "hover:bg-accent hover:text-accent-foreground",
+        link: "text-primary underline-offset-4 hover:underline",
+      },
+      size: {
+        default: "h-10 px-4 py-2",
+        sm: "h-9 rounded-md px-3",
+        lg: "h-11 rounded-md px-8",
+        icon: "h-10 w-10",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+      size: "default",
+    },
+  }
+)
+
+export interface ButtonProps
+  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
+    VariantProps<typeof buttonVariants> {
+  asChild?: boolean
+}
+
+const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
+  ({ className, variant, size, asChild = false, ...props }, ref) => {
+    const Comp = asChild ? Slot : "button"
+    return (
+      <Comp
+        className={cn(buttonVariants({ variant, size, className }))}
+        ref={ref}
+        {...props}
+      />
+    )
+  }
+)
+Button.displayName = "Button"
+
+// eslint-disable-next-line react-refresh/only-export-components
+export { Button, buttonVariants }
+```
+
+## File: src/components/ui/dropdown-menu.tsx
+```typescript
+import * as React from "react"
+import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu"
+import { Check, ChevronRight, Circle } from "lucide-react"
+
+import { cn } from "@/lib/utils"
+
+const DropdownMenu = DropdownMenuPrimitive.Root
+
+const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger
+
+const DropdownMenuGroup = DropdownMenuPrimitive.Group
+
+const DropdownMenuPortal = DropdownMenuPrimitive.Portal
+
+const DropdownMenuSub = DropdownMenuPrimitive.Sub
+
+const DropdownMenuRadioGroup = DropdownMenuPrimitive.RadioGroup
+
+const DropdownMenuSubTrigger = React.forwardRef<
+  React.ElementRef<typeof DropdownMenuPrimitive.SubTrigger>,
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.SubTrigger> & {
+    inset?: boolean
+  }
+>(({ className, inset, children, ...props }, ref) => (
+  <DropdownMenuPrimitive.SubTrigger
+    ref={ref}
+    className={cn(
+      "flex cursor-default select-none items-center rounded-lg px-3 py-2 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[state=open]:bg-accent",
+      inset && "pl-8",
+      className
+    )}
+    {...props}
+  >
+    {children}
+    <ChevronRight className="ml-auto h-4 w-4" />
+  </DropdownMenuPrimitive.SubTrigger>
+))
+DropdownMenuSubTrigger.displayName =
+  DropdownMenuPrimitive.SubTrigger.displayName
+
+const DropdownMenuSubContent = React.forwardRef<
+  React.ElementRef<typeof DropdownMenuPrimitive.SubContent>,
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.SubContent>
+>(({ className, ...props }, ref) => (
+  <DropdownMenuPrimitive.SubContent
+    ref={ref}
+    className={cn(
+      "z-50 min-w-[8rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-lg data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
+      className
+    )}
+    {...props}
+  />
+))
+DropdownMenuSubContent.displayName =
+  DropdownMenuPrimitive.SubContent.displayName
+
+const DropdownMenuContent = React.forwardRef<
+  React.ElementRef<typeof DropdownMenuPrimitive.Content>,
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content>
+>(({ className, sideOffset = 4, ...props }, ref) => (
+  <DropdownMenuPrimitive.Portal>
+    <DropdownMenuPrimitive.Content
+      ref={ref}
+      sideOffset={sideOffset}
+      className={cn(
+        "z-50 min-w-[8rem] overflow-hidden rounded-xl border bg-popover p-1 text-popover-foreground shadow-xl outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
+        className
+      )}
+      {...props}
+    />
+  </DropdownMenuPrimitive.Portal>
+))
+DropdownMenuContent.displayName = DropdownMenuPrimitive.Content.displayName
+
+const DropdownMenuItem = React.forwardRef<
+  React.ElementRef<typeof DropdownMenuPrimitive.Item>,
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Item> & {
+    inset?: boolean
+  }
+>(({ className, inset, ...props }, ref) => (
+  <DropdownMenuPrimitive.Item
+    ref={ref}
+    className={cn(
+      "relative flex cursor-default select-none items-center rounded-lg px-3 py-2 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      inset && "pl-8",
+      className
+    )}
+    {...props}
+  />
+))
+DropdownMenuItem.displayName = DropdownMenuPrimitive.Item.displayName
+
+const DropdownMenuCheckboxItem = React.forwardRef<
+  React.ElementRef<typeof DropdownMenuPrimitive.CheckboxItem>,
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.CheckboxItem>
+>(({ className, children, checked, ...props }, ref) => (
+  <DropdownMenuPrimitive.CheckboxItem
+    ref={ref}
+    className={cn(
+      "relative flex cursor-default select-none items-center rounded-lg py-2 pl-8 pr-3 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      className
+    )}
+    checked={checked}
+    {...props}
+  >
+    <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
+      <DropdownMenuPrimitive.ItemIndicator>
+        <Check className="h-4 w-4" />
+      </DropdownMenuPrimitive.ItemIndicator>
+    </span>
+    {children}
+  </DropdownMenuPrimitive.CheckboxItem>
+))
+DropdownMenuCheckboxItem.displayName =
+  DropdownMenuPrimitive.CheckboxItem.displayName
+
+const DropdownMenuRadioItem = React.forwardRef<
+  React.ElementRef<typeof DropdownMenuPrimitive.RadioItem>,
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.RadioItem>
+>(({ className, children, ...props }, ref) => (
+  <DropdownMenuPrimitive.RadioItem
+    ref={ref}
+    className={cn(
+      "relative flex cursor-default select-none items-center rounded-lg py-2 pl-8 pr-3 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      className
+    )}
+    {...props}
+  >
+    <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
+      <DropdownMenuPrimitive.ItemIndicator>
+        <Circle className="h-2 w-2 fill-current" />
+      </DropdownMenuPrimitive.ItemIndicator>
+    </span>
+    {children}
+  </DropdownMenuPrimitive.RadioItem>
+))
+DropdownMenuRadioItem.displayName = DropdownMenuPrimitive.RadioItem.displayName
+
+const DropdownMenuLabel = React.forwardRef<
+  React.ElementRef<typeof DropdownMenuPrimitive.Label>,
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Label> & {
+    inset?: boolean
+  }
+>(({ className, inset, ...props }, ref) => (
+  <DropdownMenuPrimitive.Label
+    ref={ref}
+    className={cn(
+      "px-2 py-1.5 text-sm font-semibold",
+      inset && "pl-8",
+      className
+    )}
+    {...props}
+  />
+))
+DropdownMenuLabel.displayName = DropdownMenuPrimitive.Label.displayName
+
+const DropdownMenuSeparator = React.forwardRef<
+  React.ElementRef<typeof DropdownMenuPrimitive.Separator>,
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Separator>
+>(({ className, ...props }, ref) => (
+  <DropdownMenuPrimitive.Separator
+    ref={ref}
+    className={cn("-mx-1 my-1 h-px bg-muted", className)}
+    {...props}
+  />
+))
+DropdownMenuSeparator.displayName = DropdownMenuPrimitive.Separator.displayName
+
+const DropdownMenuShortcut = ({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLSpanElement>) => {
+  return (
+    <span
+      className={cn("ml-auto text-xs tracking-widest opacity-60", className)}
+      {...props}
+    />
+  )
+}
+DropdownMenuShortcut.displayName = "DropdownMenuShortcut"
+
+export {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuCheckboxItem,
+  DropdownMenuRadioItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuShortcut,
+  DropdownMenuGroup,
+  DropdownMenuPortal,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuRadioGroup,
+}
+```
+
+## File: src/components/ui/popover.tsx
+```typescript
+import * as React from "react"
+import * as PopoverPrimitive from "@radix-ui/react-popover"
+
+import { cn } from "@/lib/utils"
+
+const Popover = PopoverPrimitive.Root
+
+const PopoverTrigger = PopoverPrimitive.Trigger
+
+interface PopoverContentProps
+  extends React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Content> {
+  useTriggerWidth?: boolean
+}
+
+const PopoverContent = React.forwardRef<
+  React.ElementRef<typeof PopoverPrimitive.Content>,
+  PopoverContentProps
+>(
+  ({ className, align = "center", sideOffset = 4, useTriggerWidth = false, ...props }, ref) => (
+  <PopoverPrimitive.Portal>
+    <PopoverPrimitive.Content
+      ref={ref}
+      align={align}
+      sideOffset={sideOffset}
+      className={cn(
+        "z-50 w-72 rounded-xl border bg-popover p-4 text-popover-foreground shadow-xl outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
+        useTriggerWidth && "w-[var(--radix-popover-trigger-width)]",
+        className
+      )}
+      {...props}
+    />
+  </PopoverPrimitive.Portal>
+))
+PopoverContent.displayName = PopoverPrimitive.Content.displayName
+
+export { Popover, PopoverTrigger, PopoverContent }
+export type { PopoverContentProps }
+```
+
+## File: src/components/ui/toast.tsx
+```typescript
+import {
+  forwardRef,
+  useImperativeHandle,
+  createContext,
+  useContext,
+  useCallback,
+  useRef,
+  type ReactNode,
+} from "react";
+import { Toaster as SonnerToaster, toast as sonnerToast } from "sonner";
+import { CheckCircle, AlertCircle, Info, AlertTriangle, X } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+
+type Variant = "default" | "success" | "error" | "warning";
+type Position =
+  | "top-left"
+  | "top-center"
+  | "top-right"
+  | "bottom-left"
+  | "bottom-center"
+  | "bottom-right";
+
+interface ActionButton {
+  label: string;
+  onClick: () => void;
+  variant?: "default" | "outline" | "ghost";
+}
+
+export interface ToasterProps {
+  title?: string;
+  message: string;
+  variant?: Variant;
+  duration?: number;
+  position?: Position;
+  actions?: ActionButton;
+  onDismiss?: () => void;
+  highlightTitle?: boolean;
+}
+
+export interface ToasterRef {
+  show: (props: ToasterProps) => void;
+}
+
+const variantStyles: Record<Variant, string> = {
+  default: "border-border",
+  success: "border-green-600/50",
+  error: "border-destructive/50",
+  warning: "border-amber-600/50",
+};
+
+const titleColor: Record<Variant, string> = {
+  default: "text-foreground",
+  success: "text-green-600 dark:text-green-400",
+  error: "text-destructive",
+  warning: "text-amber-600 dark:text-amber-400",
+};
+
+const iconColor: Record<Variant, string> = {
+  default: "text-muted-foreground",
+  success: "text-green-600 dark:text-green-400",
+  error: "text-destructive",
+  warning: "text-amber-600 dark:text-amber-400",
+};
+
+const variantIcons: Record<
+  Variant,
+  React.ComponentType<{ className?: string }>
+> = {
+  default: Info,
+  success: CheckCircle,
+  error: AlertCircle,
+  warning: AlertTriangle,
+};
+
+const CustomToast = ({
+  toastId,
+  title,
+  message,
+  variant = "default",
+  actions,
+  highlightTitle,
+}: Omit<ToasterProps, "duration" | "position" | "onDismiss"> & {
+  toastId: number | string;
+}) => {
+  const Icon = variantIcons[variant];
+
+  const handleDismiss = () => {
+    sonnerToast.dismiss(toastId);
+  };
+
+  return (
+    <div
+      className={cn(
+        "flex items-center justify-between w-full max-w-sm p-4 rounded-lg border shadow-xl bg-popover text-popover-foreground",
+        variantStyles[variant],
+      )}
+    >
+      <div className="flex items-start gap-3">
+        <Icon
+          className={cn("h-5 w-5 mt-0.5 flex-shrink-0", iconColor[variant])}
+        />
+        <div className="space-y-1">
+          {title && (
+            <h3
+              className={cn(
+                "text-sm font-semibold leading-none",
+                titleColor[variant],
+                highlightTitle && titleColor["success"],
+              )}
+            >
+              {title}
+            </h3>
+          )}
+          <p className="text-sm text-muted-foreground">{message}</p>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-2">
+        {actions?.label && (
+          <Button
+            variant={actions.variant || "outline"}
+            size="sm"
+            onClick={() => {
+              actions.onClick();
+              handleDismiss();
+            }}
+            className={cn(
+              "h-8 px-3 text-xs cursor-pointer",
+              variant === "success"
+                ? "text-green-600 border-green-600 hover:bg-green-600/10 dark:hover:bg-green-400/20"
+                : variant === "error"
+                  ? "text-destructive border-destructive hover:bg-destructive/10 dark:hover:bg-destructive/20"
+                  : variant === "warning"
+                    ? "text-amber-600 border-amber-600 hover:bg-amber-600/10 dark:hover:bg-amber-400/20"
+                    : "text-foreground border-border hover:bg-muted/10 dark:hover:bg-muted/20",
+            )}
+          >
+            {actions.label}
+          </Button>
+        )}
+        <button
+          onClick={handleDismiss}
+          className="rounded-md p-1 hover:bg-muted/50 dark:hover:bg-muted/30 transition-colors focus:outline-none focus:ring-2 focus:ring-ring"
+          aria-label="Dismiss notification"
+        >
+          <X className="h-4 w-4 text-muted-foreground" />
+        </button>
+      </div>
+    </div>
+  );
+};
+
+const Toaster = forwardRef<ToasterRef, { defaultPosition?: Position }>(
+  ({ defaultPosition = "bottom-right" }, ref) => {
+    useImperativeHandle(ref, () => ({
+      show({
+        title,
+        message,
+        variant = "default",
+        duration = 4000,
+        position = defaultPosition,
+        actions,
+        onDismiss,
+        highlightTitle,
+      }) {
+        sonnerToast.custom(
+          (toastId) => (
+            <CustomToast
+              toastId={toastId}
+              title={title}
+              message={message}
+              variant={variant}
+              actions={actions}
+              highlightTitle={highlightTitle}
+            />
+          ),
+          {
+            duration,
+            position,
+            onDismiss,
+          },
+        );
+      },
+    }));
+
+    return (
+      <SonnerToaster
+        position={defaultPosition}
+        toastOptions={{
+          // By removing `unstyled`, sonner handles positioning and animations.
+          // We then use `classNames` to override only the styles we don't want,
+          // allowing our custom component to define the appearance.
+          classNames: {
+            toast: "p-0 border-none shadow-none bg-transparent", // Neutralize wrapper styles
+            // We can add specific styling to other parts if needed
+            // closeButton: '...',
+          },
+        }}
+        // The z-index is still useful as a safeguard
+        className="z-[2147483647]"
+      />
+    );
+  },
+);
+Toaster.displayName = "Toaster";
+
+const ToasterContext = createContext<((props: ToasterProps) => void) | null>(
+  null,
+);
+
+// eslint-disable-next-line react-refresh/only-export-components
+export const useToast = () => {
+  const context = useContext(ToasterContext);
+  if (!context) {
+    throw new Error("useToast must be used within a ToasterProvider");
+  }
+  return { show: context };
+};
+
+export const ToasterProvider = ({ children }: { children: ReactNode }) => {
+  const toasterRef = useRef<ToasterRef>(null);
+
+  const showToast = useCallback((props: ToasterProps) => {
+    toasterRef.current?.show(props);
+  }, []);
+
+  return (
+    <ToasterContext.Provider value={showToast}>
+      {children}
+      <Toaster ref={toasterRef} />
+    </ToasterContext.Provider>
+  );
+};
+```
+
 ## File: src/hooks/useAppViewManager.hook.ts
 ```typescript
 import { useMemo, useCallback } from 'react';
 import { useSearchParams, useNavigate, useLocation, useParams } from 'react-router-dom';
-import type { AppShellState } from '@/store/appShell.store';
-import type { ActivePage } from '@/store/appStore';
+import type { AppShellState, ActivePage } from '@/store/appShell.store';
 import type { DataItem, ViewMode, SortConfig, SortableField, GroupableField, Status, Priority } from '@/pages/DataDemo/types';
 import type { FilterConfig } from '@/pages/DataDemo/components/DataToolbar';
 import { BODY_STATES } from '@/lib/utils';
@@ -741,6 +3615,97 @@ export function useRightPaneContent(sidePaneContent: AppShellState['sidePaneCont
 }
 ```
 
+## File: src/hooks/useStaggeredAnimation.motion.hook.ts
+```typescript
+import { useLayoutEffect, useRef } from 'react';
+import { gsap } from 'gsap';
+import { useAppShellStore } from '@/store/appShell.store';
+
+interface StaggeredAnimationOptions {
+	stagger?: number;
+	duration?: number;
+	y?: number;
+	scale?: number;
+	ease?: string;
+	mode?: 'full' | 'incremental';
+}
+
+/**
+ * Animates the direct children of a container element with a staggered fade-in effect.
+ *
+ * @param containerRef Ref to the container element.
+ * @param deps Dependency array to trigger the animation.
+ * @param options Animation options.
+ * @param options.mode - 'full' (default): animates all children every time deps change.
+ *                       'incremental': only animates new children added to the container.
+ */
+export function useStaggeredAnimation<T extends HTMLElement>(
+	containerRef: React.RefObject<T>,
+	deps: React.DependencyList,
+	options: StaggeredAnimationOptions = {},
+) {
+	const reducedMotion = useAppShellStore(s => s.reducedMotion);
+	const {
+		stagger = 0.08,
+		duration = 0.6,
+		y = 30,
+		scale = 1,
+		ease = 'power3.out',
+		mode = 'full',
+	} = options;
+
+	const animatedItemsCount = useRef(0);
+
+	useLayoutEffect(() => {
+		if (reducedMotion || !containerRef.current) return;
+
+		const children = Array.from(containerRef.current.children) as HTMLElement[];
+
+		if (mode === 'incremental') {
+			// On dependency change, if the number of children is less than what we've animated,
+			// it's a list reset (e.g., filtering), so reset the counter.
+			if (children.length < animatedItemsCount.current) {
+				animatedItemsCount.current = 0;
+			}
+
+			const newItems = children.slice(animatedItemsCount.current);
+
+			if (newItems.length > 0) {
+				gsap.fromTo(
+					newItems,
+					{ y, opacity: 0, scale },
+					{
+						duration,
+						y: 0,
+						opacity: 1,
+						scale: 1,
+						stagger,
+						ease,
+					},
+				);
+				animatedItemsCount.current = children.length;
+			}
+		} else {
+			if (children.length) {
+				gsap.fromTo(
+					children,
+					{ y, opacity: 0, scale },
+					{
+						duration,
+						y: 0,
+						opacity: 1,
+						scale: 1,
+						stagger,
+						ease,
+					},
+				);
+			}
+		}
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [containerRef, ...deps]);
+}
+```
+
 ## File: src/pages/Dashboard/hooks/useDashboardAnimations.motion.hook.ts
 ```typescript
 import { useEffect } from 'react';
@@ -755,13 +3720,14 @@ export function useDashboardAnimations(
   featureCardsContainerRef: React.RefObject<HTMLDivElement>,
 ) {
   const bodyState = useAppShellStore(s => s.bodyState);
+  const reducedMotion = useAppShellStore(s => s.reducedMotion);
 
   // Animate cards on mount
   useStaggeredAnimation(statsCardsContainerRef, [], { y: 20, scale: 0.95 });
   useStaggeredAnimation(featureCardsContainerRef, [], { y: 30, scale: 0.95, stagger: 0.05 });
 
   useEffect(() => {
-    if (!contentRef.current) return;
+    if (reducedMotion || !contentRef.current) return;
 
     const content = contentRef.current;
 
@@ -773,17 +3739,215 @@ export function useDashboardAnimations(
         gsap.to(content, { scale: 1, duration: 0.4, ease: 'power3.out' });
         break;
     }
-  }, [bodyState, contentRef]);
+  }, [bodyState, contentRef, reducedMotion]);
 }
 ```
 
-## File: postcss.config.js
-```javascript
-export default {
-  plugins: {
-    tailwindcss: {},
-    autoprefixer: {},
+## File: src/pages/DataDemo/components/shared/DataItemParts.tsx
+```typescript
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Badge } from '@/components/ui/badge'
+import { cn, getStatusColor, getPriorityColor } from '@/lib/utils'
+import { Clock, Eye, Heart, Share } from 'lucide-react'
+import type { DataItem } from '../../types'
+
+export function ItemStatusBadge({ status }: { status: DataItem['status'] }) {
+  return (
+    <Badge variant="outline" className={cn("font-medium", getStatusColor(status))}>
+      {status.charAt(0).toUpperCase() + status.slice(1)}
+    </Badge>
+  )
+}
+
+export function ItemPriorityBadge({ priority }: { priority: DataItem['priority'] }) {
+  return (
+    <Badge variant="outline" className={cn("font-medium", getPriorityColor(priority))}>
+      {priority.charAt(0).toUpperCase() + priority.slice(1)}
+    </Badge>
+  )
+}
+
+export function AssigneeInfo({
+  assignee,
+  avatarClassName = "w-8 h-8",
+}: {
+  assignee: DataItem['assignee']
+  avatarClassName?: string
+}) {
+  return (
+    <div className="flex items-center gap-2 group">
+      <Avatar className={cn("border-2 border-transparent group-hover:border-primary/50 transition-colors", avatarClassName)}>
+        <AvatarImage src={assignee.avatar} alt={assignee.name} />
+        <AvatarFallback>{assignee.name.charAt(0)}</AvatarFallback>
+      </Avatar>
+      <div className="min-w-0">
+        <p className="font-medium text-sm truncate">{assignee.name}</p>
+        <p className="text-xs text-muted-foreground truncate">{assignee.email}</p>
+      </div>
+    </div>
+  )
+}
+
+export function ItemMetrics({ metrics }: { metrics: DataItem['metrics'] }) {
+  return (
+    <div className="flex items-center gap-3 text-sm">
+      <div className="flex items-center gap-1"><Eye className="w-4 h-4" /> {metrics.views}</div>
+      <div className="flex items-center gap-1"><Heart className="w-4 h-4" /> {metrics.likes}</div>
+      <div className="flex items-center gap-1"><Share className="w-4 h-4" /> {metrics.shares}</div>
+    </div>
+  )
+}
+
+export function ItemProgressBar({ completion, showPercentage }: { completion: number; showPercentage?: boolean }) {
+  const bar = (
+    <div className="w-full bg-muted rounded-full h-2.5">
+      <div
+        className="bg-gradient-to-r from-primary to-primary/80 h-2.5 rounded-full transition-all duration-500"
+        style={{ width: `${completion}%` }}
+      />
+    </div>
+  );
+
+  if (!showPercentage) return bar;
+
+  return (
+    <div className="flex items-center gap-3">
+      <div className="flex-1 min-w-0">{bar}</div>
+      <span className="text-sm font-medium text-muted-foreground">{completion}%</span>
+    </div>
+  )
+}
+
+export function ItemDateInfo({ date }: { date: string }) {
+  return (
+    <div className="flex items-center gap-1.5 text-sm">
+      <Clock className="w-4 h-4" />
+      <span>{new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+    </div>
+  )
+}
+
+export function ItemTags({ tags }: { tags: string[] }) {
+  const MAX_TAGS = 3
+  const remainingTags = tags.length - MAX_TAGS
+  return (
+    <div className="flex items-center gap-1.5 flex-wrap">
+      {tags.slice(0, MAX_TAGS).map(tag => (
+        <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
+      ))}
+      {remainingTags > 0 && (
+        <Badge variant="outline" className="text-xs">+{remainingTags}</Badge>
+      )}
+    </div>
+  )
+}
+```
+
+## File: src/store/authStore.ts
+```typescript
+import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
+
+interface AuthState {
+  isAuthenticated: boolean
+  user: {
+    email: string
+    name: string
+  } | null
+  login: (email: string, password: string) => Promise<void>
+  logout: () => void
+  forgotPassword: (email: string) => Promise<void>
+}
+
+export const useAuthStore = create<AuthState>()(
+  persist(
+    (set) => ({
+      isAuthenticated: false,
+      user: null,
+
+      login: async (email: string, password: string) => {
+        // Simulate API call
+        await new Promise((resolve) => setTimeout(resolve, 1000))
+
+        // Mock authentication - in real app, validate with backend
+        if (email && password) {
+          set({
+            isAuthenticated: true,
+            user: {
+              email,
+              name: email.split('@')[0], // Simple name extraction
+            },
+          })
+        } else {
+          throw new Error('Invalid credentials')
+        }
+      },
+
+      logout: () => {
+        set({
+          isAuthenticated: false,
+          user: null,
+        })
+      },
+
+      forgotPassword: async (email: string) => {
+        // Simulate API call
+        await new Promise((resolve) => setTimeout(resolve, 1000))
+
+        // In real app, send reset email via backend
+        console.log(`Password reset link sent to: ${email}`)
+      },
+    }),
+    {
+      name: 'auth-storage',
+      partialize: (state) => ({ isAuthenticated: state.isAuthenticated, user: state.user }),
+    },
+  ),
+)
+```
+
+## File: tsconfig.json
+```json
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "useDefineForClassFields": true,
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+
+    /* Bundler mode */
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "react-jsx",
+
+    /* Linting */
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+
+    /* Library Build */
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "declarationDir": "dist",
+
+    /* Path mapping */
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    }
   },
+  "include": ["src"],
+  "exclude": [
+    "dist",
+    "src/App.tsx",
+    "src/main.tsx",
+    "src/pages"
+  ],
+  "references": [{ "path": "./tsconfig.node.json" }]
 }
 ```
 
@@ -805,7 +3969,6 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAppShellStore } from '@/store/appShell.store'
-import { useAppStore } from '@/store/appStore'
 import { SettingsToggle } from './SettingsToggle'
 import { SettingsSection } from './SettingsSection'
 
@@ -819,12 +3982,17 @@ const colorPresets = [
 ]
 
 export function SettingsContent() {
+  const sidebarWidth = useAppShellStore(s => s.sidebarWidth);
+  const compactMode = useAppShellStore(s => s.compactMode);
+  const primaryColor = useAppShellStore(s => s.primaryColor);
+  const autoExpandSidebar = useAppShellStore(s => s.autoExpandSidebar);
+  const reducedMotion = useAppShellStore(s => s.reducedMotion);
+  const isDarkMode = useAppShellStore(s => s.isDarkMode);
+  
   const {
-    sidebarWidth, compactMode, primaryColor, autoExpandSidebar, reducedMotion,
     setSidebarWidth, setCompactMode, setPrimaryColor, setAutoExpandSidebar,
-    setReducedMotion, resetToDefaults
-  } = useAppShellStore();
-  const { isDarkMode, toggleDarkMode } = useAppStore()
+    setReducedMotion, resetToDefaults, toggleDarkMode
+  } = useAppShellStore.getState();
 
   const [tempSidebarWidth, setTempSidebarWidth] = useState(sidebarWidth)
 
@@ -1022,6 +4190,187 @@ if (typeof document !== 'undefined') {
   const styleSheet = document.createElement('style')
   styleSheet.textContent = sliderStyles
   document.head.appendChild(styleSheet)
+}
+```
+
+## File: src/pages/DataDemo/components/AnimatedLoadingSkeleton.tsx
+```typescript
+import { useEffect, useRef, useState } from 'react'
+import { gsap } from 'gsap'
+import { Search } from 'lucide-react'
+import { cn } from '@/lib/utils'
+import type { ViewMode } from '../types'
+
+interface GridConfig {
+  numCards: number
+  cols: number
+}
+
+export const AnimatedLoadingSkeleton = ({ viewMode }: { viewMode: ViewMode }) => {
+  const [containerWidth, setContainerWidth] = useState(0)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const iconRef = useRef<HTMLDivElement>(null)
+  const timelineRef = useRef<gsap.core.Timeline | null>(null)
+
+  const getGridConfig = (width: number): GridConfig => {
+    if (width === 0) return { numCards: 8, cols: 2 }; // Default before measurement
+    if (viewMode === 'list' || viewMode === 'table') {
+      return { numCards: 5, cols: 1 }
+    }
+    // For card view
+    if (viewMode === 'cards') {
+      const cols = Math.max(1, Math.floor(width / 344)); // 320px card + 24px gap
+      return { numCards: Math.max(8, cols * 2), cols }
+    }
+    // For grid view
+    const cols = Math.max(1, Math.floor(width / 304)); // 280px card + 24px gap
+    return { numCards: Math.max(8, cols * 2), cols }
+  }
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const resizeObserver = new ResizeObserver(entries => {
+      if (entries[0]) {
+        setContainerWidth(entries[0].contentRect.width);
+      }
+    });
+
+    resizeObserver.observe(container);
+    return () => resizeObserver.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (timelineRef.current) {
+      timelineRef.current.kill()
+    }
+    if (!iconRef.current || !containerRef.current || containerWidth === 0) return
+
+    // Allow DOM to update with new skeleton cards
+    const timeoutId = setTimeout(() => {
+      const cards = Array.from(containerRef.current!.children)
+      if (cards.length === 0) return
+
+      const shuffledCards = gsap.utils.shuffle(cards)
+
+      const getCardPosition = (card: Element) => {
+        const rect = card.getBoundingClientRect()
+        const containerRect = containerRef.current!.getBoundingClientRect()
+        const iconRect = iconRef.current!.getBoundingClientRect()
+
+        return {
+          x: rect.left - containerRect.left + rect.width / 2 - iconRect.width / 2,
+          y: rect.top - containerRect.top + rect.height / 2 - iconRect.height / 2,
+        }
+      }
+      
+      const tl = gsap.timeline({
+        repeat: -1,
+        repeatDelay: 0.5,
+        defaults: { duration: 1, ease: 'power2.inOut' }
+      });
+      timelineRef.current = tl
+
+      // Animate to a few random cards
+      shuffledCards.slice(0, 5).forEach(card => {
+        const pos = getCardPosition(card)
+        tl.to(iconRef.current, { 
+          x: pos.x,
+          y: pos.y,
+          scale: 1.2,
+          duration: 0.8
+        }).to(iconRef.current, {
+          scale: 1,
+          duration: 0.2
+        })
+      });
+
+      // Loop back to the start
+      const firstPos = getCardPosition(shuffledCards[0]);
+      tl.to(iconRef.current, { x: firstPos.x, y: firstPos.y, duration: 0.8 });
+    }, 100) // Small delay to ensure layout is calculated
+
+    return () => {
+      clearTimeout(timeoutId)
+      if (timelineRef.current) {
+        timelineRef.current.kill()
+      }
+    }
+
+  }, [containerWidth, viewMode])
+
+  const config = getGridConfig(containerWidth)
+
+  const renderSkeletonCard = (key: number) => {
+    if (viewMode === 'list' || viewMode === 'table') {
+      return (
+        <div key={key} className="bg-card/30 border border-border/30 rounded-2xl p-6 flex items-start gap-4 animate-pulse">
+          <div className="w-14 h-14 bg-muted rounded-xl flex-shrink-0"></div>
+          <div className="flex-1 space-y-3">
+            <div className="h-4 bg-muted rounded w-3/4"></div>
+            <div className="h-3 bg-muted rounded w-full"></div>
+            <div className="h-3 bg-muted rounded w-5/6"></div>
+            <div className="flex gap-2 pt-2">
+              <div className="h-6 bg-muted rounded-full w-20"></div>
+              <div className="h-6 bg-muted rounded-full w-20"></div>
+            </div>
+          </div>
+        </div>
+      )
+    }
+
+    return (
+      <div 
+        key={key} 
+        className={cn(
+          "bg-card/30 border border-border/30 rounded-3xl p-6 space-y-4 animate-pulse",
+        )}
+      >
+        <div className="flex items-start justify-between">
+          <div className="w-16 h-16 bg-muted rounded-2xl"></div>
+          <div className="w-4 h-4 bg-muted rounded-full"></div>
+        </div>
+        <div className="h-4 bg-muted rounded w-3/4"></div>
+        <div className="h-3 bg-muted rounded w-full"></div>
+        <div className="h-3 bg-muted rounded w-5/6"></div>
+        <div className="h-2 w-full bg-muted rounded-full my-4"></div>
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 bg-muted rounded-full"></div>
+          <div className="flex-1 space-y-2">
+            <div className="h-3 bg-muted rounded w-1/2"></div>
+            <div className="h-2 bg-muted rounded w-1/3"></div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  const gridClasses = {
+    list: "space-y-4",
+    table: "space-y-4",
+    cards: "grid grid-cols-[repeat(auto-fit,minmax(320px,1fr))] gap-6",
+    grid: "grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-6"
+  }
+
+  return (
+    <div className="relative overflow-hidden rounded-lg min-h-[500px]">
+      <div 
+        ref={iconRef}
+        className="absolute z-10 p-3 bg-primary/20 rounded-full backdrop-blur-sm"
+        style={{ willChange: 'transform' }}
+      >
+        <Search className="w-6 h-6 text-primary" />
+      </div>
+
+      <div 
+        ref={containerRef}
+        className={cn(gridClasses[viewMode])}
+      >
+        {[...Array(config.numCards)].map((_, i) => renderSkeletonCard(i))}
+      </div>
+    </div>
+  )
 }
 ```
 
@@ -1270,112 +4619,104 @@ function CombinedFilter({
 }
 ```
 
-## File: src/store/authStore.ts
+## File: src/pages/DataDemo/types.ts
 ```typescript
-import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+export type ViewMode = 'list' | 'cards' | 'grid' | 'table'
 
-interface AuthState {
-  isAuthenticated: boolean
-  user: {
-    email: string
-    name: string
-  } | null
-  login: (email: string, password: string) => Promise<void>
-  logout: () => void
-  forgotPassword: (email: string) => Promise<void>
+export type GroupableField = 'status' | 'priority' | 'category'
+
+export type SortableField = 'title' | 'status' | 'priority' | 'updatedAt' | 'assignee.name' | 'metrics.views' | 'metrics.completion' | 'createdAt'
+export type SortDirection = 'asc' | 'desc'
+export interface SortConfig {
+  key: SortableField
+  direction: SortDirection
 }
 
-export const useAuthStore = create<AuthState>()(
-  persist(
-    (set) => ({
-      isAuthenticated: false,
-      user: null,
+export interface DataItem {
+  id: string
+  title: string
+  description: string
+  category: string
+  status: 'active' | 'pending' | 'completed' | 'archived'
+  priority: 'low' | 'medium' | 'high' | 'critical'
+  assignee: {
+    name: string
+    avatar: string
+    email: string
+  }
+  metrics: {
+    views: number
+    likes: number
+    shares: number
+    completion: number
+  }
+  tags: string[]
+  createdAt: string
+  updatedAt: string
+  dueDate?: string
+  thumbnail?: string
+  content?: {
+    summary: string
+    details: string
+    attachments?: Array<{
+      name: string
+      type: string
+      size: string
+      url: string
+    }>
+  }
+}
 
-      login: async (email: string, password: string) => {
-        // Simulate API call
-        await new Promise((resolve) => setTimeout(resolve, 1000))
+export interface ViewProps {
+  data: DataItem[] | Record<string, DataItem[]>
+  onItemSelect: (item: DataItem) => void
+  selectedItem: DataItem | null
+  isGrid?: boolean
 
-        // Mock authentication - in real app, validate with backend
-        if (email && password) {
-          set({
-            isAuthenticated: true,
-            user: {
-              email,
-              name: email.split('@')[0], // Simple name extraction
-            },
-          })
-        } else {
-          throw new Error('Invalid credentials')
-        }
-      },
+  // Props for table view specifically
+  sortConfig?: SortConfig | null
+  onSort?: (field: SortableField) => void
+}
 
-      logout: () => {
-        set({
-          isAuthenticated: false,
-          user: null,
-        })
-      },
-
-      forgotPassword: async (email: string) => {
-        // Simulate API call
-        await new Promise((resolve) => setTimeout(resolve, 1000))
-
-        // In real app, send reset email via backend
-        console.log(`Password reset link sent to: ${email}`)
-      },
-    }),
-    {
-      name: 'auth-storage',
-      partialize: (state) => ({ isAuthenticated: state.isAuthenticated, user: state.user }),
-    },
-  ),
-)
+export type Status = DataItem['status']
+export type Priority = DataItem['priority']
 ```
 
-## File: tsconfig.json
-```json
-{
-  "compilerOptions": {
-    "target": "ES2020",
-    "useDefineForClassFields": true,
-    "lib": ["ES2020", "DOM", "DOM.Iterable"],
-    "module": "ESNext",
-    "skipLibCheck": true,
+## File: src/pages/Settings/index.tsx
+```typescript
+import { SettingsContent } from '@/features/settings/SettingsContent';
+import { useAutoAnimateTopBar } from '@/hooks/useAutoAnimateTopBar';
+import { PageHeader } from '@/components/shared/PageHeader';
+import { PageLayout } from '@/components/shared/PageLayout';
 
-    /* Bundler mode */
-    "moduleResolution": "bundler",
-    "allowImportingTsExtensions": true,
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "jsx": "react-jsx",
+export function SettingsPage() {
+  const { onScroll } = useAutoAnimateTopBar();
 
-    /* Linting */
-    "strict": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noFallthroughCasesInSwitch": true,
-
-    /* Library Build */
-    "declaration": true,
-    "emitDeclarationOnly": true,
-    "declarationDir": "dist",
-
-    /* Path mapping */
-    "baseUrl": ".",
-    "paths": {
-      "@/*": ["./src/*"]
-    }
-  },
-  "include": ["src"],
-  "exclude": [
-    "dist",
-    "src/App.tsx",
-    "src/main.tsx",
-    "src/pages"
-  ],
-  "references": [{ "path": "./tsconfig.node.json" }]
+  return (
+    <PageLayout onScroll={onScroll}>
+      {/* Header */}
+      <PageHeader
+        title="Settings"
+        description="Customize your experience. Changes are saved automatically."
+      />
+      <SettingsContent />
+    </PageLayout>
+  )
 }
+```
+
+## File: src/main.tsx
+```typescript
+import React from 'react'
+import ReactDOM from 'react-dom/client'
+import App from './App.tsx'
+import './index.css'
+
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>,
+)
 ```
 
 ## File: index.html
@@ -1408,6 +4749,171 @@ export const useAuthStore = create<AuthState>()(
     "resolveJsonModule": true
   },
   "include": ["vite.config.ts"]
+}
+```
+
+## File: src/lib/utils.ts
+```typescript
+import { type ClassValue, clsx } from "clsx"
+import { twMerge } from "tailwind-merge"
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs))
+}
+
+export const SIDEBAR_STATES = {
+  HIDDEN: 'hidden',
+  COLLAPSED: 'collapsed', 
+  EXPANDED: 'expanded',
+  PEEK: 'peek'
+} as const
+
+export const BODY_STATES = {
+  NORMAL: 'normal',
+  FULLSCREEN: 'fullscreen',
+  SIDE_PANE: 'side_pane',
+  SPLIT_VIEW: 'split_view'
+} as const
+
+export type SidebarState = typeof SIDEBAR_STATES[keyof typeof SIDEBAR_STATES]
+export type BodyState = typeof BODY_STATES[keyof typeof BODY_STATES]
+
+export function capitalize(str: string): string {
+  if (!str) return str
+  return str.charAt(0).toUpperCase() + str.slice(1)
+}
+
+export const getStatusColor = (status: string) => {
+  switch (status) {
+    case 'active': return 'bg-green-500/20 text-green-700 border-green-500/30'
+    case 'pending': return 'bg-yellow-500/20 text-yellow-700 border-yellow-500/30'
+    case 'completed': return 'bg-blue-500/20 text-blue-700 border-blue-500/30'
+    case 'archived': return 'bg-gray-500/20 text-gray-700 border-gray-500/30'
+    default: return 'bg-gray-500/20 text-gray-700 border-gray-500/30'
+  }
+}
+
+export const getPriorityColor = (priority: string) => {
+  switch (priority) {
+    case 'critical': return 'bg-red-500/20 text-red-700 border-red-500/30'
+    case 'high': return 'bg-orange-500/20 text-orange-700 border-orange-500/30'
+    case 'medium': return 'bg-blue-500/20 text-blue-700 border-blue-500/30'
+    case 'low': return 'bg-green-500/20 text-green-700 border-green-500/30'
+    default: return 'bg-gray-500/20 text-gray-700 border-gray-500/30'
+  }
+}
+```
+
+## File: tailwind.config.js
+```javascript
+/** @type {import('tailwindcss').Config} */
+export default {
+  content: [
+    "./index.html",
+    "./src/**/*.{js,ts,jsx,tsx}",
+  ],
+  darkMode: "class",
+  theme: {
+    extend: {
+      colors: {
+        border: "hsl(var(--border))",
+        input: "hsl(var(--input))",
+        ring: "hsl(var(--ring))",
+        background: "hsl(var(--background))",
+        foreground: "hsl(var(--foreground))",
+        primary: {
+          DEFAULT: "hsl(var(--primary))",
+          foreground: "hsl(var(--primary-foreground))",
+        },
+        secondary: {
+          DEFAULT: "hsl(var(--secondary))",
+          foreground: "hsl(var(--secondary-foreground))",
+        },
+        destructive: {
+          DEFAULT: "hsl(var(--destructive))",
+          foreground: "hsl(var(--destructive-foreground))",
+        },
+        muted: {
+          DEFAULT: "hsl(var(--muted))",
+          foreground: "hsl(var(--muted-foreground))",
+        },
+        accent: {
+          DEFAULT: "hsl(var(--accent))",
+          foreground: "hsl(var(--accent-foreground))",
+        },
+        popover: {
+          DEFAULT: "hsl(var(--popover))",
+          foreground: "hsl(var(--popover-foreground))",
+        },
+        card: {
+          DEFAULT: "hsl(var(--card))",
+          foreground: "hsl(var(--card-foreground))",
+        },
+      },
+      borderRadius: {
+        lg: "var(--radius)",
+        md: "calc(var(--radius) - 4px)",
+        sm: "calc(var(--radius) - 8px)",
+        DEFAULT: "0.5rem",
+      },
+      boxShadow: {
+        input: [
+          "0px 2px 3px -1px rgba(0, 0, 0, 0.1)",
+          "0px 1px 0px 0px rgba(25, 28, 33, 0.02)",
+          "0px 0px 0px 1px rgba(25, 28, 33, 0.08)",
+        ].join(", "),
+      },
+      animation: {
+        "fade-in": "fadeIn 0.5s ease-in-out",
+        "slide-in": "slideIn 0.3s ease-out",
+        "scale-in": "scaleIn 0.2s ease-out",
+        ripple: "ripple 2s ease calc(var(--i, 0) * 0.2s) infinite",
+        orbit: "orbit calc(var(--duration) * 1s) linear infinite",
+      },
+      keyframes: {
+        fadeIn: {
+          "0%": { opacity: "0" },
+          "100%": { opacity: "1" },
+        },
+        slideIn: {
+          "0%": { transform: "translateX(-100%)" },
+          "100%": { transform: "translateX(0)" },
+        },
+        scaleIn: {
+          "0%": { transform: "scale(0.95)", opacity: "0" },
+          "100%": { transform: "scale(1)", opacity: "1" },
+        },
+        ripple: {
+          "0%, 100%": { transform: "translate(-50%, -50%) scale(1)" },
+          "50%": { transform: "translate(-50%, -50%) scale(0.9)" },
+        },
+        orbit: {
+          "0%": {
+            transform:
+              "rotate(0deg) translateY(calc(var(--radius) * 1px)) rotate(0deg)",
+          },
+          "100%": {
+            transform:
+              "rotate(360deg) translateY(calc(var(--radius) * 1px)) rotate(-360deg)",
+          },
+        }
+      },
+    },
+  },
+  plugins: [
+    require("tailwindcss-animate"),
+    require("tailwindcss/plugin")(function ({ addUtilities }) {
+      addUtilities({
+        ".no-scrollbar::-webkit-scrollbar": {
+          display: "none",
+        },
+        ".no-scrollbar": {
+          "-ms-overflow-style": "none",
+          "scrollbar-width": "none",
+        },
+      });
+    }),
+  ],
 }
 ```
 
@@ -1446,7 +4952,8 @@ interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
 
 const Sidebar = React.forwardRef<HTMLDivElement, SidebarProps>(
   ({ children, className, ...props }, ref) => {
-    const { sidebarState, compactMode } = useAppShellStore();
+    const sidebarState = useAppShellStore(s => s.sidebarState);
+    const compactMode = useAppShellStore(s => s.compactMode);
     const isCollapsed = sidebarState === SIDEBAR_STATES.COLLAPSED;
     const isPeek = sidebarState === SIDEBAR_STATES.PEEK;
 
@@ -1861,7 +5368,7 @@ import { useToast } from '@/components/ui/toast';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { PageLayout } from '@/components/shared/PageLayout';
 import { useAppShellStore } from '@/store/appShell.store';
-import { cn } from '@/lib/utils';
+import { cn, BODY_STATES } from '@/lib/utils';
 
 type Variant = 'default' | 'success' | 'error' | 'warning';
 type Position =
@@ -2005,117 +5512,48 @@ export function ToasterDemo() {
 }
 ```
 
-## File: tailwind.config.js
-```javascript
-/** @type {import('tailwindcss').Config} */
-export default {
-  content: [
-    "./index.html",
-    "./src/**/*.{js,ts,jsx,tsx}",
-  ],
-  darkMode: "class",
-  theme: {
-    extend: {
-      colors: {
-        border: "hsl(var(--border))",
-        input: "hsl(var(--input))",
-        ring: "hsl(var(--ring))",
-        background: "hsl(var(--background))",
-        foreground: "hsl(var(--foreground))",
-        primary: {
-          DEFAULT: "hsl(var(--primary))",
-          foreground: "hsl(var(--primary-foreground))",
+## File: vite.config.ts
+```typescript
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+import { fileURLToPath, URL } from 'url'
+import { resolve } from 'path'
+import pkg from './package.json' with { type: 'json' }
+
+// https://vitejs.dev/config/
+export default defineConfig({
+  plugins: [react()],
+  resolve: {
+    alias: {
+      "@": fileURLToPath(new URL('./src', import.meta.url)),
+    },
+  },
+  build: {
+    lib: {
+      entry: resolve(__dirname, 'src/index.ts'),
+      name: 'JeliAppShell',
+      fileName: (format) => `jeli-app-shell.${format}.js`,
+    },
+    rollupOptions: {
+      // make sure to externalize deps that shouldn't be bundled
+      // into your library
+      external: Object.keys(pkg.peerDependencies || {}),
+      output: {
+        // Provide global variables to use in the UMD build
+        // for externalized deps
+        globals: {
+          react: 'React',
+          'react-dom': 'ReactDOM',
+          tailwindcss: 'tailwindcss',
+          gsap: 'gsap',
+          'lucide-react': 'lucide-react',
+          zustand: 'zustand',
+          sonner: 'sonner'
         },
-        secondary: {
-          DEFAULT: "hsl(var(--secondary))",
-          foreground: "hsl(var(--secondary-foreground))",
-        },
-        destructive: {
-          DEFAULT: "hsl(var(--destructive))",
-          foreground: "hsl(var(--destructive-foreground))",
-        },
-        muted: {
-          DEFAULT: "hsl(var(--muted))",
-          foreground: "hsl(var(--muted-foreground))",
-        },
-        accent: {
-          DEFAULT: "hsl(var(--accent))",
-          foreground: "hsl(var(--accent-foreground))",
-        },
-        popover: {
-          DEFAULT: "hsl(var(--popover))",
-          foreground: "hsl(var(--popover-foreground))",
-        },
-        card: {
-          DEFAULT: "hsl(var(--card))",
-          foreground: "hsl(var(--card-foreground))",
-        },
-      },
-      borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 4px)",
-        sm: "calc(var(--radius) - 8px)",
-        DEFAULT: "0.5rem",
-      },
-      boxShadow: {
-        input: [
-          "0px 2px 3px -1px rgba(0, 0, 0, 0.1)",
-          "0px 1px 0px 0px rgba(25, 28, 33, 0.02)",
-          "0px 0px 0px 1px rgba(25, 28, 33, 0.08)",
-        ].join(", "),
-      },
-      animation: {
-        "fade-in": "fadeIn 0.5s ease-in-out",
-        "slide-in": "slideIn 0.3s ease-out",
-        "scale-in": "scaleIn 0.2s ease-out",
-        ripple: "ripple 2s ease calc(var(--i, 0) * 0.2s) infinite",
-        orbit: "orbit calc(var(--duration) * 1s) linear infinite",
-      },
-      keyframes: {
-        fadeIn: {
-          "0%": { opacity: "0" },
-          "100%": { opacity: "1" },
-        },
-        slideIn: {
-          "0%": { transform: "translateX(-100%)" },
-          "100%": { transform: "translateX(0)" },
-        },
-        scaleIn: {
-          "0%": { transform: "scale(0.95)", opacity: "0" },
-          "100%": { transform: "scale(1)", opacity: "1" },
-        },
-        ripple: {
-          "0%, 100%": { transform: "translate(-50%, -50%) scale(1)" },
-          "50%": { transform: "translate(-50%, -50%) scale(0.9)" },
-        },
-        orbit: {
-          "0%": {
-            transform:
-              "rotate(0deg) translateY(calc(var(--radius) * 1px)) rotate(0deg)",
-          },
-          "100%": {
-            transform:
-              "rotate(360deg) translateY(calc(var(--radius) * 1px)) rotate(-360deg)",
-          },
-        }
       },
     },
   },
-  plugins: [
-    require("tailwindcss-animate"),
-    require("tailwindcss/plugin")(function ({ addUtilities }) {
-      addUtilities({
-        ".no-scrollbar::-webkit-scrollbar": {
-          display: "none",
-        },
-        ".no-scrollbar": {
-          "-ms-overflow-style": "none",
-          "scrollbar-width": "none",
-        },
-      });
-    }),
-  ],
-}
+})
 ```
 
 ## File: src/components/auth/LoginPage.tsx
@@ -2282,7 +5720,6 @@ import { BODY_STATES } from '@/lib/utils';
 
 export function useAutoAnimateTopBar(isPane = false) {
   const bodyState = useAppShellStore(s => s.bodyState);
-  const setTopBarVisible = useAppShellStore(s => s.setTopBarVisible);
   const lastScrollTop = useRef(0);
   const scrollTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -2295,6 +5732,7 @@ export function useAutoAnimateTopBar(isPane = false) {
     }
 
     const { scrollTop } = event.currentTarget;
+    const { setTopBarVisible } = useAppShellStore.getState();
     
     if (scrollTop > lastScrollTop.current && scrollTop > 200) {
       setTopBarVisible(false);
@@ -2312,7 +5750,7 @@ export function useAutoAnimateTopBar(isPane = false) {
         setTopBarVisible(true);
       }
     }, 250); // Adjust timeout as needed
-  }, [isPane, setTopBarVisible, bodyState]);
+  }, [isPane, bodyState]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -2353,6 +5791,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { useAppShellStore } from "@/store/appShell.store";
+import { BODY_STATES } from "@/lib/utils";
 
 import { PageLayout } from "@/components/shared/PageLayout";
 import { 
@@ -2531,48 +5970,124 @@ export function NotificationsPage() {
 }
 ```
 
-## File: vite.config.ts
-```typescript
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-import { fileURLToPath, URL } from 'url'
-import { resolve } from 'path'
-import pkg from './package.json' with { type: 'json' }
+## File: src/index.css
+```css
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import 'tailwindcss/utilities';
 
-// https://vitejs.dev/config/
-export default defineConfig({
-  plugins: [react()],
-  resolve: {
-    alias: {
-      "@": fileURLToPath(new URL('./src', import.meta.url)),
-    },
-  },
-  build: {
-    lib: {
-      entry: resolve(__dirname, 'src/index.ts'),
-      name: 'JeliAppShell',
-      fileName: (format) => `jeli-app-shell.${format}.js`,
-    },
-    rollupOptions: {
-      // make sure to externalize deps that shouldn't be bundled
-      // into your library
-      external: Object.keys(pkg.peerDependencies || {}),
-      output: {
-        // Provide global variables to use in the UMD build
-        // for externalized deps
-        globals: {
-          react: 'React',
-          'react-dom': 'ReactDOM',
-          tailwindcss: 'tailwindcss',
-          gsap: 'gsap',
-          'lucide-react': 'lucide-react',
-          zustand: 'zustand',
-          sonner: 'sonner'
-        },
-      },
-    },
-  },
-})
+@layer base {
+  :root {
+    --primary-hsl: 220 84% 60%;
+    --background: 210 40% 96.1%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: var(--primary-hsl);
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222.2 84% 4.9%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96%;
+    --accent-foreground: 222.2 84% 4.9%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: var(--primary-hsl);
+    --radius: 1rem;
+  }
+
+  .dark {
+    --background: 240 6% 9%;
+    --foreground: 210 40% 98%;
+    --card: 240 6% 14%;
+    --card-foreground: 210 40% 98%;
+    --popover: 240 6% 12%;
+    --popover-foreground: 210 40% 98%;
+    --primary: var(--primary-hsl);
+    --primary-foreground: 210 40% 98%;
+    --secondary: 240 5% 20%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 240 5% 20%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 240 5% 20%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 240 5% 20%;
+    --input: 240 5% 20%;
+    --ring: var(--primary-hsl);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Custom scrollbar styles */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-border rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-muted-foreground/50;
+}
+
+/* For UserDropdown */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
+
+@layer base {
+  .login-page-theme {
+    --background: hsl(0 0% 100%);
+    --foreground: hsl(0 0% 0%);
+    --skeleton: hsl(0 0% 90%);
+    --border: hsl(220 20% 90%);
+    --btn-border: hsl(214.3 31.8% 91.4%);
+    --input: hsl(220 20% 90%);
+    --radius: 0.5rem;
+  }
+ 
+  .dark .login-page-theme {
+    --background: hsl(222 94% 5%);
+    --foreground: hsl(0 0% 100%);
+    --skeleton: hsl(218 36% 16%);
+    --border: hsl(220 20% 90%);
+    --btn-border: hsl(217 32.6% 17.5%);
+    --input: hsl(219 63% 16%);
+    --radius: 0.5rem;
+  }
+}
+
+@layer components {
+  .g-button {
+    @apply rounded-[var(--radius)] border;
+    border-color: var(--btn-border);
+  }
+}
 ```
 
 ## File: src/components/global/CommandPalette.tsx
@@ -2587,25 +6102,20 @@ import {
   CommandSeparator,
   CommandShortcut,
 } from '@/components/ui/command';
-import { useAppStore } from '@/store/appStore'
 import { useCommandPaletteToggle } from '@/hooks/useCommandPaletteToggle.hook'
 import { useAppViewManager } from '@/hooks/useAppViewManager.hook';
 import { useAppShellStore } from '@/store/appShell.store';
 import { Home, Settings, Moon, Sun, Monitor, Smartphone, PanelRight, Maximize, Component, Bell } from 'lucide-react'
 
 export function CommandPalette() {
-  const { setCompactMode, toggleFullscreen } = useAppShellStore();
+  const { setCompactMode, toggleFullscreen, setCommandPaletteOpen, toggleDarkMode } = useAppShellStore.getState();
+  const isCommandPaletteOpen = useAppShellStore(s => s.isCommandPaletteOpen);
+  const isDarkMode = useAppShellStore(s => s.isDarkMode);
   const viewManager = useAppViewManager();
-  const {
-    isCommandPaletteOpen,
-    setCommandPaletteOpen,
-    isDarkMode,
-    toggleDarkMode,
-  } = useAppStore()
   useCommandPaletteToggle()
   
   const runCommand = (command: () => void) => {
-    setCommandPaletteOpen(false)
+    setCommandPaletteOpen(false);
     command()
   }
 
@@ -2690,13 +6200,14 @@ import {
   Settings
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useAppStore } from '@/store/appStore'
 import { useAppShellStore } from '@/store/appShell.store'
 import { Card } from '@/components/ui/card'
 
 export const DemoContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(function DemoContent(props, ref) {
-  const { bodyState, sidebarState, compactMode } = useAppShellStore()
-  const { isDarkMode } = useAppStore()
+  const bodyState = useAppShellStore(s => s.bodyState);
+  const sidebarState = useAppShellStore(s => s.sidebarState);
+  const compactMode = useAppShellStore(s => s.compactMode);
+  const isDarkMode = useAppShellStore(s => s.isDarkMode);
   const contentRef = useRef<HTMLDivElement>(null)
 
   const features = [
@@ -2870,6 +6381,252 @@ export const DemoContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes
     </div>
   )
 })
+```
+
+## File: src/pages/DataDemo/components/DataDetailPanel.tsx
+```typescript
+import React, { useRef } from 'react'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { 
+  ArrowLeft, 
+  Clock, 
+  Download,
+  FileText,
+  Image,
+  Video,
+  File,
+  Tag,
+  User,
+  BarChart3,
+  TrendingUp,
+  CheckCircle,
+  AlertCircle,
+  Circle
+} from 'lucide-react'
+import type { DataItem } from '../types'
+import { useStaggeredAnimation } from '@/hooks/useStaggeredAnimation.motion.hook'
+import {
+  AssigneeInfo,
+  ItemProgressBar,
+  ItemPriorityBadge,
+  ItemTags,
+} from './shared/DataItemParts'
+import { DataDetailActions } from './DataDetailActions'
+interface DataDetailPanelProps {
+  item: DataItem | null
+  onClose: () => void
+}
+
+export function DataDetailPanel({ item, onClose }: DataDetailPanelProps) {
+  const contentRef = useRef<HTMLDivElement>(null)
+  useStaggeredAnimation(contentRef, [item]);
+
+  if (!item) {
+    return null
+  }
+
+  const getFileIcon = (type: string) => {
+    switch (type.toLowerCase()) {
+      case 'pdf': return FileText
+      case 'image':
+      case 'png':
+      case 'jpg':
+      case 'jpeg': return Image
+      case 'video':
+      case 'mp4': return Video
+      default: return File
+    }
+  }
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'completed': return CheckCircle
+      case 'active': return Circle
+      case 'pending': return AlertCircle
+      default: return Circle
+    }
+  }
+
+  return (
+    <div ref={contentRef} className="h-full flex flex-col">
+      {/* Header */}
+      <div className="p-6 border-b border-border/50 bg-gradient-to-r from-card/50 to-card/30 backdrop-blur-sm">
+        <Button variant="ghost" onClick={onClose} className="mb-4 -ml-4">
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Back to list
+        </Button>
+        <div className="flex items-start gap-4 mb-4">
+          <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-primary/10 rounded-2xl flex items-center justify-center text-3xl flex-shrink-0">
+            {item.thumbnail}
+          </div>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-2xl font-bold mb-2 leading-tight">
+              {item.title}
+            </h1>
+            <p className="text-muted-foreground">
+              {item.description}
+            </p>
+          </div>
+        </div>
+
+        {/* Status badges */}
+        <div className="flex items-center gap-2 mb-4">
+          <Badge variant="outline">
+            {React.createElement(getStatusIcon(item.status), { className: "w-3 h-3 mr-1" })}
+            {item.status}
+          </Badge>
+          <ItemPriorityBadge priority={item.priority} />
+          <Badge variant="outline" className="bg-accent/50">
+            {item.category}
+          </Badge>
+        </div>
+
+        {/* Progress */}
+        <ItemProgressBar completion={item.metrics.completion} />
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="p-6 space-y-6">
+          {/* Assignee Info */}
+          <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
+            <div className="flex items-center gap-1 mb-3">
+              <User className="w-4 h-4 text-muted-foreground" />
+              <h3 className="font-semibold text-sm">Assigned to</h3>
+            </div>
+            <AssigneeInfo assignee={item.assignee} avatarClassName="w-12 h-12" />
+          </div>
+
+          {/* Metrics */}
+          <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
+            <div className="flex items-center gap-1 mb-3">
+              <BarChart3 className="w-4 h-4 text-muted-foreground" />
+              <h3 className="font-semibold text-sm">Engagement Metrics</h3>
+            </div>
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(80px,1fr))] gap-4">
+              <div className="text-center">
+                <p className="text-2xl font-bold">{item.metrics.views + item.metrics.likes + item.metrics.shares}</p>
+                <p className="text-xs text-muted-foreground">Shares</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Tags */}
+          <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
+            <div className="flex items-center gap-1 mb-3">
+              <Tag className="w-4 h-4 text-muted-foreground" />
+              <h3 className="font-semibold text-sm">Tags</h3>
+            </div>
+            <ItemTags tags={item.tags} />
+          </div>
+
+          {/* Content Details */}
+          {item.content && (
+            <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
+              <h3 className="font-semibold text-sm mb-3">Project Details</h3>
+              <div className="space-y-4">
+                <div>
+                  <h4 className="font-medium text-sm mb-2">Summary</h4>
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    {item.content.summary}
+                  </p>
+                </div>
+                <div>
+                  <h4 className="font-medium text-sm mb-2">Description</h4>
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    {item.content.details}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Attachments */}
+          {item.content?.attachments && item.content.attachments.length > 0 && (
+            <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
+              <h3 className="font-semibold text-sm mb-3">Attachments</h3>
+              <div className="space-y-2">
+                {item.content.attachments.map((attachment, index) => {
+                  const IconComponent = getFileIcon(attachment.type)
+                  return (
+                    <div
+                      key={index}
+                      className="flex items-center gap-3 p-3 bg-muted/30 rounded-xl hover:bg-muted/50 transition-colors cursor-pointer group"
+                    >
+                      <IconComponent className="w-5 h-5 text-muted-foreground" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">
+                          {attachment.name}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {attachment.type} • {attachment.size}
+                        </p>
+                      </div>
+                      <Button size="sm" variant="ghost" className="opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Download className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Timeline */}
+          <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
+            <div className="flex items-center gap-1 mb-3">
+              <Clock className="w-4 h-4 text-muted-foreground" />
+              <h3 className="font-semibold text-sm">Timeline</h3>
+            </div>
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 text-sm">
+                <Clock className="w-3 h-3 text-muted-foreground" />
+                <span className="text-muted-foreground">Created:</span>
+                <span className="font-medium">
+                  {new Date(item.createdAt).toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                  })}
+                </span>
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                <TrendingUp className="w-3 h-3 text-muted-foreground" />
+                <span className="text-muted-foreground">Last updated:</span>
+                <span className="font-medium">
+                  {new Date(item.updatedAt).toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                  })}
+                </span>
+              </div>
+              {item.dueDate && (
+                <div className="flex items-center gap-2 text-sm">
+                  <AlertCircle className="w-3 h-3 text-orange-500" />
+                  <span className="text-muted-foreground">Due date:</span>
+                  <span className="font-medium text-orange-600">
+                    {new Date(item.dueDate).toLocaleDateString('en-US', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric'
+                    })}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Footer Actions */}
+      <div className="p-6 border-t border-border/50 bg-card/30">
+        <DataDetailActions />
+      </div>
+    </div>
+  )
+}
 ```
 
 ## File: src/pages/DataDemo/components/DataViewModeSelector.tsx
@@ -3104,7 +6861,7 @@ export { useCommandPaletteToggle } from './hooks/useCommandPaletteToggle.hook';
 export * from './lib/utils';
 
 // Store
-export { useAppStore, type ActivePage } from './store/appStore';
+export type { ActivePage } from './store/appShell.store';
 export { useAuthStore } from './store/authStore';
 ```
 
@@ -3122,7 +6879,9 @@ interface MainContentProps {
 
 export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
   ({ children }, ref) => {
-    const { bodyState, fullscreenTarget, toggleFullscreen } = useAppShellStore();
+    const bodyState = useAppShellStore(s => s.bodyState);
+    const fullscreenTarget = useAppShellStore(s => s.fullscreenTarget);
+    const { toggleFullscreen } = useAppShellStore.getState();
     const isFullscreen = bodyState === BODY_STATES.FULLSCREEN;
 
     if (isFullscreen && fullscreenTarget === 'right') {
@@ -3534,10 +7293,8 @@ function TableRow({ item, isSelected, onItemSelect }: { item: DataItem; isSelect
 import { useState, useRef, useEffect } from 'react';
 import { gsap } from 'gsap';
 import { cn } from '@/lib/utils'
-import { useAppShellStore } from '@/store/appShell.store'
-import { type ActivePage } from '@/store/appStore'
+import { useAppShellStore, type AppShellState, type ActivePage } from '@/store/appShell.store'
 import { BODY_STATES } from '@/lib/utils'
-import { type AppShellState } from '@/store/appShell.store'
 import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
 import {
   Columns,
@@ -3551,8 +7308,9 @@ import {
 } from 'lucide-react'
 
 export function ViewModeSwitcher({ pane, targetPage }: { pane?: 'main' | 'right', targetPage?: ActivePage }) {
-  const { bodyState, fullscreenTarget } = useAppShellStore();
-  const toggleFullscreen = useAppShellStore(s => s.toggleFullscreen);
+  const bodyState = useAppShellStore(s => s.bodyState);
+  const fullscreenTarget = useAppShellStore(s => s.fullscreenTarget);
+  const { toggleFullscreen } = useAppShellStore.getState();
   const {
     currentActivePage,
     toggleSidePane,
@@ -3742,6 +7500,7 @@ import { DemoContent } from './DemoContent';
 import { useDashboardAnimations } from './hooks/useDashboardAnimations.motion.hook'
 import { useDashboardScroll } from './hooks/useDashboardScroll.hook'
 import { useAppShellStore } from '@/store/appShell.store'
+import { BODY_STATES } from '@/lib/utils'
 import { PageHeader } from '@/components/shared/PageHeader';
 import { StatCard } from '@/components/shared/StatCard';
 import { Card } from '@/components/ui/card';
@@ -4139,6 +7898,7 @@ export function DataCardView({ isGrid = false }: { isGrid?: boolean }) {
 
 ## File: src/components/layout/TopBar.tsx
 ```typescript
+import React from 'react';
 import {
   Menu, 
   Moon, 
@@ -4149,7 +7909,6 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { BODY_STATES } from '@/lib/utils'
-import { useAppStore } from '@/store/appStore'
 import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
 import { UserDropdown } from './UserDropdown'
 import { ViewModeSwitcher } from './ViewModeSwitcher'
@@ -4159,17 +7918,17 @@ interface TopBarProps {
   children?: React.ReactNode
 }
 
-export function TopBar({
+export const TopBar = React.memo(({
   children,
-}: TopBarProps) {
-  const bodyState = useAppShellStore(s => s.bodyState);
-  const toggleSidebar = useAppShellStore(s => s.toggleSidebar);
-  const viewManager = useAppViewManager();
+}: TopBarProps) => {
+  const bodyState = useAppShellStore(s => s.bodyState)
+  const isDarkMode = useAppShellStore(s => s.isDarkMode);
   const { 
+    toggleSidebar, 
     setCommandPaletteOpen,
-    isDarkMode,
     toggleDarkMode,
-  } = useAppStore()
+  } = useAppShellStore.getState();
+  const viewManager = useAppViewManager();
 
   return (
     <div className={cn(
@@ -4244,7 +8003,7 @@ export function TopBar({
       </div>
     </div>
   )
-}
+});
 ```
 
 ## File: src/hooks/useAppShellAnimations.hook.ts
@@ -4267,8 +8026,11 @@ export function useSidebarAnimations(
   sidebarRef: React.RefObject<HTMLDivElement>,
   resizeHandleRef: React.RefObject<HTMLDivElement>
 ) {
-  const { sidebarState, sidebarWidth, bodyState, reducedMotion } = useAppShellStore();
-  const animationDuration = reducedMotion ? 0.1 : 0.4;
+  const sidebarState = useAppShellStore(s => s.sidebarState);
+  const sidebarWidth = useAppShellStore(s => s.sidebarWidth);
+  const bodyState = useAppShellStore(s => s.bodyState);
+  const reducedMotion = useAppShellStore(s => s.reducedMotion);
+  const animationDuration = reducedMotion ? 0 : 0.4;
 
   useEffect(() => {
     if (!sidebarRef.current || !resizeHandleRef.current) return;
@@ -4325,9 +8087,12 @@ export function useBodyStateAnimations(
   topBarContainerRef: React.RefObject<HTMLDivElement>,
   mainAreaRef: React.RefObject<HTMLDivElement>
 ) {
-  const { bodyState, reducedMotion, isTopBarVisible, fullscreenTarget } = useAppShellStore();
+  const bodyState = useAppShellStore(s => s.bodyState);
+  const reducedMotion = useAppShellStore(s => s.reducedMotion);
+  const isTopBarVisible = useAppShellStore(s => s.isTopBarVisible);
+  const fullscreenTarget = useAppShellStore(s => s.fullscreenTarget);
   const rightPaneWidth = useRightPaneWidth();
-  const animationDuration = reducedMotion ? 0.1 : 0.4;
+  const animationDuration = reducedMotion ? 0 : 0.4;
   const prevBodyState = usePrevious(bodyState);
   const [, setSearchParams] = useSearchParams();
 
@@ -4414,7 +8179,7 @@ export function useBodyStateAnimations(
 
 ## File: src/components/layout/RightPane.tsx
 ```typescript
-import { forwardRef, useMemo, useCallback, createElement } from 'react'
+import { forwardRef, useMemo, useCallback, createElement, memo } from 'react'
 import {
   ChevronRight,
   X,
@@ -4427,10 +8192,11 @@ import { useAppShellStore } from '@/store/appShell.store';
 import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
 import { useRightPaneContent } from '@/hooks/useRightPaneContent.hook'
 
-export const RightPane = forwardRef<HTMLDivElement, { className?: string }>(({ className }, ref) => {
-  const fullscreenTarget = useAppShellStore(s => s.fullscreenTarget);
-  const bodyState = useAppShellStore(s => s.bodyState);
-  const { toggleFullscreen, setIsResizingRightPane } = useAppShellStore.getState();
+export const RightPane = memo(forwardRef<HTMLDivElement, { className?: string }>(({ className }, ref) => {
+  const fullscreenTarget = useAppShellStore(s => s.fullscreenTarget)
+  const bodyState = useAppShellStore(s => s.bodyState)
+  const { toggleFullscreen, setIsResizingRightPane } =
+    useAppShellStore.getState()
 
   const viewManager = useAppViewManager()
   const { sidePaneContent, closeSidePane, toggleSplitView, navigateTo } = viewManager
@@ -4519,7 +8285,7 @@ export const RightPane = forwardRef<HTMLDivElement, { className?: string }>(({ c
       </div>
     </aside>
   )
-})
+}));
 RightPane.displayName = "RightPane"
 ```
 
@@ -4544,10 +8310,9 @@ import {
   Download,
   User,
   Plus,
-  Database
+  Database,
 } from 'lucide-react';
-import { type ActivePage } from '@/store/appStore';
-import { useAppShellStore } from '@/store/appShell.store';
+import { useAppShellStore, type ActivePage } from '@/store/appShell.store';
 import {
   Workspaces,
   WorkspaceTrigger,
@@ -4612,9 +8377,12 @@ interface SidebarProps {
   onMouseLeave?: () => void;
 }
 
-export const EnhancedSidebar = React.forwardRef<HTMLDivElement, SidebarProps>(
+export const EnhancedSidebar = React.memo(React.forwardRef<HTMLDivElement, SidebarProps>(
   ({ onMouseEnter, onMouseLeave }, ref) => {
-    const { sidebarWidth, compactMode, appName, appLogo } = useAppShellStore();
+    const sidebarWidth = useAppShellStore(s => s.sidebarWidth);
+    const compactMode = useAppShellStore(s => s.compactMode);
+    const appName = useAppShellStore(s => s.appName);
+    const appLogo = useAppShellStore(s => s.appLogo);
     const [selectedWorkspace, setSelectedWorkspace] = React.useState(mockWorkspaces[0]);
 
     return (
@@ -4690,7 +8458,7 @@ export const EnhancedSidebar = React.forwardRef<HTMLDivElement, SidebarProps>(
       </Sidebar>
     );
   },
-);
+));
 EnhancedSidebar.displayName = 'EnhancedSidebar';
 
 
@@ -4707,8 +8475,8 @@ interface AppMenuItemProps {
 }
 
 const AppMenuItem: React.FC<AppMenuItemProps> = ({ icon: Icon, label, badge, hasActions, children, isSubItem = false, page, opensInSidePane = false }) => {
-  const compactMode = useAppShellStore(s => s.compactMode);
-  const { setDraggedPage, setDragHoverTarget } = useAppShellStore.getState();
+  const compactMode = useAppShellStore(state => state.compactMode);
+  const { setDraggedPage, setDragHoverTarget } = useAppShellStore.getState()
   const { isCollapsed } = useSidebar();
   const viewManager = useAppViewManager();
 
@@ -4791,6 +8559,78 @@ const AppMenuItem: React.FC<AppMenuItemProps> = ({ icon: Icon, label, badge, has
     </div>
   );
 };
+```
+
+## File: package.json
+```json
+{
+  "name": "jeli-app-shell",
+  "private": false,
+  "version": "1.0.1",
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "main": "./dist/jeli-app-shell.umd.js",
+  "module": "./dist/jeli-app-shell.es.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/jeli-app-shell.es.js",
+      "require": "./dist/jeli-app-shell.umd.js"
+    },
+    "./dist/style.css": "./dist/style.css"
+  },
+  "sideEffects": [
+    "**/*.css"
+  ],
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "preview": "vite preview"
+  },
+  "dependencies": {},
+  "peerDependencies": {
+    "@iconify/react": "^4.1.1",
+    "@radix-ui/react-avatar": "^1.0.4",
+    "@radix-ui/react-dialog": "^1.0.5",
+    "@radix-ui/react-dropdown-menu": "^2.0.6",
+    "@radix-ui/react-label": "^2.1.7",
+    "@radix-ui/react-popover": "^1.0.7",
+    "@radix-ui/react-slot": "^1.0.2",
+    "@radix-ui/react-tabs": "^1.0.4",
+    "class-variance-authority": "^0.7.0",
+    "clsx": "^2.0.0",
+    "cmdk": "^0.2.0",
+    "gsap": "^3.12.2",
+    "lucide-react": "^0.294.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.22.3",
+    "sonner": "^1.2.4",
+    "tailwind-merge": "^2.0.0",
+    "tailwindcss": "^3.3.5",
+    "zustand": "^4.5.7"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@types/react": "^18.2.37",
+    "@types/react-dom": "^18.2.15",
+    "@typescript-eslint/eslint-plugin": "^6.10.0",
+    "@typescript-eslint/parser": "^6.10.0",
+    "@vitejs/plugin-react": "^4.1.1",
+    "autoprefixer": "^10.4.16",
+    "eslint": "^8.53.0",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint-plugin-react-refresh": "^0.4.4",
+    "postcss": "^8.4.31",
+    "tailwindcss": "^3.3.5",
+    "tailwindcss-animate": "^1.0.7",
+    "typescript": "^5.2.2",
+    "vite": "^4.5.0"
+  }
+}
 ```
 
 ## File: src/pages/DataDemo/index.tsx
@@ -5082,124 +8922,6 @@ export default function DataDemoPage() {
 }
 ```
 
-## File: src/store/appStore.ts
-```typescript
-import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
-
-export type ActivePage = 'dashboard' | 'settings' | 'toaster' | 'notifications' | 'data-demo';
-
-interface AppState {
-  // UI States
-  isCommandPaletteOpen: boolean
-  searchTerm: string
-  isDarkMode: boolean
-  
-  // Actions
-  setCommandPaletteOpen: (open: boolean) => void
-  setSearchTerm: (term: string) => void
-  toggleDarkMode: () => void
-}
-
-const defaultState = {
-  isCommandPaletteOpen: false,
-  searchTerm: '',
-  isDarkMode: false,
-}
-
-export const useAppStore = create<AppState>()(
-  persist(
-    (set) => ({
-      ...defaultState,
-      
-      // Basic setters
-      setCommandPaletteOpen: (open) => set({ isCommandPaletteOpen: open }),
-      setSearchTerm: (term) => set({ searchTerm: term }),
-      toggleDarkMode: () => set((state) => ({ isDarkMode: !state.isDarkMode })),
-    }),
-    {
-      name: 'app-preferences',
-      partialize: (state) => ({
-        isDarkMode: state.isDarkMode,
-        // searchTerm is not persisted
-      }),
-    }
-  )
-)
-```
-
-## File: package.json
-```json
-{
-  "name": "jeli-app-shell",
-  "private": false,
-  "version": "1.0.1",
-  "type": "module",
-  "files": [
-    "dist"
-  ],
-  "main": "./dist/jeli-app-shell.umd.js",
-  "module": "./dist/jeli-app-shell.es.js",
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "import": "./dist/jeli-app-shell.es.js",
-      "require": "./dist/jeli-app-shell.umd.js"
-    },
-    "./dist/style.css": "./dist/style.css"
-  },
-  "sideEffects": [
-    "**/*.css"
-  ],
-  "scripts": {
-    "dev": "vite",
-    "build": "tsc && vite build",
-    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "preview": "vite preview"
-  },
-  "dependencies": {},
-  "peerDependencies": {
-    "@iconify/react": "^4.1.1",
-    "@radix-ui/react-avatar": "^1.0.4",
-    "@radix-ui/react-dialog": "^1.0.5",
-    "@radix-ui/react-dropdown-menu": "^2.0.6",
-    "@radix-ui/react-label": "^2.1.7",
-    "@radix-ui/react-popover": "^1.0.7",
-    "@radix-ui/react-slot": "^1.0.2",
-    "@radix-ui/react-tabs": "^1.0.4",
-    "class-variance-authority": "^0.7.0",
-    "clsx": "^2.0.0",
-    "cmdk": "^0.2.0",
-    "gsap": "^3.12.2",
-    "lucide-react": "^0.294.0",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "react-router-dom": "^6.22.3",
-    "sonner": "^1.2.4",
-    "tailwind-merge": "^2.0.0",
-    "tailwindcss": "^3.3.5",
-    "zustand": "^4.5.7"
-  },
-  "devDependencies": {
-    "@types/node": "^20.10.0",
-    "@types/react": "^18.2.37",
-    "@types/react-dom": "^18.2.15",
-    "@typescript-eslint/eslint-plugin": "^6.10.0",
-    "@typescript-eslint/parser": "^6.10.0",
-    "@vitejs/plugin-react": "^4.1.1",
-    "autoprefixer": "^10.4.16",
-    "eslint": "^8.53.0",
-    "eslint-plugin-react-hooks": "^4.6.0",
-    "eslint-plugin-react-refresh": "^0.4.4",
-    "postcss": "^8.4.31",
-    "tailwindcss": "^3.3.5",
-    "tailwindcss-animate": "^1.0.7",
-    "typescript": "^5.2.2",
-    "vite": "^4.5.0"
-  }
-}
-```
-
 ## File: src/components/layout/AppShell.tsx
 ```typescript
 import React, { useRef, type ReactElement, useEffect, useLayoutEffect } from 'react'
@@ -5207,7 +8929,6 @@ import { useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils'
 import { gsap } from 'gsap';
 import { CommandPalette } from '@/components/global/CommandPalette';
-import { useAppStore } from '@/store/appStore'
 import { useAppShellStore } from '@/store/appShell.store';
 import { SIDEBAR_STATES, BODY_STATES } from '@/lib/utils'
 import { useResizableSidebar, useResizableRightPane } from '@/hooks/useResizablePanes.hook'
@@ -5243,23 +8964,20 @@ function usePrevious<T>(value: T): T | undefined {
 
 
 export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalette, onOverlayClick }: AppShellProps) {
-  const {
-    sidebarState, autoExpandSidebar, hoveredPane, draggedPage,
-    dragHoverTarget, bodyState, sidePaneContent, reducedMotion,
-    isTopBarVisible,
-  } = useAppShellStore(state => ({
-    sidebarState: state.sidebarState, autoExpandSidebar: state.autoExpandSidebar,
-    hoveredPane: state.hoveredPane, draggedPage: state.draggedPage,
-    dragHoverTarget: state.dragHoverTarget, bodyState: state.bodyState,
-    sidePaneContent: state.sidePaneContent, reducedMotion: state.reducedMotion,
-    isTopBarVisible: state.isTopBarVisible,
-  }));
-  const { setSidebarState, toggleSidebar, peekSidebar, setHoveredPane } = useAppShellStore.getState();
+  const sidebarState = useAppShellStore(s => s.sidebarState);
+  const autoExpandSidebar = useAppShellStore(s => s.autoExpandSidebar);
+  const hoveredPane = useAppShellStore(s => s.hoveredPane);
+  const draggedPage = useAppShellStore(s => s.draggedPage);
+  const dragHoverTarget = useAppShellStore(s => s.dragHoverTarget);
+  const bodyState = useAppShellStore(s => s.bodyState);
+  const sidePaneContent = useAppShellStore(s => s.sidePaneContent);
+  const reducedMotion = useAppShellStore(s => s.reducedMotion);
+  const isTopBarVisible = useAppShellStore(s => s.isTopBarVisible);
+  const isDarkMode = useAppShellStore(s => s.isDarkMode);
+  const { setSidebarState, peekSidebar, setHoveredPane } = useAppShellStore.getState();
   
   const isFullscreen = bodyState === BODY_STATES.FULLSCREEN;
   const isSidePaneOpen = bodyState === BODY_STATES.SIDE_PANE;
-
-  const { isDarkMode, toggleDarkMode } = useAppStore();
   const location = useLocation();
   const activePage = location.pathname.split('/')[1] || 'dashboard';
   const appRef = useRef<HTMLDivElement>(null)
@@ -5330,11 +9048,6 @@ export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalet
     }
   });
 
-  const topBarWithProps = React.cloneElement(topBar, {
-    onToggleSidebar: toggleSidebar,
-    onToggleDarkMode: toggleDarkMode,
-  });
-
   const mainContentWithProps = React.cloneElement(mainContent, {
     ref: mainContentRef,
   });
@@ -5379,7 +9092,7 @@ export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalet
             )}
             onMouseEnter={() => { if (isSplitView) setHoveredPane(null); }}
           >
-            {topBarWithProps}
+            {topBar}
           </div>
 
           <div className="flex flex-1 min-h-0">
@@ -5507,7 +9220,6 @@ import {
 import { AppShell } from "./components/layout/AppShell";
 import { AppShellProvider } from "./providers/AppShellProvider";
 import { useAppShellStore } from "./store/appShell.store";
-import { useAppStore } from "./store/appStore";
 import { useAuthStore } from "./store/authStore";
 import "./index.css";
 
