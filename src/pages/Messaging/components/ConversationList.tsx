@@ -1,44 +1,130 @@
+import { useState, useMemo, useCallback } from 'react';
 import { Search, SlidersHorizontal } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 import { useMessagingStore } from '../store/messaging.store';
-import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
+import { AnimatedTabs } from '@/components/ui/animated-tabs';
 import { ChannelIcon } from './ChannelIcons';
+import type { Channel } from '../types';
+
+const channels: { id: Channel, label: string }[] = [
+  { id: 'whatsapp', label: 'WhatsApp' },
+  { id: 'instagram', label: 'Instagram' },
+  { id: 'facebook', label: 'Facebook' },
+];
 
 export const ConversationList = () => {
   const { conversationId } = useParams<{ conversationId: string }>();
-  const conversations = useMessagingStore(state => state.getConversationsWithContact());
+  const { 
+    getConversationsWithContact,
+    searchTerm,
+    setSearchTerm,
+    activeFilters,
+    setFilters,
+    getAvailableTags,
+   } = useMessagingStore();
+  const conversations = getConversationsWithContact();
+  const [activeTab, setActiveTab] = useState('all');
+  const availableTags = useMemo(() => getAvailableTags(), [getAvailableTags]);
+
+  const tabs = useMemo(() => [{ id: 'all', label: 'All' }, { id: 'unread', label: 'Unread' }], []);
+
+  const handleChannelFilterChange = useCallback((channelId: Channel) => {
+    const newChannels = activeFilters.channels.includes(channelId)
+      ? activeFilters.channels.filter(c => c !== channelId)
+      : [...activeFilters.channels, channelId];
+    setFilters({ channels: newChannels });
+  }, [activeFilters.channels, setFilters]);
+
+  const handleTagFilterChange = useCallback((tag: string) => {
+    const newTags = activeFilters.tags.includes(tag)
+      ? activeFilters.tags.filter(t => t !== tag)
+      : [...activeFilters.tags, tag];
+    setFilters({ tags: newTags });
+  }, [activeFilters.tags, setFilters]);
+
+  const filteredConversations = useMemo(() => {
+    if (activeTab === 'unread') {
+      return conversations.filter(convo => convo.unreadCount > 0); // This now filters on the already filtered list from store
+    }
+    return conversations;
+  }, [conversations, activeTab]);
 
   return (
-    <div className="h-full flex flex-col border-r bg-card/50 min-w-[320px] max-w-[400px] w-1/3">
+    <div className="h-full flex flex-col border-r bg-background/80">
       {/* Header */}
-      <div className="p-4 border-b">
-        <h2 className="text-xl font-bold tracking-tight mb-4">Conversations</h2>
+      <div className="p-4 border-b flex-shrink-0">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-bold tracking-tight">Conversations</h2>
+        </div>
         <div className="flex gap-2">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input placeholder="Search messages..." className="pl-9 bg-background" />
+            <Input placeholder="Search by name..." className="pl-9" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
           </div>
-          <Button variant="outline" size="icon">
-            <SlidersHorizontal className="w-4 h-4" />
-          </Button>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="icon" className="h-10 w-10 flex-shrink-0">
+                <SlidersHorizontal className="w-4 h-4" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-64 p-4" align="end">
+              <div className="space-y-4">
+                <div>
+                  <h4 className="text-sm font-semibold mb-2">Channels</h4>
+                  <div className="space-y-2">
+                    {channels.map(channel => (
+                      <div key={channel.id} className="flex items-center gap-2">
+                        <Checkbox 
+                          id={`channel-${channel.id}`} 
+                          checked={activeFilters.channels.includes(channel.id)}
+                          onCheckedChange={() => handleChannelFilterChange(channel.id)}
+                        />
+                        <label htmlFor={`channel-${channel.id}`} className="text-sm cursor-pointer">{channel.label}</label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <h4 className="text-sm font-semibold mb-2">Tags</h4>
+                  <div className="space-y-2">
+                    {availableTags.map(tag => (
+                      <div key={tag} className="flex items-center gap-2">
+                        <Checkbox 
+                          id={`tag-${tag}`} 
+                          checked={activeFilters.tags.includes(tag)}
+                          onCheckedChange={() => handleTagFilterChange(tag)}
+                        />
+                        <label htmlFor={`tag-${tag}`} className="text-sm cursor-pointer">{tag}</label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
         </div>
+        <AnimatedTabs tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} />
       </div>
 
       {/* Conversation List */}
       <div className="flex-1 overflow-y-auto">
-        <nav className="p-2 space-y-1">
-          {conversations.map(convo => (
+        <nav className="p-3 space-y-1">
+          {filteredConversations.map(convo => (
             <Link
               to={`/messaging/${convo.id}`}
               key={convo.id}
               className={cn(
-                "flex items-start gap-3 p-3 rounded-lg text-left transition-colors hover:bg-accent",
-                conversationId === convo.id && "bg-accent"
+                "flex items-start gap-4 p-4 rounded-xl text-left transition-all duration-200 hover:bg-accent/50",
+                "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 outline-none",
+                conversationId === convo.id && "bg-accent border-l-4 border-primary pl-3"
               )}
             >
               <div className="relative">
@@ -53,9 +139,7 @@ export const ConversationList = () => {
               <div className="flex-1 overflow-hidden">
                 <div className="flex justify-between items-center">
                   <p className="font-semibold truncate">{convo.contact.name}</p>
-                  <p className="text-xs text-muted-foreground whitespace-nowrap">
-                    {formatDistanceToNow(new Date(convo.lastMessage.timestamp), { addSuffix: true })}
-                  </p>
+                    <p className="text-xs text-muted-foreground whitespace-nowrap">{formatDistanceToNow(new Date(convo.lastMessage.timestamp), { addSuffix: false })}</p>
                 </div>
                 <p className="text-sm text-muted-foreground truncate">{convo.lastMessage.text}</p>
               </div>

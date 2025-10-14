@@ -16,8 +16,25 @@ export interface Contact {
   email: string;
   phone: string;
   lastSeen: string;
+  company: string;
+  role: string;
+  activity: ActivityEvent[];
+  notes: Note[];
 }
 
+export type ActivityEventType = 'note' | 'call' | 'email' | 'meeting';
+
+export interface ActivityEvent {
+  id: string;
+  type: ActivityEventType;
+  content: string;
+  timestamp: string;
+}
+export interface Note {
+  id: string;
+  content: string;
+  createdAt: string;
+}
 export interface Message {
   id: string;
   text: string;

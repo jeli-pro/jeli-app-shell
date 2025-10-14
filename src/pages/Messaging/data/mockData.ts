@@ -1,4 +1,16 @@
-import type { Contact, Conversation, Message } from '../types';
+import type { Contact, Conversation, Message, ActivityEvent, Note } from '../types';
+
+// --- HELPERS ---
+const generateNotes = (contactName: string): Note[] => [
+  { id: `note-${Math.random()}`, content: `Initial discovery call with ${contactName}. Seemed very interested in our enterprise package.`, createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString() },
+  { id: `note-${Math.random()}`, content: `Followed up via email with pricing details.`, createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString() },
+];
+
+const generateActivity = (contactName: string): ActivityEvent[] => [
+  { id: `act-${Math.random()}`, type: 'email', content: `Sent follow-up email regarding pricing.`, timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString() },
+  { id: `act-${Math.random()}`, type: 'call', content: `Had a 30-minute discovery call with ${contactName}.`, timestamp: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString() },
+  { id: `act-${Math.random()}`, type: 'meeting', content: `Scheduled a demo for next week.`, timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString() },
+];
 
 // --- CONTACTS ---
 export const mockContacts: Contact[] = [
@@ -11,6 +23,10 @@ export const mockContacts: Contact[] = [
     email: 'elena.r@example.com',
     phone: '+1 234 567 8901',
     lastSeen: 'online',
+    company: 'Innovate Inc.',
+    role: 'CTO',
+    activity: generateActivity('Elena Rodriguez'),
+    notes: generateNotes('Elena Rodriguez'),
   },
   {
     id: 'contact-2',
@@ -21,6 +37,10 @@ export const mockContacts: Contact[] = [
     email: 'marcus.c@example.com',
     phone: '+1 345 678 9012',
     lastSeen: '2 hours ago',
+    company: 'Solutions Co.',
+    role: 'Product Manager',
+    activity: generateActivity('Marcus Chen'),
+    notes: generateNotes('Marcus Chen'),
   },
   {
     id: 'contact-3',
@@ -31,6 +51,10 @@ export const mockContacts: Contact[] = [
     email: 'aisha.k@example.com',
     phone: '+1 456 789 0123',
     lastSeen: 'online',
+    company: 'Data Dynamics',
+    role: 'Data Analyst',
+    activity: generateActivity('Aisha Khan'),
+    notes: generateNotes('Aisha Khan'),
   },
   {
     id: 'contact-4',
@@ -41,6 +65,10 @@ export const mockContacts: Contact[] = [
     email: 'leo.tolstoy@example.com',
     phone: '+44 20 7946 0958',
     lastSeen: 'yesterday',
+    company: 'Classic Reads',
+    role: 'Author',
+    activity: generateActivity('Leo Tolstoy'),
+    notes: generateNotes('Leo Tolstoy'),
   }
 ];
 

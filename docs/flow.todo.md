@@ -9,11 +9,19 @@ also why not auto applied to another page like demo data?
 
 ===
 
+data demo page: on each view mode, need additional item as CTA to lure user to add more data
+
+===
+
 create omni (WA, IG, FB) channel CRM messaging page. make sure UI amazing and UX cohesive
 
 the page should be as split view mode: right pane consist of two columns, left column is for showing message list, right column is for showing profile detail with AI summaries ... and right pane is for showing message thread
 
 at the end make sure no bun tsc -b problems
+
+----
+
+ messaging page: please make every components, layout, UI UX more beautiful amazing also cohesive. with a bit glassmorphism effect but not too much.. also add many advanced features to profil detail column, also many advanced features to message thread column. message list and profile detail should be de/expandable█
 
 ===
 
