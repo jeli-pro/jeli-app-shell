@@ -7,11 +7,27 @@ I am obsessed with laravel filament... so make everything about data demo page i
 scroll to bottom in dashboard is not stick to right bottom.
 also why not auto applied to another page like demo data?
 
+===
+
+create omni (WA, IG, FB) channel CRM messaging page. make sure UI amazing and UX cohesive
+
+the page should be as split view mode: right pane consist of two columns, left column is for showing message list, right column is for showing profile detail with AI summaries ... and right pane is for showing message thread
+
+at the end make sure no bun tsc -b problems
+
+===
+
+please make buttons and forms spacious for minimalism
+
+===
+
+ creaate a page named Dialogs that showcasing many dialogs with many variant and many state... make sure they are UI amazing and UX cohesive█
+
 === DONE
 
 implement the eslint
 
-===
+=== DONE
 
 make the codebase radically DRY without UI UX regression by;
 1. extract out all stores to [domain].store.ts file

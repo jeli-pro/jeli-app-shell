@@ -113,6 +113,7 @@ export const EnhancedSidebar = React.memo(React.forwardRef<HTMLDivElement, Sideb
             <SidebarSection title="Main">
               <AppMenuItem icon={Home} label="Dashboard" page="dashboard" />
               <AppMenuItem icon={Database} label="Data Demo" page="data-demo" />
+              <AppMenuItem icon={Mail} label="Messaging" page="messaging" badge={7} />
               <AppMenuItem icon={Search} label="Search" />
               <AppMenuItem icon={Bell} label="Notifications" badge={3} page="notifications" opensInSidePane />
             </SidebarSection>

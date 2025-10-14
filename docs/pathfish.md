@@ -1,165 +1,556 @@
-Hell yeah, we shipped the DRY refactor. Code's cleaner, state's centralized. But now we're dropping frames and the UI feels like it's wading through molasses. Classic trade-off. We optimized for maintainability, now we gotta optimize for the metal.
+I will now execute Part 1 of the plan, focusing on establishing the foundational architecture for the new Omni-channel CRM messaging page.
 
-The culprit is classic over-rendering. Our new global stores are telling *everything* to update on *every* little change. A mouse move during resize shouldn't cause the entire UI tree to rethink its life.
+### Part 1: Foundation, Routing, and Data Modeling
 
-The plan is to go surgical. We'll switch from broad state subscriptions to granular selectors, ensuring components only listen for the exact slice of state they care about. We'll stabilize our animation hooks so they don't re-fire on every render. And we'll merge our UI state stores to cut down on noise. This is about making our components selectively deaf to irrelevant state changes.
+First, I'll create the necessary files for the new messaging feature, including type definitions, mock data, and a Zustand store.
 
-Let's tune this engine.
+```typescript // src/pages/Messaging/types.ts
+import { Icon } from 'lucide-react';
+import type { ComponentType } from 'react';
+
+export type Channel = 'whatsapp' | 'instagram' | 'facebook' | 'sms';
+
+export type ContactStatus = 'active' | 'away' | 'offline';
+
+export interface Contact {
+  id: string;
+  name: string;
+  avatar: string;
+  status: ContactStatus;
+  lastSeen: string;
+  tags: string[];
+  email?: string;
+  phone?: string;
+  location?: string;
+  socials?: {
+    twitter?: string;
+    linkedin?: string;
+  };
+  aiSummary: {
+    personality: string[];
+    recentTopics: string[];
+    sentiment: 'positive' | 'neutral' | 'negative';
+  };
+}
+
+export interface Message {
+  id: string;
+  content: string;
+  timestamp: string;
+  sender: 'contact' | 'agent';
+  agentName?: string;
+  agentAvatar?: string;
+  read: boolean;
+  type: 'text' | 'image' | 'file';
+  attachment?: {
+    url: string;
+    name?: string;
+    size?: string;
+  };
+}
+
+export interface Conversation {
+  id: string;
+  contact: Contact;
+  channel: Channel;
+  unreadCount: number;
+  lastMessage: Message;
+  messages: Message[];
+}
+
+export interface ChannelConfig {
+  icon: ComponentType<{ className?: string }>;
+  color: string;
+  name: string;
+}
+```
+
+```typescript // src/pages/Messaging/data/mockData.ts
+import { Instagram, MessageSquare, Facebook } from 'lucide-react';
+import { SiWhatsapp } from '@icons-pack/react-simple-icons';
+import type { Conversation, ChannelConfig } from '../types';
+
+export const channelConfig: Record<string, ChannelConfig> = {
+  whatsapp: {
+    icon: SiWhatsapp,
+    color: 'text-green-500',
+    name: 'WhatsApp',
+  },
+  instagram: {
+    icon: Instagram,
+    color: 'text-pink-500',
+    name: 'Instagram',
+  },
+  facebook: {
+    icon: Facebook,
+    color: 'text-blue-600',
+    name: 'Facebook',
+  },
+  sms: {
+    icon: MessageSquare,
+    color: 'text-sky-500',
+    name: 'SMS',
+  }
+};
+
+
+export const mockConversations: Conversation[] = [
+  {
+    id: 'conv-1',
+    contact: {
+      id: 'contact-1',
+      name: 'Elena Rodriguez',
+      avatar: 'https://avatar.vercel.sh/er.png',
+      status: 'active',
+      lastSeen: 'online',
+      tags: ['VIP', 'New Lead'],
+      email: 'elena.r@example.com',
+      phone: '+1 234 567 8901',
+      location: 'Madrid, Spain',
+      socials: {
+        linkedin: 'linkedin.com/in/elenarodriguez',
+      },
+      aiSummary: {
+        personality: ['Inquisitive', 'Direct', 'Detail-oriented'],
+        recentTopics: ['Pricing plans', 'API integration', 'Support SLAs'],
+        sentiment: 'positive',
+      },
+    },
+    channel: 'whatsapp',
+    unreadCount: 2,
+    lastMessage: {
+      id: 'msg-1-3',
+      content: "That sounds great, thank you! I'll review the new proposal.",
+      timestamp: '2024-05-21T10:45:00Z',
+      sender: 'contact',
+      read: false,
+      type: 'text',
+    },
+    messages: [
+      { id: 'msg-1-1', content: 'Hi, I have a question about your enterprise plan.', timestamp: '2024-05-21T10:30:00Z', sender: 'contact', read: true, type: 'text' },
+      { id: 'msg-1-2', content: 'Hello Elena! Happy to help. What would you like to know?', timestamp: '2024-05-21T10:32:00Z', sender: 'agent', agentName: 'Alex', read: true, type: 'text' },
+      { id: 'msg-1-3', content: "That sounds great, thank you! I'll review the new proposal.", timestamp: '2024-05-21T10:45:00Z', sender: 'contact', read: false, type: 'text' },
+    ],
+  },
+  {
+    id: 'conv-2',
+    contact: {
+      id: 'contact-2',
+      name: 'Ben Carter',
+      avatar: 'https://avatar.vercel.sh/bc.png',
+      status: 'away',
+      lastSeen: '2 hours ago',
+      tags: ['Returning Customer'],
+      email: 'ben.c@example.com',
+      phone: '+44 20 7946 0958',
+      location: 'London, UK',
+      aiSummary: {
+        personality: ['Concise', 'Friendly'],
+        recentTopics: ['Order status', 'Shipping options'],
+        sentiment: 'neutral',
+      },
+    },
+    channel: 'instagram',
+    unreadCount: 0,
+    lastMessage: {
+      id: 'msg-2-2',
+      content: 'Perfect, thanks for the update!',
+      timestamp: '2024-05-21T08:15:00Z',
+      sender: 'agent',
+      read: true,
+      type: 'text',
+    },
+    messages: [
+       { id: 'msg-2-1', content: 'Hey, any update on my order #12345?', timestamp: '2024-05-21T08:10:00Z', sender: 'contact', read: true, type: 'text' },
+       { id: 'msg-2-2', content: 'Perfect, thanks for the update!', timestamp: '2024-05-21T08:15:00Z', sender: 'agent', agentName: 'Chloe', read: true, type: 'text' },
+    ],
+  },
+  {
+    id: 'conv-3',
+    contact: {
+      id: 'contact-3',
+      name: 'Aisha Khan',
+      avatar: 'https://avatar.vercel.sh/ak.png',
+      status: 'offline',
+      lastSeen: 'yesterday',
+      tags: ['High Value'],
+      email: 'aisha.k@example.com',
+      location: 'Dubai, UAE',
+      aiSummary: {
+        personality: ['Analytical', 'Patient'],
+        recentTopics: ['Feature comparison', 'Data security'],
+        sentiment: 'positive',
+      },
+    },
+    channel: 'facebook',
+    unreadCount: 1,
+    lastMessage: {
+      id: 'msg-3-3',
+      content: 'Could you send over the security compliance document?',
+      timestamp: '2024-05-20T16:20:00Z',
+      sender: 'contact',
+      read: false,
+      type: 'text',
+    },
+    messages: [
+        { id: 'msg-3-1', content: 'Hi, I saw your ad and wanted to learn more.', timestamp: '2024-05-20T16:00:00Z', sender: 'contact', read: true, type: 'text' },
+        { id: 'msg-3-2', content: 'Hi Aisha, thanks for reaching out! We have a full feature list on our website.', timestamp: '2024-05-20T16:05:00Z', sender: 'agent', agentName: 'Alex', read: true, type: 'text' },
+        { id: 'msg-3-3', content: 'Could you send over the security compliance document?', timestamp: '2024-05-20T16:20:00Z', sender: 'contact', read: false, type: 'text' },
+    ],
+  },
+  {
+    id: 'conv-4',
+    contact: {
+      id: 'contact-4',
+      name: 'Marcus Holloway',
+      avatar: 'https://avatar.vercel.sh/mh.png',
+      status: 'active',
+      lastSeen: 'online',
+      tags: ['Tech Issue', 'Enterprise'],
+      email: 'marcus.h@example.com',
+      location: 'San Francisco, USA',
+      aiSummary: {
+        personality: ['Technical', 'Pragmatic'],
+        recentTopics: ['Bug report', 'System logs'],
+        sentiment: 'negative',
+      },
+    },
+    channel: 'sms',
+    unreadCount: 0,
+    lastMessage: {
+      id: 'msg-4-2',
+      content: "I've attached the logs. Please escalate this issue.",
+      timestamp: '2024-05-21T11:05:00Z',
+      sender: 'contact',
+      read: true,
+      type: 'text',
+    },
+    messages: [
+       { id: 'msg-4-1', content: 'The new update broke our integration.', timestamp: '2024-05-21T11:00:00Z', sender: 'contact', read: true, type: 'text' },
+       { id: 'msg-4-2', content: "I've attached the logs. Please escalate this issue.", timestamp: '2024-05-21T11:05:00Z', sender: 'contact', read: true, type: 'text' },
+    ],
+  },
+];
+```
+
+```typescript // src/pages/Messaging/store/messaging.store.ts
+import { create } from 'zustand';
+import { mockConversations } from '../data/mockData';
+import type { Conversation } from '../types';
+
+interface MessagingState {
+  conversations: Conversation[];
+  isLoading: boolean;
+  error: string | null;
+}
+
+interface MessagingActions {
+  getConversations: () => Conversation[];
+  getConversationById: (id: string) => Conversation | undefined;
+}
+
+export const useMessagingStore = create<MessagingState & MessagingActions>((set, get) => ({
+  conversations: [],
+  isLoading: true,
+  error: null,
+
+  // Actions
+  getConversations: () => {
+    // Simulate API fetch
+    if (get().conversations.length === 0) {
+      setTimeout(() => {
+        set({ conversations: mockConversations, isLoading: false });
+      }, 500);
+    }
+    return get().conversations.sort((a, b) =>
+      new Date(b.lastMessage.timestamp).getTime() - new Date(a.lastMessage.timestamp).getTime()
+    );
+  },
+
+  getConversationById: (id: string) => {
+    // Ensure conversations are loaded
+    if (get().conversations.length === 0) {
+      get().getConversations();
+    }
+    return get().conversations.find(c => c.id === id);
+  },
+}));
+```
+
+```typescript // src/pages/Messaging/index.tsx
+import { useParams } from "react-router-dom";
+
+export default function MessagingPage() {
+    const { conversationId } = useParams<{ conversationId: string }>();
+
+    return (
+        <div className="h-full w-full flex">
+            <div className="w-1/3 border-r">
+                <p className="p-4">Conversation List</p>
+                {conversationId && <p className="p-4">Selected: {conversationId}</p>}
+            </div>
+            <div className="w-2/3">
+                <p className="p-4">Contact Details / Empty State</p>
+                {conversationId && <p className="p-4">Showing details for {conversationId}</p>}
+            </div>
+        </div>
+    );
+}
+```
+
+Next, I'll add the necessary package for the WhatsApp icon and update the app shell's global state and hooks to recognize the new messaging page.
+
+```json // package.json standard-diff
+--- package.json
++++ package.json
+@@ -43,6 +43,7 @@
+     "preview": "vite preview"
+   },
+   "peerDependencies": {
++    "@icons-pack/react-simple-icons": "^9.5.0",
+     "@iconify/react": "^4.1.1",
+     "@radix-ui/react-avatar": "^1.0.4",
+     "@radix-ui/react-dialog": "^1.0.5",
+
+```
+
+```typescript // src/store/appShell.store.ts standard-diff
+--- src/store/appShell.store.ts
++++ src/store/appShell.store.ts
+@@ -3,11 +3,11 @@
+ import { SIDEBAR_STATES, BODY_STATES, type SidebarState, type BodyState } from '@/lib/utils';
+
+-export type ActivePage = 'dashboard' | 'settings' | 'toaster' | 'notifications' | 'data-demo';
++export type ActivePage = 'dashboard' | 'settings' | 'toaster' | 'notifications' | 'data-demo' | 'messaging';
+
+ // --- State and Action Types ---
+
+ export interface AppShellState {
+   sidebarState: SidebarState;
+   bodyState: BodyState;
+-  sidePaneContent: 'details' | 'settings' | 'main' | 'toaster' | 'notifications' | 'dataDemo' | 'dataItem';
++  sidePaneContent: 'details' | 'settings' | 'main' | 'toaster' | 'notifications' | 'dataDemo' | 'dataItem' | 'messaging';
+   sidebarWidth: number;
+   sidePaneWidth: number;
+   splitPaneWidth: number;
+@@ -25,7 +25,7 @@
+   isDarkMode: boolean;
+   appName?: string;
+   appLogo?: ReactElement;
+-  draggedPage: 'dashboard' | 'settings' | 'toaster' | 'notifications' | 'data-demo' | null;
++  draggedPage: ActivePage | null;
+   dragHoverTarget: 'left' | 'right' | null;
+   hoveredPane: 'left' | 'right' | null;
+ }
+@@ -49,7 +49,7 @@
+     setReducedMotion: (payload: boolean) => void;
+     setCompactMode: (payload: boolean) => void;
+     setPrimaryColor: (payload: string) => void;
+-    setDraggedPage: (payload: 'dashboard' | 'settings' | 'toaster' | 'notifications' | 'data-demo' | null) => void;
++    setDraggedPage: (payload: ActivePage | null) => void;
+     setCommandPaletteOpen: (open: boolean) => void;
+     toggleDarkMode: () => void;
+     setDragHoverTarget: (payload: 'left' | 'right' | null) => void;
+
+```
+
+```typescript // src/hooks/useAppViewManager.hook.ts standard-diff
+--- src/hooks/useAppViewManager.hook.ts
++++ src/hooks/useAppViewManager.hook.ts
+@@ -7,6 +7,7 @@
+   settings: 'settings',
+   toaster: 'toaster',
+   notifications: 'notifications',
+   'data-demo': 'dataDemo',
++  messaging: 'messaging',
+ };
+
+ /**
+@@ -19,13 +20,13 @@
+   const [searchParams, setSearchParams] = useSearchParams();
+   const navigate = useNavigate();
+   const location = useLocation();
+-  const { itemId } = useParams<{ itemId: string }>();
++  const { itemId, conversationId } = useParams<{ itemId: string; conversationId: string }>();
+
+   // --- DERIVED STATE FROM URL ---
+
+   const view = searchParams.get('view');
+   const sidePane = searchParams.get('sidePane');
+   const right = searchParams.get('right');
+
+   const { bodyState, sidePaneContent } = useMemo(() => {
+-    const validPanes: AppShellState['sidePaneContent'][] = ['details', 'settings', 'main', 'toaster', 'notifications', 'dataDemo'];
++    const validPanes: AppShellState['sidePaneContent'][] = ['details', 'settings', 'main', 'toaster', 'notifications', 'dataDemo', 'messaging'];
+
+     if (itemId) {
+       if (view === 'split') {
+@@ -34,6 +35,10 @@
+       return { bodyState: BODY_STATES.SIDE_PANE, sidePaneContent: 'dataItem' as const };
+     }
+
++    if (conversationId) {
++      return { bodyState: BODY_STATES.SPLIT_VIEW, sidePaneContent: 'messaging' as const };
++    }
++
+     if (sidePane && validPanes.includes(sidePane as AppShellState['sidePaneContent'])) {
+       return { bodyState: BODY_STATES.SIDE_PANE, sidePaneContent: sidePane as AppShellState['sidePaneContent'] };
+     }
+@@ -43,7 +48,7 @@
+     }
+
+     return { bodyState: BODY_STATES.NORMAL, sidePaneContent: 'details' as const };
+-  }, [itemId, view, sidePane, right]);
++  }, [itemId, conversationId, view, sidePane, right]);
+
+   const currentActivePage = useMemo(() => (location.pathname.split('/')[1] || 'dashboard') as ActivePage, [location.pathname]);
+
+
+```
+
+```typescript // src/hooks/usePaneDnd.hook.ts standard-diff
+--- src/hooks/usePaneDnd.hook.ts
++++ src/hooks/usePaneDnd.hook.ts
+@@ -3,11 +3,12 @@
+ import { useAppShellStore } from '@/store/appShell.store';
+ import { BODY_STATES } from '@/lib/utils';
+
+-const pageToPaneMap: Record<string, 'main' | 'settings' | 'toaster' | 'notifications' | 'dataDemo'> = {
++const pageToPaneMap: Record<string, 'main' | 'settings' | 'toaster' | 'notifications' | 'dataDemo' | 'messaging'> = {
+   dashboard: 'main',
+   settings: 'settings',
+   toaster: 'toaster',
+   notifications: 'notifications',
+   'data-demo': 'dataDemo',
++  messaging: 'messaging',
+ };
+
+ export function usePaneDnd() {
+
+```
+
+```typescript // src/hooks/useRightPaneContent.hook.tsx standard-diff
+--- src/hooks/useRightPaneContent.hook.tsx
++++ src/hooks/useRightPaneContent.hook.tsx
+@@ -5,6 +5,7 @@
+   Bell,
+   SlidersHorizontal,
+   Database,
++  MessageCircle,
+ } from 'lucide-react';
+
+ import { DashboardContent } from "@/pages/Dashboard";
+@@ -16,7 +17,7 @@
+ import type { AppShellState } from '@/store/appShell.store';
+
+ export function useRightPaneContent(sidePaneContent: AppShellState['sidePaneContent']) {
+   const navigate = useNavigate();
+-  const { itemId } = useParams<{ itemId: string }>();
++  const { itemId, conversationId } = useParams<{ itemId: string, conversationId: string }>();
+
+   const contentMap = useMemo(() => ({
+     main: {
+@@ -58,7 +59,12 @@
+         </div>
+       ),
+     },
+-  }), []);
++    messaging: {
++      title: "Conversation",
++      icon: MessageCircle,
++      content: <div className="p-6">Message Thread for {conversationId}</div>,
++    },
++  }), [conversationId]);
+
+   const selectedItem = useMemo(() => {
+     if (!itemId) return null;
+@@ -76,7 +82,7 @@
+       meta: mappedContent,
+       content: mappedContent.content,
+     };
+-  }, [sidePaneContent, selectedItem, navigate, contentMap, itemId]);
++  }, [sidePaneContent, selectedItem, navigate, contentMap, itemId, conversationId]);
+
+   return { meta, content };
+ }
+
+```
+
+Finally, I'll integrate the new page into the application's router and add a navigation link in the sidebar.
+
+```typescript // src/components/layout/EnhancedSidebar.tsx standard-diff
+--- src/components/layout/EnhancedSidebar.tsx
++++ src/components/layout/EnhancedSidebar.tsx
+@@ -118,6 +118,7 @@
+           <SidebarBody>
+             <SidebarSection title="Main">
+               <AppMenuItem icon={Home} label="Dashboard" page="dashboard" />
++              <AppMenuItem icon={Mail} label="Messaging" page="messaging" />
+               <AppMenuItem icon={Database} label="Data Demo" page="data-demo" />
+               <AppMenuItem icon={Search} label="Search" />
+               <AppMenuItem icon={Bell} label="Notifications" badge={3} page="notifications" opensInSidePane />
+@@ -128,8 +129,7 @@
+                 <AppMenuItem icon={Star} label="Starred" isSubItem />
+                 <AppMenuItem icon={Trash2} label="Trash" isSubItem />
+               </AppMenuItem>
+-              <AppMenuItem icon={FolderOpen} label="Projects" hasActions />
+-              <AppMenuItem icon={Mail} label="Messages" badge={12} />
++              <AppMenuItem icon={FolderOpen} label="Projects" hasActions />
+             </SidebarSection>
+
+             <SidebarSection title="Personal" collapsible>
+
+```
+
+```typescript // src/App.tsx standard-diff
+--- src/App.tsx
++++ src/App.tsx
+@@ -19,6 +19,7 @@
+ import { SettingsPage } from "./pages/Settings";
+ import { ToasterDemo } from "./pages/ToasterDemo";
+ import { NotificationsPage } from "./pages/Notifications";
+ import DataDemoPage from "./pages/DataDemo";
++import MessagingPage from "./pages/Messaging";
+ import { LoginPage } from "./components/auth/LoginPage";
+
+ // --- Icons ---
+@@ -216,6 +217,8 @@
+                 { path: "notifications", element: <NotificationsPage /> },
+                 { path: "data-demo", element: <DataDemoPage /> },
+                 { path: "data-demo/:itemId", element: <DataDemoPage /> },
++                { path: "messaging", element: <MessagingPage /> },
++                { path: "messaging/:conversationId", element: <MessagingPage /> },
+               ],
+             },
+           ],
+
+```
+
+This completes Part 1. The foundational elements are now in place, and the application is aware of the new messaging feature, its routes, and its potential view states.
 
 ```yaml
-plan:
-  uuid: 'c5d8a3f1-7b9e-4a0f-8d2c-1e9f4a7b6c3d'
-  status: 'todo'
-  title: 'Performance Tuning: Optimizing Renders and Animations'
-  introduction: |
-    We executed the radical DRY refactor, centralizing state with Zustand. The architecture is solid, but the user experience took a performance hit. Animations are lagging and interactions feel heavy. This is a classic symptom of excessive re-renders caused by components over-subscribing to our shiny new global stores. High-frequency updates (like resizing or scrolling) are triggering a cascade of unnecessary renders across the entire app.
+projectId: jeli-app-shell
+uuid: 44bbd414-b6c8-4770-87a3-e7f847ffde58
+changeSummary:
+  - new: src/pages/Messaging/types.ts
+  - new: src/pages/Messaging/data/mockData.ts
+  - new: src/pages/Messaging/store/messaging.store.ts
+  - new: src/pages/Messaging/index.tsx
+  - edit: package.json
+  - edit: src/store/appShell.store.ts
+  - edit: src/hooks/useAppViewManager.hook.ts
+  - edit: src/hooks/usePaneDnd.hook.ts
+  - edit: src/hooks/useRightPaneContent.hook.tsx
+  - edit: src/components/layout/EnhancedSidebar.tsx
+  - edit: src/App.tsx
+promptSummary: I need to create an omni-channel CRM messaging page. The page should be in split view mode: the left pane will have a message list and a profile detail column, and the right pane will show the message thread. This response executes part 1 of the plan, which is to lay the foundation, set up routing, and model the data.
+gitCommitMsg: >-
+  feat(messaging): scaffold foundation for omni-channel CRM page
 
-    This plan addresses the performance degradation head-on without sacrificing the benefits of the new architecture. The strategy is to surgically optimize our state subscriptions and stabilize our animation triggers. We will refactor components to select only the minimal, necessary slices of state from Zustand. This ensures they only re-render when their specific data changes.
-
-    Furthermore, we will audit our animation hooks (`useEffect`/`useLayoutEffect`) to guarantee they have stable dependencies, preventing them from re-running on every render. We'll also merge our UI state stores to simplify state management and reduce cross-store updates. The goal is to transform our application from a performance bottleneck into a buttery-smooth, responsive experience that is both maintainable and fast.
-  parts:
-    - uuid: 'd1e2f3a4-5b6c-7d8e-9f0a-1b2c3d4e5f6a'
-      status: 'todo'
-      name: 'Part 1: Implement Granular State Selection & Consolidate Stores'
-      reason: |
-        The primary cause of our performance issue is that components are subscribing to entire store objects. Any change to any property in the store triggers a re-render in every subscribed component. By switching to granular selectors (e.g., `useAppShellStore(state => state.sidebarState)`), we ensure components only update when the specific data they care about changes.
-
-        Additionally, `useAppStore` and `useAppShellStore` manage closely related UI state. Merging them simplifies our state architecture, reduces the number of store subscriptions, and makes the overall state easier to reason about.
-      steps:
-        - uuid: 'a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d'
-          status: 'todo'
-          name: '1. Merge `appStore.ts` into `appShell.store.ts`'
-          reason: |
-            State like `isDarkMode` and `isCommandPaletteOpen` are fundamentally part of the application shell's UI state. Consolidating them into `appShell.store.ts` reduces complexity and the number of separate global stores to manage.
-          files:
-            - src/store/appStore.ts
-            - src/store/appShell.store.ts
-          operations:
-            - 'Move the state properties (`isCommandPaletteOpen`, `isDarkMode`) and actions (`setCommandPaletteOpen`, `toggleDarkMode`) from `appStore.ts` into `appShell.store.ts`.'
-            - 'Remove `searchTerm` and `setSearchTerm` from the store logic; this is better handled by `useAppViewManager` with URL state.'
-            - 'Update all components that were using `useAppStore` to now use `useAppShellStore` with the appropriate selectors.'
-            - 'Delete the now-redundant `src/store/appStore.ts` file.'
-            - 'Update `src/index.ts` to stop exporting anything from the deleted `appStore.ts`.'
-        - uuid: 'b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d'
-          status: 'todo'
-          name: '2. Audit and Refactor All Store Subscriptions to Use Granular Selectors'
-          reason: |
-            This is the most critical performance optimization. We must change every instance of `useAppShellStore()` that selects the entire state object to use a selector for only the needed properties. This will slash the number of re-renders.
-          files:
-            - src/components/layout/AppShell.tsx
-            - src/components/layout/EnhancedSidebar.tsx
-            - src/components/layout/MainContent.tsx
-            - src/components/layout/RightPane.tsx
-            - src/components/layout/Sidebar.tsx
-            - src/components/layout/TopBar.tsx
-            - src/components/layout/ViewModeSwitcher.tsx
-            - src/components/global/CommandPalette.tsx
-            - src/features/settings/SettingsContent.tsx
-            - src/hooks/useAppShellAnimations.hook.ts
-            - src/hooks/useResizablePanes.hook.ts
-            - src/hooks/useAutoAnimateTopBar.ts
-            - src/pages/Dashboard/hooks/useDashboardAnimations.motion.hook.ts
-            - src/components/shared/PageLayout.tsx
-          operations:
-            - 'In `AppShell.tsx`, instead of destructuring from a single `useAppShellStore(state => ({...}))` call, use individual selectors for each piece of state: `const sidebarState = useAppShellStore(s => s.sidebarState);`, `const bodyState = useAppShellStore(s => s.bodyState);`, etc.'
-            - 'Apply the same pattern to all other components and hooks listed in `files`. For example, `EnhancedSidebar` only needs `sidebarWidth` and `compactMode`, so it should select only those.'
-            - 'In `SettingsContent.tsx`, which uses many properties, select them individually to prevent re-renders when, for example, `sidebarWidth` is changing.'
-            - 'For components that need both state and actions, destructure actions from `useAppShellStore.getState()` or select them separately to ensure render stability.'
-    - uuid: 'c3d4e5f6-a7b8-9c0d-1e2f-3a4b5c6d7e8f'
-      status: 'todo'
-      name: 'Part 2: Stabilize Animation and High-Frequency Hooks'
-      reason: |
-        Our animation logic is tied to React's lifecycle via `useEffect` and `useLayoutEffect`. If the dependencies for these effects are not stable, the animations will be needlessly re-initialized, causing jank and stuttering. Hooks that run on high-frequency events like scrolling also need to be optimized to prevent them from triggering expensive operations on every event.
-      steps:
-        - uuid: 'd4e5f6a7-b8c9-d0e1-f2a3-b4c5d6e7f8a9'
-          status: 'todo'
-          name: '1. Stabilize `useAppShellAnimations.hook.ts` Dependencies'
-          reason: |
-            This hook controls the core layout animations. It currently subscribes to multiple state properties, potentially re-running the entire animation setup when only one minor thing changes.
-          files:
-            - src/hooks/useAppShellAnimations.hook.ts
-          operations:
-            - 'In `useSidebarAnimations`, ensure the dependency array is minimal: `[sidebarState, sidebarWidth, bodyState, animationDuration, sidebarRef, resizeHandleRef]`. The values are primitives or stable refs, which is good.'
-            - 'In `useBodyStateAnimations`, the dependency array is large. Let''s confirm it''s necessary. The main trigger should be `bodyState`. We can use `useRef` to store previous values if needed to avoid including them in the deps array.'
-            - 'For store actions like `setSearchParams` that are used inside an effect, if they are not stable, they can cause re-runs. We should use the functional update form (`setSearchParams(prev => ...)`), which often has a stable identity, or wrap our logic in a `useCallback` in the parent hook.'
-        - uuid: 'e5f6a7b8-c9d0-e1f2-a3b4-c5d6e7f8a9b0'
-          status: 'todo'
-          name: '2. Optimize `useAutoAnimateTopBar` for High-Frequency Scrolling'
-          reason: |
-            This hook attaches a listener to the `onScroll` event. The callback function needs to be stable, and its dependencies must be minimal to avoid re-attaching the listener and to ensure the logic inside is efficient.
-          files:
-            - src/hooks/useAutoAnimateTopBar.ts
-          operations:
-            - 'Wrap the `onScroll` function in a `useCallback`.'
-            - 'The dependencies for the `useCallback` should be minimal. Instead of including `setTopBarVisible` directly, we can access it via `useAppShellStore.getState().setTopBarVisible()` inside the scroll handler. This removes the store action from the dependency list.'
-            - 'Ensure the hook correctly cleans up its `setTimeout` timer on unmount and on re-render.'
-        - uuid: 'f6a7b8c9-d0e1-f2a3-b4c5-d6e7f8a9b0c1'
-          status: 'todo'
-          name: '3. Add `reducedMotion` Check to Animation Hooks'
-          reason: |
-            Our animation hooks should respect the user's `reducedMotion` setting and bail out early to avoid any unnecessary calculations or DOM manipulations.
-          files:
-            - src/hooks/useStaggeredAnimation.motion.hook.ts
-            - src/hooks/useAppShellAnimations.hook.ts
-            - src/pages/Dashboard/hooks/useDashboardAnimations.motion.hook.ts
-          operations:
-            - 'In each animation hook, get the `reducedMotion` state from `useAppShellStore`.'
-            - 'Add a check at the beginning of the `useLayoutEffect`/`useEffect`: `if (reducedMotion || !containerRef.current) return;`.'
-            - 'This ensures no GSAP code runs if the user prefers reduced motion, improving performance and accessibility.'
-    - uuid: 'a7b8c9d0-e1f2-a3b4-c5d6-e7f8a9b0c1d2'
-      status: 'todo'
-      name: 'Part 3: Memoize Components and Refine Logic Hooks'
-      reason: |
-        Even with selective subscriptions, some components might re-render because their parent does. We can use `React.memo` to prevent this for components that are "pure" (same props, same output). We also need to ensure our logic hooks are not causing downstream re-renders by returning new object references on every render.
-      steps:
-        - uuid: 'b8c9d0e1-f2a3-b4c5-d6e7-f8a9b0c1d2e3'
-          status: 'todo'
-          name: '1. Wrap Pure Layout Components with `React.memo`'
-          reason: |
-            Components like `EnhancedSidebar` and `TopBar` are complex and their re-rendering can be expensive. Since they are primarily driven by global state, we can memoize them to prevent re-renders caused by their parent, `AppShell`.
-          files:
-            - src/components/layout/EnhancedSidebar.tsx
-            - src/components/layout/TopBar.tsx
-            - src/components/layout/RightPane.tsx
-          operations:
-            - 'Wrap the component exports in `EnhancedSidebar`, `TopBar`, and `RightPane` with `React.memo`.'
-            - 'Example: `export const EnhancedSidebar = React.memo(forwardRef<...>(...))`'
-        - uuid: 'c9d0e1f2-a3b4-c5d6-e7f8-a9b0c1d2e3f4'
-          status: 'todo'
-          name: '2. Stabilize Return Value of `useAppViewManager`'
-          reason: |
-            This hook returns a large object of state and functions. If the object reference changes on every render, any component that uses the hook will re-render, even if the specific properties it uses haven't changed.
-          files:
-            - src/hooks/useAppViewManager.hook.ts
-          operations:
-            - 'Wrap the entire return object of `useAppViewManager` in a `useMemo` hook.'
-            - 'Carefully craft the dependency array for this `useMemo` to include all the individual state values (`bodyState`, `viewMode`, etc.) and stable callbacks.'
-            - 'This ensures that the hook returns the same object reference unless one of its core values actually changes, preventing unnecessary re-renders in consumer components.'
-  conclusion: |
-    By executing this performance-focused plan, we will eliminate the jank and lag introduced after our initial refactor. The application will not only retain its new, clean architecture but will also feel fast and responsive.
-
-    We will have achieved the best of both worlds: a highly maintainable codebase with a centralized state model, and a user interface with buttery-smooth animations and interactions. This process of hardening our architecture for performance is a critical step in building a production-ready application.
-  context_files:
-    compact:
-      - src/store/appStore.ts
-      - src/store/appShell.store.ts
-      - src/hooks/useAppShellAnimations.hook.ts
-      - src/hooks/useAutoAnimateTopBar.ts
-    medium:
-      - src/store/appStore.ts
-      - src/store/appShell.store.ts
-      - src/hooks/useAppShellAnimations.hook.ts
-      - src/hooks/useAutoAnimateTopBar.ts
-      - src/components/layout/AppShell.tsx
-      - src/features/settings/SettingsContent.tsx
-    extended:
-      - src/store/appStore.ts
-      - src/store/appShell.store.ts
-      - src/hooks/useAppShellAnimations.hook.ts
-      - src/hooks/useAutoAnimateTopBar.ts
-      - src/components/layout/AppShell.tsx
-      - src/features/settings/SettingsContent.tsx
-      - src/components/layout/EnhancedSidebar.tsx
-      - src/components/layout/TopBar.tsx
-      - src/hooks/useAppViewManager.hook.ts
+  - Establishes the directory structure, data types, mock data, and a Zustand store for the new messaging feature.
+  - Integrates the messaging page into the application's core systems:
+    - Adds new routes for `/messaging` and `/messaging/:conversationId`.
+    - Updates the main sidebar with a navigation link to the new page.
+    - Extends the `useAppShellStore` and core view management hooks (`useAppViewManager`, `useRightPaneContent`, `usePaneDnd`) to recognize and handle the `'messaging'` page and its associated view states.
+  - Adds `@icons-pack/react-simple-icons` for channel-specific iconography.
 ```

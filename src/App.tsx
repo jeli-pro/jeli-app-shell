@@ -28,6 +28,7 @@ import { SettingsPage } from "./pages/Settings";
 import { ToasterDemo } from "./pages/ToasterDemo";
 import { NotificationsPage } from "./pages/Notifications";
 import DataDemoPage from "./pages/DataDemo";
+import MessagingPage from "./pages/Messaging";
 import { LoginPage } from "./components/auth/LoginPage";
 
 // --- Icons ---
@@ -212,6 +213,8 @@ function App() {
                 { path: "notifications", element: <NotificationsPage /> },
                 { path: "data-demo", element: <DataDemoPage /> },
                 { path: "data-demo/:itemId", element: <DataDemoPage /> },
+                { path: "messaging", element: <MessagingPage /> },
+                { path: "messaging/:conversationId", element: <MessagingPage /> },
               ],
             },
           ],

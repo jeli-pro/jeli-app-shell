@@ -1,0 +1,1607 @@
+uuid: d8e5e806-a841-4c60-8433-f54f76274b7c
+projectId: jeli-app-shell
+createdAt: '2025-10-14T07:50:09.653Z'
+gitCommitMsg: >-
+  feat(messaging): scaffold foundation for omni-channel crm page
+
+  This commit introduces the foundational architecture for the new messaging
+  feature. It includes:
+
+  -   **Data Modeling**: Defines TypeScript types for conversations, contacts,
+  and messages. -   **State Management**: Adds a dedicated Zustand store
+  (`useMessagingStore`) with mock data. -   **Routing**: Registers new routes
+  `/messaging` and `/messaging/:conversationId` in the main app router. -  
+  **App Shell Integration**: Updates core stores and hooks (`useAppShellStore`,
+  `useAppViewManager`, `useRightPaneContent`) to recognize "messaging" as a new
+  page and view state, enabling split-view layouts. -   **Navigation**: Adds a
+  "Messaging" link to the main sidebar for discoverability. -  
+  **Placeholders**: Scaffolds placeholder components for the main messaging page
+  and the message thread view.
+
+  This lays the groundwork for building the UI components in subsequent commits.
+promptSummary: >-
+  Create a new omni-channel CRM messaging page, including data models, state
+  management, routing, and integration with the existing app shell.
+reasoning:
+  - >-
+    Executing Part 1 of the plan, I will establish the foundational data models,
+    routing, and state management for the new Omni-channel CRM page. This
+    involves creating the necessary files for types, mock data, and a new
+    Zustand store for messaging. I will then integrate this new "messaging" page
+    as a first-class citizen within the application by updating the core App
+    Shell store, view manager hooks, sidebar navigation, and the main
+    application router.
+  - >-
+    First, I'll create the type definitions for our messaging domain. This
+    ensures data consistency from the start.
+  - >-
+    Next, I'll create rich mock data to simulate a real-world scenario. This is
+    crucial for building and testing the UI components in the next phase.
+  - >-
+    A dedicated Zustand store will manage the messaging data, providing clean
+    selectors for components to consume.
+  - >-
+    Now, I'll create placeholder components. This `MessageThread` will be
+    rendered in the `RightPane`, and the `MessagingPage` will be the main
+    content.
+  - >-
+    With the core files for the new feature in place, I will update the App
+    Shell's global state management to recognize `'messaging'` as a valid page
+    and pane type.
+  - >-
+    Next, I'll update the main view manager hook. This hook is the brain that
+    interprets the URL and determines the layout of the app. It now needs to
+    understand the `/messaging/:conversationId` route to trigger a split-view
+    layout.
+  - >-
+    I'll update the drag-and-drop hook to allow the new "Messaging" page to be
+    draggable into different panes.
+  - >-
+    The `useRightPaneContent` hook determines what to render in the right-hand
+    pane. It will now be responsible for rendering the `MessageThread` component
+    when a conversation is active.
+  - To make the new page accessible, I'll add a link to it in the main sidebar.
+  - >-
+    Finally, I'll register the new routes in the application's main router to
+    make the page renderable.
+  - >-
+    This completes the foundational work. The app is now aware of the messaging
+    page, its routes, and its potential view states, setting the stage for
+    building the UI components in Part 2.
+operations:
+  - type: write
+    path: src/pages/Messaging/types.ts
+    content: |-
+      import type { LucideIcon } from "lucide-react";
+
+      export type Channel = 'whatsapp' | 'instagram' | 'facebook';
+
+      export interface ChannelIcon {
+        Icon: LucideIcon;
+        color: string;
+      }
+
+      export interface Contact {
+        id: string;
+        name: string;
+        avatar: string;
+        online: boolean;
+        tags: string[];
+        email: string;
+        phone: string;
+        lastSeen: string;
+      }
+
+      export interface Message {
+        id: string;
+        text: string;
+        timestamp: string;
+        sender: 'user' | 'contact';
+        read: boolean;
+      }
+
+      export interface AISummary {
+        sentiment: 'positive' | 'negative' | 'neutral';
+        summaryPoints: string[];
+        suggestedReplies: string[];
+      }
+
+      export interface Conversation {
+        id: string;
+        contactId: string;
+        channel: Channel;
+        unreadCount: number;
+        lastMessage: Message;
+        messages: Message[];
+        aiSummary: AISummary;
+      }
+    patchStrategy: replace
+  - type: write
+    path: src/pages/Messaging/data/mockData.ts
+    content: >-
+      import type { Contact, Conversation, Message } from '../types';
+
+
+      // --- CONTACTS ---
+
+      export const mockContacts: Contact[] = [
+        {
+          id: 'contact-1',
+          name: 'Elena Rodriguez',
+          avatar: `https://avatar.vercel.sh/elenarodriguez.png`,
+          online: true,
+          tags: ['VIP', 'New Lead'],
+          email: 'elena.r@example.com',
+          phone: '+1 234 567 8901',
+          lastSeen: 'online',
+        },
+        {
+          id: 'contact-2',
+          name: 'Marcus Chen',
+          avatar: `https://avatar.vercel.sh/marcuschen.png`,
+          online: false,
+          tags: ['Returning Customer'],
+          email: 'marcus.c@example.com',
+          phone: '+1 345 678 9012',
+          lastSeen: '2 hours ago',
+        },
+        {
+          id: 'contact-3',
+          name: 'Aisha Khan',
+          avatar: `https://avatar.vercel.sh/aishakhan.png`,
+          online: true,
+          tags: ['Support Request'],
+          email: 'aisha.k@example.com',
+          phone: '+1 456 789 0123',
+          lastSeen: 'online',
+        },
+        {
+          id: 'contact-4',
+          name: 'Leo Tolstoy',
+          avatar: `https://avatar.vercel.sh/leotolstoy.png`,
+          online: false,
+          tags: [],
+          email: 'leo.tolstoy@example.com',
+          phone: '+44 20 7946 0958',
+          lastSeen: 'yesterday',
+        }
+      ];
+
+
+      // --- MESSAGE GENERATOR ---
+
+      const generateMessages = (count: number, contactName: string): Message[]
+      => {
+        const messages: Message[] = [];
+        const now = new Date();
+        for (let i = count - 1; i >= 0; i--) {
+          const sender = Math.random() > 0.5 ? 'user' : 'contact';
+          messages.push({
+            id: `msg-${Math.random()}`,
+            text: `This is a sample message number ${i} from ${sender === 'user' ? 'me' : contactName}. The time is roughly ${count - i} hours ago.`,
+            timestamp: new Date(now.getTime() - i * 60 * 60 * 1000).toISOString(),
+            sender,
+            read: i < count - 2,
+          });
+        }
+        // Ensure the last message is from the contact for preview purposes
+        messages[messages.length - 1].sender = 'contact';
+        messages[messages.length - 1].text = `Hey! This is the latest message from ${contactName}.`;
+        return messages.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+      };
+
+
+      // --- CONVERSATIONS ---
+
+      export const mockConversations: Conversation[] = [
+        {
+          id: 'conv-1',
+          contactId: 'contact-1',
+          channel: 'whatsapp',
+          unreadCount: 2,
+          messages: generateMessages(15, 'Elena Rodriguez'),
+          get lastMessage() { return this.messages[this.messages.length - 1]; },
+          aiSummary: {
+            sentiment: 'positive',
+            summaryPoints: [
+              'Expressed strong interest in the new feature.',
+              'Asked about pricing tiers for enterprise.',
+              'Is ready for a follow-up call next week.',
+            ],
+            suggestedReplies: [
+              'Let\'s schedule that call!',
+              'Here is the pricing information.',
+              'Happy to hear you like it!',
+            ],
+          },
+        },
+        {
+          id: 'conv-2',
+          contactId: 'contact-2',
+          channel: 'instagram',
+          unreadCount: 0,
+          messages: generateMessages(8, 'Marcus Chen'),
+          get lastMessage() { return this.messages[this.messages.length - 1]; },
+          aiSummary: {
+            sentiment: 'neutral',
+            summaryPoints: [
+              'Reported a minor issue with order #12345.',
+              'Was satisfied with the proposed solution.',
+              'Inquired about the return policy.',
+            ],
+            suggestedReplies: [
+              'Can I help with anything else?',
+              'Here is our return policy.',
+            ],
+          },
+        },
+        {
+          id: 'conv-3',
+          contactId: 'contact-3',
+          channel: 'facebook',
+          unreadCount: 5,
+          messages: generateMessages(20, 'Aisha Khan'),
+          get lastMessage() { return this.messages[this.messages.length - 1]; },
+          aiSummary: {
+            sentiment: 'negative',
+            summaryPoints: [
+              'Frustrated with login issues.',
+              'Unable to reset password via email link.',
+              'Threatened to cancel their subscription.',
+            ],
+            suggestedReplies: [
+              'I\'m escalating this to our technical team.',
+              'Let\'s try a manual password reset.',
+              'We apologize for the inconvenience.',
+            ],
+          },
+        },
+        {
+          id: 'conv-4',
+          contactId: 'contact-4',
+          channel: 'whatsapp',
+          unreadCount: 0,
+          messages: generateMessages(5, 'Leo Tolstoy'),
+          get lastMessage() { return this.messages[this.messages.length - 1]; },
+          aiSummary: {
+            sentiment: 'neutral',
+            summaryPoints: [
+              'Followed up on a previous conversation.',
+              'Confirmed meeting time for Thursday.',
+              'No outstanding issues.',
+            ],
+            suggestedReplies: [
+              'Sounds good!',
+              'See you then!',
+            ],
+          },
+        },
+      ];
+    patchStrategy: replace
+  - type: write
+    path: src/pages/Messaging/store/messaging.store.ts
+    content: >-
+      import { create } from 'zustand';
+
+      import { mockConversations, mockContacts } from '../data/mockData';
+
+      import type { Conversation, Contact } from '../types';
+
+
+      interface MessagingState {
+        conversations: Conversation[];
+        contacts: Contact[];
+      }
+
+
+      interface MessagingActions {
+        getConversationById: (id: string) => (Conversation & { contact: Contact }) | undefined;
+        getConversationsWithContact: () => (Conversation & { contact: Contact })[];
+      }
+
+
+      export const useMessagingStore = create<MessagingState &
+      MessagingActions>((set, get) => ({
+        conversations: mockConversations,
+        contacts: mockContacts,
+
+        getConversationById: (id) => {
+          const conversation = get().conversations.find(c => c.id === id);
+          if (!conversation) return undefined;
+          
+          const contact = get().contacts.find(c => c.id === conversation.contactId);
+          if (!contact) return undefined; // Should not happen with consistent data
+
+          return { ...conversation, contact };
+        },
+
+        getConversationsWithContact: () => {
+          const { conversations, contacts } = get();
+          return conversations.map(convo => {
+            const contact = contacts.find(c => c.id === convo.contactId) as Contact;
+            return { ...convo, contact };
+          }).sort((a, b) => new Date(b.lastMessage.timestamp).getTime() - new Date(a.lastMessage.timestamp).getTime());
+        },
+      }));
+    patchStrategy: replace
+  - type: write
+    path: src/pages/Messaging/components/MessageThread.tsx
+    content: >-
+      import React from 'react';
+
+
+      interface MessageThreadProps {
+        conversationId?: string;
+      }
+
+
+      export const MessageThread: React.FC<MessageThreadProps> = ({
+      conversationId }) => {
+        return (
+          <div className="p-6">
+            <h2 className="text-lg font-semibold">Message Thread</h2>
+            {conversationId ? (
+              <p>Displaying messages for conversation: {conversationId}</p>
+            ) : (
+              <p className="text-muted-foreground">Select a conversation to see the messages.</p>
+            )}
+          </div>
+        );
+      };
+    patchStrategy: replace
+  - type: write
+    path: src/pages/Messaging/index.tsx
+    content: |-
+      import { useParams } from "react-router-dom";
+
+      export default function MessagingPage() {
+        const { conversationId } = useParams<{ conversationId: string }>();
+
+        return (
+          <div className="h-full w-full flex bg-background">
+              {/* This will be replaced by a 2-column layout in Part 2 */}
+              <div className="p-6 flex-1">
+                <h1 className="text-2xl font-bold tracking-tight">Messaging</h1>
+                <p className="text-muted-foreground mt-2">
+                  This area will contain the conversation list and contact details.
+                </p>
+                {conversationId && 
+                  <div className="mt-4 p-4 rounded-lg bg-card border">
+                      <p className="font-semibold">Active Conversation ID:</p>
+                      <p className="text-sm text-primary">{conversationId}</p>
+                  </div>
+                }
+              </div>
+          </div>
+        );
+      }
+    patchStrategy: replace
+  - type: write
+    path: src/store/appShell.store.ts
+    content: >+
+      --- src/store/appShell.store.ts
+
+      +++ src/store/appShell.store.ts
+
+      @@ -4,13 +4,13 @@
+       import { SIDEBAR_STATES, BODY_STATES, type SidebarState, type BodyState } from '@/lib/utils';
+       
+      -export type ActivePage = 'dashboard' | 'settings' | 'toaster' |
+      'notifications' | 'data-demo';
+
+      +export type ActivePage = 'dashboard' | 'settings' | 'toaster' |
+      'notifications' | 'data-demo' | 'messaging';
+       
+       // --- State and Action Types ---
+       
+       export interface AppShellState {
+         sidebarState: SidebarState;
+         bodyState: BodyState;
+      -  sidePaneContent: 'details' | 'settings' | 'main' | 'toaster' |
+      'notifications' | 'dataDemo' | 'dataItem';
+
+      +  sidePaneContent: 'details' | 'settings' | 'main' | 'toaster' |
+      'notifications' | 'dataDemo' | 'dataItem' | 'messaging';
+         sidebarWidth: number;
+         sidePaneWidth: number;
+         splitPaneWidth: number;
+      @@ -26,7 +26,7 @@
+         isCommandPaletteOpen: boolean;
+         isDarkMode: boolean;
+         appName?: string;
+         appLogo?: ReactElement;
+      -  draggedPage: 'dashboard' | 'settings' | 'toaster' | 'notifications' |
+      'data-demo' | null;
+
+      +  draggedPage: 'dashboard' | 'settings' | 'toaster' | 'notifications' |
+      'data-demo' | 'messaging' | null;
+         dragHoverTarget: 'left' | 'right' | null;
+         hoveredPane: 'left' | 'right' | null;
+       }
+      @@ -51,7 +51,7 @@
+           setReducedMotion: (payload: boolean) => void;
+           setCompactMode: (payload: boolean) => void;
+           setPrimaryColor: (payload: string) => void;
+      -    setDraggedPage: (payload: 'dashboard' | 'settings' | 'toaster' |
+      'notifications' | 'data-demo' | null) => void;
+
+      +    setDraggedPage: (payload: AppShellState['draggedPage']) => void;
+           setCommandPaletteOpen: (open: boolean) => void;
+           toggleDarkMode: () => void;
+           setDragHoverTarget: (payload: 'left' | 'right' | null) => void;
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/hooks/useAppViewManager.hook.ts
+    content: >+
+      --- src/hooks/useAppViewManager.hook.ts
+
+      +++ src/hooks/useAppViewManager.hook.ts
+
+      @@ -6,6 +6,7 @@
+         settings: 'settings',
+         toaster: 'toaster',
+         notifications: 'notifications',
+         'data-demo': 'dataDemo',
+      +  messaging: 'messaging',
+       };
+       
+       /**
+      @@ -17,21 +18,26 @@
+         const [searchParams, setSearchParams] = useSearchParams();
+         const navigate = useNavigate();
+         const location = useLocation();
+      -  const { itemId } = useParams<{ itemId: string }>();
+
+      +  const params = useParams<{ itemId: string; conversationId: string }>();
+
+      +  const { itemId, conversationId } = params;
+       
+         // --- DERIVED STATE FROM URL ---
+       
+         const view = searchParams.get('view');
+         const sidePane = searchParams.get('sidePane');
+         const right = searchParams.get('right');
+       
+         const { bodyState, sidePaneContent } = useMemo(() => {
+      -    const validPanes: AppShellState['sidePaneContent'][] = ['details',
+      'settings', 'main', 'toaster', 'notifications', 'dataDemo'];
+
+      +    const validPanes: AppShellState['sidePaneContent'][] = ['details',
+      'settings', 'main', 'toaster', 'notifications', 'dataDemo', 'messaging'];
+           
+      +    if (conversationId) {
+
+      +      return { bodyState: BODY_STATES.SPLIT_VIEW, sidePaneContent:
+      'messaging' as const };
+
+      +    }
+
+      +
+           if (itemId) {
+             if (view === 'split') {
+               return { bodyState: BODY_STATES.SPLIT_VIEW, sidePaneContent: 'dataItem' as const };
+      @@ -48,7 +54,7 @@
+           }
+           
+           return { bodyState: BODY_STATES.NORMAL, sidePaneContent: 'details' as const };
+      -  }, [itemId, view, sidePane, right]);
+
+      +  }, [itemId, conversationId, view, sidePane, right]);
+         
+         const currentActivePage = useMemo(() => (location.pathname.split('/')[1] || 'dashboard') as ActivePage, [location.pathname]);
+       
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/hooks/usePaneDnd.hook.ts
+    content: >+
+      --- src/hooks/usePaneDnd.hook.ts
+
+      +++ src/hooks/usePaneDnd.hook.ts
+
+      @@ -4,11 +4,12 @@
+       import { useAppShellStore } from '@/store/appShell.store';
+       import { BODY_STATES } from '@/lib/utils';
+       
+      -const pageToPaneMap: Record<string, 'main' | 'settings' | 'toaster' |
+      'notifications' | 'dataDemo'> = {
+
+      +const pageToPaneMap: Record<string, 'main' | 'settings' | 'toaster' |
+      'notifications' | 'dataDemo' | 'messaging'> = {
+         dashboard: 'main',
+         settings: 'settings',
+         toaster: 'toaster',
+         notifications: 'notifications',
+         'data-demo': 'dataDemo',
+      +  messaging: 'messaging',
+       };
+       
+       export function usePaneDnd() {
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/hooks/useRightPaneContent.hook.tsx
+    content: >+
+      --- src/hooks/useRightPaneContent.hook.tsx
+
+      +++ src/hooks/useRightPaneContent.hook.tsx
+
+      @@ -5,6 +5,7 @@
+         Bell,
+         SlidersHorizontal,
+         Database,
+      +  MessageSquare,
+       } from 'lucide-react';
+       
+       import { DashboardContent } from "@/pages/Dashboard";
+      @@ -14,11 +15,12 @@
+       import DataDemoPage from "@/pages/DataDemo";
+       import { DataDetailPanel } from "@/pages/DataDemo/components/DataDetailPanel";
+       import { mockDataItems } from "@/pages/DataDemo/data/mockData";
+      +import { MessageThread } from
+      "@/pages/Messaging/components/MessageThread";
+       import type { AppShellState } from '@/store/appShell.store';
+       
+       export function useRightPaneContent(sidePaneContent: AppShellState['sidePaneContent']) {
+         const navigate = useNavigate();
+      -  const { itemId } = useParams<{ itemId: string }>();
+
+      +  const { itemId, conversationId } = useParams<{ itemId: string;
+      conversationId: string }>();
+       
+         const contentMap = useMemo(() => ({
+           main: {
+      @@ -51,6 +53,12 @@
+             page: "data-demo",
+             content: <DataDemoPage />,
+           },
+      +    messaging: {
+
+      +      title: "Conversation",
+
+      +      icon: MessageSquare,
+
+      +      page: "messaging",
+
+      +      content: <MessageThread conversationId={conversationId} />,
+
+      +    },
+           details: {
+             title: "Details Panel",
+             icon: SlidersHorizontal,
+      @@ -63,7 +71,7 @@
+               </div>
+             ),
+           },
+      -  }), []);
+
+      +  }), [conversationId]);
+       
+         const selectedItem = useMemo(() => {
+           if (!itemId) return null;
+      @@ -77,12 +85,18 @@
+               content: <DataDetailPanel item={selectedItem} onClose={() => navigate('/data-demo')} />,
+             };
+           }
+      +    if (sidePaneContent === 'messaging') {
+
+      +      return {
+
+      +       meta: contentMap.messaging,
+
+      +       content: <MessageThread conversationId={conversationId} />,
+
+      +     };
+
+      +   }
+           const mappedContent = contentMap[sidePaneContent as keyof typeof contentMap] || contentMap.details;
+           return {
+             meta: mappedContent,
+             content: mappedContent.content,
+           };
+      -  }, [sidePaneContent, selectedItem, navigate, contentMap, itemId]);
+
+      +  }, [sidePaneContent, selectedItem, navigate, contentMap, itemId,
+      conversationId]);
+       
+         return { meta, content };
+       }
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/components/layout/EnhancedSidebar.tsx
+    content: >+
+      --- src/components/layout/EnhancedSidebar.tsx
+
+      +++ src/components/layout/EnhancedSidebar.tsx
+
+      @@ -124,6 +124,7 @@
+                 <SidebarBody>
+                   <SidebarSection title="Main">
+                     <AppMenuItem icon={Home} label="Dashboard" page="dashboard" />
+                     <AppMenuItem icon={Database} label="Data Demo" page="data-demo" />
+      +              <AppMenuItem icon={Mail} label="Messaging" page="messaging"
+      badge={7} />
+                     <AppMenuItem icon={Search} label="Search" />
+                     <AppMenuItem icon={Bell} label="Notifications" badge={3} page="notifications" opensInSidePane />
+                   </SidebarSection>
+      @@ -131,7 +132,7 @@
+                   <SidebarSection title="Workspace" collapsible defaultExpanded>
+                     <AppMenuItem icon={FileText} label="Documents" hasActions>
+                       <AppMenuItem icon={FileText} label="Recent" isSubItem />
+                       <AppMenuItem icon={Star} label="Starred" isSubItem />
+      @@ -139,7 +140,7 @@
+                     </AppMenuItem>
+                     <AppMenuItem icon={FolderOpen} label="Projects" hasActions />
+                     <AppMenuItem icon={Mail} label="Messages" badge={12} />
+                   </SidebarSection>
+                   
+                   <SidebarSection title="Personal" collapsible>
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/App.tsx
+    content: >
+      --- src/App.tsx
+
+      +++ src/App.tsx
+
+      @@ -23,6 +23,7 @@
+       import { ToasterDemo } from "./pages/ToasterDemo";
+       import { NotificationsPage } from "./pages/Notifications";
+       import DataDemoPage from "./pages/DataDemo";
+      +import MessagingPage from "./pages/Messaging";
+       import { LoginPage } from "./components/auth/LoginPage";
+       
+       // --- Icons ---
+      @@ -242,6 +243,8 @@
+                       { path: "notifications", element: <NotificationsPage /> },
+                       { path: "data-demo", element: <DataDemoPage /> },
+                       { path: "data-demo/:itemId", element: <DataDemoPage /> },
+      +                { path: "messaging", element: <MessagingPage /> },
+
+      +                { path: "messaging/:conversationId", element:
+      <MessagingPage /> },
+                     ],
+                   },
+                 ],
+    patchStrategy: standard-diff
+snapshot:
+  src/pages/Messaging/types.ts: null
+  src/pages/Messaging/store/messaging.store.ts: null
+  src/pages/Messaging/components/MessageThread.tsx: null
+  src/pages/Messaging/data/mockData.ts: null
+  src/pages/Messaging/index.tsx: null
+  src/store/appShell.store.ts: >-
+    import { create } from 'zustand';
+
+    import { type ReactElement } from 'react';
+
+    import { SIDEBAR_STATES, BODY_STATES, type SidebarState, type BodyState }
+    from '@/lib/utils';
+
+
+    export type ActivePage = 'dashboard' | 'settings' | 'toaster' |
+    'notifications' | 'data-demo';
+
+
+    // --- State and Action Types ---
+
+
+    export interface AppShellState {
+      sidebarState: SidebarState;
+      bodyState: BodyState;
+      sidePaneContent: 'details' | 'settings' | 'main' | 'toaster' | 'notifications' | 'dataDemo' | 'dataItem';
+      sidebarWidth: number;
+      sidePaneWidth: number;
+      splitPaneWidth: number;
+      previousBodyState: BodyState;
+      fullscreenTarget: 'main' | 'right' | null;
+      isResizing: boolean;
+      isResizingRightPane: boolean;
+      isTopBarVisible: boolean;
+      autoExpandSidebar: boolean;
+      reducedMotion: boolean;
+      compactMode: boolean;
+      primaryColor: string;
+      isCommandPaletteOpen: boolean;
+      isDarkMode: boolean;
+      appName?: string;
+      appLogo?: ReactElement;
+      draggedPage: 'dashboard' | 'settings' | 'toaster' | 'notifications' | 'data-demo' | null;
+      dragHoverTarget: 'left' | 'right' | null;
+      hoveredPane: 'left' | 'right' | null;
+    }
+
+
+    export interface AppShellActions {
+        // Initialization
+        init: (config: { appName?: string; appLogo?: ReactElement; defaultSplitPaneWidth?: number }) => void;
+        
+        // Direct state setters
+        setSidebarState: (payload: SidebarState) => void;
+        setBodyState: (payload: BodyState) => void;
+        setSidePaneContent: (payload: AppShellState['sidePaneContent']) => void;
+        setSidebarWidth: (payload: number) => void;
+        setSidePaneWidth: (payload: number) => void;
+        setSplitPaneWidth: (payload: number) => void;
+        setIsResizing: (payload: boolean) => void;
+        setFullscreenTarget: (payload: 'main' | 'right' | null) => void;
+        setIsResizingRightPane: (payload: boolean) => void;
+        setTopBarVisible: (payload: boolean) => void;
+        setAutoExpandSidebar: (payload: boolean) => void;
+        setReducedMotion: (payload: boolean) => void;
+        setCompactMode: (payload: boolean) => void;
+        setPrimaryColor: (payload: string) => void;
+        setDraggedPage: (payload: 'dashboard' | 'settings' | 'toaster' | 'notifications' | 'data-demo' | null) => void;
+        setCommandPaletteOpen: (open: boolean) => void;
+        toggleDarkMode: () => void;
+        setDragHoverTarget: (payload: 'left' | 'right' | null) => void;
+        setHoveredPane: (payload: 'left' | 'right' | null) => void;
+        
+        // Composite actions
+        toggleSidebar: () => void;
+        hideSidebar: () => void;
+        showSidebar: () => void;
+        peekSidebar: () => void;
+        toggleFullscreen: (target?: 'main' | 'right' | null) => void;
+        resetToDefaults: () => void;
+    }
+
+
+    const defaultState: AppShellState = {
+      sidebarState: SIDEBAR_STATES.EXPANDED,
+      bodyState: BODY_STATES.NORMAL,
+      sidePaneContent: 'details',
+      sidebarWidth: 280,
+      sidePaneWidth: typeof window !== 'undefined' ? Math.max(300, Math.round(window.innerWidth * 0.6)) : 400,
+      splitPaneWidth: typeof window !== 'undefined' ? Math.max(300, Math.round(window.innerWidth * 0.35)) : 400,
+      previousBodyState: BODY_STATES.NORMAL,
+      fullscreenTarget: null,
+      isResizing: false,
+      isResizingRightPane: false,
+      isTopBarVisible: true,
+      autoExpandSidebar: true,
+      reducedMotion: false,
+      compactMode: false,
+      primaryColor: '220 84% 60%',
+      isCommandPaletteOpen: false,
+      isDarkMode: false,
+      appName: 'Jeli App',
+      appLogo: undefined,
+      draggedPage: null,
+      dragHoverTarget: null,
+      hoveredPane: null,
+    };
+
+
+
+    export const useAppShellStore = create<AppShellState &
+    AppShellActions>((set, get) => ({
+      ...defaultState,
+
+      init: ({ appName, appLogo, defaultSplitPaneWidth }) => set(state => ({
+        ...state,
+        ...(appName && { appName }),
+        ...(appLogo && { appLogo }),
+        ...(defaultSplitPaneWidth && { splitPaneWidth: defaultSplitPaneWidth }),
+      })),
+      
+      setSidebarState: (payload) => set({ sidebarState: payload }),
+      setBodyState: (payload) => {
+        // If we're leaving fullscreen, reset the target and previous state
+        if (get().bodyState === BODY_STATES.FULLSCREEN && payload !== BODY_STATES.FULLSCREEN) {
+          set({ bodyState: payload, fullscreenTarget: null, previousBodyState: BODY_STATES.NORMAL });
+        } else {
+          set({ bodyState: payload });
+        }
+      },
+      setSidePaneContent: (payload) => set({ sidePaneContent: payload }),
+      setSidebarWidth: (payload) => set({ sidebarWidth: Math.max(200, Math.min(500, payload)) }),
+      setSidePaneWidth: (payload) => set({ sidePaneWidth: Math.max(300, Math.min(window.innerWidth * 0.8, payload)) }),
+      setSplitPaneWidth: (payload) => set({ splitPaneWidth: Math.max(300, Math.min(window.innerWidth * 0.8, payload)) }),
+      setIsResizing: (payload) => set({ isResizing: payload }),
+      setFullscreenTarget: (payload) => set({ fullscreenTarget: payload }),
+      setIsResizingRightPane: (payload) => set({ isResizingRightPane: payload }),
+      setTopBarVisible: (payload) => set({ isTopBarVisible: payload }),
+      setAutoExpandSidebar: (payload) => set({ autoExpandSidebar: payload }),
+      setReducedMotion: (payload) => set({ reducedMotion: payload }),
+      setCompactMode: (payload) => set({ compactMode: payload }),
+      setPrimaryColor: (payload) => {
+        if (typeof document !== 'undefined') {
+            document.documentElement.style.setProperty('--primary-hsl', payload);
+        }
+        set({ primaryColor: payload });
+      },
+      setDraggedPage: (payload) => set({ draggedPage: payload }),
+      setCommandPaletteOpen: (open) => set({ isCommandPaletteOpen: open }),
+      toggleDarkMode: () => set((state) => ({ isDarkMode: !state.isDarkMode })),
+      setDragHoverTarget: (payload) => set({ dragHoverTarget: payload }),
+      setHoveredPane: (payload) => set({ hoveredPane: payload }),
+      
+      toggleSidebar: () => {
+        const current = get().sidebarState;
+        if (current === SIDEBAR_STATES.HIDDEN) set({ sidebarState: SIDEBAR_STATES.COLLAPSED });
+        else if (current === SIDEBAR_STATES.COLLAPSED) set({ sidebarState: SIDEBAR_STATES.EXPANDED });
+        else if (current === SIDEBAR_STATES.EXPANDED) set({ sidebarState: SIDEBAR_STATES.COLLAPSED });
+      },
+      hideSidebar: () => set({ sidebarState: SIDEBAR_STATES.HIDDEN }),
+      showSidebar: () => set({ sidebarState: SIDEBAR_STATES.EXPANDED }),
+      peekSidebar: () => set({ sidebarState: SIDEBAR_STATES.PEEK }),
+      
+      toggleFullscreen: (target = null) => {
+        const { bodyState, previousBodyState } = get();
+        if (bodyState === BODY_STATES.FULLSCREEN) {
+          set({ 
+            bodyState: previousBodyState || BODY_STATES.NORMAL,
+            fullscreenTarget: null,
+            previousBodyState: BODY_STATES.NORMAL,
+          });
+        } else {
+          set({ 
+            previousBodyState: bodyState, 
+            bodyState: BODY_STATES.FULLSCREEN, 
+            fullscreenTarget: target 
+          });
+        }
+      },
+      
+      resetToDefaults: () => {
+        // Preserve props passed to provider
+        const { appName, appLogo } = get();
+        const currentPrimaryColor = defaultState.primaryColor;
+        if (typeof document !== 'undefined') {
+          document.documentElement.style.setProperty('--primary-hsl', currentPrimaryColor);
+        }
+        set({ ...defaultState, primaryColor: currentPrimaryColor, appName, appLogo });
+      },
+    }));
+
+
+    // Add a selector for the derived rightPaneWidth
+
+    export const useRightPaneWidth = () => useAppShellStore(state => 
+        state.bodyState === BODY_STATES.SPLIT_VIEW ? state.splitPaneWidth : state.sidePaneWidth
+    );
+  src/hooks/useRightPaneContent.hook.tsx: >-
+    import { useMemo } from 'react';
+
+    import { useNavigate, useParams } from 'react-router-dom';
+
+    import {
+      LayoutDashboard,
+      Settings,
+      Component,
+      Bell,
+      SlidersHorizontal,
+      Database,
+    } from 'lucide-react';
+
+
+    import { DashboardContent } from "@/pages/Dashboard";
+
+    import { SettingsContent } from "@/features/settings/SettingsContent";
+
+    import { ToasterDemo } from "@/pages/ToasterDemo";
+
+    import { NotificationsPage } from "@/pages/Notifications";
+
+    import DataDemoPage from "@/pages/DataDemo";
+
+    import { DataDetailPanel } from
+    "@/pages/DataDemo/components/DataDetailPanel";
+
+    import { mockDataItems } from "@/pages/DataDemo/data/mockData";
+
+    import type { AppShellState } from '@/store/appShell.store';
+
+
+    export function useRightPaneContent(sidePaneContent:
+    AppShellState['sidePaneContent']) {
+      const navigate = useNavigate();
+      const { itemId } = useParams<{ itemId: string }>();
+
+      const contentMap = useMemo(() => ({
+        main: {
+          title: "Dashboard",
+          icon: LayoutDashboard,
+          page: "dashboard",
+          content: <DashboardContent />,
+        },
+        settings: {
+          title: "Settings",
+          icon: Settings,
+          page: "settings",
+          content: <div className="p-6"><SettingsContent /></div>
+        },
+        toaster: {
+          title: "Toaster Demo",
+          icon: Component,
+          page: "toaster",
+          content: <ToasterDemo />,
+        },
+        notifications: {
+          title: "Notifications",
+          icon: Bell,
+          page: "notifications",
+          content: <NotificationsPage />,
+        },
+        dataDemo: {
+          title: "Data Showcase",
+          icon: Database,
+          page: "data-demo",
+          content: <DataDemoPage />,
+        },
+        details: {
+          title: "Details Panel",
+          icon: SlidersHorizontal,
+          content: (
+            <div className="p-6">
+              <p className="text-muted-foreground">
+                This is the side pane. It can be used to display contextual
+                information, forms, or actions related to the main content.
+              </p>
+            </div>
+          ),
+        },
+      }), []);
+
+      const selectedItem = useMemo(() => {
+        if (!itemId) return null;
+        return mockDataItems.find(item => item.id === itemId) ?? null;
+      }, [itemId]);
+
+      const { meta, content } = useMemo(() => {
+        if (sidePaneContent === 'dataItem' && selectedItem) {
+          return {
+            meta: { title: "Item Details", icon: Database, page: `data-demo/${itemId}` },
+            content: <DataDetailPanel item={selectedItem} onClose={() => navigate('/data-demo')} />,
+          };
+        }
+        const mappedContent = contentMap[sidePaneContent as keyof typeof contentMap] || contentMap.details;
+        return {
+          meta: mappedContent,
+          content: mappedContent.content,
+        };
+      }, [sidePaneContent, selectedItem, navigate, contentMap, itemId]);
+
+      return { meta, content };
+    }
+  src/hooks/usePaneDnd.hook.ts: >-
+    import { useCallback } from 'react';
+
+    import { useLocation, useNavigate } from 'react-router-dom';
+
+    import { useAppShellStore } from '@/store/appShell.store';
+
+    import { BODY_STATES } from '@/lib/utils';
+
+
+    const pageToPaneMap: Record<string, 'main' | 'settings' | 'toaster' |
+    'notifications' | 'dataDemo'> = {
+      dashboard: 'main',
+      settings: 'settings',
+      toaster: 'toaster',
+      notifications: 'notifications',
+      'data-demo': 'dataDemo',
+    };
+
+
+    export function usePaneDnd() {
+      const {
+        draggedPage,
+        dragHoverTarget,
+        bodyState,
+        sidePaneContent,
+      } = useAppShellStore(state => ({
+        draggedPage: state.draggedPage,
+        dragHoverTarget: state.dragHoverTarget,
+        bodyState: state.bodyState,
+        sidePaneContent: state.sidePaneContent,
+      }));
+      const { setDraggedPage, setDragHoverTarget } = useAppShellStore.getState();
+      const navigate = useNavigate();
+      const location = useLocation();
+      const activePage = location.pathname.split('/')[1] || 'dashboard';
+
+      const handleDragOverLeft = useCallback((e: React.DragEvent) => {
+        if (!draggedPage) return;
+        e.preventDefault();
+        if (dragHoverTarget !== 'left') {
+          setDragHoverTarget('left');
+        }
+      }, [draggedPage, dragHoverTarget, setDragHoverTarget]);
+
+      const handleDropLeft = useCallback(() => {
+        if (!draggedPage) return;
+
+        const paneContentOfDraggedPage = pageToPaneMap[draggedPage as keyof typeof pageToPaneMap];
+        if (paneContentOfDraggedPage === sidePaneContent && (bodyState === BODY_STATES.SIDE_PANE || bodyState === BODY_STATES.SPLIT_VIEW)) {
+          navigate(`/${draggedPage}`, { replace: true });
+        } 
+        else if (bodyState === BODY_STATES.NORMAL && draggedPage !== activePage) {
+            const originalActivePagePaneContent = pageToPaneMap[activePage as keyof typeof pageToPaneMap];
+            if (originalActivePagePaneContent) {
+                navigate(`/${draggedPage}?view=split&right=${originalActivePagePaneContent}`, { replace: true });
+            } else {
+                navigate(`/${draggedPage}`, { replace: true });
+            }
+        } else {
+          if (bodyState === BODY_STATES.SPLIT_VIEW) {
+            const rightPane = location.search.split('right=')[1];
+            if (rightPane) {
+              navigate(`/${draggedPage}?view=split&right=${rightPane}`, { replace: true });
+              return;
+            }
+          }
+          navigate(`/${draggedPage}`, { replace: true });
+        }
+        
+        setDraggedPage(null);
+        setDragHoverTarget(null);
+      }, [draggedPage, activePage, bodyState, sidePaneContent, navigate, location.search, setDraggedPage, setDragHoverTarget]);
+
+      const handleDragOverRight = useCallback((e: React.DragEvent) => {
+        if (!draggedPage) return;
+        e.preventDefault();
+        if (dragHoverTarget !== 'right') {
+          setDragHoverTarget('right');
+        }
+      }, [draggedPage, dragHoverTarget, setDragHoverTarget]);
+
+      const handleDropRight = useCallback(() => {
+        if (!draggedPage) return;
+        const pane = pageToPaneMap[draggedPage as keyof typeof pageToPaneMap];
+        if (pane) {
+          let mainPage = activePage;
+          if (draggedPage === activePage) {
+            mainPage = 'dashboard';
+          }
+          navigate(`/${mainPage}?view=split&right=${pane}`, { replace: true });
+        }
+        setDraggedPage(null);
+        setDragHoverTarget(null);
+      }, [draggedPage, activePage, navigate, setDraggedPage, setDragHoverTarget]);
+
+      const handleDragLeave = useCallback(() => {
+          setDragHoverTarget(null);
+      }, [setDragHoverTarget]);
+
+      return {
+        handleDragOverLeft,
+        handleDropLeft,
+        handleDragOverRight,
+        handleDropRight,
+        handleDragLeave,
+      };
+    }
+  src/components/layout/EnhancedSidebar.tsx: >-
+    import React from 'react';
+
+    import {
+      Home,
+      Settings,
+      HelpCircle,
+      Component,
+      Rocket,
+      MoreHorizontal,
+      Bell,
+      Search,
+      FileText,
+      Star,
+      Trash2,
+      FolderOpen,
+      Mail,
+      Bookmark,
+      Download,
+      User,
+      Plus,
+      Database,
+    } from 'lucide-react';
+
+    import { useAppShellStore, type ActivePage } from '@/store/appShell.store';
+
+    import {
+      Workspaces,
+      WorkspaceTrigger,
+      WorkspaceContent,
+      type Workspace,
+    } from './WorkspaceSwitcher';
+
+    import {
+      DropdownMenu,
+      DropdownMenuContent,
+      DropdownMenuItem,
+      DropdownMenuTrigger,
+    } from '@/components/ui/dropdown-menu';
+
+    import {
+      Sidebar,
+      SidebarContent,
+      SidebarHeader,
+      SidebarTitle,
+      SidebarBody,
+      SidebarFooter,
+      SidebarSection,
+      SidebarMenuItem,
+      SidebarMenuButton,
+      SidebarMenuAction,
+      SidebarLabel,
+      SidebarBadge,
+      SidebarTooltip,
+      SidebarIcon,
+      useSidebar,
+    } from './Sidebar';
+
+    import { ViewModeSwitcher } from './ViewModeSwitcher';
+
+    import { cn } from '@/lib/utils';
+
+    import { useAppViewManager } from '@/hooks/useAppViewManager.hook';
+
+
+    interface MyWorkspace extends Workspace {
+      logo: string;
+      plan: string;
+    }
+
+
+    const mockWorkspaces: MyWorkspace[] = [
+      { id: 'ws1', name: 'Acme Inc.', logo: 'https://avatar.vercel.sh/acme.png', plan: 'Pro' },
+      { id: 'ws2', name: 'Monsters Inc.', logo: 'https://avatar.vercel.sh/monsters.png', plan: 'Free' },
+      { id: 'ws3', name: 'Stark Industries', logo: 'https://avatar.vercel.sh/stark.png', plan: 'Enterprise' },
+    ];
+
+
+    const SidebarWorkspaceTrigger = () => {
+      const { isCollapsed, compactMode } = useSidebar();
+
+      return (
+        <WorkspaceTrigger
+          collapsed={isCollapsed}
+          className={cn(
+            'rounded-xl transition-colors hover:bg-accent/50 w-full',
+            isCollapsed ? 'p-2' : 'p-3 bg-accent/50',
+          )}
+          avatarClassName={cn(compactMode ? 'h-8 w-8' : 'h-10 w-10')}
+        />
+      );
+    };
+
+
+    interface SidebarProps {
+      onMouseEnter?: () => void;
+      onMouseLeave?: () => void;
+    }
+
+
+    export const EnhancedSidebar = React.memo(React.forwardRef<HTMLDivElement,
+    SidebarProps>(
+      ({ onMouseEnter, onMouseLeave }, ref) => {
+        const sidebarWidth = useAppShellStore(s => s.sidebarWidth);
+        const compactMode = useAppShellStore(s => s.compactMode);
+        const appName = useAppShellStore(s => s.appName);
+        const appLogo = useAppShellStore(s => s.appLogo);
+        const [selectedWorkspace, setSelectedWorkspace] = React.useState(mockWorkspaces[0]);
+
+        return (
+          <Sidebar
+            ref={ref}
+            style={{ width: sidebarWidth }}
+            onMouseEnter={onMouseEnter}
+            onMouseLeave={onMouseLeave}
+          >
+            <SidebarContent>
+              <SidebarHeader>
+                {appLogo || (
+                  <div className="p-2 bg-primary/20 rounded-lg">
+                    <Rocket className="w-5 h-5 text-primary" />
+                  </div>
+                )}
+                <SidebarTitle>{appName}</SidebarTitle>
+              </SidebarHeader>
+
+              <SidebarBody>
+                <SidebarSection title="Main">
+                  <AppMenuItem icon={Home} label="Dashboard" page="dashboard" />
+                  <AppMenuItem icon={Database} label="Data Demo" page="data-demo" />
+                  <AppMenuItem icon={Search} label="Search" />
+                  <AppMenuItem icon={Bell} label="Notifications" badge={3} page="notifications" opensInSidePane />
+                </SidebarSection>
+                
+                <SidebarSection title="Workspace" collapsible defaultExpanded>
+                  <AppMenuItem icon={FileText} label="Documents" hasActions>
+                    <AppMenuItem icon={FileText} label="Recent" isSubItem />
+                    <AppMenuItem icon={Star} label="Starred" isSubItem />
+                    <AppMenuItem icon={Trash2} label="Trash" isSubItem />
+                  </AppMenuItem>
+                  <AppMenuItem icon={FolderOpen} label="Projects" hasActions />
+                  <AppMenuItem icon={Mail} label="Messages" badge={12} />
+                </SidebarSection>
+                
+                <SidebarSection title="Personal" collapsible>
+                  <AppMenuItem icon={Bookmark} label="Bookmarks" />
+                  <AppMenuItem icon={Star} label="Favorites" />
+                  <AppMenuItem icon={Download} label="Downloads" />
+                </SidebarSection>
+
+                <SidebarSection title="Components" collapsible defaultExpanded>
+                  <AppMenuItem icon={Component} label="Toaster" page="toaster" />
+                </SidebarSection>
+              </SidebarBody>
+
+              <SidebarFooter>
+                <SidebarSection>
+                  <AppMenuItem icon={User} label="Profile" />
+                  <AppMenuItem icon={Settings} label="Settings" page="settings" />
+                  <AppMenuItem icon={HelpCircle} label="Help" />
+                </SidebarSection>
+
+                <div className={cn(compactMode ? 'mt-4' : 'mt-6')}>
+                  <Workspaces
+                    workspaces={mockWorkspaces}
+                    selectedWorkspaceId={selectedWorkspace.id}
+                    onWorkspaceChange={setSelectedWorkspace}
+                  >
+                    <SidebarWorkspaceTrigger />
+                    <WorkspaceContent>
+                      <button className="flex w-full items-center gap-2 rounded-sm px-2 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground focus:outline-none">
+                        <Plus className="h-4 w-4" />
+                        <span>Create Workspace</span>
+                      </button>
+                    </WorkspaceContent>
+                  </Workspaces>
+                </div>
+              </SidebarFooter>
+            </SidebarContent>
+          </Sidebar>
+        );
+      },
+    ));
+
+    EnhancedSidebar.displayName = 'EnhancedSidebar';
+
+
+
+    // Example of a reusable menu item component built with the new Sidebar
+    primitives
+
+    interface AppMenuItemProps {
+      icon: React.ElementType;
+      label: string;
+      badge?: number;
+      hasActions?: boolean;
+      children?: React.ReactNode;
+      isSubItem?: boolean;
+      page?: ActivePage;
+      opensInSidePane?: boolean;
+    }
+
+
+    const AppMenuItem: React.FC<AppMenuItemProps> = ({ icon: Icon, label, badge,
+    hasActions, children, isSubItem = false, page, opensInSidePane = false }) =>
+    {
+      const compactMode = useAppShellStore(state => state.compactMode);
+      const { setDraggedPage, setDragHoverTarget } = useAppShellStore.getState()
+      const { isCollapsed } = useSidebar();
+      const viewManager = useAppViewManager();
+
+      const isActive = (
+        (!opensInSidePane && page && viewManager.currentActivePage === page)
+      ) || (
+        opensInSidePane && page === 'notifications' && viewManager.sidePaneContent === 'notifications'
+      );
+
+      const handleClick = () => {
+        if (page) {
+          if (opensInSidePane) {
+            // The only item using this is Notifications
+            viewManager.toggleSidePane('notifications');
+          } else {
+            viewManager.navigateTo(page);
+          }
+        }
+      };
+
+      return (
+        <div className={isSubItem ? (compactMode ? 'ml-4' : 'ml-6') : ''}>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              onClick={handleClick}
+              isActive={isActive}
+              draggable={!!page}
+              onDragStart={(_e) => {
+                if (page) {
+                  // set dragged page in AppShell store
+                  setDraggedPage(page);
+                }
+              }}
+              onDragEnd={() => {
+                setDraggedPage(null);
+                setDragHoverTarget(null);
+              }}
+            >
+              <SidebarIcon>
+                <Icon className={isSubItem ? "w-3 h-3" : "w-4 h-4"}/>
+              </SidebarIcon>
+              <SidebarLabel>{label}</SidebarLabel>
+              {badge && <SidebarBadge>{badge}</SidebarBadge>}
+              <SidebarTooltip label={label} badge={badge} />
+            </SidebarMenuButton>
+
+            {page && !isCollapsed && ( // Always render switcher if there's a page
+              <div className={cn(
+                "absolute top-1/2 -translate-y-1/2 z-10",
+                "opacity-0 group-hover/item:opacity-100 group-focus-within/item:opacity-100",
+                "transition-opacity pointer-events-none group-hover/item:pointer-events-auto",
+                // If there are actions, move left to make space for the action button
+                hasActions ? "right-10" : "right-2"
+              )}>
+                <ViewModeSwitcher targetPage={page} />
+              </div>
+            )}
+
+            {hasActions && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <SidebarMenuAction>
+                    <MoreHorizontal className="h-4 w-4" />
+                  </SidebarMenuAction>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent side="right" align="start">
+                  <DropdownMenuItem>
+                    <span>Edit {label}</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem>
+                    <span>Delete {label}</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </SidebarMenuItem>
+          {!isCollapsed && children && (
+            <div className="space-y-1 mt-1">{children}</div>
+          )}
+        </div>
+      );
+    };
+  src/hooks/useAppViewManager.hook.ts: "import { useMemo, useCallback } from 'react';\nimport { useSearchParams, useNavigate, useLocation, useParams } from 'react-router-dom';\nimport type { AppShellState, ActivePage } from '@/store/appShell.store';\nimport type { DataItem, ViewMode, SortConfig, SortableField, GroupableField, Status, Priority } from '@/pages/DataDemo/types';\nimport type { FilterConfig } from '@/pages/DataDemo/components/DataToolbar';\nimport { BODY_STATES } from '@/lib/utils';\n\nconst pageToPaneMap: Record<string, AppShellState['sidePaneContent']> = {\n  dashboard: 'main',\n  settings: 'settings',\n  toaster: 'toaster',\n  notifications: 'notifications',\n  'data-demo': 'dataDemo',\n};\n\n/**\n * A centralized hook to manage and synchronize all URL-based view states.\n * This is the single source of truth for view modes, side panes, split views,\n * and page-specific parameters.\n */\nexport function useAppViewManager() {\n  const [searchParams, setSearchParams] = useSearchParams();\n  const navigate = useNavigate();\n  const location = useLocation();\n  const { itemId } = useParams<{ itemId: string }>();\n\n  // --- DERIVED STATE FROM URL ---\n\n  const view = searchParams.get('view');\n  const sidePane = searchParams.get('sidePane');\n  const right = searchParams.get('right');\n\n  const { bodyState, sidePaneContent } = useMemo(() => {\n    const validPanes: AppShellState['sidePaneContent'][] = ['details', 'settings', 'main', 'toaster', 'notifications', 'dataDemo'];\n    \n    if (itemId) {\n      if (view === 'split') {\n        return { bodyState: BODY_STATES.SPLIT_VIEW, sidePaneContent: 'dataItem' as const };\n      }\n      return { bodyState: BODY_STATES.SIDE_PANE, sidePaneContent: 'dataItem' as const };\n    }\n    \n    if (sidePane && validPanes.includes(sidePane as AppShellState['sidePaneContent'])) {\n      return { bodyState: BODY_STATES.SIDE_PANE, sidePaneContent: sidePane as AppShellState['sidePaneContent'] };\n    }\n    \n    if (view === 'split' && right && validPanes.includes(right as AppShellState['sidePaneContent'])) {\n      return { bodyState: BODY_STATES.SPLIT_VIEW, sidePaneContent: right as AppShellState['sidePaneContent'] };\n    }\n    \n    return { bodyState: BODY_STATES.NORMAL, sidePaneContent: 'details' as const };\n  }, [itemId, view, sidePane, right]);\n  \n  const currentActivePage = useMemo(() => (location.pathname.split('/')[1] || 'dashboard') as ActivePage, [location.pathname]);\n\n  // DataDemo specific state\n  const viewMode = useMemo(() => (searchParams.get('view') as ViewMode) || 'list', [searchParams]);\n\tconst page = useMemo(() => parseInt(searchParams.get('page') || '1', 10), [searchParams]);\n\tconst groupBy = useMemo(() => (searchParams.get('groupBy') as GroupableField | 'none') || 'none', [searchParams]);\n\tconst activeGroupTab = useMemo(() => searchParams.get('tab') || 'all', [searchParams]);\n\tconst filters = useMemo<FilterConfig>(\n\t\t() => ({\n\t\t\tsearchTerm: searchParams.get('q') || '',\n\t\t\tstatus: (searchParams.get('status')?.split(',') || []).filter(Boolean) as Status[],\n\t\t\tpriority: (searchParams.get('priority')?.split(',') || []).filter(Boolean) as Priority[],\n\t\t}),\n\t\t[searchParams],\n\t);\n\tconst sortConfig = useMemo<SortConfig | null>(() => {\n\t\tconst sortParam = searchParams.get('sort');\n\t\tif (!sortParam) return { key: 'updatedAt', direction: 'desc' }; // Default sort\n\t\tif (sortParam === 'default') return null;\n\n\t\tconst [key, direction] = sortParam.split('-');\n\t\treturn { key: key as SortableField, direction: direction as 'asc' | 'desc' };\n\t}, [searchParams]);\n\n  // --- MUTATOR ACTIONS ---\n\n  const handleParamsChange = useCallback(\n\t\t(newParams: Record<string, string | string[] | null | undefined>, resetPage = false) => {\n\t\t\tsetSearchParams(\n\t\t\t\t(prev) => {\n\t\t\t\t\tconst updated = new URLSearchParams(prev);\n\t\t\t\t\t\n\t\t\t\t\tfor (const [key, value] of Object.entries(newParams)) {\n\t\t\t\t\t\tif (value === null || value === undefined || (Array.isArray(value) && value.length === 0) || value === '') {\n\t\t\t\t\t\t\tupdated.delete(key);\n\t\t\t\t\t\t} else if (Array.isArray(value)) {\n\t\t\t\t\t\t\tupdated.set(key, value.join(','));\n\t\t\t\t\t\t} else {\n\t\t\t\t\t\t\tupdated.set(key, String(value));\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\n\t\t\t\t\tif (resetPage) {\n\t\t\t\t\t\tupdated.delete('page');\n\t\t\t\t\t}\n\t\t\t\t\tif ('groupBy' in newParams) {\n\t\t\t\t\t\tupdated.delete('tab');\n\t\t\t\t\t}\n\n\t\t\t\t\treturn updated;\n\t\t\t\t},\n\t\t\t\t{ replace: true },\n\t\t\t);\n\t\t},\n\t\t[setSearchParams],\n\t);\n\n  const navigateTo = useCallback((page: string) => {\n    navigate(page.startsWith('/') ? page : `/${page}`);\n  }, [navigate]);\n\n  const openSidePane = useCallback((pane: AppShellState['sidePaneContent']) => {\n    if (location.pathname === `/${Object.keys(pageToPaneMap).find(key => pageToPaneMap[key] === pane)}`) {\n        navigate({ pathname: '/dashboard', search: `?sidePane=${pane}` }, { replace: true });\n    } else {\n        handleParamsChange({ sidePane: pane, view: null, right: null });\n    }\n  }, [handleParamsChange, navigate, location.pathname]);\n\n  const closeSidePane = useCallback(() => {\n    if (itemId) {\n      navigate('/data-demo');\n    } else {\n      handleParamsChange({ sidePane: null, view: null, right: null });\n    }\n  }, [itemId, navigate, handleParamsChange]);\n\n  const toggleSidePane = useCallback((pane: AppShellState['sidePaneContent']) => {\n    if (sidePane === pane) {\n      closeSidePane();\n    } else {\n      openSidePane(pane);\n    }\n  }, [sidePane, openSidePane, closeSidePane]);\n\n  const toggleSplitView = useCallback(() => {\n    if (bodyState === BODY_STATES.SIDE_PANE) {\n      handleParamsChange({ view: 'split', right: sidePane, sidePane: null });\n    } else if (bodyState === BODY_STATES.SPLIT_VIEW) {\n      handleParamsChange({ sidePane: right, view: null, right: null });\n    } else { // From normal\n      const paneContent = pageToPaneMap[currentActivePage] || 'details';\n      handleParamsChange({ view: 'split', right: paneContent, sidePane: null });\n    }\n  }, [bodyState, sidePane, right, currentActivePage, handleParamsChange]);\n  \n  const setNormalView = useCallback(() => {\n      handleParamsChange({ sidePane: null, view: null, right: null });\n  }, [handleParamsChange]);\n\n  const switchSplitPanes = useCallback(() => {\n    if (bodyState !== BODY_STATES.SPLIT_VIEW) return;\n    const newSidePaneContent = pageToPaneMap[currentActivePage];\n    const newActivePage = Object.entries(pageToPaneMap).find(\n      ([, value]) => value === sidePaneContent\n    )?.[0] as ActivePage | undefined;\n\n    if (newActivePage && newSidePaneContent) {\n      navigate(`/${newActivePage}?view=split&right=${newSidePaneContent}`, { replace: true });\n    }\n  }, [bodyState, currentActivePage, sidePaneContent, navigate]);\n  \n  const closeSplitPane = useCallback((paneToClose: 'main' | 'right') => {\n    if (bodyState !== BODY_STATES.SPLIT_VIEW) return;\n    if (paneToClose === 'right') {\n      navigate(`/${currentActivePage}`, { replace: true });\n    } else { // Closing main pane\n      const pageToBecomeActive = Object.entries(pageToPaneMap).find(\n        ([, value]) => value === sidePaneContent\n      )?.[0] as ActivePage | undefined;\n      \n      if (pageToBecomeActive) {\n        navigate(`/${pageToBecomeActive}`, { replace: true });\n      } else {\n        navigate(`/dashboard`, { replace: true });\n      }\n    }\n  }, [bodyState, currentActivePage, sidePaneContent, navigate]);\n  \n  // DataDemo actions\n  const setViewMode = (mode: ViewMode) => handleParamsChange({ view: mode });\n  const setGroupBy = (val: string) => handleParamsChange({ groupBy: val === 'none' ? null : val }, true);\n  const setActiveGroupTab = (tab: string) => handleParamsChange({ tab: tab === 'all' ? null : tab });\n  const setFilters = (newFilters: FilterConfig) => {\n    handleParamsChange({ q: newFilters.searchTerm, status: newFilters.status, priority: newFilters.priority }, true);\n  }\n  const setSort = (config: SortConfig | null) => {\n    if (!config) {\n      handleParamsChange({ sort: 'default' }, true);\n    } else {\n      handleParamsChange({ sort: `${config.key}-${config.direction}` }, true);\n    }\n  }\n  const setTableSort = (field: SortableField) => {\n    let newSort: string | null = `${field}-desc`;\n    if (sortConfig?.key === field) {\n      if (sortConfig.direction === 'desc') newSort = `${field}-asc`;\n      else if (sortConfig.direction === 'asc') newSort = 'default';\n    }\n    handleParamsChange({ sort: newSort }, true);\n  };\n  const setPage = (newPage: number) => handleParamsChange({ page: newPage.toString() });\n\n  const onItemSelect = useCallback((item: DataItem) => {\n\t\tnavigate(`/data-demo/${item.id}${location.search}`);\n\t}, [navigate, location.search]);\n\n\n  return useMemo(() => ({\n    // State\n    bodyState,\n    sidePaneContent,\n    currentActivePage,\n    itemId,\n    // DataDemo State\n    viewMode,\n    page,\n    groupBy,\n    activeGroupTab,\n    filters,\n    sortConfig,\n    // Actions\n    navigateTo,\n    openSidePane,\n    closeSidePane,\n    toggleSidePane,\n    toggleSplitView,\n    setNormalView,\n    switchSplitPanes,\n    closeSplitPane,\n    // DataDemo Actions\n    onItemSelect,\n    setViewMode,\n    setGroupBy,\n    setActiveGroupTab,\n    setFilters,\n    setSort,\n    setTableSort,\n    setPage,\n  }), [\n    bodyState, sidePaneContent, currentActivePage, itemId,\n    viewMode, page, groupBy, activeGroupTab, filters, sortConfig,\n    navigateTo, openSidePane, closeSidePane, toggleSidePane, toggleSplitView, setNormalView, \n    switchSplitPanes, closeSplitPane, onItemSelect, setViewMode, setGroupBy, setActiveGroupTab, setFilters,\n    setSort, setTableSort, setPage\n  ]);\n}"
+  src/App.tsx: |-
+    import React, { useEffect } from "react";
+    import {
+      createBrowserRouter,
+      RouterProvider,
+      Outlet,
+      Navigate,
+      useNavigate, // used in LoginPageWrapper
+      useLocation,
+    } from "react-router-dom";
+
+    import { AppShell } from "./components/layout/AppShell";
+    import { AppShellProvider } from "./providers/AppShellProvider";
+    import { useAppShellStore } from "./store/appShell.store";
+    import { useAuthStore } from "./store/authStore";
+    import "./index.css";
+
+    // Import library components
+    import { EnhancedSidebar } from "./components/layout/EnhancedSidebar";
+    import { MainContent } from "./components/layout/MainContent";
+    import { RightPane } from "./components/layout/RightPane";
+    import { TopBar } from "./components/layout/TopBar";
+    import { CommandPalette } from "./components/global/CommandPalette";
+    import { ToasterProvider } from "./components/ui/toast";
+
+    // --- Page/Content Components for Pages and Panes ---
+    import { DashboardContent } from "./pages/Dashboard";
+    import { SettingsPage } from "./pages/Settings";
+    import { ToasterDemo } from "./pages/ToasterDemo";
+    import { NotificationsPage } from "./pages/Notifications";
+    import DataDemoPage from "./pages/DataDemo";
+    import { LoginPage } from "./components/auth/LoginPage";
+
+    // --- Icons ---
+    import {
+      Search,
+      Filter,
+      Plus,
+      ChevronRight,
+      Rocket,
+    } from "lucide-react";
+
+    // --- Utils & Hooks ---
+    import { cn } from "./lib/utils";
+    import { useAppViewManager } from "./hooks/useAppViewManager.hook";
+    import { useRightPaneContent } from "./hooks/useRightPaneContent.hook";
+    import { BODY_STATES } from "./lib/utils";
+
+    // Checks for authentication and redirects to login if needed
+    function ProtectedRoute() {
+      const { isAuthenticated } = useAuthStore();
+      const location = useLocation();
+      if (!isAuthenticated) {
+        return <Navigate to="/login" state={{ from: location }} replace />;
+      }
+      return <Outlet />;
+    }
+
+    // A root component to apply global styles and effects
+    function Root() {
+      const isDarkMode = useAppShellStore((state) => state.isDarkMode);
+
+      useEffect(() => {
+        document.documentElement.classList.toggle("dark", isDarkMode);
+      }, [isDarkMode]);
+
+      return <Outlet />;
+    }
+
+    // The main layout for authenticated parts of the application
+    function ProtectedLayout() {
+
+      return (
+        <div className="h-screen w-screen overflow-hidden bg-background">
+          <AppShellProvider
+            appName="Jeli App"
+            appLogo={
+              <div className="p-2 bg-primary/20 rounded-lg">
+                <Rocket className="w-5 h-5 text-primary" />
+              </div>
+            }
+          >
+            <ComposedApp />
+          </AppShellProvider>
+        </div>
+      );
+    }
+
+    // Content for the Top Bar (will be fully refactored in Part 2)
+    function AppTopBar() {
+      const [searchTerm, setSearchTerm] = React.useState("");
+      const [isSearchFocused, setIsSearchFocused] = React.useState(false);
+      const location = useLocation();
+      const activePage = location.pathname.split('/').filter(Boolean).pop()?.replace('-', ' ') || 'dashboard';
+
+      return (
+        <div className="flex items-center gap-3 flex-1">
+          <div
+            className={cn(
+              "hidden md:flex items-center gap-2 text-sm transition-opacity",
+              {
+                "opacity-0 pointer-events-none":
+                  isSearchFocused && activePage === "dashboard",
+              },
+            )}
+          >
+            <a
+              href="#"
+              className="text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Home
+            </a>
+            <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            <span className="font-medium text-foreground capitalize">
+              {activePage}
+            </span>
+          </div>
+
+          <div className="flex-1" />
+
+          {/* Page-specific: Dashboard search and actions */}
+          {activePage === "dashboard" && (
+            <div className="flex items-center gap-2 flex-1 justify-end">
+              <div
+                className={cn(
+                  "relative transition-all duration-300 ease-in-out",
+                  isSearchFocused ? "flex-1 max-w-lg" : "w-auto",
+                )}
+              >
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4 pointer-events-none" />
+                <input
+                  type="text"
+                  placeholder="Search..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onFocus={() => setIsSearchFocused(true)}
+                  onBlur={() => setIsSearchFocused(false)}
+                  className={cn(
+                    "pl-9 pr-4 py-2 h-10 border-none rounded-lg bg-card focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300 ease-in-out w-full",
+                    isSearchFocused ? "bg-background" : "w-48",
+                  )}
+                />
+              </div>
+              <button className="h-10 w-10 flex-shrink-0 flex items-center justify-center hover:bg-accent rounded-full transition-colors">
+                <Filter className="w-5 h-5" />
+              </button>
+              <button className="bg-primary text-primary-foreground px-4 py-2 rounded-full hover:bg-primary/90 transition-colors flex items-center gap-2 h-10 flex-shrink-0">
+                <Plus className="w-5 h-5" />
+                <span
+                  className={cn(isSearchFocused ? "hidden sm:inline" : "inline")}
+                >
+                  New Project
+                </span>
+              </button>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // The main App component that composes the shell
+    function ComposedApp() {
+      const { setBodyState, setSidePaneContent } = useAppShellStore();
+      const viewManager = useAppViewManager();
+
+      // Sync URL state with AppShellStore
+      useEffect(() => {
+        setBodyState(viewManager.bodyState);
+        setSidePaneContent(viewManager.sidePaneContent);
+      }, [viewManager.bodyState, viewManager.sidePaneContent, setBodyState, setSidePaneContent]);
+
+      return (
+        <AppShell
+          sidebar={<EnhancedSidebar />}
+          onOverlayClick={viewManager.closeSidePane}
+          topBar={
+            <TopBar>
+              <AppTopBar />
+            </TopBar>
+          }
+          mainContent={
+            <MainContent>
+              <Outlet />
+            </MainContent>
+          }
+          rightPane={<RightPane />}
+          commandPalette={<CommandPalette />}
+        />
+      );
+    }
+
+    function App() {
+      const router = createBrowserRouter([
+        {
+          element: <Root />,
+          children: [
+            {
+              path: "/login",
+              element: <LoginPage />,
+            },
+            {
+              path: "/",
+              element: <ProtectedRoute />,
+              children: [
+                {
+                  path: "/",
+                  element: <ProtectedLayout />,
+                  children: [
+                    { index: true, element: <Navigate to="/dashboard" replace /> },
+                    { path: "dashboard", element: <DashboardContent /> },
+                    { path: "settings", element: <SettingsPage /> },
+                    { path: "toaster", element: <ToasterDemo /> },
+                    { path: "notifications", element: <NotificationsPage /> },
+                    { path: "data-demo", element: <DataDemoPage /> },
+                    { path: "data-demo/:itemId", element: <DataDemoPage /> },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ]);
+
+      return (
+        <ToasterProvider>
+          <RouterProvider router={router} />
+        </ToasterProvider>
+      );
+    }
+
+    export default App;
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 290

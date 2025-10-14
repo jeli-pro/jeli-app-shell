@@ -76,8 +76,9 @@ export function ViewModeSwitcher({ pane, targetPage }: { pane?: 'main' | 'right'
   }, [isExpanded, bodyState]); // re-run if bodyState changes to recalc buttons
 
   const handlePaneClick = (type: 'side-pane' | 'split-view') => {
-    const pageToPaneMap: Record<ActivePage, AppShellState['sidePaneContent']> = {
+    const pageToPaneMap: Record<ActivePage, AppShellState['sidePaneContent']> = { // This type is now stricter because ActivePage includes messaging
       dashboard: 'main', settings: 'settings', toaster: 'toaster', notifications: 'notifications', 'data-demo': 'dataDemo',
+      messaging: 'messaging',
     };
     const paneContent = pageToPaneMap[activePage];
     if (type === 'side-pane') toggleSidePane(paneContent);

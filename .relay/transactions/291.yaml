@@ -1,0 +1,543 @@
+uuid: 13a483ef-d75d-4f11-9a1f-f1165a6c3f0b
+projectId: jeli-app-shell
+createdAt: '2025-10-14T07:57:17.917Z'
+gitCommitMsg: >-
+  feat(messaging): build omni-channel CRM page UI
+
+  This commit implements the full user interface for the new messaging page,
+  transforming it into a three-column omni-channel CRM.
+
+  - Creates `ConversationList` component for the left column, displaying all
+  conversations with avatars, last messages, and unread counts. - Creates
+  `ContactProfile` component for the middle column, showing detailed contact
+  info and a stylized AI Summary card. - Creates `ChannelIcons` helper component
+  for consistent channel branding. - Completely revamps the `MessageThread`
+  component with a full chat interface, including a header, styled message
+  bubbles, and an input form. - Assembles the new components within
+  `MessagingPage` to create the final two-column layout for the main content
+  area. - Adds `date-fns` as a dependency for relative timestamp formatting.
+promptSummary: Create omni-channel CRM messaging page with a cohesive UI/UX.
+reasoning:
+  - >-
+    This is Part 2. I'm building out the full UI for the Omni-channel CRM
+    Messaging page. This involves creating three new components for the
+    conversation list, contact profile, and channel icons, then significantly
+    upgrading the message thread component and assembling them all in the main
+    `MessagingPage`. This will transform the placeholder page into a rich,
+    three-column, interactive CRM interface. I'm also adding `date-fns` as a
+    dependency for formatting timestamps.
+  - First, I'll create a helper component to display channel icons consistently.
+  - >-
+    Next, I'll create the component for the left-most column which lists all
+    conversations. It will handle selection and navigation.
+  - >-
+    This is the middle column component, which displays the selected contact's
+    profile and AI-generated summaries.
+  - >-
+    Now, I'm replacing the placeholder `MessageThread` with a full-featured chat
+    interface that will live in the app's right pane.
+  - >-
+    I'll now assemble the main content area of the `MessagingPage` to use the
+    new conversation list and contact profile components.
+  - >-
+    Finally, I'll add `date-fns` to `package.json` to handle the relative time
+    formatting in the conversation list.
+operations:
+  - type: write
+    path: src/pages/Messaging/components/ChannelIcons.tsx
+    content: >-
+      import { Instagram, MessageCircle, Facebook } from 'lucide-react';
+
+      import type { Channel, ChannelIcon } from '../types';
+
+      import { cn } from '@/lib/utils';
+
+
+      export const channelMap: Record<Channel, ChannelIcon> = {
+        whatsapp: { Icon: MessageCircle, color: 'text-green-500' },
+        instagram: { Icon: Instagram, color: 'text-pink-500' },
+        facebook: { Icon: Facebook, color: 'text-blue-600' },
+      };
+
+
+      export const ChannelIcon: React.FC<{ channel: Channel; className?: string
+      }> = ({ channel, className }) => {
+        const { Icon, color } = channelMap[channel];
+        return <Icon className={cn('w-4 h-4', color, className)} />;
+      };
+    patchStrategy: replace
+  - type: write
+    path: src/pages/Messaging/components/ConversationList.tsx
+    content: >-
+      import { Search, SlidersHorizontal } from 'lucide-react';
+
+      import { Link, useParams } from 'react-router-dom';
+
+      import { formatDistanceToNow } from 'date-fns';
+
+      import { useMessagingStore } from '../store/messaging.store';
+
+      import { Input } from '@/components/ui/input';
+
+      import { Button } from '@/components/ui/button';
+
+      import { Avatar, AvatarFallback, AvatarImage } from
+      '@/components/ui/avatar';
+
+      import { Badge } from '@/components/ui/badge';
+
+      import { cn } from '@/lib/utils';
+
+      import { ChannelIcon } from './ChannelIcons';
+
+
+      export const ConversationList = () => {
+        const { conversationId } = useParams<{ conversationId: string }>();
+        const conversations = useMessagingStore(state => state.getConversationsWithContact());
+
+        return (
+          <div className="h-full flex flex-col border-r bg-card/50 min-w-[320px] max-w-[400px] w-1/3">
+            {/* Header */}
+            <div className="p-4 border-b">
+              <h2 className="text-xl font-bold tracking-tight mb-4">Conversations</h2>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input placeholder="Search messages..." className="pl-9 bg-background" />
+                </div>
+                <Button variant="outline" size="icon">
+                  <SlidersHorizontal className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+
+            {/* Conversation List */}
+            <div className="flex-1 overflow-y-auto">
+              <nav className="p-2 space-y-1">
+                {conversations.map(convo => (
+                  <Link
+                    to={`/messaging/${convo.id}`}
+                    key={convo.id}
+                    className={cn(
+                      "flex items-start gap-3 p-3 rounded-lg text-left transition-colors hover:bg-accent",
+                      conversationId === convo.id && "bg-accent"
+                    )}
+                  >
+                    <div className="relative">
+                      <Avatar className="h-12 w-12">
+                        <AvatarImage src={convo.contact.avatar} alt={convo.contact.name} />
+                        <AvatarFallback>{convo.contact.name.charAt(0)}</AvatarFallback>
+                      </Avatar>
+                      <div className="absolute bottom-0 right-0">
+                          <ChannelIcon channel={convo.channel} className="bg-background rounded-full p-0.5" />
+                      </div>
+                    </div>
+                    <div className="flex-1 overflow-hidden">
+                      <div className="flex justify-between items-center">
+                        <p className="font-semibold truncate">{convo.contact.name}</p>
+                        <p className="text-xs text-muted-foreground whitespace-nowrap">
+                          {formatDistanceToNow(new Date(convo.lastMessage.timestamp), { addSuffix: true })}
+                        </p>
+                      </div>
+                      <p className="text-sm text-muted-foreground truncate">{convo.lastMessage.text}</p>
+                    </div>
+                    {convo.unreadCount > 0 && (
+                      <div className="flex items-center justify-center self-center ml-auto">
+                          <Badge className="bg-primary h-5 w-5 p-0 flex items-center justify-center">{convo.unreadCount}</Badge>
+                      </div>
+                    )}
+                  </Link>
+                ))}
+              </nav>
+            </div>
+          </div>
+        );
+      };
+    patchStrategy: replace
+  - type: write
+    path: src/pages/Messaging/components/ContactProfile.tsx
+    content: >-
+      import React from 'react';
+
+      import { Mail, Phone, Bot, Sparkles, Reply, ThumbsUp, ThumbsDown,
+      UserCheck } from 'lucide-react';
+
+      import { useMessagingStore } from '../store/messaging.store';
+
+      import { Avatar, AvatarFallback, AvatarImage } from
+      '@/components/ui/avatar';
+
+      import { Badge } from '@/components/ui/badge';
+
+      import { Card, CardContent, CardHeader, CardTitle } from
+      '@/components/ui/card';
+
+      import { Button } from '@/components/ui/button';
+
+
+      interface ContactProfileProps {
+        conversationId?: string;
+      }
+
+
+      export const ContactProfile: React.FC<ContactProfileProps> = ({
+      conversationId }) => {
+        const conversation = useMessagingStore(state => 
+          conversationId ? state.getConversationById(conversationId) : undefined
+        );
+
+        if (!conversation) {
+          return (
+            <div className="h-full flex-1 flex flex-col items-center justify-center bg-background p-6">
+              <div className="text-center">
+                  <UserCheck className="mx-auto h-12 w-12 text-muted-foreground" />
+                  <h3 className="mt-4 text-lg font-medium">Select a Conversation</h3>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                      Contact details and AI summaries will appear here.
+                  </p>
+              </div>
+            </div>
+          );
+        }
+
+        const { contact, aiSummary } = conversation;
+
+        return (
+          <div className="h-full flex-1 flex flex-col bg-background overflow-y-auto p-6 space-y-6">
+            {/* Contact Header */}
+            <div className="flex flex-col items-center text-center">
+              <Avatar className="h-24 w-24 mb-4 border-4 border-background ring-2 ring-primary">
+                <AvatarImage src={contact.avatar} alt={contact.name} />
+                <AvatarFallback className="text-3xl">{contact.name.charAt(0)}</AvatarFallback>
+              </Avatar>
+              <h2 className="text-2xl font-bold">{contact.name}</h2>
+              <p className="text-sm text-muted-foreground">
+                {contact.online ? 'Online' : `Last seen ${contact.lastSeen}`}
+              </p>
+              <div className="flex flex-wrap gap-2 mt-4 justify-center">
+                {contact.tags.map(tag => (
+                  <Badge key={tag} variant="secondary">{tag}</Badge>
+                ))}
+              </div>
+            </div>
+            
+            {/* Contact Details Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Contact Details</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4 text-sm">
+                <div className="flex items-center gap-3">
+                  <Mail className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-foreground">{contact.email}</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Phone className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-foreground">{contact.phone}</span>
+                </div>
+              </CardContent>
+            </Card>
+            
+            {/* AI Summary Card */}
+            <Card className="bg-card/50">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Bot className="w-5 h-5 text-primary" />
+                  <span>AI Summary</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold">Sentiment:</span>
+                  <Badge variant={
+                    aiSummary.sentiment === 'positive' ? 'default' : aiSummary.sentiment === 'negative' ? 'destructive' : 'secondary'
+                  } className="capitalize">
+                    {aiSummary.sentiment === 'positive' && <ThumbsUp className="w-3 h-3 mr-1.5" />}
+                    {aiSummary.sentiment === 'negative' && <ThumbsDown className="w-3 h-3 mr-1.5" />}
+                    {aiSummary.sentiment}
+                  </Badge>
+                </div>
+                <div>
+                  <h4 className="font-semibold mb-2 flex items-center gap-2"><Sparkles className="w-4 h-4 text-yellow-500" /> Key Points</h4>
+                  <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground pl-2">
+                    {aiSummary.summaryPoints.map((point, i) => <li key={i}>{point}</li>)}
+                  </ul>
+                </div>
+                <div>
+                  <h4 className="font-semibold mb-2 flex items-center gap-2"><Reply className="w-4 h-4 text-blue-500" /> Suggested Replies</h4>
+                  <div className="flex flex-col gap-2">
+                    {aiSummary.suggestedReplies.map((reply, i) => (
+                      <Button key={i} variant="outline" size="sm" className="w-full justify-start text-left h-auto py-2">
+                        {reply}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        );
+      };
+    patchStrategy: replace
+  - type: write
+    path: src/pages/Messaging/components/MessageThread.tsx
+    content: >-
+      import React from 'react';
+
+      import { Paperclip, SendHorizontal, Smile } from 'lucide-react';
+
+
+      import { useMessagingStore } from '../store/messaging.store';
+
+      import { Avatar, AvatarFallback, AvatarImage } from
+      '@/components/ui/avatar';
+
+      import { Input } from '@/components/ui/input';
+
+      import { Button } from '@/components/ui/button';
+
+      import { ChannelIcon } from './ChannelIcons';
+
+      import { cn } from '@/lib/utils';
+
+
+      interface MessageThreadProps {
+        conversationId?: string;
+      }
+
+
+      export const MessageThread: React.FC<MessageThreadProps> = ({
+      conversationId }) => {
+        const conversation = useMessagingStore(state =>
+          conversationId ? state.getConversationById(conversationId) : undefined
+        );
+        
+        if (!conversationId || !conversation) {
+          return (
+              <div className="h-full flex flex-col items-center justify-center p-6 bg-background">
+                  <p className="text-muted-foreground">Select a conversation to see the messages.</p>
+              </div>
+          );
+        }
+
+        const { contact, messages } = conversation;
+
+        return (
+          <div className="h-full flex flex-col bg-background">
+            {/* Header */}
+            <div className="flex items-center gap-3 p-4 border-b h-20 flex-shrink-0">
+              <Avatar className="h-10 w-10">
+                <AvatarImage src={contact.avatar} alt={contact.name} />
+                <AvatarFallback>{contact.name.charAt(0)}</AvatarFallback>
+              </Avatar>
+              <div className="flex-1">
+                <p className="font-semibold">{contact.name}</p>
+                <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                  <span className={cn("w-2 h-2 rounded-full", contact.online ? 'bg-green-500' : 'bg-gray-400')} />
+                  {contact.online ? 'Online' : 'Offline'}
+                </p>
+              </div>
+              <ChannelIcon channel={conversation.channel} className="w-5 h-5" />
+            </div>
+
+            {/* Messages */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+              {messages.map((message) => (
+                <div key={message.id} className={cn(
+                  "flex items-end gap-3",
+                  message.sender === 'user' ? 'justify-end' : 'justify-start'
+                )}>
+                  {message.sender === 'contact' && (
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={contact.avatar} />
+                      <AvatarFallback>{contact.name.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                  )}
+                  <div className={cn(
+                    "max-w-xs md:max-w-md lg:max-w-lg p-3 rounded-2xl",
+                    message.sender === 'user' 
+                      ? 'bg-primary text-primary-foreground rounded-br-none' 
+                      : 'bg-card border rounded-bl-none'
+                  )}>
+                    <p className="text-sm">{message.text}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Input Form */}
+            <div className="p-4 border-t flex-shrink-0 bg-card/30">
+              <div className="relative">
+                <Input placeholder="Type a message..." className="pr-32 h-12 rounded-full bg-background" />
+                <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                  <Button variant="ghost" size="icon" className="rounded-full">
+                      <Smile className="w-5 h-5" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="rounded-full">
+                      <Paperclip className="w-5 h-5" />
+                  </Button>
+                  <Button size="icon" className="rounded-full">
+                      <SendHorizontal className="w-5 h-5" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      };
+    patchStrategy: replace
+  - type: write
+    path: src/pages/Messaging/index.tsx
+    content: |-
+      import { useParams } from "react-router-dom";
+      import { ConversationList } from "./components/ConversationList";
+      import { ContactProfile } from "./components/ContactProfile";
+
+      export default function MessagingPage() {
+        const { conversationId } = useParams<{ conversationId: string }>();
+
+        return (
+          <div className="h-full w-full flex bg-background">
+              <ConversationList />
+              <ContactProfile conversationId={conversationId} />
+          </div>
+        );
+      }
+    patchStrategy: replace
+  - type: write
+    path: package.json
+    content: |
+      <<<<<<< SEARCH
+          "cmdk": "^0.2.0",
+          "gsap": "^3.13.0",
+      =======
+          "cmdk": "^0.2.0",
+          "date-fns": "^3.6.0",
+          "gsap": "^3.13.0",
+      >>>>>>> REPLACE
+    patchStrategy: search-replace
+snapshot:
+  src/pages/Messaging/components/ChannelIcons.tsx: null
+  src/pages/Messaging/components/ContactProfile.tsx: null
+  src/pages/Messaging/components/ConversationList.tsx: null
+  package.json: |
+    {
+      "name": "jeli-app-shell",
+      "private": false,
+      "version": "1.0.1",
+      "type": "module",
+      "files": [
+        "dist"
+      ],
+      "main": "./dist/jeli-app-shell.umd.js",
+      "module": "./dist/jeli-app-shell.es.js",
+      "types": "./dist/index.d.ts",
+      "exports": {
+        ".": {
+          "import": "./dist/jeli-app-shell.es.js",
+          "require": "./dist/jeli-app-shell.umd.js"
+        },
+        "./dist/style.css": "./dist/style.css"
+      },
+      "sideEffects": [
+        "**/*.css"
+      ],
+      "scripts": {
+        "dev": "vite",
+        "build": "tsc && vite build",
+        "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+        "preview": "vite preview"
+      },
+      "peerDependencies": {
+        "@iconify/react": "^4.1.1",
+        "@radix-ui/react-avatar": "^1.0.4",
+        "@radix-ui/react-dialog": "^1.0.5",
+        "@radix-ui/react-dropdown-menu": "^2.0.6",
+        "@radix-ui/react-label": "^2.1.7",
+        "@radix-ui/react-popover": "^1.0.7",
+        "@radix-ui/react-slot": "^1.0.2",
+        "@radix-ui/react-tabs": "^1.0.4",
+        "class-variance-authority": "^0.7.0",
+        "clsx": "^2.0.0",
+        "cmdk": "^0.2.0",
+        "gsap": "^3.13.0",
+        "lucide-react": "^0.294.0",
+        "react": "^18.2.0",
+        "react-dom": "^18.2.0",
+        "react-router-dom": "^6.22.3",
+        "sonner": "^1.2.4",
+        "tailwind-merge": "^2.0.0",
+        "tailwindcss": "^3.3.5",
+        "zustand": "^4.5.7"
+      },
+      "devDependencies": {
+        "@types/node": "^20.10.0",
+        "@types/react": "^18.2.37",
+        "@types/react-dom": "^18.2.15",
+        "@typescript-eslint/eslint-plugin": "^6.10.0",
+        "@typescript-eslint/parser": "^6.10.0",
+        "@vitejs/plugin-react": "^4.1.1",
+        "autoprefixer": "^10.4.16",
+        "eslint": "^8.53.0",
+        "eslint-plugin-react-hooks": "^4.6.0",
+        "eslint-plugin-react-refresh": "^0.4.4",
+        "postcss": "^8.4.31",
+        "tailwindcss": "^3.3.5",
+        "tailwindcss-animate": "^1.0.7",
+        "typescript": "^5.2.2",
+        "vite": "^4.5.0"
+      }
+    }
+  src/pages/Messaging/components/MessageThread.tsx: >-
+    import React from 'react';
+
+
+    interface MessageThreadProps {
+      conversationId?: string;
+    }
+
+
+    export const MessageThread: React.FC<MessageThreadProps> = ({ conversationId
+    }) => {
+      return (
+        <div className="p-6">
+          <h2 className="text-lg font-semibold">Message Thread</h2>
+          {conversationId ? (
+            <p>Displaying messages for conversation: {conversationId}</p>
+          ) : (
+            <p className="text-muted-foreground">Select a conversation to see the messages.</p>
+          )}
+        </div>
+      );
+    };
+  src/pages/Messaging/index.tsx: |-
+    import { useParams } from "react-router-dom";
+
+    export default function MessagingPage() {
+      const { conversationId } = useParams<{ conversationId: string }>();
+
+      return (
+        <div className="h-full w-full flex bg-background">
+            {/* This will be replaced by a 2-column layout in Part 2 */}
+            <div className="p-6 flex-1">
+              <h1 className="text-2xl font-bold tracking-tight">Messaging</h1>
+              <p className="text-muted-foreground mt-2">
+                This area will contain the conversation list and contact details.
+              </p>
+              {conversationId && 
+                <div className="mt-4 p-4 rounded-lg bg-card border">
+                    <p className="font-semibold">Active Conversation ID:</p>
+                    <p className="text-sm text-primary">{conversationId}</p>
+                </div>
+              }
+            </div>
+        </div>
+      );
+    }
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 291

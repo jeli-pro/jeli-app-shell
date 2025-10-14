@@ -2,14 +2,14 @@ import { create } from 'zustand';
 import { type ReactElement } from 'react';
 import { SIDEBAR_STATES, BODY_STATES, type SidebarState, type BodyState } from '@/lib/utils';
 
-export type ActivePage = 'dashboard' | 'settings' | 'toaster' | 'notifications' | 'data-demo';
+export type ActivePage = 'dashboard' | 'settings' | 'toaster' | 'notifications' | 'data-demo' | 'messaging';
 
 // --- State and Action Types ---
 
 export interface AppShellState {
   sidebarState: SidebarState;
   bodyState: BodyState;
-  sidePaneContent: 'details' | 'settings' | 'main' | 'toaster' | 'notifications' | 'dataDemo' | 'dataItem';
+  sidePaneContent: 'details' | 'settings' | 'main' | 'toaster' | 'notifications' | 'dataDemo' | 'dataItem' | 'messaging';
   sidebarWidth: number;
   sidePaneWidth: number;
   splitPaneWidth: number;
@@ -26,7 +26,7 @@ export interface AppShellState {
   isDarkMode: boolean;
   appName?: string;
   appLogo?: ReactElement;
-  draggedPage: 'dashboard' | 'settings' | 'toaster' | 'notifications' | 'data-demo' | null;
+  draggedPage: 'dashboard' | 'settings' | 'toaster' | 'notifications' | 'data-demo' | 'messaging' | null;
   dragHoverTarget: 'left' | 'right' | null;
   hoveredPane: 'left' | 'right' | null;
 }
@@ -50,7 +50,7 @@ export interface AppShellActions {
     setReducedMotion: (payload: boolean) => void;
     setCompactMode: (payload: boolean) => void;
     setPrimaryColor: (payload: string) => void;
-    setDraggedPage: (payload: 'dashboard' | 'settings' | 'toaster' | 'notifications' | 'data-demo' | null) => void;
+    setDraggedPage: (payload: AppShellState['draggedPage']) => void;
     setCommandPaletteOpen: (open: boolean) => void;
     toggleDarkMode: () => void;
     setDragHoverTarget: (payload: 'left' | 'right' | null) => void;

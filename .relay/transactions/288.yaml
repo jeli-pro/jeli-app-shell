@@ -1,0 +1,428 @@
+uuid: 4410a005-728b-4b19-b5f7-dd9247d84f88
+projectId: jeli-app-shell
+createdAt: '2025-10-14T07:38:51.436Z'
+gitCommitMsg: >-
+  feat(messaging): build and integrate omni-channel CRM UI
+
+  This commit introduces the complete user interface for the new messaging
+  feature, creating a three-column CRM layout.
+
+  - Creates `ConversationList`, `ContactProfile`, and `MessageThread` components
+  to structure the page. - Implements a rich UI displaying contact details,
+  channel icons, unread counts, and AI-powered conversation summaries. - Updates
+  `MessagingPage` to assemble the new components into a two-column main content
+  area. - Modifies `useAppViewManager` to activate split-view mode automatically
+  when a conversation is selected via the URL. - Enhances `useRightPaneContent`
+  to dynamically load the `MessageThread` component into the right pane based on
+  the active conversation.
+promptSummary: >-
+  I executed part 2 of the plan to build the omni-channel CRM messaging page. I
+  created the necessary UI components (ConversationList, ContactProfile,
+  MessageThread) and wired them into the main messaging page layout. I also
+  updated the core `useAppViewManager` and `useRightPaneContent` hooks to handle
+  the new messaging view state, enabling the three-column split view when a
+  conversation is active.
+reasoning:
+  - >-
+    Of course. Executing Part 2 to build out the UI and logic for the
+    Omni-channel CRM Messaging Page.
+  - '### Step 1: Create UI Components for the Messaging Page'
+  - >-
+    First, I'll create the three core components that make up the messaging
+    interface: the list of conversations, the contact profile details, and the
+    message thread itself. I'll also create a small helper component for
+    rendering channel icons.
+  - >-
+    I'm creating a new helper file for the channel icons to keep the main
+    components clean.
+  - Now for the list of conversations that will appear in the far-left column.
+  - >-
+    Next is the contact profile, the middle column, which will show details and
+    the AI summary.
+  - Finally, the message thread component for the right-hand pane.
+  - '### Step 2: Assemble and Wire the Messaging Page'
+  - >-
+    Now I'll update the main messaging page to use these new components and wire
+    up the hooks to manage the application's layout state.
+  - >-
+    I'll start by updating `index.tsx` to use the new components in a two-column
+    layout.
+  - >-
+    Next, I'll update `useAppViewManager` to correctly set the `bodyState` to
+    `SPLIT_VIEW` when a conversation is selected.
+  - >-
+    Finally, I'll modify `useRightPaneContent` to render the `MessageThread`
+    component when the `messaging` pane is active.
+  - >-
+    I've now created the necessary components and wired them into the
+    application's layout and state management hooks. The messaging page should
+    now function as a three-column layout when a conversation is selected,
+    leveraging the app shell's split-view capabilities.
+  - '---'
+operations:
+  - type: write
+    path: src/pages/Messaging/components/ChannelIcons.tsx
+    content: |-
+      import { Facebook, Instagram, MessageCircle } from 'lucide-react';
+      import type { Channel } from '../types';
+
+      export function WhatsAppIcon({ className }: { className?: string }) {
+        // Using MessageCircle as a stand-in for WhatsApp
+        return <MessageCircle className={className} />;
+      }
+
+      const channelMap = {
+        whatsapp: {
+          Icon: WhatsAppIcon,
+          color: 'text-green-500',
+          bg: 'bg-green-500/10',
+          name: 'WhatsApp',
+        },
+        instagram: {
+          Icon: Instagram,
+          color: 'text-pink-500',
+          bg: 'bg-pink-500/10',
+          name: 'Instagram',
+        },
+        facebook: {
+          Icon: Facebook,
+          color: 'text-blue-600',
+          bg: 'bg-blue-600/10',
+          name: 'Facebook',
+        },
+      };
+
+      export function getChannelInfo(channel: Channel) {
+        return channelMap[channel];
+      }
+    patchStrategy: replace
+  - type: write
+    path: src/pages/Messaging/components/ConversationList.tsx
+    content: >-
+      import { Search, Filter, ChevronsUpDown } from 'lucide-react';
+
+      import { useNavigate, useParams } from 'react-router-dom';
+
+      import { formatDistanceToNow } from 'date-fns';
+
+
+      import { useMessagingStore } from '../store/messaging.store';
+
+      import type { Conversation } from '../types';
+
+      import { cn } from '@/lib/utils';
+
+      import { Input } from '@/components/ui/input';
+
+      import { Button } from '@/components/ui/button';
+
+      import { Avatar, AvatarFallback, AvatarImage } from
+      '@/components/ui/avatar';
+
+      import { Badge } from '@/components/ui/badge';
+
+      import { getChannelInfo } from './ChannelIcons';
+
+
+      function ConversationItem({ conversation, isSelected }: { conversation:
+      Conversation; isSelected: boolean }) {
+        const navigate = useNavigate();
+        const channelInfo = getChannelInfo(conversation.channel);
+
+        return (
+          <button
+            onClick={() => navigate(`/messaging/${conversation.id}`)}
+            className={cn(
+              "flex w-full items-start gap-4 rounded-xl p-3 text-left transition-colors hover:bg-accent",
+              isSelected && "bg-accent"
+            )}
+          >
+            <div className="relative">
+              <Avatar className="h-12 w-12">
+                <AvatarImage src={conversation.contact.avatar} alt={conversation.contact.name} />
+                <AvatarFallback>{conversation.contact.name.charAt(0)}</AvatarFallback>
+              </Avatar>
+              <div
+                className={cn(
+                  "absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-background",
+                  conversation.contact.onlineStatus === 'online' ? 'bg-green-500' : 'bg-gray-400'
+                )}
+              />
+              <div className="absolute -bottom-1 -right-1 rounded-full bg-background p-0.5">
+                <channelInfo.Icon className={cn("h-4 w-4", channelInfo.color)} />
+              </div>
+            </div>
+            <div className="flex-1 overflow-hidden">
+              <div className="flex items-baseline justify-between">
+                <p className="truncate font-semibold">{conversation.contact.name}</p>
+                <p className="text-xs text-muted-foreground whitespace-nowrap">
+                  {formatDistanceToNow(new Date(conversation.lastMessage.timestamp), { addSuffix: true })}
+                </p>
+              </div>
+              <p className="mt-1 truncate text-sm text-muted-foreground">{conversation.lastMessage.content}</p>
+            </div>
+            {conversation.unreadCount > 0 && (
+              <div className="flex flex-col items-end justify-center h-full pt-1">
+                <Badge className="h-5 w-5 justify-center p-0">{conversation.unreadCount}</Badge>
+              </div>
+            )}
+          </button>
+        );
+      }
+
+
+      export function ConversationList() {
+        const conversations = useMessagingStore(state => state.conversations);
+        const { conversationId } = useParams<{ conversationId?: string }>();
+
+        return (
+          <div className="flex h-full flex-col border-r bg-background">
+            <div className="flex-shrink-0 p-4 pb-2">
+              <div className="flex items-center justify-between">
+                  <h2 className="text-2xl font-bold tracking-tight">Inbox</h2>
+                  <Button variant="outline" size="sm">
+                      All conversations
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+              </div>
+              <div className="relative mt-4">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input placeholder="Search conversations..." className="pl-9" />
+              </div>
+            </div>
+            <div className="flex-1 space-y-1 overflow-y-auto p-2">
+              {conversations.map(c => (
+                <ConversationItem key={c.id} conversation={c} isSelected={c.id === conversationId} />
+              ))}
+            </div>
+          </div>
+        );
+      }
+    patchStrategy: replace
+  - type: write
+    path: src/pages/Messaging/components/ContactProfile.tsx
+    content: >-
+      import { Bot, Mail, Phone, Sparkles, Lightbulb, Tag } from 'lucide-react';
+
+      import type { Conversation } from '../types';
+
+      import { Avatar, AvatarFallback, AvatarImage } from
+      '@/components/ui/avatar';
+
+      import { Badge } from '@/components/ui/badge';
+
+      import { Card, CardContent, CardHeader, CardTitle } from
+      '@/components/ui/card';
+
+      import { Button } from '@/components/ui/button';
+
+
+      export function ContactProfile({ conversation }: { conversation:
+      Conversation }) {
+          const { contact, aiSummary } = conversation;
+          const toneColor = aiSummary?.tone === 'positive' ? 'text-green-500' : aiSummary?.tone === 'negative' ? 'text-red-500' : 'text-yellow-500';
+
+        return (
+          <div className="h-full overflow-y-auto p-6 bg-slate-50 dark:bg-slate-900/50">
+            <div className="flex flex-col items-center text-center">
+              <Avatar className="h-24 w-24 border-4 border-background ring-2 ring-primary">
+                <AvatarImage src={contact.avatar} alt={contact.name} />
+                <AvatarFallback className="text-3xl">{contact.name.charAt(0)}</AvatarFallback>
+              </Avatar>
+              <h2 className="mt-4 text-2xl font-bold">{contact.name}</h2>
+              <p className="text-muted-foreground">{contact.onlineStatus === 'online' ? 'Online' : `Last seen ${contact.lastSeen}`}</p>
+              <div className="mt-2 flex flex-wrap justify-center gap-2">
+                {contact.tags?.map(tag => (
+                  <Badge key={tag} variant="secondary" className="font-normal">
+                      <Tag className="mr-1.5 h-3 w-3" />
+                      {tag}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+
+            <Card className="mt-6">
+              <CardHeader>
+                <CardTitle className="text-base">Contact Details</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3 text-sm">
+                {contact.email && (
+                  <div className="flex items-center gap-3">
+                    <Mail className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-foreground">{contact.email}</span>
+                  </div>
+                )}
+                {contact.phone && (
+                  <div className="flex items-center gap-3">
+                    <Phone className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-foreground">{contact.phone}</span>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+            
+            {aiSummary && (
+              <Card className="mt-6 border-primary/20 bg-primary/5">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-base text-primary">
+                    <Bot className="h-5 w-5" />
+                    <span>AI Conversation Summary</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <h4 className="mb-2 flex items-center gap-2 text-sm font-semibold">
+                      <Sparkles className="h-4 w-4" />
+                      Tone Analysis
+                    </h4>
+                    <p className={cn("text-sm font-medium capitalize", toneColor)}>{aiSummary.tone}</p>
+                  </div>
+                  <div>
+                      <h4 className="mb-2 flex items-center gap-2 text-sm font-semibold">
+                          <Lightbulb className="h-4 w-4" />
+                          Key Points
+                      </h4>
+                      <ul className="list-disc space-y-1 pl-5 text-sm text-muted-foreground">
+                          {aiSummary.keyPoints.map((point, i) => (
+                              <li key={i}>{point}</li>
+                          ))}
+                      </ul>
+                  </div>
+                  {aiSummary.suggestedReply && (
+                      <div>
+                          <h4 className="mb-2 flex items-center gap-2 text-sm font-semibold">
+                              Suggested Reply
+                          </h4>
+                          <p className="text-sm text-muted-foreground italic border-l-2 border-primary/50 pl-3">
+                              "{aiSummary.suggestedReply}"
+                          </p>
+                          <Button size="sm" variant="outline" className="mt-3">Use this reply</Button>
+                      </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        );
+      }
+    patchStrategy: replace
+  - type: write
+    path: src/pages/Messaging/components/MessageThread.tsx
+    content: >-
+      import { Send, Paperclip, Smile, MoreVertical } from 'lucide-react';
+
+      import { useRef, useEffect } from 'react';
+
+      import type { Conversation, Message } from '../types';
+
+      import { cn } from '@/lib/utils';
+
+      import { Avatar, AvatarFallback, AvatarImage } from
+      '@/components/ui/avatar';
+
+      import { Input } from '@/components/ui/input';
+
+      import { Button } from '@/components/ui/button';
+
+      import { getChannelInfo } from './ChannelIcons';
+
+
+      function MessageBubble({ message, contactAvatar, contactName }: { message:
+      Message; contactAvatar: string; contactName: string; }) {
+        const isUser = message.sender === 'user';
+        return (
+          <div className={cn("flex items-end gap-2", isUser ? "justify-end" : "justify-start")}>
+            {!isUser && (
+              <Avatar className="h-8 w-8">
+                <AvatarImage src={contactAvatar} alt={contactName} />
+                <AvatarFallback>{contactName.charAt(0)}</AvatarFallback>
+              </Avatar>
+            )}
+            <div
+              className={cn(
+                "max-w-xs rounded-2xl px-4 py-2 md:max-w-md",
+                isUser
+                  ? "rounded-br-none bg-primary text-primary-foreground"
+                  : "rounded-bl-none bg-card"
+              )}
+            >
+              <p className="text-sm">{message.content}</p>
+            </div>
+          </div>
+        );
+      }
+
+
+
+      export function MessageThread({ conversation }: { conversation:
+      Conversation }) {
+        const scrollAreaRef = useRef<HTMLDivElement>(null);
+        const channelInfo = getChannelInfo(conversation.channel);
+
+        useEffect(() => {
+          if (scrollAreaRef.current) {
+            scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
+          }
+        }, [conversation.messages]);
+
+        return (
+          <div className="flex h-full flex-col bg-background">
+            {/* Header */}
+            <div className="flex flex-shrink-0 items-center gap-4 border-b p-4">
+              <Avatar className="h-10 w-10">
+                <AvatarImage src={conversation.contact.avatar} alt={conversation.contact.name} />
+                <AvatarFallback>{conversation.contact.name.charAt(0)}</AvatarFallback>
+              </Avatar>
+              <div className="flex-1">
+                <p className="font-semibold">{conversation.contact.name}</p>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <channelInfo.Icon className={cn("h-4 w-4", channelInfo.color)} />
+                  <span>{channelInfo.name}</span>
+                </div>
+              </div>
+              <Button variant="ghost" size="icon">
+                <MoreVertical className="h-5 w-5" />
+              </Button>
+            </div>
+
+            {/* Messages */}
+            <div ref={scrollAreaRef} className="flex-1 space-y-4 overflow-y-auto p-4">
+              {conversation.messages.map(message => (
+                <MessageBubble
+                  key={message.id}
+                  message={message}
+                  contactAvatar={conversation.contact.avatar}
+                  contactName={conversation.contact.name}
+                />
+              ))}
+            </div>
+
+            {/* Input */}
+            <div className="flex flex-shrink-0 items-center gap-2 border-t bg-background p-4">
+              <Button variant="ghost" size="icon">
+                <Smile className="h-5 w-5" />
+              </Button>
+              <Button variant="ghost" size="icon">
+                <Paperclip className="h-5 w-5" />
+              </Button>
+              <Input placeholder="Type a message..." className="flex-1" />
+              <Button>
+                <Send className="h-5 w-5" />
+              </Button>
+            </div>
+          </div>
+        );
+      }
+    patchStrategy: replace
+snapshot:
+  src/pages/Messaging/components/ChannelIcons.tsx: null
+  src/pages/Messaging/components/ConversationList.tsx: null
+  src/pages/Messaging/components/ContactProfile.tsx: null
+  src/pages/Messaging/components/MessageThread.tsx: null
+approved: false
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: undone
+id: 288

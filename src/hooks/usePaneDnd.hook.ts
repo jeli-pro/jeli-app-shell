@@ -3,12 +3,13 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useAppShellStore } from '@/store/appShell.store';
 import { BODY_STATES } from '@/lib/utils';
 
-const pageToPaneMap: Record<string, 'main' | 'settings' | 'toaster' | 'notifications' | 'dataDemo'> = {
+const pageToPaneMap: Record<string, 'main' | 'settings' | 'toaster' | 'notifications' | 'dataDemo' | 'messaging'> = {
   dashboard: 'main',
   settings: 'settings',
   toaster: 'toaster',
   notifications: 'notifications',
   'data-demo': 'dataDemo',
+  messaging: 'messaging',
 };
 
 export function usePaneDnd() {

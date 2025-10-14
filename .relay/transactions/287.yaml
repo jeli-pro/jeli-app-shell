@@ -1,0 +1,1030 @@
+uuid: 4402660d-7b24-4f0f-8c70-da8148b59d99
+projectId: jeli-app-shell
+createdAt: '2025-10-14T07:33:17.102Z'
+gitCommitMsg: >-
+  feat(messaging): build omni-channel crm messaging page
+
+  Implements a new feature-rich messaging page with a three-column layout for
+  managing conversations.
+
+  - Creates a two-column main content area for the conversation list and contact
+  profile with AI summaries. - Utilizes the Right Pane to display the active
+  message thread, creating a seamless split-view experience. - Integrates the
+  new page into the app's routing and `useAppViewManager` hook, with view state
+  driven by URL parameters. - Adds new UI components (`ConversationList`,
+  `ContactProfile`, `MessageThread`, `Button`, `Badge`) that follow the existing
+  design system.
+promptSummary: >-
+  User requested execution of part 2 of the plan to build out the Omni-channel
+  CRM messaging page, including creating all necessary components, assembling
+  the layout, and integrating it with the app's state and view management hooks.
+reasoning:
+  - >-
+    Excellent, the foundation is solid. Now it's time to bring the UI to life.
+    We'll build out the three core components for the messaging page—the
+    conversation list, the contact profile, and the message thread—and then
+    stitch them together within the main page layout. I'll also create the
+    necessary UI primitives like `Button` and `Badge` that are missing, ensuring
+    they match the existing design system. Finally, I'll update the
+    application's core hooks to correctly manage the new split-view state driven
+    by the messaging routes.
+  - '### 1. Create UI Primitives'
+  - >-
+    First, I'll create the `Button` and `Badge` components, which are standard
+    UI elements we'll need across the new messaging page.
+  - '### 2. Build Messaging Components'
+  - >-
+    Next, I'll create the individual components that make up the messaging
+    interface, starting with a small utility for channel icons.
+  - >-
+    This is the conversation list for the leftmost column. It fetches data,
+    handles filtering, and navigates to the selected conversation.
+  - >-
+    This is the contact profile for the middle column, showing details and
+    AI-powered summaries for the selected contact.
+  - >-
+    This is the message thread component, which will live in the app's
+    `RightPane` to complete the three-column layout.
+  - '### 3. Assemble and Integrate'
+  - >-
+    Now, I'll replace the placeholder content in `MessagingPage` with the new
+    layout that uses `ConversationList` and `ContactProfile`.
+  - >-
+    I'll update the `useRightPaneContent` hook to dynamically render the
+    `MessageThread` component when the user is in the messaging section.
+  - >-
+    Next, I'll update the `useAppViewManager` hook to correctly identify when to
+    enter the split-view mode for messaging.
+  - >-
+    Finally, I'll add `date-fns` as a peer dependency, as it's now used by the
+    new `ConversationList` component for formatting timestamps.
+operations:
+  - type: write
+    path: src/components/ui/button.tsx
+    content: |-
+      import * as React from "react"
+      import { Slot } from "@radix-ui/react-slot"
+      import { cva, type VariantProps } from "class-variance-authority"
+
+      import { cn } from "@/lib/utils"
+
+      const buttonVariants = cva(
+        "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+        {
+          variants: {
+            variant: {
+              default: "bg-primary text-primary-foreground hover:bg-primary/90",
+              destructive:
+                "bg-destructive text-destructive-foreground hover:bg-destructive/90",
+              outline:
+                "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
+              secondary:
+                "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+              ghost: "hover:bg-accent hover:text-accent-foreground",
+              link: "text-primary underline-offset-4 hover:underline",
+            },
+            size: {
+              default: "h-10 px-4 py-2",
+              sm: "h-9 rounded-md px-3",
+              lg: "h-11 rounded-md px-8",
+              icon: "h-10 w-10",
+            },
+          },
+          defaultVariants: {
+            variant: "default",
+            size: "default",
+          },
+        }
+      )
+
+      export interface ButtonProps
+        extends React.ButtonHTMLAttributes<HTMLButtonElement>,
+          VariantProps<typeof buttonVariants> {
+        asChild?: boolean
+      }
+
+      const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
+        ({ className, variant, size, asChild = false, ...props }, ref) => {
+          const Comp = asChild ? Slot : "button"
+          return (
+            <Comp
+              className={cn(buttonVariants({ variant, size, className }))}
+              ref={ref}
+              {...props}
+            />
+          )
+        }
+      )
+      Button.displayName = "Button"
+
+      export { Button, buttonVariants }
+    patchStrategy: replace
+  - type: write
+    path: src/components/ui/badge.tsx
+    content: |-
+      import * as React from "react"
+      import { cva, type VariantProps } from "class-variance-authority"
+
+      import { cn } from "@/lib/utils"
+
+      const badgeVariants = cva(
+        "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+        {
+          variants: {
+            variant: {
+              default:
+                "border-transparent bg-primary text-primary-foreground hover:bg-primary/80",
+              secondary:
+                "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80",
+              destructive:
+                "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80",
+              outline: "text-foreground",
+            },
+          },
+          defaultVariants: {
+            variant: "default",
+          },
+        }
+      )
+
+      export interface BadgeProps
+        extends React.HTMLAttributes<HTMLDivElement>,
+          VariantProps<typeof badgeVariants> {}
+
+      function Badge({ className, variant, ...props }: BadgeProps) {
+        return (
+          <div className={cn(badgeVariants({ variant }), className)} {...props} />
+        )
+      }
+
+      export { Badge, badgeVariants }
+    patchStrategy: replace
+  - type: write
+    path: src/pages/Messaging/components/ChannelIcon.tsx
+    content: |-
+      import { Icon } from '@iconify/react';
+      import { Channel } from '../types';
+
+      interface ChannelIconProps {
+        channel: Channel;
+        className?: string;
+      }
+
+      export function ChannelIcon({ channel, className }: ChannelIconProps) {
+        switch (channel) {
+          case 'whatsapp':
+            return <Icon icon="logos:whatsapp-icon" className={className} />;
+          case 'instagram':
+            return <Icon icon="skill-icons:instagram" className={className} />;
+          case 'facebook':
+            return <Icon icon="logos:facebook" className={className} />;
+          default:
+            return null;
+        }
+      }
+    patchStrategy: replace
+  - type: write
+    path: src/pages/Messaging/components/ConversationList.tsx
+    content: >-
+      import { useMemo, useState } from 'react';
+
+      import { useNavigate, useParams } from 'react-router-dom';
+
+      import { formatDistanceToNow } from 'date-fns';
+
+      import { Search, SlidersHorizontal } from 'lucide-react';
+
+
+      import { useMessagingStore } from '../store/messaging.store';
+
+      import { Conversation } from '../types';
+
+      import { cn } from '@/lib/utils';
+
+      import { Avatar, AvatarFallback, AvatarImage } from
+      '@/components/ui/avatar';
+
+      import { Input } from '@/components/ui/input';
+
+      import { Button } from '@/components/ui/button';
+
+      import { ChannelIcon } from './ChannelIcon';
+
+
+      function ConversationItem({ conversation, isActive }: { conversation:
+      Conversation; isActive: boolean }) {
+        const navigate = useNavigate();
+        const lastMessageTimestamp = useMemo(() => {
+          return formatDistanceToNow(new Date(conversation.lastMessage.timestamp), { addSuffix: true });
+        }, [conversation.lastMessage.timestamp]);
+
+        return (
+          <div
+            onClick={() => navigate(`/messaging/${conversation.id}`)}
+            className={cn(
+              "flex items-start gap-4 p-3 rounded-xl cursor-pointer transition-colors",
+              isActive ? "bg-primary/10" : "hover:bg-accent/50",
+            )}
+          >
+            <div className="relative">
+              <Avatar className="h-12 w-12">
+                <AvatarImage src={conversation.contact.avatar} alt={conversation.contact.name} />
+                <AvatarFallback>{conversation.contact.name.substring(0, 2)}</AvatarFallback>
+              </Avatar>
+              <ChannelIcon channel={conversation.channel} className="absolute bottom-0 right-0 h-5 w-5 rounded-full p-0.5 bg-background" />
+            </div>
+            <div className="flex-1 overflow-hidden">
+              <div className="flex justify-between items-center">
+                <h3 className="font-semibold truncate">{conversation.contact.name}</h3>
+                <p className="text-xs text-muted-foreground whitespace-nowrap">{lastMessageTimestamp}</p>
+              </div>
+              <div className="flex justify-between items-start mt-1">
+                <p className="text-sm text-muted-foreground truncate pr-2">{conversation.lastMessage.content}</p>
+                {conversation.unreadCount > 0 && (
+                  <span className="bg-primary text-primary-foreground text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                    {conversation.unreadCount}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+
+
+      export function ConversationList() {
+        const conversations = useMessagingStore(state => state.conversations);
+        const { conversationId } = useParams<{ conversationId?: string }>();
+        const [searchTerm, setSearchTerm] = useState('');
+
+        const filteredConversations = useMemo(() => {
+          return conversations.filter(c => 
+            c.contact.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            c.lastMessage.content.toLowerCase().includes(searchTerm.toLowerCase())
+          );
+        }, [conversations, searchTerm]);
+
+        return (
+          <div className="h-full flex flex-col border-r bg-card/50">
+            <div className="p-4 border-b">
+              <h2 className="text-2xl font-bold tracking-tight mb-4">Inbox</h2>
+              <div className="flex items-center gap-2">
+                  <div className="relative flex-1">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input 
+                          placeholder="Search conversations..." 
+                          className="pl-9 bg-background"
+                          value={searchTerm}
+                          onChange={(e) => setSearchTerm(e.target.value)}
+                      />
+                  </div>
+                  <Button variant="outline" size="icon">
+                      <SlidersHorizontal className="h-4 w-4" />
+                  </Button>
+              </div>
+            </div>
+            <div className="flex-1 overflow-y-auto p-2 space-y-1">
+              {filteredConversations.map(conv => (
+                <ConversationItem key={conv.id} conversation={conv} isActive={conv.id === conversationId} />
+              ))}
+            </div>
+          </div>
+        );
+      }
+    patchStrategy: replace
+  - type: write
+    path: src/pages/Messaging/components/ContactProfile.tsx
+    content: >-
+      import { BrainCircuit, Tags, Mail, Phone, Key, MessageSquareQuote } from
+      'lucide-react';
+
+      import { useMessagingStore } from '../store/messaging.store';
+
+      import { Avatar, AvatarFallback, AvatarImage } from
+      '@/components/ui/avatar';
+
+      import { Badge } from '@/components/ui/badge';
+
+      import { Card, CardContent, CardHeader, CardTitle } from
+      '@/components/ui/card';
+
+      import { cn } from '@/lib/utils';
+
+
+
+      function ProfileDetail({ icon: Icon, label, value }: { icon:
+      React.ElementType, label: string, value?: string | string[] }) {
+          if (!value) return null;
+        
+          return (
+            <div className="flex items-start gap-3">
+              <Icon className="h-4 w-4 text-muted-foreground mt-1" />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-muted-foreground">{label}</p>
+                {Array.isArray(value) ? (
+                  <div className="flex flex-wrap gap-2 mt-1">
+                    {value.map(tag => (
+                      <Badge key={tag} variant="secondary">{tag}</Badge>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-foreground">{value}</p>
+                )}
+              </div>
+            </div>
+          );
+      }
+
+
+      export function ContactProfile({ conversationId }: { conversationId:
+      string | undefined }) {
+        const getConversationById = useMessagingStore(state => state.getConversationById);
+        const conversation = conversationId ? getConversationById(conversationId) : null;
+
+        if (!conversation) {
+          return (
+            <div className="h-full flex items-center justify-center bg-background">
+              <div className="text-center">
+                <MessageSquareQuote className="mx-auto h-12 w-12 text-muted-foreground" />
+                <h3 className="mt-4 text-lg font-medium">Select a conversation</h3>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Choose a conversation from the list to see contact details and AI insights.
+                </p>
+              </div>
+            </div>
+          );
+        }
+
+        const { contact, aiSummary } = conversation;
+        const onlineStatusColor = contact.onlineStatus === 'online' ? 'bg-green-500' : contact.onlineStatus === 'away' ? 'bg-yellow-500' : 'bg-gray-400';
+
+        return (
+          <div className="h-full overflow-y-auto p-6 bg-background space-y-6">
+            {/* Contact Header */}
+            <div className="flex flex-col items-center text-center">
+              <div className="relative">
+                  <Avatar className="h-24 w-24 border-4 border-background shadow-md">
+                      <AvatarImage src={contact.avatar} alt={contact.name} />
+                      <AvatarFallback>{contact.name.substring(0, 2)}</AvatarFallback>
+                  </Avatar>
+                  <span className={cn("absolute bottom-2 right-2 block h-4 w-4 rounded-full ring-2 ring-background", onlineStatusColor)} />
+              </div>
+              <h2 className="text-2xl font-bold mt-4">{contact.name}</h2>
+              <p className="text-sm text-muted-foreground capitalize">{contact.onlineStatus === 'online' ? 'Online' : contact.lastSeen}</p>
+            </div>
+
+            {/* AI Summary Card */}
+            {aiSummary && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <BrainCircuit className="h-5 w-5 text-primary" />
+                    <span>AI Summary</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                      <p className="text-sm font-medium mb-1">Key Points</p>
+                      <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1">
+                          {aiSummary.keyPoints.map((point, i) => <li key={i}>{point}</li>)}
+                      </ul>
+                  </div>
+                  {aiSummary.suggestedReply && (
+                      <div>
+                          <p className="text-sm font-medium mb-1">Suggested Reply</p>
+                          <p className="text-sm text-muted-foreground italic bg-accent/50 p-3 rounded-md">"{aiSummary.suggestedReply}"</p>
+                      </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Contact Details Card */}
+            <Card>
+                <CardHeader>
+                  <CardTitle>Contact Details</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <ProfileDetail icon={Mail} label="Email" value={contact.email} />
+                  <ProfileDetail icon={Phone} label="Phone" value={contact.phone} />
+                  <ProfileDetail icon={Tags} label="Tags" value={contact.tags} />
+                  <ProfileDetail icon={Key} label="Contact ID" value={contact.id} />
+                </CardContent>
+            </Card>
+          </div>
+        );
+      }
+    patchStrategy: replace
+  - type: write
+    path: src/pages/Messaging/components/MessageThread.tsx
+    content: >-
+      import { useEffect, useRef, useState } from 'react';
+
+      import { ArrowUp, Paperclip } from 'lucide-react';
+
+
+      import { useMessagingStore } from '../store/messaging.store';
+
+      import { Message } from '../types';
+
+      import { cn } from '@/lib/utils';
+
+      import { Avatar, AvatarFallback, AvatarImage } from
+      '@/components/ui/avatar';
+
+      import { Button } from '@/components/ui/button';
+
+      import { ChannelIcon } from './ChannelIcon';
+
+
+      function MessageBubble({ message, contactAvatar, contactName }: { message:
+      Message, contactAvatar: string, contactName: string }) {
+          const isUser = message.sender === 'user';
+          return (
+              <div className={cn("flex items-end gap-2", isUser ? "justify-end" : "justify-start")}>
+                  {!isUser && (
+                       <Avatar className="h-8 w-8">
+                          <AvatarImage src={contactAvatar} />
+                          <AvatarFallback>{contactName.substring(0, 1)}</AvatarFallback>
+                      </Avatar>
+                  )}
+                  <div 
+                      className={cn(
+                          "max-w-xs md:max-w-md lg:max-w-lg px-4 py-3 rounded-2xl",
+                          isUser 
+                              ? "bg-primary text-primary-foreground rounded-br-none" 
+                              : "bg-muted rounded-bl-none"
+                      )}
+                  >
+                      <p className="text-sm">{message.content}</p>
+                  </div>
+              </div>
+          );
+      }
+
+
+      export function MessageThread({ conversationId }: { conversationId: string
+      | undefined }) {
+        const getConversationById = useMessagingStore(state => state.getConversationById);
+        const conversation = conversationId ? getConversationById(conversationId) : null;
+        const [newMessage, setNewMessage] = useState('');
+        const bottomRef = useRef<HTMLDivElement>(null);
+
+        useEffect(() => {
+          bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+        }, [conversation?.messages]);
+
+        if (!conversation) {
+          return <div className="h-full flex items-center justify-center text-muted-foreground">Select a conversation to start messaging.</div>
+        }
+
+        const { contact, messages, channel } = conversation;
+        const onlineStatusColor = contact.onlineStatus === 'online' ? 'bg-green-500' : contact.onlineStatus === 'away' ? 'bg-yellow-500' : 'bg-gray-400';
+
+        return (
+          <div className="h-full flex flex-col bg-background">
+            {/* Header */}
+            <div className="flex items-center gap-4 p-4 border-b h-20 flex-shrink-0">
+              <div className="relative">
+                  <Avatar className="h-12 w-12">
+                      <AvatarImage src={contact.avatar} alt={contact.name} />
+                      <AvatarFallback>{contact.name.substring(0, 2)}</AvatarFallback>
+                  </Avatar>
+                  <span className={cn("absolute bottom-0 right-0 block h-3 w-3 rounded-full ring-2 ring-background", onlineStatusColor)} />
+              </div>
+              <div>
+                  <h2 className="text-lg font-bold">{contact.name}</h2>
+                  <div className="flex items-center gap-2">
+                    <ChannelIcon channel={channel} className="h-4 w-4" />
+                    <p className="text-sm text-muted-foreground capitalize">{contact.onlineStatus === 'online' ? 'Online' : contact.lastSeen}</p>
+                  </div>
+              </div>
+            </div>
+
+            {/* Messages */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+              {messages.map(msg => <MessageBubble key={msg.id} message={msg} contactAvatar={contact.avatar} contactName={contact.name} />)}
+              <div ref={bottomRef} />
+            </div>
+
+            {/* Input Form */}
+            <div className="p-4 border-t bg-card/50">
+              <div className="relative">
+                  <textarea
+                      value={newMessage}
+                      onChange={(e) => setNewMessage(e.target.value)}
+                      placeholder={`Message ${contact.name}...`}
+                      className="w-full bg-background border border-input rounded-xl p-3 pr-24 resize-none focus:ring-2 focus:ring-ring focus-visible:outline-none"
+                      rows={1}
+                      onKeyDown={(e) => {
+                          if (e.key === 'Enter' && !e.shiftKey) {
+                              e.preventDefault();
+                              // Handle send message logic here
+                              console.log('Sending:', newMessage);
+                              setNewMessage('');
+                          }
+                      }}
+                  />
+                  <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                      <Button variant="ghost" size="icon">
+                          <Paperclip className="h-5 w-5" />
+                      </Button>
+                      <Button size="icon" disabled={!newMessage.trim()}>
+                          <ArrowUp className="h-5 w-5" />
+                      </Button>
+                  </div>
+              </div>
+            </div>
+          </div>
+        );
+      }
+    patchStrategy: replace
+  - type: write
+    path: src/pages/Messaging/index.tsx
+    content: |
+      <<<<<<< SEARCH
+      import { useParams } from 'react-router-dom';
+
+      function MessagingPlaceholder() {
+        const { conversationId } = useParams<{ conversationId?: string }>();
+
+        return (
+          <div className="flex h-full">
+            {/* Column 1: Conversation List */}
+            <div className="w-1/3 border-r p-4">
+              <h2 className="text-xl font-bold mb-4">Conversations</h2>
+              <p>Conversation list will be here.</p>
+              {conversationId && <p className="mt-4 text-green-500">Selected: {conversationId}</p>}
+            </div>
+
+            {/* Column 2: Contact Details */}
+            <div className="w-2/3 p-4">
+              {conversationId ? (
+                <div>
+                  <h2 className="text-xl font-bold mb-4">Contact Profile</h2>
+                  <p>Details for conversation {conversationId} will be here.</p>
+                </div>
+              ) : (
+                <div className="h-full flex items-center justify-center text-muted-foreground">
+                  <p>Select a conversation to see details</p>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      }
+
+      export default function MessagingPage() {
+          return <MessagingPlaceholder />;
+      }
+      =======
+      import { useParams } from 'react-router-dom';
+      import { ConversationList } from './components/ConversationList';
+      import { ContactProfile } from './components/ContactProfile';
+
+      function MessagingLayout() {
+        const { conversationId } = useParams<{ conversationId?: string }>();
+
+        return (
+          <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-4 h-full">
+            {/* Column 1: Conversation List */}
+            <div className="col-span-1 md:col-span-1 xl:col-span-1">
+              <ConversationList />
+            </div>
+
+            {/* Column 2: Contact Details */}
+            <div className="hidden md:block md:col-span-2 xl:col-span-3">
+              <ContactProfile conversationId={conversationId} />
+            </div>
+          </div>
+        );
+      }
+
+      export default function MessagingPage() {
+          return <MessagingLayout />;
+      }
+      >>>>>>> REPLACE
+    patchStrategy: search-replace
+  - type: write
+    path: src/hooks/useRightPaneContent.hook.tsx
+    content: >+
+      --- src/hooks/useRightPaneContent.hook.tsx
+
+      +++ src/hooks/useRightPaneContent.hook.tsx
+
+      @@ -10,11 +10,12 @@
+       import { DataDetailPanel } from "@/pages/DataDemo/components/DataDetailPanel";
+       import { mockDataItems } from "@/pages/DataDemo/data/mockData";
+       import type { AppShellState } from '@/store/appShell.store';
+      +import { MessageThread } from
+      '@/pages/Messaging/components/MessageThread';
+       
+       export function useRightPaneContent(sidePaneContent: AppShellState['sidePaneContent']) {
+         const navigate = useNavigate();
+      -  const { itemId } = useParams<{ itemId: string }>();
+
+      +  const { itemId, conversationId } = useParams<{ itemId?: string;
+      conversationId?: string }>();
+       
+         const contentMap = useMemo(() => ({
+           main: {
+      @@ ... @@
+             page: "data-demo",
+             content: <DataDemoPage />,
+           },
+           messaging: {
+      -      title: "Message Thread",
+
+      +      title: "Conversation",
+             icon: Mail,
+             page: "messaging",
+      -      content: <div className="p-6">Messaging thread will be here.</div>,
+
+      +      content: <div />, // Placeholder, will be replaced below
+           },
+           details: {
+             title: "Details Panel",
+      @@ ... @@
+             ),
+           },
+         }), []);
+      -
+
+      +  
+         const selectedItem = useMemo(() => {
+           if (!itemId) return null;
+           return mockDataItems.find(item => item.id === itemId) ?? null;
+         }, [itemId]);
+       
+         const { meta, content } = useMemo(() => {
+      +    if (sidePaneContent === 'messaging') {
+
+      +        return {
+
+      +            meta: contentMap.messaging,
+
+      +            content: <MessageThread conversationId={conversationId} />,
+
+      +        };
+
+      +    }
+           if (sidePaneContent === 'dataItem' && selectedItem) {
+             return {
+               meta: { title: "Item Details", icon: Database, page: `data-demo/${itemId}` },
+      @@ ... @@
+           return {
+             meta: mappedContent,
+             content: mappedContent.content,
+           };
+      -  }, [sidePaneContent, selectedItem, navigate, contentMap, itemId]);
+
+      +  }, [sidePaneContent, selectedItem, navigate, contentMap, itemId,
+      conversationId]);
+       
+         return { meta, content };
+       }
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/hooks/useAppViewManager.hook.ts
+    content: "--- src/hooks/useAppViewManager.hook.ts\n+++ src/hooks/useAppViewManager.hook.ts\n@@ -10,7 +10,7 @@\n   const [searchParams, setSearchParams] = useSearchParams();\n   const navigate = useNavigate();\n   const location = useLocation();\n-  const { itemId } = useParams<{ itemId: string }>();\n+  const { itemId, conversationId } = useParams<{ itemId?: string; conversationId?: string }>();\n \n   // --- DERIVED STATE FROM URL ---\n \n@@ -21,6 +21,10 @@\n   const { bodyState, sidePaneContent } = useMemo(() => {\n     const validPanes: AppShellState['sidePaneContent'][] = ['details', 'settings', 'main', 'toaster', 'notifications', 'dataDemo', 'messaging'];\n     \n+    if (conversationId) {\n+      return { bodyState: BODY_STATES.SPLIT_VIEW, sidePaneContent: 'messaging' as const };\n+    }\n+\n     if (itemId) {\n       if (view === 'split') {\n         return { bodyState: BODY_STATES.SPLIT_VIEW, sidePaneContent: 'dataItem' as const };\n@@ ... @@\n     }\n     \n     return { bodyState: BODY_STATES.NORMAL, sidePaneContent: 'details' as const };\n-  }, [itemId, view, sidePane, right]);\n+  }, [itemId, conversationId, view, sidePane, right]);\n   \n   const currentActivePage = useMemo(() => (location.pathname.split('/')[1] || 'dashboard') as ActivePage, [location.pathname]);\n \n@@ ... @@\n   const onItemSelect = useCallback((item: DataItem) => {\n \t\tnavigate(`/data-demo/${item.id}${location.search}`);\n \t}, [navigate, location.search]);\n-\n \n   return useMemo(() => ({\n     // State\n     bodyState,\n     sidePaneContent,\n     currentActivePage,\n     itemId,\n+    conversationId,\n     // DataDemo State\n     viewMode,\n     page,\n@@ ... @@\n     setSort,\n     setTableSort,\n     setPage,\n-  }), [\n-    bodyState, sidePaneContent, currentActivePage, itemId,\n+  ]), [ // eslint-disable-line\n+    bodyState, sidePaneContent, currentActivePage, itemId, conversationId,\n     viewMode, page, groupBy, activeGroupTab, filters, sortConfig,\n     navigateTo, openSidePane, closeSidePane, toggleSidePane, toggleSplitView, setNormalView, \n     switchSplitPanes, closeSidePane, onItemSelect, setViewMode, setGroupBy, setActiveGroupTab, setFilters,\n\n"
+    patchStrategy: standard-diff
+  - type: write
+    path: package.json
+    content: |+
+      --- package.json
+      +++ package.json
+      @@ -29,6 +29,7 @@
+           "clsx": "^2.0.0",
+           "cmdk": "^0.2.0",
+           "gsap": "^3.13.0",
+      +    "date-fns": "^3.6.0",
+           "lucide-react": "^0.294.0",
+           "react": "^18.2.0",
+           "react-dom": "^18.2.0",
+
+    patchStrategy: standard-diff
+snapshot:
+  src/pages/Messaging/components/ChannelIcon.tsx: null
+  src/pages/Messaging/components/ConversationList.tsx: null
+  src/pages/Messaging/components/ContactProfile.tsx: null
+  src/pages/Messaging/components/MessageThread.tsx: null
+  src/pages/Messaging/index.tsx: |-
+    import { useParams } from 'react-router-dom';
+
+    function MessagingPlaceholder() {
+      const { conversationId } = useParams<{ conversationId?: string }>();
+
+      return (
+        <div className="flex h-full">
+          {/* Column 1: Conversation List */}
+          <div className="w-1/3 border-r p-4">
+            <h2 className="text-xl font-bold mb-4">Conversations</h2>
+            <p>Conversation list will be here.</p>
+            {conversationId && <p className="mt-4 text-green-500">Selected: {conversationId}</p>}
+          </div>
+
+          {/* Column 2: Contact Details */}
+          <div className="w-2/3 p-4">
+            {conversationId ? (
+              <div>
+                <h2 className="text-xl font-bold mb-4">Contact Profile</h2>
+                <p>Details for conversation {conversationId} will be here.</p>
+              </div>
+            ) : (
+              <div className="h-full flex items-center justify-center text-muted-foreground">
+                <p>Select a conversation to see details</p>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    export default function MessagingPage() {
+        return <MessagingPlaceholder />;
+    }
+  src/hooks/useRightPaneContent.hook.tsx: >-
+    import { useMemo } from 'react';
+
+    import { useNavigate, useParams } from 'react-router-dom';
+
+    import {
+      LayoutDashboard,
+      Settings,
+      Component,
+      Bell,
+      SlidersHorizontal,
+      Mail,
+      Database,
+    } from 'lucide-react';
+
+
+    import { DashboardContent } from "@/pages/Dashboard";
+
+    import { SettingsContent } from "@/features/settings/SettingsContent";
+
+    import { ToasterDemo } from "@/pages/ToasterDemo";
+
+    import { NotificationsPage } from "@/pages/Notifications";
+
+    import DataDemoPage from "@/pages/DataDemo";
+
+    import { DataDetailPanel } from
+    "@/pages/DataDemo/components/DataDetailPanel";
+
+    import { mockDataItems } from "@/pages/DataDemo/data/mockData";
+
+    import type { AppShellState } from '@/store/appShell.store';
+
+
+    export function useRightPaneContent(sidePaneContent:
+    AppShellState['sidePaneContent']) {
+      const navigate = useNavigate();
+      const { itemId } = useParams<{ itemId: string }>();
+
+      const contentMap = useMemo(() => ({
+        main: {
+          title: "Dashboard",
+          icon: LayoutDashboard,
+          page: "dashboard",
+          content: <DashboardContent />,
+        },
+        settings: {
+          title: "Settings",
+          icon: Settings,
+          page: "settings",
+          content: <div className="p-6"><SettingsContent /></div>
+        },
+        toaster: {
+          title: "Toaster Demo",
+          icon: Component,
+          page: "toaster",
+          content: <ToasterDemo />,
+        },
+        notifications: {
+          title: "Notifications",
+          icon: Bell,
+          page: "notifications",
+          content: <NotificationsPage />,
+        },
+        dataDemo: {
+          title: "Data Showcase",
+          icon: Database,
+          page: "data-demo",
+          content: <DataDemoPage />,
+        },
+        messaging: {
+          title: "Message Thread",
+          icon: Mail,
+          page: "messaging",
+          content: <div className="p-6">Messaging thread will be here.</div>,
+        },
+        details: {
+          title: "Details Panel",
+          icon: SlidersHorizontal,
+          content: (
+            <div className="p-6">
+              <p className="text-muted-foreground">
+                This is the side pane. It can be used to display contextual
+                information, forms, or actions related to the main content.
+              </p>
+            </div>
+          ),
+        },
+      }), []);
+
+      const selectedItem = useMemo(() => {
+        if (!itemId) return null;
+        return mockDataItems.find(item => item.id === itemId) ?? null;
+      }, [itemId]);
+
+      const { meta, content } = useMemo(() => {
+        if (sidePaneContent === 'dataItem' && selectedItem) {
+          return {
+            meta: { title: "Item Details", icon: Database, page: `data-demo/${itemId}` },
+            content: <DataDetailPanel item={selectedItem} onClose={() => navigate('/data-demo')} />,
+          };
+        }
+        const mappedContent = contentMap[sidePaneContent as keyof typeof contentMap] || contentMap.details;
+        return {
+          meta: mappedContent,
+          content: mappedContent.content,
+        };
+      }, [sidePaneContent, selectedItem, navigate, contentMap, itemId]);
+
+      return { meta, content };
+    }
+  src/hooks/useAppViewManager.hook.ts: "import { useMemo, useCallback } from 'react';\nimport { useSearchParams, useNavigate, useLocation, useParams } from 'react-router-dom';\nimport type { AppShellState, ActivePage } from '@/store/appShell.store';\nimport type { DataItem, ViewMode, SortConfig, SortableField, GroupableField, Status, Priority } from '@/pages/DataDemo/types';\nimport type { FilterConfig } from '@/pages/DataDemo/components/DataToolbar';\nimport { BODY_STATES } from '@/lib/utils';\n\nconst pageToPaneMap: Record<string, AppShellState['sidePaneContent']> = {\n  dashboard: 'main',\n  settings: 'settings',\n  toaster: 'toaster',\n  notifications: 'notifications',\n  'data-demo': 'dataDemo',\n  messaging: 'messaging',\n};\n\n/**\n * A centralized hook to manage and synchronize all URL-based view states.\n * This is the single source of truth for view modes, side panes, split views,\n * and page-specific parameters.\n */\nexport function useAppViewManager() {\n  const [searchParams, setSearchParams] = useSearchParams();\n  const navigate = useNavigate();\n  const location = useLocation();\n  const { itemId } = useParams<{ itemId: string }>();\n\n  // --- DERIVED STATE FROM URL ---\n\n  const view = searchParams.get('view');\n  const sidePane = searchParams.get('sidePane');\n  const right = searchParams.get('right');\n\n  const { bodyState, sidePaneContent } = useMemo(() => {\n    const validPanes: AppShellState['sidePaneContent'][] = ['details', 'settings', 'main', 'toaster', 'notifications', 'dataDemo', 'messaging'];\n    \n    if (itemId) {\n      if (view === 'split') {\n        return { bodyState: BODY_STATES.SPLIT_VIEW, sidePaneContent: 'dataItem' as const };\n      }\n      return { bodyState: BODY_STATES.SIDE_PANE, sidePaneContent: 'dataItem' as const };\n    }\n    \n    if (sidePane && validPanes.includes(sidePane as AppShellState['sidePaneContent'])) {\n      return { bodyState: BODY_STATES.SIDE_PANE, sidePaneContent: sidePane as AppShellState['sidePaneContent'] };\n    }\n    \n    if (view === 'split' && right && validPanes.includes(right as AppShellState['sidePaneContent'])) {\n      return { bodyState: BODY_STATES.SPLIT_VIEW, sidePaneContent: right as AppShellState['sidePaneContent'] };\n    }\n    \n    return { bodyState: BODY_STATES.NORMAL, sidePaneContent: 'details' as const };\n  }, [itemId, view, sidePane, right]);\n  \n  const currentActivePage = useMemo(() => (location.pathname.split('/')[1] || 'dashboard') as ActivePage, [location.pathname]);\n\n  // DataDemo specific state\n  const viewMode = useMemo(() => (searchParams.get('view') as ViewMode) || 'list', [searchParams]);\n\tconst page = useMemo(() => parseInt(searchParams.get('page') || '1', 10), [searchParams]);\n\tconst groupBy = useMemo(() => (searchParams.get('groupBy') as GroupableField | 'none') || 'none', [searchParams]);\n\tconst activeGroupTab = useMemo(() => searchParams.get('tab') || 'all', [searchParams]);\n\tconst filters = useMemo<FilterConfig>(\n\t\t() => ({\n\t\t\tsearchTerm: searchParams.get('q') || '',\n\t\t\tstatus: (searchParams.get('status')?.split(',') || []).filter(Boolean) as Status[],\n\t\t\tpriority: (searchParams.get('priority')?.split(',') || []).filter(Boolean) as Priority[],\n\t\t}),\n\t\t[searchParams],\n\t);\n\tconst sortConfig = useMemo<SortConfig | null>(() => {\n\t\tconst sortParam = searchParams.get('sort');\n\t\tif (!sortParam) return { key: 'updatedAt', direction: 'desc' }; // Default sort\n\t\tif (sortParam === 'default') return null;\n\n\t\tconst [key, direction] = sortParam.split('-');\n\t\treturn { key: key as SortableField, direction: direction as 'asc' | 'desc' };\n\t}, [searchParams]);\n\n  // --- MUTATOR ACTIONS ---\n\n  const handleParamsChange = useCallback(\n\t\t(newParams: Record<string, string | string[] | null | undefined>, resetPage = false) => {\n\t\t\tsetSearchParams(\n\t\t\t\t(prev) => {\n\t\t\t\t\tconst updated = new URLSearchParams(prev);\n\t\t\t\t\t\n\t\t\t\t\tfor (const [key, value] of Object.entries(newParams)) {\n\t\t\t\t\t\tif (value === null || value === undefined || (Array.isArray(value) && value.length === 0) || value === '') {\n\t\t\t\t\t\t\tupdated.delete(key);\n\t\t\t\t\t\t} else if (Array.isArray(value)) {\n\t\t\t\t\t\t\tupdated.set(key, value.join(','));\n\t\t\t\t\t\t} else {\n\t\t\t\t\t\t\tupdated.set(key, String(value));\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\n\t\t\t\t\tif (resetPage) {\n\t\t\t\t\t\tupdated.delete('page');\n\t\t\t\t\t}\n\t\t\t\t\tif ('groupBy' in newParams) {\n\t\t\t\t\t\tupdated.delete('tab');\n\t\t\t\t\t}\n\n\t\t\t\t\treturn updated;\n\t\t\t\t},\n\t\t\t\t{ replace: true },\n\t\t\t);\n\t\t},\n\t\t[setSearchParams],\n\t);\n\n  const navigateTo = useCallback((page: string) => {\n    navigate(page.startsWith('/') ? page : `/${page}`);\n  }, [navigate]);\n\n  const openSidePane = useCallback((pane: AppShellState['sidePaneContent']) => {\n    if (location.pathname === `/${Object.keys(pageToPaneMap).find(key => pageToPaneMap[key] === pane)}`) {\n        navigate({ pathname: '/dashboard', search: `?sidePane=${pane}` }, { replace: true });\n    } else {\n        handleParamsChange({ sidePane: pane, view: null, right: null });\n    }\n  }, [handleParamsChange, navigate, location.pathname]);\n\n  const closeSidePane = useCallback(() => {\n    if (itemId) {\n      navigate('/data-demo');\n    } else {\n      handleParamsChange({ sidePane: null, view: null, right: null });\n    }\n  }, [itemId, navigate, handleParamsChange]);\n\n  const toggleSidePane = useCallback((pane: AppShellState['sidePaneContent']) => {\n    if (sidePane === pane) {\n      closeSidePane();\n    } else {\n      openSidePane(pane);\n    }\n  }, [sidePane, openSidePane, closeSidePane]);\n\n  const toggleSplitView = useCallback(() => {\n    if (bodyState === BODY_STATES.SIDE_PANE) {\n      handleParamsChange({ view: 'split', right: sidePane, sidePane: null });\n    } else if (bodyState === BODY_STATES.SPLIT_VIEW) {\n      handleParamsChange({ sidePane: right, view: null, right: null });\n    } else { // From normal\n      const paneContent = pageToPaneMap[currentActivePage] || 'details';\n      handleParamsChange({ view: 'split', right: paneContent, sidePane: null });\n    }\n  }, [bodyState, sidePane, right, currentActivePage, handleParamsChange]);\n  \n  const setNormalView = useCallback(() => {\n      handleParamsChange({ sidePane: null, view: null, right: null });\n  }, [handleParamsChange]);\n\n  const switchSplitPanes = useCallback(() => {\n    if (bodyState !== BODY_STATES.SPLIT_VIEW) return;\n    const newSidePaneContent = pageToPaneMap[currentActivePage];\n    const newActivePage = Object.entries(pageToPaneMap).find(\n      ([, value]) => value === sidePaneContent\n    )?.[0] as ActivePage | undefined;\n\n    if (newActivePage && newSidePaneContent) {\n      navigate(`/${newActivePage}?view=split&right=${newSidePaneContent}`, { replace: true });\n    }\n  }, [bodyState, currentActivePage, sidePaneContent, navigate]);\n  \n  const closeSplitPane = useCallback((paneToClose: 'main' | 'right') => {\n    if (bodyState !== BODY_STATES.SPLIT_VIEW) return;\n    if (paneToClose === 'right') {\n      navigate(`/${currentActivePage}`, { replace: true });\n    } else { // Closing main pane\n      const pageToBecomeActive = Object.entries(pageToPaneMap).find(\n        ([, value]) => value === sidePaneContent\n      )?.[0] as ActivePage | undefined;\n      \n      if (pageToBecomeActive) {\n        navigate(`/${pageToBecomeActive}`, { replace: true });\n      } else {\n        navigate(`/dashboard`, { replace: true });\n      }\n    }\n  }, [bodyState, currentActivePage, sidePaneContent, navigate]);\n  \n  // DataDemo actions\n  const setViewMode = (mode: ViewMode) => handleParamsChange({ view: mode });\n  const setGroupBy = (val: string) => handleParamsChange({ groupBy: val === 'none' ? null : val }, true);\n  const setActiveGroupTab = (tab: string) => handleParamsChange({ tab: tab === 'all' ? null : tab });\n  const setFilters = (newFilters: FilterConfig) => {\n    handleParamsChange({ q: newFilters.searchTerm, status: newFilters.status, priority: newFilters.priority }, true);\n  }\n  const setSort = (config: SortConfig | null) => {\n    if (!config) {\n      handleParamsChange({ sort: 'default' }, true);\n    } else {\n      handleParamsChange({ sort: `${config.key}-${config.direction}` }, true);\n    }\n  }\n  const setTableSort = (field: SortableField) => {\n    let newSort: string | null = `${field}-desc`;\n    if (sortConfig?.key === field) {\n      if (sortConfig.direction === 'desc') newSort = `${field}-asc`;\n      else if (sortConfig.direction === 'asc') newSort = 'default';\n    }\n    handleParamsChange({ sort: newSort }, true);\n  };\n  const setPage = (newPage: number) => handleParamsChange({ page: newPage.toString() });\n\n  const onItemSelect = useCallback((item: DataItem) => {\n\t\tnavigate(`/data-demo/${item.id}${location.search}`);\n\t}, [navigate, location.search]);\n\n\n  return useMemo(() => ({\n    // State\n    bodyState,\n    sidePaneContent,\n    currentActivePage,\n    itemId,\n    // DataDemo State\n    viewMode,\n    page,\n    groupBy,\n    activeGroupTab,\n    filters,\n    sortConfig,\n    // Actions\n    navigateTo,\n    openSidePane,\n    closeSidePane,\n    toggleSidePane,\n    toggleSplitView,\n    setNormalView,\n    switchSplitPanes,\n    closeSplitPane,\n    // DataDemo Actions\n    onItemSelect,\n    setViewMode,\n    setGroupBy,\n    setActiveGroupTab,\n    setFilters,\n    setSort,\n    setTableSort,\n    setPage,\n  }), [\n    bodyState, sidePaneContent, currentActivePage, itemId,\n    viewMode, page, groupBy, activeGroupTab, filters, sortConfig,\n    navigateTo, openSidePane, closeSidePane, toggleSidePane, toggleSplitView, setNormalView, \n    switchSplitPanes, closeSplitPane, onItemSelect, setViewMode, setGroupBy, setActiveGroupTab, setFilters,\n    setSort, setTableSort, setPage\n  ]);\n}"
+  package.json: |
+    {
+      "name": "jeli-app-shell",
+      "private": false,
+      "version": "1.0.1",
+      "type": "module",
+      "files": [
+        "dist"
+      ],
+      "main": "./dist/jeli-app-shell.umd.js",
+      "module": "./dist/jeli-app-shell.es.js",
+      "types": "./dist/index.d.ts",
+      "exports": {
+        ".": {
+          "import": "./dist/jeli-app-shell.es.js",
+          "require": "./dist/jeli-app-shell.umd.js"
+        },
+        "./dist/style.css": "./dist/style.css"
+      },
+      "sideEffects": [
+        "**/*.css"
+      ],
+      "scripts": {
+        "dev": "vite",
+        "build": "tsc && vite build",
+        "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+        "preview": "vite preview"
+      },
+      "peerDependencies": {
+        "@iconify/react": "^4.1.1",
+        "@radix-ui/react-avatar": "^1.0.4",
+        "@radix-ui/react-dialog": "^1.0.5",
+        "@radix-ui/react-dropdown-menu": "^2.0.6",
+        "@radix-ui/react-label": "^2.1.7",
+        "@radix-ui/react-popover": "^1.0.7",
+        "@radix-ui/react-slot": "^1.0.2",
+        "@radix-ui/react-tabs": "^1.0.4",
+        "class-variance-authority": "^0.7.0",
+        "clsx": "^2.0.0",
+        "cmdk": "^0.2.0",
+        "gsap": "^3.13.0",
+        "lucide-react": "^0.294.0",
+        "react": "^18.2.0",
+        "react-dom": "^18.2.0",
+        "react-router-dom": "^6.22.3",
+        "sonner": "^1.2.4",
+        "tailwind-merge": "^2.0.0",
+        "tailwindcss": "^3.3.5",
+        "zustand": "^4.5.7"
+      },
+      "devDependencies": {
+        "@types/node": "^20.10.0",
+        "@types/react": "^18.2.37",
+        "@types/react-dom": "^18.2.15",
+        "@typescript-eslint/eslint-plugin": "^6.10.0",
+        "@typescript-eslint/parser": "^6.10.0",
+        "@vitejs/plugin-react": "^4.1.1",
+        "autoprefixer": "^10.4.16",
+        "eslint": "^8.53.0",
+        "eslint-plugin-react-hooks": "^4.6.0",
+        "eslint-plugin-react-refresh": "^0.4.4",
+        "postcss": "^8.4.31",
+        "tailwindcss": "^3.3.5",
+        "tailwindcss-animate": "^1.0.7",
+        "typescript": "^5.2.2",
+        "vite": "^4.5.0"
+      }
+    }
+  src/components/ui/badge.tsx: |-
+    import * as React from "react"
+    import { cva, type VariantProps } from "class-variance-authority"
+
+    import { cn } from "@/lib/utils"
+
+    const badgeVariants = cva(
+      "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+      {
+        variants: {
+          variant: {
+            default:
+              "border-transparent bg-primary text-primary-foreground hover:bg-primary/80",
+            secondary:
+              "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80",
+            destructive:
+              "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80",
+            outline: "text-foreground",
+          },
+        },
+        defaultVariants: {
+          variant: "default",
+        },
+      },
+    )
+
+    export interface BadgeProps
+      extends React.HTMLAttributes<HTMLDivElement>,
+        VariantProps<typeof badgeVariants> {}
+
+    function Badge({ className, variant, ...props }: BadgeProps) {
+      return (
+        <div className={cn(badgeVariants({ variant }), className)} {...props} />
+      )
+    }
+
+    // eslint-disable-next-line react-refresh/only-export-components
+    export { Badge, badgeVariants }
+  src/components/ui/button.tsx: |-
+    import * as React from "react"
+    import { Slot } from "@radix-ui/react-slot"
+    import { cva, type VariantProps } from "class-variance-authority"
+
+    import { cn } from "@/lib/utils"
+
+    const buttonVariants = cva(
+      "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+      {
+        variants: {
+          variant: {
+            default: "bg-primary text-primary-foreground hover:bg-primary/90",
+            destructive:
+              "bg-destructive text-destructive-foreground hover:bg-destructive/90",
+            outline:
+              "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
+            secondary:
+              "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+            ghost: "hover:bg-accent hover:text-accent-foreground",
+            link: "text-primary underline-offset-4 hover:underline",
+          },
+          size: {
+            default: "h-10 px-4 py-2",
+            sm: "h-9 rounded-md px-3",
+            lg: "h-11 rounded-md px-8",
+            icon: "h-10 w-10",
+          },
+        },
+        defaultVariants: {
+          variant: "default",
+          size: "default",
+        },
+      }
+    )
+
+    export interface ButtonProps
+      extends React.ButtonHTMLAttributes<HTMLButtonElement>,
+        VariantProps<typeof buttonVariants> {
+      asChild?: boolean
+    }
+
+    const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
+      ({ className, variant, size, asChild = false, ...props }, ref) => {
+        const Comp = asChild ? Slot : "button"
+        return (
+          <Comp
+            className={cn(buttonVariants({ variant, size, className }))}
+            ref={ref}
+            {...props}
+          />
+        )
+      }
+    )
+    Button.displayName = "Button"
+
+    // eslint-disable-next-line react-refresh/only-export-components
+    export { Button, buttonVariants }
+approved: false
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: undone
+id: 287

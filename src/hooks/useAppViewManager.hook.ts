@@ -11,6 +11,7 @@ const pageToPaneMap: Record<string, AppShellState['sidePaneContent']> = {
   toaster: 'toaster',
   notifications: 'notifications',
   'data-demo': 'dataDemo',
+  messaging: 'messaging',
 };
 
 /**
@@ -22,7 +23,8 @@ export function useAppViewManager() {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const { itemId } = useParams<{ itemId: string }>();
+  const params = useParams<{ itemId: string; conversationId: string }>();
+  const { itemId, conversationId } = params;
 
   // --- DERIVED STATE FROM URL ---
 
@@ -31,8 +33,12 @@ export function useAppViewManager() {
   const right = searchParams.get('right');
 
   const { bodyState, sidePaneContent } = useMemo(() => {
-    const validPanes: AppShellState['sidePaneContent'][] = ['details', 'settings', 'main', 'toaster', 'notifications', 'dataDemo'];
+    const validPanes: AppShellState['sidePaneContent'][] = ['details', 'settings', 'main', 'toaster', 'notifications', 'dataDemo', 'messaging'];
     
+    if (conversationId) {
+      return { bodyState: BODY_STATES.SPLIT_VIEW, sidePaneContent: 'messaging' as const };
+    }
+
     if (itemId) {
       if (view === 'split') {
         return { bodyState: BODY_STATES.SPLIT_VIEW, sidePaneContent: 'dataItem' as const };
@@ -49,7 +55,7 @@ export function useAppViewManager() {
     }
     
     return { bodyState: BODY_STATES.NORMAL, sidePaneContent: 'details' as const };
-  }, [itemId, view, sidePane, right]);
+  }, [itemId, conversationId, view, sidePane, right]);
   
   const currentActivePage = useMemo(() => (location.pathname.split('/')[1] || 'dashboard') as ActivePage, [location.pathname]);
 

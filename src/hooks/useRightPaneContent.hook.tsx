@@ -7,6 +7,7 @@ import {
   Bell,
   SlidersHorizontal,
   Database,
+  MessageSquare,
 } from 'lucide-react';
 
 import { DashboardContent } from "@/pages/Dashboard";
@@ -16,11 +17,12 @@ import { NotificationsPage } from "@/pages/Notifications";
 import DataDemoPage from "@/pages/DataDemo";
 import { DataDetailPanel } from "@/pages/DataDemo/components/DataDetailPanel";
 import { mockDataItems } from "@/pages/DataDemo/data/mockData";
+import { MessageThread } from "@/pages/Messaging/components/MessageThread";
 import type { AppShellState } from '@/store/appShell.store';
 
 export function useRightPaneContent(sidePaneContent: AppShellState['sidePaneContent']) {
   const navigate = useNavigate();
-  const { itemId } = useParams<{ itemId: string }>();
+  const { itemId, conversationId } = useParams<{ itemId: string; conversationId: string }>();
 
   const contentMap = useMemo(() => ({
     main: {
@@ -53,6 +55,12 @@ export function useRightPaneContent(sidePaneContent: AppShellState['sidePaneCont
       page: "data-demo",
       content: <DataDemoPage />,
     },
+    messaging: {
+      title: "Conversation",
+      icon: MessageSquare,
+      page: "messaging",
+      content: <MessageThread conversationId={conversationId} />,
+    },
     details: {
       title: "Details Panel",
       icon: SlidersHorizontal,
@@ -65,7 +73,7 @@ export function useRightPaneContent(sidePaneContent: AppShellState['sidePaneCont
         </div>
       ),
     },
-  }), []);
+  }), [conversationId]);
 
   const selectedItem = useMemo(() => {
     if (!itemId) return null;
@@ -79,12 +87,18 @@ export function useRightPaneContent(sidePaneContent: AppShellState['sidePaneCont
         content: <DataDetailPanel item={selectedItem} onClose={() => navigate('/data-demo')} />,
       };
     }
+    if (sidePaneContent === 'messaging') {
+      return {
+       meta: contentMap.messaging,
+       content: <MessageThread conversationId={conversationId} />,
+     };
+   }
     const mappedContent = contentMap[sidePaneContent as keyof typeof contentMap] || contentMap.details;
     return {
       meta: mappedContent,
       content: mappedContent.content,
     };
-  }, [sidePaneContent, selectedItem, navigate, contentMap, itemId]);
+  }, [sidePaneContent, selectedItem, navigate, contentMap, itemId, conversationId]);
 
   return { meta, content };
 }

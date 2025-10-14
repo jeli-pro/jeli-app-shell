@@ -25,7 +25,6 @@
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview"
   },
-  "dependencies": {},
   "peerDependencies": {
     "@iconify/react": "^4.1.1",
     "@radix-ui/react-avatar": "^1.0.4",
@@ -38,7 +37,8 @@
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.0.0",
     "cmdk": "^0.2.0",
-    "gsap": "^3.12.2",
+    "date-fns": "^3.6.0",
+    "gsap": "^3.13.0",
     "lucide-react": "^0.294.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
