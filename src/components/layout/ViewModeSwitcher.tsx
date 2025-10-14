@@ -1,10 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
 import { gsap } from 'gsap';
 import { cn } from '@/lib/utils'
-import { useAppShell } from '@/context/AppShellContext'
+import { useAppShellStore } from '@/store/appShell.store'
 import { type ActivePage } from '@/store/appStore'
 import { BODY_STATES } from '@/lib/utils'
-import { type AppShellState } from '@/context/AppShellContext'
+import { type AppShellState } from '@/store/appShell.store'
 import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
 import {
   Columns,
@@ -18,11 +18,8 @@ import {
 } from 'lucide-react'
 
 export function ViewModeSwitcher({ pane, targetPage }: { pane?: 'main' | 'right', targetPage?: ActivePage }) {
-  const {
-    bodyState,
-    toggleFullscreen,
-    fullscreenTarget,
-  } = useAppShell()
+  const { bodyState, fullscreenTarget } = useAppShellStore();
+  const toggleFullscreen = useAppShellStore(s => s.toggleFullscreen);
   const {
     currentActivePage,
     toggleSidePane,

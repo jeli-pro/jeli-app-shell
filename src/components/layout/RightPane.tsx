@@ -6,13 +6,16 @@ import {
   SplitSquareHorizontal,
   ChevronsLeftRight,
 } from 'lucide-react'
-import { cn, BODY_STATES } from '@/lib/utils'
-import { useAppShell } from '@/context/AppShellContext'
+import { cn, BODY_STATES } from '@/lib/utils';
+import { useAppShellStore } from '@/store/appShell.store';
 import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
 import { useRightPaneContent } from '@/hooks/useRightPaneContent.hook'
 
 export const RightPane = forwardRef<HTMLDivElement, { className?: string }>(({ className }, ref) => {
-  const { dispatch, fullscreenTarget, toggleFullscreen, bodyState } = useAppShell()
+  const fullscreenTarget = useAppShellStore(s => s.fullscreenTarget);
+  const bodyState = useAppShellStore(s => s.bodyState);
+  const { toggleFullscreen, setIsResizingRightPane } = useAppShellStore.getState();
+
   const viewManager = useAppViewManager()
   const { sidePaneContent, closeSidePane, toggleSplitView, navigateTo } = viewManager
   
@@ -89,7 +92,7 @@ export const RightPane = forwardRef<HTMLDivElement, { className?: string }>(({ c
         )}
         onMouseDown={(e) => {
           e.preventDefault()
-          dispatch({ type: 'SET_IS_RESIZING_RIGHT_PANE', payload: true });
+          setIsResizingRightPane(true);
         }}
       >
         <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200 mx-auto" />

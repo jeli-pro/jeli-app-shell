@@ -16,7 +16,7 @@ import { NotificationsPage } from "@/pages/Notifications";
 import DataDemoPage from "@/pages/DataDemo";
 import { DataDetailPanel } from "@/pages/DataDemo/components/DataDetailPanel";
 import { mockDataItems } from "@/pages/DataDemo/data/mockData";
-import { AppShellState } from '@/context/AppShellContext';
+import type { AppShellState } from '@/store/appShell.store';
 
 export function useRightPaneContent(sidePaneContent: AppShellState['sidePaneContent']) {
   const navigate = useNavigate();
@@ -27,7 +27,7 @@ export function useRightPaneContent(sidePaneContent: AppShellState['sidePaneCont
       title: "Dashboard",
       icon: LayoutDashboard,
       page: "dashboard",
-      content: <DashboardContent isInSidePane />,
+      content: <DashboardContent />,
     },
     settings: {
       title: "Settings",
@@ -39,13 +39,13 @@ export function useRightPaneContent(sidePaneContent: AppShellState['sidePaneCont
       title: "Toaster Demo",
       icon: Component,
       page: "toaster",
-      content: <ToasterDemo isInSidePane />,
+      content: <ToasterDemo />,
     },
     notifications: {
       title: "Notifications",
       icon: Bell,
       page: "notifications",
-      content: <NotificationsPage isInSidePane />,
+      content: <NotificationsPage />,
     },
     dataDemo: {
       title: "Data Showcase",

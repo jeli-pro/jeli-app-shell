@@ -12,7 +12,7 @@ import { useAppStore } from '@/store/appStore'
 import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
 import { UserDropdown } from './UserDropdown'
 import { ViewModeSwitcher } from './ViewModeSwitcher'
-import { useAppShell } from '@/context/AppShellContext'
+import { useAppShellStore } from '@/store/appShell.store'
 
 interface TopBarProps {
   children?: React.ReactNode
@@ -21,10 +21,8 @@ interface TopBarProps {
 export function TopBar({
   children,
 }: TopBarProps) {
-  const { 
-    bodyState,
-    toggleSidebar,
-  } = useAppShell()
+  const bodyState = useAppShellStore(s => s.bodyState);
+  const toggleSidebar = useAppShellStore(s => s.toggleSidebar);
   const viewManager = useAppViewManager();
   const { 
     setCommandPaletteOpen,

@@ -1,4 +1,4 @@
-import { useRef, useEffect } from 'react'
+import { useRef, useEffect, useCallback } from 'react'
 import {
   Layers, 
   AlertTriangle, 
@@ -28,7 +28,12 @@ import { AnimatedLoadingSkeleton } from './components/AnimatedLoadingSkeleton'
 import { DataToolbar } from './components/DataToolbar'
 import { mockDataItems } from './data/mockData'
 import type { GroupableField } from './types'
-import { useDataDemo, DataDemoProvider } from './context/DataDemoContext'
+import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
+import { 
+  useDataDemoStore,
+  useGroupTabs,
+  useDataToRender,
+} from './store/dataDemo.store'
 
 type Stat = {
   title: string;
@@ -56,16 +61,24 @@ function DataDemoContent() {
     viewMode,
     groupBy,
     activeGroupTab,
-    hasMore,
-    isLoading,
-    loaderRef,
-    groupTabs,
-    dataToRender,
-    totalItemCount,
-    isInitialLoading,
     setGroupBy,
     setActiveGroupTab,
-  } = useDataDemo();
+    page,
+    filters,
+    sortConfig,
+    setPage,
+  } = useAppViewManager();
+
+  const { hasMore, isLoading, isInitialLoading, totalItemCount, loadData } = useDataDemoStore(state => ({
+    hasMore: state.hasMore,
+    isLoading: state.isLoading,
+    isInitialLoading: state.isInitialLoading,
+    totalItemCount: state.totalItemCount,
+    loadData: state.loadData,
+  }));
+
+  const groupTabs = useGroupTabs(groupBy, activeGroupTab);
+  const dataToRender = useDataToRender(groupBy, activeGroupTab);
 
   const groupOptions: { id: GroupableField | 'none'; label: string }[] = [
     { id: 'none', label: 'None' }, { id: 'status', label: 'Status' }, { id: 'priority', label: 'Priority' }, { id: 'category', label: 'Category' }
@@ -133,7 +146,27 @@ function DataDemoContent() {
         }
       )
     }
-  }, [isInitialLoading])
+  }, [isInitialLoading]);
+
+  useEffect(() => {
+    loadData({ page, groupBy, filters, sortConfig });
+  }, [page, groupBy, filters, sortConfig, loadData]);
+
+  const observer = useRef<IntersectionObserver>();
+  const loaderRef = useCallback(
+    (node: Element | null) => {
+      if (isLoading) return;
+      if (observer.current) observer.current.disconnect();
+
+      observer.current = new IntersectionObserver((entries) => {
+        if (entries[0].isIntersecting && hasMore) {
+          setPage(page + 1);
+        }
+      });
+      if (node) observer.current.observe(node);
+    },
+    [isLoading, hasMore, page, setPage],
+  );
 
   return (
     <PageLayout
@@ -248,9 +281,5 @@ function DataDemoContent() {
 }
 
 export default function DataDemoPage() {
-  return (
-    <DataDemoProvider>
-      <DataDemoContent />
-    </DataDemoProvider>
-  );
+  return <DataDemoContent />;
 }

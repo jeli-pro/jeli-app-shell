@@ -9,7 +9,8 @@ import {
 } from "react-router-dom";
 
 import { AppShell } from "./components/layout/AppShell";
-import { AppShellProvider, useAppShell } from "./context/AppShellContext";
+import { AppShellProvider } from "./providers/AppShellProvider";
+import { useAppShellStore } from "./store/appShell.store";
 import { useAppStore } from "./store/appStore";
 import { useAuthStore } from "./store/authStore";
 import "./index.css";
@@ -44,45 +45,6 @@ import { cn } from "./lib/utils";
 import { useAppViewManager } from "./hooks/useAppViewManager.hook";
 import { useRightPaneContent } from "./hooks/useRightPaneContent.hook";
 import { BODY_STATES } from "./lib/utils";
-
-// Wrapper for LoginPage to provide auth handlers
-function LoginPageWrapper() {
-  const { login, forgotPassword } = useAuthStore();
-  const navigate = useNavigate();
-  const location = useLocation();
-  const from = location.state?.from?.pathname + location.state?.from?.search || "/";
-
-  const handleLogin = async (email: string, password: string) => {
-    try {
-      await login(email, password);
-      navigate(from, { replace: true });
-    } catch (error) {
-      console.error("Login failed:", error);
-      // In a real app, you'd show an error message to the user
-    }
-  };
-
-  const handleForgotPassword = async (email: string) => {
-    try {
-      await forgotPassword(email);
-    } catch (error) {
-      console.error("Forgot password failed:", error);
-    }
-  };
-
-  const handleSignUp = () => {
-    // In a real app, navigate to sign up page
-    console.log("Navigate to sign up page");
-  };
-
-  return (
-    <LoginPage
-      onLogin={handleLogin}
-      onForgotPassword={handleForgotPassword}
-      onSignUp={handleSignUp}
-    />
-  );
-}
 
 // Checks for authentication and redirects to login if needed
 function ProtectedRoute() {
@@ -198,14 +160,14 @@ function AppTopBar() {
 
 // The main App component that composes the shell
 function ComposedApp() {
-  const { dispatch } = useAppShell();
+  const { setBodyState, setSidePaneContent } = useAppShellStore();
   const viewManager = useAppViewManager();
 
-  // Sync URL state with AppShellContext
+  // Sync URL state with AppShellStore
   useEffect(() => {
-    dispatch({ type: 'SET_BODY_STATE', payload: viewManager.bodyState });
-    dispatch({ type: 'SET_SIDE_PANE_CONTENT', payload: viewManager.sidePaneContent });
-  }, [viewManager.bodyState, viewManager.sidePaneContent, dispatch]);
+    setBodyState(viewManager.bodyState);
+    setSidePaneContent(viewManager.sidePaneContent);
+  }, [viewManager.bodyState, viewManager.sidePaneContent, setBodyState, setSidePaneContent]);
 
   return (
     <AppShell
@@ -234,7 +196,7 @@ function App() {
       children: [
         {
           path: "/login",
-          element: <LoginPageWrapper />,
+          element: <LoginPage />,
         },
         {
           path: "/",

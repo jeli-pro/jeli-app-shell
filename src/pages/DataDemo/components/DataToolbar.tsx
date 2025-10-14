@@ -26,7 +26,7 @@ import {
 } from '@/components/ui/command'
 
 import type { SortableField, Status, Priority } from '../types'
-import { useDataDemo } from '../context/DataDemoContext'
+import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
 
 export interface FilterConfig {
   searchTerm: string
@@ -60,13 +60,13 @@ const sortOptions: { value: SortableField, label: string }[] = [
 export function DataToolbar() {
   const {
     filters,
-    setFilters: onFiltersChange,
+    setFilters,
     sortConfig,
-    setSort: onSortChange,
-  } = useDataDemo();
+    setSort,
+  } = useAppViewManager();
 
   const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    onFiltersChange({ ...filters, searchTerm: event.target.value })
+    setFilters({ ...filters, searchTerm: event.target.value })
   }
   
   const activeFilterCount = filters.status.length + filters.priority.length
@@ -101,12 +101,12 @@ export function DataToolbar() {
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-[240px] p-0" align="start">
-            <CombinedFilter filters={filters} onFiltersChange={onFiltersChange} />
+            <CombinedFilter filters={filters} onFiltersChange={setFilters} />
           </PopoverContent>
         </Popover>
 
         {activeFilterCount > 0 && (
-          <Button variant="ghost" onClick={() => onFiltersChange({ searchTerm: filters.searchTerm, status: [], priority: [] })}>Reset</Button>
+          <Button variant="ghost" onClick={() => setFilters({ searchTerm: filters.searchTerm, status: [], priority: [] })}>Reset</Button>
         )}
       </div>
 
@@ -125,10 +125,10 @@ export function DataToolbar() {
               value={`${sortConfig?.key || 'default'}-${sortConfig?.direction || ''}`}
               onValueChange={(value) => {
                 if (value.startsWith('default')) {
-                  onSortChange(null)
+                  setSort(null)
                 } else {
                   const [key, direction] = value.split('-')
-                  onSortChange({ key: key as SortableField, direction: direction as 'asc' | 'desc' })
+                  setSort({ key: key as SortableField, direction: direction as 'asc' | 'desc' })
                 }
               }}
             >

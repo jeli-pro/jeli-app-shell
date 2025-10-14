@@ -1,5 +1,6 @@
 // Context
-export { AppShellProvider, useAppShell } from './context/AppShellContext';
+export { AppShellProvider } from './providers/AppShellProvider';
+export { useAppShellStore } from './store/appShell.store';
 
 // Layout Components
 export { AppShell } from './components/layout/AppShell';

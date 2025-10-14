@@ -1,20 +1,21 @@
 import { useEffect } from 'react';
 import { gsap } from 'gsap';
-import { useAppShell } from '@/context/AppShellContext';
+import { useAppShellStore } from '@/store/appShell.store';
 import { BODY_STATES } from '@/lib/utils';
 
 export function useResizableSidebar(
   sidebarRef: React.RefObject<HTMLDivElement>,
   resizeHandleRef: React.RefObject<HTMLDivElement>
 ) {
-  const { isResizing, dispatch } = useAppShell();
+  const isResizing = useAppShellStore(s => s.isResizing);
+  const { setSidebarWidth, setIsResizing } = useAppShellStore.getState();
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (!isResizing) return;
 
       const newWidth = Math.max(200, Math.min(500, e.clientX));
-      dispatch({ type: 'SET_SIDEBAR_WIDTH', payload: newWidth });
+      setSidebarWidth(newWidth);
 
       if (sidebarRef.current) {
         gsap.set(sidebarRef.current, { width: newWidth });
@@ -25,7 +26,7 @@ export function useResizableSidebar(
     };
 
     const handleMouseUp = () => {
-      dispatch({ type: 'SET_IS_RESIZING', payload: false });
+      setIsResizing(false);
       document.body.style.cursor = '';
       document.body.style.userSelect = '';
     };
@@ -41,11 +42,13 @@ export function useResizableSidebar(
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isResizing, dispatch, sidebarRef, resizeHandleRef]);
+  }, [isResizing, setSidebarWidth, setIsResizing, sidebarRef, resizeHandleRef]);
 }
 
 export function useResizableRightPane() {
-  const { isResizingRightPane, dispatch, bodyState } = useAppShell();
+  const isResizingRightPane = useAppShellStore(s => s.isResizingRightPane);
+  const bodyState = useAppShellStore(s => s.bodyState);
+  const { setSplitPaneWidth, setSidePaneWidth, setIsResizingRightPane } = useAppShellStore.getState();
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -53,14 +56,14 @@ export function useResizableRightPane() {
 
       const newWidth = window.innerWidth - e.clientX;
       if (bodyState === BODY_STATES.SPLIT_VIEW) {
-        dispatch({ type: 'SET_SPLIT_PANE_WIDTH', payload: newWidth });
+        setSplitPaneWidth(newWidth);
       } else {
-        dispatch({ type: 'SET_SIDE_PANE_WIDTH', payload: newWidth });
+        setSidePaneWidth(newWidth);
       }
     };
 
     const handleMouseUp = () => {
-      dispatch({ type: 'SET_IS_RESIZING_RIGHT_PANE', payload: false });
+      setIsResizingRightPane(false);
       document.body.style.cursor = '';
       document.body.style.userSelect = '';
     };
@@ -77,5 +80,5 @@ export function useResizableRightPane() {
       document.removeEventListener('mouseup', handleMouseUp);
       document.body.style.cursor = '';
     };
-  }, [isResizingRightPane, dispatch, bodyState]);
+  }, [isResizingRightPane, setSplitPaneWidth, setSidePaneWidth, setIsResizingRightPane, bodyState]);
 }

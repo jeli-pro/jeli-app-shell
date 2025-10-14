@@ -18,6 +18,8 @@ import { cn } from '@/lib/utils'
 import { DemoContent } from './DemoContent';
 import { useDashboardAnimations } from './hooks/useDashboardAnimations.motion.hook'
 import { useDashboardScroll } from './hooks/useDashboardScroll.hook'
+import { useAppShellStore } from '@/store/appShell.store'
+import { BODY_STATES } from '@/lib/utils'
 import { PageHeader } from '@/components/shared/PageHeader';
 import { StatCard } from '@/components/shared/StatCard';
 import { Card } from '@/components/ui/card';
@@ -106,15 +108,13 @@ const recentActivity: ActivityItem[] = [
   }
 ]
 
-interface DashboardContentProps {
-  isInSidePane?: boolean;
-}
-
-export function DashboardContent({ isInSidePane = false }: DashboardContentProps) {
+export function DashboardContent() {
     const scrollRef = useRef<HTMLDivElement>(null)
     const contentRef = useRef<HTMLDivElement>(null);
     const statsCardsContainerRef = useRef<HTMLDivElement>(null);
     const featureCardsContainerRef = useRef<HTMLDivElement>(null);
+    const bodyState = useAppShellStore(s => s.bodyState);
+    const isInSidePane = bodyState === BODY_STATES.SIDE_PANE;
     const { showScrollToBottom, handleScroll, scrollToBottom } = useDashboardScroll(scrollRef, isInSidePane);
 
     useDashboardAnimations(contentRef, statsCardsContainerRef, featureCardsContainerRef);
@@ -135,7 +135,7 @@ export function DashboardContent({ isInSidePane = false }: DashboardContentProps
     }
 
     return (
-      <PageLayout scrollRef={scrollRef} onScroll={handleScroll} ref={contentRef} isInSidePane={isInSidePane}>
+      <PageLayout scrollRef={scrollRef} onScroll={handleScroll} ref={contentRef}>
         {/* Header */}
         {!isInSidePane && (
           <PageHeader

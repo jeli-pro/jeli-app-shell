@@ -1,0 +1,2184 @@
+uuid: d6e82a5c-75c1-460d-8549-35a1228ac00d
+projectId: jeli-app-shell
+createdAt: '2025-10-14T03:15:21.472Z'
+gitCommitMsg: >-
+  refactor(arch): purify components and eliminate prop drilling
+
+  This commit completes the final phase of the architectural refactor, focusing
+  on component purification and logic extraction.
+
+  - Extracted login form state and logic into a self-contained
+  `useLoginForm.hook.ts`, removing props from `LoginPage` and simplifying the
+  router setup in `App.tsx`. - Eliminated the `isInSidePane` prop by having
+  components derive this state directly from the `useAppShellStore`. This
+  removes prop drilling through `PageLayout`. - Encapsulated all drag-and-drop
+  logic for docking panes from `AppShell.tsx` into a new `usePaneDnd.hook.ts`,
+  making the `AppShell` component significantly cleaner and more focused on
+  layout.
+promptSummary: >-
+  The user requested to execute part 3 of a refactoring plan to make the
+  codebase radically DRY, eliminate prop drilling, and extract logic from
+  components.
+reasoning:
+  - >-
+    This is the final part of our refactoring plan. Here, we'll purify our
+    components by removing prop drilling and extracting any remaining complex
+    logic into dedicated hooks. This will make our TSX files focused solely on
+    rendering, resulting in a cleaner, more maintainable codebase.
+  - '### Step 1: Refactor `LoginPage` to be Self-Contained'
+  - >-
+    First, I'll create a new hook, `useLoginForm.hook.ts`, to encapsulate all
+    form state and submission logic for the login page. This includes handling
+    user input, validation, loading states, and API calls to the `useAuthStore`.
+  - >-
+    Next, I'll refactor `LoginPage.tsx` to use this new hook. This removes all
+    local state management and props, making the component purely
+    presentational.
+  - >-
+    Finally, I'll update `App.tsx` to remove the now-redundant
+    `LoginPageWrapper` and render the self-contained `LoginPage` component
+    directly in the router.
+  - '### Step 2: Eliminate the `isInSidePane` Prop'
+  - >-
+    I will now remove the `isInSidePane` prop. Components will now determine
+    their context by checking the global `bodyState` from `useAppShellStore`.
+  - First, I'll update `PageLayout.tsx` to derive the state internally.
+  - Now I'll update the page components that were using this prop.
+  - '`DashboardContent`:'
+  - '`ToasterDemo`:'
+  - '`NotificationsPage`:'
+  - '### Step 3: Extract Drag-and-Drop Logic'
+  - >-
+    To clean up `AppShell.tsx`, I'll extract all drag-and-drop logic into a
+    dedicated `usePaneDnd.hook.ts`.
+  - Now, I'll simplify `AppShell.tsx` by using this new hook.
+  - >-
+    This completes the final part of the refactoring. The codebase is now
+    significantly cleaner, more modular, and adheres to our goal of making
+    components as "dumb" and presentational as possible.
+operations:
+  - type: write
+    path: src/components/auth/useLoginForm.hook.ts
+    content: |-
+      import { useState, FormEvent, ChangeEvent } from 'react';
+      import { useNavigate, useLocation } from 'react-router-dom';
+      import { useAuthStore } from '@/store/authStore';
+
+      type LoginState = 'login' | 'forgot-password' | 'reset-sent';
+
+      export function useLoginForm() {
+        const [state, setState] = useState<LoginState>('login');
+        const [email, setEmail] = useState('');
+        const [password, setPassword] = useState('');
+        const [isLoading, setIsLoading] = useState(false);
+        const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
+        const [showPassword, setShowPassword] = useState(false);
+        
+        const { login, forgotPassword } = useAuthStore();
+        const navigate = useNavigate();
+        const location = useLocation();
+        const from = location.state?.from?.pathname + location.state?.from?.search || "/";
+
+        const handleLoginSubmit = async (e: FormEvent) => {
+          e.preventDefault();
+          setErrors({});
+          const newErrors: typeof errors = {};
+          if (!email) newErrors.email = 'Email is required';
+          if (!password) newErrors.password = 'Password is required';
+          if (Object.keys(newErrors).length > 0) {
+            setErrors(newErrors);
+            return;
+          }
+          setIsLoading(true);
+          try {
+            await login(email, password);
+            navigate(from, { replace: true });
+          } catch (error) {
+            console.error("Login failed:", error);
+            // In a real app, you'd show an error message to the user
+            setErrors({ email: 'Invalid credentials', password: ' ' }); // Add a generic error
+          } finally {
+            setIsLoading(false);
+          }
+        };
+
+        const handleForgotSubmit = async (e: FormEvent) => {
+          e.preventDefault();
+          setErrors({});
+          if (!email) {
+            setErrors({ email: 'Email is required' });
+            return;
+          }
+          setIsLoading(true);
+          try {
+            await forgotPassword(email);
+            setState('reset-sent');
+          } catch (error) {
+            console.error("Forgot password failed:", error);
+          } finally {
+            setIsLoading(false);
+          }
+        };
+
+        const handleSignUp = () => {
+          // In a real app, navigate to sign up page
+          console.log("Navigate to sign up page");
+        };
+
+        return {
+          state,
+          setState,
+          email,
+          setEmail,
+          password,
+          setPassword,
+          isLoading,
+          errors,
+          showPassword,
+          setShowPassword,
+          handleLoginSubmit,
+          handleForgotSubmit,
+          handleSignUp,
+        };
+      }
+    patchStrategy: replace
+  - type: write
+    path: src/components/auth/LoginPage.tsx
+    content: "import { ChangeEvent } from 'react';\nimport { Eye, EyeOff, Mail, ArrowLeft } from 'lucide-react';\nimport { Label } from '@/components/ui/label';\nimport { AnimatedInput } from '../effects/AnimatedInput';\nimport { BoxReveal } from '../effects/BoxReveal';\nimport { Ripple } from '../effects/Ripple';\nimport { TechOrbitDisplay } from '../effects/OrbitingCircles';\nimport { BottomGradient } from '../effects/BottomGradient';\nimport { useLoginForm } from './useLoginForm.hook';\n\n// ==================== Main LoginPage Component ====================\nexport function LoginPage() {\n\tconst {\n\t\tstate,\n\t\tsetState,\n\t\temail,\n\t\tsetEmail,\n\t\tsetPassword,\n\t\tisLoading,\n\t\terrors,\n\t\tshowPassword,\n\t\tsetShowPassword,\n\t\thandleLoginSubmit,\n\t\thandleForgotSubmit,\n\t} = useLoginForm();\n\n\n\tconst renderContent = () => {\n\t\tif (state === 'reset-sent') {\n\t\t\treturn (\n\t\t\t\t<div className=\"w-full max-w-md mx-auto text-center flex flex-col gap-4\">\n\t\t\t\t\t<BoxReveal boxColor=\"hsl(var(--skeleton))\" duration={0.5}>\n\t\t\t\t\t\t<div className=\"w-16 h-16 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center mx-auto\">\n\t\t\t\t\t\t\t<Mail className=\"w-8 h-8 text-green-600 dark:text-green-400\" />\n\t\t\t\t\t\t</div>\n\t\t\t\t\t</BoxReveal>\n\t\t\t\t\t<BoxReveal boxColor=\"hsl(var(--skeleton))\" duration={0.5}>\n\t\t\t\t\t\t<h1 className=\"text-3xl font-bold tracking-tight\">Check your email</h1>\n\t\t\t\t\t</BoxReveal>\n\t\t\t\t\t<BoxReveal boxColor=\"hsl(var(--skeleton))\" duration={0.5}>\n\t\t\t\t\t\t<p className=\"text-muted-foreground\">We've sent a password reset link to <strong>{email}</strong></p>\n\t\t\t\t\t</BoxReveal>\n\t\t\t\t\t<BoxReveal width=\"100%\" boxColor=\"hsl(var(--skeleton))\" duration={0.5}>\n\t\t\t\t\t\t<button onClick={() => setState('login')} className=\"text-sm text-blue-500 hover:underline\">\n\t\t\t\t\t\t\t<div className=\"flex items-center justify-center gap-2\">\n\t\t\t\t\t\t\t\t<ArrowLeft className=\"w-4 h-4\" /> Back to login\n\t\t\t\t\t\t\t</div>\n\t\t\t\t\t\t</button>\n\t\t\t\t\t</BoxReveal>\n\t\t\t\t</div>\n\t\t\t);\n\t\t}\n\n\t\tconst isLogin = state === 'login';\n\t\tconst formFields = isLogin\n\t\t\t? [\n\t\t\t\t{ label: 'Email', required: true, type: 'email', placeholder: 'Enter your email address', onChange: (e: ChangeEvent<HTMLInputElement>) => setEmail(e.target.value) },\n\t\t\t\t{ label: 'Password', required: true, type: 'password', placeholder: 'Enter your password', onChange: (e: ChangeEvent<HTMLInputElement>) => setPassword(e.target.value) },\n\t\t\t]\n\t\t\t: [{ label: 'Email', required: true, type: 'email', placeholder: 'Enter your email address', onChange: (e: ChangeEvent<HTMLInputElement>) => setEmail(e.target.value) }];\n\n\t\treturn (\n\t\t\t<div className=\"w-full max-w-md mx-auto flex flex-col gap-4\">\n\t\t\t\t<BoxReveal boxColor=\"hsl(var(--skeleton))\" duration={0.3}>\n\t\t\t\t\t<h2 className=\"font-bold text-3xl text-neutral-800 dark:text-neutral-200\">{isLogin ? 'Welcome back' : 'Reset Password'}</h2>\n\t\t\t\t</BoxReveal>\n\t\t\t\t<BoxReveal boxColor=\"hsl(var(--skeleton))\" duration={0.3} className=\"pb-2\">\n\t\t\t\t\t<p className=\"text-neutral-600 text-sm max-w-sm dark:text-neutral-300\">{isLogin ? 'Sign in to your account to continue' : 'Enter your email to receive a reset link'}</p>\n\t\t\t\t</BoxReveal>\n\t\t\t\t{isLogin && (\n\t\t\t\t\t<BoxReveal boxColor=\"hsl(var(--skeleton))\" duration={0.3} width=\"100%\" className=\"overflow-visible\">\n\t\t\t\t\t\t<button className=\"g-button group/btn bg-transparent w-full rounded-md border h-10 font-medium outline-hidden hover:cursor-pointer\" type=\"button\">\n\t\t\t\t\t\t\t<span className=\"flex items-center justify-center w-full h-full gap-3\">\n\t\t\t\t\t\t\t\t<img src=\"https://cdn1.iconfinder.com/data/icons/google-s-logo/150/Google_Icons-09-512.png\" width={26} height={26} alt=\"Google Icon\" />\n\t\t\t\t\t\t\t\tSign in with Google\n\t\t\t\t\t\t\t</span>\n\t\t\t\t\t\t\t<BottomGradient />\n\t\t\t\t\t\t</button>\n\t\t\t\t\t</BoxReveal>\n\t\t\t\t)}\n\t\t\t\t{isLogin && (\n\t\t\t\t\t<BoxReveal boxColor=\"hsl(var(--skeleton))\" duration={0.3} width=\"100%\">\n\t\t\t\t\t\t<div className=\"flex items-center gap-4\">\n\t\t\t\t\t\t\t<hr className=\"flex-1 border-1 border-dashed border-neutral-300 dark:border-neutral-700\" />\n\t\t\t\t\t\t\t<p className=\"text-neutral-700 text-sm dark:text-neutral-300\">or</p>\n\t\t\t\t\t\t\t<hr className=\"flex-1 border-1 border-dashed border-neutral-300 dark:border-neutral-700\" />\n\t\t\t\t\t\t</div>\n\t\t\t\t\t</BoxReveal>\n\t\t\t\t)}\n\t\t\t\t<form onSubmit={isLogin ? handleLoginSubmit : handleForgotSubmit}>\n\t\t\t\t\t{formFields.map((field) => (\n\t\t\t\t\t\t<div key={field.label} className=\"flex flex-col gap-2 mb-4\">\n\t\t\t\t\t\t\t<BoxReveal boxColor=\"hsl(var(--skeleton))\" duration={0.3}>\n\t\t\t\t\t\t\t\t<Label htmlFor={field.label}>{field.label} <span className=\"text-red-500\">*</span></Label>\n\t\t\t\t\t\t\t</BoxReveal>\n\t\t\t\t\t\t\t<BoxReveal width=\"100%\" boxColor=\"hsl(var(--skeleton))\" duration={0.3} className=\"flex flex-col space-y-2 w-full\">\n\t\t\t\t\t\t\t\t<div className=\"relative\">\n\t\t\t\t\t\t\t\t\t<AnimatedInput type={field.type === 'password' ? (showPassword ? 'text' : 'password') : field.type} id={field.label} placeholder={field.placeholder} onChange={field.onChange} />\n\t\t\t\t\t\t\t\t\t{field.type === 'password' && (\n\t\t\t\t\t\t\t\t\t\t<button type=\"button\" onClick={() => setShowPassword(!showPassword)} className=\"absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5\">\n\t\t\t\t\t\t\t\t\t\t\t{showPassword ? <EyeOff className=\"h-5 w-5 text-gray-500\" /> : <Eye className=\"h-5 w-5 text-gray-500\" />}\n\t\t\t\t\t\t\t\t\t\t</button>\n\t\t\t\t\t\t\t\t\t)}\n\t\t\t\t\t\t\t\t</div>\n\t\t\t\t\t\t\t\t<div className=\"h-4\">{errors[field.label.toLowerCase() as keyof typeof errors] && <p className=\"text-red-500 text-xs\">{errors[field.label.toLowerCase() as keyof typeof errors]}</p>}</div>\n\t\t\t\t\t\t\t</BoxReveal>\n\t\t\t\t\t\t</div>\n\t\t\t\t\t))}\n\n\t\t\t\t\t<BoxReveal width=\"100%\" boxColor=\"hsl(var(--skeleton))\" duration={0.3} className=\"overflow-visible\">\n\t\t\t\t\t\t<button\n\t\t\t\t\t\t\tclassName=\"bg-gradient-to-br relative group/btn from-zinc-200 dark:from-zinc-900 dark:to-zinc-900 to-zinc-200 block dark:bg-zinc-800 w-full text-black dark:text-white rounded-md h-10 font-medium shadow-[0px_1px_0px_0px_#ffffff40_inset,0px_-1px_0px_0px_#ffffff40_inset] dark:shadow-[0px_1px_0px_0px_var(--zinc-800)_inset,0px_-1px_0px_0px_var(--zinc-800)_inset] outline-hidden hover:cursor-pointer disabled:opacity-50\"\n\t\t\t\t\t\t\ttype=\"submit\" disabled={isLoading}\n\t\t\t\t\t\t>\n\t\t\t\t\t\t\t{isLoading ? (\n\t\t\t\t\t\t\t\t<div className=\"flex items-center justify-center gap-2\">\n\t\t\t\t\t\t\t\t\t<div className=\"w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin\" />\n\t\t\t\t\t\t\t\t\t<span>Processing...</span>\n\t\t\t\t\t\t\t\t</div>\n\t\t\t\t\t\t\t) : (\n\t\t\t\t\t\t\t\t<>{isLogin ? 'Sign in' : 'Send reset link'} &rarr;</>\n\t\t\t\t\t\t\t)}\n\t\t\t\t\t\t\t<BottomGradient />\n\t\t\t\t\t\t</button>\n\t\t\t\t\t</BoxReveal>\n\t\t\t\t\t<BoxReveal boxColor=\"hsl(var(--skeleton))\" duration={0.3}>\n\t\t\t\t\t\t<div className=\"mt-4 text-center\">\n\t\t\t\t\t\t\t<button type=\"button\" className=\"text-sm text-blue-500 hover:underline\" onClick={() => setState(isLogin ? 'forgot-password' : 'login')}>\n\t\t\t\t\t\t\t\t{isLogin ? 'Forgot password?' : 'Back to login'}\n\t\t\t\t\t\t\t</button>\n\t\t\t\t\t\t</div>\n\t\t\t\t\t</BoxReveal>\n\t\t\t\t</form>\n\t\t\t</div>\n\t\t);\n\t};\n\n\treturn (\n\t\t<section className=\"flex max-lg:justify-center min-h-screen w-full login-page-theme bg-background text-foreground\">\n\t\t\t{/* Left Side */}\n\t\t\t<div className=\"flex flex-col justify-center w-1/2 max-lg:hidden relative\">\n\t\t\t\t<Ripple />\n\t\t\t\t<TechOrbitDisplay />\n\t\t\t</div>\n\n\t\t\t{/* Right Side */}\n\t\t\t<div className=\"w-1/2 h-screen flex flex-col justify-center items-center max-lg:w-full max-lg:px-[10%]\">\n\t\t\t\t{renderContent()}\n\t\t\t</div>\n\t\t</section>\n\t);\n}"
+    patchStrategy: replace
+  - type: write
+    path: src/App.tsx
+    content: >+
+      --- src/App.tsx
+
+      +++ src/App.tsx
+
+      @@ -29,46 +29,6 @@
+       import { useRightPaneContent } from "./hooks/useRightPaneContent.hook";
+       import { BODY_STATES } from "./lib/utils";
+       
+      -// Wrapper for LoginPage to provide auth handlers
+
+      -function LoginPageWrapper() {
+
+      -  const { login, forgotPassword } = useAuthStore();
+
+      -  const navigate = useNavigate();
+
+      -  const location = useLocation();
+
+      -  const from = location.state?.from?.pathname +
+      location.state?.from?.search || "/";
+
+      -
+
+      -  const handleLogin = async (email: string, password: string) => {
+
+      -    try {
+
+      -      await login(email, password);
+
+      -      navigate(from, { replace: true });
+
+      -    } catch (error) {
+
+      -      console.error("Login failed:", error);
+
+      -      // In a real app, you'd show an error message to the user
+
+      -    }
+
+      -  };
+
+      -
+
+      -  const handleForgotPassword = async (email: string) => {
+
+      -    try {
+
+      -      await forgotPassword(email);
+
+      -    } catch (error) {
+
+      -      console.error("Forgot password failed:", error);
+
+      -    }
+
+      -  };
+
+      -
+
+      -  const handleSignUp = () => {
+
+      -    // In a real app, navigate to sign up page
+
+      -    console.log("Navigate to sign up page");
+
+      -  };
+
+      -
+
+      -  return (
+
+      -    <LoginPage
+
+      -      onLogin={handleLogin}
+
+      -      onForgotPassword={handleForgotPassword}
+
+      -      onSignUp={handleSignUp}
+
+      -    />
+
+      -  );
+
+      -}
+
+      -
+       // Checks for authentication and redirects to login if needed
+       function ProtectedRoute() {
+         const { isAuthenticated } = useAuthStore();
+      @@ -213,7 +173,7 @@
+             children: [
+               {
+                 path: "/login",
+      -          element: <LoginPageWrapper />,
+
+      +          element: <LoginPage />,
+               },
+               {
+                 path: "/",
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/components/shared/PageLayout.tsx
+    content: >+
+      --- src/components/shared/PageLayout.tsx
+
+      +++ src/components/shared/PageLayout.tsx
+
+      @@ -1,16 +1,16 @@
+       import React from 'react';
+       import { cn } from '@/lib/utils';
+       import { useAppShellStore } from '@/store/appShell.store';
+      +import { BODY_STATES } from '@/lib/utils';
+       
+       interface PageLayoutProps extends React.HTMLAttributes<HTMLDivElement> {
+         children: React.ReactNode;
+         scrollRef?: React.RefObject<HTMLDivElement>;
+      -  isInSidePane?: boolean;
+       }
+       
+       export const PageLayout = React.forwardRef<HTMLDivElement, PageLayoutProps>(
+      -  ({ children, onScroll, scrollRef, className, isInSidePane = false,
+      ...props }, ref) => {
+
+      +  ({ children, onScroll, scrollRef, className, ...props }, ref) => {
+           const { isTopBarVisible, bodyState } = useAppShellStore();
+           const isFullscreen = bodyState === 'fullscreen';
+      +    const isInSidePane = bodyState === BODY_STATES.SIDE_PANE;
+       
+           return (
+             <div
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/Dashboard/index.tsx
+    content: >+
+      --- src/pages/Dashboard/index.tsx
+
+      +++ src/pages/Dashboard/index.tsx
+
+      @@ -15,6 +15,7 @@
+       import { DemoContent } from './DemoContent';
+       import { useDashboardAnimations } from './hooks/useDashboardAnimations.motion.hook'
+       import { useDashboardScroll } from './hooks/useDashboardScroll.hook'
+      +import { useAppShellStore } from '@/store/appShell.store'
+       import { PageHeader } from '@/components/shared/PageHeader';
+       import { StatCard } from '@/components/shared/StatCard';
+       import { Card } from '@/components/ui/card';
+      @@ -124,14 +125,12 @@
+         }
+       ]
+       
+      -interface DashboardContentProps {
+
+      -  isInSidePane?: boolean;
+
+      -}
+
+      -
+
+      -export function DashboardContent({ isInSidePane = false }:
+      DashboardContentProps) {
+
+      +export function DashboardContent() {
+           const scrollRef = useRef<HTMLDivElement>(null)
+           const contentRef = useRef<HTMLDivElement>(null);
+           const statsCardsContainerRef = useRef<HTMLDivElement>(null);
+           const featureCardsContainerRef = useRef<HTMLDivElement>(null);
+      +    const bodyState = useAppShellStore(s => s.bodyState);
+
+      +    const isInSidePane = bodyState === 'side-pane';
+           const { showScrollToBottom, handleScroll, scrollToBottom } = useDashboardScroll(scrollRef, isInSidePane);
+       
+           useDashboardAnimations(contentRef, statsCardsContainerRef, featureCardsContainerRef);
+      @@ -155,7 +154,7 @@
+           }
+       
+           return (
+      -      <PageLayout scrollRef={scrollRef} onScroll={handleScroll}
+      ref={contentRef} isInSidePane={isInSidePane}>
+
+      +      <PageLayout scrollRef={scrollRef} onScroll={handleScroll}
+      ref={contentRef}>
+               {/* Header */}
+               {!isInSidePane && (
+                 <PageHeader
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/ToasterDemo/index.tsx
+    content: >+
+      --- src/pages/ToasterDemo/index.tsx
+
+      +++ src/pages/ToasterDemo/index.tsx
+
+      @@ -2,6 +2,7 @@
+       import { useToast } from '@/components/ui/toast';
+       import { PageHeader } from '@/components/shared/PageHeader';
+       import { PageLayout } from '@/components/shared/PageLayout';
+      +import { useAppShellStore } from '@/store/appShell.store';
+       import { cn } from '@/lib/utils';
+       
+       type Variant = 'default' | 'success' | 'error' | 'warning';
+      @@ -26,8 +27,10 @@
+         </section>
+       );
+       
+      -export function ToasterDemo({ isInSidePane = false }: { isInSidePane?:
+      boolean }) {
+
+      +export function ToasterDemo() {
+         const toast = useToast();
+      +  const bodyState = useAppShellStore(s => s.bodyState);
+
+      +  const isInSidePane = bodyState === 'side-pane';
+       
+         const showToast = (variant: Variant, position: Position = 'bottom-right') => {
+           toast.show({
+      @@ -73,7 +76,7 @@
+         };
+       
+         return (
+      -    <PageLayout isInSidePane={isInSidePane}>
+
+      +    <PageLayout>
+             {/* Header */}
+             {!isInSidePane && (
+               <PageHeader
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/Notifications/index.tsx
+    content: >+
+      --- src/pages/Notifications/index.tsx
+
+      +++ src/pages/Notifications/index.tsx
+
+      @@ -18,6 +18,7 @@
+         ClipboardCheck,
+         ShieldCheck,
+       } from "lucide-react";
+      +import { useAppShellStore } from "@/store/appShell.store";
+       
+       import { PageLayout } from "@/components/shared/PageLayout";
+       import { 
+      @@ -118,7 +119,10 @@
+         );
+       }
+       
+      -export function NotificationsPage({ isInSidePane = false }: {
+      isInSidePane?: boolean; }) {
+
+      +export function NotificationsPage() {
+
+      +  const bodyState = useAppShellStore(s => s.bodyState);
+
+      +  const isInSidePane = bodyState === 'side-pane';
+
+      +  
+         const { activeTab, setActiveTab, markAllAsRead } = useNotificationsStore(s => ({ activeTab: s.activeTab, setActiveTab: s.setActiveTab, markAllAsRead: s.markAllAsRead }));
+         const filteredNotifications = useFilteredNotifications();
+         const { unreadCount, verifiedCount, mentionCount } = useNotificationCounts();
+      @@ -169,7 +173,7 @@
+         );
+       
+         return (
+      -    <PageLayout isInSidePane={isInSidePane}>
+
+      +    <PageLayout>
+             {!isInSidePane && (
+               <PageHeader
+                 title="Notifications"
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/hooks/usePaneDnd.hook.ts
+    content: >-
+      import { useCallback } from 'react';
+
+      import { useLocation, useNavigate } from 'react-router-dom';
+
+      import { useAppShellStore } from '@/store/appShell.store';
+
+      import { BODY_STATES } from '@/lib/utils';
+
+
+      const pageToPaneMap: Record<string, 'main' | 'settings' | 'toaster' |
+      'notifications' | 'dataDemo'> = {
+        dashboard: 'main',
+        settings: 'settings',
+        toaster: 'toaster',
+        notifications: 'notifications',
+        'data-demo': 'dataDemo',
+      };
+
+
+      export function usePaneDnd() {
+        const {
+          draggedPage,
+          dragHoverTarget,
+          bodyState,
+          sidePaneContent,
+        } = useAppShellStore(state => ({
+          draggedPage: state.draggedPage,
+          dragHoverTarget: state.dragHoverTarget,
+          bodyState: state.bodyState,
+          sidePaneContent: state.sidePaneContent,
+        }));
+        const { setDraggedPage, setDragHoverTarget } = useAppShellStore.getState();
+        const navigate = useNavigate();
+        const location = useLocation();
+        const activePage = location.pathname.split('/')[1] || 'dashboard';
+
+        const handleDragOverLeft = useCallback((e: React.DragEvent) => {
+          if (!draggedPage) return;
+          e.preventDefault();
+          if (dragHoverTarget !== 'left') {
+            setDragHoverTarget('left');
+          }
+        }, [draggedPage, dragHoverTarget, setDragHoverTarget]);
+
+        const handleDropLeft = useCallback(() => {
+          if (!draggedPage) return;
+
+          const paneContentOfDraggedPage = pageToPaneMap[draggedPage as keyof typeof pageToPaneMap];
+          if (paneContentOfDraggedPage === sidePaneContent && (bodyState === BODY_STATES.SIDE_PANE || bodyState === BODY_STATES.SPLIT_VIEW)) {
+            navigate(`/${draggedPage}`, { replace: true });
+          } 
+          else if (bodyState === BODY_STATES.NORMAL && draggedPage !== activePage) {
+              const originalActivePagePaneContent = pageToPaneMap[activePage as keyof typeof pageToPaneMap];
+              if (originalActivePagePaneContent) {
+                  navigate(`/${draggedPage}?view=split&right=${originalActivePagePaneContent}`, { replace: true });
+              } else {
+                  navigate(`/${draggedPage}`, { replace: true });
+              }
+          } else {
+            if (bodyState === BODY_STATES.SPLIT_VIEW) {
+              const rightPane = location.search.split('right=')[1];
+              if (rightPane) {
+                navigate(`/${draggedPage}?view=split&right=${rightPane}`, { replace: true });
+                return;
+              }
+            }
+            navigate(`/${draggedPage}`, { replace: true });
+          }
+          
+          setDraggedPage(null);
+          setDragHoverTarget(null);
+        }, [draggedPage, activePage, bodyState, sidePaneContent, navigate, location.search, setDraggedPage, setDragHoverTarget]);
+
+        const handleDragOverRight = useCallback((e: React.DragEvent) => {
+          if (!draggedPage) return;
+          e.preventDefault();
+          if (dragHoverTarget !== 'right') {
+            setDragHoverTarget('right');
+          }
+        }, [draggedPage, dragHoverTarget, setDragHoverTarget]);
+
+        const handleDropRight = useCallback(() => {
+          if (!draggedPage) return;
+          const pane = pageToPaneMap[draggedPage as keyof typeof pageToPaneMap];
+          if (pane) {
+            let mainPage = activePage;
+            if (draggedPage === activePage) {
+              mainPage = 'dashboard';
+            }
+            navigate(`/${mainPage}?view=split&right=${pane}`, { replace: true });
+          }
+          setDraggedPage(null);
+          setDragHoverTarget(null);
+        }, [draggedPage, activePage, navigate, setDraggedPage, setDragHoverTarget]);
+
+        const handleDragLeave = useCallback(() => {
+            setDragHoverTarget(null);
+        }, [setDragHoverTarget]);
+
+        return {
+          handleDragOverLeft,
+          handleDropLeft,
+          handleDragOverRight,
+          handleDropRight,
+          handleDragLeave,
+        };
+      }
+    patchStrategy: replace
+  - type: write
+    path: src/components/layout/AppShell.tsx
+    content: >+
+      --- src/components/layout/AppShell.tsx
+
+      +++ src/components/layout/AppShell.tsx
+
+      @@ -1,4 +1,4 @@
+
+      -import React, { useRef, type ReactElement, useCallback, useEffect,
+      useLayoutEffect } from 'react'
+
+      +import React, { useRef, type ReactElement, useEffect, useLayoutEffect }
+      from 'react'
+       import { useLocation, useNavigate } from 'react-router-dom';
+       import { cn } from '@/lib/utils'
+       import { gsap } from 'gsap';
+      @@ -8,6 +8,7 @@
+       import { SIDEBAR_STATES, BODY_STATES } from '@/lib/utils'
+       import { useResizableSidebar, useResizableRightPane } from '@/hooks/useResizablePanes.hook'
+       import { useSidebarAnimations, useBodyStateAnimations } from '@/hooks/useAppShellAnimations.hook'
+       import { ViewModeSwitcher } from './ViewModeSwitcher';
+      +import { usePaneDnd } from '@/hooks/usePaneDnd.hook';
+       
+       interface AppShellProps {
+         sidebar: ReactElement;
+      @@ -42,7 +43,7 @@
+           isTopBarVisible: state.isTopBarVisible,
+         }));
+      -  const { setSidebarState, toggleSidebar, peekSidebar, setDraggedPage,
+      setDragHoverTarget, setHoveredPane } = useAppShellStore.getState();
+
+      +  const { setSidebarState, toggleSidebar, peekSidebar, setHoveredPane } =
+      useAppShellStore.getState();
+         
+         const isFullscreen = bodyState === BODY_STATES.FULLSCREEN;
+         const isSidePaneOpen = bodyState === BODY_STATES.SIDE_PANE;
+      @@ -62,6 +63,7 @@
+         const prevSidePaneContent = usePrevious(sidePaneContent);
+       
+         const isSplitView = bodyState === BODY_STATES.SPLIT_VIEW;
+      +  const dndHandlers = usePaneDnd();
+       
+         // Custom hooks for logic
+         useResizableSidebar(sidebarRef, resizeHandleRef);
+      @@ -128,68 +130,6 @@
+       
+         const rightPaneWithProps = React.cloneElement(rightPane, { ref: rightPaneRef });
+       
+      -  // Drag and drop handlers for docking
+
+      -  const handleDragOverLeft = useCallback((e: React.DragEvent) => {
+
+      -    if (!draggedPage) return;
+
+      -    e.preventDefault();
+
+      -    if (dragHoverTarget !== 'left') {
+
+      -      setDragHoverTarget('left');
+
+      -    }
+
+      -  }, [draggedPage, dragHoverTarget, setDragHoverTarget]);
+
+      -
+
+      -  const handleDropLeft = useCallback(() => {
+
+      -    if (!draggedPage) return;
+
+      -
+
+      -    // If we drop the page that's already in the side pane, just make it
+      the main view.
+
+      -    const paneContentOfDraggedPage = pageToPaneMap[draggedPage];
+
+      -    if (paneContentOfDraggedPage === sidePaneContent && (bodyState ===
+      BODY_STATES.SIDE_PANE || bodyState === BODY_STATES.SPLIT_VIEW)) {
+
+      -      navigate(`/${draggedPage}`, { replace: true });
+
+      -    } 
+
+      -    // New context-aware logic: if we are in normal view and drop a NEW
+      page on the left
+
+      -    else if (bodyState === BODY_STATES.NORMAL && draggedPage !==
+      activePage) {
+
+      -        const originalActivePagePaneContent = pageToPaneMap[activePage];
+
+      -        if (originalActivePagePaneContent) {
+
+      -           
+      navigate(`/${draggedPage}?view=split&right=${originalActivePagePaneContent}`,
+      { replace: true });
+
+      -        } else {
+
+      -            // Fallback for pages that can't be in a pane
+
+      -            navigate(`/${draggedPage}`, { replace: true });
+
+      -        }
+
+      -    } else { // Default behavior: just make the dropped page the main one
+
+      -      // If in split view, replace the main content and keep the right
+      pane
+
+      -      if (bodyState === BODY_STATES.SPLIT_VIEW) {
+
+      -        const rightPane = location.search.split('right=')[1];
+
+      -        if (rightPane) {
+
+      -          navigate(`/${draggedPage}?view=split&right=${rightPane}`, {
+      replace: true });
+
+      -          return;
+
+      -        }
+
+      -      }
+
+      -      navigate(`/${draggedPage}`, { replace: true });
+
+      -    }
+
+      -    
+
+      -    setDraggedPage(null);
+
+      -    setDragHoverTarget(null);
+
+      -  }, [draggedPage, activePage, bodyState, sidePaneContent, navigate,
+      location, setDraggedPage, setDragHoverTarget]);
+
+      -
+
+      -  const handleDragOverRight = useCallback((e: React.DragEvent) => {
+
+      -    if (!draggedPage) return;
+
+      -    e.preventDefault();
+
+      -    if (dragHoverTarget !== 'right') {
+
+      -      setDragHoverTarget('right');
+
+      -    }
+
+      -  }, [draggedPage, dragHoverTarget, setDragHoverTarget]);
+
+      -
+
+      -  const handleDropRight = useCallback(() => {
+
+      -    if (!draggedPage) return;
+
+      -    const pane = pageToPaneMap[draggedPage as keyof typeof
+      pageToPaneMap];
+
+      -    if (pane) {
+
+      -      let mainPage = activePage;
+
+      -      // If dropping the currently active page to the right,
+
+      -      // set a default page (e.g., dashboard) as the new active page.
+
+      -      if (draggedPage === activePage) {
+
+      -        mainPage = 'dashboard';
+
+      -      }
+
+      -
+
+      -      navigate(`/${mainPage}?view=split&right=${pane}`, { replace: true
+      });
+
+      -    }
+
+      -    setDraggedPage(null);
+
+      -    setDragHoverTarget(null);
+
+      -  }, [draggedPage, activePage, navigate, setDraggedPage,
+      setDragHoverTarget]);
+
+      -
+         return (
+           <div 
+             ref={appRef}
+      @@ -250,11 +190,9 @@
+                           : "pointer-events-none w-0",
+                         dragHoverTarget === 'left' && "bg-primary/10 border-primary"
+                       )}
+      -                onDragOver={handleDragOverLeft}
+
+      -                onDrop={handleDropLeft}
+
+      -                onDragLeave={() => {
+
+      -                  if (dragHoverTarget === 'left')
+      setDragHoverTarget(null);
+
+      -                }}
+
+      +                onDragOver={dndHandlers.handleDragOverLeft}
+
+      +                onDrop={dndHandlers.handleDropLeft}
+
+      +                onDragLeave={dndHandlers.handleDragLeave}
+                     >
+                       {draggedPage && dragHoverTarget === 'left' && (
+                         <div className="absolute inset-0 flex items-center justify-center text-sm font-medium text-primary-foreground/80 pointer-events-none">
+      @@ -275,11 +213,9 @@
+                           draggedPage ? "pointer-events-auto w-1/2" : "pointer-events-none",
+                           dragHoverTarget === 'right' && "bg-primary/10 border-primary"
+                         )}
+      -                  onDragOver={handleDragOverRight}
+
+      -                  onDrop={handleDropRight}
+
+      -                  onDragLeave={() => {
+
+      -                    if (dragHoverTarget === 'right')
+      setDragHoverTarget(null);
+
+      -                  }}
+
+      +                  onDragOver={dndHandlers.handleDragOverRight}
+
+      +                  onDrop={dndHandlers.handleDropRight}
+
+      +                  onDragLeave={dndHandlers.handleDragLeave}
+                       >
+                         {draggedPage && dragHoverTarget === 'right' && (
+                           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+      @@ -293,7 +229,7 @@
+                       className="relative"
+                       onMouseEnter={() => { if (isSplitView && !draggedPage) setHoveredPane('right'); }}
+                       onMouseLeave={() => { if (isSplitView && !draggedPage) setHoveredPane(null); }}
+      -                onDragOver={handleDragOverRight}
+
+      +                onDragOver={dndHandlers.handleDragOverRight}
+                     >
+                       {rightPaneWithProps}
+                       {draggedPage && (
+      @@ -304,11 +240,8 @@
+                               ? 'bg-primary/10 border-2 border-primary'
+                               : 'pointer-events-none'
+                           )}
+      -                    onDragLeave={() => {
+
+      -                      if (dragHoverTarget === 'right')
+
+      -                        setDragHoverTarget(null);
+
+      -                    }}
+
+      -                    onDrop={handleDropRight}
+
+      +                    onDragLeave={dndHandlers.handleDragLeave}
+
+      +                    onDrop={dndHandlers.handleDropRight}
+                           onDragOver={(e) => e.preventDefault()}
+                         >
+                           {dragHoverTarget === 'right' && (
+
+    patchStrategy: standard-diff
+snapshot:
+  src/components/auth/useLoginForm.hook.ts: null
+  src/hooks/usePaneDnd.hook.ts: null
+  src/components/auth/LoginPage.tsx: "import { useState, ChangeEvent, FormEvent } from 'react';\nimport { Eye, EyeOff, Mail, ArrowLeft } from 'lucide-react';\nimport { Label } from '@/components/ui/label';\nimport { AnimatedInput } from '../effects/AnimatedInput';\nimport { BoxReveal } from '../effects/BoxReveal';\nimport { Ripple } from '../effects/Ripple';\nimport { TechOrbitDisplay } from '../effects/OrbitingCircles';\nimport { BottomGradient } from '../effects/BottomGradient';\n\n// ==================== AnimatedForm Components ====================\n\n// ==================== Main LoginPage Component ====================\ninterface LoginPageProps {\n\tonLogin?: (email: string, password: string) => void;\n\tonForgotPassword?: (email: string) => void;\n\tonSignUp?: () => void;\n}\n\ntype LoginState = 'login' | 'forgot-password' | 'reset-sent';\n\nexport function LoginPage({ onLogin, onForgotPassword }: LoginPageProps) {\n\tconst [state, setState] = useState<LoginState>('login');\n\tconst [email, setEmail] = useState('');\n\tconst [password, setPassword] = useState('');\n\tconst [isLoading, setIsLoading] = useState(false);\n\tconst [errors, setErrors] = useState<{ email?: string; password?: string }>({});\n\tconst [showPassword, setShowPassword] = useState(false);\n\n\tconst handleLoginSubmit = async (e: FormEvent) => {\n\t\te.preventDefault();\n\t\tsetErrors({});\n\t\tconst newErrors: typeof errors = {};\n\t\tif (!email) newErrors.email = 'Email is required';\n\t\tif (!password) newErrors.password = 'Password is required';\n\t\tif (Object.keys(newErrors).length > 0) {\n\t\t\tsetErrors(newErrors);\n\t\t\treturn;\n\t\t}\n\t\tsetIsLoading(true);\n\t\tawait onLogin?.(email, password);\n\t\tsetIsLoading(false);\n\t};\n\n\tconst handleForgotSubmit = async (e: FormEvent) => {\n\t\te.preventDefault();\n\t\tsetErrors({});\n\t\tif (!email) {\n\t\t\tsetErrors({ email: 'Email is required' });\n\t\t\treturn;\n\t\t}\n\t\tsetIsLoading(true);\n\t\tawait onForgotPassword?.(email);\n\t\tsetIsLoading(false);\n\t\tsetState('reset-sent');\n\t};\n\n\tconst renderContent = () => {\n\t\tif (state === 'reset-sent') {\n\t\t\treturn (\n\t\t\t\t<div className=\"w-full max-w-md mx-auto text-center flex flex-col gap-4\">\n\t\t\t\t\t<BoxReveal boxColor=\"hsl(var(--skeleton))\" duration={0.5}>\n\t\t\t\t\t\t<div className=\"w-16 h-16 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center mx-auto\">\n\t\t\t\t\t\t\t<Mail className=\"w-8 h-8 text-green-600 dark:text-green-400\" />\n\t\t\t\t\t\t</div>\n\t\t\t\t\t</BoxReveal>\n\t\t\t\t\t<BoxReveal boxColor=\"hsl(var(--skeleton))\" duration={0.5}>\n\t\t\t\t\t\t<h1 className=\"text-3xl font-bold tracking-tight\">Check your email</h1>\n\t\t\t\t\t</BoxReveal>\n\t\t\t\t\t<BoxReveal boxColor=\"hsl(var(--skeleton))\" duration={0.5}>\n\t\t\t\t\t\t<p className=\"text-muted-foreground\">We've sent a password reset link to <strong>{email}</strong></p>\n\t\t\t\t\t</BoxReveal>\n\t\t\t\t\t<BoxReveal width=\"100%\" boxColor=\"hsl(var(--skeleton))\" duration={0.5}>\n\t\t\t\t\t\t<button onClick={() => setState('login')} className=\"text-sm text-blue-500 hover:underline\">\n\t\t\t\t\t\t\t<div className=\"flex items-center justify-center gap-2\">\n\t\t\t\t\t\t\t\t<ArrowLeft className=\"w-4 h-4\" /> Back to login\n\t\t\t\t\t\t\t</div>\n\t\t\t\t\t\t</button>\n\t\t\t\t\t</BoxReveal>\n\t\t\t\t</div>\n\t\t\t);\n\t\t}\n\n\t\tconst isLogin = state === 'login';\n\t\tconst formFields = isLogin\n\t\t\t? [\n\t\t\t\t{ label: 'Email', required: true, type: 'email', placeholder: 'Enter your email address', onChange: (e: ChangeEvent<HTMLInputElement>) => setEmail(e.target.value) },\n\t\t\t\t{ label: 'Password', required: true, type: 'password', placeholder: 'Enter your password', onChange: (e: ChangeEvent<HTMLInputElement>) => setPassword(e.target.value) },\n\t\t\t]\n\t\t\t: [{ label: 'Email', required: true, type: 'email', placeholder: 'Enter your email address', onChange: (e: ChangeEvent<HTMLInputElement>) => setEmail(e.target.value) }];\n\n\t\treturn (\n\t\t\t<div className=\"w-full max-w-md mx-auto flex flex-col gap-4\">\n\t\t\t\t<BoxReveal boxColor=\"hsl(var(--skeleton))\" duration={0.3}>\n\t\t\t\t\t<h2 className=\"font-bold text-3xl text-neutral-800 dark:text-neutral-200\">{isLogin ? 'Welcome back' : 'Reset Password'}</h2>\n\t\t\t\t</BoxReveal>\n\t\t\t\t<BoxReveal boxColor=\"hsl(var(--skeleton))\" duration={0.3} className=\"pb-2\">\n\t\t\t\t\t<p className=\"text-neutral-600 text-sm max-w-sm dark:text-neutral-300\">{isLogin ? 'Sign in to your account to continue' : 'Enter your email to receive a reset link'}</p>\n\t\t\t\t</BoxReveal>\n\t\t\t\t{isLogin && (\n\t\t\t\t\t<BoxReveal boxColor=\"hsl(var(--skeleton))\" duration={0.3} width=\"100%\" className=\"overflow-visible\">\n\t\t\t\t\t\t<button className=\"g-button group/btn bg-transparent w-full rounded-md border h-10 font-medium outline-hidden hover:cursor-pointer\" type=\"button\">\n\t\t\t\t\t\t\t<span className=\"flex items-center justify-center w-full h-full gap-3\">\n\t\t\t\t\t\t\t\t<img src=\"https://cdn1.iconfinder.com/data/icons/google-s-logo/150/Google_Icons-09-512.png\" width={26} height={26} alt=\"Google Icon\" />\n\t\t\t\t\t\t\t\tSign in with Google\n\t\t\t\t\t\t\t</span>\n\t\t\t\t\t\t\t<BottomGradient />\n\t\t\t\t\t\t</button>\n\t\t\t\t\t</BoxReveal>\n\t\t\t\t)}\n\t\t\t\t{isLogin && (\n\t\t\t\t\t<BoxReveal boxColor=\"hsl(var(--skeleton))\" duration={0.3} width=\"100%\">\n\t\t\t\t\t\t<div className=\"flex items-center gap-4\">\n\t\t\t\t\t\t\t<hr className=\"flex-1 border-1 border-dashed border-neutral-300 dark:border-neutral-700\" />\n\t\t\t\t\t\t\t<p className=\"text-neutral-700 text-sm dark:text-neutral-300\">or</p>\n\t\t\t\t\t\t\t<hr className=\"flex-1 border-1 border-dashed border-neutral-300 dark:border-neutral-700\" />\n\t\t\t\t\t\t</div>\n\t\t\t\t\t</BoxReveal>\n\t\t\t\t)}\n\t\t\t\t<form onSubmit={isLogin ? handleLoginSubmit : handleForgotSubmit}>\n\t\t\t\t\t{formFields.map((field) => (\n\t\t\t\t\t\t<div key={field.label} className=\"flex flex-col gap-2 mb-4\">\n\t\t\t\t\t\t\t<BoxReveal boxColor=\"hsl(var(--skeleton))\" duration={0.3}>\n\t\t\t\t\t\t\t\t<Label htmlFor={field.label}>{field.label} <span className=\"text-red-500\">*</span></Label>\n\t\t\t\t\t\t\t</BoxReveal>\n\t\t\t\t\t\t\t<BoxReveal width=\"100%\" boxColor=\"hsl(var(--skeleton))\" duration={0.3} className=\"flex flex-col space-y-2 w-full\">\n\t\t\t\t\t\t\t\t<div className=\"relative\">\n\t\t\t\t\t\t\t\t\t<AnimatedInput type={field.type === 'password' ? (showPassword ? 'text' : 'password') : field.type} id={field.label} placeholder={field.placeholder} onChange={field.onChange} />\n\t\t\t\t\t\t\t\t\t{field.type === 'password' && (\n\t\t\t\t\t\t\t\t\t\t<button type=\"button\" onClick={() => setShowPassword(!showPassword)} className=\"absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5\">\n\t\t\t\t\t\t\t\t\t\t\t{showPassword ? <EyeOff className=\"h-5 w-5 text-gray-500\" /> : <Eye className=\"h-5 w-5 text-gray-500\" />}\n\t\t\t\t\t\t\t\t\t\t</button>\n\t\t\t\t\t\t\t\t\t)}\n\t\t\t\t\t\t\t\t</div>\n\t\t\t\t\t\t\t\t<div className=\"h-4\">{errors[field.label as keyof typeof errors] && <p className=\"text-red-500 text-xs\">{errors[field.label as keyof typeof errors]}</p>}</div>\n\t\t\t\t\t\t\t</BoxReveal>\n\t\t\t\t\t\t</div>\n\t\t\t\t\t))}\n\n\t\t\t\t\t<BoxReveal width=\"100%\" boxColor=\"hsl(var(--skeleton))\" duration={0.3} className=\"overflow-visible\">\n\t\t\t\t\t\t<button\n\t\t\t\t\t\t\tclassName=\"bg-gradient-to-br relative group/btn from-zinc-200 dark:from-zinc-900 dark:to-zinc-900 to-zinc-200 block dark:bg-zinc-800 w-full text-black dark:text-white rounded-md h-10 font-medium shadow-[0px_1px_0px_0px_#ffffff40_inset,0px_-1px_0px_0px_#ffffff40_inset] dark:shadow-[0px_1px_0px_0px_var(--zinc-800)_inset,0px_-1px_0px_0px_var(--zinc-800)_inset] outline-hidden hover:cursor-pointer disabled:opacity-50\"\n\t\t\t\t\t\t\ttype=\"submit\" disabled={isLoading}\n\t\t\t\t\t\t>\n\t\t\t\t\t\t\t{isLoading ? (\n\t\t\t\t\t\t\t\t<div className=\"flex items-center justify-center gap-2\">\n\t\t\t\t\t\t\t\t\t<div className=\"w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin\" />\n\t\t\t\t\t\t\t\t\t<span>Processing...</span>\n\t\t\t\t\t\t\t\t</div>\n\t\t\t\t\t\t\t) : (\n\t\t\t\t\t\t\t\t<>{isLogin ? 'Sign in' : 'Send reset link'} &rarr;</>\n\t\t\t\t\t\t\t)}\n\t\t\t\t\t\t\t<BottomGradient />\n\t\t\t\t\t\t</button>\n\t\t\t\t\t</BoxReveal>\n\t\t\t\t\t<BoxReveal boxColor=\"hsl(var(--skeleton))\" duration={0.3}>\n\t\t\t\t\t\t<div className=\"mt-4 text-center\">\n\t\t\t\t\t\t\t<button type=\"button\" className=\"text-sm text-blue-500 hover:underline\" onClick={() => setState(isLogin ? 'forgot-password' : 'login')}>\n\t\t\t\t\t\t\t\t{isLogin ? 'Forgot password?' : 'Back to login'}\n\t\t\t\t\t\t\t</button>\n\t\t\t\t\t\t</div>\n\t\t\t\t\t</BoxReveal>\n\t\t\t\t</form>\n\t\t\t</div>\n\t\t);\n\t};\n\n\treturn (\n\t\t<section className=\"flex max-lg:justify-center min-h-screen w-full login-page-theme bg-background text-foreground\">\n\t\t\t{/* Left Side */}\n\t\t\t<div className=\"flex flex-col justify-center w-1/2 max-lg:hidden relative\">\n\t\t\t\t<Ripple />\n\t\t\t\t<TechOrbitDisplay />\n\t\t\t</div>\n\n\t\t\t{/* Right Side */}\n\t\t\t<div className=\"w-1/2 h-screen flex flex-col justify-center items-center max-lg:w-full max-lg:px-[10%]\">\n\t\t\t\t{renderContent()}\n\t\t\t</div>\n\t\t</section>\n\t);\n}"
+  src/App.tsx: |-
+    import React, { useEffect } from "react";
+    import {
+      createBrowserRouter,
+      RouterProvider,
+      Outlet,
+      Navigate,
+      useNavigate, // used in LoginPageWrapper
+      useLocation,
+    } from "react-router-dom";
+
+    import { AppShell } from "./components/layout/AppShell";
+    import { AppShellProvider } from "./providers/AppShellProvider";
+    import { useAppShellStore } from "./store/appShell.store";
+    import { useAppStore } from "./store/appStore";
+    import { useAuthStore } from "./store/authStore";
+    import "./index.css";
+
+    // Import library components
+    import { EnhancedSidebar } from "./components/layout/EnhancedSidebar";
+    import { MainContent } from "./components/layout/MainContent";
+    import { RightPane } from "./components/layout/RightPane";
+    import { TopBar } from "./components/layout/TopBar";
+    import { CommandPalette } from "./components/global/CommandPalette";
+    import { ToasterProvider } from "./components/ui/toast";
+
+    // --- Page/Content Components for Pages and Panes ---
+    import { DashboardContent } from "./pages/Dashboard";
+    import { SettingsPage } from "./pages/Settings";
+    import { ToasterDemo } from "./pages/ToasterDemo";
+    import { NotificationsPage } from "./pages/Notifications";
+    import DataDemoPage from "./pages/DataDemo";
+    import { LoginPage } from "./components/auth/LoginPage";
+
+    // --- Icons ---
+    import {
+      Search,
+      Filter,
+      Plus,
+      ChevronRight,
+      Rocket,
+    } from "lucide-react";
+
+    // --- Utils & Hooks ---
+    import { cn } from "./lib/utils";
+    import { useAppViewManager } from "./hooks/useAppViewManager.hook";
+    import { useRightPaneContent } from "./hooks/useRightPaneContent.hook";
+    import { BODY_STATES } from "./lib/utils";
+
+    // Wrapper for LoginPage to provide auth handlers
+    function LoginPageWrapper() {
+      const { login, forgotPassword } = useAuthStore();
+      const navigate = useNavigate();
+      const location = useLocation();
+      const from = location.state?.from?.pathname + location.state?.from?.search || "/";
+
+      const handleLogin = async (email: string, password: string) => {
+        try {
+          await login(email, password);
+          navigate(from, { replace: true });
+        } catch (error) {
+          console.error("Login failed:", error);
+          // In a real app, you'd show an error message to the user
+        }
+      };
+
+      const handleForgotPassword = async (email: string) => {
+        try {
+          await forgotPassword(email);
+        } catch (error) {
+          console.error("Forgot password failed:", error);
+        }
+      };
+
+      const handleSignUp = () => {
+        // In a real app, navigate to sign up page
+        console.log("Navigate to sign up page");
+      };
+
+      return (
+        <LoginPage
+          onLogin={handleLogin}
+          onForgotPassword={handleForgotPassword}
+          onSignUp={handleSignUp}
+        />
+      );
+    }
+
+    // Checks for authentication and redirects to login if needed
+    function ProtectedRoute() {
+      const { isAuthenticated } = useAuthStore();
+      const location = useLocation();
+      if (!isAuthenticated) {
+        return <Navigate to="/login" state={{ from: location }} replace />;
+      }
+      return <Outlet />;
+    }
+
+    // A root component to apply global styles and effects
+    function Root() {
+      const isDarkMode = useAppStore((state) => state.isDarkMode);
+
+      useEffect(() => {
+        document.documentElement.classList.toggle("dark", isDarkMode);
+      }, [isDarkMode]);
+
+      return <Outlet />;
+    }
+
+    // The main layout for authenticated parts of the application
+    function ProtectedLayout() {
+
+      return (
+        <div className="h-screen w-screen overflow-hidden bg-background">
+          <AppShellProvider
+            appName="Jeli App"
+            appLogo={
+              <div className="p-2 bg-primary/20 rounded-lg">
+                <Rocket className="w-5 h-5 text-primary" />
+              </div>
+            }
+          >
+            <ComposedApp />
+          </AppShellProvider>
+        </div>
+      );
+    }
+
+    // Content for the Top Bar (will be fully refactored in Part 2)
+    function AppTopBar() {
+      const { searchTerm, setSearchTerm } = useAppStore();
+      const [isSearchFocused, setIsSearchFocused] = React.useState(false);
+      const location = useLocation();
+      const activePage = location.pathname.split('/').filter(Boolean).pop()?.replace('-', ' ') || 'dashboard';
+
+      return (
+        <div className="flex items-center gap-3 flex-1">
+          <div
+            className={cn(
+              "hidden md:flex items-center gap-2 text-sm transition-opacity",
+              {
+                "opacity-0 pointer-events-none":
+                  isSearchFocused && activePage === "dashboard",
+              },
+            )}
+          >
+            <a
+              href="#"
+              className="text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Home
+            </a>
+            <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            <span className="font-medium text-foreground capitalize">
+              {activePage}
+            </span>
+          </div>
+
+          <div className="flex-1" />
+
+          {/* Page-specific: Dashboard search and actions */}
+          {activePage === "dashboard" && (
+            <div className="flex items-center gap-2 flex-1 justify-end">
+              <div
+                className={cn(
+                  "relative transition-all duration-300 ease-in-out",
+                  isSearchFocused ? "flex-1 max-w-lg" : "w-auto",
+                )}
+              >
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4 pointer-events-none" />
+                <input
+                  type="text"
+                  placeholder="Search..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onFocus={() => setIsSearchFocused(true)}
+                  onBlur={() => setIsSearchFocused(false)}
+                  className={cn(
+                    "pl-9 pr-4 py-2 h-10 border-none rounded-lg bg-card focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300 ease-in-out w-full",
+                    isSearchFocused ? "bg-background" : "w-48",
+                  )}
+                />
+              </div>
+              <button className="h-10 w-10 flex-shrink-0 flex items-center justify-center hover:bg-accent rounded-full transition-colors">
+                <Filter className="w-5 h-5" />
+              </button>
+              <button className="bg-primary text-primary-foreground px-4 py-2 rounded-full hover:bg-primary/90 transition-colors flex items-center gap-2 h-10 flex-shrink-0">
+                <Plus className="w-5 h-5" />
+                <span
+                  className={cn(isSearchFocused ? "hidden sm:inline" : "inline")}
+                >
+                  New Project
+                </span>
+              </button>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // The main App component that composes the shell
+    function ComposedApp() {
+      const { setBodyState, setSidePaneContent } = useAppShellStore();
+      const viewManager = useAppViewManager();
+
+      // Sync URL state with AppShellStore
+      useEffect(() => {
+        setBodyState(viewManager.bodyState);
+        setSidePaneContent(viewManager.sidePaneContent);
+      }, [viewManager.bodyState, viewManager.sidePaneContent, setBodyState, setSidePaneContent]);
+
+      return (
+        <AppShell
+          sidebar={<EnhancedSidebar />}
+          onOverlayClick={viewManager.closeSidePane}
+          topBar={
+            <TopBar>
+              <AppTopBar />
+            </TopBar>
+          }
+          mainContent={
+            <MainContent>
+              <Outlet />
+            </MainContent>
+          }
+          rightPane={<RightPane />}
+          commandPalette={<CommandPalette />}
+        />
+      );
+    }
+
+    function App() {
+      const router = createBrowserRouter([
+        {
+          element: <Root />,
+          children: [
+            {
+              path: "/login",
+              element: <LoginPageWrapper />,
+            },
+            {
+              path: "/",
+              element: <ProtectedRoute />,
+              children: [
+                {
+                  path: "/",
+                  element: <ProtectedLayout />,
+                  children: [
+                    { index: true, element: <Navigate to="/dashboard" replace /> },
+                    { path: "dashboard", element: <DashboardContent /> },
+                    { path: "settings", element: <SettingsPage /> },
+                    { path: "toaster", element: <ToasterDemo /> },
+                    { path: "notifications", element: <NotificationsPage /> },
+                    { path: "data-demo", element: <DataDemoPage /> },
+                    { path: "data-demo/:itemId", element: <DataDemoPage /> },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ]);
+
+      return (
+        <ToasterProvider>
+          <RouterProvider router={router} />
+        </ToasterProvider>
+      );
+    }
+
+    export default App;
+  src/components/shared/PageLayout.tsx: |-
+    import React from 'react';
+    import { cn } from '@/lib/utils';
+    import { useAppShellStore } from '@/store/appShell.store';
+
+    interface PageLayoutProps extends React.HTMLAttributes<HTMLDivElement> {
+      children: React.ReactNode;
+      scrollRef?: React.RefObject<HTMLDivElement>;
+      isInSidePane?: boolean;
+    }
+
+    export const PageLayout = React.forwardRef<HTMLDivElement, PageLayoutProps>(
+      ({ children, onScroll, scrollRef, className, isInSidePane = false, ...props }, ref) => {
+        const { isTopBarVisible, bodyState } = useAppShellStore();
+        const isFullscreen = bodyState === 'fullscreen';
+
+        return (
+          <div
+            ref={scrollRef}
+            className={cn("h-full overflow-y-auto", className)}
+            onScroll={onScroll}
+          >
+            <div ref={ref} className={cn(
+              "space-y-8 transition-all duration-300",
+              !isInSidePane ? "px-6 lg:px-12 pb-6" : "px-6 pb-6",
+              isTopBarVisible && !isFullscreen ? "pt-24" : "pt-6"
+            )}
+            {...props}
+            >
+              {children}
+            </div>
+          </div>
+        );
+      }
+    );
+
+    PageLayout.displayName = 'PageLayout';
+  src/pages/ToasterDemo/index.tsx: >-
+    import { Button } from '@/components/ui/button';
+
+    import { useToast } from '@/components/ui/toast';
+
+    import { PageHeader } from '@/components/shared/PageHeader';
+
+    import { PageLayout } from '@/components/shared/PageLayout';
+
+    import { cn } from '@/lib/utils';
+
+
+    type Variant = 'default' | 'success' | 'error' | 'warning';
+
+    type Position =
+      | 'top-left'
+      | 'top-center'
+      | 'top-right'
+      | 'bottom-left'
+      | 'bottom-center'
+      | 'bottom-right';
+
+    const variantColors = {
+      default: 'border-border text-foreground hover:bg-muted/10 dark:hover:bg-muted/20',
+      success: 'border-green-600 text-green-600 hover:bg-green-600/10 dark:hover:bg-green-400/20',
+      error: 'border-destructive text-destructive hover:bg-destructive/10 dark:hover:bg-destructive/20',
+      warning: 'border-amber-600 text-amber-600 hover:bg-amber-600/10 dark:hover:bg-amber-400/20',
+    }
+
+
+    const DemoSection: React.FC<{ title: string; children: React.ReactNode }> =
+    ({
+      title,
+      children,
+    }) => (
+      <section>
+        <h2 className="text-lg font-semibold mb-2">{title}</h2>
+        {children}
+      </section>
+    );
+
+
+    export function ToasterDemo({ isInSidePane = false }: { isInSidePane?:
+    boolean }) {
+      const toast = useToast();
+
+      const showToast = (variant: Variant, position: Position = 'bottom-right') => {
+        toast.show({
+          title: `${variant.charAt(0).toUpperCase() + variant.slice(1)} Notification`,
+          message: `This is a ${variant} toast notification.`,
+          variant,
+          position,
+          duration: 3000,
+          onDismiss: () =>
+            console.log(`${variant} toast at ${position} dismissed`),
+        });
+      };
+
+      const simulateApiCall = async () => {
+        toast.show({
+          title: 'Scheduling...',
+          message: 'Please wait while we schedule your meeting.',
+          variant: 'default',
+          position: 'bottom-right',
+        });
+
+        try {
+          await new Promise((resolve) => setTimeout(resolve, 2000));
+
+          toast.show({
+            title: 'Meeting Scheduled',
+            message: 'Your meeting is scheduled for July 4, 2025, at 3:42 PM IST.',
+            variant: 'success',
+            position: 'bottom-right',
+            highlightTitle: true,
+            actions: {
+              label: 'Undo',
+              onClick: () => console.log('Undoing meeting schedule'),
+              variant: 'outline',
+            },
+          });
+        } catch (error) {
+          toast.show({
+            title: 'Error Scheduling Meeting',
+            message: 'Failed to schedule the meeting. Please try again.',
+            variant: 'error',
+            position: 'bottom-right',
+          });
+        }
+      };
+
+      return (
+        <PageLayout isInSidePane={isInSidePane}>
+          {/* Header */}
+          {!isInSidePane && (
+            <PageHeader
+              title="Toaster"
+              description="A customizable toast component for notifications."
+            />
+          )}
+          <div className="space-y-6">
+            <DemoSection title="Toast Variants">
+              <div className="flex flex-wrap gap-4">
+                {(['default', 'success', 'error', 'warning'] as Variant[]).map((variantKey) => (
+                  <Button
+                    key={variantKey}
+                    variant="outline"
+                    onClick={() => showToast(variantKey as Variant)}
+                    className={cn(variantColors[variantKey])}
+                  >
+                    {variantKey.charAt(0).toUpperCase() + variantKey.slice(1)} Toast
+                  </Button>
+                ))}
+              </div>
+            </DemoSection>
+
+            <DemoSection title="Toast Positions">
+              <div className="flex flex-wrap gap-4">
+                {[
+                  'top-left',
+                  'top-center',
+                  'top-right',
+                  'bottom-left',
+                  'bottom-center',
+                  'bottom-right',
+                ].map((positionKey) => (
+                  <Button
+                    key={positionKey}
+                    variant="outline"
+                    onClick={() =>
+                      showToast('default', positionKey as Position)
+                    }
+                    className="border-border text-foreground hover:bg-muted/10 dark:hover:bg-muted/20"
+                  >
+                    {positionKey
+                      .replace('-', ' ')
+                      .replace(/\b\w/g, (char) => char.toUpperCase())}
+                  </Button>
+                ))}
+              </div>
+            </DemoSection>
+
+            <DemoSection title="Real-World Example">
+              <Button
+                variant="outline"
+                onClick={simulateApiCall}
+                className="border-border text-foreground hover:bg-muted/10 dark:hover:bg-muted/20"
+              >
+                Schedule Meeting
+              </Button>
+            </DemoSection>
+          </div>
+        </PageLayout>
+      );
+    }
+  src/pages/Dashboard/index.tsx: >-
+    import { useRef } from 'react'
+
+    import { 
+      BarChart3, 
+      TrendingUp, 
+      Users, 
+      DollarSign, 
+      Activity,
+      Calendar,
+      Clock,
+      MessageSquare,
+      FileText,
+      Star,
+      ChevronRight,
+      MoreVertical,
+      ArrowDown
+    } from 'lucide-react'
+
+    import { cn } from '@/lib/utils'
+
+    import { DemoContent } from './DemoContent';
+
+    import { useDashboardAnimations } from
+    './hooks/useDashboardAnimations.motion.hook'
+
+    import { useDashboardScroll } from './hooks/useDashboardScroll.hook'
+
+    import { PageHeader } from '@/components/shared/PageHeader';
+
+    import { StatCard } from '@/components/shared/StatCard';
+
+    import { Card } from '@/components/ui/card';
+
+    import { PageLayout } from '@/components/shared/PageLayout';
+
+
+    interface StatsCard {
+      title: string
+      value: string
+      change: string
+      trend: 'up' | 'down'
+      icon: React.ReactNode
+    }
+
+
+    interface ActivityItem {
+      id: string
+      type: 'comment' | 'file' | 'meeting' | 'task'
+      title: string
+      description: string
+      time: string
+      user: string
+    }
+
+
+    const statsCards: StatsCard[] = [
+      {
+        title: "Total Revenue",
+        value: "$45,231.89",
+        change: "+20.1%",
+        trend: "up",
+        icon: <DollarSign className="w-5 h-5" />
+      },
+      {
+        title: "Active Users",
+        value: "2,350",
+        change: "+180.1%",
+        trend: "up",
+        icon: <Users className="w-5 h-5" />
+      },
+      {
+        title: "Conversion Rate",
+        value: "12.5%",
+        change: "+19%",
+        trend: "up",
+        icon: <TrendingUp className="w-5 h-5" />
+      },
+      {
+        title: "Performance",
+        value: "573ms",
+        change: "-5.3%",
+        trend: "down",
+        icon: <Activity className="w-5 h-5" />
+      }
+    ]
+
+
+    const recentActivity: ActivityItem[] = [
+      {
+        id: "1",
+        type: "comment",
+        title: "New comment on Project Alpha",
+        description: "Sarah Johnson added a comment to the design review",
+        time: "2 minutes ago",
+        user: "SJ"
+      },
+      {
+        id: "2",
+        type: "file",
+        title: "Document uploaded",
+        description: "quarterly-report.pdf was uploaded to Documents",
+        time: "15 minutes ago",
+        user: "MD"
+      },
+      {
+        id: "3",
+        type: "meeting",
+        title: "Meeting scheduled",
+        description: "Weekly standup meeting scheduled for tomorrow 9 AM",
+        time: "1 hour ago",
+        user: "RW"
+      },
+      {
+        id: "4",
+        type: "task",
+        title: "Task completed",
+        description: "UI wireframes for mobile app completed",
+        time: "2 hours ago",
+        user: "AL"
+      }
+    ]
+
+
+    interface DashboardContentProps {
+      isInSidePane?: boolean;
+    }
+
+
+    export function DashboardContent({ isInSidePane = false }:
+    DashboardContentProps) {
+        const scrollRef = useRef<HTMLDivElement>(null)
+        const contentRef = useRef<HTMLDivElement>(null);
+        const statsCardsContainerRef = useRef<HTMLDivElement>(null);
+        const featureCardsContainerRef = useRef<HTMLDivElement>(null);
+        const { showScrollToBottom, handleScroll, scrollToBottom } = useDashboardScroll(scrollRef, isInSidePane);
+
+        useDashboardAnimations(contentRef, statsCardsContainerRef, featureCardsContainerRef);
+
+        const getTypeIcon = (type: ActivityItem['type']) => {
+          switch (type) {
+            case 'comment':
+              return <MessageSquare className="w-4 h-4" />
+            case 'file':
+              return <FileText className="w-4 h-4" />
+            case 'meeting':
+              return <Calendar className="w-4 h-4" />
+            case 'task':
+              return <Star className="w-4 h-4" />
+            default:
+              return <Activity className="w-4 h-4" />
+          }
+        }
+
+        return (
+          <PageLayout scrollRef={scrollRef} onScroll={handleScroll} ref={contentRef} isInSidePane={isInSidePane}>
+            {/* Header */}
+            {!isInSidePane && (
+              <PageHeader
+                title="Dashboard"
+                description="Welcome to the Jeli App Shell demo! Explore all the features and customization options."
+              />
+            )}
+              {/* Stats Cards */}
+            <div ref={statsCardsContainerRef} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {statsCards.map((stat) => (
+                <StatCard
+                  key={stat.title}
+                  title={stat.title}
+                  value={stat.value}
+                  change={stat.change}
+                  trend={stat.trend}
+                  icon={stat.icon}
+                />
+              ))}
+            </div>
+
+            {/* Demo Content */}
+            <DemoContent ref={featureCardsContainerRef} />
+
+            {/* Main Content Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Chart Area */}
+            <div className="lg:col-span-2 space-y-6">
+              {/* Analytics Chart */}
+              <Card className="p-6 border-border/50">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-lg font-semibold">Analytics Overview</h3>
+                  <button className="h-8 w-8 flex items-center justify-center hover:bg-accent rounded-full transition-colors">
+                    <MoreVertical className="w-5 h-5" />
+                  </button>
+                </div>
+                
+                {/* Mock Chart */}
+                <div className="h-64 bg-gradient-to-br from-primary/10 to-transparent rounded-xl flex items-center justify-center border border-border/50">
+                  <div className="text-center">
+                    <BarChart3 className="w-12 h-12 text-primary mx-auto mb-2" />
+                    <p className="text-muted-foreground">Chart visualization would go here</p>
+                  </div>
+                </div>
+              </Card>
+
+              {/* Recent Projects */}
+              <Card className="p-6 border-border/50">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-lg font-semibold">Recent Projects</h3>
+                  <button className="text-primary hover:text-primary/80 text-sm font-medium flex items-center gap-1">
+                    View All
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+                
+                <div className="space-y-4">
+                  {[
+                    { name: "E-commerce Platform", progress: 75, team: 5, deadline: "Dec 15" },
+                    { name: "Mobile App Redesign", progress: 45, team: 3, deadline: "Jan 20" },
+                    { name: "Marketing Website", progress: 90, team: 4, deadline: "Dec 5" }
+                  ].map((project) => (
+                    <div key={project.name} className="p-4 bg-accent/30 rounded-xl hover:bg-accent/50 transition-colors cursor-pointer">
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="font-medium">{project.name}</h4>
+                        <span className="text-sm text-muted-foreground">{project.progress}%</span>
+                      </div>
+                      <div className="w-full bg-muted rounded-full h-2 mb-3">
+                        <div 
+                          className="bg-primary h-2 rounded-full transition-all duration-500"
+                          style={{ width: `${project.progress}%` }}
+                        />
+                      </div>
+                      <div className="flex items-center justify-between text-sm text-muted-foreground">
+                        <span>{project.team} team members</span>
+                        <span>Due {project.deadline}</span>
+                        </div>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            </div>
+
+            {/* Sidebar Content */}
+            <div className="space-y-6">
+              {/* Quick Actions */}
+              <Card className="p-6 border-border/50">
+                <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
+                <div className="space-y-3">
+                  {[
+                    { icon: <FileText className="w-4 h-4" />, label: "Create Document", color: "bg-blue-500/10 text-blue-600" },
+                    { icon: <Calendar className="w-4 h-4" />, label: "Schedule Meeting", color: "bg-green-500/10 text-green-600" },
+                    { icon: <Users className="w-4 h-4" />, label: "Invite Team", color: "bg-purple-500/10 text-purple-600" },
+                    { icon: <BarChart3 className="w-4 h-4" />, label: "View Reports", color: "bg-orange-500/10 text-orange-600" }
+                  ].map((action) => (
+                    <button
+                      key={action.label}
+                      className="w-full flex items-center gap-3 p-3 hover:bg-accent rounded-lg transition-colors text-left"
+                    >
+                      <div className={cn("p-2 rounded-full", action.color)}>
+                        {action.icon}
+                      </div>
+                      <span className="font-medium">{action.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </Card>
+
+              {/* Recent Activity */}
+              <Card className="p-6 border-border/50">
+                <h3 className="text-lg font-semibold mb-4">Recent Activity</h3>
+                <div className="space-y-4">
+                  {recentActivity.map((activity) => (
+                    <div key={activity.id} className="flex items-start gap-3 p-3 hover:bg-accent/30 rounded-xl transition-colors cursor-pointer">
+                      <div className="p-2 bg-primary/10 rounded-full flex-shrink-0">
+                        {getTypeIcon(activity.type)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-medium text-sm mb-1">{activity.title}</h4>
+                        <p className="text-xs text-muted-foreground mb-2">{activity.description}</p>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <Clock className="w-3 h-3" />
+                          <span>{activity.time}</span>
+                          <div className="w-5 h-5 bg-primary rounded-full flex items-center justify-center text-primary-foreground text-xs font-medium">
+                            {activity.user}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            </div>
+          </div>
+          {showScrollToBottom && (
+            <button
+              onClick={scrollToBottom}
+              className="fixed bottom-8 right-8 w-12 h-12 bg-primary text-primary-foreground rounded-full flex items-center justify-center shadow-lg hover:bg-primary/90 transition-all animate-fade-in z-[51]"
+              style={{ animation: 'bounce 2s infinite' }}
+              title="Scroll to bottom"
+            >
+              <ArrowDown className="w-6 h-6" />
+            </button>
+          )}
+          </PageLayout>
+        )
+    }
+  src/pages/Notifications/index.tsx: >-
+    import React from "react";
+
+    import { Avatar, AvatarFallback, AvatarImage } from
+    "@/components/ui/avatar";
+
+    import { Badge } from "@/components/ui/badge";
+
+    import { Button } from "@/components/ui/button";
+
+    import { Card, CardContent, CardHeader } from "@/components/ui/card";
+
+    import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
+    import { PageHeader } from "@/components/shared/PageHeader";
+
+    import { useToast } from "@/components/ui/toast";
+
+    import { cn } from "@/lib/utils";
+
+    import { 
+      CheckCheck, 
+      Download, 
+      Settings, 
+      Bell,
+      MessageSquare,
+      UserPlus,
+      Mail,
+      File as FileIcon,
+      Heart,
+      AtSign,
+      ClipboardCheck,
+      ShieldCheck,
+    } from "lucide-react";
+
+
+    import { PageLayout } from "@/components/shared/PageLayout";
+
+    import { 
+      useNotificationsStore,
+      useFilteredNotifications,
+      useNotificationCounts,
+      type Notification
+    } from "./notifications.store";
+
+
+    const iconMap: { [key: string]: React.ElementType } = {
+      comment: MessageSquare,
+      follow: UserPlus,
+      invitation: Mail,
+      file_share: FileIcon,
+      mention: AtSign,
+      like: Heart,
+      task_assignment: ClipboardCheck,
+      system_update: ShieldCheck,
+    };
+
+
+    function NotificationItem({ notification }: { notification: Notification; })
+    {
+      const markAsRead = useNotificationsStore(s => s.markAsRead);
+      const Icon = iconMap[notification.type];
+
+      return (
+        <div className={cn(
+          "group w-full p-4 hover:bg-accent/50 rounded-lg transition-colors duration-200"
+        )}>
+          <div className="flex gap-3">
+            <div className="relative h-10 w-10 shrink-0">
+              <Avatar className="h-10 w-10">
+                <AvatarImage src={notification.user.avatar} alt={`${notification.user.name}'s profile picture`} />
+                <AvatarFallback>{notification.user.fallback}</AvatarFallback>
+              </Avatar>
+              {Icon && (
+                <div className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full border-2 border-card bg-background">
+                  <Icon className={cn("h-3 w-3", notification.type === 'like' ? 'text-red-500 fill-current' : 'text-muted-foreground')} />
+                </div>
+              )}
+            </div>
+
+            <div className="flex flex-1 flex-col space-y-2">
+              <div className="flex items-start justify-between">
+                <div className="text-sm">
+                  <span className="font-semibold">{notification.user.name}</span>
+                  <span className="text-muted-foreground"> {notification.action} </span>
+                  {notification.target && <span className="font-semibold">{notification.target}</span>}
+                  <div className="mt-0.5 text-xs text-muted-foreground">{notification.timeAgo}</div>
+                </div>
+                <button
+                  onClick={() => !notification.isRead && markAsRead(notification.id)}
+                  title={notification.isRead ? "Read" : "Mark as read"}
+                  className={cn("size-2.5 rounded-full mt-1 shrink-0 transition-all duration-300",
+                    notification.isRead ? 'bg-transparent' : 'bg-primary hover:scale-125 cursor-pointer'
+                  )}
+                ></button>
+              </div>
+
+              {notification.content && <div className="rounded-lg border bg-muted/50 p-3 text-sm">{notification.content}</div>}
+
+              {notification.file && (
+                <div className="flex items-center gap-2 rounded-lg bg-muted/50 p-2 border border-border">
+                  <div className="shrink-0 w-10 h-10 flex items-center justify-center bg-background rounded-md border border-border">
+                    <FileIcon className="w-5 h-5 text-muted-foreground" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium truncate">{notification.file.name}</div>
+                    <div className="text-xs text-muted-foreground">{notification.file.type} • {notification.file.size}</div>
+                  </div>
+                  <Button variant="ghost" size="icon" className="size-8 shrink-0">
+                    <Download className="w-4 h-4" />
+                  </Button>
+                </div>
+              )}
+
+              {notification.hasActions && (
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm">Decline</Button>
+                  <Button size="sm">Accept</Button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+
+    export function NotificationsPage({ isInSidePane = false }: { isInSidePane?:
+    boolean; }) {
+      const { activeTab, setActiveTab, markAllAsRead } = useNotificationsStore(s => ({ activeTab: s.activeTab, setActiveTab: s.setActiveTab, markAllAsRead: s.markAllAsRead }));
+      const filteredNotifications = useFilteredNotifications();
+      const { unreadCount, verifiedCount, mentionCount } = useNotificationCounts();
+      const { show: showToast } = useToast();
+
+      const handleMarkAllAsRead = () => {
+        const count = markAllAsRead();
+        if (count === 0) {
+          showToast({
+            title: "Already up to date!",
+            message: "You have no unread notifications.",
+            variant: "default",
+          });
+          return;
+        }
+        showToast({
+            title: "All Caught Up!",
+            message: "All notifications have been marked as read.",
+            variant: "success",
+        });
+      };
+
+      const content = (
+        <Card className={cn("flex w-full flex-col shadow-none", isInSidePane ? "border-none" : "")}>
+          <CardHeader className={cn(isInSidePane ? "p-4" : "p-6")}>
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold">
+                Your notifications
+              </h3>
+              <div className="flex items-center gap-1">
+                <Button variant="ghost" size="icon" className="size-8" onClick={handleMarkAllAsRead} title="Mark all as read">
+                  <CheckCheck className="size-4 text-muted-foreground" />
+                </Button>
+                <Button variant="ghost" size="icon" className="size-8">
+                  <Settings className="size-4 text-muted-foreground" />
+                </Button>
+              </div>
+            </div>
+
+            <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val as 'all' | 'verified' | 'mentions')} className="w-full flex-col justify-start mt-4">
+              <TabsList className="gap-1.5">
+                <TabsTrigger value="all" className="gap-1.5">
+                  View all {unreadCount > 0 && <Badge variant="secondary" className="rounded-full">{unreadCount}</Badge>}
+                </TabsTrigger>
+                <TabsTrigger value="verified" className="gap-1.5">
+                  Verified {verifiedCount > 0 && <Badge variant="secondary" className="rounded-full">{verifiedCount}</Badge>}
+                </TabsTrigger>
+                <TabsTrigger value="mentions" className="gap-1.5">
+                  Mentions {mentionCount > 0 && <Badge variant="secondary" className="rounded-full">{mentionCount}</Badge>}
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </CardHeader>
+
+          <CardContent className={cn("h-full p-0", isInSidePane ? "px-2" : "px-6")}>
+            <div className="space-y-2 divide-y divide-border">
+              {filteredNotifications.length > 0 ? (
+                filteredNotifications.map((notification) => (
+                  <NotificationItem key={notification.id} notification={notification} />
+                ))
+              ) : (
+                <div className="flex flex-col items-center justify-center space-y-2.5 py-12 text-center">
+                  <div className="rounded-full bg-muted p-4">
+                    <Bell className="text-muted-foreground" />
+                  </div>
+                  <p className="text-sm font-medium text-muted-foreground">No notifications yet.</p>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      );
+
+      return (
+        <PageLayout isInSidePane={isInSidePane}>
+          {!isInSidePane && (
+            <PageHeader
+              title="Notifications"
+              description="Manage your notifications and stay up-to-date."
+            />
+          )}
+          {content}
+        </PageLayout>
+      );
+    }
+  src/components/layout/AppShell.tsx: >-
+    import React, { useRef, type ReactElement, useCallback, useEffect,
+    useLayoutEffect } from 'react'
+
+    import { useLocation, useNavigate } from 'react-router-dom';
+
+    import { cn } from '@/lib/utils'
+
+    import { gsap } from 'gsap';
+
+    import { CommandPalette } from '@/components/global/CommandPalette';
+
+    import { useAppStore } from '@/store/appStore'
+
+    import { useAppShellStore } from '@/store/appShell.store';
+
+    import { SIDEBAR_STATES, BODY_STATES } from '@/lib/utils'
+
+    import { useResizableSidebar, useResizableRightPane } from
+    '@/hooks/useResizablePanes.hook'
+
+    import { useSidebarAnimations, useBodyStateAnimations } from
+    '@/hooks/useAppShellAnimations.hook'
+
+    import { ViewModeSwitcher } from './ViewModeSwitcher';
+
+
+    interface AppShellProps {
+      sidebar: ReactElement;
+      topBar: ReactElement;
+      mainContent: ReactElement;
+      rightPane: ReactElement;
+      commandPalette?: ReactElement;
+      onOverlayClick?: () => void;
+    }
+
+
+    const pageToPaneMap: Record<string, 'main' | 'settings' | 'toaster' |
+    'notifications' | 'dataDemo'> = {
+      dashboard: 'main',
+      settings: 'settings',
+      toaster: 'toaster',
+      notifications: 'notifications',
+      'data-demo': 'dataDemo',
+    };
+
+
+    // Helper hook to get the previous value of a prop or state
+
+    function usePrevious<T>(value: T): T | undefined {
+      const ref = useRef<T>();
+      useEffect(() => {
+        ref.current = value;
+      }, [value]);
+      return ref.current;
+    }
+
+
+
+    export function AppShell({ sidebar, topBar, mainContent, rightPane,
+    commandPalette, onOverlayClick }: AppShellProps) {
+      const {
+        sidebarState, autoExpandSidebar, hoveredPane, draggedPage,
+        dragHoverTarget, bodyState, sidePaneContent, reducedMotion,
+        isTopBarVisible,
+      } = useAppShellStore(state => ({
+        sidebarState: state.sidebarState, autoExpandSidebar: state.autoExpandSidebar,
+        hoveredPane: state.hoveredPane, draggedPage: state.draggedPage,
+        dragHoverTarget: state.dragHoverTarget, bodyState: state.bodyState,
+        sidePaneContent: state.sidePaneContent, reducedMotion: state.reducedMotion,
+        isTopBarVisible: state.isTopBarVisible,
+      }));
+      const { setSidebarState, toggleSidebar, peekSidebar, setDraggedPage, setDragHoverTarget, setHoveredPane } = useAppShellStore.getState();
+      
+      const isFullscreen = bodyState === BODY_STATES.FULLSCREEN;
+      const isSidePaneOpen = bodyState === BODY_STATES.SIDE_PANE;
+
+      const { isDarkMode, toggleDarkMode } = useAppStore();
+      const navigate = useNavigate();
+      const location = useLocation();
+      const activePage = location.pathname.split('/')[1] || 'dashboard';
+      const appRef = useRef<HTMLDivElement>(null)
+      const sidebarRef = useRef<HTMLDivElement>(null)
+      const mainContentRef = useRef<HTMLDivElement>(null)
+      const rightPaneRef = useRef<HTMLDivElement>(null)
+      const resizeHandleRef = useRef<HTMLDivElement>(null)
+      const topBarContainerRef = useRef<HTMLDivElement>(null)
+      const mainAreaRef = useRef<HTMLDivElement>(null)
+
+      const prevActivePage = usePrevious(activePage);
+      const prevSidePaneContent = usePrevious(sidePaneContent);
+
+      const isSplitView = bodyState === BODY_STATES.SPLIT_VIEW;
+
+      // Custom hooks for logic
+      useResizableSidebar(sidebarRef, resizeHandleRef);
+      useResizableRightPane();
+      useSidebarAnimations(sidebarRef, resizeHandleRef);
+      useBodyStateAnimations(appRef, mainContentRef, rightPaneRef, topBarContainerRef, mainAreaRef);
+      
+      // Animation for pane swapping
+      useLayoutEffect(() => {
+        if (reducedMotion || bodyState !== BODY_STATES.SPLIT_VIEW || !prevActivePage || !prevSidePaneContent) {
+          return;
+        }
+
+        const pageForPrevSidePane = Object.keys(pageToPaneMap).find(
+          key => pageToPaneMap[key as keyof typeof pageToPaneMap] === prevSidePaneContent
+        );
+
+        // Check if a swap occurred by comparing current state with previous state
+        if (activePage === pageForPrevSidePane && sidePaneContent === pageToPaneMap[prevActivePage as keyof typeof pageToPaneMap]) {
+          const mainEl = mainAreaRef.current;
+          const rightEl = rightPaneRef.current;
+
+          if (mainEl && rightEl) {
+            const mainWidth = mainEl.offsetWidth;
+            const rightWidth = rightEl.offsetWidth;
+
+            const tl = gsap.timeline();
+            
+            // Animate main content FROM where right pane was TO its new place
+            tl.from(mainEl, {
+              x: rightWidth, duration: 0.4, ease: 'power3.inOut'
+            });
+
+            // Animate right pane FROM where main content was TO its new place
+            tl.from(rightEl, {
+              x: -mainWidth, duration: 0.4, ease: 'power3.inOut'
+            }, 0); // Start at the same time
+          }
+        }
+      }, [activePage, sidePaneContent, bodyState, prevActivePage, prevSidePaneContent, reducedMotion]);
+      
+      const sidebarWithProps = React.cloneElement(sidebar, { 
+        ref: sidebarRef,
+        onMouseEnter: () => {
+          if (autoExpandSidebar && sidebarState === SIDEBAR_STATES.COLLAPSED) {
+            peekSidebar()
+          }
+        },
+        onMouseLeave: () => {
+          if (autoExpandSidebar && sidebarState === SIDEBAR_STATES.PEEK) {
+            setSidebarState(SIDEBAR_STATES.COLLAPSED);
+          }
+        }
+      });
+
+      const topBarWithProps = React.cloneElement(topBar, {
+        onToggleSidebar: toggleSidebar,
+        onToggleDarkMode: toggleDarkMode,
+      });
+
+      const mainContentWithProps = React.cloneElement(mainContent, {
+        ref: mainContentRef,
+      });
+
+      const rightPaneWithProps = React.cloneElement(rightPane, { ref: rightPaneRef });
+
+      // Drag and drop handlers for docking
+      const handleDragOverLeft = useCallback((e: React.DragEvent) => {
+        if (!draggedPage) return;
+        e.preventDefault();
+        if (dragHoverTarget !== 'left') {
+          setDragHoverTarget('left');
+        }
+      }, [draggedPage, dragHoverTarget, setDragHoverTarget]);
+
+      const handleDropLeft = useCallback(() => {
+        if (!draggedPage) return;
+
+        // If we drop the page that's already in the side pane, just make it the main view.
+        const paneContentOfDraggedPage = pageToPaneMap[draggedPage];
+        if (paneContentOfDraggedPage === sidePaneContent && (bodyState === BODY_STATES.SIDE_PANE || bodyState === BODY_STATES.SPLIT_VIEW)) {
+          navigate(`/${draggedPage}`, { replace: true });
+        } 
+        // New context-aware logic: if we are in normal view and drop a NEW page on the left
+        else if (bodyState === BODY_STATES.NORMAL && draggedPage !== activePage) {
+            const originalActivePagePaneContent = pageToPaneMap[activePage];
+            if (originalActivePagePaneContent) {
+                navigate(`/${draggedPage}?view=split&right=${originalActivePagePaneContent}`, { replace: true });
+            } else {
+                // Fallback for pages that can't be in a pane
+                navigate(`/${draggedPage}`, { replace: true });
+            }
+        } else { // Default behavior: just make the dropped page the main one
+          // If in split view, replace the main content and keep the right pane
+          if (bodyState === BODY_STATES.SPLIT_VIEW) {
+            const rightPane = location.search.split('right=')[1];
+            if (rightPane) {
+              navigate(`/${draggedPage}?view=split&right=${rightPane}`, { replace: true });
+              return;
+            }
+          }
+          navigate(`/${draggedPage}`, { replace: true });
+        }
+        
+        setDraggedPage(null);
+        setDragHoverTarget(null);
+      }, [draggedPage, activePage, bodyState, sidePaneContent, navigate, location, setDraggedPage, setDragHoverTarget]);
+
+      const handleDragOverRight = useCallback((e: React.DragEvent) => {
+        if (!draggedPage) return;
+        e.preventDefault();
+        if (dragHoverTarget !== 'right') {
+          setDragHoverTarget('right');
+        }
+      }, [draggedPage, dragHoverTarget, setDragHoverTarget]);
+
+      const handleDropRight = useCallback(() => {
+        if (!draggedPage) return;
+        const pane = pageToPaneMap[draggedPage as keyof typeof pageToPaneMap];
+        if (pane) {
+          let mainPage = activePage;
+          // If dropping the currently active page to the right,
+          // set a default page (e.g., dashboard) as the new active page.
+          if (draggedPage === activePage) {
+            mainPage = 'dashboard';
+          }
+
+          navigate(`/${mainPage}?view=split&right=${pane}`, { replace: true });
+        }
+        setDraggedPage(null);
+        setDragHoverTarget(null);
+      }, [draggedPage, activePage, navigate, setDraggedPage, setDragHoverTarget]);
+
+      return (
+        <div 
+          ref={appRef}
+          className={cn(
+            "relative h-screen w-screen overflow-hidden bg-background transition-colors duration-300",
+            isDarkMode && "dark"
+          )}
+        >
+          <div className="flex h-screen overflow-hidden">
+            {/* Enhanced Sidebar */}
+            {sidebarWithProps}
+
+            {/* Resize Handle */}
+            {sidebarState !== SIDEBAR_STATES.HIDDEN && (
+              <div
+                ref={resizeHandleRef}
+                className={cn(
+                  "absolute top-0 w-2 h-full bg-transparent hover:bg-primary/20 cursor-col-resize z-50 transition-colors duration-200 group -translate-x-1/2"
+                )}
+                onMouseDown={(e) => {
+                  e.preventDefault()
+                  useAppShellStore.getState().setIsResizing(true);
+                }}
+              >
+                <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200 mx-auto" />
+              </div>
+            )}
+
+            {/* Main area wrapper */}
+            <div className="flex-1 flex flex-col overflow-hidden relative">
+              <div
+                ref={topBarContainerRef}
+                className={cn(
+                  "absolute top-0 left-0 right-0 z-30",
+                  isFullscreen && "z-0"
+                )}
+                onMouseEnter={() => { if (isSplitView) setHoveredPane(null); }}
+              >
+                {topBarWithProps}
+              </div>
+
+              <div className="flex flex-1 min-h-0">
+                <div
+                  ref={mainAreaRef}
+                  className="relative flex-1 overflow-hidden bg-background"
+                  onMouseEnter={() => { if (isSplitView && !draggedPage) setHoveredPane('left'); }}
+                  onMouseLeave={() => { if (isSplitView && !draggedPage) setHoveredPane(null); }}
+                >
+                  {/* Side Pane Overlay */}
+                  <div
+                    role="button"
+                    aria-label="Close side pane"
+                    tabIndex={isSidePaneOpen ? 0 : -1}
+                    className={cn(
+                      "absolute inset-0 bg-black/40 z-40 transition-opacity duration-300",
+                      isSidePaneOpen
+                        ? "opacity-100 pointer-events-auto"
+                        : "opacity-0 pointer-events-none"
+                    )}
+                    onClick={onOverlayClick}
+                  />
+                  {/* Left drop overlay */}
+                  <div
+                    className={cn(
+                      "absolute inset-y-0 left-0 z-40 border-2 border-transparent transition-all",
+                      draggedPage
+                        ? cn("pointer-events-auto", isSplitView ? 'w-full' : 'w-1/2')
+                        : "pointer-events-none w-0",
+                      dragHoverTarget === 'left' && "bg-primary/10 border-primary"
+                    )}
+                    onDragOver={handleDragOverLeft}
+                    onDrop={handleDropLeft}
+                    onDragLeave={() => {
+                      if (dragHoverTarget === 'left') setDragHoverTarget(null);
+                    }}
+                  >
+                    {draggedPage && dragHoverTarget === 'left' && (
+                      <div className="absolute inset-0 flex items-center justify-center text-sm font-medium text-primary-foreground/80 pointer-events-none">
+                        <span className="px-3 py-1 rounded-md bg-primary/70">{isSplitView ? 'Drop to Replace' : 'Drop to Left'}</span>
+                      </div>
+                    )}
+                  </div>
+                  {mainContentWithProps}
+                  {isSplitView && hoveredPane === 'left' && !draggedPage && (
+                    <div className={cn("absolute right-4 z-50 transition-all", isTopBarVisible ? 'top-24' : 'top-4')}>
+                      <ViewModeSwitcher pane="main" />
+                    </div>
+                  )}
+                  {/* Right drop overlay (over main area, ONLY when NOT in split view) */}
+                  {!isSplitView && (
+                    <div
+                      className={cn(
+                        "absolute inset-y-0 right-0 z-40 border-2 border-transparent",
+                        draggedPage ? "pointer-events-auto w-1/2" : "pointer-events-none",
+                        dragHoverTarget === 'right' && "bg-primary/10 border-primary"
+                      )}
+                      onDragOver={handleDragOverRight}
+                      onDrop={handleDropRight}
+                      onDragLeave={() => {
+                        if (dragHoverTarget === 'right') setDragHoverTarget(null);
+                      }}
+                    >
+                      {draggedPage && dragHoverTarget === 'right' && (
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                          <span className="px-3 py-1 rounded-md bg-primary/70 text-sm font-medium text-primary-foreground/80">Drop to Right</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+                {isSplitView ? (
+                  <div
+                    className="relative"
+                    onMouseEnter={() => { if (isSplitView && !draggedPage) setHoveredPane('right'); }}
+                    onMouseLeave={() => { if (isSplitView && !draggedPage) setHoveredPane(null); }}
+                    onDragOver={handleDragOverRight}
+                  >
+                    {rightPaneWithProps}
+                    {draggedPage && (
+                      <div
+                        className={cn(
+                          'absolute inset-0 z-50 transition-all',
+                          dragHoverTarget === 'right'
+                            ? 'bg-primary/10 border-2 border-primary'
+                            : 'pointer-events-none'
+                        )}
+                        onDragLeave={() => {
+                          if (dragHoverTarget === 'right')
+                            setDragHoverTarget(null);
+                        }}
+                        onDrop={handleDropRight}
+                        onDragOver={(e) => e.preventDefault()}
+                      >
+                        {dragHoverTarget === 'right' && (
+                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                            <span className="px-3 py-1 rounded-md bg-primary/70 text-sm font-medium text-primary-foreground/80">
+                              Drop to Replace
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {hoveredPane === 'right' && !draggedPage && (
+                      <div className={cn("absolute right-4 z-[70] transition-all", isTopBarVisible ? 'top-24' : 'top-4')}>
+                        <ViewModeSwitcher pane="right" />
+                      </div>
+                    )}
+                  </div>
+                ) : rightPaneWithProps}
+              </div>
+            </div>
+          </div>
+          {commandPalette || <CommandPalette />}
+        </div>
+      )
+    }
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 277

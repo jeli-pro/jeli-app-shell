@@ -2,7 +2,7 @@ import { forwardRef } from 'react'
 import { X } from 'lucide-react'
 import { cn } from '@/lib/utils';
 import { BODY_STATES } from '@/lib/utils'
-import { useAppShell } from '@/context/AppShellContext'
+import { useAppShellStore } from '@/store/appShell.store'
 
 interface MainContentProps {
   children?: React.ReactNode;
@@ -10,7 +10,7 @@ interface MainContentProps {
 
 export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
   ({ children }, ref) => {
-    const { bodyState, fullscreenTarget, toggleFullscreen } = useAppShell();
+    const { bodyState, fullscreenTarget, toggleFullscreen } = useAppShellStore();
     const isFullscreen = bodyState === BODY_STATES.FULLSCREEN;
 
     if (isFullscreen && fullscreenTarget === 'right') {

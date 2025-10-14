@@ -1,14 +1,15 @@
-import React, { useRef, type ReactElement, useCallback, useEffect, useLayoutEffect } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom';
+import React, { useRef, type ReactElement, useEffect, useLayoutEffect } from 'react'
+import { useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils'
 import { gsap } from 'gsap';
 import { CommandPalette } from '@/components/global/CommandPalette';
 import { useAppStore } from '@/store/appStore'
-import { useAppShell } from '@/context/AppShellContext';
+import { useAppShellStore } from '@/store/appShell.store';
 import { SIDEBAR_STATES, BODY_STATES } from '@/lib/utils'
 import { useResizableSidebar, useResizableRightPane } from '@/hooks/useResizablePanes.hook'
 import { useSidebarAnimations, useBodyStateAnimations } from '@/hooks/useAppShellAnimations.hook'
 import { ViewModeSwitcher } from './ViewModeSwitcher';
+import { usePaneDnd } from '@/hooks/usePaneDnd.hook';
 
 interface AppShellProps {
   sidebar: ReactElement;
@@ -39,25 +40,22 @@ function usePrevious<T>(value: T): T | undefined {
 
 export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalette, onOverlayClick }: AppShellProps) {
   const {
-    sidebarState,
-    dispatch,
-    autoExpandSidebar,
-    toggleSidebar,
-    hoveredPane,
-    peekSidebar,
-    draggedPage,
-    dragHoverTarget,
-    bodyState,
-    sidePaneContent,
-    reducedMotion,
+    sidebarState, autoExpandSidebar, hoveredPane, draggedPage,
+    dragHoverTarget, bodyState, sidePaneContent, reducedMotion,
     isTopBarVisible,
-  } = useAppShell();
+  } = useAppShellStore(state => ({
+    sidebarState: state.sidebarState, autoExpandSidebar: state.autoExpandSidebar,
+    hoveredPane: state.hoveredPane, draggedPage: state.draggedPage,
+    dragHoverTarget: state.dragHoverTarget, bodyState: state.bodyState,
+    sidePaneContent: state.sidePaneContent, reducedMotion: state.reducedMotion,
+    isTopBarVisible: state.isTopBarVisible,
+  }));
+  const { setSidebarState, toggleSidebar, peekSidebar, setHoveredPane } = useAppShellStore.getState();
   
   const isFullscreen = bodyState === BODY_STATES.FULLSCREEN;
   const isSidePaneOpen = bodyState === BODY_STATES.SIDE_PANE;
 
   const { isDarkMode, toggleDarkMode } = useAppStore();
-  const navigate = useNavigate();
   const location = useLocation();
   const activePage = location.pathname.split('/')[1] || 'dashboard';
   const appRef = useRef<HTMLDivElement>(null)
@@ -72,6 +70,7 @@ export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalet
   const prevSidePaneContent = usePrevious(sidePaneContent);
 
   const isSplitView = bodyState === BODY_STATES.SPLIT_VIEW;
+  const dndHandlers = usePaneDnd();
 
   // Custom hooks for logic
   useResizableSidebar(sidebarRef, resizeHandleRef);
@@ -122,7 +121,7 @@ export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalet
     },
     onMouseLeave: () => {
       if (autoExpandSidebar && sidebarState === SIDEBAR_STATES.PEEK) {
-        dispatch({ type: 'SET_SIDEBAR_STATE', payload: SIDEBAR_STATES.COLLAPSED });
+        setSidebarState(SIDEBAR_STATES.COLLAPSED);
       }
     }
   });
@@ -137,73 +136,6 @@ export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalet
   });
 
   const rightPaneWithProps = React.cloneElement(rightPane, { ref: rightPaneRef });
-
-  // Drag and drop handlers for docking
-  const handleDragOverLeft = useCallback((e: React.DragEvent) => {
-    if (!draggedPage) return;
-    e.preventDefault();
-    if (dragHoverTarget !== 'left') {
-      dispatch({ type: 'SET_DRAG_HOVER_TARGET', payload: 'left' });
-    }
-  }, [draggedPage, dragHoverTarget, dispatch]);
-
-  const handleDropLeft = useCallback(() => {
-    if (!draggedPage) return;
-
-    // If we drop the page that's already in the side pane, just make it the main view.
-    const paneContentOfDraggedPage = pageToPaneMap[draggedPage];
-    if (paneContentOfDraggedPage === sidePaneContent && (bodyState === BODY_STATES.SIDE_PANE || bodyState === BODY_STATES.SPLIT_VIEW)) {
-      navigate(`/${draggedPage}`, { replace: true });
-    } 
-    // New context-aware logic: if we are in normal view and drop a NEW page on the left
-    else if (bodyState === BODY_STATES.NORMAL && draggedPage !== activePage) {
-        const originalActivePagePaneContent = pageToPaneMap[activePage];
-        if (originalActivePagePaneContent) {
-            navigate(`/${draggedPage}?view=split&right=${originalActivePagePaneContent}`, { replace: true });
-        } else {
-            // Fallback for pages that can't be in a pane
-            navigate(`/${draggedPage}`, { replace: true });
-        }
-    } else { // Default behavior: just make the dropped page the main one
-      // If in split view, replace the main content and keep the right pane
-      if (bodyState === BODY_STATES.SPLIT_VIEW) {
-        const rightPane = location.search.split('right=')[1];
-        if (rightPane) {
-          navigate(`/${draggedPage}?view=split&right=${rightPane}`, { replace: true });
-          return;
-        }
-      }
-      navigate(`/${draggedPage}`, { replace: true });
-    }
-    
-    dispatch({ type: 'SET_DRAGGED_PAGE', payload: null });
-    dispatch({ type: 'SET_DRAG_HOVER_TARGET', payload: null });
-  }, [draggedPage, activePage, bodyState, sidePaneContent, navigate, dispatch, location]);
-
-  const handleDragOverRight = useCallback((e: React.DragEvent) => {
-    if (!draggedPage) return;
-    e.preventDefault();
-    if (dragHoverTarget !== 'right') {
-      dispatch({ type: 'SET_DRAG_HOVER_TARGET', payload: 'right' });
-    }
-  }, [draggedPage, dragHoverTarget, dispatch]);
-
-  const handleDropRight = useCallback(() => {
-    if (!draggedPage) return;
-    const pane = pageToPaneMap[draggedPage as keyof typeof pageToPaneMap];
-    if (pane) {
-      let mainPage = activePage;
-      // If dropping the currently active page to the right,
-      // set a default page (e.g., dashboard) as the new active page.
-      if (draggedPage === activePage) {
-        mainPage = 'dashboard';
-      }
-
-      navigate(`/${mainPage}?view=split&right=${pane}`, { replace: true });
-    }
-    dispatch({ type: 'SET_DRAGGED_PAGE', payload: null });
-    dispatch({ type: 'SET_DRAG_HOVER_TARGET', payload: null });
-  }, [draggedPage, dispatch, activePage, navigate]);
 
   return (
     <div 
@@ -226,7 +158,7 @@ export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalet
             )}
             onMouseDown={(e) => {
               e.preventDefault()
-              dispatch({ type: 'SET_IS_RESIZING', payload: true });
+              useAppShellStore.getState().setIsResizing(true);
             }}
           >
             <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200 mx-auto" />
@@ -241,7 +173,7 @@ export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalet
               "absolute top-0 left-0 right-0 z-30",
               isFullscreen && "z-0"
             )}
-            onMouseEnter={() => { if (isSplitView) dispatch({ type: 'SET_HOVERED_PANE', payload: null }); }}
+            onMouseEnter={() => { if (isSplitView) setHoveredPane(null); }}
           >
             {topBarWithProps}
           </div>
@@ -250,8 +182,8 @@ export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalet
             <div
               ref={mainAreaRef}
               className="relative flex-1 overflow-hidden bg-background"
-              onMouseEnter={() => { if (isSplitView && !draggedPage) dispatch({ type: 'SET_HOVERED_PANE', payload: 'left' }); }}
-              onMouseLeave={() => { if (isSplitView && !draggedPage) dispatch({ type: 'SET_HOVERED_PANE', payload: null }); }}
+              onMouseEnter={() => { if (isSplitView && !draggedPage) setHoveredPane('left'); }}
+              onMouseLeave={() => { if (isSplitView && !draggedPage) setHoveredPane(null); }}
             >
               {/* Side Pane Overlay */}
               <div
@@ -275,11 +207,9 @@ export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalet
                     : "pointer-events-none w-0",
                   dragHoverTarget === 'left' && "bg-primary/10 border-primary"
                 )}
-                onDragOver={handleDragOverLeft}
-                onDrop={handleDropLeft}
-                onDragLeave={() => {
-                  if (dragHoverTarget === 'left') dispatch({ type: 'SET_DRAG_HOVER_TARGET', payload: null });
-                }}
+                onDragOver={dndHandlers.handleDragOverLeft}
+                onDrop={dndHandlers.handleDropLeft}
+                onDragLeave={dndHandlers.handleDragLeave}
               >
                 {draggedPage && dragHoverTarget === 'left' && (
                   <div className="absolute inset-0 flex items-center justify-center text-sm font-medium text-primary-foreground/80 pointer-events-none">
@@ -301,11 +231,9 @@ export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalet
                     draggedPage ? "pointer-events-auto w-1/2" : "pointer-events-none",
                     dragHoverTarget === 'right' && "bg-primary/10 border-primary"
                   )}
-                  onDragOver={handleDragOverRight}
-                  onDrop={handleDropRight}
-                  onDragLeave={() => {
-                    if (dragHoverTarget === 'right') dispatch({ type: 'SET_DRAG_HOVER_TARGET', payload: null });
-                  }}
+                  onDragOver={dndHandlers.handleDragOverRight}
+                  onDrop={dndHandlers.handleDropRight}
+                  onDragLeave={dndHandlers.handleDragLeave}
                 >
                   {draggedPage && dragHoverTarget === 'right' && (
                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -318,9 +246,9 @@ export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalet
             {isSplitView ? (
               <div
                 className="relative"
-                onMouseEnter={() => { if (isSplitView && !draggedPage) dispatch({ type: 'SET_HOVERED_PANE', payload: 'right' }); }}
-                onMouseLeave={() => { if (isSplitView && !draggedPage) dispatch({ type: 'SET_HOVERED_PANE', payload: null }); }}
-                onDragOver={handleDragOverRight}
+                onMouseEnter={() => { if (isSplitView && !draggedPage) setHoveredPane('right'); }}
+                onMouseLeave={() => { if (isSplitView && !draggedPage) setHoveredPane(null); }}
+                onDragOver={dndHandlers.handleDragOverRight}
               >
                 {rightPaneWithProps}
                 {draggedPage && (
@@ -331,11 +259,8 @@ export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalet
                         ? 'bg-primary/10 border-2 border-primary'
                         : 'pointer-events-none'
                     )}
-                    onDragLeave={() => {
-                      if (dragHoverTarget === 'right')
-                        dispatch({ type: 'SET_DRAG_HOVER_TARGET', payload: null });
-                    }}
-                    onDrop={handleDropRight}
+                    onDragLeave={dndHandlers.handleDragLeave}
+                    onDrop={dndHandlers.handleDropRight}
                     onDragOver={(e) => e.preventDefault()}
                   >
                     {dragHoverTarget === 'right' && (

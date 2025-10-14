@@ -1,9 +1,10 @@
 import { useRef, useCallback, useEffect } from 'react';
-import { useAppShell } from '@/context/AppShellContext';
+import { useAppShellStore } from '@/store/appShell.store';
 import { BODY_STATES } from '@/lib/utils';
 
 export function useAutoAnimateTopBar(isPane = false) {
-  const { dispatch, bodyState } = useAppShell();
+  const bodyState = useAppShellStore(s => s.bodyState);
+  const setTopBarVisible = useAppShellStore(s => s.setTopBarVisible);
   const lastScrollTop = useRef(0);
   const scrollTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -18,9 +19,9 @@ export function useAutoAnimateTopBar(isPane = false) {
     const { scrollTop } = event.currentTarget;
     
     if (scrollTop > lastScrollTop.current && scrollTop > 200) {
-      dispatch({ type: 'SET_TOP_BAR_VISIBLE', payload: false });
+      setTopBarVisible(false);
     } else if (scrollTop < lastScrollTop.current || scrollTop <= 0) {
-      dispatch({ type: 'SET_TOP_BAR_VISIBLE', payload: true });
+      setTopBarVisible(true);
     }
     
     lastScrollTop.current = scrollTop <= 0 ? 0 : scrollTop;
@@ -30,10 +31,10 @@ export function useAutoAnimateTopBar(isPane = false) {
       // Don't hide, just ensure it's visible after scrolling stops
       // and we are not at the top of the page.
       if (scrollTop > 0) {
-        dispatch({ type: 'SET_TOP_BAR_VISIBLE', payload: true });
+        setTopBarVisible(true);
       }
     }, 250); // Adjust timeout as needed
-  }, [isPane, dispatch, bodyState]);
+  }, [isPane, setTopBarVisible, bodyState]);
 
   // Cleanup on unmount
   useEffect(() => {

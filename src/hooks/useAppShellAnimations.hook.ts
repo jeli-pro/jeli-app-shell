@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { gsap } from 'gsap';
 import { useSearchParams } from 'react-router-dom';
-import { useAppShell } from '@/context/AppShellContext';
+import { useAppShellStore, useRightPaneWidth } from '@/store/appShell.store';
 import { SIDEBAR_STATES, BODY_STATES } from '@/lib/utils';
 
 function usePrevious<T>(value: T): T | undefined {
@@ -16,7 +16,7 @@ export function useSidebarAnimations(
   sidebarRef: React.RefObject<HTMLDivElement>,
   resizeHandleRef: React.RefObject<HTMLDivElement>
 ) {
-  const { sidebarState, sidebarWidth, bodyState, reducedMotion } = useAppShell();
+  const { sidebarState, sidebarWidth, bodyState, reducedMotion } = useAppShellStore();
   const animationDuration = reducedMotion ? 0.1 : 0.4;
 
   useEffect(() => {
@@ -74,7 +74,8 @@ export function useBodyStateAnimations(
   topBarContainerRef: React.RefObject<HTMLDivElement>,
   mainAreaRef: React.RefObject<HTMLDivElement>
 ) {
-  const { bodyState, reducedMotion, rightPaneWidth, isTopBarVisible, dispatch, fullscreenTarget } = useAppShell();
+  const { bodyState, reducedMotion, isTopBarVisible, fullscreenTarget } = useAppShellStore();
+  const rightPaneWidth = useRightPaneWidth();
   const animationDuration = reducedMotion ? 0.1 : 0.4;
   const prevBodyState = usePrevious(bodyState);
   const [, setSearchParams] = useSearchParams();
@@ -156,5 +157,5 @@ export function useBodyStateAnimations(
         gsap.to(backdrop, { opacity: 0, duration: animationDuration, onComplete: () => backdrop.remove() });
       }
     }
-  }, [bodyState, prevBodyState, animationDuration, rightPaneWidth, isTopBarVisible, appRef, mainContentRef, rightPaneRef, topBarContainerRef, mainAreaRef, fullscreenTarget, dispatch, setSearchParams]);
+  }, [bodyState, prevBodyState, animationDuration, rightPaneWidth, isTopBarVisible, appRef, mainContentRef, rightPaneRef, topBarContainerRef, mainAreaRef, fullscreenTarget, setSearchParams]);
 }

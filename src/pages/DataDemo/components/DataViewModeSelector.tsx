@@ -3,7 +3,7 @@ import { gsap } from 'gsap'
 import { cn } from '@/lib/utils'
 import { List, Grid3X3, LayoutGrid, Table } from 'lucide-react'
 import type { ViewMode } from '../types'
-import { useDataDemo } from '../context/DataDemoContext'
+import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
 
 const viewModes = [
   { id: 'list' as ViewMode, label: 'List', icon: List, description: 'Compact list with details' },
@@ -13,7 +13,7 @@ const viewModes = [
 ]
 
 export function DataViewModeSelector() {
-  const { viewMode, setViewMode: onChange } = useDataDemo();
+  const { viewMode, setViewMode } = useAppViewManager();
   const indicatorRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const [isExpanded, setIsExpanded] = useState(false)
@@ -109,7 +109,7 @@ export function DataViewModeSelector() {
           <button
             key={mode.id}
             data-mode={mode.id}
-            onClick={() => onChange(mode.id)}
+            onClick={() => setViewMode(mode.id)}
             className={cn(
               "relative flex items-center justify-center rounded-xl transition-all duration-500 ease-out group overflow-hidden",
               "hover:bg-accent/20 active:scale-95",

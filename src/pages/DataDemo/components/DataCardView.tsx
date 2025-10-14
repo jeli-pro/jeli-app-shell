@@ -5,7 +5,11 @@ import { ArrowUpRight } from 'lucide-react'
 import type { DataItem } from '../types'
 import { useStaggeredAnimation } from '@/hooks/useStaggeredAnimation.motion.hook'
 import { EmptyState } from './EmptyState'
-import { useDataDemo } from '../context/DataDemoContext'
+import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
+import {
+  useDataToRender,
+  useSelectedItem,
+} from '../store/dataDemo.store'
 import {
   AssigneeInfo,
   ItemMetrics,
@@ -16,7 +20,10 @@ import {
 } from './shared/DataItemParts'
 
 export function DataCardView({ isGrid = false }: { isGrid?: boolean }) {
-  const { dataToRender: data, onItemSelect, selectedItem } = useDataDemo();
+  const { groupBy, activeGroupTab, onItemSelect, itemId } = useAppViewManager();
+  const data = useDataToRender(groupBy, activeGroupTab);
+  const selectedItem = useSelectedItem(itemId);
+
   const containerRef = useRef<HTMLDivElement>(null)
   useStaggeredAnimation(containerRef, [data], { mode: 'incremental', y: 40 });
 

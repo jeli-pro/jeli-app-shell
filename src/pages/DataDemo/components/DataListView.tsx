@@ -5,7 +5,11 @@ import { ArrowRight } from 'lucide-react'
 import type { DataItem } from '../types'
 import { useStaggeredAnimation } from '@/hooks/useStaggeredAnimation.motion.hook'
 import { EmptyState } from './EmptyState'
-import { useDataDemo } from '../context/DataDemoContext'
+import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
+import { 
+  useDataToRender,
+  useSelectedItem,
+} from '../store/dataDemo.store'
 import {
   AssigneeInfo,
   ItemMetrics,
@@ -16,7 +20,10 @@ import {
 } from './shared/DataItemParts'
 
 export function DataListView() {
-  const { dataToRender: data, onItemSelect, selectedItem } = useDataDemo();
+  const { groupBy, activeGroupTab, onItemSelect, itemId } = useAppViewManager();
+  const data = useDataToRender(groupBy, activeGroupTab);
+  const selectedItem = useSelectedItem(itemId);
+
   const listRef = useRef<HTMLDivElement>(null)
   useStaggeredAnimation(listRef, [data], { mode: 'incremental', scale: 1, y: 30, stagger: 0.08, duration: 0.5 });
 

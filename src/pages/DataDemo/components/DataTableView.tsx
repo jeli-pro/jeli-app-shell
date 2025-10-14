@@ -9,7 +9,11 @@ import {
 } from 'lucide-react'
 import type { DataItem, SortableField } from '../types'
 import { EmptyState } from './EmptyState'
-import { useDataDemo } from '../context/DataDemoContext'
+import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
+import {
+  useDataToRender,
+  useSelectedItem,
+} from '../store/dataDemo.store'
 import { capitalize } from '@/lib/utils'
 import {
   AssigneeInfo,
@@ -22,13 +26,16 @@ import {
 
 export function DataTableView() {
   const {
-    dataToRender: data,
-    onItemSelect,
-    selectedItem,
     sortConfig,
-    setTableSort: onSort,
+    setTableSort,
     groupBy,
-  } = useDataDemo();
+    activeGroupTab,
+    onItemSelect,
+    itemId,
+  } = useAppViewManager();
+  const data = useDataToRender(groupBy, activeGroupTab);
+  const selectedItem = useSelectedItem(itemId);
+
   const tableRef = useRef<HTMLTableElement>(null)
   const animatedItemsCount = useRef(0)
 
@@ -67,7 +74,7 @@ export function DataTableView() {
   }
 
   const handleSortClick = (field: SortableField) => {
-    onSort?.(field)
+    setTableSort(field)
   }
 
   const groupedData = useMemo(() => {

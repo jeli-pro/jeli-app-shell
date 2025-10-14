@@ -20,7 +20,7 @@ import {
   Database
 } from 'lucide-react';
 import { type ActivePage } from '@/store/appStore';
-import { useAppShell } from '@/context/AppShellContext';
+import { useAppShellStore } from '@/store/appShell.store';
 import {
   Workspaces,
   WorkspaceTrigger,
@@ -87,7 +87,7 @@ interface SidebarProps {
 
 export const EnhancedSidebar = React.forwardRef<HTMLDivElement, SidebarProps>(
   ({ onMouseEnter, onMouseLeave }, ref) => {
-    const { sidebarWidth, compactMode, appName, appLogo } = useAppShell();
+    const { sidebarWidth, compactMode, appName, appLogo } = useAppShellStore();
     const [selectedWorkspace, setSelectedWorkspace] = React.useState(mockWorkspaces[0]);
 
     return (
@@ -180,7 +180,8 @@ interface AppMenuItemProps {
 }
 
 const AppMenuItem: React.FC<AppMenuItemProps> = ({ icon: Icon, label, badge, hasActions, children, isSubItem = false, page, opensInSidePane = false }) => {
-  const { compactMode, dispatch } = useAppShell()
+  const compactMode = useAppShellStore(s => s.compactMode);
+  const { setDraggedPage, setDragHoverTarget } = useAppShellStore.getState();
   const { isCollapsed } = useSidebar();
   const viewManager = useAppViewManager();
 
@@ -210,13 +211,13 @@ const AppMenuItem: React.FC<AppMenuItemProps> = ({ icon: Icon, label, badge, has
           draggable={!!page}
           onDragStart={(_e) => {
             if (page) {
-              // set dragged page in AppShell context
-              dispatch({ type: 'SET_DRAGGED_PAGE', payload: page });
+              // set dragged page in AppShell store
+              setDraggedPage(page);
             }
           }}
           onDragEnd={() => {
-            dispatch({ type: 'SET_DRAGGED_PAGE', payload: null });
-            dispatch({ type: 'SET_DRAG_HOVER_TARGET', payload: null });
+            setDraggedPage(null);
+            setDragHoverTarget(null);
           }}
         >
           <SidebarIcon>

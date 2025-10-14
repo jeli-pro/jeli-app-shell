@@ -1,17 +1,18 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
-import { useAppShell } from '@/context/AppShellContext';
+import { useAppShellStore } from '@/store/appShell.store';
+import { BODY_STATES } from '@/lib/utils';
 
 interface PageLayoutProps extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;
   scrollRef?: React.RefObject<HTMLDivElement>;
-  isInSidePane?: boolean;
 }
 
 export const PageLayout = React.forwardRef<HTMLDivElement, PageLayoutProps>(
-  ({ children, onScroll, scrollRef, className, isInSidePane = false, ...props }, ref) => {
-    const { isTopBarVisible, bodyState } = useAppShell();
+  ({ children, onScroll, scrollRef, className, ...props }, ref) => {
+    const { isTopBarVisible, bodyState } = useAppShellStore();
     const isFullscreen = bodyState === 'fullscreen';
+    const isInSidePane = bodyState === BODY_STATES.SIDE_PANE;
 
     return (
       <div

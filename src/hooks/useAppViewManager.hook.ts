@@ -1,8 +1,8 @@
 import { useMemo, useCallback } from 'react';
 import { useSearchParams, useNavigate, useLocation, useParams } from 'react-router-dom';
-import type { AppShellState } from '@/context/AppShellContext';
+import type { AppShellState } from '@/store/appShell.store';
 import type { ActivePage } from '@/store/appStore';
-import type { ViewMode, SortConfig, SortableField, GroupableField, Status, Priority } from '@/pages/DataDemo/types';
+import type { DataItem, ViewMode, SortConfig, SortableField, GroupableField, Status, Priority } from '@/pages/DataDemo/types';
 import type { FilterConfig } from '@/pages/DataDemo/components/DataToolbar';
 import { BODY_STATES } from '@/lib/utils';
 
@@ -205,6 +205,10 @@ export function useAppViewManager() {
   };
   const setPage = (newPage: number) => handleParamsChange({ page: newPage.toString() });
 
+  const onItemSelect = useCallback((item: DataItem) => {
+		navigate(`/data-demo/${item.id}${location.search}`);
+	}, [navigate, location.search]);
+
 
   return useMemo(() => ({
     // State
@@ -229,6 +233,7 @@ export function useAppViewManager() {
     switchSplitPanes,
     closeSplitPane,
     // DataDemo Actions
+    onItemSelect,
     setViewMode,
     setGroupBy,
     setActiveGroupTab,
@@ -239,8 +244,8 @@ export function useAppViewManager() {
   }), [
     bodyState, sidePaneContent, currentActivePage, itemId,
     viewMode, page, groupBy, activeGroupTab, filters, sortConfig,
-    navigateTo, openSidePane, closeSidePane, toggleSidePane, toggleSplitView, setNormalView,
-    switchSplitPanes, closeSplitPane, setViewMode, setGroupBy, setActiveGroupTab, setFilters,
+    navigateTo, openSidePane, closeSidePane, toggleSidePane, toggleSplitView, setNormalView, 
+    switchSplitPanes, closeSplitPane, onItemSelect, setViewMode, setGroupBy, setActiveGroupTab, setFilters,
     setSort, setTableSort, setPage
   ]);
 }

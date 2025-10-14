@@ -2,7 +2,8 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/toast';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { PageLayout } from '@/components/shared/PageLayout';
-import { cn } from '@/lib/utils';
+import { useAppShellStore } from '@/store/appShell.store';
+import { cn, BODY_STATES } from '@/lib/utils';
 
 type Variant = 'default' | 'success' | 'error' | 'warning';
 type Position =
@@ -30,8 +31,10 @@ const DemoSection: React.FC<{ title: string; children: React.ReactNode }> = ({
   </section>
 );
 
-export function ToasterDemo({ isInSidePane = false }: { isInSidePane?: boolean }) {
+export function ToasterDemo() {
   const toast = useToast();
+  const bodyState = useAppShellStore(s => s.bodyState);
+  const isInSidePane = bodyState === BODY_STATES.SIDE_PANE;
 
   const showToast = (variant: Variant, position: Position = 'bottom-right') => {
     toast.show({
@@ -79,7 +82,7 @@ export function ToasterDemo({ isInSidePane = false }: { isInSidePane?: boolean }
   };
 
   return (
-    <PageLayout isInSidePane={isInSidePane}>
+    <PageLayout>
       {/* Header */}
       {!isInSidePane && (
         <PageHeader

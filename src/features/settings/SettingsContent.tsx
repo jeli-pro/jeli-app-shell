@@ -13,7 +13,7 @@ import {
   Check
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useAppShell } from '@/context/AppShellContext'
+import { useAppShellStore } from '@/store/appShell.store'
 import { useAppStore } from '@/store/appStore'
 import { SettingsToggle } from './SettingsToggle'
 import { SettingsSection } from './SettingsSection'
@@ -28,26 +28,27 @@ const colorPresets = [
 ]
 
 export function SettingsContent() {
-  const shell = useAppShell()
-  const dispatch = shell.dispatch
+  const {
+    sidebarWidth, compactMode, primaryColor, autoExpandSidebar, reducedMotion,
+    setSidebarWidth, setCompactMode, setPrimaryColor, setAutoExpandSidebar,
+    setReducedMotion, resetToDefaults
+  } = useAppShellStore();
   const { isDarkMode, toggleDarkMode } = useAppStore()
 
-  const [tempSidebarWidth, setTempSidebarWidth] = useState(shell.sidebarWidth)
+  const [tempSidebarWidth, setTempSidebarWidth] = useState(sidebarWidth)
 
   const handleSidebarWidthChange = (width: number) => {
     setTempSidebarWidth(width)
-    dispatch({ type: 'SET_SIDEBAR_WIDTH', payload: width });
+    setSidebarWidth(width);
   }
 
   const handleReset = () => {
-    shell.resetToDefaults();
+    resetToDefaults();
     setTempSidebarWidth(280); // Reset temp state as well
   }
 
-  const setCompactMode = (payload: boolean) => dispatch({ type: 'SET_COMPACT_MODE', payload });
-  const setReducedMotion = (payload: boolean) => dispatch({ type: 'SET_REDUCED_MOTION', payload });
-  const setSidebarWidth = (payload: number) => {
-    dispatch({ type: 'SET_SIDEBAR_WIDTH', payload });
+  const handleSetSidebarWidth = (payload: number) => {
+    setSidebarWidth(payload);
     setTempSidebarWidth(payload);
   };
 
@@ -69,8 +70,8 @@ export function SettingsContent() {
           icon={<Minimize2 className="w-4 h-4" />}
           title="Compact Mode"
           description="Reduce spacing and sizes"
-          checked={shell.compactMode}
-          onCheckedChange={(payload) => dispatch({ type: 'SET_COMPACT_MODE', payload })}
+          checked={compactMode}
+          onCheckedChange={setCompactMode}
         />
 
         {/* Accent Color */}
@@ -84,12 +85,12 @@ export function SettingsContent() {
           </div>
           <div className="grid grid-cols-6 gap-2 pt-1">
             {colorPresets.map(color => {
-              const isActive = color.value === shell.primaryColor
+              const isActive = color.value === primaryColor
               return (
                 <button
                   key={color.name}
                   title={color.name}
-                  onClick={() => dispatch({ type: 'SET_PRIMARY_COLOR', payload: color.value })}
+                  onClick={() => setPrimaryColor(color.value)}
                   className={cn(
                     "w-8 h-8 rounded-full border-2 transition-transform hover:scale-110 flex items-center justify-center",
                     isActive ? 'border-primary' : 'border-transparent'
@@ -109,8 +110,8 @@ export function SettingsContent() {
           icon={<Eye className="w-4 h-4" />}
           title="Auto Expand Sidebar"
           description="Expand on hover when collapsed"
-          checked={shell.autoExpandSidebar}
-          onCheckedChange={(payload) => dispatch({ type: 'SET_AUTO_EXPAND_SIDEBAR', payload })}
+          checked={autoExpandSidebar}
+          onCheckedChange={setAutoExpandSidebar}
         />
 
         {/* Sidebar Width */}
@@ -148,8 +149,8 @@ export function SettingsContent() {
           icon={<Zap className="w-4 h-4" />}
           title="Reduced Motion"
           description="Minimize animations"
-          checked={shell.reducedMotion}
-          onCheckedChange={(payload) => dispatch({ type: 'SET_REDUCED_MOTION', payload })}
+          checked={reducedMotion}
+          onCheckedChange={setReducedMotion}
         />
       </SettingsSection>
 
@@ -164,7 +165,7 @@ export function SettingsContent() {
             onClick={() => {
               setCompactMode(false)
               setReducedMotion(false)
-              setSidebarWidth(320)
+              handleSetSidebarWidth(320)
             }}
             className="p-4 bg-accent/30 hover:bg-accent/50 rounded-xl transition-colors text-left"
           >
@@ -177,7 +178,7 @@ export function SettingsContent() {
             onClick={() => {
               setCompactMode(true)
               setReducedMotion(true)
-              setSidebarWidth(240)
+              handleSetSidebarWidth(240)
             }}
             className="p-4 bg-accent/30 hover:bg-accent/50 rounded-xl transition-colors text-left"
           >

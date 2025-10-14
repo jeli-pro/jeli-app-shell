@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { gsap } from 'gsap';
-import { useAppShell } from '@/context/AppShellContext';
+import { useAppShellStore } from '@/store/appShell.store';
 import { BODY_STATES } from '@/lib/utils';
 import { useStaggeredAnimation } from '@/hooks/useStaggeredAnimation.motion.hook';
 
@@ -9,7 +9,7 @@ export function useDashboardAnimations(
   statsCardsContainerRef: React.RefObject<HTMLDivElement>,
   featureCardsContainerRef: React.RefObject<HTMLDivElement>,
 ) {
-  const { bodyState } = useAppShell();
+  const bodyState = useAppShellStore(s => s.bodyState);
 
   // Animate cards on mount
   useStaggeredAnimation(statsCardsContainerRef, [], { y: 20, scale: 0.95 });

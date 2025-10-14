@@ -1,4 +1,4 @@
-import { useState, ChangeEvent, FormEvent } from 'react';
+import { ChangeEvent } from 'react';
 import { Eye, EyeOff, Mail, ArrowLeft } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { AnimatedInput } from '../effects/AnimatedInput';
@@ -6,53 +6,24 @@ import { BoxReveal } from '../effects/BoxReveal';
 import { Ripple } from '../effects/Ripple';
 import { TechOrbitDisplay } from '../effects/OrbitingCircles';
 import { BottomGradient } from '../effects/BottomGradient';
-
-// ==================== AnimatedForm Components ====================
+import { useLoginForm } from './useLoginForm.hook';
 
 // ==================== Main LoginPage Component ====================
-interface LoginPageProps {
-	onLogin?: (email: string, password: string) => void;
-	onForgotPassword?: (email: string) => void;
-	onSignUp?: () => void;
-}
+export function LoginPage() {
+	const {
+		state,
+		setState,
+		email,
+		setEmail,
+		setPassword,
+		isLoading,
+		errors,
+		showPassword,
+		setShowPassword,
+		handleLoginSubmit,
+		handleForgotSubmit,
+	} = useLoginForm();
 
-type LoginState = 'login' | 'forgot-password' | 'reset-sent';
-
-export function LoginPage({ onLogin, onForgotPassword }: LoginPageProps) {
-	const [state, setState] = useState<LoginState>('login');
-	const [email, setEmail] = useState('');
-	const [password, setPassword] = useState('');
-	const [isLoading, setIsLoading] = useState(false);
-	const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
-	const [showPassword, setShowPassword] = useState(false);
-
-	const handleLoginSubmit = async (e: FormEvent) => {
-		e.preventDefault();
-		setErrors({});
-		const newErrors: typeof errors = {};
-		if (!email) newErrors.email = 'Email is required';
-		if (!password) newErrors.password = 'Password is required';
-		if (Object.keys(newErrors).length > 0) {
-			setErrors(newErrors);
-			return;
-		}
-		setIsLoading(true);
-		await onLogin?.(email, password);
-		setIsLoading(false);
-	};
-
-	const handleForgotSubmit = async (e: FormEvent) => {
-		e.preventDefault();
-		setErrors({});
-		if (!email) {
-			setErrors({ email: 'Email is required' });
-			return;
-		}
-		setIsLoading(true);
-		await onForgotPassword?.(email);
-		setIsLoading(false);
-		setState('reset-sent');
-	};
 
 	const renderContent = () => {
 		if (state === 'reset-sent') {
@@ -131,7 +102,7 @@ export function LoginPage({ onLogin, onForgotPassword }: LoginPageProps) {
 										</button>
 									)}
 								</div>
-								<div className="h-4">{errors[field.label as keyof typeof errors] && <p className="text-red-500 text-xs">{errors[field.label as keyof typeof errors]}</p>}</div>
+								<div className="h-4">{errors[field.label.toLowerCase() as keyof typeof errors] && <p className="text-red-500 text-xs">{errors[field.label.toLowerCase() as keyof typeof errors]}</p>}</div>
 							</BoxReveal>
 						</div>
 					))}
