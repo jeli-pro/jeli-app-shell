@@ -32,11 +32,12 @@
     "postcss.config.js",
     "index.html",
     // "src"
-    "src/App.tsx",
     "src/components/layout/AppShell.tsx",
-    "src/components/layout/EnhancedSidebar.tsx",
-    "src/components/layout/Sidebar.tsx",
-    "src/components/layout/TopBar.tsx",
+    "src/hooks/useAppViewManager.hook.ts",
+    "src/hooks/useResizablePanes.hook.ts",
+    "src/hooks/useRightPaneContent.hook.tsx",
+    "src/pages/Messaging/index.tsx",
+    "src/providers/AppShellProvider.tsx",
     "src/store/appShell.store.ts"
   ],
   "ignore": {

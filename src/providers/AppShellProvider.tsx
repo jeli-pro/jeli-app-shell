@@ -10,12 +10,17 @@ interface AppShellProviderProps {
 
 export function AppShellProvider({ children, appName, appLogo, defaultSplitPaneWidth }: AppShellProviderProps) {
   const init = useAppShellStore(state => state.init);
+  const setDefaultPaneWidths = useAppShellStore(state => state.setDefaultPaneWidths);
   const setPrimaryColor = useAppShellStore(state => state.setPrimaryColor);
   const primaryColor = useAppShellStore(state => state.primaryColor);
 
   useEffect(() => {
     init({ appName, appLogo, defaultSplitPaneWidth });
   }, [appName, appLogo, defaultSplitPaneWidth, init]);
+
+  useEffect(() => {
+    setDefaultPaneWidths();
+  }, [setDefaultPaneWidths]);
 
   // Side effect for primary color
   useEffect(() => {

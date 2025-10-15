@@ -4,12 +4,17 @@ src/
   components/
     layout/
       AppShell.tsx
-      EnhancedSidebar.tsx
-      Sidebar.tsx
-      TopBar.tsx
+  hooks/
+    useAppViewManager.hook.ts
+    useResizablePanes.hook.ts
+    useRightPaneContent.hook.tsx
+  pages/
+    Messaging/
+      index.tsx
+  providers/
+    AppShellProvider.tsx
   store/
     appShell.store.ts
-  App.tsx
 index.html
 package.json
 postcss.config.js
@@ -20,6 +25,38 @@ vite.config.ts
 ```
 
 # Files
+
+## File: src/providers/AppShellProvider.tsx
+```typescript
+import { useEffect, type ReactNode, type ReactElement } from 'react';
+import { useAppShellStore } from '@/store/appShell.store';
+
+interface AppShellProviderProps {
+  children: ReactNode;
+  appName?: string;
+  appLogo?: ReactElement;
+  defaultSplitPaneWidth?: number;
+}
+
+export function AppShellProvider({ children, appName, appLogo, defaultSplitPaneWidth }: AppShellProviderProps) {
+  const init = useAppShellStore(state => state.init);
+  const setPrimaryColor = useAppShellStore(state => state.setPrimaryColor);
+  const primaryColor = useAppShellStore(state => state.primaryColor);
+
+  useEffect(() => {
+    init({ appName, appLogo, defaultSplitPaneWidth });
+  }, [appName, appLogo, defaultSplitPaneWidth, init]);
+
+  // Side effect for primary color
+  useEffect(() => {
+    // This effect is here because the store itself can't run side-effects on init
+    // before React has mounted. So we trigger it from the provider.
+    setPrimaryColor(primaryColor);
+  }, [primaryColor, setPrimaryColor]);
+
+  return <>{children}</>;
+}
+```
 
 ## File: postcss.config.js
 ```javascript
@@ -90,6 +127,435 @@ export default {
     "src/main.tsx",
     "src/pages"
   ]
+}
+```
+
+## File: src/hooks/useAppViewManager.hook.ts
+```typescript
+import { useMemo, useCallback } from 'react';
+import { useSearchParams, useNavigate, useLocation, useParams } from 'react-router-dom';
+import type { AppShellState, ActivePage } from '@/store/appShell.store';
+import type { DataItem, ViewMode, SortConfig, SortableField, GroupableField, Status, Priority } from '@/pages/DataDemo/types';
+import type { FilterConfig } from '@/pages/DataDemo/components/DataToolbar';
+import { BODY_STATES } from '@/lib/utils';
+
+const pageToPaneMap: Record<string, AppShellState['sidePaneContent']> = {
+  dashboard: 'main',
+  settings: 'settings',
+  toaster: 'toaster',
+  notifications: 'notifications',
+  'data-demo': 'dataDemo',
+  messaging: 'messaging',
+};
+
+/**
+ * A centralized hook to manage and synchronize all URL-based view states.
+ * This is the single source of truth for view modes, side panes, split views,
+ * and page-specific parameters.
+ */
+export function useAppViewManager() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const params = useParams<{ itemId: string; conversationId: string }>();
+  const { itemId, conversationId } = params;
+
+  // --- DERIVED STATE FROM URL ---
+
+  const view = searchParams.get('view');
+  const sidePane = searchParams.get('sidePane');
+  const right = searchParams.get('right');
+
+  const { bodyState, sidePaneContent } = useMemo(() => {
+    const validPanes: AppShellState['sidePaneContent'][] = ['details', 'settings', 'main', 'toaster', 'notifications', 'dataDemo', 'messaging'];
+    
+    if (conversationId) {
+      return { bodyState: BODY_STATES.SPLIT_VIEW, sidePaneContent: 'messaging' as const };
+    }
+
+    if (itemId) {
+      if (view === 'split') {
+        return { bodyState: BODY_STATES.SPLIT_VIEW, sidePaneContent: 'dataItem' as const };
+      }
+      return { bodyState: BODY_STATES.SIDE_PANE, sidePaneContent: 'dataItem' as const };
+    }
+    
+    if (sidePane && validPanes.includes(sidePane as AppShellState['sidePaneContent'])) {
+      return { bodyState: BODY_STATES.SIDE_PANE, sidePaneContent: sidePane as AppShellState['sidePaneContent'] };
+    }
+    
+    if (view === 'split' && right && validPanes.includes(right as AppShellState['sidePaneContent'])) {
+      return { bodyState: BODY_STATES.SPLIT_VIEW, sidePaneContent: right as AppShellState['sidePaneContent'] };
+    }
+    
+    return { bodyState: BODY_STATES.NORMAL, sidePaneContent: 'details' as const };
+  }, [itemId, conversationId, view, sidePane, right]);
+  
+  const currentActivePage = useMemo(() => (location.pathname.split('/')[1] || 'dashboard') as ActivePage, [location.pathname]);
+
+  // DataDemo specific state
+  const viewMode = useMemo(() => (searchParams.get('view') as ViewMode) || 'list', [searchParams]);
+	const page = useMemo(() => parseInt(searchParams.get('page') || '1', 10), [searchParams]);
+	const groupBy = useMemo(() => (searchParams.get('groupBy') as GroupableField | 'none') || 'none', [searchParams]);
+	const activeGroupTab = useMemo(() => searchParams.get('tab') || 'all', [searchParams]);
+	const filters = useMemo<FilterConfig>(
+		() => ({
+			searchTerm: searchParams.get('q') || '',
+			status: (searchParams.get('status')?.split(',') || []).filter(Boolean) as Status[],
+			priority: (searchParams.get('priority')?.split(',') || []).filter(Boolean) as Priority[],
+		}),
+		[searchParams],
+	);
+	const sortConfig = useMemo<SortConfig | null>(() => {
+		const sortParam = searchParams.get('sort');
+		if (!sortParam) return { key: 'updatedAt', direction: 'desc' }; // Default sort
+		if (sortParam === 'default') return null;
+
+		const [key, direction] = sortParam.split('-');
+		return { key: key as SortableField, direction: direction as 'asc' | 'desc' };
+	}, [searchParams]);
+
+  // --- MUTATOR ACTIONS ---
+
+  const handleParamsChange = useCallback(
+		(newParams: Record<string, string | string[] | null | undefined>, resetPage = false) => {
+			setSearchParams(
+				(prev) => {
+					const updated = new URLSearchParams(prev);
+					
+					for (const [key, value] of Object.entries(newParams)) {
+						if (value === null || value === undefined || (Array.isArray(value) && value.length === 0) || value === '') {
+							updated.delete(key);
+						} else if (Array.isArray(value)) {
+							updated.set(key, value.join(','));
+						} else {
+							updated.set(key, String(value));
+						}
+					}
+
+					if (resetPage) {
+						updated.delete('page');
+					}
+					if ('groupBy' in newParams) {
+						updated.delete('tab');
+					}
+
+					return updated;
+				},
+				{ replace: true },
+			);
+		},
+		[setSearchParams],
+	);
+
+  const navigateTo = useCallback((page: string) => {
+    navigate(page.startsWith('/') ? page : `/${page}`);
+  }, [navigate]);
+
+  const openSidePane = useCallback((pane: AppShellState['sidePaneContent']) => {
+    if (location.pathname === `/${Object.keys(pageToPaneMap).find(key => pageToPaneMap[key] === pane)}`) {
+        navigate({ pathname: '/dashboard', search: `?sidePane=${pane}` }, { replace: true });
+    } else {
+        handleParamsChange({ sidePane: pane, view: null, right: null });
+    }
+  }, [handleParamsChange, navigate, location.pathname]);
+
+  const closeSidePane = useCallback(() => {
+    if (itemId) {
+      navigate('/data-demo');
+    } else {
+      handleParamsChange({ sidePane: null, view: null, right: null });
+    }
+  }, [itemId, navigate, handleParamsChange]);
+
+  const toggleSidePane = useCallback((pane: AppShellState['sidePaneContent']) => {
+    if (sidePane === pane) {
+      closeSidePane();
+    } else {
+      openSidePane(pane);
+    }
+  }, [sidePane, openSidePane, closeSidePane]);
+
+  const toggleSplitView = useCallback(() => {
+    if (bodyState === BODY_STATES.SIDE_PANE) {
+      handleParamsChange({ view: 'split', right: sidePane, sidePane: null });
+    } else if (bodyState === BODY_STATES.SPLIT_VIEW) {
+      handleParamsChange({ sidePane: right, view: null, right: null });
+    } else { // From normal
+      const paneContent = pageToPaneMap[currentActivePage] || 'details';
+      handleParamsChange({ view: 'split', right: paneContent, sidePane: null });
+    }
+  }, [bodyState, sidePane, right, currentActivePage, handleParamsChange]);
+  
+  const setNormalView = useCallback(() => {
+      handleParamsChange({ sidePane: null, view: null, right: null });
+  }, [handleParamsChange]);
+
+  const switchSplitPanes = useCallback(() => {
+    if (bodyState !== BODY_STATES.SPLIT_VIEW) return;
+    const newSidePaneContent = pageToPaneMap[currentActivePage];
+    const newActivePage = Object.entries(pageToPaneMap).find(
+      ([, value]) => value === sidePaneContent
+    )?.[0] as ActivePage | undefined;
+
+    if (newActivePage && newSidePaneContent) {
+      navigate(`/${newActivePage}?view=split&right=${newSidePaneContent}`, { replace: true });
+    }
+  }, [bodyState, currentActivePage, sidePaneContent, navigate]);
+  
+  const closeSplitPane = useCallback((paneToClose: 'main' | 'right') => {
+    if (bodyState !== BODY_STATES.SPLIT_VIEW) return;
+    if (paneToClose === 'right') {
+      navigate(`/${currentActivePage}`, { replace: true });
+    } else { // Closing main pane
+      const pageToBecomeActive = Object.entries(pageToPaneMap).find(
+        ([, value]) => value === sidePaneContent
+      )?.[0] as ActivePage | undefined;
+      
+      if (pageToBecomeActive) {
+        navigate(`/${pageToBecomeActive}`, { replace: true });
+      } else {
+        navigate(`/dashboard`, { replace: true });
+      }
+    }
+  }, [bodyState, currentActivePage, sidePaneContent, navigate]);
+  
+  // DataDemo actions
+  const setViewMode = (mode: ViewMode) => handleParamsChange({ view: mode });
+  const setGroupBy = (val: string) => handleParamsChange({ groupBy: val === 'none' ? null : val }, true);
+  const setActiveGroupTab = (tab: string) => handleParamsChange({ tab: tab === 'all' ? null : tab });
+  const setFilters = (newFilters: FilterConfig) => {
+    handleParamsChange({ q: newFilters.searchTerm, status: newFilters.status, priority: newFilters.priority }, true);
+  }
+  const setSort = (config: SortConfig | null) => {
+    if (!config) {
+      handleParamsChange({ sort: 'default' }, true);
+    } else {
+      handleParamsChange({ sort: `${config.key}-${config.direction}` }, true);
+    }
+  }
+  const setTableSort = (field: SortableField) => {
+    let newSort: string | null = `${field}-desc`;
+    if (sortConfig?.key === field) {
+      if (sortConfig.direction === 'desc') newSort = `${field}-asc`;
+      else if (sortConfig.direction === 'asc') newSort = 'default';
+    }
+    handleParamsChange({ sort: newSort }, true);
+  };
+  const setPage = (newPage: number) => handleParamsChange({ page: newPage.toString() });
+
+  const onItemSelect = useCallback((item: DataItem) => {
+		navigate(`/data-demo/${item.id}${location.search}`);
+	}, [navigate, location.search]);
+
+
+  return useMemo(() => ({
+    // State
+    bodyState,
+    sidePaneContent,
+    currentActivePage,
+    itemId,
+    // DataDemo State
+    viewMode,
+    page,
+    groupBy,
+    activeGroupTab,
+    filters,
+    sortConfig,
+    // Actions
+    navigateTo,
+    openSidePane,
+    closeSidePane,
+    toggleSidePane,
+    toggleSplitView,
+    setNormalView,
+    switchSplitPanes,
+    closeSplitPane,
+    // DataDemo Actions
+    onItemSelect,
+    setViewMode,
+    setGroupBy,
+    setActiveGroupTab,
+    setFilters,
+    setSort,
+    setTableSort,
+    setPage,
+  }), [
+    bodyState, sidePaneContent, currentActivePage, itemId,
+    viewMode, page, groupBy, activeGroupTab, filters, sortConfig,
+    navigateTo, openSidePane, closeSidePane, toggleSidePane, toggleSplitView, setNormalView, 
+    switchSplitPanes, closeSplitPane, onItemSelect, setViewMode, setGroupBy, setActiveGroupTab, setFilters,
+    setSort, setTableSort, setPage
+  ]);
+}
+```
+
+## File: src/hooks/useRightPaneContent.hook.tsx
+```typescript
+import { useMemo } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import {
+  LayoutDashboard,
+  Settings,
+  Component,
+  Bell,
+  SlidersHorizontal,
+  Database,
+  MessageSquare,
+} from 'lucide-react';
+
+import { DashboardContent } from "@/pages/Dashboard";
+import { SettingsContent } from "@/features/settings/SettingsContent";
+import { ToasterDemo } from "@/pages/ToasterDemo";
+import { NotificationsPage } from "@/pages/Notifications";
+import DataDemoPage from "@/pages/DataDemo";
+import { DataDetailPanel } from "@/pages/DataDemo/components/DataDetailPanel";
+import { mockDataItems } from "@/pages/DataDemo/data/mockData";
+import { MessagingContent } from "@/pages/Messaging/components/MessagingContent";
+import type { AppShellState } from '@/store/appShell.store';
+
+export function useRightPaneContent(sidePaneContent: AppShellState['sidePaneContent']) {
+  const navigate = useNavigate();
+  const { itemId, conversationId } = useParams<{ itemId: string; conversationId: string }>();
+
+  const contentMap = useMemo(() => ({
+    main: {
+      title: "Dashboard",
+      icon: LayoutDashboard,
+      page: "dashboard",
+      content: <DashboardContent />,
+    },
+    settings: {
+      title: "Settings",
+      icon: Settings,
+      page: "settings",
+      content: <div className="p-6"><SettingsContent /></div>
+    },
+    toaster: {
+      title: "Toaster Demo",
+      icon: Component,
+      page: "toaster",
+      content: <ToasterDemo />,
+    },
+    notifications: {
+      title: "Notifications",
+      icon: Bell,
+      page: "notifications",
+      content: <NotificationsPage />,
+    },
+    dataDemo: {
+      title: "Data Showcase",
+      icon: Database,
+      page: "data-demo",
+      content: <DataDemoPage />,
+    },
+    messaging: {
+      title: "Conversation",
+      icon: MessageSquare,
+      page: "messaging",
+      content: <MessagingContent conversationId={conversationId} />,
+    },
+    details: {
+      title: "Details Panel",
+      icon: SlidersHorizontal,
+      content: (
+        <div className="p-6">
+          <p className="text-muted-foreground">
+            This is the side pane. It can be used to display contextual
+            information, forms, or actions related to the main content.
+          </p>
+        </div>
+      ),
+    },
+  }), [conversationId]);
+
+  const selectedItem = useMemo(() => {
+    if (!itemId) return null;
+    return mockDataItems.find(item => item.id === itemId) ?? null;
+  }, [itemId]);
+
+  const { meta, content } = useMemo(() => {
+    if (sidePaneContent === 'dataItem' && selectedItem) {
+      return {
+        meta: { title: "Item Details", icon: Database, page: `data-demo/${itemId}` },
+        content: <DataDetailPanel item={selectedItem} onClose={() => navigate('/data-demo')} />,
+      };
+    }
+    if (sidePaneContent === 'messaging') {
+      return {
+       meta: contentMap.messaging,
+       content: <MessagingContent conversationId={conversationId} />,
+     };
+   }
+    const mappedContent = contentMap[sidePaneContent as keyof typeof contentMap] || contentMap.details;
+    return {
+      meta: mappedContent,
+      content: mappedContent.content,
+    };
+  }, [sidePaneContent, selectedItem, navigate, contentMap, itemId, conversationId]);
+
+  return { meta, content };
+}
+```
+
+## File: src/pages/Messaging/index.tsx
+```typescript
+import React, { useRef } from "react";
+import { useParams } from "react-router-dom";
+import { ConversationList } from "./components/ConversationList";
+import { cn } from "@/lib/utils";
+import { MessagingContent } from "./components/MessagingContent";
+import { useAppShellStore } from "@/store/appShell.store";
+import { useResizableMessagingList } from "@/hooks/useResizablePanes.hook";
+import { BODY_STATES } from "@/lib/utils";
+
+export default function MessagingPage() {
+  const { conversationId } = useParams<{ conversationId: string }>();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const COLLAPSED_WIDTH = 80;
+
+  const { messagingListWidth, isResizingMessagingList, isMessagingListCollapsed, bodyState } = useAppShellStore(s => ({
+    messagingListWidth: s.messagingListWidth,
+    isResizingMessagingList: s.isResizingMessagingList,
+    isMessagingListCollapsed: s.isMessagingListCollapsed,
+    bodyState: s.bodyState,
+  }));
+  const { setIsResizingMessagingList } = useAppShellStore.getState();
+
+  useResizableMessagingList(containerRef);
+
+  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (isMessagingListCollapsed) return;
+    e.preventDefault();
+    setIsResizingMessagingList(true);
+  };
+
+  const listWidth = isMessagingListCollapsed ? COLLAPSED_WIDTH : messagingListWidth;
+
+  if (bodyState === BODY_STATES.SPLIT_VIEW) {
+    return (
+      <div className="h-full w-full">
+        <ConversationList />
+      </div>
+    );
+  }
+
+  return (
+    <div ref={containerRef} className={cn(
+      "h-full w-full flex bg-background", 
+      isResizingMessagingList && !isMessagingListCollapsed && "cursor-col-resize select-none"
+    )}>
+        <div style={{ width: `${listWidth}px` }} className="flex-shrink-0 transition-[width] duration-300 ease-in-out">
+          <ConversationList />
+        </div>
+        {!isMessagingListCollapsed && (
+          <div onMouseDown={handleMouseDown} className="w-2 flex-shrink-0 cursor-col-resize group flex items-center justify-center">
+            <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200" />
+          </div>
+        )}
+        <div className="flex-1 min-w-0"><MessagingContent conversationId={conversationId} /></div>
+    </div>
+  );
 }
 ```
 
@@ -264,362 +730,6 @@ export default defineConfig({
     },
   },
 })
-```
-
-## File: src/components/layout/Sidebar.tsx
-```typescript
-import * as React from 'react';
-import { ChevronDown } from 'lucide-react';
-import { Slot } from '@radix-ui/react-slot';
-import { useAppShellStore } from '@/store/appShell.store';
-import { SIDEBAR_STATES } from '@/lib/utils';
-import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
-
-// --- Context ---
-interface SidebarContextValue {
-  isCollapsed: boolean;
-  isPeek: boolean;
-  compactMode: boolean;
-}
-
-const SidebarContext = React.createContext<SidebarContextValue | null>(null);
-
-// eslint-disable-next-line react-refresh/only-export-components
-export const useSidebar = () => {
-  const context = React.useContext(SidebarContext);
-  if (!context) {
-    throw new Error('useSidebar must be used within a Sidebar component');
-  }
-  return context;
-};
-
-// --- Main Sidebar Component ---
-interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
-  children: React.ReactNode;
-}
-
-const Sidebar = React.forwardRef<HTMLDivElement, SidebarProps>(
-  ({ children, className, ...props }, ref) => {
-    const sidebarState = useAppShellStore(s => s.sidebarState);
-    const compactMode = useAppShellStore(s => s.compactMode);
-    const isCollapsed = sidebarState === SIDEBAR_STATES.COLLAPSED;
-    const isPeek = sidebarState === SIDEBAR_STATES.PEEK;
-
-    return (
-      <SidebarContext.Provider value={{ isCollapsed, isPeek, compactMode }}>
-        <div
-          ref={ref}
-          className={cn(
-            'relative bg-card flex-shrink-0',
-            'h-full',
-            isPeek && 'shadow-xl z-40',
-            compactMode && 'text-sm',
-            className,
-          )}
-          {...props}
-        >
-          {isPeek && <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" />}
-          {children}
-        </div>
-      </SidebarContext.Provider>
-    );
-  },
-);
-Sidebar.displayName = 'Sidebar';
-
-// --- Sidebar Content Wrapper ---
-const SidebarContent = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => {
-  const { compactMode } = useSidebar();
-  return (
-    <div
-      ref={ref}
-      className={cn(
-        'relative z-10 h-full flex flex-col',
-        compactMode ? 'p-3' : 'p-4',
-        className,
-      )}
-      {...props}
-    />
-  );
-});
-SidebarContent.displayName = 'SidebarContent';
-
-// --- Sidebar Header ---
-const SidebarHeader = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => {
-  const { isCollapsed } = useSidebar();
-  return (
-    <div
-      ref={ref}
-      className={cn(
-        'flex items-center gap-3',
-        isCollapsed ? 'justify-center' : 'px-3',
-        'h-16',
-        className,
-      )}
-      {...props}
-    />
-  );
-});
-SidebarHeader.displayName = 'SidebarHeader';
-
-const SidebarTitle = React.forwardRef<
-  HTMLParagraphElement,
-  React.HTMLAttributes<HTMLParagraphElement>
->(({ className, ...props }, ref) => {
-  const { isCollapsed } = useSidebar();
-  if (isCollapsed) return null;
-  return (
-    <h1
-      ref={ref}
-      className={cn('text-lg font-bold nav-label', className)}
-      {...props}
-    />
-  );
-});
-SidebarTitle.displayName = 'SidebarTitle';
-
-// --- Sidebar Body ---
-const SidebarBody = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn(
-      'flex-1 overflow-y-auto space-y-6 pt-4',
-      className,
-    )}
-    {...props}
-  />
-));
-SidebarBody.displayName = 'SidebarBody';
-
-// --- Sidebar Footer ---
-const SidebarFooter = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => {
-  const { compactMode } = useSidebar();
-  return (
-    <div
-      ref={ref}
-      className={cn('pt-4 border-t border-border', compactMode && 'pt-3', className)}
-      {...props}
-    />
-  );
-});
-SidebarFooter.displayName = 'SidebarFooter';
-
-// --- Sidebar Section ---
-const SidebarSection = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement> & {
-    title?: string;
-    collapsible?: boolean;
-    defaultExpanded?: boolean;
-  }
->(({ title, collapsible = false, defaultExpanded = true, children, ...props }, ref) => {
-  const { isCollapsed } = useSidebar();
-  const [isExpanded, setIsExpanded] = React.useState(defaultExpanded);
-
-  const handleToggle = () => {
-    if (collapsible) {
-      setIsExpanded(!isExpanded);
-    }
-  };
-
-  return (
-    <div ref={ref} className="space-y-1" {...props}>
-      {!isCollapsed && title && (
-        <div
-          className={cn(
-            'flex items-center justify-between px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider',
-            collapsible && 'cursor-pointer hover:text-foreground transition-colors',
-          )}
-          onClick={handleToggle}
-        >
-          <span className="section-title">{title}</span>
-          {collapsible && (
-            <ChevronDown
-              className={cn(
-                'section-chevron w-3 h-3 transition-transform',
-                isExpanded ? 'rotate-0' : '-rotate-90',
-              )}
-            />
-          )}
-        </div>
-      )}
-      {(!collapsible || isExpanded || isCollapsed) && (
-        <nav className="space-y-1">{children}</nav>
-      )}
-    </div>
-  );
-});
-SidebarSection.displayName = 'SidebarSection';
-
-// --- Sidebar Menu Item ---
-const SidebarMenuItem = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => {
-  return <div ref={ref} className={cn('group/item relative flex items-stretch', className)} {...props} />;
-});
-SidebarMenuItem.displayName = 'SidebarMenuItem';
-
-
-// --- Sidebar Menu Button ---
-interface SidebarMenuButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  asChild?: boolean;
-  isActive?: boolean;
-}
-const SidebarMenuButton = React.forwardRef<HTMLButtonElement, SidebarMenuButtonProps>(
-  ({ className, asChild = false, isActive, ...props }, ref) => {
-    const { isCollapsed, compactMode } = useSidebar();
-    const Comp = asChild ? Slot : 'button';
-
-    return (
-      <Comp
-        ref={ref}
-        className={cn(
-          'group flex items-center gap-3 rounded-lg cursor-pointer transition-all duration-200 w-full text-left flex-1',
-          compactMode ? 'px-2 py-1.5' : 'px-4 py-2.5',
-          'hover:bg-accent',
-          isActive && 'bg-primary text-primary-foreground hover:bg-primary/90',
-          isCollapsed && 'justify-center',
-          className
-        )}
-        {...props}
-      />
-    );
-  }
-);
-SidebarMenuButton.displayName = 'SidebarMenuButton';
-
-// --- Sidebar Menu Action ---
-const SidebarMenuAction = React.forwardRef<
-  HTMLButtonElement,
-  React.ButtonHTMLAttributes<HTMLButtonElement>
->(({ className, ...props }, ref) => {
-  const { isCollapsed } = useSidebar();
-  if (isCollapsed) return null;
-  return (
-    <Button
-      ref={ref}
-      variant="ghost"
-      size="icon"
-      className={cn(
-        'absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 rounded-md opacity-0 group-hover/item:opacity-100 transition-opacity',
-        'focus:opacity-100', // show on focus for accessibility
-        className
-      )}
-      {...props}
-    />
-  );
-});
-SidebarMenuAction.displayName = 'SidebarMenuAction';
-
-// --- Sidebar Menu Label ---
-const SidebarLabel = React.forwardRef<
-  HTMLSpanElement,
-  React.HTMLAttributes<HTMLSpanElement>
->(({ className, ...props }, ref) => {
-  const { isCollapsed } = useSidebar();
-  if (isCollapsed) return null;
-  return (
-    <span
-      ref={ref}
-      className={cn('nav-label flex-1 font-medium truncate', className)}
-      {...props}
-    />
-  );
-});
-SidebarLabel.displayName = 'SidebarLabel';
-
-
-// --- Sidebar Menu Badge ---
-const SidebarBadge = React.forwardRef<
-  HTMLSpanElement,
-  React.HTMLAttributes<HTMLSpanElement>
->(({ className, children, ...props }, ref) => {
-  const { isCollapsed } = useSidebar();
-  if (isCollapsed) return null;
-  const badgeContent = typeof children === 'number' && children > 99 ? '99+' : children;
-  return (
-    <span
-      ref={ref}
-      className={cn(
-        'nav-badge bg-destructive text-destructive-foreground text-xs px-1.5 py-0.5 rounded-full min-w-[1.25rem] text-center',
-        className
-      )}
-      {...props}
-    >
-      {badgeContent}
-    </span>
-  );
-});
-SidebarBadge.displayName = 'SidebarBadge';
-
-
-// --- Sidebar Tooltip ---
-interface SidebarTooltipProps extends React.HTMLAttributes<HTMLDivElement> {
-  label: string;
-  badge?: number | string;
-}
-const SidebarTooltip = ({ label, badge, className, ...props }: SidebarTooltipProps) => {
-  const { isCollapsed } = useSidebar();
-  if (!isCollapsed) return null;
-  return (
-    <div
-      className={cn(
-        'absolute left-full ml-2 px-2 py-1 bg-popover text-popover-foreground text-sm rounded-md shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50',
-        className
-      )}
-      {...props}
-    >
-      {label}
-      {badge && (
-        <span className="ml-2 bg-destructive text-destructive-foreground text-xs px-1.5 py-0.5 rounded-full">
-          {typeof badge === 'number' && badge > 99 ? '99+' : badge}
-        </span>
-      )}
-    </div>
-  );
-};
-SidebarTooltip.displayName = 'SidebarTooltip';
-
-
-// --- Icon Wrapper for consistent sizing ---
-const SidebarIcon = ({ children, className }: { children: React.ReactNode, className?: string }) => {
-  return (
-    <div className={cn("flex-shrink-0 w-4 h-4", className)}>
-      {children}
-    </div>
-  )
-}
-
-export {
-  Sidebar,
-  SidebarContent,
-  SidebarHeader,
-  SidebarTitle,
-  SidebarBody,
-  SidebarFooter,
-  SidebarSection,
-  SidebarMenuItem,
-  SidebarMenuButton,
-  SidebarMenuAction,
-  SidebarLabel,
-  SidebarBadge,
-  SidebarTooltip,
-  SidebarIcon
-};
 ```
 
 ## File: src/store/appShell.store.ts
@@ -831,387 +941,163 @@ export const useRightPaneWidth = () => useAppShellStore(state =>
 );
 ```
 
-## File: src/components/layout/TopBar.tsx
+## File: src/hooks/useResizablePanes.hook.ts
 ```typescript
-import React from 'react';
-import {
-  Menu, 
-  Moon, 
-  Sun,
-  Settings,
-  Command,
-  Zap,
-} from 'lucide-react'
-import { cn } from '@/lib/utils'
-import { BODY_STATES } from '@/lib/utils'
-import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
-import { UserDropdown } from './UserDropdown'
-import { ViewModeSwitcher } from './ViewModeSwitcher'
-import { useAppShellStore } from '@/store/appShell.store'
+import { useEffect } from 'react';
+import { gsap } from 'gsap';
+import { useAppShellStore } from '@/store/appShell.store';
+import { BODY_STATES } from '@/lib/utils';
 
-interface TopBarProps {
-  children?: React.ReactNode
-}
+export function useResizableSidebar(
+  sidebarRef: React.RefObject<HTMLDivElement>,
+  resizeHandleRef: React.RefObject<HTMLDivElement>
+) {
+  const isResizing = useAppShellStore(s => s.isResizing);
+  const { setSidebarWidth, setIsResizing } = useAppShellStore.getState();
 
-export const TopBar = React.memo(({
-  children,
-}: TopBarProps) => {
-  const bodyState = useAppShellStore(s => s.bodyState)
-  const isDarkMode = useAppShellStore(s => s.isDarkMode);
-  const { 
-    toggleSidebar, 
-    setCommandPaletteOpen,
-    toggleDarkMode,
-  } = useAppShellStore.getState();
-  const viewManager = useAppViewManager();
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizing) return;
 
-  return (
-    <div className={cn(
-      "h-20 bg-background border-b border-border flex items-center justify-between px-6 z-50 gap-4"
-    )}>
-      {/* Left Section - Sidebar Controls & Breadcrumbs */}
-      <div className="flex items-center gap-4">
-        {/* Sidebar Controls */}
-        <button
-          onClick={toggleSidebar}
-          className={cn(
-            "h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors"
-          )}
-          title="Toggle Sidebar"
-        >
-          <Menu className="w-5 h-5" />
-        </button>
+      const newWidth = Math.max(200, Math.min(500, e.clientX));
+      setSidebarWidth(newWidth);
 
-      </div>
-
-      {/* Right Section - page controls, and global controls */}
-      <div className="flex items-center gap-3">
-        {children}
-
-        {/* Separator */}
-        <div className="w-px h-6 bg-border mx-2" />
-
-        {/* Quick Actions */}
-        <div className="flex items-center gap-3">
-
-          <button
-            onClick={() => setCommandPaletteOpen(true)}
-            className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
-            title="Command Palette (Ctrl+K)"
-          >
-            <Command className="w-5 h-5 group-hover:scale-110 transition-transform" />
-          </button>
-
-        <button
-          className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
-          title="Quick Actions"
-        >
-          <Zap className="w-5 h-5 group-hover:scale-110 transition-transform" />
-        </button>
-
-        {bodyState !== BODY_STATES.SPLIT_VIEW && <ViewModeSwitcher />}
-
-        <div className="w-px h-6 bg-border mx-2" />
-
-        {/* Theme and Settings */}
-        <button
-          onClick={toggleDarkMode}
-          className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
-          title="Toggle Dark Mode"
-        >
-          {isDarkMode ? (
-            <Sun className="w-5 h-5 group-hover:scale-110 transition-transform" />
-          ) : (
-            <Moon className="w-5 h-5 group-hover:scale-110 transition-transform" />
-          )}
-        </button>
-
-        <button
-          onClick={() => viewManager.toggleSidePane('settings')}
-          className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
-          title="Settings"
-        >
-          <Settings className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
-        </button>
-        <UserDropdown />
-        </div>
-      </div>
-    </div>
-  )
-});
-```
-
-## File: src/components/layout/EnhancedSidebar.tsx
-```typescript
-import React from 'react';
-import {
-  Home,
-  Settings,
-  HelpCircle,
-  Component,
-  Rocket,
-  MoreHorizontal,
-  Bell,
-  Search,
-  FileText,
-  Star,
-  Trash2,
-  FolderOpen,
-  Mail,
-  Bookmark,
-  Download,
-  User,
-  Plus,
-  Database,
-} from 'lucide-react';
-import { useAppShellStore, type ActivePage } from '@/store/appShell.store';
-import {
-  Workspaces,
-  WorkspaceTrigger,
-  WorkspaceContent,
-  type Workspace,
-} from './WorkspaceSwitcher';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarHeader,
-  SidebarTitle,
-  SidebarBody,
-  SidebarFooter,
-  SidebarSection,
-  SidebarMenuItem,
-  SidebarMenuButton,
-  SidebarMenuAction,
-  SidebarLabel,
-  SidebarBadge,
-  SidebarTooltip,
-  SidebarIcon,
-  useSidebar,
-} from './Sidebar';
-import { ViewModeSwitcher } from './ViewModeSwitcher';
-import { cn } from '@/lib/utils';
-import { useAppViewManager } from '@/hooks/useAppViewManager.hook';
-
-interface MyWorkspace extends Workspace {
-  logo: string;
-  plan: string;
-}
-
-const mockWorkspaces: MyWorkspace[] = [
-  { id: 'ws1', name: 'Acme Inc.', logo: 'https://avatar.vercel.sh/acme.png', plan: 'Pro' },
-  { id: 'ws2', name: 'Monsters Inc.', logo: 'https://avatar.vercel.sh/monsters.png', plan: 'Free' },
-  { id: 'ws3', name: 'Stark Industries', logo: 'https://avatar.vercel.sh/stark.png', plan: 'Enterprise' },
-];
-
-const SidebarWorkspaceTrigger = () => {
-  const { isCollapsed, compactMode } = useSidebar();
-
-  return (
-    <WorkspaceTrigger
-      collapsed={isCollapsed}
-      className={cn(
-        'rounded-xl transition-colors hover:bg-accent/50 w-full',
-        isCollapsed ? 'p-2' : 'p-3 bg-accent/50',
-      )}
-      avatarClassName={cn(compactMode ? 'h-8 w-8' : 'h-10 w-10')}
-    />
-  );
-};
-
-interface SidebarProps {
-  onMouseEnter?: () => void;
-  onMouseLeave?: () => void;
-}
-
-export const EnhancedSidebar = React.memo(React.forwardRef<HTMLDivElement, SidebarProps>(
-  ({ onMouseEnter, onMouseLeave }, ref) => {
-    const sidebarWidth = useAppShellStore(s => s.sidebarWidth);
-    const compactMode = useAppShellStore(s => s.compactMode);
-    const appName = useAppShellStore(s => s.appName);
-    const appLogo = useAppShellStore(s => s.appLogo);
-    const [selectedWorkspace, setSelectedWorkspace] = React.useState(mockWorkspaces[0]);
-
-    return (
-      <Sidebar
-        ref={ref}
-        style={{ width: sidebarWidth }}
-        onMouseEnter={onMouseEnter}
-        onMouseLeave={onMouseLeave}
-      >
-        <SidebarContent>
-          <SidebarHeader>
-            {appLogo || (
-              <div className="p-2 bg-primary/20 rounded-lg">
-                <Rocket className="w-5 h-5 text-primary" />
-              </div>
-            )}
-            <SidebarTitle>{appName}</SidebarTitle>
-          </SidebarHeader>
-
-          <SidebarBody>
-            <SidebarSection title="Main">
-              <AppMenuItem icon={Home} label="Dashboard" page="dashboard" />
-              <AppMenuItem icon={Database} label="Data Demo" page="data-demo" />
-              <AppMenuItem icon={Mail} label="Messaging" page="messaging" badge={7} />
-              <AppMenuItem icon={Search} label="Search" />
-              <AppMenuItem icon={Bell} label="Notifications" badge={3} page="notifications" opensInSidePane />
-            </SidebarSection>
-            
-            <SidebarSection title="Workspace" collapsible defaultExpanded>
-              <AppMenuItem icon={FileText} label="Documents" hasActions>
-                <AppMenuItem icon={FileText} label="Recent" isSubItem />
-                <AppMenuItem icon={Star} label="Starred" isSubItem />
-                <AppMenuItem icon={Trash2} label="Trash" isSubItem />
-              </AppMenuItem>
-              <AppMenuItem icon={FolderOpen} label="Projects" hasActions />
-              <AppMenuItem icon={Mail} label="Messages" badge={12} />
-            </SidebarSection>
-            
-            <SidebarSection title="Personal" collapsible>
-              <AppMenuItem icon={Bookmark} label="Bookmarks" />
-              <AppMenuItem icon={Star} label="Favorites" />
-              <AppMenuItem icon={Download} label="Downloads" />
-            </SidebarSection>
-
-            <SidebarSection title="Components" collapsible defaultExpanded>
-              <AppMenuItem icon={Component} label="Toaster" page="toaster" />
-            </SidebarSection>
-          </SidebarBody>
-
-          <SidebarFooter>
-            <SidebarSection>
-              <AppMenuItem icon={User} label="Profile" />
-              <AppMenuItem icon={Settings} label="Settings" page="settings" />
-              <AppMenuItem icon={HelpCircle} label="Help" />
-            </SidebarSection>
-
-            <div className={cn(compactMode ? 'mt-4' : 'mt-6')}>
-              <Workspaces
-                workspaces={mockWorkspaces}
-                selectedWorkspaceId={selectedWorkspace.id}
-                onWorkspaceChange={setSelectedWorkspace}
-              >
-                <SidebarWorkspaceTrigger />
-                <WorkspaceContent>
-                  <button className="flex w-full items-center gap-2 rounded-sm px-2 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground focus:outline-none">
-                    <Plus className="h-4 w-4" />
-                    <span>Create Workspace</span>
-                  </button>
-                </WorkspaceContent>
-              </Workspaces>
-            </div>
-          </SidebarFooter>
-        </SidebarContent>
-      </Sidebar>
-    );
-  },
-));
-EnhancedSidebar.displayName = 'EnhancedSidebar';
-
-
-// Example of a reusable menu item component built with the new Sidebar primitives
-interface AppMenuItemProps {
-  icon: React.ElementType;
-  label: string;
-  badge?: number;
-  hasActions?: boolean;
-  children?: React.ReactNode;
-  isSubItem?: boolean;
-  page?: ActivePage;
-  opensInSidePane?: boolean;
-}
-
-const AppMenuItem: React.FC<AppMenuItemProps> = ({ icon: Icon, label, badge, hasActions, children, isSubItem = false, page, opensInSidePane = false }) => {
-  const compactMode = useAppShellStore(state => state.compactMode);
-  const { setDraggedPage, setDragHoverTarget } = useAppShellStore.getState()
-  const { isCollapsed } = useSidebar();
-  const viewManager = useAppViewManager();
-
-  const isActive = (
-    (!opensInSidePane && page && viewManager.currentActivePage === page)
-  ) || (
-    opensInSidePane && page === 'notifications' && viewManager.sidePaneContent === 'notifications'
-  );
-
-  const handleClick = () => {
-    if (page) {
-      if (opensInSidePane) {
-        // The only item using this is Notifications
-        viewManager.toggleSidePane('notifications');
-      } else {
-        viewManager.navigateTo(page);
+      if (sidebarRef.current) {
+        gsap.set(sidebarRef.current, { width: newWidth });
       }
+      if (resizeHandleRef.current) {
+        gsap.set(resizeHandleRef.current, { left: newWidth });
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+
+    if (isResizing) {
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
     }
-  };
 
-  return (
-    <div className={isSubItem ? (compactMode ? 'ml-4' : 'ml-6') : ''}>
-      <SidebarMenuItem>
-        <SidebarMenuButton
-          onClick={handleClick}
-          isActive={isActive}
-          draggable={!!page}
-          onDragStart={(_e) => {
-            if (page) {
-              // set dragged page in AppShell store
-              setDraggedPage(page);
-            }
-          }}
-          onDragEnd={() => {
-            setDraggedPage(null);
-            setDragHoverTarget(null);
-          }}
-        >
-          <SidebarIcon>
-            <Icon className={isSubItem ? "w-3 h-3" : "w-4 h-4"}/>
-          </SidebarIcon>
-          <SidebarLabel>{label}</SidebarLabel>
-          {badge && <SidebarBadge>{badge}</SidebarBadge>}
-          <SidebarTooltip label={label} badge={badge} />
-        </SidebarMenuButton>
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizing, setSidebarWidth, setIsResizing, sidebarRef, resizeHandleRef]);
+}
 
-        {page && !isCollapsed && ( // Always render switcher if there's a page
-          <div className={cn(
-            "absolute top-1/2 -translate-y-1/2 z-10",
-            "opacity-0 group-hover/item:opacity-100 group-focus-within/item:opacity-100",
-            "transition-opacity pointer-events-none group-hover/item:pointer-events-auto",
-            // If there are actions, move left to make space for the action button
-            hasActions ? "right-10" : "right-2"
-          )}>
-            <ViewModeSwitcher targetPage={page} />
-          </div>
-        )}
+export function useResizableRightPane() {
+  const isResizingRightPane = useAppShellStore(s => s.isResizingRightPane);
+  const bodyState = useAppShellStore(s => s.bodyState);
+  const { setSplitPaneWidth, setSidePaneWidth, setIsResizingRightPane } = useAppShellStore.getState();
 
-        {hasActions && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <SidebarMenuAction>
-                <MoreHorizontal className="h-4 w-4" />
-              </SidebarMenuAction>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent side="right" align="start">
-              <DropdownMenuItem>
-                <span>Edit {label}</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <span>Delete {label}</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
-      </SidebarMenuItem>
-      {!isCollapsed && children && (
-        <div className="space-y-1 mt-1">{children}</div>
-      )}
-    </div>
-  );
-};
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizingRightPane) return;
+
+      const newWidth = window.innerWidth - e.clientX;
+      if (bodyState === BODY_STATES.SPLIT_VIEW) {
+        setSplitPaneWidth(newWidth);
+      } else {
+        setSidePaneWidth(newWidth);
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsResizingRightPane(false);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+
+    if (isResizingRightPane) {
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = '';
+    };
+  }, [isResizingRightPane, setSplitPaneWidth, setSidePaneWidth, setIsResizingRightPane, bodyState]);
+}
+
+export function useResizableMessagingList(containerRef: React.RefObject<HTMLDivElement>) {
+  const isResizingMessagingList = useAppShellStore(s => s.isResizingMessagingList);
+  const { setMessagingListWidth, setIsResizingMessagingList } = useAppShellStore.getState();
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizingMessagingList || !containerRef.current) return;
+
+      const containerRect = containerRef.current.getBoundingClientRect();
+      const newWidth = e.clientX - containerRect.left;
+      
+      setMessagingListWidth(newWidth);
+    };
+
+    const handleMouseUp = () => {
+      setIsResizingMessagingList(false);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+
+    if (isResizingMessagingList) {
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+    }
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+  }, [isResizingMessagingList, setMessagingListWidth, setIsResizingMessagingList, containerRef]);
+}
+
+export function useResizableMessagingProfile(containerRef: React.RefObject<HTMLDivElement>) {
+  const isResizingMessagingProfile = useAppShellStore(s => s.isResizingMessagingProfile);
+  const { setMessagingProfileWidth, setIsResizingMessagingProfile } = useAppShellStore.getState();
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizingMessagingProfile || !containerRef.current) return;
+
+      const containerRect = containerRef.current.getBoundingClientRect();
+      const newWidth = containerRect.right - e.clientX;
+      
+      setMessagingProfileWidth(newWidth);
+    };
+
+    const handleMouseUp = () => {
+      setIsResizingMessagingProfile(false);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+
+    if (isResizingMessagingProfile) {
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+    }
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = '';
+    };
+  }, [isResizingMessagingProfile, setMessagingProfileWidth, setIsResizingMessagingProfile, containerRef]);
+}
 ```
 
 ## File: package.json
@@ -1591,241 +1477,4 @@ export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalet
     </div>
   )
 }
-```
-
-## File: src/App.tsx
-```typescript
-import React, { useEffect } from "react";
-import {
-  createBrowserRouter,
-  RouterProvider,
-  Outlet,
-  Navigate,
-  useNavigate, // used in LoginPageWrapper
-  useLocation,
-} from "react-router-dom";
-
-import { AppShell } from "./components/layout/AppShell";
-import { AppShellProvider } from "./providers/AppShellProvider";
-import { useAppShellStore } from "./store/appShell.store";
-import { useAuthStore } from "./store/authStore";
-import "./index.css";
-
-// Import library components
-import { EnhancedSidebar } from "./components/layout/EnhancedSidebar";
-import { MainContent } from "./components/layout/MainContent";
-import { RightPane } from "./components/layout/RightPane";
-import { TopBar } from "./components/layout/TopBar";
-import { CommandPalette } from "./components/global/CommandPalette";
-import { ToasterProvider } from "./components/ui/toast";
-
-// --- Page/Content Components for Pages and Panes ---
-import { DashboardContent } from "./pages/Dashboard";
-import { SettingsPage } from "./pages/Settings";
-import { ToasterDemo } from "./pages/ToasterDemo";
-import { NotificationsPage } from "./pages/Notifications";
-import DataDemoPage from "./pages/DataDemo";
-import MessagingPage from "./pages/Messaging";
-import { LoginPage } from "./components/auth/LoginPage";
-
-// --- Icons ---
-import {
-  Search,
-  Filter,
-  Plus,
-  ChevronRight,
-  Rocket,
-} from "lucide-react";
-
-// --- Utils & Hooks ---
-import { cn } from "./lib/utils";
-import { useAppViewManager } from "./hooks/useAppViewManager.hook";
-import { useRightPaneContent } from "./hooks/useRightPaneContent.hook";
-import { BODY_STATES } from "./lib/utils";
-
-// Checks for authentication and redirects to login if needed
-function ProtectedRoute() {
-  const { isAuthenticated } = useAuthStore();
-  const location = useLocation();
-  if (!isAuthenticated) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
-  }
-  return <Outlet />;
-}
-
-// A root component to apply global styles and effects
-function Root() {
-  const isDarkMode = useAppShellStore((state) => state.isDarkMode);
-
-  useEffect(() => {
-    document.documentElement.classList.toggle("dark", isDarkMode);
-  }, [isDarkMode]);
-
-  return <Outlet />;
-}
-
-// The main layout for authenticated parts of the application
-function ProtectedLayout() {
-
-  return (
-    <div className="h-screen w-screen overflow-hidden bg-background">
-      <AppShellProvider
-        appName="Jeli App"
-        appLogo={
-          <div className="p-2 bg-primary/20 rounded-lg">
-            <Rocket className="w-5 h-5 text-primary" />
-          </div>
-        }
-      >
-        <ComposedApp />
-      </AppShellProvider>
-    </div>
-  );
-}
-
-// Content for the Top Bar (will be fully refactored in Part 2)
-function AppTopBar() {
-  const [searchTerm, setSearchTerm] = React.useState("");
-  const [isSearchFocused, setIsSearchFocused] = React.useState(false);
-  const location = useLocation();
-  const activePage = location.pathname.split('/').filter(Boolean).pop()?.replace('-', ' ') || 'dashboard';
-
-  return (
-    <div className="flex items-center gap-3 flex-1">
-      <div
-        className={cn(
-          "hidden md:flex items-center gap-2 text-sm transition-opacity",
-          {
-            "opacity-0 pointer-events-none":
-              isSearchFocused && activePage === "dashboard",
-          },
-        )}
-      >
-        <a
-          href="#"
-          className="text-muted-foreground hover:text-foreground transition-colors"
-        >
-          Home
-        </a>
-        <ChevronRight className="w-4 h-4 text-muted-foreground" />
-        <span className="font-medium text-foreground capitalize">
-          {activePage}
-        </span>
-      </div>
-
-      <div className="flex-1" />
-
-      {/* Page-specific: Dashboard search and actions */}
-      {activePage === "dashboard" && (
-        <div className="flex items-center gap-2 flex-1 justify-end">
-          <div
-            className={cn(
-              "relative transition-all duration-300 ease-in-out",
-              isSearchFocused ? "flex-1 max-w-lg" : "w-auto",
-            )}
-          >
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4 pointer-events-none" />
-            <input
-              type="text"
-              placeholder="Search..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              onFocus={() => setIsSearchFocused(true)}
-              onBlur={() => setIsSearchFocused(false)}
-              className={cn(
-                "pl-9 pr-4 py-2 h-10 border-none rounded-lg bg-card focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300 ease-in-out w-full",
-                isSearchFocused ? "bg-background" : "w-48",
-              )}
-            />
-          </div>
-          <button className="h-10 w-10 flex-shrink-0 flex items-center justify-center hover:bg-accent rounded-full transition-colors">
-            <Filter className="w-5 h-5" />
-          </button>
-          <button className="bg-primary text-primary-foreground px-4 py-2 rounded-full hover:bg-primary/90 transition-colors flex items-center gap-2 h-10 flex-shrink-0">
-            <Plus className="w-5 h-5" />
-            <span
-              className={cn(isSearchFocused ? "hidden sm:inline" : "inline")}
-            >
-              New Project
-            </span>
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// The main App component that composes the shell
-function ComposedApp() {
-  const { setBodyState, setSidePaneContent } = useAppShellStore();
-  const viewManager = useAppViewManager();
-
-  // Sync URL state with AppShellStore
-  useEffect(() => {
-    setBodyState(viewManager.bodyState);
-    setSidePaneContent(viewManager.sidePaneContent);
-  }, [viewManager.bodyState, viewManager.sidePaneContent, setBodyState, setSidePaneContent]);
-
-  return (
-    <AppShell
-      sidebar={<EnhancedSidebar />}
-      onOverlayClick={viewManager.closeSidePane}
-      topBar={
-        <TopBar>
-          <AppTopBar />
-        </TopBar>
-      }
-      mainContent={
-        <MainContent>
-          <Outlet />
-        </MainContent>
-      }
-      rightPane={<RightPane />}
-      commandPalette={<CommandPalette />}
-    />
-  );
-}
-
-function App() {
-  const router = createBrowserRouter([
-    {
-      element: <Root />,
-      children: [
-        {
-          path: "/login",
-          element: <LoginPage />,
-        },
-        {
-          path: "/",
-          element: <ProtectedRoute />,
-          children: [
-            {
-              path: "/",
-              element: <ProtectedLayout />,
-              children: [
-                { index: true, element: <Navigate to="/dashboard" replace /> },
-                { path: "dashboard", element: <DashboardContent /> },
-                { path: "settings", element: <SettingsPage /> },
-                { path: "toaster", element: <ToasterDemo /> },
-                { path: "notifications", element: <NotificationsPage /> },
-                { path: "data-demo", element: <DataDemoPage /> },
-                { path: "data-demo/:itemId", element: <DataDemoPage /> },
-                { path: "messaging", element: <MessagingPage /> },
-                { path: "messaging/:conversationId", element: <MessagingPage /> },
-              ],
-            },
-          ],
-        },
-      ],
-    },
-  ]);
-
-  return (
-    <ToasterProvider>
-      <RouterProvider router={router} />
-    </ToasterProvider>
-  );
-}
-
-export default App;
 ```

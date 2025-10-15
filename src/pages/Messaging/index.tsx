@@ -4,6 +4,7 @@ import { ConversationList } from "./components/ConversationList";
 import { cn } from "@/lib/utils";
 import { MessagingContent } from "./components/MessagingContent";
 import { useAppShellStore } from "@/store/appShell.store";
+import { usePageViewConfig } from "@/hooks/usePageViewConfig.hook";
 import { useResizableMessagingList } from "@/hooks/useResizablePanes.hook";
 import { BODY_STATES } from "@/lib/utils";
 
@@ -21,6 +22,12 @@ export default function MessagingPage() {
   const { setIsResizingMessagingList } = useAppShellStore.getState();
 
   useResizableMessagingList(containerRef);
+
+  // Configure the pane widths specifically for the messaging page
+  usePageViewConfig({
+    // In split view, we want the right pane (conversation) to be wider.
+    splitPaneWidth: typeof window !== 'undefined' ? Math.round(window.innerWidth * 0.6) : 600,
+  });
 
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
     if (isMessagingListCollapsed) return;

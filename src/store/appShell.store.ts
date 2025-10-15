@@ -13,6 +13,9 @@ export interface AppShellState {
   sidebarWidth: number;
   sidePaneWidth: number;
   splitPaneWidth: number;
+  defaultSidePaneWidth: number;
+  defaultSplitPaneWidth: number;
+  defaultWidthsSet: boolean;
   messagingListWidth: number;
   messagingProfileWidth: number;
   previousBodyState: BodyState;
@@ -48,6 +51,8 @@ export interface AppShellActions {
     setSidePaneContent: (payload: AppShellState['sidePaneContent']) => void;
     setSidebarWidth: (payload: number) => void;
     setSidePaneWidth: (payload: number) => void;
+    setDefaultPaneWidths: () => void;
+    resetPaneWidths: () => void;
     setSplitPaneWidth: (payload: number) => void;
     setMessagingListWidth: (payload: number) => void;
     setIsResizing: (payload: boolean) => void;
@@ -86,6 +91,9 @@ const defaultState: AppShellState = {
   sidebarWidth: 280,
   sidePaneWidth: typeof window !== 'undefined' ? Math.max(300, Math.round(window.innerWidth * 0.6)) : 400,
   splitPaneWidth: typeof window !== 'undefined' ? Math.max(300, Math.round(window.innerWidth * 0.35)) : 400,
+  defaultSidePaneWidth: 400,
+  defaultSplitPaneWidth: 400,
+  defaultWidthsSet: false,
   messagingListWidth: 384,
   messagingProfileWidth: 384,
   previousBodyState: BODY_STATES.NORMAL,
@@ -134,6 +142,18 @@ export const useAppShellStore = create<AppShellState & AppShellActions>((set, ge
   setSidePaneContent: (payload) => set({ sidePaneContent: payload }),
   setSidebarWidth: (payload) => set({ sidebarWidth: Math.max(200, Math.min(500, payload)) }),
   setSidePaneWidth: (payload) => set({ sidePaneWidth: Math.max(300, Math.min(window.innerWidth * 0.8, payload)) }),
+  setDefaultPaneWidths: () => {
+    if (get().defaultWidthsSet) return;
+    set(state => ({
+        defaultSidePaneWidth: state.sidePaneWidth,
+        defaultSplitPaneWidth: state.splitPaneWidth,
+        defaultWidthsSet: true,
+    }));
+  },
+  resetPaneWidths: () => set(state => ({
+    sidePaneWidth: state.defaultSidePaneWidth,
+    splitPaneWidth: state.defaultSplitPaneWidth,
+  })),
   setSplitPaneWidth: (payload) => set({ splitPaneWidth: Math.max(300, Math.min(window.innerWidth * 0.8, payload)) }),
   setMessagingListWidth: (payload) => set({ messagingListWidth: Math.max(320, Math.min(payload, window.innerWidth - 400)) }),
   setMessagingProfileWidth: (payload) => set({ messagingProfileWidth: Math.max(320, Math.min(payload, window.innerWidth - 400)) }),
@@ -189,13 +209,25 @@ export const useAppShellStore = create<AppShellState & AppShellActions>((set, ge
   },
   
   resetToDefaults: () => {
-    // Preserve props passed to provider
-    const { appName, appLogo } = get();
-    const currentPrimaryColor = defaultState.primaryColor;
-    if (typeof document !== 'undefined') {
-      document.documentElement.style.setProperty('--primary-hsl', currentPrimaryColor);
-    }
-    set({ ...defaultState, primaryColor: currentPrimaryColor, appName, appLogo });
+    // Preserve props passed to provider and session defaults
+    set(state => {
+      const currentPrimaryColor = defaultState.primaryColor;
+      if (typeof document !== 'undefined') {
+        document.documentElement.style.setProperty('--primary-hsl', currentPrimaryColor);
+      }
+      return {
+        ...defaultState,
+        primaryColor: currentPrimaryColor,
+        appName: state.appName,
+        appLogo: state.appLogo,
+        defaultSidePaneWidth: state.defaultSidePaneWidth,
+        defaultSplitPaneWidth: state.defaultSplitPaneWidth,
+        defaultWidthsSet: state.defaultWidthsSet,
+        // Also reset current widths to the defaults
+        sidePaneWidth: state.defaultSidePaneWidth,
+        splitPaneWidth: state.defaultSplitPaneWidth,
+      };
+    });
   },
 }));
 

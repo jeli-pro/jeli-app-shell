@@ -1,0 +1,603 @@
+uuid: c67f94ba-e0fd-4f04-9721-394998788a8f
+projectId: jeli-app-shell
+createdAt: '2025-10-15T03:55:41.425Z'
+gitCommitMsg: >-
+  feat(layout): Allow page-specific pane width configurations
+
+  Introduced a system for page components to define their own preferred
+  proportions for side panes and split-view layouts. This decouples page layout
+  from the global AppShell configuration, providing greater flexibility.
+
+  - Updated the `appShell.store` to differentiate between session-default
+    pane widths and currently active (potentially overridden) widths.
+  - Created a new `usePageViewConfig` hook that allows a component to set
+    pane widths on mount and automatically reset them to default on unmount.
+  - Applied this new hook to the `MessagingPage` to provide a more
+    balanced split-view layout, giving more space to the conversation
+    details pane.
+promptSummary: >-
+  I need to allow individual pages to control the proportions of the screen
+  width for split view and overlay side pane modes, as the current global
+  configuration is too rigid for pages like Messaging.
+reasoning:
+  - >-
+    This refactor introduces a system for page-specific view configurations,
+    allowing individual pages to define their preferred layout proportions for
+    split-view and side-pane modes. I'll update the Zustand store to distinguish
+    between default and active pane widths, introduce a new `usePageViewConfig`
+    hook for pages to declare their layout, and apply this new system to the
+    Messaging page to fix its cramped layout.
+  - '### Part 1: Enhance State Management for Dynamic Pane Widths'
+  - >-
+    First, I'll update the `appShell.store.ts` to support the concept of default
+    pane widths that can be temporarily overridden. This involves adding state
+    to track both default and current widths, and actions to manage them.
+  - >-
+    Next, I'll update the `AppShellProvider` to call the new
+    `setDefaultPaneWidths` action on mount, capturing the initial, dynamically
+    calculated pane widths as the defaults for the session.
+  - '### Part 2: Implement Page-Level View Configuration'
+  - >-
+    Now I'll create the new `usePageViewConfig` hook. This provides a clean,
+    declarative API for pages to manage their view width configurations.
+  - >-
+    Finally, I'll apply the new hook to the `MessagingPage` to fix the cramped
+    split-view layout, giving the conversation view more space.
+operations:
+  - type: write
+    path: src/store/appShell.store.ts
+    content: >
+      --- src/store/appShell.store.ts
+
+      +++ src/store/appShell.store.ts
+
+      @@ -10,6 +10,9 @@
+         sidebarWidth: number;
+         sidePaneWidth: number;
+         splitPaneWidth: number;
+      +  defaultSidePaneWidth: number;
+
+      +  defaultSplitPaneWidth: number;
+
+      +  defaultWidthsSet: boolean;
+         messagingListWidth: number;
+         messagingProfileWidth: number;
+         previousBodyState: BodyState;
+      @@ -42,6 +45,8 @@
+           setSidePaneContent: (payload: AppShellState['sidePaneContent']) => void;
+           setSidebarWidth: (payload: number) => void;
+           setSidePaneWidth: (payload: number) => void;
+      +    setDefaultPaneWidths: () => void;
+
+      +    resetPaneWidths: () => void;
+           setSplitPaneWidth: (payload: number) => void;
+           setMessagingListWidth: (payload: number) => void;
+           setIsResizing: (payload: boolean) => void;
+      @@ -74,6 +79,9 @@
+         sidePaneContent: 'details',
+         sidebarWidth: 280,
+         sidePaneWidth: typeof window !== 'undefined' ? Math.max(300, Math.round(window.innerWidth * 0.6)) : 400,
+         splitPaneWidth: typeof window !== 'undefined' ? Math.max(300, Math.round(window.innerWidth * 0.35)) : 400,
+      +  defaultSidePaneWidth: 400,
+
+      +  defaultSplitPaneWidth: 400,
+
+      +  defaultWidthsSet: false,
+         messagingListWidth: 384,
+         messagingProfileWidth: 384,
+         previousBodyState: BODY_STATES.NORMAL,
+      @@ -118,6 +126,18 @@
+         setSidePaneContent: (payload) => set({ sidePaneContent: payload }),
+         setSidebarWidth: (payload) => set({ sidebarWidth: Math.max(200, Math.min(500, payload)) }),
+         setSidePaneWidth: (payload) => set({ sidePaneWidth: Math.max(300, Math.min(window.innerWidth * 0.8, payload)) }),
+      +  setDefaultPaneWidths: () => {
+
+      +    if (get().defaultWidthsSet) return;
+
+      +    set(state => ({
+
+      +        defaultSidePaneWidth: state.sidePaneWidth,
+
+      +        defaultSplitPaneWidth: state.splitPaneWidth,
+
+      +        defaultWidthsSet: true,
+
+      +    }));
+
+      +  },
+
+      +  resetPaneWidths: () => set(state => ({
+
+      +    sidePaneWidth: state.defaultSidePaneWidth,
+
+      +    splitPaneWidth: state.defaultSplitPaneWidth,
+
+      +  })),
+         setSplitPaneWidth: (payload) => set({ splitPaneWidth: Math.max(300, Math.min(window.innerWidth * 0.8, payload)) }),
+         setMessagingListWidth: (payload) => set({ messagingListWidth: Math.max(320, Math.min(payload, window.innerWidth - 400)) }),
+         setMessagingProfileWidth: (payload) => set({ messagingProfileWidth: Math.max(320, Math.min(payload, window.innerWidth - 400)) }),
+      @@ -176,13 +196,25 @@
+         },
+         
+         resetToDefaults: () => {
+      -    // Preserve props passed to provider
+
+      -    const { appName, appLogo } = get();
+
+      -    const currentPrimaryColor = defaultState.primaryColor;
+
+      -    if (typeof document !== 'undefined') {
+
+      -      document.documentElement.style.setProperty('--primary-hsl',
+      currentPrimaryColor);
+
+      -    }
+
+      -    set({ ...defaultState, primaryColor: currentPrimaryColor, appName,
+      appLogo });
+
+      +    // Preserve props passed to provider and session defaults
+
+      +    set(state => {
+
+      +      const currentPrimaryColor = defaultState.primaryColor;
+
+      +      if (typeof document !== 'undefined') {
+
+      +        document.documentElement.style.setProperty('--primary-hsl',
+      currentPrimaryColor);
+
+      +      }
+
+      +      return {
+
+      +        ...defaultState,
+
+      +        primaryColor: currentPrimaryColor,
+
+      +        appName: state.appName,
+
+      +        appLogo: state.appLogo,
+
+      +        defaultSidePaneWidth: state.defaultSidePaneWidth,
+
+      +        defaultSplitPaneWidth: state.defaultSplitPaneWidth,
+
+      +        defaultWidthsSet: state.defaultWidthsSet,
+
+      +        // Also reset current widths to the defaults
+
+      +        sidePaneWidth: state.defaultSidePaneWidth,
+
+      +        splitPaneWidth: state.defaultSplitPaneWidth,
+
+      +      };
+
+      +    });
+         },
+       }));
+       
+    patchStrategy: standard-diff
+  - type: write
+    path: src/providers/AppShellProvider.tsx
+    content: >+
+      --- src/providers/AppShellProvider.tsx
+
+      +++ src/providers/AppShellProvider.tsx
+
+      @@ -9,11 +9,17 @@
+       
+       export function AppShellProvider({ children, appName, appLogo, defaultSplitPaneWidth }: AppShellProviderProps) {
+         const init = useAppShellStore(state => state.init);
+      +  const setDefaultPaneWidths = useAppShellStore(state =>
+      state.setDefaultPaneWidths);
+         const setPrimaryColor = useAppShellStore(state => state.setPrimaryColor);
+         const primaryColor = useAppShellStore(state => state.primaryColor);
+       
+         useEffect(() => {
+           init({ appName, appLogo, defaultSplitPaneWidth });
+         }, [appName, appLogo, defaultSplitPaneWidth, init]);
+      +
+
+      +  useEffect(() => {
+
+      +    setDefaultPaneWidths();
+
+      +  }, [setDefaultPaneWidths]);
+       
+         // Side effect for primary color
+         useEffect(() => {
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/hooks/usePageViewConfig.hook.ts
+    content: |-
+      import { useEffect } from 'react';
+      import { useAppShellStore } from '@/store/appShell.store';
+
+      interface PageViewConfig {
+          sidePaneWidth?: number;
+          splitPaneWidth?: number;
+      }
+
+      /**
+       * A hook for a page component to declaratively set its desired pane widths.
+       * It sets the widths on mount and resets them to the application defaults on unmount.
+       * @param {PageViewConfig} config - The desired widths for side pane and split view.
+       */
+      export function usePageViewConfig(config: PageViewConfig) {
+          const { setSidePaneWidth, setSplitPaneWidth, resetPaneWidths } = useAppShellStore.getState();
+
+          useEffect(() => {
+              if (config.sidePaneWidth !== undefined) {
+                  setSidePaneWidth(config.sidePaneWidth);
+              }
+              if (config.splitPaneWidth !== undefined) {
+                  setSplitPaneWidth(config.splitPaneWidth);
+              }
+
+              // Return a cleanup function to reset widths when the component unmounts
+              return () => {
+                  resetPaneWidths();
+              };
+          // eslint-disable-next-line react-hooks/exhaustive-deps
+          }, []); // Run only once on mount and cleanup on unmount
+      }
+    patchStrategy: replace
+  - type: write
+    path: src/pages/Messaging/index.tsx
+    content: >+
+      --- src/pages/Messaging/index.tsx
+
+      +++ src/pages/Messaging/index.tsx
+
+      @@ -4,8 +4,9 @@
+       import { cn } from "@/lib/utils";
+       import { MessagingContent } from "./components/MessagingContent";
+       import { useAppShellStore } from "@/store/appShell.store";
+      +import { usePageViewConfig } from "@/hooks/usePageViewConfig.hook";
+       import { useResizableMessagingList } from "@/hooks/useResizablePanes.hook";
+       import { BODY_STATES } from "@/lib/utils";
+       
+       export default function MessagingPage() {
+         const { conversationId } = useParams<{ conversationId: string }>();
+      @@ -20,6 +21,12 @@
+         const { setIsResizingMessagingList } = useAppShellStore.getState();
+       
+         useResizableMessagingList(containerRef);
+      +
+
+      +  // Configure the pane widths specifically for the messaging page
+
+      +  usePageViewConfig({
+
+      +    // In split view, we want the right pane (conversation) to be wider.
+
+      +    splitPaneWidth: typeof window !== 'undefined' ?
+      Math.round(window.innerWidth * 0.6) : 600,
+
+      +  });
+       
+         const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+           if (isMessagingListCollapsed) return;
+
+    patchStrategy: standard-diff
+snapshot:
+  src/hooks/usePageViewConfig.hook.ts: null
+  src/store/appShell.store.ts: >-
+    import { create } from 'zustand';
+
+    import { type ReactElement } from 'react';
+
+    import { SIDEBAR_STATES, BODY_STATES, type SidebarState, type BodyState }
+    from '@/lib/utils';
+
+
+    export type ActivePage = 'dashboard' | 'settings' | 'toaster' |
+    'notifications' | 'data-demo' | 'messaging';
+
+
+    // --- State and Action Types ---
+
+
+    export interface AppShellState {
+      sidebarState: SidebarState;
+      bodyState: BodyState;
+      sidePaneContent: 'details' | 'settings' | 'main' | 'toaster' | 'notifications' | 'dataDemo' | 'dataItem' | 'messaging';
+      sidebarWidth: number;
+      sidePaneWidth: number;
+      splitPaneWidth: number;
+      messagingListWidth: number;
+      messagingProfileWidth: number;
+      previousBodyState: BodyState;
+      fullscreenTarget: 'main' | 'right' | null;
+      isResizing: boolean;
+      isResizingRightPane: boolean;
+      isResizingMessagingList: boolean;
+      isResizingMessagingProfile: boolean;
+      isMessagingListCollapsed: boolean;
+      isMessagingProfileCollapsed: boolean;
+      isTopBarVisible: boolean;
+      isTopBarHovered: boolean;
+      autoExpandSidebar: boolean;
+      reducedMotion: boolean;
+      compactMode: boolean;
+      primaryColor: string;
+      isCommandPaletteOpen: boolean;
+      isDarkMode: boolean;
+      appName?: string;
+      appLogo?: ReactElement;
+      draggedPage: 'dashboard' | 'settings' | 'toaster' | 'notifications' | 'data-demo' | 'messaging' | null;
+      dragHoverTarget: 'left' | 'right' | null;
+      hoveredPane: 'left' | 'right' | null;
+    }
+
+
+    export interface AppShellActions {
+        // Initialization
+        init: (config: { appName?: string; appLogo?: ReactElement; defaultSplitPaneWidth?: number }) => void;
+        
+        // Direct state setters
+        setSidebarState: (payload: SidebarState) => void;
+        setBodyState: (payload: BodyState) => void;
+        setSidePaneContent: (payload: AppShellState['sidePaneContent']) => void;
+        setSidebarWidth: (payload: number) => void;
+        setSidePaneWidth: (payload: number) => void;
+        setSplitPaneWidth: (payload: number) => void;
+        setMessagingListWidth: (payload: number) => void;
+        setIsResizing: (payload: boolean) => void;
+        setMessagingProfileWidth: (payload: number) => void;
+        setFullscreenTarget: (payload: 'main' | 'right' | null) => void;
+        setIsResizingRightPane: (payload: boolean) => void;
+        setIsResizingMessagingList: (payload: boolean) => void;
+        setIsResizingMessagingProfile: (payload: boolean) => void;
+        toggleMessagingListCollapsed: () => void;
+        toggleMessagingProfileCollapsed: () => void;
+        setTopBarVisible: (payload: boolean) => void;
+        setAutoExpandSidebar: (payload: boolean) => void;
+        setReducedMotion: (payload: boolean) => void;
+        setCompactMode: (payload: boolean) => void;
+        setPrimaryColor: (payload: string) => void;
+        setDraggedPage: (payload: AppShellState['draggedPage']) => void;
+        setCommandPaletteOpen: (open: boolean) => void;
+        toggleDarkMode: () => void;
+        setDragHoverTarget: (payload: 'left' | 'right' | null) => void;
+        setTopBarHovered: (isHovered: boolean) => void;
+        setHoveredPane: (payload: 'left' | 'right' | null) => void;
+        
+        // Composite actions
+        toggleSidebar: () => void;
+        hideSidebar: () => void;
+        showSidebar: () => void;
+        peekSidebar: () => void;
+        toggleFullscreen: (target?: 'main' | 'right' | null) => void;
+        resetToDefaults: () => void;
+    }
+
+
+    const defaultState: AppShellState = {
+      sidebarState: SIDEBAR_STATES.EXPANDED,
+      bodyState: BODY_STATES.NORMAL,
+      sidePaneContent: 'details',
+      sidebarWidth: 280,
+      sidePaneWidth: typeof window !== 'undefined' ? Math.max(300, Math.round(window.innerWidth * 0.6)) : 400,
+      splitPaneWidth: typeof window !== 'undefined' ? Math.max(300, Math.round(window.innerWidth * 0.35)) : 400,
+      messagingListWidth: 384,
+      messagingProfileWidth: 384,
+      previousBodyState: BODY_STATES.NORMAL,
+      fullscreenTarget: null,
+      isResizing: false,
+      isResizingRightPane: false,
+      isResizingMessagingList: false,
+      isResizingMessagingProfile: false,
+      isMessagingListCollapsed: false,
+      isMessagingProfileCollapsed: false,
+      isTopBarVisible: true,
+      isTopBarHovered: false,
+      autoExpandSidebar: true,
+      reducedMotion: false,
+      compactMode: false,
+      primaryColor: '220 84% 60%',
+      isCommandPaletteOpen: false,
+      isDarkMode: false,
+      appName: 'Jeli App',
+      appLogo: undefined,
+      draggedPage: null,
+      dragHoverTarget: null,
+      hoveredPane: null,
+    };
+
+
+
+    export const useAppShellStore = create<AppShellState &
+    AppShellActions>((set, get) => ({
+      ...defaultState,
+
+      init: ({ appName, appLogo, defaultSplitPaneWidth }) => set(state => ({
+        ...state,
+        ...(appName && { appName }),
+        ...(appLogo && { appLogo }),
+        ...(defaultSplitPaneWidth && { splitPaneWidth: defaultSplitPaneWidth }),
+      })),
+      
+      setSidebarState: (payload) => set({ sidebarState: payload }),
+      setBodyState: (payload) => {
+        // If we're leaving fullscreen, reset the target and previous state
+        if (get().bodyState === BODY_STATES.FULLSCREEN && payload !== BODY_STATES.FULLSCREEN) {
+          set({ bodyState: payload, fullscreenTarget: null, previousBodyState: BODY_STATES.NORMAL });
+        } else {
+          set({ bodyState: payload });
+        }
+      },
+      setSidePaneContent: (payload) => set({ sidePaneContent: payload }),
+      setSidebarWidth: (payload) => set({ sidebarWidth: Math.max(200, Math.min(500, payload)) }),
+      setSidePaneWidth: (payload) => set({ sidePaneWidth: Math.max(300, Math.min(window.innerWidth * 0.8, payload)) }),
+      setSplitPaneWidth: (payload) => set({ splitPaneWidth: Math.max(300, Math.min(window.innerWidth * 0.8, payload)) }),
+      setMessagingListWidth: (payload) => set({ messagingListWidth: Math.max(320, Math.min(payload, window.innerWidth - 400)) }),
+      setMessagingProfileWidth: (payload) => set({ messagingProfileWidth: Math.max(320, Math.min(payload, window.innerWidth - 400)) }),
+      setIsResizing: (payload) => set({ isResizing: payload }),
+      setFullscreenTarget: (payload) => set({ fullscreenTarget: payload }),
+      setIsResizingRightPane: (payload) => set({ isResizingRightPane: payload }),
+      setIsResizingMessagingList: (payload) => set({ isResizingMessagingList: payload }),
+      setIsResizingMessagingProfile: (payload) => set({ isResizingMessagingProfile: payload }),
+      toggleMessagingListCollapsed: () => set(state => ({ isMessagingListCollapsed: !state.isMessagingListCollapsed })),
+      toggleMessagingProfileCollapsed: () => set(state => ({ isMessagingProfileCollapsed: !state.isMessagingProfileCollapsed })),
+      setTopBarVisible: (payload) => set({ isTopBarVisible: payload }),
+      setAutoExpandSidebar: (payload) => set({ autoExpandSidebar: payload }),
+      setReducedMotion: (payload) => set({ reducedMotion: payload }),
+      setCompactMode: (payload) => set({ compactMode: payload }),
+      setPrimaryColor: (payload) => {
+        if (typeof document !== 'undefined') {
+            document.documentElement.style.setProperty('--primary-hsl', payload);
+        }
+        set({ primaryColor: payload });
+      },
+      setDraggedPage: (payload) => set({ draggedPage: payload }),
+      setCommandPaletteOpen: (open) => set({ isCommandPaletteOpen: open }),
+      toggleDarkMode: () => set((state) => ({ isDarkMode: !state.isDarkMode })),
+      setDragHoverTarget: (payload) => set({ dragHoverTarget: payload }),
+      setTopBarHovered: (isHovered) => set({ isTopBarHovered: isHovered }),
+      setHoveredPane: (payload) => set({ hoveredPane: payload }),
+      
+      toggleSidebar: () => {
+        const current = get().sidebarState;
+        if (current === SIDEBAR_STATES.HIDDEN) set({ sidebarState: SIDEBAR_STATES.COLLAPSED });
+        else if (current === SIDEBAR_STATES.COLLAPSED) set({ sidebarState: SIDEBAR_STATES.EXPANDED });
+        else if (current === SIDEBAR_STATES.EXPANDED) set({ sidebarState: SIDEBAR_STATES.COLLAPSED });
+      },
+      hideSidebar: () => set({ sidebarState: SIDEBAR_STATES.HIDDEN }),
+      showSidebar: () => set({ sidebarState: SIDEBAR_STATES.EXPANDED }),
+      peekSidebar: () => set({ sidebarState: SIDEBAR_STATES.PEEK }),
+      
+      toggleFullscreen: (target = null) => {
+        const { bodyState, previousBodyState } = get();
+        if (bodyState === BODY_STATES.FULLSCREEN) {
+          set({ 
+            bodyState: previousBodyState || BODY_STATES.NORMAL,
+            fullscreenTarget: null,
+            previousBodyState: BODY_STATES.NORMAL,
+          });
+        } else {
+          set({ 
+            previousBodyState: bodyState, 
+            bodyState: BODY_STATES.FULLSCREEN, 
+            fullscreenTarget: target 
+          });
+        }
+      },
+      
+      resetToDefaults: () => {
+        // Preserve props passed to provider
+        const { appName, appLogo } = get();
+        const currentPrimaryColor = defaultState.primaryColor;
+        if (typeof document !== 'undefined') {
+          document.documentElement.style.setProperty('--primary-hsl', currentPrimaryColor);
+        }
+        set({ ...defaultState, primaryColor: currentPrimaryColor, appName, appLogo });
+      },
+    }));
+
+
+    // Add a selector for the derived rightPaneWidth
+
+    export const useRightPaneWidth = () => useAppShellStore(state => 
+        state.bodyState === BODY_STATES.SPLIT_VIEW ? state.splitPaneWidth : state.sidePaneWidth
+    );
+  src/providers/AppShellProvider.tsx: >-
+    import { useEffect, type ReactNode, type ReactElement } from 'react';
+
+    import { useAppShellStore } from '@/store/appShell.store';
+
+
+    interface AppShellProviderProps {
+      children: ReactNode;
+      appName?: string;
+      appLogo?: ReactElement;
+      defaultSplitPaneWidth?: number;
+    }
+
+
+    export function AppShellProvider({ children, appName, appLogo,
+    defaultSplitPaneWidth }: AppShellProviderProps) {
+      const init = useAppShellStore(state => state.init);
+      const setPrimaryColor = useAppShellStore(state => state.setPrimaryColor);
+      const primaryColor = useAppShellStore(state => state.primaryColor);
+
+      useEffect(() => {
+        init({ appName, appLogo, defaultSplitPaneWidth });
+      }, [appName, appLogo, defaultSplitPaneWidth, init]);
+
+      // Side effect for primary color
+      useEffect(() => {
+        // This effect is here because the store itself can't run side-effects on init
+        // before React has mounted. So we trigger it from the provider.
+        setPrimaryColor(primaryColor);
+      }, [primaryColor, setPrimaryColor]);
+
+      return <>{children}</>;
+    }
+  src/pages/Messaging/index.tsx: |-
+    import React, { useRef } from "react";
+    import { useParams } from "react-router-dom";
+    import { ConversationList } from "./components/ConversationList";
+    import { cn } from "@/lib/utils";
+    import { MessagingContent } from "./components/MessagingContent";
+    import { useAppShellStore } from "@/store/appShell.store";
+    import { useResizableMessagingList } from "@/hooks/useResizablePanes.hook";
+    import { BODY_STATES } from "@/lib/utils";
+
+    export default function MessagingPage() {
+      const { conversationId } = useParams<{ conversationId: string }>();
+      const containerRef = useRef<HTMLDivElement>(null);
+      const COLLAPSED_WIDTH = 80;
+
+      const { messagingListWidth, isResizingMessagingList, isMessagingListCollapsed, bodyState } = useAppShellStore(s => ({
+        messagingListWidth: s.messagingListWidth,
+        isResizingMessagingList: s.isResizingMessagingList,
+        isMessagingListCollapsed: s.isMessagingListCollapsed,
+        bodyState: s.bodyState,
+      }));
+      const { setIsResizingMessagingList } = useAppShellStore.getState();
+
+      useResizableMessagingList(containerRef);
+
+      const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+        if (isMessagingListCollapsed) return;
+        e.preventDefault();
+        setIsResizingMessagingList(true);
+      };
+
+      const listWidth = isMessagingListCollapsed ? COLLAPSED_WIDTH : messagingListWidth;
+
+      if (bodyState === BODY_STATES.SPLIT_VIEW) {
+        return (
+          <div className="h-full w-full">
+            <ConversationList />
+          </div>
+        );
+      }
+
+      return (
+        <div ref={containerRef} className={cn(
+          "h-full w-full flex bg-background", 
+          isResizingMessagingList && !isMessagingListCollapsed && "cursor-col-resize select-none"
+        )}>
+            <div style={{ width: `${listWidth}px` }} className="flex-shrink-0 transition-[width] duration-300 ease-in-out">
+              <ConversationList />
+            </div>
+            {!isMessagingListCollapsed && (
+              <div onMouseDown={handleMouseDown} className="w-2 flex-shrink-0 cursor-col-resize group flex items-center justify-center">
+                <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200" />
+              </div>
+            )}
+            <div className="flex-1 min-w-0"><MessagingContent conversationId={conversationId} /></div>
+        </div>
+      );
+    }
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 314

@@ -1,108 +1,138 @@
-Here is the master plan for the code refactoring.
+Here is the master plan for the refactor.
 
 ```yaml
 plan:
-  uuid: 'c8a2b1f3-7e4d-4a1b-9f0c-6d9e8a7b3c2d'
+  uuid: 'f4a1b2c3-d4e5-f6a7-b8c9-d0e1f2a3b4c5'
   status: 'todo'
-  title: 'Refactor Sidebar Toggle and TopBar Layout'
+  title: 'Refactor Pane Width Management for Page-Specific Layouts'
   introduction: |
-    This plan orchestrates a two-part refactor to improve the UI/UX of the application shell. The primary goals are to enhance component encapsulation and create a more intuitive, conventional layout.
+    Alright, let's kill the hardcoded pane widths. The current setup where `splitPaneWidth` and `sidePaneWidth` are global constants in the store is too rigid. Some pages, like Messaging, need different proportions to feel right. Pages should own their layout, not be dictated to by a global config.
 
-    First, we'll relocate the sidebar toggle control from the global `TopBar` into the `Sidebar` component itself. This is a cleaner architecture, as a component should ideally manage its own state toggles. The new toggle will be stateful, visually indicating whether it will collapse or expand the sidebar, improving user feedback.
+    This refactor introduces a system for page-specific view configurations. We'll juice up the Zustand store to distinguish between default pane widths and the currently active widths. This allows individual pages to temporarily override the defaults when they are mounted.
 
-    Second, we'll address the layout of the `TopBar`. The breadcrumb navigation, currently pushed away from the edge, will be permanently anchored to the far left. This creates a more standard and predictable header layout, ensuring a consistent starting point for user navigation across all pages. These changes will be implemented carefully to avoid any animation lag or race conditions.
+    The star of the show is a new `usePageViewConfig` hook. It's a clean, declarative API for any page component to say "Hey, when I'm on screen, use *these* widths." When the component unmounts, the hook cleans up after itself, resetting the widths back to the default. This keeps things tidy and prevents layout settings from one page from bleeding into another.
+
+    We'll apply this new system to the Messaging page first, fixing the cramped split-view layout that was reported. This approach makes the AppShell more of a flexible framework and less of a dictator, paving the way for more complex and context-aware layouts in the future.
   parts:
-    - uuid: 'a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d'
+    - uuid: 'a1b2c3d4-e5f6-a7b8-c9d0-e1f2a3b4c5d6'
       status: 'todo'
-      name: 'Part 1: Relocate and Enhance Sidebar Toggle'
+      name: 'Part 1: Enhance State Management for Dynamic Pane Widths'
       reason: |
-        The current sidebar toggle resides in the `TopBar`, which breaks component encapsulation. A component should ideally contain the controls that manipulate it. By moving the toggle inside the sidebar, we create a more self-contained and reusable `Sidebar` component.
-
-        Furthermore, the toggle will be made "stateful," meaning its icon will change to reflect the action it will perform (collapse or expand). This provides clearer visual feedback to the user.
+        The current store treats pane widths as global, session-wide variables. We need to evolve this to support a concept of "default" widths that can be temporarily overridden by pages. This part lays the foundation by updating the store to track both default and current widths.
       steps:
-        - uuid: 'b1c2d3e4-f5a6-7b8c-9d0e-1f2a3b4c5d6e'
+        - uuid: 'b2c3d4e5-f6a7-b8c9-d0e1-f2a3b4c5d6e7'
           status: 'todo'
-          name: '1. Remove Toggle Button from TopBar'
+          name: '1. Update appShell.store.ts State'
           reason: |
-            The `Menu` button in the `TopBar` is the current sidebar toggle. This step removes it from its current location to prepare for its relocation into the sidebar component.
+            To differentiate between the application's default widths and the widths currently in use (which might be set by a specific page or by user resizing), we need to add state for the defaults and a flag to see if they've been initialized.
           files:
-            - src/components/layout/TopBar.tsx
+            - src/store/appShell.store.ts
           operations:
-            - "Delete the entire `<button>` element responsible for toggling the sidebar, which contains the `<Menu>` icon."
-            - "The parent `div` for the 'Left Section' will now be empty, awaiting the breadcrumb content in Part 2."
-        - uuid: 'c2d3e4f5-a6b7-8c9d-0e1f-2a3b4c5d6f7a'
+            - 'In `AppShellState`, add `defaultSplitPaneWidth: number`, `defaultSidePaneWidth: number`, and `defaultWidthsSet: boolean`.'
+            - 'In `defaultState`, initialize `defaultSplitPaneWidth` and `defaultSidePaneWidth` with placeholder values (e.g., `400`) and `defaultWidthsSet` to `false`.'
+        - uuid: 'c3d4e5f6-a7b8-c9d0-e1f2-a3b4c5d6e7f8'
           status: 'todo'
-          name: '2. Implement Stateful Toggle in Sidebar Header'
+          name: '2. Add New Actions to appShell.store.ts'
           reason: |
-            This step creates the new, improved toggle button within the sidebar's header, making it an integral part of the sidebar. The button will change its icon based on the sidebar's current state (collapsed or expanded).
+            We need actions to manage the new default/current width lifecycle: one to capture the initial defaults, and one to reset the current widths back to those defaults when a page with custom widths unmounts.
           files:
-            - src/components/layout/EnhancedSidebar.tsx
+            - src/store/appShell.store.ts
           operations:
-            - "Import `PanelLeftClose` from 'lucide-react'."
-            - "Within the `EnhancedSidebar` component, inside the `<SidebarHeader>`."
-            - "After the `<SidebarTitle>` component, add a new `<button>` for toggling."
-            - "Use the `useAppShellStore` to get the `toggleSidebar` action and `sidebarState`."
-            - "The button's `onClick` handler should call `toggleSidebar`."
-            - "The button should be styled to be pushed to the right of the header, for instance using `ml-auto`."
-            - "The button's icon should be `<PanelLeftClose />` as it will only be visible when the sidebar is expanded, and its purpose is to collapse it."
-            - "Ensure the button is only rendered when the sidebar is not collapsed. The logic to expand the sidebar from a collapsed state is handled by other interactions (like hover or a different UI element if designed)."
-    - uuid: 'd3e4f5a6-b7c8-9d0e-1f2a-3b4c5d6f7a8b'
+            - 'Create a new action `setDefaultPaneWidths: () => void`.'
+            - 'Inside `setDefaultPaneWidths`, add a guard to return if `defaultWidthsSet` is true.'
+            - 'If not set, it should capture the current `splitPaneWidth` and `sidePaneWidth` from the state and save them into `defaultSplitPaneWidth` and `defaultSidePaneWidth`, then set `defaultWidthsSet` to `true`.'
+            - 'Create a new action `resetPaneWidths: () => void` that sets the current `splitPaneWidth` and `sidePaneWidth` from `defaultSplitPaneWidth` and `defaultSidePaneWidth`.'
+            - "Update the existing `resetToDefaults` action to also call the new `resetPaneWidths` action to ensure a full reset."
+        - uuid: 'd4e5f6a7-b8c9-d0e1-f2a3-b4c5d6e7f8a9'
+          status: 'todo'
+          name: '3. Initialize Default Widths in Provider'
+          reason: |
+            To capture the initial, dynamically calculated pane widths as our defaults for the session, we need to call the `setDefaultPaneWidths` action once when the application loads. The `AppShellProvider` is the perfect place for this one-time setup.
+          files:
+            - src/providers/AppShellProvider.tsx
+          operations:
+            - 'In `AppShellProvider`, get the `setDefaultPaneWidths` action from the `useAppShellStore`.'
+            - 'Use a `useEffect` hook with an empty dependency array `[]` to call `setDefaultPaneWidths()` when the provider mounts.'
+      context_files:
+        compact:
+          - src/store/appShell.store.ts
+          - src/providers/AppShellProvider.tsx
+        medium:
+          - src/store/appShell.store.ts
+          - src/providers/AppShellProvider.tsx
+          - src/hooks/useResizablePanes.hook.ts
+        extended:
+          - src/store/appShell.store.ts
+          - src/providers/AppShellProvider.tsx
+          - src/hooks/useResizablePanes.hook.ts
+          - src/components/layout/AppShell.tsx
+    - uuid: 'e5f6a7b8-c9d0-e1f2-a3b4-c5d6e7f8a9b0'
       status: 'todo'
-      name: 'Part 2: Re-align TopBar Breadcrumb'
+      name: 'Part 2: Implement Page-Level View Configuration'
       reason: |
-        The breadcrumb's current alignment is inconsistent and not anchored to the left edge, which is standard practice for primary navigation elements. This part corrects the layout for better visual hierarchy and predictability.
+        With the store ready, we can now build the mechanism for pages to declare their layout preferences. This involves creating a new hook for a clean API and then applying it to the Messaging page to solve the immediate layout issue.
       steps:
-        - uuid: 'e4f5a6b7-c8d9-0e1f-2a3b-4c5d6f7a8b9c'
+        - uuid: 'f6a7b8c9-d0e1-f2a3-b4c5-d6e7f8a9b0c1'
           status: 'todo'
-          name: "1. Modify AppShell's TopBar Composition"
+          name: '1. Create usePageViewConfig Hook'
           reason: |
-            The `TopBar` component's structure needs to be adjusted to correctly place its children (the breadcrumb and page-specific actions) in the leftmost area.
+            A dedicated hook provides a clean, reusable, and declarative API for pages to manage their specific view width configurations without cluttering the page components with lifecycle logic.
           files:
-            - src/components/layout/AppShell.tsx
+            - src/hooks/usePageViewConfig.hook.ts
           operations:
-            - "Locate the `topBar` prop being passed to the `AppShell` component."
-            - "The `AppTopBar` component is currently passed as a child inside the `TopBar`. This structure is correct, but we need to ensure the parent `TopBar` places it correctly."
-        - uuid: 'f5a6b7c8-d9e0-1f2a-3b4c-5d6f7a8b9c0d'
+            - 'Create a new file `src/hooks/usePageViewConfig.hook.ts`.'
+            - "Define a hook `usePageViewConfig` that accepts a config object: `{ sidePaneWidth?: number; splitPaneWidth?: number }`."
+            - 'Inside the hook, use a `useEffect` with an empty dependency array `[]`.'
+            - "In the effect, get `setSplitPaneWidth`, `setSidePaneWidth`, and `resetPaneWidths` actions from `useAppShellStore`."
+            - 'If `config.splitPaneWidth` is defined, call `setSplitPaneWidth` with the value.'
+            - 'If `config.sidePaneWidth` is defined, call `setSidePaneWidth` with the value.'
+            - 'Return a cleanup function from the effect that calls `resetPaneWidths()`.'
+        - uuid: 'a7b8c9d0-e1f2-a3b4-c5d6-e7f8a9b0c1d2'
           status: 'todo'
-          name: "2. Adjust TopBar's Internal Layout"
+          name: '2. Apply Configuration to Messaging Page'
           reason: |
-            To force the breadcrumb to the left, the `TopBar` component must be told to render its children in the "left section" of its flex layout.
+            Now we apply the new hook to the Messaging page to fix the cramped split-view layout. This serves as the primary use case and validation for the new system. We'll give the right pane more room, making the conversation list in the main pane narrower.
           files:
-            - src/components/layout/TopBar.tsx
+            - src/pages/Messaging/index.tsx
           operations:
-            - "In the `TopBar` component's JSX, move the `{children}` prop inside the 'Left Section' `div`."
-            - "This div previously held the `Menu` icon and should now be the designated area for breadcrumbs or other primary page identifiers."
-        - uuid: 'a6b7c8d9-e0f1-2a3b-4c5d-6f7a8b9c0e1f'
-          status: 'todo'
-          name: "3. Refine AppTopBar Component Layout"
-          reason: |
-            The `AppTopBar` component in `App.tsx` contains flex spacer elements that push the breadcrumb away from the left edge. These need to be removed.
-          files:
-            - src/App.tsx
-          operations:
-            - "Find the `AppTopBar` functional component."
-            - "Remove the `<div className=\"flex-1\" />` spacer element."
-            - "In the root `div` of `AppTopBar`, which has `className=\"flex items-center gap-3 flex-1\"`, remove the `flex-1` class."
+            - "Import the new `usePageViewConfig` hook."
+            - "Inside the `MessagingPage` component, call `usePageViewConfig`."
+            - 'Pass a configuration object that sets `splitPaneWidth`. A good starting value would be a calculation that makes the right pane significantly larger, for example: `splitPaneWidth: window.innerWidth * 0.6`.'
+      context_files:
+        compact:
+          - src/pages/Messaging/index.tsx
+          - src/store/appShell.store.ts
+        medium:
+          - src/pages/Messaging/index.tsx
+          - src/store/appShell.store.ts
+          - src/hooks/useResizablePanes.hook.ts
+        extended:
+          - src/pages/Messaging/index.tsx
+          - src/store/appShell.store.ts
+          - src/hooks/useResizablePanes.hook.ts
+          - src/components/layout/AppShell.tsx
+          - src/hooks/useAppViewManager.hook.ts
   conclusion: |
-    Upon completion, this refactor will result in a more robust and intuitive application shell. The sidebar will be a self-contained unit with its own state controls, improving code organization and reusability. The `TopBar` will feature a logically aligned layout, with primary navigation elements anchored to the left, adhering to common UX patterns.
+    This refactor successfully decouples page layout from the global shell configuration, making the AppShell more of a framework and less of a dictator. Pages can now opt-in to custom layouts with a single hook, without needing to fork the main shell logic or cluttering their own component.
 
-    These changes provide a cleaner foundation for future development and a better, more predictable experience for the end-user, all while ensuring smooth transitions and a responsive feel.
+    It's a huge win for component independence and makes implementing future features like user-saveable layout presets much more straightforward. The immediate fix to the Messaging page layout demonstrates the power and simplicity of the new approach.
   context_files:
     compact:
-      - src/components/layout/TopBar.tsx
-      - src/components/layout/EnhancedSidebar.tsx
-      - src/App.tsx
-    medium:
-      - src/components/layout/TopBar.tsx
-      - src/components/layout/EnhancedSidebar.tsx
-      - src/App.tsx
-      - src/components/layout/AppShell.tsx
-      - src/components/layout/Sidebar.tsx
-    extended:
-      - src/components/layout/TopBar.tsx
-      - src/components/layout/EnhancedSidebar.tsx
-      - src/App.tsx
-      - src/components/layout/AppShell.tsx
-      - src/components/layout/Sidebar.tsx
       - src/store/appShell.store.ts
+      - src/providers/AppShellProvider.tsx
+      - src/pages/Messaging/index.tsx
+    medium:
+      - src/store/appShell.store.ts
+      - src/providers/AppShellProvider.tsx
+      - src/pages/Messaging/index.tsx
+      - src/hooks/useResizablePanes.hook.ts
+      - src/components/layout/AppShell.tsx
+    extended:
+      - src/store/appShell.store.ts
+      - src/providers/AppShellProvider.tsx
+      - src/pages/Messaging/index.tsx
+      - src/hooks/useResizablePanes.hook.ts
+      - src/components/layout/AppShell.tsx
+      - src/hooks/useAppViewManager.hook.ts
+      - src/hooks/useRightPaneContent.hook.tsx
 ```

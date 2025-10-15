@@ -10,7 +10,9 @@ also why not auto applied to another page like demo data?
 
 ===
 
-each page can decide to view mode management about how much proportion of screen widht for split view mod and overlay side pane mode
+each page should can decide to view mode management about how much proportion of screen widht for split view mod and overlay side pane mode
+
+example like case of message split view mode layout, currently the message list left pane too widht eats right pane of message thread and profile detail
 
 === DONE
 
