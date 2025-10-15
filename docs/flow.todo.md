@@ -28,7 +28,7 @@ dark light mode is not persisted on refresh
 
 === DONE
 
-message page: sidebar should always be collapsed for message page
+message page: sidebar should always be collapsed for message page on first load and page refresh
 
 ===
 
@@ -75,7 +75,7 @@ message page:
 
 message page should comply the app shell view mode!
 
-===
+=== DONE
 
 message page: message list column pane: animated tabs
 
@@ -96,7 +96,7 @@ message page: message list column: resizable sidebar border: I hate when it perc
 === DONE
 
 message page:
-please inform the view mode managemnt about the split view mode ;
+should has capability to inform the view mode managemnt about the split view mode ;
 
 widht portion:
 

@@ -1,0 +1,306 @@
+uuid: 44265147-3b2d-451e-a4ad-0a8809c91054
+projectId: jeli-app-shell
+createdAt: '2025-10-15T14:46:33.253Z'
+gitCommitMsg: >-
+  feat(messaging): implement 3-pane responsive layout
+
+  Refactors the messaging feature to use a responsive, three-pane layout
+  (20/40/40 split) that integrates seamlessly with the AppShell's split-view
+  architecture.
+
+  - The `useAppViewManager` hook now forces a split-view state for the messaging
+  page. - `MessagingPage` dynamically calculates and sets the required pane
+  widths, reacting to window resize and sidebar state changes to maintain
+  proportions. - The internal resizer in `MessagingContent` is improved for a
+  smoother UX by disabling transitions during resizing.
+promptSummary: >-
+  The user wants to refactor the messaging page to have a 3-pane layout
+  (20/40/40 split) that is responsive and compliant with the AppShell's
+  split-view mode.
+reasoning:
+  - >-
+    Based on your request, I will refactor the messaging page to implement a
+    responsive, three-pane layout that integrates with the AppShell's split-view
+    mode. This will be achieved by:
+  - >-
+    1.  **Forcing Split-View Mode**: I'll modify the `useAppViewManager` hook to
+    automatically activate `split-view` whenever the user navigates to the
+    messaging feature.
+  - >-
+    2.  **Managing Pane Widths**: A custom effect will be added to the
+    `MessagingPage` component. This effect will calculate and set the pane
+    widths to achieve the desired 20/40/40 split, ensuring it responds correctly
+    to window resizing and sidebar state changes.
+  - >-
+    3.  **Improving Resizing UX**: I'll make a minor adjustment to the
+    `MessagingContent` component to disable CSS transitions during resizing,
+    ensuring a smoother user experience.
+  - >-
+    These changes will correctly configure the application layout without
+    altering the core AppShell components, encapsulating the complexity within
+    the messaging feature itself.
+  - >-
+    First, I'll update the `useAppViewManager` hook to recognize the messaging
+    page and enforce the split-view layout.
+  - >-
+    Next, I'll update the main `MessagingPage` component. This will no longer
+    use the generic `usePageViewConfig` hook, but instead implement its own
+    `useEffect` to dynamically calculate and set the widths for the main split
+    pane and the nested messaging profile pane, ensuring the 20/40/40 split is
+    maintained responsively.
+  - >-
+    Finally, I'll apply a small refinement to `MessagingContent` to prevent
+    jerky animations by disabling CSS transitions while the user is actively
+    resizing the panes.
+operations:
+  - type: write
+    path: src/hooks/useAppViewManager.hook.ts
+    content: >+
+      --- src/hooks/useAppViewManager.hook.ts
+
+      +++ src/hooks/useAppViewManager.hook.ts
+
+      @@ -29,26 +29,23 @@
+         const { itemId, conversationId } = params;
+       
+         // --- DERIVED STATE FROM URL ---
+      -
+
+      +  const currentActivePage = useMemo(() =>
+      (location.pathname.split('/')[1] || 'dashboard') as ActivePage,
+      [location.pathname]);
+         const view = searchParams.get('view');
+         const sidePane = searchParams.get('sidePane');
+         const right = searchParams.get('right');
+       
+         const { bodyState, sidePaneContent } = useMemo(() => {
+           const validPanes: AppShellState['sidePaneContent'][] = ['details', 'settings', 'main', 'toaster', 'notifications', 'dataDemo', 'messaging'];
+           
+      +    if (currentActivePage === 'messaging') {
+
+      +      return { bodyState: BODY_STATES.SPLIT_VIEW, sidePaneContent:
+      'messaging' as const };
+
+      +    }
+
+      +
+           if (sidePane && validPanes.includes(sidePane as AppShellState['sidePaneContent'])) {
+             return { bodyState: BODY_STATES.SIDE_PANE, sidePaneContent: sidePane as AppShellState['sidePaneContent'] };
+           }
+       
+           if (itemId) {
+      -      if (view === 'split') {
+
+      -        return { bodyState: BODY_STATES.SPLIT_VIEW, sidePaneContent:
+      'dataItem' as const };
+
+      -      }
+
+      -      return { bodyState: BODY_STATES.SIDE_PANE, sidePaneContent:
+      'dataItem' as const };
+
+      -    }
+
+      -    
+
+      -    if (conversationId) {
+
+      -      return { bodyState: BODY_STATES.SPLIT_VIEW, sidePaneContent:
+      'messaging' as const };
+
+      +      return { bodyState: view === 'split' ? BODY_STATES.SPLIT_VIEW :
+      BODY_STATES.SIDE_PANE, sidePaneContent: 'dataItem' as const };
+           }
+       
+           if (view === 'split' && right && validPanes.includes(right as AppShellState['sidePaneContent'])) {
+      @@ -56,10 +53,8 @@
+           }
+           
+           return { bodyState: BODY_STATES.NORMAL, sidePaneContent: 'details' as const };
+      -  }, [itemId, conversationId, view, sidePane, right]);
+
+      -  
+
+      -  const currentActivePage = useMemo(() =>
+      (location.pathname.split('/')[1] || 'dashboard') as ActivePage,
+      [location.pathname]);
+
+      +  }, [itemId, view, sidePane, right, currentActivePage]);
+       
+         // DataDemo specific state
+         const viewMode = useMemo(() => (searchParams.get('view') as ViewMode) || 'list', [searchParams]);
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/Messaging/index.tsx
+    content: |-
+      import React, { useEffect } from "react";
+      import { ConversationList } from "./components/ConversationList";
+      import { useAppShellStore } from "@/store/appShell.store";
+      import { SIDEBAR_STATES } from "@/lib/utils";
+
+      export default function MessagingPage() {
+        const { sidebarWidth, sidebarState } = useAppShellStore(state => ({
+          sidebarWidth: state.sidebarWidth,
+          sidebarState: state.sidebarState,
+        }));
+        const { setSplitPaneWidth, setMessagingProfileWidth, resetPaneWidths } = useAppShellStore.getState();
+
+        useEffect(() => {
+          const isSidebarEffectivelyVisible = sidebarState !== SIDEBAR_STATES.HIDDEN;
+          
+          const updateWidths = () => {
+            const effectiveSidebarWidth = isSidebarEffectivelyVisible ? sidebarWidth : 0;
+            const availableWidth = window.innerWidth - effectiveSidebarWidth;
+            const newSplitPaneWidth = availableWidth * 0.8;
+            setSplitPaneWidth(newSplitPaneWidth);
+            setMessagingProfileWidth(newSplitPaneWidth * 0.5);
+          };
+
+          updateWidths(); // Set on mount
+          window.addEventListener('resize', updateWidths);
+
+          return () => {
+            window.removeEventListener('resize', updateWidths);
+            resetPaneWidths(); // Reset on unmount
+          };
+        }, [sidebarWidth, sidebarState, setSplitPaneWidth, setMessagingProfileWidth, resetPaneWidths]);
+
+        return (
+          <div className="h-full w-full">
+            <ConversationList />
+          </div>
+        );
+      }
+    patchStrategy: replace
+  - type: write
+    path: src/pages/Messaging/components/MessagingContent.tsx
+    content: >+
+      --- src/pages/Messaging/components/MessagingContent.tsx
+
+      +++ src/pages/Messaging/components/MessagingContent.tsx
+
+      @@ -32,11 +32,7 @@
+         const profileWidth = isMessagingProfileCollapsed ? 0 : messagingProfileWidth;
+       
+         return (
+      -    <div ref={containerRef} className={cn(
+
+      -      "h-full w-full flex bg-background", 
+
+      -      isResizingMessagingProfile && !isMessagingProfileCollapsed &&
+      "cursor-col-resize select-none"
+
+      -    )}>
+
+      +    <div ref={containerRef} className="h-full w-full flex bg-background">
+             <div className="flex-1 min-w-0">
+               <MessageThread conversationId={conversationId} />
+             </div>
+      @@ -49,8 +45,8 @@
+             <div 
+               style={{ width: `${profileWidth}px` }} 
+               className={cn(
+      -          "flex-shrink-0 transition-[width] duration-300 ease-in-out
+      overflow-hidden",
+
+      +          "flex-shrink-0 overflow-hidden",
+
+      +          !isResizingMessagingProfile && "transition-[width] duration-300
+      ease-in-out",
+                 isMessagingProfileCollapsed && "w-0"
+               )}
+             >
+
+    patchStrategy: standard-diff
+snapshot:
+  src/hooks/useAppViewManager.hook.ts: "import { useMemo, useCallback } from 'react';\nimport { useSearchParams, useNavigate, useLocation, useParams } from 'react-router-dom';\nimport type { AppShellState, ActivePage } from '@/store/appShell.store';\nimport type { DataItem, ViewMode, SortConfig, SortableField, GroupableField, Status, Priority } from '@/pages/DataDemo/types';\nimport type { FilterConfig } from '@/pages/DataDemo/components/DataToolbar';\nimport { BODY_STATES } from '@/lib/utils';\n\nconst pageToPaneMap: Record<string, AppShellState['sidePaneContent']> = {\n  dashboard: 'main',\n  settings: 'settings',\n  toaster: 'toaster',\n  notifications: 'notifications',\n  'data-demo': 'dataDemo',\n  messaging: 'messaging',\n};\n\n/**\n * A centralized hook to manage and synchronize all URL-based view states.\n * This is the single source of truth for view modes, side panes, split views,\n * and page-specific parameters.\n */\nexport function useAppViewManager() {\n  const [searchParams, setSearchParams] = useSearchParams();\n  const navigate = useNavigate();\n  const location = useLocation();\n  const params = useParams<{ itemId: string; conversationId: string }>();\n  const { itemId, conversationId } = params;\n\n  // --- DERIVED STATE FROM URL ---\n\n  const view = searchParams.get('view');\n  const sidePane = searchParams.get('sidePane');\n  const right = searchParams.get('right');\n\n  const { bodyState, sidePaneContent } = useMemo(() => {\n    const validPanes: AppShellState['sidePaneContent'][] = ['details', 'settings', 'main', 'toaster', 'notifications', 'dataDemo', 'messaging'];\n    \n    if (sidePane && validPanes.includes(sidePane as AppShellState['sidePaneContent'])) {\n      return { bodyState: BODY_STATES.SIDE_PANE, sidePaneContent: sidePane as AppShellState['sidePaneContent'] };\n    }\n\n    if (itemId) {\n      if (view === 'split') {\n        return { bodyState: BODY_STATES.SPLIT_VIEW, sidePaneContent: 'dataItem' as const };\n      }\n      return { bodyState: BODY_STATES.SIDE_PANE, sidePaneContent: 'dataItem' as const };\n    }\n    \n    if (conversationId) {\n      return { bodyState: BODY_STATES.SPLIT_VIEW, sidePaneContent: 'messaging' as const };\n    }\n\n    if (view === 'split' && right && validPanes.includes(right as AppShellState['sidePaneContent'])) {\n      return { bodyState: BODY_STATES.SPLIT_VIEW, sidePaneContent: right as AppShellState['sidePaneContent'] };\n    }\n    \n    return { bodyState: BODY_STATES.NORMAL, sidePaneContent: 'details' as const };\n  }, [itemId, conversationId, view, sidePane, right]);\n  \n  const currentActivePage = useMemo(() => (location.pathname.split('/')[1] || 'dashboard') as ActivePage, [location.pathname]);\n\n  // DataDemo specific state\n  const viewMode = useMemo(() => (searchParams.get('view') as ViewMode) || 'list', [searchParams]);\n\tconst page = useMemo(() => parseInt(searchParams.get('page') || '1', 10), [searchParams]);\n\tconst groupBy = useMemo(() => (searchParams.get('groupBy') as GroupableField | 'none') || 'none', [searchParams]);\n\tconst activeGroupTab = useMemo(() => searchParams.get('tab') || 'all', [searchParams]);\n\tconst filters = useMemo<FilterConfig>(\n\t\t() => ({\n\t\t\tsearchTerm: searchParams.get('q') || '',\n\t\t\tstatus: (searchParams.get('status')?.split(',') || []).filter(Boolean) as Status[],\n\t\t\tpriority: (searchParams.get('priority')?.split(',') || []).filter(Boolean) as Priority[],\n\t\t}),\n\t\t[searchParams],\n\t);\n\tconst sortConfig = useMemo<SortConfig | null>(() => {\n\t\tconst sortParam = searchParams.get('sort');\n\t\tif (!sortParam) return { key: 'updatedAt', direction: 'desc' }; // Default sort\n\t\tif (sortParam === 'default') return null;\n\n\t\tconst [key, direction] = sortParam.split('-');\n\t\treturn { key: key as SortableField, direction: direction as 'asc' | 'desc' };\n\t}, [searchParams]);\n\n  // --- MUTATOR ACTIONS ---\n\n  const handleParamsChange = useCallback(\n\t\t(newParams: Record<string, string | string[] | null | undefined>, resetPage = false) => {\n\t\t\tsetSearchParams(\n\t\t\t\t(prev) => {\n\t\t\t\t\tconst updated = new URLSearchParams(prev);\n\t\t\t\t\t\n\t\t\t\t\tfor (const [key, value] of Object.entries(newParams)) {\n\t\t\t\t\t\tif (value === null || value === undefined || (Array.isArray(value) && value.length === 0) || value === '') {\n\t\t\t\t\t\t\tupdated.delete(key);\n\t\t\t\t\t\t} else if (Array.isArray(value)) {\n\t\t\t\t\t\t\tupdated.set(key, value.join(','));\n\t\t\t\t\t\t} else {\n\t\t\t\t\t\t\tupdated.set(key, String(value));\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\n\t\t\t\t\tif (resetPage) {\n\t\t\t\t\t\tupdated.delete('page');\n\t\t\t\t\t}\n\t\t\t\t\tif ('groupBy' in newParams) {\n\t\t\t\t\t\tupdated.delete('tab');\n\t\t\t\t\t}\n\n\t\t\t\t\treturn updated;\n\t\t\t\t},\n\t\t\t\t{ replace: true },\n\t\t\t);\n\t\t},\n\t\t[setSearchParams],\n\t);\n\n  const navigateTo = useCallback((page: string) => {\n    navigate(page.startsWith('/') ? page : `/${page}`);\n  }, [navigate]);\n\n  const openSidePane = useCallback((pane: AppShellState['sidePaneContent']) => {\n    if (location.pathname === `/${Object.keys(pageToPaneMap).find(key => pageToPaneMap[key] === pane)}`) {\n        navigate({ pathname: '/dashboard', search: `?sidePane=${pane}` }, { replace: true });\n    } else {\n        handleParamsChange({ sidePane: pane, view: null, right: null });\n    }\n  }, [handleParamsChange, navigate, location.pathname]);\n\n  const closeSidePane = useCallback(() => {\n    if (itemId) {\n      navigate('/data-demo');\n    } else {\n      handleParamsChange({ sidePane: null, view: null, right: null });\n    }\n  }, [itemId, navigate, handleParamsChange]);\n\n  const toggleSidePane = useCallback((pane: AppShellState['sidePaneContent']) => {\n    if (sidePane === pane) {\n      closeSidePane();\n    } else {\n      openSidePane(pane);\n    }\n  }, [sidePane, openSidePane, closeSidePane]);\n\n  const toggleSplitView = useCallback(() => {\n    if (bodyState === BODY_STATES.SIDE_PANE) {\n      handleParamsChange({ view: 'split', right: sidePane, sidePane: null });\n    } else if (bodyState === BODY_STATES.SPLIT_VIEW) {\n      handleParamsChange({ sidePane: right, view: null, right: null });\n    } else { // From normal\n      const paneContent = pageToPaneMap[currentActivePage] || 'details';\n      handleParamsChange({ view: 'split', right: paneContent, sidePane: null });\n    }\n  }, [bodyState, sidePane, right, currentActivePage, handleParamsChange]);\n  \n  const setNormalView = useCallback(() => {\n      handleParamsChange({ sidePane: null, view: null, right: null });\n  }, [handleParamsChange]);\n\n  const switchSplitPanes = useCallback(() => {\n    if (bodyState !== BODY_STATES.SPLIT_VIEW) return;\n    const newSidePaneContent = pageToPaneMap[currentActivePage];\n    const newActivePage = Object.entries(pageToPaneMap).find(\n      ([, value]) => value === sidePaneContent\n    )?.[0] as ActivePage | undefined;\n\n    if (newActivePage && newSidePaneContent) {\n      navigate(`/${newActivePage}?view=split&right=${newSidePaneContent}`, { replace: true });\n    }\n  }, [bodyState, currentActivePage, sidePaneContent, navigate]);\n  \n  const closeSplitPane = useCallback((paneToClose: 'main' | 'right') => {\n    if (bodyState !== BODY_STATES.SPLIT_VIEW) return;\n    if (paneToClose === 'right') {\n      navigate(`/${currentActivePage}`, { replace: true });\n    } else { // Closing main pane\n      const pageToBecomeActive = Object.entries(pageToPaneMap).find(\n        ([, value]) => value === sidePaneContent\n      )?.[0] as ActivePage | undefined;\n      \n      if (pageToBecomeActive) {\n        navigate(`/${pageToBecomeActive}`, { replace: true });\n      } else {\n        navigate(`/dashboard`, { replace: true });\n      }\n    }\n  }, [bodyState, currentActivePage, sidePaneContent, navigate]);\n  \n  // DataDemo actions\n  const setViewMode = (mode: ViewMode) => handleParamsChange({ view: mode });\n  const setGroupBy = (val: string) => handleParamsChange({ groupBy: val === 'none' ? null : val }, true);\n  const setActiveGroupTab = (tab: string) => handleParamsChange({ tab: tab === 'all' ? null : tab });\n  const setFilters = (newFilters: FilterConfig) => {\n    handleParamsChange({ q: newFilters.searchTerm, status: newFilters.status, priority: newFilters.priority }, true);\n  }\n  const setSort = (config: SortConfig | null) => {\n    if (!config) {\n      handleParamsChange({ sort: 'default' }, true);\n    } else {\n      handleParamsChange({ sort: `${config.key}-${config.direction}` }, true);\n    }\n  }\n  const setTableSort = (field: SortableField) => {\n    let newSort: string | null = `${field}-desc`;\n    if (sortConfig?.key === field) {\n      if (sortConfig.direction === 'desc') newSort = `${field}-asc`;\n      else if (sortConfig.direction === 'asc') newSort = 'default';\n    }\n    handleParamsChange({ sort: newSort }, true);\n  };\n  const setPage = (newPage: number) => handleParamsChange({ page: newPage.toString() });\n\n  const onItemSelect = useCallback((item: DataItem) => {\n\t\tnavigate(`/data-demo/${item.id}${location.search}`);\n\t}, [navigate, location.search]);\n\n\n  return useMemo(() => ({\n    // State\n    bodyState,\n    sidePaneContent,\n    currentActivePage,\n    itemId,\n    // DataDemo State\n    viewMode,\n    page,\n    groupBy,\n    activeGroupTab,\n    filters,\n    sortConfig,\n    // Actions\n    navigateTo,\n    openSidePane,\n    closeSidePane,\n    toggleSidePane,\n    toggleSplitView,\n    setNormalView,\n    switchSplitPanes,\n    closeSplitPane,\n    // DataDemo Actions\n    onItemSelect,\n    setViewMode,\n    setGroupBy,\n    setActiveGroupTab,\n    setFilters,\n    setSort,\n    setTableSort,\n    setPage,\n  }), [\n    bodyState, sidePaneContent, currentActivePage, itemId,\n    viewMode, page, groupBy, activeGroupTab, filters, sortConfig,\n    navigateTo, openSidePane, closeSidePane, toggleSidePane, toggleSplitView, setNormalView, \n    switchSplitPanes, closeSplitPane, onItemSelect, setViewMode, setGroupBy, setActiveGroupTab, setFilters,\n    setSort, setTableSort, setPage\n  ]);\n}"
+  src/pages/Messaging/index.tsx: |-
+    import React from "react";
+    import { ConversationList } from "./components/ConversationList";
+
+    export default function MessagingPage() {
+      return (
+        <div className="h-full w-full">
+          <ConversationList />
+        </div>
+      );
+    }
+  src/pages/Messaging/components/MessagingContent.tsx: >-
+    import React, { useRef } from 'react';
+
+    import { ContactProfile } from './ContactProfile';
+
+    import { MessageThread } from './MessageThread';
+
+    import { useAppShellStore } from '@/store/appShell.store';
+
+    import { useResizableMessagingProfile } from
+    '@/hooks/useResizablePanes.hook';
+
+    import { cn } from '@/lib/utils';
+
+
+    interface MessagingContentProps {
+      conversationId?: string;
+    }
+
+
+    export const MessagingContent: React.FC<MessagingContentProps> = ({
+    conversationId }) => {
+      const containerRef = useRef<HTMLDivElement>(null);
+      const { 
+        messagingProfileWidth, 
+        isResizingMessagingProfile, 
+        isMessagingProfileCollapsed 
+      } = useAppShellStore(s => ({
+        messagingProfileWidth: s.messagingProfileWidth,
+        isResizingMessagingProfile: s.isResizingMessagingProfile,
+        isMessagingProfileCollapsed: s.isMessagingProfileCollapsed,
+      }));
+      const { setIsResizingMessagingProfile } = useAppShellStore.getState();
+
+      useResizableMessagingProfile(containerRef);
+
+      const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+        if (isMessagingProfileCollapsed) return;
+        e.preventDefault();
+        setIsResizingMessagingProfile(true);
+      };
+      
+      const profileWidth = isMessagingProfileCollapsed ? 0 : messagingProfileWidth;
+
+      return (
+        <div ref={containerRef} className={cn(
+          "h-full w-full flex bg-background", 
+          isResizingMessagingProfile && !isMessagingProfileCollapsed && "cursor-col-resize select-none"
+        )}>
+          <div className="flex-1 min-w-0">
+            <MessageThread conversationId={conversationId} />
+          </div>
+
+          {!isMessagingProfileCollapsed && (
+            <div onMouseDown={handleMouseDown} className="w-2 flex-shrink-0 cursor-col-resize group flex items-center justify-center">
+              <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200" />
+            </div>
+          )}
+
+          <div 
+            style={{ width: `${profileWidth}px` }} 
+            className={cn(
+              "flex-shrink-0 transition-[width] duration-300 ease-in-out overflow-hidden",
+              isMessagingProfileCollapsed && "w-0"
+            )}
+          >
+            <ContactProfile conversationId={conversationId} />
+          </div>
+        </div>
+      );
+    };
+approved: false
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: undone
+id: 321

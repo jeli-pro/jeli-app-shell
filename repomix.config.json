@@ -32,11 +32,21 @@
     // "postcss.config.js",
     // "index.html",
     // "src"
-
+    //
+    //
     "src/App.tsx",
-    "src/components/ui/animated-tabs.tsx",
+    "src/components/layout/AppShell.tsx",
+    "src/components/layout/MainContent.tsx",
+    "src/components/layout/RightPane.tsx",
+    "src/hooks/useAppViewManager.hook.ts",
+    "src/hooks/useResizablePanes.hook.ts",
+    "src/hooks/useRightPaneContent.hook.tsx",
+    "src/pages/Messaging/components/ContactProfile.tsx",
     "src/pages/Messaging/components/ConversationList.tsx",
-    "src/pages/Messaging/index.tsx"
+    "src/pages/Messaging/components/MessageThread.tsx",
+    "src/pages/Messaging/components/MessagingContent.tsx",
+    "src/pages/Messaging/index.tsx",
+    "src/store/appShell.store.ts"
   ],
   "ignore": {
     "useGitignore": true,

@@ -16,13 +16,10 @@ export interface AppShellState {
   defaultSidePaneWidth: number;
   defaultSplitPaneWidth: number;
   defaultWidthsSet: boolean;
-  messagingProfileWidth: number;
   previousBodyState: BodyState;
   fullscreenTarget: 'main' | 'right' | null;
   isResizing: boolean;
   isResizingRightPane: boolean;
-  isResizingMessagingProfile: boolean;
-  isMessagingProfileCollapsed: boolean;
   isTopBarVisible: boolean;
   isTopBarHovered: boolean;
   autoExpandSidebar: boolean;
@@ -52,11 +49,8 @@ export interface AppShellActions {
     resetPaneWidths: () => void;
     setSplitPaneWidth: (payload: number) => void;
     setIsResizing: (payload: boolean) => void;
-    setMessagingProfileWidth: (payload: number) => void;
     setFullscreenTarget: (payload: 'main' | 'right' | null) => void;
     setIsResizingRightPane: (payload: boolean) => void;
-    setIsResizingMessagingProfile: (payload: boolean) => void;
-    toggleMessagingProfileCollapsed: () => void;
     setTopBarVisible: (payload: boolean) => void;
     setAutoExpandSidebar: (payload: boolean) => void;
     setReducedMotion: (payload: boolean) => void;
@@ -88,13 +82,10 @@ const defaultState: AppShellState = {
   defaultSidePaneWidth: 400,
   defaultSplitPaneWidth: 400,
   defaultWidthsSet: false,
-  messagingProfileWidth: 384,
   previousBodyState: BODY_STATES.NORMAL,
   fullscreenTarget: null,
   isResizing: false,
   isResizingRightPane: false,
-  isResizingMessagingProfile: false,
-  isMessagingProfileCollapsed: false,
   isTopBarVisible: true,
   isTopBarHovered: false,
   autoExpandSidebar: true,
@@ -146,12 +137,9 @@ export const useAppShellStore = create<AppShellState & AppShellActions>((set, ge
     splitPaneWidth: state.defaultSplitPaneWidth,
   })),
   setSplitPaneWidth: (payload) => set({ splitPaneWidth: Math.max(300, Math.min(window.innerWidth * 0.8, payload)) }),
-  setMessagingProfileWidth: (payload) => set({ messagingProfileWidth: Math.max(320, Math.min(payload, window.innerWidth - 400)) }),
   setIsResizing: (payload) => set({ isResizing: payload }),
   setFullscreenTarget: (payload) => set({ fullscreenTarget: payload }),
   setIsResizingRightPane: (payload) => set({ isResizingRightPane: payload }),
-  setIsResizingMessagingProfile: (payload) => set({ isResizingMessagingProfile: payload }),
-  toggleMessagingProfileCollapsed: () => set(state => ({ isMessagingProfileCollapsed: !state.isMessagingProfileCollapsed })),
   setTopBarVisible: (payload) => set({ isTopBarVisible: payload }),
   setAutoExpandSidebar: (payload) => set({ autoExpandSidebar: payload }),
   setReducedMotion: (payload) => set({ reducedMotion: payload }),

@@ -87,12 +87,6 @@ export function useRightPaneContent(sidePaneContent: AppShellState['sidePaneCont
         content: <DataDetailPanel item={selectedItem} onClose={() => navigate('/data-demo')} />,
       };
     }
-    if (sidePaneContent === 'messaging') {
-      return {
-       meta: contentMap.messaging,
-       content: <MessagingContent conversationId={conversationId} />,
-     };
-   }
     const mappedContent = contentMap[sidePaneContent as keyof typeof contentMap] || contentMap.details;
     return {
       meta: mappedContent,

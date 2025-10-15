@@ -1,9 +1,9 @@
-import { useMemo, useCallback } from 'react';
+import { useMemo, useCallback, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate, useLocation, useParams } from 'react-router-dom';
-import type { AppShellState, ActivePage } from '@/store/appShell.store';
+import { useAppShellStore, type AppShellState, type ActivePage } from '@/store/appShell.store';
 import type { DataItem, ViewMode, SortConfig, SortableField, GroupableField, Status, Priority } from '@/pages/DataDemo/types';
 import type { FilterConfig } from '@/pages/DataDemo/components/DataToolbar';
-import { BODY_STATES } from '@/lib/utils';
+import { BODY_STATES, SIDEBAR_STATES } from '@/lib/utils';
 
 const pageToPaneMap: Record<string, AppShellState['sidePaneContent']> = {
   dashboard: 'main',
@@ -13,6 +13,14 @@ const pageToPaneMap: Record<string, AppShellState['sidePaneContent']> = {
   'data-demo': 'dataDemo',
   messaging: 'messaging',
 };
+
+function usePrevious<T>(value: T): T | undefined {
+  const ref = useRef<T>();
+  useEffect(() => {
+    ref.current = value;
+  });
+  return ref.current;
+}
 
 /**
  * A centralized hook to manage and synchronize all URL-based view states.
@@ -25,6 +33,7 @@ export function useAppViewManager() {
   const location = useLocation();
   const params = useParams<{ itemId: string; conversationId: string }>();
   const { itemId, conversationId } = params;
+  const { setSidebarState, sidebarState } = useAppShellStore();
 
   // --- DERIVED STATE FROM URL ---
 
@@ -35,29 +44,43 @@ export function useAppViewManager() {
   const { bodyState, sidePaneContent } = useMemo(() => {
     const validPanes: AppShellState['sidePaneContent'][] = ['details', 'settings', 'main', 'toaster', 'notifications', 'dataDemo', 'messaging'];
     
+    // 1. Priority: Explicit side pane overlay via URL param
     if (sidePane && validPanes.includes(sidePane as AppShellState['sidePaneContent'])) {
       return { bodyState: BODY_STATES.SIDE_PANE, sidePaneContent: sidePane as AppShellState['sidePaneContent'] };
     }
 
+    // 2. Data item detail view (can be overlay or split)
     if (itemId) {
       if (view === 'split') {
         return { bodyState: BODY_STATES.SPLIT_VIEW, sidePaneContent: 'dataItem' as const };
       }
       return { bodyState: BODY_STATES.SIDE_PANE, sidePaneContent: 'dataItem' as const };
     }
-    
+
+    // 3. Messaging conversation view (always split)
     if (conversationId) {
       return { bodyState: BODY_STATES.SPLIT_VIEW, sidePaneContent: 'messaging' as const };
     }
 
+    // 4. Generic split view via URL param
     if (view === 'split' && right && validPanes.includes(right as AppShellState['sidePaneContent'])) {
       return { bodyState: BODY_STATES.SPLIT_VIEW, sidePaneContent: right as AppShellState['sidePaneContent'] };
     }
-    
+
     return { bodyState: BODY_STATES.NORMAL, sidePaneContent: 'details' as const };
   }, [itemId, conversationId, view, sidePane, right]);
   
   const currentActivePage = useMemo(() => (location.pathname.split('/')[1] || 'dashboard') as ActivePage, [location.pathname]);
+  const prevActivePage = usePrevious(currentActivePage);
+
+  // --- SIDE EFFECTS ---
+  useEffect(() => {
+    // On navigating to messaging page, collapse sidebar if it's expanded.
+    // This ensures a good default view but allows the user to expand it again if they wish.
+    if (currentActivePage === 'messaging' && prevActivePage !== 'messaging' && sidebarState === SIDEBAR_STATES.EXPANDED) {
+      setSidebarState(SIDEBAR_STATES.COLLAPSED);
+    }
+  }, [currentActivePage, prevActivePage, sidebarState, setSidebarState]);
 
   // DataDemo specific state
   const viewMode = useMemo(() => (searchParams.get('view') as ViewMode) || 'list', [searchParams]);
