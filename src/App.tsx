@@ -94,7 +94,7 @@ function AppTopBar() {
   const activePage = location.pathname.split('/').filter(Boolean).pop()?.replace('-', ' ') || 'dashboard';
 
   return (
-    <div className="flex items-center gap-3 flex-1">
+    <div className="flex items-center gap-3">
       <div
         className={cn(
           "hidden md:flex items-center gap-2 text-sm transition-opacity",
@@ -115,8 +115,6 @@ function AppTopBar() {
           {activePage}
         </span>
       </div>
-
-      <div className="flex-1" />
 
       {/* Page-specific: Dashboard search and actions */}
       {activePage === "dashboard" && (

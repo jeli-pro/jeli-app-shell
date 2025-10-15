@@ -7,7 +7,17 @@ I am obsessed with laravel filament... so make everything about data demo page i
 scroll to bottom in dashboard is not stick to right bottom.
 also why not auto applied to another page like demo data?
 
+
 ===
+
+each page can decide to view mode management about how much proportion of screen widht for split view mod and overlay side pane mode
+
+=== DONE
+
+1.  sidebar toggle should not in top bar, it should be within sidebar, just right side of logo.
+2. breadcrumb should left aligned in top bar at edge left side
+
+=== DONE
 
 on splid view mode active, should hide top bar... only reveal on hovering top area
 
@@ -15,7 +25,7 @@ on splid view mode active, should hide top bar... only reveal on hovering top ar
 
 data demo page: on each view mode, need additional item as CTA to lure user to add more data
 
-===
+=== DONE
 
 create omni (WA, IG, FB) channel CRM messaging page. make sure UI amazing and UX cohesive
 

@@ -18,6 +18,7 @@ import {
   User,
   Plus,
   Database,
+  PanelLeftClose,
 } from 'lucide-react';
 import { useAppShellStore, type ActivePage } from '@/store/appShell.store';
 import {
@@ -79,6 +80,23 @@ const SidebarWorkspaceTrigger = () => {
   );
 };
 
+const SidebarToggleButton = () => {
+  const { isCollapsed } = useSidebar();
+  const { toggleSidebar } = useAppShellStore.getState();
+
+  if (isCollapsed) return null;
+
+  return (
+    <button
+      onClick={toggleSidebar}
+      className="ml-auto h-9 w-9 flex items-center justify-center rounded-lg hover:bg-accent transition-colors"
+      title="Collapse Sidebar"
+    >
+      <PanelLeftClose className="w-5 h-5" />
+    </button>
+  );
+};
+
 interface SidebarProps {
   onMouseEnter?: () => void;
   onMouseLeave?: () => void;
@@ -91,7 +109,6 @@ export const EnhancedSidebar = React.memo(React.forwardRef<HTMLDivElement, Sideb
     const appName = useAppShellStore(s => s.appName);
     const appLogo = useAppShellStore(s => s.appLogo);
     const [selectedWorkspace, setSelectedWorkspace] = React.useState(mockWorkspaces[0]);
-
     return (
       <Sidebar
         ref={ref}
@@ -107,6 +124,7 @@ export const EnhancedSidebar = React.memo(React.forwardRef<HTMLDivElement, Sideb
               </div>
             )}
             <SidebarTitle>{appName}</SidebarTitle>
+            <SidebarToggleButton />
           </SidebarHeader>
 
           <SidebarBody>
@@ -150,7 +168,7 @@ export const EnhancedSidebar = React.memo(React.forwardRef<HTMLDivElement, Sideb
               <Workspaces
                 workspaces={mockWorkspaces}
                 selectedWorkspaceId={selectedWorkspace.id}
-                onWorkspaceChange={setSelectedWorkspace}
+                onWorkspaceChange={(ws) => setSelectedWorkspace(ws as MyWorkspace)}
               >
                 <SidebarWorkspaceTrigger />
                 <WorkspaceContent>

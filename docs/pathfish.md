@@ -1,146 +1,108 @@
-Here's the master plan, architect style.
-
-We're going to make the top bar in split view mode slicker than a greased-up watermelon. Right now, it's just sitting there, hogging precious vertical space. The new deal: it gets out of the way by default and only peeks back when you hover the top edge of the window. It's about giving users back their pixels.
-
-The approach is surgical. First, we'll patch our central nervous system, the Zustand store, with a new state to track the hover status. Then, we'll rewire the animation logic in `useAppShellAnimations.hook.ts` to listen to this new signal. If we're in split view and not hovering, we'll tell GSAP to boot that top bar off-screen. Finally, the main `AppShell` component will get the simple mouse listeners to flip the state. This avoids polluting components with messy logic and keeps the animations smooth.
-
-This is a clean, state-driven approach that respects the existing architecture. No hacks, just extending the system to be smarter. Let's lay out the schematics.
+Here is the master plan for the code refactoring.
 
 ```yaml
 plan:
-  uuid: 'c8a2b1f3-5d7e-4b9a-8c1f-9d3e5a7b6a2c'
+  uuid: 'c8a2b1f3-7e4d-4a1b-9f0c-6d9e8a7b3c2d'
   status: 'todo'
-  title: 'Auto-hide Top Bar on Split View with Hover Reveal'
+  title: 'Refactor Sidebar Toggle and TopBar Layout'
   introduction: |
-    Alright, listen up. The top bar in split view is a screen real estate hog. We're gonna make it slick. It'll get out of the way by default and only slide back in when you mouse over the top edge. Pure class.
+    This plan orchestrates a two-part refactor to improve the UI/UX of the application shell. The primary goals are to enhance component encapsulation and create a more intuitive, conventional layout.
 
-    We'll pipe a new `isTopBarHovered` boolean into our Zustand store. The main `AppShell` component will be responsible for flipping this switch on mouse enter/leave events in the top bar area. Then, our existing GSAP animation hook, `useBodyStateAnimations`, will be modified to react to this new state. If the app is in split view and the user isn't hovering at the top, that top bar gets a `translateY(-100%)`.
+    First, we'll relocate the sidebar toggle control from the global `TopBar` into the `Sidebar` component itself. This is a cleaner architecture, as a component should ideally manage its own state toggles. The new toggle will be stateful, visually indicating whether it will collapse or expand the sidebar, improving user feedback.
 
-    This keeps our logic tight and centralized. The scroll-based animation for the normal view remains untouched. It's a surgical strike, extending the system to be smarter without adding complexity where it doesn't belong. Let's get it done.
+    Second, we'll address the layout of the `TopBar`. The breadcrumb navigation, currently pushed away from the edge, will be permanently anchored to the far left. This creates a more standard and predictable header layout, ensuring a consistent starting point for user navigation across all pages. These changes will be implemented carefully to avoid any animation lag or race conditions.
   parts:
-    - uuid: 'a1b2c3d4-e5f6-7890-1234-567890abcdef'
+    - uuid: 'a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d'
       status: 'todo'
-      name: 'Part 1: Augment App Shell State'
+      name: 'Part 1: Relocate and Enhance Sidebar Toggle'
       reason: |
-        We need a central, single source of truth to track whether the user's cursor is in the "reveal zone" for the top bar. The Zustand store is the right place for this to avoid prop-drilling and keep our components clean.
+        The current sidebar toggle resides in the `TopBar`, which breaks component encapsulation. A component should ideally contain the controls that manipulate it. By moving the toggle inside the sidebar, we create a more self-contained and reusable `Sidebar` component.
+
+        Furthermore, the toggle will be made "stateful," meaning its icon will change to reflect the action it will perform (collapse or expand). This provides clearer visual feedback to the user.
       steps:
-        - uuid: '11aa22bb-33cc-44dd-55ee-66ff77gg88hh'
+        - uuid: 'b1c2d3e4-f5a6-7b8c-9d0e-1f2a3b4c5d6e'
           status: 'todo'
-          name: '1. Update appShell.store.ts'
+          name: '1. Remove Toggle Button from TopBar'
           reason: |
-            To add the new state and its corresponding action to the global `AppShell` store.
+            The `Menu` button in the `TopBar` is the current sidebar toggle. This step removes it from its current location to prepare for its relocation into the sidebar component.
           files:
-            - src/store/appShell.store.ts
+            - src/components/layout/TopBar.tsx
           operations:
-            - 'In the `AppShellState` interface, add a new property: `isTopBarHovered: boolean;`.'
-            - 'In the `AppShellActions` interface, add a new action signature: `setTopBarHovered: (isHovered: boolean) => void;`.'
-            - 'In the `defaultState` object, initialize the new state: `isTopBarHovered: false,`.'
-            - 'Within the `create` function body, add the implementation for the new action: `setTopBarHovered: (isHovered) => set({ isTopBarHovered: isHovered }),`.'
-      context_files:
-        compact:
-          - src/store/appShell.store.ts
-        medium:
-          - src/store/appShell.store.ts
-          - src/hooks/useAppShellAnimations.hook.ts
-        extended:
-          - src/store/appShell.store.ts
-          - src/hooks/useAppShellAnimations.hook.ts
-          - src/components/layout/AppShell.tsx
-    - uuid: 'b2c3d4e5-f6a7-8901-2345-678901bcdefa'
-      status: 'todo'
-      name: 'Part 2: Update Animation Logic for Split View'
-      reason: |
-        The core animation logic that controls the top bar's vertical position needs to be updated. It must now consider the new hover state, but *only* when the application is in split view mode.
-      steps:
-        - uuid: '22bb33cc-44dd-55ee-66ff-77gg88hh99ii'
+            - "Delete the entire `<button>` element responsible for toggling the sidebar, which contains the `<Menu>` icon."
+            - "The parent `div` for the 'Left Section' will now be empty, awaiting the breadcrumb content in Part 2."
+        - uuid: 'c2d3e4f5-a6b7-8c9d-0e1f-2a3b4c5d6f7a'
           status: 'todo'
-          name: '1. Modify useBodyStateAnimations hook'
+          name: '2. Implement Stateful Toggle in Sidebar Header'
           reason: |
-            This hook is the central controller for major layout animations. We need to patch its logic to hide/show the top bar based on the new `isTopBarHovered` state when in split view.
+            This step creates the new, improved toggle button within the sidebar's header, making it an integral part of the sidebar. The button will change its icon based on the sidebar's current state (collapsed or expanded).
           files:
-            - src/hooks/useAppShellAnimations.hook.ts
+            - src/components/layout/EnhancedSidebar.tsx
           operations:
-            - 'Inside the `useBodyStateAnimations` hook, import and subscribe to the new state from the store: `const isTopBarHovered = useAppShellStore(s => s.isTopBarHovered);`.'
-            - 'Add `isTopBarHovered` to the dependency array of the main `useEffect` inside the hook.'
-            - "Update the `topBarY` variable logic. The new logic should prioritize the `isTopBarHovered` state when `bodyState` is `SPLIT_VIEW`."
-            - 'Replace the existing `topBarY` logic block with this enhanced version:
-              ```typescript
-              let topBarY = '0%';
-              if (bodyState === BODY_STATES.FULLSCREEN) {
-                topBarY = '-100%';
-              } else if (bodyState === BODY_STATES.SPLIT_VIEW && !isTopBarHovered) {
-                topBarY = '-100%';
-              } else if (bodyState === BODY_STATES.NORMAL && !isTopBarVisible) {
-                topBarY = '-100%';
-              }
-              ```'
-      context_files:
-        compact:
-          - src/hooks/useAppShellAnimations.hook.ts
-        medium:
-          - src/hooks/useAppShellAnimations.hook.ts
-          - src/store/appShell.store.ts
-        extended:
-          - src/hooks/useAppShellAnimations.hook.ts
-          - src/store/appShell.store.ts
-          - src/components/layout/AppShell.tsx
-    - uuid: 'c3d4e5f6-a7b8-9012-3456-789012cdefab'
+            - "Import `PanelLeftClose` from 'lucide-react'."
+            - "Within the `EnhancedSidebar` component, inside the `<SidebarHeader>`."
+            - "After the `<SidebarTitle>` component, add a new `<button>` for toggling."
+            - "Use the `useAppShellStore` to get the `toggleSidebar` action and `sidebarState`."
+            - "The button's `onClick` handler should call `toggleSidebar`."
+            - "The button should be styled to be pushed to the right of the header, for instance using `ml-auto`."
+            - "The button's icon should be `<PanelLeftClose />` as it will only be visible when the sidebar is expanded, and its purpose is to collapse it."
+            - "Ensure the button is only rendered when the sidebar is not collapsed. The logic to expand the sidebar from a collapsed state is handled by other interactions (like hover or a different UI element if designed)."
+    - uuid: 'd3e4f5a6-b7c8-9d0e-1f2a-3b4c5d6f7a8b'
       status: 'todo'
-      name: 'Part 3: Implement UI Hover Trigger'
+      name: 'Part 2: Re-align TopBar Breadcrumb'
       reason: |
-        The state needs to be updated from the UI. The most logical place for the hover trigger is the `AppShell` component itself, which renders the top bar container. We will attach mouse listeners there.
+        The breadcrumb's current alignment is inconsistent and not anchored to the left edge, which is standard practice for primary navigation elements. This part corrects the layout for better visual hierarchy and predictability.
       steps:
-        - uuid: '33cc44dd-55ee-66ff-77gg-88hh99ii00jj'
+        - uuid: 'e4f5a6b7-c8d9-0e1f-2a3b-4c5d6f7a8b9c'
           status: 'todo'
-          name: '1. Add hover listeners to AppShell.tsx'
+          name: "1. Modify AppShell's TopBar Composition"
           reason: |
-            To connect the user's mouse actions to the state management, we'll add `onMouseEnter` and `onMouseLeave` handlers to the top bar's container element.
+            The `TopBar` component's structure needs to be adjusted to correctly place its children (the breadcrumb and page-specific actions) in the leftmost area.
           files:
             - src/components/layout/AppShell.tsx
           operations:
-            - "In the `AppShell` component, get the `setTopBarHovered` action from the store: `const { ..., setTopBarHovered } = useAppShellStore.getState();`."
-            - "Find the `div` with the `ref={topBarContainerRef}`."
-            - "Modify its `onMouseEnter` handler to also call `setTopBarHovered(true)` when in split view. The existing call to `setHoveredPane(null)` should remain."
-            - "Add a new `onMouseLeave` handler to the same `div` to call `setTopBarHovered(false)` when in split view."
-            - 'The handlers should look like this:
-              ```tsx
-              onMouseEnter={() => {
-                if (isSplitView) {
-                  setTopBarHovered(true);
-                  setHoveredPane(null);
-                }
-              }}
-              onMouseLeave={() => {
-                if (isSplitView) {
-                  setTopBarHovered(false);
-                }
-              }}
-              ```'
-      context_files:
-        compact:
-          - src/components/layout/AppShell.tsx
-        medium:
-          - src/components/layout/AppShell.tsx
-          - src/store/appShell.store.ts
-        extended:
-          - src/components/layout/AppShell.tsx
-          - src/store/appShell.store.ts
-          - src/hooks/useAppShellAnimations.hook.ts
+            - "Locate the `topBar` prop being passed to the `AppShell` component."
+            - "The `AppTopBar` component is currently passed as a child inside the `TopBar`. This structure is correct, but we need to ensure the parent `TopBar` places it correctly."
+        - uuid: 'f5a6b7c8-d9e0-1f2a-3b4c-5d6f7a8b9c0d'
+          status: 'todo'
+          name: "2. Adjust TopBar's Internal Layout"
+          reason: |
+            To force the breadcrumb to the left, the `TopBar` component must be told to render its children in the "left section" of its flex layout.
+          files:
+            - src/components/layout/TopBar.tsx
+          operations:
+            - "In the `TopBar` component's JSX, move the `{children}` prop inside the 'Left Section' `div`."
+            - "This div previously held the `Menu` icon and should now be the designated area for breadcrumbs or other primary page identifiers."
+        - uuid: 'a6b7c8d9-e0f1-2a3b-4c5d-6f7a8b9c0e1f'
+          status: 'todo'
+          name: "3. Refine AppTopBar Component Layout"
+          reason: |
+            The `AppTopBar` component in `App.tsx` contains flex spacer elements that push the breadcrumb away from the left edge. These need to be removed.
+          files:
+            - src/App.tsx
+          operations:
+            - "Find the `AppTopBar` functional component."
+            - "Remove the `<div className=\"flex-1\" />` spacer element."
+            - "In the root `div` of `AppTopBar`, which has `className=\"flex items-center gap-3 flex-1\"`, remove the `flex-1` class."
   conclusion: |
-    Once these changes are deployed, the top bar will behave intelligently in split view mode, maximizing screen real estate for the user while remaining easily accessible. This enhances the user experience by reducing visual clutter without sacrificing functionality. The implementation is clean, state-driven, and maintains a clear separation of concerns.
+    Upon completion, this refactor will result in a more robust and intuitive application shell. The sidebar will be a self-contained unit with its own state controls, improving code organization and reusability. The `TopBar` will feature a logically aligned layout, with primary navigation elements anchored to the left, adhering to common UX patterns.
+
+    These changes provide a cleaner foundation for future development and a better, more predictable experience for the end-user, all while ensuring smooth transitions and a responsive feel.
   context_files:
     compact:
-      - src/store/appShell.store.ts
-      - src/hooks/useAppShellAnimations.hook.ts
-      - src/components/layout/AppShell.tsx
-    medium:
-      - src/store/appShell.store.ts
-      - src/hooks/useAppShellAnimations.hook.ts
-      - src/components/layout/AppShell.tsx
-    extended:
-      - src/store/appShell.store.ts
-      - src/hooks/useAppShellAnimations.hook.ts
-      - src/components/layout/AppShell.tsx
       - src/components/layout/TopBar.tsx
-      - src/lib/utils.ts
+      - src/components/layout/EnhancedSidebar.tsx
+      - src/App.tsx
+    medium:
+      - src/components/layout/TopBar.tsx
+      - src/components/layout/EnhancedSidebar.tsx
+      - src/App.tsx
+      - src/components/layout/AppShell.tsx
+      - src/components/layout/Sidebar.tsx
+    extended:
+      - src/components/layout/TopBar.tsx
+      - src/components/layout/EnhancedSidebar.tsx
+      - src/App.tsx
+      - src/components/layout/AppShell.tsx
+      - src/components/layout/Sidebar.tsx
+      - src/store/appShell.store.ts
 ```

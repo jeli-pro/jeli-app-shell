@@ -1,6 +1,5 @@
 import React from 'react';
 import {
-  Menu, 
   Moon, 
   Sun,
   Settings,
@@ -24,7 +23,6 @@ export const TopBar = React.memo(({
   const bodyState = useAppShellStore(s => s.bodyState)
   const isDarkMode = useAppShellStore(s => s.isDarkMode);
   const { 
-    toggleSidebar, 
     setCommandPaletteOpen,
     toggleDarkMode,
   } = useAppShellStore.getState();
@@ -36,23 +34,11 @@ export const TopBar = React.memo(({
     )}>
       {/* Left Section - Sidebar Controls & Breadcrumbs */}
       <div className="flex items-center gap-4">
-        {/* Sidebar Controls */}
-        <button
-          onClick={toggleSidebar}
-          className={cn(
-            "h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors"
-          )}
-          title="Toggle Sidebar"
-        >
-          <Menu className="w-5 h-5" />
-        </button>
-
+        {children}
       </div>
 
       {/* Right Section - page controls, and global controls */}
       <div className="flex items-center gap-3">
-        {children}
-
         {/* Separator */}
         <div className="w-px h-6 bg-border mx-2" />
 

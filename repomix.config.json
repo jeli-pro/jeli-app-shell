@@ -31,7 +31,13 @@
     "tailwind.config.js",
     "postcss.config.js",
     "index.html",
-    "src"
+    // "src"
+    "src/App.tsx",
+    "src/components/layout/AppShell.tsx",
+    "src/components/layout/EnhancedSidebar.tsx",
+    "src/components/layout/Sidebar.tsx",
+    "src/components/layout/TopBar.tsx",
+    "src/store/appShell.store.ts"
   ],
   "ignore": {
     "useGitignore": true,

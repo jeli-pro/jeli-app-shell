@@ -1,0 +1,844 @@
+uuid: c2945d91-58c0-4357-bb03-c917998b5849
+projectId: jeli-app-shell
+createdAt: '2025-10-15T03:30:40.109Z'
+gitCommitMsg: >-
+  refactor(AppShell): relocate sidebar toggle and align TopBar breadcrumb
+
+  - Moves the sidebar toggle control from the `TopBar` into the
+  `EnhancedSidebar` header for better component encapsulation. - The new toggle
+  button is only visible when the sidebar is expanded and uses a
+  `PanelLeftClose` icon to indicate its action. - Removes the old `Menu` button
+  from the `TopBar`. - Adjusts the `TopBar` layout to place breadcrumbs on the
+  far left by moving the `children` prop to the left flex container. - Refines
+  `AppTopBar` layout by removing spacers to ensure correct alignment of its
+  content.
+promptSummary: >-
+  The user wants to refactor the sidebar toggle and TopBar layout. This involves
+  moving the sidebar toggle button from the TopBar into the sidebar itself,
+  making it stateful. Additionally, the breadcrumb in the TopBar needs to be
+  aligned to the far left edge for a more standard layout.
+reasoning:
+  - >-
+    I will implement the requested changes to relocate the sidebar toggle and
+    adjust the TopBar layout.
+  - >-
+    First, I will move the sidebar toggle button from the `TopBar` into the
+    `EnhancedSidebar` component. I'll create a small, state-aware
+    `SidebarToggleButton` component within `EnhancedSidebar.tsx` that only
+    appears when the sidebar is expanded. This component will handle collapsing
+    the sidebar.
+  - >-
+    Next, I'll modify the `TopBar` component. I will remove the old sidebar
+    toggle button (`Menu` icon) and shift the `children` (which includes the
+    breadcrumbs and page-specific actions) to the left section of the `TopBar`.
+    This will ensure the breadcrumbs are aligned to the far left.
+  - >-
+    Finally, to prevent the page-specific actions from being squashed against
+    the breadcrumbs, I'll adjust the `AppTopBar` component in `App.tsx` by
+    removing the spacer `div` and the `flex-1` utility from its root element, as
+    per the plan.
+  - >-
+    These changes will improve component encapsulation and create a more
+    conventional and predictable UI layout.
+operations:
+  - type: write
+    path: src/components/layout/EnhancedSidebar.tsx
+    content: >+
+      --- src/components/layout/EnhancedSidebar.tsx
+
+      +++ src/components/layout/EnhancedSidebar.tsx
+
+      @@ -17,6 +17,7 @@
+         User,
+         Plus,
+         Database,
+      +  PanelLeftClose,
+       } from 'lucide-react';
+       import { useAppShellStore, type ActivePage } from '@/store/appShell.store';
+       import {
+      @@ -74,6 +75,23 @@
+         );
+       };
+       
+      +const SidebarToggleButton = () => {
+
+      +  const { isCollapsed } = useSidebar();
+
+      +  const { toggleSidebar } = useAppShellStore.getState();
+
+      +
+
+      +  if (isCollapsed) return null;
+
+      +
+
+      +  return (
+
+      +    <button
+
+      +      onClick={toggleSidebar}
+
+      +      className="ml-auto h-9 w-9 flex items-center justify-center
+      rounded-lg hover:bg-accent transition-colors"
+
+      +      title="Collapse Sidebar"
+
+      +    >
+
+      +      <PanelLeftClose className="w-5 h-5" />
+
+      +    </button>
+
+      +  );
+
+      +};
+
+      +
+       interface SidebarProps {
+         onMouseEnter?: () => void;
+         onMouseLeave?: () => void;
+      @@ -85,7 +103,6 @@
+           const compactMode = useAppShellStore(s => s.compactMode);
+           const appName = useAppShellStore(s => s.appName);
+           const appLogo = useAppShellStore(s => s.appLogo);
+      -    const [selectedWorkspace, setSelectedWorkspace] =
+      React.useState(mockWorkspaces[0]);
+       
+           return (
+             <Sidebar
+      @@ -101,6 +118,7 @@
+                     </div>
+                   )}
+                   <SidebarTitle>{appName}</SidebarTitle>
+      +            <SidebarToggleButton />
+                 </SidebarHeader>
+       
+                 <SidebarBody>
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/components/layout/TopBar.tsx
+    content: >
+      --- src/components/layout/TopBar.tsx
+
+      +++ src/components/layout/TopBar.tsx
+
+      @@ -1,6 +1,5 @@
+       import React from 'react';
+       import {
+      -  Menu, 
+         Moon, 
+         Sun,
+         Settings,
+      @@ -18,8 +17,7 @@
+         const bodyState = useAppShellStore(s => s.bodyState)
+         const isDarkMode = useAppShellStore(s => s.isDarkMode);
+         const { 
+      -    toggleSidebar, 
+           setCommandPaletteOpen,
+           toggleDarkMode,
+         } = useAppShellStore.getState();
+      @@ -31,23 +29,12 @@
+           )}>
+             {/* Left Section - Sidebar Controls & Breadcrumbs */}
+             <div className="flex items-center gap-4">
+      -        {/* Sidebar Controls */}
+
+      -        <button
+
+      -          onClick={toggleSidebar}
+
+      -          className={cn(
+
+      -            "h-10 w-10 flex items-center justify-center rounded-full
+      hover:bg-accent transition-colors"
+
+      -          )}
+
+      -          title="Toggle Sidebar"
+
+      -        >
+
+      -          <Menu className="w-5 h-5" />
+
+      -        </button>
+
+      -
+
+      +        {children}
+             </div>
+       
+             {/* Right Section - page controls, and global controls */}
+             <div className="flex items-center gap-3">
+      -        {children}
+
+      -
+               {/* Separator */}
+               <div className="w-px h-6 bg-border mx-2" />
+       
+    patchStrategy: standard-diff
+  - type: write
+    path: src/App.tsx
+    content: |+
+      --- src/App.tsx
+      +++ src/App.tsx
+      @@ -107,7 +107,7 @@
+         const activePage = location.pathname.split('/').filter(Boolean).pop()?.replace('-', ' ') || 'dashboard';
+       
+         return (
+      -    <div className="flex items-center gap-3 flex-1">
+      +    <div className="flex items-center gap-3">
+             <div
+               className={cn(
+                 "hidden md:flex items-center gap-2 text-sm transition-opacity",
+      @@ -128,8 +128,6 @@
+               </span>
+             </div>
+       
+      -      <div className="flex-1" />
+      -
+             {/* Page-specific: Dashboard search and actions */}
+             {activePage === "dashboard" && (
+               <div className="flex items-center gap-2 flex-1 justify-end">
+
+    patchStrategy: standard-diff
+snapshot:
+  src/components/layout/EnhancedSidebar.tsx: >-
+    import React from 'react';
+
+    import {
+      Home,
+      Settings,
+      HelpCircle,
+      Component,
+      Rocket,
+      MoreHorizontal,
+      Bell,
+      Search,
+      FileText,
+      Star,
+      Trash2,
+      FolderOpen,
+      Mail,
+      Bookmark,
+      Download,
+      User,
+      Plus,
+      Database,
+    } from 'lucide-react';
+
+    import { useAppShellStore, type ActivePage } from '@/store/appShell.store';
+
+    import {
+      Workspaces,
+      WorkspaceTrigger,
+      WorkspaceContent,
+      type Workspace,
+    } from './WorkspaceSwitcher';
+
+    import {
+      DropdownMenu,
+      DropdownMenuContent,
+      DropdownMenuItem,
+      DropdownMenuTrigger,
+    } from '@/components/ui/dropdown-menu';
+
+    import {
+      Sidebar,
+      SidebarContent,
+      SidebarHeader,
+      SidebarTitle,
+      SidebarBody,
+      SidebarFooter,
+      SidebarSection,
+      SidebarMenuItem,
+      SidebarMenuButton,
+      SidebarMenuAction,
+      SidebarLabel,
+      SidebarBadge,
+      SidebarTooltip,
+      SidebarIcon,
+      useSidebar,
+    } from './Sidebar';
+
+    import { ViewModeSwitcher } from './ViewModeSwitcher';
+
+    import { cn } from '@/lib/utils';
+
+    import { useAppViewManager } from '@/hooks/useAppViewManager.hook';
+
+
+    interface MyWorkspace extends Workspace {
+      logo: string;
+      plan: string;
+    }
+
+
+    const mockWorkspaces: MyWorkspace[] = [
+      { id: 'ws1', name: 'Acme Inc.', logo: 'https://avatar.vercel.sh/acme.png', plan: 'Pro' },
+      { id: 'ws2', name: 'Monsters Inc.', logo: 'https://avatar.vercel.sh/monsters.png', plan: 'Free' },
+      { id: 'ws3', name: 'Stark Industries', logo: 'https://avatar.vercel.sh/stark.png', plan: 'Enterprise' },
+    ];
+
+
+    const SidebarWorkspaceTrigger = () => {
+      const { isCollapsed, compactMode } = useSidebar();
+
+      return (
+        <WorkspaceTrigger
+          collapsed={isCollapsed}
+          className={cn(
+            'rounded-xl transition-colors hover:bg-accent/50 w-full',
+            isCollapsed ? 'p-2' : 'p-3 bg-accent/50',
+          )}
+          avatarClassName={cn(compactMode ? 'h-8 w-8' : 'h-10 w-10')}
+        />
+      );
+    };
+
+
+    interface SidebarProps {
+      onMouseEnter?: () => void;
+      onMouseLeave?: () => void;
+    }
+
+
+    export const EnhancedSidebar = React.memo(React.forwardRef<HTMLDivElement,
+    SidebarProps>(
+      ({ onMouseEnter, onMouseLeave }, ref) => {
+        const sidebarWidth = useAppShellStore(s => s.sidebarWidth);
+        const compactMode = useAppShellStore(s => s.compactMode);
+        const appName = useAppShellStore(s => s.appName);
+        const appLogo = useAppShellStore(s => s.appLogo);
+        const [selectedWorkspace, setSelectedWorkspace] = React.useState(mockWorkspaces[0]);
+
+        return (
+          <Sidebar
+            ref={ref}
+            style={{ width: sidebarWidth }}
+            onMouseEnter={onMouseEnter}
+            onMouseLeave={onMouseLeave}
+          >
+            <SidebarContent>
+              <SidebarHeader>
+                {appLogo || (
+                  <div className="p-2 bg-primary/20 rounded-lg">
+                    <Rocket className="w-5 h-5 text-primary" />
+                  </div>
+                )}
+                <SidebarTitle>{appName}</SidebarTitle>
+              </SidebarHeader>
+
+              <SidebarBody>
+                <SidebarSection title="Main">
+                  <AppMenuItem icon={Home} label="Dashboard" page="dashboard" />
+                  <AppMenuItem icon={Database} label="Data Demo" page="data-demo" />
+                  <AppMenuItem icon={Mail} label="Messaging" page="messaging" badge={7} />
+                  <AppMenuItem icon={Search} label="Search" />
+                  <AppMenuItem icon={Bell} label="Notifications" badge={3} page="notifications" opensInSidePane />
+                </SidebarSection>
+                
+                <SidebarSection title="Workspace" collapsible defaultExpanded>
+                  <AppMenuItem icon={FileText} label="Documents" hasActions>
+                    <AppMenuItem icon={FileText} label="Recent" isSubItem />
+                    <AppMenuItem icon={Star} label="Starred" isSubItem />
+                    <AppMenuItem icon={Trash2} label="Trash" isSubItem />
+                  </AppMenuItem>
+                  <AppMenuItem icon={FolderOpen} label="Projects" hasActions />
+                  <AppMenuItem icon={Mail} label="Messages" badge={12} />
+                </SidebarSection>
+                
+                <SidebarSection title="Personal" collapsible>
+                  <AppMenuItem icon={Bookmark} label="Bookmarks" />
+                  <AppMenuItem icon={Star} label="Favorites" />
+                  <AppMenuItem icon={Download} label="Downloads" />
+                </SidebarSection>
+
+                <SidebarSection title="Components" collapsible defaultExpanded>
+                  <AppMenuItem icon={Component} label="Toaster" page="toaster" />
+                </SidebarSection>
+              </SidebarBody>
+
+              <SidebarFooter>
+                <SidebarSection>
+                  <AppMenuItem icon={User} label="Profile" />
+                  <AppMenuItem icon={Settings} label="Settings" page="settings" />
+                  <AppMenuItem icon={HelpCircle} label="Help" />
+                </SidebarSection>
+
+                <div className={cn(compactMode ? 'mt-4' : 'mt-6')}>
+                  <Workspaces
+                    workspaces={mockWorkspaces}
+                    selectedWorkspaceId={selectedWorkspace.id}
+                    onWorkspaceChange={setSelectedWorkspace}
+                  >
+                    <SidebarWorkspaceTrigger />
+                    <WorkspaceContent>
+                      <button className="flex w-full items-center gap-2 rounded-sm px-2 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground focus:outline-none">
+                        <Plus className="h-4 w-4" />
+                        <span>Create Workspace</span>
+                      </button>
+                    </WorkspaceContent>
+                  </Workspaces>
+                </div>
+              </SidebarFooter>
+            </SidebarContent>
+          </Sidebar>
+        );
+      },
+    ));
+
+    EnhancedSidebar.displayName = 'EnhancedSidebar';
+
+
+
+    // Example of a reusable menu item component built with the new Sidebar
+    primitives
+
+    interface AppMenuItemProps {
+      icon: React.ElementType;
+      label: string;
+      badge?: number;
+      hasActions?: boolean;
+      children?: React.ReactNode;
+      isSubItem?: boolean;
+      page?: ActivePage;
+      opensInSidePane?: boolean;
+    }
+
+
+    const AppMenuItem: React.FC<AppMenuItemProps> = ({ icon: Icon, label, badge,
+    hasActions, children, isSubItem = false, page, opensInSidePane = false }) =>
+    {
+      const compactMode = useAppShellStore(state => state.compactMode);
+      const { setDraggedPage, setDragHoverTarget } = useAppShellStore.getState()
+      const { isCollapsed } = useSidebar();
+      const viewManager = useAppViewManager();
+
+      const isActive = (
+        (!opensInSidePane && page && viewManager.currentActivePage === page)
+      ) || (
+        opensInSidePane && page === 'notifications' && viewManager.sidePaneContent === 'notifications'
+      );
+
+      const handleClick = () => {
+        if (page) {
+          if (opensInSidePane) {
+            // The only item using this is Notifications
+            viewManager.toggleSidePane('notifications');
+          } else {
+            viewManager.navigateTo(page);
+          }
+        }
+      };
+
+      return (
+        <div className={isSubItem ? (compactMode ? 'ml-4' : 'ml-6') : ''}>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              onClick={handleClick}
+              isActive={isActive}
+              draggable={!!page}
+              onDragStart={(_e) => {
+                if (page) {
+                  // set dragged page in AppShell store
+                  setDraggedPage(page);
+                }
+              }}
+              onDragEnd={() => {
+                setDraggedPage(null);
+                setDragHoverTarget(null);
+              }}
+            >
+              <SidebarIcon>
+                <Icon className={isSubItem ? "w-3 h-3" : "w-4 h-4"}/>
+              </SidebarIcon>
+              <SidebarLabel>{label}</SidebarLabel>
+              {badge && <SidebarBadge>{badge}</SidebarBadge>}
+              <SidebarTooltip label={label} badge={badge} />
+            </SidebarMenuButton>
+
+            {page && !isCollapsed && ( // Always render switcher if there's a page
+              <div className={cn(
+                "absolute top-1/2 -translate-y-1/2 z-10",
+                "opacity-0 group-hover/item:opacity-100 group-focus-within/item:opacity-100",
+                "transition-opacity pointer-events-none group-hover/item:pointer-events-auto",
+                // If there are actions, move left to make space for the action button
+                hasActions ? "right-10" : "right-2"
+              )}>
+                <ViewModeSwitcher targetPage={page} />
+              </div>
+            )}
+
+            {hasActions && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <SidebarMenuAction>
+                    <MoreHorizontal className="h-4 w-4" />
+                  </SidebarMenuAction>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent side="right" align="start">
+                  <DropdownMenuItem>
+                    <span>Edit {label}</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem>
+                    <span>Delete {label}</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </SidebarMenuItem>
+          {!isCollapsed && children && (
+            <div className="space-y-1 mt-1">{children}</div>
+          )}
+        </div>
+      );
+    };
+  src/components/layout/TopBar.tsx: |-
+    import React from 'react';
+    import {
+      Menu, 
+      Moon, 
+      Sun,
+      Settings,
+      Command,
+      Zap,
+    } from 'lucide-react'
+    import { cn } from '@/lib/utils'
+    import { BODY_STATES } from '@/lib/utils'
+    import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
+    import { UserDropdown } from './UserDropdown'
+    import { ViewModeSwitcher } from './ViewModeSwitcher'
+    import { useAppShellStore } from '@/store/appShell.store'
+
+    interface TopBarProps {
+      children?: React.ReactNode
+    }
+
+    export const TopBar = React.memo(({
+      children,
+    }: TopBarProps) => {
+      const bodyState = useAppShellStore(s => s.bodyState)
+      const isDarkMode = useAppShellStore(s => s.isDarkMode);
+      const { 
+        toggleSidebar, 
+        setCommandPaletteOpen,
+        toggleDarkMode,
+      } = useAppShellStore.getState();
+      const viewManager = useAppViewManager();
+
+      return (
+        <div className={cn(
+          "h-20 bg-background border-b border-border flex items-center justify-between px-6 z-50 gap-4"
+        )}>
+          {/* Left Section - Sidebar Controls & Breadcrumbs */}
+          <div className="flex items-center gap-4">
+            {/* Sidebar Controls */}
+            <button
+              onClick={toggleSidebar}
+              className={cn(
+                "h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors"
+              )}
+              title="Toggle Sidebar"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+
+          </div>
+
+          {/* Right Section - page controls, and global controls */}
+          <div className="flex items-center gap-3">
+            {children}
+
+            {/* Separator */}
+            <div className="w-px h-6 bg-border mx-2" />
+
+            {/* Quick Actions */}
+            <div className="flex items-center gap-3">
+
+              <button
+                onClick={() => setCommandPaletteOpen(true)}
+                className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+                title="Command Palette (Ctrl+K)"
+              >
+                <Command className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              </button>
+
+            <button
+              className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+              title="Quick Actions"
+            >
+              <Zap className="w-5 h-5 group-hover:scale-110 transition-transform" />
+            </button>
+
+            {bodyState !== BODY_STATES.SPLIT_VIEW && <ViewModeSwitcher />}
+
+            <div className="w-px h-6 bg-border mx-2" />
+
+            {/* Theme and Settings */}
+            <button
+              onClick={toggleDarkMode}
+              className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+              title="Toggle Dark Mode"
+            >
+              {isDarkMode ? (
+                <Sun className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              ) : (
+                <Moon className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              )}
+            </button>
+
+            <button
+              onClick={() => viewManager.toggleSidePane('settings')}
+              className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+              title="Settings"
+            >
+              <Settings className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
+            </button>
+            <UserDropdown />
+            </div>
+          </div>
+        </div>
+      )
+    });
+  src/App.tsx: |-
+    import React, { useEffect } from "react";
+    import {
+      createBrowserRouter,
+      RouterProvider,
+      Outlet,
+      Navigate,
+      useNavigate, // used in LoginPageWrapper
+      useLocation,
+    } from "react-router-dom";
+
+    import { AppShell } from "./components/layout/AppShell";
+    import { AppShellProvider } from "./providers/AppShellProvider";
+    import { useAppShellStore } from "./store/appShell.store";
+    import { useAuthStore } from "./store/authStore";
+    import "./index.css";
+
+    // Import library components
+    import { EnhancedSidebar } from "./components/layout/EnhancedSidebar";
+    import { MainContent } from "./components/layout/MainContent";
+    import { RightPane } from "./components/layout/RightPane";
+    import { TopBar } from "./components/layout/TopBar";
+    import { CommandPalette } from "./components/global/CommandPalette";
+    import { ToasterProvider } from "./components/ui/toast";
+
+    // --- Page/Content Components for Pages and Panes ---
+    import { DashboardContent } from "./pages/Dashboard";
+    import { SettingsPage } from "./pages/Settings";
+    import { ToasterDemo } from "./pages/ToasterDemo";
+    import { NotificationsPage } from "./pages/Notifications";
+    import DataDemoPage from "./pages/DataDemo";
+    import MessagingPage from "./pages/Messaging";
+    import { LoginPage } from "./components/auth/LoginPage";
+
+    // --- Icons ---
+    import {
+      Search,
+      Filter,
+      Plus,
+      ChevronRight,
+      Rocket,
+    } from "lucide-react";
+
+    // --- Utils & Hooks ---
+    import { cn } from "./lib/utils";
+    import { useAppViewManager } from "./hooks/useAppViewManager.hook";
+    import { useRightPaneContent } from "./hooks/useRightPaneContent.hook";
+    import { BODY_STATES } from "./lib/utils";
+
+    // Checks for authentication and redirects to login if needed
+    function ProtectedRoute() {
+      const { isAuthenticated } = useAuthStore();
+      const location = useLocation();
+      if (!isAuthenticated) {
+        return <Navigate to="/login" state={{ from: location }} replace />;
+      }
+      return <Outlet />;
+    }
+
+    // A root component to apply global styles and effects
+    function Root() {
+      const isDarkMode = useAppShellStore((state) => state.isDarkMode);
+
+      useEffect(() => {
+        document.documentElement.classList.toggle("dark", isDarkMode);
+      }, [isDarkMode]);
+
+      return <Outlet />;
+    }
+
+    // The main layout for authenticated parts of the application
+    function ProtectedLayout() {
+
+      return (
+        <div className="h-screen w-screen overflow-hidden bg-background">
+          <AppShellProvider
+            appName="Jeli App"
+            appLogo={
+              <div className="p-2 bg-primary/20 rounded-lg">
+                <Rocket className="w-5 h-5 text-primary" />
+              </div>
+            }
+          >
+            <ComposedApp />
+          </AppShellProvider>
+        </div>
+      );
+    }
+
+    // Content for the Top Bar (will be fully refactored in Part 2)
+    function AppTopBar() {
+      const [searchTerm, setSearchTerm] = React.useState("");
+      const [isSearchFocused, setIsSearchFocused] = React.useState(false);
+      const location = useLocation();
+      const activePage = location.pathname.split('/').filter(Boolean).pop()?.replace('-', ' ') || 'dashboard';
+
+      return (
+        <div className="flex items-center gap-3 flex-1">
+          <div
+            className={cn(
+              "hidden md:flex items-center gap-2 text-sm transition-opacity",
+              {
+                "opacity-0 pointer-events-none":
+                  isSearchFocused && activePage === "dashboard",
+              },
+            )}
+          >
+            <a
+              href="#"
+              className="text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Home
+            </a>
+            <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            <span className="font-medium text-foreground capitalize">
+              {activePage}
+            </span>
+          </div>
+
+          <div className="flex-1" />
+
+          {/* Page-specific: Dashboard search and actions */}
+          {activePage === "dashboard" && (
+            <div className="flex items-center gap-2 flex-1 justify-end">
+              <div
+                className={cn(
+                  "relative transition-all duration-300 ease-in-out",
+                  isSearchFocused ? "flex-1 max-w-lg" : "w-auto",
+                )}
+              >
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4 pointer-events-none" />
+                <input
+                  type="text"
+                  placeholder="Search..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onFocus={() => setIsSearchFocused(true)}
+                  onBlur={() => setIsSearchFocused(false)}
+                  className={cn(
+                    "pl-9 pr-4 py-2 h-10 border-none rounded-lg bg-card focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300 ease-in-out w-full",
+                    isSearchFocused ? "bg-background" : "w-48",
+                  )}
+                />
+              </div>
+              <button className="h-10 w-10 flex-shrink-0 flex items-center justify-center hover:bg-accent rounded-full transition-colors">
+                <Filter className="w-5 h-5" />
+              </button>
+              <button className="bg-primary text-primary-foreground px-4 py-2 rounded-full hover:bg-primary/90 transition-colors flex items-center gap-2 h-10 flex-shrink-0">
+                <Plus className="w-5 h-5" />
+                <span
+                  className={cn(isSearchFocused ? "hidden sm:inline" : "inline")}
+                >
+                  New Project
+                </span>
+              </button>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // The main App component that composes the shell
+    function ComposedApp() {
+      const { setBodyState, setSidePaneContent } = useAppShellStore();
+      const viewManager = useAppViewManager();
+
+      // Sync URL state with AppShellStore
+      useEffect(() => {
+        setBodyState(viewManager.bodyState);
+        setSidePaneContent(viewManager.sidePaneContent);
+      }, [viewManager.bodyState, viewManager.sidePaneContent, setBodyState, setSidePaneContent]);
+
+      return (
+        <AppShell
+          sidebar={<EnhancedSidebar />}
+          onOverlayClick={viewManager.closeSidePane}
+          topBar={
+            <TopBar>
+              <AppTopBar />
+            </TopBar>
+          }
+          mainContent={
+            <MainContent>
+              <Outlet />
+            </MainContent>
+          }
+          rightPane={<RightPane />}
+          commandPalette={<CommandPalette />}
+        />
+      );
+    }
+
+    function App() {
+      const router = createBrowserRouter([
+        {
+          element: <Root />,
+          children: [
+            {
+              path: "/login",
+              element: <LoginPage />,
+            },
+            {
+              path: "/",
+              element: <ProtectedRoute />,
+              children: [
+                {
+                  path: "/",
+                  element: <ProtectedLayout />,
+                  children: [
+                    { index: true, element: <Navigate to="/dashboard" replace /> },
+                    { path: "dashboard", element: <DashboardContent /> },
+                    { path: "settings", element: <SettingsPage /> },
+                    { path: "toaster", element: <ToasterDemo /> },
+                    { path: "notifications", element: <NotificationsPage /> },
+                    { path: "data-demo", element: <DataDemoPage /> },
+                    { path: "data-demo/:itemId", element: <DataDemoPage /> },
+                    { path: "messaging", element: <MessagingPage /> },
+                    { path: "messaging/:conversationId", element: <MessagingPage /> },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ]);
+
+      return (
+        <ToasterProvider>
+          <RouterProvider router={router} />
+        </ToasterProvider>
+      );
+    }
+
+    export default App;
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 312
