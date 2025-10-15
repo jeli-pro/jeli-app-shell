@@ -83,42 +83,6 @@ export function useResizableRightPane() {
   }, [isResizingRightPane, setSplitPaneWidth, setSidePaneWidth, setIsResizingRightPane, bodyState]);
 }
 
-export function useResizableMessagingList(containerRef: React.RefObject<HTMLDivElement>) {
-  const isResizingMessagingList = useAppShellStore(s => s.isResizingMessagingList);
-  const { setMessagingListWidth, setIsResizingMessagingList } = useAppShellStore.getState();
-
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!isResizingMessagingList || !containerRef.current) return;
-
-      const containerRect = containerRef.current.getBoundingClientRect();
-      const newWidth = e.clientX - containerRect.left;
-      
-      setMessagingListWidth(newWidth);
-    };
-
-    const handleMouseUp = () => {
-      setIsResizingMessagingList(false);
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
-    };
-
-    if (isResizingMessagingList) {
-      document.body.style.cursor = 'col-resize';
-      document.body.style.userSelect = 'none';
-      window.addEventListener('mousemove', handleMouseMove);
-      window.addEventListener('mouseup', handleMouseUp);
-    }
-
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
-    };
-  }, [isResizingMessagingList, setMessagingListWidth, setIsResizingMessagingList, containerRef]);
-}
-
 export function useResizableMessagingProfile(containerRef: React.RefObject<HTMLDivElement>) {
   const isResizingMessagingProfile = useAppShellStore(s => s.isResizingMessagingProfile);
   const { setMessagingProfileWidth, setIsResizingMessagingProfile } = useAppShellStore.getState();

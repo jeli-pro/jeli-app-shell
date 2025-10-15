@@ -1,0 +1,1526 @@
+uuid: c32a0c7c-40cc-40b5-9276-2e8eb6320a06
+projectId: jeli-app-shell
+createdAt: '2025-10-15T13:48:16.128Z'
+gitCommitMsg: >-
+  refactor(messaging): integrate messaging page with global app shell layout
+
+  Decouples the messaging page's two-pane layout from its component, moving
+  layout control to the global App Shell. The URL is now the single source of
+  truth for the view state.
+
+  - The `ConversationList` now renders in the main content area. - The
+  `MessagingContent` (thread/profile) is now rendered in the
+    `RightPane`, managed by the App Shell.
+  - A new route `messaging/:conversationId` is added. - `useAppViewManager` now
+  automatically enters/exits split-view mode based
+    on the messaging URL.
+  - Removes redundant state (`messagingListWidth`, etc.) and the specific
+    `useResizableMessagingList` hook.
+
+  This fixes broken view mode switcher behavior on the messaging page and allows
+  global overlay panes (like Settings) to function correctly.
+promptSummary: >-
+  The user wants to integrate the messaging page fully with the app shell's view
+  management system to fix issues with the view mode switcher and overlay panes.
+  This involves making the URL the single source of truth for the messaging
+  layout.
+reasoning:
+  - >-
+    Of course. Here is the comprehensive refactor to fully integrate the
+    messaging page with the app shell's view management system. This will
+    resolve the issues with the view mode switcher and overlay panes by making
+    the URL the single source of truth for the layout.
+  - '### Part 1: Decouple Messaging UI and Integrate with App Shell State'
+  - >-
+    First, I'll streamline the `appShell` store by removing state that was
+    specific to the old, self-contained messaging layout. Then, I'll delete the
+    now-redundant resizing hook and teach the global `RightPane` how to render
+    the messaging content when requested.
+  - '### Part 2: Implement URL-Driven View State'
+  - >-
+    Now, I'll update the routing and the core `useAppViewManager` hook. This
+    hook will now automatically detect the messaging conversation URL and
+    command the app shell to switch into a split-view mode, making the URL the
+    true driver of the UI. I'll also update the `ViewModeSwitcher` to be aware
+    of this new capability.
+  - '### Part 3: Refactor the Messaging Page Component'
+  - >-
+    Finally, I will drastically simplify the `MessagingPage` component. With the
+    global app shell now managing its layout, I can remove all the internal
+    resizing logic, state, and complex structure, leaving a clean component that
+    focuses solely on displaying the conversation list.
+  - '---'
+operations:
+  - type: write
+    path: src/store/appShell.store.ts
+    content: >+
+      --- src/store/appShell.store.ts
+
+      +++ src/store/appShell.store.ts
+
+      @@ -17,14 +17,10 @@
+         sidePaneWidth: number;
+         splitPaneWidth: number;
+         defaultSidePaneWidth: number;
+         defaultSplitPaneWidth: number;
+         defaultWidthsSet: boolean;
+      -  messagingListWidth: number;
+         messagingProfileWidth: number;
+         previousBodyState: BodyState;
+         fullscreenTarget: 'main' | 'right' | null;
+         isResizing: boolean;
+         isResizingRightPane: boolean;
+      -  isResizingMessagingList: boolean;
+         isResizingMessagingProfile: boolean;
+         isMessagingListCollapsed: boolean;
+         isMessagingProfileCollapsed: boolean;
+      @@ -58,12 +54,9 @@
+           setDefaultPaneWidths: () => void;
+           resetPaneWidths: () => void;
+           setSplitPaneWidth: (payload: number) => void;
+      -    setMessagingListWidth: (payload: number) => void;
+           setIsResizing: (payload: boolean) => void;
+           setMessagingProfileWidth: (payload: number) => void;
+           setFullscreenTarget: (payload: 'main' | 'right' | null) => void;
+           setIsResizingRightPane: (payload: boolean) => void;
+      -    setIsResizingMessagingList: (payload: boolean) => void;
+           setIsResizingMessagingProfile: (payload: boolean) => void;
+           toggleMessagingListCollapsed: () => void;
+           toggleMessagingProfileCollapsed: () => void;
+      @@ -101,14 +94,10 @@
+         sidePaneWidth: 400,
+         splitPaneWidth: 0.5, // 50%
+         defaultSidePaneWidth: 400,
+         defaultSplitPaneWidth: 0.5,
+         defaultWidthsSet: false,
+      -  messagingListWidth: 384, // 24rem
+         messagingProfileWidth: 400,
+         previousBodyState: BODY_STATES.NORMAL,
+         fullscreenTarget: null,
+         isResizing: false,
+         isResizingRightPane: false,
+      -  isResizingMessagingList: false,
+         isResizingMessagingProfile: false,
+         isMessagingListCollapsed: false,
+         isMessagingProfileCollapsed: false,
+      @@ -165,8 +154,6 @@
+         setSidePaneWidth: (payload) => set({ sidePaneWidth: payload }),
+         setDefaultPaneWidths: () => set(state => ({ defaultSidePaneWidth: state.sidePaneWidth, defaultSplitPaneWidth: state.splitPaneWidth, defaultWidthsSet: true })),
+         resetPaneWidths: () => set(state => ({ sidePaneWidth: state.defaultSidePaneWidth, splitPaneWidth: state.defaultSplitPaneWidth })),
+         setSplitPaneWidth: (payload) => set({ splitPaneWidth: payload }),
+      -  setMessagingListWidth: (payload) => set({ messagingListWidth: payload
+      }),
+         setIsResizing: (payload) => set({ isResizing: payload }),
+         setMessagingProfileWidth: (payload) => set({ messagingProfileWidth: payload }),
+         setFullscreenTarget: (payload) => set({ fullscreenTarget: payload }),
+      @@ -174,8 +161,6 @@
+           // When resizing the right pane, we are also resizing in general.
+           set({ isResizingRightPane: payload, isResizing: payload })
+         },
+      -  setIsResizingMessagingList: (payload) => set({ isResizingMessagingList:
+      payload, isResizing: payload }),
+         setIsResizingMessagingProfile: (payload) => set({ isResizingMessagingProfile: payload, isResizing: payload }),
+         toggleMessagingListCollapsed: () => set(state => ({ isMessagingListCollapsed: !state.isMessagingListCollapsed })),
+         toggleMessagingProfileCollapsed: () => set(state => ({ isMessagingProfileCollapsed: !state.isMessagingProfileCollapsed })),
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/hooks/useResizablePanes.hook.ts
+    content: >+
+      --- src/hooks/useResizablePanes.hook.ts
+
+      +++ src/hooks/useResizablePanes.hook.ts
+
+      @@ -82,41 +82,6 @@
+         }, [isSplitView, setSplitPaneWidth, setIsResizingRightPane]);
+       }
+       
+      -export function useResizableMessagingList(containerRef:
+      React.RefObject<HTMLDivElement>) {
+
+      -  const { setMessagingListWidth, setIsResizingMessagingList,
+      isMessagingListCollapsed } = useAppShellStore(
+
+      -    state => ({
+
+      -      setMessagingListWidth: state.setMessagingListWidth,
+
+      -      setIsResizingMessagingList: state.setIsResizingMessagingList,
+
+      -      isMessagingListCollapsed: state.isMessagingListCollapsed,
+
+      -    }),
+
+      -  );
+
+      -
+
+      -  const handleMouseDown = useCallback((e:
+      React.MouseEvent<HTMLDivElement>) => {
+
+      -    e.preventDefault();
+
+      -    setIsResizingMessagingList(true);
+
+      -
+
+      -    const handleMouseMove = (e: MouseEvent) => {
+
+      -      if (!containerRef.current) return;
+
+      -
+
+      -      const containerRect = containerRef.current.getBoundingClientRect();
+
+      -      const newWidth = e.clientX - containerRect.left;
+
+      -
+
+      -      // Clamp width between min and max
+
+      -      const clampedWidth = Math.max(280, Math.min(newWidth, 600));
+
+      -      setMessagingListWidth(clampedWidth);
+
+      -    };
+
+      -
+
+      -    const handleMouseUp = () => {
+
+      -      setIsResizingMessagingList(false);
+
+      -      document.removeEventListener('mousemove', handleMouseMove);
+
+      -      document.removeEventListener('mouseup', handleMouseUp);
+
+      -    };
+
+      -
+
+      -    document.addEventListener('mousemove', handleMouseMove);
+
+      -    document.addEventListener('mouseup', handleMouseUp);
+
+      -  }, [containerRef, setIsResizingMessagingList, setMessagingListWidth]);
+
+      -
+
+      -  return { handleMouseDown, isMessagingListCollapsed };
+
+      -}
+
+      -
+       export function useResizableMessagingProfile(containerRef: React.RefObject<HTMLDivElement>) {
+         const { setMessagingProfileWidth, setIsResizingMessagingProfile } = useAppShellStore(
+           state => ({
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/hooks/useRightPaneContent.hook.tsx
+    content: >+
+      --- src/hooks/useRightPaneContent.hook.tsx
+
+      +++ src/hooks/useRightPaneContent.hook.tsx
+
+      @@ -14,7 +14,7 @@
+       import { NotificationsPage } from "@/pages/Notifications";
+       import DataDemoPage from "@/pages/DataDemo";
+       import { DataDetailPanel } from "@/pages/DataDemo/components/DataDetailPanel";
+      -import { mockDataItems } from "@/pages/DataDemo/data/mockData";
+
+      +import { mockDataItems } from "@/pages/DataDemo/data/mockData"; // Note:
+      This might not be used if dataItem isn't used below
+       import { MessagingContent } from "@/pages/Messaging/components/MessagingContent";
+       import type { AppShellState } from '@/store/appShell.store';
+       
+      @@ -24,7 +24,7 @@
+        * This avoids re-rendering the entire AppShell when only the pane content changes.
+        */
+       export function useRightPaneContent() {
+      -  const { content, itemId } = useParams<{ content?: string; itemId?:
+      string }>();
+
+      +  const { content, itemId, conversationId } = useParams<{ content?:
+      string; itemId?: string; conversationId?: string }>();
+         const navigate = useNavigate();
+       
+         const sidePaneContent = useMemo(() => {
+      @@ -39,9 +39,10 @@
+             settings: <SettingsContent />,
+             toaster: <ToasterDemo />,
+             notifications: <NotificationsPage />,
+      -      dataDemo: <DataDemoPage isInSidePane />,
+
+      +      // The 'dataDemo' as a full page in the pane is less common, but
+      kept for flexibility
+
+      +      dataDemo: <DataDemoPage isInSidePane />, 
+             dataItem: <DataDetailPanel item={selectedItem} onClose={() => navigate('/data-demo')} />,
+      -      messaging: <MessagingContent />,
+
+      +      messaging: conversationId ? <MessagingContent
+      conversationId={conversationId} /> : null,
+           };
+       
+           const activeContentKey = content as keyof typeof contentMap;
+      @@ -50,7 +51,7 @@
+             return { Component: contentMap[activeContentKey], ...commonProps };
+           }
+           return { Component: null, ...commonProps };
+      -  }, [content, navigate, itemId]);
+
+      +  }, [content, navigate, itemId, conversationId]);
+       
+         const rightPanePages = useMemo(
+           () => [
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/App.tsx
+    content: |+
+      --- src/App.tsx
+      +++ src/App.tsx
+      @@ -62,6 +62,7 @@
+             { path: "toaster", element: <ToasterDemo /> },
+             { path: "notifications", element: <NotificationsPage /> },
+             { path: "messaging", element: <MessagingPage /> },
+      +      { path: "messaging/:conversationId", element: <MessagingPage /> },
+             // The DataDemo page has a nested route for the detail view
+             {
+               path: "data-demo",
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/hooks/useAppViewManager.hook.ts
+    content: >+
+      --- src/hooks/useAppViewManager.hook.ts
+
+      +++ src/hooks/useAppViewManager.hook.ts
+
+      @@ -1,4 +1,4 @@
+
+      -import { useMemo, useCallback } from 'react';
+
+      +import { useMemo, useCallback, useEffect } from 'react';
+       import { useSearchParams, useNavigate, useLocation, useParams } from 'react-router-dom';
+       import type { AppShellState, ActivePage } from '@/store/appShell.store';
+       import type { DataItem, ViewMode, SortConfig, SortableField, GroupableField, Status, Priority } from '@/pages/DataDemo/types';
+      @@ -13,6 +13,7 @@
+        */
+       export function useAppViewManager() {
+         const navigate = useNavigate();
+      +  const location = useLocation();
+         const [searchParams, setSearchParams] = useSearchParams();
+         const { content, itemId } = useParams<{ content?: string, itemId?: string }>();
+       
+      @@ -165,6 +166,23 @@
+           (target?: 'main' | 'right' | null) => toggleFullscreen(target),
+         };
+       
+      +  // Effect to automatically manage messaging pane state based on URL
+
+      +  useEffect(() => {
+
+      +    const match = location.pathname.match(/^\/messaging\/([^/]+)/);
+
+      +    const isMessagingPaneOpen = bodyState === BODY_STATES.SPLIT_VIEW &&
+      sidePaneContent === 'messaging';
+
+      +
+
+      +    if (match) {
+
+      +      // We are on a specific conversation URL
+
+      +      if (!isMessagingPaneOpen) {
+
+      +        openPane('messaging', 'split-view');
+
+      +      }
+
+      +    } else if (location.pathname === '/messaging') {
+
+      +      // We are on the main messaging page
+
+      +      if (isMessagingPaneOpen) {
+
+      +        closePane();
+
+      +      }
+
+      +    }
+
+      +  }, [location.pathname, bodyState, sidePaneContent]);
+
+      +
+         return {
+           // State
+           bodyState,
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/components/layout/ViewModeSwitcher.tsx
+    content: |+
+      --- src/components/layout/ViewModeSwitcher.tsx
+      +++ src/components/layout/ViewModeSwitcher.tsx
+      @@ -111,6 +111,7 @@
+           toaster: 'toaster',
+           notifications: 'notifications',
+           'data-demo': 'dataDemo',
+      +    messaging: 'messaging',
+         };
+         const paneContent = pageToPaneMap[activePage];
+       
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/Messaging/index.tsx
+    content: >+
+      --- src/pages/Messaging/index.tsx
+
+      +++ src/pages/Messaging/index.tsx
+
+      @@ -1,13 +1,8 @@
+
+      -import React, { useRef } from "react";
+
+      -import { useParams } from "react-router-dom";
+
+      +import React from "react";
+       import { ConversationList } from "./components/ConversationList";
+       import { cn } from "@/lib/utils";
+      -import { MessagingContent } from "./components/MessagingContent";
+       import { useAppShellStore } from "@/store/appShell.store";
+       import { usePageViewConfig } from "@/hooks/usePageViewConfig.hook";
+      -import { useResizableMessagingList } from
+      "@/hooks/useResizablePanes.hook";
+
+      -import { BODY_STATES } from "@/lib/utils";
+       
+       export default function MessagingPage() {
+         const {
+      @@ -21,39 +16,14 @@
+       
+         // Configure the pane widths specifically for the messaging page
+         usePageViewConfig({
+      -    sidePaneWidth: 600, // In side pane view, we want the whole component
+      to be wider
+
+      -    splitPaneWidth: 0.65, // In split view, we want the right pane
+      (conversation) to be wider.
+
+      +    // When messaging is in split view, the right pane (thread/profile)
+      should be wider
+
+      +    splitPaneWidth: 0.65, 
+         });
+      -
+
+      -  const containerRef = useRef<HTMLDivElement>(null);
+
+      -  const { handleMouseDown } = useResizableMessagingList(containerRef);
+
+      -  const { isMessagingListCollapsed } = useAppShellStore(state => ({
+
+      -    isMessagingListCollapsed: state.isMessagingListCollapsed
+
+      -  }));
+
+      -
+
+      -  const { conversationId } = useParams();
+
+      -
+
+      +  
+         return (
+           <div
+             className={cn(
+               "h-full w-full flex overflow-hidden",
+      -        isSplitView && "bg-background",
+
+      -        !isSplitView && "bg-card",
+             )}
+      -      ref={containerRef}
+           >
+      -      {/* --- Conversation List --- */}
+
+      -      <div
+
+      -        className={cn("h-full transition-all duration-300 ease-in-out",
+
+      -          isMessagingListCollapsed ? "w-0" : "w-[384px]"
+
+      -        )}
+
+      -        style={{ width: isMessagingListCollapsed ? 0 :
+      `${messagingListWidth}px` }}
+
+      -      >
+
+      -        <ConversationList />
+
+      -      </div>
+
+      -
+
+      -      {/* --- Resizer --- */}
+
+      -      <div onMouseDown={handleMouseDown} className="w-1.5 h-full
+      cursor-col-resize hover:bg-primary/20 transition-colors" />
+
+      -
+
+      -      {/* --- Main Content (Thread + Profile) --- */}
+
+      -      <div className="flex-1 h-full min-w-0">
+
+      -        <MessagingContent conversationId={conversationId} />
+
+      -      </div>
+
+      +      <ConversationList />
+           </div>
+         );
+       }
+
+    patchStrategy: standard-diff
+snapshot:
+  src/store/appShell.store.ts: >-
+    import { create } from 'zustand';
+
+    import { type ReactElement } from 'react';
+
+    import { SIDEBAR_STATES, BODY_STATES, type SidebarState, type BodyState }
+    from '@/lib/utils';
+
+
+    export type ActivePage = 'dashboard' | 'settings' | 'toaster' |
+    'notifications' | 'data-demo' | 'messaging';
+
+
+    // --- State and Action Types ---
+
+
+    export interface AppShellState {
+      sidebarState: SidebarState;
+      bodyState: BodyState;
+      sidePaneContent: 'details' | 'settings' | 'main' | 'toaster' | 'notifications' | 'dataDemo' | 'dataItem' | 'messaging';
+      sidebarWidth: number;
+      sidePaneWidth: number;
+      splitPaneWidth: number;
+      defaultSidePaneWidth: number;
+      defaultSplitPaneWidth: number;
+      defaultWidthsSet: boolean;
+      messagingListWidth: number;
+      messagingProfileWidth: number;
+      previousBodyState: BodyState;
+      fullscreenTarget: 'main' | 'right' | null;
+      isResizing: boolean;
+      isResizingRightPane: boolean;
+      isResizingMessagingList: boolean;
+      isResizingMessagingProfile: boolean;
+      isMessagingListCollapsed: boolean;
+      isMessagingProfileCollapsed: boolean;
+      isTopBarVisible: boolean;
+      isTopBarHovered: boolean;
+      autoExpandSidebar: boolean;
+      reducedMotion: boolean;
+      compactMode: boolean;
+      primaryColor: string;
+      isCommandPaletteOpen: boolean;
+      isDarkMode: boolean;
+      appName?: string;
+      appLogo?: ReactElement;
+      draggedPage: 'dashboard' | 'settings' | 'toaster' | 'notifications' | 'data-demo' | 'messaging' | null;
+      dragHoverTarget: 'left' | 'right' | null;
+      hoveredPane: 'left' | 'right' | null;
+    }
+
+
+    export interface AppShellActions {
+        // Initialization
+        init: (config: { appName?: string; appLogo?: ReactElement; defaultSplitPaneWidth?: number }) => void;
+        
+        // Direct state setters
+        setSidebarState: (payload: SidebarState) => void;
+        setBodyState: (payload: BodyState) => void;
+        setSidePaneContent: (payload: AppShellState['sidePaneContent']) => void;
+        setSidebarWidth: (payload: number) => void;
+        setSidePaneWidth: (payload: number) => void;
+        setDefaultPaneWidths: () => void;
+        resetPaneWidths: () => void;
+        setSplitPaneWidth: (payload: number) => void;
+        setMessagingListWidth: (payload: number) => void;
+        setIsResizing: (payload: boolean) => void;
+        setMessagingProfileWidth: (payload: number) => void;
+        setFullscreenTarget: (payload: 'main' | 'right' | null) => void;
+        setIsResizingRightPane: (payload: boolean) => void;
+        setIsResizingMessagingList: (payload: boolean) => void;
+        setIsResizingMessagingProfile: (payload: boolean) => void;
+        toggleMessagingListCollapsed: () => void;
+        toggleMessagingProfileCollapsed: () => void;
+        setTopBarVisible: (payload: boolean) => void;
+        setAutoExpandSidebar: (payload: boolean) => void;
+        setReducedMotion: (payload: boolean) => void;
+        setCompactMode: (payload: boolean) => void;
+        setPrimaryColor: (payload: string) => void;
+        setDraggedPage: (payload: AppShellState['draggedPage']) => void;
+        setCommandPaletteOpen: (open: boolean) => void;
+        toggleDarkMode: () => void;
+        setDragHoverTarget: (payload: 'left' | 'right' | null) => void;
+        setTopBarHovered: (isHovered: boolean) => void;
+        setHoveredPane: (payload: 'left' | 'right' | null) => void;
+        
+        // Composite actions
+        toggleSidebar: () => void;
+        hideSidebar: () => void;
+        showSidebar: () => void;
+        peekSidebar: () => void;
+        toggleFullscreen: (target?: 'main' | 'right' | null) => void;
+        resetToDefaults: () => void;
+    }
+
+
+    const defaultState: AppShellState = {
+      sidebarState: SIDEBAR_STATES.EXPANDED,
+      bodyState: BODY_STATES.NORMAL,
+      sidePaneContent: 'details',
+      sidebarWidth: 280,
+      sidePaneWidth: typeof window !== 'undefined' ? Math.max(300, Math.round(window.innerWidth * 0.6)) : 400,
+      splitPaneWidth: typeof window !== 'undefined' ? Math.max(300, Math.round(window.innerWidth * 0.35)) : 400,
+      defaultSidePaneWidth: 400,
+      defaultSplitPaneWidth: 400,
+      defaultWidthsSet: false,
+      messagingListWidth: 384,
+      messagingProfileWidth: 384,
+      previousBodyState: BODY_STATES.NORMAL,
+      fullscreenTarget: null,
+      isResizing: false,
+      isResizingRightPane: false,
+      isResizingMessagingList: false,
+      isResizingMessagingProfile: false,
+      isMessagingListCollapsed: false,
+      isMessagingProfileCollapsed: false,
+      isTopBarVisible: true,
+      isTopBarHovered: false,
+      autoExpandSidebar: true,
+      reducedMotion: false,
+      compactMode: false,
+      primaryColor: '220 84% 60%',
+      isCommandPaletteOpen: false,
+      isDarkMode: false,
+      appName: 'Jeli App',
+      appLogo: undefined,
+      draggedPage: null,
+      dragHoverTarget: null,
+      hoveredPane: null,
+    };
+
+
+
+    export const useAppShellStore = create<AppShellState &
+    AppShellActions>((set, get) => ({
+      ...defaultState,
+
+      init: ({ appName, appLogo, defaultSplitPaneWidth }) => set(state => ({
+        ...state,
+        ...(appName && { appName }),
+        ...(appLogo && { appLogo }),
+        ...(defaultSplitPaneWidth && { splitPaneWidth: defaultSplitPaneWidth }),
+      })),
+      
+      setSidebarState: (payload) => set({ sidebarState: payload }),
+      setBodyState: (payload) => {
+        // If we're leaving fullscreen, reset the target and previous state
+        if (get().bodyState === BODY_STATES.FULLSCREEN && payload !== BODY_STATES.FULLSCREEN) {
+          set({ bodyState: payload, fullscreenTarget: null, previousBodyState: BODY_STATES.NORMAL });
+        } else {
+          set({ bodyState: payload });
+        }
+      },
+      setSidePaneContent: (payload) => set({ sidePaneContent: payload }),
+      setSidebarWidth: (payload) => set({ sidebarWidth: Math.max(200, Math.min(500, payload)) }),
+      setSidePaneWidth: (payload) => set({ sidePaneWidth: Math.max(300, Math.min(window.innerWidth * 0.8, payload)) }),
+      setDefaultPaneWidths: () => {
+        if (get().defaultWidthsSet) return;
+        set(state => ({
+            defaultSidePaneWidth: state.sidePaneWidth,
+            defaultSplitPaneWidth: state.splitPaneWidth,
+            defaultWidthsSet: true,
+        }));
+      },
+      resetPaneWidths: () => set(state => ({
+        sidePaneWidth: state.defaultSidePaneWidth,
+        splitPaneWidth: state.defaultSplitPaneWidth,
+      })),
+      setSplitPaneWidth: (payload) => set({ splitPaneWidth: Math.max(300, Math.min(window.innerWidth * 0.8, payload)) }),
+      setMessagingListWidth: (payload) => set({ messagingListWidth: Math.max(320, Math.min(payload, window.innerWidth - 400)) }),
+      setMessagingProfileWidth: (payload) => set({ messagingProfileWidth: Math.max(320, Math.min(payload, window.innerWidth - 400)) }),
+      setIsResizing: (payload) => set({ isResizing: payload }),
+      setFullscreenTarget: (payload) => set({ fullscreenTarget: payload }),
+      setIsResizingRightPane: (payload) => set({ isResizingRightPane: payload }),
+      setIsResizingMessagingList: (payload) => set({ isResizingMessagingList: payload }),
+      setIsResizingMessagingProfile: (payload) => set({ isResizingMessagingProfile: payload }),
+      toggleMessagingListCollapsed: () => set(state => ({ isMessagingListCollapsed: !state.isMessagingListCollapsed })),
+      toggleMessagingProfileCollapsed: () => set(state => ({ isMessagingProfileCollapsed: !state.isMessagingProfileCollapsed })),
+      setTopBarVisible: (payload) => set({ isTopBarVisible: payload }),
+      setAutoExpandSidebar: (payload) => set({ autoExpandSidebar: payload }),
+      setReducedMotion: (payload) => set({ reducedMotion: payload }),
+      setCompactMode: (payload) => set({ compactMode: payload }),
+      setPrimaryColor: (payload) => {
+        if (typeof document !== 'undefined') {
+            document.documentElement.style.setProperty('--primary-hsl', payload);
+        }
+        set({ primaryColor: payload });
+      },
+      setDraggedPage: (payload) => set({ draggedPage: payload }),
+      setCommandPaletteOpen: (open) => set({ isCommandPaletteOpen: open }),
+      toggleDarkMode: () => set((state) => ({ isDarkMode: !state.isDarkMode })),
+      setDragHoverTarget: (payload) => set({ dragHoverTarget: payload }),
+      setTopBarHovered: (isHovered) => set({ isTopBarHovered: isHovered }),
+      setHoveredPane: (payload) => set({ hoveredPane: payload }),
+      
+      toggleSidebar: () => {
+        const current = get().sidebarState;
+        if (current === SIDEBAR_STATES.HIDDEN) set({ sidebarState: SIDEBAR_STATES.COLLAPSED });
+        else if (current === SIDEBAR_STATES.COLLAPSED) set({ sidebarState: SIDEBAR_STATES.EXPANDED });
+        else if (current === SIDEBAR_STATES.EXPANDED) set({ sidebarState: SIDEBAR_STATES.COLLAPSED });
+      },
+      hideSidebar: () => set({ sidebarState: SIDEBAR_STATES.HIDDEN }),
+      showSidebar: () => set({ sidebarState: SIDEBAR_STATES.EXPANDED }),
+      peekSidebar: () => set({ sidebarState: SIDEBAR_STATES.PEEK }),
+      
+      toggleFullscreen: (target = null) => {
+        const { bodyState, previousBodyState } = get();
+        if (bodyState === BODY_STATES.FULLSCREEN) {
+          set({ 
+            bodyState: previousBodyState || BODY_STATES.NORMAL,
+            fullscreenTarget: null,
+            previousBodyState: BODY_STATES.NORMAL,
+          });
+        } else {
+          set({ 
+            previousBodyState: bodyState, 
+            bodyState: BODY_STATES.FULLSCREEN, 
+            fullscreenTarget: target 
+          });
+        }
+      },
+      
+      resetToDefaults: () => {
+        // Preserve props passed to provider and session defaults
+        set(state => {
+          const currentPrimaryColor = defaultState.primaryColor;
+          if (typeof document !== 'undefined') {
+            document.documentElement.style.setProperty('--primary-hsl', currentPrimaryColor);
+          }
+          return {
+            ...defaultState,
+            primaryColor: currentPrimaryColor,
+            appName: state.appName,
+            appLogo: state.appLogo,
+            defaultSidePaneWidth: state.defaultSidePaneWidth,
+            defaultSplitPaneWidth: state.defaultSplitPaneWidth,
+            defaultWidthsSet: state.defaultWidthsSet,
+            // Also reset current widths to the defaults
+            sidePaneWidth: state.defaultSidePaneWidth,
+            splitPaneWidth: state.defaultSplitPaneWidth,
+          };
+        });
+      },
+    }));
+
+
+    // Add a selector for the derived rightPaneWidth
+
+    export const useRightPaneWidth = () => useAppShellStore(state => 
+        state.bodyState === BODY_STATES.SPLIT_VIEW ? state.splitPaneWidth : state.sidePaneWidth
+    );
+  src/hooks/useResizablePanes.hook.ts: >-
+    import { useEffect } from 'react';
+
+    import { gsap } from 'gsap';
+
+    import { useAppShellStore } from '@/store/appShell.store';
+
+    import { BODY_STATES } from '@/lib/utils';
+
+
+    export function useResizableSidebar(
+      sidebarRef: React.RefObject<HTMLDivElement>,
+      resizeHandleRef: React.RefObject<HTMLDivElement>
+    ) {
+      const isResizing = useAppShellStore(s => s.isResizing);
+      const { setSidebarWidth, setIsResizing } = useAppShellStore.getState();
+
+      useEffect(() => {
+        const handleMouseMove = (e: MouseEvent) => {
+          if (!isResizing) return;
+
+          const newWidth = Math.max(200, Math.min(500, e.clientX));
+          setSidebarWidth(newWidth);
+
+          if (sidebarRef.current) {
+            gsap.set(sidebarRef.current, { width: newWidth });
+          }
+          if (resizeHandleRef.current) {
+            gsap.set(resizeHandleRef.current, { left: newWidth });
+          }
+        };
+
+        const handleMouseUp = () => {
+          setIsResizing(false);
+          document.body.style.cursor = '';
+          document.body.style.userSelect = '';
+        };
+
+        if (isResizing) {
+          document.body.style.cursor = 'col-resize';
+          document.body.style.userSelect = 'none';
+          document.addEventListener('mousemove', handleMouseMove);
+          document.addEventListener('mouseup', handleMouseUp);
+        }
+
+        return () => {
+          document.removeEventListener('mousemove', handleMouseMove);
+          document.removeEventListener('mouseup', handleMouseUp);
+        };
+      }, [isResizing, setSidebarWidth, setIsResizing, sidebarRef, resizeHandleRef]);
+    }
+
+
+    export function useResizableRightPane() {
+      const isResizingRightPane = useAppShellStore(s => s.isResizingRightPane);
+      const bodyState = useAppShellStore(s => s.bodyState);
+      const { setSplitPaneWidth, setSidePaneWidth, setIsResizingRightPane } = useAppShellStore.getState();
+
+      useEffect(() => {
+        const handleMouseMove = (e: MouseEvent) => {
+          if (!isResizingRightPane) return;
+
+          const newWidth = window.innerWidth - e.clientX;
+          if (bodyState === BODY_STATES.SPLIT_VIEW) {
+            setSplitPaneWidth(newWidth);
+          } else {
+            setSidePaneWidth(newWidth);
+          }
+        };
+
+        const handleMouseUp = () => {
+          setIsResizingRightPane(false);
+          document.body.style.cursor = '';
+          document.body.style.userSelect = '';
+        };
+
+        if (isResizingRightPane) {
+          document.body.style.cursor = 'col-resize';
+          document.body.style.userSelect = 'none';
+          document.addEventListener('mousemove', handleMouseMove);
+          document.addEventListener('mouseup', handleMouseUp);
+        }
+
+        return () => {
+          document.removeEventListener('mousemove', handleMouseMove);
+          document.removeEventListener('mouseup', handleMouseUp);
+          document.body.style.cursor = '';
+        };
+      }, [isResizingRightPane, setSplitPaneWidth, setSidePaneWidth, setIsResizingRightPane, bodyState]);
+    }
+
+
+    export function useResizableMessagingList(containerRef:
+    React.RefObject<HTMLDivElement>) {
+      const isResizingMessagingList = useAppShellStore(s => s.isResizingMessagingList);
+      const { setMessagingListWidth, setIsResizingMessagingList } = useAppShellStore.getState();
+
+      useEffect(() => {
+        const handleMouseMove = (e: MouseEvent) => {
+          if (!isResizingMessagingList || !containerRef.current) return;
+
+          const containerRect = containerRef.current.getBoundingClientRect();
+          const newWidth = e.clientX - containerRect.left;
+          
+          setMessagingListWidth(newWidth);
+        };
+
+        const handleMouseUp = () => {
+          setIsResizingMessagingList(false);
+          document.body.style.cursor = '';
+          document.body.style.userSelect = '';
+        };
+
+        if (isResizingMessagingList) {
+          document.body.style.cursor = 'col-resize';
+          document.body.style.userSelect = 'none';
+          window.addEventListener('mousemove', handleMouseMove);
+          window.addEventListener('mouseup', handleMouseUp);
+        }
+
+        return () => {
+          window.removeEventListener('mousemove', handleMouseMove);
+          window.removeEventListener('mouseup', handleMouseUp);
+          document.body.style.cursor = '';
+          document.body.style.userSelect = '';
+        };
+      }, [isResizingMessagingList, setMessagingListWidth, setIsResizingMessagingList, containerRef]);
+    }
+
+
+    export function useResizableMessagingProfile(containerRef:
+    React.RefObject<HTMLDivElement>) {
+      const isResizingMessagingProfile = useAppShellStore(s => s.isResizingMessagingProfile);
+      const { setMessagingProfileWidth, setIsResizingMessagingProfile } = useAppShellStore.getState();
+
+      useEffect(() => {
+        const handleMouseMove = (e: MouseEvent) => {
+          if (!isResizingMessagingProfile || !containerRef.current) return;
+
+          const containerRect = containerRef.current.getBoundingClientRect();
+          const newWidth = containerRect.right - e.clientX;
+          
+          setMessagingProfileWidth(newWidth);
+        };
+
+        const handleMouseUp = () => {
+          setIsResizingMessagingProfile(false);
+          document.body.style.cursor = '';
+          document.body.style.userSelect = '';
+        };
+
+        if (isResizingMessagingProfile) {
+          document.body.style.cursor = 'col-resize';
+          document.body.style.userSelect = 'none';
+          window.addEventListener('mousemove', handleMouseMove);
+          window.addEventListener('mouseup', handleMouseUp);
+        }
+
+        return () => {
+          window.removeEventListener('mousemove', handleMouseMove);
+          window.removeEventListener('mouseup', handleMouseUp);
+          document.body.style.cursor = '';
+        };
+      }, [isResizingMessagingProfile, setMessagingProfileWidth, setIsResizingMessagingProfile, containerRef]);
+    }
+  src/hooks/useRightPaneContent.hook.tsx: >-
+    import { useMemo } from 'react';
+
+    import { useNavigate, useParams } from 'react-router-dom';
+
+    import {
+      LayoutDashboard,
+      Settings,
+      Component,
+      Bell,
+      SlidersHorizontal,
+      Database,
+      MessageSquare,
+    } from 'lucide-react';
+
+
+    import { DashboardContent } from "@/pages/Dashboard";
+
+    import { SettingsContent } from "@/features/settings/SettingsContent";
+
+    import { ToasterDemo } from "@/pages/ToasterDemo";
+
+    import { NotificationsPage } from "@/pages/Notifications";
+
+    import DataDemoPage from "@/pages/DataDemo";
+
+    import { DataDetailPanel } from
+    "@/pages/DataDemo/components/DataDetailPanel";
+
+    import { mockDataItems } from "@/pages/DataDemo/data/mockData";
+
+    import { MessagingContent } from
+    "@/pages/Messaging/components/MessagingContent";
+
+    import type { AppShellState } from '@/store/appShell.store';
+
+
+    export function useRightPaneContent(sidePaneContent:
+    AppShellState['sidePaneContent']) {
+      const navigate = useNavigate();
+      const { itemId, conversationId } = useParams<{ itemId: string; conversationId: string }>();
+
+      const contentMap = useMemo(() => ({
+        main: {
+          title: "Dashboard",
+          icon: LayoutDashboard,
+          page: "dashboard",
+          content: <DashboardContent />,
+        },
+        settings: {
+          title: "Settings",
+          icon: Settings,
+          page: "settings",
+          content: <div className="p-6"><SettingsContent /></div>
+        },
+        toaster: {
+          title: "Toaster Demo",
+          icon: Component,
+          page: "toaster",
+          content: <ToasterDemo />,
+        },
+        notifications: {
+          title: "Notifications",
+          icon: Bell,
+          page: "notifications",
+          content: <NotificationsPage />,
+        },
+        dataDemo: {
+          title: "Data Showcase",
+          icon: Database,
+          page: "data-demo",
+          content: <DataDemoPage />,
+        },
+        messaging: {
+          title: "Conversation",
+          icon: MessageSquare,
+          page: "messaging",
+          content: <MessagingContent conversationId={conversationId} />,
+        },
+        details: {
+          title: "Details Panel",
+          icon: SlidersHorizontal,
+          content: (
+            <div className="p-6">
+              <p className="text-muted-foreground">
+                This is the side pane. It can be used to display contextual
+                information, forms, or actions related to the main content.
+              </p>
+            </div>
+          ),
+        },
+      }), [conversationId]);
+
+      const selectedItem = useMemo(() => {
+        if (!itemId) return null;
+        return mockDataItems.find(item => item.id === itemId) ?? null;
+      }, [itemId]);
+
+      const { meta, content } = useMemo(() => {
+        if (sidePaneContent === 'dataItem' && selectedItem) {
+          return {
+            meta: { title: "Item Details", icon: Database, page: `data-demo/${itemId}` },
+            content: <DataDetailPanel item={selectedItem} onClose={() => navigate('/data-demo')} />,
+          };
+        }
+        if (sidePaneContent === 'messaging') {
+          return {
+           meta: contentMap.messaging,
+           content: <MessagingContent conversationId={conversationId} />,
+         };
+       }
+        const mappedContent = contentMap[sidePaneContent as keyof typeof contentMap] || contentMap.details;
+        return {
+          meta: mappedContent,
+          content: mappedContent.content,
+        };
+      }, [sidePaneContent, selectedItem, navigate, contentMap, itemId, conversationId]);
+
+      return { meta, content };
+    }
+  src/App.tsx: |-
+    import React, { useEffect } from "react";
+    import {
+      createBrowserRouter,
+      RouterProvider,
+      Outlet,
+      Navigate,
+      useNavigate, // used in LoginPageWrapper
+      useLocation,
+    } from "react-router-dom";
+
+    import { AppShell } from "./components/layout/AppShell";
+    import { AppShellProvider } from "./providers/AppShellProvider";
+    import { useAppShellStore } from "./store/appShell.store";
+    import { useAuthStore } from "./store/authStore";
+    import "./index.css";
+
+    // Import library components
+    import { EnhancedSidebar } from "./components/layout/EnhancedSidebar";
+    import { MainContent } from "./components/layout/MainContent";
+    import { RightPane } from "./components/layout/RightPane";
+    import { TopBar } from "./components/layout/TopBar";
+    import { CommandPalette } from "./components/global/CommandPalette";
+    import { ToasterProvider } from "./components/ui/toast";
+
+    // --- Page/Content Components for Pages and Panes ---
+    import { DashboardContent } from "./pages/Dashboard";
+    import { SettingsPage } from "./pages/Settings";
+    import { ToasterDemo } from "./pages/ToasterDemo";
+    import { NotificationsPage } from "./pages/Notifications";
+    import DataDemoPage from "./pages/DataDemo";
+    import MessagingPage from "./pages/Messaging";
+    import { LoginPage } from "./components/auth/LoginPage";
+
+    // --- Icons ---
+    import {
+      Search,
+      Filter,
+      Plus,
+      ChevronRight,
+      Rocket,
+    } from "lucide-react";
+
+    // --- Utils & Hooks ---
+    import { cn } from "./lib/utils";
+    import { useAppViewManager } from "./hooks/useAppViewManager.hook";
+    import { useRightPaneContent } from "./hooks/useRightPaneContent.hook";
+    import { BODY_STATES } from "./lib/utils";
+
+    // Checks for authentication and redirects to login if needed
+    function ProtectedRoute() {
+      const { isAuthenticated } = useAuthStore();
+      const location = useLocation();
+      if (!isAuthenticated) {
+        return <Navigate to="/login" state={{ from: location }} replace />;
+      }
+      return <Outlet />;
+    }
+
+    // A root component to apply global styles and effects
+    function Root() {
+      const isDarkMode = useAppShellStore((state) => state.isDarkMode);
+
+      useEffect(() => {
+        document.documentElement.classList.toggle("dark", isDarkMode);
+      }, [isDarkMode]);
+
+      return <Outlet />;
+    }
+
+    // The main layout for authenticated parts of the application
+    function ProtectedLayout() {
+
+      return (
+        <div className="h-screen w-screen overflow-hidden bg-background">
+          <AppShellProvider
+            appName="Jeli App"
+            appLogo={
+              <div className="p-2 bg-primary/20 rounded-lg">
+                <Rocket className="w-5 h-5 text-primary" />
+              </div>
+            }
+          >
+            <ComposedApp />
+          </AppShellProvider>
+        </div>
+      );
+    }
+
+    // Content for the Top Bar (will be fully refactored in Part 2)
+    function AppTopBar() {
+      const [searchTerm, setSearchTerm] = React.useState("");
+      const [isSearchFocused, setIsSearchFocused] = React.useState(false);
+      const location = useLocation();
+      const activePage = location.pathname.split('/').filter(Boolean).pop()?.replace('-', ' ') || 'dashboard';
+
+      return (
+        <div className="flex items-center gap-3">
+          <div
+            className={cn(
+              "hidden md:flex items-center gap-2 text-sm transition-opacity",
+              {
+                "opacity-0 pointer-events-none":
+                  isSearchFocused && activePage === "dashboard",
+              },
+            )}
+          >
+            <a
+              href="#"
+              className="text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Home
+            </a>
+            <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            <span className="font-medium text-foreground capitalize">
+              {activePage}
+            </span>
+          </div>
+
+          {/* Page-specific: Dashboard search and actions */}
+          {activePage === "dashboard" && (
+            <div className="flex items-center gap-2 flex-1 justify-end">
+              <div
+                className={cn(
+                  "relative transition-all duration-300 ease-in-out",
+                  isSearchFocused ? "flex-1 max-w-lg" : "w-auto",
+                )}
+              >
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4 pointer-events-none" />
+                <input
+                  type="text"
+                  placeholder="Search..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onFocus={() => setIsSearchFocused(true)}
+                  onBlur={() => setIsSearchFocused(false)}
+                  className={cn(
+                    "pl-9 pr-4 py-2 h-10 border-none rounded-lg bg-card focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300 ease-in-out w-full",
+                    isSearchFocused ? "bg-background" : "w-48",
+                  )}
+                />
+              </div>
+              <button className="h-10 w-10 flex-shrink-0 flex items-center justify-center hover:bg-accent rounded-full transition-colors">
+                <Filter className="w-5 h-5" />
+              </button>
+              <button className="bg-primary text-primary-foreground px-4 py-2 rounded-full hover:bg-primary/90 transition-colors flex items-center gap-2 h-10 flex-shrink-0">
+                <Plus className="w-5 h-5" />
+                <span
+                  className={cn(isSearchFocused ? "hidden sm:inline" : "inline")}
+                >
+                  New Project
+                </span>
+              </button>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // The main App component that composes the shell
+    function ComposedApp() {
+      const { setBodyState, setSidePaneContent } = useAppShellStore();
+      const viewManager = useAppViewManager();
+
+      // Sync URL state with AppShellStore
+      useEffect(() => {
+        setBodyState(viewManager.bodyState);
+        setSidePaneContent(viewManager.sidePaneContent);
+      }, [viewManager.bodyState, viewManager.sidePaneContent, setBodyState, setSidePaneContent]);
+
+      return (
+        <AppShell
+          sidebar={<EnhancedSidebar />}
+          onOverlayClick={viewManager.closeSidePane}
+          topBar={
+            <TopBar>
+              <AppTopBar />
+            </TopBar>
+          }
+          mainContent={
+            <MainContent>
+              <Outlet />
+            </MainContent>
+          }
+          rightPane={<RightPane />}
+          commandPalette={<CommandPalette />}
+        />
+      );
+    }
+
+    function App() {
+      const router = createBrowserRouter([
+        {
+          element: <Root />,
+          children: [
+            {
+              path: "/login",
+              element: <LoginPage />,
+            },
+            {
+              path: "/",
+              element: <ProtectedRoute />,
+              children: [
+                {
+                  path: "/",
+                  element: <ProtectedLayout />,
+                  children: [
+                    { index: true, element: <Navigate to="/dashboard" replace /> },
+                    { path: "dashboard", element: <DashboardContent /> },
+                    { path: "settings", element: <SettingsPage /> },
+                    { path: "toaster", element: <ToasterDemo /> },
+                    { path: "notifications", element: <NotificationsPage /> },
+                    { path: "data-demo", element: <DataDemoPage /> },
+                    { path: "data-demo/:itemId", element: <DataDemoPage /> },
+                    { path: "messaging", element: <MessagingPage /> },
+                    { path: "messaging/:conversationId", element: <MessagingPage /> },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ]);
+
+      return (
+        <ToasterProvider>
+          <RouterProvider router={router} />
+        </ToasterProvider>
+      );
+    }
+
+    export default App;
+  src/hooks/useAppViewManager.hook.ts: "import { useMemo, useCallback } from 'react';\nimport { useSearchParams, useNavigate, useLocation, useParams } from 'react-router-dom';\nimport type { AppShellState, ActivePage } from '@/store/appShell.store';\nimport type { DataItem, ViewMode, SortConfig, SortableField, GroupableField, Status, Priority } from '@/pages/DataDemo/types';\nimport type { FilterConfig } from '@/pages/DataDemo/components/DataToolbar';\nimport { BODY_STATES } from '@/lib/utils';\n\nconst pageToPaneMap: Record<string, AppShellState['sidePaneContent']> = {\n  dashboard: 'main',\n  settings: 'settings',\n  toaster: 'toaster',\n  notifications: 'notifications',\n  'data-demo': 'dataDemo',\n  messaging: 'messaging',\n};\n\n/**\n * A centralized hook to manage and synchronize all URL-based view states.\n * This is the single source of truth for view modes, side panes, split views,\n * and page-specific parameters.\n */\nexport function useAppViewManager() {\n  const [searchParams, setSearchParams] = useSearchParams();\n  const navigate = useNavigate();\n  const location = useLocation();\n  const params = useParams<{ itemId: string; conversationId: string }>();\n  const { itemId, conversationId } = params;\n\n  // --- DERIVED STATE FROM URL ---\n\n  const view = searchParams.get('view');\n  const sidePane = searchParams.get('sidePane');\n  const right = searchParams.get('right');\n\n  const { bodyState, sidePaneContent } = useMemo(() => {\n    const validPanes: AppShellState['sidePaneContent'][] = ['details', 'settings', 'main', 'toaster', 'notifications', 'dataDemo', 'messaging'];\n    \n    if (conversationId) {\n      return { bodyState: BODY_STATES.SPLIT_VIEW, sidePaneContent: 'messaging' as const };\n    }\n\n    if (itemId) {\n      if (view === 'split') {\n        return { bodyState: BODY_STATES.SPLIT_VIEW, sidePaneContent: 'dataItem' as const };\n      }\n      return { bodyState: BODY_STATES.SIDE_PANE, sidePaneContent: 'dataItem' as const };\n    }\n    \n    if (sidePane && validPanes.includes(sidePane as AppShellState['sidePaneContent'])) {\n      return { bodyState: BODY_STATES.SIDE_PANE, sidePaneContent: sidePane as AppShellState['sidePaneContent'] };\n    }\n    \n    if (view === 'split' && right && validPanes.includes(right as AppShellState['sidePaneContent'])) {\n      return { bodyState: BODY_STATES.SPLIT_VIEW, sidePaneContent: right as AppShellState['sidePaneContent'] };\n    }\n    \n    return { bodyState: BODY_STATES.NORMAL, sidePaneContent: 'details' as const };\n  }, [itemId, conversationId, view, sidePane, right]);\n  \n  const currentActivePage = useMemo(() => (location.pathname.split('/')[1] || 'dashboard') as ActivePage, [location.pathname]);\n\n  // DataDemo specific state\n  const viewMode = useMemo(() => (searchParams.get('view') as ViewMode) || 'list', [searchParams]);\n\tconst page = useMemo(() => parseInt(searchParams.get('page') || '1', 10), [searchParams]);\n\tconst groupBy = useMemo(() => (searchParams.get('groupBy') as GroupableField | 'none') || 'none', [searchParams]);\n\tconst activeGroupTab = useMemo(() => searchParams.get('tab') || 'all', [searchParams]);\n\tconst filters = useMemo<FilterConfig>(\n\t\t() => ({\n\t\t\tsearchTerm: searchParams.get('q') || '',\n\t\t\tstatus: (searchParams.get('status')?.split(',') || []).filter(Boolean) as Status[],\n\t\t\tpriority: (searchParams.get('priority')?.split(',') || []).filter(Boolean) as Priority[],\n\t\t}),\n\t\t[searchParams],\n\t);\n\tconst sortConfig = useMemo<SortConfig | null>(() => {\n\t\tconst sortParam = searchParams.get('sort');\n\t\tif (!sortParam) return { key: 'updatedAt', direction: 'desc' }; // Default sort\n\t\tif (sortParam === 'default') return null;\n\n\t\tconst [key, direction] = sortParam.split('-');\n\t\treturn { key: key as SortableField, direction: direction as 'asc' | 'desc' };\n\t}, [searchParams]);\n\n  // --- MUTATOR ACTIONS ---\n\n  const handleParamsChange = useCallback(\n\t\t(newParams: Record<string, string | string[] | null | undefined>, resetPage = false) => {\n\t\t\tsetSearchParams(\n\t\t\t\t(prev) => {\n\t\t\t\t\tconst updated = new URLSearchParams(prev);\n\t\t\t\t\t\n\t\t\t\t\tfor (const [key, value] of Object.entries(newParams)) {\n\t\t\t\t\t\tif (value === null || value === undefined || (Array.isArray(value) && value.length === 0) || value === '') {\n\t\t\t\t\t\t\tupdated.delete(key);\n\t\t\t\t\t\t} else if (Array.isArray(value)) {\n\t\t\t\t\t\t\tupdated.set(key, value.join(','));\n\t\t\t\t\t\t} else {\n\t\t\t\t\t\t\tupdated.set(key, String(value));\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\n\t\t\t\t\tif (resetPage) {\n\t\t\t\t\t\tupdated.delete('page');\n\t\t\t\t\t}\n\t\t\t\t\tif ('groupBy' in newParams) {\n\t\t\t\t\t\tupdated.delete('tab');\n\t\t\t\t\t}\n\n\t\t\t\t\treturn updated;\n\t\t\t\t},\n\t\t\t\t{ replace: true },\n\t\t\t);\n\t\t},\n\t\t[setSearchParams],\n\t);\n\n  const navigateTo = useCallback((page: string) => {\n    navigate(page.startsWith('/') ? page : `/${page}`);\n  }, [navigate]);\n\n  const openSidePane = useCallback((pane: AppShellState['sidePaneContent']) => {\n    if (location.pathname === `/${Object.keys(pageToPaneMap).find(key => pageToPaneMap[key] === pane)}`) {\n        navigate({ pathname: '/dashboard', search: `?sidePane=${pane}` }, { replace: true });\n    } else {\n        handleParamsChange({ sidePane: pane, view: null, right: null });\n    }\n  }, [handleParamsChange, navigate, location.pathname]);\n\n  const closeSidePane = useCallback(() => {\n    if (itemId) {\n      navigate('/data-demo');\n    } else {\n      handleParamsChange({ sidePane: null, view: null, right: null });\n    }\n  }, [itemId, navigate, handleParamsChange]);\n\n  const toggleSidePane = useCallback((pane: AppShellState['sidePaneContent']) => {\n    if (sidePane === pane) {\n      closeSidePane();\n    } else {\n      openSidePane(pane);\n    }\n  }, [sidePane, openSidePane, closeSidePane]);\n\n  const toggleSplitView = useCallback(() => {\n    if (bodyState === BODY_STATES.SIDE_PANE) {\n      handleParamsChange({ view: 'split', right: sidePane, sidePane: null });\n    } else if (bodyState === BODY_STATES.SPLIT_VIEW) {\n      handleParamsChange({ sidePane: right, view: null, right: null });\n    } else { // From normal\n      const paneContent = pageToPaneMap[currentActivePage] || 'details';\n      handleParamsChange({ view: 'split', right: paneContent, sidePane: null });\n    }\n  }, [bodyState, sidePane, right, currentActivePage, handleParamsChange]);\n  \n  const setNormalView = useCallback(() => {\n      handleParamsChange({ sidePane: null, view: null, right: null });\n  }, [handleParamsChange]);\n\n  const switchSplitPanes = useCallback(() => {\n    if (bodyState !== BODY_STATES.SPLIT_VIEW) return;\n    const newSidePaneContent = pageToPaneMap[currentActivePage];\n    const newActivePage = Object.entries(pageToPaneMap).find(\n      ([, value]) => value === sidePaneContent\n    )?.[0] as ActivePage | undefined;\n\n    if (newActivePage && newSidePaneContent) {\n      navigate(`/${newActivePage}?view=split&right=${newSidePaneContent}`, { replace: true });\n    }\n  }, [bodyState, currentActivePage, sidePaneContent, navigate]);\n  \n  const closeSplitPane = useCallback((paneToClose: 'main' | 'right') => {\n    if (bodyState !== BODY_STATES.SPLIT_VIEW) return;\n    if (paneToClose === 'right') {\n      navigate(`/${currentActivePage}`, { replace: true });\n    } else { // Closing main pane\n      const pageToBecomeActive = Object.entries(pageToPaneMap).find(\n        ([, value]) => value === sidePaneContent\n      )?.[0] as ActivePage | undefined;\n      \n      if (pageToBecomeActive) {\n        navigate(`/${pageToBecomeActive}`, { replace: true });\n      } else {\n        navigate(`/dashboard`, { replace: true });\n      }\n    }\n  }, [bodyState, currentActivePage, sidePaneContent, navigate]);\n  \n  // DataDemo actions\n  const setViewMode = (mode: ViewMode) => handleParamsChange({ view: mode });\n  const setGroupBy = (val: string) => handleParamsChange({ groupBy: val === 'none' ? null : val }, true);\n  const setActiveGroupTab = (tab: string) => handleParamsChange({ tab: tab === 'all' ? null : tab });\n  const setFilters = (newFilters: FilterConfig) => {\n    handleParamsChange({ q: newFilters.searchTerm, status: newFilters.status, priority: newFilters.priority }, true);\n  }\n  const setSort = (config: SortConfig | null) => {\n    if (!config) {\n      handleParamsChange({ sort: 'default' }, true);\n    } else {\n      handleParamsChange({ sort: `${config.key}-${config.direction}` }, true);\n    }\n  }\n  const setTableSort = (field: SortableField) => {\n    let newSort: string | null = `${field}-desc`;\n    if (sortConfig?.key === field) {\n      if (sortConfig.direction === 'desc') newSort = `${field}-asc`;\n      else if (sortConfig.direction === 'asc') newSort = 'default';\n    }\n    handleParamsChange({ sort: newSort }, true);\n  };\n  const setPage = (newPage: number) => handleParamsChange({ page: newPage.toString() });\n\n  const onItemSelect = useCallback((item: DataItem) => {\n\t\tnavigate(`/data-demo/${item.id}${location.search}`);\n\t}, [navigate, location.search]);\n\n\n  return useMemo(() => ({\n    // State\n    bodyState,\n    sidePaneContent,\n    currentActivePage,\n    itemId,\n    // DataDemo State\n    viewMode,\n    page,\n    groupBy,\n    activeGroupTab,\n    filters,\n    sortConfig,\n    // Actions\n    navigateTo,\n    openSidePane,\n    closeSidePane,\n    toggleSidePane,\n    toggleSplitView,\n    setNormalView,\n    switchSplitPanes,\n    closeSplitPane,\n    // DataDemo Actions\n    onItemSelect,\n    setViewMode,\n    setGroupBy,\n    setActiveGroupTab,\n    setFilters,\n    setSort,\n    setTableSort,\n    setPage,\n  }), [\n    bodyState, sidePaneContent, currentActivePage, itemId,\n    viewMode, page, groupBy, activeGroupTab, filters, sortConfig,\n    navigateTo, openSidePane, closeSidePane, toggleSidePane, toggleSplitView, setNormalView, \n    switchSplitPanes, closeSplitPane, onItemSelect, setViewMode, setGroupBy, setActiveGroupTab, setFilters,\n    setSort, setTableSort, setPage\n  ]);\n}"
+  src/components/layout/ViewModeSwitcher.tsx: >-
+    import { useState, useRef, useEffect } from 'react';
+
+    import { gsap } from 'gsap';
+
+    import { cn } from '@/lib/utils'
+
+    import { useAppShellStore, type AppShellState, type ActivePage } from
+    '@/store/appShell.store'
+
+    import { BODY_STATES } from '@/lib/utils'
+
+    import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
+
+    import {
+      Columns,
+      PanelRightOpen,
+      SplitSquareHorizontal,
+      Maximize,
+      Minimize,
+      Layers,
+      X,
+      ArrowLeftRight
+    } from 'lucide-react'
+
+
+    export function ViewModeSwitcher({ pane, targetPage }: { pane?: 'main' |
+    'right', targetPage?: ActivePage }) {
+      const bodyState = useAppShellStore(s => s.bodyState);
+      const fullscreenTarget = useAppShellStore(s => s.fullscreenTarget);
+      const { toggleFullscreen } = useAppShellStore.getState();
+      const {
+        currentActivePage,
+        toggleSidePane,
+        toggleSplitView,
+        setNormalView,
+        navigateTo,
+        switchSplitPanes,
+        closeSplitPane,
+      } = useAppViewManager();
+
+      const activePage = targetPage || currentActivePage;
+      const [isExpanded, setIsExpanded] = useState(false);
+      const buttonRefs = useRef<(HTMLButtonElement | null)[]>([]);
+
+      const isFullscreen = bodyState === BODY_STATES.FULLSCREEN;
+      const isThisPaneFullscreen = isFullscreen && (
+        (pane === 'main' && fullscreenTarget !== 'right') ||
+        (pane === 'right' && fullscreenTarget === 'right') ||
+        (!pane && !fullscreenTarget) // Global switcher, global fullscreen
+      );
+
+      useEffect(() => {
+        const buttonsToAnimate = buttonRefs.current.filter(Boolean) as HTMLButtonElement[];
+        if (buttonsToAnimate.length === 0) return;
+
+        gsap.killTweensOf(buttonsToAnimate);
+
+        if (isExpanded) {
+            gsap.to(buttonsToAnimate, {
+                width: 32, // h-8 w-8
+                opacity: 1,
+                pointerEvents: 'auto',
+                marginLeft: 4, // from gap-1 in original
+                duration: 0.2,
+                stagger: {
+                    each: 0.05,
+                    from: 'start'
+                },
+                ease: 'power2.out'
+            });
+        } else {
+            gsap.to(buttonsToAnimate, {
+                width: 0,
+                opacity: 0,
+                pointerEvents: 'none',
+                marginLeft: 0,
+                duration: 0.2,
+                stagger: {
+                    each: 0.05,
+                    from: 'end'
+                },
+                ease: 'power2.in'
+            });
+        }
+      }, [isExpanded, bodyState]); // re-run if bodyState changes to recalc buttons
+
+      const handlePaneClick = (type: 'side-pane' | 'split-view') => {
+        const pageToPaneMap: Record<ActivePage, AppShellState['sidePaneContent']> = { // This type is now stricter because ActivePage includes messaging
+          dashboard: 'main', settings: 'settings', toaster: 'toaster', notifications: 'notifications', 'data-demo': 'dataDemo',
+          messaging: 'messaging',
+        };
+        const paneContent = pageToPaneMap[activePage];
+        if (type === 'side-pane') toggleSidePane(paneContent);
+        else toggleSplitView();
+      }
+
+      const handleNormalViewClick = () => {
+        if (isFullscreen) {
+          toggleFullscreen();
+        }
+        if (targetPage && targetPage !== currentActivePage) {
+          navigateTo(targetPage);
+        } else {
+          setNormalView();
+        }
+      }
+
+      const buttons = [
+        {
+          id: 'normal',
+          onClick: handleNormalViewClick,
+          active: bodyState === BODY_STATES.NORMAL,
+          title: "Normal View",
+          icon: <Columns className="w-4 h-4" />
+        },
+        {
+          id: 'side-pane',
+          onClick: () => handlePaneClick('side-pane'),
+          active: bodyState === BODY_STATES.SIDE_PANE,
+          title: "Side Pane View",
+          icon: <PanelRightOpen className="w-4 h-4" />
+        },
+        {
+          id: 'split-view',
+          onClick: () => handlePaneClick('split-view'),
+          active: bodyState === BODY_STATES.SPLIT_VIEW,
+          title: bodyState === BODY_STATES.SPLIT_VIEW ? 'Switch to Overlay View' : 'Switch to Split View',
+          icon: bodyState === BODY_STATES.SPLIT_VIEW ? <Layers className="w-4 h-4" /> : <SplitSquareHorizontal className="w-4 h-4" />
+        },
+        {
+          id: 'fullscreen',
+          onClick: () => {
+            if (targetPage && targetPage !== currentActivePage ) {
+              navigateTo(targetPage);
+              setTimeout(() => toggleFullscreen(pane), 50);
+            } else {
+              toggleFullscreen(pane);
+            }
+          },
+          active: isThisPaneFullscreen,
+          title: "Toggle Fullscreen",
+          icon: isThisPaneFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />
+        }
+      ];
+
+      if (bodyState === BODY_STATES.SPLIT_VIEW) {
+        buttons.push({
+          id: 'switch',
+          onClick: switchSplitPanes,
+          active: false,
+          title: "Switch Panes",
+          icon: <ArrowLeftRight className="w-4 h-4" />
+        });
+        buttons.push({
+          id: 'close',
+          onClick: () => closeSplitPane(pane || 'right'),
+          active: false,
+          title: "Close Pane",
+          icon: <X className="w-4 h-4 text-muted-foreground group-hover:text-destructive" />
+        });
+      }
+
+      return (
+        <div
+          onMouseEnter={() => setIsExpanded(true)}
+          onMouseLeave={() => setIsExpanded(false)}
+          className="flex items-center gap-0 p-1 bg-card rounded-full border border-border"
+        >
+            <button
+                className='h-8 w-8 flex-shrink-0 flex items-center justify-center rounded-full hover:bg-accent transition-colors'
+                title="View Modes"
+                onClick={() => setIsExpanded(!isExpanded)}
+            >
+                <Layers className="w-4 h-4" />
+            </button>
+          
+          {buttons.map((btn, index) => (
+            <button
+              key={btn.id}
+              ref={el => buttonRefs.current[index] = el}
+              onClick={btn.onClick}
+              className={cn(
+                'h-8 w-0 flex items-center justify-center rounded-full hover:bg-accent transition-colors group opacity-0',
+                btn.active && 'bg-accent text-accent-foreground',
+                btn.id === 'close' && 'hover:bg-destructive/20'
+              )}
+              style={{ pointerEvents: 'none', marginLeft: 0, overflow: 'hidden' }}
+              title={btn.title}
+            >
+              {btn.icon}
+            </button>
+          ))}
+        </div>
+      )
+    }
+  src/pages/Messaging/index.tsx: |-
+    import React, { useRef } from "react";
+    import { useParams } from "react-router-dom";
+    import { ConversationList } from "./components/ConversationList";
+    import { cn } from "@/lib/utils";
+    import { MessagingContent } from "./components/MessagingContent";
+    import { useAppShellStore } from "@/store/appShell.store";
+    import { usePageViewConfig } from "@/hooks/usePageViewConfig.hook";
+    import { useResizableMessagingList } from "@/hooks/useResizablePanes.hook";
+    import { BODY_STATES } from "@/lib/utils";
+
+    export default function MessagingPage() {
+      const { conversationId } = useParams<{ conversationId: string }>();
+      const containerRef = useRef<HTMLDivElement>(null);
+      const COLLAPSED_WIDTH = 80;
+
+      const { messagingListWidth, isResizingMessagingList, isMessagingListCollapsed, bodyState } = useAppShellStore(s => ({
+        messagingListWidth: s.messagingListWidth,
+        isResizingMessagingList: s.isResizingMessagingList,
+        isMessagingListCollapsed: s.isMessagingListCollapsed,
+        bodyState: s.bodyState,
+      }));
+      const { setIsResizingMessagingList } = useAppShellStore.getState();
+
+      useResizableMessagingList(containerRef);
+
+      // Configure the pane widths specifically for the messaging page
+      usePageViewConfig({
+        // In split view, we want the right pane (conversation) to be wider.
+        splitPaneWidth: typeof window !== 'undefined' ? Math.round(window.innerWidth * 0.6) : 600,
+      });
+
+      const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+        if (isMessagingListCollapsed) return;
+        e.preventDefault();
+        setIsResizingMessagingList(true);
+      };
+
+      const listWidth = isMessagingListCollapsed ? COLLAPSED_WIDTH : messagingListWidth;
+
+      if (bodyState === BODY_STATES.SPLIT_VIEW) {
+        return (
+          <div className="h-full w-full">
+            <ConversationList />
+          </div>
+        );
+      }
+
+      return (
+        <div ref={containerRef} className={cn(
+          "h-full w-full flex bg-background", 
+          isResizingMessagingList && !isMessagingListCollapsed && "cursor-col-resize select-none"
+        )}>
+            <div style={{ width: `${listWidth}px` }} className="flex-shrink-0 transition-[width] duration-300 ease-in-out">
+              <ConversationList />
+            </div>
+            {!isMessagingListCollapsed && (
+              <div onMouseDown={handleMouseDown} className="w-2 flex-shrink-0 cursor-col-resize group flex items-center justify-center">
+                <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200" />
+              </div>
+            )}
+            <div className="flex-1 min-w-0"><MessagingContent conversationId={conversationId} /></div>
+        </div>
+      );
+    }
+approved: false
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: undone
+id: 317

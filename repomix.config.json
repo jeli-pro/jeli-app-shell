@@ -24,21 +24,19 @@
   },
   "include": [
     // "README.md",
-    "package.json",
-    "vite.config.ts",
-    "tsconfig.json",
-    "tsconfig.node.json",
-    "tailwind.config.js",
-    "postcss.config.js",
-    "index.html",
+    // "package.json",
+    // "vite.config.ts",
+    // "tsconfig.json",
+    // "tsconfig.node.json",
+    // "tailwind.config.js",
+    // "postcss.config.js",
+    // "index.html",
     // "src"
-    "src/components/layout/AppShell.tsx",
-    "src/hooks/useAppViewManager.hook.ts",
-    "src/hooks/useResizablePanes.hook.ts",
-    "src/hooks/useRightPaneContent.hook.tsx",
-    "src/pages/Messaging/index.tsx",
-    "src/providers/AppShellProvider.tsx",
-    "src/store/appShell.store.ts"
+
+    "src/App.tsx",
+    "src/components/ui/animated-tabs.tsx",
+    "src/pages/Messaging/components/ConversationList.tsx",
+    "src/pages/Messaging/index.tsx"
   ],
   "ignore": {
     "useGitignore": true,

@@ -35,8 +35,8 @@ export function useAppViewManager() {
   const { bodyState, sidePaneContent } = useMemo(() => {
     const validPanes: AppShellState['sidePaneContent'][] = ['details', 'settings', 'main', 'toaster', 'notifications', 'dataDemo', 'messaging'];
     
-    if (conversationId) {
-      return { bodyState: BODY_STATES.SPLIT_VIEW, sidePaneContent: 'messaging' as const };
+    if (sidePane && validPanes.includes(sidePane as AppShellState['sidePaneContent'])) {
+      return { bodyState: BODY_STATES.SIDE_PANE, sidePaneContent: sidePane as AppShellState['sidePaneContent'] };
     }
 
     if (itemId) {
@@ -46,10 +46,10 @@ export function useAppViewManager() {
       return { bodyState: BODY_STATES.SIDE_PANE, sidePaneContent: 'dataItem' as const };
     }
     
-    if (sidePane && validPanes.includes(sidePane as AppShellState['sidePaneContent'])) {
-      return { bodyState: BODY_STATES.SIDE_PANE, sidePaneContent: sidePane as AppShellState['sidePaneContent'] };
+    if (conversationId) {
+      return { bodyState: BODY_STATES.SPLIT_VIEW, sidePaneContent: 'messaging' as const };
     }
-    
+
     if (view === 'split' && right && validPanes.includes(right as AppShellState['sidePaneContent'])) {
       return { bodyState: BODY_STATES.SPLIT_VIEW, sidePaneContent: right as AppShellState['sidePaneContent'] };
     }

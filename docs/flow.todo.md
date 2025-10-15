@@ -7,8 +7,106 @@ I am obsessed with laravel filament... so make everything about data demo page i
 scroll to bottom in dashboard is not stick to right bottom.
 also why not auto applied to another page like demo data?
 
+===
+
+login page, the two column left right needs distinctive background color
 
 ===
+
+data demo page:
+
+- data list is not rendered when view mode change: split view mode, overlay side pane view mode
+- also view mode should not be affected when user interact with content like changing data view mode
+
+===
+
+top bar: left aligned is only for the breadcrumb, everything else should right aligned
+
+===
+
+dark light mode is not persisted on refresh
+
+=== DONE
+
+message page: sidebar should always be collapsed for message page
+
+===
+
+overlay side pane: fix erratic close open movement while user resizing the pane
+
+===
+
+on overlay side pane active: the main right content view should not be re-rendered
+
+===
+
+ animated tabs: should horizontally scrollable by default. so consumer no need to implement individually, also prevent from vertically scrollable
+
+===
+
+message page:
+
+lets refactor the architecture of message:
+
+- we need to have mental model of message is basically to do list with its properties like (due date, status, relationship, description, labels)
+
+- present the mental model to UI UX with amazing look and cohesive manner
+
+===
+
+message page: message list
+
+1. we need more advanced feature than [ all | unread ] like [ Open, Close ] , [ Assigned | unAssigned ] etc
+
+  1.1 those shorcuts should also available as child/sub page in sidebar
+
+2. message list item:
+
+  2.1. we need kind of badge/tag to show each customer journey point for each contact
+  2.2. we alo need avatar of which human/ai agent that the item currently assigned
+
+=== DONE
+
+message page:
+
+1. view mode switcher action/purpose is not working well for message page. make it work!
+2. also message list with its profil detail cannot be opened as overlay side pane. fix it!
+3. cannot open notification page and setting page as overlay side pane from message page. fix it!
+
+message page should comply the app shell view mode!
+
+===
+
+message page: message list column pane: animated tabs
+
+the tab line should inline with header bottom line
+
+===
+
+message page: message list column pane:
+
+1. when app view mode management tell that the widht is so narrow, then message list column pane should automatically turn into collapsed state
+
+2. also when message list column pane is collapsed, the widht of the column should auto follow the shrinked widht of the children
+
+===
+
+message page: message list column: resizable sidebar border: I hate when it perceived like there is doubling vertical line
+
+=== DONE
+
+message page:
+please inform the view mode managemnt about the split view mode ;
+
+widht portion:
+
+message list : 20%
+message thread : 40%
+profile detail : 40%
+
+all above should be sensitive to sidebar collapse and decollapse
+
+=== DONE
 
 each page should can decide to view mode management about how much proportion of screen widht for split view mod and overlay side pane mode
 
