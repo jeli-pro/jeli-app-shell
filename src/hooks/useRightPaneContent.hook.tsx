@@ -17,7 +17,7 @@ import { NotificationsPage } from "@/pages/Notifications";
 import DataDemoPage from "@/pages/DataDemo";
 import { DataDetailPanel } from "@/pages/DataDemo/components/DataDetailPanel";
 import { mockDataItems } from "@/pages/DataDemo/data/mockData";
-import { MessageThread } from "@/pages/Messaging/components/MessageThread";
+import { MessagingContent } from "@/pages/Messaging/components/MessagingContent";
 import type { AppShellState } from '@/store/appShell.store';
 
 export function useRightPaneContent(sidePaneContent: AppShellState['sidePaneContent']) {
@@ -59,7 +59,7 @@ export function useRightPaneContent(sidePaneContent: AppShellState['sidePaneCont
       title: "Conversation",
       icon: MessageSquare,
       page: "messaging",
-      content: <MessageThread conversationId={conversationId} />,
+      content: <MessagingContent conversationId={conversationId} />,
     },
     details: {
       title: "Details Panel",
@@ -90,7 +90,7 @@ export function useRightPaneContent(sidePaneContent: AppShellState['sidePaneCont
     if (sidePaneContent === 'messaging') {
       return {
        meta: contentMap.messaging,
-       content: <MessageThread conversationId={conversationId} />,
+       content: <MessagingContent conversationId={conversationId} />,
      };
    }
     const mappedContent = contentMap[sidePaneContent as keyof typeof contentMap] || contentMap.details;

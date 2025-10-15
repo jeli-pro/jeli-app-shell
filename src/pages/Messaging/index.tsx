@@ -1,20 +1,22 @@
 import React, { useRef } from "react";
 import { useParams } from "react-router-dom";
 import { ConversationList } from "./components/ConversationList";
-import { ContactProfile } from "./components/ContactProfile";
 import { cn } from "@/lib/utils";
+import { MessagingContent } from "./components/MessagingContent";
 import { useAppShellStore } from "@/store/appShell.store";
 import { useResizableMessagingList } from "@/hooks/useResizablePanes.hook";
+import { BODY_STATES } from "@/lib/utils";
 
 export default function MessagingPage() {
   const { conversationId } = useParams<{ conversationId: string }>();
   const containerRef = useRef<HTMLDivElement>(null);
   const COLLAPSED_WIDTH = 80;
 
-  const { messagingListWidth, isResizingMessagingList, isMessagingListCollapsed } = useAppShellStore(s => ({
+  const { messagingListWidth, isResizingMessagingList, isMessagingListCollapsed, bodyState } = useAppShellStore(s => ({
     messagingListWidth: s.messagingListWidth,
     isResizingMessagingList: s.isResizingMessagingList,
     isMessagingListCollapsed: s.isMessagingListCollapsed,
+    bodyState: s.bodyState,
   }));
   const { setIsResizingMessagingList } = useAppShellStore.getState();
 
@@ -27,6 +29,14 @@ export default function MessagingPage() {
   };
 
   const listWidth = isMessagingListCollapsed ? COLLAPSED_WIDTH : messagingListWidth;
+
+  if (bodyState === BODY_STATES.SPLIT_VIEW) {
+    return (
+      <div className="h-full w-full">
+        <ConversationList />
+      </div>
+    );
+  }
 
   return (
     <div ref={containerRef} className={cn(
@@ -41,7 +51,7 @@ export default function MessagingPage() {
             <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200" />
           </div>
         )}
-        <ContactProfile conversationId={conversationId} />
+        <div className="flex-1 min-w-0"><MessagingContent conversationId={conversationId} /></div>
     </div>
   );
 }

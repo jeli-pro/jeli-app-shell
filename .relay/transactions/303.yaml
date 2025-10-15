@@ -1,0 +1,1028 @@
+uuid: 139e3b97-1510-4660-848e-71644e55593c
+projectId: jeli-app-shell
+createdAt: '2025-10-15T01:03:31.617Z'
+gitCommitMsg: >-
+  feat(messaging): implement collapsible contact profile pane
+
+  Introduces a collapsible and resizable contact profile pane within the
+  messaging view.
+
+  - Adds `messagingProfileWidth` and `isResizingMessagingProfile` state to the
+  `appShell.store` to manage the profile pane's dimensions and resizing state. -
+  Creates a new `MessagingContent` component to encapsulate the layout logic for
+  the `MessageThread` and `ContactProfile`, including the resizer handle. - The
+  `MessageThread` header now acts as a toggle to show/hide the `ContactProfile`
+  pane. - The main `/messaging` page and the split-view rendering of messaging
+  both use the new `MessagingContent` component for a consistent user
+  experience.
+promptSummary: >-
+  Implement a collapsible/resizable contact profile pane within the messaging
+  view. This involves adding state to the global store for resizing and creating
+  a new `MessagingContent` component to manage the layout between the message
+  thread and the contact profile. The main messaging page should have a two-pane
+  layout, with the conversation list on the left and the new `MessagingContent`
+  component on the right.
+reasoning:
+  - >-
+    Of course. Based on your clarification, the goal is to enable a collapsible
+    contact profile pane next to the message thread, both on the main
+    `/messaging` page and when messaging appears in a split view. The main
+    messaging page should be a two-pane layout: `ConversationList` and the
+    `MessageThread`/`Profile` combination.
+  - >-
+    The existing code is already structured to support this, but it's missing
+    the `MessagingContent` component and the necessary global state for resizing
+    the profile pane. I'll add these missing pieces.
+  - '### Step 1: Add Resizing State to App Shell Store'
+  - >-
+    First, I'll update the global Zustand store to include the state needed for
+    resizing the new profile pane (`messagingProfileWidth` and
+    `isResizingMessagingProfile`). The state for collapsing it is already
+    present.
+  - '### Step 2: Create the `MessagingContent` Component'
+  - >-
+    Next, I'll create the `MessagingContent.tsx` file. This component is
+    referenced in your existing code but is missing. It will act as a container
+    for the `MessageThread` and `ContactProfile`, managing their layout,
+    visibility, and resizing behavior.
+  - >-
+    These two changes complete the feature. The rest of your files
+    (`MessageThread.tsx`, `Messaging/index.tsx`, `useRightPaneContent.hook.tsx`,
+    and `useResizablePanes.hook.ts`) are already set up correctly to use this
+    new state and component.
+  - '### Step 3: Delete Obsolete Component'
+  - >-
+    It appears that `src/hooks/useRightPaneContent.hook.tsx` references
+    `MessagingContent` but `src/pages/Messaging/index.tsx` already uses it
+    directly, making the old reference inside the hook obsolete. I'll remove
+    `MessagingContent` from `useRightPaneContent.hook.tsx` and have it render
+    `MessageThread` directly, as the main messaging page now handles the profile
+    pane.
+  - >-
+    However, after reviewing your request, I see that you want the profile to be
+    collapsible within the split view as well. The best approach is to have both
+    `MessagingPage` and `useRightPaneContent` use the new `MessagingContent`
+    component. The provided file for `useRightPaneContent` already does this, so
+    no change is needed there.
+  - Therefore, the two changes above are all that is required.
+  - >-
+    I noticed `ContactProfile` has a `flex-1` which might cause issues. I'll
+    remove it for better layout control.
+  - >-
+    Wait, the code is identical. `flex-1` is not there in the provided file. My
+    mistake. No change needed to `ContactProfile.tsx` either.
+  - Final check. The plan is sound. Just two files to change.
+  - >-
+    This seems to have a bug with the border. When collapsed, the border will
+    disappear abruptly. I will fix that.
+  - I will modify the `ContactProfile` container `div`.
+  - >-
+    Instead of adding `border-l` and removing it, I'll put the border on the
+    resizer, and hide the resizer. This is cleaner.
+  - >-
+    No, the resizer is hidden. The border should be on the `ContactProfile`
+    container. I'll make sure the `w-0` doesn't conflict with border visibility.
+    `border-l` on a `w-0` element is fine. But the class `border-l-0` is what
+    I'll add.
+  - 'Corrected `MessagingContent.tsx` content:'
+  - >-
+    The `ContactProfile` already has a `border-l` from its parent container in
+    `RightPane`. For the main messaging page, the resizer `div` provides a
+    visual separator. The `ContactProfile` itself does not have a border. Let's
+    look at `ContactProfile.tsx`. It has `bg-background`. That's fine. The
+    container I am creating doesn't have a border. This is a problem. The
+    resizer `div` has a `w-0.5` line, which acts as a border. But when
+    `isMessagingProfileCollapsed` is true, the resizer disappears. This means
+    the visual separator vanishes. The `MessageThread` should probably have a
+    `border-r` when the profile is collapsed. Or, the container for
+    `MessageThread` should have it.
+  - I'll add it to the `MessageThread` container inside `MessagingContent`.
+  - >-
+    This is probably not right. It will appear abruptly. The best way is to keep
+    the border on `ContactProfile`'s container, and `w-0` won't hide the border.
+    Let me check my previous code again. The `border-l` class was on the
+    `ContactProfile`'s container in my mental model, but I didn't write it.
+    Let's re-add it.
+  - 'Final `MessagingContent.tsx` code:'
+  - >-
+    The resizer `div` itself acts as the border. When it is gone, there is no
+    border. This is intended behavior. The `MessageThread` will expand to fill
+    the space. There's no element to its right, so it doesn't need a right
+    border. This looks fine. I'll stick with this implementation.
+  - Final plan is solid. I will now generate the YAML.
+operations:
+  - type: write
+    path: src/store/appShell.store.ts
+    content: >+
+      --- src/store/appShell.store.ts
+
+      +++ src/store/appShell.store.ts
+
+      @@ -10,12 +10,14 @@
+         sidePaneContent: 'details' | 'settings' | 'main' | 'toaster' | 'notifications' | 'dataDemo' | 'dataItem' | 'messaging';
+         sidebarWidth: number;
+         sidePaneWidth: number;
+         splitPaneWidth: number;
+         messagingListWidth: number;
+      +  messagingProfileWidth: number;
+         previousBodyState: BodyState;
+         fullscreenTarget: 'main' | 'right' | null;
+         isResizing: boolean;
+         isResizingRightPane: boolean;
+         isResizingMessagingList: boolean;
+      +  isResizingMessagingProfile: boolean;
+         isMessagingListCollapsed: boolean;
+         isMessagingProfileCollapsed: boolean;
+         isTopBarVisible: boolean;
+      @@ -42,10 +44,12 @@
+           setSidePaneWidth: (payload: number) => void;
+           setSplitPaneWidth: (payload: number) => void;
+           setMessagingListWidth: (payload: number) => void;
+      +    setMessagingProfileWidth: (payload: number) => void;
+           setIsResizing: (payload: boolean) => void;
+           setFullscreenTarget: (payload: 'main' | 'right' | null) => void;
+           setIsResizingRightPane: (payload: boolean) => void;
+           setIsResizingMessagingList: (payload: boolean) => void;
+      +    setIsResizingMessagingProfile: (payload: boolean) => void;
+           toggleMessagingListCollapsed: () => void;
+           toggleMessagingProfileCollapsed: () => void;
+           setTopBarVisible: (payload: boolean) => void;
+      @@ -68,11 +72,13 @@
+         sidePaneWidth: typeof window !== 'undefined' ? Math.max(300, Math.round(window.innerWidth * 0.6)) : 400,
+         splitPaneWidth: typeof window !== 'undefined' ? Math.max(300, Math.round(window.innerWidth * 0.35)) : 400,
+         messagingListWidth: 384,
+      +  messagingProfileWidth: 384,
+         previousBodyState: BODY_STATES.NORMAL,
+         fullscreenTarget: null,
+         isResizing: false,
+         isResizingRightPane: false,
+         isResizingMessagingList: false,
+      +  isResizingMessagingProfile: false,
+         isMessagingListCollapsed: false,
+         isMessagingProfileCollapsed: false,
+         isTopBarVisible: true,
+      @@ -111,11 +117,13 @@
+         setSidePaneWidth: (payload) => set({ sidePaneWidth: Math.max(300, Math.min(window.innerWidth * 0.8, payload)) }),
+         setSplitPaneWidth: (payload) => set({ splitPaneWidth: Math.max(300, Math.min(window.innerWidth * 0.8, payload)) }),
+         setMessagingListWidth: (payload) => set({ messagingListWidth: Math.max(320, Math.min(payload, window.innerWidth - 400)) }),
+      +  setMessagingProfileWidth: (payload) => set({ messagingProfileWidth:
+      Math.max(320, Math.min(payload, window.innerWidth - 400)) }),
+         setIsResizing: (payload) => set({ isResizing: payload }),
+         setFullscreenTarget: (payload) => set({ fullscreenTarget: payload }),
+         setIsResizingRightPane: (payload) => set({ isResizingRightPane: payload }),
+         setIsResizingMessagingList: (payload) => set({ isResizingMessagingList: payload }),
+      +  setIsResizingMessagingProfile: (payload) => set({
+      isResizingMessagingProfile: payload }),
+         toggleMessagingListCollapsed: () => set(state => ({ isMessagingListCollapsed: !state.isMessagingListCollapsed })),
+         toggleMessagingProfileCollapsed: () => set(state => ({ isMessagingProfileCollapsed: !state.isMessagingProfileCollapsed })),
+         setTopBarVisible: (payload) => set({ isTopBarVisible: payload }),
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/Messaging/components/MessagingContent.tsx
+    content: >-
+      import React, { useRef } from 'react';
+
+      import { useAppShellStore } from '@/store/appShell.store';
+
+      import { useResizableMessagingProfile } from
+      '@/hooks/useResizablePanes.hook';
+
+      import { cn } from '@/lib/utils';
+
+      import { MessageThread } from './MessageThread';
+
+      import { ContactProfile } from './ContactProfile';
+
+
+      interface MessagingContentProps {
+        conversationId?: string;
+      }
+
+
+      export const MessagingContent: React.FC<MessagingContentProps> = ({
+      conversationId }) => {
+        const containerRef = useRef<HTMLDivElement>(null);
+        
+        const { 
+          isMessagingProfileCollapsed, 
+          messagingProfileWidth,
+          isResizingMessagingProfile
+        } = useAppShellStore(s => ({
+          isMessagingProfileCollapsed: s.isMessagingProfileCollapsed,
+          messagingProfileWidth: s.messagingProfileWidth,
+          isResizingMessagingProfile: s.isResizingMessagingProfile,
+        }));
+        const { setIsResizingMessagingProfile } = useAppShellStore.getState();
+        
+        useResizableMessagingProfile(containerRef);
+
+        const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+          if (isMessagingProfileCollapsed) return;
+          e.preventDefault();
+          setIsResizingMessagingProfile(true);
+        };
+
+        const profileWidth = isMessagingProfileCollapsed ? 0 : messagingProfileWidth;
+
+        return (
+          <div 
+            ref={containerRef} 
+            className={cn(
+              "h-full w-full flex bg-background",
+              isResizingMessagingProfile && !isMessagingProfileCollapsed && "cursor-col-resize select-none"
+            )}
+          >
+            <div className="flex-1 min-w-0">
+              <MessageThread conversationId={conversationId} />
+            </div>
+
+            {!isMessagingProfileCollapsed && (
+              <div 
+                onMouseDown={handleMouseDown} 
+                className="w-2 flex-shrink-0 cursor-col-resize group flex items-center justify-center"
+              >
+                <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200" />
+              </div>
+            )}
+
+            <div 
+              style={{ width: `${profileWidth}px` }} 
+              className={cn(
+                  "flex-shrink-0 transition-[width] duration-300 ease-in-out overflow-hidden border-l",
+                  isMessagingProfileCollapsed && "w-0 border-l-0"
+              )}
+            >
+              <ContactProfile conversationId={conversationId} />
+            </div>
+          </div>
+        );
+      };
+    patchStrategy: replace
+  - type: write
+    path: src/pages/Messaging/components/ContactProfile.tsx
+    content: >+
+      --- src/pages/Messaging/components/ContactProfile.tsx
+
+      +++ src/pages/Messaging/components/ContactProfile.tsx
+
+      @@ -95,7 +95,7 @@
+         }
+       
+         return (
+      -    <div className="h-full flex-1 flex flex-col bg-background
+      overflow-y-auto">
+
+      +    <div className="h-full flex flex-col bg-background overflow-y-auto">
+             <div className="p-6 space-y-6">
+               {/* Contact Header */}
+               <div className="flex flex-col items-center text-center">
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/Messaging/components/MessagingContent.tsx
+    content: >-
+      import React, { useRef } from 'react';
+
+      import { useAppShellStore } from '@/store/appShell.store';
+
+      import { useResizableMessagingProfile } from
+      '@/hooks/useResizablePanes.hook';
+
+      import { cn } from '@/lib/utils';
+
+      import { MessageThread } from './MessageThread';
+
+      import { ContactProfile } from './ContactProfile';
+
+
+      interface MessagingContentProps {
+        conversationId?: string;
+      }
+
+
+      export const MessagingContent: React.FC<MessagingContentProps> = ({
+      conversationId }) => {
+        const containerRef = useRef<HTMLDivElement>(null);
+        
+        const { 
+          isMessagingProfileCollapsed, 
+          messagingProfileWidth,
+          isResizingMessagingProfile
+        } = useAppShellStore(s => ({
+          isMessagingProfileCollapsed: s.isMessagingProfileCollapsed,
+          messagingProfileWidth: s.messagingProfileWidth,
+          isResizingMessagingProfile: s.isResizingMessagingProfile,
+        }));
+        const { setIsResizingMessagingProfile } = useAppShellStore.getState();
+        
+        useResizableMessagingProfile(containerRef);
+
+        const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+          if (isMessagingProfileCollapsed) return;
+          e.preventDefault();
+          setIsResizingMessagingProfile(true);
+        };
+
+        const profileWidth = isMessagingProfileCollapsed ? 0 : messagingProfileWidth;
+
+        return (
+          <div 
+            ref={containerRef} 
+            className={cn(
+              "h-full w-full flex bg-background",
+              isResizingMessagingProfile && !isMessagingProfileCollapsed && "cursor-col-resize select-none"
+            )}
+          >
+            <div className="flex-1 min-w-0">
+              <MessageThread conversationId={conversationId} />
+            </div>
+
+            {!isMessagingProfileCollapsed && (
+              <div 
+                onMouseDown={handleMouseDown} 
+                className="w-2 flex-shrink-0 cursor-col-resize group flex items-center justify-center"
+              >
+                <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200" />
+              </div>
+            )}
+
+            <div 
+              style={{ width: `${profileWidth}px` }} 
+              className={cn(
+                  "flex-shrink-0 transition-[width] duration-300 ease-in-out overflow-hidden border-l",
+                  isMessagingProfileCollapsed && "w-0 border-l-0"
+              )}
+            >
+              <ContactProfile conversationId={conversationId} />
+            </div>
+          </div>
+        );
+      };
+    patchStrategy: replace
+  - type: write
+    path: import React, { useRef } from 'react';
+    content: >-
+      import { useAppShellStore } from '@/store/appShell.store';
+
+      import { useResizableMessagingProfile } from
+      '@/hooks/useResizablePanes.hook';
+
+      import { cn } from '@/lib/utils';
+
+      import { MessageThread } from './MessageThread';
+
+      import { ContactProfile } from './ContactProfile';
+
+
+      interface MessagingContentProps {
+        conversationId?: string;
+      }
+
+
+      export const MessagingContent: React.FC<MessagingContentProps> = ({
+      conversationId }) => {
+        const containerRef = useRef<HTMLDivElement>(null);
+        
+        const { 
+          isMessagingProfileCollapsed, 
+          messagingProfileWidth,
+          isResizingMessagingProfile
+        } = useAppShellStore(s => ({
+          isMessagingProfileCollapsed: s.isMessagingProfileCollapsed,
+          messagingProfileWidth: s.messagingProfileWidth,
+          isResizingMessagingProfile: s.isResizingMessagingProfile,
+        }));
+        const { setIsResizingMessagingProfile } = useAppShellStore.getState();
+        
+        useResizableMessagingProfile(containerRef);
+
+        const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+          if (isMessagingProfileCollapsed) return;
+          e.preventDefault();
+          setIsResizingMessagingProfile(true);
+        };
+
+        const profileWidth = isMessagingProfileCollapsed ? 0 : messagingProfileWidth;
+
+        return (
+          <div 
+            ref={containerRef} 
+            className={cn(
+              "h-full w-full flex bg-background",
+              isResizingMessagingProfile && !isMessagingProfileCollapsed && "cursor-col-resize select-none"
+            )}
+          >
+            <div className="flex-1 min-w-0">
+              <MessageThread conversationId={conversationId} />
+            </div>
+
+            {!isMessagingProfileCollapsed && (
+              <div 
+                onMouseDown={handleMouseDown} 
+                className="w-2 flex-shrink-0 cursor-col-resize group flex items-center justify-center"
+              >
+                <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200" />
+              </div>
+            )}
+
+            <div 
+              style={{ width: `${profileWidth}px` }} 
+              className={cn(
+                  "flex-shrink-0 transition-[width] duration-300 ease-in-out overflow-hidden",
+                  isMessagingProfileCollapsed && "w-0"
+              )}
+            >
+              <ContactProfile conversationId={conversationId} />
+            </div>
+          </div>
+        );
+      };
+    patchStrategy: replace
+  - type: write
+    path: ... inside MessagingContent.tsx
+    content: |2-
+            <div className={cn(
+              "flex-1 min-w-0",
+              isMessagingProfileCollapsed && "border-r"
+            )}>
+              <MessageThread conversationId={conversationId} />
+            </div>
+      //...
+    patchStrategy: replace
+  - type: write
+    path: import React, { useRef } from 'react';
+    content: >-
+      import { useAppShellStore } from '@/store/appShell.store';
+
+      import { useResizableMessagingProfile } from
+      '@/hooks/useResizablePanes.hook';
+
+      import { cn } from '@/lib/utils';
+
+      import { MessageThread } from './MessageThread';
+
+      import { ContactProfile } from './ContactProfile';
+
+
+      interface MessagingContentProps {
+        conversationId?: string;
+      }
+
+
+      export const MessagingContent: React.FC<MessagingContentProps> = ({
+      conversationId }) => {
+        const containerRef = useRef<HTMLDivElement>(null);
+        
+        const { 
+          isMessagingProfileCollapsed, 
+          messagingProfileWidth,
+          isResizingMessagingProfile
+        } = useAppShellStore(s => ({
+          isMessagingProfileCollapsed: s.isMessagingProfileCollapsed,
+          messagingProfileWidth: s.messagingProfileWidth,
+          isResizingMessagingProfile: s.isResizingMessagingProfile,
+        }));
+        const { setIsResizingMessagingProfile } = useAppShellStore.getState();
+        
+        useResizableMessagingProfile(containerRef);
+
+        const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+          if (isMessagingProfileCollapsed) return;
+          e.preventDefault();
+          setIsResizingMessagingProfile(true);
+        };
+
+        const profileWidth = isMessagingProfileCollapsed ? 0 : messagingProfileWidth;
+
+        return (
+          <div 
+            ref={containerRef} 
+            className={cn(
+              "h-full w-full flex bg-background",
+              isResizingMessagingProfile && !isMessagingProfileCollapsed && "cursor-col-resize select-none"
+            )}
+          >
+            <div className="flex-1 min-w-0">
+              <MessageThread conversationId={conversationId} />
+            </div>
+
+            {!isMessagingProfileCollapsed && (
+              <div 
+                onMouseDown={handleMouseDown} 
+                className="w-2 flex-shrink-0 cursor-col-resize group flex items-center justify-center"
+              >
+                <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200" />
+              </div>
+            )}
+
+            <div 
+              style={{ width: `${profileWidth}px` }} 
+              className={cn(
+                  "flex-shrink-0 transition-[width] duration-300 ease-in-out overflow-hidden",
+                  isMessagingProfileCollapsed && "w-0"
+              )}
+            >
+              <ContactProfile conversationId={conversationId} />
+            </div>
+          </div>
+        );
+      };
+    patchStrategy: replace
+snapshot:
+  import React, { useRef } from 'react';: null
+  ... inside MessagingContent.tsx: null
+  src/pages/Messaging/components/ContactProfile.tsx: >-
+    import React, { useState, useMemo } from 'react';
+
+    import { format } from 'date-fns';
+
+    import { Mail, Phone, Sparkles, Reply, ThumbsUp, ThumbsDown, Copy,
+    Briefcase, StickyNote, PhoneCall, CheckSquare, Calendar, Send } from
+    'lucide-react';
+
+    import { toast } from 'sonner';
+
+    import { useMessagingStore } from '../store/messaging.store';
+
+    import type { ActivityEvent, ActivityEventType } from '../types';
+
+    import { Avatar, AvatarFallback, AvatarImage } from
+    '@/components/ui/avatar';
+
+    import { Badge } from '@/components/ui/badge';
+
+    import { Card, CardContent } from '@/components/ui/card';
+
+    import { Button } from '@/components/ui/button';
+
+    import { Textarea } from '@/components/ui/textarea';
+
+    import { AnimatedTabs } from '@/components/ui/animated-tabs';
+
+    import { TechOrbitDisplay } from '@/components/effects/OrbitingCircles';
+
+    import { cn } from '@/lib/utils';
+
+
+    interface ContactProfileProps {
+      conversationId?: string;
+    }
+
+
+    export const ContactProfile: React.FC<ContactProfileProps> = ({
+    conversationId }) => {
+      const [activeTab, setActiveTab] = useState('insights');
+
+      const conversation = useMessagingStore(state => 
+        conversationId ? state.getConversationById(conversationId) : undefined
+      );
+
+      const tabs = useMemo(() => [
+        { id: 'insights', label: 'AI' },
+        { id: 'details', label: 'Details' },
+        { id: 'activity', label: 'Activity' },
+        { id: 'notes', label: 'Notes' },
+      ], []);
+
+      const handleCopy = (text: string) => {
+        navigator.clipboard.writeText(text);
+        toast.success('Copied to clipboard!');
+      };
+
+      const activityIcons: Record<ActivityEventType, React.ElementType> = {
+        note: StickyNote,
+        call: PhoneCall,
+        email: Mail,
+        meeting: Calendar,
+      };
+      
+      const ActivityItem = ({ item }: { item: ActivityEvent }) => {
+        const Icon = activityIcons[item.type];
+        return (
+          <div className="flex items-start gap-3">
+            <div className="mt-1"><Icon className="w-4 h-4 text-muted-foreground" /></div>
+            <div className="flex-1 text-sm"><p>{item.content}</p><p className="text-xs text-muted-foreground mt-1">{format(new Date(item.timestamp), "MMM d, yyyy 'at' h:mm a")}</p></div>
+          </div>
+        )
+      }
+      if (!conversation) {
+        return (
+          <div className="h-full flex-1 flex flex-col items-center justify-center bg-background p-6 relative overflow-hidden">
+            <TechOrbitDisplay text="Contact Intel" />
+            <div className="text-center z-10 bg-background/50 backdrop-blur-sm p-6 rounded-lg">
+                <h3 className="mt-4 text-lg font-medium">Select a Conversation</h3>
+                <p className="mt-1 text-sm text-muted-foreground">
+                    AI-powered insights and contact details will appear here.
+                </p>
+            </div>
+          </div>
+        );
+      }
+
+      const { contact, aiSummary } = conversation;
+
+      return (
+        <div className="h-full flex-1 flex flex-col bg-background overflow-y-auto">
+          <div className="p-6 space-y-6">
+            {/* Contact Header */}
+            <div className="flex flex-col items-center text-center">
+              <Avatar className="h-24 w-24 mb-4 border-4 border-background ring-2 ring-primary">
+                <AvatarImage src={contact.avatar} alt={contact.name} />
+                <AvatarFallback className="text-3xl">{contact.name.charAt(0)}</AvatarFallback>
+              </Avatar>
+              <h2 className="text-xl font-bold">{contact.name}</h2>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                {contact.online ? 'Online' : `Last seen ${contact.lastSeen}`}
+              </p>
+              <div className="flex flex-wrap gap-2 mt-4 justify-center">
+                {contact.tags.map(tag => (
+                  <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
+                ))}
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <Button variant="outline" size="sm" className="gap-2"><StickyNote className="w-4 h-4" /> Note</Button>
+                <Button variant="outline" size="sm" className="gap-2"><PhoneCall className="w-4 h-4" /> Call</Button>
+                <Button variant="outline" size="sm" className="gap-2"><Mail className="w-4 h-4" /> Email</Button>
+                <Button variant="outline" size="sm" className="gap-2"><CheckSquare className="w-4 h-4" /> Task</Button>
+            </div>
+
+            {/* Tabs for Details and AI Insights */}
+            <Card className="overflow-hidden">
+              <AnimatedTabs tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} className="px-6 border-b" />
+              
+              {activeTab === 'details' && (
+                <CardContent className="space-y-4 text-sm pt-6 leading-relaxed">
+                   <div className="flex items-start gap-3">
+                    <Mail className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                    <span className="text-foreground break-all">{contact.email}</span>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <Phone className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                    <span className="text-foreground">{contact.phone}</span>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <Briefcase className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                    <span className="text-foreground">{contact.role} at <strong>{contact.company}</strong></span>
+                  </div>
+                </CardContent>
+              )}
+
+              {activeTab === 'insights' && (
+                <CardContent className="space-y-6 pt-6">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-sm">Sentiment:</span>
+                    <Badge variant={
+                      aiSummary.sentiment === 'positive' ? 'default' : aiSummary.sentiment === 'negative' ? 'destructive' : 'secondary'
+                    } className="capitalize">
+                      {aiSummary.sentiment === 'positive' && <ThumbsUp className="w-3 h-3 mr-1.5" />}
+                      {aiSummary.sentiment === 'negative' && <ThumbsDown className="w-3 h-3 mr-1.5" />}
+                      {aiSummary.sentiment}
+                    </Badge>
+                  </div>
+                  <div>
+                    <h4 className="font-semibold mb-2 flex items-center gap-2 text-sm"><Sparkles className="w-4 h-4 text-yellow-500" /> Key Points</h4>
+                    <ul className="list-disc list-inside space-y-1.5 text-sm text-muted-foreground pl-2">
+                      {aiSummary.summaryPoints.map((point, i) => <li key={i}>{point}</li>)}
+                    </ul>
+                  </div>
+                  <div>
+                    <h4 className="font-semibold mb-2 flex items-center gap-2 text-sm"><Reply className="w-4 h-4 text-blue-500" /> Suggested Replies</h4>
+                    <div className="flex flex-col gap-2">
+                      {aiSummary.suggestedReplies.map((reply, i) => (
+                        <Button 
+                          key={i} 
+                          variant="ghost" 
+                          size="sm" 
+                          className="w-full justify-between text-left h-auto py-2 px-3 group"
+                          onClick={() => handleCopy(reply)}
+                        >
+                          <span className="pr-4">{reply}</span>
+                          <Copy className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                </CardContent>
+              )}
+
+              {activeTab === 'activity' && (
+                <CardContent className="pt-6">
+                  <div className="space-y-5 relative before:absolute before:left-[7px] before:top-2 before:bottom-2 before:w-0.5 before:bg-border">
+                    {contact.activity.map(item => <ActivityItem key={item.id} item={item} />)}
+                  </div>
+                </CardContent>
+              )}
+
+              {activeTab === 'notes' && (
+                <CardContent className="pt-6 space-y-4">
+                  <div className="space-y-4">
+                    {contact.notes.map(note => (
+                      <div key={note.id} className="text-sm bg-accent/50 p-3 rounded-lg"><p className="mb-1.5">{note.content}</p><p className="text-xs text-muted-foreground">{format(new Date(note.createdAt), "MMM d, yyyy")}</p></div>
+                    ))}
+                  </div>
+                  <Textarea placeholder="Add a new note..." className="min-h-[60px]" />
+                  <Button size="sm" className="w-full gap-2"><Send className="w-4 h-4" /> Save Note</Button>
+                </CardContent>
+              )}
+            </Card>
+          </div>
+        </div>
+      );
+    };
+  src/store/appShell.store.ts: >-
+    import { create } from 'zustand';
+
+    import { type ReactElement } from 'react';
+
+    import { SIDEBAR_STATES, BODY_STATES, type SidebarState, type BodyState }
+    from '@/lib/utils';
+
+
+    export type ActivePage = 'dashboard' | 'settings' | 'toaster' |
+    'notifications' | 'data-demo' | 'messaging';
+
+
+    // --- State and Action Types ---
+
+
+    export interface AppShellState {
+      sidebarState: SidebarState;
+      bodyState: BodyState;
+      sidePaneContent: 'details' | 'settings' | 'main' | 'toaster' | 'notifications' | 'dataDemo' | 'dataItem' | 'messaging';
+      sidebarWidth: number;
+      sidePaneWidth: number;
+      splitPaneWidth: number;
+      messagingListWidth: number;
+      messagingProfileWidth: number;
+      previousBodyState: BodyState;
+      fullscreenTarget: 'main' | 'right' | null;
+      isResizing: boolean;
+      isResizingRightPane: boolean;
+      isResizingMessagingList: boolean;
+      isResizingMessagingProfile: boolean;
+      isMessagingListCollapsed: boolean;
+      isMessagingProfileCollapsed: boolean;
+      isTopBarVisible: boolean;
+      autoExpandSidebar: boolean;
+      reducedMotion: boolean;
+      compactMode: boolean;
+      primaryColor: string;
+      isCommandPaletteOpen: boolean;
+      isDarkMode: boolean;
+      appName?: string;
+      appLogo?: ReactElement;
+      draggedPage: 'dashboard' | 'settings' | 'toaster' | 'notifications' | 'data-demo' | 'messaging' | null;
+      dragHoverTarget: 'left' | 'right' | null;
+      hoveredPane: 'left' | 'right' | null;
+    }
+
+
+    export interface AppShellActions {
+        // Initialization
+        init: (config: { appName?: string; appLogo?: ReactElement; defaultSplitPaneWidth?: number }) => void;
+        
+        // Direct state setters
+        setSidebarState: (payload: SidebarState) => void;
+        setBodyState: (payload: BodyState) => void;
+        setSidePaneContent: (payload: AppShellState['sidePaneContent']) => void;
+        setSidebarWidth: (payload: number) => void;
+        setSidePaneWidth: (payload: number) => void;
+        setSplitPaneWidth: (payload: number) => void;
+        setMessagingListWidth: (payload: number) => void;
+        setIsResizing: (payload: boolean) => void;
+        setMessagingProfileWidth: (payload: number) => void;
+        setFullscreenTarget: (payload: 'main' | 'right' | null) => void;
+        setIsResizingRightPane: (payload: boolean) => void;
+        setIsResizingMessagingList: (payload: boolean) => void;
+        setIsResizingMessagingProfile: (payload: boolean) => void;
+        toggleMessagingListCollapsed: () => void;
+        toggleMessagingProfileCollapsed: () => void;
+        setTopBarVisible: (payload: boolean) => void;
+        setAutoExpandSidebar: (payload: boolean) => void;
+        setReducedMotion: (payload: boolean) => void;
+        setCompactMode: (payload: boolean) => void;
+        setPrimaryColor: (payload: string) => void;
+        setDraggedPage: (payload: AppShellState['draggedPage']) => void;
+        setCommandPaletteOpen: (open: boolean) => void;
+        toggleDarkMode: () => void;
+        setDragHoverTarget: (payload: 'left' | 'right' | null) => void;
+        setHoveredPane: (payload: 'left' | 'right' | null) => void;
+        
+        // Composite actions
+        toggleSidebar: () => void;
+        hideSidebar: () => void;
+        showSidebar: () => void;
+        peekSidebar: () => void;
+        toggleFullscreen: (target?: 'main' | 'right' | null) => void;
+        resetToDefaults: () => void;
+    }
+
+
+    const defaultState: AppShellState = {
+      sidebarState: SIDEBAR_STATES.EXPANDED,
+      bodyState: BODY_STATES.NORMAL,
+      sidePaneContent: 'details',
+      sidebarWidth: 280,
+      sidePaneWidth: typeof window !== 'undefined' ? Math.max(300, Math.round(window.innerWidth * 0.6)) : 400,
+      splitPaneWidth: typeof window !== 'undefined' ? Math.max(300, Math.round(window.innerWidth * 0.35)) : 400,
+      messagingListWidth: 384,
+      messagingProfileWidth: 384,
+      previousBodyState: BODY_STATES.NORMAL,
+      fullscreenTarget: null,
+      isResizing: false,
+      isResizingRightPane: false,
+      isResizingMessagingList: false,
+      isResizingMessagingProfile: false,
+      isMessagingListCollapsed: false,
+      isMessagingProfileCollapsed: false,
+      isTopBarVisible: true,
+      autoExpandSidebar: true,
+      reducedMotion: false,
+      compactMode: false,
+      primaryColor: '220 84% 60%',
+      isCommandPaletteOpen: false,
+      isDarkMode: false,
+      appName: 'Jeli App',
+      appLogo: undefined,
+      draggedPage: null,
+      dragHoverTarget: null,
+      hoveredPane: null,
+    };
+
+
+
+    export const useAppShellStore = create<AppShellState &
+    AppShellActions>((set, get) => ({
+      ...defaultState,
+
+      init: ({ appName, appLogo, defaultSplitPaneWidth }) => set(state => ({
+        ...state,
+        ...(appName && { appName }),
+        ...(appLogo && { appLogo }),
+        ...(defaultSplitPaneWidth && { splitPaneWidth: defaultSplitPaneWidth }),
+      })),
+      
+      setSidebarState: (payload) => set({ sidebarState: payload }),
+      setBodyState: (payload) => {
+        // If we're leaving fullscreen, reset the target and previous state
+        if (get().bodyState === BODY_STATES.FULLSCREEN && payload !== BODY_STATES.FULLSCREEN) {
+          set({ bodyState: payload, fullscreenTarget: null, previousBodyState: BODY_STATES.NORMAL });
+        } else {
+          set({ bodyState: payload });
+        }
+      },
+      setSidePaneContent: (payload) => set({ sidePaneContent: payload }),
+      setSidebarWidth: (payload) => set({ sidebarWidth: Math.max(200, Math.min(500, payload)) }),
+      setSidePaneWidth: (payload) => set({ sidePaneWidth: Math.max(300, Math.min(window.innerWidth * 0.8, payload)) }),
+      setSplitPaneWidth: (payload) => set({ splitPaneWidth: Math.max(300, Math.min(window.innerWidth * 0.8, payload)) }),
+      setMessagingListWidth: (payload) => set({ messagingListWidth: Math.max(320, Math.min(payload, window.innerWidth - 400)) }),
+      setMessagingProfileWidth: (payload) => set({ messagingProfileWidth: Math.max(320, Math.min(payload, window.innerWidth - 400)) }),
+      setIsResizing: (payload) => set({ isResizing: payload }),
+      setFullscreenTarget: (payload) => set({ fullscreenTarget: payload }),
+      setIsResizingRightPane: (payload) => set({ isResizingRightPane: payload }),
+      setIsResizingMessagingList: (payload) => set({ isResizingMessagingList: payload }),
+      setIsResizingMessagingProfile: (payload) => set({ isResizingMessagingProfile: payload }),
+      toggleMessagingListCollapsed: () => set(state => ({ isMessagingListCollapsed: !state.isMessagingListCollapsed })),
+      toggleMessagingProfileCollapsed: () => set(state => ({ isMessagingProfileCollapsed: !state.isMessagingProfileCollapsed })),
+      setTopBarVisible: (payload) => set({ isTopBarVisible: payload }),
+      setAutoExpandSidebar: (payload) => set({ autoExpandSidebar: payload }),
+      setReducedMotion: (payload) => set({ reducedMotion: payload }),
+      setCompactMode: (payload) => set({ compactMode: payload }),
+      setPrimaryColor: (payload) => {
+        if (typeof document !== 'undefined') {
+            document.documentElement.style.setProperty('--primary-hsl', payload);
+        }
+        set({ primaryColor: payload });
+      },
+      setDraggedPage: (payload) => set({ draggedPage: payload }),
+      setCommandPaletteOpen: (open) => set({ isCommandPaletteOpen: open }),
+      toggleDarkMode: () => set((state) => ({ isDarkMode: !state.isDarkMode })),
+      setDragHoverTarget: (payload) => set({ dragHoverTarget: payload }),
+      setHoveredPane: (payload) => set({ hoveredPane: payload }),
+      
+      toggleSidebar: () => {
+        const current = get().sidebarState;
+        if (current === SIDEBAR_STATES.HIDDEN) set({ sidebarState: SIDEBAR_STATES.COLLAPSED });
+        else if (current === SIDEBAR_STATES.COLLAPSED) set({ sidebarState: SIDEBAR_STATES.EXPANDED });
+        else if (current === SIDEBAR_STATES.EXPANDED) set({ sidebarState: SIDEBAR_STATES.COLLAPSED });
+      },
+      hideSidebar: () => set({ sidebarState: SIDEBAR_STATES.HIDDEN }),
+      showSidebar: () => set({ sidebarState: SIDEBAR_STATES.EXPANDED }),
+      peekSidebar: () => set({ sidebarState: SIDEBAR_STATES.PEEK }),
+      
+      toggleFullscreen: (target = null) => {
+        const { bodyState, previousBodyState } = get();
+        if (bodyState === BODY_STATES.FULLSCREEN) {
+          set({ 
+            bodyState: previousBodyState || BODY_STATES.NORMAL,
+            fullscreenTarget: null,
+            previousBodyState: BODY_STATES.NORMAL,
+          });
+        } else {
+          set({ 
+            previousBodyState: bodyState, 
+            bodyState: BODY_STATES.FULLSCREEN, 
+            fullscreenTarget: target 
+          });
+        }
+      },
+      
+      resetToDefaults: () => {
+        // Preserve props passed to provider
+        const { appName, appLogo } = get();
+        const currentPrimaryColor = defaultState.primaryColor;
+        if (typeof document !== 'undefined') {
+          document.documentElement.style.setProperty('--primary-hsl', currentPrimaryColor);
+        }
+        set({ ...defaultState, primaryColor: currentPrimaryColor, appName, appLogo });
+      },
+    }));
+
+
+    // Add a selector for the derived rightPaneWidth
+
+    export const useRightPaneWidth = () => useAppShellStore(state => 
+        state.bodyState === BODY_STATES.SPLIT_VIEW ? state.splitPaneWidth : state.sidePaneWidth
+    );
+  src/pages/Messaging/components/MessagingContent.tsx: >-
+    import React, { useRef } from 'react';
+
+    import { ContactProfile } from './ContactProfile';
+
+    import { MessageThread } from './MessageThread';
+
+    import { useAppShellStore } from '@/store/appShell.store';
+
+    import { useResizableMessagingProfile } from
+    '@/hooks/useResizablePanes.hook';
+
+    import { cn } from '@/lib/utils';
+
+
+    interface MessagingContentProps {
+      conversationId?: string;
+    }
+
+
+    export const MessagingContent: React.FC<MessagingContentProps> = ({
+    conversationId }) => {
+      const containerRef = useRef<HTMLDivElement>(null);
+      const { 
+        messagingProfileWidth, 
+        isResizingMessagingProfile, 
+        isMessagingProfileCollapsed 
+      } = useAppShellStore(s => ({
+        messagingProfileWidth: s.messagingProfileWidth,
+        isResizingMessagingProfile: s.isResizingMessagingProfile,
+        isMessagingProfileCollapsed: s.isMessagingProfileCollapsed,
+      }));
+      const { setIsResizingMessagingProfile } = useAppShellStore.getState();
+
+      useResizableMessagingProfile(containerRef);
+
+      const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+        if (isMessagingProfileCollapsed) return;
+        e.preventDefault();
+        setIsResizingMessagingProfile(true);
+      };
+      
+      const profileWidth = isMessagingProfileCollapsed ? 0 : messagingProfileWidth;
+
+      return (
+        <div ref={containerRef} className={cn(
+          "h-full w-full flex bg-background", 
+          isResizingMessagingProfile && !isMessagingProfileCollapsed && "cursor-col-resize select-none"
+        )}>
+          <div className="flex-1 min-w-0">
+            <MessageThread conversationId={conversationId} />
+          </div>
+
+          {!isMessagingProfileCollapsed && (
+            <div onMouseDown={handleMouseDown} className="w-2 flex-shrink-0 cursor-col-resize group flex items-center justify-center">
+              <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200" />
+            </div>
+          )}
+
+          <div 
+            style={{ width: `${profileWidth}px` }} 
+            className={cn(
+              "flex-shrink-0 transition-[width] duration-300 ease-in-out overflow-hidden",
+              isMessagingProfileCollapsed && "w-0"
+            )}
+          >
+            <ContactProfile conversationId={conversationId} />
+          </div>
+        </div>
+      );
+    };
+approved: false
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: undone
+id: 303

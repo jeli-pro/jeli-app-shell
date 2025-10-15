@@ -1,0 +1,144 @@
+uuid: 4a2b1f8c-3e6d-4f8a-9c7b-1d0e5a3c9b4a
+projectId: jeli-app-shell
+createdAt: '2025-10-15T01:06:06.007Z'
+gitCommitMsg: >-
+  refactor(messaging): simplify main pane in split view
+
+  Updated the MessagingPage component to conditionally render its layout. When
+  the app shell is in a split-view state, the MessagingPage (acting as the main
+  pane) will now only display the ConversationList, creating a clean
+  single-column view.
+
+  This resolves the issue of duplicated or redundant UI when navigating to a
+  specific conversation, which forces a split-view layout. The standard
+  two-column layout is preserved for the non-split, full-page view of the
+  messaging feature.
+promptSummary: >-
+  I want to refine the messaging page's split-view layout so that the main pane
+  only shows the conversation list as a single column.
+reasoning:
+  - >-
+    Of course. The previous change set up a split view for messaging, but it
+    resulted in some redundant content on the main page. This change will refine
+    that behavior. When the application is in a split view mode for messaging,
+    the main content area will now correctly display only the conversation list,
+    creating a clean, single-column layout as requested.
+  - '### Step 1: Modify the Messaging Page Layout'
+  - >-
+    I will update `src/pages/Messaging/index.tsx` to be aware of the app's
+    global layout state (`bodyState`). When it detects that it's being rendered
+    as the main pane within a larger split view, it will simplify its own layout
+    to show only the conversation list. In all other cases (like visiting the
+    main `/messaging` route), it will retain its standard two-column appearance.
+operations:
+  - type: write
+    path: src/pages/Messaging/index.tsx
+    content: >+
+      --- src/pages/Messaging/index.tsx
+
+      +++ src/pages/Messaging/index.tsx
+
+      @@ -4,18 +4,20 @@
+       import { cn } from "@/lib/utils";
+       import { MessagingContent } from "./components/MessagingContent";
+       import { useAppShellStore } from "@/store/appShell.store";
+       import { useResizableMessagingList } from "@/hooks/useResizablePanes.hook";
+      +import { BODY_STATES } from "@/lib/utils";
+       
+       export default function MessagingPage() {
+         const { conversationId } = useParams<{ conversationId: string }>();
+         const containerRef = useRef<HTMLDivElement>(null);
+         const COLLAPSED_WIDTH = 80;
+       
+      -  const { messagingListWidth, isResizingMessagingList,
+      isMessagingListCollapsed } = useAppShellStore(s => ({
+
+      +  const { messagingListWidth, isResizingMessagingList,
+      isMessagingListCollapsed, bodyState } = useAppShellStore(s => ({
+           messagingListWidth: s.messagingListWidth,
+           isResizingMessagingList: s.isResizingMessagingList,
+           isMessagingListCollapsed: s.isMessagingListCollapsed,
+      +    bodyState: s.bodyState,
+         }));
+         const { setIsResizingMessagingList } = useAppShellStore.getState();
+       
+      @@ -29,6 +31,14 @@
+       
+         const listWidth = isMessagingListCollapsed ? COLLAPSED_WIDTH : messagingListWidth;
+       
+      +  if (bodyState === BODY_STATES.SPLIT_VIEW) {
+
+      +    return (
+
+      +      <div className="h-full w-full">
+
+      +        <ConversationList />
+
+      +      </div>
+
+      +    );
+
+      +  }
+
+      +
+         return (
+           <div ref={containerRef} className={cn(
+             "h-full w-full flex bg-background", 
+
+    patchStrategy: standard-diff
+snapshot:
+  src/pages/Messaging/index.tsx: |-
+    import React, { useRef } from "react";
+    import { useParams } from "react-router-dom";
+    import { ConversationList } from "./components/ConversationList";
+    import { cn } from "@/lib/utils";
+    import { MessagingContent } from "./components/MessagingContent";
+    import { useAppShellStore } from "@/store/appShell.store";
+    import { useResizableMessagingList } from "@/hooks/useResizablePanes.hook";
+
+    export default function MessagingPage() {
+      const { conversationId } = useParams<{ conversationId: string }>();
+      const containerRef = useRef<HTMLDivElement>(null);
+      const COLLAPSED_WIDTH = 80;
+
+      const { messagingListWidth, isResizingMessagingList, isMessagingListCollapsed } = useAppShellStore(s => ({
+        messagingListWidth: s.messagingListWidth,
+        isResizingMessagingList: s.isResizingMessagingList,
+        isMessagingListCollapsed: s.isMessagingListCollapsed,
+      }));
+      const { setIsResizingMessagingList } = useAppShellStore.getState();
+
+      useResizableMessagingList(containerRef);
+
+      const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+        if (isMessagingListCollapsed) return;
+        e.preventDefault();
+        setIsResizingMessagingList(true);
+      };
+
+      const listWidth = isMessagingListCollapsed ? COLLAPSED_WIDTH : messagingListWidth;
+
+      return (
+        <div ref={containerRef} className={cn(
+          "h-full w-full flex bg-background", 
+          isResizingMessagingList && !isMessagingListCollapsed && "cursor-col-resize select-none"
+        )}>
+            <div style={{ width: `${listWidth}px` }} className="flex-shrink-0 transition-[width] duration-300 ease-in-out">
+              <ConversationList />
+            </div>
+            {!isMessagingListCollapsed && (
+              <div onMouseDown={handleMouseDown} className="w-2 flex-shrink-0 cursor-col-resize group flex items-center justify-center">
+                <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200" />
+              </div>
+            )}
+            <div className="flex-1 min-w-0"><MessagingContent conversationId={conversationId} /></div>
+        </div>
+      );
+    }
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 304

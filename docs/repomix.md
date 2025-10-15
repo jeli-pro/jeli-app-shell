@@ -8,6 +8,7 @@ src/
   hooks/
     useAppViewManager.hook.ts
     useResizablePanes.hook.ts
+    useRightPaneContent.hook.tsx
   pages/
     Messaging/
       components/
@@ -39,7 +40,7 @@ vite.config.ts
 ## File: src/pages/Messaging/components/MessageThread.tsx
 ```typescript
 import React from 'react';
-import { Paperclip, SendHorizontal, Smile } from 'lucide-react';
+import { Paperclip, SendHorizontal, Smile, PanelRightClose, PanelRightOpen } from 'lucide-react';
 
 import { useMessagingStore } from '../store/messaging.store';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -47,6 +48,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ChannelIcon } from './ChannelIcons';
 import { cn } from '@/lib/utils';
+import { useAppShellStore } from '@/store/appShell.store';
 
 interface MessageThreadProps {
   conversationId?: string;
@@ -56,6 +58,11 @@ export const MessageThread: React.FC<MessageThreadProps> = ({ conversationId }) 
   const conversation = useMessagingStore(state =>
     conversationId ? state.getConversationById(conversationId) : undefined
   );
+  const { isMessagingProfileCollapsed } = useAppShellStore(s => ({
+    isMessagingProfileCollapsed: s.isMessagingProfileCollapsed,
+  }));
+  const { toggleMessagingProfileCollapsed } = useAppShellStore.getState();
+  
   
   if (!conversationId || !conversation) {
     return (
@@ -70,7 +77,10 @@ export const MessageThread: React.FC<MessageThreadProps> = ({ conversationId }) 
   return (
     <div className="h-full flex flex-col bg-background">
       {/* Header */}
-      <div className="flex items-center gap-3 p-4 border-b h-20 flex-shrink-0">
+      <div 
+        className="flex items-center gap-3 p-4 border-b h-20 flex-shrink-0 cursor-pointer group"
+        onClick={toggleMessagingProfileCollapsed}
+      >
         <Avatar className="h-10 w-10">
           <AvatarImage src={contact.avatar} alt={contact.name} />
           <AvatarFallback>{contact.name.charAt(0)}</AvatarFallback>
@@ -83,6 +93,10 @@ export const MessageThread: React.FC<MessageThreadProps> = ({ conversationId }) 
           </p>
         </div>
         <ChannelIcon channel={conversation.channel} className="w-5 h-5" />
+        {isMessagingProfileCollapsed 
+          ? <PanelRightOpen className="w-5 h-5 text-muted-foreground group-hover:text-foreground transition-colors ml-auto" />
+          : <PanelRightClose className="w-5 h-5 text-muted-foreground group-hover:text-foreground transition-colors ml-auto" />
+        }
       </div>
 
       {/* Messages */}
@@ -359,167 +373,6 @@ export const ContactProfile: React.FC<ContactProfileProps> = ({ conversationId }
 };
 ```
 
-## File: src/pages/Messaging/components/ConversationList.tsx
-```typescript
-import { useState, useMemo, useCallback } from 'react';
-import { Search, SlidersHorizontal } from 'lucide-react';
-import { Link, useParams } from 'react-router-dom';
-import { formatDistanceToNow } from 'date-fns';
-import { useMessagingStore } from '../store/messaging.store';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Checkbox } from '@/components/ui/checkbox';
-import { cn } from '@/lib/utils';
-import { AnimatedTabs } from '@/components/ui/animated-tabs';
-import { ChannelIcon } from './ChannelIcons';
-import type { Channel } from '../types';
-
-const channels: { id: Channel, label: string }[] = [
-  { id: 'whatsapp', label: 'WhatsApp' },
-  { id: 'instagram', label: 'Instagram' },
-  { id: 'facebook', label: 'Facebook' },
-];
-
-export const ConversationList = () => {
-  const { conversationId } = useParams<{ conversationId: string }>();
-  const { 
-    getConversationsWithContact,
-    searchTerm,
-    setSearchTerm,
-    activeFilters,
-    setFilters,
-    getAvailableTags,
-   } = useMessagingStore();
-  const conversations = getConversationsWithContact();
-  const [activeTab, setActiveTab] = useState('all');
-  const availableTags = useMemo(() => getAvailableTags(), [getAvailableTags]);
-
-  const tabs = useMemo(() => [{ id: 'all', label: 'All' }, { id: 'unread', label: 'Unread' }], []);
-
-  const handleChannelFilterChange = useCallback((channelId: Channel) => {
-    const newChannels = activeFilters.channels.includes(channelId)
-      ? activeFilters.channels.filter(c => c !== channelId)
-      : [...activeFilters.channels, channelId];
-    setFilters({ channels: newChannels });
-  }, [activeFilters.channels, setFilters]);
-
-  const handleTagFilterChange = useCallback((tag: string) => {
-    const newTags = activeFilters.tags.includes(tag)
-      ? activeFilters.tags.filter(t => t !== tag)
-      : [...activeFilters.tags, tag];
-    setFilters({ tags: newTags });
-  }, [activeFilters.tags, setFilters]);
-
-  const filteredConversations = useMemo(() => {
-    if (activeTab === 'unread') {
-      return conversations.filter(convo => convo.unreadCount > 0); // This now filters on the already filtered list from store
-    }
-    return conversations;
-  }, [conversations, activeTab]);
-
-  return (
-    <div className="h-full flex flex-col border-r bg-background/80">
-      {/* Header */}
-      <div className="p-4 border-b flex-shrink-0">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold tracking-tight">Conversations</h2>
-        </div>
-        <div className="flex gap-2">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input placeholder="Search by name..." className="pl-9" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
-          </div>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" size="icon" className="h-10 w-10 flex-shrink-0">
-                <SlidersHorizontal className="w-4 h-4" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-64 p-4" align="end">
-              <div className="space-y-4">
-                <div>
-                  <h4 className="text-sm font-semibold mb-2">Channels</h4>
-                  <div className="space-y-2">
-                    {channels.map(channel => (
-                      <div key={channel.id} className="flex items-center gap-2">
-                        <Checkbox 
-                          id={`channel-${channel.id}`} 
-                          checked={activeFilters.channels.includes(channel.id)}
-                          onCheckedChange={() => handleChannelFilterChange(channel.id)}
-                        />
-                        <label htmlFor={`channel-${channel.id}`} className="text-sm cursor-pointer">{channel.label}</label>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <h4 className="text-sm font-semibold mb-2">Tags</h4>
-                  <div className="space-y-2">
-                    {availableTags.map(tag => (
-                      <div key={tag} className="flex items-center gap-2">
-                        <Checkbox 
-                          id={`tag-${tag}`} 
-                          checked={activeFilters.tags.includes(tag)}
-                          onCheckedChange={() => handleTagFilterChange(tag)}
-                        />
-                        <label htmlFor={`tag-${tag}`} className="text-sm cursor-pointer">{tag}</label>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </PopoverContent>
-          </Popover>
-        </div>
-        <AnimatedTabs tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} />
-      </div>
-
-      {/* Conversation List */}
-      <div className="flex-1 overflow-y-auto">
-        <nav className="p-3 space-y-1">
-          {filteredConversations.map(convo => (
-            <Link
-              to={`/messaging/${convo.id}`}
-              key={convo.id}
-              className={cn(
-                "flex items-start gap-4 p-4 rounded-xl text-left transition-all duration-200 hover:bg-accent/50",
-                "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 outline-none",
-                conversationId === convo.id && "bg-accent border-l-4 border-primary pl-3"
-              )}
-            >
-              <div className="relative">
-                <Avatar className="h-12 w-12">
-                  <AvatarImage src={convo.contact.avatar} alt={convo.contact.name} />
-                  <AvatarFallback>{convo.contact.name.charAt(0)}</AvatarFallback>
-                </Avatar>
-                <div className="absolute bottom-0 right-0">
-                    <ChannelIcon channel={convo.channel} className="bg-background rounded-full p-0.5" />
-                </div>
-              </div>
-              <div className="flex-1 overflow-hidden">
-                <div className="flex justify-between items-center">
-                  <p className="font-semibold truncate">{convo.contact.name}</p>
-                    <p className="text-xs text-muted-foreground whitespace-nowrap">{formatDistanceToNow(new Date(convo.lastMessage.timestamp), { addSuffix: false })}</p>
-                </div>
-                <p className="text-sm text-muted-foreground truncate">{convo.lastMessage.text}</p>
-              </div>
-              {convo.unreadCount > 0 && (
-                <div className="flex items-center justify-center self-center ml-auto">
-                    <Badge className="bg-primary h-5 w-5 p-0 flex items-center justify-center">{convo.unreadCount}</Badge>
-                </div>
-              )}
-            </Link>
-          ))}
-        </nav>
-      </div>
-    </div>
-  );
-};
-```
-
 ## File: src/pages/Messaging/store/messaging.store.ts
 ```typescript
 import { create } from 'zustand';
@@ -593,47 +446,6 @@ export const useMessagingStore = create<MessagingState & MessagingActions>((set,
     return Array.from(allTags);
   }
 }));
-```
-
-## File: src/pages/Messaging/index.tsx
-```typescript
-import React, { useRef } from "react";
-import { useParams } from "react-router-dom";
-import { ConversationList } from "./components/ConversationList";
-import { ContactProfile } from "./components/ContactProfile";
-import { cn } from "@/lib/utils";
-import { useAppShellStore } from "@/store/appShell.store";
-import { useResizableMessagingList } from "@/hooks/useResizablePanes.hook";
-
-export default function MessagingPage() {
-  const { conversationId } = useParams<{ conversationId: string }>();
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  const { messagingListWidth, isResizingMessagingList } = useAppShellStore(s => ({
-    messagingListWidth: s.messagingListWidth,
-    isResizingMessagingList: s.isResizingMessagingList
-  }));
-  const { setIsResizingMessagingList } = useAppShellStore.getState();
-
-  useResizableMessagingList(containerRef);
-
-  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    setIsResizingMessagingList(true);
-  };
-
-  return (
-    <div ref={containerRef} className={cn("h-full w-full flex bg-background", isResizingMessagingList && "cursor-col-resize select-none")}>
-        <div style={{ width: `${messagingListWidth}px` }} className="flex-shrink-0">
-          <ConversationList />
-        </div>
-        <div onMouseDown={handleMouseDown} className="w-2 flex-shrink-0 cursor-col-resize group flex items-center justify-center">
-          <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200" />
-        </div>
-        <ContactProfile conversationId={conversationId} />
-    </div>
-  );
-}
 ```
 
 ## File: src/pages/Messaging/types.ts
@@ -763,193 +575,369 @@ export const useAuthStore = create<AuthState>()(
 )
 ```
 
-## File: src/store/appShell.store.ts
+## File: src/hooks/useRightPaneContent.hook.tsx
 ```typescript
-import { create } from 'zustand';
-import { type ReactElement } from 'react';
-import { SIDEBAR_STATES, BODY_STATES, type SidebarState, type BodyState } from '@/lib/utils';
+import { useMemo } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import {
+  LayoutDashboard,
+  Settings,
+  Component,
+  Bell,
+  SlidersHorizontal,
+  Database,
+  MessageSquare,
+} from 'lucide-react';
 
-export type ActivePage = 'dashboard' | 'settings' | 'toaster' | 'notifications' | 'data-demo' | 'messaging';
+import { DashboardContent } from "@/pages/Dashboard";
+import { SettingsContent } from "@/features/settings/SettingsContent";
+import { ToasterDemo } from "@/pages/ToasterDemo";
+import { NotificationsPage } from "@/pages/Notifications";
+import DataDemoPage from "@/pages/DataDemo";
+import { DataDetailPanel } from "@/pages/DataDemo/components/DataDetailPanel";
+import { mockDataItems } from "@/pages/DataDemo/data/mockData";
+import { MessagingContent } from "@/pages/Messaging/components/MessagingContent";
+import type { AppShellState } from '@/store/appShell.store';
 
-// --- State and Action Types ---
+export function useRightPaneContent(sidePaneContent: AppShellState['sidePaneContent']) {
+  const navigate = useNavigate();
+  const { itemId, conversationId } = useParams<{ itemId: string; conversationId: string }>();
 
-export interface AppShellState {
-  sidebarState: SidebarState;
-  bodyState: BodyState;
-  sidePaneContent: 'details' | 'settings' | 'main' | 'toaster' | 'notifications' | 'dataDemo' | 'dataItem' | 'messaging';
-  sidebarWidth: number;
-  sidePaneWidth: number;
-  splitPaneWidth: number;
-  messagingListWidth: number;
-  previousBodyState: BodyState;
-  fullscreenTarget: 'main' | 'right' | null;
-  isResizing: boolean;
-  isResizingRightPane: boolean;
-  isResizingMessagingList: boolean;
-  isTopBarVisible: boolean;
-  autoExpandSidebar: boolean;
-  reducedMotion: boolean;
-  compactMode: boolean;
-  primaryColor: string;
-  isCommandPaletteOpen: boolean;
-  isDarkMode: boolean;
-  appName?: string;
-  appLogo?: ReactElement;
-  draggedPage: 'dashboard' | 'settings' | 'toaster' | 'notifications' | 'data-demo' | 'messaging' | null;
-  dragHoverTarget: 'left' | 'right' | null;
-  hoveredPane: 'left' | 'right' | null;
+  const contentMap = useMemo(() => ({
+    main: {
+      title: "Dashboard",
+      icon: LayoutDashboard,
+      page: "dashboard",
+      content: <DashboardContent />,
+    },
+    settings: {
+      title: "Settings",
+      icon: Settings,
+      page: "settings",
+      content: <div className="p-6"><SettingsContent /></div>
+    },
+    toaster: {
+      title: "Toaster Demo",
+      icon: Component,
+      page: "toaster",
+      content: <ToasterDemo />,
+    },
+    notifications: {
+      title: "Notifications",
+      icon: Bell,
+      page: "notifications",
+      content: <NotificationsPage />,
+    },
+    dataDemo: {
+      title: "Data Showcase",
+      icon: Database,
+      page: "data-demo",
+      content: <DataDemoPage />,
+    },
+    messaging: {
+      title: "Conversation",
+      icon: MessageSquare,
+      page: "messaging",
+      content: <MessagingContent conversationId={conversationId} />,
+    },
+    details: {
+      title: "Details Panel",
+      icon: SlidersHorizontal,
+      content: (
+        <div className="p-6">
+          <p className="text-muted-foreground">
+            This is the side pane. It can be used to display contextual
+            information, forms, or actions related to the main content.
+          </p>
+        </div>
+      ),
+    },
+  }), [conversationId]);
+
+  const selectedItem = useMemo(() => {
+    if (!itemId) return null;
+    return mockDataItems.find(item => item.id === itemId) ?? null;
+  }, [itemId]);
+
+  const { meta, content } = useMemo(() => {
+    if (sidePaneContent === 'dataItem' && selectedItem) {
+      return {
+        meta: { title: "Item Details", icon: Database, page: `data-demo/${itemId}` },
+        content: <DataDetailPanel item={selectedItem} onClose={() => navigate('/data-demo')} />,
+      };
+    }
+    if (sidePaneContent === 'messaging') {
+      return {
+       meta: contentMap.messaging,
+       content: <MessagingContent conversationId={conversationId} />,
+     };
+   }
+    const mappedContent = contentMap[sidePaneContent as keyof typeof contentMap] || contentMap.details;
+    return {
+      meta: mappedContent,
+      content: mappedContent.content,
+    };
+  }, [sidePaneContent, selectedItem, navigate, contentMap, itemId, conversationId]);
+
+  return { meta, content };
 }
+```
 
-export interface AppShellActions {
-    // Initialization
-    init: (config: { appName?: string; appLogo?: ReactElement; defaultSplitPaneWidth?: number }) => void;
-    
-    // Direct state setters
-    setSidebarState: (payload: SidebarState) => void;
-    setBodyState: (payload: BodyState) => void;
-    setSidePaneContent: (payload: AppShellState['sidePaneContent']) => void;
-    setSidebarWidth: (payload: number) => void;
-    setSidePaneWidth: (payload: number) => void;
-    setSplitPaneWidth: (payload: number) => void;
-    setMessagingListWidth: (payload: number) => void;
-    setIsResizing: (payload: boolean) => void;
-    setFullscreenTarget: (payload: 'main' | 'right' | null) => void;
-    setIsResizingRightPane: (payload: boolean) => void;
-    setIsResizingMessagingList: (payload: boolean) => void;
-    setTopBarVisible: (payload: boolean) => void;
-    setAutoExpandSidebar: (payload: boolean) => void;
-    setReducedMotion: (payload: boolean) => void;
-    setCompactMode: (payload: boolean) => void;
-    setPrimaryColor: (payload: string) => void;
-    setDraggedPage: (payload: AppShellState['draggedPage']) => void;
-    setCommandPaletteOpen: (open: boolean) => void;
-    toggleDarkMode: () => void;
-    setDragHoverTarget: (payload: 'left' | 'right' | null) => void;
-    setHoveredPane: (payload: 'left' | 'right' | null) => void;
-    
-    // Composite actions
-    toggleSidebar: () => void;
-    hideSidebar: () => void;
-    showSidebar: () => void;
-    peekSidebar: () => void;
-    toggleFullscreen: (target?: 'main' | 'right' | null) => void;
-    resetToDefaults: () => void;
-}
+## File: src/pages/Messaging/components/ConversationList.tsx
+```typescript
+import { useState, useMemo, useCallback } from 'react';
+import { Search, SlidersHorizontal, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { Link, useParams } from 'react-router-dom';
+import { formatDistanceToNow } from 'date-fns';
+import { useMessagingStore } from '../store/messaging.store';
+import { useAppShellStore } from '@/store/appShell.store';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Checkbox } from '@/components/ui/checkbox';
+import { cn } from '@/lib/utils';
+import { AnimatedTabs } from '@/components/ui/animated-tabs';
+import { ChannelIcon } from './ChannelIcons';
+import type { Channel } from '../types';
 
-const defaultState: AppShellState = {
-  sidebarState: SIDEBAR_STATES.EXPANDED,
-  bodyState: BODY_STATES.NORMAL,
-  sidePaneContent: 'details',
-  sidebarWidth: 280,
-  sidePaneWidth: typeof window !== 'undefined' ? Math.max(300, Math.round(window.innerWidth * 0.6)) : 400,
-  splitPaneWidth: typeof window !== 'undefined' ? Math.max(300, Math.round(window.innerWidth * 0.35)) : 400,
-  messagingListWidth: 384,
-  previousBodyState: BODY_STATES.NORMAL,
-  fullscreenTarget: null,
-  isResizing: false,
-  isResizingRightPane: false,
-  isResizingMessagingList: false,
-  isTopBarVisible: true,
-  autoExpandSidebar: true,
-  reducedMotion: false,
-  compactMode: false,
-  primaryColor: '220 84% 60%',
-  isCommandPaletteOpen: false,
-  isDarkMode: false,
-  appName: 'Jeli App',
-  appLogo: undefined,
-  draggedPage: null,
-  dragHoverTarget: null,
-  hoveredPane: null,
+const channels: { id: Channel, label: string }[] = [
+  { id: 'whatsapp', label: 'WhatsApp' },
+  { id: 'instagram', label: 'Instagram' },
+  { id: 'facebook', label: 'Facebook' },
+];
+
+export const ConversationList = () => {
+  const { conversationId } = useParams<{ conversationId: string }>();
+  const { isMessagingListCollapsed } = useAppShellStore();
+  const { toggleMessagingListCollapsed } = useAppShellStore.getState();
+  const { 
+    getConversationsWithContact,
+    searchTerm,
+    setSearchTerm,
+    activeFilters,
+    setFilters,
+    getAvailableTags,
+   } = useMessagingStore();
+  const conversations = getConversationsWithContact();
+  const [activeTab, setActiveTab] = useState('all');
+  const availableTags = useMemo(() => getAvailableTags(), [getAvailableTags]);
+
+  const tabs = useMemo(() => [{ id: 'all', label: 'All' }, { id: 'unread', label: 'Unread' }], []);
+
+  const handleChannelFilterChange = useCallback((channelId: Channel) => {
+    const newChannels = activeFilters.channels.includes(channelId)
+      ? activeFilters.channels.filter(c => c !== channelId)
+      : [...activeFilters.channels, channelId];
+    setFilters({ channels: newChannels });
+  }, [activeFilters.channels, setFilters]);
+
+  const handleTagFilterChange = useCallback((tag: string) => {
+    const newTags = activeFilters.tags.includes(tag)
+      ? activeFilters.tags.filter(t => t !== tag)
+      : [...activeFilters.tags, tag];
+    setFilters({ tags: newTags });
+  }, [activeFilters.tags, setFilters]);
+
+  const filteredConversations = useMemo(() => {
+    if (activeTab === 'unread') {
+      return conversations.filter(convo => convo.unreadCount > 0); // This now filters on the already filtered list from store
+    }
+    return conversations;
+  }, [conversations, activeTab]);
+  
+  if (isMessagingListCollapsed) {
+    return (
+      <div className="h-full flex flex-col items-center border-r bg-background/80 py-4 gap-4">
+        <Button variant="ghost" size="icon" onClick={toggleMessagingListCollapsed}>
+          <PanelLeftOpen className="w-5 h-5" />
+        </Button>
+        <div className="flex-1 overflow-y-auto no-scrollbar pt-2">
+            <nav className="flex flex-col gap-3 items-center">
+              {filteredConversations.map(convo => (
+                <Link
+                  to={`/messaging/${convo.id}`}
+                  key={convo.id}
+                  title={convo.contact.name}
+                  className={cn(
+                    "relative flex items-start p-1 rounded-full text-left transition-all duration-200",
+                    "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 outline-none",
+                    conversationId === convo.id && "ring-2 ring-offset-2 ring-offset-background ring-primary"
+                  )}
+                >
+                  <Avatar className="h-12 w-12">
+                    <AvatarImage src={convo.contact.avatar} alt={convo.contact.name} />
+                    <AvatarFallback>{convo.contact.name.charAt(0)}</AvatarFallback>
+                  </Avatar>
+                  <div className="absolute -bottom-1 -right-1">
+                      <ChannelIcon channel={convo.channel} className="bg-background rounded-full p-0.5" />
+                  </div>
+                  {convo.unreadCount > 0 && (
+                      <Badge className="absolute -top-1 -right-1 bg-primary h-5 w-5 p-0 flex items-center justify-center border-2 border-background">
+                        {convo.unreadCount}
+                      </Badge>
+                  )}
+                </Link>
+              ))}
+            </nav>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="h-full flex flex-col border-r bg-background/80">
+      {/* Header */}
+      <div className="p-4 border-b flex-shrink-0">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-bold tracking-tight">Conversations</h2>
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={toggleMessagingListCollapsed}>
+            <PanelLeftClose className="w-5 h-5" />
+          </Button>
+        </div>
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input placeholder="Search by name..." className="pl-9" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+          </div>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="icon" className="h-10 w-10 flex-shrink-0">
+                <SlidersHorizontal className="w-4 h-4" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-64 p-4" align="end">
+              <div className="space-y-4">
+                <div>
+                  <h4 className="text-sm font-semibold mb-2">Channels</h4>
+                  <div className="space-y-2">
+                    {channels.map(channel => (
+                      <div key={channel.id} className="flex items-center gap-2">
+                        <Checkbox 
+                          id={`channel-${channel.id}`} 
+                          checked={activeFilters.channels.includes(channel.id)}
+                          onCheckedChange={() => handleChannelFilterChange(channel.id)}
+                        />
+                        <label htmlFor={`channel-${channel.id}`} className="text-sm cursor-pointer">{channel.label}</label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <h4 className="text-sm font-semibold mb-2">Tags</h4>
+                  <div className="space-y-2">
+                    {availableTags.map(tag => (
+                      <div key={tag} className="flex items-center gap-2">
+                        <Checkbox 
+                          id={`tag-${tag}`} 
+                          checked={activeFilters.tags.includes(tag)}
+                          onCheckedChange={() => handleTagFilterChange(tag)}
+                        />
+                        <label htmlFor={`tag-${tag}`} className="text-sm cursor-pointer">{tag}</label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
+        </div>
+        <AnimatedTabs tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} />
+      </div>
+
+      {/* Conversation List */}
+      <div className="flex-1 overflow-y-auto">
+        <nav className="p-3 space-y-1">
+          {filteredConversations.map(convo => (
+            <Link
+              to={`/messaging/${convo.id}`}
+              key={convo.id}
+              className={cn(
+                "flex items-start gap-4 p-4 rounded-xl text-left transition-all duration-200 hover:bg-accent/50",
+                "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 outline-none",
+                conversationId === convo.id && "bg-accent border-l-4 border-primary pl-3"
+              )}
+            >
+              <div className="relative">
+                <Avatar className="h-12 w-12">
+                  <AvatarImage src={convo.contact.avatar} alt={convo.contact.name} />
+                  <AvatarFallback>{convo.contact.name.charAt(0)}</AvatarFallback>
+                </Avatar>
+                <div className="absolute bottom-0 right-0">
+                    <ChannelIcon channel={convo.channel} className="bg-background rounded-full p-0.5" />
+                </div>
+              </div>
+              <div className="flex-1 overflow-hidden">
+                <div className="flex justify-between items-center">
+                  <p className="font-semibold truncate">{convo.contact.name}</p>
+                    <p className="text-xs text-muted-foreground whitespace-nowrap">{formatDistanceToNow(new Date(convo.lastMessage.timestamp), { addSuffix: false })}</p>
+                </div>
+                <p className="text-sm text-muted-foreground truncate">{convo.lastMessage.text}</p>
+              </div>
+              {convo.unreadCount > 0 && (
+                <div className="flex items-center justify-center self-center ml-auto">
+                    <Badge className="bg-primary h-5 w-5 p-0 flex items-center justify-center">{convo.unreadCount}</Badge>
+                </div>
+              )}
+            </Link>
+          ))}
+        </nav>
+      </div>
+    </div>
+  );
 };
+```
 
+## File: src/pages/Messaging/index.tsx
+```typescript
+import React, { useRef } from "react";
+import { useParams } from "react-router-dom";
+import { ConversationList } from "./components/ConversationList";
+import { cn } from "@/lib/utils";
+import { MessagingContent } from "./components/MessagingContent";
+import { useAppShellStore } from "@/store/appShell.store";
+import { useResizableMessagingList } from "@/hooks/useResizablePanes.hook";
 
-export const useAppShellStore = create<AppShellState & AppShellActions>((set, get) => ({
-  ...defaultState,
+export default function MessagingPage() {
+  const { conversationId } = useParams<{ conversationId: string }>();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const COLLAPSED_WIDTH = 80;
 
-  init: ({ appName, appLogo, defaultSplitPaneWidth }) => set(state => ({
-    ...state,
-    ...(appName && { appName }),
-    ...(appLogo && { appLogo }),
-    ...(defaultSplitPaneWidth && { splitPaneWidth: defaultSplitPaneWidth }),
-  })),
-  
-  setSidebarState: (payload) => set({ sidebarState: payload }),
-  setBodyState: (payload) => {
-    // If we're leaving fullscreen, reset the target and previous state
-    if (get().bodyState === BODY_STATES.FULLSCREEN && payload !== BODY_STATES.FULLSCREEN) {
-      set({ bodyState: payload, fullscreenTarget: null, previousBodyState: BODY_STATES.NORMAL });
-    } else {
-      set({ bodyState: payload });
-    }
-  },
-  setSidePaneContent: (payload) => set({ sidePaneContent: payload }),
-  setSidebarWidth: (payload) => set({ sidebarWidth: Math.max(200, Math.min(500, payload)) }),
-  setSidePaneWidth: (payload) => set({ sidePaneWidth: Math.max(300, Math.min(window.innerWidth * 0.8, payload)) }),
-  setSplitPaneWidth: (payload) => set({ splitPaneWidth: Math.max(300, Math.min(window.innerWidth * 0.8, payload)) }),
-  setMessagingListWidth: (payload) => set({ messagingListWidth: Math.max(320, Math.min(payload, window.innerWidth - 400)) }),
-  setIsResizing: (payload) => set({ isResizing: payload }),
-  setFullscreenTarget: (payload) => set({ fullscreenTarget: payload }),
-  setIsResizingRightPane: (payload) => set({ isResizingRightPane: payload }),
-  setIsResizingMessagingList: (payload) => set({ isResizingMessagingList: payload }),
-  setTopBarVisible: (payload) => set({ isTopBarVisible: payload }),
-  setAutoExpandSidebar: (payload) => set({ autoExpandSidebar: payload }),
-  setReducedMotion: (payload) => set({ reducedMotion: payload }),
-  setCompactMode: (payload) => set({ compactMode: payload }),
-  setPrimaryColor: (payload) => {
-    if (typeof document !== 'undefined') {
-        document.documentElement.style.setProperty('--primary-hsl', payload);
-    }
-    set({ primaryColor: payload });
-  },
-  setDraggedPage: (payload) => set({ draggedPage: payload }),
-  setCommandPaletteOpen: (open) => set({ isCommandPaletteOpen: open }),
-  toggleDarkMode: () => set((state) => ({ isDarkMode: !state.isDarkMode })),
-  setDragHoverTarget: (payload) => set({ dragHoverTarget: payload }),
-  setHoveredPane: (payload) => set({ hoveredPane: payload }),
-  
-  toggleSidebar: () => {
-    const current = get().sidebarState;
-    if (current === SIDEBAR_STATES.HIDDEN) set({ sidebarState: SIDEBAR_STATES.COLLAPSED });
-    else if (current === SIDEBAR_STATES.COLLAPSED) set({ sidebarState: SIDEBAR_STATES.EXPANDED });
-    else if (current === SIDEBAR_STATES.EXPANDED) set({ sidebarState: SIDEBAR_STATES.COLLAPSED });
-  },
-  hideSidebar: () => set({ sidebarState: SIDEBAR_STATES.HIDDEN }),
-  showSidebar: () => set({ sidebarState: SIDEBAR_STATES.EXPANDED }),
-  peekSidebar: () => set({ sidebarState: SIDEBAR_STATES.PEEK }),
-  
-  toggleFullscreen: (target = null) => {
-    const { bodyState, previousBodyState } = get();
-    if (bodyState === BODY_STATES.FULLSCREEN) {
-      set({ 
-        bodyState: previousBodyState || BODY_STATES.NORMAL,
-        fullscreenTarget: null,
-        previousBodyState: BODY_STATES.NORMAL,
-      });
-    } else {
-      set({ 
-        previousBodyState: bodyState, 
-        bodyState: BODY_STATES.FULLSCREEN, 
-        fullscreenTarget: target 
-      });
-    }
-  },
-  
-  resetToDefaults: () => {
-    // Preserve props passed to provider
-    const { appName, appLogo } = get();
-    const currentPrimaryColor = defaultState.primaryColor;
-    if (typeof document !== 'undefined') {
-      document.documentElement.style.setProperty('--primary-hsl', currentPrimaryColor);
-    }
-    set({ ...defaultState, primaryColor: currentPrimaryColor, appName, appLogo });
-  },
-}));
+  const { messagingListWidth, isResizingMessagingList, isMessagingListCollapsed } = useAppShellStore(s => ({
+    messagingListWidth: s.messagingListWidth,
+    isResizingMessagingList: s.isResizingMessagingList,
+    isMessagingListCollapsed: s.isMessagingListCollapsed,
+  }));
+  const { setIsResizingMessagingList } = useAppShellStore.getState();
 
-// Add a selector for the derived rightPaneWidth
-export const useRightPaneWidth = () => useAppShellStore(state => 
-    state.bodyState === BODY_STATES.SPLIT_VIEW ? state.splitPaneWidth : state.sidePaneWidth
-);
+  useResizableMessagingList(containerRef);
+
+  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (isMessagingListCollapsed) return;
+    e.preventDefault();
+    setIsResizingMessagingList(true);
+  };
+
+  const listWidth = isMessagingListCollapsed ? COLLAPSED_WIDTH : messagingListWidth;
+
+  return (
+    <div ref={containerRef} className={cn(
+      "h-full w-full flex bg-background", 
+      isResizingMessagingList && !isMessagingListCollapsed && "cursor-col-resize select-none"
+    )}>
+        <div style={{ width: `${listWidth}px` }} className="flex-shrink-0 transition-[width] duration-300 ease-in-out">
+          <ConversationList />
+        </div>
+        {!isMessagingListCollapsed && (
+          <div onMouseDown={handleMouseDown} className="w-2 flex-shrink-0 cursor-col-resize group flex items-center justify-center">
+            <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200" />
+          </div>
+        )}
+        <div className="flex-1 min-w-0"><MessagingContent conversationId={conversationId} /></div>
+    </div>
+  );
+}
 ```
 
 ## File: index.html
@@ -1274,6 +1262,211 @@ export function useAppViewManager() {
 }
 ```
 
+## File: src/store/appShell.store.ts
+```typescript
+import { create } from 'zustand';
+import { type ReactElement } from 'react';
+import { SIDEBAR_STATES, BODY_STATES, type SidebarState, type BodyState } from '@/lib/utils';
+
+export type ActivePage = 'dashboard' | 'settings' | 'toaster' | 'notifications' | 'data-demo' | 'messaging';
+
+// --- State and Action Types ---
+
+export interface AppShellState {
+  sidebarState: SidebarState;
+  bodyState: BodyState;
+  sidePaneContent: 'details' | 'settings' | 'main' | 'toaster' | 'notifications' | 'dataDemo' | 'dataItem' | 'messaging';
+  sidebarWidth: number;
+  sidePaneWidth: number;
+  splitPaneWidth: number;
+  messagingListWidth: number;
+  messagingProfileWidth: number;
+  previousBodyState: BodyState;
+  fullscreenTarget: 'main' | 'right' | null;
+  isResizing: boolean;
+  isResizingRightPane: boolean;
+  isResizingMessagingList: boolean;
+  isResizingMessagingProfile: boolean;
+  isMessagingListCollapsed: boolean;
+  isMessagingProfileCollapsed: boolean;
+  isTopBarVisible: boolean;
+  autoExpandSidebar: boolean;
+  reducedMotion: boolean;
+  compactMode: boolean;
+  primaryColor: string;
+  isCommandPaletteOpen: boolean;
+  isDarkMode: boolean;
+  appName?: string;
+  appLogo?: ReactElement;
+  draggedPage: 'dashboard' | 'settings' | 'toaster' | 'notifications' | 'data-demo' | 'messaging' | null;
+  dragHoverTarget: 'left' | 'right' | null;
+  hoveredPane: 'left' | 'right' | null;
+}
+
+export interface AppShellActions {
+    // Initialization
+    init: (config: { appName?: string; appLogo?: ReactElement; defaultSplitPaneWidth?: number }) => void;
+    
+    // Direct state setters
+    setSidebarState: (payload: SidebarState) => void;
+    setBodyState: (payload: BodyState) => void;
+    setSidePaneContent: (payload: AppShellState['sidePaneContent']) => void;
+    setSidebarWidth: (payload: number) => void;
+    setSidePaneWidth: (payload: number) => void;
+    setSplitPaneWidth: (payload: number) => void;
+    setMessagingListWidth: (payload: number) => void;
+    setIsResizing: (payload: boolean) => void;
+    setMessagingProfileWidth: (payload: number) => void;
+    setFullscreenTarget: (payload: 'main' | 'right' | null) => void;
+    setIsResizingRightPane: (payload: boolean) => void;
+    setIsResizingMessagingList: (payload: boolean) => void;
+    setIsResizingMessagingProfile: (payload: boolean) => void;
+    toggleMessagingListCollapsed: () => void;
+    toggleMessagingProfileCollapsed: () => void;
+    setTopBarVisible: (payload: boolean) => void;
+    setAutoExpandSidebar: (payload: boolean) => void;
+    setReducedMotion: (payload: boolean) => void;
+    setCompactMode: (payload: boolean) => void;
+    setPrimaryColor: (payload: string) => void;
+    setDraggedPage: (payload: AppShellState['draggedPage']) => void;
+    setCommandPaletteOpen: (open: boolean) => void;
+    toggleDarkMode: () => void;
+    setDragHoverTarget: (payload: 'left' | 'right' | null) => void;
+    setHoveredPane: (payload: 'left' | 'right' | null) => void;
+    
+    // Composite actions
+    toggleSidebar: () => void;
+    hideSidebar: () => void;
+    showSidebar: () => void;
+    peekSidebar: () => void;
+    toggleFullscreen: (target?: 'main' | 'right' | null) => void;
+    resetToDefaults: () => void;
+}
+
+const defaultState: AppShellState = {
+  sidebarState: SIDEBAR_STATES.EXPANDED,
+  bodyState: BODY_STATES.NORMAL,
+  sidePaneContent: 'details',
+  sidebarWidth: 280,
+  sidePaneWidth: typeof window !== 'undefined' ? Math.max(300, Math.round(window.innerWidth * 0.6)) : 400,
+  splitPaneWidth: typeof window !== 'undefined' ? Math.max(300, Math.round(window.innerWidth * 0.35)) : 400,
+  messagingListWidth: 384,
+  messagingProfileWidth: 384,
+  previousBodyState: BODY_STATES.NORMAL,
+  fullscreenTarget: null,
+  isResizing: false,
+  isResizingRightPane: false,
+  isResizingMessagingList: false,
+  isResizingMessagingProfile: false,
+  isMessagingListCollapsed: false,
+  isMessagingProfileCollapsed: false,
+  isTopBarVisible: true,
+  autoExpandSidebar: true,
+  reducedMotion: false,
+  compactMode: false,
+  primaryColor: '220 84% 60%',
+  isCommandPaletteOpen: false,
+  isDarkMode: false,
+  appName: 'Jeli App',
+  appLogo: undefined,
+  draggedPage: null,
+  dragHoverTarget: null,
+  hoveredPane: null,
+};
+
+
+export const useAppShellStore = create<AppShellState & AppShellActions>((set, get) => ({
+  ...defaultState,
+
+  init: ({ appName, appLogo, defaultSplitPaneWidth }) => set(state => ({
+    ...state,
+    ...(appName && { appName }),
+    ...(appLogo && { appLogo }),
+    ...(defaultSplitPaneWidth && { splitPaneWidth: defaultSplitPaneWidth }),
+  })),
+  
+  setSidebarState: (payload) => set({ sidebarState: payload }),
+  setBodyState: (payload) => {
+    // If we're leaving fullscreen, reset the target and previous state
+    if (get().bodyState === BODY_STATES.FULLSCREEN && payload !== BODY_STATES.FULLSCREEN) {
+      set({ bodyState: payload, fullscreenTarget: null, previousBodyState: BODY_STATES.NORMAL });
+    } else {
+      set({ bodyState: payload });
+    }
+  },
+  setSidePaneContent: (payload) => set({ sidePaneContent: payload }),
+  setSidebarWidth: (payload) => set({ sidebarWidth: Math.max(200, Math.min(500, payload)) }),
+  setSidePaneWidth: (payload) => set({ sidePaneWidth: Math.max(300, Math.min(window.innerWidth * 0.8, payload)) }),
+  setSplitPaneWidth: (payload) => set({ splitPaneWidth: Math.max(300, Math.min(window.innerWidth * 0.8, payload)) }),
+  setMessagingListWidth: (payload) => set({ messagingListWidth: Math.max(320, Math.min(payload, window.innerWidth - 400)) }),
+  setMessagingProfileWidth: (payload) => set({ messagingProfileWidth: Math.max(320, Math.min(payload, window.innerWidth - 400)) }),
+  setIsResizing: (payload) => set({ isResizing: payload }),
+  setFullscreenTarget: (payload) => set({ fullscreenTarget: payload }),
+  setIsResizingRightPane: (payload) => set({ isResizingRightPane: payload }),
+  setIsResizingMessagingList: (payload) => set({ isResizingMessagingList: payload }),
+  setIsResizingMessagingProfile: (payload) => set({ isResizingMessagingProfile: payload }),
+  toggleMessagingListCollapsed: () => set(state => ({ isMessagingListCollapsed: !state.isMessagingListCollapsed })),
+  toggleMessagingProfileCollapsed: () => set(state => ({ isMessagingProfileCollapsed: !state.isMessagingProfileCollapsed })),
+  setTopBarVisible: (payload) => set({ isTopBarVisible: payload }),
+  setAutoExpandSidebar: (payload) => set({ autoExpandSidebar: payload }),
+  setReducedMotion: (payload) => set({ reducedMotion: payload }),
+  setCompactMode: (payload) => set({ compactMode: payload }),
+  setPrimaryColor: (payload) => {
+    if (typeof document !== 'undefined') {
+        document.documentElement.style.setProperty('--primary-hsl', payload);
+    }
+    set({ primaryColor: payload });
+  },
+  setDraggedPage: (payload) => set({ draggedPage: payload }),
+  setCommandPaletteOpen: (open) => set({ isCommandPaletteOpen: open }),
+  toggleDarkMode: () => set((state) => ({ isDarkMode: !state.isDarkMode })),
+  setDragHoverTarget: (payload) => set({ dragHoverTarget: payload }),
+  setHoveredPane: (payload) => set({ hoveredPane: payload }),
+  
+  toggleSidebar: () => {
+    const current = get().sidebarState;
+    if (current === SIDEBAR_STATES.HIDDEN) set({ sidebarState: SIDEBAR_STATES.COLLAPSED });
+    else if (current === SIDEBAR_STATES.COLLAPSED) set({ sidebarState: SIDEBAR_STATES.EXPANDED });
+    else if (current === SIDEBAR_STATES.EXPANDED) set({ sidebarState: SIDEBAR_STATES.COLLAPSED });
+  },
+  hideSidebar: () => set({ sidebarState: SIDEBAR_STATES.HIDDEN }),
+  showSidebar: () => set({ sidebarState: SIDEBAR_STATES.EXPANDED }),
+  peekSidebar: () => set({ sidebarState: SIDEBAR_STATES.PEEK }),
+  
+  toggleFullscreen: (target = null) => {
+    const { bodyState, previousBodyState } = get();
+    if (bodyState === BODY_STATES.FULLSCREEN) {
+      set({ 
+        bodyState: previousBodyState || BODY_STATES.NORMAL,
+        fullscreenTarget: null,
+        previousBodyState: BODY_STATES.NORMAL,
+      });
+    } else {
+      set({ 
+        previousBodyState: bodyState, 
+        bodyState: BODY_STATES.FULLSCREEN, 
+        fullscreenTarget: target 
+      });
+    }
+  },
+  
+  resetToDefaults: () => {
+    // Preserve props passed to provider
+    const { appName, appLogo } = get();
+    const currentPrimaryColor = defaultState.primaryColor;
+    if (typeof document !== 'undefined') {
+      document.documentElement.style.setProperty('--primary-hsl', currentPrimaryColor);
+    }
+    set({ ...defaultState, primaryColor: currentPrimaryColor, appName, appLogo });
+  },
+}));
+
+// Add a selector for the derived rightPaneWidth
+export const useRightPaneWidth = () => useAppShellStore(state => 
+    state.bodyState === BODY_STATES.SPLIT_VIEW ? state.splitPaneWidth : state.sidePaneWidth
+);
+```
+
 ## File: tailwind.config.js
 ```javascript
 /** @type {import('tailwindcss').Config} */
@@ -1403,6 +1596,50 @@ export default {
 }
 ```
 
+## File: vite.config.ts
+```typescript
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+import { fileURLToPath, URL } from 'url'
+import { resolve } from 'path'
+import pkg from './package.json' with { type: 'json' }
+
+// https://vitejs.dev/config/
+export default defineConfig({
+  plugins: [react()],
+  resolve: {
+    alias: {
+      "@": fileURLToPath(new URL('./src', import.meta.url)),
+    },
+  },
+  build: {
+    lib: {
+      entry: resolve(__dirname, 'src/index.ts'),
+      name: 'JeliAppShell',
+      fileName: (format) => `jeli-app-shell.${format}.js`,
+    },
+    rollupOptions: {
+      // make sure to externalize deps that shouldn't be bundled
+      // into your library
+      external: Object.keys(pkg.peerDependencies || {}),
+      output: {
+        // Provide global variables to use in the UMD build
+        // for externalized deps
+        globals: {
+          react: 'React',
+          'react-dom': 'ReactDOM',
+          tailwindcss: 'tailwindcss',
+          gsap: 'gsap',
+          'lucide-react': 'lucide-react',
+          zustand: 'zustand',
+          sonner: 'sonner'
+        },
+      },
+    },
+  },
+})
+```
+
 ## File: src/hooks/useResizablePanes.hook.ts
 ```typescript
 import { useEffect } from 'react';
@@ -1525,50 +1762,41 @@ export function useResizableMessagingList(containerRef: React.RefObject<HTMLDivE
     };
   }, [isResizingMessagingList, setMessagingListWidth, setIsResizingMessagingList, containerRef]);
 }
-```
 
-## File: vite.config.ts
-```typescript
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-import { fileURLToPath, URL } from 'url'
-import { resolve } from 'path'
-import pkg from './package.json' with { type: 'json' }
+export function useResizableMessagingProfile(containerRef: React.RefObject<HTMLDivElement>) {
+  const isResizingMessagingProfile = useAppShellStore(s => s.isResizingMessagingProfile);
+  const { setMessagingProfileWidth, setIsResizingMessagingProfile } = useAppShellStore.getState();
 
-// https://vitejs.dev/config/
-export default defineConfig({
-  plugins: [react()],
-  resolve: {
-    alias: {
-      "@": fileURLToPath(new URL('./src', import.meta.url)),
-    },
-  },
-  build: {
-    lib: {
-      entry: resolve(__dirname, 'src/index.ts'),
-      name: 'JeliAppShell',
-      fileName: (format) => `jeli-app-shell.${format}.js`,
-    },
-    rollupOptions: {
-      // make sure to externalize deps that shouldn't be bundled
-      // into your library
-      external: Object.keys(pkg.peerDependencies || {}),
-      output: {
-        // Provide global variables to use in the UMD build
-        // for externalized deps
-        globals: {
-          react: 'React',
-          'react-dom': 'ReactDOM',
-          tailwindcss: 'tailwindcss',
-          gsap: 'gsap',
-          'lucide-react': 'lucide-react',
-          zustand: 'zustand',
-          sonner: 'sonner'
-        },
-      },
-    },
-  },
-})
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizingMessagingProfile || !containerRef.current) return;
+
+      const containerRect = containerRef.current.getBoundingClientRect();
+      const newWidth = containerRect.right - e.clientX;
+      
+      setMessagingProfileWidth(newWidth);
+    };
+
+    const handleMouseUp = () => {
+      setIsResizingMessagingProfile(false);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+
+    if (isResizingMessagingProfile) {
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+    }
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = '';
+    };
+  }, [isResizingMessagingProfile, setMessagingProfileWidth, setIsResizingMessagingProfile, containerRef]);
+}
 ```
 
 ## File: src/index.css

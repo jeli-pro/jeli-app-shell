@@ -32,16 +32,13 @@
     "postcss.config.js",
     "index.html",
     // "src"
-    // "src/components/ui/card.tsx",
-    // "src/components/ui/dropdown-menu.tsx",
-    // "src/components/ui/popover.tsx",
-    // "src/components/ui/animated-tabs.tsx",
+
     "src/hooks/useResizablePanes.hook.ts",
     "src/index.css",
     "src/pages/Messaging/components/ContactProfile.tsx",
     "src/pages/Messaging/components/ConversationList.tsx",
     "src/pages/Messaging/components/MessageThread.tsx",
-    // "src/pages/Messaging/data/mockData.ts",
+
     "src/pages/Messaging/index.tsx",
     "src/pages/Messaging/store/messaging.store.ts",
     "src/pages/Messaging/types.ts",
@@ -52,12 +49,22 @@
     "src/components/layout/AppShell.tsx",
     "src/components/layout/RightPane.tsx",
     "src/hooks/useAppViewManager.hook.ts",
-    // "src/components/effects",
     "src/store/appShell.store.ts",
     "src/pages/Messaging/components/ConversationList.tsx",
     "src/pages/Messaging/index.tsx",
     "src/hooks/useResizablePanes.hook.ts",
-    "src/pages/Messaging/components/ContactProfile.tsx"
+    "src/pages/Messaging/components/ContactProfile.tsx",
+
+    "src/App.tsx",
+    "src/components/layout/AppShell.tsx",
+    "src/hooks/useResizablePanes.hook.ts",
+    "src/hooks/useRightPaneContent.hook.tsx",
+    "src/pages/Messaging/components/ContactProfile.tsx",
+    "src/pages/Messaging/components/ConversationList.tsx",
+    "src/pages/Messaging/components/MessageThread.tsx",
+    "src/pages/Messaging/index.tsx",
+    "src/store/appShell.store.ts",
+    "src/pages/Messaging/components/MessagingContent.tsx "
   ],
   "ignore": {
     "useGitignore": true,

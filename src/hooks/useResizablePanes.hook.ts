@@ -118,3 +118,38 @@ export function useResizableMessagingList(containerRef: React.RefObject<HTMLDivE
     };
   }, [isResizingMessagingList, setMessagingListWidth, setIsResizingMessagingList, containerRef]);
 }
+
+export function useResizableMessagingProfile(containerRef: React.RefObject<HTMLDivElement>) {
+  const isResizingMessagingProfile = useAppShellStore(s => s.isResizingMessagingProfile);
+  const { setMessagingProfileWidth, setIsResizingMessagingProfile } = useAppShellStore.getState();
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizingMessagingProfile || !containerRef.current) return;
+
+      const containerRect = containerRef.current.getBoundingClientRect();
+      const newWidth = containerRect.right - e.clientX;
+      
+      setMessagingProfileWidth(newWidth);
+    };
+
+    const handleMouseUp = () => {
+      setIsResizingMessagingProfile(false);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+
+    if (isResizingMessagingProfile) {
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+    }
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = '';
+    };
+  }, [isResizingMessagingProfile, setMessagingProfileWidth, setIsResizingMessagingProfile, containerRef]);
+}

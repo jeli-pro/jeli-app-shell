@@ -14,12 +14,15 @@ export interface AppShellState {
   sidePaneWidth: number;
   splitPaneWidth: number;
   messagingListWidth: number;
+  messagingProfileWidth: number;
   previousBodyState: BodyState;
   fullscreenTarget: 'main' | 'right' | null;
   isResizing: boolean;
   isResizingRightPane: boolean;
   isResizingMessagingList: boolean;
+  isResizingMessagingProfile: boolean;
   isMessagingListCollapsed: boolean;
+  isMessagingProfileCollapsed: boolean;
   isTopBarVisible: boolean;
   autoExpandSidebar: boolean;
   reducedMotion: boolean;
@@ -47,10 +50,13 @@ export interface AppShellActions {
     setSplitPaneWidth: (payload: number) => void;
     setMessagingListWidth: (payload: number) => void;
     setIsResizing: (payload: boolean) => void;
+    setMessagingProfileWidth: (payload: number) => void;
     setFullscreenTarget: (payload: 'main' | 'right' | null) => void;
     setIsResizingRightPane: (payload: boolean) => void;
     setIsResizingMessagingList: (payload: boolean) => void;
+    setIsResizingMessagingProfile: (payload: boolean) => void;
     toggleMessagingListCollapsed: () => void;
+    toggleMessagingProfileCollapsed: () => void;
     setTopBarVisible: (payload: boolean) => void;
     setAutoExpandSidebar: (payload: boolean) => void;
     setReducedMotion: (payload: boolean) => void;
@@ -79,12 +85,15 @@ const defaultState: AppShellState = {
   sidePaneWidth: typeof window !== 'undefined' ? Math.max(300, Math.round(window.innerWidth * 0.6)) : 400,
   splitPaneWidth: typeof window !== 'undefined' ? Math.max(300, Math.round(window.innerWidth * 0.35)) : 400,
   messagingListWidth: 384,
+  messagingProfileWidth: 384,
   previousBodyState: BODY_STATES.NORMAL,
   fullscreenTarget: null,
   isResizing: false,
   isResizingRightPane: false,
   isResizingMessagingList: false,
+  isResizingMessagingProfile: false,
   isMessagingListCollapsed: false,
+  isMessagingProfileCollapsed: false,
   isTopBarVisible: true,
   autoExpandSidebar: true,
   reducedMotion: false,
@@ -124,11 +133,14 @@ export const useAppShellStore = create<AppShellState & AppShellActions>((set, ge
   setSidePaneWidth: (payload) => set({ sidePaneWidth: Math.max(300, Math.min(window.innerWidth * 0.8, payload)) }),
   setSplitPaneWidth: (payload) => set({ splitPaneWidth: Math.max(300, Math.min(window.innerWidth * 0.8, payload)) }),
   setMessagingListWidth: (payload) => set({ messagingListWidth: Math.max(320, Math.min(payload, window.innerWidth - 400)) }),
+  setMessagingProfileWidth: (payload) => set({ messagingProfileWidth: Math.max(320, Math.min(payload, window.innerWidth - 400)) }),
   setIsResizing: (payload) => set({ isResizing: payload }),
   setFullscreenTarget: (payload) => set({ fullscreenTarget: payload }),
   setIsResizingRightPane: (payload) => set({ isResizingRightPane: payload }),
   setIsResizingMessagingList: (payload) => set({ isResizingMessagingList: payload }),
-  toggleMessagingListCollapsed: () => set((state) => ({ isMessagingListCollapsed: !state.isMessagingListCollapsed })),
+  setIsResizingMessagingProfile: (payload) => set({ isResizingMessagingProfile: payload }),
+  toggleMessagingListCollapsed: () => set(state => ({ isMessagingListCollapsed: !state.isMessagingListCollapsed })),
+  toggleMessagingProfileCollapsed: () => set(state => ({ isMessagingProfileCollapsed: !state.isMessagingProfileCollapsed })),
   setTopBarVisible: (payload) => set({ isTopBarVisible: payload }),
   setAutoExpandSidebar: (payload) => set({ autoExpandSidebar: payload }),
   setReducedMotion: (payload) => set({ reducedMotion: payload }),

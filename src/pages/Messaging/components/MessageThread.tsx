@@ -1,5 +1,5 @@
 import React from 'react';
-import { Paperclip, SendHorizontal, Smile } from 'lucide-react';
+import { Paperclip, SendHorizontal, Smile, PanelRightClose, PanelRightOpen } from 'lucide-react';
 
 import { useMessagingStore } from '../store/messaging.store';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ChannelIcon } from './ChannelIcons';
 import { cn } from '@/lib/utils';
+import { useAppShellStore } from '@/store/appShell.store';
 
 interface MessageThreadProps {
   conversationId?: string;
@@ -16,6 +17,11 @@ export const MessageThread: React.FC<MessageThreadProps> = ({ conversationId }) 
   const conversation = useMessagingStore(state =>
     conversationId ? state.getConversationById(conversationId) : undefined
   );
+  const { isMessagingProfileCollapsed } = useAppShellStore(s => ({
+    isMessagingProfileCollapsed: s.isMessagingProfileCollapsed,
+  }));
+  const { toggleMessagingProfileCollapsed } = useAppShellStore.getState();
+  
   
   if (!conversationId || !conversation) {
     return (
@@ -30,7 +36,10 @@ export const MessageThread: React.FC<MessageThreadProps> = ({ conversationId }) 
   return (
     <div className="h-full flex flex-col bg-background">
       {/* Header */}
-      <div className="flex items-center gap-3 p-4 border-b h-20 flex-shrink-0">
+      <div 
+        className="flex items-center gap-3 p-4 border-b h-20 flex-shrink-0 cursor-pointer group"
+        onClick={toggleMessagingProfileCollapsed}
+      >
         <Avatar className="h-10 w-10">
           <AvatarImage src={contact.avatar} alt={contact.name} />
           <AvatarFallback>{contact.name.charAt(0)}</AvatarFallback>
@@ -43,6 +52,10 @@ export const MessageThread: React.FC<MessageThreadProps> = ({ conversationId }) 
           </p>
         </div>
         <ChannelIcon channel={conversation.channel} className="w-5 h-5" />
+        {isMessagingProfileCollapsed 
+          ? <PanelRightOpen className="w-5 h-5 text-muted-foreground group-hover:text-foreground transition-colors ml-auto" />
+          : <PanelRightClose className="w-5 h-5 text-muted-foreground group-hover:text-foreground transition-colors ml-auto" />
+        }
       </div>
 
       {/* Messages */}
