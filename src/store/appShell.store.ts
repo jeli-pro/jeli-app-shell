@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import { type ReactElement } from 'react';
 import { SIDEBAR_STATES, BODY_STATES, type SidebarState, type BodyState } from '@/lib/utils';
 
@@ -102,110 +103,128 @@ const defaultState: AppShellState = {
 };
 
 
-export const useAppShellStore = create<AppShellState & AppShellActions>((set, get) => ({
-  ...defaultState,
+export const useAppShellStore = create<AppShellState & AppShellActions>()(
+  persist(
+    (set, get) => ({
+      ...defaultState,
 
-  init: ({ appName, appLogo, defaultSplitPaneWidth }) => set(state => ({
-    ...state,
-    ...(appName && { appName }),
-    ...(appLogo && { appLogo }),
-    ...(defaultSplitPaneWidth && { splitPaneWidth: defaultSplitPaneWidth }),
-  })),
-  
-  setSidebarState: (payload) => set({ sidebarState: payload }),
-  setBodyState: (payload) => {
-    // If we're leaving fullscreen, reset the target and previous state
-    if (get().bodyState === BODY_STATES.FULLSCREEN && payload !== BODY_STATES.FULLSCREEN) {
-      set({ bodyState: payload, fullscreenTarget: null, previousBodyState: BODY_STATES.NORMAL });
-    } else {
-      set({ bodyState: payload });
-    }
-  },
-  setSidePaneContent: (payload) => set({ sidePaneContent: payload }),
-  setSidebarWidth: (payload) => set({ sidebarWidth: Math.max(200, Math.min(500, payload)) }),
-  setSidePaneWidth: (payload) => set({ sidePaneWidth: Math.max(300, Math.min(window.innerWidth * 0.8, payload)) }),
-  setDefaultPaneWidths: () => {
-    if (get().defaultWidthsSet) return;
-    set(state => ({
-        defaultSidePaneWidth: state.sidePaneWidth,
-        defaultSplitPaneWidth: state.splitPaneWidth,
-        defaultWidthsSet: true,
-    }));
-  },
-  resetPaneWidths: () => set(state => ({
-    sidePaneWidth: state.defaultSidePaneWidth,
-    splitPaneWidth: state.defaultSplitPaneWidth,
-  })),
-  setSplitPaneWidth: (payload) => set({ splitPaneWidth: Math.max(300, Math.min(window.innerWidth * 0.8, payload)) }),
-  setIsResizing: (payload) => set({ isResizing: payload }),
-  setFullscreenTarget: (payload) => set({ fullscreenTarget: payload }),
-  setIsResizingRightPane: (payload) => set({ isResizingRightPane: payload }),
-  setTopBarVisible: (payload) => set({ isTopBarVisible: payload }),
-  setAutoExpandSidebar: (payload) => set({ autoExpandSidebar: payload }),
-  setReducedMotion: (payload) => set({ reducedMotion: payload }),
-  setCompactMode: (payload) => set({ compactMode: payload }),
-  setPrimaryColor: (payload) => {
-    if (typeof document !== 'undefined') {
-        document.documentElement.style.setProperty('--primary-hsl', payload);
-    }
-    set({ primaryColor: payload });
-  },
-  setDraggedPage: (payload) => set({ draggedPage: payload }),
-  setCommandPaletteOpen: (open) => set({ isCommandPaletteOpen: open }),
-  toggleDarkMode: () => set((state) => ({ isDarkMode: !state.isDarkMode })),
-  setDragHoverTarget: (payload) => set({ dragHoverTarget: payload }),
-  setTopBarHovered: (isHovered) => set({ isTopBarHovered: isHovered }),
-  setHoveredPane: (payload) => set({ hoveredPane: payload }),
-  
-  toggleSidebar: () => {
-    const current = get().sidebarState;
-    if (current === SIDEBAR_STATES.HIDDEN) set({ sidebarState: SIDEBAR_STATES.COLLAPSED });
-    else if (current === SIDEBAR_STATES.COLLAPSED) set({ sidebarState: SIDEBAR_STATES.EXPANDED });
-    else if (current === SIDEBAR_STATES.EXPANDED) set({ sidebarState: SIDEBAR_STATES.COLLAPSED });
-  },
-  hideSidebar: () => set({ sidebarState: SIDEBAR_STATES.HIDDEN }),
-  showSidebar: () => set({ sidebarState: SIDEBAR_STATES.EXPANDED }),
-  peekSidebar: () => set({ sidebarState: SIDEBAR_STATES.PEEK }),
-  
-  toggleFullscreen: (target = null) => {
-    const { bodyState, previousBodyState } = get();
-    if (bodyState === BODY_STATES.FULLSCREEN) {
-      set({ 
-        bodyState: previousBodyState || BODY_STATES.NORMAL,
-        fullscreenTarget: null,
-        previousBodyState: BODY_STATES.NORMAL,
-      });
-    } else {
-      set({ 
-        previousBodyState: bodyState, 
-        bodyState: BODY_STATES.FULLSCREEN, 
-        fullscreenTarget: target 
-      });
-    }
-  },
-  
-  resetToDefaults: () => {
-    // Preserve props passed to provider and session defaults
-    set(state => {
-      const currentPrimaryColor = defaultState.primaryColor;
-      if (typeof document !== 'undefined') {
-        document.documentElement.style.setProperty('--primary-hsl', currentPrimaryColor);
-      }
-      return {
-        ...defaultState,
-        primaryColor: currentPrimaryColor,
-        appName: state.appName,
-        appLogo: state.appLogo,
-        defaultSidePaneWidth: state.defaultSidePaneWidth,
-        defaultSplitPaneWidth: state.defaultSplitPaneWidth,
-        defaultWidthsSet: state.defaultWidthsSet,
-        // Also reset current widths to the defaults
+      init: ({ appName, appLogo, defaultSplitPaneWidth }) => set(state => ({
+        ...state,
+        ...(appName && { appName }),
+        ...(appLogo && { appLogo }),
+        ...(defaultSplitPaneWidth && { splitPaneWidth: defaultSplitPaneWidth }),
+      })),
+      
+      setSidebarState: (payload) => set({ sidebarState: payload }),
+      setBodyState: (payload) => {
+        // If we're leaving fullscreen, reset the target and previous state
+        if (get().bodyState === BODY_STATES.FULLSCREEN && payload !== BODY_STATES.FULLSCREEN) {
+          set({ bodyState: payload, fullscreenTarget: null, previousBodyState: BODY_STATES.NORMAL });
+        } else {
+          set({ bodyState: payload });
+        }
+      },
+      setSidePaneContent: (payload) => set({ sidePaneContent: payload }),
+      setSidebarWidth: (payload) => set({ sidebarWidth: Math.max(200, Math.min(500, payload)) }),
+      setSidePaneWidth: (payload) => set({ sidePaneWidth: Math.max(300, Math.min(window.innerWidth * 0.8, payload)) }),
+      setDefaultPaneWidths: () => {
+        if (get().defaultWidthsSet) return;
+        set(state => ({
+            defaultSidePaneWidth: state.sidePaneWidth,
+            defaultSplitPaneWidth: state.splitPaneWidth,
+            defaultWidthsSet: true,
+        }));
+      },
+      resetPaneWidths: () => set(state => ({
         sidePaneWidth: state.defaultSidePaneWidth,
         splitPaneWidth: state.defaultSplitPaneWidth,
-      };
-    });
-  },
-}));
+      })),
+      setSplitPaneWidth: (payload) => set({ splitPaneWidth: Math.max(300, Math.min(window.innerWidth * 0.8, payload)) }),
+      setIsResizing: (payload) => set({ isResizing: payload }),
+      setFullscreenTarget: (payload) => set({ fullscreenTarget: payload }),
+      setIsResizingRightPane: (payload) => set({ isResizingRightPane: payload }),
+      setTopBarVisible: (payload) => set({ isTopBarVisible: payload }),
+      setAutoExpandSidebar: (payload) => set({ autoExpandSidebar: payload }),
+      setReducedMotion: (payload) => set({ reducedMotion: payload }),
+      setCompactMode: (payload) => set({ compactMode: payload }),
+      setPrimaryColor: (payload) => {
+        if (typeof document !== 'undefined') {
+            document.documentElement.style.setProperty('--primary-hsl', payload);
+        }
+        set({ primaryColor: payload });
+      },
+      setDraggedPage: (payload) => set({ draggedPage: payload }),
+      setCommandPaletteOpen: (open) => set({ isCommandPaletteOpen: open }),
+      toggleDarkMode: () => set((state) => ({ isDarkMode: !state.isDarkMode })),
+      setDragHoverTarget: (payload) => set({ dragHoverTarget: payload }),
+      setTopBarHovered: (isHovered) => set({ isTopBarHovered: isHovered }),
+      setHoveredPane: (payload) => set({ hoveredPane: payload }),
+      
+      toggleSidebar: () => {
+        const current = get().sidebarState;
+        if (current === SIDEBAR_STATES.HIDDEN) set({ sidebarState: SIDEBAR_STATES.COLLAPSED });
+        else if (current === SIDEBAR_STATES.COLLAPSED) set({ sidebarState: SIDEBAR_STATES.EXPANDED });
+        else if (current === SIDEBAR_STATES.EXPANDED) set({ sidebarState: SIDEBAR_STATES.COLLAPSED });
+      },
+      hideSidebar: () => set({ sidebarState: SIDEBAR_STATES.HIDDEN }),
+      showSidebar: () => set({ sidebarState: SIDEBAR_STATES.EXPANDED }),
+      peekSidebar: () => set({ sidebarState: SIDEBAR_STATES.PEEK }),
+      
+      toggleFullscreen: (target = null) => {
+        const { bodyState, previousBodyState } = get();
+        if (bodyState === BODY_STATES.FULLSCREEN) {
+          set({ 
+            bodyState: previousBodyState || BODY_STATES.NORMAL,
+            fullscreenTarget: null,
+            previousBodyState: BODY_STATES.NORMAL,
+          });
+        } else {
+          set({ 
+            previousBodyState: bodyState, 
+            bodyState: BODY_STATES.FULLSCREEN, 
+            fullscreenTarget: target 
+          });
+        }
+      },
+      
+      resetToDefaults: () => {
+        // Preserve props passed to provider and session defaults
+        set(state => {
+          const currentPrimaryColor = defaultState.primaryColor;
+          if (typeof document !== 'undefined') {
+            document.documentElement.style.setProperty('--primary-hsl', currentPrimaryColor);
+          }
+          return {
+            ...defaultState,
+            primaryColor: currentPrimaryColor,
+            appName: state.appName,
+            appLogo: state.appLogo,
+            defaultSidePaneWidth: state.defaultSidePaneWidth,
+            defaultSplitPaneWidth: state.defaultSplitPaneWidth,
+            defaultWidthsSet: state.defaultWidthsSet,
+            // Also reset current widths to the defaults
+            sidePaneWidth: state.defaultSidePaneWidth,
+            splitPaneWidth: state.defaultSplitPaneWidth,
+          };
+        });
+      },
+    }),
+    {
+      name: 'app-shell-storage',
+      partialize: (state) => ({
+        isDarkMode: state.isDarkMode,
+        sidebarState: state.sidebarState,
+        sidebarWidth: state.sidebarWidth,
+        sidePaneWidth: state.sidePaneWidth,
+        splitPaneWidth: state.splitPaneWidth,
+        autoExpandSidebar: state.autoExpandSidebar,
+        reducedMotion: state.reducedMotion,
+        compactMode: state.compactMode,
+        primaryColor: state.primaryColor,
+      }),
+    }
+  )
+);
 
 // Add a selector for the derived rightPaneWidth
 export const useRightPaneWidth = () => useAppShellStore(state => 

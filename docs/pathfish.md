@@ -1,137 +1,77 @@
-Alright, heard you loud and clear. My first take was too simplistic—stuffing everything into `MainContent` is a cop-out. You want the real deal: a native, three-pane messaging layout that fully leverages the AppShell's split-view power. No hacks, no workarounds. A proper integration.
+Alright, let's architect this fix. The current setup is slick, but losing the theme on refresh is a classic rookie mistake. We're going to fix it the right way, making it persistent and flicker-free. This isn't just about slapping `localStorage` on it; it's about doing it elegantly so the user experience is seamless.
 
-You're right. The messaging page shouldn't be a special snowflake; it should be a first-class citizen of the split-view world. This means `ConversationList` and `MessageThread` live in the main content area, with their own resizer, while `ContactProfile` takes its rightful place in the `RightPane`. This architecture is cleaner, more powerful, and fixes the janky behavior with overlays.
+We'll use Zustand's built-in `persist` middleware to handle the state storage. That's the easy part. The real pro move is adding a tiny, blocking script to the `index.html` head. This script will run before React even thinks about mounting, read the theme from `localStorage`, and apply the `dark` class instantly. No more flash of light theme on a dark-mode user's screen. That's how you show you care about the details.
 
-Let's scrap the old plan. Here's the new blueprint to build this thing right.
+The plan is simple:
+1.  **Beef up the `appShell.store`:** We'll wrap our Zustand store with the `persist` middleware. We'll be surgical, using `partialize` to only store the settings that matter—theme, layout preferences, etc. We don't want to persist transient UI state like `isResizing`.
+2.  **Pre-emptive Strike on `index.html`:** We'll inject a small script into the `<head>` to set the theme class before the page paints. This kills the flicker dead.
+
+Let's get this done.
 
 ```yaml
 plan:
-  uuid: 'f2c9a1b3-5e8d-4a7b-9c6d-8e4f0a9b1c7d'
+  uuid: 'f8d1e2c3-a4b5-46c7-8d9e-01a2b3c4d5e6'
   status: 'todo'
-  title: 'Architect Messaging for Native Three-Pane Split-View'
+  title: 'Persist Dark/Light Mode on Refresh'
   introduction: |
-    The initial plan to isolate the messaging page within the main content area was a flawed simplification. Based on feedback, we're pivoting to a more robust architecture that deeply integrates a three-pane messaging layout with the AppShell's native split-view capabilities. This is the "right way" to do it.
+    The current application does not persist the user's selected dark or light mode preference across page reloads, leading to a frustrating user experience where the theme resets on every refresh. Additionally, even with simple persistence, there's a risk of a "flash of incorrect theme" (FOIT) where the default theme is shown briefly before the persisted preference is applied by JavaScript.
 
-    The new strategy involves creating a nested, two-pane layout (Conversation List & Message Thread) that lives entirely within the `MainContent` area, while the `ContactProfile` will be rendered in the `RightPane`. This structure will be activated when the user navigates to a conversation, establishing a true split-view state. Most critically, we'll overhaul the view management logic to ensure that this messaging split-view coexists peacefully with other shell functions, like opening settings or notifications in an overlay pane. This will fix all known view-switching bugs and deliver a seamless, powerful, and maintainable messaging experience.
+    This plan addresses both issues. We will leverage Zustand's `persist` middleware to automatically save the user's theme choice (and other relevant settings) to `localStorage`. To eliminate the theme flicker, we will add a small, synchronous inline script to the `<head>` of the `index.html` file. This script will execute before the main application bundle, read the persisted theme from `localStorage`, and apply the correct CSS class to the `<html>` element, ensuring a seamless and instant theme application on page load.
   parts:
-    - uuid: '9a8b7c6d-5e4f-3a2b-1c0d-9e8f7a6b5c4d'
+    - uuid: 'a1b2c3d4-e5f6-7890-1234-567890abcdef'
       status: 'todo'
-      name: 'Part 1: Re-architect Messaging Components for a Main/Right Pane Split'
+      name: 'Part 1: Implement Persistence in App Shell Store'
       reason: |
-        To achieve a native split-view, we must first logically and physically separate the messaging components into two groups: what goes in the main content area and what goes in the right pane. This structural change is the foundation for the entire refactor.
+        To ensure user preferences are saved and reloaded, we need to modify the central `appShell.store` to use `localStorage`. We will use Zustand's `persist` middleware, which simplifies this process. We will also be selective about what we persist to avoid saving temporary UI state.
       steps:
-        - uuid: '1b2c3d4e-5f6a-7b8c-9d0e-1f2a3b4c5d6e'
+        - uuid: 'b1c2d3e4-f5a6-b7c8-d9e0-f1a2b3c4d5e6'
           status: 'todo'
-          name: '1. Create a Nested Two-Pane Layout for Main Content'
+          name: '1. Integrate `persist` Middleware into `appShell.store`'
           reason: |
-            The `ConversationList` and `MessageThread` need to coexist within the `MainContent` area. We'll replace the old `MessagingContent` component with a new layout component dedicated to this two-pane view.
+            This step modifies the Zustand store to save a subset of its state to `localStorage`. We will use the `partialize` option to specifically select user preferences like dark mode, sidebar state, and pane widths, preventing transient state like `isResizing` or `draggedPage` from being persisted.
           files:
-            - 'src/pages/Messaging/components/MessagingContent.tsx'
-            - 'src/pages/Messaging/index.tsx'
+            - src/store/appShell.store.ts
           operations:
-            - "Rename `src/pages/Messaging/components/MessagingContent.tsx` to a more descriptive name like `MessagingMainContent.tsx`."
-            - "Gut the existing layout logic in the renamed file. Rebuild it to render `ConversationList` and `MessageThread` side-by-side within a flexbox container."
-            - "Update `src/pages/Messaging/index.tsx` (`MessagingPage`) to render this new `MessagingMainContent` component, passing down the `conversationId` from `useParams`."
-        - uuid: '2c3d4e5f-6a7b-8c9d-0e1f-2a3b4c5d6e7f'
-          status: 'todo'
-          name: '2. Relocate Contact Profile to the Right Pane'
-          reason: |
-            The `ContactProfile` component is the third pane and belongs in the AppShell's `RightPane` when the messaging split-view is active.
-          files:
-            - 'src/hooks/useRightPaneContent.hook.tsx'
-          operations:
-            - "In `useRightPaneContent.hook.tsx`, re-introduce or confirm the logic for `sidePaneContent === 'messaging'`."
-            - "This case should render the `<MessagingContent />` component. We will rename this component to `MessagingRightPane` or similar if needed for clarity to avoid confusion with the main content, but for now, let's assume it renders the `ContactProfile`."
-            - "The component rendered here should be the `ContactProfile`, which now receives the `conversationId`."
-    - uuid: '3d4e5f6a-7b8c-9d0e-1f2a-3b4c5d6e7f8g'
+            - 'Import `persist` from `zustand/middleware`.'
+            - 'Wrap the existing `create` callback with `persist((set, get) => ({...}), { ...options })`.'
+            - 'Provide a configuration object to `persist`.'
+            - "Set the `name` option to `'app-shell-storage'` to define the key in `localStorage`."
+            - "Implement the `partialize` option to return an object containing only the state we want to persist: `isDarkMode`, `sidebarState`, `sidebarWidth`, `sidePaneWidth`, `splitPaneWidth`, `autoExpandSidebar`, `reducedMotion`, `compactMode`, `primaryColor`."
+    - uuid: 'c3d4e5f6-a7b8-9012-3456-7890abcdef12'
       status: 'todo'
-      name: 'Part 2: Fortify AppShell View Management'
+      name: 'Part 2: Prevent Initial Theme Flicker'
       reason: |
-        The core of the problem is that the messaging split-view state is too "sticky," preventing other side panes from opening as overlays. We need to fix the state derivation logic in `useAppViewManager` to be more explicit and predictable.
+        Even with persistence, the application's JavaScript needs time to load and apply the theme, causing a "flicker" of the default (light) theme. By adding a script directly to `index.html`, we can apply the theme before the page is rendered by the browser, providing a much smoother user experience.
       steps:
-        - uuid: '4e5f6a7b-8c9d-0e1f-2a3b-4c5d6e7f8g9h'
+        - uuid: 'd4e5f6a7-b8c9-d0e1-f2a3-b4c5d6e7f8a9'
           status: 'todo'
-          name: '1. Prioritize Overlay Panes in State Derivation'
+          name: '1. Add Pre-emptive Theme Script to `index.html`'
           reason: |
-            An explicit request for an overlay pane (e.g., `?sidePane=settings`) must always win, regardless of the current URL path. This is the key to fixing the overlay bugs.
+            This inline script will run synchronously before the main React application. It checks `localStorage` for the persisted theme setting and applies the `.dark` class to the `<html>` element if necessary. It also includes a fallback to respect the user's operating system preference via `prefers-color-scheme`.
           files:
-            - 'src/hooks/useAppViewManager.hook.ts'
+            - index.html
           operations:
-            - "In `useAppViewManager`, locate the `useMemo` hook that derives `bodyState` and `sidePaneContent`."
-            - "Refactor the logic to ensure the check for a `sidePane` URL parameter is the very first thing. If `sidePane` exists, the hook must *immediately* return `bodyState: BODY_STATES.SIDE_PANE`."
-            - "The existing logic that checks for `conversationId` to create a `SPLIT_VIEW` should only run *after* the `sidePane` check has failed. This ensures overlays can appear on top of the messaging page."
-        - uuid: '5f6a7b8c-9d0e-1f2a-3b4c-5d6e7f8g9h1i'
-          status: 'todo'
-          name: '2. Solidify Messaging Split-View Activation'
-          reason: |
-            With overlays fixed, we need to ensure that navigating to a conversation correctly and reliably activates our desired `SPLIT_VIEW` state.
-          files:
-            - 'src/hooks/useAppViewManager.hook.ts'
-          operations:
-            - "Confirm that when no `sidePane` param is present, the logic correctly detects `conversationId` from the URL path."
-            - "When `conversationId` is present, the hook should return `{ bodyState: BODY_STATES.SPLIT_VIEW, sidePaneContent: 'messaging' }`. This activates our split-view, rendering `ContactProfile` in the `RightPane`."
-    - uuid: '6a7b8c9d-0e1f-2a3b-4c5d-6e7f8g9h1i2j'
-      status: 'todo'
-      name: 'Part 3: Implement Nested Resizable Panes'
-      reason: |
-        With the AppShell correctly managing the main split, we now need to implement the internal resizer for the two panes living inside `MainContent`.
-      steps:
-        - uuid: '7b8c9d0e-1f2a-3b4c-5d6e-7f8g9h1i2j3k'
-          status: 'todo'
-          name: '1. Build the Resizable Two-Pane UI'
-          reason: |
-            A new, localized resizer is needed to manage the split between the conversation list and the message thread.
-          files:
-            - 'src/pages/Messaging/MessagingMainContent.tsx'
-            - 'src/hooks/useResizablePanes.hook.ts'
-          operations:
-            - "In `MessagingMainContent.tsx`, add a `useState` hook to manage the widths of the two panes, e.g., `const [widths, setWidths] = useState([33, 67])` to approximate the desired 20%/40% overall ratio."
-            - "Apply these widths to the `ConversationList` and `MessageThread` wrapper divs using `flex-basis`."
-            - "Insert a resizer `div` between the two panes."
-            - "Create a new resizing hook, or adapt `useResizableMessagingProfile`, to handle `onMouseDown` events for the new resizer. The `onMouseMove` handler should calculate the new percentage-based widths and update the state."
-        - uuid: '8c9d0e1f-2a3b-4c5d-6e7f-8g9h1i2j3k4l'
-          status: 'todo'
-          name: '2. Clean Up Obsolete State and Logic'
-          reason: |
-            The old resizing logic and state for the `ContactProfile` is now redundant and must be removed to prevent conflicts. The AppShell's main resizer handles this now.
-          files:
-            - 'src/pages/Messaging/MessagingMainContent.tsx'
-            - 'src/store/appShell.store.ts'
-            - 'src/hooks/useResizablePanes.hook.ts'
-          operations:
-            - "Remove all state and props related to `messagingProfileWidth`, `isResizingMessagingProfile`, and `isMessagingProfileCollapsed` from the old `MessagingContent` (now `MessagingMainContent`)."
-            - "Remove the corresponding state properties and actions (`setMessagingProfileWidth`, `toggleMessagingProfileCollapsed`, etc.) from `appShell.store.ts`."
-            - "Remove the `useResizableMessagingProfile` hook from `useResizablePanes.hook.ts` as its functionality is now split between the AppShell's main resizer and our new nested resizer."
-            - "Remove any UI elements related to collapsing the profile pane from `MessageThread.tsx`, as this is now implicitly handled by closing the `RightPane`."
+            - 'In `index.html`, add a `<script>` tag inside the `<head>` element, before any other scripts or stylesheets.'
+            - 'Inside the script, write self-executing JavaScript (`(() => { ... })();`).'
+            - "The script should attempt to read from `localStorage` using the key `'app-shell-storage'`."
+            - 'It should parse the stored JSON and check for the `state.isDarkMode` property.'
+            - "If `isDarkMode` is `true`, add the class `'dark'` to `document.documentElement`."
+            - "If `isDarkMode` is `false`, remove the class `'dark'` from `document.documentElement`."
+            - "If no value is found in `localStorage`, use `window.matchMedia('(prefers-color-scheme: dark)').matches` as a fallback to set the initial theme based on the user's system settings."
   conclusion: |
-    By executing this plan, we'll transform the messaging page from a buggy, special-cased component into a flagship example of the AppShell's power. It will feature a clean, performant, and fully resizable three-pane layout that is perfectly integrated with the shell's native split-view and overlay systems. This not only crushes the existing bugs but also establishes a solid, scalable architecture for future feature development.
+    By completing these two parts, we will have a robust and professional theme persistence implementation. The user's dark/light mode preference will be remembered across sessions, and the flicker-free loading experience will make the application feel more native and polished. This approach correctly separates concerns: Zustand handles state management, while a minimal, high-priority script handles the initial render to prevent visual artifacts.
   context_files:
     compact:
-      - 'src/pages/Messaging/index.tsx'
-      - 'src/pages/Messaging/components/MessagingContent.tsx'
-      - 'src/hooks/useAppViewManager.hook.ts'
-      - 'src/hooks/useRightPaneContent.hook.tsx'
+      - src/store/appShell.store.ts
+      - index.html
     medium:
-      - 'src/pages/Messaging/index.tsx'
-      - 'src/pages/Messaging/components/MessagingContent.tsx'
-      - 'src/hooks/useAppViewManager.hook.ts'
-      - 'src/hooks/useRightPaneContent.hook.tsx'
-      - 'src/hooks/useResizablePanes.hook.ts'
-      - 'src/store/appShell.store.ts'
-      - 'src/App.tsx'
+      - src/store/appShell.store.ts
+      - index.html
+      - src/App.tsx
     extended:
-      - 'src/pages/Messaging/index.tsx'
-      - 'src/pages/Messaging/components/MessagingContent.tsx'
-      - 'src/pages/Messaging/components/ConversationList.tsx'
-      - 'src/pages/Messaging/components/MessageThread.tsx'
-      - 'src/pages/Messaging/components/ContactProfile.tsx'
-      - 'src/hooks/useAppViewManager.hook.ts'
-      - 'src/hooks/useRightPaneContent.hook.tsx'
-      - 'src/hooks/useResizablePanes.hook.ts'
-      - 'src/store/appShell.store.ts'
-      - 'src/components/layout/AppShell.tsx'
-      - 'src/components/layout/MainContent.tsx'
-      - 'src/components/layout/RightPane.tsx'
-      - 'src/App.tsx'
-
+      - src/store/appShell.store.ts
+      - index.html
+      - src/App.tsx
+      - src/features/settings/SettingsContent.tsx
+      - src/components/layout/TopBar.tsx
 ```
