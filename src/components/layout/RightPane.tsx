@@ -98,7 +98,7 @@ export const RightPane = memo(forwardRef<HTMLDivElement, { className?: string }>
       >
         <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200 mx-auto" />
       </div>
-      {header}
+      {!isSplitView && !isFullscreen && header}
       <div className={cn("flex-1 overflow-y-auto")}>
         {children}
       </div>

@@ -31,12 +31,7 @@
     "tailwind.config.js",
     "postcss.config.js",
     "index.html",
-    // "src"
-    "src/components/layout/AppShell.tsx",
-    "src/components/layout/TopBar.tsx",
-    "src/hooks/useAppShellAnimations.hook.ts",
-    "src/lib/utils.ts",
-    "src/store/appShell.store.ts"
+    "src"
   ],
   "ignore": {
     "useGitignore": true,
