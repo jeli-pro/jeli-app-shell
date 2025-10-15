@@ -80,6 +80,7 @@ export function useBodyStateAnimations(
   const bodyState = useAppShellStore(s => s.bodyState);
   const reducedMotion = useAppShellStore(s => s.reducedMotion);
   const isTopBarVisible = useAppShellStore(s => s.isTopBarVisible);
+  const isTopBarHovered = useAppShellStore(s => s.isTopBarHovered);
   const fullscreenTarget = useAppShellStore(s => s.fullscreenTarget);
   const rightPaneWidth = useRightPaneWidth();
   const animationDuration = reducedMotion ? 0 : 0.4;
@@ -130,10 +131,12 @@ export function useBodyStateAnimations(
 
     // Determine top bar position based on state
     let topBarY = '0%';
-    if (bodyState === BODY_STATES.FULLSCREEN) {
-      topBarY = '-100%'; // Always hide in fullscreen
-    } else if (bodyState === BODY_STATES.NORMAL && !isTopBarVisible) {
-      topBarY = '-100%'; // Hide only in normal mode when scrolled
+    if (bodyState === BODY_STATES.FULLSCREEN) { // Always hide in fullscreen
+      topBarY = '-100%';
+    } else if (bodyState === BODY_STATES.SPLIT_VIEW && !isTopBarHovered) { // Hide in split view unless hovered
+      topBarY = '-100%';
+    } else if (bodyState === BODY_STATES.NORMAL && !isTopBarVisible) { // Hide only in normal mode when scrolled
+      topBarY = '-100%';
     }
 
     gsap.to(topBarContainerRef.current, {
@@ -163,5 +166,5 @@ export function useBodyStateAnimations(
         gsap.to(backdrop, { opacity: 0, duration: animationDuration, onComplete: () => backdrop.remove() });
       }
     }
-  }, [bodyState, prevBodyState, animationDuration, rightPaneWidth, isTopBarVisible, appRef, mainContentRef, rightPaneRef, topBarContainerRef, mainAreaRef, fullscreenTarget, setSearchParams]);
+  }, [bodyState, prevBodyState, animationDuration, rightPaneWidth, isTopBarVisible, isTopBarHovered, appRef, mainContentRef, rightPaneRef, topBarContainerRef, mainAreaRef, fullscreenTarget, setSearchParams]);
 }

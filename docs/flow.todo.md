@@ -9,6 +9,10 @@ also why not auto applied to another page like demo data?
 
 ===
 
+on splid view mode active, should hide top bar... only reveal on hovering top area
+
+===
+
 data demo page: on each view mode, need additional item as CTA to lure user to add more data
 
 ===

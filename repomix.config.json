@@ -32,39 +32,11 @@
     "postcss.config.js",
     "index.html",
     // "src"
-
-    "src/hooks/useResizablePanes.hook.ts",
-    "src/index.css",
-    "src/pages/Messaging/components/ContactProfile.tsx",
-    "src/pages/Messaging/components/ConversationList.tsx",
-    "src/pages/Messaging/components/MessageThread.tsx",
-
-    "src/pages/Messaging/index.tsx",
-    "src/pages/Messaging/store/messaging.store.ts",
-    "src/pages/Messaging/types.ts",
-    "tailwind.config.js",
-    "src/App.tsx",
-    "src/store",
-    "src/providers",
     "src/components/layout/AppShell.tsx",
-    "src/components/layout/RightPane.tsx",
-    "src/hooks/useAppViewManager.hook.ts",
-    "src/store/appShell.store.ts",
-    "src/pages/Messaging/components/ConversationList.tsx",
-    "src/pages/Messaging/index.tsx",
-    "src/hooks/useResizablePanes.hook.ts",
-    "src/pages/Messaging/components/ContactProfile.tsx",
-
-    "src/App.tsx",
-    "src/components/layout/AppShell.tsx",
-    "src/hooks/useResizablePanes.hook.ts",
-    "src/hooks/useRightPaneContent.hook.tsx",
-    "src/pages/Messaging/components/ContactProfile.tsx",
-    "src/pages/Messaging/components/ConversationList.tsx",
-    "src/pages/Messaging/components/MessageThread.tsx",
-    "src/pages/Messaging/index.tsx",
-    "src/store/appShell.store.ts",
-    "src/pages/Messaging/components/MessagingContent.tsx "
+    "src/components/layout/TopBar.tsx",
+    "src/hooks/useAppShellAnimations.hook.ts",
+    "src/lib/utils.ts",
+    "src/store/appShell.store.ts"
   ],
   "ignore": {
     "useGitignore": true,

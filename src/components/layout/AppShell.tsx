@@ -48,7 +48,7 @@ export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalet
   const reducedMotion = useAppShellStore(s => s.reducedMotion);
   const isTopBarVisible = useAppShellStore(s => s.isTopBarVisible);
   const isDarkMode = useAppShellStore(s => s.isDarkMode);
-  const { setSidebarState, peekSidebar, setHoveredPane } = useAppShellStore.getState();
+  const { setSidebarState, peekSidebar, setHoveredPane, setTopBarHovered } = useAppShellStore.getState();
   
   const isFullscreen = bodyState === BODY_STATES.FULLSCREEN;
   const isSidePaneOpen = bodyState === BODY_STATES.SIDE_PANE;
@@ -164,10 +164,31 @@ export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalet
               "absolute top-0 left-0 right-0 z-30",
               isFullscreen && "z-0"
             )}
-            onMouseEnter={() => { if (isSplitView) setHoveredPane(null); }}
+            onMouseEnter={() => {
+              if (isSplitView) {
+                setTopBarHovered(true);
+                setHoveredPane(null);
+              }
+            }}
+            onMouseLeave={() => {
+              if (isSplitView) {
+                setTopBarHovered(false);
+              }
+            }}
           >
             {topBar}
           </div>
+
+          {/* Invisible trigger area for top bar in split view */}
+          {isSplitView && (
+            <div
+              className="absolute top-0 left-0 right-0 h-4 z-20"
+              onMouseEnter={() => {
+                setTopBarHovered(true);
+                setHoveredPane(null);
+              }}
+            />
+          )}
 
           <div className="flex flex-1 min-h-0">
             <div

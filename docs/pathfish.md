@@ -1,222 +1,146 @@
-You're right. My apologies. The context is everything. The goal isn't to refactor the main `/messaging` page itself, but to enhance the experience when the messaging feature is loaded into the `RightPane` during a split view. This is a critical distinction.
+Here's the master plan, architect style.
 
-The previous plan was flawed because it focused on `MessagingPage.tsx`. The real work needs to happen in the component that *gets rendered inside* the `RightPane`. We need a new container component to manage the thread and the profile *within that context*.
+We're going to make the top bar in split view mode slicker than a greased-up watermelon. Right now, it's just sitting there, hogging precious vertical space. The new deal: it gets out of the way by default and only peeks back when you hover the top edge of the window. It's about giving users back their pixels.
 
-Here is the corrected master plan. It's more surgical and respects the existing architecture.
+The approach is surgical. First, we'll patch our central nervous system, the Zustand store, with a new state to track the hover status. Then, we'll rewire the animation logic in `useAppShellAnimations.hook.ts` to listen to this new signal. If we're in split view and not hovering, we'll tell GSAP to boot that top bar off-screen. Finally, the main `AppShell` component will get the simple mouse listeners to flip the state. This avoids polluting components with messy logic and keeps the animations smooth.
+
+This is a clean, state-driven approach that respects the existing architecture. No hacks, just extending the system to be smarter. Let's lay out the schematics.
 
 ```yaml
 plan:
-  uuid: '2c5f1a9e-8d7b-4c6a-9e8d-3b4c1a9e8d7b'
+  uuid: 'c8a2b1f3-5d7e-4b9a-8c1f-9d3e5a7b6a2c'
   status: 'todo'
-  title: 'Implement Collapsible Profile in Messaging Split View Pane'
+  title: 'Auto-hide Top Bar on Split View with Hover Reveal'
   introduction: |
-    Got it. The refactor is specifically for the messaging experience *within the split view's right pane*. The previous approach was off-target. We won't touch the top-level layout of `MessagingPage.tsx` initially, but instead create a new wrapper component that will house both the `MessageThread` and the `ContactProfile`.
+    Alright, listen up. The top bar in split view is a screen real estate hog. We're gonna make it slick. It'll get out of the way by default and only slide back in when you mouse over the top edge. Pure class.
 
-    This new component, let's call it `MessagingContent`, will become the orchestrator for the right pane. It will manage the collapsible state of the `ContactProfile`, allowing the `MessageThread` to expand and fill the space. This is a much cleaner way to achieve the goal without disrupting the main app shell's logic or the primary two-pane layout of the messaging route.
+    We'll pipe a new `isTopBarHovered` boolean into our Zustand store. The main `AppShell` component will be responsible for flipping this switch on mouse enter/leave events in the top bar area. Then, our existing GSAP animation hook, `useBodyStateAnimations`, will be modified to react to this new state. If the app is in split view and the user isn't hovering at the top, that top bar gets a `translateY(-100%)`.
 
-    The plan is now focused: 1) Add the necessary global state. 2) Create the resizing hook. 3) Build the new `MessagingContent` component and integrate it where it belongs—inside the `RightPane` via our `useRightPaneContent` hook. 4) Add the final UI toggle in the `MessageThread` header. This is the right way to do it.
+    This keeps our logic tight and centralized. The scroll-based animation for the normal view remains untouched. It's a surgical strike, extending the system to be smarter without adding complexity where it doesn't belong. Let's get it done.
   parts:
-    - uuid: 'b9c8d7e6-f5a4-4b3c-ad9e-2f1a0b9c8d7e'
+    - uuid: 'a1b2c3d4-e5f6-7890-1234-567890abcdef'
       status: 'todo'
-      name: 'Part 1: Extend App Shell State for the Profile Pane'
+      name: 'Part 1: Augment App Shell State'
       reason: |
-        To make the profile pane collapsible and resizable, its state (width, visibility, resizing status) must live in our global Zustand store. This allows different components to react to and control the pane's properties without messy prop drilling.
+        We need a central, single source of truth to track whether the user's cursor is in the "reveal zone" for the top bar. The Zustand store is the right place for this to avoid prop-drilling and keep our components clean.
       steps:
-        - uuid: 'c0d9e8f7-a6b5-4c4d-be0f-3a2b1c0d9e8f'
+        - uuid: '11aa22bb-33cc-44dd-55ee-66ff77gg88hh'
           status: 'todo'
-          name: '1. Update AppShell Store with Profile Pane State'
+          name: '1. Update appShell.store.ts'
           reason: |
-            We need to add state for the new profile pane (`isMessagingProfileCollapsed`, `messagingProfileWidth`, `isResizingMessagingProfile`) and corresponding actions to manipulate it. This is the foundation for the entire feature.
+            To add the new state and its corresponding action to the global `AppShell` store.
           files:
-            - 'src/store/appShell.store.ts'
+            - src/store/appShell.store.ts
           operations:
-            - "In the `AppShellState` interface, add three new properties: `isMessagingProfileCollapsed: boolean`, `messagingProfileWidth: number`, and `isResizingMessagingProfile: boolean`."
-            - "In the `AppShellActions` interface, add the corresponding setters: `toggleMessagingProfileCollapsed: () => void`, `setMessagingProfileWidth: (payload: number) => void`, and `setIsResizingMessagingProfile: (payload: boolean) => void`."
-            - "In the `defaultState` object, initialize these new properties: `isMessagingProfileCollapsed: false`, `messagingProfileWidth: 384`, and `isResizingMessagingProfile: false`."
-            - "Implement the new actions in the store creation logic. `toggleMessagingProfileCollapsed` flips the boolean. `setMessagingProfileWidth` updates the width with sane min/max bounds (e.g., min 320, max window width - 400). `setIsResizingMessagingProfile` sets the resizing flag."
+            - 'In the `AppShellState` interface, add a new property: `isTopBarHovered: boolean;`.'
+            - 'In the `AppShellActions` interface, add a new action signature: `setTopBarHovered: (isHovered: boolean) => void;`.'
+            - 'In the `defaultState` object, initialize the new state: `isTopBarHovered: false,`.'
+            - 'Within the `create` function body, add the implementation for the new action: `setTopBarHovered: (isHovered) => set({ isTopBarHovered: isHovered }),`.'
       context_files:
         compact:
-          - 'src/store/appShell.store.ts'
+          - src/store/appShell.store.ts
         medium:
-          - 'src/store/appShell.store.ts'
+          - src/store/appShell.store.ts
+          - src/hooks/useAppShellAnimations.hook.ts
         extended:
-          - 'src/store/appShell.store.ts'
-
-    - uuid: 'd1e0f9a8-b7c6-4d5e-af1a-4b3c2d1e0f9a'
+          - src/store/appShell.store.ts
+          - src/hooks/useAppShellAnimations.hook.ts
+          - src/components/layout/AppShell.tsx
+    - uuid: 'b2c3d4e5-f6a7-8901-2345-678901bcdefa'
       status: 'todo'
-      name: 'Part 2: Implement Profile Pane Resizing Hook'
+      name: 'Part 2: Update Animation Logic for Split View'
       reason: |
-        To allow users to resize the `ContactProfile` pane, we'll create a dedicated React hook. This encapsulates the complex logic of handling mouse events for resizing, keeping our layout components clean.
+        The core animation logic that controls the top bar's vertical position needs to be updated. It must now consider the new hover state, but *only* when the application is in split view mode.
       steps:
-        - uuid: 'e2f1a0b9-c8d7-4e6f-be2b-5c4d3e2f1a0b'
+        - uuid: '22bb33cc-44dd-55ee-66ff-77gg88hh99ii'
           status: 'todo'
-          name: '1. Create useResizableMessagingProfile Hook'
+          name: '1. Modify useBodyStateAnimations hook'
           reason: |
-            This new hook, `useResizableMessagingProfile`, will mirror the functionality of existing resizer hooks. It will listen for mouse movements when resizing is active and update the profile pane's width in the global store.
+            This hook is the central controller for major layout animations. We need to patch its logic to hide/show the top bar based on the new `isTopBarHovered` state when in split view.
           files:
-            - 'src/hooks/useResizablePanes.hook.ts'
+            - src/hooks/useAppShellAnimations.hook.ts
           operations:
-            - "Export a new function `useResizableMessagingProfile(containerRef: React.RefObject<HTMLDivElement>)`."
-            - "Inside the hook, get `isResizingMessagingProfile` from `useAppShellStore`."
-            - "Get the `setMessagingProfileWidth` and `setIsResizingMessagingProfile` actions from the store."
-            - "Use a `useEffect` hook that attaches `mousemove` and `mouseup` event listeners to the `window` only when `isResizingMessagingProfile` is true."
-            - "The `mousemove` handler will calculate the new width based on the cursor's X position relative to the right edge of the *container* (`containerRect.right - e.clientX`) and call `setMessagingProfileWidth`."
-            - "The `mouseup` handler will set `isResizingMessagingProfile` to `false` and clean up the event listeners."
+            - 'Inside the `useBodyStateAnimations` hook, import and subscribe to the new state from the store: `const isTopBarHovered = useAppShellStore(s => s.isTopBarHovered);`.'
+            - 'Add `isTopBarHovered` to the dependency array of the main `useEffect` inside the hook.'
+            - "Update the `topBarY` variable logic. The new logic should prioritize the `isTopBarHovered` state when `bodyState` is `SPLIT_VIEW`."
+            - 'Replace the existing `topBarY` logic block with this enhanced version:
+              ```typescript
+              let topBarY = '0%';
+              if (bodyState === BODY_STATES.FULLSCREEN) {
+                topBarY = '-100%';
+              } else if (bodyState === BODY_STATES.SPLIT_VIEW && !isTopBarHovered) {
+                topBarY = '-100%';
+              } else if (bodyState === BODY_STATES.NORMAL && !isTopBarVisible) {
+                topBarY = '-100%';
+              }
+              ```'
       context_files:
         compact:
-          - 'src/hooks/useResizablePanes.hook.ts'
+          - src/hooks/useAppShellAnimations.hook.ts
         medium:
-          - 'src/hooks/useResizablePanes.hook.ts'
-          - 'src/store/appShell.store.ts'
+          - src/hooks/useAppShellAnimations.hook.ts
+          - src/store/appShell.store.ts
         extended:
-          - 'src/hooks/useResizablePanes.hook.ts'
-          - 'src/store/appShell.store.ts'
-
-    - uuid: '0abf88c1-6e3a-4f9e-8d7b-1a2b3c4d5e6f'
+          - src/hooks/useAppShellAnimations.hook.ts
+          - src/store/appShell.store.ts
+          - src/components/layout/AppShell.tsx
+    - uuid: 'c3d4e5f6-a7b8-9012-3456-789012cdefab'
       status: 'todo'
-      name: 'Part 3: Create and Integrate Messaging Content Container'
+      name: 'Part 3: Implement UI Hover Trigger'
       reason: |
-        This is the core of the refactor. We will create a new component, `MessagingContent`, to manage the layout of the message thread and the contact profile. We will then update our hooks and pages to use this new component, ensuring the logic is correctly placed for both split-view and full-page scenarios.
+        The state needs to be updated from the UI. The most logical place for the hover trigger is the `AppShell` component itself, which renders the top bar container. We will attach mouse listeners there.
       steps:
-        - uuid: '1cde2f3a-7b4d-4a0f-9e8d-2b3c4d5e6f7a'
+        - uuid: '33cc44dd-55ee-66ff-77gg-88hh99ii00jj'
           status: 'todo'
-          name: '1. Create the MessagingContent Component'
+          name: '1. Add hover listeners to AppShell.tsx'
           reason: |
-            This new component will act as a dedicated layout manager for the messaging thread and profile, containing all the logic for resizing and collapsing.
+            To connect the user's mouse actions to the state management, we'll add `onMouseEnter` and `onMouseLeave` handlers to the top bar's container element.
           files:
-            - 'src/pages/Messaging/components/MessagingContent.tsx' # This is a new file to be created.
+            - src/components/layout/AppShell.tsx
           operations:
-            - "Create a new file: `src/pages/Messaging/components/MessagingContent.tsx`."
-            - "The component, `MessagingContent`, should accept `conversationId?: string` as a prop."
-            - "Import `MessageThread`, `ContactProfile`, `useAppShellStore`, and the new `useResizableMessagingProfile` hook."
-            - "Inside the component, get all relevant state from the store: `isMessagingProfileCollapsed`, `messagingProfileWidth`, `isResizingMessagingProfile`, and the `setIsResizingMessagingProfile` action."
-            - "The component will return a main container `div` with `className='h-full w-full flex'`. This `div` should have a `ref`."
-            - "Call `useResizableMessagingProfile` with the container's `ref`."
-            - "Inside the main container, render three elements: a `div` for `MessageThread` (with `className='flex-1 min-w-0'`), a resizer `div`, and a `div` for `ContactProfile`."
-            - "The `ContactProfile` wrapper `div` should have its width controlled by state: `style={{ width: isMessagingProfileCollapsed ? 0 : messagingProfileWidth }}` and have transition classes."
-            - "The resizer `div` should only be visible when the profile is not collapsed and its `onMouseDown` should trigger `setIsResizingMessagingProfile(true)`."
+            - "In the `AppShell` component, get the `setTopBarHovered` action from the store: `const { ..., setTopBarHovered } = useAppShellStore.getState();`."
+            - "Find the `div` with the `ref={topBarContainerRef}`."
+            - "Modify its `onMouseEnter` handler to also call `setTopBarHovered(true)` when in split view. The existing call to `setHoveredPane(null)` should remain."
+            - "Add a new `onMouseLeave` handler to the same `div` to call `setTopBarHovered(false)` when in split view."
+            - 'The handlers should look like this:
+              ```tsx
+              onMouseEnter={() => {
+                if (isSplitView) {
+                  setTopBarHovered(true);
+                  setHoveredPane(null);
+                }
+              }}
+              onMouseLeave={() => {
+                if (isSplitView) {
+                  setTopBarHovered(false);
+                }
+              }}
+              ```'
       context_files:
         compact:
-          - 'src/store/appShell.store.ts'
-          - 'src/hooks/useResizablePanes.hook.ts'
-          - 'src/pages/Messaging/components/MessageThread.tsx'
-          - 'src/pages/Messaging/components/ContactProfile.tsx'
+          - src/components/layout/AppShell.tsx
         medium:
-          - 'src/store/appShell.store.ts'
-          - 'src/hooks/useResizablePanes.hook.ts'
-          - 'src/pages/Messaging/components/MessageThread.tsx'
-          - 'src/pages/Messaging/components/ContactProfile.tsx'
+          - src/components/layout/AppShell.tsx
+          - src/store/appShell.store.ts
         extended:
-          - 'src/store/appShell.store.ts'
-          - 'src/hooks/useResizablePanes.hook.ts'
-          - 'src/pages/Messaging/components/MessageThread.tsx'
-          - 'src/pages/Messaging/components/ContactProfile.tsx'
-          - 'src/pages/Messaging/index.tsx'
-
-        - uuid: '2def3a4b-8c5e-4b1g-0f9e-3c4d5e6f7a8b'
-          status: 'todo'
-          name: '2. Update Right Pane Hook to use MessagingContent'
-          reason: |
-            To make the split view work, the `useRightPaneContent` hook must be updated to render our new `MessagingContent` container instead of just the `MessageThread`.
-          files:
-            - 'src/hooks/useRightPaneContent.hook.tsx'
-          operations:
-            - "Import the new `MessagingContent` component."
-            - "In the `contentMap`, when the key is `'messaging'`, change the `content` property to render `<MessagingContent conversationId={conversationId} />`."
-            - "Update the `useMemo` block that calculates `meta` and `content`. When `sidePaneContent === 'messaging'`, it should return `{ meta: contentMap.messaging, content: <MessagingContent conversationId={conversationId} /> }`."
-            - "Remove the direct import of `MessageThread` as it's no longer used in this hook."
-      context_files:
-        compact:
-          - 'src/hooks/useRightPaneContent.hook.tsx'
-        medium:
-          - 'src/hooks/useRightPaneContent.hook.tsx'
-          - 'src/pages/Messaging/components/MessagingContent.tsx' # new file
-        extended:
-          - 'src/hooks/useRightPaneContent.hook.tsx'
-          - 'src/pages/Messaging/components/MessagingContent.tsx'
-          - 'src/store/appShell.store.ts'
-
-        - uuid: '3ef4a5b-9d6f-4c2h-1g0f-4d5e6f7a8b9c'
-          status: 'todo'
-          name: '3. Refactor MessagingPage to use MessagingContent'
-          reason: |
-            To ensure a consistent UI, the full `/messaging` page should also use the new `MessagingContent` component, simplifying its own layout logic.
-          files:
-            - 'src/pages/Messaging/index.tsx'
-          operations:
-            - "Import the new `MessagingContent` component."
-            - "Remove the direct import of `ContactProfile`."
-            - "In the return statement, replace the direct rendering of `ContactProfile` with `<MessagingContent conversationId={conversationId} />`."
-            - "The main flex container in `MessagingPage` should now contain only two children: the `div` for `ConversationList` and the new `MessagingContent` component."
-            - "Remove the resizing logic and state related to the profile pane from this page, as it's now handled inside `MessagingContent`."
-      context_files:
-        compact:
-          - 'src/pages/Messaging/index.tsx'
-        medium:
-          - 'src/pages/Messaging/index.tsx'
-          - 'src/pages/Messaging/components/MessagingContent.tsx'
-        extended:
-          - 'src/pages/Messaging/index.tsx'
-          - 'src/pages/Messaging/components/MessagingContent.tsx'
-          - 'src/pages/Messaging/components/ConversationList.tsx'
-
-    - uuid: 'b5c4d3e2-f1a0-4b9i-dh5e-8f7a6b5c4d3e'
-      status: 'todo'
-      name: 'Part 4: Add Profile Pane Toggle Control'
-      reason: |
-        A feature isn't complete until the user can actually use it. We'll make the `MessageThread` header clickable to toggle the `ContactProfile` pane, providing a clean, button-less user experience.
-      steps:
-        - uuid: 'c6d5e4f3-a2b1-4c0j-ei6f-9a8b7c6d5e4f'
-          status: 'todo'
-          name: '1. Make MessageThread Header Clickable'
-          reason: |
-            Using the entire header as a click target is an elegant solution. We'll add an `onClick` handler and a visual state indicator (an icon) directly into the header flow, avoiding the need for a separate button.
-          files:
-            - 'src/pages/Messaging/components/MessageThread.tsx'
-          operations:
-            - "Import `PanelRightClose` and `PanelRightOpen` from `lucide-react`."
-            - "Import `useAppShellStore` from `'@/store/appShell.store'`."
-            - "In the `MessageThread` component, get `isMessagingProfileCollapsed` state and `toggleMessagingProfileCollapsed` action from the `useAppShellStore`."
-            - "Locate the main header `div` (the one with the class `flex items-center gap-3...`)."
-            - "Add an `onClick` handler to this `div` that calls `toggleMessagingProfileCollapsed`."
-            - "Using the `cn` utility, add `cursor-pointer` and `group` classes to this same `div`."
-            - "At the end of the header `div`'s children, right after the `<ChannelIcon />`, add the state indicator icon."
-            - "Conditionally render the icon: `{isMessagingProfileCollapsed ? <PanelRightOpen ... /> : <PanelRightClose ... />}`."
-            - "Style the icon with `className='w-5 h-5 text-muted-foreground group-hover:text-foreground transition-colors ml-auto'` to make it respond to the header hover state and align to the right."
-      context_files:
-        compact:
-          - 'src/pages/Messaging/components/MessageThread.tsx'
-        medium:
-          - 'src/pages/Messaging/components/MessageThread.tsx'
-          - 'src/store/appShell.store.ts'
-        extended:
-          - 'src/pages/Messaging/components/MessageThread.tsx'
-          - 'src/store/appShell.store.ts'
-          - 'src/pages/Messaging/components/MessagingContent.tsx'
-
+          - src/components/layout/AppShell.tsx
+          - src/store/appShell.store.ts
+          - src/hooks/useAppShellAnimations.hook.ts
   conclusion: |
-    This corrected plan is laser-focused on the user's requirement. By creating a dedicated `MessagingContent` component, we encapsulate the complex layout logic and apply it correctly within the `RightPane` for split view. This ensures the main app shell remains untouched while delivering a powerful, flexible, and intuitive enhancement to the messaging feature exactly where it's needed.
+    Once these changes are deployed, the top bar will behave intelligently in split view mode, maximizing screen real estate for the user while remaining easily accessible. This enhances the user experience by reducing visual clutter without sacrificing functionality. The implementation is clean, state-driven, and maintains a clear separation of concerns.
   context_files:
     compact:
-      - 'src/store/appShell.store.ts'
-      - 'src/hooks/useResizablePanes.hook.ts'
-      - 'src/hooks/useRightPaneContent.hook.tsx'
-      - 'src/pages/Messaging/index.tsx'
-      - 'src/pages/Messaging/components/MessageThread.tsx'
+      - src/store/appShell.store.ts
+      - src/hooks/useAppShellAnimations.hook.ts
+      - src/components/layout/AppShell.tsx
     medium:
-      - 'src/store/appShell.store.ts'
-      - 'src/hooks/useResizablePanes.hook.ts'
-      - 'src/hooks/useRightPaneContent.hook.tsx'
-      - 'src/pages/Messaging/index.tsx'
-      - 'src/pages/Messaging/components/MessageThread.tsx'
-      - 'src/pages/Messaging/components/ContactProfile.tsx'
+      - src/store/appShell.store.ts
+      - src/hooks/useAppShellAnimations.hook.ts
+      - src/components/layout/AppShell.tsx
     extended:
-      - 'src/store/appShell.store.ts'
-      - 'src/hooks/useResizablePanes.hook.ts'
-      - 'src/hooks/useRightPaneContent.hook.tsx'
-      - 'src/pages/Messaging/index.tsx'
-      - 'src/pages/Messaging/components/MessageThread.tsx'
-      - 'src/pages/Messaging/components/ContactProfile.tsx'
-      - 'src/components/layout/AppShell.tsx'
-      - 'src/App.tsx'
+      - src/store/appShell.store.ts
+      - src/hooks/useAppShellAnimations.hook.ts
+      - src/components/layout/AppShell.tsx
+      - src/components/layout/TopBar.tsx
+      - src/lib/utils.ts
 ```

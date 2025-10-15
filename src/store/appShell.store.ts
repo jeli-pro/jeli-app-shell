@@ -24,6 +24,7 @@ export interface AppShellState {
   isMessagingListCollapsed: boolean;
   isMessagingProfileCollapsed: boolean;
   isTopBarVisible: boolean;
+  isTopBarHovered: boolean;
   autoExpandSidebar: boolean;
   reducedMotion: boolean;
   compactMode: boolean;
@@ -66,6 +67,7 @@ export interface AppShellActions {
     setCommandPaletteOpen: (open: boolean) => void;
     toggleDarkMode: () => void;
     setDragHoverTarget: (payload: 'left' | 'right' | null) => void;
+    setTopBarHovered: (isHovered: boolean) => void;
     setHoveredPane: (payload: 'left' | 'right' | null) => void;
     
     // Composite actions
@@ -95,6 +97,7 @@ const defaultState: AppShellState = {
   isMessagingListCollapsed: false,
   isMessagingProfileCollapsed: false,
   isTopBarVisible: true,
+  isTopBarHovered: false,
   autoExpandSidebar: true,
   reducedMotion: false,
   compactMode: false,
@@ -155,6 +158,7 @@ export const useAppShellStore = create<AppShellState & AppShellActions>((set, ge
   setCommandPaletteOpen: (open) => set({ isCommandPaletteOpen: open }),
   toggleDarkMode: () => set((state) => ({ isDarkMode: !state.isDarkMode })),
   setDragHoverTarget: (payload) => set({ dragHoverTarget: payload }),
+  setTopBarHovered: (isHovered) => set({ isTopBarHovered: isHovered }),
   setHoveredPane: (payload) => set({ hoveredPane: payload }),
   
   toggleSidebar: () => {
