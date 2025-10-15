@@ -13,10 +13,13 @@ export interface AppShellState {
   sidebarWidth: number;
   sidePaneWidth: number;
   splitPaneWidth: number;
+  messagingListWidth: number;
   previousBodyState: BodyState;
   fullscreenTarget: 'main' | 'right' | null;
   isResizing: boolean;
   isResizingRightPane: boolean;
+  isResizingMessagingList: boolean;
+  isMessagingListCollapsed: boolean;
   isTopBarVisible: boolean;
   autoExpandSidebar: boolean;
   reducedMotion: boolean;
@@ -42,9 +45,12 @@ export interface AppShellActions {
     setSidebarWidth: (payload: number) => void;
     setSidePaneWidth: (payload: number) => void;
     setSplitPaneWidth: (payload: number) => void;
+    setMessagingListWidth: (payload: number) => void;
     setIsResizing: (payload: boolean) => void;
     setFullscreenTarget: (payload: 'main' | 'right' | null) => void;
     setIsResizingRightPane: (payload: boolean) => void;
+    setIsResizingMessagingList: (payload: boolean) => void;
+    toggleMessagingListCollapsed: () => void;
     setTopBarVisible: (payload: boolean) => void;
     setAutoExpandSidebar: (payload: boolean) => void;
     setReducedMotion: (payload: boolean) => void;
@@ -72,10 +78,13 @@ const defaultState: AppShellState = {
   sidebarWidth: 280,
   sidePaneWidth: typeof window !== 'undefined' ? Math.max(300, Math.round(window.innerWidth * 0.6)) : 400,
   splitPaneWidth: typeof window !== 'undefined' ? Math.max(300, Math.round(window.innerWidth * 0.35)) : 400,
+  messagingListWidth: 384,
   previousBodyState: BODY_STATES.NORMAL,
   fullscreenTarget: null,
   isResizing: false,
   isResizingRightPane: false,
+  isResizingMessagingList: false,
+  isMessagingListCollapsed: false,
   isTopBarVisible: true,
   autoExpandSidebar: true,
   reducedMotion: false,
@@ -114,9 +123,12 @@ export const useAppShellStore = create<AppShellState & AppShellActions>((set, ge
   setSidebarWidth: (payload) => set({ sidebarWidth: Math.max(200, Math.min(500, payload)) }),
   setSidePaneWidth: (payload) => set({ sidePaneWidth: Math.max(300, Math.min(window.innerWidth * 0.8, payload)) }),
   setSplitPaneWidth: (payload) => set({ splitPaneWidth: Math.max(300, Math.min(window.innerWidth * 0.8, payload)) }),
+  setMessagingListWidth: (payload) => set({ messagingListWidth: Math.max(320, Math.min(payload, window.innerWidth - 400)) }),
   setIsResizing: (payload) => set({ isResizing: payload }),
   setFullscreenTarget: (payload) => set({ fullscreenTarget: payload }),
   setIsResizingRightPane: (payload) => set({ isResizingRightPane: payload }),
+  setIsResizingMessagingList: (payload) => set({ isResizingMessagingList: payload }),
+  toggleMessagingListCollapsed: () => set((state) => ({ isMessagingListCollapsed: !state.isMessagingListCollapsed })),
   setTopBarVisible: (payload) => set({ isTopBarVisible: payload }),
   setAutoExpandSidebar: (payload) => set({ autoExpandSidebar: payload }),
   setReducedMotion: (payload) => set({ reducedMotion: payload }),

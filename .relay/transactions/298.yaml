@@ -1,0 +1,985 @@
+uuid: c6b4b449-3171-460d-9b5f-5ca9b5420ac8
+projectId: jeli-app-shell
+createdAt: '2025-10-14T22:26:07.838Z'
+gitCommitMsg: >-
+  feat(messaging): implement collapsible conversation list
+
+  Introduces a collapsible sidebar for the messaging conversation list, allowing
+  users to shrink the pane to an avatar-only view, maximizing space for the main
+  content areas.
+
+  - Extends `appShell.store` with state (`isMessagingListCollapsed`,
+    `previousMessagingListWidth`) and a `toggleMessagingList` action to
+    manage the collapsed state globally.
+  - Refactors `ConversationList` to conditionally render its content based
+    on the new collapsed state, including a header button to toggle the view.
+  - Updates `MessagingPage` to hide the resizer handle when the list is
+    collapsed, preventing interaction with a fixed-width pane.
+promptSummary: >-
+  The user wants to make the conversation list in the messaging page
+  collapsible, similar to Discord or Slack. This involves showing only avatars
+  when collapsed.
+reasoning:
+  - Here is the implementation of the collapsible messaging conversation list.
+  - '### Part 1: Enhance State Management'
+  - >-
+    I'll start by updating our Zustand store, `appShell.store.ts`, to manage the
+    new collapsible state. I'm adding `isMessagingListCollapsed` to track the
+    state, `previousMessagingListWidth` to remember the user's preferred width
+    when expanding, and a `toggleMessagingList` action to handle the logic. I've
+    also adjusted `setMessagingListWidth` to ensure manual resizing
+    automatically expands the list and to allow for the new smaller collapsed
+    width.
+  - '### Part 2: Implement the Collapsible UI'
+  - >-
+    Now, I'll refactor the `ConversationList` component. It will now connect to
+    the `useAppShellStore` to get the collapsed state and the toggle function. A
+    new button in the header will trigger the collapse/expand action. The rest
+    of the component will conditionally render its contents based on the
+    `isMessagingListCollapsed` flag, showing only avatars in the collapsed
+    state.
+  - '### Part 3: Adjust Parent Layout'
+  - >-
+    Finally, I'll update the main `MessagingPage` layout to hide the resizer
+    handle when the conversation list is collapsed. This prevents visual clutter
+    and avoids user confusion, since a fixed-width pane shouldn't be resizable.
+  - '---'
+operations:
+  - type: write
+    path: src/store/appShell.store.ts
+    content: >+
+      --- src/store/appShell.store.ts
+
+      +++ src/store/appShell.store.ts
+
+      @@ -10,12 +10,14 @@
+         sidePaneContent: 'details' | 'settings' | 'main' | 'toaster' | 'notifications' | 'dataDemo' | 'dataItem' | 'messaging';
+         sidebarWidth: number;
+         sidePaneWidth: number;
+         splitPaneWidth: number;
+         messagingListWidth: number;
+      +  previousMessagingListWidth: number;
+         previousBodyState: BodyState;
+         fullscreenTarget: 'main' | 'right' | null;
+         isResizing: boolean;
+         isResizingRightPane: boolean;
+         isResizingMessagingList: boolean;
+      +  isMessagingListCollapsed: boolean;
+         isTopBarVisible: boolean;
+         autoExpandSidebar: boolean;
+         reducedMotion: boolean;
+      @@ -47,6 +49,7 @@
+           setHoveredPane: (payload: 'left' | 'right' | null) => void;
+           
+           // Composite actions
+      +    toggleMessagingList: () => void;
+           toggleSidebar: () => void;
+           hideSidebar: () => void;
+           showSidebar: () => void;
+      @@ -54,6 +57,8 @@
+           toggleFullscreen: (target?: 'main' | 'right' | null) => void;
+           resetToDefaults: () => void;
+       }
+      +
+
+      +const MESSAGING_LIST_COLLAPSED_WIDTH = 80;
+       
+       const defaultState: AppShellState = {
+         sidebarState: SIDEBAR_STATES.EXPANDED,
+      @@ -62,11 +67,13 @@
+         sidebarWidth: 280,
+         sidePaneWidth: typeof window !== 'undefined' ? Math.max(300, Math.round(window.innerWidth * 0.6)) : 400,
+         splitPaneWidth: typeof window !== 'undefined' ? Math.max(300, Math.round(window.innerWidth * 0.35)) : 400,
+         messagingListWidth: 384,
+      +  previousMessagingListWidth: 384,
+         previousBodyState: BODY_STATES.NORMAL,
+         fullscreenTarget: null,
+         isResizing: false,
+         isResizingRightPane: false,
+         isResizingMessagingList: false,
+      +  isMessagingListCollapsed: false,
+         isTopBarVisible: true,
+         autoExpandSidebar: true,
+         reducedMotion: false,
+      @@ -100,7 +107,7 @@
+         setSidebarWidth: (payload) => set({ sidebarWidth: Math.max(200, Math.min(500, payload)) }),
+         setSidePaneWidth: (payload) => set({ sidePaneWidth: Math.max(300, Math.min(window.innerWidth * 0.8, payload)) }),
+         setSplitPaneWidth: (payload) => set({ splitPaneWidth: Math.max(300, Math.min(window.innerWidth * 0.8, payload)) }),
+      -  setMessagingListWidth: (payload) => set({ messagingListWidth:
+      Math.max(320, Math.min(payload, window.innerWidth - 400)) }),
+
+      +  setMessagingListWidth: (payload) => set({ messagingListWidth:
+      Math.max(MESSAGING_LIST_COLLAPSED_WIDTH, Math.min(payload,
+      window.innerWidth - 400)), isMessagingListCollapsed: false }),
+         setIsResizing: (payload) => set({ isResizing: payload }),
+         setFullscreenTarget: (payload) => set({ fullscreenTarget: payload }),
+         setIsResizingRightPane: (payload) => set({ isResizingRightPane: payload }),
+      @@ -118,6 +125,24 @@
+         setDragHoverTarget: (payload) => set({ dragHoverTarget: payload }),
+         setHoveredPane: (payload) => set({ hoveredPane: payload }),
+         
+      +  toggleMessagingList: () => set(state => {
+
+      +    if (state.isMessagingListCollapsed) {
+
+      +      // Expand
+
+      +      return {
+
+      +        isMessagingListCollapsed: false,
+
+      +        messagingListWidth: state.previousMessagingListWidth
+
+      +      }
+
+      +    } else {
+
+      +      // Collapse
+
+      +      return {
+
+      +        isMessagingListCollapsed: true,
+
+      +        previousMessagingListWidth: state.messagingListWidth,
+
+      +        messagingListWidth: MESSAGING_LIST_COLLAPSED_WIDTH,
+
+      +      }
+
+      +    }
+
+      +
+
+      +  }),
+
+      +
+         toggleSidebar: () => {
+           const current = get().sidebarState;
+           if (current === SIDEBAR_STATES.HIDDEN) set({ sidebarState: SIDEBAR_STATES.COLLAPSED });
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/Messaging/components/ConversationList.tsx
+    content: >
+      --- src/pages/Messaging/components/ConversationList.tsx
+
+      +++ src/pages/Messaging/components/ConversationList.tsx
+
+      @@ -1,5 +1,5 @@
+       import { useState, useMemo, useCallback } from 'react';
+      -import { Search, SlidersHorizontal } from 'lucide-react';
+
+      +import { Search, SlidersHorizontal, PanelLeftClose, PanelRightClose }
+      from 'lucide-react';
+       import { Link, useParams } from 'react-router-dom';
+       import { formatDistanceToNow } from 'date-fns';
+       import { useMessagingStore } from '../store/messaging.store';
+      @@ -11,6 +11,7 @@
+       import { cn } from '@/lib/utils';
+       import { AnimatedTabs } from '@/components/ui/animated-tabs';
+       import { ChannelIcon } from './ChannelIcons';
+      +import { useAppShellStore } from '@/store/appShell.store';
+       import type { Channel } from '../types';
+       
+       const channels: { id: Channel, label: string }[] = [
+      @@ -28,6 +29,8 @@
+           setFilters,
+           getAvailableTags,
+          } = useMessagingStore();
+      +  const { isMessagingListCollapsed, toggleMessagingList } =
+      useAppShellStore(s => ({ isMessagingListCollapsed:
+      s.isMessagingListCollapsed, toggleMessagingList: s.toggleMessagingList
+      }));
+
+      +
+         const conversations = getConversationsWithContact();
+         const [activeTab, setActiveTab] = useState('all');
+         const availableTags = useMemo(() => getAvailableTags(), [getAvailableTags]);
+      @@ -60,56 +63,63 @@
+             {/* Header */}
+             <div className="p-4 border-b flex-shrink-0">
+               <div className="flex justify-between items-center mb-4">
+      -          <h2 className="text-xl font-bold
+      tracking-tight">Conversations</h2>
+
+      +          <h2 className="text-xl font-bold tracking-tight">{
+      !isMessagingListCollapsed && 'Conversations' }</h2>
+
+      +          <Button variant="ghost" size="icon" className="h-8 w-8 ml-auto"
+      onClick={toggleMessagingList}>
+
+      +            {isMessagingListCollapsed ? <PanelRightClose className="w-4
+      h-4" /> : <PanelLeftClose className="w-4 h-4" />}
+
+      +          </Button>
+               </div>
+      -        <div className="flex gap-2">
+
+      -          <div className="relative flex-1">
+
+      -            <Search className="absolute left-3 top-1/2 -translate-y-1/2
+      w-4 h-4 text-muted-foreground" />
+
+      -            <Input placeholder="Search by name..." className="pl-9"
+      value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+
+      -          </div>
+
+      -          <Popover>
+
+      -            <PopoverTrigger asChild>
+
+      -              <Button variant="outline" size="icon" className="h-10 w-10
+      flex-shrink-0">
+
+      -                <SlidersHorizontal className="w-4 h-4" />
+
+      -              </Button>
+
+      -            </PopoverTrigger>
+
+      -            <PopoverContent className="w-64 p-4" align="end">
+
+      -              <div className="space-y-4">
+
+      -                <div>
+
+      -                  <h4 className="text-sm font-semibold
+      mb-2">Channels</h4>
+
+      -                  <div className="space-y-2">
+
+      -                    {channels.map(channel => (
+
+      -                      <div key={channel.id} className="flex items-center
+      gap-2">
+
+      -                        <Checkbox 
+
+      -                          id={`channel-${channel.id}`} 
+
+      -                         
+      checked={activeFilters.channels.includes(channel.id)}
+
+      -                          onCheckedChange={() =>
+      handleChannelFilterChange(channel.id)}
+
+      -                        />
+
+      -                        <label htmlFor={`channel-${channel.id}`}
+      className="text-sm cursor-pointer">{channel.label}</label>
+
+      -                      </div>
+
+      -                    ))}
+
+      +        { !isMessagingListCollapsed && (
+
+      +          <>
+
+      +            <div className="flex gap-2">
+
+      +              <div className="relative flex-1">
+
+      +                <Search className="absolute left-3 top-1/2
+      -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+
+      +                <Input placeholder="Search by name..." className="pl-9"
+      value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+
+      +              </div>
+
+      +              <Popover>
+
+      +                <PopoverTrigger asChild>
+
+      +                  <Button variant="outline" size="icon" className="h-10
+      w-10 flex-shrink-0">
+
+      +                    <SlidersHorizontal className="w-4 h-4" />
+
+      +                  </Button>
+
+      +                </PopoverTrigger>
+
+      +                <PopoverContent className="w-64 p-4" align="end">
+
+      +                  <div className="space-y-4">
+
+      +                    <div>
+
+      +                      <h4 className="text-sm font-semibold
+      mb-2">Channels</h4>
+
+      +                      <div className="space-y-2">
+
+      +                        {channels.map(channel => (
+
+      +                          <div key={channel.id} className="flex
+      items-center gap-2">
+
+      +                            <Checkbox 
+
+      +                              id={`channel-${channel.id}`} 
+
+      +                             
+      checked={activeFilters.channels.includes(channel.id)}
+
+      +                              onCheckedChange={() =>
+      handleChannelFilterChange(channel.id)}
+
+      +                            />
+
+      +                            <label htmlFor={`channel-${channel.id}`}
+      className="text-sm cursor-pointer">{channel.label}</label>
+
+      +                          </div>
+
+      +                        ))}
+
+      +                      </div>
+
+      +                    </div>
+
+      +                    <div>
+
+      +                      <h4 className="text-sm font-semibold
+      mb-2">Tags</h4>
+
+      +                      <div className="space-y-2">
+
+      +                        {availableTags.map(tag => (
+
+      +                          <div key={tag} className="flex items-center
+      gap-2">
+
+      +                            <Checkbox 
+
+      +                              id={`tag-${tag}`} 
+
+      +                              checked={activeFilters.tags.includes(tag)}
+
+      +                              onCheckedChange={() =>
+      handleTagFilterChange(tag)}
+
+      +                            />
+
+      +                            <label htmlFor={`tag-${tag}`}
+      className="text-sm cursor-pointer">{tag}</label>
+
+      +                          </div>
+
+      +                        ))}
+
+      +                      </div>
+
+      +                    </div>
+                         </div>
+      -                </div>
+
+      -                <div>
+
+      -                  <h4 className="text-sm font-semibold mb-2">Tags</h4>
+
+      -                  <div className="space-y-2">
+
+      -                    {availableTags.map(tag => (
+
+      -                      <div key={tag} className="flex items-center gap-2">
+
+      -                        <Checkbox 
+
+      -                          id={`tag-${tag}`} 
+
+      -                          checked={activeFilters.tags.includes(tag)}
+
+      -                          onCheckedChange={() =>
+      handleTagFilterChange(tag)}
+
+      -                        />
+
+      -                        <label htmlFor={`tag-${tag}`} className="text-sm
+      cursor-pointer">{tag}</label>
+
+      -                      </div>
+
+      -                    ))}
+
+      -                  </div>
+
+      -                </div>
+
+      -              </div>
+
+      -            </PopoverContent>
+
+      -          </Popover>
+
+      -        </div>
+
+      -        <AnimatedTabs tabs={tabs} activeTab={activeTab}
+      onTabChange={setActiveTab} />
+
+      +                </PopoverContent>
+
+      +              </Popover>
+
+      +            </div>
+
+      +            <AnimatedTabs tabs={tabs} activeTab={activeTab}
+      onTabChange={setActiveTab} />
+
+      +          </>
+
+      +        )}
+             </div>
+       
+             {/* Conversation List */}
+      @@ -118,29 +128,34 @@
+                   <Link
+                     to={`/messaging/${convo.id}`}
+                     key={convo.id}
+      +              title={convo.contact.name}
+                     className={cn(
+      -                "flex items-start gap-4 p-4 rounded-xl text-left
+      transition-all duration-200 hover:bg-accent/50",
+
+      +                "flex items-start gap-4 p-3 rounded-xl text-left
+      transition-all duration-200 hover:bg-accent/50",
+                       "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 outline-none",
+      -                conversationId === convo.id && "bg-accent border-l-4
+      border-primary pl-3"
+
+      +                conversationId === convo.id && "bg-accent",
+
+      +                isMessagingListCollapsed ? "justify-center h-14 w-14 p-0"
+      : "p-4",
+
+      +                conversationId === convo.id && !isMessagingListCollapsed
+      && "border-l-4 border-primary pl-3"
+                     )}
+                   >
+      -              <div className="relative">
+
+      +              <div className={cn("relative", isMessagingListCollapsed &&
+      'flex-shrink-0')}>
+                       <Avatar className="h-12 w-12">
+                         <AvatarImage src={convo.contact.avatar} alt={convo.contact.name} />
+                         <AvatarFallback>{convo.contact.name.charAt(0)}</AvatarFallback>
+                       </Avatar>
+      -                <div className="absolute bottom-0 right-0">
+
+      +                <div className={cn("absolute bottom-0 right-0",
+      isMessagingListCollapsed && '-bottom-1 -right-1')}>
+                           <ChannelIcon channel={convo.channel} className="bg-background rounded-full p-0.5" />
+                       </div>
+                     </div>
+      -              <div className="flex-1 overflow-hidden">
+
+      -                <div className="flex justify-between items-center">
+
+      -                  <p className="font-semibold
+      truncate">{convo.contact.name}</p>
+
+      -                    <p className="text-xs text-muted-foreground
+      whitespace-nowrap">{formatDistanceToNow(new
+      Date(convo.lastMessage.timestamp), { addSuffix: false })}</p>
+
+      -                </div>
+
+      -                <p className="text-sm text-muted-foreground
+      truncate">{convo.lastMessage.text}</p>
+
+      -              </div>
+
+      -              {convo.unreadCount > 0 && (
+
+      +              {!isMessagingListCollapsed && (
+
+      +                <>
+
+      +                  <div className="flex-1 overflow-hidden">
+
+      +                    <div className="flex justify-between items-center">
+
+      +                      <p className="font-semibold
+      truncate">{convo.contact.name}</p>
+
+      +                        <p className="text-xs text-muted-foreground
+      whitespace-nowrap">{formatDistanceToNow(new
+      Date(convo.lastMessage.timestamp), { addSuffix: false })}</p>
+
+      +                    </div>
+
+      +                    <p className="text-sm text-muted-foreground
+      truncate">{convo.lastMessage.text}</p>
+
+      +                  </div>
+
+      +                  {convo.unreadCount > 0 && (
+                       <div className="flex items-center justify-center self-center ml-auto">
+                           <Badge className="bg-primary h-5 w-5 p-0 flex items-center justify-center">{convo.unreadCount}</Badge>
+                       </div>
+      +              )}
+
+      +                </>
+                     )}
+                   </Link>
+                 ))}
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/Messaging/index.tsx
+    content: >+
+      --- src/pages/Messaging/index.tsx
+
+      +++ src/pages/Messaging/index.tsx
+
+      @@ -10,9 +10,10 @@
+       
+         const { messagingListWidth, isResizingMessagingList } = useAppShellStore(s => ({
+           messagingListWidth: s.messagingListWidth,
+      -    isResizingMessagingList: s.isResizingMessagingList
+
+      +    isResizingMessagingList: s.isResizingMessagingList,
+         }));
+      +  const isMessagingListCollapsed = useAppShellStore(s =>
+      s.isMessagingListCollapsed);
+         const { setIsResizingMessagingList } = useAppShellStore.getState();
+       
+         useResizableMessagingList(containerRef);
+      @@ -26,7 +27,7 @@
+               <div style={{ width: `${messagingListWidth}px` }} className="flex-shrink-0">
+                 <ConversationList />
+               </div>
+      -        <div onMouseDown={handleMouseDown} className="w-2 flex-shrink-0
+      cursor-col-resize group flex items-center justify-center">
+
+      +        <div onMouseDown={handleMouseDown} className={cn("w-2
+      flex-shrink-0 cursor-col-resize group flex items-center justify-center",
+      isMessagingListCollapsed && "hidden")}>
+                 <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200" />
+               </div>
+               <ContactProfile conversationId={conversationId} />
+
+    patchStrategy: standard-diff
+snapshot:
+  src/store/appShell.store.ts: >-
+    import { create } from 'zustand';
+
+    import { type ReactElement } from 'react';
+
+    import { SIDEBAR_STATES, BODY_STATES, type SidebarState, type BodyState }
+    from '@/lib/utils';
+
+
+    export type ActivePage = 'dashboard' | 'settings' | 'toaster' |
+    'notifications' | 'data-demo' | 'messaging';
+
+
+    // --- State and Action Types ---
+
+
+    export interface AppShellState {
+      sidebarState: SidebarState;
+      bodyState: BodyState;
+      sidePaneContent: 'details' | 'settings' | 'main' | 'toaster' | 'notifications' | 'dataDemo' | 'dataItem' | 'messaging';
+      sidebarWidth: number;
+      sidePaneWidth: number;
+      splitPaneWidth: number;
+      messagingListWidth: number;
+      previousBodyState: BodyState;
+      fullscreenTarget: 'main' | 'right' | null;
+      isResizing: boolean;
+      isResizingRightPane: boolean;
+      isResizingMessagingList: boolean;
+      isTopBarVisible: boolean;
+      autoExpandSidebar: boolean;
+      reducedMotion: boolean;
+      compactMode: boolean;
+      primaryColor: string;
+      isCommandPaletteOpen: boolean;
+      isDarkMode: boolean;
+      appName?: string;
+      appLogo?: ReactElement;
+      draggedPage: 'dashboard' | 'settings' | 'toaster' | 'notifications' | 'data-demo' | 'messaging' | null;
+      dragHoverTarget: 'left' | 'right' | null;
+      hoveredPane: 'left' | 'right' | null;
+    }
+
+
+    export interface AppShellActions {
+        // Initialization
+        init: (config: { appName?: string; appLogo?: ReactElement; defaultSplitPaneWidth?: number }) => void;
+        
+        // Direct state setters
+        setSidebarState: (payload: SidebarState) => void;
+        setBodyState: (payload: BodyState) => void;
+        setSidePaneContent: (payload: AppShellState['sidePaneContent']) => void;
+        setSidebarWidth: (payload: number) => void;
+        setSidePaneWidth: (payload: number) => void;
+        setSplitPaneWidth: (payload: number) => void;
+        setMessagingListWidth: (payload: number) => void;
+        setIsResizing: (payload: boolean) => void;
+        setFullscreenTarget: (payload: 'main' | 'right' | null) => void;
+        setIsResizingRightPane: (payload: boolean) => void;
+        setIsResizingMessagingList: (payload: boolean) => void;
+        setTopBarVisible: (payload: boolean) => void;
+        setAutoExpandSidebar: (payload: boolean) => void;
+        setReducedMotion: (payload: boolean) => void;
+        setCompactMode: (payload: boolean) => void;
+        setPrimaryColor: (payload: string) => void;
+        setDraggedPage: (payload: AppShellState['draggedPage']) => void;
+        setCommandPaletteOpen: (open: boolean) => void;
+        toggleDarkMode: () => void;
+        setDragHoverTarget: (payload: 'left' | 'right' | null) => void;
+        setHoveredPane: (payload: 'left' | 'right' | null) => void;
+        
+        // Composite actions
+        toggleSidebar: () => void;
+        hideSidebar: () => void;
+        showSidebar: () => void;
+        peekSidebar: () => void;
+        toggleFullscreen: (target?: 'main' | 'right' | null) => void;
+        resetToDefaults: () => void;
+    }
+
+
+    const defaultState: AppShellState = {
+      sidebarState: SIDEBAR_STATES.EXPANDED,
+      bodyState: BODY_STATES.NORMAL,
+      sidePaneContent: 'details',
+      sidebarWidth: 280,
+      sidePaneWidth: typeof window !== 'undefined' ? Math.max(300, Math.round(window.innerWidth * 0.6)) : 400,
+      splitPaneWidth: typeof window !== 'undefined' ? Math.max(300, Math.round(window.innerWidth * 0.35)) : 400,
+      messagingListWidth: 384,
+      previousBodyState: BODY_STATES.NORMAL,
+      fullscreenTarget: null,
+      isResizing: false,
+      isResizingRightPane: false,
+      isResizingMessagingList: false,
+      isTopBarVisible: true,
+      autoExpandSidebar: true,
+      reducedMotion: false,
+      compactMode: false,
+      primaryColor: '220 84% 60%',
+      isCommandPaletteOpen: false,
+      isDarkMode: false,
+      appName: 'Jeli App',
+      appLogo: undefined,
+      draggedPage: null,
+      dragHoverTarget: null,
+      hoveredPane: null,
+    };
+
+
+
+    export const useAppShellStore = create<AppShellState &
+    AppShellActions>((set, get) => ({
+      ...defaultState,
+
+      init: ({ appName, appLogo, defaultSplitPaneWidth }) => set(state => ({
+        ...state,
+        ...(appName && { appName }),
+        ...(appLogo && { appLogo }),
+        ...(defaultSplitPaneWidth && { splitPaneWidth: defaultSplitPaneWidth }),
+      })),
+      
+      setSidebarState: (payload) => set({ sidebarState: payload }),
+      setBodyState: (payload) => {
+        // If we're leaving fullscreen, reset the target and previous state
+        if (get().bodyState === BODY_STATES.FULLSCREEN && payload !== BODY_STATES.FULLSCREEN) {
+          set({ bodyState: payload, fullscreenTarget: null, previousBodyState: BODY_STATES.NORMAL });
+        } else {
+          set({ bodyState: payload });
+        }
+      },
+      setSidePaneContent: (payload) => set({ sidePaneContent: payload }),
+      setSidebarWidth: (payload) => set({ sidebarWidth: Math.max(200, Math.min(500, payload)) }),
+      setSidePaneWidth: (payload) => set({ sidePaneWidth: Math.max(300, Math.min(window.innerWidth * 0.8, payload)) }),
+      setSplitPaneWidth: (payload) => set({ splitPaneWidth: Math.max(300, Math.min(window.innerWidth * 0.8, payload)) }),
+      setMessagingListWidth: (payload) => set({ messagingListWidth: Math.max(320, Math.min(payload, window.innerWidth - 400)) }),
+      setIsResizing: (payload) => set({ isResizing: payload }),
+      setFullscreenTarget: (payload) => set({ fullscreenTarget: payload }),
+      setIsResizingRightPane: (payload) => set({ isResizingRightPane: payload }),
+      setIsResizingMessagingList: (payload) => set({ isResizingMessagingList: payload }),
+      setTopBarVisible: (payload) => set({ isTopBarVisible: payload }),
+      setAutoExpandSidebar: (payload) => set({ autoExpandSidebar: payload }),
+      setReducedMotion: (payload) => set({ reducedMotion: payload }),
+      setCompactMode: (payload) => set({ compactMode: payload }),
+      setPrimaryColor: (payload) => {
+        if (typeof document !== 'undefined') {
+            document.documentElement.style.setProperty('--primary-hsl', payload);
+        }
+        set({ primaryColor: payload });
+      },
+      setDraggedPage: (payload) => set({ draggedPage: payload }),
+      setCommandPaletteOpen: (open) => set({ isCommandPaletteOpen: open }),
+      toggleDarkMode: () => set((state) => ({ isDarkMode: !state.isDarkMode })),
+      setDragHoverTarget: (payload) => set({ dragHoverTarget: payload }),
+      setHoveredPane: (payload) => set({ hoveredPane: payload }),
+      
+      toggleSidebar: () => {
+        const current = get().sidebarState;
+        if (current === SIDEBAR_STATES.HIDDEN) set({ sidebarState: SIDEBAR_STATES.COLLAPSED });
+        else if (current === SIDEBAR_STATES.COLLAPSED) set({ sidebarState: SIDEBAR_STATES.EXPANDED });
+        else if (current === SIDEBAR_STATES.EXPANDED) set({ sidebarState: SIDEBAR_STATES.COLLAPSED });
+      },
+      hideSidebar: () => set({ sidebarState: SIDEBAR_STATES.HIDDEN }),
+      showSidebar: () => set({ sidebarState: SIDEBAR_STATES.EXPANDED }),
+      peekSidebar: () => set({ sidebarState: SIDEBAR_STATES.PEEK }),
+      
+      toggleFullscreen: (target = null) => {
+        const { bodyState, previousBodyState } = get();
+        if (bodyState === BODY_STATES.FULLSCREEN) {
+          set({ 
+            bodyState: previousBodyState || BODY_STATES.NORMAL,
+            fullscreenTarget: null,
+            previousBodyState: BODY_STATES.NORMAL,
+          });
+        } else {
+          set({ 
+            previousBodyState: bodyState, 
+            bodyState: BODY_STATES.FULLSCREEN, 
+            fullscreenTarget: target 
+          });
+        }
+      },
+      
+      resetToDefaults: () => {
+        // Preserve props passed to provider
+        const { appName, appLogo } = get();
+        const currentPrimaryColor = defaultState.primaryColor;
+        if (typeof document !== 'undefined') {
+          document.documentElement.style.setProperty('--primary-hsl', currentPrimaryColor);
+        }
+        set({ ...defaultState, primaryColor: currentPrimaryColor, appName, appLogo });
+      },
+    }));
+
+
+    // Add a selector for the derived rightPaneWidth
+
+    export const useRightPaneWidth = () => useAppShellStore(state => 
+        state.bodyState === BODY_STATES.SPLIT_VIEW ? state.splitPaneWidth : state.sidePaneWidth
+    );
+  src/pages/Messaging/components/ConversationList.tsx: >-
+    import { useState, useMemo, useCallback } from 'react';
+
+    import { Search, SlidersHorizontal } from 'lucide-react';
+
+    import { Link, useParams } from 'react-router-dom';
+
+    import { formatDistanceToNow } from 'date-fns';
+
+    import { useMessagingStore } from '../store/messaging.store';
+
+    import { Button } from '@/components/ui/button';
+
+    import { Input } from '@/components/ui/input';
+
+    import { Avatar, AvatarFallback, AvatarImage } from
+    '@/components/ui/avatar';
+
+    import { Badge } from '@/components/ui/badge';
+
+    import { Popover, PopoverContent, PopoverTrigger } from
+    '@/components/ui/popover';
+
+    import { Checkbox } from '@/components/ui/checkbox';
+
+    import { cn } from '@/lib/utils';
+
+    import { AnimatedTabs } from '@/components/ui/animated-tabs';
+
+    import { ChannelIcon } from './ChannelIcons';
+
+    import type { Channel } from '../types';
+
+
+    const channels: { id: Channel, label: string }[] = [
+      { id: 'whatsapp', label: 'WhatsApp' },
+      { id: 'instagram', label: 'Instagram' },
+      { id: 'facebook', label: 'Facebook' },
+    ];
+
+
+    export const ConversationList = () => {
+      const { conversationId } = useParams<{ conversationId: string }>();
+      const { 
+        getConversationsWithContact,
+        searchTerm,
+        setSearchTerm,
+        activeFilters,
+        setFilters,
+        getAvailableTags,
+       } = useMessagingStore();
+      const conversations = getConversationsWithContact();
+      const [activeTab, setActiveTab] = useState('all');
+      const availableTags = useMemo(() => getAvailableTags(), [getAvailableTags]);
+
+      const tabs = useMemo(() => [{ id: 'all', label: 'All' }, { id: 'unread', label: 'Unread' }], []);
+
+      const handleChannelFilterChange = useCallback((channelId: Channel) => {
+        const newChannels = activeFilters.channels.includes(channelId)
+          ? activeFilters.channels.filter(c => c !== channelId)
+          : [...activeFilters.channels, channelId];
+        setFilters({ channels: newChannels });
+      }, [activeFilters.channels, setFilters]);
+
+      const handleTagFilterChange = useCallback((tag: string) => {
+        const newTags = activeFilters.tags.includes(tag)
+          ? activeFilters.tags.filter(t => t !== tag)
+          : [...activeFilters.tags, tag];
+        setFilters({ tags: newTags });
+      }, [activeFilters.tags, setFilters]);
+
+      const filteredConversations = useMemo(() => {
+        if (activeTab === 'unread') {
+          return conversations.filter(convo => convo.unreadCount > 0); // This now filters on the already filtered list from store
+        }
+        return conversations;
+      }, [conversations, activeTab]);
+
+      return (
+        <div className="h-full flex flex-col border-r bg-background/80">
+          {/* Header */}
+          <div className="p-4 border-b flex-shrink-0">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold tracking-tight">Conversations</h2>
+            </div>
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input placeholder="Search by name..." className="pl-9" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+              </div>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="icon" className="h-10 w-10 flex-shrink-0">
+                    <SlidersHorizontal className="w-4 h-4" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-64 p-4" align="end">
+                  <div className="space-y-4">
+                    <div>
+                      <h4 className="text-sm font-semibold mb-2">Channels</h4>
+                      <div className="space-y-2">
+                        {channels.map(channel => (
+                          <div key={channel.id} className="flex items-center gap-2">
+                            <Checkbox 
+                              id={`channel-${channel.id}`} 
+                              checked={activeFilters.channels.includes(channel.id)}
+                              onCheckedChange={() => handleChannelFilterChange(channel.id)}
+                            />
+                            <label htmlFor={`channel-${channel.id}`} className="text-sm cursor-pointer">{channel.label}</label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-semibold mb-2">Tags</h4>
+                      <div className="space-y-2">
+                        {availableTags.map(tag => (
+                          <div key={tag} className="flex items-center gap-2">
+                            <Checkbox 
+                              id={`tag-${tag}`} 
+                              checked={activeFilters.tags.includes(tag)}
+                              onCheckedChange={() => handleTagFilterChange(tag)}
+                            />
+                            <label htmlFor={`tag-${tag}`} className="text-sm cursor-pointer">{tag}</label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </div>
+            <AnimatedTabs tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} />
+          </div>
+
+          {/* Conversation List */}
+          <div className="flex-1 overflow-y-auto">
+            <nav className="p-3 space-y-1">
+              {filteredConversations.map(convo => (
+                <Link
+                  to={`/messaging/${convo.id}`}
+                  key={convo.id}
+                  className={cn(
+                    "flex items-start gap-4 p-4 rounded-xl text-left transition-all duration-200 hover:bg-accent/50",
+                    "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 outline-none",
+                    conversationId === convo.id && "bg-accent border-l-4 border-primary pl-3"
+                  )}
+                >
+                  <div className="relative">
+                    <Avatar className="h-12 w-12">
+                      <AvatarImage src={convo.contact.avatar} alt={convo.contact.name} />
+                      <AvatarFallback>{convo.contact.name.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                    <div className="absolute bottom-0 right-0">
+                        <ChannelIcon channel={convo.channel} className="bg-background rounded-full p-0.5" />
+                    </div>
+                  </div>
+                  <div className="flex-1 overflow-hidden">
+                    <div className="flex justify-between items-center">
+                      <p className="font-semibold truncate">{convo.contact.name}</p>
+                        <p className="text-xs text-muted-foreground whitespace-nowrap">{formatDistanceToNow(new Date(convo.lastMessage.timestamp), { addSuffix: false })}</p>
+                    </div>
+                    <p className="text-sm text-muted-foreground truncate">{convo.lastMessage.text}</p>
+                  </div>
+                  {convo.unreadCount > 0 && (
+                    <div className="flex items-center justify-center self-center ml-auto">
+                        <Badge className="bg-primary h-5 w-5 p-0 flex items-center justify-center">{convo.unreadCount}</Badge>
+                    </div>
+                  )}
+                </Link>
+              ))}
+            </nav>
+          </div>
+        </div>
+      );
+    };
+  src/pages/Messaging/index.tsx: |-
+    import React, { useRef } from "react";
+    import { useParams } from "react-router-dom";
+    import { ConversationList } from "./components/ConversationList";
+    import { ContactProfile } from "./components/ContactProfile";
+    import { cn } from "@/lib/utils";
+    import { useAppShellStore } from "@/store/appShell.store";
+    import { useResizableMessagingList } from "@/hooks/useResizablePanes.hook";
+
+    export default function MessagingPage() {
+      const { conversationId } = useParams<{ conversationId: string }>();
+      const containerRef = useRef<HTMLDivElement>(null);
+
+      const { messagingListWidth, isResizingMessagingList } = useAppShellStore(s => ({
+        messagingListWidth: s.messagingListWidth,
+        isResizingMessagingList: s.isResizingMessagingList
+      }));
+      const { setIsResizingMessagingList } = useAppShellStore.getState();
+
+      useResizableMessagingList(containerRef);
+
+      const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        setIsResizingMessagingList(true);
+      };
+
+      return (
+        <div ref={containerRef} className={cn("h-full w-full flex bg-background", isResizingMessagingList && "cursor-col-resize select-none")}>
+            <div style={{ width: `${messagingListWidth}px` }} className="flex-shrink-0">
+              <ConversationList />
+            </div>
+            <div onMouseDown={handleMouseDown} className="w-2 flex-shrink-0 cursor-col-resize group flex items-center justify-center">
+              <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200" />
+            </div>
+            <ContactProfile conversationId={conversationId} />
+        </div>
+      );
+    }
+approved: false
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: undone
+id: 298

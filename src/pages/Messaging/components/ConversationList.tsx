@@ -1,8 +1,9 @@
 import { useState, useMemo, useCallback } from 'react';
-import { Search, SlidersHorizontal } from 'lucide-react';
+import { Search, SlidersHorizontal, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 import { useMessagingStore } from '../store/messaging.store';
+import { useAppShellStore } from '@/store/appShell.store';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -22,6 +23,8 @@ const channels: { id: Channel, label: string }[] = [
 
 export const ConversationList = () => {
   const { conversationId } = useParams<{ conversationId: string }>();
+  const { isMessagingListCollapsed } = useAppShellStore();
+  const { toggleMessagingListCollapsed } = useAppShellStore.getState();
   const { 
     getConversationsWithContact,
     searchTerm,
@@ -56,6 +59,45 @@ export const ConversationList = () => {
     }
     return conversations;
   }, [conversations, activeTab]);
+  
+  if (isMessagingListCollapsed) {
+    return (
+      <div className="h-full flex flex-col items-center border-r bg-background/80 py-4 gap-4">
+        <Button variant="ghost" size="icon" onClick={toggleMessagingListCollapsed}>
+          <PanelLeftOpen className="w-5 h-5" />
+        </Button>
+        <div className="flex-1 overflow-y-auto no-scrollbar pt-2">
+            <nav className="flex flex-col gap-3 items-center">
+              {filteredConversations.map(convo => (
+                <Link
+                  to={`/messaging/${convo.id}`}
+                  key={convo.id}
+                  title={convo.contact.name}
+                  className={cn(
+                    "relative flex items-start p-1 rounded-full text-left transition-all duration-200",
+                    "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 outline-none",
+                    conversationId === convo.id && "ring-2 ring-offset-2 ring-offset-background ring-primary"
+                  )}
+                >
+                  <Avatar className="h-12 w-12">
+                    <AvatarImage src={convo.contact.avatar} alt={convo.contact.name} />
+                    <AvatarFallback>{convo.contact.name.charAt(0)}</AvatarFallback>
+                  </Avatar>
+                  <div className="absolute -bottom-1 -right-1">
+                      <ChannelIcon channel={convo.channel} className="bg-background rounded-full p-0.5" />
+                  </div>
+                  {convo.unreadCount > 0 && (
+                      <Badge className="absolute -top-1 -right-1 bg-primary h-5 w-5 p-0 flex items-center justify-center border-2 border-background">
+                        {convo.unreadCount}
+                      </Badge>
+                  )}
+                </Link>
+              ))}
+            </nav>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-full flex flex-col border-r bg-background/80">
@@ -63,6 +105,9 @@ export const ConversationList = () => {
       <div className="p-4 border-b flex-shrink-0">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-bold tracking-tight">Conversations</h2>
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={toggleMessagingListCollapsed}>
+            <PanelLeftClose className="w-5 h-5" />
+          </Button>
         </div>
         <div className="flex gap-2">
           <div className="relative flex-1">

@@ -2,20 +2,9 @@
 ```
 src/
   components/
-    effects/
-      AnimatedInput.tsx
-      BottomGradient.tsx
-      BoxReveal.tsx
-      OrbitingCircles.tsx
-      Ripple.tsx
     layout/
       AppShell.tsx
       RightPane.tsx
-    ui/
-      animated-tabs.tsx
-      card.tsx
-      dropdown-menu.tsx
-      popover.tsx
   hooks/
     useAppViewManager.hook.ts
     useResizablePanes.hook.ts
@@ -25,8 +14,6 @@ src/
         ContactProfile.tsx
         ConversationList.tsx
         MessageThread.tsx
-      data/
-        mockData.ts
       store/
         messaging.store.ts
       index.tsx
@@ -49,509 +36,142 @@ vite.config.ts
 
 # Files
 
-## File: src/components/effects/AnimatedInput.tsx
+## File: src/pages/Messaging/components/MessageThread.tsx
 ```typescript
-import React, { memo, forwardRef, useRef, useEffect } from 'react';
+import React from 'react';
+import { Paperclip, SendHorizontal, Smile } from 'lucide-react';
+
+import { useMessagingStore } from '../store/messaging.store';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { ChannelIcon } from './ChannelIcons';
 import { cn } from '@/lib/utils';
 
-export const AnimatedInput = memo(
-	forwardRef(function Input(
-		{ className, type, ...props }: React.InputHTMLAttributes<HTMLInputElement>,
-		ref: React.ForwardedRef<HTMLInputElement>,
-	) {
-		const radius = 100;
-		const wrapperRef = useRef<HTMLDivElement>(null);
-
-		useEffect(() => {
-			const wrapper = wrapperRef.current;
-			if (!wrapper) return;
-
-			let animationFrameId: number | null = null;
-
-			const handleMouseMove = (e: MouseEvent) => {
-				if (animationFrameId) {
-					cancelAnimationFrame(animationFrameId);
-				}
-
-				animationFrameId = requestAnimationFrame(() => {
-					if (!wrapper) return;
-					const { left, top } = wrapper.getBoundingClientRect();
-					const x = e.clientX - left;
-					const y = e.clientY - top;
-					wrapper.style.setProperty('--mouse-x', `${x}px`);
-					wrapper.style.setProperty('--mouse-y', `${y}px`);
-				});
-			};
-
-			const handleMouseEnter = () => {
-				if (!wrapper) return;
-				wrapper.style.setProperty('--radius', `${radius}px`);
-			};
-
-			const handleMouseLeave = () => {
-				if (!wrapper) return;
-				wrapper.style.setProperty('--radius', '0px');
-				if (animationFrameId) {
-					cancelAnimationFrame(animationFrameId);
-					animationFrameId = null;
-				}
-			};
-
-			wrapper.addEventListener('mousemove', handleMouseMove);
-			wrapper.addEventListener('mouseenter', handleMouseEnter);
-			wrapper.addEventListener('mouseleave', handleMouseLeave);
-
-			return () => {
-				wrapper.removeEventListener('mousemove', handleMouseMove);
-				wrapper.removeEventListener('mouseenter', handleMouseEnter);
-				wrapper.removeEventListener('mouseleave', handleMouseLeave);
-				if (animationFrameId) {
-					cancelAnimationFrame(animationFrameId);
-				}
-			};
-		}, [radius]);
-
-		return (
-			<div
-				ref={wrapperRef}
-				style={
-					{
-						'--radius': '0px',
-						'--mouse-x': '0px',
-						'--mouse-y': '0px',
-						background: `radial-gradient(var(--radius) circle at var(--mouse-x) var(--mouse-y), #3b82f6, transparent 80%)`,
-					} as React.CSSProperties
-				}
-				className="group/input rounded-lg p-[2px] transition duration-300"
-			>
-				<input
-					type={type}
-					className={cn(
-						`shadow-input dark:placeholder-text-neutral-600 flex h-10 w-full rounded-md border-none bg-gray-50 px-3 py-2 text-sm text-black transition duration-400 group-hover/input:shadow-none file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-neutral-400 focus-visible:ring-[2px] focus-visible:ring-neutral-400 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 dark:bg-zinc-800 dark:text-white dark:shadow-[0px_0px_1px_1px_#404040] dark:focus-visible:ring-neutral-600`,
-						className,
-					)}
-					ref={ref}
-					{...props}
-				/>
-			</div>
-		);
-	}),
-);
-```
-
-## File: src/components/effects/BottomGradient.tsx
-```typescript
-export const BottomGradient = () => (
-	<>
-		<span className="group-hover/btn:opacity-100 block transition duration-500 opacity-0 absolute h-px w-full -bottom-px inset-x-0 bg-gradient-to-r from-transparent via-cyan-500 to-transparent" />
-		<span className="group-hover/btn:opacity-100 blur-sm block transition duration-500 opacity-0 absolute h-px w-1/2 mx-auto -bottom-px inset-x-10 bg-gradient-to-r from-transparent via-indigo-500 to-transparent" />
-	</>
-);
-```
-
-## File: src/components/effects/BoxReveal.tsx
-```typescript
-import { ReactNode, useEffect, useRef, memo } from 'react';
-import { gsap } from 'gsap';
-import { cn } from '@/lib/utils';
-
-type BoxRevealProps = {
-	children: ReactNode;
-	width?: string;
-	boxColor?: string;
-	duration?: number;
-	className?: string;
-};
-
-export const BoxReveal = memo(function BoxReveal({
-	children,
-	width = 'fit-content',
-	boxColor,
-	duration,
-	className,
-}: BoxRevealProps) {
-	const sectionRef = useRef<HTMLDivElement>(null);
-	const boxRef = useRef<HTMLDivElement>(null);
-	const childRef = useRef<HTMLDivElement>(null);
-
-	useEffect(() => {
-		const section = sectionRef.current;
-		if (!section) return;
-
-		const observer = new IntersectionObserver(
-			(entries) => {
-				entries.forEach((entry) => {
-					if (entry.isIntersecting) {
-						gsap.timeline()
-							.set(childRef.current, { opacity: 0, y: 50 })
-							.set(boxRef.current, { transformOrigin: 'right' })
-							.to(boxRef.current, {
-								scaleX: 0,
-								duration: duration ?? 0.5,
-								ease: 'power3.inOut',
-							})
-							.to(
-								childRef.current,
-								{ y: 0, opacity: 1, duration: duration ?? 0.5, ease: 'power3.out' },
-								'-=0.3',
-							);
-						observer.unobserve(section);
-					}
-				});
-			},
-			{ threshold: 0.1 },
-		);
-
-		observer.observe(section);
-
-		return () => {
-			if (section) {
-				observer.unobserve(section);
-			}
-		};
-	}, [duration]);
-
-	return (
-		<div ref={sectionRef} style={{ width }} className={cn('relative overflow-hidden', className)}>
-			<div ref={childRef}>{children}</div>
-			<div
-				ref={boxRef}
-				style={{
-					background: boxColor ?? 'hsl(var(--skeleton))',
-				}}
-				className="absolute top-1 bottom-1 left-0 right-0 z-20 rounded-sm"
-			/>
-		</div>
-	);
-});
-```
-
-## File: src/components/effects/OrbitingCircles.tsx
-```typescript
-import React, { ReactNode, memo } from 'react';
-import { cn } from '@/lib/utils';
-
-export const OrbitingCircles = memo(function OrbitingCircles({
-	className,
-	children,
-	reverse = false,
-	duration = 20,
-	delay = 10,
-	radius = 50,
-	path = true,
-}: {
-	className?: string;
-	children?: React.ReactNode;
-	reverse?: boolean;
-	duration?: number;
-	delay?: number;
-	radius?: number;
-	path?: boolean;
-}) {
-	return (
-		<>
-			{path && (
-				<svg
-					xmlns="http://www.w3.org/2000/svg"
-					version="1.1"
-					className="pointer-events-none absolute inset-0 size-full"
-				>
-					<circle
-						className="stroke-black/10 stroke-1 dark:stroke-white/10"
-						cx="50%"
-						cy="50%"
-						r={radius}
-						fill="none"
-					/>
-				</svg>
-			)}
-			<div
-				style={
-					{
-						'--duration': duration,
-						'--radius': radius,
-						'--delay': -delay,
-					} as React.CSSProperties
-				}
-				className={cn(
-					'absolute flex size-full transform-gpu animate-orbit items-center justify-center rounded-full border bg-black/10 [animation-delay:calc(var(--delay)*1s)] dark:bg-white/10',
-					{ '[animation-direction:reverse]': reverse },
-					className,
-				)}
-			>
-				{children}
-			</div>
-		</>
-	);
-});
-
-
-interface OrbitIcon {
-	component: () => ReactNode;
-	className: string;
-	duration?: number;
-	delay?: number;
-	radius?: number;
-	path?: boolean;
-	reverse?: boolean;
+interface MessageThreadProps {
+  conversationId?: string;
 }
 
-const iconsArray: OrbitIcon[] = [
-	{ component: () => <img width={30} height={30} src='https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/html5/html5-original.svg' alt='HTML5' />, className: 'size-[30px] border-none bg-transparent', duration: 20, delay: 20, radius: 100, path: false, reverse: false },
-	{ component: () => <img width={30} height={30} src='https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/css3/css3-original.svg' alt='CSS3' />, className: 'size-[30px] border-none bg-transparent', duration: 20, delay: 10, radius: 100, path: false, reverse: false },
-	{ component: () => <img width={50} height={50} src='https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/typescript/typescript-original.svg' alt='TypeScript' />, className: 'size-[50px] border-none bg-transparent', radius: 210, duration: 20, path: false, reverse: false },
-	{ component: () => <img width={50} height={50} src='https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/javascript/javascript-original.svg' alt='JavaScript' />, className: 'size-[50px] border-none bg-transparent', radius: 210, duration: 20, delay: 20, path: false, reverse: false },
-	{ component: () => <img width={30} height={30} src='https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/tailwindcss/tailwindcss-original.svg' alt='TailwindCSS' />, className: 'size-[30px] border-none bg-transparent', duration: 20, delay: 20, radius: 150, path: false, reverse: true },
-	{ component: () => <img width={30} height={30} src='https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/nextjs/nextjs-original.svg' alt='Nextjs' />, className: 'size-[30px] border-none bg-transparent', duration: 20, delay: 10, radius: 150, path: false, reverse: true },
-	{ component: () => <img width={50} height={50} src='https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/react/react-original.svg' alt='React' />, className: 'size-[50px] border-none bg-transparent', radius: 270, duration: 20, path: false, reverse: true },
-	{ component: () => <img width={50} height={50} src='https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/figma/figma-original.svg' alt='Figma' />, className: 'size-[50px] border-none bg-transparent', radius: 270, duration: 20, delay: 60, path: false, reverse: true },
-	{ component: () => <img width={50} height={50} src='https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/git/git-original.svg' alt='Git' />, className: 'size-[50px] border-none bg-transparent', radius: 320, duration: 20, delay: 20, path: false, reverse: false },
-];
-
-export const TechOrbitDisplay = memo(function TechOrbitDisplay({ text = 'Jeli App Shell' }: { text?: string }) {
-	return (
-		<div className="relative flex size-full flex-col items-center justify-center overflow-hidden rounded-lg">
-			<span className="pointer-events-none whitespace-pre-wrap bg-gradient-to-b from-black to-gray-300/80 bg-clip-text text-center text-7xl font-semibold leading-none text-transparent dark:from-white dark:to-slate-900/10">
-				{text}
-			</span>
-			{iconsArray.map((icon, index) => (
-				<OrbitingCircles key={index} {...icon}>
-					{icon.component()}
-				</OrbitingCircles>
-			))}
-		</div>
-	);
-});
-```
-
-## File: src/components/effects/Ripple.tsx
-```typescript
-import React, { memo } from 'react';
-
-interface RippleProps {
-	mainCircleSize?: number;
-	mainCircleOpacity?: number;
-	numCircles?: number;
-}
-
-export const Ripple = memo(function Ripple({
-	mainCircleSize = 210,
-	mainCircleOpacity = 0.24,
-	numCircles = 11,
-}: RippleProps) {
-	return (
-		<div className="absolute inset-0 flex items-center justify-center [mask-image:linear-gradient(to_bottom,white,transparent)]">
-			{Array.from({ length: numCircles }, (_, i) => {
-				const size = mainCircleSize + i * 70;
-				const opacity = mainCircleOpacity - i * 0.03;
-				const animationDelay = `${i * 0.06}s`;
-				const borderStyle = i === numCircles - 1 ? 'dashed' : 'solid';
-				const borderOpacity = 5 + i * 5;
-
-				return (
-					<div
-						key={i}
-						className="absolute animate-ripple rounded-full border"
-						style={
-							{
-								width: `${size}px`,
-								height: `${size}px`,
-								opacity: opacity,
-								animationDelay: animationDelay,
-								borderStyle: borderStyle,
-								borderWidth: '1px',
-								borderColor: `hsl(var(--foreground) / ${borderOpacity / 100})`,
-								top: '50%',
-								left: '50%',
-								transform: 'translate(-50%, -50%)',
-							} as React.CSSProperties
-						}
-					/>
-				);
-			})}
-		</div>
-	);
-});
-```
-
-## File: src/components/ui/animated-tabs.tsx
-```typescript
-"use client"
-
-import * as React from "react"
-import { useState, useRef, useEffect, useLayoutEffect } from "react"
-import { cn } from "@/lib/utils"
-
-interface Tab {
-  id: string
-  label: React.ReactNode
-}
-
-interface AnimatedTabsProps extends React.HTMLAttributes<HTMLDivElement> {
-  tabs: Tab[]
-  activeTab: string
-  onTabChange: (tabId: string) => void
-}
-
-const AnimatedTabs = React.forwardRef<HTMLDivElement, AnimatedTabsProps>(
-  ({ className, tabs, activeTab, onTabChange, ...props }, ref) => {
-    const [activeIndex, setActiveIndex] = useState(0)
-    const [activeStyle, setActiveStyle] = useState({ left: "0px", width: "0px" })
-    const tabRefs = useRef<(HTMLButtonElement | null)[]>([])
-
-    // Update active index when controlled prop changes
-    useEffect(() => {
-      const newActiveIndex = tabs.findIndex(tab => tab.id === activeTab)
-      if (newActiveIndex !== -1 && newActiveIndex !== activeIndex) {
-        setActiveIndex(newActiveIndex)
-      }
-    }, [activeTab, tabs, activeIndex])
-    
-    // Update active indicator position
-    useEffect(() => {
-      const activeElement = tabRefs.current[activeIndex]
-      if (activeElement) {
-        const { offsetLeft, offsetWidth } = activeElement
-        setActiveStyle({
-          left: `${offsetLeft}px`,
-          width: `${offsetWidth}px`,
-        })
-      }
-    }, [activeIndex, tabs])
-
-    // Set initial position of active indicator
-    useLayoutEffect(() => {
-        const initialActiveIndex = activeTab ? tabs.findIndex(tab => tab.id === activeTab) : 0
-        const indexToUse = initialActiveIndex !== -1 ? initialActiveIndex : 0
-        
-        const firstElement = tabRefs.current[indexToUse]
-        if (firstElement) {
-          const { offsetLeft, offsetWidth } = firstElement
-          setActiveStyle({
-            left: `${offsetLeft}px`,
-            width: `${offsetWidth}px`,
-          })
-        }
-    }, [tabs, activeTab])
-
+export const MessageThread: React.FC<MessageThreadProps> = ({ conversationId }) => {
+  const conversation = useMessagingStore(state =>
+    conversationId ? state.getConversationById(conversationId) : undefined
+  );
+  
+  if (!conversationId || !conversation) {
     return (
-      <div 
-        ref={ref} 
-        className={cn("relative flex w-full items-center", className)} 
-        {...props}
-      >
-        {/* Active Indicator */}
-        <div
-          className="absolute -bottom-px h-0.5 bg-primary transition-all duration-300 ease-out"
-          style={activeStyle}
-        />
+        <div className="h-full flex flex-col items-center justify-center p-6 bg-background">
+            <p className="text-muted-foreground">Select a conversation to see the messages.</p>
+        </div>
+    );
+  }
 
-        {/* Tabs */}
-        {tabs.map((tab, index) => (
-          <button
-            key={tab.id}
-            ref={(el) => (tabRefs.current[index] = el)}
-            className={cn(
-              "group relative cursor-pointer px-4 py-5 text-center transition-colors duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-              index === activeIndex 
-                ? "text-primary" 
-                : "text-muted-foreground hover:text-foreground"
+  const { contact, messages } = conversation;
+
+  return (
+    <div className="h-full flex flex-col bg-background">
+      {/* Header */}
+      <div className="flex items-center gap-3 p-4 border-b h-20 flex-shrink-0">
+        <Avatar className="h-10 w-10">
+          <AvatarImage src={contact.avatar} alt={contact.name} />
+          <AvatarFallback>{contact.name.charAt(0)}</AvatarFallback>
+        </Avatar>
+        <div className="flex-1">
+          <p className="font-semibold">{contact.name}</p>
+          <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+            <span className={cn("w-2 h-2 rounded-full", contact.online ? 'bg-green-500' : 'bg-gray-400')} />
+            {contact.online ? 'Online' : 'Offline'}
+          </p>
+        </div>
+        <ChannelIcon channel={conversation.channel} className="w-5 h-5" />
+      </div>
+
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        {messages.map((message) => (
+          <div key={message.id} className={cn(
+            "flex items-end gap-3",
+            message.sender === 'user' ? 'justify-end' : 'justify-start'
+          )}>
+            {message.sender === 'contact' && (
+              <Avatar className="h-8 w-8">
+                <AvatarImage src={contact.avatar} />
+                <AvatarFallback>{contact.name.charAt(0)}</AvatarFallback>
+              </Avatar>
             )}
-            onClick={() => onTabChange(tab.id)}
-          >
-            <span className="flex items-center gap-2 text-lg font-semibold whitespace-nowrap">{tab.label}</span>
-          </button>
+            <div className={cn(
+              "max-w-xs md:max-w-md lg:max-w-lg p-3 rounded-2xl",
+              message.sender === 'user' 
+                ? 'bg-primary text-primary-foreground rounded-br-none' 
+                : 'bg-card border rounded-bl-none'
+            )}>
+              <p className="text-sm">{message.text}</p>
+            </div>
+          </div>
         ))}
       </div>
-    )
-  }
-)
-AnimatedTabs.displayName = "AnimatedTabs"
 
-export { AnimatedTabs }
+      {/* Input Form */}
+      <div className="p-4 border-t flex-shrink-0 bg-card/30">
+        <div className="relative">
+          <Input placeholder="Type a message..." className="pr-32 h-12 rounded-full bg-background" />
+          <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+            <Button variant="ghost" size="icon" className="rounded-full">
+                <Smile className="w-5 h-5" />
+            </Button>
+            <Button variant="ghost" size="icon" className="rounded-full">
+                <Paperclip className="w-5 h-5" />
+            </Button>
+            <Button size="icon" className="rounded-full">
+                <SendHorizontal className="w-5 h-5" />
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 ```
 
-## File: src/components/ui/card.tsx
+## File: src/providers/AppShellProvider.tsx
 ```typescript
-import * as React from "react"
+import { useEffect, type ReactNode, type ReactElement } from 'react';
+import { useAppShellStore } from '@/store/appShell.store';
 
-import { cn } from "@/lib/utils"
+interface AppShellProviderProps {
+  children: ReactNode;
+  appName?: string;
+  appLogo?: ReactElement;
+  defaultSplitPaneWidth?: number;
+}
 
-const Card = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn(
-      "rounded-2xl border bg-card text-card-foreground",
-      className
-    )}
-    {...props}
-  />
-))
-Card.displayName = "Card"
+export function AppShellProvider({ children, appName, appLogo, defaultSplitPaneWidth }: AppShellProviderProps) {
+  const init = useAppShellStore(state => state.init);
+  const setPrimaryColor = useAppShellStore(state => state.setPrimaryColor);
+  const primaryColor = useAppShellStore(state => state.primaryColor);
 
-const CardHeader = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn("flex flex-col space-y-1.5 p-6", className)}
-    {...props}
-  />
-))
-CardHeader.displayName = "CardHeader"
+  useEffect(() => {
+    init({ appName, appLogo, defaultSplitPaneWidth });
+  }, [appName, appLogo, defaultSplitPaneWidth, init]);
 
-const CardTitle = React.forwardRef<
-  HTMLParagraphElement,
-  React.HTMLAttributes<HTMLHeadingElement>
->(({ className, ...props }, ref) => (
-  <h3
-    ref={ref}
-    className={cn(
-      "text-lg font-semibold leading-none tracking-tight",
-      className
-    )}
-    {...props}
-  />
-))
-CardTitle.displayName = "CardTitle"
+  // Side effect for primary color
+  useEffect(() => {
+    // This effect is here because the store itself can't run side-effects on init
+    // before React has mounted. So we trigger it from the provider.
+    setPrimaryColor(primaryColor);
+  }, [primaryColor, setPrimaryColor]);
 
-const CardDescription = React.forwardRef<
-  HTMLParagraphElement,
-  React.HTMLAttributes<HTMLParagraphElement>
->(({ className, ...props }, ref) => (
-  <p
-    ref={ref}
-    className={cn("text-sm text-muted-foreground", className)}
-    {...props}
-  />
-))
-CardDescription.displayName = "CardDescription"
+  return <>{children}</>;
+}
+```
 
-const CardContent = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div ref={ref} className={cn("p-6 pt-0", className)} {...props} />
-))
-CardContent.displayName = "CardContent"
-
-const CardFooter = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn("flex items-center p-6 pt-0", className)}
-    {...props}
-  />
-))
-CardFooter.displayName = "CardFooter"
-
-export { Card, CardHeader, CardFooter, CardTitle, CardDescription, CardContent }
+## File: postcss.config.js
+```javascript
+export default {
+  plugins: {
+    tailwindcss: {},
+    autoprefixer: {},
+  },
+}
 ```
 
 ## File: src/pages/Messaging/components/ContactProfile.tsx
@@ -900,285 +520,6 @@ export const ConversationList = () => {
 };
 ```
 
-## File: src/pages/Messaging/components/MessageThread.tsx
-```typescript
-import React from 'react';
-import { Paperclip, SendHorizontal, Smile } from 'lucide-react';
-
-import { useMessagingStore } from '../store/messaging.store';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { ChannelIcon } from './ChannelIcons';
-import { cn } from '@/lib/utils';
-
-interface MessageThreadProps {
-  conversationId?: string;
-}
-
-export const MessageThread: React.FC<MessageThreadProps> = ({ conversationId }) => {
-  const conversation = useMessagingStore(state =>
-    conversationId ? state.getConversationById(conversationId) : undefined
-  );
-  
-  if (!conversationId || !conversation) {
-    return (
-        <div className="h-full flex flex-col items-center justify-center p-6 bg-background">
-            <p className="text-muted-foreground">Select a conversation to see the messages.</p>
-        </div>
-    );
-  }
-
-  const { contact, messages } = conversation;
-
-  return (
-    <div className="h-full flex flex-col bg-background">
-      {/* Header */}
-      <div className="flex items-center gap-3 p-4 border-b h-20 flex-shrink-0">
-        <Avatar className="h-10 w-10">
-          <AvatarImage src={contact.avatar} alt={contact.name} />
-          <AvatarFallback>{contact.name.charAt(0)}</AvatarFallback>
-        </Avatar>
-        <div className="flex-1">
-          <p className="font-semibold">{contact.name}</p>
-          <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-            <span className={cn("w-2 h-2 rounded-full", contact.online ? 'bg-green-500' : 'bg-gray-400')} />
-            {contact.online ? 'Online' : 'Offline'}
-          </p>
-        </div>
-        <ChannelIcon channel={conversation.channel} className="w-5 h-5" />
-      </div>
-
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-6">
-        {messages.map((message) => (
-          <div key={message.id} className={cn(
-            "flex items-end gap-3",
-            message.sender === 'user' ? 'justify-end' : 'justify-start'
-          )}>
-            {message.sender === 'contact' && (
-              <Avatar className="h-8 w-8">
-                <AvatarImage src={contact.avatar} />
-                <AvatarFallback>{contact.name.charAt(0)}</AvatarFallback>
-              </Avatar>
-            )}
-            <div className={cn(
-              "max-w-xs md:max-w-md lg:max-w-lg p-3 rounded-2xl",
-              message.sender === 'user' 
-                ? 'bg-primary text-primary-foreground rounded-br-none' 
-                : 'bg-card border rounded-bl-none'
-            )}>
-              <p className="text-sm">{message.text}</p>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Input Form */}
-      <div className="p-4 border-t flex-shrink-0 bg-card/30">
-        <div className="relative">
-          <Input placeholder="Type a message..." className="pr-32 h-12 rounded-full bg-background" />
-          <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
-            <Button variant="ghost" size="icon" className="rounded-full">
-                <Smile className="w-5 h-5" />
-            </Button>
-            <Button variant="ghost" size="icon" className="rounded-full">
-                <Paperclip className="w-5 h-5" />
-            </Button>
-            <Button size="icon" className="rounded-full">
-                <SendHorizontal className="w-5 h-5" />
-            </Button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-```
-
-## File: src/pages/Messaging/data/mockData.ts
-```typescript
-import type { Contact, Conversation, Message, ActivityEvent, Note } from '../types';
-
-// --- HELPERS ---
-const generateNotes = (contactName: string): Note[] => [
-  { id: `note-${Math.random()}`, content: `Initial discovery call with ${contactName}. Seemed very interested in our enterprise package.`, createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString() },
-  { id: `note-${Math.random()}`, content: `Followed up via email with pricing details.`, createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString() },
-];
-
-const generateActivity = (contactName: string): ActivityEvent[] => [
-  { id: `act-${Math.random()}`, type: 'email', content: `Sent follow-up email regarding pricing.`, timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString() },
-  { id: `act-${Math.random()}`, type: 'call', content: `Had a 30-minute discovery call with ${contactName}.`, timestamp: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString() },
-  { id: `act-${Math.random()}`, type: 'meeting', content: `Scheduled a demo for next week.`, timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString() },
-];
-
-// --- CONTACTS ---
-export const mockContacts: Contact[] = [
-  {
-    id: 'contact-1',
-    name: 'Elena Rodriguez',
-    avatar: `https://avatar.vercel.sh/elenarodriguez.png`,
-    online: true,
-    tags: ['VIP', 'New Lead'],
-    email: 'elena.r@example.com',
-    phone: '+1 234 567 8901',
-    lastSeen: 'online',
-    company: 'Innovate Inc.',
-    role: 'CTO',
-    activity: generateActivity('Elena Rodriguez'),
-    notes: generateNotes('Elena Rodriguez'),
-  },
-  {
-    id: 'contact-2',
-    name: 'Marcus Chen',
-    avatar: `https://avatar.vercel.sh/marcuschen.png`,
-    online: false,
-    tags: ['Returning Customer'],
-    email: 'marcus.c@example.com',
-    phone: '+1 345 678 9012',
-    lastSeen: '2 hours ago',
-    company: 'Solutions Co.',
-    role: 'Product Manager',
-    activity: generateActivity('Marcus Chen'),
-    notes: generateNotes('Marcus Chen'),
-  },
-  {
-    id: 'contact-3',
-    name: 'Aisha Khan',
-    avatar: `https://avatar.vercel.sh/aishakhan.png`,
-    online: true,
-    tags: ['Support Request'],
-    email: 'aisha.k@example.com',
-    phone: '+1 456 789 0123',
-    lastSeen: 'online',
-    company: 'Data Dynamics',
-    role: 'Data Analyst',
-    activity: generateActivity('Aisha Khan'),
-    notes: generateNotes('Aisha Khan'),
-  },
-  {
-    id: 'contact-4',
-    name: 'Leo Tolstoy',
-    avatar: `https://avatar.vercel.sh/leotolstoy.png`,
-    online: false,
-    tags: [],
-    email: 'leo.tolstoy@example.com',
-    phone: '+44 20 7946 0958',
-    lastSeen: 'yesterday',
-    company: 'Classic Reads',
-    role: 'Author',
-    activity: generateActivity('Leo Tolstoy'),
-    notes: generateNotes('Leo Tolstoy'),
-  }
-];
-
-// --- MESSAGE GENERATOR ---
-const generateMessages = (count: number, contactName: string): Message[] => {
-  const messages: Message[] = [];
-  const now = new Date();
-  for (let i = count - 1; i >= 0; i--) {
-    const sender = Math.random() > 0.5 ? 'user' : 'contact';
-    messages.push({
-      id: `msg-${Math.random()}`,
-      text: `This is a sample message number ${i} from ${sender === 'user' ? 'me' : contactName}. The time is roughly ${count - i} hours ago.`,
-      timestamp: new Date(now.getTime() - i * 60 * 60 * 1000).toISOString(),
-      sender,
-      read: i < count - 2,
-    });
-  }
-  // Ensure the last message is from the contact for preview purposes
-  messages[messages.length - 1].sender = 'contact';
-  messages[messages.length - 1].text = `Hey! This is the latest message from ${contactName}.`;
-  return messages.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-};
-
-// --- CONVERSATIONS ---
-export const mockConversations: Conversation[] = [
-  {
-    id: 'conv-1',
-    contactId: 'contact-1',
-    channel: 'whatsapp',
-    unreadCount: 2,
-    messages: generateMessages(15, 'Elena Rodriguez'),
-    get lastMessage() { return this.messages[this.messages.length - 1]; },
-    aiSummary: {
-      sentiment: 'positive',
-      summaryPoints: [
-        'Expressed strong interest in the new feature.',
-        'Asked about pricing tiers for enterprise.',
-        'Is ready for a follow-up call next week.',
-      ],
-      suggestedReplies: [
-        'Let\'s schedule that call!',
-        'Here is the pricing information.',
-        'Happy to hear you like it!',
-      ],
-    },
-  },
-  {
-    id: 'conv-2',
-    contactId: 'contact-2',
-    channel: 'instagram',
-    unreadCount: 0,
-    messages: generateMessages(8, 'Marcus Chen'),
-    get lastMessage() { return this.messages[this.messages.length - 1]; },
-    aiSummary: {
-      sentiment: 'neutral',
-      summaryPoints: [
-        'Reported a minor issue with order #12345.',
-        'Was satisfied with the proposed solution.',
-        'Inquired about the return policy.',
-      ],
-      suggestedReplies: [
-        'Can I help with anything else?',
-        'Here is our return policy.',
-      ],
-    },
-  },
-  {
-    id: 'conv-3',
-    contactId: 'contact-3',
-    channel: 'facebook',
-    unreadCount: 5,
-    messages: generateMessages(20, 'Aisha Khan'),
-    get lastMessage() { return this.messages[this.messages.length - 1]; },
-    aiSummary: {
-      sentiment: 'negative',
-      summaryPoints: [
-        'Frustrated with login issues.',
-        'Unable to reset password via email link.',
-        'Threatened to cancel their subscription.',
-      ],
-      suggestedReplies: [
-        'I\'m escalating this to our technical team.',
-        'Let\'s try a manual password reset.',
-        'We apologize for the inconvenience.',
-      ],
-    },
-  },
-  {
-    id: 'conv-4',
-    contactId: 'contact-4',
-    channel: 'whatsapp',
-    unreadCount: 0,
-    messages: generateMessages(5, 'Leo Tolstoy'),
-    get lastMessage() { return this.messages[this.messages.length - 1]; },
-    aiSummary: {
-      sentiment: 'neutral',
-      summaryPoints: [
-        'Followed up on a previous conversation.',
-        'Confirmed meeting time for Thursday.',
-        'No outstanding issues.',
-      ],
-      suggestedReplies: [
-        'Sounds good!',
-        'See you then!',
-      ],
-    },
-  },
-];
-```
-
 ## File: src/pages/Messaging/store/messaging.store.ts
 ```typescript
 import { create } from 'zustand';
@@ -1256,50 +597,34 @@ export const useMessagingStore = create<MessagingState & MessagingActions>((set,
 
 ## File: src/pages/Messaging/index.tsx
 ```typescript
-import React, { useState, useCallback, useEffect, useRef } from "react";
+import React, { useRef } from "react";
 import { useParams } from "react-router-dom";
 import { ConversationList } from "./components/ConversationList";
 import { ContactProfile } from "./components/ContactProfile";
 import { cn } from "@/lib/utils";
+import { useAppShellStore } from "@/store/appShell.store";
+import { useResizableMessagingList } from "@/hooks/useResizablePanes.hook";
 
 export default function MessagingPage() {
   const { conversationId } = useParams<{ conversationId: string }>();
-  const [listWidth, setListWidth] = useState(384); // Default width (24rem)
-  const [isResizing, setIsResizing] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  const { messagingListWidth, isResizingMessagingList } = useAppShellStore(s => ({
+    messagingListWidth: s.messagingListWidth,
+    isResizingMessagingList: s.isResizingMessagingList
+  }));
+  const { setIsResizingMessagingList } = useAppShellStore.getState();
+
+  useResizableMessagingList(containerRef);
 
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
     e.preventDefault();
-    setIsResizing(true);
+    setIsResizingMessagingList(true);
   };
 
-  const handleMouseMove = useCallback((e: MouseEvent) => {
-    if (isResizing && containerRef.current) {
-      const containerRect = containerRef.current.getBoundingClientRect();
-      const newWidth = e.clientX - containerRect.left;
-      // Clamp the width between min and max values
-      setListWidth(Math.max(320, Math.min(newWidth, containerRect.width - 400)));
-    }
-  }, [isResizing]);
-
-  const handleMouseUp = useCallback(() => {
-    setIsResizing(false);
-  }, []);
-
-  useEffect(() => {
-    if (isResizing) {
-      window.addEventListener("mousemove", handleMouseMove);
-      window.addEventListener("mouseup", handleMouseUp);
-    }
-    return () => {
-      window.removeEventListener("mousemove", handleMouseMove);
-      window.removeEventListener("mouseup", handleMouseUp);
-    };
-  }, [isResizing, handleMouseMove, handleMouseUp]);
-
   return (
-    <div ref={containerRef} className={cn("h-full w-full flex bg-background", isResizing && "cursor-col-resize select-none")}>
-        <div style={{ width: `${listWidth}px` }} className="flex-shrink-0">
+    <div ref={containerRef} className={cn("h-full w-full flex bg-background", isResizingMessagingList && "cursor-col-resize select-none")}>
+        <div style={{ width: `${messagingListWidth}px` }} className="flex-shrink-0">
           <ConversationList />
         </div>
         <div onMouseDown={handleMouseDown} className="w-2 flex-shrink-0 cursor-col-resize group flex items-center justify-center">
@@ -1375,291 +700,6 @@ export interface Conversation {
 }
 ```
 
-## File: src/providers/AppShellProvider.tsx
-```typescript
-import { useEffect, type ReactNode, type ReactElement } from 'react';
-import { useAppShellStore } from '@/store/appShell.store';
-
-interface AppShellProviderProps {
-  children: ReactNode;
-  appName?: string;
-  appLogo?: ReactElement;
-  defaultSplitPaneWidth?: number;
-}
-
-export function AppShellProvider({ children, appName, appLogo, defaultSplitPaneWidth }: AppShellProviderProps) {
-  const init = useAppShellStore(state => state.init);
-  const setPrimaryColor = useAppShellStore(state => state.setPrimaryColor);
-  const primaryColor = useAppShellStore(state => state.primaryColor);
-
-  useEffect(() => {
-    init({ appName, appLogo, defaultSplitPaneWidth });
-  }, [appName, appLogo, defaultSplitPaneWidth, init]);
-
-  // Side effect for primary color
-  useEffect(() => {
-    // This effect is here because the store itself can't run side-effects on init
-    // before React has mounted. So we trigger it from the provider.
-    setPrimaryColor(primaryColor);
-  }, [primaryColor, setPrimaryColor]);
-
-  return <>{children}</>;
-}
-```
-
-## File: postcss.config.js
-```javascript
-export default {
-  plugins: {
-    tailwindcss: {},
-    autoprefixer: {},
-  },
-}
-```
-
-## File: src/components/ui/dropdown-menu.tsx
-```typescript
-import * as React from "react"
-import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu"
-import { Check, ChevronRight, Circle } from "lucide-react"
-
-import { cn } from "@/lib/utils"
-
-const DropdownMenu = DropdownMenuPrimitive.Root
-
-const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger
-
-const DropdownMenuGroup = DropdownMenuPrimitive.Group
-
-const DropdownMenuPortal = DropdownMenuPrimitive.Portal
-
-const DropdownMenuSub = DropdownMenuPrimitive.Sub
-
-const DropdownMenuRadioGroup = DropdownMenuPrimitive.RadioGroup
-
-const DropdownMenuSubTrigger = React.forwardRef<
-  React.ElementRef<typeof DropdownMenuPrimitive.SubTrigger>,
-  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.SubTrigger> & {
-    inset?: boolean
-  }
->(({ className, inset, children, ...props }, ref) => (
-  <DropdownMenuPrimitive.SubTrigger
-    ref={ref}
-    className={cn(
-      "flex cursor-default select-none items-center rounded-lg px-3 py-2 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[state=open]:bg-accent",
-      inset && "pl-8",
-      className
-    )}
-    {...props}
-  >
-    {children}
-    <ChevronRight className="ml-auto h-4 w-4" />
-  </DropdownMenuPrimitive.SubTrigger>
-))
-DropdownMenuSubTrigger.displayName =
-  DropdownMenuPrimitive.SubTrigger.displayName
-
-const DropdownMenuSubContent = React.forwardRef<
-  React.ElementRef<typeof DropdownMenuPrimitive.SubContent>,
-  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.SubContent>
->(({ className, ...props }, ref) => (
-  <DropdownMenuPrimitive.SubContent
-    ref={ref}
-    className={cn(
-      "z-50 min-w-[8rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-lg data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
-      className
-    )}
-    {...props}
-  />
-))
-DropdownMenuSubContent.displayName =
-  DropdownMenuPrimitive.SubContent.displayName
-
-const DropdownMenuContent = React.forwardRef<
-  React.ElementRef<typeof DropdownMenuPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content>
->(({ className, sideOffset = 4, ...props }, ref) => (
-  <DropdownMenuPrimitive.Portal>
-    <DropdownMenuPrimitive.Content
-      ref={ref}
-      sideOffset={sideOffset}
-      className={cn(
-        "z-50 min-w-[8rem] overflow-hidden rounded-xl border bg-popover p-1 text-popover-foreground shadow-xl outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
-        className
-      )}
-      {...props}
-    />
-  </DropdownMenuPrimitive.Portal>
-))
-DropdownMenuContent.displayName = DropdownMenuPrimitive.Content.displayName
-
-const DropdownMenuItem = React.forwardRef<
-  React.ElementRef<typeof DropdownMenuPrimitive.Item>,
-  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Item> & {
-    inset?: boolean
-  }
->(({ className, inset, ...props }, ref) => (
-  <DropdownMenuPrimitive.Item
-    ref={ref}
-    className={cn(
-      "relative flex cursor-default select-none items-center rounded-lg px-3 py-2 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
-      inset && "pl-8",
-      className
-    )}
-    {...props}
-  />
-))
-DropdownMenuItem.displayName = DropdownMenuPrimitive.Item.displayName
-
-const DropdownMenuCheckboxItem = React.forwardRef<
-  React.ElementRef<typeof DropdownMenuPrimitive.CheckboxItem>,
-  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.CheckboxItem>
->(({ className, children, checked, ...props }, ref) => (
-  <DropdownMenuPrimitive.CheckboxItem
-    ref={ref}
-    className={cn(
-      "relative flex cursor-default select-none items-center rounded-lg py-2 pl-8 pr-3 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
-      className
-    )}
-    checked={checked}
-    {...props}
-  >
-    <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
-      <DropdownMenuPrimitive.ItemIndicator>
-        <Check className="h-4 w-4" />
-      </DropdownMenuPrimitive.ItemIndicator>
-    </span>
-    {children}
-  </DropdownMenuPrimitive.CheckboxItem>
-))
-DropdownMenuCheckboxItem.displayName =
-  DropdownMenuPrimitive.CheckboxItem.displayName
-
-const DropdownMenuRadioItem = React.forwardRef<
-  React.ElementRef<typeof DropdownMenuPrimitive.RadioItem>,
-  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.RadioItem>
->(({ className, children, ...props }, ref) => (
-  <DropdownMenuPrimitive.RadioItem
-    ref={ref}
-    className={cn(
-      "relative flex cursor-default select-none items-center rounded-lg py-2 pl-8 pr-3 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
-      className
-    )}
-    {...props}
-  >
-    <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
-      <DropdownMenuPrimitive.ItemIndicator>
-        <Circle className="h-2 w-2 fill-current" />
-      </DropdownMenuPrimitive.ItemIndicator>
-    </span>
-    {children}
-  </DropdownMenuPrimitive.RadioItem>
-))
-DropdownMenuRadioItem.displayName = DropdownMenuPrimitive.RadioItem.displayName
-
-const DropdownMenuLabel = React.forwardRef<
-  React.ElementRef<typeof DropdownMenuPrimitive.Label>,
-  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Label> & {
-    inset?: boolean
-  }
->(({ className, inset, ...props }, ref) => (
-  <DropdownMenuPrimitive.Label
-    ref={ref}
-    className={cn(
-      "px-2 py-1.5 text-sm font-semibold",
-      inset && "pl-8",
-      className
-    )}
-    {...props}
-  />
-))
-DropdownMenuLabel.displayName = DropdownMenuPrimitive.Label.displayName
-
-const DropdownMenuSeparator = React.forwardRef<
-  React.ElementRef<typeof DropdownMenuPrimitive.Separator>,
-  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Separator>
->(({ className, ...props }, ref) => (
-  <DropdownMenuPrimitive.Separator
-    ref={ref}
-    className={cn("-mx-1 my-1 h-px bg-muted", className)}
-    {...props}
-  />
-))
-DropdownMenuSeparator.displayName = DropdownMenuPrimitive.Separator.displayName
-
-const DropdownMenuShortcut = ({
-  className,
-  ...props
-}: React.HTMLAttributes<HTMLSpanElement>) => {
-  return (
-    <span
-      className={cn("ml-auto text-xs tracking-widest opacity-60", className)}
-      {...props}
-    />
-  )
-}
-DropdownMenuShortcut.displayName = "DropdownMenuShortcut"
-
-export {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuCheckboxItem,
-  DropdownMenuRadioItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuShortcut,
-  DropdownMenuGroup,
-  DropdownMenuPortal,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
-  DropdownMenuRadioGroup,
-}
-```
-
-## File: src/components/ui/popover.tsx
-```typescript
-import * as React from "react"
-import * as PopoverPrimitive from "@radix-ui/react-popover"
-
-import { cn } from "@/lib/utils"
-
-const Popover = PopoverPrimitive.Root
-
-const PopoverTrigger = PopoverPrimitive.Trigger
-
-interface PopoverContentProps
-  extends React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Content> {
-  useTriggerWidth?: boolean
-}
-
-const PopoverContent = React.forwardRef<
-  React.ElementRef<typeof PopoverPrimitive.Content>,
-  PopoverContentProps
->(
-  ({ className, align = "center", sideOffset = 4, useTriggerWidth = false, ...props }, ref) => (
-  <PopoverPrimitive.Portal>
-    <PopoverPrimitive.Content
-      ref={ref}
-      align={align}
-      sideOffset={sideOffset}
-      className={cn(
-        "z-50 w-72 rounded-xl border bg-popover p-4 text-popover-foreground shadow-xl outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
-        useTriggerWidth && "w-[var(--radix-popover-trigger-width)]",
-        className
-      )}
-      {...props}
-    />
-  </PopoverPrimitive.Portal>
-))
-PopoverContent.displayName = PopoverPrimitive.Content.displayName
-
-export { Popover, PopoverTrigger, PopoverContent }
-export type { PopoverContentProps }
-```
-
 ## File: src/store/authStore.ts
 ```typescript
 import { create } from 'zustand'
@@ -1723,50 +763,6 @@ export const useAuthStore = create<AuthState>()(
 )
 ```
 
-## File: tsconfig.json
-```json
-{
-  "compilerOptions": {
-    "target": "ES2020",
-    "useDefineForClassFields": true,
-    "lib": ["ES2020", "DOM", "DOM.Iterable"],
-    "module": "ESNext",
-    "skipLibCheck": true,
-
-    /* Bundler mode */
-    "moduleResolution": "bundler",
-    "allowImportingTsExtensions": true,
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "jsx": "react-jsx",
-
-    /* Linting */
-    "strict": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noFallthroughCasesInSwitch": true,
-
-    /* Library Build */
-    "declaration": true,
-    "emitDeclarationOnly": true,
-    "declarationDir": "dist",
-
-    /* Path mapping */
-    "baseUrl": ".",
-    "paths": {
-      "@/*": ["./src/*"]
-    }
-  },
-  "include": ["src"],
-  "exclude": [
-    "dist",
-    "src/App.tsx",
-    "src/main.tsx",
-    "src/pages"
-  ]
-}
-```
-
 ## File: src/store/appShell.store.ts
 ```typescript
 import { create } from 'zustand';
@@ -1784,10 +780,12 @@ export interface AppShellState {
   sidebarWidth: number;
   sidePaneWidth: number;
   splitPaneWidth: number;
+  messagingListWidth: number;
   previousBodyState: BodyState;
   fullscreenTarget: 'main' | 'right' | null;
   isResizing: boolean;
   isResizingRightPane: boolean;
+  isResizingMessagingList: boolean;
   isTopBarVisible: boolean;
   autoExpandSidebar: boolean;
   reducedMotion: boolean;
@@ -1813,9 +811,11 @@ export interface AppShellActions {
     setSidebarWidth: (payload: number) => void;
     setSidePaneWidth: (payload: number) => void;
     setSplitPaneWidth: (payload: number) => void;
+    setMessagingListWidth: (payload: number) => void;
     setIsResizing: (payload: boolean) => void;
     setFullscreenTarget: (payload: 'main' | 'right' | null) => void;
     setIsResizingRightPane: (payload: boolean) => void;
+    setIsResizingMessagingList: (payload: boolean) => void;
     setTopBarVisible: (payload: boolean) => void;
     setAutoExpandSidebar: (payload: boolean) => void;
     setReducedMotion: (payload: boolean) => void;
@@ -1843,10 +843,12 @@ const defaultState: AppShellState = {
   sidebarWidth: 280,
   sidePaneWidth: typeof window !== 'undefined' ? Math.max(300, Math.round(window.innerWidth * 0.6)) : 400,
   splitPaneWidth: typeof window !== 'undefined' ? Math.max(300, Math.round(window.innerWidth * 0.35)) : 400,
+  messagingListWidth: 384,
   previousBodyState: BODY_STATES.NORMAL,
   fullscreenTarget: null,
   isResizing: false,
   isResizingRightPane: false,
+  isResizingMessagingList: false,
   isTopBarVisible: true,
   autoExpandSidebar: true,
   reducedMotion: false,
@@ -1885,9 +887,11 @@ export const useAppShellStore = create<AppShellState & AppShellActions>((set, ge
   setSidebarWidth: (payload) => set({ sidebarWidth: Math.max(200, Math.min(500, payload)) }),
   setSidePaneWidth: (payload) => set({ sidePaneWidth: Math.max(300, Math.min(window.innerWidth * 0.8, payload)) }),
   setSplitPaneWidth: (payload) => set({ splitPaneWidth: Math.max(300, Math.min(window.innerWidth * 0.8, payload)) }),
+  setMessagingListWidth: (payload) => set({ messagingListWidth: Math.max(320, Math.min(payload, window.innerWidth - 400)) }),
   setIsResizing: (payload) => set({ isResizing: payload }),
   setFullscreenTarget: (payload) => set({ fullscreenTarget: payload }),
   setIsResizingRightPane: (payload) => set({ isResizingRightPane: payload }),
+  setIsResizingMessagingList: (payload) => set({ isResizingMessagingList: payload }),
   setTopBarVisible: (payload) => set({ isTopBarVisible: payload }),
   setAutoExpandSidebar: (payload) => set({ autoExpandSidebar: payload }),
   setReducedMotion: (payload) => set({ reducedMotion: payload }),
@@ -1966,19 +970,47 @@ export const useRightPaneWidth = () => useAppShellStore(state =>
 </html>
 ```
 
-## File: tsconfig.node.json
+## File: tsconfig.json
 ```json
 {
   "compilerOptions": {
-    "composite": true,
+    "target": "ES2020",
+    "useDefineForClassFields": true,
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
     "skipLibCheck": true,
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
-    "allowSyntheticDefaultImports": true,
+
+    /* Bundler mode */
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
-    "noEmit": true
+    "isolatedModules": true,
+    "jsx": "react-jsx",
+
+    /* Linting */
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+
+    /* Library Build */
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "declarationDir": "dist",
+
+    /* Path mapping */
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    }
   },
-  "include": ["vite.config.ts"]
+  "include": ["src"],
+  "exclude": [
+    "dist",
+    "src/App.tsx",
+    "src/main.tsx",
+    "src/pages"
+  ]
 }
 ```
 
@@ -2355,6 +1387,22 @@ export default {
 }
 ```
 
+## File: tsconfig.node.json
+```json
+{
+  "compilerOptions": {
+    "composite": true,
+    "skipLibCheck": true,
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "allowSyntheticDefaultImports": true,
+    "resolveJsonModule": true,
+    "noEmit": true
+  },
+  "include": ["vite.config.ts"]
+}
+```
+
 ## File: src/hooks/useResizablePanes.hook.ts
 ```typescript
 import { useEffect } from 'react';
@@ -2440,6 +1488,42 @@ export function useResizableRightPane() {
       document.body.style.cursor = '';
     };
   }, [isResizingRightPane, setSplitPaneWidth, setSidePaneWidth, setIsResizingRightPane, bodyState]);
+}
+
+export function useResizableMessagingList(containerRef: React.RefObject<HTMLDivElement>) {
+  const isResizingMessagingList = useAppShellStore(s => s.isResizingMessagingList);
+  const { setMessagingListWidth, setIsResizingMessagingList } = useAppShellStore.getState();
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizingMessagingList || !containerRef.current) return;
+
+      const containerRect = containerRef.current.getBoundingClientRect();
+      const newWidth = e.clientX - containerRect.left;
+      
+      setMessagingListWidth(newWidth);
+    };
+
+    const handleMouseUp = () => {
+      setIsResizingMessagingList(false);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+
+    if (isResizingMessagingList) {
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+    }
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+  }, [isResizingMessagingList, setMessagingListWidth, setIsResizingMessagingList, containerRef]);
 }
 ```
 
