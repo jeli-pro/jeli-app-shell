@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useEffect } from 'react';
 import { Search, SlidersHorizontal, Check, Inbox, Clock, Zap, Shield } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
@@ -11,7 +11,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
 import { AnimatedTabs } from '@/components/ui/animated-tabs';
-import type { TaskStatus, TaskPriority } from '../types';
+import type { TaskStatus, TaskPriority, TaskView } from '../types';
+import { useAppViewManager } from '@/hooks/useAppViewManager.hook';
 
 // Local helpers for styling based on task properties
 const getStatusIcon = (status: TaskStatus) => {
@@ -43,24 +44,25 @@ export const TaskList = () => {
   const { conversationId } = useParams<{ conversationId: string }>(); // This will be taskId later
   const { 
     getFilteredTasks,
-    searchTerm,
     setSearchTerm,
     activeFilters,
+    setActiveTaskView,
+    searchTerm,
    } = useMessagingStore();
-  const tasks = getFilteredTasks();
-  const [activeTab, setActiveTab] = useState('all');
+   const { messagingView, setMessagingView } = useAppViewManager();
 
-  const tabs = useMemo(() => [{ id: 'all', label: 'All Tasks' }, { id: 'unread', label: 'Unread' }], []);
+  useEffect(() => {
+    setActiveTaskView(messagingView || 'all_open');
+  }, [messagingView, setActiveTaskView]);
 
-  const filteredTasks = useMemo(() => {
-    if (activeTab === 'unread') {
-      return tasks.filter(task => task.unreadCount > 0);
-    }
-    return tasks;
-  }, [tasks, activeTab]);
-  
+  const filteredTasks = getFilteredTasks();
   const activeFilterCount = Object.values(activeFilters).reduce((count, filterArray) => count + filterArray.length, 0);
 
+  const TABS: { id: TaskView, label: string }[] = [
+    { id: 'all_open', label: 'Open' },
+    { id: 'unassigned', label: 'Unassigned' },
+    { id: 'done', label: 'Done' }
+  ];
 
   return (
     <div className="h-full flex flex-col bg-background/80">
@@ -86,7 +88,11 @@ export const TaskList = () => {
             </Popover>
         </div>
       </div>
-      <AnimatedTabs tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} />
+      <AnimatedTabs
+        tabs={TABS}
+        activeTab={messagingView || 'all_open'}
+        onTabChange={(tabId) => setMessagingView(tabId as TaskView)}
+      />
 
       {/* Task List */}
       <div className="flex-1 overflow-y-auto">
@@ -145,7 +151,7 @@ export const TaskList = () => {
 // Filter component for popover
 function FilterCommand() {
     const { activeFilters, setFilters, assignees, getAvailableTags } = useMessagingStore();
-    const availableTags = useMemo(() => getAvailableTags(), [getAvailableTags]);
+    const availableTags = getAvailableTags();
 
     const handleSelect = (type: 'status' | 'priority' | 'assigneeId' | 'tags', value: string) => {
         const current = new Set(activeFilters[type]);

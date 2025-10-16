@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate, useLocation, useParams } from 'react-rout
 import { useAppShellStore, type AppShellState, type ActivePage } from '@/store/appShell.store';
 import type { DataItem, ViewMode, SortConfig, SortableField, GroupableField, Status, Priority } from '@/pages/DataDemo/types';
 import type { FilterConfig } from '@/pages/DataDemo/components/DataToolbar';
+import type { TaskView } from '@/pages/Messaging/types';
 import { BODY_STATES, SIDEBAR_STATES } from '@/lib/utils';
 
 const pageToPaneMap: Record<string, AppShellState['sidePaneContent']> = {
@@ -40,6 +41,7 @@ export function useAppViewManager() {
   const view = searchParams.get('view');
   const sidePane = searchParams.get('sidePane');
   const right = searchParams.get('right');
+  const messagingView = searchParams.get('messagingView') as TaskView | null;
 
   const { bodyState, sidePaneContent } = useMemo(() => {
     const validPanes: AppShellState['sidePaneContent'][] = ['details', 'settings', 'main', 'toaster', 'notifications', 'dataDemo', 'messaging'];
@@ -137,9 +139,24 @@ export function useAppViewManager() {
 		[setSearchParams],
 	);
 
-  const navigateTo = useCallback((page: string) => {
-    navigate(page.startsWith('/') ? page : `/${page}`);
-  }, [navigate]);
+  const navigateTo = useCallback((page: string, params?: Record<string, string | null>) => {
+    const targetPath = page.startsWith('/') ? page : `/${page}`;
+    const isSamePage = location.pathname === targetPath;
+    
+    const newSearchParams = new URLSearchParams(isSamePage ? searchParams : undefined);
+
+    if (params) {
+      for (const [key, value] of Object.entries(params)) {
+        if (value === null || value === undefined) {
+          newSearchParams.delete(key);
+        } else {
+          newSearchParams.set(key, value);
+        }
+      }
+    }
+
+    navigate({ pathname: targetPath, search: newSearchParams.toString() });
+  }, [navigate, location.pathname, searchParams]);
 
   const openSidePane = useCallback((pane: AppShellState['sidePaneContent']) => {
     if (location.pathname === `/${Object.keys(pageToPaneMap).find(key => pageToPaneMap[key] === pane)}`) {
@@ -237,6 +254,8 @@ export function useAppViewManager() {
 		navigate(`/data-demo/${item.id}${location.search}`);
 	}, [navigate, location.search]);
 
+  const setMessagingView = (view: TaskView) => handleParamsChange({ messagingView: view });
+
 
   return useMemo(() => ({
     // State
@@ -244,6 +263,7 @@ export function useAppViewManager() {
     sidePaneContent,
     currentActivePage,
     itemId,
+    messagingView,
     // DataDemo State
     viewMode,
     page,
@@ -259,6 +279,7 @@ export function useAppViewManager() {
     toggleSplitView,
     setNormalView,
     switchSplitPanes,
+    setMessagingView,
     closeSplitPane,
     // DataDemo Actions
     onItemSelect,
@@ -270,9 +291,9 @@ export function useAppViewManager() {
     setTableSort,
     setPage,
   }), [
-    bodyState, sidePaneContent, currentActivePage, itemId,
+    bodyState, sidePaneContent, currentActivePage, itemId, messagingView,
     viewMode, page, groupBy, activeGroupTab, filters, sortConfig,
-    navigateTo, openSidePane, closeSidePane, toggleSidePane, toggleSplitView, setNormalView, 
+    navigateTo, openSidePane, closeSidePane, toggleSidePane, toggleSplitView, setNormalView, setMessagingView,
     switchSplitPanes, closeSplitPane, onItemSelect, setViewMode, setGroupBy, setActiveGroupTab, setFilters,
     setSort, setTableSort, setPage
   ]);

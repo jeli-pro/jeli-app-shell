@@ -76,3 +76,5 @@ export interface Task {
   tags: string[];
   aiSummary: AISummary;
 }
+
+export type TaskView = 'all_open' | 'unassigned' | 'done';

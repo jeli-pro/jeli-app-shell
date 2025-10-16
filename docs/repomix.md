@@ -2,327 +2,40 @@
 ```
 src/
   components/
-    ui/
-      animated-tabs.tsx
-      dropdown-menu.tsx
-      popover.tsx
+    layout/
+      EnhancedSidebar.tsx
+      Sidebar.tsx
   hooks/
     useAppViewManager.hook.ts
   pages/
-    DataDemo/
-      components/
-        DataToolbar.tsx
     Messaging/
       components/
-        ActivityFeed.tsx
-        MessagingContent.tsx
-        TaskDetail.tsx
-        TaskHeader.tsx
         TaskList.tsx
-      data/
-        mockData.ts
       store/
         messaging.store.ts
       index.tsx
       types.ts
-  App.tsx
+  store/
+    appShell.store.ts
+index.html
+package.json
+postcss.config.js
+tailwind.config.js
+tsconfig.json
+tsconfig.node.json
+vite.config.ts
 ```
 
 # Files
 
-## File: src/pages/Messaging/components/ActivityFeed.tsx
-```typescript
-import React from 'react';
-import { useMessagingStore } from '../store/messaging.store';
-import type { Message, Contact, Assignee } from '../types';
-import { cn } from '@/lib/utils';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { formatDistanceToNow } from 'date-fns';
-import { StickyNote, Info } from 'lucide-react';
-
-interface ActivityFeedProps {
-  messages: Message[];
-  contact: Contact;
+## File: postcss.config.js
+```javascript
+export default {
+  plugins: {
+    tailwindcss: {},
+    autoprefixer: {},
+  },
 }
-
-export const ActivityFeed: React.FC<ActivityFeedProps> = ({ messages, contact }) => {
-  const getAssigneeById = useMessagingStore(state => state.getAssigneeById);
-
-  return (
-    <div className="flex-1 overflow-y-auto p-6 space-y-6">
-      {messages.map((message) => {
-        const assignee = message.userId ? getAssigneeById(message.userId) : null;
-        
-        if (message.type === 'system') {
-          return (
-            <div key={message.id} className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
-              <Info className="w-3.5 h-3.5" />
-              <p>{message.text}</p>
-              <p className="whitespace-nowrap">{formatDistanceToNow(new Date(message.timestamp), { addSuffix: true })}</p>
-            </div>
-          );
-        }
-
-        if (message.type === 'note') {
-          return (
-            <div key={message.id} className="flex items-start gap-3">
-              <div className="p-1.5 bg-yellow-400/20 text-yellow-600 rounded-full mt-1.5">
-                <StickyNote className="w-4 h-4" />
-              </div>
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1">
-                  <p className="font-semibold text-sm">{assignee?.name || 'User'}</p>
-                  <p className="text-xs text-muted-foreground">{formatDistanceToNow(new Date(message.timestamp), { addSuffix: true })}</p>
-                </div>
-                <div className="bg-card border rounded-lg p-3 text-sm">
-                  <p>{message.text}</p>
-                </div>
-              </div>
-            </div>
-          )
-        }
-
-        // Default: 'comment' type
-        return (
-          <div key={message.id} className={cn(
-            "flex items-end gap-3",
-            message.sender === 'user' ? 'justify-end' : 'justify-start'
-          )}>
-            {message.sender === 'contact' && (
-              <Avatar className="h-8 w-8">
-                <AvatarImage src={contact.avatar} />
-                <AvatarFallback>{contact.name.charAt(0)}</AvatarFallback>
-              </Avatar>
-            )}
-            <div className={cn(
-              "max-w-xs md:max-w-md lg:max-w-lg p-3 rounded-2xl",
-              message.sender === 'user' 
-                ? 'bg-primary text-primary-foreground rounded-br-none' 
-                : 'bg-card border rounded-bl-none'
-            )}>
-              <p className="text-sm">{message.text}</p>
-            </div>
-          </div>
-        )
-      })}
-    </div>
-  );
-};
-```
-
-## File: src/pages/Messaging/components/TaskDetail.tsx
-```typescript
-import React from 'react';
-import { useParams } from 'react-router-dom';
-import { useMessagingStore } from '../store/messaging.store';
-import { ActivityFeed } from './ActivityFeed';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { Paperclip, SendHorizontal, Smile, StickyNote } from 'lucide-react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-
-
-export const TaskDetail: React.FC = () => {
-  const { conversationId: taskId } = useParams<{ conversationId: string }>();
-  const task = useMessagingStore(state => taskId ? state.getTaskById(taskId) : undefined);
-  
-  if (!taskId || !task) {
-    return (
-        <div className="h-full flex flex-col items-center justify-center p-6 bg-background">
-            <p className="text-muted-foreground">Select a task to see its details.</p>
-        </div>
-    );
-  }
-
-  return (
-    <div className="h-full flex flex-col bg-background">
-      <ActivityFeed messages={task.messages} contact={task.contact} />
-
-      {/* Input Form */}
-      <div className="p-4 border-t flex-shrink-0 bg-background/50">
-        <Tabs defaultValue="comment" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-2">
-            <TabsTrigger value="comment">Comment</TabsTrigger>
-            <TabsTrigger value="note"><StickyNote className="w-4 h-4 mr-2" />Internal Note</TabsTrigger>
-          </TabsList>
-          <TabsContent value="comment">
-             <div className="relative">
-                <Textarea placeholder={`Reply to ${task.contact.name}...`} className="pr-24 min-h-[52px]" />
-                <div className="absolute right-2 top-2 flex items-center gap-1">
-                    <Button variant="ghost" size="icon" className="rounded-full h-8 w-8"><Smile className="w-4 h-4" /></Button>
-                    <Button variant="ghost" size="icon" className="rounded-full h-8 w-8"><Paperclip className="w-4 h-4" /></Button>
-                    <Button size="icon" className="rounded-full h-8 w-8"><SendHorizontal className="w-4 h-4" /></Button>
-                </div>
-            </div>
-          </TabsContent>
-          <TabsContent value="note">
-            <div className="relative">
-                <Textarea placeholder="Add an internal note..." className="pr-24 min-h-[52px] bg-yellow-400/10 border-yellow-400/30 focus-visible:ring-yellow-500" />
-                <div className="absolute right-2 top-2 flex items-center gap-1">
-                    <Button size="icon" className="rounded-full h-8 w-8"><SendHorizontal className="w-4 h-4" /></Button>
-                </div>
-            </div>
-          </TabsContent>
-        </Tabs>
-      </div>
-    </div>
-  );
-};
-```
-
-## File: src/pages/Messaging/components/TaskHeader.tsx
-```typescript
-import React from 'react';
-import { useMessagingStore } from '../store/messaging.store';
-import type { Task, TaskStatus, TaskPriority, Assignee, Contact } from '../types';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator
-} from '@/components/ui/dropdown-menu';
-import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ChevronDown, Inbox, Zap, Shield, Clock, Calendar, Plus, User } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
-import { format } from 'date-fns';
-
-const statusOptions: { value: TaskStatus; label: string; icon: React.ReactNode }[] = [
-    { value: 'open', label: 'Open', icon: <Inbox className="w-4 h-4" /> },
-    { value: 'in-progress', label: 'In Progress', icon: <Zap className="w-4 h-4" /> },
-    { value: 'done', label: 'Done', icon: <Shield className="w-4 h-4" /> },
-    { value: 'snoozed', label: 'Snoozed', icon: <Clock className="w-4 h-4" /> },
-];
-
-const priorityOptions: { value: TaskPriority; label: string; icon: React.ReactNode }[] = [
-    { value: 'high', label: 'High', icon: <div className="w-2.5 h-2.5 rounded-full bg-red-500" /> },
-    { value: 'medium', label: 'Medium', icon: <div className="w-2.5 h-2.5 rounded-full bg-yellow-500" /> },
-    { value: 'low', label: 'Low', icon: <div className="w-2.5 h-2.5 rounded-full bg-green-500" /> },
-    { value: 'none', label: 'None', icon: <div className="w-2.5 h-2.5 rounded-full bg-gray-400" /> },
-];
-
-
-interface TaskHeaderProps {
-  task: (Task & { contact: Contact; assignee: Assignee | null });
-}
-
-export const TaskHeader: React.FC<TaskHeaderProps> = ({ task }) => {
-  const { updateTask, assignees } = useMessagingStore();
-  const currentStatus = statusOptions.find(o => o.value === task.status);
-  const currentPriority = priorityOptions.find(o => o.value === task.priority);
-
-  return (
-    <div className="space-y-4">
-      {/* Task Title & Contact */}
-      <div className="overflow-hidden">
-        <h2 className="font-bold text-xl lg:text-2xl truncate" title={task.title}>
-          {task.title}
-        </h2>
-        <p className="text-sm text-muted-foreground">
-          With <a href="#" className="hover:underline font-medium text-foreground/80">{task.contact.name}</a>
-          <span className="mx-1.5">&middot;</span>
-          via <span className="capitalize font-medium text-foreground/80">{task.channel}</span>
-        </p>
-      </div>
-
-      {/* Properties Bar */}
-      <div className="flex flex-wrap items-center gap-y-2 text-sm">
-        {/* Assignee Dropdown */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" className="gap-2 font-normal">
-              {task.assignee ? (
-                <Avatar className="h-5 w-5"><AvatarImage src={task.assignee.avatar} /><AvatarFallback>{task.assignee.name.charAt(0)}</AvatarFallback></Avatar>
-              ) : (
-                <User className="h-4 w-4 text-muted-foreground" />
-              )}
-              <span className="font-medium">{task.assignee?.name || 'Unassigned'}</span>
-              <ChevronDown className="w-3 h-3 text-muted-foreground" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start">
-            <DropdownMenuRadioGroup value={task.assigneeId || 'null'} onValueChange={val => updateTask(task.id, { assigneeId: val === 'null' ? null : val })}>
-              <DropdownMenuRadioItem value="null">
-                <User className="w-4 h-4 mr-2 text-muted-foreground" /> Unassigned
-              </DropdownMenuRadioItem>
-              <DropdownMenuSeparator />
-              {assignees.map(a => (
-                <DropdownMenuRadioItem key={a.id} value={a.id}>
-                  <Avatar className="h-5 w-5 mr-2"><AvatarImage src={a.avatar} /><AvatarFallback>{a.name.charAt(0)}</AvatarFallback></Avatar>
-                  {a.name}
-                </DropdownMenuRadioItem>
-              ))}
-            </DropdownMenuRadioGroup>
-          </DropdownMenuContent>
-        </DropdownMenu>
-
-        <div className="mx-2 h-4 w-px bg-border" />
-
-        {/* Status Dropdown */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground hover:text-foreground">
-              {currentStatus?.icon}
-              <span className="font-medium text-foreground">{currentStatus?.label}</span>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start">
-            {statusOptions.map(o => (
-              <DropdownMenuItem key={o.value} onClick={() => updateTask(task.id, { status: o.value })}>
-                <div className="flex items-center">
-                  <div className="w-4 h-4 mr-2">{o.icon}</div>
-                  <span>{o.label}</span>
-                </div>
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-        
-        <div className="mx-2 h-4 w-px bg-border" />
-        
-        {/* Priority Dropdown */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground hover:text-foreground">
-              {currentPriority?.icon}
-              <span className="font-medium text-foreground">{currentPriority?.label}</span>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start">
-            {priorityOptions.map(o => (
-              <DropdownMenuItem key={o.value} onClick={() => updateTask(task.id, { priority: o.value })}>
-                <div className="flex items-center">
-                  <div className="w-2.5 h-2.5 mr-2">{o.icon}</div>
-                  <span>{o.label}</span>
-                </div>
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-
-        <div className="mx-2 h-4 w-px bg-border" />
-
-        {/* Due Date - for display, could be a popover trigger */}
-        <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground cursor-default" disabled>
-            <Calendar className="w-4 h-4" />
-            <span className="font-medium text-foreground">{task.dueDate ? format(new Date(task.dueDate), 'MMM d, yyyy') : 'No due date'}</span>
-        </Button>
-      </div>
-
-      {/* Tags */}
-      <div className="flex flex-wrap items-center gap-2">
-        {task.tags.map(t => <Badge variant="secondary" key={t}>{t}</Badge>)}
-        <Button variant="outline" size="sm" className="h-7 px-2 text-xs rounded-md border-dashed">
-          <Plus className="w-3 h-3 mr-1" /> Tag
-        </Button>
-      </div>
-    </div>
-  );
-};
 ```
 
 ## File: src/pages/Messaging/components/TaskList.tsx
@@ -392,7 +105,7 @@ export const TaskList = () => {
 
 
   return (
-    <div className="h-full flex flex-col border-r bg-background/80">
+    <div className="h-full flex flex-col bg-background/80">
       {/* Header */}
       <div className="flex-shrink-0 border-b bg-background/80 p-4 space-y-4">
         <h2 className="text-xl font-bold tracking-tight">Inbox</h2>
@@ -538,566 +251,6 @@ function FilterCommand() {
         </Command>
     );
 }
-```
-
-## File: src/components/ui/animated-tabs.tsx
-```typescript
-"use client"
-
-import * as React from "react"
-import { useState, useRef, useEffect, useLayoutEffect } from "react"
-import { cn } from "@/lib/utils"
-
-interface Tab {
-  id: string
-  label: React.ReactNode
-}
-
-interface AnimatedTabsProps extends React.HTMLAttributes<HTMLDivElement> {
-  tabs: Tab[]
-  activeTab: string
-  onTabChange: (tabId: string) => void,
-  size?: 'default' | 'sm'
-}
-
-const AnimatedTabs = React.forwardRef<HTMLDivElement, AnimatedTabsProps>(
-  ({ className, tabs, activeTab, onTabChange, size = 'default', ...props }, ref) => {
-    const [activeIndex, setActiveIndex] = useState(0)
-    const [activeStyle, setActiveStyle] = useState({ left: "0px", width: "0px" })
-    const tabRefs = useRef<(HTMLButtonElement | null)[]>([])
-
-    // Update active index when controlled prop changes
-    useEffect(() => {
-      const newActiveIndex = tabs.findIndex(tab => tab.id === activeTab)
-      if (newActiveIndex !== -1 && newActiveIndex !== activeIndex) {
-        setActiveIndex(newActiveIndex)
-      }
-    }, [activeTab, tabs, activeIndex])
-    
-    // Update active indicator position
-    useEffect(() => {
-      const activeElement = tabRefs.current[activeIndex]
-      if (activeElement) {
-        const { offsetLeft, offsetWidth } = activeElement
-        setActiveStyle({
-          left: `${offsetLeft}px`,
-          width: `${offsetWidth}px`,
-        })
-      }
-    }, [activeIndex, tabs])
-
-    // Set initial position of active indicator
-    useLayoutEffect(() => {
-        const initialActiveIndex = activeTab ? tabs.findIndex(tab => tab.id === activeTab) : 0
-        const indexToUse = initialActiveIndex !== -1 ? initialActiveIndex : 0
-        
-        const firstElement = tabRefs.current[indexToUse]
-        if (firstElement) {
-          const { offsetLeft, offsetWidth } = firstElement
-          setActiveStyle({
-            left: `${offsetLeft}px`,
-            width: `${offsetWidth}px`,
-          })
-        }
-    }, [tabs, activeTab])
-
-    return (
-      <div 
-        ref={ref} 
-        className={cn("relative flex w-full items-center", className)} 
-        {...props}
-      >
-        {/* Active Indicator */}
-        <div
-          className="absolute -bottom-px h-0.5 bg-primary transition-all duration-300 ease-out"
-          style={activeStyle}
-        />
-
-        {/* Tabs */}
-        {tabs.map((tab, index) => (
-          <button
-            key={tab.id}
-            ref={(el) => (tabRefs.current[index] = el)}
-            className={cn(
-              "group relative cursor-pointer text-center transition-colors duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-              size === 'default' ? "px-4 py-5" : "px-3 py-2.5",
-              index === activeIndex 
-                ? "text-primary" 
-                : "text-muted-foreground hover:text-foreground"
-            )}
-            onClick={() => onTabChange(tab.id)}
-          >
-            <span className={cn(
-              "flex items-center gap-2 whitespace-nowrap",
-              size === 'default' 
-                ? "text-lg font-semibold"
-                : "text-sm font-medium"
-            )}>
-              {tab.label}
-            </span>
-          </button>
-        ))}
-      </div>
-    )
-  }
-)
-AnimatedTabs.displayName = "AnimatedTabs"
-
-export { AnimatedTabs }
-```
-
-## File: src/components/ui/dropdown-menu.tsx
-```typescript
-import * as React from "react"
-import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu"
-import { Check, ChevronRight, Circle } from "lucide-react"
-
-import { cn } from "@/lib/utils"
-
-const DropdownMenu = DropdownMenuPrimitive.Root
-
-const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger
-
-const DropdownMenuGroup = DropdownMenuPrimitive.Group
-
-const DropdownMenuPortal = DropdownMenuPrimitive.Portal
-
-const DropdownMenuSub = DropdownMenuPrimitive.Sub
-
-const DropdownMenuRadioGroup = DropdownMenuPrimitive.RadioGroup
-
-const DropdownMenuSubTrigger = React.forwardRef<
-  React.ElementRef<typeof DropdownMenuPrimitive.SubTrigger>,
-  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.SubTrigger> & {
-    inset?: boolean
-  }
->(({ className, inset, children, ...props }, ref) => (
-  <DropdownMenuPrimitive.SubTrigger
-    ref={ref}
-    className={cn(
-      "flex cursor-default select-none items-center rounded-lg px-3 py-2 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[state=open]:bg-accent",
-      inset && "pl-8",
-      className
-    )}
-    {...props}
-  >
-    {children}
-    <ChevronRight className="ml-auto h-4 w-4" />
-  </DropdownMenuPrimitive.SubTrigger>
-))
-DropdownMenuSubTrigger.displayName =
-  DropdownMenuPrimitive.SubTrigger.displayName
-
-const DropdownMenuSubContent = React.forwardRef<
-  React.ElementRef<typeof DropdownMenuPrimitive.SubContent>,
-  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.SubContent>
->(({ className, ...props }, ref) => (
-  <DropdownMenuPrimitive.SubContent
-    ref={ref}
-    className={cn(
-      "z-50 min-w-[8rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-lg data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
-      className
-    )}
-    {...props}
-  />
-))
-DropdownMenuSubContent.displayName =
-  DropdownMenuPrimitive.SubContent.displayName
-
-const DropdownMenuContent = React.forwardRef<
-  React.ElementRef<typeof DropdownMenuPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content>
->(({ className, sideOffset = 4, ...props }, ref) => (
-  <DropdownMenuPrimitive.Portal>
-    <DropdownMenuPrimitive.Content
-      ref={ref}
-      sideOffset={sideOffset}
-      className={cn(
-        "z-50 min-w-[8rem] overflow-hidden rounded-xl border bg-popover p-1 text-popover-foreground shadow-xl outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
-        className
-      )}
-      {...props}
-    />
-  </DropdownMenuPrimitive.Portal>
-))
-DropdownMenuContent.displayName = DropdownMenuPrimitive.Content.displayName
-
-const DropdownMenuItem = React.forwardRef<
-  React.ElementRef<typeof DropdownMenuPrimitive.Item>,
-  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Item> & {
-    inset?: boolean
-  }
->(({ className, inset, ...props }, ref) => (
-  <DropdownMenuPrimitive.Item
-    ref={ref}
-    className={cn(
-      "relative flex cursor-default select-none items-center rounded-lg px-3 py-2 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
-      inset && "pl-8",
-      className
-    )}
-    {...props}
-  />
-))
-DropdownMenuItem.displayName = DropdownMenuPrimitive.Item.displayName
-
-const DropdownMenuCheckboxItem = React.forwardRef<
-  React.ElementRef<typeof DropdownMenuPrimitive.CheckboxItem>,
-  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.CheckboxItem>
->(({ className, children, checked, ...props }, ref) => (
-  <DropdownMenuPrimitive.CheckboxItem
-    ref={ref}
-    className={cn(
-      "relative flex cursor-default select-none items-center rounded-lg py-2 pl-8 pr-3 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
-      className
-    )}
-    checked={checked}
-    {...props}
-  >
-    <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
-      <DropdownMenuPrimitive.ItemIndicator>
-        <Check className="h-4 w-4" />
-      </DropdownMenuPrimitive.ItemIndicator>
-    </span>
-    {children}
-  </DropdownMenuPrimitive.CheckboxItem>
-))
-DropdownMenuCheckboxItem.displayName =
-  DropdownMenuPrimitive.CheckboxItem.displayName
-
-const DropdownMenuRadioItem = React.forwardRef<
-  React.ElementRef<typeof DropdownMenuPrimitive.RadioItem>,
-  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.RadioItem>
->(({ className, children, ...props }, ref) => (
-  <DropdownMenuPrimitive.RadioItem
-    ref={ref}
-    className={cn(
-      "relative flex cursor-default select-none items-center rounded-lg py-2 pl-8 pr-3 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
-      className
-    )}
-    {...props}
-  >
-    <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
-      <DropdownMenuPrimitive.ItemIndicator>
-        <Circle className="h-2 w-2 fill-current" />
-      </DropdownMenuPrimitive.ItemIndicator>
-    </span>
-    {children}
-  </DropdownMenuPrimitive.RadioItem>
-))
-DropdownMenuRadioItem.displayName = DropdownMenuPrimitive.RadioItem.displayName
-
-const DropdownMenuLabel = React.forwardRef<
-  React.ElementRef<typeof DropdownMenuPrimitive.Label>,
-  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Label> & {
-    inset?: boolean
-  }
->(({ className, inset, ...props }, ref) => (
-  <DropdownMenuPrimitive.Label
-    ref={ref}
-    className={cn(
-      "px-2 py-1.5 text-sm font-semibold",
-      inset && "pl-8",
-      className
-    )}
-    {...props}
-  />
-))
-DropdownMenuLabel.displayName = DropdownMenuPrimitive.Label.displayName
-
-const DropdownMenuSeparator = React.forwardRef<
-  React.ElementRef<typeof DropdownMenuPrimitive.Separator>,
-  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Separator>
->(({ className, ...props }, ref) => (
-  <DropdownMenuPrimitive.Separator
-    ref={ref}
-    className={cn("-mx-1 my-1 h-px bg-muted", className)}
-    {...props}
-  />
-))
-DropdownMenuSeparator.displayName = DropdownMenuPrimitive.Separator.displayName
-
-const DropdownMenuShortcut = ({
-  className,
-  ...props
-}: React.HTMLAttributes<HTMLSpanElement>) => {
-  return (
-    <span
-      className={cn("ml-auto text-xs tracking-widest opacity-60", className)}
-      {...props}
-    />
-  )
-}
-DropdownMenuShortcut.displayName = "DropdownMenuShortcut"
-
-export {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuCheckboxItem,
-  DropdownMenuRadioItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuShortcut,
-  DropdownMenuGroup,
-  DropdownMenuPortal,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
-  DropdownMenuRadioGroup,
-}
-```
-
-## File: src/components/ui/popover.tsx
-```typescript
-import * as React from "react"
-import * as PopoverPrimitive from "@radix-ui/react-popover"
-
-import { cn } from "@/lib/utils"
-
-const Popover = PopoverPrimitive.Root
-
-const PopoverTrigger = PopoverPrimitive.Trigger
-
-interface PopoverContentProps
-  extends React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Content> {
-  useTriggerWidth?: boolean
-}
-
-const PopoverContent = React.forwardRef<
-  React.ElementRef<typeof PopoverPrimitive.Content>,
-  PopoverContentProps
->(
-  ({ className, align = "center", sideOffset = 4, useTriggerWidth = false, ...props }, ref) => (
-  <PopoverPrimitive.Portal>
-    <PopoverPrimitive.Content
-      ref={ref}
-      align={align}
-      sideOffset={sideOffset}
-      className={cn(
-        "z-50 w-72 rounded-xl border bg-popover p-4 text-popover-foreground shadow-xl outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
-        useTriggerWidth && "w-[var(--radix-popover-trigger-width)]",
-        className
-      )}
-      {...props}
-    />
-  </PopoverPrimitive.Portal>
-))
-PopoverContent.displayName = PopoverPrimitive.Content.displayName
-
-export { Popover, PopoverTrigger, PopoverContent }
-export type { PopoverContentProps }
-```
-
-## File: src/pages/Messaging/components/MessagingContent.tsx
-```typescript
-import React, { useState, useMemo } from 'react';
-import { useMessagingStore } from '../store/messaging.store';
-import { ContactInfoPanel } from './ContactInfoPanel';
-import { AIInsightsPanel } from './AIInsightsPanel';
-import { ActivityPanel } from './ActivityPanel';
-import { NotesPanel } from './NotesPanel';
-import { TaskHeader } from './TaskHeader';
-import { AnimatedTabs } from '@/components/ui/animated-tabs';
-import { TechOrbitDisplay } from '@/components/effects/OrbitingCircles';
-
-interface MessagingContentProps {
-  conversationId?: string;
-}
-
-export const MessagingContent: React.FC<MessagingContentProps> = ({ conversationId }) => {
-  const [activeTab, setActiveTab] = useState('contact');
-  const task = useMessagingStore(state => conversationId ? state.getTaskById(conversationId) : undefined);
-  
-  const tabs = useMemo(() => [
-    { id: 'contact', label: 'Contact' },
-    { id: 'ai', label: 'AI Insights' },
-    { id: 'activity', label: 'Activity' },
-    { id: 'notes', label: 'Notes' },
-  ], []);
-
-  if (!task) {
-    return (
-      <div className="h-full flex-1 flex flex-col items-center justify-center bg-background p-6 relative overflow-hidden">
-        <TechOrbitDisplay text="Context" />
-        <div className="text-center z-10 bg-background/50 backdrop-blur-sm p-6 rounded-lg">
-            <h3 className="mt-4 text-lg font-medium">Select a Task</h3>
-            <p className="mt-1 text-sm text-muted-foreground">
-                Task details and contact information will appear here.
-            </p>
-        </div>
-      </div>
-    );
-  }
-  
-  return (
-    <div className="h-full flex-1 flex flex-col bg-background overflow-y-auto" data-testid="messaging-content-scroll-pane">
-      {/* Combined Header */}
-      <div className="flex-shrink-0 border-b">
-        <div className="p-6">
-          <TaskHeader task={task} />
-        </div>
-        <AnimatedTabs tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} size="sm" className="px-6" />
-      </div>
-
-      {/* Content Area */}
-      <div className="flex-1 p-6">
-        {activeTab === 'contact' && <ContactInfoPanel contact={task.contact} />}
-        {activeTab === 'ai' && <AIInsightsPanel task={task} />}
-        {activeTab === 'activity' && <ActivityPanel contact={task.contact} />}
-        {activeTab === 'notes' && <NotesPanel contact={task.contact} />}
-      </div>
-    </div>
-  );
-};
-```
-
-## File: src/pages/Messaging/data/mockData.ts
-```typescript
-import type { Contact, Task, Message, ActivityEvent, Note, Assignee, TaskStatus, TaskPriority } from '../types';
-
-// --- ASSIGNEES ---
-export const mockAssignees: Assignee[] = [
-  { id: 'user-1', name: 'You', avatar: `https://avatar.vercel.sh/you.png` },
-  { id: 'user-2', name: 'Alex Johnson', avatar: `https://avatar.vercel.sh/alex.png` },
-  { id: 'user-3', name: 'Samira Kumar', avatar: `https://avatar.vercel.sh/samira.png` },
-];
-
-// --- HELPERS ---
-const generateNotes = (contactName: string): Note[] => [
-  { id: `note-${Math.random()}`, content: `Initial discovery call with ${contactName}. Seemed very interested in our enterprise package.`, createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString() },
-  { id: `note-${Math.random()}`, content: `Followed up via email with pricing details.`, createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString() },
-];
-
-const generateActivity = (contactName: string): ActivityEvent[] => [
-  { id: `act-${Math.random()}`, type: 'email', content: `Sent follow-up email regarding pricing.`, timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString() },
-  { id: `act-${Math.random()}`, type: 'call', content: `Had a 30-minute discovery call with ${contactName}.`, timestamp: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString() },
-  { id: `act-${Math.random()}`, type: 'meeting', content: `Scheduled a demo for next week.`, timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString() },
-];
-
-// --- CONTACTS ---
-export const mockContacts: Contact[] = [
-  { id: 'contact-1', name: 'Elena Rodriguez', avatar: `https://avatar.vercel.sh/elenarodriguez.png`, online: true, tags: ['VIP', 'New Lead'], email: 'elena.r@example.com', phone: '+1 234 567 8901', lastSeen: 'online', company: 'Innovate Inc.', role: 'CTO', activity: generateActivity('Elena Rodriguez'), notes: generateNotes('Elena Rodriguez'), },
-  { id: 'contact-2', name: 'Marcus Chen', avatar: `https://avatar.vercel.sh/marcuschen.png`, online: false, tags: ['Returning Customer'], email: 'marcus.c@example.com', phone: '+1 345 678 9012', lastSeen: '2 hours ago', company: 'Solutions Co.', role: 'Product Manager', activity: generateActivity('Marcus Chen'), notes: generateNotes('Marcus Chen'), },
-  { id: 'contact-3', name: 'Aisha Khan', avatar: `https://avatar.vercel.sh/aishakhan.png`, online: true, tags: ['Support Request'], email: 'aisha.k@example.com', phone: '+1 456 789 0123', lastSeen: 'online', company: 'Data Dynamics', role: 'Data Analyst', activity: generateActivity('Aisha Khan'), notes: generateNotes('Aisha Khan'), },
-  { id: 'contact-4', name: 'Leo Tolstoy', avatar: `https://avatar.vercel.sh/leotolstoy.png`, online: false, tags: [], email: 'leo.tolstoy@example.com', phone: '+44 20 7946 0958', lastSeen: 'yesterday', company: 'Classic Reads', role: 'Author', activity: generateActivity('Leo Tolstoy'), notes: generateNotes('Leo Tolstoy'), }
-];
-
-// --- MESSAGE GENERATOR ---
-const generateMessages = (count: number, contactName: string): Message[] => {
-  const messages: Message[] = [];
-  const now = new Date();
-  for (let i = count - 1; i >= 0; i--) {
-    const random = Math.random();
-    let sender: Message['sender'] = 'contact';
-    let type: Message['type'] = 'comment';
-    let text = `This is a sample message number ${i} from ${contactName}.`;
-    let userId: string | undefined = undefined;
-
-    if (random > 0.85) { // Internal Note
-      sender = 'user';
-      type = 'note';
-      const user = mockAssignees[Math.floor(Math.random() * mockAssignees.length)];
-      userId = user.id;
-      text = `Internal note from ${user.name}: we should check their account history.`;
-    } else if (random > 0.7) { // System message
-      sender = 'system';
-      type = 'system';
-      text = `Task status changed to "in-progress"`;
-    } else if (random > 0.35) { // User comment
-      sender = 'user';
-      type = 'comment';
-      userId = 'user-1'; // "You"
-      text = `This is a reply from me. Time is roughly ${count - i} hours ago.`;
-    }
-    
-    messages.push({
-      id: `msg-${Math.random()}`,
-      text,
-      timestamp: new Date(now.getTime() - i * 60 * 60 * 1000).toISOString(),
-      sender,
-      type,
-      read: i < count - 2,
-      userId,
-    });
-  }
-  // Ensure the last message is from the contact for preview purposes
-  messages[messages.length - 1] = {
-    ...messages[messages.length-1],
-    sender: 'contact',
-    type: 'comment',
-    text: `Hey! This is the latest message from ${contactName}.`,
-    userId: undefined
-  };
-  return messages.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-};
-
-// --- TASKS ---
-const statuses: TaskStatus[] = ['open', 'in-progress', 'done', 'snoozed'];
-const priorities: TaskPriority[] = ['none', 'low', 'medium', 'high'];
-
-export const mockTasks: Task[] = [
-  {
-    id: 'task-1',
-    title: 'Question about enterprise pricing',
-    contactId: 'contact-1',
-    channel: 'whatsapp',
-    unreadCount: 2,
-    messages: generateMessages(15, 'Elena Rodriguez'),
-    get lastActivity() { return this.messages[this.messages.length - 1]; },
-    status: 'in-progress',
-    assigneeId: 'user-2',
-    dueDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
-    priority: 'high',
-    tags: ['onboarding', 'pricing'],
-    aiSummary: { sentiment: 'positive', summaryPoints: ['Expressed strong interest in the new feature.', 'Asked about pricing tiers for enterprise.', 'Is ready for a follow-up call next week.',], suggestedReplies: ['Let\'s schedule that call!', 'Here is the pricing information.', 'Happy to hear you like it!',], },
-  },
-  {
-    id: 'task-2',
-    title: 'Minor issue with order #12345',
-    contactId: 'contact-2',
-    channel: 'instagram',
-    unreadCount: 0,
-    messages: generateMessages(8, 'Marcus Chen'),
-    get lastActivity() { return this.messages[this.messages.length - 1]; },
-    status: 'done',
-    assigneeId: 'user-1',
-    dueDate: null,
-    priority: 'medium',
-    tags: ['bug-report'],
-    aiSummary: { sentiment: 'neutral', summaryPoints: ['Reported a minor issue with order #12345.', 'Was satisfied with the proposed solution.', 'Inquired about the return policy.',], suggestedReplies: ['Can I help with anything else?', 'Here is our return policy.',], },
-  },
-  {
-    id: 'task-3',
-    title: 'Login issues, cannot reset password',
-    contactId: 'contact-3',
-    channel: 'facebook',
-    unreadCount: 5,
-    messages: generateMessages(20, 'Aisha Khan'),
-    get lastActivity() { return this.messages[this.messages.length - 1]; },
-    status: 'open',
-    assigneeId: null,
-    dueDate: null,
-    priority: 'high',
-    tags: ['urgent', 'tech-support'],
-    aiSummary: { sentiment: 'negative', summaryPoints: ['Frustrated with login issues.', 'Unable to reset password via email link.', 'Threatened to cancel their subscription.',], suggestedReplies: ['I\'m escalating this to our technical team.', 'Let\'s try a manual password reset.', 'We apologize for the inconvenience.',], },
-  },
-  {
-    id: 'task-4',
-    title: 'Follow-up on previous conversation',
-    contactId: 'contact-4',
-    channel: 'email',
-    unreadCount: 0,
-    messages: generateMessages(5, 'Leo Tolstoy'),
-    get lastActivity() { return this.messages[this.messages.length - 1]; },
-    status: 'snoozed',
-    assigneeId: 'user-3',
-    dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-    priority: 'low',
-    tags: [],
-    aiSummary: { sentiment: 'neutral', summaryPoints: ['Followed up on a previous conversation.', 'Confirmed meeting time for Thursday.', 'No outstanding issues.',], suggestedReplies: ['Sounds good!', 'See you then!',], },
-  },
-];
 ```
 
 ## File: src/pages/Messaging/store/messaging.store.ts
@@ -1288,249 +441,614 @@ export interface Task {
 }
 ```
 
-## File: src/pages/DataDemo/components/DataToolbar.tsx
+## File: tsconfig.json
+```json
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "useDefineForClassFields": true,
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+
+    /* Bundler mode */
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "react-jsx",
+
+    /* Linting */
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+
+    /* Library Build */
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "declarationDir": "dist",
+
+    /* Path mapping */
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": ["src"],
+  "exclude": [
+    "dist",
+    "src/App.tsx",
+    "src/main.tsx",
+    "src/pages"
+  ]
+}
+```
+
+## File: index.html
+```html
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Jeli App Shell</title>
+    <script>
+      (function() {
+        try {
+          const storageKey = 'app-shell-storage';
+          const storageValue = localStorage.getItem(storageKey);
+          let isDarkMode;
+
+          if (storageValue) {
+            isDarkMode = JSON.parse(storageValue)?.state?.isDarkMode;
+          }
+          
+          if (typeof isDarkMode !== 'boolean') {
+            isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          }
+          
+          document.documentElement.classList.toggle('dark', isDarkMode);
+        } catch (e) { /* Fails safely */ }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <div id="toaster-container"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+```
+
+## File: tailwind.config.js
+```javascript
+/** @type {import('tailwindcss').Config} */
+export default {
+  content: [
+    "./index.html",
+    "./src/**/*.{js,ts,jsx,tsx}",
+  ],
+  darkMode: "class",
+  theme: {
+    extend: {
+      colors: {
+        border: "hsl(var(--border))",
+        input: "hsl(var(--input))",
+        ring: "hsl(var(--ring))",
+        background: "hsl(var(--background))",
+        foreground: "hsl(var(--foreground))",
+        primary: {
+          DEFAULT: "hsl(var(--primary))",
+          foreground: "hsl(var(--primary-foreground))",
+        },
+        secondary: {
+          DEFAULT: "hsl(var(--secondary))",
+          foreground: "hsl(var(--secondary-foreground))",
+        },
+        destructive: {
+          DEFAULT: "hsl(var(--destructive))",
+          foreground: "hsl(var(--destructive-foreground))",
+        },
+        muted: {
+          DEFAULT: "hsl(var(--muted))",
+          foreground: "hsl(var(--muted-foreground))",
+        },
+        accent: {
+          DEFAULT: "hsl(var(--accent))",
+          foreground: "hsl(var(--accent-foreground))",
+        },
+        popover: {
+          DEFAULT: "hsl(var(--popover))",
+          foreground: "hsl(var(--popover-foreground))",
+        },
+        card: {
+          DEFAULT: "hsl(var(--card))",
+          foreground: "hsl(var(--card-foreground))",
+        },
+      },
+      borderRadius: {
+        lg: "var(--radius)",
+        md: "calc(var(--radius) - 4px)",
+        sm: "calc(var(--radius) - 8px)",
+        DEFAULT: "0.5rem",
+      },
+      boxShadow: {
+        input: [
+          "0px 2px 3px -1px rgba(0, 0, 0, 0.1)",
+          "0px 1px 0px 0px rgba(25, 28, 33, 0.02)",
+          "0px 0px 0px 1px rgba(25, 28, 33, 0.08)",
+        ].join(", "),
+      },
+      animation: {
+        "fade-in": "fadeIn 0.5s ease-in-out",
+        "slide-in": "slideIn 0.3s ease-out",
+        "scale-in": "scaleIn 0.2s ease-out",
+        ripple: "ripple 2s ease calc(var(--i, 0) * 0.2s) infinite",
+        orbit: "orbit calc(var(--duration) * 1s) linear infinite",
+      },
+      keyframes: {
+        fadeIn: {
+          "0%": { opacity: "0" },
+          "100%": { opacity: "1" },
+        },
+        slideIn: {
+          "0%": { transform: "translateX(-100%)" },
+          "100%": { transform: "translateX(0)" },
+        },
+        scaleIn: {
+          "0%": { transform: "scale(0.95)", opacity: "0" },
+          "100%": { transform: "scale(1)", opacity: "1" },
+        },
+        ripple: {
+          "0%, 100%": { transform: "translate(-50%, -50%) scale(1)" },
+          "50%": { transform: "translate(-50%, -50%) scale(0.9)" },
+        },
+        orbit: {
+          "0%": {
+            transform:
+              "rotate(0deg) translateY(calc(var(--radius) * 1px)) rotate(0deg)",
+          },
+          "100%": {
+            transform:
+              "rotate(360deg) translateY(calc(var(--radius) * 1px)) rotate(-360deg)",
+          },
+        }
+      },
+    },
+  },
+  plugins: [
+    require("tailwindcss-animate"),
+    require("tailwindcss/plugin")(function ({ addUtilities }) {
+      addUtilities({
+        ".no-scrollbar::-webkit-scrollbar": {
+          display: "none",
+        },
+        ".no-scrollbar": {
+          "-ms-overflow-style": "none",
+          "scrollbar-width": "none",
+        },
+      });
+    }),
+  ],
+}
+```
+
+## File: tsconfig.node.json
+```json
+{
+  "compilerOptions": {
+    "composite": true,
+    "skipLibCheck": true,
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "allowSyntheticDefaultImports": true,
+    "resolveJsonModule": true,
+    "noEmit": true
+  },
+  "include": ["vite.config.ts"]
+}
+```
+
+## File: vite.config.ts
 ```typescript
-import * as React from 'react'
-import { Check, ListFilter, Search, SortAsc } from 'lucide-react'
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+import { fileURLToPath, URL } from 'url'
+import { resolve } from 'path'
+import pkg from './package.json' with { type: 'json' }
 
-import { cn } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Badge } from '@/components/ui/badge'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuSeparator,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-  CommandSeparator,
-} from '@/components/ui/command'
+// https://vitejs.dev/config/
+export default defineConfig({
+  plugins: [react()],
+  resolve: {
+    alias: {
+      "@": fileURLToPath(new URL('./src', import.meta.url)),
+    },
+  },
+  build: {
+    lib: {
+      entry: resolve(__dirname, 'src/index.ts'),
+      name: 'JeliAppShell',
+      fileName: (format) => `jeli-app-shell.${format}.js`,
+    },
+    rollupOptions: {
+      // make sure to externalize deps that shouldn't be bundled
+      // into your library
+      external: Object.keys(pkg.peerDependencies || {}),
+      output: {
+        // Provide global variables to use in the UMD build
+        // for externalized deps
+        globals: {
+          react: 'React',
+          'react-dom': 'ReactDOM',
+          tailwindcss: 'tailwindcss',
+          gsap: 'gsap',
+          'lucide-react': 'lucide-react',
+          zustand: 'zustand',
+          sonner: 'sonner'
+        },
+      },
+    },
+  },
+})
+```
 
-import type { SortableField, Status, Priority } from '../types'
-import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
+## File: src/components/layout/Sidebar.tsx
+```typescript
+import * as React from 'react';
+import { ChevronDown } from 'lucide-react';
+import { Slot } from '@radix-ui/react-slot';
+import { useAppShellStore } from '@/store/appShell.store';
+import { SIDEBAR_STATES } from '@/lib/utils';
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
 
-export interface FilterConfig {
-  searchTerm: string
-  status: Status[]
-  priority: Priority[]
+// --- Context ---
+interface SidebarContextValue {
+  isCollapsed: boolean;
+  isPeek: boolean;
+  compactMode: boolean;
 }
 
-const statusOptions: { value: Status; label: string }[] = [
-  { value: 'active', label: 'Active' },
-  { value: 'pending', label: 'Pending' },
-  { value: 'completed', label: 'Completed' },
-  { value: 'archived', label: 'Archived' },
-]
+const SidebarContext = React.createContext<SidebarContextValue | null>(null);
 
-const priorityOptions: { value: Priority; label: string }[] = [
-  { value: 'critical', label: 'Critical' },
-  { value: 'high', label: 'High' },
-  { value: 'medium', label: 'Medium' },
-  { value: 'low', label: 'Low' },
-]
-
-const sortOptions: { value: SortableField, label: string }[] = [
-  { value: 'updatedAt', label: 'Last Updated' },
-  { value: 'title', label: 'Title' },
-  { value: 'status', label: 'Status' },
-  { value: 'priority', label: 'Priority' },
-  { value: 'metrics.completion', label: 'Progress' },
-]
-
-
-export function DataToolbar() {
-  const {
-    filters,
-    setFilters,
-    sortConfig,
-    setSort,
-  } = useAppViewManager();
-
-  const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setFilters({ ...filters, searchTerm: event.target.value })
+// eslint-disable-next-line react-refresh/only-export-components
+export const useSidebar = () => {
+  const context = React.useContext(SidebarContext);
+  if (!context) {
+    throw new Error('useSidebar must be used within a Sidebar component');
   }
-  
-  const activeFilterCount = filters.status.length + filters.priority.length
+  return context;
+};
+
+// --- Main Sidebar Component ---
+interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
+  children: React.ReactNode;
+}
+
+const Sidebar = React.forwardRef<HTMLDivElement, SidebarProps>(
+  ({ children, className, ...props }, ref) => {
+    const sidebarState = useAppShellStore(s => s.sidebarState);
+    const compactMode = useAppShellStore(s => s.compactMode);
+    const isCollapsed = sidebarState === SIDEBAR_STATES.COLLAPSED;
+    const isPeek = sidebarState === SIDEBAR_STATES.PEEK;
+
+    return (
+      <SidebarContext.Provider value={{ isCollapsed, isPeek, compactMode }}>
+        <div
+          ref={ref}
+          className={cn(
+            'relative bg-card flex-shrink-0',
+            'h-full',
+            isPeek && 'shadow-xl z-40',
+            compactMode && 'text-sm',
+            className,
+          )}
+          {...props}
+        >
+          {isPeek && <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" />}
+          {children}
+        </div>
+      </SidebarContext.Provider>
+    );
+  },
+);
+Sidebar.displayName = 'Sidebar';
+
+// --- Sidebar Content Wrapper ---
+const SidebarContent = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => {
+  const { compactMode } = useSidebar();
+  return (
+    <div
+      ref={ref}
+      className={cn(
+        'relative z-10 h-full flex flex-col',
+        compactMode ? 'p-3' : 'p-4',
+        className,
+      )}
+      {...props}
+    />
+  );
+});
+SidebarContent.displayName = 'SidebarContent';
+
+// --- Sidebar Header ---
+const SidebarHeader = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => {
+  const { isCollapsed } = useSidebar();
+  return (
+    <div
+      ref={ref}
+      className={cn(
+        'flex items-center gap-3',
+        isCollapsed ? 'justify-center' : 'px-3',
+        'h-16',
+        className,
+      )}
+      {...props}
+    />
+  );
+});
+SidebarHeader.displayName = 'SidebarHeader';
+
+const SidebarTitle = React.forwardRef<
+  HTMLParagraphElement,
+  React.HTMLAttributes<HTMLParagraphElement>
+>(({ className, ...props }, ref) => {
+  const { isCollapsed } = useSidebar();
+  if (isCollapsed) return null;
+  return (
+    <h1
+      ref={ref}
+      className={cn('text-lg font-bold nav-label', className)}
+      {...props}
+    />
+  );
+});
+SidebarTitle.displayName = 'SidebarTitle';
+
+// --- Sidebar Body ---
+const SidebarBody = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => (
+  <div
+    ref={ref}
+    className={cn(
+      'flex-1 overflow-y-auto space-y-6 pt-4',
+      className,
+    )}
+    {...props}
+  />
+));
+SidebarBody.displayName = 'SidebarBody';
+
+// --- Sidebar Footer ---
+const SidebarFooter = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => {
+  const { compactMode } = useSidebar();
+  return (
+    <div
+      ref={ref}
+      className={cn('pt-4 border-t border-border', compactMode && 'pt-3', className)}
+      {...props}
+    />
+  );
+});
+SidebarFooter.displayName = 'SidebarFooter';
+
+// --- Sidebar Section ---
+const SidebarSection = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement> & {
+    title?: string;
+    collapsible?: boolean;
+    defaultExpanded?: boolean;
+  }
+>(({ title, collapsible = false, defaultExpanded = true, children, ...props }, ref) => {
+  const { isCollapsed } = useSidebar();
+  const [isExpanded, setIsExpanded] = React.useState(defaultExpanded);
+
+  const handleToggle = () => {
+    if (collapsible) {
+      setIsExpanded(!isExpanded);
+    }
+  };
 
   return (
-    <div className="flex flex-col md:flex-row items-center justify-between gap-4 w-full">
-      {/* Left side: Search, Filters */}
-      <div className="flex flex-col sm:flex-row items-center gap-2 w-full md:w-auto">
-        <div className="relative w-full sm:w-auto">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search projects..."
-            className="pl-9 w-full sm:w-64"
-            value={filters.searchTerm}
-            onChange={handleSearchChange}
-          />
-        </div>
-
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button variant="outline" size="sm" className="h-9 w-full sm:w-auto justify-start border-dashed">
-              <ListFilter className="mr-2 h-4 w-4" />
-              Filters
-              {activeFilterCount > 0 && (
-                <>
-                  <div className="mx-2 h-4 w-px bg-muted-foreground/50" />
-                  <Badge variant="secondary" className="rounded-sm px-1 font-normal">
-                    {activeFilterCount}
-                  </Badge>
-                </>
+    <div ref={ref} className="space-y-1" {...props}>
+      {!isCollapsed && title && (
+        <div
+          className={cn(
+            'flex items-center justify-between px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider',
+            collapsible && 'cursor-pointer hover:text-foreground transition-colors',
+          )}
+          onClick={handleToggle}
+        >
+          <span className="section-title">{title}</span>
+          {collapsible && (
+            <ChevronDown
+              className={cn(
+                'section-chevron w-3 h-3 transition-transform',
+                isExpanded ? 'rotate-0' : '-rotate-90',
               )}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-[240px] p-0" align="start">
-            <CombinedFilter filters={filters} onFiltersChange={setFilters} />
-          </PopoverContent>
-        </Popover>
+            />
+          )}
+        </div>
+      )}
+      {(!collapsible || isExpanded || isCollapsed) && (
+        <nav className="space-y-1">{children}</nav>
+      )}
+    </div>
+  );
+});
+SidebarSection.displayName = 'SidebarSection';
 
-        {activeFilterCount > 0 && (
-          <Button variant="ghost" onClick={() => setFilters({ searchTerm: filters.searchTerm, status: [], priority: [] })}>Reset</Button>
+// --- Sidebar Menu Item ---
+const SidebarMenuItem = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => {
+  return <div ref={ref} className={cn('group/item relative flex items-stretch', className)} {...props} />;
+});
+SidebarMenuItem.displayName = 'SidebarMenuItem';
+
+
+// --- Sidebar Menu Button ---
+interface SidebarMenuButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  asChild?: boolean;
+  isActive?: boolean;
+}
+const SidebarMenuButton = React.forwardRef<HTMLButtonElement, SidebarMenuButtonProps>(
+  ({ className, asChild = false, isActive, ...props }, ref) => {
+    const { isCollapsed, compactMode } = useSidebar();
+    const Comp = asChild ? Slot : 'button';
+
+    return (
+      <Comp
+        ref={ref}
+        className={cn(
+          'group flex items-center gap-3 rounded-lg cursor-pointer transition-all duration-200 w-full text-left flex-1',
+          compactMode ? 'px-2 py-1.5' : 'px-4 py-2.5',
+          'hover:bg-accent',
+          isActive && 'bg-primary text-primary-foreground hover:bg-primary/90',
+          isCollapsed && 'justify-center',
+          className
         )}
-      </div>
+        {...props}
+      />
+    );
+  }
+);
+SidebarMenuButton.displayName = 'SidebarMenuButton';
 
-      {/* Right side: Sorter */}
-      <div className="flex items-center gap-2 w-full md:w-auto justify-start md:justify-end">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="w-full sm:w-auto justify-start">
-              <SortAsc className="mr-2 h-4 w-4" />
-              Sort by: {sortOptions.find(o => o.value === sortConfig?.key)?.label || 'Default'}
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-[200px]">
-            <DropdownMenuLabel>Sort by</DropdownMenuLabel>
-            <DropdownMenuRadioGroup
-              value={`${sortConfig?.key || 'default'}-${sortConfig?.direction || ''}`}
-              onValueChange={(value) => {
-                if (value.startsWith('default')) {
-                  setSort(null)
-                } else {
-                  const [key, direction] = value.split('-')
-                  setSort({ key: key as SortableField, direction: direction as 'asc' | 'desc' })
-                }
-              }}
-            >
-              <DropdownMenuRadioItem value="default-">Default</DropdownMenuRadioItem>
-              <DropdownMenuSeparator />
-              {sortOptions.map(option => (
-                <React.Fragment key={option.value}>
-                  <DropdownMenuRadioItem value={`${option.value}-desc`}>{option.label} (Desc)</DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value={`${option.value}-asc`}>{option.label} (Asc)</DropdownMenuRadioItem>
-                </React.Fragment>
-              ))}
-            </DropdownMenuRadioGroup>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
+// --- Sidebar Menu Action ---
+const SidebarMenuAction = React.forwardRef<
+  HTMLButtonElement,
+  React.ButtonHTMLAttributes<HTMLButtonElement>
+>(({ className, ...props }, ref) => {
+  const { isCollapsed } = useSidebar();
+  if (isCollapsed) return null;
+  return (
+    <Button
+      ref={ref}
+      variant="ghost"
+      size="icon"
+      className={cn(
+        'absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 rounded-md opacity-0 group-hover/item:opacity-100 transition-opacity',
+        'focus:opacity-100', // show on focus for accessibility
+        className
+      )}
+      {...props}
+    />
+  );
+});
+SidebarMenuAction.displayName = 'SidebarMenuAction';
+
+// --- Sidebar Menu Label ---
+const SidebarLabel = React.forwardRef<
+  HTMLSpanElement,
+  React.HTMLAttributes<HTMLSpanElement>
+>(({ className, ...props }, ref) => {
+  const { isCollapsed } = useSidebar();
+  if (isCollapsed) return null;
+  return (
+    <span
+      ref={ref}
+      className={cn('nav-label flex-1 font-medium truncate', className)}
+      {...props}
+    />
+  );
+});
+SidebarLabel.displayName = 'SidebarLabel';
+
+
+// --- Sidebar Menu Badge ---
+const SidebarBadge = React.forwardRef<
+  HTMLSpanElement,
+  React.HTMLAttributes<HTMLSpanElement>
+>(({ className, children, ...props }, ref) => {
+  const { isCollapsed } = useSidebar();
+  if (isCollapsed) return null;
+  const badgeContent = typeof children === 'number' && children > 99 ? '99+' : children;
+  return (
+    <span
+      ref={ref}
+      className={cn(
+        'nav-badge bg-destructive text-destructive-foreground text-xs px-1.5 py-0.5 rounded-full min-w-[1.25rem] text-center',
+        className
+      )}
+      {...props}
+    >
+      {badgeContent}
+    </span>
+  );
+});
+SidebarBadge.displayName = 'SidebarBadge';
+
+
+// --- Sidebar Tooltip ---
+interface SidebarTooltipProps extends React.HTMLAttributes<HTMLDivElement> {
+  label: string;
+  badge?: number | string;
+}
+const SidebarTooltip = ({ label, badge, className, ...props }: SidebarTooltipProps) => {
+  const { isCollapsed } = useSidebar();
+  if (!isCollapsed) return null;
+  return (
+    <div
+      className={cn(
+        'absolute left-full ml-2 px-2 py-1 bg-popover text-popover-foreground text-sm rounded-md shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50',
+        className
+      )}
+      {...props}
+    >
+      {label}
+      {badge && (
+        <span className="ml-2 bg-destructive text-destructive-foreground text-xs px-1.5 py-0.5 rounded-full">
+          {typeof badge === 'number' && badge > 99 ? '99+' : badge}
+        </span>
+      )}
+    </div>
+  );
+};
+SidebarTooltip.displayName = 'SidebarTooltip';
+
+
+// --- Icon Wrapper for consistent sizing ---
+const SidebarIcon = ({ children, className }: { children: React.ReactNode, className?: string }) => {
+  return (
+    <div className={cn("flex-shrink-0 w-4 h-4", className)}>
+      {children}
     </div>
   )
 }
 
-function CombinedFilter({
-  filters,
-  onFiltersChange,
-}: {
-  filters: FilterConfig;
-  onFiltersChange: (filters: FilterConfig) => void;
-}) {
-  const selectedStatus = new Set(filters.status);
-  const selectedPriority = new Set(filters.priority);
-
-  const handleStatusSelect = (status: Status) => {
-    selectedStatus.has(status) ? selectedStatus.delete(status) : selectedStatus.add(status);
-    onFiltersChange({ ...filters, status: Array.from(selectedStatus) });
-  };
-
-  const handlePrioritySelect = (priority: Priority) => {
-    selectedPriority.has(priority) ? selectedPriority.delete(priority) : selectedPriority.add(priority);
-    onFiltersChange({ ...filters, priority: Array.from(selectedPriority) });
-  };
-
-  const hasActiveFilters = filters.status.length > 0 || filters.priority.length > 0;
-
-  return (
-    <Command>
-      <CommandInput placeholder="Filter by..." />
-      <CommandList>
-        <CommandEmpty>No results found.</CommandEmpty>
-
-        <CommandGroup heading="Status">
-          {statusOptions.map((option) => {
-            const isSelected = selectedStatus.has(option.value);
-            return (
-              <CommandItem
-                key={option.value}
-                onSelect={() => handleStatusSelect(option.value)}
-              >
-                <div
-                  className={cn(
-                    'mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary',
-                    isSelected ? 'bg-primary text-primary-foreground' : 'opacity-50 [&_svg]:invisible'
-                  )}
-                >
-                  <Check className={cn('h-4 w-4')} />
-                </div>
-                <span>{option.label}</span>
-              </CommandItem>
-            );
-          })}
-        </CommandGroup>
-
-        <CommandSeparator />
-
-        <CommandGroup heading="Priority">
-          {priorityOptions.map((option) => {
-            const isSelected = selectedPriority.has(option.value);
-            return (
-              <CommandItem
-                key={option.value}
-                onSelect={() => handlePrioritySelect(option.value)}
-              >
-                <div
-                  className={cn(
-                    'mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary',
-                    isSelected ? 'bg-primary text-primary-foreground' : 'opacity-50 [&_svg]:invisible'
-                  )}
-                >
-                  <Check className={cn('h-4 w-4')} />
-                </div>
-                <span>{option.label}</span>
-              </CommandItem>
-            );
-          })}
-        </CommandGroup>
-
-        {hasActiveFilters && (
-          <>
-            <CommandSeparator />
-            <CommandGroup>
-              <CommandItem
-                onSelect={() => onFiltersChange({ ...filters, status: [], priority: [] })}
-                className="justify-center text-center text-sm"
-              >
-                Clear filters
-              </CommandItem>
-            </CommandGroup>
-          </>
-        )}
-      </CommandList>
-    </Command>
-  )
-}
+export {
+  Sidebar,
+  SidebarContent,
+  SidebarHeader,
+  SidebarTitle,
+  SidebarBody,
+  SidebarFooter,
+  SidebarSection,
+  SidebarMenuItem,
+  SidebarMenuButton,
+  SidebarMenuAction,
+  SidebarLabel,
+  SidebarBadge,
+  SidebarTooltip,
+  SidebarIcon
+};
 ```
 
 ## File: src/hooks/useAppViewManager.hook.ts
@@ -1897,237 +1415,604 @@ export default function MessagingPage() {
 }
 ```
 
-## File: src/App.tsx
+## File: src/store/appShell.store.ts
 ```typescript
-import React, { useEffect } from "react";
-import {
-  createBrowserRouter,
-  RouterProvider,
-  Outlet,
-  Navigate,
-  useNavigate, // used in LoginPageWrapper
-  useLocation,
-} from "react-router-dom";
+import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
+import { type ReactElement } from 'react';
+import { SIDEBAR_STATES, BODY_STATES, type SidebarState, type BodyState } from '@/lib/utils';
 
-import { AppShell } from "./components/layout/AppShell";
-import { AppShellProvider } from "./providers/AppShellProvider";
-import { useAppShellStore } from "./store/appShell.store";
-import { useAuthStore } from "./store/authStore";
-import "./index.css";
+export type ActivePage = 'dashboard' | 'settings' | 'toaster' | 'notifications' | 'data-demo' | 'messaging';
 
-// Import library components
-import { EnhancedSidebar } from "./components/layout/EnhancedSidebar";
-import { MainContent } from "./components/layout/MainContent";
-import { RightPane } from "./components/layout/RightPane";
-import { TopBar } from "./components/layout/TopBar";
-import { CommandPalette } from "./components/global/CommandPalette";
-import { ToasterProvider } from "./components/ui/toast";
+// --- State and Action Types ---
 
-// --- Page/Content Components for Pages and Panes ---
-import { DashboardContent } from "./pages/Dashboard";
-import { SettingsPage } from "./pages/Settings";
-import { ToasterDemo } from "./pages/ToasterDemo";
-import { NotificationsPage } from "./pages/Notifications";
-import DataDemoPage from "./pages/DataDemo";
-import MessagingPage from "./pages/Messaging";
-import { LoginPage } from "./components/auth/LoginPage";
-
-// --- Icons ---
-import {
-  Search,
-  Filter,
-  Plus,
-  ChevronRight,
-  Rocket,
-} from "lucide-react";
-
-// --- Utils & Hooks ---
-import { cn } from "./lib/utils";
-import { useAppViewManager } from "./hooks/useAppViewManager.hook";
-import { useRightPaneContent } from "./hooks/useRightPaneContent.hook";
-import { BODY_STATES } from "./lib/utils";
-
-// Checks for authentication and redirects to login if needed
-function ProtectedRoute() {
-  const { isAuthenticated } = useAuthStore();
-  const location = useLocation();
-  if (!isAuthenticated) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
-  }
-  return <Outlet />;
+export interface AppShellState {
+  sidebarState: SidebarState;
+  bodyState: BodyState;
+  sidePaneContent: 'details' | 'settings' | 'main' | 'toaster' | 'notifications' | 'dataDemo' | 'dataItem' | 'messaging';
+  sidebarWidth: number;
+  sidePaneWidth: number;
+  splitPaneWidth: number;
+  defaultSidePaneWidth: number;
+  defaultSplitPaneWidth: number;
+  defaultWidthsSet: boolean;
+  previousBodyState: BodyState;
+  fullscreenTarget: 'main' | 'right' | null;
+  isResizing: boolean;
+  isResizingRightPane: boolean;
+  isTopBarVisible: boolean;
+  isTopBarHovered: boolean;
+  autoExpandSidebar: boolean;
+  reducedMotion: boolean;
+  compactMode: boolean;
+  primaryColor: string;
+  isCommandPaletteOpen: boolean;
+  isDarkMode: boolean;
+  appName?: string;
+  appLogo?: ReactElement;
+  draggedPage: 'dashboard' | 'settings' | 'toaster' | 'notifications' | 'data-demo' | 'messaging' | null;
+  dragHoverTarget: 'left' | 'right' | null;
+  hoveredPane: 'left' | 'right' | null;
 }
 
-// A root component to apply global styles and effects
-function Root() {
-  const isDarkMode = useAppShellStore((state) => state.isDarkMode);
-
-  useEffect(() => {
-    document.documentElement.classList.toggle("dark", isDarkMode);
-  }, [isDarkMode]);
-
-  return <Outlet />;
+export interface AppShellActions {
+    // Initialization
+    init: (config: { appName?: string; appLogo?: ReactElement; defaultSplitPaneWidth?: number }) => void;
+    
+    // Direct state setters
+    setSidebarState: (payload: SidebarState) => void;
+    setBodyState: (payload: BodyState) => void;
+    setSidePaneContent: (payload: AppShellState['sidePaneContent']) => void;
+    setSidebarWidth: (payload: number) => void;
+    setSidePaneWidth: (payload: number) => void;
+    setDefaultPaneWidths: () => void;
+    resetPaneWidths: () => void;
+    setSplitPaneWidth: (payload: number) => void;
+    setIsResizing: (payload: boolean) => void;
+    setFullscreenTarget: (payload: 'main' | 'right' | null) => void;
+    setIsResizingRightPane: (payload: boolean) => void;
+    setTopBarVisible: (payload: boolean) => void;
+    setAutoExpandSidebar: (payload: boolean) => void;
+    setReducedMotion: (payload: boolean) => void;
+    setCompactMode: (payload: boolean) => void;
+    setPrimaryColor: (payload: string) => void;
+    setDraggedPage: (payload: AppShellState['draggedPage']) => void;
+    setCommandPaletteOpen: (open: boolean) => void;
+    toggleDarkMode: () => void;
+    setDragHoverTarget: (payload: 'left' | 'right' | null) => void;
+    setTopBarHovered: (isHovered: boolean) => void;
+    setHoveredPane: (payload: 'left' | 'right' | null) => void;
+    
+    // Composite actions
+    toggleSidebar: () => void;
+    hideSidebar: () => void;
+    showSidebar: () => void;
+    peekSidebar: () => void;
+    toggleFullscreen: (target?: 'main' | 'right' | null) => void;
+    resetToDefaults: () => void;
 }
 
-// The main layout for authenticated parts of the application
-function ProtectedLayout() {
+const defaultState: AppShellState = {
+  sidebarState: SIDEBAR_STATES.EXPANDED,
+  bodyState: BODY_STATES.NORMAL,
+  sidePaneContent: 'details',
+  sidebarWidth: 280,
+  sidePaneWidth: typeof window !== 'undefined' ? Math.max(300, Math.round(window.innerWidth * 0.6)) : 400,
+  splitPaneWidth: typeof window !== 'undefined' ? Math.max(300, Math.round(window.innerWidth * 0.35)) : 400,
+  defaultSidePaneWidth: 400,
+  defaultSplitPaneWidth: 400,
+  defaultWidthsSet: false,
+  previousBodyState: BODY_STATES.NORMAL,
+  fullscreenTarget: null,
+  isResizing: false,
+  isResizingRightPane: false,
+  isTopBarVisible: true,
+  isTopBarHovered: false,
+  autoExpandSidebar: true,
+  reducedMotion: false,
+  compactMode: false,
+  primaryColor: '220 84% 60%',
+  isCommandPaletteOpen: false,
+  isDarkMode: false,
+  appName: 'Jeli App',
+  appLogo: undefined,
+  draggedPage: null,
+  dragHoverTarget: null,
+  hoveredPane: null,
+};
 
-  return (
-    <div className="h-screen w-screen overflow-hidden bg-background">
-      <AppShellProvider
-        appName="Jeli App"
-        appLogo={
-          <div className="p-2 bg-primary/20 rounded-lg">
-            <Rocket className="w-5 h-5 text-primary" />
-          </div>
+
+export const useAppShellStore = create<AppShellState & AppShellActions>()(
+  persist(
+    (set, get) => ({
+      ...defaultState,
+
+      init: ({ appName, appLogo, defaultSplitPaneWidth }) => set(state => ({
+        ...state,
+        ...(appName && { appName }),
+        ...(appLogo && { appLogo }),
+        ...(defaultSplitPaneWidth && { splitPaneWidth: defaultSplitPaneWidth }),
+      })),
+      
+      setSidebarState: (payload) => set({ sidebarState: payload }),
+      setBodyState: (payload) => {
+        // If we're leaving fullscreen, reset the target and previous state
+        if (get().bodyState === BODY_STATES.FULLSCREEN && payload !== BODY_STATES.FULLSCREEN) {
+          set({ bodyState: payload, fullscreenTarget: null, previousBodyState: BODY_STATES.NORMAL });
+        } else {
+          set({ bodyState: payload });
         }
-      >
-        <ComposedApp />
-      </AppShellProvider>
-    </div>
-  );
+      },
+      setSidePaneContent: (payload) => set({ sidePaneContent: payload }),
+      setSidebarWidth: (payload) => set({ sidebarWidth: Math.max(200, Math.min(500, payload)) }),
+      setSidePaneWidth: (payload) => set({ sidePaneWidth: Math.max(300, Math.min(window.innerWidth * 0.8, payload)) }),
+      setDefaultPaneWidths: () => {
+        if (get().defaultWidthsSet) return;
+        set(state => ({
+            defaultSidePaneWidth: state.sidePaneWidth,
+            defaultSplitPaneWidth: state.splitPaneWidth,
+            defaultWidthsSet: true,
+        }));
+      },
+      resetPaneWidths: () => set(state => ({
+        sidePaneWidth: state.defaultSidePaneWidth,
+        splitPaneWidth: state.defaultSplitPaneWidth,
+      })),
+      setSplitPaneWidth: (payload) => set({ splitPaneWidth: Math.max(300, Math.min(window.innerWidth * 0.8, payload)) }),
+      setIsResizing: (payload) => set({ isResizing: payload }),
+      setFullscreenTarget: (payload) => set({ fullscreenTarget: payload }),
+      setIsResizingRightPane: (payload) => set({ isResizingRightPane: payload }),
+      setTopBarVisible: (payload) => set({ isTopBarVisible: payload }),
+      setAutoExpandSidebar: (payload) => set({ autoExpandSidebar: payload }),
+      setReducedMotion: (payload) => set({ reducedMotion: payload }),
+      setCompactMode: (payload) => set({ compactMode: payload }),
+      setPrimaryColor: (payload) => {
+        if (typeof document !== 'undefined') {
+            document.documentElement.style.setProperty('--primary-hsl', payload);
+        }
+        set({ primaryColor: payload });
+      },
+      setDraggedPage: (payload) => set({ draggedPage: payload }),
+      setCommandPaletteOpen: (open) => set({ isCommandPaletteOpen: open }),
+      toggleDarkMode: () => set((state) => ({ isDarkMode: !state.isDarkMode })),
+      setDragHoverTarget: (payload) => set({ dragHoverTarget: payload }),
+      setTopBarHovered: (isHovered) => set({ isTopBarHovered: isHovered }),
+      setHoveredPane: (payload) => set({ hoveredPane: payload }),
+      
+      toggleSidebar: () => {
+        const current = get().sidebarState;
+        if (current === SIDEBAR_STATES.HIDDEN) set({ sidebarState: SIDEBAR_STATES.COLLAPSED });
+        else if (current === SIDEBAR_STATES.COLLAPSED) set({ sidebarState: SIDEBAR_STATES.EXPANDED });
+        else if (current === SIDEBAR_STATES.EXPANDED) set({ sidebarState: SIDEBAR_STATES.COLLAPSED });
+      },
+      hideSidebar: () => set({ sidebarState: SIDEBAR_STATES.HIDDEN }),
+      showSidebar: () => set({ sidebarState: SIDEBAR_STATES.EXPANDED }),
+      peekSidebar: () => set({ sidebarState: SIDEBAR_STATES.PEEK }),
+      
+      toggleFullscreen: (target = null) => {
+        const { bodyState, previousBodyState } = get();
+        if (bodyState === BODY_STATES.FULLSCREEN) {
+          set({ 
+            bodyState: previousBodyState || BODY_STATES.NORMAL,
+            fullscreenTarget: null,
+            previousBodyState: BODY_STATES.NORMAL,
+          });
+        } else {
+          set({ 
+            previousBodyState: bodyState, 
+            bodyState: BODY_STATES.FULLSCREEN, 
+            fullscreenTarget: target 
+          });
+        }
+      },
+      
+      resetToDefaults: () => {
+        // Preserve props passed to provider and session defaults
+        set(state => {
+          const currentPrimaryColor = defaultState.primaryColor;
+          if (typeof document !== 'undefined') {
+            document.documentElement.style.setProperty('--primary-hsl', currentPrimaryColor);
+          }
+          return {
+            ...defaultState,
+            primaryColor: currentPrimaryColor,
+            appName: state.appName,
+            appLogo: state.appLogo,
+            defaultSidePaneWidth: state.defaultSidePaneWidth,
+            defaultSplitPaneWidth: state.defaultSplitPaneWidth,
+            defaultWidthsSet: state.defaultWidthsSet,
+            // Also reset current widths to the defaults
+            sidePaneWidth: state.defaultSidePaneWidth,
+            splitPaneWidth: state.defaultSplitPaneWidth,
+          };
+        });
+      },
+    }),
+    {
+      name: 'app-shell-storage',
+      partialize: (state) => ({
+        isDarkMode: state.isDarkMode,
+        sidebarState: state.sidebarState,
+        sidebarWidth: state.sidebarWidth,
+        sidePaneWidth: state.sidePaneWidth,
+        splitPaneWidth: state.splitPaneWidth,
+        autoExpandSidebar: state.autoExpandSidebar,
+        reducedMotion: state.reducedMotion,
+        compactMode: state.compactMode,
+        primaryColor: state.primaryColor,
+      }),
+    }
+  )
+);
+
+// Add a selector for the derived rightPaneWidth
+export const useRightPaneWidth = () => useAppShellStore(state => 
+    state.bodyState === BODY_STATES.SPLIT_VIEW ? state.splitPaneWidth : state.sidePaneWidth
+);
+```
+
+## File: src/components/layout/EnhancedSidebar.tsx
+```typescript
+import React from 'react';
+import {
+  Home,
+  Settings,
+  HelpCircle,
+  Component,
+  Rocket,
+  MoreHorizontal,
+  Bell,
+  Search,
+  FileText,
+  Star,
+  Trash2,
+  FolderOpen,
+  Mail,
+  Bookmark,
+  Download,
+  User,
+  Plus,
+  Database,
+  PanelLeftClose,
+} from 'lucide-react';
+import { useAppShellStore, type ActivePage } from '@/store/appShell.store';
+import {
+  Workspaces,
+  WorkspaceTrigger,
+  WorkspaceContent,
+  type Workspace,
+} from './WorkspaceSwitcher';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarHeader,
+  SidebarTitle,
+  SidebarBody,
+  SidebarFooter,
+  SidebarSection,
+  SidebarMenuItem,
+  SidebarMenuButton,
+  SidebarMenuAction,
+  SidebarLabel,
+  SidebarBadge,
+  SidebarTooltip,
+  SidebarIcon,
+  useSidebar,
+} from './Sidebar';
+import { ViewModeSwitcher } from './ViewModeSwitcher';
+import { cn } from '@/lib/utils';
+import { useAppViewManager } from '@/hooks/useAppViewManager.hook';
+
+interface MyWorkspace extends Workspace {
+  logo: string;
+  plan: string;
 }
 
-// Content for the Top Bar (will be fully refactored in Part 2)
-function AppTopBar() {
-  const [searchTerm, setSearchTerm] = React.useState("");
-  const [isSearchFocused, setIsSearchFocused] = React.useState(false);
-  const location = useLocation();
-  const activePage = location.pathname.split('/').filter(Boolean).pop()?.replace('-', ' ') || 'dashboard';
+const mockWorkspaces: MyWorkspace[] = [
+  { id: 'ws1', name: 'Acme Inc.', logo: 'https://avatar.vercel.sh/acme.png', plan: 'Pro' },
+  { id: 'ws2', name: 'Monsters Inc.', logo: 'https://avatar.vercel.sh/monsters.png', plan: 'Free' },
+  { id: 'ws3', name: 'Stark Industries', logo: 'https://avatar.vercel.sh/stark.png', plan: 'Enterprise' },
+];
+
+const SidebarWorkspaceTrigger = () => {
+  const { isCollapsed, compactMode } = useSidebar();
 
   return (
-    <div className="flex items-center gap-3">
-      <div
-        className={cn(
-          "hidden md:flex items-center gap-2 text-sm transition-opacity",
-          {
-            "opacity-0 pointer-events-none":
-              isSearchFocused && activePage === "dashboard",
-          },
-        )}
-      >
-        <a
-          href="#"
-          className="text-muted-foreground hover:text-foreground transition-colors"
-        >
-          Home
-        </a>
-        <ChevronRight className="w-4 h-4 text-muted-foreground" />
-        <span className="font-medium text-foreground capitalize">
-          {activePage}
-        </span>
-      </div>
+    <WorkspaceTrigger
+      collapsed={isCollapsed}
+      className={cn(
+        'rounded-xl transition-colors hover:bg-accent/50 w-full',
+        isCollapsed ? 'p-2' : 'p-3 bg-accent/50',
+      )}
+      avatarClassName={cn(compactMode ? 'h-8 w-8' : 'h-10 w-10')}
+    />
+  );
+};
 
-      {/* Page-specific: Dashboard search and actions */}
-      {activePage === "dashboard" && (
-        <div className="flex items-center gap-2 flex-1 justify-end">
-          <div
-            className={cn(
-              "relative transition-all duration-300 ease-in-out",
-              isSearchFocused ? "flex-1 max-w-lg" : "w-auto",
+const SidebarToggleButton = () => {
+  const { isCollapsed } = useSidebar();
+  const { toggleSidebar } = useAppShellStore.getState();
+
+  if (isCollapsed) return null;
+
+  return (
+    <button
+      onClick={toggleSidebar}
+      className="ml-auto h-9 w-9 flex items-center justify-center rounded-lg hover:bg-accent transition-colors"
+      title="Collapse Sidebar"
+    >
+      <PanelLeftClose className="w-5 h-5" />
+    </button>
+  );
+};
+
+interface SidebarProps {
+  onMouseEnter?: () => void;
+  onMouseLeave?: () => void;
+}
+
+export const EnhancedSidebar = React.memo(React.forwardRef<HTMLDivElement, SidebarProps>(
+  ({ onMouseEnter, onMouseLeave }, ref) => {
+    const sidebarWidth = useAppShellStore(s => s.sidebarWidth);
+    const compactMode = useAppShellStore(s => s.compactMode);
+    const appName = useAppShellStore(s => s.appName);
+    const appLogo = useAppShellStore(s => s.appLogo);
+    const [selectedWorkspace, setSelectedWorkspace] = React.useState(mockWorkspaces[0]);
+    return (
+      <Sidebar
+        ref={ref}
+        style={{ width: sidebarWidth }}
+        onMouseEnter={onMouseEnter}
+        onMouseLeave={onMouseLeave}
+      >
+        <SidebarContent>
+          <SidebarHeader>
+            {appLogo || (
+              <div className="p-2 bg-primary/20 rounded-lg">
+                <Rocket className="w-5 h-5 text-primary" />
+              </div>
             )}
-          >
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4 pointer-events-none" />
-            <input
-              type="text"
-              placeholder="Search..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              onFocus={() => setIsSearchFocused(true)}
-              onBlur={() => setIsSearchFocused(false)}
-              className={cn(
-                "pl-9 pr-4 py-2 h-10 border-none rounded-lg bg-card focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300 ease-in-out w-full",
-                isSearchFocused ? "bg-background" : "w-48",
-              )}
-            />
+            <SidebarTitle>{appName}</SidebarTitle>
+            <SidebarToggleButton />
+          </SidebarHeader>
+
+          <SidebarBody>
+            <SidebarSection title="Main">
+              <AppMenuItem icon={Home} label="Dashboard" page="dashboard" />
+              <AppMenuItem icon={Database} label="Data Demo" page="data-demo" />
+              <AppMenuItem icon={Mail} label="Messaging" page="messaging" badge={7} />
+              <AppMenuItem icon={Search} label="Search" />
+              <AppMenuItem icon={Bell} label="Notifications" badge={3} page="notifications" opensInSidePane />
+            </SidebarSection>
+            
+            <SidebarSection title="Workspace" collapsible defaultExpanded>
+              <AppMenuItem icon={FileText} label="Documents" hasActions>
+                <AppMenuItem icon={FileText} label="Recent" isSubItem />
+                <AppMenuItem icon={Star} label="Starred" isSubItem />
+                <AppMenuItem icon={Trash2} label="Trash" isSubItem />
+              </AppMenuItem>
+              <AppMenuItem icon={FolderOpen} label="Projects" hasActions />
+              <AppMenuItem icon={Mail} label="Messages" badge={12} />
+            </SidebarSection>
+            
+            <SidebarSection title="Personal" collapsible>
+              <AppMenuItem icon={Bookmark} label="Bookmarks" />
+              <AppMenuItem icon={Star} label="Favorites" />
+              <AppMenuItem icon={Download} label="Downloads" />
+            </SidebarSection>
+
+            <SidebarSection title="Components" collapsible defaultExpanded>
+              <AppMenuItem icon={Component} label="Toaster" page="toaster" />
+            </SidebarSection>
+          </SidebarBody>
+
+          <SidebarFooter>
+            <SidebarSection>
+              <AppMenuItem icon={User} label="Profile" />
+              <AppMenuItem icon={Settings} label="Settings" page="settings" />
+              <AppMenuItem icon={HelpCircle} label="Help" />
+            </SidebarSection>
+
+            <div className={cn(compactMode ? 'mt-4' : 'mt-6')}>
+              <Workspaces
+                workspaces={mockWorkspaces}
+                selectedWorkspaceId={selectedWorkspace.id}
+                onWorkspaceChange={(ws) => setSelectedWorkspace(ws as MyWorkspace)}
+              >
+                <SidebarWorkspaceTrigger />
+                <WorkspaceContent>
+                  <button className="flex w-full items-center gap-2 rounded-sm px-2 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground focus:outline-none">
+                    <Plus className="h-4 w-4" />
+                    <span>Create Workspace</span>
+                  </button>
+                </WorkspaceContent>
+              </Workspaces>
+            </div>
+          </SidebarFooter>
+        </SidebarContent>
+      </Sidebar>
+    );
+  },
+));
+EnhancedSidebar.displayName = 'EnhancedSidebar';
+
+
+// Example of a reusable menu item component built with the new Sidebar primitives
+interface AppMenuItemProps {
+  icon: React.ElementType;
+  label: string;
+  badge?: number;
+  hasActions?: boolean;
+  children?: React.ReactNode;
+  isSubItem?: boolean;
+  page?: ActivePage;
+  opensInSidePane?: boolean;
+}
+
+const AppMenuItem: React.FC<AppMenuItemProps> = ({ icon: Icon, label, badge, hasActions, children, isSubItem = false, page, opensInSidePane = false }) => {
+  const compactMode = useAppShellStore(state => state.compactMode);
+  const { setDraggedPage, setDragHoverTarget } = useAppShellStore.getState()
+  const { isCollapsed } = useSidebar();
+  const viewManager = useAppViewManager();
+
+  const isActive = (
+    (!opensInSidePane && page && viewManager.currentActivePage === page)
+  ) || (
+    opensInSidePane && page === 'notifications' && viewManager.sidePaneContent === 'notifications'
+  );
+
+  const handleClick = () => {
+    if (page) {
+      if (opensInSidePane) {
+        // The only item using this is Notifications
+        viewManager.toggleSidePane('notifications');
+      } else {
+        viewManager.navigateTo(page);
+      }
+    }
+  };
+
+  return (
+    <div className={isSubItem ? (compactMode ? 'ml-4' : 'ml-6') : ''}>
+      <SidebarMenuItem>
+        <SidebarMenuButton
+          onClick={handleClick}
+          isActive={isActive}
+          draggable={!!page}
+          onDragStart={(_e) => {
+            if (page) {
+              // set dragged page in AppShell store
+              setDraggedPage(page);
+            }
+          }}
+          onDragEnd={() => {
+            setDraggedPage(null);
+            setDragHoverTarget(null);
+          }}
+        >
+          <SidebarIcon>
+            <Icon className={isSubItem ? "w-3 h-3" : "w-4 h-4"}/>
+          </SidebarIcon>
+          <SidebarLabel>{label}</SidebarLabel>
+          {badge && <SidebarBadge>{badge}</SidebarBadge>}
+          <SidebarTooltip label={label} badge={badge} />
+        </SidebarMenuButton>
+
+        {page && !isCollapsed && ( // Always render switcher if there's a page
+          <div className={cn(
+            "absolute top-1/2 -translate-y-1/2 z-10",
+            "opacity-0 group-hover/item:opacity-100 group-focus-within/item:opacity-100",
+            "transition-opacity pointer-events-none group-hover/item:pointer-events-auto",
+            // If there are actions, move left to make space for the action button
+            hasActions ? "right-10" : "right-2"
+          )}>
+            <ViewModeSwitcher targetPage={page} />
           </div>
-          <button className="h-10 w-10 flex-shrink-0 flex items-center justify-center hover:bg-accent rounded-full transition-colors">
-            <Filter className="w-5 h-5" />
-          </button>
-          <button className="bg-primary text-primary-foreground px-4 py-2 rounded-full hover:bg-primary/90 transition-colors flex items-center gap-2 h-10 flex-shrink-0">
-            <Plus className="w-5 h-5" />
-            <span
-              className={cn(isSearchFocused ? "hidden sm:inline" : "inline")}
-            >
-              New Project
-            </span>
-          </button>
-        </div>
+        )}
+
+        {hasActions && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <SidebarMenuAction>
+                <MoreHorizontal className="h-4 w-4" />
+              </SidebarMenuAction>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent side="right" align="start">
+              <DropdownMenuItem>
+                <span>Edit {label}</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <span>Delete {label}</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+      </SidebarMenuItem>
+      {!isCollapsed && children && (
+        <div className="space-y-1 mt-1">{children}</div>
       )}
     </div>
   );
-}
+};
+```
 
-// The main App component that composes the shell
-function ComposedApp() {
-  const { setBodyState, setSidePaneContent } = useAppShellStore();
-  const viewManager = useAppViewManager();
-
-  // Sync URL state with AppShellStore
-  useEffect(() => {
-    setBodyState(viewManager.bodyState);
-    setSidePaneContent(viewManager.sidePaneContent);
-  }, [viewManager.bodyState, viewManager.sidePaneContent, setBodyState, setSidePaneContent]);
-
-  return (
-    <AppShell
-      sidebar={<EnhancedSidebar />}
-      onOverlayClick={viewManager.closeSidePane}
-      topBar={
-        <TopBar>
-          <AppTopBar />
-        </TopBar>
-      }
-      mainContent={
-        <MainContent>
-          <Outlet />
-        </MainContent>
-      }
-      rightPane={<RightPane />}
-      commandPalette={<CommandPalette />}
-    />
-  );
-}
-
-function App() {
-  const router = createBrowserRouter([
-    {
-      element: <Root />,
-      children: [
-        {
-          path: "/login",
-          element: <LoginPage />,
-        },
-        {
-          path: "/",
-          element: <ProtectedRoute />,
-          children: [
-            {
-              path: "/",
-              element: <ProtectedLayout />,
-              children: [
-                { index: true, element: <Navigate to="/dashboard" replace /> },
-                { path: "dashboard", element: <DashboardContent /> },
-                { path: "settings", element: <SettingsPage /> },
-                { path: "toaster", element: <ToasterDemo /> },
-                { path: "notifications", element: <NotificationsPage /> },
-                { path: "data-demo", element: <DataDemoPage /> },
-                { path: "data-demo/:itemId", element: <DataDemoPage /> },
-                { path: "messaging", element: <MessagingPage /> },
-                { path: "messaging/:conversationId", element: <MessagingPage /> },
-              ],
-            },
-          ],
-        },
-      ],
+## File: package.json
+```json
+{
+  "name": "jeli-app-shell",
+  "private": false,
+  "version": "1.0.1",
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "main": "./dist/jeli-app-shell.umd.js",
+  "module": "./dist/jeli-app-shell.es.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/jeli-app-shell.es.js",
+      "require": "./dist/jeli-app-shell.umd.js"
     },
-  ]);
-
-  return (
-    <ToasterProvider>
-      <RouterProvider router={router} />
-    </ToasterProvider>
-  );
+    "./dist/style.css": "./dist/style.css"
+  },
+  "sideEffects": [
+    "**/*.css"
+  ],
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "preview": "vite preview"
+  },
+  "peerDependencies": {
+    "@iconify/react": "^4.1.1",
+    "@radix-ui/react-avatar": "^1.0.4",
+    "@radix-ui/react-dialog": "^1.0.5",
+    "@radix-ui/react-dropdown-menu": "^2.0.6",
+    "@radix-ui/react-label": "^2.1.7",
+    "@radix-ui/react-popover": "^1.0.7",
+    "@radix-ui/react-slot": "^1.0.2",
+    "@radix-ui/react-tabs": "^1.0.4",
+    "class-variance-authority": "^0.7.0",
+    "clsx": "^2.0.0",
+    "cmdk": "^0.2.0",
+    "date-fns": "^3.6.0",
+    "gsap": "^3.13.0",
+    "lucide-react": "^0.294.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.22.3",
+    "sonner": "^1.2.4",
+    "tailwind-merge": "^2.0.0",
+    "tailwindcss": "^3.3.5",
+    "zustand": "^4.5.7"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@types/react": "^18.2.37",
+    "@types/react-dom": "^18.2.15",
+    "@typescript-eslint/eslint-plugin": "^6.10.0",
+    "@typescript-eslint/parser": "^6.10.0",
+    "@vitejs/plugin-react": "^4.1.1",
+    "autoprefixer": "^10.4.16",
+    "eslint": "^8.53.0",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint-plugin-react-refresh": "^0.4.4",
+    "postcss": "^8.4.31",
+    "tailwindcss": "^3.3.5",
+    "tailwindcss-animate": "^1.0.7",
+    "typescript": "^5.2.2",
+    "vite": "^4.5.0"
+  },
+  "dependencies": {
+    "@radix-ui/react-checkbox": "^1.3.3"
+  }
 }
-
-export default App;
 ```

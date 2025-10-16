@@ -19,6 +19,9 @@ import {
   Plus,
   Database,
   PanelLeftClose,
+  Inbox,
+  UserX,
+  CheckCircle2,
 } from 'lucide-react';
 import { useAppShellStore, type ActivePage } from '@/store/appShell.store';
 import {
@@ -130,8 +133,8 @@ export const EnhancedSidebar = React.memo(React.forwardRef<HTMLDivElement, Sideb
           <SidebarBody>
             <SidebarSection title="Main">
               <AppMenuItem icon={Home} label="Dashboard" page="dashboard" />
-              <AppMenuItem icon={Database} label="Data Demo" page="data-demo" />
-              <AppMenuItem icon={Mail} label="Messaging" page="messaging" badge={7} />
+              <AppMenuItem icon={Database} label="Data Demo" page="data-demo"  />
+              <MessagingSidebarItems />
               <AppMenuItem icon={Search} label="Search" />
               <AppMenuItem icon={Bell} label="Notifications" badge={3} page="notifications" opensInSidePane />
             </SidebarSection>
@@ -198,21 +201,29 @@ interface AppMenuItemProps {
   isSubItem?: boolean;
   page?: ActivePage;
   opensInSidePane?: boolean;
+  onClick?: () => void;
+  isActive?: boolean;
 }
 
-const AppMenuItem: React.FC<AppMenuItemProps> = ({ icon: Icon, label, badge, hasActions, children, isSubItem = false, page, opensInSidePane = false }) => {
+const AppMenuItem: React.FC<AppMenuItemProps> = ({ icon: Icon, label, badge, hasActions, children, isSubItem = false, page, opensInSidePane = false, onClick, isActive: isActiveProp }) => {
   const compactMode = useAppShellStore(state => state.compactMode);
   const { setDraggedPage, setDragHoverTarget } = useAppShellStore.getState()
   const { isCollapsed } = useSidebar();
   const viewManager = useAppViewManager();
 
-  const isActive = (
+  const calculatedIsActive = (
     (!opensInSidePane && page && viewManager.currentActivePage === page)
   ) || (
     opensInSidePane && page === 'notifications' && viewManager.sidePaneContent === 'notifications'
   );
 
+  const isActive = isActiveProp ?? calculatedIsActive;
+
   const handleClick = () => {
+    if (onClick) {
+      onClick();
+      return;
+    }
     if (page) {
       if (opensInSidePane) {
         // The only item using this is Notifications
@@ -283,5 +294,46 @@ const AppMenuItem: React.FC<AppMenuItemProps> = ({ icon: Icon, label, badge, has
         <div className="space-y-1 mt-1">{children}</div>
       )}
     </div>
+  );
+};
+
+const MessagingSidebarItems = () => {
+  const { currentActivePage, messagingView, navigateTo } = useAppViewManager();
+  const totalUnread = 7; // Mock data, could come from a store
+
+  return (
+    <AppMenuItem
+      icon={Mail}
+      label="Messaging"
+      badge={totalUnread}
+      page="messaging"
+      isActive={currentActivePage === 'messaging'}
+      onClick={() => navigateTo('messaging', { messagingView: 'all_open' })}
+    >
+      <AppMenuItem
+        icon={Inbox}
+        label="All Open"
+        isSubItem
+        page="messaging"
+        isActive={currentActivePage === 'messaging' && (messagingView === 'all_open' || !messagingView)}
+        onClick={() => navigateTo('messaging', { messagingView: 'all_open' })}
+      />
+      <AppMenuItem
+        icon={UserX}
+        label="Unassigned"
+        isSubItem
+        page="messaging"
+        isActive={currentActivePage === 'messaging' && messagingView === 'unassigned'}
+        onClick={() => navigateTo('messaging', { messagingView: 'unassigned' })}
+      />
+      <AppMenuItem
+        icon={CheckCircle2}
+        label="Done"
+        isSubItem
+        page="messaging"
+        isActive={currentActivePage === 'messaging' && messagingView === 'done'}
+        onClick={() => navigateTo('messaging', { messagingView: 'done' })}
+      />
+    </AppMenuItem>
   );
 };

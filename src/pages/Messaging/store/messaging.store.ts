@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { mockTasks, mockContacts, mockAssignees } from '../data/mockData';
-import type { Task, Contact, Channel, Assignee, TaskStatus, TaskPriority } from '../types';
+import type { Task, Contact, Channel, Assignee, TaskStatus, TaskPriority, TaskView } from '../types';
 
 interface MessagingState {
   tasks: Task[];
@@ -14,12 +14,14 @@ interface MessagingState {
     priority: TaskPriority[];
     assigneeId: string[];
   };
+  activeTaskView: TaskView;
 }
 
 interface MessagingActions {
   getTaskById: (id: string) => (Task & { contact: Contact, assignee: Assignee | null }) | undefined;
   getFilteredTasks: () => (Task & { contact: Contact, assignee: Assignee | null })[];
   setSearchTerm: (term: string) => void;
+  setActiveTaskView: (view: TaskView) => void;
   setFilters: (filters: Partial<MessagingState['activeFilters']>) => void;
   updateTask: (taskId: string, updates: Partial<Omit<Task, 'id'>>) => void;
   getAssigneeById: (assigneeId: string) => Assignee | undefined;
@@ -38,6 +40,7 @@ export const useMessagingStore = create<MessagingState & MessagingActions>((set,
     priority: [],
     assigneeId: [],
   },
+  activeTaskView: 'all_open',
 
   getTaskById: (id) => {
     const task = get().tasks.find(t => t.id === id);
@@ -52,10 +55,22 @@ export const useMessagingStore = create<MessagingState & MessagingActions>((set,
   },
 
   getFilteredTasks: () => {
-    const { tasks, contacts, assignees, searchTerm, activeFilters } = get();
+    const { tasks, contacts, assignees, searchTerm, activeFilters, activeTaskView } = get();
     const lowercasedSearch = searchTerm.toLowerCase();
 
-    const mapped = tasks.map(task => {
+    const viewFilteredTasks = tasks.filter(task => {
+      switch (activeTaskView) {
+        case 'all_open':
+          return task.status === 'open' || task.status === 'in-progress';
+        case 'unassigned':
+          return !task.assigneeId && (task.status === 'open' || task.status === 'in-progress');
+        case 'done':
+          return task.status === 'done';
+        default:
+          return true;
+      }
+    });
+    const mapped = viewFilteredTasks.map(task => {
       const contact = contacts.find(c => c.id === task.contactId) as Contact;
       const assignee = assignees.find(a => a.id === task.assigneeId) || null;
       return { ...task, contact, assignee };
@@ -76,6 +91,8 @@ export const useMessagingStore = create<MessagingState & MessagingActions>((set,
   },
 
   setSearchTerm: (term) => set({ searchTerm: term }),
+  
+  setActiveTaskView: (view) => set({ activeTaskView: view }),
 
   setFilters: (newFilters) => set(state => ({
     activeFilters: { ...state.activeFilters, ...newFilters }

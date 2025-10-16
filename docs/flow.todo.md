@@ -89,7 +89,7 @@ message page: message list column pane:
 
 2. also when message list column pane is collapsed, the widht of the column should auto follow the shrinked widht of the children
 
-===
+=== DONE
 
 message page: message list column: resizable sidebar border: I hate when it perceived like there is doubling vertical line
 

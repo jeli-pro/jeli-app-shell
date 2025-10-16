@@ -1,0 +1,1222 @@
+uuid: c29e9d6d-97e3-461b-af16-43b9e0780b43
+projectId: jeli-app-shell
+createdAt: '2025-10-16T10:26:04.744Z'
+gitCommitMsg: >-
+  feat(messaging): implement advanced filtering and sidebar navigation
+
+  Refactors the messaging page to support advanced, preset-based filtering
+  (e.g., "All Open", "Unassigned", "Done").
+
+  - Introduces a `TaskView` state in the Zustand store to manage the
+    active filter preset.
+  - The `getFilteredTasks` selector now applies view-based filtering before
+    other filters.
+  - Implements a new `messagingView` URL search parameter, making the view
+    state bookmarkable and shareable. The `useAppViewManager` hook is updated
+    to manage this parameter.
+  - The `TaskList` UI is updated to use new tabs that control the URL-driven
+    view.
+  - The main sidebar's "Messaging" item is converted into a collapsible
+    section with direct navigation links to each new filter view.
+promptSummary: >-
+  I'm implementing a feature to add advanced filtering to the messaging page.
+  This includes adding presets like "Open" and "Unassigned," making these
+  filters accessible as sub-pages in the sidebar, and driving the state through
+  URL parameters.
+reasoning:
+  - >-
+    Okay, team, let's execute this feature upgrade. We're moving from a basic
+    messaging filter to a robust, URL-driven system with advanced presets, and
+    integrating it directly into the sidebar for a seamless user experience.
+    Here is the plan of attack.
+  - '### Part 1: State Management Upgrade'
+  - >-
+    First, I'll enhance our Zustand store. I'm introducing a new `TaskView` type
+    to define our preset filters (`all_open`, `unassigned`, `done`) and adding
+    `activeTaskView` to the store's state. The core of this change is upgrading
+    the `getFilteredTasks` selector to apply these view-based filters before any
+    other filtering logic, making our data layer smarter.
+  - '### Part 2: URL-Driven UI'
+  - >-
+    Next, I'll make the URL the single source of truth. I'm modifying the
+    `useAppViewManager` hook to manage a new `messagingView` search parameter.
+    The `TaskList` component will be refactored to use this hook, syncing the
+    URL state to our Zustand store. The old, static tabs will be replaced with
+    new `AnimatedTabs` that directly manipulate the URL, making our application
+    state bookmarkable and shareable.
+  - '### Part 3: Sidebar Integration'
+  - >-
+    Finally, to make these views first-class citizens, I'm integrating them into
+    the `EnhancedSidebar`. The "Messaging" link will become a collapsible
+    section with direct links to "All Open", "Unassigned", and "Done" views.
+    This requires making the `AppMenuItem` component more flexible to accept
+    custom `onClick` and `isActive` props, allowing it to drive our new
+    URL-based navigation seamlessly.
+  - '---'
+operations:
+  - type: write
+    path: src/pages/Messaging/types.ts
+    content: |+
+      --- src/pages/Messaging/types.ts
+      +++ src/pages/Messaging/types.ts
+      @@ -62,3 +62,5 @@
+         tags: string[];
+         aiSummary: AISummary;
+       }
+      +
+      +export type TaskView = 'all_open' | 'unassigned' | 'done';
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/Messaging/store/messaging.store.ts
+    content: >+
+      --- src/pages/Messaging/store/messaging.store.ts
+
+      +++ src/pages/Messaging/store/messaging.store.ts
+
+      @@ -1,6 +1,6 @@
+       import { create } from 'zustand';
+       import { mockTasks, mockContacts, mockAssignees } from '../data/mockData';
+      -import type { Task, Contact, Channel, Assignee, TaskStatus, TaskPriority
+      } from '../types';
+
+      +import type { Task, Contact, Channel, Assignee, TaskStatus, TaskPriority,
+      TaskView } from '../types';
+       
+       interface MessagingState {
+         tasks: Task[];
+      @@ -13,12 +13,14 @@
+           priority: TaskPriority[];
+           assigneeId: string[];
+         };
+      +  activeTaskView: TaskView;
+       }
+       
+       interface MessagingActions {
+         getTaskById: (id: string) => (Task & { contact: Contact, assignee: Assignee | null }) | undefined;
+         getFilteredTasks: () => (Task & { contact: Contact, assignee: Assignee | null })[];
+         setSearchTerm: (term: string) => void;
+      +  setActiveTaskView: (view: TaskView) => void;
+         setFilters: (filters: Partial<MessagingState['activeFilters']>) => void;
+         updateTask: (taskId: string, updates: Partial<Omit<Task, 'id'>>) => void;
+         getAssigneeById: (assigneeId: string) => Assignee | undefined;
+      @@ -36,6 +38,7 @@
+           priority: [],
+           assigneeId: [],
+         },
+      +  activeTaskView: 'all_open',
+       
+         getTaskById: (id) => {
+           const task = get().tasks.find(t => t.id === id);
+      @@ -49,16 +52,28 @@
+         },
+       
+         getFilteredTasks: () => {
+      -    const { tasks, contacts, assignees, searchTerm, activeFilters } =
+      get();
+
+      +    const { tasks, contacts, assignees, searchTerm, activeFilters,
+      activeTaskView } = get();
+           const lowercasedSearch = searchTerm.toLowerCase();
+       
+      -    const mapped = tasks.map(task => {
+
+      +    const viewFilteredTasks = tasks.filter(task => {
+
+      +      switch (activeTaskView) {
+
+      +        case 'all_open':
+
+      +          return task.status === 'open' || task.status === 'in-progress';
+
+      +        case 'unassigned':
+
+      +          return !task.assigneeId && (task.status === 'open' ||
+      task.status === 'in-progress');
+
+      +        case 'done':
+
+      +          return task.status === 'done';
+
+      +        default:
+
+      +          return true;
+
+      +      }
+
+      +    });
+
+      +    const mapped = viewFilteredTasks.map(task => {
+             const contact = contacts.find(c => c.id === task.contactId) as Contact;
+             const assignee = assignees.find(a => a.id === task.assigneeId) || null;
+             return { ...task, contact, assignee };
+           });
+       
+           const filtered = mapped.filter(task => {
+             const searchMatch = task.title.toLowerCase().includes(lowercasedSearch) || task.contact.name.toLowerCase().includes(lowercasedSearch);
+             const channelMatch = activeFilters.channels.length === 0 || activeFilters.channels.includes(task.channel);
+      @@ -73,6 +88,8 @@
+         },
+       
+         setSearchTerm: (term) => set({ searchTerm: term }),
+      +  
+
+      +  setActiveTaskView: (view) => set({ activeTaskView: view }),
+       
+         setFilters: (newFilters) => set(state => ({
+           activeFilters: { ...state.activeFilters, ...newFilters }
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/hooks/useAppViewManager.hook.ts
+    content: "--- src/hooks/useAppViewManager.hook.ts\n+++ src/hooks/useAppViewManager.hook.ts\n@@ -3,6 +3,7 @@\n import { useAppShellStore, type AppShellState, type ActivePage } from '@/store/appShell.store';\n import type { DataItem, ViewMode, SortConfig, SortableField, GroupableField, Status, Priority } from '@/pages/DataDemo/types';\n import type { FilterConfig } from '@/pages/DataDemo/components/DataToolbar';\n+import type { TaskView } from '@/pages/Messaging/types';\n import { BODY_STATES, SIDEBAR_STATES } from '@/lib/utils';\n \n const pageToPaneMap: Record<string, AppShellState['sidePaneContent']> = {\n@@ -38,6 +39,7 @@\n   const view = searchParams.get('view');\n   const sidePane = searchParams.get('sidePane');\n   const right = searchParams.get('right');\n+  const messagingView = searchParams.get('messagingView') as TaskView | null;\n \n   const { bodyState, sidePaneContent } = useMemo(() => {\n     const validPanes: AppShellState['sidePaneContent'][] = ['details', 'settings', 'main', 'toaster', 'notifications', 'dataDemo', 'messaging'];\n@@ -124,9 +126,24 @@\n \t\t[setSearchParams],\n \t);\n \n-  const navigateTo = useCallback((page: string) => {\n-    navigate(page.startsWith('/') ? page : `/${page}`);\n-  }, [navigate]);\n+  const navigateTo = useCallback((page: string, params?: Record<string, string | null>) => {\n+    const targetPath = page.startsWith('/') ? page : `/${page}`;\n+    const isSamePage = location.pathname === targetPath;\n+    \n+    const newSearchParams = new URLSearchParams(isSamePage ? searchParams : undefined);\n+\n+    if (params) {\n+      for (const [key, value] of Object.entries(params)) {\n+        if (value === null || value === undefined) {\n+          newSearchParams.delete(key);\n+        } else {\n+          newSearchParams.set(key, value);\n+        }\n+      }\n+    }\n+\n+    navigate({ pathname: targetPath, search: newSearchParams.toString() });\n+  }, [navigate, location.pathname, searchParams]);\n \n   const openSidePane = useCallback((pane: AppShellState['sidePaneContent']) => {\n     if (location.pathname === `/${Object.keys(pageToPaneMap).find(key => pageToPaneMap[key] === pane)}`) {\n@@ -218,6 +235,8 @@\n \t\tnavigate(`/data-demo/${item.id}${location.search}`);\n \t}, [navigate, location.search]);\n \n+  const setMessagingView = (view: TaskView) => handleParamsChange({ messagingView: view });\n+\n \n   return useMemo(() => ({\n     // State\n@@ -225,6 +244,7 @@\n     sidePaneContent,\n     currentActivePage,\n     itemId,\n+    messagingView,\n     // DataDemo State\n     viewMode,\n     page,\n@@ -239,6 +259,7 @@\n     toggleSplitView,\n     setNormalView,\n     switchSplitPanes,\n+    setMessagingView,\n     closeSplitPane,\n     // DataDemo Actions\n     onItemSelect,\n@@ -250,9 +271,9 @@\n     setTableSort,\n     setPage,\n   }), [\n-    bodyState, sidePaneContent, currentActivePage, itemId,\n+    bodyState, sidePaneContent, currentActivePage, itemId, messagingView,\n     viewMode, page, groupBy, activeGroupTab, filters, sortConfig,\n-    navigateTo, openSidePane, closeSidePane, toggleSidePane, toggleSplitView, setNormalView, \n+    navigateTo, openSidePane, closeSidePane, toggleSidePane, toggleSplitView, setNormalView, setMessagingView,\n     switchSplitPanes, closeSplitPane, onItemSelect, setViewMode, setGroupBy, setActiveGroupTab, setFilters,\n     setSort, setTableSort, setPage\n   ]);\n }\n"
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/Messaging/components/TaskList.tsx
+    content: >+
+      --- src/pages/Messaging/components/TaskList.tsx
+
+      +++ src/pages/Messaging/components/TaskList.tsx
+
+      @@ -1,4 +1,4 @@
+
+      -import { useState, useMemo } from 'react';
+
+      +import { useEffect } from 'react';
+       import { Search, SlidersHorizontal, Check, Inbox, Clock, Zap, Shield } from 'lucide-react';
+       import { Link, useParams } from 'react-router-dom';
+       import { formatDistanceToNow } from 'date-fns';
+      @@ -11,7 +11,8 @@
+       import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator } from '@/components/ui/command';
+       import { cn } from '@/lib/utils';
+       import { AnimatedTabs } from '@/components/ui/animated-tabs';
+      -import type { TaskStatus, TaskPriority } from '../types';
+
+      +import type { TaskStatus, TaskPriority, TaskView } from '../types';
+
+      +import { useAppViewManager } from '@/hooks/useAppViewManager.hook';
+       
+       // Local helpers for styling based on task properties
+       const getStatusIcon = (status: TaskStatus) => {
+      @@ -43,26 +44,28 @@
+         const { conversationId } = useParams<{ conversationId: string }>(); // This will be taskId later
+         const { 
+           getFilteredTasks,
+      -    searchTerm,
+           setSearchTerm,
+           activeFilters,
+      +    setActiveTaskView,
+
+      +    searchTerm,
+          } = useMessagingStore();
+      -  const tasks = getFilteredTasks();
+
+      -  const [activeTab, setActiveTab] = useState('all');
+
+      -
+
+      -  const tabs = useMemo(() => [{ id: 'all', label: 'All Tasks' }, { id:
+      'unread', label: 'Unread' }], []);
+
+      -
+
+      -  const filteredTasks = useMemo(() => {
+
+      -    if (activeTab === 'unread') {
+
+      -      return tasks.filter(task => task.unreadCount > 0);
+
+      -    }
+
+      -    return tasks;
+
+      -  }, [tasks, activeTab]);
+
+      -  
+
+      +   const { messagingView, setMessagingView } = useAppViewManager();
+
+      +
+
+      +  useEffect(() => {
+
+      +    setActiveTaskView(messagingView || 'all_open');
+
+      +  }, [messagingView, setActiveTaskView]);
+
+      +
+
+      +  const filteredTasks = getFilteredTasks();
+         const activeFilterCount = Object.values(activeFilters).reduce((count, filterArray) => count + filterArray.length, 0);
+       
+      +  const TABS: { id: TaskView, label: string }[] = [
+
+      +    { id: 'all_open', label: 'Open' },
+
+      +    { id: 'unassigned', label: 'Unassigned' },
+
+      +    { id: 'done', label: 'Done' }
+
+      +  ];
+       
+         return (
+           <div className="h-full flex flex-col bg-background/80">
+             {/* Header */}
+             <div className="flex-shrink-0 border-b bg-background/80 p-4 space-y-4">
+      @@ -86,7 +89,11 @@
+                   </Popover>
+               </div>
+             </div>
+      -      <AnimatedTabs tabs={tabs} activeTab={activeTab}
+      onTabChange={setActiveTab} />
+
+      +      <AnimatedTabs
+
+      +        tabs={TABS}
+
+      +        activeTab={messagingView || 'all_open'}
+
+      +        onTabChange={(tabId) => setMessagingView(tabId as TaskView)}
+
+      +      />
+       
+             {/* Task List */}
+             <div className="flex-1 overflow-y-auto">
+      @@ -165,7 +172,7 @@
+       // Filter component for popover
+       function FilterCommand() {
+           const { activeFilters, setFilters, assignees, getAvailableTags } = useMessagingStore();
+      -    const availableTags = useMemo(() => getAvailableTags(),
+      [getAvailableTags]);
+
+      +    const availableTags = getAvailableTags();
+       
+           const handleSelect = (type: 'status' | 'priority' | 'assigneeId' | 'tags', value: string) => {
+               const current = new Set(activeFilters[type]);
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/components/layout/EnhancedSidebar.tsx
+    content: >+
+      --- src/components/layout/EnhancedSidebar.tsx
+
+      +++ src/components/layout/EnhancedSidebar.tsx
+
+      @@ -16,6 +16,9 @@
+         Plus,
+         Database,
+         PanelLeftClose,
+      +  Inbox,
+
+      +  UserX,
+
+      +  CheckCircle2,
+       } from 'lucide-react';
+       import { useAppShellStore, type ActivePage } from '@/store/appShell.store';
+       import {
+      @@ -128,7 +131,7 @@
+                 <SidebarBody>
+                   <SidebarSection title="Main">
+                     <AppMenuItem icon={Home} label="Dashboard" page="dashboard" />
+      -              <AppMenuItem icon={Database} label="Data Demo"
+      page="data-demo" />
+
+      -              <AppMenuItem icon={Mail} label="Messaging" page="messaging"
+      badge={7} />
+
+      +              <AppMenuItem icon={Database} label="Data Demo"
+      page="data-demo"  />
+
+      +              <MessagingSidebarItems />
+                     <AppMenuItem icon={Search} label="Search" />
+                     <AppMenuItem icon={Bell} label="Notifications" badge={3} page="notifications" opensInSidePane />
+                   </SidebarSection>
+      @@ -188,18 +191,29 @@
+         hasActions?: boolean;
+         children?: React.ReactNode;
+         isSubItem?: boolean;
+         page?: ActivePage;
+         opensInSidePane?: boolean;
+      +  onClick?: () => void;
+
+      +  isActive?: boolean;
+       }
+       
+      -const AppMenuItem: React.FC<AppMenuItemProps> = ({ icon: Icon, label,
+      badge, hasActions, children, isSubItem = false, page, opensInSidePane =
+      false }) => {
+
+      +const AppMenuItem: React.FC<AppMenuItemProps> = ({ icon: Icon, label,
+      badge, hasActions, children, isSubItem = false, page, opensInSidePane =
+      false, onClick, isActive: isActiveProp }) => {
+         const compactMode = useAppShellStore(state => state.compactMode);
+         const { setDraggedPage, setDragHoverTarget } = useAppShellStore.getState()
+         const { isCollapsed } = useSidebar();
+         const viewManager = useAppViewManager();
+       
+      -  const isActive = (
+
+      +  const calculatedIsActive = (
+           (!opensInSidePane && page && viewManager.currentActivePage === page)
+         ) || (
+           opensInSidePane && page === 'notifications' && viewManager.sidePaneContent === 'notifications'
+         );
+       
+      -  const handleClick = () => {
+
+      +  const isActive = isActiveProp ?? calculatedIsActive;
+
+      +
+
+      +  const handleClick = () => {
+
+      +    if (onClick) {
+
+      +      onClick();
+
+      +      return;
+
+      +    }
+           if (page) {
+             if (opensInSidePane) {
+               // The only item using this is Notifications
+      @@ -265,3 +279,48 @@
+           </div>
+         );
+       };
+      +
+
+      +const MessagingSidebarItems = () => {
+
+      +  const { currentActivePage, messagingView, navigateTo } =
+      useAppViewManager();
+
+      +  const totalUnread = 7; // Mock data, could come from a store
+
+      +
+
+      +  return (
+
+      +    <AppMenuItem
+
+      +      icon={Mail}
+
+      +      label="Messaging"
+
+      +      badge={totalUnread}
+
+      +      page="messaging"
+
+      +      isActive={currentActivePage === 'messaging'}
+
+      +      onClick={() => navigateTo('messaging', { messagingView: 'all_open'
+      })}
+
+      +    >
+
+      +      <AppMenuItem
+
+      +        icon={Inbox}
+
+      +        label="All Open"
+
+      +        isSubItem
+
+      +        page="messaging"
+
+      +        isActive={currentActivePage === 'messaging' && (messagingView ===
+      'all_open' || !messagingView)}
+
+      +        onClick={() => navigateTo('messaging', { messagingView:
+      'all_open' })}
+
+      +      />
+
+      +      <AppMenuItem
+
+      +        icon={UserX}
+
+      +        label="Unassigned"
+
+      +        isSubItem
+
+      +        page="messaging"
+
+      +        isActive={currentActivePage === 'messaging' && messagingView ===
+      'unassigned'}
+
+      +        onClick={() => navigateTo('messaging', { messagingView:
+      'unassigned' })}
+
+      +      />
+
+      +      <AppMenuItem
+
+      +        icon={CheckCircle2}
+
+      +        label="Done"
+
+      +        isSubItem
+
+      +        page="messaging"
+
+      +        isActive={currentActivePage === 'messaging' && messagingView ===
+      'done'}
+
+      +        onClick={() => navigateTo('messaging', { messagingView: 'done'
+      })}
+
+      +      />
+
+      +    </AppMenuItem>
+
+      +  );
+
+      +};
+
+    patchStrategy: standard-diff
+snapshot:
+  src/pages/Messaging/types.ts: |-
+    import type { LucideIcon } from "lucide-react";
+
+    export type Channel = 'whatsapp' | 'instagram' | 'facebook' | 'email';
+
+    export interface ChannelIcon {
+      Icon: LucideIcon;
+      color: string;
+    }
+
+    export interface Contact {
+      id: string;
+      name:string;
+      avatar: string;
+      online: boolean;
+      tags: string[];
+      email: string;
+      phone: string;
+      lastSeen: string;
+      company: string;
+      role: string;
+      activity: ActivityEvent[];
+      notes: Note[];
+    }
+
+    export interface Assignee {
+      id: string;
+      name: string;
+      avatar: string;
+    }
+
+    export type ActivityEventType = 'note' | 'call' | 'email' | 'meeting';
+
+    export interface ActivityEvent {
+      id: string;
+      type: ActivityEventType;
+      content: string;
+      timestamp: string;
+    }
+    export interface Note {
+      id: string;
+      content: string;
+      createdAt: string;
+    }
+
+    export interface Message {
+      id: string;
+      text: string;
+      timestamp: string;
+      sender: 'user' | 'contact' | 'system';
+      type: 'comment' | 'note' | 'system';
+      read: boolean;
+      userId?: string; // for notes or system messages from users
+    }
+
+    export interface AISummary {
+      sentiment: 'positive' | 'negative' | 'neutral';
+      summaryPoints: string[];
+      suggestedReplies: string[];
+    }
+
+    export type TaskStatus = 'open' | 'in-progress' | 'done' | 'snoozed';
+    export type TaskPriority = 'none' | 'low' | 'medium' | 'high';
+
+    export interface Task {
+      id: string;
+      title: string;
+      contactId: string;
+      channel: Channel;
+      unreadCount: number;
+      lastActivity: Message;
+      messages: Message[];
+      status: TaskStatus;
+      assigneeId: string | null;
+      dueDate: string | null;
+      priority: TaskPriority;
+      tags: string[];
+      aiSummary: AISummary;
+    }
+  src/hooks/useAppViewManager.hook.ts: "import { useMemo, useCallback, useEffect, useRef } from 'react';\nimport { useSearchParams, useNavigate, useLocation, useParams } from 'react-router-dom';\nimport { useAppShellStore, type AppShellState, type ActivePage } from '@/store/appShell.store';\nimport type { DataItem, ViewMode, SortConfig, SortableField, GroupableField, Status, Priority } from '@/pages/DataDemo/types';\nimport type { FilterConfig } from '@/pages/DataDemo/components/DataToolbar';\nimport { BODY_STATES, SIDEBAR_STATES } from '@/lib/utils';\n\nconst pageToPaneMap: Record<string, AppShellState['sidePaneContent']> = {\n  dashboard: 'main',\n  settings: 'settings',\n  toaster: 'toaster',\n  notifications: 'notifications',\n  'data-demo': 'dataDemo',\n  messaging: 'messaging',\n};\n\nfunction usePrevious<T>(value: T): T | undefined {\n  const ref = useRef<T>();\n  useEffect(() => {\n    ref.current = value;\n  });\n  return ref.current;\n}\n\n/**\n * A centralized hook to manage and synchronize all URL-based view states.\n * This is the single source of truth for view modes, side panes, split views,\n * and page-specific parameters.\n */\nexport function useAppViewManager() {\n  const [searchParams, setSearchParams] = useSearchParams();\n  const navigate = useNavigate();\n  const location = useLocation();\n  const params = useParams<{ itemId: string; conversationId: string }>();\n  const { itemId, conversationId } = params;\n  const { setSidebarState, sidebarState } = useAppShellStore();\n\n  // --- DERIVED STATE FROM URL ---\n\n  const view = searchParams.get('view');\n  const sidePane = searchParams.get('sidePane');\n  const right = searchParams.get('right');\n\n  const { bodyState, sidePaneContent } = useMemo(() => {\n    const validPanes: AppShellState['sidePaneContent'][] = ['details', 'settings', 'main', 'toaster', 'notifications', 'dataDemo', 'messaging'];\n    \n    // 1. Priority: Explicit side pane overlay via URL param\n    if (sidePane && validPanes.includes(sidePane as AppShellState['sidePaneContent'])) {\n      return { bodyState: BODY_STATES.SIDE_PANE, sidePaneContent: sidePane as AppShellState['sidePaneContent'] };\n    }\n\n    // 2. Data item detail view (can be overlay or split)\n    if (itemId) {\n      if (view === 'split') {\n        return { bodyState: BODY_STATES.SPLIT_VIEW, sidePaneContent: 'dataItem' as const };\n      }\n      return { bodyState: BODY_STATES.SIDE_PANE, sidePaneContent: 'dataItem' as const };\n    }\n\n    // 3. Messaging conversation view (always split)\n    if (conversationId) {\n      return { bodyState: BODY_STATES.SPLIT_VIEW, sidePaneContent: 'messaging' as const };\n    }\n\n    // 4. Generic split view via URL param\n    if (view === 'split' && right && validPanes.includes(right as AppShellState['sidePaneContent'])) {\n      return { bodyState: BODY_STATES.SPLIT_VIEW, sidePaneContent: right as AppShellState['sidePaneContent'] };\n    }\n\n    return { bodyState: BODY_STATES.NORMAL, sidePaneContent: 'details' as const };\n  }, [itemId, conversationId, view, sidePane, right]);\n  \n  const currentActivePage = useMemo(() => (location.pathname.split('/')[1] || 'dashboard') as ActivePage, [location.pathname]);\n  const prevActivePage = usePrevious(currentActivePage);\n\n  // --- SIDE EFFECTS ---\n  useEffect(() => {\n    // On navigating to messaging page, collapse sidebar if it's expanded.\n    // This ensures a good default view but allows the user to expand it again if they wish.\n    if (currentActivePage === 'messaging' && prevActivePage !== 'messaging' && sidebarState === SIDEBAR_STATES.EXPANDED) {\n      setSidebarState(SIDEBAR_STATES.COLLAPSED);\n    }\n  }, [currentActivePage, prevActivePage, sidebarState, setSidebarState]);\n\n  // DataDemo specific state\n  const viewMode = useMemo(() => (searchParams.get('view') as ViewMode) || 'list', [searchParams]);\n\tconst page = useMemo(() => parseInt(searchParams.get('page') || '1', 10), [searchParams]);\n\tconst groupBy = useMemo(() => (searchParams.get('groupBy') as GroupableField | 'none') || 'none', [searchParams]);\n\tconst activeGroupTab = useMemo(() => searchParams.get('tab') || 'all', [searchParams]);\n\tconst filters = useMemo<FilterConfig>(\n\t\t() => ({\n\t\t\tsearchTerm: searchParams.get('q') || '',\n\t\t\tstatus: (searchParams.get('status')?.split(',') || []).filter(Boolean) as Status[],\n\t\t\tpriority: (searchParams.get('priority')?.split(',') || []).filter(Boolean) as Priority[],\n\t\t}),\n\t\t[searchParams],\n\t);\n\tconst sortConfig = useMemo<SortConfig | null>(() => {\n\t\tconst sortParam = searchParams.get('sort');\n\t\tif (!sortParam) return { key: 'updatedAt', direction: 'desc' }; // Default sort\n\t\tif (sortParam === 'default') return null;\n\n\t\tconst [key, direction] = sortParam.split('-');\n\t\treturn { key: key as SortableField, direction: direction as 'asc' | 'desc' };\n\t}, [searchParams]);\n\n  // --- MUTATOR ACTIONS ---\n\n  const handleParamsChange = useCallback(\n\t\t(newParams: Record<string, string | string[] | null | undefined>, resetPage = false) => {\n\t\t\tsetSearchParams(\n\t\t\t\t(prev) => {\n\t\t\t\t\tconst updated = new URLSearchParams(prev);\n\t\t\t\t\t\n\t\t\t\t\tfor (const [key, value] of Object.entries(newParams)) {\n\t\t\t\t\t\tif (value === null || value === undefined || (Array.isArray(value) && value.length === 0) || value === '') {\n\t\t\t\t\t\t\tupdated.delete(key);\n\t\t\t\t\t\t} else if (Array.isArray(value)) {\n\t\t\t\t\t\t\tupdated.set(key, value.join(','));\n\t\t\t\t\t\t} else {\n\t\t\t\t\t\t\tupdated.set(key, String(value));\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\n\t\t\t\t\tif (resetPage) {\n\t\t\t\t\t\tupdated.delete('page');\n\t\t\t\t\t}\n\t\t\t\t\tif ('groupBy' in newParams) {\n\t\t\t\t\t\tupdated.delete('tab');\n\t\t\t\t\t}\n\n\t\t\t\t\treturn updated;\n\t\t\t\t},\n\t\t\t\t{ replace: true },\n\t\t\t);\n\t\t},\n\t\t[setSearchParams],\n\t);\n\n  const navigateTo = useCallback((page: string) => {\n    navigate(page.startsWith('/') ? page : `/${page}`);\n  }, [navigate]);\n\n  const openSidePane = useCallback((pane: AppShellState['sidePaneContent']) => {\n    if (location.pathname === `/${Object.keys(pageToPaneMap).find(key => pageToPaneMap[key] === pane)}`) {\n        navigate({ pathname: '/dashboard', search: `?sidePane=${pane}` }, { replace: true });\n    } else {\n        handleParamsChange({ sidePane: pane, view: null, right: null });\n    }\n  }, [handleParamsChange, navigate, location.pathname]);\n\n  const closeSidePane = useCallback(() => {\n    if (itemId) {\n      navigate('/data-demo');\n    } else {\n      handleParamsChange({ sidePane: null, view: null, right: null });\n    }\n  }, [itemId, navigate, handleParamsChange]);\n\n  const toggleSidePane = useCallback((pane: AppShellState['sidePaneContent']) => {\n    if (sidePane === pane) {\n      closeSidePane();\n    } else {\n      openSidePane(pane);\n    }\n  }, [sidePane, openSidePane, closeSidePane]);\n\n  const toggleSplitView = useCallback(() => {\n    if (bodyState === BODY_STATES.SIDE_PANE) {\n      handleParamsChange({ view: 'split', right: sidePane, sidePane: null });\n    } else if (bodyState === BODY_STATES.SPLIT_VIEW) {\n      handleParamsChange({ sidePane: right, view: null, right: null });\n    } else { // From normal\n      const paneContent = pageToPaneMap[currentActivePage] || 'details';\n      handleParamsChange({ view: 'split', right: paneContent, sidePane: null });\n    }\n  }, [bodyState, sidePane, right, currentActivePage, handleParamsChange]);\n  \n  const setNormalView = useCallback(() => {\n      handleParamsChange({ sidePane: null, view: null, right: null });\n  }, [handleParamsChange]);\n\n  const switchSplitPanes = useCallback(() => {\n    if (bodyState !== BODY_STATES.SPLIT_VIEW) return;\n    const newSidePaneContent = pageToPaneMap[currentActivePage];\n    const newActivePage = Object.entries(pageToPaneMap).find(\n      ([, value]) => value === sidePaneContent\n    )?.[0] as ActivePage | undefined;\n\n    if (newActivePage && newSidePaneContent) {\n      navigate(`/${newActivePage}?view=split&right=${newSidePaneContent}`, { replace: true });\n    }\n  }, [bodyState, currentActivePage, sidePaneContent, navigate]);\n  \n  const closeSplitPane = useCallback((paneToClose: 'main' | 'right') => {\n    if (bodyState !== BODY_STATES.SPLIT_VIEW) return;\n    if (paneToClose === 'right') {\n      navigate(`/${currentActivePage}`, { replace: true });\n    } else { // Closing main pane\n      const pageToBecomeActive = Object.entries(pageToPaneMap).find(\n        ([, value]) => value === sidePaneContent\n      )?.[0] as ActivePage | undefined;\n      \n      if (pageToBecomeActive) {\n        navigate(`/${pageToBecomeActive}`, { replace: true });\n      } else {\n        navigate(`/dashboard`, { replace: true });\n      }\n    }\n  }, [bodyState, currentActivePage, sidePaneContent, navigate]);\n  \n  // DataDemo actions\n  const setViewMode = (mode: ViewMode) => handleParamsChange({ view: mode });\n  const setGroupBy = (val: string) => handleParamsChange({ groupBy: val === 'none' ? null : val }, true);\n  const setActiveGroupTab = (tab: string) => handleParamsChange({ tab: tab === 'all' ? null : tab });\n  const setFilters = (newFilters: FilterConfig) => {\n    handleParamsChange({ q: newFilters.searchTerm, status: newFilters.status, priority: newFilters.priority }, true);\n  }\n  const setSort = (config: SortConfig | null) => {\n    if (!config) {\n      handleParamsChange({ sort: 'default' }, true);\n    } else {\n      handleParamsChange({ sort: `${config.key}-${config.direction}` }, true);\n    }\n  }\n  const setTableSort = (field: SortableField) => {\n    let newSort: string | null = `${field}-desc`;\n    if (sortConfig?.key === field) {\n      if (sortConfig.direction === 'desc') newSort = `${field}-asc`;\n      else if (sortConfig.direction === 'asc') newSort = 'default';\n    }\n    handleParamsChange({ sort: newSort }, true);\n  };\n  const setPage = (newPage: number) => handleParamsChange({ page: newPage.toString() });\n\n  const onItemSelect = useCallback((item: DataItem) => {\n\t\tnavigate(`/data-demo/${item.id}${location.search}`);\n\t}, [navigate, location.search]);\n\n\n  return useMemo(() => ({\n    // State\n    bodyState,\n    sidePaneContent,\n    currentActivePage,\n    itemId,\n    // DataDemo State\n    viewMode,\n    page,\n    groupBy,\n    activeGroupTab,\n    filters,\n    sortConfig,\n    // Actions\n    navigateTo,\n    openSidePane,\n    closeSidePane,\n    toggleSidePane,\n    toggleSplitView,\n    setNormalView,\n    switchSplitPanes,\n    closeSplitPane,\n    // DataDemo Actions\n    onItemSelect,\n    setViewMode,\n    setGroupBy,\n    setActiveGroupTab,\n    setFilters,\n    setSort,\n    setTableSort,\n    setPage,\n  }), [\n    bodyState, sidePaneContent, currentActivePage, itemId,\n    viewMode, page, groupBy, activeGroupTab, filters, sortConfig,\n    navigateTo, openSidePane, closeSidePane, toggleSidePane, toggleSplitView, setNormalView, \n    switchSplitPanes, closeSplitPane, onItemSelect, setViewMode, setGroupBy, setActiveGroupTab, setFilters,\n    setSort, setTableSort, setPage\n  ]);\n}"
+  src/pages/Messaging/store/messaging.store.ts: >-
+    import { create } from 'zustand';
+
+    import { mockTasks, mockContacts, mockAssignees } from '../data/mockData';
+
+    import type { Task, Contact, Channel, Assignee, TaskStatus, TaskPriority }
+    from '../types';
+
+
+    interface MessagingState {
+      tasks: Task[];
+      contacts: Contact[];
+      assignees: Assignee[];
+      searchTerm: string;
+      activeFilters: {
+        channels: Channel[];
+        tags: string[];
+        status: TaskStatus[];
+        priority: TaskPriority[];
+        assigneeId: string[];
+      };
+    }
+
+
+    interface MessagingActions {
+      getTaskById: (id: string) => (Task & { contact: Contact, assignee: Assignee | null }) | undefined;
+      getFilteredTasks: () => (Task & { contact: Contact, assignee: Assignee | null })[];
+      setSearchTerm: (term: string) => void;
+      setFilters: (filters: Partial<MessagingState['activeFilters']>) => void;
+      updateTask: (taskId: string, updates: Partial<Omit<Task, 'id'>>) => void;
+      getAssigneeById: (assigneeId: string) => Assignee | undefined;
+      getAvailableTags: () => string[];
+    }
+
+
+    export const useMessagingStore = create<MessagingState &
+    MessagingActions>((set, get) => ({
+      tasks: mockTasks,
+      contacts: mockContacts,
+      assignees: mockAssignees,
+      searchTerm: '',
+      activeFilters: {
+        channels: [],
+        tags: [],
+        status: [],
+        priority: [],
+        assigneeId: [],
+      },
+
+      getTaskById: (id) => {
+        const task = get().tasks.find(t => t.id === id);
+        if (!task) return undefined;
+
+        const contact = get().contacts.find(c => c.id === task.contactId);
+        if (!contact) return undefined;
+
+        const assignee = get().assignees.find(a => a.id === task.assigneeId) || null;
+
+        return { ...task, contact, assignee };
+      },
+
+      getFilteredTasks: () => {
+        const { tasks, contacts, assignees, searchTerm, activeFilters } = get();
+        const lowercasedSearch = searchTerm.toLowerCase();
+
+        const mapped = tasks.map(task => {
+          const contact = contacts.find(c => c.id === task.contactId) as Contact;
+          const assignee = assignees.find(a => a.id === task.assigneeId) || null;
+          return { ...task, contact, assignee };
+        });
+
+        const filtered = mapped.filter(task => {
+          const searchMatch = task.title.toLowerCase().includes(lowercasedSearch) || task.contact.name.toLowerCase().includes(lowercasedSearch);
+          const channelMatch = activeFilters.channels.length === 0 || activeFilters.channels.includes(task.channel);
+          const tagMatch = activeFilters.tags.length === 0 || activeFilters.tags.some(tag => task.tags.includes(tag));
+          const statusMatch = activeFilters.status.length === 0 || activeFilters.status.includes(task.status);
+          const priorityMatch = activeFilters.priority.length === 0 || activeFilters.priority.includes(task.priority);
+          const assigneeMatch = activeFilters.assigneeId.length === 0 || (task.assigneeId && activeFilters.assigneeId.includes(task.assigneeId));
+          
+          return searchMatch && channelMatch && tagMatch && statusMatch && priorityMatch && assigneeMatch;
+        });
+
+        return filtered.sort((a, b) => new Date(b.lastActivity.timestamp).getTime() - new Date(a.lastActivity.timestamp).getTime());
+      },
+
+      setSearchTerm: (term) => set({ searchTerm: term }),
+
+      setFilters: (newFilters) => set(state => ({
+        activeFilters: { ...state.activeFilters, ...newFilters }
+      })),
+
+      updateTask: (taskId, updates) => set(state => ({
+        tasks: state.tasks.map(task => 
+          task.id === taskId 
+            ? { ...task, ...updates, lastActivity: { ...task.lastActivity, timestamp: new Date().toISOString() } } 
+            : task
+        )
+      })),
+
+      getAssigneeById: (assigneeId: string) => {
+        return get().assignees.find(a => a.id === assigneeId);
+      },
+
+      getAvailableTags: () => {
+        const contactTags = get().contacts.flatMap(c => c.tags);
+        const taskTags = get().tasks.flatMap(t => t.tags);
+        const allTags = new Set([...contactTags, ...taskTags]);
+        return Array.from(allTags);
+      }
+    }));
+  src/pages/Messaging/components/TaskList.tsx: >-
+    import { useState, useMemo } from 'react';
+
+    import { Search, SlidersHorizontal, Check, Inbox, Clock, Zap, Shield } from
+    'lucide-react';
+
+    import { Link, useParams } from 'react-router-dom';
+
+    import { formatDistanceToNow } from 'date-fns';
+
+    import { useMessagingStore } from '../store/messaging.store';
+
+    import { Button } from '@/components/ui/button';
+
+    import { Input } from '@/components/ui/input';
+
+    import { Avatar, AvatarFallback, AvatarImage } from
+    '@/components/ui/avatar';
+
+    import { Badge } from '@/components/ui/badge';
+
+    import { Popover, PopoverContent, PopoverTrigger } from
+    '@/components/ui/popover';
+
+    import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem,
+    CommandList, CommandSeparator } from '@/components/ui/command';
+
+    import { cn } from '@/lib/utils';
+
+    import { AnimatedTabs } from '@/components/ui/animated-tabs';
+
+    import type { TaskStatus, TaskPriority } from '../types';
+
+
+    // Local helpers for styling based on task properties
+
+    const getStatusIcon = (status: TaskStatus) => {
+        switch(status) {
+            case 'open': return <Inbox className="w-3 h-3 text-blue-500" />;
+            case 'in-progress': return <Zap className="w-3 h-3 text-yellow-500" />;
+            case 'done': return <Shield className="w-3 h-3 text-green-500" />;
+            case 'snoozed': return <Clock className="w-3 h-3 text-gray-500" />;
+        }
+    };
+
+
+    const getPriorityIcon = (priority: TaskPriority) => {
+        switch(priority) {
+            case 'high': return <div className="w-2 h-2 rounded-full bg-red-500" />;
+            case 'medium': return <div className="w-2 h-2 rounded-full bg-yellow-500" />;
+            case 'low': return <div className="w-2 h-2 rounded-full bg-green-500" />;
+            default: return <div className="w-2 h-2 rounded-full bg-gray-400" />;
+        }
+    };
+
+
+    const statusOptions: { value: TaskStatus; label: string }[] = [
+        { value: 'open', label: 'Open' }, { value: 'in-progress', label: 'In Progress' }, { value: 'done', label: 'Done' }, { value: 'snoozed', label: 'Snoozed' }
+    ];
+
+    const priorityOptions: { value: TaskPriority; label: string }[] = [
+        { value: 'high', label: 'High' }, { value: 'medium', label: 'Medium' }, { value: 'low', label: 'Low' }, { value: 'none', label: 'None' }
+    ];
+
+
+    export const TaskList = () => {
+      const { conversationId } = useParams<{ conversationId: string }>(); // This will be taskId later
+      const { 
+        getFilteredTasks,
+        searchTerm,
+        setSearchTerm,
+        activeFilters,
+       } = useMessagingStore();
+      const tasks = getFilteredTasks();
+      const [activeTab, setActiveTab] = useState('all');
+
+      const tabs = useMemo(() => [{ id: 'all', label: 'All Tasks' }, { id: 'unread', label: 'Unread' }], []);
+
+      const filteredTasks = useMemo(() => {
+        if (activeTab === 'unread') {
+          return tasks.filter(task => task.unreadCount > 0);
+        }
+        return tasks;
+      }, [tasks, activeTab]);
+      
+      const activeFilterCount = Object.values(activeFilters).reduce((count, filterArray) => count + filterArray.length, 0);
+
+
+      return (
+        <div className="h-full flex flex-col bg-background/80">
+          {/* Header */}
+          <div className="flex-shrink-0 border-b bg-background/80 p-4 space-y-4">
+            <h2 className="text-xl font-bold tracking-tight">Inbox</h2>
+            <div className="flex gap-2">
+                <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input placeholder="Search tasks..." className="pl-9" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+                </div>
+                <Popover>
+                    <PopoverTrigger asChild>
+                        <Button variant="outline" size="sm" className="h-10 border-dashed gap-2">
+                            <SlidersHorizontal className="w-4 h-4" />
+                            Filters
+                            {activeFilterCount > 0 && <Badge variant="secondary" className="rounded-sm px-1 font-normal">{activeFilterCount}</Badge>}
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[240px] p-0" align="end">
+                        <FilterCommand />
+                    </PopoverContent>
+                </Popover>
+            </div>
+          </div>
+          <AnimatedTabs tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} />
+
+          {/* Task List */}
+          <div className="flex-1 overflow-y-auto">
+            <nav className="p-2 space-y-1">
+              {filteredTasks.map(task => (
+                <Link
+                  to={`/messaging/${task.id}`}
+                  key={task.id}
+                  className={cn(
+                    "block p-3 rounded-lg text-left transition-all duration-200 hover:bg-accent/50",
+                    "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 outline-none",
+                    conversationId === task.id && "bg-accent"
+                  )}
+                >
+                  <div className="flex items-start gap-3">
+                    <Avatar className="h-9 w-9 mt-1">
+                      <AvatarImage src={task.contact.avatar} alt={task.contact.name} />
+                      <AvatarFallback>{task.contact.name.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 overflow-hidden">
+                        <div className="flex justify-between items-center mb-1">
+                            <p className="text-sm font-semibold truncate pr-2">{task.contact.name}</p>
+                            <p className="text-xs text-muted-foreground whitespace-nowrap">{formatDistanceToNow(new Date(task.lastActivity.timestamp), { addSuffix: true })}</p>
+                        </div>
+                        <p className="text-sm truncate text-foreground">{task.title}</p>
+                        <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+                            <div className="flex items-center gap-1.5" title={task.status}>
+                                {getStatusIcon(task.status)}
+                                <span className="capitalize">{task.status.replace('-', ' ')}</span>
+                            </div>
+                            <div className="flex items-center gap-1.5" title={task.priority}>
+                                {getPriorityIcon(task.priority)}
+                                <span className="capitalize">{task.priority}</span>
+                            </div>
+                            {task.assignee && (
+                                <div className="flex items-center gap-1.5" title={`Assigned to ${task.assignee.name}`}>
+                                    <Avatar className="h-4 w-4"><AvatarImage src={task.assignee.avatar} /></Avatar>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                    {task.unreadCount > 0 && (
+                        <div className="flex items-center justify-center self-center ml-auto">
+                            <Badge className="bg-primary h-5 w-5 p-0 flex items-center justify-center">{task.unreadCount}</Badge>
+                        </div>
+                    )}
+                  </div>
+                </Link>
+              ))}
+            </nav>
+          </div>
+        </div>
+      );
+    };
+
+
+    // Filter component for popover
+
+    function FilterCommand() {
+        const { activeFilters, setFilters, assignees, getAvailableTags } = useMessagingStore();
+        const availableTags = useMemo(() => getAvailableTags(), [getAvailableTags]);
+
+        const handleSelect = (type: 'status' | 'priority' | 'assigneeId' | 'tags', value: string) => {
+            const current = new Set(activeFilters[type]);
+            current.has(value) ? current.delete(value) : current.add(value);
+            setFilters({ [type]: Array.from(current) });
+        };
+
+        const hasActiveFilters = Object.values(activeFilters).some(arr => arr.length > 0);
+
+        return (
+            <Command>
+                <CommandInput placeholder="Filter by..." />
+                <CommandList>
+                    <CommandEmpty>No results found.</CommandEmpty>
+                    <CommandGroup heading="Status">
+                        {statusOptions.map(o => (
+                            <CommandItem key={o.value} onSelect={() => handleSelect('status', o.value)}>
+                                <div className={cn('mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary', activeFilters.status.includes(o.value) ? 'bg-primary text-primary-foreground' : 'opacity-50 [&_svg]:invisible')}><Check className="h-4 w-4" /></div>
+                                <span>{o.label}</span>
+                            </CommandItem>
+                        ))}
+                    </CommandGroup>
+                    <CommandSeparator />
+                    <CommandGroup heading="Priority">
+                        {priorityOptions.map(o => (
+                            <CommandItem key={o.value} onSelect={() => handleSelect('priority', o.value)}>
+                                <div className={cn('mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary', activeFilters.priority.includes(o.value) ? 'bg-primary text-primary-foreground' : 'opacity-50 [&_svg]:invisible')}><Check className="h-4 w-4" /></div>
+                                <span>{o.label}</span>
+                            </CommandItem>
+                        ))}
+                    </CommandGroup>
+                    <CommandSeparator />
+                    <CommandGroup heading="Assignee">
+                        {assignees.map(a => (
+                            <CommandItem key={a.id} onSelect={() => handleSelect('assigneeId', a.id)}>
+                                <div className={cn('mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary', activeFilters.assigneeId.includes(a.id) ? 'bg-primary text-primary-foreground' : 'opacity-50 [&_svg]:invisible')}><Check className="h-4 w-4" /></div>
+                                <Avatar className="h-5 w-5 mr-2"><AvatarImage src={a.avatar} /><AvatarFallback>{a.name.charAt(0)}</AvatarFallback></Avatar>
+                                <span>{a.name}</span>
+                            </CommandItem>
+                        ))}
+                    </CommandGroup>
+                    <CommandSeparator />
+                    <CommandGroup heading="Tags">
+                        {availableTags.map(t => (
+                            <CommandItem key={t} onSelect={() => handleSelect('tags', t)}>
+                                <div className={cn('mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary', activeFilters.tags.includes(t) ? 'bg-primary text-primary-foreground' : 'opacity-50 [&_svg]:invisible')}><Check className="h-4 w-4" /></div>
+                                <span>{t}</span>
+                            </CommandItem>
+                        ))}
+                    </CommandGroup>
+
+                    {hasActiveFilters && (
+                        <>
+                            <CommandSeparator />
+                            <CommandGroup>
+                                <CommandItem onSelect={() => setFilters({ status: [], priority: [], assigneeId: [], tags: [], channels: [] })} className="justify-center text-center text-sm">Clear all filters</CommandItem>
+                            </CommandGroup>
+                        </>
+                    )}
+                </CommandList>
+            </Command>
+        );
+    }
+  src/components/layout/EnhancedSidebar.tsx: >-
+    import React from 'react';
+
+    import {
+      Home,
+      Settings,
+      HelpCircle,
+      Component,
+      Rocket,
+      MoreHorizontal,
+      Bell,
+      Search,
+      FileText,
+      Star,
+      Trash2,
+      FolderOpen,
+      Mail,
+      Bookmark,
+      Download,
+      User,
+      Plus,
+      Database,
+      PanelLeftClose,
+    } from 'lucide-react';
+
+    import { useAppShellStore, type ActivePage } from '@/store/appShell.store';
+
+    import {
+      Workspaces,
+      WorkspaceTrigger,
+      WorkspaceContent,
+      type Workspace,
+    } from './WorkspaceSwitcher';
+
+    import {
+      DropdownMenu,
+      DropdownMenuContent,
+      DropdownMenuItem,
+      DropdownMenuTrigger,
+    } from '@/components/ui/dropdown-menu';
+
+    import {
+      Sidebar,
+      SidebarContent,
+      SidebarHeader,
+      SidebarTitle,
+      SidebarBody,
+      SidebarFooter,
+      SidebarSection,
+      SidebarMenuItem,
+      SidebarMenuButton,
+      SidebarMenuAction,
+      SidebarLabel,
+      SidebarBadge,
+      SidebarTooltip,
+      SidebarIcon,
+      useSidebar,
+    } from './Sidebar';
+
+    import { ViewModeSwitcher } from './ViewModeSwitcher';
+
+    import { cn } from '@/lib/utils';
+
+    import { useAppViewManager } from '@/hooks/useAppViewManager.hook';
+
+
+    interface MyWorkspace extends Workspace {
+      logo: string;
+      plan: string;
+    }
+
+
+    const mockWorkspaces: MyWorkspace[] = [
+      { id: 'ws1', name: 'Acme Inc.', logo: 'https://avatar.vercel.sh/acme.png', plan: 'Pro' },
+      { id: 'ws2', name: 'Monsters Inc.', logo: 'https://avatar.vercel.sh/monsters.png', plan: 'Free' },
+      { id: 'ws3', name: 'Stark Industries', logo: 'https://avatar.vercel.sh/stark.png', plan: 'Enterprise' },
+    ];
+
+
+    const SidebarWorkspaceTrigger = () => {
+      const { isCollapsed, compactMode } = useSidebar();
+
+      return (
+        <WorkspaceTrigger
+          collapsed={isCollapsed}
+          className={cn(
+            'rounded-xl transition-colors hover:bg-accent/50 w-full',
+            isCollapsed ? 'p-2' : 'p-3 bg-accent/50',
+          )}
+          avatarClassName={cn(compactMode ? 'h-8 w-8' : 'h-10 w-10')}
+        />
+      );
+    };
+
+
+    const SidebarToggleButton = () => {
+      const { isCollapsed } = useSidebar();
+      const { toggleSidebar } = useAppShellStore.getState();
+
+      if (isCollapsed) return null;
+
+      return (
+        <button
+          onClick={toggleSidebar}
+          className="ml-auto h-9 w-9 flex items-center justify-center rounded-lg hover:bg-accent transition-colors"
+          title="Collapse Sidebar"
+        >
+          <PanelLeftClose className="w-5 h-5" />
+        </button>
+      );
+    };
+
+
+    interface SidebarProps {
+      onMouseEnter?: () => void;
+      onMouseLeave?: () => void;
+    }
+
+
+    export const EnhancedSidebar = React.memo(React.forwardRef<HTMLDivElement,
+    SidebarProps>(
+      ({ onMouseEnter, onMouseLeave }, ref) => {
+        const sidebarWidth = useAppShellStore(s => s.sidebarWidth);
+        const compactMode = useAppShellStore(s => s.compactMode);
+        const appName = useAppShellStore(s => s.appName);
+        const appLogo = useAppShellStore(s => s.appLogo);
+        const [selectedWorkspace, setSelectedWorkspace] = React.useState(mockWorkspaces[0]);
+        return (
+          <Sidebar
+            ref={ref}
+            style={{ width: sidebarWidth }}
+            onMouseEnter={onMouseEnter}
+            onMouseLeave={onMouseLeave}
+          >
+            <SidebarContent>
+              <SidebarHeader>
+                {appLogo || (
+                  <div className="p-2 bg-primary/20 rounded-lg">
+                    <Rocket className="w-5 h-5 text-primary" />
+                  </div>
+                )}
+                <SidebarTitle>{appName}</SidebarTitle>
+                <SidebarToggleButton />
+              </SidebarHeader>
+
+              <SidebarBody>
+                <SidebarSection title="Main">
+                  <AppMenuItem icon={Home} label="Dashboard" page="dashboard" />
+                  <AppMenuItem icon={Database} label="Data Demo" page="data-demo" />
+                  <AppMenuItem icon={Mail} label="Messaging" page="messaging" badge={7} />
+                  <AppMenuItem icon={Search} label="Search" />
+                  <AppMenuItem icon={Bell} label="Notifications" badge={3} page="notifications" opensInSidePane />
+                </SidebarSection>
+                
+                <SidebarSection title="Workspace" collapsible defaultExpanded>
+                  <AppMenuItem icon={FileText} label="Documents" hasActions>
+                    <AppMenuItem icon={FileText} label="Recent" isSubItem />
+                    <AppMenuItem icon={Star} label="Starred" isSubItem />
+                    <AppMenuItem icon={Trash2} label="Trash" isSubItem />
+                  </AppMenuItem>
+                  <AppMenuItem icon={FolderOpen} label="Projects" hasActions />
+                  <AppMenuItem icon={Mail} label="Messages" badge={12} />
+                </SidebarSection>
+                
+                <SidebarSection title="Personal" collapsible>
+                  <AppMenuItem icon={Bookmark} label="Bookmarks" />
+                  <AppMenuItem icon={Star} label="Favorites" />
+                  <AppMenuItem icon={Download} label="Downloads" />
+                </SidebarSection>
+
+                <SidebarSection title="Components" collapsible defaultExpanded>
+                  <AppMenuItem icon={Component} label="Toaster" page="toaster" />
+                </SidebarSection>
+              </SidebarBody>
+
+              <SidebarFooter>
+                <SidebarSection>
+                  <AppMenuItem icon={User} label="Profile" />
+                  <AppMenuItem icon={Settings} label="Settings" page="settings" />
+                  <AppMenuItem icon={HelpCircle} label="Help" />
+                </SidebarSection>
+
+                <div className={cn(compactMode ? 'mt-4' : 'mt-6')}>
+                  <Workspaces
+                    workspaces={mockWorkspaces}
+                    selectedWorkspaceId={selectedWorkspace.id}
+                    onWorkspaceChange={(ws) => setSelectedWorkspace(ws as MyWorkspace)}
+                  >
+                    <SidebarWorkspaceTrigger />
+                    <WorkspaceContent>
+                      <button className="flex w-full items-center gap-2 rounded-sm px-2 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground focus:outline-none">
+                        <Plus className="h-4 w-4" />
+                        <span>Create Workspace</span>
+                      </button>
+                    </WorkspaceContent>
+                  </Workspaces>
+                </div>
+              </SidebarFooter>
+            </SidebarContent>
+          </Sidebar>
+        );
+      },
+    ));
+
+    EnhancedSidebar.displayName = 'EnhancedSidebar';
+
+
+
+    // Example of a reusable menu item component built with the new Sidebar
+    primitives
+
+    interface AppMenuItemProps {
+      icon: React.ElementType;
+      label: string;
+      badge?: number;
+      hasActions?: boolean;
+      children?: React.ReactNode;
+      isSubItem?: boolean;
+      page?: ActivePage;
+      opensInSidePane?: boolean;
+    }
+
+
+    const AppMenuItem: React.FC<AppMenuItemProps> = ({ icon: Icon, label, badge,
+    hasActions, children, isSubItem = false, page, opensInSidePane = false }) =>
+    {
+      const compactMode = useAppShellStore(state => state.compactMode);
+      const { setDraggedPage, setDragHoverTarget } = useAppShellStore.getState()
+      const { isCollapsed } = useSidebar();
+      const viewManager = useAppViewManager();
+
+      const isActive = (
+        (!opensInSidePane && page && viewManager.currentActivePage === page)
+      ) || (
+        opensInSidePane && page === 'notifications' && viewManager.sidePaneContent === 'notifications'
+      );
+
+      const handleClick = () => {
+        if (page) {
+          if (opensInSidePane) {
+            // The only item using this is Notifications
+            viewManager.toggleSidePane('notifications');
+          } else {
+            viewManager.navigateTo(page);
+          }
+        }
+      };
+
+      return (
+        <div className={isSubItem ? (compactMode ? 'ml-4' : 'ml-6') : ''}>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              onClick={handleClick}
+              isActive={isActive}
+              draggable={!!page}
+              onDragStart={(_e) => {
+                if (page) {
+                  // set dragged page in AppShell store
+                  setDraggedPage(page);
+                }
+              }}
+              onDragEnd={() => {
+                setDraggedPage(null);
+                setDragHoverTarget(null);
+              }}
+            >
+              <SidebarIcon>
+                <Icon className={isSubItem ? "w-3 h-3" : "w-4 h-4"}/>
+              </SidebarIcon>
+              <SidebarLabel>{label}</SidebarLabel>
+              {badge && <SidebarBadge>{badge}</SidebarBadge>}
+              <SidebarTooltip label={label} badge={badge} />
+            </SidebarMenuButton>
+
+            {page && !isCollapsed && ( // Always render switcher if there's a page
+              <div className={cn(
+                "absolute top-1/2 -translate-y-1/2 z-10",
+                "opacity-0 group-hover/item:opacity-100 group-focus-within/item:opacity-100",
+                "transition-opacity pointer-events-none group-hover/item:pointer-events-auto",
+                // If there are actions, move left to make space for the action button
+                hasActions ? "right-10" : "right-2"
+              )}>
+                <ViewModeSwitcher targetPage={page} />
+              </div>
+            )}
+
+            {hasActions && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <SidebarMenuAction>
+                    <MoreHorizontal className="h-4 w-4" />
+                  </SidebarMenuAction>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent side="right" align="start">
+                  <DropdownMenuItem>
+                    <span>Edit {label}</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem>
+                    <span>Delete {label}</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </SidebarMenuItem>
+          {!isCollapsed && children && (
+            <div className="space-y-1 mt-1">{children}</div>
+          )}
+        </div>
+      );
+    };
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 352

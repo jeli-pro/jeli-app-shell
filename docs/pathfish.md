@@ -1,301 +1,200 @@
-Okay, let's architect this refactor. The current messaging feature is a basic chat app. We're going to rebuild it from the ground up with a new mental model: every conversation is an actionable task. Think less "chat log," more "command center." This is a full-stack rewrite of the feature, from data models to UI components.
+Alright, let's get this done. The current messaging page filter is a toy. We're going to ship a real feature that gives users power over their workflow.
 
-We'll ditch the ephemeral nature of chat and introduce structure: status, assignees, due dates, the works. The UI will be overhauled to present this dense, actionable information in a way that's both powerful and intuitive. It's time to stop just talking and start doing.
+The plan is simple: We're upgrading the state management to handle advanced, preset filters like 'Open', 'Unassigned', and 'Done'. Then, we'll overhaul the UI, replacing the weak-sauce tabs with a new set that leverages these presets. Finally, we'll make these views first-class citizens by wiring them up as sub-nav links in the sidebar, all driven by URL params so they're shareable and bookmarkable.
 
-Here's the master plan.
+This isn't just a refactor; it's a feature upgrade that'll make the app 10x more usable. Let's build it.
 
 ```yaml
 plan:
-  uuid: 'd8a3c1f0-5b7e-4d9c-8a1b-6f2e9b1c0a4d'
+  uuid: 'f2a7b8e1-c9d3-4a1e-8b65-9f4d3c0a7e1b'
   status: 'todo'
-  title: 'Refactor Messaging from Chat to a Task-Based Inbox'
+  title: 'Refactor Messaging Page for Advanced Filtering and Sidebar Nav'
   introduction: |
-    Alright, let's pwn this messaging feature. The current setup is a vanilla chat clone. We're gonna juice it up and pivot to a task-based inbox, think Linear meets Intercom. The mental model is simple: every conversation is a task. It has a lifecycle, an owner, a deadline. It's not just chat, it's actionable.
+    Alright, listen up. The current messaging page filter is weak sauce - just 'all' and 'unread'. Users are crying out for real power. We're going to inject some serious functionality here.
 
-    We'll gut the existing data models and replace them with task-centric structures. Then we'll rebuild the UI layer by layer: a slick task list instead of a boring conversation list, a full-blown task detail view with an activity feed, and a properties panel to manage the metadata. This isn't just a facelift; it's a full architectural overhaul to make the feature 10x more powerful. No more dropping the ball on user messages.
+    The plan is to juice up the state management to handle advanced, preset filters like 'Open', 'Unassigned', 'Done', etc. Then, we'll rip out the old tabs and slap in a new UI that uses these presets.
+
+    But that's not all. We're going to make these filters first-class citizens by turning them into sub-navigation links in the sidebar. Clicking 'Unassigned' in the sidebar will jump you right to that view. This is a huge UX win. We'll wire this all up through URL params, making the views shareable and bookmarkable. No half-measures. Let's build something people actually want to use.
   parts:
-    - uuid: 'c1b2d3e4-f5a6-4b7c-8d9e-0f1a2b3c4d5e'
+    - uuid: 'a1b3c4d5-e6f7-8a90-b1c2-d3e4f5a6b7c8'
       status: 'todo'
-      name: 'Part 1: Nuke and Pave the Data Layer for Tasks'
+      name: 'Part 1: Beef Up State Management for Advanced Filtering'
       reason: |
-        The current data model is for chat. It won't scale for tasks. We need to rebuild the foundation first to support states, deadlines, and ownership. Garbage in, garbage out. Let's get the types right, and everything else will follow.
+        The current `messaging.store` is too basic. It can't handle the concept of predefined filter "views". We need to bake this logic directly into the store to keep our components clean and have a single source of truth for filtering tasks.
       steps:
-        - uuid: '1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d'
+        - uuid: 'e8f9a0b1-c2d3-4e5f-6a7b-8c9d0e1f2a3b'
           status: 'todo'
-          name: '1. Overhaul Data Types'
+          name: '1. Define new filter presets and state'
           reason: |
-            To represent conversations as tasks, we need to redefine the core `Conversation` and `Message` types. We'll rename `Conversation` to `Task` and enrich it with properties needed for task management.
+            To create a contract for what filter views are available and to store the currently active view. This establishes the foundation for the new filtering logic.
           files:
-            - 'src/pages/Messaging/types.ts'
+            - src/pages/Messaging/types.ts
+            - src/pages/Messaging/store/messaging.store.ts
           operations:
-            - 'Rename the `Conversation` interface to `Task`.'
-            - 'Add new properties to `Task`: `title: string`, `status: ''open'' | ''in-progress'' | ''done'' | ''snoozed''`, `assigneeId: string | null`, `dueDate: string | null`, `priority: ''none'' | ''low'' | ''medium'' | ''high''`, and `labels: string[]`.'
-            - 'The `messages` property on `Task` will now represent an activity feed.'
-            - 'Modify the `Message` type to include a `type` property: `type: ''comment'' | ''note'' | ''system''` to differentiate between customer messages, internal notes, and automated logs.'
-            - 'Rename `lastMessage` on `Task` to `lastActivity` and its type to `Message` (or a new `Activity` type if we expand it).'
-        - uuid: '6f7a8b9c-0d1e-4f2a-b3c4-d5e6f7a8b9c0'
+            - 'In `src/pages/Messaging/types.ts`, export a new type `export type TaskView = "all_open" | "unassigned" | "done";` to define the available filter presets.'
+            - 'In `src/pages/Messaging/store/messaging.store.ts`, import the new `TaskView` type.'
+            - 'In the `MessagingState` interface, add a new property: `activeTaskView: TaskView;`.'
+            - 'In the store''s initial state, set `activeTaskView: "all_open"`, making it the default view.'
+            - 'In the `MessagingActions` interface, add a new action signature: `setActiveTaskView: (view: TaskView) => void;`.'
+            - 'Implement the `setActiveTaskView` action in the store. It should simply call `set({ activeTaskView: view })`.'
+        - uuid: 'b4c5d6e7-f8a9-0b1c-2d3e-4f5a6b7c8d9e'
           status: 'todo'
-          name: '2. Update Mock Data Generation'
+          name: '2. Upgrade `getFilteredTasks` selector'
           reason: |
-            The existing mock data is for simple chats. We need to update the data generator to produce rich `Task` objects that reflect the new, more complex structure.
+            This is the core of the refactor. The selector needs to apply the logic for the new `activeTaskView` on top of existing filters like search and tags.
           files:
-            - 'src/pages/Messaging/data/mockData.ts'
+            - src/pages/Messaging/store/messaging.store.ts
           operations:
-            - 'Update `mockConversations` to `mockTasks`.'
-            - 'Refactor the generation logic to create `Task` objects with randomized statuses, priorities, due dates, and assignees.'
-            - 'Modify the message generation logic to produce a mix of `comment`, `note`, and `system` type messages for the activity feed.'
-        - uuid: 'b3c4d5e6-f7a8-4b9c-8d1e-2f3a4b5c6d7e'
-          status: 'todo'
-          name: '3. Refactor the Messaging Store'
-          reason: |
-            The Zustand store is wired to the old `Conversation` model. We need to update its state, actions, and selectors to manage `Task` entities.
-          files:
-            - 'src/pages/Messaging/store/messaging.store.ts'
-          operations:
-            - 'In `MessagingState`, rename `conversations` to `tasks` and update its type to `Task[]`.'
-            - 'Rename actions and selectors from `*Conversation*` to `*Task*`. For example, `getConversationById` becomes `getTaskById`.'
-            - 'Add new actions to the store for managing task properties, such as `updateTaskStatus(taskId: string, status: Task[''status''])`, `setTaskAssignee(...)`, and `setTaskDueDate(...)`.'
+            - 'Modify the `getFilteredTasks` selector to read `activeTaskView` from the state.'
+            - 'Inside the function, before the existing filtering logic, introduce a new filtering step based on `activeTaskView`.'
+            - 'Use a `switch` statement or `if/else` chain to handle the different views:'
+            - "For `'all_open'`, filter tasks where status is `'open'` or `'in-progress'`."
+            - "For `'unassigned'`, filter tasks where `assigneeId` is `null` AND status is `'open'` or `'in-progress'`."
+            - "For `'done'`, filter tasks where status is `'done'`."
+            - 'Ensure the result of this new view-based filtering is then passed to the subsequent search and tag filtering logic, allowing all filters to be combined.'
       context_files:
         compact:
-          - 'src/pages/Messaging/types.ts'
-          - 'src/pages/Messaging/data/mockData.ts'
-          - 'src/pages/Messaging/store/messaging.store.ts'
+          - src/pages/Messaging/store/messaging.store.ts
+          - src/pages/Messaging/types.ts
         medium:
-          - 'src/pages/Messaging/types.ts'
-          - 'src/pages/Messaging/data/mockData.ts'
-          - 'src/pages/Messaging/store/messaging.store.ts'
-          - 'src/pages/Messaging/index.tsx'
+          - src/pages/Messaging/store/messaging.store.ts
+          - src/pages/Messaging/types.ts
+          - src/pages/Messaging/components/TaskList.tsx
         extended:
-          - 'src/pages/Messaging/types.ts'
-          - 'src/pages/Messaging/data/mockData.ts'
-          - 'src/pages/Messaging/store/messaging.store.ts'
-          - 'src/pages/Messaging/index.tsx'
-          - 'src/pages/Messaging/components/ConversationList.tsx'
-          - 'src/pages/Messaging/components/MessageThread.tsx'
-    - uuid: 'e5f6a7b8-c9d0-4e1f-a2b3-c4d5e6f7a8b9'
+          - src/pages/Messaging/store/messaging.store.ts
+          - src/pages/Messaging/types.ts
+          - src/pages/Messaging/components/TaskList.tsx
+          - src/hooks/useAppViewManager.hook.ts
+    - uuid: 'c9d8e7f6-a5b4-c3d2-e1f0-9a8b7c6d5e4f'
       status: 'todo'
-      name: 'Part 2: Morph Conversation List into a Legit Task List'
+      name: 'Part 2: Overhaul TaskList UI & URL-based State'
       reason: |
-        The left pane is prime real estate. Showing a snippet of the last message is a waste. We need a high-density, scannable list of tasks with their status, priority, and assignee. This will be the new command-central.
+        The UI needs to reflect the new filtering power. We'll replace the simple tabs with ones that control our new "views". We'll also make the URL the source of truth for the active view, making the app state more robust and shareable.
       steps:
-        - uuid: '2a3b4c5d-6e7f-4a8b-9c0d-1e2f3a4b5c6d'
+        - uuid: 'd1e2f3a4-b5c6-7d8e-9f0a-1b2c3d4e5f6a'
           status: 'todo'
-          name: '1. Create the new TaskList Component'
+          name: '1. Introduce `messagingView` URL parameter'
           reason: |
-            We'll replace the old `ConversationList` with a new `TaskList` component designed to display the rich task data.
+            To control the messaging view state via the URL, enabling deep linking and browser history support. This decouples the view state from component state.
           files:
-            - 'src/pages/Messaging/components/ConversationList.tsx'
-            - 'src/pages/Messaging/components/TaskList.tsx' # new file
-            - 'src/pages/Messaging/index.tsx'
+            - src/hooks/useAppViewManager.hook.ts
+            - src/pages/Messaging/types.ts
           operations:
-            - 'Create a new file `src/pages/Messaging/components/TaskList.tsx`.'
-            - 'In `TaskList.tsx`, fetch tasks from `useMessagingStore`.'
-            - 'Render each task as a dense row. Include the task `title`, contact `avatar`, `status` badge, `priority` icon, and `dueDate`.'
-            - 'Use `Link` from `react-router-dom` to navigate to `/messaging/{taskId}` when a task row is clicked.'
-            - 'Delete the old `ConversationList.tsx` file.'
-            - 'Update `src/pages/Messaging/index.tsx` to import and render `TaskList` instead of `ConversationList`.'
-        - uuid: '7f8a9b0c-1d2e-4f3a-b4c5-d6e7f8a9b0c1'
+            - 'In `useAppViewManager.hook.ts`, import `TaskView` from `''@/pages/Messaging/types''`.'
+            - 'In the hook, create a new derived state variable: `const messagingView = searchParams.get("messagingView") as TaskView | null;`.'
+            - 'Create a new setter function to update the URL: `const setMessagingView = (view: TaskView) => handleParamsChange({ messagingView: view });`.'
+            - 'Return `messagingView` and `setMessagingView` from the hook''s returned object.'
+        - uuid: 'a6b7c8d9-e0f1-2a3b-4c5d-6e7f8a9b0c1d'
           status: 'todo'
-          name: '2. Implement Advanced Filtering'
+          name: '2. Connect `TaskList` to URL state and store'
           reason: |
-            A simple search bar isn't enough for a task list. We need powerful filtering controls similar to those in the `DataDemo` feature.
+            To make the `TaskList` component react to URL changes and update the central store accordingly, ensuring a synchronized state across the application.
           files:
-            - 'src/pages/Messaging/components/TaskList.tsx'
-            - 'src/pages/Messaging/store/messaging.store.ts'
+            - src/pages/Messaging/components/TaskList.tsx
           operations:
-            - 'In `TaskList.tsx`, add a toolbar section above the list.'
-            - 'Add dropdowns/popovers for filtering by `status`, `priority`, and `assignee`.'
-            - 'Connect these UI controls to the `setFilters` action in the `messaging.store.ts`.'
-            - 'Update the selectors in the store to apply these new filters to the `tasks` list that is returned.'
+            - 'In `TaskList.tsx`, get `messagingView` and `setMessagingView` from the `useAppViewManager()` hook.'
+            - 'Get the `setActiveTaskView` action from the `useMessagingStore()` hook.'
+            - 'Add a `useEffect` hook to sync the URL state with the Zustand store: `useEffect(() => { setActiveTaskView(messagingView || "all_open"); }, [messagingView, setActiveTaskView]);`.'
+        - uuid: 'f2a3b4c5-d6e7-8f9a-0b1c-2d3e4f5a6b7c'
+          status: 'todo'
+          name: '3. Replace UI tabs with new view controls'
+          reason: |
+            The old `[all | unread]` tabs are now obsolete. They must be replaced with new tabs that control the `messagingView` via the URL.
+          files:
+            - src/pages/Messaging/components/TaskList.tsx
+          operations:
+            - 'Locate the `AnimatedTabs` component within `TaskList.tsx`.'
+            - 'Replace the existing `tabs` prop array with a new constant: `const TABS = [{ id: "all_open", label: "Open" }, { id: "unassigned", label: "Unassigned" }, { id: "done", label: "Done" }];`.'
+            - 'Update the `activeTab` prop to be driven by the URL: `activeTab={messagingView || "all_open"}`.'
+            - 'Update the `onTabChange` prop to call the URL setter: `onTabChange={(tabId) => setMessagingView(tabId as TaskView)}`.'
       context_files:
         compact:
-          - 'src/pages/Messaging/components/ConversationList.tsx'
-          - 'src/pages/Messaging/index.tsx'
-          - 'src/pages/Messaging/store/messaging.store.ts'
+          - src/pages/Messaging/components/TaskList.tsx
+          - src/hooks/useAppViewManager.hook.ts
         medium:
-          - 'src/pages/Messaging/components/ConversationList.tsx'
-          - 'src/pages/Messaging/index.tsx'
-          - 'src/pages/Messaging/store/messaging.store.ts'
-          - 'src/pages/Messaging/types.ts'
-          - 'src/pages/DataDemo/components/DataToolbar.tsx' # for reference
+          - src/pages/Messaging/components/TaskList.tsx
+          - src/hooks/useAppViewManager.hook.ts
+          - src/pages/Messaging/store/messaging.store.ts
+          - src/pages/Messaging/types.ts
         extended:
-          - 'src/pages/Messaging/components/ConversationList.tsx'
-          - 'src/pages/Messaging/index.tsx'
-          - 'src/pages/Messaging/store/messaging.store.ts'
-          - 'src/pages/Messaging/types.ts'
-          - 'src/pages/DataDemo/components/DataToolbar.tsx'
-          - 'src/components/ui/dropdown-menu.tsx'
-          - 'src/components/ui/popover.tsx'
-    - uuid: 'd9e0f1a2-b3c4-4d5e-8f6a-7b8c9d0e1f2a'
+          - src/pages/Messaging/components/TaskList.tsx
+          - src/hooks/useAppViewManager.hook.ts
+          - src/pages/Messaging/store/messaging.store.ts
+          - src/pages/Messaging/types.ts
+          - src/components/layout/EnhancedSidebar.tsx
+    - uuid: '8d7e6f5a-4b3c-2d1e-0f9a-8b7c6d5e4f3a'
       status: 'todo'
-      name: 'Part 3: Evolve the Message Thread into Task Command Center'
+      name: 'Part 3: Integrate Filter Views into Sidebar'
       reason: |
-        The center pane is where the work gets done. A simple chat log doesn't cut it. We need a proper header to manage the task's state and an activity feed that shows not just messages, but the entire history of the task.
+        To provide quick, one-click access to the most important message views directly from the main application navigation, improving discoverability and workflow efficiency.
       steps:
-        - uuid: '3a4b5c6d-7e8f-4a9b-0c1d-2e3f4a5b6c7d'
+        - uuid: '7c6d5e4f-3a2b-1c0d-9e8f-7a6b5c4d3e2f'
           status: 'todo'
-          name: '1. Create TaskHeader Component'
+          name: '1. Enhance navigation logic for URL parameters'
           reason: |
-            The task's metadata needs to be front and center, and editable. We'll create a dedicated header component for this.
+            The existing `navigateToPage` function only changes the URL path. We need to upgrade it to handle setting URL search parameters simultaneously, which is essential for activating our new views from the sidebar.
           files:
-            - 'src/pages/Messaging/components/TaskHeader.tsx' # new file
+            - src/hooks/useAppViewManager.hook.ts
           operations:
-            - 'Create a new file `src/pages/Messaging/components/TaskHeader.tsx`.'
-            - 'The component will receive a `task` object as a prop.'
-            - 'Display the task `title`. Make it editable inline or via a modal.'
-            - 'Add dropdowns (`DropdownMenu` or `Popover` with `Command`) to change the `status`, `assignee`, `priority`, and `dueDate`.'
-            - 'These controls should call the corresponding update actions in `useMessagingStore`.'
-        - uuid: '8f9a0b1c-2d3e-4f4a-b5c6-d7e8f9a0b1c2'
+            - 'Locate the `navigateToPage` function inside `useAppViewManager.hook.ts`.'
+            - 'Modify its signature to accept an optional `params` object: `const navigateToPage = (page: ActivePage, params?: Record<string, string | null>) => { ... };`.'
+            - 'Inside the function, create a new `URLSearchParams` instance from the current `searchParams`.'
+            - 'Iterate over the passed `params` object. If a value is `null` or `undefined`, `delete` the key from the search params. Otherwise, `set` the key/value.'
+            - 'Finally, call `navigate` with both the new pathname and the stringified search params: `navigate({ pathname: `/${page}`, search: newSearchParams.toString() });`.'
+        - uuid: '6b5c4d3e-2f1a-0b9c-8d7e-6f5a4b3c2d1e'
           status: 'todo'
-          name: '2. Create ActivityFeed Component'
+          name: '2. Refactor "Messaging" sidebar item into a collapsible section'
           reason: |
-            The message list needs to become an activity feed that can render different types of events.
+            To create a container for the main "Messaging" link and its new sub-navigation links. This improves the information architecture and makes the sidebar more organized.
           files:
-            - 'src/pages/Messaging/components/ActivityFeed.tsx' # new file
+            - src/components/layout/EnhancedSidebar.tsx
           operations:
-            - 'Create a new file `src/pages/Messaging/components/ActivityFeed.tsx`.'
-            - 'The component will receive an array of `Message` objects.'
-            - 'Iterate through the messages and render them based on their `type`.'
-            - '`comment` type: Render as a chat bubble, similar to the old design.'
-            - '`note` type: Render with a distinct style (e.g., yellow background, "Internal Note" header) to show it's not visible to the contact.'
-            - '`system` type: Render as a centered, small-text event line (e.g., "Assignee changed to John Doe").'
-        - uuid: 'e2f3a4b5-c6d7-4e8f-9a0b-1c2d3e4f5a6b'
-          status: 'todo'
-          name: '3. Assemble the new TaskDetail View'
-          reason: |
-            We'll combine the new header and activity feed into a single `TaskDetail` component, replacing the old `MessageThread`.
-          files:
-            - 'src/pages/Messaging/components/MessageThread.tsx'
-            - 'src/pages/Messaging/components/TaskDetail.tsx' # new file
-            - 'src/pages/Messaging/index.tsx'
-          operations:
-            - 'Create a new file `src/pages/Messaging/components/TaskDetail.tsx`.'
-            - 'Get the current `taskId` from `useParams` and fetch the task data using `getTaskById` from the store.'
-            - 'Render the `TaskHeader` at the top, passing the task data.'
-            - 'Render the `ActivityFeed` below the header, passing the task''s messages.'
-            - 'Include an input form at the bottom for adding new comments or internal notes (with a toggle).'
-            - 'Delete the old `MessageThread.tsx` file.'
-            - 'Update `src/pages/Messaging/index.tsx` to render `TaskDetail` instead of `MessageThread`.'
+            - 'In `EnhancedSidebar.tsx`, get `messagingView` and the modified `navigateToPage` from the `useAppViewManager()` hook.'
+            - 'Locate the `EnhancedSidebarMenuItem` for "Messaging" (where `page="messaging"`).'
+            - 'Remove this single menu item.'
+            - 'In its place, add a `<SidebarSection title="Inbox" isCollapsible={true}>`.'
+            - 'Inside this new section, add three `EnhancedSidebarMenuItem` components, one for each view:'
+            - "1. **All Open:** `label=\"All Open\"`, `page=\"messaging\"`, `onClick={() => navigateToPage('messaging', { messagingView: 'all_open' })}`, `isActive={activePage === 'messaging' && (messagingView === 'all_open' || !messagingView)}`."
+            - "2. **Unassigned:** `label=\"Unassigned\"`, `page=\"messaging\"`, `onClick={() => navigateToPage('messaging', { messagingView: 'unassigned' })}`, `isActive={activePage === 'messaging' && messagingView === 'unassigned'}`."
+            - "3. **Done:** `label=\"Done\"`, `page=\"messaging\"`, `onClick={() => navigateToPage('messaging', { messagingView: 'done' })}`, `isActive={activePage === 'messaging' && messagingView === 'done'}`."
+            - "Modify the `EnhancedSidebarMenuItem` component to accept and prioritize an `onClick` prop over its default navigation behavior. Update its `handleClick` to be `const handleClick = onClick ?? (() => navigateToPage(page));`."
       context_files:
         compact:
-          - 'src/pages/Messaging/components/MessageThread.tsx'
-          - 'src/pages/Messaging/index.tsx'
-          - 'src/pages/Messaging/types.ts'
+          - src/components/layout/EnhancedSidebar.tsx
+          - src/hooks/useAppViewManager.hook.ts
         medium:
-          - 'src/pages/Messaging/components/MessageThread.tsx'
-          - 'src/pages/Messaging/index.tsx'
-          - 'src/pages/Messaging/types.ts'
-          - 'src/pages/Messaging/store/messaging.store.ts'
+          - src/components/layout/EnhancedSidebar.tsx
+          - src/hooks/useAppViewManager.hook.ts
+          - src/pages/Messaging/components/TaskList.tsx
         extended:
-          - 'src/pages/Messaging/components/MessageThread.tsx'
-          - 'src/pages/Messaging/index.tsx'
-          - 'src/pages/Messaging/types.ts'
-          - 'src/pages/Messaging/store/messaging.store.ts'
-          - 'src/components/ui/dropdown-menu.tsx'
-          - 'src/components/ui/popover.tsx'
-    - uuid: '4a5b6c7d-8e9f-4a0b-1c2d-3e4f5a6b7c8d'
-      status: 'todo'
-      name: 'Part 4: Refactor Right Pane for Task & Contact Context'
-      reason: |
-        Context is king. The right pane needs to show both information about the task and the contact. We'll use tabs to separate these concerns and present a clean, organized view.
-      steps:
-        - uuid: '9f0a1b2c-3d4e-4f5a-b6c7-d8e9f0a1b2c3'
-          status: 'todo'
-          name: '1. Create TaskPropertiesPanel Component'
-          reason: |
-            A dedicated panel is needed to display all the task's metadata in a clear, structured format.
-          files:
-            - 'src/pages/Messaging/components/TaskPropertiesPanel.tsx' # new file
-          operations:
-            - 'Create a new file `src/pages/Messaging/components/TaskPropertiesPanel.tsx`.'
-            - 'It will accept a `task` object as a prop.'
-            - 'Display key-value pairs for all task metadata: `Status`, `Assignee`, `Priority`, `Labels`, `Due Date`, `Created Date`, etc.'
-            - 'This panel should be read-only, as editing is handled in the `TaskHeader`.'
-        - uuid: '4e5f6a7b-8c9d-4e0f-a1b2-c3d4e5f6a7b8'
-          status: 'todo'
-          name: '2. Combine Panels with Tabs'
-          reason: |
-            We'll use tabs to allow the user to switch between viewing task properties and contact details in the right-hand pane.
-          files:
-            - 'src/pages/Messaging/components/MessagingContent.tsx'
-            - 'src/pages/Messaging/components/ContactProfile.tsx'
-          operations:
-            - 'Modify `MessagingContent.tsx` to be the container for the tabbed view.'
-            - 'Use the `AnimatedTabs` component.'
-            - 'Create two tabs: "Details" and "Contact".'
-            - 'The "Details" tab will render the new `TaskPropertiesPanel.tsx`.'
-            - 'The "Contact" tab will render the existing `ContactProfile.tsx`.'
-            - 'Pass the relevant `task` and `contact` data to each panel.'
-      context_files:
-        compact:
-          - 'src/pages/Messaging/components/MessagingContent.tsx'
-          - 'src/pages/Messaging/components/ContactProfile.tsx'
-        medium:
-          - 'src/pages/Messaging/components/MessagingContent.tsx'
-          - 'src/pages/Messaging/components/ContactProfile.tsx'
-          - 'src/components/ui/animated-tabs.tsx'
-        extended:
-          - 'src/pages/Messaging/components/MessagingContent.tsx'
-          - 'src/pages/Messaging/components/ContactProfile.tsx'
-          - 'src/components/ui/animated-tabs.tsx'
-          - 'src/pages/Messaging/types.ts'
-    - uuid: 'b3c4d5e6-f7a8-4b9c-8d1e-0f1a2b3c4d5e'
-      status: 'todo'
-      name: 'Part 5: Final Integration & Route Cleanup'
-      reason: |
-        The URL is part of the feature's API. Renaming `/messaging/:conversationId` to `/messaging/:taskId` makes the new model explicit and self-documenting. We'll hunt down and rename all the old `conversation` cruft to complete the migration.
-      steps:
-        - uuid: '5a6b7c8d-9e0f-4a1b-2c3d-4e5f6a7b8c9d'
-          status: 'todo'
-          name: '1. Update Routing and URL Parameters'
-          reason: |
-            To align with the new task-based model, we need to update the application's routes and any code that depends on the URL structure.
-          files:
-            - 'src/App.tsx'
-            - 'src/hooks/useAppViewManager.hook.ts'
-            - 'src/pages/Messaging/index.tsx'
-          operations:
-            - 'In `App.tsx`, change the messaging route from `/messaging/:conversationId` to `/messaging/:taskId`.'
-            - 'In `useAppViewManager.hook.ts`, find the logic that handles messaging views. Update it to look for `taskId` in the params instead of `conversationId`.'
-            - 'In `TaskList.tsx` and anywhere else a link to a task is generated, ensure it uses the new `/messaging/:taskId` format.'
-            - 'In `TaskDetail.tsx`, update `useParams` to extract `taskId`.'
-      context_files:
-        compact:
-          - 'src/App.tsx'
-          - 'src/hooks/useAppViewManager.hook.ts'
-        medium:
-          - 'src/App.tsx'
-          - 'src/hooks/useAppViewManager.hook.ts'
-          - 'src/pages/Messaging/index.tsx'
-        extended:
-          - 'src/App.tsx'
-          - 'src/hooks/useAppViewManager.hook.ts'
-          - 'src/pages/Messaging/index.tsx'
-          - 'src/pages/Messaging/components/TaskList.tsx' # newly created
-          - 'src/pages/Messaging/components/TaskDetail.tsx' # newly created
+          - src/components/layout/EnhancedSidebar.tsx
+          - src/hooks/useAppViewManager.hook.ts
+          - src/pages/Messaging/components/TaskList.tsx
+          - src/store/appShell.store.ts
+          - src/components/layout/Sidebar.tsx
   conclusion: |
-    When we're done, the messaging feature will be transformed from a passive communication log into an active work management system. Users will be able to track, manage, and resolve conversations like a pro. This shift makes the app stickier and provides a ton more value by treating user interaction as the start of a workflow, not the end of one. It's a massive level-up.
+    Once this is shipped, the messaging feature will be transformed from a simple inbox into a powerful, organized workspace. Users can triage tasks efficiently with direct navigation from the sidebar, and the URL-driven state makes the entire experience more stable and predictable. This is a massive leap forward in usability. LGTM.
   context_files:
     compact:
-      - 'src/pages/Messaging/index.tsx'
-      - 'src/pages/Messaging/types.ts'
-      - 'src/pages/Messaging/store/messaging.store.ts'
-      - 'src/App.tsx'
+      - src/pages/Messaging/store/messaging.store.ts
+      - src/pages/Messaging/components/TaskList.tsx
+      - src/components/layout/EnhancedSidebar.tsx
+      - src/hooks/useAppViewManager.hook.ts
+      - src/pages/Messaging/types.ts
     medium:
-      - 'src/pages/Messaging/index.tsx'
-      - 'src/pages/Messaging/types.ts'
-      - 'src/pages/Messaging/store/messaging.store.ts'
-      - 'src/pages/Messaging/data/mockData.ts'
-      - 'src/App.tsx'
-      - 'src/hooks/useAppViewManager.hook.ts'
+      - src/pages/Messaging/store/messaging.store.ts
+      - src/pages/Messaging/components/TaskList.tsx
+      - src/components/layout/EnhancedSidebar.tsx
+      - src/hooks/useAppViewManager.hook.ts
+      - src/pages/Messaging/types.ts
+      - src/components/layout/Sidebar.tsx
     extended:
-      - 'src/pages/Messaging/index.tsx'
-      - 'src/pages/Messaging/types.ts'
-      - 'src/pages/Messaging/store/messaging.store.ts'
-      - 'src/pages/Messaging/data/mockData.ts'
-      - 'src/pages/Messaging/components/ConversationList.tsx'
-      - 'src/pages/Messaging/components/MessageThread.tsx'
-      - 'src/pages/Messaging/components/ContactProfile.tsx'
-      - 'src/App.tsx'
-      - 'src/hooks/useAppViewManager.hook.ts'
+      - src/pages/Messaging/store/messaging.store.ts
+      - src/pages/Messaging/components/TaskList.tsx
+      - src/components/layout/EnhancedSidebar.tsx
+      - src/hooks/useAppViewManager.hook.ts
+      - src/pages/Messaging/types.ts
+      - src/components/layout/Sidebar.tsx
+      - src/store/appShell.store.ts
+      - src/pages/Messaging/index.tsx
 ```
