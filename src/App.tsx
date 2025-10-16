@@ -21,6 +21,8 @@ import { RightPane } from "./components/layout/RightPane";
 import { TopBar } from "./components/layout/TopBar";
 import { CommandPalette } from "./components/global/CommandPalette";
 import { ToasterProvider } from "./components/ui/toast";
+import { Input } from "./components/ui/input";
+import { Button } from "./components/ui/button";
 
 // --- Page/Content Components for Pages and Panes ---
 import { DashboardContent } from "./pages/Dashboard";
@@ -86,74 +88,91 @@ function ProtectedLayout() {
   );
 }
 
-// Content for the Top Bar (will be fully refactored in Part 2)
-function AppTopBar() {
-  const [searchTerm, setSearchTerm] = React.useState("");
-  const [isSearchFocused, setIsSearchFocused] = React.useState(false);
-  const location = useLocation();
-  const activePage = location.pathname.split('/').filter(Boolean).pop()?.replace('-', ' ') || 'dashboard';
+// Breadcrumbs for the Top Bar
+function AppBreadcrumbs() {
+  const { currentActivePage } = useAppViewManager();
+  const activePageName = currentActivePage.replace('-', ' ');
 
   return (
-    <div className="flex items-center gap-3">
-      <div
-        className={cn(
-          "hidden md:flex items-center gap-2 text-sm transition-opacity",
-          {
-            "opacity-0 pointer-events-none":
-              isSearchFocused && activePage === "dashboard",
-          },
-        )}
+    <div className="hidden md:flex items-center gap-2 text-sm">
+      <a
+        href="#"
+        className="text-muted-foreground hover:text-foreground transition-colors"
       >
-        <a
-          href="#"
-          className="text-muted-foreground hover:text-foreground transition-colors"
-        >
-          Home
-        </a>
-        <ChevronRight className="w-4 h-4 text-muted-foreground" />
-        <span className="font-medium text-foreground capitalize">
-          {activePage}
-        </span>
-      </div>
-
-      {/* Page-specific: Dashboard search and actions */}
-      {activePage === "dashboard" && (
-        <div className="flex items-center gap-2 flex-1 justify-end">
-          <div
-            className={cn(
-              "relative transition-all duration-300 ease-in-out",
-              isSearchFocused ? "flex-1 max-w-lg" : "w-auto",
-            )}
-          >
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4 pointer-events-none" />
-            <input
-              type="text"
-              placeholder="Search..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              onFocus={() => setIsSearchFocused(true)}
-              onBlur={() => setIsSearchFocused(false)}
-              className={cn(
-                "pl-9 pr-4 py-2 h-10 border-none rounded-lg bg-card focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300 ease-in-out w-full",
-                isSearchFocused ? "bg-background" : "w-48",
-              )}
-            />
-          </div>
-          <button className="h-10 w-10 flex-shrink-0 flex items-center justify-center hover:bg-accent rounded-full transition-colors">
-            <Filter className="w-5 h-5" />
-          </button>
-          <button className="bg-primary text-primary-foreground px-4 py-2 rounded-full hover:bg-primary/90 transition-colors flex items-center gap-2 h-10 flex-shrink-0">
-            <Plus className="w-5 h-5" />
-            <span
-              className={cn(isSearchFocused ? "hidden sm:inline" : "inline")}
-            >
-              New Project
-            </span>
-          </button>
-        </div>
-      )}
+        Home
+      </a>
+      <ChevronRight className="w-4 h-4 text-muted-foreground" />
+      <span className="font-medium text-foreground capitalize">
+        {activePageName}
+      </span>
     </div>
   );
+}
+
+// Page-specific controls for the Top Bar
+function TopBarPageControls() {
+  const { currentActivePage, filters, setFilters } = useAppViewManager();
+  const [searchTerm, setSearchTerm] = React.useState('');
+  const [isSearchFocused, setIsSearchFocused] = React.useState(false);
+
+  if (currentActivePage === 'dashboard') {
+    return (
+      <div className="flex items-center gap-2 flex-1 justify-end">
+        <div
+          className={cn(
+            "relative transition-all duration-300 ease-in-out",
+            isSearchFocused ? "flex-1 max-w-lg" : "w-auto",
+          )}
+        >
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4 pointer-events-none" />
+          <input
+            type="text"
+            placeholder="Search dashboard..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            onFocus={() => setIsSearchFocused(true)}
+            onBlur={() => setIsSearchFocused(false)}
+            className="pl-9 pr-4 py-2 h-10 border-none rounded-lg bg-card focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300 ease-in-out w-full"
+          />
+        </div>
+        <Button variant="ghost" size="icon" className="flex-shrink-0">
+          <Filter className="w-5 h-5" />
+        </Button>
+        <Button className="flex-shrink-0">
+          <Plus className="w-5 h-5 mr-0 sm:mr-2" />
+          <span className={cn(isSearchFocused ? "hidden sm:inline" : "inline")}>
+            New Project
+          </span>
+        </Button>
+      </div>
+    );
+  }
+
+  if (currentActivePage === 'data-demo') {
+    return (
+      <div className="flex items-center gap-2">
+        <div className="relative w-64">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
+          <Input
+            placeholder="Search items..."
+            className="pl-9 bg-card border-none"
+            value={filters.searchTerm}
+            onChange={(e) => setFilters({ ...filters, searchTerm: e.target.value })}
+          />
+        </div>
+        <Button variant="outline">
+          <Filter className="w-4 h-4 mr-2" />
+          Filter
+        </Button>
+        <Button>
+          <Plus className="w-4 h-4 mr-2" />
+          New Item
+        </Button>
+      </div>
+    );
+  }
+
+  return null;
 }
 
 // The main App component that composes the shell
@@ -172,9 +191,7 @@ function ComposedApp() {
       sidebar={<EnhancedSidebar />}
       onOverlayClick={viewManager.closeSidePane}
       topBar={
-        <TopBar>
-          <AppTopBar />
-        </TopBar>
+        <TopBar breadcrumbs={<AppBreadcrumbs />} pageControls={<TopBarPageControls />} />
       }
       mainContent={
         <MainContent>

@@ -2,413 +2,112 @@
 ```
 src/
   components/
-    auth/
-      LoginPage.tsx
     layout/
-      ViewModeSwitcher.tsx
+      AppShell.tsx
+      TopBar.tsx
+    ui/
+      button.tsx
+      input.tsx
   hooks/
     useAppViewManager.hook.ts
   pages/
-    DataDemo/
-      components/
-        DataViewModeSelector.tsx
+    Dashboard/
       index.tsx
-  store/
-    appShell.store.ts
+    DataDemo/
+      index.tsx
   App.tsx
-  index.css
-tailwind.config.js
 ```
 
 # Files
 
-## File: tailwind.config.js
-```javascript
-/** @type {import('tailwindcss').Config} */
-export default {
-  content: [
-    "./index.html",
-    "./src/**/*.{js,ts,jsx,tsx}",
-  ],
-  darkMode: "class",
-  theme: {
-    extend: {
-      colors: {
-        border: "hsl(var(--border))",
-        input: "hsl(var(--input))",
-        ring: "hsl(var(--ring))",
-        background: "hsl(var(--background))",
-        foreground: "hsl(var(--foreground))",
-        primary: {
-          DEFAULT: "hsl(var(--primary))",
-          foreground: "hsl(var(--primary-foreground))",
-        },
-        secondary: {
-          DEFAULT: "hsl(var(--secondary))",
-          foreground: "hsl(var(--secondary-foreground))",
-        },
-        destructive: {
-          DEFAULT: "hsl(var(--destructive))",
-          foreground: "hsl(var(--destructive-foreground))",
-        },
-        muted: {
-          DEFAULT: "hsl(var(--muted))",
-          foreground: "hsl(var(--muted-foreground))",
-        },
-        accent: {
-          DEFAULT: "hsl(var(--accent))",
-          foreground: "hsl(var(--accent-foreground))",
-        },
-        popover: {
-          DEFAULT: "hsl(var(--popover))",
-          foreground: "hsl(var(--popover-foreground))",
-        },
-        card: {
-          DEFAULT: "hsl(var(--card))",
-          foreground: "hsl(var(--card-foreground))",
-        },
+## File: src/components/ui/input.tsx
+```typescript
+import * as React from "react"
+
+import { cn } from "@/lib/utils"
+
+export interface InputProps
+  extends React.InputHTMLAttributes<HTMLInputElement> {}
+
+const Input = React.forwardRef<HTMLInputElement, InputProps>(
+  ({ className, type, ...props }, ref) => {
+    return (
+      <input
+        type={type}
+        className={cn(
+          "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+          className
+        )}
+        ref={ref}
+        {...props}
+      />
+    )
+  }
+)
+Input.displayName = "Input"
+
+export { Input }
+```
+
+## File: src/components/ui/button.tsx
+```typescript
+import * as React from "react"
+import { Slot } from "@radix-ui/react-slot"
+import { cva, type VariantProps } from "class-variance-authority"
+
+import { cn } from "@/lib/utils"
+
+const buttonVariants = cva(
+  "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+  {
+    variants: {
+      variant: {
+        default: "bg-primary text-primary-foreground hover:bg-primary/90",
+        destructive:
+          "bg-destructive text-destructive-foreground hover:bg-destructive/90",
+        outline:
+          "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
+        secondary:
+          "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+        ghost: "hover:bg-accent hover:text-accent-foreground",
+        link: "text-primary underline-offset-4 hover:underline",
       },
-      borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 4px)",
-        sm: "calc(var(--radius) - 8px)",
-        DEFAULT: "0.5rem",
-      },
-      boxShadow: {
-        input: [
-          "0px 2px 3px -1px rgba(0, 0, 0, 0.1)",
-          "0px 1px 0px 0px rgba(25, 28, 33, 0.02)",
-          "0px 0px 0px 1px rgba(25, 28, 33, 0.08)",
-        ].join(", "),
-      },
-      animation: {
-        "fade-in": "fadeIn 0.5s ease-in-out",
-        "slide-in": "slideIn 0.3s ease-out",
-        "scale-in": "scaleIn 0.2s ease-out",
-        ripple: "ripple 2s ease calc(var(--i, 0) * 0.2s) infinite",
-        orbit: "orbit calc(var(--duration) * 1s) linear infinite",
-      },
-      keyframes: {
-        fadeIn: {
-          "0%": { opacity: "0" },
-          "100%": { opacity: "1" },
-        },
-        slideIn: {
-          "0%": { transform: "translateX(-100%)" },
-          "100%": { transform: "translateX(0)" },
-        },
-        scaleIn: {
-          "0%": { transform: "scale(0.95)", opacity: "0" },
-          "100%": { transform: "scale(1)", opacity: "1" },
-        },
-        ripple: {
-          "0%, 100%": { transform: "translate(-50%, -50%) scale(1)" },
-          "50%": { transform: "translate(-50%, -50%) scale(0.9)" },
-        },
-        orbit: {
-          "0%": {
-            transform:
-              "rotate(0deg) translateY(calc(var(--radius) * 1px)) rotate(0deg)",
-          },
-          "100%": {
-            transform:
-              "rotate(360deg) translateY(calc(var(--radius) * 1px)) rotate(-360deg)",
-          },
-        }
+      size: {
+        default: "h-10 px-4 py-2",
+        sm: "h-9 rounded-md px-3",
+        lg: "h-11 rounded-md px-8",
+        icon: "h-10 w-10",
       },
     },
-  },
-  plugins: [
-    require("tailwindcss-animate"),
-    require("tailwindcss/plugin")(function ({ addUtilities }) {
-      addUtilities({
-        ".no-scrollbar::-webkit-scrollbar": {
-          display: "none",
-        },
-        ".no-scrollbar": {
-          "-ms-overflow-style": "none",
-          "scrollbar-width": "none",
-        },
-      });
-    }),
-  ],
-}
-```
-
-## File: src/components/auth/LoginPage.tsx
-```typescript
-import { ChangeEvent } from 'react';
-import { Eye, EyeOff, Mail, ArrowLeft } from 'lucide-react';
-import { Label } from '@/components/ui/label';
-import { AnimatedInput } from '../effects/AnimatedInput';
-import { BoxReveal } from '../effects/BoxReveal';
-import { Ripple } from '../effects/Ripple';
-import { TechOrbitDisplay } from '../effects/OrbitingCircles';
-import { BottomGradient } from '../effects/BottomGradient';
-import { useLoginForm } from './useLoginForm.hook';
-
-// ==================== Main LoginPage Component ====================
-export function LoginPage() {
-	const {
-		state,
-		setState,
-		email,
-		setEmail,
-		setPassword,
-		isLoading,
-		errors,
-		showPassword,
-		setShowPassword,
-		handleLoginSubmit,
-		handleForgotSubmit,
-	} = useLoginForm();
-
-
-	const renderContent = () => {
-		if (state === 'reset-sent') {
-			return (
-				<div className="w-full max-w-md mx-auto text-center flex flex-col gap-4">
-					<BoxReveal boxColor="hsl(var(--skeleton))" duration={0.5}>
-						<div className="w-16 h-16 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center mx-auto">
-							<Mail className="w-8 h-8 text-green-600 dark:text-green-400" />
-						</div>
-					</BoxReveal>
-					<BoxReveal boxColor="hsl(var(--skeleton))" duration={0.5}>
-						<h1 className="text-3xl font-bold tracking-tight">Check your email</h1>
-					</BoxReveal>
-					<BoxReveal boxColor="hsl(var(--skeleton))" duration={0.5}>
-						<p className="text-muted-foreground">We've sent a password reset link to <strong>{email}</strong></p>
-					</BoxReveal>
-					<BoxReveal width="100%" boxColor="hsl(var(--skeleton))" duration={0.5}>
-						<button onClick={() => setState('login')} className="text-sm text-blue-500 hover:underline">
-							<div className="flex items-center justify-center gap-2">
-								<ArrowLeft className="w-4 h-4" /> Back to login
-							</div>
-						</button>
-					</BoxReveal>
-				</div>
-			);
-		}
-
-		const isLogin = state === 'login';
-		const formFields = isLogin
-			? [
-				{ label: 'Email', required: true, type: 'email', placeholder: 'Enter your email address', onChange: (e: ChangeEvent<HTMLInputElement>) => setEmail(e.target.value) },
-				{ label: 'Password', required: true, type: 'password', placeholder: 'Enter your password', onChange: (e: ChangeEvent<HTMLInputElement>) => setPassword(e.target.value) },
-			]
-			: [{ label: 'Email', required: true, type: 'email', placeholder: 'Enter your email address', onChange: (e: ChangeEvent<HTMLInputElement>) => setEmail(e.target.value) }];
-
-		return (
-			<div className="w-full max-w-md mx-auto flex flex-col gap-4">
-				<BoxReveal boxColor="hsl(var(--skeleton))" duration={0.3}>
-					<h2 className="font-bold text-3xl text-neutral-800 dark:text-neutral-200">{isLogin ? 'Welcome back' : 'Reset Password'}</h2>
-				</BoxReveal>
-				<BoxReveal boxColor="hsl(var(--skeleton))" duration={0.3} className="pb-2">
-					<p className="text-neutral-600 text-sm max-w-sm dark:text-neutral-300">{isLogin ? 'Sign in to your account to continue' : 'Enter your email to receive a reset link'}</p>
-				</BoxReveal>
-				{isLogin && (
-					<BoxReveal boxColor="hsl(var(--skeleton))" duration={0.3} width="100%" className="overflow-visible">
-						<button className="g-button group/btn bg-transparent w-full rounded-md border h-10 font-medium outline-hidden hover:cursor-pointer" type="button">
-							<span className="flex items-center justify-center w-full h-full gap-3">
-								<img src="https://cdn1.iconfinder.com/data/icons/google-s-logo/150/Google_Icons-09-512.png" width={26} height={26} alt="Google Icon" />
-								Sign in with Google
-							</span>
-							<BottomGradient />
-						</button>
-					</BoxReveal>
-				)}
-				{isLogin && (
-					<BoxReveal boxColor="hsl(var(--skeleton))" duration={0.3} width="100%">
-						<div className="flex items-center gap-4">
-							<hr className="flex-1 border-1 border-dashed border-neutral-300 dark:border-neutral-700" />
-							<p className="text-neutral-700 text-sm dark:text-neutral-300">or</p>
-							<hr className="flex-1 border-1 border-dashed border-neutral-300 dark:border-neutral-700" />
-						</div>
-					</BoxReveal>
-				)}
-				<form onSubmit={isLogin ? handleLoginSubmit : handleForgotSubmit}>
-					{formFields.map((field) => (
-						<div key={field.label} className="flex flex-col gap-2 mb-4">
-							<BoxReveal boxColor="hsl(var(--skeleton))" duration={0.3}>
-								<Label htmlFor={field.label}>{field.label} <span className="text-red-500">*</span></Label>
-							</BoxReveal>
-							<BoxReveal width="100%" boxColor="hsl(var(--skeleton))" duration={0.3} className="flex flex-col space-y-2 w-full">
-								<div className="relative">
-									<AnimatedInput type={field.type === 'password' ? (showPassword ? 'text' : 'password') : field.type} id={field.label} placeholder={field.placeholder} onChange={field.onChange} />
-									{field.type === 'password' && (
-										<button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5">
-											{showPassword ? <EyeOff className="h-5 w-5 text-gray-500" /> : <Eye className="h-5 w-5 text-gray-500" />}
-										</button>
-									)}
-								</div>
-								<div className="h-4">{errors[field.label.toLowerCase() as keyof typeof errors] && <p className="text-red-500 text-xs">{errors[field.label.toLowerCase() as keyof typeof errors]}</p>}</div>
-							</BoxReveal>
-						</div>
-					))}
-
-					<BoxReveal width="100%" boxColor="hsl(var(--skeleton))" duration={0.3} className="overflow-visible">
-						<button
-							className="bg-gradient-to-br relative group/btn from-zinc-200 dark:from-zinc-900 dark:to-zinc-900 to-zinc-200 block dark:bg-zinc-800 w-full text-black dark:text-white rounded-md h-10 font-medium shadow-[0px_1px_0px_0px_#ffffff40_inset,0px_-1px_0px_0px_#ffffff40_inset] dark:shadow-[0px_1px_0px_0px_var(--zinc-800)_inset,0px_-1px_0px_0px_var(--zinc-800)_inset] outline-hidden hover:cursor-pointer disabled:opacity-50"
-							type="submit" disabled={isLoading}
-						>
-							{isLoading ? (
-								<div className="flex items-center justify-center gap-2">
-									<div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-									<span>Processing...</span>
-								</div>
-							) : (
-								<>{isLogin ? 'Sign in' : 'Send reset link'} &rarr;</>
-							)}
-							<BottomGradient />
-						</button>
-					</BoxReveal>
-					<BoxReveal boxColor="hsl(var(--skeleton))" duration={0.3}>
-						<div className="mt-4 text-center">
-							<button type="button" className="text-sm text-blue-500 hover:underline" onClick={() => setState(isLogin ? 'forgot-password' : 'login')}>
-								{isLogin ? 'Forgot password?' : 'Back to login'}
-							</button>
-						</div>
-					</BoxReveal>
-				</form>
-			</div>
-		);
-	};
-
-	return (
-		<section className="flex max-lg:justify-center min-h-screen w-full login-page-theme bg-background text-foreground">
-			{/* Left Side */}
-			<div className="flex flex-col justify-center w-1/2 max-lg:hidden relative">
-				<Ripple />
-				<TechOrbitDisplay />
-			</div>
-
-			{/* Right Side */}
-			<div className="w-1/2 h-screen flex flex-col justify-center items-center max-lg:w-full max-lg:px-[10%]">
-				{renderContent()}
-			</div>
-		</section>
-	);
-}
-```
-
-## File: src/index.css
-```css
-@import 'tailwindcss/base';
-@import 'tailwindcss/components';
-@import 'tailwindcss/utilities';
-
-@layer base {
-  :root {
-    --primary-hsl: 220 84% 60%;
-    --background: 210 40% 96.1%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: var(--primary-hsl);
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 222.2 84% 4.9%;
-    --muted: 210 40% 96%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96%;
-    --accent-foreground: 222.2 84% 4.9%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: var(--primary-hsl);
-    --radius: 1rem;
+    defaultVariants: {
+      variant: "default",
+      size: "default",
+    },
   }
+)
 
-  .dark {
-    --background: 240 6% 9%;
-    --foreground: 210 40% 98%;
-    --card: 240 6% 14%;
-    --card-foreground: 210 40% 98%;
-    --popover: 240 6% 12%;
-    --popover-foreground: 210 40% 98%;
-    --primary: var(--primary-hsl);
-    --primary-foreground: 210 40% 98%;
-    --secondary: 240 5% 20%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 240 5% 20%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 240 5% 20%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 240 5% 20%;
-    --input: 240 5% 20%;
-    --ring: var(--primary-hsl);
+export interface ButtonProps
+  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
+    VariantProps<typeof buttonVariants> {
+  asChild?: boolean
+}
+
+const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
+  ({ className, variant, size, asChild = false, ...props }, ref) => {
+    const Comp = asChild ? Slot : "button"
+    return (
+      <Comp
+        className={cn(buttonVariants({ variant, size, className }))}
+        ref={ref}
+        {...props}
+      />
+    )
   }
-}
+)
+Button.displayName = "Button"
 
-@layer base {
-  * {
-    @apply border-border;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
-}
-
-/* Custom scrollbar styles */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-
-::-webkit-scrollbar-track {
-  @apply bg-transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  @apply bg-border rounded-full;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  @apply bg-muted-foreground/50;
-}
-
-/* For UserDropdown */
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-.no-scrollbar {
-  -ms-overflow-style: none; /* IE and Edge */
-  scrollbar-width: none; /* Firefox */
-}
-
-@layer base {
-  .login-page-theme {
-    --background: hsl(0 0% 100%);
-    --foreground: hsl(0 0% 0%);
-    --skeleton: hsl(0 0% 90%);
-    --border: hsl(220 20% 90%);
-    --btn-border: hsl(214.3 31.8% 91.4%);
-    --input: hsl(220 20% 90%);
-    --radius: 0.5rem;
-  }
- 
-  .dark .login-page-theme {
-    --background: hsl(222 94% 5%);
-    --foreground: hsl(0 0% 100%);
-    --skeleton: hsl(218 36% 16%);
-    --border: hsl(220 20% 90%);
-    --btn-border: hsl(217 32.6% 17.5%);
-    --input: hsl(219 63% 16%);
-    --radius: 0.5rem;
-  }
-}
-
-@layer components {
-  .g-button {
-    @apply rounded-[var(--radius)] border;
-    border-color: var(--btn-border);
-  }
-}
+// eslint-disable-next-line react-refresh/only-export-components
+export { Button, buttonVariants }
 ```
 
 ## File: src/hooks/useAppViewManager.hook.ts
@@ -500,7 +199,7 @@ export function useAppViewManager() {
   }, [currentActivePage, prevActivePage, sidebarState, setSidebarState]);
 
   // DataDemo specific state
-  const viewMode = useMemo(() => (searchParams.get('view') as ViewMode) || 'list', [searchParams]);
+  const viewMode = useMemo(() => (searchParams.get('dataView') as ViewMode) || 'list', [searchParams]);
 	const page = useMemo(() => parseInt(searchParams.get('page') || '1', 10), [searchParams]);
 	const groupBy = useMemo(() => (searchParams.get('groupBy') as GroupableField | 'none') || 'none', [searchParams]);
 	const activeGroupTab = useMemo(() => searchParams.get('tab') || 'all', [searchParams]);
@@ -642,7 +341,7 @@ export function useAppViewManager() {
   }, [bodyState, currentActivePage, sidePaneContent, navigate]);
   
   // DataDemo actions
-  const setViewMode = (mode: ViewMode) => handleParamsChange({ view: mode });
+  const setViewMode = (mode: ViewMode) => handleParamsChange({ dataView: mode === 'list' ? null : mode });
   const setGroupBy = (val: string) => handleParamsChange({ groupBy: val === 'none' ? null : val }, true);
   const setActiveGroupTab = (tab: string) => handleParamsChange({ tab: tab === 'all' ? null : tab });
   const setFilters = (newFilters: FilterConfig) => {
@@ -715,583 +414,389 @@ export function useAppViewManager() {
 }
 ```
 
-## File: src/pages/DataDemo/components/DataViewModeSelector.tsx
+## File: src/pages/Dashboard/index.tsx
 ```typescript
-import { useEffect, useRef, useState, useCallback } from 'react'
-import { gsap } from 'gsap'
+import { useRef } from 'react'
+import { 
+  BarChart3, 
+  TrendingUp, 
+  Users, 
+  DollarSign, 
+  Activity,
+  Calendar,
+  Clock,
+  MessageSquare,
+  FileText,
+  Star,
+  ChevronRight,
+  MoreVertical,
+  ArrowDown
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { List, Grid3X3, LayoutGrid, Table } from 'lucide-react'
-import type { ViewMode } from '../types'
-import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
+import { DemoContent } from './DemoContent';
+import { useDashboardAnimations } from './hooks/useDashboardAnimations.motion.hook'
+import { useDashboardScroll } from './hooks/useDashboardScroll.hook'
+import { useAppShellStore } from '@/store/appShell.store'
+import { BODY_STATES } from '@/lib/utils'
+import { PageHeader } from '@/components/shared/PageHeader';
+import { StatCard } from '@/components/shared/StatCard';
+import { Card } from '@/components/ui/card';
+import { PageLayout } from '@/components/shared/PageLayout';
 
-const viewModes = [
-  { id: 'list' as ViewMode, label: 'List', icon: List, description: 'Compact list with details' },
-  { id: 'cards' as ViewMode, label: 'Cards', icon: LayoutGrid, description: 'Rich card layout' },
-  { id: 'grid' as ViewMode, label: 'Grid', icon: Grid3X3, description: 'Masonry grid view' },
-  { id: 'table' as ViewMode, label: 'Table', icon: Table, description: 'Structured data table' }
+interface StatsCard {
+  title: string
+  value: string
+  change: string
+  trend: 'up' | 'down'
+  icon: React.ReactNode
+}
+
+interface ActivityItem {
+  id: string
+  type: 'comment' | 'file' | 'meeting' | 'task'
+  title: string
+  description: string
+  time: string
+  user: string
+}
+
+const statsCards: StatsCard[] = [
+  {
+    title: "Total Revenue",
+    value: "$45,231.89",
+    change: "+20.1%",
+    trend: "up",
+    icon: <DollarSign className="w-5 h-5" />
+  },
+  {
+    title: "Active Users",
+    value: "2,350",
+    change: "+180.1%",
+    trend: "up",
+    icon: <Users className="w-5 h-5" />
+  },
+  {
+    title: "Conversion Rate",
+    value: "12.5%",
+    change: "+19%",
+    trend: "up",
+    icon: <TrendingUp className="w-5 h-5" />
+  },
+  {
+    title: "Performance",
+    value: "573ms",
+    change: "-5.3%",
+    trend: "down",
+    icon: <Activity className="w-5 h-5" />
+  }
 ]
 
-export function DataViewModeSelector() {
-  const { viewMode, setViewMode } = useAppViewManager();
-  const indicatorRef = useRef<HTMLDivElement>(null)
-  const containerRef = useRef<HTMLDivElement>(null)
-  const [isExpanded, setIsExpanded] = useState(false)
-  const [isTransitioning, setIsTransitioning] = useState(false)
-
-  const updateIndicatorPosition = useCallback((immediate = false) => {
-    if (!indicatorRef.current || !containerRef.current || isTransitioning) return
-
-    const activeButton = containerRef.current.querySelector(`[data-mode="${viewMode}"]`) as HTMLElement
-    if (!activeButton) return
-
-    const containerRect = containerRef.current.getBoundingClientRect()
-    const buttonRect = activeButton.getBoundingClientRect()
-    
-    const left = buttonRect.left - containerRect.left
-    const width = buttonRect.width
-
-    if (immediate) {
-      // Set position immediately without animation for initial load
-      gsap.set(indicatorRef.current, {
-        x: left,
-        width: width
-      })
-    } else {
-      gsap.to(indicatorRef.current, {
-        duration: 0.3,
-        x: left,
-        width: width,
-        ease: "power2.out"
-      })
-    }
-  }, [viewMode, isTransitioning])
-
-  // Initial setup - set position immediately without animation
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      updateIndicatorPosition(true)
-    }, 0)
-    return () => clearTimeout(timer)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []) // Only run once on mount
-
-  useEffect(() => {
-    if (!isTransitioning) {
-      updateIndicatorPosition()
-    }
-  }, [viewMode, isTransitioning, updateIndicatorPosition])
-
-  const handleMouseEnter = () => {
-    setIsTransitioning(true)
-    setIsExpanded(true)
-    
-    // Wait for expand animation to complete
-    setTimeout(() => {
-      setIsTransitioning(false)
-    }, 500)
+const recentActivity: ActivityItem[] = [
+  {
+    id: "1",
+    type: "comment",
+    title: "New comment on Project Alpha",
+    description: "Sarah Johnson added a comment to the design review",
+    time: "2 minutes ago",
+    user: "SJ"
+  },
+  {
+    id: "2",
+    type: "file",
+    title: "Document uploaded",
+    description: "quarterly-report.pdf was uploaded to Documents",
+    time: "15 minutes ago",
+    user: "MD"
+  },
+  {
+    id: "3",
+    type: "meeting",
+    title: "Meeting scheduled",
+    description: "Weekly standup meeting scheduled for tomorrow 9 AM",
+    time: "1 hour ago",
+    user: "RW"
+  },
+  {
+    id: "4",
+    type: "task",
+    title: "Task completed",
+    description: "UI wireframes for mobile app completed",
+    time: "2 hours ago",
+    user: "AL"
   }
+]
 
-  const handleMouseLeave = () => {
-    setIsTransitioning(true)
-    setIsExpanded(false)
-    
-    // Wait for collapse animation to complete
-    setTimeout(() => {
-      setIsTransitioning(false)
-    }, 500)
-  }
+export function DashboardContent() {
+    const scrollRef = useRef<HTMLDivElement>(null)
+    const contentRef = useRef<HTMLDivElement>(null);
+    const statsCardsContainerRef = useRef<HTMLDivElement>(null);
+    const featureCardsContainerRef = useRef<HTMLDivElement>(null);
+    const bodyState = useAppShellStore(s => s.bodyState);
+    const isInSidePane = bodyState === BODY_STATES.SIDE_PANE;
+    const { showScrollToBottom, handleScroll, scrollToBottom } = useDashboardScroll(scrollRef, isInSidePane);
 
-  return (
-    <div 
-      ref={containerRef}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-      className={cn(
-        "relative flex items-center bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-1.5 shadow-lg transition-all duration-500 ease-out",
-        "hover:shadow-xl hover:bg-card/70",
-        isExpanded ? "gap-1" : "gap-0"
-      )}
-    >
-      {/* Animated indicator */}
-      <div
-        ref={indicatorRef}
-        className="absolute inset-y-1.5 bg-gradient-to-r from-primary/20 to-primary/10 border border-primary/20 rounded-xl transition-all duration-300"
-        style={{ left: 0, width: 0 }}
-      />
-      
-      {/* Mode buttons */}
-      {viewModes.map((mode, index) => {
-        const IconComponent = mode.icon
-        const isActive = viewMode === mode.id
-        
-        return (
-          <button
-            key={mode.id}
-            data-mode={mode.id}
-            onClick={() => setViewMode(mode.id)}
-            className={cn(
-              "relative flex items-center justify-center rounded-xl transition-all duration-500 ease-out group overflow-hidden",
-              "hover:bg-accent/20 active:scale-95",
-              isActive && "text-primary",
-              isExpanded ? "gap-3 px-4 py-2.5" : "gap-0 px-3 py-2.5"
-            )}
-            title={mode.description}
-            style={{
-              transitionDelay: isExpanded ? `${index * 50}ms` : `${(viewModes.length - index - 1) * 30}ms`
-            }}
-          >
-            <IconComponent className={cn(
-              "w-5 h-5 transition-all duration-300 flex-shrink-0",
-              isActive && "scale-110",
-              "group-hover:scale-105",
-              isExpanded ? "rotate-0" : "rotate-0"
-            )} />
-            
-            {/* Label with smooth expand/collapse */}
-            <div className={cn(
-              "overflow-hidden transition-all duration-500 ease-out",
-              isExpanded ? "max-w-[80px] opacity-100" : "max-w-0 opacity-0"
-            )}>
-              <span className={cn(
-                "font-medium whitespace-nowrap transition-all duration-300",
-                isActive ? "text-primary" : "text-muted-foreground",
-                "group-hover:text-foreground"
-              )}>
-                {mode.label}
-              </span>
+    useDashboardAnimations(contentRef, statsCardsContainerRef, featureCardsContainerRef);
+
+    const getTypeIcon = (type: ActivityItem['type']) => {
+      switch (type) {
+        case 'comment':
+          return <MessageSquare className="w-4 h-4" />
+        case 'file':
+          return <FileText className="w-4 h-4" />
+        case 'meeting':
+          return <Calendar className="w-4 h-4" />
+        case 'task':
+          return <Star className="w-4 h-4" />
+        default:
+          return <Activity className="w-4 h-4" />
+      }
+    }
+
+    return (
+      <PageLayout scrollRef={scrollRef} onScroll={handleScroll} ref={contentRef}>
+        {/* Header */}
+        {!isInSidePane && (
+          <PageHeader
+            title="Dashboard"
+            description="Welcome to the Jeli App Shell demo! Explore all the features and customization options."
+          />
+        )}
+          {/* Stats Cards */}
+        <div ref={statsCardsContainerRef} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {statsCards.map((stat) => (
+            <StatCard
+              key={stat.title}
+              title={stat.title}
+              value={stat.value}
+              change={stat.change}
+              trend={stat.trend}
+              icon={stat.icon}
+            />
+          ))}
+        </div>
+
+        {/* Demo Content */}
+        <DemoContent ref={featureCardsContainerRef} />
+
+        {/* Main Content Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Chart Area */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Analytics Chart */}
+          <Card className="p-6 border-border/50">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-semibold">Analytics Overview</h3>
+              <button className="h-8 w-8 flex items-center justify-center hover:bg-accent rounded-full transition-colors">
+                <MoreVertical className="w-5 h-5" />
+              </button>
             </div>
-          </button>
-        )
-      })}
-    </div>
-  )
+            
+            {/* Mock Chart */}
+            <div className="h-64 bg-gradient-to-br from-primary/10 to-transparent rounded-xl flex items-center justify-center border border-border/50">
+              <div className="text-center">
+                <BarChart3 className="w-12 h-12 text-primary mx-auto mb-2" />
+                <p className="text-muted-foreground">Chart visualization would go here</p>
+              </div>
+            </div>
+          </Card>
+
+          {/* Recent Projects */}
+          <Card className="p-6 border-border/50">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-semibold">Recent Projects</h3>
+              <button className="text-primary hover:text-primary/80 text-sm font-medium flex items-center gap-1">
+                View All
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              {[
+                { name: "E-commerce Platform", progress: 75, team: 5, deadline: "Dec 15" },
+                { name: "Mobile App Redesign", progress: 45, team: 3, deadline: "Jan 20" },
+                { name: "Marketing Website", progress: 90, team: 4, deadline: "Dec 5" }
+              ].map((project) => (
+                <div key={project.name} className="p-4 bg-accent/30 rounded-xl hover:bg-accent/50 transition-colors cursor-pointer">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="font-medium">{project.name}</h4>
+                    <span className="text-sm text-muted-foreground">{project.progress}%</span>
+                  </div>
+                  <div className="w-full bg-muted rounded-full h-2 mb-3">
+                    <div 
+                      className="bg-primary h-2 rounded-full transition-all duration-500"
+                      style={{ width: `${project.progress}%` }}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between text-sm text-muted-foreground">
+                    <span>{project.team} team members</span>
+                    <span>Due {project.deadline}</span>
+                    </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        </div>
+
+        {/* Sidebar Content */}
+        <div className="space-y-6">
+          {/* Quick Actions */}
+          <Card className="p-6 border-border/50">
+            <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
+            <div className="space-y-3">
+              {[
+                { icon: <FileText className="w-4 h-4" />, label: "Create Document", color: "bg-blue-500/10 text-blue-600" },
+                { icon: <Calendar className="w-4 h-4" />, label: "Schedule Meeting", color: "bg-green-500/10 text-green-600" },
+                { icon: <Users className="w-4 h-4" />, label: "Invite Team", color: "bg-purple-500/10 text-purple-600" },
+                { icon: <BarChart3 className="w-4 h-4" />, label: "View Reports", color: "bg-orange-500/10 text-orange-600" }
+              ].map((action) => (
+                <button
+                  key={action.label}
+                  className="w-full flex items-center gap-3 p-3 hover:bg-accent rounded-lg transition-colors text-left"
+                >
+                  <div className={cn("p-2 rounded-full", action.color)}>
+                    {action.icon}
+                  </div>
+                  <span className="font-medium">{action.label}</span>
+                </button>
+              ))}
+            </div>
+          </Card>
+
+          {/* Recent Activity */}
+          <Card className="p-6 border-border/50">
+            <h3 className="text-lg font-semibold mb-4">Recent Activity</h3>
+            <div className="space-y-4">
+              {recentActivity.map((activity) => (
+                <div key={activity.id} className="flex items-start gap-3 p-3 hover:bg-accent/30 rounded-xl transition-colors cursor-pointer">
+                  <div className="p-2 bg-primary/10 rounded-full flex-shrink-0">
+                    {getTypeIcon(activity.type)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-medium text-sm mb-1">{activity.title}</h4>
+                    <p className="text-xs text-muted-foreground mb-2">{activity.description}</p>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Clock className="w-3 h-3" />
+                      <span>{activity.time}</span>
+                      <div className="w-5 h-5 bg-primary rounded-full flex items-center justify-center text-primary-foreground text-xs font-medium">
+                        {activity.user}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        </div>
+      </div>
+      {showScrollToBottom && (
+        <button
+          onClick={scrollToBottom}
+          className="fixed bottom-8 right-8 w-12 h-12 bg-primary text-primary-foreground rounded-full flex items-center justify-center shadow-lg hover:bg-primary/90 transition-all animate-fade-in z-[51]"
+          style={{ animation: 'bounce 2s infinite' }}
+          title="Scroll to bottom"
+        >
+          <ArrowDown className="w-6 h-6" />
+        </button>
+      )}
+      </PageLayout>
+    )
 }
 ```
 
-## File: src/store/appShell.store.ts
+## File: src/components/layout/TopBar.tsx
 ```typescript
-import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
-import { type ReactElement } from 'react';
-import { SIDEBAR_STATES, BODY_STATES, type SidebarState, type BodyState } from '@/lib/utils';
-
-export type ActivePage = 'dashboard' | 'settings' | 'toaster' | 'notifications' | 'data-demo' | 'messaging';
-
-// --- State and Action Types ---
-
-export interface AppShellState {
-  sidebarState: SidebarState;
-  bodyState: BodyState;
-  sidePaneContent: 'details' | 'settings' | 'main' | 'toaster' | 'notifications' | 'dataDemo' | 'dataItem' | 'messaging';
-  sidebarWidth: number;
-  sidePaneWidth: number;
-  splitPaneWidth: number;
-  defaultSidePaneWidth: number;
-  defaultSplitPaneWidth: number;
-  defaultWidthsSet: boolean;
-  previousBodyState: BodyState;
-  fullscreenTarget: 'main' | 'right' | null;
-  isResizing: boolean;
-  isResizingRightPane: boolean;
-  isTopBarVisible: boolean;
-  isTopBarHovered: boolean;
-  autoExpandSidebar: boolean;
-  reducedMotion: boolean;
-  compactMode: boolean;
-  primaryColor: string;
-  isCommandPaletteOpen: boolean;
-  isDarkMode: boolean;
-  appName?: string;
-  appLogo?: ReactElement;
-  draggedPage: 'dashboard' | 'settings' | 'toaster' | 'notifications' | 'data-demo' | 'messaging' | null;
-  dragHoverTarget: 'left' | 'right' | null;
-  hoveredPane: 'left' | 'right' | null;
-}
-
-export interface AppShellActions {
-    // Initialization
-    init: (config: { appName?: string; appLogo?: ReactElement; defaultSplitPaneWidth?: number }) => void;
-    
-    // Direct state setters
-    setSidebarState: (payload: SidebarState) => void;
-    setBodyState: (payload: BodyState) => void;
-    setSidePaneContent: (payload: AppShellState['sidePaneContent']) => void;
-    setSidebarWidth: (payload: number) => void;
-    setSidePaneWidth: (payload: number) => void;
-    setDefaultPaneWidths: () => void;
-    resetPaneWidths: () => void;
-    setSplitPaneWidth: (payload: number) => void;
-    setIsResizing: (payload: boolean) => void;
-    setFullscreenTarget: (payload: 'main' | 'right' | null) => void;
-    setIsResizingRightPane: (payload: boolean) => void;
-    setTopBarVisible: (payload: boolean) => void;
-    setAutoExpandSidebar: (payload: boolean) => void;
-    setReducedMotion: (payload: boolean) => void;
-    setCompactMode: (payload: boolean) => void;
-    setPrimaryColor: (payload: string) => void;
-    setDraggedPage: (payload: AppShellState['draggedPage']) => void;
-    setCommandPaletteOpen: (open: boolean) => void;
-    toggleDarkMode: () => void;
-    setDragHoverTarget: (payload: 'left' | 'right' | null) => void;
-    setTopBarHovered: (isHovered: boolean) => void;
-    setHoveredPane: (payload: 'left' | 'right' | null) => void;
-    
-    // Composite actions
-    toggleSidebar: () => void;
-    hideSidebar: () => void;
-    showSidebar: () => void;
-    peekSidebar: () => void;
-    toggleFullscreen: (target?: 'main' | 'right' | null) => void;
-    resetToDefaults: () => void;
-}
-
-const defaultState: AppShellState = {
-  sidebarState: SIDEBAR_STATES.EXPANDED,
-  bodyState: BODY_STATES.NORMAL,
-  sidePaneContent: 'details',
-  sidebarWidth: 280,
-  sidePaneWidth: typeof window !== 'undefined' ? Math.max(300, Math.round(window.innerWidth * 0.6)) : 400,
-  splitPaneWidth: typeof window !== 'undefined' ? Math.max(300, Math.round(window.innerWidth * 0.35)) : 400,
-  defaultSidePaneWidth: 400,
-  defaultSplitPaneWidth: 400,
-  defaultWidthsSet: false,
-  previousBodyState: BODY_STATES.NORMAL,
-  fullscreenTarget: null,
-  isResizing: false,
-  isResizingRightPane: false,
-  isTopBarVisible: true,
-  isTopBarHovered: false,
-  autoExpandSidebar: true,
-  reducedMotion: false,
-  compactMode: false,
-  primaryColor: '220 84% 60%',
-  isCommandPaletteOpen: false,
-  isDarkMode: false,
-  appName: 'Jeli App',
-  appLogo: undefined,
-  draggedPage: null,
-  dragHoverTarget: null,
-  hoveredPane: null,
-};
-
-
-export const useAppShellStore = create<AppShellState & AppShellActions>()(
-  persist(
-    (set, get) => ({
-      ...defaultState,
-
-      init: ({ appName, appLogo, defaultSplitPaneWidth }) => set(state => ({
-        ...state,
-        ...(appName && { appName }),
-        ...(appLogo && { appLogo }),
-        ...(defaultSplitPaneWidth && { splitPaneWidth: defaultSplitPaneWidth }),
-      })),
-      
-      setSidebarState: (payload) => set({ sidebarState: payload }),
-      setBodyState: (payload) => {
-        // If we're leaving fullscreen, reset the target and previous state
-        if (get().bodyState === BODY_STATES.FULLSCREEN && payload !== BODY_STATES.FULLSCREEN) {
-          set({ bodyState: payload, fullscreenTarget: null, previousBodyState: BODY_STATES.NORMAL });
-        } else {
-          set({ bodyState: payload });
-        }
-      },
-      setSidePaneContent: (payload) => set({ sidePaneContent: payload }),
-      setSidebarWidth: (payload) => set({ sidebarWidth: Math.max(200, Math.min(500, payload)) }),
-      setSidePaneWidth: (payload) => set({ sidePaneWidth: Math.max(300, Math.min(window.innerWidth * 0.8, payload)) }),
-      setDefaultPaneWidths: () => {
-        if (get().defaultWidthsSet) return;
-        set(state => ({
-            defaultSidePaneWidth: state.sidePaneWidth,
-            defaultSplitPaneWidth: state.splitPaneWidth,
-            defaultWidthsSet: true,
-        }));
-      },
-      resetPaneWidths: () => set(state => ({
-        sidePaneWidth: state.defaultSidePaneWidth,
-        splitPaneWidth: state.defaultSplitPaneWidth,
-      })),
-      setSplitPaneWidth: (payload) => set({ splitPaneWidth: Math.max(300, Math.min(window.innerWidth * 0.8, payload)) }),
-      setIsResizing: (payload) => set({ isResizing: payload }),
-      setFullscreenTarget: (payload) => set({ fullscreenTarget: payload }),
-      setIsResizingRightPane: (payload) => set({ isResizingRightPane: payload }),
-      setTopBarVisible: (payload) => set({ isTopBarVisible: payload }),
-      setAutoExpandSidebar: (payload) => set({ autoExpandSidebar: payload }),
-      setReducedMotion: (payload) => set({ reducedMotion: payload }),
-      setCompactMode: (payload) => set({ compactMode: payload }),
-      setPrimaryColor: (payload) => {
-        if (typeof document !== 'undefined') {
-            document.documentElement.style.setProperty('--primary-hsl', payload);
-        }
-        set({ primaryColor: payload });
-      },
-      setDraggedPage: (payload) => set({ draggedPage: payload }),
-      setCommandPaletteOpen: (open) => set({ isCommandPaletteOpen: open }),
-      toggleDarkMode: () => set((state) => ({ isDarkMode: !state.isDarkMode })),
-      setDragHoverTarget: (payload) => set({ dragHoverTarget: payload }),
-      setTopBarHovered: (isHovered) => set({ isTopBarHovered: isHovered }),
-      setHoveredPane: (payload) => set({ hoveredPane: payload }),
-      
-      toggleSidebar: () => {
-        const current = get().sidebarState;
-        if (current === SIDEBAR_STATES.HIDDEN) set({ sidebarState: SIDEBAR_STATES.COLLAPSED });
-        else if (current === SIDEBAR_STATES.COLLAPSED) set({ sidebarState: SIDEBAR_STATES.EXPANDED });
-        else if (current === SIDEBAR_STATES.EXPANDED) set({ sidebarState: SIDEBAR_STATES.COLLAPSED });
-      },
-      hideSidebar: () => set({ sidebarState: SIDEBAR_STATES.HIDDEN }),
-      showSidebar: () => set({ sidebarState: SIDEBAR_STATES.EXPANDED }),
-      peekSidebar: () => set({ sidebarState: SIDEBAR_STATES.PEEK }),
-      
-      toggleFullscreen: (target = null) => {
-        const { bodyState, previousBodyState } = get();
-        if (bodyState === BODY_STATES.FULLSCREEN) {
-          set({ 
-            bodyState: previousBodyState || BODY_STATES.NORMAL,
-            fullscreenTarget: null,
-            previousBodyState: BODY_STATES.NORMAL,
-          });
-        } else {
-          set({ 
-            previousBodyState: bodyState, 
-            bodyState: BODY_STATES.FULLSCREEN, 
-            fullscreenTarget: target 
-          });
-        }
-      },
-      
-      resetToDefaults: () => {
-        // Preserve props passed to provider and session defaults
-        set(state => {
-          const currentPrimaryColor = defaultState.primaryColor;
-          if (typeof document !== 'undefined') {
-            document.documentElement.style.setProperty('--primary-hsl', currentPrimaryColor);
-          }
-          return {
-            ...defaultState,
-            primaryColor: currentPrimaryColor,
-            appName: state.appName,
-            appLogo: state.appLogo,
-            defaultSidePaneWidth: state.defaultSidePaneWidth,
-            defaultSplitPaneWidth: state.defaultSplitPaneWidth,
-            defaultWidthsSet: state.defaultWidthsSet,
-            // Also reset current widths to the defaults
-            sidePaneWidth: state.defaultSidePaneWidth,
-            splitPaneWidth: state.defaultSplitPaneWidth,
-          };
-        });
-      },
-    }),
-    {
-      name: 'app-shell-storage',
-      partialize: (state) => ({
-        isDarkMode: state.isDarkMode,
-        sidebarState: state.sidebarState,
-        sidebarWidth: state.sidebarWidth,
-        sidePaneWidth: state.sidePaneWidth,
-        splitPaneWidth: state.splitPaneWidth,
-        autoExpandSidebar: state.autoExpandSidebar,
-        reducedMotion: state.reducedMotion,
-        compactMode: state.compactMode,
-        primaryColor: state.primaryColor,
-      }),
-    }
-  )
-);
-
-// Add a selector for the derived rightPaneWidth
-export const useRightPaneWidth = () => useAppShellStore(state => 
-    state.bodyState === BODY_STATES.SPLIT_VIEW ? state.splitPaneWidth : state.sidePaneWidth
-);
-```
-
-## File: src/components/layout/ViewModeSwitcher.tsx
-```typescript
-import { useState, useRef, useEffect } from 'react';
-import { gsap } from 'gsap';
+import React from 'react';
+import {
+  Moon, 
+  Sun,
+  Settings,
+  Command,
+  Zap,
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useAppShellStore, type AppShellState, type ActivePage } from '@/store/appShell.store'
 import { BODY_STATES } from '@/lib/utils'
 import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
-import {
-  Columns,
-  PanelRightOpen,
-  SplitSquareHorizontal,
-  Maximize,
-  Minimize,
-  Layers,
-  X,
-  ArrowLeftRight
-} from 'lucide-react'
+import { UserDropdown } from './UserDropdown'
+import { ViewModeSwitcher } from './ViewModeSwitcher'
+import { useAppShellStore } from '@/store/appShell.store'
 
-export function ViewModeSwitcher({ pane, targetPage }: { pane?: 'main' | 'right', targetPage?: ActivePage }) {
-  const bodyState = useAppShellStore(s => s.bodyState);
-  const fullscreenTarget = useAppShellStore(s => s.fullscreenTarget);
-  const { toggleFullscreen } = useAppShellStore.getState();
-  const {
-    currentActivePage,
-    toggleSidePane,
-    toggleSplitView,
-    setNormalView,
-    navigateTo,
-    switchSplitPanes,
-    closeSplitPane,
-  } = useAppViewManager();
+interface TopBarProps {
+  children?: React.ReactNode
+}
 
-  const activePage = targetPage || currentActivePage;
-  const [isExpanded, setIsExpanded] = useState(false);
-  const buttonRefs = useRef<(HTMLButtonElement | null)[]>([]);
-
-  const isFullscreen = bodyState === BODY_STATES.FULLSCREEN;
-  const isThisPaneFullscreen = isFullscreen && (
-    (pane === 'main' && fullscreenTarget !== 'right') ||
-    (pane === 'right' && fullscreenTarget === 'right') ||
-    (!pane && !fullscreenTarget) // Global switcher, global fullscreen
-  );
-
-  useEffect(() => {
-    const buttonsToAnimate = buttonRefs.current.filter(Boolean) as HTMLButtonElement[];
-    if (buttonsToAnimate.length === 0) return;
-
-    gsap.killTweensOf(buttonsToAnimate);
-
-    if (isExpanded) {
-        gsap.to(buttonsToAnimate, {
-            width: 32, // h-8 w-8
-            opacity: 1,
-            pointerEvents: 'auto',
-            marginLeft: 4, // from gap-1 in original
-            duration: 0.2,
-            stagger: {
-                each: 0.05,
-                from: 'start'
-            },
-            ease: 'power2.out'
-        });
-    } else {
-        gsap.to(buttonsToAnimate, {
-            width: 0,
-            opacity: 0,
-            pointerEvents: 'none',
-            marginLeft: 0,
-            duration: 0.2,
-            stagger: {
-                each: 0.05,
-                from: 'end'
-            },
-            ease: 'power2.in'
-        });
-    }
-  }, [isExpanded, bodyState]); // re-run if bodyState changes to recalc buttons
-
-  const handlePaneClick = (type: 'side-pane' | 'split-view') => {
-    const pageToPaneMap: Record<ActivePage, AppShellState['sidePaneContent']> = { // This type is now stricter because ActivePage includes messaging
-      dashboard: 'main', settings: 'settings', toaster: 'toaster', notifications: 'notifications', 'data-demo': 'dataDemo',
-      messaging: 'messaging',
-    };
-    const paneContent = pageToPaneMap[activePage];
-    if (type === 'side-pane') toggleSidePane(paneContent);
-    else toggleSplitView();
-  }
-
-  const handleNormalViewClick = () => {
-    if (isFullscreen) {
-      toggleFullscreen();
-    }
-    if (targetPage && targetPage !== currentActivePage) {
-      navigateTo(targetPage);
-    } else {
-      setNormalView();
-    }
-  }
-
-  const buttons = [
-    {
-      id: 'normal',
-      onClick: handleNormalViewClick,
-      active: bodyState === BODY_STATES.NORMAL,
-      title: "Normal View",
-      icon: <Columns className="w-4 h-4" />
-    },
-    {
-      id: 'side-pane',
-      onClick: () => handlePaneClick('side-pane'),
-      active: bodyState === BODY_STATES.SIDE_PANE,
-      title: "Side Pane View",
-      icon: <PanelRightOpen className="w-4 h-4" />
-    },
-    {
-      id: 'split-view',
-      onClick: () => handlePaneClick('split-view'),
-      active: bodyState === BODY_STATES.SPLIT_VIEW,
-      title: bodyState === BODY_STATES.SPLIT_VIEW ? 'Switch to Overlay View' : 'Switch to Split View',
-      icon: bodyState === BODY_STATES.SPLIT_VIEW ? <Layers className="w-4 h-4" /> : <SplitSquareHorizontal className="w-4 h-4" />
-    },
-    {
-      id: 'fullscreen',
-      onClick: () => {
-        if (targetPage && targetPage !== currentActivePage ) {
-          navigateTo(targetPage);
-          setTimeout(() => toggleFullscreen(pane), 50);
-        } else {
-          toggleFullscreen(pane);
-        }
-      },
-      active: isThisPaneFullscreen,
-      title: "Toggle Fullscreen",
-      icon: isThisPaneFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />
-    }
-  ];
-
-  if (bodyState === BODY_STATES.SPLIT_VIEW) {
-    buttons.push({
-      id: 'switch',
-      onClick: switchSplitPanes,
-      active: false,
-      title: "Switch Panes",
-      icon: <ArrowLeftRight className="w-4 h-4" />
-    });
-    buttons.push({
-      id: 'close',
-      onClick: () => closeSplitPane(pane || 'right'),
-      active: false,
-      title: "Close Pane",
-      icon: <X className="w-4 h-4 text-muted-foreground group-hover:text-destructive" />
-    });
-  }
+export const TopBar = React.memo(({
+  children,
+}: TopBarProps) => {
+  const bodyState = useAppShellStore(s => s.bodyState)
+  const isDarkMode = useAppShellStore(s => s.isDarkMode);
+  const { 
+    setCommandPaletteOpen,
+    toggleDarkMode,
+  } = useAppShellStore.getState();
+  const viewManager = useAppViewManager();
 
   return (
-    <div
-      onMouseEnter={() => setIsExpanded(true)}
-      onMouseLeave={() => setIsExpanded(false)}
-      className="flex items-center gap-0 p-1 bg-card rounded-full border border-border"
-    >
+    <div className={cn(
+      "h-20 bg-background border-b border-border flex items-center justify-between px-6 z-50 gap-4"
+    )}>
+      {/* Left Section - Sidebar Controls & Breadcrumbs */}
+      <div className="flex items-center gap-4">
+        {children}
+      </div>
+
+      {/* Right Section - page controls, and global controls */}
+      <div className="flex items-center gap-3">
+        {/* Separator */}
+        <div className="w-px h-6 bg-border mx-2" />
+
+        {/* Quick Actions */}
+        <div className="flex items-center gap-3">
+
+          <button
+            onClick={() => setCommandPaletteOpen(true)}
+            className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+            title="Command Palette (Ctrl+K)"
+          >
+            <Command className="w-5 h-5 group-hover:scale-110 transition-transform" />
+          </button>
+
         <button
-            className='h-8 w-8 flex-shrink-0 flex items-center justify-center rounded-full hover:bg-accent transition-colors'
-            title="View Modes"
-            onClick={() => setIsExpanded(!isExpanded)}
+          className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+          title="Quick Actions"
         >
-            <Layers className="w-4 h-4" />
+          <Zap className="w-5 h-5 group-hover:scale-110 transition-transform" />
         </button>
-      
-      {buttons.map((btn, index) => (
+
+        {bodyState !== BODY_STATES.SPLIT_VIEW && <ViewModeSwitcher />}
+
+        <div className="w-px h-6 bg-border mx-2" />
+
+        {/* Theme and Settings */}
         <button
-          key={btn.id}
-          ref={el => buttonRefs.current[index] = el}
-          onClick={btn.onClick}
-          className={cn(
-            'h-8 w-0 flex items-center justify-center rounded-full hover:bg-accent transition-colors group opacity-0',
-            btn.active && 'bg-accent text-accent-foreground',
-            btn.id === 'close' && 'hover:bg-destructive/20'
+          onClick={toggleDarkMode}
+          className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+          title="Toggle Dark Mode"
+        >
+          {isDarkMode ? (
+            <Sun className="w-5 h-5 group-hover:scale-110 transition-transform" />
+          ) : (
+            <Moon className="w-5 h-5 group-hover:scale-110 transition-transform" />
           )}
-          style={{ pointerEvents: 'none', marginLeft: 0, overflow: 'hidden' }}
-          title={btn.title}
-        >
-          {btn.icon}
         </button>
-      ))}
+
+        <button
+          onClick={() => viewManager.toggleSidePane('settings')}
+          className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+          title="Settings"
+        >
+          <Settings className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
+        </button>
+        <UserDropdown />
+        </div>
+      </div>
     </div>
   )
-}
+});
 ```
 
 ## File: src/pages/DataDemo/index.tsx
@@ -1579,6 +1084,310 @@ function DataDemoContent() {
 
 export default function DataDemoPage() {
   return <DataDemoContent />;
+}
+```
+
+## File: src/components/layout/AppShell.tsx
+```typescript
+import React, { useRef, type ReactElement, useEffect, useLayoutEffect } from 'react'
+import { useLocation } from 'react-router-dom';
+import { cn } from '@/lib/utils'
+import { gsap } from 'gsap';
+import { CommandPalette } from '@/components/global/CommandPalette';
+import { useAppShellStore } from '@/store/appShell.store';
+import { SIDEBAR_STATES, BODY_STATES } from '@/lib/utils'
+import { useResizableSidebar, useResizableRightPane } from '@/hooks/useResizablePanes.hook'
+import { useSidebarAnimations, useBodyStateAnimations } from '@/hooks/useAppShellAnimations.hook'
+import { ViewModeSwitcher } from './ViewModeSwitcher';
+import { usePaneDnd } from '@/hooks/usePaneDnd.hook';
+
+interface AppShellProps {
+  sidebar: ReactElement;
+  topBar: ReactElement;
+  mainContent: ReactElement;
+  rightPane: ReactElement;
+  commandPalette?: ReactElement;
+  onOverlayClick?: () => void;
+}
+
+const pageToPaneMap: Record<string, 'main' | 'settings' | 'toaster' | 'notifications' | 'dataDemo'> = {
+  dashboard: 'main',
+  settings: 'settings',
+  toaster: 'toaster',
+  notifications: 'notifications',
+  'data-demo': 'dataDemo',
+};
+
+// Helper hook to get the previous value of a prop or state
+function usePrevious<T>(value: T): T | undefined {
+  const ref = useRef<T>();
+  useEffect(() => {
+    ref.current = value;
+  }, [value]);
+  return ref.current;
+}
+
+
+export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalette, onOverlayClick }: AppShellProps) {
+  const sidebarState = useAppShellStore(s => s.sidebarState);
+  const autoExpandSidebar = useAppShellStore(s => s.autoExpandSidebar);
+  const hoveredPane = useAppShellStore(s => s.hoveredPane);
+  const draggedPage = useAppShellStore(s => s.draggedPage);
+  const dragHoverTarget = useAppShellStore(s => s.dragHoverTarget);
+  const bodyState = useAppShellStore(s => s.bodyState);
+  const sidePaneContent = useAppShellStore(s => s.sidePaneContent);
+  const reducedMotion = useAppShellStore(s => s.reducedMotion);
+  const isTopBarVisible = useAppShellStore(s => s.isTopBarVisible);
+  const isDarkMode = useAppShellStore(s => s.isDarkMode);
+  const { setSidebarState, peekSidebar, setHoveredPane, setTopBarHovered } = useAppShellStore.getState();
+  
+  const isFullscreen = bodyState === BODY_STATES.FULLSCREEN;
+  const isSidePaneOpen = bodyState === BODY_STATES.SIDE_PANE;
+  const location = useLocation();
+  const activePage = location.pathname.split('/')[1] || 'dashboard';
+  const appRef = useRef<HTMLDivElement>(null)
+  const sidebarRef = useRef<HTMLDivElement>(null)
+  const mainContentRef = useRef<HTMLDivElement>(null)
+  const rightPaneRef = useRef<HTMLDivElement>(null)
+  const resizeHandleRef = useRef<HTMLDivElement>(null)
+  const topBarContainerRef = useRef<HTMLDivElement>(null)
+  const mainAreaRef = useRef<HTMLDivElement>(null)
+
+  const prevActivePage = usePrevious(activePage);
+  const prevSidePaneContent = usePrevious(sidePaneContent);
+
+  const isSplitView = bodyState === BODY_STATES.SPLIT_VIEW;
+  const dndHandlers = usePaneDnd();
+
+  // Custom hooks for logic
+  useResizableSidebar(sidebarRef, resizeHandleRef);
+  useResizableRightPane();
+  useSidebarAnimations(sidebarRef, resizeHandleRef);
+  useBodyStateAnimations(appRef, mainContentRef, rightPaneRef, topBarContainerRef, mainAreaRef);
+  
+  // Animation for pane swapping
+  useLayoutEffect(() => {
+    if (reducedMotion || bodyState !== BODY_STATES.SPLIT_VIEW || !prevActivePage || !prevSidePaneContent) {
+      return;
+    }
+
+    const pageForPrevSidePane = Object.keys(pageToPaneMap).find(
+      key => pageToPaneMap[key as keyof typeof pageToPaneMap] === prevSidePaneContent
+    );
+
+    // Check if a swap occurred by comparing current state with previous state
+    if (activePage === pageForPrevSidePane && sidePaneContent === pageToPaneMap[prevActivePage as keyof typeof pageToPaneMap]) {
+      const mainEl = mainAreaRef.current;
+      const rightEl = rightPaneRef.current;
+
+      if (mainEl && rightEl) {
+        const mainWidth = mainEl.offsetWidth;
+        const rightWidth = rightEl.offsetWidth;
+
+        const tl = gsap.timeline();
+        
+        // Animate main content FROM where right pane was TO its new place
+        tl.from(mainEl, {
+          x: rightWidth, duration: 0.4, ease: 'power3.inOut'
+        });
+
+        // Animate right pane FROM where main content was TO its new place
+        tl.from(rightEl, {
+          x: -mainWidth, duration: 0.4, ease: 'power3.inOut'
+        }, 0); // Start at the same time
+      }
+    }
+  }, [activePage, sidePaneContent, bodyState, prevActivePage, prevSidePaneContent, reducedMotion]);
+  
+  const sidebarWithProps = React.cloneElement(sidebar, { 
+    ref: sidebarRef,
+    onMouseEnter: () => {
+      if (autoExpandSidebar && sidebarState === SIDEBAR_STATES.COLLAPSED) {
+        peekSidebar()
+      }
+    },
+    onMouseLeave: () => {
+      if (autoExpandSidebar && sidebarState === SIDEBAR_STATES.PEEK) {
+        setSidebarState(SIDEBAR_STATES.COLLAPSED);
+      }
+    }
+  });
+
+  const mainContentWithProps = React.cloneElement(mainContent, {
+    ref: mainContentRef,
+  });
+
+  const rightPaneWithProps = React.cloneElement(rightPane, { ref: rightPaneRef });
+
+  return (
+    <div 
+      ref={appRef}
+      className={cn(
+        "relative h-screen w-screen overflow-hidden bg-background transition-colors duration-300",
+        isDarkMode && "dark"
+      )}
+    >
+      <div className="flex h-screen overflow-hidden">
+        {/* Enhanced Sidebar */}
+        {sidebarWithProps}
+
+        {/* Resize Handle */}
+        {sidebarState !== SIDEBAR_STATES.HIDDEN && (
+          <div
+            ref={resizeHandleRef}
+            className={cn(
+              "absolute top-0 w-2 h-full bg-transparent hover:bg-primary/20 cursor-col-resize z-50 transition-colors duration-200 group -translate-x-1/2"
+            )}
+            onMouseDown={(e) => {
+              e.preventDefault()
+              useAppShellStore.getState().setIsResizing(true);
+            }}
+          >
+            <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200 mx-auto" />
+          </div>
+        )}
+
+        {/* Main area wrapper */}
+        <div className="flex-1 flex flex-col overflow-hidden relative">
+          <div
+            ref={topBarContainerRef}
+            className={cn(
+              "absolute top-0 left-0 right-0 z-30",
+              isFullscreen && "z-0"
+            )}
+            onMouseEnter={() => {
+              if (isSplitView) {
+                setTopBarHovered(true);
+                setHoveredPane(null);
+              }
+            }}
+            onMouseLeave={() => {
+              if (isSplitView) {
+                setTopBarHovered(false);
+              }
+            }}
+          >
+            {topBar}
+          </div>
+
+          {/* Invisible trigger area for top bar in split view */}
+          {isSplitView && (
+            <div
+              className="absolute top-0 left-0 right-0 h-4 z-20"
+              onMouseEnter={() => {
+                setTopBarHovered(true);
+                setHoveredPane(null);
+              }}
+            />
+          )}
+
+          <div className="flex flex-1 min-h-0">
+            <div
+              ref={mainAreaRef}
+              className="relative flex-1 overflow-hidden bg-background"
+              onMouseEnter={() => { if (isSplitView && !draggedPage) setHoveredPane('left'); }}
+              onMouseLeave={() => { if (isSplitView && !draggedPage) setHoveredPane(null); }}
+            >
+              {/* Side Pane Overlay */}
+              <div
+                role="button"
+                aria-label="Close side pane"
+                tabIndex={isSidePaneOpen ? 0 : -1}
+                className={cn(
+                  "absolute inset-0 bg-black/40 z-40 transition-opacity duration-300",
+                  isSidePaneOpen
+                    ? "opacity-100 pointer-events-auto"
+                    : "opacity-0 pointer-events-none"
+                )}
+                onClick={onOverlayClick}
+              />
+              {/* Left drop overlay */}
+              <div
+                className={cn(
+                  "absolute inset-y-0 left-0 z-40 border-2 border-transparent transition-all",
+                  draggedPage
+                    ? cn("pointer-events-auto", isSplitView ? 'w-full' : 'w-1/2')
+                    : "pointer-events-none w-0",
+                  dragHoverTarget === 'left' && "bg-primary/10 border-primary"
+                )}
+                onDragOver={dndHandlers.handleDragOverLeft}
+                onDrop={dndHandlers.handleDropLeft}
+                onDragLeave={dndHandlers.handleDragLeave}
+              >
+                {draggedPage && dragHoverTarget === 'left' && (
+                  <div className="absolute inset-0 flex items-center justify-center text-sm font-medium text-primary-foreground/80 pointer-events-none">
+                    <span className="px-3 py-1 rounded-md bg-primary/70">{isSplitView ? 'Drop to Replace' : 'Drop to Left'}</span>
+                  </div>
+                )}
+              </div>
+              {mainContentWithProps}
+              {isSplitView && hoveredPane === 'left' && !draggedPage && (
+                <div className={cn("absolute right-4 z-50 transition-all", isTopBarVisible ? 'top-24' : 'top-4')}>
+                  <ViewModeSwitcher pane="main" />
+                </div>
+              )}
+              {/* Right drop overlay (over main area, ONLY when NOT in split view) */}
+              {!isSplitView && (
+                <div
+                  className={cn(
+                    "absolute inset-y-0 right-0 z-40 border-2 border-transparent",
+                    draggedPage ? "pointer-events-auto w-1/2" : "pointer-events-none",
+                    dragHoverTarget === 'right' && "bg-primary/10 border-primary"
+                  )}
+                  onDragOver={dndHandlers.handleDragOverRight}
+                  onDrop={dndHandlers.handleDropRight}
+                  onDragLeave={dndHandlers.handleDragLeave}
+                >
+                  {draggedPage && dragHoverTarget === 'right' && (
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                      <span className="px-3 py-1 rounded-md bg-primary/70 text-sm font-medium text-primary-foreground/80">Drop to Right</span>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+            {isSplitView ? (
+              <div
+                className="relative"
+                onMouseEnter={() => { if (isSplitView && !draggedPage) setHoveredPane('right'); }}
+                onMouseLeave={() => { if (isSplitView && !draggedPage) setHoveredPane(null); }}
+                onDragOver={dndHandlers.handleDragOverRight}
+              >
+                {rightPaneWithProps}
+                {draggedPage && (
+                  <div
+                    className={cn(
+                      'absolute inset-0 z-50 transition-all',
+                      dragHoverTarget === 'right'
+                        ? 'bg-primary/10 border-2 border-primary'
+                        : 'pointer-events-none'
+                    )}
+                    onDragLeave={dndHandlers.handleDragLeave}
+                    onDrop={dndHandlers.handleDropRight}
+                    onDragOver={(e) => e.preventDefault()}
+                  >
+                    {dragHoverTarget === 'right' && (
+                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <span className="px-3 py-1 rounded-md bg-primary/70 text-sm font-medium text-primary-foreground/80">
+                          Drop to Replace
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
+                {hoveredPane === 'right' && !draggedPage && (
+                  <div className={cn("absolute right-4 z-[70] transition-all", isTopBarVisible ? 'top-24' : 'top-4')}>
+                    <ViewModeSwitcher pane="right" />
+                  </div>
+                )}
+              </div>
+            ) : rightPaneWithProps}
+          </div>
+        </div>
+      </div>
+      {commandPalette || <CommandPalette />}
+    </div>
+  )
 }
 ```
 

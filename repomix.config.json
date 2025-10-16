@@ -34,14 +34,13 @@
     // "src"
     //
     "src/App.tsx",
-    "src/components/auth/LoginPage.tsx",
-    "src/components/layout/ViewModeSwitcher.tsx",
+    "src/components/layout/AppShell.tsx",
+    "src/components/layout/TopBar.tsx",
+    "src/components/ui/button.tsx",
+    "src/components/ui/input.tsx",
     "src/hooks/useAppViewManager.hook.ts",
-    "src/index.css",
-    "src/pages/DataDemo/components/DataViewModeSelector.tsx",
-    "src/pages/DataDemo/index.tsx",
-    "src/store/appShell.store.ts",
-    "tailwind.config.js"
+    "src/pages/Dashboard/index.tsx",
+    "src/pages/DataDemo/index.tsx"
 
     //
   ],

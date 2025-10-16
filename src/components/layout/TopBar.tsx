@@ -14,11 +14,13 @@ import { ViewModeSwitcher } from './ViewModeSwitcher'
 import { useAppShellStore } from '@/store/appShell.store'
 
 interface TopBarProps {
-  children?: React.ReactNode
+  breadcrumbs?: React.ReactNode
+  pageControls?: React.ReactNode
 }
 
 export const TopBar = React.memo(({
-  children,
+  breadcrumbs,
+  pageControls,
 }: TopBarProps) => {
   const bodyState = useAppShellStore(s => s.bodyState)
   const isDarkMode = useAppShellStore(s => s.isDarkMode);
@@ -34,11 +36,13 @@ export const TopBar = React.memo(({
     )}>
       {/* Left Section - Sidebar Controls & Breadcrumbs */}
       <div className="flex items-center gap-4">
-        {children}
+        {breadcrumbs}
       </div>
 
       {/* Right Section - page controls, and global controls */}
       <div className="flex items-center gap-3">
+        {pageControls}
+
         {/* Separator */}
         <div className="w-px h-6 bg-border mx-2" />
 
