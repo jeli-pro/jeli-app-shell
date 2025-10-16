@@ -1,0 +1,805 @@
+uuid: 4f4f728c-4f1f-4318-8f83-e18742b87445
+projectId: jeli-app-shell
+createdAt: '2025-10-16T13:44:35.370Z'
+gitCommitMsg: >-
+  fix(AppShell): stabilize right pane resizing animation
+
+  Re-implemented the `useResizableRightPane` hook to fix erratic animations
+  during and after resizing.
+
+  - The hook now temporarily disables all app animations by setting
+  `reducedMotion: true` for the duration of the resize gesture. - State is
+  updated on every `mousemove` event to keep React's state in sync with the DOM,
+  preventing race conditions. - Animations are re-enabled once the resize is
+  complete (`mouseup`).
+
+  This approach prevents the pane from animating open/closed during the drag,
+  and it also resolves the issue where the pane would re-run its "enter"
+  animation upon release. This provides a stable and predictable resizing
+  experience.
+promptSummary: >-
+  User is experiencing erratic animations on the overlay side pane both during
+  and after resizing.
+reasoning:
+  - >-
+    I understand. My previous fix, while improving the smoothness of resizing,
+    introduced a new issue where the pane's "enter" animation re-triggers upon
+    releasing the mouse. This is a subtle timing issue between React's render
+    cycle and the animation system.
+  - >-
+    The core problem is that my optimization to use `gsap.set()` desynchronized
+    React's state from the actual DOM state during the drag. When the final
+    state was committed on `mouseup`, the animation hook got confused and re-ran
+    the entry animation.
+  - >-
+    To provide a truly robust solution, I will take a different approach that
+    prioritizes keeping React's state as the single source of truth, which will
+    prevent these timing issues.
+  - 'Here is my new plan:'
+  - >-
+    1.  **Revert the `gsap.set()` optimization:** I will go back to updating the
+    pane's width in the Zustand store on every `mousemove` event.
+  - >-
+    2.  **Disable animations during resize:** I will wrap the entire resize
+    operation with logic that temporarily sets the app's global `reducedMotion`
+    state to `true`.
+  - 'This approach fixes both issues:'
+  - >-
+    *   The original "erratic close open movement" is fixed because animations
+    are disabled during the drag, so the frequent state updates won't trigger
+    any animations.
+  - >-
+    *   The "re-animate on release" issue is fixed because the state and DOM are
+    always in sync, and when animations are re-enabled, the pane is already
+    stable at its final size, so there's nothing for the animation hook to do.
+  - >-
+    This might be slightly less performant during the drag compared to the
+    `gsap` method, but it will be visually correct and free of animation
+    glitches, which is the higher priority.
+  - 'Here is the updated code for `src/hooks/useResizablePanes.hook.ts`:'
+  - >-
+    I also need to update `AppShell.tsx` to pass the `rightPaneRef` to the hook,
+    which was part of my previous correct change.
+  - >-
+    It appears the change in `AppShell.tsx` was already made in a previous step
+    and is reflected in the provided file state. I will just submit the change
+    for `useResizablePanes.hook.ts` which correctly implements the
+    animation-disabling logic around the state updates.
+  - 'Final check on `AppShell.tsx`:'
+  - >-
+    The file provided in the prompt already contains
+    `useResizableRightPane(rightPaneRef)`. However, the hook definition in
+    `useResizablePanes.hook.ts` does *not* accept an argument. This is an
+    inconsistency I must fix. I will update both files to be consistent.
+  - >-
+    The user's `AppShell.tsx` already called
+    `useResizableRightPane(rightPaneRef)`. The problem was the hook signature in
+    `useResizablePanes.hook.ts` was `useResizableRightPane()`. I will replace
+    the hook's content to fix the signature and the logic inside. The
+    `AppShell.tsx` file needs no changes from the version in the prompt.
+operations:
+  - type: write
+    path: src/hooks/useResizablePanes.hook.ts
+    content: >+
+      --- src/hooks/useResizablePanes.hook.ts
+
+      +++ src/hooks/useResizablePanes.hook.ts
+
+      @@ -1,4 +1,4 @@
+
+      -import { useEffect } from 'react';
+
+      +import { useEffect, useRef } from 'react';
+       import { gsap } from 'gsap';
+       import { useAppShellStore } from '@/store/appShell.store';
+       import { BODY_STATES } from '@/lib/utils';
+      @@ -40,49 +40,51 @@
+         }, [isResizing, setSidebarWidth, setIsResizing, sidebarRef, resizeHandleRef]);
+       }
+       
+      -export function useResizableRightPane() {
+
+      +export function useResizableRightPane(
+
+      +  rightPaneRef: React.RefObject<HTMLDivElement>
+
+      +) {
+         const isResizingRightPane = useAppShellStore(s => s.isResizingRightPane);
+         const bodyState = useAppShellStore(s => s.bodyState);
+      -  const { setSplitPaneWidth, setSidePaneWidth, setIsResizingRightPane } =
+      useAppShellStore.getState();
+
+      +  const { setSplitPaneWidth, setSidePaneWidth, setIsResizingRightPane,
+      setReducedMotion } = useAppShellStore.getState();
+
+      +  const originalReducedMotionRef = useRef<boolean | null>(null);
+
+      +
+
+      +  // This effect temporarily disables animations during resizing to
+      prevent the
+
+      +  // pane's enter/exit animation from firing incorrectly.
+
+      +  useEffect(() => {
+
+      +    if (isResizingRightPane) {
+
+      +      // When resizing starts, store the original setting and disable
+      animations.
+
+      +      if (originalReducedMotionRef.current === null) {
+
+      +        originalReducedMotionRef.current =
+      useAppShellStore.getState().reducedMotion;
+
+      +        setReducedMotion(true);
+
+      +      }
+
+      +    } else {
+
+      +      // When resizing ends, restore the original setting.
+
+      +      if (originalReducedMotionRef.current !== null) {
+
+      +        setReducedMotion(originalReducedMotionRef.current!);
+
+      +        originalReducedMotionRef.current = null;
+
+      +      }
+
+      +    }
+
+      +  }, [isResizingRightPane, setReducedMotion]);
+       
+         useEffect(() => {
+           const handleMouseMove = (e: MouseEvent) => {
+             if (!isResizingRightPane) return;
+       
+             const newWidth = window.innerWidth - e.clientX;
+      -      if (bodyState === BODY_STATES.SPLIT_VIEW) {
+
+      -        setSplitPaneWidth(newWidth);
+
+      -      } else {
+
+      -        setSidePaneWidth(newWidth);
+
+      -      }
+
+      +      // Keep React state in sync. Animations are disabled by the effect
+      above.
+
+      +      if (bodyState === BODY_STATES.SPLIT_VIEW)
+      setSplitPaneWidth(newWidth);
+
+      +      else setSidePaneWidth(newWidth);
+           };
+       
+           const handleMouseUp = () => {
+             setIsResizingRightPane(false);
+             document.body.style.cursor = '';
+             document.body.style.userSelect = '';
+           };
+       
+           if (isResizingRightPane) {
+             document.body.style.cursor = 'col-resize';
+             document.body.style.userSelect = 'none';
+             document.addEventListener('mousemove', handleMouseMove);
+             document.addEventListener('mouseup', handleMouseUp);
+           }
+       
+           return () => {
+             document.removeEventListener('mousemove', handleMouseMove);
+             document.removeEventListener('mouseup', handleMouseUp);
+             document.body.style.cursor = '';
+           };
+      -  }, [isResizingRightPane, setSplitPaneWidth, setSidePaneWidth,
+      setIsResizingRightPane, bodyState]);
+
+      +  }, [isResizingRightPane, setSplitPaneWidth, setSidePaneWidth,
+      setIsResizingRightPane, bodyState, rightPaneRef]);
+       }
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/components/layout/AppShell.tsx
+    content: >
+      --- src/components/layout/AppShell.tsx
+
+      +++ src/components/layout/AppShell.tsx
+
+      @@ -59,7 +59,7 @@
+       
+         // Custom hooks for logic
+         useResizableSidebar(sidebarRef, resizeHandleRef);
+      -  useResizableRightPane(rightPaneRef);
+
+      +  useResizableRightPane(rightPaneRef); // This was changed in a previous
+      step, ensuring it passes the ref
+         useSidebarAnimations(sidebarRef, resizeHandleRef);
+         useBodyStateAnimations(appRef, mainContentRef, rightPaneRef, topBarContainerRef, mainAreaRef);
+         
+    patchStrategy: standard-diff
+  - type: write
+    path: ...
+    content: |2-
+        // Custom hooks for logic
+        useResizableSidebar(sidebarRef, resizeHandleRef);
+        useResizableRightPane(rightPaneRef);
+      // ...
+    patchStrategy: replace
+  - type: write
+    path: src/hooks/useResizablePanes.hook.ts
+    content: |-
+      import { useEffect, useRef } from 'react';
+      import { gsap } from 'gsap';
+      import { useAppShellStore } from '@/store/appShell.store';
+      import { BODY_STATES } from '@/lib/utils';
+
+      export function useResizableSidebar(
+        sidebarRef: React.RefObject<HTMLDivElement>,
+        resizeHandleRef: React.RefObject<HTMLDivElement>
+      ) {
+        const isResizing = useAppShellStore(s => s.isResizing);
+        const { setSidebarWidth, setIsResizing } = useAppShellStore.getState();
+
+        useEffect(() => {
+          const handleMouseMove = (e: MouseEvent) => {
+            if (!isResizing) return;
+
+            const newWidth = Math.max(200, Math.min(500, e.clientX));
+            setSidebarWidth(newWidth);
+
+            if (sidebarRef.current) {
+              gsap.set(sidebarRef.current, { width: newWidth });
+            }
+            if (resizeHandleRef.current) {
+              gsap.set(resizeHandleRef.current, { left: newWidth });
+            }
+          };
+
+          const handleMouseUp = () => {
+            setIsResizing(false);
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+          };
+
+          if (isResizing) {
+            document.body.style.cursor = 'col-resize';
+            document.body.style.userSelect = 'none';
+            document.addEventListener('mousemove', handleMouseMove);
+            document.addEventListener('mouseup', handleMouseUp);
+          }
+
+          return () => {
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+          };
+        }, [isResizing, setSidebarWidth, setIsResizing, sidebarRef, resizeHandleRef]);
+      }
+
+      export function useResizableRightPane(
+        rightPaneRef: React.RefObject<HTMLDivElement>
+      ) {
+        const isResizingRightPane = useAppShellStore(s => s.isResizingRightPane);
+        const bodyState = useAppShellStore(s => s.bodyState);
+        const { setSplitPaneWidth, setSidePaneWidth, setIsResizingRightPane, setReducedMotion } = useAppShellStore.getState();
+        const originalReducedMotionRef = useRef<boolean | null>(null);
+
+        // This effect temporarily disables animations during resizing to prevent the
+        // pane's enter/exit animation from firing incorrectly.
+        useEffect(() => {
+          if (isResizingRightPane) {
+            // When resizing starts, store the original setting and disable animations.
+            if (originalReducedMotionRef.current === null) {
+              originalReducedMotionRef.current = useAppShellStore.getState().reducedMotion;
+              setReducedMotion(true);
+            }
+          } else {
+            // When resizing ends, restore the original setting.
+            if (originalReducedMotionRef.current !== null) {
+              setReducedMotion(originalReducedMotionRef.current!);
+              originalReducedMotionRef.current = null;
+            }
+          }
+        }, [isResizingRightPane, setReducedMotion]);
+
+        useEffect(() => {
+          const handleMouseMove = (e: MouseEvent) => {
+            if (!isResizingRightPane) return;
+
+            const newWidth = window.innerWidth - e.clientX;
+            // Keep React state in sync. Animations are disabled by the effect above.
+            if (bodyState === BODY_STATES.SPLIT_VIEW) {
+              setSplitPaneWidth(newWidth);
+            } else {
+              setSidePaneWidth(newWidth);
+            }
+          };
+
+          const handleMouseUp = () => {
+            setIsResizingRightPane(false);
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+          };
+
+          if (isResizingRightPane) {
+            document.body.style.cursor = 'col-resize';
+            document.body.style.userSelect = 'none';
+            document.addEventListener('mousemove', handleMouseMove);
+            document.addEventListener('mouseup', handleMouseUp);
+          }
+
+          return () => {
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+            document.body.style.cursor = '';
+          };
+        }, [isResizingRightPane, setSplitPaneWidth, setSidePaneWidth, setIsResizingRightPane, bodyState, rightPaneRef]);
+      }
+    patchStrategy: replace
+  - type: write
+    path: src/components/layout/AppShell.tsx
+    content: |+
+      --- src/components/layout/AppShell.tsx
+      +++ src/components/layout/AppShell.tsx
+      @@ -59,7 +59,7 @@
+       
+         // Custom hooks for logic
+         useResizableSidebar(sidebarRef, resizeHandleRef);
+      -  useResizableRightPane(rightPaneRef);
+      +  useResizableRightPane(rightPaneRef);
+         useSidebarAnimations(sidebarRef, resizeHandleRef);
+         useBodyStateAnimations(appRef, mainContentRef, rightPaneRef, topBarContainerRef, mainAreaRef);
+         
+
+    patchStrategy: standard-diff
+snapshot:
+  ...: null
+  src/hooks/useResizablePanes.hook.ts: |-
+    import { useEffect, useRef } from 'react';
+    import { gsap } from 'gsap';
+    import { useAppShellStore } from '@/store/appShell.store';
+    import { BODY_STATES } from '@/lib/utils';
+
+    export function useResizableSidebar(
+      sidebarRef: React.RefObject<HTMLDivElement>,
+      resizeHandleRef: React.RefObject<HTMLDivElement>
+    ) {
+      const isResizing = useAppShellStore(s => s.isResizing);
+      const { setSidebarWidth, setIsResizing } = useAppShellStore.getState();
+
+      useEffect(() => {
+        const handleMouseMove = (e: MouseEvent) => {
+          if (!isResizing) return;
+
+          const newWidth = Math.max(200, Math.min(500, e.clientX));
+          setSidebarWidth(newWidth);
+
+          if (sidebarRef.current) {
+            gsap.set(sidebarRef.current, { width: newWidth });
+          }
+          if (resizeHandleRef.current) {
+            gsap.set(resizeHandleRef.current, { left: newWidth });
+          }
+        };
+
+        const handleMouseUp = () => {
+          setIsResizing(false);
+          document.body.style.cursor = '';
+          document.body.style.userSelect = '';
+        };
+
+        if (isResizing) {
+          document.body.style.cursor = 'col-resize';
+          document.body.style.userSelect = 'none';
+          document.addEventListener('mousemove', handleMouseMove);
+          document.addEventListener('mouseup', handleMouseUp);
+        }
+
+        return () => {
+          document.removeEventListener('mousemove', handleMouseMove);
+          document.removeEventListener('mouseup', handleMouseUp);
+        };
+      }, [isResizing, setSidebarWidth, setIsResizing, sidebarRef, resizeHandleRef]);
+    }
+
+    export function useResizableRightPane(
+      rightPaneRef: React.RefObject<HTMLDivElement>
+    ) {
+      const isResizingRightPane = useAppShellStore(s => s.isResizingRightPane);
+      const bodyState = useAppShellStore(s => s.bodyState);
+      const { setSplitPaneWidth, setSidePaneWidth, setIsResizingRightPane, setReducedMotion } = useAppShellStore.getState();
+      const finalWidthRef = useRef<number | null>(null);
+      const originalReducedMotionRef = useRef<boolean | null>(null);
+
+      // This effect temporarily disables animations during resizing to prevent the
+      // pane's enter/exit animation from firing incorrectly.
+      useEffect(() => {
+        if (isResizingRightPane) {
+          // When resizing starts, store the original setting and disable animations.
+          if (originalReducedMotionRef.current === null) {
+            originalReducedMotionRef.current = useAppShellStore.getState().reducedMotion;
+            setReducedMotion(true);
+          }
+        } else {
+          // When resizing ends, restore the original setting after a brief delay.
+          // This ensures the final width is rendered before animations are re-enabled.
+          if (originalReducedMotionRef.current !== null) {
+            setTimeout(() => {
+              setReducedMotion(originalReducedMotionRef.current!);
+              originalReducedMotionRef.current = null;
+            }, 0);
+          }
+        }
+      }, [isResizingRightPane, setReducedMotion]);
+
+      useEffect(() => {
+        const handleMouseMove = (e: MouseEvent) => {
+          if (!isResizingRightPane) return;
+
+          const newWidth = window.innerWidth - e.clientX;
+          finalWidthRef.current = newWidth;
+          if (rightPaneRef.current) {
+            gsap.set(rightPaneRef.current, { width: newWidth });
+          }
+        };
+
+        const handleMouseUp = () => {
+          if (finalWidthRef.current !== null) {
+            if (bodyState === BODY_STATES.SPLIT_VIEW) {
+              setSplitPaneWidth(finalWidthRef.current);
+            } else {
+              setSidePaneWidth(finalWidthRef.current);
+            }
+            finalWidthRef.current = null;
+          }
+          setIsResizingRightPane(false);
+          document.body.style.cursor = '';
+          document.body.style.userSelect = '';
+        };
+
+        if (isResizingRightPane) {
+          document.body.style.cursor = 'col-resize';
+          document.body.style.userSelect = 'none';
+          document.addEventListener('mousemove', handleMouseMove);
+          document.addEventListener('mouseup', handleMouseUp);
+        }
+
+        return () => {
+          document.removeEventListener('mousemove', handleMouseMove);
+          document.removeEventListener('mouseup', handleMouseUp);
+          document.body.style.cursor = '';
+        };
+      }, [isResizingRightPane, setSplitPaneWidth, setSidePaneWidth, setIsResizingRightPane, bodyState, rightPaneRef]);
+    }
+  src/components/layout/AppShell.tsx: >-
+    import React, { useRef, type ReactElement, useEffect, useLayoutEffect } from
+    'react'
+
+    import { useLocation } from 'react-router-dom';
+
+    import { cn } from '@/lib/utils'
+
+    import { gsap } from 'gsap';
+
+    import { CommandPalette } from '@/components/global/CommandPalette';
+
+    import { useAppShellStore } from '@/store/appShell.store';
+
+    import { SIDEBAR_STATES, BODY_STATES } from '@/lib/utils'
+
+    import { useResizableSidebar, useResizableRightPane } from
+    '@/hooks/useResizablePanes.hook'
+
+    import { useSidebarAnimations, useBodyStateAnimations } from
+    '@/hooks/useAppShellAnimations.hook'
+
+    import { ViewModeSwitcher } from './ViewModeSwitcher';
+
+    import { usePaneDnd } from '@/hooks/usePaneDnd.hook';
+
+
+    interface AppShellProps {
+      sidebar: ReactElement;
+      topBar: ReactElement;
+      mainContent: ReactElement;
+      rightPane: ReactElement;
+      commandPalette?: ReactElement;
+      onOverlayClick?: () => void;
+    }
+
+
+    const pageToPaneMap: Record<string, 'main' | 'settings' | 'toaster' |
+    'notifications' | 'dataDemo'> = {
+      dashboard: 'main',
+      settings: 'settings',
+      toaster: 'toaster',
+      notifications: 'notifications',
+      'data-demo': 'dataDemo',
+    };
+
+
+    // Helper hook to get the previous value of a prop or state
+
+    function usePrevious<T>(value: T): T | undefined {
+      const ref = useRef<T>();
+      useEffect(() => {
+        ref.current = value;
+      }, [value]);
+      return ref.current;
+    }
+
+
+
+    export function AppShell({ sidebar, topBar, mainContent, rightPane,
+    commandPalette, onOverlayClick }: AppShellProps) {
+      const sidebarState = useAppShellStore(s => s.sidebarState);
+      const autoExpandSidebar = useAppShellStore(s => s.autoExpandSidebar);
+      const hoveredPane = useAppShellStore(s => s.hoveredPane);
+      const draggedPage = useAppShellStore(s => s.draggedPage);
+      const dragHoverTarget = useAppShellStore(s => s.dragHoverTarget);
+      const bodyState = useAppShellStore(s => s.bodyState);
+      const sidePaneContent = useAppShellStore(s => s.sidePaneContent);
+      const reducedMotion = useAppShellStore(s => s.reducedMotion);
+      const isTopBarVisible = useAppShellStore(s => s.isTopBarVisible);
+      const isDarkMode = useAppShellStore(s => s.isDarkMode);
+      const { setSidebarState, peekSidebar, setHoveredPane, setTopBarHovered } = useAppShellStore.getState();
+      
+      const isFullscreen = bodyState === BODY_STATES.FULLSCREEN;
+      const isSidePaneOpen = bodyState === BODY_STATES.SIDE_PANE;
+      const location = useLocation();
+      const activePage = location.pathname.split('/')[1] || 'dashboard';
+      const appRef = useRef<HTMLDivElement>(null)
+      const sidebarRef = useRef<HTMLDivElement>(null)
+      const mainContentRef = useRef<HTMLDivElement>(null)
+      const rightPaneRef = useRef<HTMLDivElement>(null)
+      const resizeHandleRef = useRef<HTMLDivElement>(null)
+      const topBarContainerRef = useRef<HTMLDivElement>(null)
+      const mainAreaRef = useRef<HTMLDivElement>(null)
+
+      const prevActivePage = usePrevious(activePage);
+      const prevSidePaneContent = usePrevious(sidePaneContent);
+
+      const isSplitView = bodyState === BODY_STATES.SPLIT_VIEW;
+      const dndHandlers = usePaneDnd();
+
+      // Custom hooks for logic
+      useResizableSidebar(sidebarRef, resizeHandleRef);
+      useResizableRightPane(rightPaneRef);
+      useSidebarAnimations(sidebarRef, resizeHandleRef);
+      useBodyStateAnimations(appRef, mainContentRef, rightPaneRef, topBarContainerRef, mainAreaRef);
+      
+      // Animation for pane swapping
+      useLayoutEffect(() => {
+        if (reducedMotion || bodyState !== BODY_STATES.SPLIT_VIEW || !prevActivePage || !prevSidePaneContent) {
+          return;
+        }
+
+        const pageForPrevSidePane = Object.keys(pageToPaneMap).find(
+          key => pageToPaneMap[key as keyof typeof pageToPaneMap] === prevSidePaneContent
+        );
+
+        // Check if a swap occurred by comparing current state with previous state
+        if (activePage === pageForPrevSidePane && sidePaneContent === pageToPaneMap[prevActivePage as keyof typeof pageToPaneMap]) {
+          const mainEl = mainAreaRef.current;
+          const rightEl = rightPaneRef.current;
+
+          if (mainEl && rightEl) {
+            const mainWidth = mainEl.offsetWidth;
+            const rightWidth = rightEl.offsetWidth;
+
+            const tl = gsap.timeline();
+            
+            // Animate main content FROM where right pane was TO its new place
+            tl.from(mainEl, {
+              x: rightWidth, duration: 0.4, ease: 'power3.inOut'
+            });
+
+            // Animate right pane FROM where main content was TO its new place
+            tl.from(rightEl, {
+              x: -mainWidth, duration: 0.4, ease: 'power3.inOut'
+            }, 0); // Start at the same time
+          }
+        }
+      }, [activePage, sidePaneContent, bodyState, prevActivePage, prevSidePaneContent, reducedMotion]);
+      
+      const sidebarWithProps = React.cloneElement(sidebar, { 
+        ref: sidebarRef,
+        onMouseEnter: () => {
+          if (autoExpandSidebar && sidebarState === SIDEBAR_STATES.COLLAPSED) {
+            peekSidebar()
+          }
+        },
+        onMouseLeave: () => {
+          if (autoExpandSidebar && sidebarState === SIDEBAR_STATES.PEEK) {
+            setSidebarState(SIDEBAR_STATES.COLLAPSED);
+          }
+        }
+      });
+
+      const mainContentWithProps = React.cloneElement(mainContent, {
+        ref: mainContentRef,
+      });
+
+      const rightPaneWithProps = React.cloneElement(rightPane, { ref: rightPaneRef });
+
+      return (
+        <div 
+          ref={appRef}
+          className={cn(
+            "relative h-screen w-screen overflow-hidden bg-background transition-colors duration-300",
+            isDarkMode && "dark"
+          )}
+        >
+          <div className="flex h-screen overflow-hidden">
+            {/* Enhanced Sidebar */}
+            {sidebarWithProps}
+
+            {/* Resize Handle */}
+            {sidebarState !== SIDEBAR_STATES.HIDDEN && (
+              <div
+                ref={resizeHandleRef}
+                className={cn(
+                  "absolute top-0 w-2 h-full bg-transparent hover:bg-primary/20 cursor-col-resize z-50 transition-colors duration-200 group -translate-x-1/2"
+                )}
+                onMouseDown={(e) => {
+                  e.preventDefault()
+                  useAppShellStore.getState().setIsResizing(true);
+                }}
+              >
+                <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200 mx-auto" />
+              </div>
+            )}
+
+            {/* Main area wrapper */}
+            <div className="flex-1 flex flex-col overflow-hidden relative">
+              <div
+                ref={topBarContainerRef}
+                className={cn(
+                  "absolute top-0 left-0 right-0 z-30",
+                  isFullscreen && "z-0"
+                )}
+                onMouseEnter={() => {
+                  if (isSplitView) {
+                    setTopBarHovered(true);
+                    setHoveredPane(null);
+                  }
+                }}
+                onMouseLeave={() => {
+                  if (isSplitView) {
+                    setTopBarHovered(false);
+                  }
+                }}
+              >
+                {topBar}
+              </div>
+
+              {/* Invisible trigger area for top bar in split view */}
+              {isSplitView && (
+                <div
+                  className="absolute top-0 left-0 right-0 h-4 z-20"
+                  onMouseEnter={() => {
+                    setTopBarHovered(true);
+                    setHoveredPane(null);
+                  }}
+                />
+              )}
+
+              <div className="flex flex-1 min-h-0">
+                <div
+                  ref={mainAreaRef}
+                  className="relative flex-1 overflow-hidden bg-background"
+                  onMouseEnter={() => { if (isSplitView && !draggedPage) setHoveredPane('left'); }}
+                  onMouseLeave={() => { if (isSplitView && !draggedPage) setHoveredPane(null); }}
+                >
+                  {/* Side Pane Overlay */}
+                  <div
+                    role="button"
+                    aria-label="Close side pane"
+                    tabIndex={isSidePaneOpen ? 0 : -1}
+                    className={cn(
+                      "absolute inset-0 bg-black/40 z-40 transition-opacity duration-300",
+                      isSidePaneOpen
+                        ? "opacity-100 pointer-events-auto"
+                        : "opacity-0 pointer-events-none"
+                    )}
+                    onClick={onOverlayClick}
+                  />
+                  {/* Left drop overlay */}
+                  <div
+                    className={cn(
+                      "absolute inset-y-0 left-0 z-40 border-2 border-transparent transition-all",
+                      draggedPage
+                        ? cn("pointer-events-auto", isSplitView ? 'w-full' : 'w-1/2')
+                        : "pointer-events-none w-0",
+                      dragHoverTarget === 'left' && "bg-primary/10 border-primary"
+                    )}
+                    onDragOver={dndHandlers.handleDragOverLeft}
+                    onDrop={dndHandlers.handleDropLeft}
+                    onDragLeave={dndHandlers.handleDragLeave}
+                  >
+                    {draggedPage && dragHoverTarget === 'left' && (
+                      <div className="absolute inset-0 flex items-center justify-center text-sm font-medium text-primary-foreground/80 pointer-events-none">
+                        <span className="px-3 py-1 rounded-md bg-primary/70">{isSplitView ? 'Drop to Replace' : 'Drop to Left'}</span>
+                      </div>
+                    )}
+                  </div>
+                  {mainContentWithProps}
+                  {isSplitView && hoveredPane === 'left' && !draggedPage && (
+                    <div className={cn("absolute right-4 z-50 transition-all", isTopBarVisible ? 'top-24' : 'top-4')}>
+                      <ViewModeSwitcher pane="main" />
+                    </div>
+                  )}
+                  {/* Right drop overlay (over main area, ONLY when NOT in split view) */}
+                  {!isSplitView && (
+                    <div
+                      className={cn(
+                        "absolute inset-y-0 right-0 z-40 border-2 border-transparent",
+                        draggedPage ? "pointer-events-auto w-1/2" : "pointer-events-none",
+                        dragHoverTarget === 'right' && "bg-primary/10 border-primary"
+                      )}
+                      onDragOver={dndHandlers.handleDragOverRight}
+                      onDrop={dndHandlers.handleDropRight}
+                      onDragLeave={dndHandlers.handleDragLeave}
+                    >
+                      {draggedPage && dragHoverTarget === 'right' && (
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                          <span className="px-3 py-1 rounded-md bg-primary/70 text-sm font-medium text-primary-foreground/80">Drop to Right</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+                {isSplitView ? (
+                  <div
+                    className="relative"
+                    onMouseEnter={() => { if (isSplitView && !draggedPage) setHoveredPane('right'); }}
+                    onMouseLeave={() => { if (isSplitView && !draggedPage) setHoveredPane(null); }}
+                    onDragOver={dndHandlers.handleDragOverRight}
+                  >
+                    {rightPaneWithProps}
+                    {draggedPage && (
+                      <div
+                        className={cn(
+                          'absolute inset-0 z-50 transition-all',
+                          dragHoverTarget === 'right'
+                            ? 'bg-primary/10 border-2 border-primary'
+                            : 'pointer-events-none'
+                        )}
+                        onDragLeave={dndHandlers.handleDragLeave}
+                        onDrop={dndHandlers.handleDropRight}
+                        onDragOver={(e) => e.preventDefault()}
+                      >
+                        {dragHoverTarget === 'right' && (
+                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                            <span className="px-3 py-1 rounded-md bg-primary/70 text-sm font-medium text-primary-foreground/80">
+                              Drop to Replace
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {hoveredPane === 'right' && !draggedPage && (
+                      <div className={cn("absolute right-4 z-[70] transition-all", isTopBarVisible ? 'top-24' : 'top-4')}>
+                        <ViewModeSwitcher pane="right" />
+                      </div>
+                    )}
+                  </div>
+                ) : rightPaneWithProps}
+              </div>
+            </div>
+          </div>
+          {commandPalette || <CommandPalette />}
+        </div>
+      )
+    }
+approved: false
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: undone
+id: 367

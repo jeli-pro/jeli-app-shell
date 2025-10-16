@@ -1,0 +1,285 @@
+uuid: b0d26859-9941-4cf1-8409-f80e03e72879
+projectId: jeli-app-shell
+createdAt: '2025-10-16T13:38:07.013Z'
+gitCommitMsg: >-
+  fix(AppShell): disable pane animations during resize operations
+
+  Updated the `useBodyStateAnimations` hook to prevent it from running while the
+  right pane is being resized.
+
+  - The hook now reads the `isResizingRightPane` state from the store. - If
+  `isResizingRightPane` is true, the animation effect is short-circuited,
+  preventing any conflicting animations from firing during the drag operation.
+
+  This resolves the "left-right" movement seen before and after resizing the
+  overlay side pane by ensuring the resize logic has exclusive control over the
+  element's style during the interaction.
+promptSummary: >-
+  The user is still seeing unwanted "reveal hide left right movement" on the
+  side pane before and after resizing it.
+reasoning:
+  - >-
+    Of course. It seems my previous change didn't fully resolve the issue. The
+    "reveal hide left right movement" you're seeing before and after resizing is
+    likely due to a conflict between the animation hook
+    (`useBodyStateAnimations`) and the direct DOM manipulation happening during
+    the resize.
+  - >-
+    When the resize state changes (starting and stopping), it causes a
+    re-render. This re-render can trigger the animation hook, which then tries
+    to animate the pane based on its state, conflicting with the resizing logic.
+  - >-
+    To fix this, I will update the `useBodyStateAnimations` hook to be aware of
+    the resizing state. It will pause all its animations whenever the user is
+    actively resizing the right pane.
+  - 1.  **Modify `useAppShellAnimations.hook.ts`:**
+  - '*   I will read the `isResizingRightPane` state from the `useAppShellStore`.'
+  - >-
+    *   I will add a check at the beginning of the `useLayoutEffect` inside
+    `useBodyStateAnimations`. If `isResizingRightPane` is `true`, the hook will
+    immediately exit, preventing any animations from running.
+  - >-
+    *   I will add `isResizingRightPane` to the effect's dependency array to
+    ensure it correctly resumes animations after resizing is complete.
+  - >-
+    This will effectively "lock" the pane's animations during the resize
+    operation, allowing the `useResizableRightPane` hook to have exclusive
+    control, which should eliminate the unwanted movement.
+  - 'Here is the change:'
+operations:
+  - type: write
+    path: src/hooks/useAppShellAnimations.hook.ts
+    content: >+
+      --- src/hooks/useAppShellAnimations.hook.ts
+
+      +++ src/hooks/useAppShellAnimations.hook.ts
+
+      @@ -74,8 +74,16 @@
+         const isTopBarHovered = useAppShellStore(s => s.isTopBarHovered);
+         const sidebarState = useAppShellStore(s => s.sidebarState);
+         const sidebarWidth = useAppShellStore(s => s.sidebarWidth);
+      +  const isResizingRightPane = useAppShellStore(s =>
+      s.isResizingRightPane);
+       
+         useLayoutEffect(() => {
+      +    // Prevent animations from running while the user is actively
+      resizing the pane.
+
+      +    // The resizing is handled by GSAP directly in useResizablePanes for
+      performance,
+
+      +    // and this prevents this hook from creating conflicting animations.
+
+      +    if (isResizingRightPane) {
+
+      +      return;
+
+      +    }
+
+      +
+           const mainContentEl = mainContentRef.current;
+           const rightPaneEl = rightPaneRef.current;
+           const topBarEl = topBarContainerRef.current;
+      @@ -193,5 +201,5 @@
+               paddingTop: '0rem',
+             }, "<");
+           }
+      -  }, [bodyState, rightPaneWidth, reducedMotion, isTopBarVisible,
+      isTopBarHovered, appRef, mainContentRef, rightPaneRef, topBarContainerRef,
+      mainAreaRef, fullscreenTarget, sidebarState, sidebarWidth,
+      prevBodyState]);
+
+      +  }, [bodyState, rightPaneWidth, reducedMotion, isTopBarVisible,
+      isTopBarHovered, appRef, mainContentRef, rightPaneRef, topBarContainerRef,
+      mainAreaRef, fullscreenTarget, sidebarState, sidebarWidth, prevBodyState,
+      isResizingRightPane]);
+       }
+
+    patchStrategy: standard-diff
+snapshot:
+  src/hooks/useAppShellAnimations.hook.ts: >-
+    import { useEffect, useRef } from 'react';
+
+    import { gsap } from 'gsap';
+
+    import { useSearchParams } from 'react-router-dom';
+
+    import { useAppShellStore, useRightPaneWidth } from
+    '@/store/appShell.store';
+
+    import { SIDEBAR_STATES, BODY_STATES } from '@/lib/utils';
+
+
+    function usePrevious<T>(value: T): T | undefined {
+      const ref = useRef<T>();
+      useEffect(() => {
+        ref.current = value;
+      }, [value]);
+      return ref.current;
+    }
+
+
+    export function useSidebarAnimations(
+      sidebarRef: React.RefObject<HTMLDivElement>,
+      resizeHandleRef: React.RefObject<HTMLDivElement>
+    ) {
+      const sidebarState = useAppShellStore(s => s.sidebarState);
+      const sidebarWidth = useAppShellStore(s => s.sidebarWidth);
+      const bodyState = useAppShellStore(s => s.bodyState);
+      const reducedMotion = useAppShellStore(s => s.reducedMotion);
+      const animationDuration = reducedMotion ? 0 : 0.4;
+
+      useEffect(() => {
+        if (!sidebarRef.current || !resizeHandleRef.current) return;
+
+        const sidebar = sidebarRef.current;
+        const handle = resizeHandleRef.current;
+        
+        let targetWidth = 0;
+        let targetOpacity = 1;
+
+        if (bodyState === BODY_STATES.FULLSCREEN) {
+          targetWidth = 0;
+          targetOpacity = 0;
+        } else {
+          switch (sidebarState) {
+            case SIDEBAR_STATES.HIDDEN:
+              targetWidth = 0;
+              targetOpacity = 0;
+              break;
+            case SIDEBAR_STATES.COLLAPSED:
+              targetWidth = 64;
+              targetOpacity = 1;
+              break;
+            case SIDEBAR_STATES.EXPANDED:
+              targetWidth = sidebarWidth;
+              targetOpacity = 1;
+              break;
+            case SIDEBAR_STATES.PEEK:
+              targetWidth = sidebarWidth * 0.8;
+              targetOpacity = 0.95;
+              break;
+          }
+        }
+
+        const tl = gsap.timeline({ ease: "power3.out" });
+        
+        tl.to(sidebar, {
+          width: targetWidth,
+          opacity: targetOpacity,
+          duration: animationDuration,
+        });
+        tl.to(handle, {
+          left: targetWidth,
+          duration: animationDuration,
+        }, 0);
+
+      }, [sidebarState, sidebarWidth, bodyState, animationDuration, sidebarRef, resizeHandleRef]);
+    }
+
+
+    export function useBodyStateAnimations(
+      appRef: React.RefObject<HTMLDivElement>,
+      mainContentRef: React.RefObject<HTMLDivElement>,
+      rightPaneRef: React.RefObject<HTMLDivElement>,
+      topBarContainerRef: React.RefObject<HTMLDivElement>,
+      mainAreaRef: React.RefObject<HTMLDivElement>
+    ) {
+      const bodyState = useAppShellStore(s => s.bodyState);
+      const reducedMotion = useAppShellStore(s => s.reducedMotion);
+      const isTopBarVisible = useAppShellStore(s => s.isTopBarVisible);
+      const isTopBarHovered = useAppShellStore(s => s.isTopBarHovered);
+      const fullscreenTarget = useAppShellStore(s => s.fullscreenTarget);
+      const rightPaneWidth = useRightPaneWidth();
+      const animationDuration = reducedMotion ? 0 : 0.4;
+      const prevBodyState = usePrevious(bodyState);
+      const [, setSearchParams] = useSearchParams();
+
+      useEffect(() => {
+        if (!mainContentRef.current || !rightPaneRef.current || !topBarContainerRef.current || !mainAreaRef.current) return;
+
+        const ease = "power3.out";
+        const isSidePane = bodyState === BODY_STATES.SIDE_PANE;
+        const isSplitView = bodyState === BODY_STATES.SPLIT_VIEW;
+
+        // Kill any existing animations on the right pane to prevent conflicts
+        gsap.killTweensOf(rightPaneRef.current);
+
+        // Right pane animation
+        if (isSidePane) {
+          // SHOW AS OVERLAY: Set width immediately, animate transform for performance.
+          gsap.set(rightPaneRef.current, { width: rightPaneWidth, x: '0%' });
+          gsap.fromTo(rightPaneRef.current, { x: '100%' }, {
+              x: '0%',
+              duration: animationDuration,
+              ease,
+          });
+        } else if (isSplitView) {
+            // SHOW AS SPLIT: Set transform immediately, animate width.
+            gsap.set(rightPaneRef.current, { x: '0%' });
+            gsap.to(rightPaneRef.current, {
+                width: rightPaneWidth,
+                duration: animationDuration,
+                ease,
+            });
+        } else {
+            // HIDE PANE: Determine how to hide based on the state we are coming FROM.
+            if (prevBodyState === BODY_STATES.SIDE_PANE) {
+                // It was an overlay, so slide it out.
+                gsap.to(rightPaneRef.current, {
+              x: '100%',
+              duration: animationDuration,
+              ease,
+                });
+            } else { // Covers coming from SPLIT_VIEW, FULLSCREEN, or NORMAL
+                // It was docked or fullscreen, so shrink its width.
+                gsap.to(rightPaneRef.current, { width: 0, duration: animationDuration, ease });
+            }
+        }
+
+        // Determine top bar position based on state
+        let topBarY = '0%';
+        if (bodyState === BODY_STATES.FULLSCREEN) { // Always hide in fullscreen
+          topBarY = '-100%';
+        } else if (bodyState === BODY_STATES.SPLIT_VIEW && !isTopBarHovered) { // Hide in split view unless hovered
+          topBarY = '-100%';
+        } else if (bodyState === BODY_STATES.NORMAL && !isTopBarVisible) { // Hide only in normal mode when scrolled
+          topBarY = '-100%';
+        }
+
+        gsap.to(topBarContainerRef.current, {
+          y: topBarY,
+          duration: animationDuration,
+          ease,
+        });
+        
+        // Add backdrop for side pane
+        const backdrop = document.querySelector('.app-backdrop');
+        if (isSidePane) { // This is correct because isSidePane is false when bodyState is split_view
+          if (!backdrop) {
+            const el = document.createElement('div');
+            el.className = 'app-backdrop fixed inset-0 bg-black/30 z-[55]';
+            appRef.current?.appendChild(el);
+            gsap.fromTo(el, { opacity: 0 }, { opacity: 1, duration: animationDuration });
+            el.onclick = () => {
+              setSearchParams(prev => {
+                const newParams = new URLSearchParams(prev);
+                newParams.delete('sidePane');
+                return newParams;
+              }, { replace: true });
+            };
+          }
+        } else {
+          if (backdrop) {
+            gsap.to(backdrop, { opacity: 0, duration: animationDuration, onComplete: () => backdrop.remove() });
+          }
+        }
+      }, [bodyState, prevBodyState, animationDuration, rightPaneWidth, isTopBarVisible, isTopBarHovered, appRef, mainContentRef, rightPaneRef, topBarContainerRef, mainAreaRef, fullscreenTarget, setSearchParams]);
+    }
+approved: false
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: undone
+id: 365

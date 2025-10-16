@@ -7,6 +7,10 @@ I am obsessed with laravel filament... so make everything about data demo page i
 scroll to bottom in dashboard is not stick to right bottom.
 also why not auto applied to another page like demo data?
 
+===
+
+view mode switcher should be on overlay side pane header, replacing current switcher
+
 === DONE
 
 login page, the two column left right needs distinctive background color
@@ -25,7 +29,7 @@ data demo page:
   "src/pages/DataDemo/index.tsx",
   "src/store/appShell.store.ts"
 
-===
+=== DONE
 
 top bar: left aligned is only for the breadcrumb, everything else should right aligned
 
@@ -138,7 +142,7 @@ example like case of message split view mode layout, currently the message list 
 
 on splid view mode active, should hide top bar... only reveal on hovering top area
 
-===
+=== DONE
 
 data demo page: on each view mode, need additional item as CTA to lure user to add more data
 

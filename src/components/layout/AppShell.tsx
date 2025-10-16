@@ -70,7 +70,7 @@ export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalet
 
   // Custom hooks for logic
   useResizableSidebar(sidebarRef, resizeHandleRef);
-  useResizableRightPane();
+  useResizableRightPane(rightPaneRef);
   useSidebarAnimations(sidebarRef, resizeHandleRef);
   useBodyStateAnimations(appRef, mainContentRef, rightPaneRef, topBarContainerRef, mainAreaRef);
   

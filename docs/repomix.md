@@ -4,992 +4,196 @@ src/
   components/
     layout/
       AppShell.tsx
-      TopBar.tsx
-    ui/
-      button.tsx
-      card.tsx
-      input.tsx
+      MainContent.tsx
+    shared/
+      PageLayout.tsx
   hooks/
-    useAppViewManager.hook.ts
-  lib/
-    utils.ts
+    useAutoAnimateTopBar.ts
   pages/
     Dashboard/
+      hooks/
+        useDashboardScroll.hook.ts
       index.tsx
     DataDemo/
-      components/
-        DataCardView.tsx
-        DataListView.tsx
-        DataTableView.tsx
       index.tsx
-      types.ts
-  App.tsx
 ```
 
 # Files
 
-## File: src/components/ui/card.tsx
+## File: src/pages/Dashboard/hooks/useDashboardScroll.hook.ts
 ```typescript
-import * as React from "react"
+import { useState, useCallback } from 'react';
+import { useAutoAnimateTopBar } from '@/hooks/useAutoAnimateTopBar';
 
-import { cn } from "@/lib/utils"
+export function useDashboardScroll(
+  contentRef: React.RefObject<HTMLDivElement>,
+  isInSidePane: boolean
+) {
+  const [showScrollToBottom, setShowScrollToBottom] = useState(false);
+  const { onScroll: handleTopBarScroll } = useAutoAnimateTopBar(isInSidePane);
 
-const Card = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn(
-      "rounded-2xl border bg-card text-card-foreground",
-      className
-    )}
-    {...props}
-  />
-))
-Card.displayName = "Card"
+  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    handleTopBarScroll(e);
+    if (!contentRef.current) return;
+    const { scrollTop, scrollHeight, clientHeight } = contentRef.current;
+    setShowScrollToBottom(scrollTop > 200 && scrollTop < scrollHeight - clientHeight - 200);
+  }, [handleTopBarScroll, contentRef]);
 
-const CardHeader = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn("flex flex-col space-y-1.5 p-6", className)}
-    {...props}
-  />
-))
-CardHeader.displayName = "CardHeader"
-
-const CardTitle = React.forwardRef<
-  HTMLParagraphElement,
-  React.HTMLAttributes<HTMLHeadingElement>
->(({ className, ...props }, ref) => (
-  <h3
-    ref={ref}
-    className={cn(
-      "text-lg font-semibold leading-none tracking-tight",
-      className
-    )}
-    {...props}
-  />
-))
-CardTitle.displayName = "CardTitle"
-
-const CardDescription = React.forwardRef<
-  HTMLParagraphElement,
-  React.HTMLAttributes<HTMLParagraphElement>
->(({ className, ...props }, ref) => (
-  <p
-    ref={ref}
-    className={cn("text-sm text-muted-foreground", className)}
-    {...props}
-  />
-))
-CardDescription.displayName = "CardDescription"
-
-const CardContent = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div ref={ref} className={cn("p-6 pt-0", className)} {...props} />
-))
-CardContent.displayName = "CardContent"
-
-const CardFooter = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn("flex items-center p-6 pt-0", className)}
-    {...props}
-  />
-))
-CardFooter.displayName = "CardFooter"
-
-export { Card, CardHeader, CardFooter, CardTitle, CardDescription, CardContent }
-```
-
-## File: src/components/ui/input.tsx
-```typescript
-import * as React from "react"
-
-import { cn } from "@/lib/utils"
-
-export interface InputProps
-  extends React.InputHTMLAttributes<HTMLInputElement> {}
-
-const Input = React.forwardRef<HTMLInputElement, InputProps>(
-  ({ className, type, ...props }, ref) => {
-    return (
-      <input
-        type={type}
-        className={cn(
-          "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
-          className
-        )}
-        ref={ref}
-        {...props}
-      />
-    )
-  }
-)
-Input.displayName = "Input"
-
-export { Input }
-```
-
-## File: src/components/ui/button.tsx
-```typescript
-import * as React from "react"
-import { Slot } from "@radix-ui/react-slot"
-import { cva, type VariantProps } from "class-variance-authority"
-
-import { cn } from "@/lib/utils"
-
-const buttonVariants = cva(
-  "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
-  {
-    variants: {
-      variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/90",
-        destructive:
-          "bg-destructive text-destructive-foreground hover:bg-destructive/90",
-        outline:
-          "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
-        secondary:
-          "bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        ghost: "hover:bg-accent hover:text-accent-foreground",
-        link: "text-primary underline-offset-4 hover:underline",
-      },
-      size: {
-        default: "h-10 px-4 py-2",
-        sm: "h-9 rounded-md px-3",
-        lg: "h-11 rounded-md px-8",
-        icon: "h-10 w-10",
-      },
-    },
-    defaultVariants: {
-      variant: "default",
-      size: "default",
-    },
-  }
-)
-
-export interface ButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
-    VariantProps<typeof buttonVariants> {
-  asChild?: boolean
-}
-
-const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, asChild = false, ...props }, ref) => {
-    const Comp = asChild ? Slot : "button"
-    return (
-      <Comp
-        className={cn(buttonVariants({ variant, size, className }))}
-        ref={ref}
-        {...props}
-      />
-    )
-  }
-)
-Button.displayName = "Button"
-
-// eslint-disable-next-line react-refresh/only-export-components
-export { Button, buttonVariants }
-```
-
-## File: src/pages/DataDemo/types.ts
-```typescript
-export type ViewMode = 'list' | 'cards' | 'grid' | 'table'
-
-export type GroupableField = 'status' | 'priority' | 'category'
-
-export type SortableField = 'title' | 'status' | 'priority' | 'updatedAt' | 'assignee.name' | 'metrics.views' | 'metrics.completion' | 'createdAt'
-export type SortDirection = 'asc' | 'desc'
-export interface SortConfig {
-  key: SortableField
-  direction: SortDirection
-}
-
-export interface DataItem {
-  id: string
-  title: string
-  description: string
-  category: string
-  status: 'active' | 'pending' | 'completed' | 'archived'
-  priority: 'low' | 'medium' | 'high' | 'critical'
-  assignee: {
-    name: string
-    avatar: string
-    email: string
-  }
-  metrics: {
-    views: number
-    likes: number
-    shares: number
-    completion: number
-  }
-  tags: string[]
-  createdAt: string
-  updatedAt: string
-  dueDate?: string
-  thumbnail?: string
-  content?: {
-    summary: string
-    details: string
-    attachments?: Array<{
-      name: string
-      type: string
-      size: string
-      url: string
-    }>
-  }
-}
-
-export interface ViewProps {
-  data: DataItem[] | Record<string, DataItem[]>
-  onItemSelect: (item: DataItem) => void
-  selectedItem: DataItem | null
-  isGrid?: boolean
-
-  // Props for table view specifically
-  sortConfig?: SortConfig | null
-  onSort?: (field: SortableField) => void
-}
-
-export type Status = DataItem['status']
-export type Priority = DataItem['priority']
-```
-
-## File: src/lib/utils.ts
-```typescript
-import { type ClassValue, clsx } from "clsx"
-import { twMerge } from "tailwind-merge"
-
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
-}
-
-export const SIDEBAR_STATES = {
-  HIDDEN: 'hidden',
-  COLLAPSED: 'collapsed', 
-  EXPANDED: 'expanded',
-  PEEK: 'peek'
-} as const
-
-export const BODY_STATES = {
-  NORMAL: 'normal',
-  FULLSCREEN: 'fullscreen',
-  SIDE_PANE: 'side_pane',
-  SPLIT_VIEW: 'split_view'
-} as const
-
-export type SidebarState = typeof SIDEBAR_STATES[keyof typeof SIDEBAR_STATES]
-export type BodyState = typeof BODY_STATES[keyof typeof BODY_STATES]
-
-export function capitalize(str: string): string {
-  if (!str) return str
-  return str.charAt(0).toUpperCase() + str.slice(1)
-}
-
-export const getStatusColor = (status: string) => {
-  switch (status) {
-    case 'active': return 'bg-green-500/20 text-green-700 border-green-500/30'
-    case 'pending': return 'bg-yellow-500/20 text-yellow-700 border-yellow-500/30'
-    case 'completed': return 'bg-blue-500/20 text-blue-700 border-blue-500/30'
-    case 'archived': return 'bg-gray-500/20 text-gray-700 border-gray-500/30'
-    default: return 'bg-gray-500/20 text-gray-700 border-gray-500/30'
-  }
-}
-
-export const getPriorityColor = (priority: string) => {
-  switch (priority) {
-    case 'critical': return 'bg-red-500/20 text-red-700 border-red-500/30'
-    case 'high': return 'bg-orange-500/20 text-orange-700 border-orange-500/30'
-    case 'medium': return 'bg-blue-500/20 text-blue-700 border-blue-500/30'
-    case 'low': return 'bg-green-500/20 text-green-700 border-green-500/30'
-    default: return 'bg-gray-500/20 text-gray-700 border-gray-500/30'
-  }
-}
-```
-
-## File: src/hooks/useAppViewManager.hook.ts
-```typescript
-import { useMemo, useCallback, useEffect, useRef } from 'react';
-import { useSearchParams, useNavigate, useLocation, useParams } from 'react-router-dom';
-import { useAppShellStore, type AppShellState, type ActivePage } from '@/store/appShell.store';
-import type { DataItem, ViewMode, SortConfig, SortableField, GroupableField, Status, Priority } from '@/pages/DataDemo/types';
-import type { FilterConfig } from '@/pages/DataDemo/components/DataToolbar';
-import type { TaskView } from '@/pages/Messaging/types';
-import { BODY_STATES, SIDEBAR_STATES } from '@/lib/utils';
-
-const pageToPaneMap: Record<string, AppShellState['sidePaneContent']> = {
-  dashboard: 'main',
-  settings: 'settings',
-  toaster: 'toaster',
-  notifications: 'notifications',
-  'data-demo': 'dataDemo',
-  messaging: 'messaging',
-};
-
-function usePrevious<T>(value: T): T | undefined {
-  const ref = useRef<T>();
-  useEffect(() => {
-    ref.current = value;
-  });
-  return ref.current;
-}
-
-/**
- * A centralized hook to manage and synchronize all URL-based view states.
- * This is the single source of truth for view modes, side panes, split views,
- * and page-specific parameters.
- */
-export function useAppViewManager() {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const navigate = useNavigate();
-  const location = useLocation();
-  const params = useParams<{ itemId: string; conversationId: string }>();
-  const { itemId, conversationId } = params;
-  const { setSidebarState, sidebarState } = useAppShellStore();
-
-  // --- DERIVED STATE FROM URL ---
-
-  const view = searchParams.get('view');
-  const sidePane = searchParams.get('sidePane');
-  const right = searchParams.get('right');
-  const messagingView = searchParams.get('messagingView') as TaskView | null;
-
-  const { bodyState, sidePaneContent } = useMemo(() => {
-    const validPanes: AppShellState['sidePaneContent'][] = ['details', 'settings', 'main', 'toaster', 'notifications', 'dataDemo', 'messaging'];
-    
-    // 1. Priority: Explicit side pane overlay via URL param
-    if (sidePane && validPanes.includes(sidePane as AppShellState['sidePaneContent'])) {
-      return { bodyState: BODY_STATES.SIDE_PANE, sidePaneContent: sidePane as AppShellState['sidePaneContent'] };
-    }
-
-    // 2. Data item detail view (can be overlay or split)
-    if (itemId) {
-      if (view === 'split') {
-        return { bodyState: BODY_STATES.SPLIT_VIEW, sidePaneContent: 'dataItem' as const };
-      }
-      return { bodyState: BODY_STATES.SIDE_PANE, sidePaneContent: 'dataItem' as const };
-    }
-
-    // 3. Messaging conversation view (always split)
-    if (conversationId) {
-      return { bodyState: BODY_STATES.SPLIT_VIEW, sidePaneContent: 'messaging' as const };
-    }
-
-    // 4. Generic split view via URL param
-    if (view === 'split' && right && validPanes.includes(right as AppShellState['sidePaneContent'])) {
-      return { bodyState: BODY_STATES.SPLIT_VIEW, sidePaneContent: right as AppShellState['sidePaneContent'] };
-    }
-
-    return { bodyState: BODY_STATES.NORMAL, sidePaneContent: 'details' as const };
-  }, [itemId, conversationId, view, sidePane, right]);
-  
-  const currentActivePage = useMemo(() => (location.pathname.split('/')[1] || 'dashboard') as ActivePage, [location.pathname]);
-  const prevActivePage = usePrevious(currentActivePage);
-
-  // --- SIDE EFFECTS ---
-  useEffect(() => {
-    // On navigating to messaging page, collapse sidebar if it's expanded.
-    // This ensures a good default view but allows the user to expand it again if they wish.
-    if (currentActivePage === 'messaging' && prevActivePage !== 'messaging' && sidebarState === SIDEBAR_STATES.EXPANDED) {
-      setSidebarState(SIDEBAR_STATES.COLLAPSED);
-    }
-  }, [currentActivePage, prevActivePage, sidebarState, setSidebarState]);
-
-  // DataDemo specific state
-  const viewMode = useMemo(() => (searchParams.get('dataView') as ViewMode) || 'list', [searchParams]);
-	const page = useMemo(() => parseInt(searchParams.get('page') || '1', 10), [searchParams]);
-	const groupBy = useMemo(() => (searchParams.get('groupBy') as GroupableField | 'none') || 'none', [searchParams]);
-	const activeGroupTab = useMemo(() => searchParams.get('tab') || 'all', [searchParams]);
-	const filters = useMemo<FilterConfig>(
-		() => ({
-			searchTerm: searchParams.get('q') || '',
-			status: (searchParams.get('status')?.split(',') || []).filter(Boolean) as Status[],
-			priority: (searchParams.get('priority')?.split(',') || []).filter(Boolean) as Priority[],
-		}),
-		[searchParams],
-	);
-	const sortConfig = useMemo<SortConfig | null>(() => {
-		const sortParam = searchParams.get('sort');
-		if (!sortParam) return { key: 'updatedAt', direction: 'desc' }; // Default sort
-		if (sortParam === 'default') return null;
-
-		const [key, direction] = sortParam.split('-');
-		return { key: key as SortableField, direction: direction as 'asc' | 'desc' };
-	}, [searchParams]);
-
-  // --- MUTATOR ACTIONS ---
-
-  const handleParamsChange = useCallback(
-		(newParams: Record<string, string | string[] | null | undefined>, resetPage = false) => {
-			setSearchParams(
-				(prev) => {
-					const updated = new URLSearchParams(prev);
-					
-					for (const [key, value] of Object.entries(newParams)) {
-						if (value === null || value === undefined || (Array.isArray(value) && value.length === 0) || value === '') {
-							updated.delete(key);
-						} else if (Array.isArray(value)) {
-							updated.set(key, value.join(','));
-						} else {
-							updated.set(key, String(value));
-						}
-					}
-
-					if (resetPage) {
-						updated.delete('page');
-					}
-					if ('groupBy' in newParams) {
-						updated.delete('tab');
-					}
-
-					return updated;
-				},
-				{ replace: true },
-			);
-		},
-		[setSearchParams],
-	);
-
-  const navigateTo = useCallback((page: string, params?: Record<string, string | null>) => {
-    const targetPath = page.startsWith('/') ? page : `/${page}`;
-    const isSamePage = location.pathname === targetPath;
-    
-    const newSearchParams = new URLSearchParams(isSamePage ? searchParams : undefined);
-
-    if (params) {
-      for (const [key, value] of Object.entries(params)) {
-        if (value === null || value === undefined) {
-          newSearchParams.delete(key);
-        } else {
-          newSearchParams.set(key, value);
-        }
-      }
-    }
-
-    navigate({ pathname: targetPath, search: newSearchParams.toString() });
-  }, [navigate, location.pathname, searchParams]);
-
-  const openSidePane = useCallback((pane: AppShellState['sidePaneContent']) => {
-    if (location.pathname === `/${Object.keys(pageToPaneMap).find(key => pageToPaneMap[key] === pane)}`) {
-        navigate({ pathname: '/dashboard', search: `?sidePane=${pane}` }, { replace: true });
-    } else {
-        handleParamsChange({ sidePane: pane, view: null, right: null });
-    }
-  }, [handleParamsChange, navigate, location.pathname]);
-
-  const closeSidePane = useCallback(() => {
-    if (itemId) {
-      navigate('/data-demo');
-    } else {
-      handleParamsChange({ sidePane: null, view: null, right: null });
-    }
-  }, [itemId, navigate, handleParamsChange]);
-
-  const toggleSidePane = useCallback((pane: AppShellState['sidePaneContent']) => {
-    if (sidePane === pane) {
-      closeSidePane();
-    } else {
-      openSidePane(pane);
-    }
-  }, [sidePane, openSidePane, closeSidePane]);
-
-  const toggleSplitView = useCallback(() => {
-    if (bodyState === BODY_STATES.SIDE_PANE) {
-      handleParamsChange({ view: 'split', right: sidePane, sidePane: null });
-    } else if (bodyState === BODY_STATES.SPLIT_VIEW) {
-      handleParamsChange({ sidePane: right, view: null, right: null });
-    } else { // From normal
-      const paneContent = pageToPaneMap[currentActivePage] || 'details';
-      handleParamsChange({ view: 'split', right: paneContent, sidePane: null });
-    }
-  }, [bodyState, sidePane, right, currentActivePage, handleParamsChange]);
-  
-  const setNormalView = useCallback(() => {
-      handleParamsChange({ sidePane: null, view: null, right: null });
-  }, [handleParamsChange]);
-
-  const switchSplitPanes = useCallback(() => {
-    if (bodyState !== BODY_STATES.SPLIT_VIEW) return;
-    const newSidePaneContent = pageToPaneMap[currentActivePage];
-    const newActivePage = Object.entries(pageToPaneMap).find(
-      ([, value]) => value === sidePaneContent
-    )?.[0] as ActivePage | undefined;
-
-    if (newActivePage && newSidePaneContent) {
-      navigate(`/${newActivePage}?view=split&right=${newSidePaneContent}`, { replace: true });
-    }
-  }, [bodyState, currentActivePage, sidePaneContent, navigate]);
-  
-  const closeSplitPane = useCallback((paneToClose: 'main' | 'right') => {
-    if (bodyState !== BODY_STATES.SPLIT_VIEW) return;
-    if (paneToClose === 'right') {
-      navigate(`/${currentActivePage}`, { replace: true });
-    } else { // Closing main pane
-      const pageToBecomeActive = Object.entries(pageToPaneMap).find(
-        ([, value]) => value === sidePaneContent
-      )?.[0] as ActivePage | undefined;
-      
-      if (pageToBecomeActive) {
-        navigate(`/${pageToBecomeActive}`, { replace: true });
-      } else {
-        navigate(`/dashboard`, { replace: true });
-      }
-    }
-  }, [bodyState, currentActivePage, sidePaneContent, navigate]);
-  
-  // DataDemo actions
-  const setViewMode = (mode: ViewMode) => handleParamsChange({ dataView: mode === 'list' ? null : mode });
-  const setGroupBy = (val: string) => handleParamsChange({ groupBy: val === 'none' ? null : val }, true);
-  const setActiveGroupTab = (tab: string) => handleParamsChange({ tab: tab === 'all' ? null : tab });
-  const setFilters = (newFilters: FilterConfig) => {
-    handleParamsChange({ q: newFilters.searchTerm, status: newFilters.status, priority: newFilters.priority }, true);
-  }
-  const setSort = (config: SortConfig | null) => {
-    if (!config) {
-      handleParamsChange({ sort: 'default' }, true);
-    } else {
-      handleParamsChange({ sort: `${config.key}-${config.direction}` }, true);
-    }
-  }
-  const setTableSort = (field: SortableField) => {
-    let newSort: string | null = `${field}-desc`;
-    if (sortConfig?.key === field) {
-      if (sortConfig.direction === 'desc') newSort = `${field}-asc`;
-      else if (sortConfig.direction === 'asc') newSort = 'default';
-    }
-    handleParamsChange({ sort: newSort }, true);
+  const scrollToBottom = () => {
+    contentRef.current?.scrollTo({
+      top: contentRef.current.scrollHeight,
+      behavior: 'smooth'
+    });
   };
-  const setPage = (newPage: number) => handleParamsChange({ page: newPage.toString() });
 
-  const onItemSelect = useCallback((item: DataItem) => {
-		navigate(`/data-demo/${item.id}${location.search}`);
-	}, [navigate, location.search]);
-
-  const setMessagingView = (view: TaskView) => handleParamsChange({ messagingView: view });
-
-
-  return useMemo(() => ({
-    // State
-    bodyState,
-    sidePaneContent,
-    currentActivePage,
-    itemId,
-    messagingView,
-    // DataDemo State
-    viewMode,
-    page,
-    groupBy,
-    activeGroupTab,
-    filters,
-    sortConfig,
-    // Actions
-    navigateTo,
-    openSidePane,
-    closeSidePane,
-    toggleSidePane,
-    toggleSplitView,
-    setNormalView,
-    switchSplitPanes,
-    setMessagingView,
-    closeSplitPane,
-    // DataDemo Actions
-    onItemSelect,
-    setViewMode,
-    setGroupBy,
-    setActiveGroupTab,
-    setFilters,
-    setSort,
-    setTableSort,
-    setPage,
-  }), [
-    bodyState, sidePaneContent, currentActivePage, itemId, messagingView,
-    viewMode, page, groupBy, activeGroupTab, filters, sortConfig,
-    navigateTo, openSidePane, closeSidePane, toggleSidePane, toggleSplitView, setNormalView, setMessagingView,
-    switchSplitPanes, closeSplitPane, onItemSelect, setViewMode, setGroupBy, setActiveGroupTab, setFilters,
-    setSort, setTableSort, setPage
-  ]);
+  return { showScrollToBottom, handleScroll, scrollToBottom };
 }
 ```
 
-## File: src/pages/DataDemo/components/DataListView.tsx
+## File: src/components/shared/PageLayout.tsx
 ```typescript
-import { useRef } from 'react'
-import { cn } from '@/lib/utils'
-import { Badge } from '@/components/ui/badge'
-import { ArrowRight } from 'lucide-react'
-import type { DataItem } from '../types'
-import { useStaggeredAnimation } from '@/hooks/useStaggeredAnimation.motion.hook'
-import { EmptyState } from './EmptyState'
-import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
-import { 
-  useDataToRender,
-  useSelectedItem,
-} from '../store/dataDemo.store'
-import {
-  AssigneeInfo,
-  ItemMetrics,
-  ItemProgressBar,
-  ItemStatusBadge,
-  ItemPriorityBadge,
-  ItemDateInfo,
-} from './shared/DataItemParts'
+import React from 'react';
+import { cn } from '@/lib/utils';
+import { useAppShellStore } from '@/store/appShell.store';
+import { BODY_STATES } from '@/lib/utils';
 
-export function DataListView() {
-  const { groupBy, activeGroupTab, onItemSelect, itemId } = useAppViewManager();
-  const data = useDataToRender(groupBy, activeGroupTab);
-  const selectedItem = useSelectedItem(itemId);
-
-  const listRef = useRef<HTMLDivElement>(null)
-  useStaggeredAnimation(listRef, [data], { mode: 'incremental', scale: 1, y: 30, stagger: 0.08, duration: 0.5 });
-
-  const items = Array.isArray(data) ? data : [];
-  if (items.length === 0) {
-    return <EmptyState />
-  }
-
-  return (
-    <div ref={listRef} className="space-y-4">
-      {items.map((item: DataItem) => {
-        const isSelected = selectedItem?.id === item.id
-        
-        return (
-          <div
-            key={item.id}
-            onClick={() => onItemSelect(item)}
-            className={cn(
-              "group relative overflow-hidden rounded-2xl border bg-card/50 backdrop-blur-sm transition-all duration-300 cursor-pointer",
-              "hover:bg-card/80 hover:shadow-lg hover:shadow-primary/5 hover:border-primary/20",
-              "active:scale-[0.99]",
-              isSelected && "ring-2 ring-primary/20 border-primary/30 bg-card/90"
-            )}
-          >
-            <div className="p-6">
-              <div className="flex items-start gap-4">
-                {/* Thumbnail */}
-                <div className="flex-shrink-0">
-                  <div className="w-14 h-14 bg-gradient-to-br from-primary/20 to-primary/10 rounded-xl flex items-center justify-center text-2xl">
-                    {item.thumbnail}
-                  </div>
-                </div>
-
-                {/* Content */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-lg mb-1 group-hover:text-primary transition-colors">
-                        {item.title}
-                      </h3>
-                      <p className="text-muted-foreground text-sm mb-3 line-clamp-2">
-                        {item.description}
-                      </p>
-                    </div>
-                    <ArrowRight className="w-5 h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all duration-300 ml-4 flex-shrink-0" />
-                  </div>
-
-                  {/* Badges */}
-                  <div className="flex items-center gap-2 mb-4">
-                    <ItemStatusBadge status={item.status} />
-                    <ItemPriorityBadge priority={item.priority} />
-                    <Badge variant="outline" className="bg-accent/50">
-                      {item.category}
-                    </Badge>
-                  </div>
-
-                  {/* Meta info */}
-                  <div className="flex items-center justify-between text-muted-foreground">
-                    <div className="flex items-center gap-4">
-                      {/* Assignee */}
-                      <AssigneeInfo assignee={item.assignee} avatarClassName="w-7 h-7" />
-                      {/* Date */}
-                      <ItemDateInfo date={item.updatedAt} />
-                    </div>
-
-                    {/* Metrics */}
-                    <ItemMetrics metrics={item.metrics} />
-                  </div>
-
-                  {/* Progress bar */}
-                  <div className="mt-4"><ItemProgressBar completion={item.metrics.completion} /></div>
-                </div>
-              </div>
-            </div>
-
-            {/* Hover gradient overlay */}
-            <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
-          </div>
-        )
-      })}
-    </div>
-  )
-}
-```
-
-## File: src/pages/DataDemo/components/DataTableView.tsx
-```typescript
-import { useRef, useLayoutEffect, useMemo } from 'react'
-import { gsap } from 'gsap'
-import { cn } from '@/lib/utils'
-import { 
-  ArrowUpDown, 
-  ArrowUp, 
-  ArrowDown,
-  ExternalLink
-} from 'lucide-react'
-import type { DataItem, SortableField } from '../types'
-import { EmptyState } from './EmptyState'
-import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
-import {
-  useDataToRender,
-  useSelectedItem,
-} from '../store/dataDemo.store'
-import { capitalize } from '@/lib/utils'
-import {
-  AssigneeInfo,
-  ItemMetrics,
-  ItemStatusBadge,
-  ItemPriorityBadge,
-  ItemDateInfo,
-  ItemProgressBar,
-} from './shared/DataItemParts'
-
-export function DataTableView() {
-  const {
-    sortConfig,
-    setTableSort,
-    groupBy,
-    activeGroupTab,
-    onItemSelect,
-    itemId,
-  } = useAppViewManager();
-  const data = useDataToRender(groupBy, activeGroupTab);
-  const selectedItem = useSelectedItem(itemId);
-
-  const tableRef = useRef<HTMLTableElement>(null)
-  const animatedItemsCount = useRef(0)
-
-  useLayoutEffect(() => {
-    if (tableRef.current) {
-      // Only select item rows for animation, not group headers
-      const newItems = Array.from( 
-        tableRef.current.querySelectorAll('tbody tr')
-      ).filter(tr => !(tr as HTMLElement).dataset.groupHeader)
-       .slice(animatedItemsCount.current);
-      gsap.fromTo(newItems,
-        { y: 20, opacity: 0 },
-        {
-          duration: 0.5,
-          y: 0,
-          opacity: 1,
-          stagger: 0.05,
-          ease: "power2.out",
-        },
-      );
-      animatedItemsCount.current = data.length;
-    }
-  }, [data]);
-
-  const SortIcon = ({ field }: { field: SortableField }) => {
-    if (sortConfig?.key !== field) {
-      return <ArrowUpDown className="w-4 h-4 opacity-50" />
-    }
-    if (sortConfig.direction === 'asc') {
-      return <ArrowUp className="w-4 h-4 text-primary" />
-    }
-    if (sortConfig.direction === 'desc') {
-      return <ArrowDown className="w-4 h-4 text-primary" />
-    }
-    return <ArrowUpDown className="w-4 h-4 opacity-50" />
-  }
-
-  const handleSortClick = (field: SortableField) => {
-    setTableSort(field)
-  }
-
-  const groupedData = useMemo(() => {
-    if (groupBy === 'none') return null;
-    return (data as DataItem[]).reduce((acc, item) => {
-      const groupKey = item[groupBy as 'status' | 'priority' | 'category'] || 'N/A';
-      if (!acc[groupKey]) {
-        acc[groupKey] = [];
-      }
-      acc[groupKey].push(item);
-      return acc;
-    }, {} as Record<string, DataItem[]>);
-  }, [data, groupBy]);
-
-  if (data.length === 0) {
-    return <EmptyState />
-  }
-
-  return (
-    <div className="relative overflow-hidden rounded-2xl border bg-card/50 backdrop-blur-sm">
-      <div className="overflow-x-auto">
-        <table ref={tableRef} className="w-full">
-          <thead>
-            <tr className="border-b border-border/50 bg-muted/20">
-              <th className="text-left p-4 font-semibold text-sm">
-                <button
-                  onClick={() => handleSortClick('title')}
-                  className="flex items-center gap-2 hover:text-primary transition-colors"
-                >
-                  Project
-                  <SortIcon field="title" />
-                </button>
-              </th>
-              <th className="text-left p-4 font-semibold text-sm">
-                <button
-                  onClick={() => handleSortClick('status')}
-                  className="flex items-center gap-2 hover:text-primary transition-colors"
-                >
-                  Status
-                  <SortIcon field="status" />
-                </button>
-              </th>
-              <th className="text-left p-4 font-semibold text-sm">
-                <button
-                  onClick={() => handleSortClick('priority')}
-                  className="flex items-center gap-2 hover:text-primary transition-colors"
-                >
-                  Priority
-                  <SortIcon field="priority" />
-                </button>
-              </th>
-              <th className="text-left p-4 font-semibold text-sm">
-                <button
-                  onClick={() => handleSortClick('assignee.name')}
-                  className="flex items-center gap-2 hover:text-primary transition-colors"
-                >
-                  Assignee
-                  <SortIcon field="assignee.name" />
-                </button>
-              </th>
-              <th className="text-left p-4 font-semibold text-sm">
-                <button
-                  onClick={() => handleSortClick('metrics.completion')}
-                  className="flex items-center gap-2 hover:text-primary transition-colors"
-                >
-                  Progress
-                  <SortIcon field="metrics.completion" />
-                </button>
-              </th>
-              <th className="text-left p-4 font-semibold text-sm">
-                <button
-                  onClick={() => handleSortClick('metrics.views')}
-                  className="flex items-center gap-2 hover:text-primary transition-colors"
-                >
-                  Engagement
-                  <SortIcon field="metrics.views" />
-                </button>
-              </th>
-              <th className="text-left p-4 font-semibold text-sm">Last Updated</th>
-              <th className="text-center p-4 font-semibold text-sm w-16">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {groupedData
-              ? Object.entries(groupedData).flatMap(([groupName, items]) => [
-                  <tr key={groupName} data-group-header="true" className="sticky top-0 z-10">
-                    <td colSpan={8} className="p-2 bg-muted/50 backdrop-blur-sm">
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-semibold text-sm">{capitalize(groupName)}</h3>
-                        <span className="text-xs px-2 py-0.5 bg-background rounded-full font-medium">{items.length}</span>
-                      </div>
-                    </td>
-                  </tr>,
-                  ...items.map(item => <TableRow key={item.id} item={item} isSelected={selectedItem?.id === item.id} onItemSelect={onItemSelect} />)
-                ])
-              : data.map(item => <TableRow key={item.id} item={item} isSelected={selectedItem?.id === item.id} onItemSelect={onItemSelect} />)
-            }
-          </tbody>
-        </table>
-      </div>
-    </div>
-  )
+interface PageLayoutProps extends React.HTMLAttributes<HTMLDivElement> {
+  children: React.ReactNode;
+  scrollRef?: React.RefObject<HTMLDivElement>;
 }
 
-function TableRow({ item, isSelected, onItemSelect }: { item: DataItem; isSelected: boolean; onItemSelect: (item: DataItem) => void }) {
-  return (
-    <tr
-      onClick={() => onItemSelect(item)}
-      className={cn(
-        "group border-b border-border/30 transition-all duration-200 cursor-pointer",
-        "hover:bg-accent/20 hover:border-primary/20",
-        isSelected && "bg-primary/5 border-primary/30"
-      )}
-    >
-      {/* Project Column */}
-      <td className="p-4">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-gradient-to-br from-primary/20 to-primary/10 rounded-lg flex items-center justify-center text-lg flex-shrink-0">
-            {item.thumbnail}
-          </div>
-          <div className="min-w-0 flex-1">
-            <h4 className="font-medium group-hover:text-primary transition-colors truncate">
-              {item.title}
-            </h4>
-            <p className="text-sm text-muted-foreground truncate">
-              {item.category}
-            </p>
-          </div>
-        </div>
-      </td>
+export const PageLayout = React.forwardRef<HTMLDivElement, PageLayoutProps>(
+  ({ children, onScroll, scrollRef, className, ...props }, ref) => {
+    const isTopBarVisible = useAppShellStore(s => s.isTopBarVisible);
+    const bodyState = useAppShellStore(s => s.bodyState);
+    const isFullscreen = bodyState === 'fullscreen';
+    const isInSidePane = bodyState === BODY_STATES.SIDE_PANE;
 
-      {/* Status Column */}
-      <td className="p-4">
-        <ItemStatusBadge status={item.status} />
-      </td>
-
-      {/* Priority Column */}
-      <td className="p-4">
-        <ItemPriorityBadge priority={item.priority} />
-      </td>
-
-      {/* Assignee Column */}
-      <td className="p-4">
-        <AssigneeInfo assignee={item.assignee} />
-      </td>
-
-      {/* Progress Column */}
-      {/* Note: This progress bar is custom for the table, so we don't use the shared component here. */}
-      <td className="p-4">
-        <ItemProgressBar completion={item.metrics.completion} showPercentage />
-      </td>
-
-      {/* Engagement Column */}
-      <td className="p-4">
-        <ItemMetrics metrics={item.metrics} />
-      </td>
-
-      {/* Date Column */}
-      <td className="p-4">
-        <ItemDateInfo date={item.updatedAt} />
-      </td>
-
-      {/* Actions Column */}
-      <td className="p-4">
-        <button 
-          onClick={(e) => {
-            e.stopPropagation()
-            onItemSelect(item)
-          }}
-          className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-accent transition-colors"
-          title="View details"
+    return (
+      <div
+        ref={scrollRef}
+        className={cn("h-full overflow-y-auto", className)}
+        onScroll={onScroll}
+      >
+        <div ref={ref} className={cn(
+          "space-y-8 transition-all duration-300",
+          !isInSidePane ? "px-6 lg:px-12 pb-6" : "px-6 pb-6",
+          isTopBarVisible && !isFullscreen ? "pt-24" : "pt-6"
+        )}
+        {...props}
         >
-          <ExternalLink className="w-4 h-4" />
-        </button>
-      </td>
-    </tr>
-  )
+          {children}
+        </div>
+      </div>
+    );
+  }
+);
+
+PageLayout.displayName = 'PageLayout';
+```
+
+## File: src/hooks/useAutoAnimateTopBar.ts
+```typescript
+import { useRef, useCallback, useEffect } from 'react';
+import { useAppShellStore } from '@/store/appShell.store';
+import { BODY_STATES } from '@/lib/utils';
+
+export function useAutoAnimateTopBar(isPane = false) {
+  const bodyState = useAppShellStore(s => s.bodyState);
+  const lastScrollTop = useRef(0);
+  const scrollTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const onScroll = useCallback((event: React.UIEvent<HTMLDivElement>) => {
+    if (isPane || bodyState === BODY_STATES.SPLIT_VIEW || bodyState === BODY_STATES.FULLSCREEN) return;
+
+    // Clear previous timeout
+    if (scrollTimeout.current) {
+      clearTimeout(scrollTimeout.current);
+    }
+
+    const { scrollTop } = event.currentTarget;
+    const { setTopBarVisible } = useAppShellStore.getState();
+    
+    if (scrollTop > lastScrollTop.current && scrollTop > 200) {
+      setTopBarVisible(false);
+    } else if (scrollTop < lastScrollTop.current || scrollTop <= 0) {
+      setTopBarVisible(true);
+    }
+    
+    lastScrollTop.current = scrollTop <= 0 ? 0 : scrollTop;
+
+    // Set new timeout to show top bar when scrolling stops
+    scrollTimeout.current = setTimeout(() => {
+      // Don't hide, just ensure it's visible after scrolling stops
+      // and we are not at the top of the page.
+      if (scrollTop > 0) {
+        setTopBarVisible(true);
+      }
+    }, 250); // Adjust timeout as needed
+  }, [isPane, bodyState]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (scrollTimeout.current) {
+        clearTimeout(scrollTimeout.current);
+      }
+    };
+  }, []);
+
+  return { onScroll };
 }
+```
+
+## File: src/components/layout/MainContent.tsx
+```typescript
+import { forwardRef } from 'react'
+import { X } from 'lucide-react'
+import { cn } from '@/lib/utils';
+import { BODY_STATES } from '@/lib/utils'
+import { useAppShellStore } from '@/store/appShell.store'
+
+interface MainContentProps {
+  children?: React.ReactNode;
+}
+
+export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
+  ({ children }, ref) => {
+    const bodyState = useAppShellStore(s => s.bodyState);
+    const fullscreenTarget = useAppShellStore(s => s.fullscreenTarget);
+    const { toggleFullscreen } = useAppShellStore.getState();
+    const isFullscreen = bodyState === BODY_STATES.FULLSCREEN;
+
+    if (isFullscreen && fullscreenTarget === 'right') {
+      return null;
+    }
+
+    return (
+      <div
+        ref={ref}
+        className={cn(
+        "flex flex-col h-full overflow-hidden bg-background",
+        isFullscreen && "fixed inset-0 z-[60]"
+        )}
+      >
+        {isFullscreen && (
+          <button
+            onClick={() => toggleFullscreen()}
+            className="fixed top-6 right-6 lg:right-12 z-[100] h-12 w-12 flex items-center justify-center rounded-full bg-card/50 backdrop-blur-sm hover:bg-card/75 transition-colors group"
+            title="Exit Fullscreen"
+          >
+            <X className="w-6 h-6 group-hover:scale-110 group-hover:rotate-90 transition-all duration-300" />
+          </button>
+        )}
+
+        <div className="flex-1 min-h-0 flex flex-col">
+          {children}
+        </div>
+      </div>
+    )
+  }
+)
+MainContent.displayName = 'MainContent'
 ```
 
 ## File: src/pages/Dashboard/index.tsx
@@ -1279,236 +483,6 @@ export function DashboardContent() {
       </PageLayout>
     )
 }
-```
-
-## File: src/pages/DataDemo/components/DataCardView.tsx
-```typescript
-import { useRef } from 'react'
-import { cn } from '@/lib/utils'
-import { Badge } from '@/components/ui/badge'
-import { ArrowUpRight } from 'lucide-react'
-import type { DataItem } from '../types'
-import { useStaggeredAnimation } from '@/hooks/useStaggeredAnimation.motion.hook'
-import { EmptyState } from './EmptyState'
-import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
-import {
-  useDataToRender,
-  useSelectedItem,
-} from '../store/dataDemo.store'
-import {
-  AssigneeInfo,
-  ItemMetrics,
-  ItemProgressBar,
-  ItemStatusBadge,
-  ItemTags,
-  ItemDateInfo,
-} from './shared/DataItemParts'
-
-export function DataCardView({ isGrid = false }: { isGrid?: boolean }) {
-  const { groupBy, activeGroupTab, onItemSelect, itemId } = useAppViewManager();
-  const data = useDataToRender(groupBy, activeGroupTab);
-  const selectedItem = useSelectedItem(itemId);
-
-  const containerRef = useRef<HTMLDivElement>(null)
-  useStaggeredAnimation(containerRef, [data], { mode: 'incremental', y: 40 });
-
-  const items = Array.isArray(data) ? data : [];
-  if (items.length === 0) {
-    return <EmptyState />
-  }
-
-  return (
-    <div 
-      ref={containerRef}
-      className={cn(
-        "gap-6",
-        isGrid
-          ? "grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))]"
-          : "grid grid-cols-[repeat(auto-fit,minmax(320px,1fr))]"
-      )}
-    >
-      {items.map((item: DataItem) => {
-        const isSelected = selectedItem?.id === item.id
-        
-        return (
-          <div
-            key={item.id}
-            onClick={() => onItemSelect(item)}
-            className={cn(
-              "group relative overflow-hidden rounded-3xl border bg-card/50 backdrop-blur-sm transition-all duration-500 cursor-pointer",
-              "hover:bg-card/80 hover:shadow-xl hover:shadow-primary/10 hover:border-primary/30 hover:-translate-y-2",
-              "active:scale-[0.98]",
-              isSelected && "ring-2 ring-primary/30 border-primary/40 bg-card/90 shadow-lg shadow-primary/20",
-            )}
-          >
-            {/* Card Header with Thumbnail */}
-            <div className="relative p-6 pb-4">
-              <div className="flex items-start justify-between mb-4">
-                <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-primary/10 rounded-2xl flex items-center justify-center text-3xl group-hover:scale-110 transition-transform duration-300">
-                  {item.thumbnail}
-                </div>
-                <ArrowUpRight className="w-5 h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 group-hover:-translate-y-1 transition-all duration-300" />
-              </div>
-
-              {/* Priority indicator */}
-              <div className="absolute top-4 right-4">
-                <div className={cn(
-                  "w-3 h-3 rounded-full",
-                  item.priority === 'critical' && "bg-red-500",
-                  item.priority === 'high' && "bg-orange-500",
-                  item.priority === 'medium' && "bg-blue-500",
-                  item.priority === 'low' && "bg-green-500"
-                )} />
-              </div>
-            </div>
-
-            {/* Card Content */}
-            <div className="px-6 pb-6">
-              {/* Title and Description */}
-              <h3 className="font-semibold text-lg mb-2 group-hover:text-primary transition-colors line-clamp-2">
-                {item.title}
-              </h3>
-              <p className="text-muted-foreground text-sm mb-4 line-clamp-3">
-                {item.description}
-              </p>
-
-              {/* Status and Category */}
-              <div className="flex items-center gap-2 mb-4">
-                <ItemStatusBadge status={item.status} />
-                <Badge variant="outline" className="bg-accent/50 text-xs">
-                  {item.category}
-                </Badge>
-              </div>
-
-              {/* Tags */}
-              <div className="mb-4"><ItemTags tags={item.tags} /></div>
-
-              {/* Progress */}
-              <div className="mb-4"><ItemProgressBar completion={item.metrics.completion} /></div>
-
-              {/* Assignee */}
-              <div className="mb-4"><AssigneeInfo assignee={item.assignee} /></div>
-
-              {/* Metrics */}
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <ItemMetrics metrics={item.metrics} />
-                <ItemDateInfo date={item.updatedAt} />
-              </div>
-            </div>
-
-            {/* Hover gradient overlay */}
-            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
-            
-            {/* Selection indicator */}
-            {isSelected && (
-              <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-primary/5 pointer-events-none" />
-            )}
-          </div>
-        )
-      })}
-    </div>
-  )
-}
-```
-
-## File: src/components/layout/TopBar.tsx
-```typescript
-import React from 'react';
-import {
-  Moon, 
-  Sun,
-  Settings,
-  Command,
-  Zap,
-} from 'lucide-react'
-import { cn } from '@/lib/utils'
-import { BODY_STATES } from '@/lib/utils'
-import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
-import { UserDropdown } from './UserDropdown'
-import { ViewModeSwitcher } from './ViewModeSwitcher'
-import { useAppShellStore } from '@/store/appShell.store'
-
-interface TopBarProps {
-  breadcrumbs?: React.ReactNode
-  pageControls?: React.ReactNode
-}
-
-export const TopBar = React.memo(({
-  breadcrumbs,
-  pageControls,
-}: TopBarProps) => {
-  const bodyState = useAppShellStore(s => s.bodyState)
-  const isDarkMode = useAppShellStore(s => s.isDarkMode);
-  const { 
-    setCommandPaletteOpen,
-    toggleDarkMode,
-  } = useAppShellStore.getState();
-  const viewManager = useAppViewManager();
-
-  return (
-    <div className={cn(
-      "h-20 bg-background border-b border-border flex items-center justify-between px-6 z-50 gap-4"
-    )}>
-      {/* Left Section - Sidebar Controls & Breadcrumbs */}
-      <div className="flex items-center gap-4">
-        {breadcrumbs}
-      </div>
-
-      {/* Right Section - page controls, and global controls */}
-      <div className="flex items-center gap-3">
-        {pageControls}
-
-        {/* Separator */}
-        <div className="w-px h-6 bg-border mx-2" />
-
-        {/* Quick Actions */}
-        <div className="flex items-center gap-3">
-
-          <button
-            onClick={() => setCommandPaletteOpen(true)}
-            className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
-            title="Command Palette (Ctrl+K)"
-          >
-            <Command className="w-5 h-5 group-hover:scale-110 transition-transform" />
-          </button>
-
-        <button
-          className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
-          title="Quick Actions"
-        >
-          <Zap className="w-5 h-5 group-hover:scale-110 transition-transform" />
-        </button>
-
-        {bodyState !== BODY_STATES.SPLIT_VIEW && <ViewModeSwitcher />}
-
-        <div className="w-px h-6 bg-border mx-2" />
-
-        {/* Theme and Settings */}
-        <button
-          onClick={toggleDarkMode}
-          className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
-          title="Toggle Dark Mode"
-        >
-          {isDarkMode ? (
-            <Sun className="w-5 h-5 group-hover:scale-110 transition-transform" />
-          ) : (
-            <Moon className="w-5 h-5 group-hover:scale-110 transition-transform" />
-          )}
-        </button>
-
-        <button
-          onClick={() => viewManager.toggleSidePane('settings')}
-          className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
-          title="Settings"
-        >
-          <Settings className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
-        </button>
-        <UserDropdown />
-        </div>
-      </div>
-    </div>
-  )
-});
 ```
 
 ## File: src/pages/DataDemo/index.tsx
@@ -1873,7 +847,7 @@ export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalet
 
   // Custom hooks for logic
   useResizableSidebar(sidebarRef, resizeHandleRef);
-  useResizableRightPane();
+  useResizableRightPane(rightPaneRef);
   useSidebarAnimations(sidebarRef, resizeHandleRef);
   useBodyStateAnimations(appRef, mainContentRef, rightPaneRef, topBarContainerRef, mainAreaRef);
   
@@ -2101,256 +1075,4 @@ export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalet
     </div>
   )
 }
-```
-
-## File: src/App.tsx
-```typescript
-import React, { useEffect } from "react";
-import {
-  createBrowserRouter,
-  RouterProvider,
-  Outlet,
-  Navigate,
-  useNavigate, // used in LoginPageWrapper
-  useLocation,
-} from "react-router-dom";
-
-import { AppShell } from "./components/layout/AppShell";
-import { AppShellProvider } from "./providers/AppShellProvider";
-import { useAppShellStore } from "./store/appShell.store";
-import { useAuthStore } from "./store/authStore";
-import "./index.css";
-
-// Import library components
-import { EnhancedSidebar } from "./components/layout/EnhancedSidebar";
-import { MainContent } from "./components/layout/MainContent";
-import { RightPane } from "./components/layout/RightPane";
-import { TopBar } from "./components/layout/TopBar";
-import { CommandPalette } from "./components/global/CommandPalette";
-import { ToasterProvider } from "./components/ui/toast";
-import { Input } from "./components/ui/input";
-import { Button } from "./components/ui/button";
-
-// --- Page/Content Components for Pages and Panes ---
-import { DashboardContent } from "./pages/Dashboard";
-import { SettingsPage } from "./pages/Settings";
-import { ToasterDemo } from "./pages/ToasterDemo";
-import { NotificationsPage } from "./pages/Notifications";
-import DataDemoPage from "./pages/DataDemo";
-import MessagingPage from "./pages/Messaging";
-import { LoginPage } from "./components/auth/LoginPage";
-
-// --- Icons ---
-import {
-  Search,
-  Filter,
-  Plus,
-  ChevronRight,
-  Rocket,
-} from "lucide-react";
-
-// --- Utils & Hooks ---
-import { cn } from "./lib/utils";
-import { useAppViewManager } from "./hooks/useAppViewManager.hook";
-import { useRightPaneContent } from "./hooks/useRightPaneContent.hook";
-import { BODY_STATES } from "./lib/utils";
-
-// Checks for authentication and redirects to login if needed
-function ProtectedRoute() {
-  const { isAuthenticated } = useAuthStore();
-  const location = useLocation();
-  if (!isAuthenticated) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
-  }
-  return <Outlet />;
-}
-
-// A root component to apply global styles and effects
-function Root() {
-  const isDarkMode = useAppShellStore((state) => state.isDarkMode);
-
-  useEffect(() => {
-    document.documentElement.classList.toggle("dark", isDarkMode);
-  }, [isDarkMode]);
-
-  return <Outlet />;
-}
-
-// The main layout for authenticated parts of the application
-function ProtectedLayout() {
-
-  return (
-    <div className="h-screen w-screen overflow-hidden bg-background">
-      <AppShellProvider
-        appName="Jeli App"
-        appLogo={
-          <div className="p-2 bg-primary/20 rounded-lg">
-            <Rocket className="w-5 h-5 text-primary" />
-          </div>
-        }
-      >
-        <ComposedApp />
-      </AppShellProvider>
-    </div>
-  );
-}
-
-// Breadcrumbs for the Top Bar
-function AppBreadcrumbs() {
-  const { currentActivePage } = useAppViewManager();
-  const activePageName = currentActivePage.replace('-', ' ');
-
-  return (
-    <div className="hidden md:flex items-center gap-2 text-sm">
-      <a
-        href="#"
-        className="text-muted-foreground hover:text-foreground transition-colors"
-      >
-        Home
-      </a>
-      <ChevronRight className="w-4 h-4 text-muted-foreground" />
-      <span className="font-medium text-foreground capitalize">
-        {activePageName}
-      </span>
-    </div>
-  );
-}
-
-// Page-specific controls for the Top Bar
-function TopBarPageControls() {
-  const { currentActivePage, filters, setFilters } = useAppViewManager();
-  const [searchTerm, setSearchTerm] = React.useState('');
-  const [isSearchFocused, setIsSearchFocused] = React.useState(false);
-
-  if (currentActivePage === 'dashboard') {
-    return (
-      <div className="flex items-center gap-2 flex-1 justify-end">
-        <div
-          className={cn(
-            "relative transition-all duration-300 ease-in-out",
-            isSearchFocused ? "flex-1 max-w-lg" : "w-auto",
-          )}
-        >
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4 pointer-events-none" />
-          <input
-            type="text"
-            placeholder="Search dashboard..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            onFocus={() => setIsSearchFocused(true)}
-            onBlur={() => setIsSearchFocused(false)}
-            className="pl-9 pr-4 py-2 h-10 border-none rounded-lg bg-card focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300 ease-in-out w-full"
-          />
-        </div>
-        <Button variant="ghost" size="icon" className="flex-shrink-0">
-          <Filter className="w-5 h-5" />
-        </Button>
-        <Button className="flex-shrink-0">
-          <Plus className="w-5 h-5 mr-0 sm:mr-2" />
-          <span className={cn(isSearchFocused ? "hidden sm:inline" : "inline")}>
-            New Project
-          </span>
-        </Button>
-      </div>
-    );
-  }
-
-  if (currentActivePage === 'data-demo') {
-    return (
-      <div className="flex items-center gap-2">
-        <div className="relative w-64">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
-          <Input
-            placeholder="Search items..."
-            className="pl-9 bg-card border-none"
-            value={filters.searchTerm}
-            onChange={(e) => setFilters({ ...filters, searchTerm: e.target.value })}
-          />
-        </div>
-        <Button variant="outline">
-          <Filter className="w-4 h-4 mr-2" />
-          Filter
-        </Button>
-        <Button>
-          <Plus className="w-4 h-4 mr-2" />
-          New Item
-        </Button>
-      </div>
-    );
-  }
-
-  return null;
-}
-
-// The main App component that composes the shell
-function ComposedApp() {
-  const { setBodyState, setSidePaneContent } = useAppShellStore();
-  const viewManager = useAppViewManager();
-
-  // Sync URL state with AppShellStore
-  useEffect(() => {
-    setBodyState(viewManager.bodyState);
-    setSidePaneContent(viewManager.sidePaneContent);
-  }, [viewManager.bodyState, viewManager.sidePaneContent, setBodyState, setSidePaneContent]);
-
-  return (
-    <AppShell
-      sidebar={<EnhancedSidebar />}
-      onOverlayClick={viewManager.closeSidePane}
-      topBar={
-        <TopBar breadcrumbs={<AppBreadcrumbs />} pageControls={<TopBarPageControls />} />
-      }
-      mainContent={
-        <MainContent>
-          <Outlet />
-        </MainContent>
-      }
-      rightPane={<RightPane />}
-      commandPalette={<CommandPalette />}
-    />
-  );
-}
-
-function App() {
-  const router = createBrowserRouter([
-    {
-      element: <Root />,
-      children: [
-        {
-          path: "/login",
-          element: <LoginPage />,
-        },
-        {
-          path: "/",
-          element: <ProtectedRoute />,
-          children: [
-            {
-              path: "/",
-              element: <ProtectedLayout />,
-              children: [
-                { index: true, element: <Navigate to="/dashboard" replace /> },
-                { path: "dashboard", element: <DashboardContent /> },
-                { path: "settings", element: <SettingsPage /> },
-                { path: "toaster", element: <ToasterDemo /> },
-                { path: "notifications", element: <NotificationsPage /> },
-                { path: "data-demo", element: <DataDemoPage /> },
-                { path: "data-demo/:itemId", element: <DataDemoPage /> },
-                { path: "messaging", element: <MessagingPage /> },
-                { path: "messaging/:conversationId", element: <MessagingPage /> },
-              ],
-            },
-          ],
-        },
-      ],
-    },
-  ]);
-
-  return (
-    <ToasterProvider>
-      <RouterProvider router={router} />
-    </ToasterProvider>
-  );
-}
-
-export default App;
 ```

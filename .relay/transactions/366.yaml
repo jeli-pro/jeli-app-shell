@@ -1,0 +1,243 @@
+uuid: b8596660-f8ca-43ca-a39c-512968132644
+projectId: jeli-app-shell
+createdAt: '2025-10-16T13:41:03.176Z'
+gitCommitMsg: >-
+  fix(AppShell): eliminate side pane animation flicker during resize
+
+  Implemented a workaround to prevent the side pane's entry/exit animation from
+  triggering at the start and end of a resize operation.
+
+  The `useResizableRightPane` hook now temporarily sets the global
+  `reducedMotion` state to `true` for the duration of the resize gesture. This
+  effectively disables the faulty animation. The user's original `reducedMotion`
+  preference is restored via a `setTimeout` immediately after the resize
+  completes, ensuring the pane renders at its final width without the visual
+  flicker.
+promptSummary: >-
+  The user is still seeing an erratic "reveal/hide" animation on the side pane
+  before and after resizing it.
+reasoning:
+  - >-
+    I understand. It seems my previous fix addressed the continuous re-rendering
+    *during* the resize but didn't solve the visual jump that happens at the
+    very beginning and end of the resizing action. This "reveal/hide" movement
+    indicates that the pane's entry/exit animation is being incorrectly
+    re-triggered.
+  - >-
+    This is likely happening because the animation logic (in a hook I cannot
+    see, `useBodyStateAnimations`) re-runs its "enter" animation whenever the
+    pane's width changes in the state, even if the pane is already visible.
+  - >-
+    To fix this without modifying the animation hook itself, I will implement a
+    robust workaround inside `useResizablePanes.hook.ts`. The plan is to
+    temporarily disable animations globally during the entire resize lifecycle.
+    This will prevent the faulty animation from running at the start and end of
+    the interaction.
+  - 'Here is the step-by-step plan:'
+  - 1.  **Modify `useResizableRightPane.hook.ts`:**
+  - '*   I will add a `useEffect` that watches the `isResizingRightPane` state.'
+  - '*   When resizing **starts**, I will:'
+  - 1.  Store the user's current `reducedMotion` preference in a `ref`.
+  - >-
+    2.  Immediately set the global `reducedMotion` state to `true`, effectively
+    disabling animations across the app.
+  - '*   When resizing **ends**, I will:'
+  - >-
+    1.  Commit the final pane width to the store, as before. This will happen
+    while animations are still disabled, so the pane will just snap to its new
+    size without animating.
+  - >-
+    2.  Use a `setTimeout` with a zero-millisecond delay to restore the user's
+    original `reducedMotion` preference. This ensures the restoration happens in
+    a separate task, *after* React has finished rendering the pane at its new,
+    final width.
+  - >-
+    This approach ensures that the problematic animation is never triggered by
+    the resize action, eliminating the "before" and "after" visual jumps and
+    resulting in a smooth, predictable resizing experience.
+  - 'Here is the required change to `src/hooks/useResizablePanes.hook.ts`:'
+operations:
+  - type: write
+    path: src/hooks/useResizablePanes.hook.ts
+    content: >
+      --- src/hooks/useResizablePanes.hook.ts
+
+      +++ src/hooks/useResizablePanes.hook.ts
+
+      @@ -42,7 +42,27 @@
+         rightPaneRef: React.RefObject<HTMLDivElement>
+       ) {
+         const isResizingRightPane = useAppShellStore(s => s.isResizingRightPane);
+         const bodyState = useAppShellStore(s => s.bodyState);
+      -  const { setSplitPaneWidth, setSidePaneWidth, setIsResizingRightPane } =
+      useAppShellStore.getState();
+
+      +  const { setSplitPaneWidth, setSidePaneWidth, setIsResizingRightPane,
+      setReducedMotion } = useAppShellStore.getState();
+         const finalWidthRef = useRef<number | null>(null);
+      +  const originalReducedMotionRef = useRef<boolean | null>(null);
+
+      +
+
+      +  // This effect temporarily disables animations during resizing to
+      prevent the
+
+      +  // pane's enter/exit animation from firing incorrectly.
+
+      +  useEffect(() => {
+
+      +    if (isResizingRightPane) {
+
+      +      // When resizing starts, store the original setting and disable
+      animations.
+
+      +      if (originalReducedMotionRef.current === null) {
+
+      +        originalReducedMotionRef.current =
+      useAppShellStore.getState().reducedMotion;
+
+      +        setReducedMotion(true);
+
+      +      }
+
+      +    } else {
+
+      +      // When resizing ends, restore the original setting after a brief
+      delay.
+
+      +      // This ensures the final width is rendered before animations are
+      re-enabled.
+
+      +      if (originalReducedMotionRef.current !== null) {
+
+      +        setTimeout(() => {
+
+      +          setReducedMotion(originalReducedMotionRef.current!);
+
+      +          originalReducedMotionRef.current = null;
+
+      +        }, 0);
+
+      +      }
+
+      +    }
+
+      +  }, [isResizingRightPane, setReducedMotion]);
+       
+         useEffect(() => {
+           const handleMouseMove = (e: MouseEvent) => {
+      @@ -79,5 +99,5 @@
+             document.removeEventListener('mousemove', handleMouseMove);
+             document.removeEventListener('mouseup', handleMouseUp);
+             document.body.style.cursor = '';
+           };
+      -  }, [isResizingRightPane, setSplitPaneWidth, setSidePaneWidth,
+      setIsResizingRightPane, bodyState, rightPaneRef]);
+
+      +  }, [isResizingRightPane, setSplitPaneWidth, setSidePaneWidth,
+      setIsResizingRightPane, bodyState, rightPaneRef]);
+       }
+    patchStrategy: standard-diff
+snapshot:
+  src/hooks/useResizablePanes.hook.ts: |-
+    import { useEffect, useRef } from 'react';
+    import { gsap } from 'gsap';
+    import { useAppShellStore } from '@/store/appShell.store';
+    import { BODY_STATES } from '@/lib/utils';
+
+    export function useResizableSidebar(
+      sidebarRef: React.RefObject<HTMLDivElement>,
+      resizeHandleRef: React.RefObject<HTMLDivElement>
+    ) {
+      const isResizing = useAppShellStore(s => s.isResizing);
+      const { setSidebarWidth, setIsResizing } = useAppShellStore.getState();
+
+      useEffect(() => {
+        const handleMouseMove = (e: MouseEvent) => {
+          if (!isResizing) return;
+
+          const newWidth = Math.max(200, Math.min(500, e.clientX));
+          setSidebarWidth(newWidth);
+
+          if (sidebarRef.current) {
+            gsap.set(sidebarRef.current, { width: newWidth });
+          }
+          if (resizeHandleRef.current) {
+            gsap.set(resizeHandleRef.current, { left: newWidth });
+          }
+        };
+
+        const handleMouseUp = () => {
+          setIsResizing(false);
+          document.body.style.cursor = '';
+          document.body.style.userSelect = '';
+        };
+
+        if (isResizing) {
+          document.body.style.cursor = 'col-resize';
+          document.body.style.userSelect = 'none';
+          document.addEventListener('mousemove', handleMouseMove);
+          document.addEventListener('mouseup', handleMouseUp);
+        }
+
+        return () => {
+          document.removeEventListener('mousemove', handleMouseMove);
+          document.removeEventListener('mouseup', handleMouseUp);
+        };
+      }, [isResizing, setSidebarWidth, setIsResizing, sidebarRef, resizeHandleRef]);
+    }
+
+    export function useResizableRightPane(
+      rightPaneRef: React.RefObject<HTMLDivElement>
+    ) {
+      const isResizingRightPane = useAppShellStore(s => s.isResizingRightPane);
+      const bodyState = useAppShellStore(s => s.bodyState);
+      const { setSplitPaneWidth, setSidePaneWidth, setIsResizingRightPane } = useAppShellStore.getState();
+      const finalWidthRef = useRef<number | null>(null);
+
+      useEffect(() => {
+        const handleMouseMove = (e: MouseEvent) => {
+          if (!isResizingRightPane) return;
+
+          const newWidth = window.innerWidth - e.clientX;
+          finalWidthRef.current = newWidth;
+          if (rightPaneRef.current) {
+            gsap.set(rightPaneRef.current, { width: newWidth });
+          }
+        };
+
+        const handleMouseUp = () => {
+          if (finalWidthRef.current !== null) {
+            if (bodyState === BODY_STATES.SPLIT_VIEW) {
+              setSplitPaneWidth(finalWidthRef.current);
+            } else {
+              setSidePaneWidth(finalWidthRef.current);
+            }
+            finalWidthRef.current = null;
+          }
+          setIsResizingRightPane(false);
+          document.body.style.cursor = '';
+          document.body.style.userSelect = '';
+        };
+
+        if (isResizingRightPane) {
+          document.body.style.cursor = 'col-resize';
+          document.body.style.userSelect = 'none';
+          document.addEventListener('mousemove', handleMouseMove);
+          document.addEventListener('mouseup', handleMouseUp);
+        }
+
+        return () => {
+          document.removeEventListener('mousemove', handleMouseMove);
+          document.removeEventListener('mouseup', handleMouseUp);
+          document.body.style.cursor = '';
+        };
+      }, [isResizingRightPane, setSplitPaneWidth, setSidePaneWidth, setIsResizingRightPane, bodyState, rightPaneRef]);
+    }
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 366

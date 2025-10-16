@@ -99,13 +99,16 @@ export function useBodyStateAnimations(
 
     // Right pane animation
     if (isSidePane) {
-      // SHOW AS OVERLAY: Set width immediately, animate transform for performance.
+      // Ensure correct width and position are set.
       gsap.set(rightPaneRef.current, { width: rightPaneWidth, x: '0%' });
-      gsap.fromTo(rightPaneRef.current, { x: '100%' }, {
-          x: '0%',
-          duration: animationDuration,
-          ease,
-      });
+      // Animate entrance only when changing TO side pane view to prevent re-animation on resize.
+      if (prevBodyState !== BODY_STATES.SIDE_PANE) {
+        gsap.fromTo(rightPaneRef.current, { x: '100%' }, {
+            x: '0%',
+            duration: animationDuration,
+            ease,
+        });
+      }
     } else if (isSplitView) {
         // SHOW AS SPLIT: Set transform immediately, animate width.
         gsap.set(rightPaneRef.current, { x: '0%' });
