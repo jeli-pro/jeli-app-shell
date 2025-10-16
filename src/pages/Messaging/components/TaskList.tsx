@@ -63,7 +63,7 @@ export const TaskList = () => {
 
 
   return (
-    <div className="h-full flex flex-col border-r bg-background/80">
+    <div className="h-full flex flex-col bg-background/80">
       {/* Header */}
       <div className="flex-shrink-0 border-b bg-background/80 p-4 space-y-4">
         <h2 className="text-xl font-bold tracking-tight">Inbox</h2>
