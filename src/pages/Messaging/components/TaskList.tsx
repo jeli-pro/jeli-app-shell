@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Search, SlidersHorizontal, Check, Inbox, Clock, Zap, Shield } from 'lucide-react';
+import { Search, SlidersHorizontal, Check, Inbox, Clock, Zap, Shield, Eye } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 import { useMessagingStore } from '../store/messaging.store';
@@ -97,51 +97,57 @@ export const TaskList = () => {
       {/* Task List */}
       <div className="flex-1 overflow-y-auto">
         <nav className="p-2 space-y-1">
-          {filteredTasks.map(task => (
-            <Link
-              to={`/messaging/${task.id}`}
-              key={task.id}
-              className={cn(
-                "block p-3 rounded-lg text-left transition-all duration-200 hover:bg-accent/50",
-                "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 outline-none",
-                conversationId === task.id && "bg-accent"
-              )}
-            >
-              <div className="flex items-start gap-3">
-                <Avatar className="h-9 w-9 mt-1">
-                  <AvatarImage src={task.contact.avatar} alt={task.contact.name} />
-                  <AvatarFallback>{task.contact.name.charAt(0)}</AvatarFallback>
-                </Avatar>
-                <div className="flex-1 overflow-hidden">
-                    <div className="flex justify-between items-center mb-1">
-                        <p className="text-sm font-semibold truncate pr-2">{task.contact.name}</p>
-                        <p className="text-xs text-muted-foreground whitespace-nowrap">{formatDistanceToNow(new Date(task.lastActivity.timestamp), { addSuffix: true })}</p>
-                    </div>
-                    <p className="text-sm truncate text-foreground">{task.title}</p>
-                    <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
-                        <div className="flex items-center gap-1.5" title={task.status}>
-                            {getStatusIcon(task.status)}
-                            <span className="capitalize">{task.status.replace('-', ' ')}</span>
-                        </div>
-                        <div className="flex items-center gap-1.5" title={task.priority}>
-                            {getPriorityIcon(task.priority)}
-                            <span className="capitalize">{task.priority}</span>
-                        </div>
-                        {task.assignee && (
-                            <div className="flex items-center gap-1.5" title={`Assigned to ${task.assignee.name}`}>
-                                <Avatar className="h-4 w-4"><AvatarImage src={task.assignee.avatar} /></Avatar>
-                            </div>
-                        )}
-                    </div>
-                </div>
-                {task.unreadCount > 0 && (
-                    <div className="flex items-center justify-center self-center ml-auto">
-                        <Badge className="bg-primary h-5 w-5 p-0 flex items-center justify-center">{task.unreadCount}</Badge>
-                    </div>
+          {filteredTasks.map(task => {
+            const currentUserId = 'user-1';
+            const isHandledByOther = task.activeHandlerId && task.activeHandlerId !== currentUserId;
+
+            return (
+              <Link
+                to={`/messaging/${task.id}`}
+                key={task.id}
+                className={cn(
+                  "block p-3 rounded-lg text-left transition-all duration-200 hover:bg-accent/50",
+                  "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 outline-none",
+                  conversationId === task.id && "bg-accent"
                 )}
-              </div>
-            </Link>
-          ))}
+              >
+                <div className="flex items-start gap-3">
+                  <Avatar className="h-9 w-9 mt-1">
+                    <AvatarImage src={task.contact.avatar} alt={task.contact.name} />
+                    <AvatarFallback>{task.contact.name.charAt(0)}</AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 overflow-hidden">
+                      <div className="flex justify-between items-center mb-1">
+                          <p className="text-sm font-semibold truncate pr-2">{task.contact.name}</p>
+                          <p className="text-xs text-muted-foreground whitespace-nowrap">{formatDistanceToNow(new Date(task.lastActivity.timestamp), { addSuffix: true })}</p>
+                      </div>
+                      <p className="text-sm truncate text-foreground">{task.title}</p>
+                      <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+                          <div className="flex items-center gap-1.5" title={task.status}>
+                              {getStatusIcon(task.status)}
+                              <span className="capitalize">{task.status.replace('-', ' ')}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5" title={task.priority}>
+                              {getPriorityIcon(task.priority)}
+                              <span className="capitalize">{task.priority}</span>
+                          </div>
+                          {task.assignee && (
+                              <div className="flex items-center gap-1.5" title={`Assigned to ${task.assignee.name}`}>
+                                  <Avatar className="h-4 w-4"><AvatarImage src={task.assignee.avatar} /></Avatar>
+                              </div>
+                          )}
+                          {isHandledByOther && <Eye className="w-3.5 h-3.5" title="Being handled by another user" />}
+                      </div>
+                  </div>
+                  {task.unreadCount > 0 && (
+                      <div className="flex items-center justify-center self-center ml-auto">
+                          <Badge className="bg-primary h-5 w-5 p-0 flex items-center justify-center">{task.unreadCount}</Badge>
+                      </div>
+                  )}
+                </div>
+              </Link>
+            )
+          })}
         </nav>
       </div>
     </div>

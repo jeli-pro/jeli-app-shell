@@ -1,0 +1,1665 @@
+uuid: b099951b-5e95-46f0-a337-1422ab88a53e
+projectId: jeli-app-shell
+createdAt: '2025-10-16T12:32:43.713Z'
+gitCommitMsg: >-
+  feat(messaging): implement agent lock and takeover UX
+
+  Adds a new feature to the messaging module to show when a conversation is
+  being handled by another agent and provides a mechanism to take over.
+
+  - Extends the `Task` data model with an optional `lockedBy` property to
+    track the active agent (human or AI).
+  - Updates mock data to include examples of locked tasks for testing. - Adds
+  `requestTakeover` and `forceTakeover` actions to the Zustand store,
+    complete with toast notifications for user feedback.
+  - Renders a lock icon on tasks in the `TaskList` for at-a-glance status. -
+  Displays a banner in the `TaskHeader` for locked tasks, showing who is
+    handling it and providing a conditional button to "Request Takeover"
+    from a human or "Take Over" directly from an AI.
+  - Disables the message input form in `TaskDetail` for locked tasks to
+    prevent concurrent editing.
+promptSummary: >-
+  The user wants to implement an agent lock and takeover UX for the messaging
+  feature. This involves updating data models, adding UI indicators to the task
+  list, creating a takeover banner in the task detail view, disabling input on
+  locked tasks, and implementing the state logic with toast notifications for
+  user feedback.
+reasoning:
+  - >-
+    Here are the changes to implement the agent lock and takeover user
+    experience in the messaging module. I've updated the data models, seeded the
+    mock data, added the necessary UI components to both the task list and
+    detail views, and implemented the state management logic with user feedback
+    via toasts.
+  - >-
+    First, I'll update the core data structure to include the concept of a task
+    being "locked".
+  - >-
+    Next, I'll update the mock data to include examples of locked tasks, which
+    is crucial for development and testing of the new UI.
+  - >-
+    Now I'll add the takeover logic to the Zustand store, including toast
+    notifications for user feedback.
+  - >-
+    To provide an at-a-glance status, I'll add a lock icon to items in the
+    `TaskList`.
+  - >-
+    The core of the new UX is in the `TaskHeader`, where I'll display a banner
+    for locked tasks and provide the correct takeover action.
+  - >-
+    Finally, I'll disable the message input form in the `TaskDetail` component
+    when a task is locked to prevent users from taking invalid actions.
+operations:
+  - type: write
+    path: src/pages/Messaging/types.ts
+    content: |+
+      --- src/pages/Messaging/types.ts
+      +++ src/pages/Messaging/types.ts
+      @@ -71,6 +71,12 @@
+         priority: TaskPriority;
+         tags: string[];
+         aiSummary: AISummary;
+      +  lockedBy?: {
+      +    agentId: string;
+      +    agentType: 'human' | 'ai';
+      +    agentName: string;
+      +    agentAvatar: string;
+      +  } | null;
+       }
+       
+       export type TaskView = 'all_open' | 'unassigned' | 'done';
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/Messaging/data/mockData.ts
+    content: |
+      --- src/pages/Messaging/data/mockData.ts
+      +++ src/pages/Messaging/data/mockData.ts
+      @@ -107,6 +107,12 @@
+           priority: 'high',
+           tags: ['onboarding', 'pricing'],
+           aiSummary: { sentiment: 'positive', summaryPoints: ['Expressed strong interest in the new feature.', 'Asked about pricing tiers for enterprise.', 'Is ready for a follow-up call next week.',], suggestedReplies: ['Let\'s schedule that call!', 'Here is the pricing information.', 'Happy to hear you like it!',], },
+      +    lockedBy: {
+      +      agentId: 'user-2',
+      +      agentType: 'human',
+      +      agentName: 'Alex Johnson',
+      +      agentAvatar: 'https://avatar.vercel.sh/alex.png',
+      +    }
+         },
+         {
+           id: 'task-2',
+      @@ -134,6 +140,12 @@
+           priority: 'high',
+           tags: ['urgent', 'tech-support'],
+           aiSummary: { sentiment: 'negative', summaryPoints: ['Frustrated with login issues.', 'Unable to reset password via email link.', 'Threatened to cancel their subscription.',], suggestedReplies: ['I\'m escalating this to our technical team.', 'Let\'s try a manual password reset.', 'We apologize for the inconvenience.',], },
+      +    lockedBy: {
+      +      agentId: 'ai-assistant-1',
+      +      agentType: 'ai',
+      +      agentName: 'Jeli AI Assistant',
+      +      agentAvatar: 'https://avatar.vercel.sh/jeli-ai.png',
+      +    }
+         },
+         {
+           id: 'task-4',
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/Messaging/store/messaging.store.ts
+    content: |+
+      --- src/pages/Messaging/store/messaging.store.ts
+      +++ src/pages/Messaging/store/messaging.store.ts
+      @@ -1,5 +1,6 @@
+       import { create } from 'zustand';
+       import { mockTasks, mockContacts, mockAssignees } from '../data/mockData';
+       import type { Task, Contact, Channel, Assignee, TaskStatus, TaskPriority, TaskView } from '../types';
+      +import { toast } from 'sonner';
+       
+       interface MessagingState {
+         tasks: Task[];
+      @@ -23,6 +24,8 @@
+         updateTask: (taskId: string, updates: Partial<Omit<Task, 'id'>>) => void;
+         getAssigneeById: (assigneeId: string) => Assignee | undefined;
+         getAvailableTags: () => string[];
+      +  requestTakeover: (taskId: string) => void;
+      +  forceTakeover: (taskId: string) => void;
+       }
+       
+       export const useMessagingStore = create<MessagingState & MessagingActions>((set, get) => ({
+      @@ -113,5 +116,28 @@
+           const contactTags = get().contacts.flatMap(c => c.tags);
+           const taskTags = get().tasks.flatMap(t => t.tags);
+           const allTags = new Set([...contactTags, ...taskTags]);
+           return Array.from(allTags);
+      +  },
+      +
+      +  requestTakeover: (taskId: string) => {
+      +    const task = get().tasks.find(t => t.id === taskId);
+      +    if (task?.lockedBy?.agentName) {
+      +      toast.info(`Takeover request sent to ${task.lockedBy.agentName}.`);
+      +    }
+      +  },
+      +
+      +  forceTakeover: (taskId: string) => {
+      +    set(state => ({
+      +      tasks: state.tasks.map(task => {
+      +        if (task.id === taskId) {
+      +          toast.success("You have taken over the conversation.");
+      +          return {
+      +            ...task,
+      +            lockedBy: null
+      +          };
+      +        }
+      +        return task;
+      +      })
+      +    }));
+         }
+       }));
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/Messaging/components/TaskList.tsx
+    content: >+
+      --- src/pages/Messaging/components/TaskList.tsx
+
+      +++ src/pages/Messaging/components/TaskList.tsx
+
+      @@ -1,5 +1,5 @@
+       import { useEffect } from 'react';
+      -import { Search, SlidersHorizontal, Check, Inbox, Clock, Zap, Shield }
+      from 'lucide-react';
+
+      +import { Search, SlidersHorizontal, Check, Inbox, Clock, Zap, Shield,
+      Lock } from 'lucide-react';
+       import { Link, useParams } from 'react-router-dom';
+       import { formatDistanceToNow } from 'date-fns';
+       import { useMessagingStore } from '../store/messaging.store';
+      @@ -82,8 +82,9 @@
+                   <Link
+                     to={`/messaging/${task.id}`}
+                     key={task.id}
+                     className={cn(
+      -                "block p-3 rounded-lg text-left transition-all
+      duration-200 hover:bg-accent/50",
+
+      +                "block p-3 rounded-lg text-left transition-all
+      duration-200 group",
+
+      +                task.lockedBy ? "hover:bg-accent/30" :
+      "hover:bg-accent/50",
+                       "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 outline-none",
+                       conversationId === task.id && "bg-accent"
+                     )}
+      @@ -94,7 +95,12 @@
+                       </Avatar>
+                       <div className="flex-1 overflow-hidden">
+                           <div className="flex justify-between items-center mb-1">
+      -                        <p className="text-sm font-semibold truncate
+      pr-2">{task.contact.name}</p>
+
+      +                        <div className="flex items-center gap-1.5">
+
+      +                          {task.lockedBy && <Lock className="w-3 h-3
+      text-muted-foreground/80 group-hover:text-foreground/90 transition-colors"
+      />}
+
+      +                          <p className={cn("text-sm font-semibold
+      truncate pr-2", task.lockedBy && "opacity-70 group-hover:opacity-100
+      transition-opacity")}>
+
+      +                            {task.contact.name}
+
+      +                          </p>
+
+      +                        </div>
+                               <p className="text-xs text-muted-foreground whitespace-nowrap">{formatDistanceToNow(new Date(task.lastActivity.timestamp), { addSuffix: true })}</p>
+                           </div>
+                           <p className="text-sm truncate text-foreground">{task.title}</p>
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/Messaging/components/TaskHeader.tsx
+    content: >
+      --- src/pages/Messaging/components/TaskHeader.tsx
+
+      +++ src/pages/Messaging/components/TaskHeader.tsx
+
+      @@ -9,7 +9,7 @@
+         DropdownMenuSeparator
+       } from '@/components/ui/dropdown-menu';
+       import { Button } from '@/components/ui/button';
+       import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+      -import { ChevronDown, Inbox, Zap, Shield, Clock, Calendar, Plus, User }
+      from 'lucide-react';
+
+      +import { ChevronDown, Inbox, Zap, Shield, Clock, Calendar, Plus, User,
+      Bot, UserCheck } from 'lucide-react';
+       import { Badge } from '@/components/ui/badge';
+       import { format } from 'date-fns';
+       
+      @@ -33,103 +33,121 @@
+       }
+       
+       export const TaskHeader: React.FC<TaskHeaderProps> = ({ task }) => {
+      -  const { updateTask, assignees } = useMessagingStore();
+
+      +  const { updateTask, assignees, requestTakeover, forceTakeover } =
+      useMessagingStore();
+         const currentStatus = statusOptions.find(o => o.value === task.status);
+         const currentPriority = priorityOptions.find(o => o.value === task.priority);
+       
+         return (
+      -    <div className="space-y-4">
+
+      +    <div className="space-y-4 relative">
+             {/* Task Title & Contact */}
+             <div className="overflow-hidden">
+               <h2 className="font-bold text-xl lg:text-2xl truncate" title={task.title}>
+                 {task.title}
+               </h2>
+               <p className="text-sm text-muted-foreground">
+                 With <a href="#" className="hover:underline font-medium text-foreground/80">{task.contact.name}</a>
+                 <span className="mx-1.5">&middot;</span>
+                 via <span className="capitalize font-medium text-foreground/80">{task.channel}</span>
+               </p>
+             </div>
+       
+      -      {/* Properties Bar */}
+
+      -      <div className="flex flex-wrap items-center gap-y-2 text-sm">
+
+      -        {/* Assignee Dropdown */}
+
+      -        <DropdownMenu>
+
+      -          <DropdownMenuTrigger asChild>
+
+      -            <Button variant="outline" size="sm" className="gap-2
+      font-normal">
+
+      -              {task.assignee ? (
+
+      -                <Avatar className="h-5 w-5"><AvatarImage
+      src={task.assignee.avatar}
+      /><AvatarFallback>{task.assignee.name.charAt(0)}</AvatarFallback></Avatar>
+
+      -              ) : (
+
+      -                <User className="h-4 w-4 text-muted-foreground" />
+
+      -              )}
+
+      -              <span className="font-medium">{task.assignee?.name ||
+      'Unassigned'}</span>
+
+      -              <ChevronDown className="w-3 h-3 text-muted-foreground" />
+
+      -            </Button>
+
+      -          </DropdownMenuTrigger>
+
+      -          <DropdownMenuContent align="start">
+
+      -            <DropdownMenuRadioGroup value={task.assigneeId || 'null'}
+      onValueChange={val => updateTask(task.id, { assigneeId: val === 'null' ?
+      null : val })}>
+
+      -              <DropdownMenuRadioItem value="null">
+
+      -                <User className="w-4 h-4 mr-2 text-muted-foreground" />
+      Unassigned
+
+      -              </DropdownMenuRadioItem>
+
+      -              <DropdownMenuSeparator />
+
+      -              {assignees.map(a => (
+
+      -                <DropdownMenuRadioItem key={a.id} value={a.id}>
+
+      -                  <Avatar className="h-5 w-5 mr-2"><AvatarImage
+      src={a.avatar}
+      /><AvatarFallback>{a.name.charAt(0)}</AvatarFallback></Avatar>
+
+      -                  {a.name}
+
+      -                </DropdownMenuRadioItem>
+
+      -              ))}
+
+      -            </DropdownMenuRadioGroup>
+
+      -          </DropdownMenuContent>
+
+      -        </DropdownMenu>
+
+      -
+
+      -        <div className="mx-2 h-4 w-px bg-border" />
+
+      -
+
+      -        {/* Status Dropdown */}
+
+      -        <DropdownMenu>
+
+      -          <DropdownMenuTrigger asChild>
+
+      -            <Button variant="ghost" size="sm" className="gap-2
+      text-muted-foreground hover:text-foreground">
+
+      -              {currentStatus?.icon}
+
+      -              <span className="font-medium
+      text-foreground">{currentStatus?.label}</span>
+
+      -            </Button>
+
+      -          </DropdownMenuTrigger>
+
+      -          <DropdownMenuContent align="start">
+
+      -            {statusOptions.map(o => (
+
+      -              <DropdownMenuItem key={o.value} onClick={() =>
+      updateTask(task.id, { status: o.value })}>
+
+      -                <div className="flex items-center">
+
+      -                  <div className="w-4 h-4 mr-2">{o.icon}</div>
+
+      -                  <span>{o.label}</span>
+
+      -                </div>
+
+      -              </DropdownMenuItem>
+
+      -            ))}
+
+      -          </DropdownMenuContent>
+
+      -        </DropdownMenu>
+
+      -        
+
+      -        <div className="mx-2 h-4 w-px bg-border" />
+
+      -        
+
+      -        {/* Priority Dropdown */}
+
+      -        <DropdownMenu>
+
+      -          <DropdownMenuTrigger asChild>
+
+      -            <Button variant="ghost" size="sm" className="gap-2
+      text-muted-foreground hover:text-foreground">
+
+      -              {currentPriority?.icon}
+
+      -              <span className="font-medium
+      text-foreground">{currentPriority?.label}</span>
+
+      -            </Button>
+
+      -          </DropdownMenuTrigger>
+
+      -          <DropdownMenuContent align="start">
+
+      -            {priorityOptions.map(o => (
+
+      -              <DropdownMenuItem key={o.value} onClick={() =>
+      updateTask(task.id, { priority: o.value })}>
+
+      -                <div className="flex items-center">
+
+      -                  <div className="w-2.5 h-2.5 mr-2">{o.icon}</div>
+
+      -                  <span>{o.label}</span>
+
+      -                </div>
+
+      -              </DropdownMenuItem>
+
+      -            ))}
+
+      -          </DropdownMenuContent>
+
+      -        </DropdownMenu>
+
+      -
+
+      -        <div className="mx-2 h-4 w-px bg-border" />
+
+      -
+
+      -        {/* Due Date - for display, could be a popover trigger */}
+
+      -        <Button variant="ghost" size="sm" className="gap-2
+      text-muted-foreground cursor-default" disabled>
+
+      -            <Calendar className="w-4 h-4" />
+
+      -            <span className="font-medium text-foreground">{task.dueDate ?
+      format(new Date(task.dueDate), 'MMM d, yyyy') : 'No due date'}</span>
+
+      -        </Button>
+
+      -      </div>
+
+      -
+
+      -      {/* Tags */}
+
+      -      <div className="flex flex-wrap items-center gap-2">
+
+      -        {task.tags.map(t => <Badge variant="secondary"
+      key={t}>{t}</Badge>)}
+
+      -        <Button variant="outline" size="sm" className="h-7 px-2 text-xs
+      rounded-md border-dashed">
+
+      -          <Plus className="w-3 h-3 mr-1" /> Tag
+
+      -        </Button>
+
+      -      </div>
+
+      +      {task.lockedBy ? (
+
+      +        <div className="p-3 rounded-lg bg-secondary/50 border
+      border-border flex items-center justify-between gap-4">
+
+      +          <div className="flex items-center gap-3">
+
+      +            <Avatar className="h-9 w-9">
+
+      +                <AvatarImage src={task.lockedBy.agentAvatar}
+      alt={task.lockedBy.agentName} />
+
+      +               
+      <AvatarFallback>{task.lockedBy.agentName.charAt(0)}</AvatarFallback>
+
+      +            </Avatar>
+
+      +            <div>
+
+      +                <p className="text-sm
+      font-semibold">{task.lockedBy.agentName}</p>
+
+      +                <p className="text-xs text-muted-foreground">is currently
+      handling this conversation.</p>
+
+      +            </div>
+
+      +          </div>
+
+      +          {task.lockedBy.agentType === 'human' ? (
+
+      +            <Button size="sm" onClick={() => requestTakeover(task.id)}>
+
+      +              <UserCheck className="w-4 h-4 mr-2" />
+
+      +              Request Takeover
+
+      +            </Button>
+
+      +          ) : (
+
+      +            <Button size="sm" variant="outline" onClick={() =>
+      forceTakeover(task.id)}>
+
+      +              <Bot className="w-4 h-4 mr-2" />
+
+      +              Take Over from AI
+
+      +            </Button>
+
+      +          )}
+
+      +        </div>
+
+      +      ) : (
+
+      +        <>
+
+      +          {/* Properties Bar */}
+
+      +          <div className="flex flex-wrap items-center gap-y-2 text-sm">
+
+      +            {/* Assignee Dropdown */}
+
+      +            <DropdownMenu>
+
+      +              <DropdownMenuTrigger asChild>
+
+      +                <Button variant="outline" size="sm" className="gap-2
+      font-normal">
+
+      +                  {task.assignee ? (
+
+      +                    <Avatar className="h-5 w-5"><AvatarImage
+      src={task.assignee.avatar}
+      /><AvatarFallback>{task.assignee.name.charAt(0)}</AvatarFallback></Avatar>
+
+      +                  ) : (
+
+      +                    <User className="h-4 w-4 text-muted-foreground" />
+
+      +                  )}
+
+      +                  <span className="font-medium">{task.assignee?.name ||
+      'Unassigned'}</span>
+
+      +                  <ChevronDown className="w-3 h-3 text-muted-foreground"
+      />
+
+      +                </Button>
+
+      +              </DropdownMenuTrigger>
+
+      +              <DropdownMenuContent align="start">
+
+      +                <DropdownMenuRadioGroup value={task.assigneeId || 'null'}
+      onValueChange={val => updateTask(task.id, { assigneeId: val === 'null' ?
+      null : val })}>
+
+      +                  <DropdownMenuRadioItem value="null">
+
+      +                    <User className="w-4 h-4 mr-2 text-muted-foreground"
+      /> Unassigned
+
+      +                  </DropdownMenuRadioItem>
+
+      +                  <DropdownMenuSeparator />
+
+      +                  {assignees.map(a => (
+
+      +                    <DropdownMenuRadioItem key={a.id} value={a.id}>
+
+      +                      <Avatar className="h-5 w-5 mr-2"><AvatarImage
+      src={a.avatar}
+      /><AvatarFallback>{a.name.charAt(0)}</AvatarFallback></Avatar>
+
+      +                      {a.name}
+
+      +                    </DropdownMenuRadioItem>
+
+      +                  ))}
+
+      +                </DropdownMenuRadioGroup>
+
+      +              </DropdownMenuContent>
+
+      +            </DropdownMenu>
+
+      +
+
+      +            <div className="mx-2 h-4 w-px bg-border" />
+
+      +
+
+      +            {/* Status Dropdown */}
+
+      +            <DropdownMenu>
+
+      +              <DropdownMenuTrigger asChild>
+
+      +                <Button variant="ghost" size="sm" className="gap-2
+      text-muted-foreground hover:text-foreground">
+
+      +                  {currentStatus?.icon}
+
+      +                  <span className="font-medium
+      text-foreground">{currentStatus?.label}</span>
+
+      +                </Button>
+
+      +              </DropdownMenuTrigger>
+
+      +              <DropdownMenuContent align="start">
+
+      +                {statusOptions.map(o => (
+
+      +                  <DropdownMenuItem key={o.value} onClick={() =>
+      updateTask(task.id, { status: o.value })}>
+
+      +                    <div className="flex items-center">
+
+      +                      <div className="w-4 h-4 mr-2">{o.icon}</div>
+
+      +                      <span>{o.label}</span>
+
+      +                    </div>
+
+      +                  </DropdownMenuItem>
+
+      +                ))}
+
+      +              </DropdownMenuContent>
+
+      +            </DropdownMenu>
+
+      +            
+
+      +            <div className="mx-2 h-4 w-px bg-border" />
+
+      +            
+
+      +            {/* Priority Dropdown */}
+
+      +            <DropdownMenu>
+
+      +              <DropdownMenuTrigger asChild>
+
+      +                <Button variant="ghost" size="sm" className="gap-2
+      text-muted-foreground hover:text-foreground">
+
+      +                  {currentPriority?.icon}
+
+      +                  <span className="font-medium
+      text-foreground">{currentPriority?.label}</span>
+
+      +                </Button>
+
+      +              </DropdownMenuTrigger>
+
+      +              <DropdownMenuContent align="start">
+
+      +                {priorityOptions.map(o => (
+
+      +                  <DropdownMenuItem key={o.value} onClick={() =>
+      updateTask(task.id, { priority: o.value })}>
+
+      +                    <div className="flex items-center">
+
+      +                      <div className="w-2.5 h-2.5 mr-2">{o.icon}</div>
+
+      +                      <span>{o.label}</span>
+
+      +                    </div>
+
+      +                  </DropdownMenuItem>
+
+      +                ))}
+
+      +              </DropdownMenuContent>
+
+      +            </DropdownMenu>
+
+      +
+
+      +            <div className="mx-2 h-4 w-px bg-border" />
+
+      +
+
+      +            {/* Due Date - for display, could be a popover trigger */}
+
+      +            <Button variant="ghost" size="sm" className="gap-2
+      text-muted-foreground cursor-default" disabled>
+
+      +                <Calendar className="w-4 h-4" />
+
+      +                <span className="font-medium
+      text-foreground">{task.dueDate ? format(new Date(task.dueDate), 'MMM d,
+      yyyy') : 'No due date'}</span>
+
+      +            </Button>
+
+      +          </div>
+
+      +
+
+      +          {/* Tags */}
+
+      +          <div className="flex flex-wrap items-center gap-2">
+
+      +            {task.tags.map(t => <Badge variant="secondary"
+      key={t}>{t}</Badge>)}
+
+      +            <Button variant="outline" size="sm" className="h-7 px-2
+      text-xs rounded-md border-dashed">
+
+      +              <Plus className="w-3 h-3 mr-1" /> Tag
+
+      +            </Button>
+
+      +          </div>
+
+      +        </>
+
+      +      )}
+           </div>
+         );
+       };
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/Messaging/components/TaskDetail.tsx
+    content: >+
+      --- src/pages/Messaging/components/TaskDetail.tsx
+
+      +++ src/pages/Messaging/components/TaskDetail.tsx
+
+      @@ -21,29 +21,30 @@
+             <ActivityFeed messages={task.messages} contact={task.contact} />
+       
+             {/* Input Form */}
+      -      <div className="p-4 border-t flex-shrink-0 bg-background/50">
+
+      +      <div className="p-4 border-t flex-shrink-0 bg-background/50
+      relative">
+
+      +        {task.lockedBy && <div className="absolute inset-0
+      bg-background/50 backdrop-blur-[1px] z-10" />}
+               <Tabs defaultValue="comment" className="w-full">
+                 <TabsList className="grid w-full grid-cols-2 mb-2">
+                   <TabsTrigger value="comment">Comment</TabsTrigger>
+                   <TabsTrigger value="note"><StickyNote className="w-4 h-4 mr-2" />Internal Note</TabsTrigger>
+                 </TabsList>
+                 <TabsContent value="comment">
+                    <div className="relative">
+      -                <Textarea placeholder={`Reply to
+      ${task.contact.name}...`} className="pr-24 min-h-[52px]" />
+
+      +                <Textarea placeholder={`Reply to
+      ${task.contact.name}...`} className="pr-24 min-h-[52px]"
+      disabled={!!task.lockedBy} />
+                       <div className="absolute right-2 top-2 flex items-center gap-1">
+      -                    <Button variant="ghost" size="icon"
+      className="rounded-full h-8 w-8"><Smile className="w-4 h-4" /></Button>
+
+      -                    <Button variant="ghost" size="icon"
+      className="rounded-full h-8 w-8"><Paperclip className="w-4 h-4"
+      /></Button>
+
+      -                    <Button size="icon" className="rounded-full h-8
+      w-8"><SendHorizontal className="w-4 h-4" /></Button>
+
+      +                    <Button variant="ghost" size="icon"
+      className="rounded-full h-8 w-8" disabled={!!task.lockedBy}><Smile
+      className="w-4 h-4" /></Button>
+
+      +                    <Button variant="ghost" size="icon"
+      className="rounded-full h-8 w-8" disabled={!!task.lockedBy}><Paperclip
+      className="w-4 h-4" /></Button>
+
+      +                    <Button size="icon" className="rounded-full h-8 w-8"
+      disabled={!!task.lockedBy}><SendHorizontal className="w-4 h-4" /></Button>
+                       </div>
+                   </div>
+                 </TabsContent>
+                 <TabsContent value="note">
+                   <div className="relative">
+      -                <Textarea placeholder="Add an internal note..."
+      className="pr-24 min-h-[52px] bg-yellow-400/10 border-yellow-400/30
+      focus-visible:ring-yellow-500" />
+
+      +                <Textarea placeholder="Add an internal note..."
+      className="pr-24 min-h-[52px] bg-yellow-400/10 border-yellow-400/30
+      focus-visible:ring-yellow-500" disabled={!!task.lockedBy} />
+                       <div className="absolute right-2 top-2 flex items-center gap-1">
+      -                    <Button size="icon" className="rounded-full h-8
+      w-8"><SendHorizontal className="w-4 h-4" /></Button>
+
+      +                    <Button size="icon" className="rounded-full h-8 w-8"
+      disabled={!!task.lockedBy}><SendHorizontal className="w-4 h-4" /></Button>
+                       </div>
+                   </div>
+                 </TabsContent>
+               </Tabs>
+
+    patchStrategy: standard-diff
+snapshot:
+  src/pages/Messaging/types.ts: |-
+    import type { LucideIcon } from "lucide-react";
+
+    export type Channel = 'whatsapp' | 'instagram' | 'facebook' | 'email';
+
+    export interface ChannelIcon {
+      Icon: LucideIcon;
+      color: string;
+    }
+
+    export interface Contact {
+      id: string;
+      name:string;
+      avatar: string;
+      online: boolean;
+      tags: string[];
+      email: string;
+      phone: string;
+      lastSeen: string;
+      company: string;
+      role: string;
+      activity: ActivityEvent[];
+      notes: Note[];
+    }
+
+    export interface Assignee {
+      id: string;
+      name: string;
+      avatar: string;
+    }
+
+    export type ActivityEventType = 'note' | 'call' | 'email' | 'meeting';
+
+    export interface ActivityEvent {
+      id: string;
+      type: ActivityEventType;
+      content: string;
+      timestamp: string;
+    }
+    export interface Note {
+      id: string;
+      content: string;
+      createdAt: string;
+    }
+
+    export interface Message {
+      id: string;
+      text: string;
+      timestamp: string;
+      sender: 'user' | 'contact' | 'system';
+      type: 'comment' | 'note' | 'system';
+      read: boolean;
+      userId?: string; // for notes or system messages from users
+    }
+
+    export interface AISummary {
+      sentiment: 'positive' | 'negative' | 'neutral';
+      summaryPoints: string[];
+      suggestedReplies: string[];
+    }
+
+    export type TaskStatus = 'open' | 'in-progress' | 'done' | 'snoozed';
+    export type TaskPriority = 'none' | 'low' | 'medium' | 'high';
+
+    export interface Task {
+      id: string;
+      title: string;
+      contactId: string;
+      channel: Channel;
+      unreadCount: number;
+      lastActivity: Message;
+      messages: Message[];
+      status: TaskStatus;
+      assigneeId: string | null;
+      dueDate: string | null;
+      priority: TaskPriority;
+      tags: string[];
+      aiSummary: AISummary;
+    }
+
+    export type TaskView = 'all_open' | 'unassigned' | 'done';
+  src/pages/Messaging/data/mockData.ts: >-
+    import type { Contact, Task, Message, ActivityEvent, Note, Assignee,
+    TaskStatus, TaskPriority } from '../types';
+
+
+    // --- ASSIGNEES ---
+
+    export const mockAssignees: Assignee[] = [
+      { id: 'user-1', name: 'You', avatar: `https://avatar.vercel.sh/you.png` },
+      { id: 'user-2', name: 'Alex Johnson', avatar: `https://avatar.vercel.sh/alex.png` },
+      { id: 'user-3', name: 'Samira Kumar', avatar: `https://avatar.vercel.sh/samira.png` },
+    ];
+
+
+    // --- HELPERS ---
+
+    const generateNotes = (contactName: string): Note[] => [
+      { id: `note-${Math.random()}`, content: `Initial discovery call with ${contactName}. Seemed very interested in our enterprise package.`, createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString() },
+      { id: `note-${Math.random()}`, content: `Followed up via email with pricing details.`, createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString() },
+    ];
+
+
+    const generateActivity = (contactName: string): ActivityEvent[] => [
+      { id: `act-${Math.random()}`, type: 'email', content: `Sent follow-up email regarding pricing.`, timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString() },
+      { id: `act-${Math.random()}`, type: 'call', content: `Had a 30-minute discovery call with ${contactName}.`, timestamp: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString() },
+      { id: `act-${Math.random()}`, type: 'meeting', content: `Scheduled a demo for next week.`, timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString() },
+    ];
+
+
+    // --- CONTACTS ---
+
+    export const mockContacts: Contact[] = [
+      { id: 'contact-1', name: 'Elena Rodriguez', avatar: `https://avatar.vercel.sh/elenarodriguez.png`, online: true, tags: ['VIP', 'New Lead'], email: 'elena.r@example.com', phone: '+1 234 567 8901', lastSeen: 'online', company: 'Innovate Inc.', role: 'CTO', activity: generateActivity('Elena Rodriguez'), notes: generateNotes('Elena Rodriguez'), },
+      { id: 'contact-2', name: 'Marcus Chen', avatar: `https://avatar.vercel.sh/marcuschen.png`, online: false, tags: ['Returning Customer'], email: 'marcus.c@example.com', phone: '+1 345 678 9012', lastSeen: '2 hours ago', company: 'Solutions Co.', role: 'Product Manager', activity: generateActivity('Marcus Chen'), notes: generateNotes('Marcus Chen'), },
+      { id: 'contact-3', name: 'Aisha Khan', avatar: `https://avatar.vercel.sh/aishakhan.png`, online: true, tags: ['Support Request'], email: 'aisha.k@example.com', phone: '+1 456 789 0123', lastSeen: 'online', company: 'Data Dynamics', role: 'Data Analyst', activity: generateActivity('Aisha Khan'), notes: generateNotes('Aisha Khan'), },
+      { id: 'contact-4', name: 'Leo Tolstoy', avatar: `https://avatar.vercel.sh/leotolstoy.png`, online: false, tags: [], email: 'leo.tolstoy@example.com', phone: '+44 20 7946 0958', lastSeen: 'yesterday', company: 'Classic Reads', role: 'Author', activity: generateActivity('Leo Tolstoy'), notes: generateNotes('Leo Tolstoy'), }
+    ];
+
+
+    // --- MESSAGE GENERATOR ---
+
+    const generateMessages = (count: number, contactName: string): Message[] =>
+    {
+      const messages: Message[] = [];
+      const now = new Date();
+      for (let i = count - 1; i >= 0; i--) {
+        const random = Math.random();
+        let sender: Message['sender'] = 'contact';
+        let type: Message['type'] = 'comment';
+        let text = `This is a sample message number ${i} from ${contactName}.`;
+        let userId: string | undefined = undefined;
+
+        if (random > 0.85) { // Internal Note
+          sender = 'user';
+          type = 'note';
+          const user = mockAssignees[Math.floor(Math.random() * mockAssignees.length)];
+          userId = user.id;
+          text = `Internal note from ${user.name}: we should check their account history.`;
+        } else if (random > 0.7) { // System message
+          sender = 'system';
+          type = 'system';
+          text = `Task status changed to "in-progress"`;
+        } else if (random > 0.35) { // User comment
+          sender = 'user';
+          type = 'comment';
+          userId = 'user-1'; // "You"
+          text = `This is a reply from me. Time is roughly ${count - i} hours ago.`;
+        }
+        
+        messages.push({
+          id: `msg-${Math.random()}`,
+          text,
+          timestamp: new Date(now.getTime() - i * 60 * 60 * 1000).toISOString(),
+          sender,
+          type,
+          read: i < count - 2,
+          userId,
+        });
+      }
+      // Ensure the last message is from the contact for preview purposes
+      messages[messages.length - 1] = {
+        ...messages[messages.length-1],
+        sender: 'contact',
+        type: 'comment',
+        text: `Hey! This is the latest message from ${contactName}.`,
+        userId: undefined
+      };
+      return messages.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+    };
+
+
+    // --- TASKS ---
+
+    const statuses: TaskStatus[] = ['open', 'in-progress', 'done', 'snoozed'];
+
+    const priorities: TaskPriority[] = ['none', 'low', 'medium', 'high'];
+
+
+    export const mockTasks: Task[] = [
+      {
+        id: 'task-1',
+        title: 'Question about enterprise pricing',
+        contactId: 'contact-1',
+        channel: 'whatsapp',
+        unreadCount: 2,
+        messages: generateMessages(15, 'Elena Rodriguez'),
+        get lastActivity() { return this.messages[this.messages.length - 1]; },
+        status: 'in-progress',
+        assigneeId: 'user-2',
+        dueDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
+        priority: 'high',
+        tags: ['onboarding', 'pricing'],
+        aiSummary: { sentiment: 'positive', summaryPoints: ['Expressed strong interest in the new feature.', 'Asked about pricing tiers for enterprise.', 'Is ready for a follow-up call next week.',], suggestedReplies: ['Let\'s schedule that call!', 'Here is the pricing information.', 'Happy to hear you like it!',], },
+      },
+      {
+        id: 'task-2',
+        title: 'Minor issue with order #12345',
+        contactId: 'contact-2',
+        channel: 'instagram',
+        unreadCount: 0,
+        messages: generateMessages(8, 'Marcus Chen'),
+        get lastActivity() { return this.messages[this.messages.length - 1]; },
+        status: 'done',
+        assigneeId: 'user-1',
+        dueDate: null,
+        priority: 'medium',
+        tags: ['bug-report'],
+        aiSummary: { sentiment: 'neutral', summaryPoints: ['Reported a minor issue with order #12345.', 'Was satisfied with the proposed solution.', 'Inquired about the return policy.',], suggestedReplies: ['Can I help with anything else?', 'Here is our return policy.',], },
+      },
+      {
+        id: 'task-3',
+        title: 'Login issues, cannot reset password',
+        contactId: 'contact-3',
+        channel: 'facebook',
+        unreadCount: 5,
+        messages: generateMessages(20, 'Aisha Khan'),
+        get lastActivity() { return this.messages[this.messages.length - 1]; },
+        status: 'open',
+        assigneeId: null,
+        dueDate: null,
+        priority: 'high',
+        tags: ['urgent', 'tech-support'],
+        aiSummary: { sentiment: 'negative', summaryPoints: ['Frustrated with login issues.', 'Unable to reset password via email link.', 'Threatened to cancel their subscription.',], suggestedReplies: ['I\'m escalating this to our technical team.', 'Let\'s try a manual password reset.', 'We apologize for the inconvenience.',], },
+      },
+      {
+        id: 'task-4',
+        title: 'Follow-up on previous conversation',
+        contactId: 'contact-4',
+        channel: 'email',
+        unreadCount: 0,
+        messages: generateMessages(5, 'Leo Tolstoy'),
+        get lastActivity() { return this.messages[this.messages.length - 1]; },
+        status: 'snoozed',
+        assigneeId: 'user-3',
+        dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+        priority: 'low',
+        tags: [],
+        aiSummary: { sentiment: 'neutral', summaryPoints: ['Followed up on a previous conversation.', 'Confirmed meeting time for Thursday.', 'No outstanding issues.',], suggestedReplies: ['Sounds good!', 'See you then!',], },
+      },
+    ];
+  src/pages/Messaging/components/TaskHeader.tsx: >
+    import React from 'react';
+
+    import { useMessagingStore } from '../store/messaging.store';
+
+    import type { Task, TaskStatus, TaskPriority, Assignee, Contact } from
+    '../types';
+
+    import {
+      DropdownMenu,
+      DropdownMenuContent,
+      DropdownMenuItem,
+      DropdownMenuRadioGroup,
+      DropdownMenuRadioItem,
+      DropdownMenuTrigger,
+      DropdownMenuSeparator
+    } from '@/components/ui/dropdown-menu';
+
+    import { Button } from '@/components/ui/button';
+
+    import { Avatar, AvatarFallback, AvatarImage } from
+    '@/components/ui/avatar';
+
+    import { ChevronDown, Inbox, Zap, Shield, Clock, Calendar, Plus, User } from
+    'lucide-react';
+
+    import { Badge } from '@/components/ui/badge';
+
+    import { format } from 'date-fns';
+
+
+    const statusOptions: { value: TaskStatus; label: string; icon:
+    React.ReactNode }[] = [
+        { value: 'open', label: 'Open', icon: <Inbox className="w-4 h-4" /> },
+        { value: 'in-progress', label: 'In Progress', icon: <Zap className="w-4 h-4" /> },
+        { value: 'done', label: 'Done', icon: <Shield className="w-4 h-4" /> },
+        { value: 'snoozed', label: 'Snoozed', icon: <Clock className="w-4 h-4" /> },
+    ];
+
+
+    const priorityOptions: { value: TaskPriority; label: string; icon:
+    React.ReactNode }[] = [
+        { value: 'high', label: 'High', icon: <div className="w-2.5 h-2.5 rounded-full bg-red-500" /> },
+        { value: 'medium', label: 'Medium', icon: <div className="w-2.5 h-2.5 rounded-full bg-yellow-500" /> },
+        { value: 'low', label: 'Low', icon: <div className="w-2.5 h-2.5 rounded-full bg-green-500" /> },
+        { value: 'none', label: 'None', icon: <div className="w-2.5 h-2.5 rounded-full bg-gray-400" /> },
+    ];
+
+
+
+    interface TaskHeaderProps {
+      task: (Task & { contact: Contact; assignee: Assignee | null });
+    }
+
+
+    export const TaskHeader: React.FC<TaskHeaderProps> = ({ task }) => {
+      const { updateTask, assignees } = useMessagingStore();
+      const currentStatus = statusOptions.find(o => o.value === task.status);
+      const currentPriority = priorityOptions.find(o => o.value === task.priority);
+
+      return (
+        <div className="space-y-4">
+          {/* Task Title & Contact */}
+          <div className="overflow-hidden">
+            <h2 className="font-bold text-xl lg:text-2xl truncate" title={task.title}>
+              {task.title}
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              With <a href="#" className="hover:underline font-medium text-foreground/80">{task.contact.name}</a>
+              <span className="mx-1.5">&middot;</span>
+              via <span className="capitalize font-medium text-foreground/80">{task.channel}</span>
+            </p>
+          </div>
+
+          {/* Properties Bar */}
+          <div className="flex flex-wrap items-center gap-y-2 text-sm">
+            {/* Assignee Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-2 font-normal">
+                  {task.assignee ? (
+                    <Avatar className="h-5 w-5"><AvatarImage src={task.assignee.avatar} /><AvatarFallback>{task.assignee.name.charAt(0)}</AvatarFallback></Avatar>
+                  ) : (
+                    <User className="h-4 w-4 text-muted-foreground" />
+                  )}
+                  <span className="font-medium">{task.assignee?.name || 'Unassigned'}</span>
+                  <ChevronDown className="w-3 h-3 text-muted-foreground" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                <DropdownMenuRadioGroup value={task.assigneeId || 'null'} onValueChange={val => updateTask(task.id, { assigneeId: val === 'null' ? null : val })}>
+                  <DropdownMenuRadioItem value="null">
+                    <User className="w-4 h-4 mr-2 text-muted-foreground" /> Unassigned
+                  </DropdownMenuRadioItem>
+                  <DropdownMenuSeparator />
+                  {assignees.map(a => (
+                    <DropdownMenuRadioItem key={a.id} value={a.id}>
+                      <Avatar className="h-5 w-5 mr-2"><AvatarImage src={a.avatar} /><AvatarFallback>{a.name.charAt(0)}</AvatarFallback></Avatar>
+                      {a.name}
+                    </DropdownMenuRadioItem>
+                  ))}
+                </DropdownMenuRadioGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <div className="mx-2 h-4 w-px bg-border" />
+
+            {/* Status Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground hover:text-foreground">
+                  {currentStatus?.icon}
+                  <span className="font-medium text-foreground">{currentStatus?.label}</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                {statusOptions.map(o => (
+                  <DropdownMenuItem key={o.value} onClick={() => updateTask(task.id, { status: o.value })}>
+                    <div className="flex items-center">
+                      <div className="w-4 h-4 mr-2">{o.icon}</div>
+                      <span>{o.label}</span>
+                    </div>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+            
+            <div className="mx-2 h-4 w-px bg-border" />
+            
+            {/* Priority Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground hover:text-foreground">
+                  {currentPriority?.icon}
+                  <span className="font-medium text-foreground">{currentPriority?.label}</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                {priorityOptions.map(o => (
+                  <DropdownMenuItem key={o.value} onClick={() => updateTask(task.id, { priority: o.value })}>
+                    <div className="flex items-center">
+                      <div className="w-2.5 h-2.5 mr-2">{o.icon}</div>
+                      <span>{o.label}</span>
+                    </div>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <div className="mx-2 h-4 w-px bg-border" />
+
+            {/* Due Date - for display, could be a popover trigger */}
+            <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground cursor-default" disabled>
+                <Calendar className="w-4 h-4" />
+                <span className="font-medium text-foreground">{task.dueDate ? format(new Date(task.dueDate), 'MMM d, yyyy') : 'No due date'}</span>
+            </Button>
+          </div>
+
+          {/* Tags */}
+          <div className="flex flex-wrap items-center gap-2">
+            {task.tags.map(t => <Badge variant="secondary" key={t}>{t}</Badge>)}
+            <Button variant="outline" size="sm" className="h-7 px-2 text-xs rounded-md border-dashed">
+              <Plus className="w-3 h-3 mr-1" /> Tag
+            </Button>
+          </div>
+        </div>
+      );
+    };
+  src/pages/Messaging/store/messaging.store.ts: >-
+    import { create } from 'zustand';
+
+    import { mockTasks, mockContacts, mockAssignees } from '../data/mockData';
+
+    import type { Task, Contact, Channel, Assignee, TaskStatus, TaskPriority,
+    TaskView } from '../types';
+
+
+    interface MessagingState {
+      tasks: Task[];
+      contacts: Contact[];
+      assignees: Assignee[];
+      searchTerm: string;
+      activeFilters: {
+        channels: Channel[];
+        tags: string[];
+        status: TaskStatus[];
+        priority: TaskPriority[];
+        assigneeId: string[];
+      };
+      activeTaskView: TaskView;
+    }
+
+
+    interface MessagingActions {
+      getTaskById: (id: string) => (Task & { contact: Contact, assignee: Assignee | null }) | undefined;
+      getFilteredTasks: () => (Task & { contact: Contact, assignee: Assignee | null })[];
+      setSearchTerm: (term: string) => void;
+      setActiveTaskView: (view: TaskView) => void;
+      setFilters: (filters: Partial<MessagingState['activeFilters']>) => void;
+      updateTask: (taskId: string, updates: Partial<Omit<Task, 'id'>>) => void;
+      getAssigneeById: (assigneeId: string) => Assignee | undefined;
+      getAvailableTags: () => string[];
+    }
+
+
+    export const useMessagingStore = create<MessagingState &
+    MessagingActions>((set, get) => ({
+      tasks: mockTasks,
+      contacts: mockContacts,
+      assignees: mockAssignees,
+      searchTerm: '',
+      activeFilters: {
+        channels: [],
+        tags: [],
+        status: [],
+        priority: [],
+        assigneeId: [],
+      },
+      activeTaskView: 'all_open',
+
+      getTaskById: (id) => {
+        const task = get().tasks.find(t => t.id === id);
+        if (!task) return undefined;
+
+        const contact = get().contacts.find(c => c.id === task.contactId);
+        if (!contact) return undefined;
+
+        const assignee = get().assignees.find(a => a.id === task.assigneeId) || null;
+
+        return { ...task, contact, assignee };
+      },
+
+      getFilteredTasks: () => {
+        const { tasks, contacts, assignees, searchTerm, activeFilters, activeTaskView } = get();
+        const lowercasedSearch = searchTerm.toLowerCase();
+
+        const viewFilteredTasks = tasks.filter(task => {
+          switch (activeTaskView) {
+            case 'all_open':
+              return task.status === 'open' || task.status === 'in-progress';
+            case 'unassigned':
+              return !task.assigneeId && (task.status === 'open' || task.status === 'in-progress');
+            case 'done':
+              return task.status === 'done';
+            default:
+              return true;
+          }
+        });
+        const mapped = viewFilteredTasks.map(task => {
+          const contact = contacts.find(c => c.id === task.contactId) as Contact;
+          const assignee = assignees.find(a => a.id === task.assigneeId) || null;
+          return { ...task, contact, assignee };
+        });
+
+        const filtered = mapped.filter(task => {
+          const searchMatch = task.title.toLowerCase().includes(lowercasedSearch) || task.contact.name.toLowerCase().includes(lowercasedSearch);
+          const channelMatch = activeFilters.channels.length === 0 || activeFilters.channels.includes(task.channel);
+          const tagMatch = activeFilters.tags.length === 0 || activeFilters.tags.some(tag => task.tags.includes(tag));
+          const statusMatch = activeFilters.status.length === 0 || activeFilters.status.includes(task.status);
+          const priorityMatch = activeFilters.priority.length === 0 || activeFilters.priority.includes(task.priority);
+          const assigneeMatch = activeFilters.assigneeId.length === 0 || (task.assigneeId && activeFilters.assigneeId.includes(task.assigneeId));
+          
+          return searchMatch && channelMatch && tagMatch && statusMatch && priorityMatch && assigneeMatch;
+        });
+
+        return filtered.sort((a, b) => new Date(b.lastActivity.timestamp).getTime() - new Date(a.lastActivity.timestamp).getTime());
+      },
+
+      setSearchTerm: (term) => set({ searchTerm: term }),
+      
+      setActiveTaskView: (view) => set({ activeTaskView: view }),
+
+      setFilters: (newFilters) => set(state => ({
+        activeFilters: { ...state.activeFilters, ...newFilters }
+      })),
+
+      updateTask: (taskId, updates) => set(state => ({
+        tasks: state.tasks.map(task => 
+          task.id === taskId 
+            ? { ...task, ...updates, lastActivity: { ...task.lastActivity, timestamp: new Date().toISOString() } } 
+            : task
+        )
+      })),
+
+      getAssigneeById: (assigneeId: string) => {
+        return get().assignees.find(a => a.id === assigneeId);
+      },
+
+      getAvailableTags: () => {
+        const contactTags = get().contacts.flatMap(c => c.tags);
+        const taskTags = get().tasks.flatMap(t => t.tags);
+        const allTags = new Set([...contactTags, ...taskTags]);
+        return Array.from(allTags);
+      }
+    }));
+  src/pages/Messaging/components/TaskList.tsx: >-
+    import { useEffect } from 'react';
+
+    import { Search, SlidersHorizontal, Check, Inbox, Clock, Zap, Shield } from
+    'lucide-react';
+
+    import { Link, useParams } from 'react-router-dom';
+
+    import { formatDistanceToNow } from 'date-fns';
+
+    import { useMessagingStore } from '../store/messaging.store';
+
+    import { Button } from '@/components/ui/button';
+
+    import { Input } from '@/components/ui/input';
+
+    import { Avatar, AvatarFallback, AvatarImage } from
+    '@/components/ui/avatar';
+
+    import { Badge } from '@/components/ui/badge';
+
+    import { Popover, PopoverContent, PopoverTrigger } from
+    '@/components/ui/popover';
+
+    import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem,
+    CommandList, CommandSeparator } from '@/components/ui/command';
+
+    import { cn } from '@/lib/utils';
+
+    import { AnimatedTabs } from '@/components/ui/animated-tabs';
+
+    import type { TaskStatus, TaskPriority, TaskView } from '../types';
+
+    import { useAppViewManager } from '@/hooks/useAppViewManager.hook';
+
+
+    // Local helpers for styling based on task properties
+
+    const getStatusIcon = (status: TaskStatus) => {
+        switch(status) {
+            case 'open': return <Inbox className="w-3 h-3 text-blue-500" />;
+            case 'in-progress': return <Zap className="w-3 h-3 text-yellow-500" />;
+            case 'done': return <Shield className="w-3 h-3 text-green-500" />;
+            case 'snoozed': return <Clock className="w-3 h-3 text-gray-500" />;
+        }
+    };
+
+
+    const getPriorityIcon = (priority: TaskPriority) => {
+        switch(priority) {
+            case 'high': return <div className="w-2 h-2 rounded-full bg-red-500" />;
+            case 'medium': return <div className="w-2 h-2 rounded-full bg-yellow-500" />;
+            case 'low': return <div className="w-2 h-2 rounded-full bg-green-500" />;
+            default: return <div className="w-2 h-2 rounded-full bg-gray-400" />;
+        }
+    };
+
+
+    const statusOptions: { value: TaskStatus; label: string }[] = [
+        { value: 'open', label: 'Open' }, { value: 'in-progress', label: 'In Progress' }, { value: 'done', label: 'Done' }, { value: 'snoozed', label: 'Snoozed' }
+    ];
+
+    const priorityOptions: { value: TaskPriority; label: string }[] = [
+        { value: 'high', label: 'High' }, { value: 'medium', label: 'Medium' }, { value: 'low', label: 'Low' }, { value: 'none', label: 'None' }
+    ];
+
+
+    export const TaskList = () => {
+      const { conversationId } = useParams<{ conversationId: string }>(); // This will be taskId later
+      const { 
+        getFilteredTasks,
+        setSearchTerm,
+        activeFilters,
+        setActiveTaskView,
+        searchTerm,
+       } = useMessagingStore();
+       const { messagingView, setMessagingView } = useAppViewManager();
+
+      useEffect(() => {
+        setActiveTaskView(messagingView || 'all_open');
+      }, [messagingView, setActiveTaskView]);
+
+      const filteredTasks = getFilteredTasks();
+      const activeFilterCount = Object.values(activeFilters).reduce((count, filterArray) => count + filterArray.length, 0);
+
+      const TABS: { id: TaskView, label: string }[] = [
+        { id: 'all_open', label: 'Open' },
+        { id: 'unassigned', label: 'Unassigned' },
+        { id: 'done', label: 'Done' }
+      ];
+
+      return (
+        <div className="h-full flex flex-col bg-background/80">
+          {/* Header */}
+          <div className="flex-shrink-0 border-b bg-background/80 p-4 space-y-4">
+            <h2 className="text-xl font-bold tracking-tight">Inbox</h2>
+            <div className="flex gap-2">
+                <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input placeholder="Search tasks..." className="pl-9" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+                </div>
+                <Popover>
+                    <PopoverTrigger asChild>
+                        <Button variant="outline" size="sm" className="h-10 border-dashed gap-2">
+                            <SlidersHorizontal className="w-4 h-4" />
+                            Filters
+                            {activeFilterCount > 0 && <Badge variant="secondary" className="rounded-sm px-1 font-normal">{activeFilterCount}</Badge>}
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[240px] p-0" align="end">
+                        <FilterCommand />
+                    </PopoverContent>
+                </Popover>
+            </div>
+          </div>
+          <AnimatedTabs
+            tabs={TABS}
+            activeTab={messagingView || 'all_open'}
+            onTabChange={(tabId) => setMessagingView(tabId as TaskView)}
+          />
+
+          {/* Task List */}
+          <div className="flex-1 overflow-y-auto">
+            <nav className="p-2 space-y-1">
+              {filteredTasks.map(task => (
+                <Link
+                  to={`/messaging/${task.id}`}
+                  key={task.id}
+                  className={cn(
+                    "block p-3 rounded-lg text-left transition-all duration-200 hover:bg-accent/50",
+                    "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 outline-none",
+                    conversationId === task.id && "bg-accent"
+                  )}
+                >
+                  <div className="flex items-start gap-3">
+                    <Avatar className="h-9 w-9 mt-1">
+                      <AvatarImage src={task.contact.avatar} alt={task.contact.name} />
+                      <AvatarFallback>{task.contact.name.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 overflow-hidden">
+                        <div className="flex justify-between items-center mb-1">
+                            <p className="text-sm font-semibold truncate pr-2">{task.contact.name}</p>
+                            <p className="text-xs text-muted-foreground whitespace-nowrap">{formatDistanceToNow(new Date(task.lastActivity.timestamp), { addSuffix: true })}</p>
+                        </div>
+                        <p className="text-sm truncate text-foreground">{task.title}</p>
+                        <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+                            <div className="flex items-center gap-1.5" title={task.status}>
+                                {getStatusIcon(task.status)}
+                                <span className="capitalize">{task.status.replace('-', ' ')}</span>
+                            </div>
+                            <div className="flex items-center gap-1.5" title={task.priority}>
+                                {getPriorityIcon(task.priority)}
+                                <span className="capitalize">{task.priority}</span>
+                            </div>
+                            {task.assignee && (
+                                <div className="flex items-center gap-1.5" title={`Assigned to ${task.assignee.name}`}>
+                                    <Avatar className="h-4 w-4"><AvatarImage src={task.assignee.avatar} /></Avatar>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                    {task.unreadCount > 0 && (
+                        <div className="flex items-center justify-center self-center ml-auto">
+                            <Badge className="bg-primary h-5 w-5 p-0 flex items-center justify-center">{task.unreadCount}</Badge>
+                        </div>
+                    )}
+                  </div>
+                </Link>
+              ))}
+            </nav>
+          </div>
+        </div>
+      );
+    };
+
+
+    // Filter component for popover
+
+    function FilterCommand() {
+        const { activeFilters, setFilters, assignees, getAvailableTags } = useMessagingStore();
+        const availableTags = getAvailableTags();
+
+        const handleSelect = (type: 'status' | 'priority' | 'assigneeId' | 'tags', value: string) => {
+            const current = new Set(activeFilters[type]);
+            current.has(value) ? current.delete(value) : current.add(value);
+            setFilters({ [type]: Array.from(current) });
+        };
+
+        const hasActiveFilters = Object.values(activeFilters).some(arr => arr.length > 0);
+
+        return (
+            <Command>
+                <CommandInput placeholder="Filter by..." />
+                <CommandList>
+                    <CommandEmpty>No results found.</CommandEmpty>
+                    <CommandGroup heading="Status">
+                        {statusOptions.map(o => (
+                            <CommandItem key={o.value} onSelect={() => handleSelect('status', o.value)}>
+                                <div className={cn('mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary', activeFilters.status.includes(o.value) ? 'bg-primary text-primary-foreground' : 'opacity-50 [&_svg]:invisible')}><Check className="h-4 w-4" /></div>
+                                <span>{o.label}</span>
+                            </CommandItem>
+                        ))}
+                    </CommandGroup>
+                    <CommandSeparator />
+                    <CommandGroup heading="Priority">
+                        {priorityOptions.map(o => (
+                            <CommandItem key={o.value} onSelect={() => handleSelect('priority', o.value)}>
+                                <div className={cn('mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary', activeFilters.priority.includes(o.value) ? 'bg-primary text-primary-foreground' : 'opacity-50 [&_svg]:invisible')}><Check className="h-4 w-4" /></div>
+                                <span>{o.label}</span>
+                            </CommandItem>
+                        ))}
+                    </CommandGroup>
+                    <CommandSeparator />
+                    <CommandGroup heading="Assignee">
+                        {assignees.map(a => (
+                            <CommandItem key={a.id} onSelect={() => handleSelect('assigneeId', a.id)}>
+                                <div className={cn('mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary', activeFilters.assigneeId.includes(a.id) ? 'bg-primary text-primary-foreground' : 'opacity-50 [&_svg]:invisible')}><Check className="h-4 w-4" /></div>
+                                <Avatar className="h-5 w-5 mr-2"><AvatarImage src={a.avatar} /><AvatarFallback>{a.name.charAt(0)}</AvatarFallback></Avatar>
+                                <span>{a.name}</span>
+                            </CommandItem>
+                        ))}
+                    </CommandGroup>
+                    <CommandSeparator />
+                    <CommandGroup heading="Tags">
+                        {availableTags.map(t => (
+                            <CommandItem key={t} onSelect={() => handleSelect('tags', t)}>
+                                <div className={cn('mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary', activeFilters.tags.includes(t) ? 'bg-primary text-primary-foreground' : 'opacity-50 [&_svg]:invisible')}><Check className="h-4 w-4" /></div>
+                                <span>{t}</span>
+                            </CommandItem>
+                        ))}
+                    </CommandGroup>
+
+                    {hasActiveFilters && (
+                        <>
+                            <CommandSeparator />
+                            <CommandGroup>
+                                <CommandItem onSelect={() => setFilters({ status: [], priority: [], assigneeId: [], tags: [], channels: [] })} className="justify-center text-center text-sm">Clear all filters</CommandItem>
+                            </CommandGroup>
+                        </>
+                    )}
+                </CommandList>
+            </Command>
+        );
+    }
+  src/pages/Messaging/components/TaskDetail.tsx: >-
+    import React from 'react';
+
+    import { useParams } from 'react-router-dom';
+
+    import { useMessagingStore } from '../store/messaging.store';
+
+    import { ActivityFeed } from './ActivityFeed';
+
+    import { Input } from '@/components/ui/input';
+
+    import { Button } from '@/components/ui/button';
+
+    import { Textarea } from '@/components/ui/textarea';
+
+    import { Paperclip, SendHorizontal, Smile, StickyNote } from 'lucide-react';
+
+    import { Tabs, TabsContent, TabsList, TabsTrigger } from
+    "@/components/ui/tabs";
+
+
+
+    export const TaskDetail: React.FC = () => {
+      const { conversationId: taskId } = useParams<{ conversationId: string }>();
+      const task = useMessagingStore(state => taskId ? state.getTaskById(taskId) : undefined);
+      
+      if (!taskId || !task) {
+        return (
+            <div className="h-full flex flex-col items-center justify-center p-6 bg-background">
+                <p className="text-muted-foreground">Select a task to see its details.</p>
+            </div>
+        );
+      }
+
+      return (
+        <div className="h-full flex flex-col bg-background">
+          <ActivityFeed messages={task.messages} contact={task.contact} />
+
+          {/* Input Form */}
+          <div className="p-4 border-t flex-shrink-0 bg-background/50">
+            <Tabs defaultValue="comment" className="w-full">
+              <TabsList className="grid w-full grid-cols-2 mb-2">
+                <TabsTrigger value="comment">Comment</TabsTrigger>
+                <TabsTrigger value="note"><StickyNote className="w-4 h-4 mr-2" />Internal Note</TabsTrigger>
+              </TabsList>
+              <TabsContent value="comment">
+                 <div className="relative">
+                    <Textarea placeholder={`Reply to ${task.contact.name}...`} className="pr-24 min-h-[52px]" />
+                    <div className="absolute right-2 top-2 flex items-center gap-1">
+                        <Button variant="ghost" size="icon" className="rounded-full h-8 w-8"><Smile className="w-4 h-4" /></Button>
+                        <Button variant="ghost" size="icon" className="rounded-full h-8 w-8"><Paperclip className="w-4 h-4" /></Button>
+                        <Button size="icon" className="rounded-full h-8 w-8"><SendHorizontal className="w-4 h-4" /></Button>
+                    </div>
+                </div>
+              </TabsContent>
+              <TabsContent value="note">
+                <div className="relative">
+                    <Textarea placeholder="Add an internal note..." className="pr-24 min-h-[52px] bg-yellow-400/10 border-yellow-400/30 focus-visible:ring-yellow-500" />
+                    <div className="absolute right-2 top-2 flex items-center gap-1">
+                        <Button size="icon" className="rounded-full h-8 w-8"><SendHorizontal className="w-4 h-4" /></Button>
+                    </div>
+                </div>
+              </TabsContent>
+            </Tabs>
+          </div>
+        </div>
+      );
+    };
+approved: false
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: undone
+id: 354

@@ -42,7 +42,7 @@ on overlay side pane active: the main right content view should not be re-render
 
  animated tabs: should horizontally scrollable by default. so consumer no need to implement individually, also prevent from vertically scrollable
 
-===
+=== DONE
 
 message page:
 
@@ -52,7 +52,11 @@ lets refactor the architecture of message:
 
 - present the mental model to UI UX with amazing look and cohesive manner
 
-===
+=== DONE
+
+we need UI UX state for case where certain message is currently handled by another agent. if human agent, should request for approval to take over, if AI agent, no need for approval
+
+=== DONE
 
 message page: message list
 

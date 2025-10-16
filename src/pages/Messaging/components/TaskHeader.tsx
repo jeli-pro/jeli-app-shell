@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ChevronDown, Inbox, Zap, Shield, Clock, Calendar, Plus, User } from 'lucide-react';
+import { ChevronDown, Inbox, Zap, Shield, Clock, Calendar, Plus, User, Eye } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 
@@ -39,6 +39,9 @@ export const TaskHeader: React.FC<TaskHeaderProps> = ({ task }) => {
   const { updateTask, assignees } = useMessagingStore();
   const currentStatus = statusOptions.find(o => o.value === task.status);
   const currentPriority = priorityOptions.find(o => o.value === task.priority);
+  const currentUserId = 'user-1'; // Mock current user
+  const isHandledByOther = task.activeHandler && task.activeHandlerId !== currentUserId;
+
 
   return (
     <div className="space-y-4">
@@ -85,6 +88,14 @@ export const TaskHeader: React.FC<TaskHeaderProps> = ({ task }) => {
           </DropdownMenuContent>
         </DropdownMenu>
 
+        {isHandledByOther && (
+            <>
+                <div className="mx-2 h-4 w-px bg-border" />
+                <Badge variant="outline" className="gap-2 font-normal text-amber-600 border-amber-600/50">
+                    <Eye className="w-3.5 h-3.5" /> Viewing: {task.activeHandler?.name}
+                </Badge>
+            </>
+        )}
         <div className="mx-2 h-4 w-px bg-border" />
 
         {/* Status Dropdown */}

@@ -26,6 +26,7 @@ export interface Assignee {
   id: string;
   name: string;
   avatar: string;
+  type: 'human' | 'ai';
 }
 
 export type ActivityEventType = 'note' | 'call' | 'email' | 'meeting';
@@ -75,6 +76,8 @@ export interface Task {
   priority: TaskPriority;
   tags: string[];
   aiSummary: AISummary;
+  activeHandlerId: string | null;
+  takeoverRequested?: boolean;
 }
 
 export type TaskView = 'all_open' | 'unassigned' | 'done';

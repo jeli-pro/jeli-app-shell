@@ -2,9 +2,10 @@ import type { Contact, Task, Message, ActivityEvent, Note, Assignee, TaskStatus,
 
 // --- ASSIGNEES ---
 export const mockAssignees: Assignee[] = [
-  { id: 'user-1', name: 'You', avatar: `https://avatar.vercel.sh/you.png` },
-  { id: 'user-2', name: 'Alex Johnson', avatar: `https://avatar.vercel.sh/alex.png` },
-  { id: 'user-3', name: 'Samira Kumar', avatar: `https://avatar.vercel.sh/samira.png` },
+  { id: 'user-1', name: 'You', avatar: `https://avatar.vercel.sh/you.png`, type: 'human' },
+  { id: 'user-2', name: 'Alex Johnson', avatar: `https://avatar.vercel.sh/alex.png`, type: 'human' },
+  { id: 'user-3', name: 'Samira Kumar', avatar: `https://avatar.vercel.sh/samira.png`, type: 'human' },
+  { id: 'user-ai-1', name: 'AI Assistant', avatar: `https://avatar.vercel.sh/ai.png`, type: 'ai' },
 ];
 
 // --- HELPERS ---
@@ -95,6 +96,7 @@ export const mockTasks: Task[] = [
     priority: 'high',
     tags: ['onboarding', 'pricing'],
     aiSummary: { sentiment: 'positive', summaryPoints: ['Expressed strong interest in the new feature.', 'Asked about pricing tiers for enterprise.', 'Is ready for a follow-up call next week.',], suggestedReplies: ['Let\'s schedule that call!', 'Here is the pricing information.', 'Happy to hear you like it!',], },
+    activeHandlerId: 'user-2', // Alex is handling this
   },
   {
     id: 'task-2',
@@ -110,6 +112,7 @@ export const mockTasks: Task[] = [
     priority: 'medium',
     tags: ['bug-report'],
     aiSummary: { sentiment: 'neutral', summaryPoints: ['Reported a minor issue with order #12345.', 'Was satisfied with the proposed solution.', 'Inquired about the return policy.',], suggestedReplies: ['Can I help with anything else?', 'Here is our return policy.',], },
+    activeHandlerId: null,
   },
   {
     id: 'task-3',
@@ -125,6 +128,7 @@ export const mockTasks: Task[] = [
     priority: 'high',
     tags: ['urgent', 'tech-support'],
     aiSummary: { sentiment: 'negative', summaryPoints: ['Frustrated with login issues.', 'Unable to reset password via email link.', 'Threatened to cancel their subscription.',], suggestedReplies: ['I\'m escalating this to our technical team.', 'Let\'s try a manual password reset.', 'We apologize for the inconvenience.',], },
+    activeHandlerId: 'user-ai-1', // AI Assistant is handling this
   },
   {
     id: 'task-4',
@@ -140,5 +144,6 @@ export const mockTasks: Task[] = [
     priority: 'low',
     tags: [],
     aiSummary: { sentiment: 'neutral', summaryPoints: ['Followed up on a previous conversation.', 'Confirmed meeting time for Thursday.', 'No outstanding issues.',], suggestedReplies: ['Sounds good!', 'See you then!',], },
+    activeHandlerId: null,
   },
 ];

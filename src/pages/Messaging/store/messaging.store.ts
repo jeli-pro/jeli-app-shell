@@ -18,12 +18,14 @@ interface MessagingState {
 }
 
 interface MessagingActions {
-  getTaskById: (id: string) => (Task & { contact: Contact, assignee: Assignee | null }) | undefined;
+  getTaskById: (id: string) => (Task & { contact: Contact, assignee: Assignee | null, activeHandler: Assignee | null }) | undefined;
   getFilteredTasks: () => (Task & { contact: Contact, assignee: Assignee | null })[];
   setSearchTerm: (term: string) => void;
   setActiveTaskView: (view: TaskView) => void;
   setFilters: (filters: Partial<MessagingState['activeFilters']>) => void;
   updateTask: (taskId: string, updates: Partial<Omit<Task, 'id'>>) => void;
+  takeOverTask: (taskId: string, userId: string) => void;
+  requestAndSimulateTakeover: (taskId: string, requestedByUserId: string) => void;
   getAssigneeById: (assigneeId: string) => Assignee | undefined;
   getAvailableTags: () => string[];
 }
@@ -50,8 +52,9 @@ export const useMessagingStore = create<MessagingState & MessagingActions>((set,
     if (!contact) return undefined;
 
     const assignee = get().assignees.find(a => a.id === task.assigneeId) || null;
+    const activeHandler = get().assignees.find(a => a.id === task.activeHandlerId) || null;
 
-    return { ...task, contact, assignee };
+    return { ...task, contact, assignee, activeHandler };
   },
 
   getFilteredTasks: () => {
@@ -105,6 +108,24 @@ export const useMessagingStore = create<MessagingState & MessagingActions>((set,
         : task
     )
   })),
+
+  takeOverTask: (taskId, userId) => set(state => ({
+    tasks: state.tasks.map(task => 
+      task.id === taskId 
+        ? { ...task, activeHandlerId: userId, takeoverRequested: false } 
+        : task
+    )
+  })),
+
+  requestAndSimulateTakeover: (taskId, requestedByUserId) => {
+    set(state => ({
+      tasks: state.tasks.map(task => 
+        task.id === taskId ? { ...task, takeoverRequested: true } : task
+      )
+    }));
+    // Simulate a 2-second delay for the other user to "approve"
+    setTimeout(() => get().takeOverTask(taskId, requestedByUserId), 2000);
+  },
 
   getAssigneeById: (assigneeId: string) => {
     return get().assignees.find(a => a.id === assigneeId);

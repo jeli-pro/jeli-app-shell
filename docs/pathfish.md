@@ -1,200 +1,220 @@
-Alright, let's get this done. The current messaging page filter is a toy. We're going to ship a real feature that gives users power over their workflow.
+Yo, check it. We're dropping a new feature into the messaging system. Right now, it's a free-for-all. We're adding an agent-lock mechanism to prevent collisions and clarify who's handling what. This is a classic coordination problem, and we're solving it with a clean UI.
 
-The plan is simple: We're upgrading the state management to handle advanced, preset filters like 'Open', 'Unassigned', and 'Done'. Then, we'll overhaul the UI, replacing the weak-sauce tabs with a new set that leverages these presets. Finally, we'll make these views first-class citizens by wiring them up as sub-nav links in the sidebar, all driven by URL params so they're shareable and bookmarkable.
+The plan is to show when a conversation (task) is being worked on. We'll differentiate between a human agent and an AI agent. If it's a human, the user has to request a takeover – we're not animals. If it's an AI, the user can just boot it and take control directly. This prevents stepping on toes while keeping the workflow fast.
 
-This isn't just a refactor; it's a feature upgrade that'll make the app 10x more usable. Let's build it.
+We'll tackle this surgically. First, we'll update the data model and the Zustand store to understand this new "locked" state. Then, we'll sprinkle in UI indicators in the task list and build out the main takeover controls in the task detail header. Finally, we'll wire everything up and add toast notifications for slick user feedback. It's a clean, multi-part refactor that will seriously level up the UX. No massive rewrites, just targeted enhancements.
 
 ```yaml
 plan:
-  uuid: 'f2a7b8e1-c9d3-4a1e-8b65-9f4d3c0a7e1b'
+  uuid: 'e8a1b2c4-f3d5-4e67-8b9a-c0d1f2e3a4b5'
   status: 'todo'
-  title: 'Refactor Messaging Page for Advanced Filtering and Sidebar Nav'
+  title: 'Refactor: Implement Agent Lock & Takeover UX in Messaging'
   introduction: |
-    Alright, listen up. The current messaging page filter is weak sauce - just 'all' and 'unread'. Users are crying out for real power. We're going to inject some serious functionality here.
+    Alright, listen up. We're about to ship a slick new feature for the messaging module. Right now, it's the wild west—anyone can jump into any conversation. We're adding an agent lock. If someone's on it, you'll know. If it's a human, you ask nicely to take over. If it's our AI bot, you just kick it out. Simple.
 
-    The plan is to juice up the state management to handle advanced, preset filters like 'Open', 'Unassigned', 'Done', etc. Then, we'll rip out the old tabs and slap in a new UI that uses these presets.
+    This refactor is surgical. We'll start by teaching our data model about this new "locked" state. Then we'll slap some UI on the task list so you can see locks at a glance. The main event is in the task detail view: a big, clear banner showing who's in charge, with the right button to request or force a takeover. Finally, we'll wire it all up with Zustand and some flashy toasts so the user knows what's happening.
 
-    But that's not all. We're going to make these filters first-class citizens by turning them into sub-navigation links in the sidebar. Clicking 'Unassigned' in the sidebar will jump you right to that view. This is a huge UX win. We'll wire this all up through URL params, making the views shareable and bookmarkable. No half-measures. Let's build something people actually want to use.
+    No big bang rewrite. Just a clean, four-part slice that adds real value. Let's get it done.
   parts:
-    - uuid: 'a1b3c4d5-e6f7-8a90-b1c2-d3e4f5a6b7c8'
+    - uuid: 'a1b2c3d4-e5f6-7890-1234-567890abcdef'
       status: 'todo'
-      name: 'Part 1: Beef Up State Management for Advanced Filtering'
+      name: 'Part 1: Data Model & Store Enhancements'
       reason: |
-        The current `messaging.store` is too basic. It can't handle the concept of predefined filter "views". We need to bake this logic directly into the store to keep our components clean and have a single source of truth for filtering tasks.
+        Gotta start with the foundation. We need to update our data structures and state management to even recognize the concept of a "locked" task. Without this, the UI has nothing to work with. This part gets our store and types in shape for the new reality.
       steps:
-        - uuid: 'e8f9a0b1-c2d3-4e5f-6a7b-8c9d0e1f2a3b'
+        - uuid: 'b2c3d4e5-f6a7-8901-2345-67890abcdef1'
           status: 'todo'
-          name: '1. Define new filter presets and state'
+          name: '1. Extend Task Data Model'
           reason: |
-            To create a contract for what filter views are available and to store the currently active view. This establishes the foundation for the new filtering logic.
+            The `Task` interface is our source of truth for a conversation. We need to add an optional `lockedBy` field to track who, if anyone, is currently handling it. This field needs to know if the agent is human or AI, which dictates the takeover UX.
           files:
             - src/pages/Messaging/types.ts
-            - src/pages/Messaging/store/messaging.store.ts
           operations:
-            - 'In `src/pages/Messaging/types.ts`, export a new type `export type TaskView = "all_open" | "unassigned" | "done";` to define the available filter presets.'
-            - 'In `src/pages/Messaging/store/messaging.store.ts`, import the new `TaskView` type.'
-            - 'In the `MessagingState` interface, add a new property: `activeTaskView: TaskView;`.'
-            - 'In the store''s initial state, set `activeTaskView: "all_open"`, making it the default view.'
-            - 'In the `MessagingActions` interface, add a new action signature: `setActiveTaskView: (view: TaskView) => void;`.'
-            - 'Implement the `setActiveTaskView` action in the store. It should simply call `set({ activeTaskView: view })`.'
-        - uuid: 'b4c5d6e7-f8a9-0b1c-2d3e-4f5a6b7c8d9e'
+            - 'In `src/pages/Messaging/types.ts`, find the `Task` interface.'
+            - 'Add a new optional property `lockedBy` of type `{ agentId: string; agentType: "human" | "ai"; agentName: string; agentAvatar: string; } | null`.'
+        - uuid: 'c3d4e5f6-a7b8-9012-3456-7890abcdef12'
           status: 'todo'
-          name: '2. Upgrade `getFilteredTasks` selector'
+          name: '2. Seed Mock Data with Locked Tasks'
           reason: |
-            This is the core of the refactor. The selector needs to apply the logic for the new `activeTaskView` on top of existing filters like search and tags.
+            To build and test the UI, we need data that reflects the new locked states. We'll update the mock data to include examples of tasks locked by both a human and an AI agent.
+          files:
+            - src/pages/Messaging/data/mockData.ts
+          operations:
+            - 'Open `src/pages/Messaging/data/mockData.ts`.'
+            - 'In the `mockTasks` array, find a couple of tasks to modify.'
+            - 'For one task, add the `lockedBy` property with `agentType: "human"`. You can use an existing assignee for the agent details.'
+            - 'For another task, add `lockedBy` with `agentType: "ai"`. Create a mock AI agent profile for this (e.g., name: "Jeli AI Assistant").'
+        - uuid: 'd4e5f6a7-b8c9-0123-4567-890abcdef123'
+          status: 'todo'
+          name: '3. Add Takeover Actions to Messaging Store'
+          reason: |
+            The UI needs functions to call. We'll add two new actions to our Zustand store: one for requesting a takeover from a human and another for forcing a takeover from an AI. For now, these will be placeholders for the logic we'll implement later.
           files:
             - src/pages/Messaging/store/messaging.store.ts
           operations:
-            - 'Modify the `getFilteredTasks` selector to read `activeTaskView` from the state.'
-            - 'Inside the function, before the existing filtering logic, introduce a new filtering step based on `activeTaskView`.'
-            - 'Use a `switch` statement or `if/else` chain to handle the different views:'
-            - "For `'all_open'`, filter tasks where status is `'open'` or `'in-progress'`."
-            - "For `'unassigned'`, filter tasks where `assigneeId` is `null` AND status is `'open'` or `'in-progress'`."
-            - "For `'done'`, filter tasks where status is `'done'`."
-            - 'Ensure the result of this new view-based filtering is then passed to the subsequent search and tag filtering logic, allowing all filters to be combined.'
+            - 'In `src/pages/Messaging/store/messaging.store.ts`, locate the `MessagingActions` interface.'
+            - 'Add a new action: `requestTakeover: (taskId: string) => void;`.'
+            - 'Add another new action: `forceTakeover: (taskId: string) => void;`.'
+            - 'In the store implementation, add placeholder implementations for these two new actions that do nothing for now.'
       context_files:
         compact:
-          - src/pages/Messaging/store/messaging.store.ts
           - src/pages/Messaging/types.ts
+          - src/pages/Messaging/data/mockData.ts
+          - src/pages/Messaging/store/messaging.store.ts
         medium:
-          - src/pages/Messaging/store/messaging.store.ts
           - src/pages/Messaging/types.ts
-          - src/pages/Messaging/components/TaskList.tsx
+          - src/pages/Messaging/data/mockData.ts
+          - src/pages/Messaging/store/messaging.store.ts
         extended:
-          - src/pages/Messaging/store/messaging.store.ts
           - src/pages/Messaging/types.ts
+          - src/pages/Messaging/data/mockData.ts
+          - src/pages/Messaging/store/messaging.store.ts
           - src/pages/Messaging/components/TaskList.tsx
-          - src/hooks/useAppViewManager.hook.ts
-    - uuid: 'c9d8e7f6-a5b4-c3d2-e1f0-9a8b7c6d5e4f'
+          - src/pages/Messaging/components/TaskHeader.tsx
+    - uuid: 'e5f6a7b8-c9d0-1234-5678-90abcdef1234'
       status: 'todo'
-      name: 'Part 2: Overhaul TaskList UI & URL-based State'
+      name: 'Part 2: UI for Locked State in Task List'
       reason: |
-        The UI needs to reflect the new filtering power. We'll replace the simple tabs with ones that control our new "views". We'll also make the URL the source of truth for the active view, making the app state more robust and shareable.
+        Users need to see the state of a conversation before clicking in. A simple lock icon on the task list items provides crucial at-a-glance information, improving workflow and preventing unnecessary clicks.
       steps:
-        - uuid: 'd1e2f3a4-b5c6-7d8e-9f0a-1b2c3d4e5f6a'
+        - uuid: 'f6a7b8c9-d0e1-2345-6789-0abcdef12345'
           status: 'todo'
-          name: '1. Introduce `messagingView` URL parameter'
+          name: '1. Render Lock Indicator in Task List'
           reason: |
-            To control the messaging view state via the URL, enabling deep linking and browser history support. This decouples the view state from component state.
-          files:
-            - src/hooks/useAppViewManager.hook.ts
-            - src/pages/Messaging/types.ts
-          operations:
-            - 'In `useAppViewManager.hook.ts`, import `TaskView` from `''@/pages/Messaging/types''`.'
-            - 'In the hook, create a new derived state variable: `const messagingView = searchParams.get("messagingView") as TaskView | null;`.'
-            - 'Create a new setter function to update the URL: `const setMessagingView = (view: TaskView) => handleParamsChange({ messagingView: view });`.'
-            - 'Return `messagingView` and `setMessagingView` from the hook''s returned object.'
-        - uuid: 'a6b7c8d9-e0f1-2a3b-4c5d-6e7f8a9b0c1d'
-          status: 'todo'
-          name: '2. Connect `TaskList` to URL state and store'
-          reason: |
-            To make the `TaskList` component react to URL changes and update the central store accordingly, ensuring a synchronized state across the application.
+            We'll modify the `TaskList` component to check for the `lockedBy` property on each task and render a visual indicator, like a lock icon, if it's present. This gives immediate feedback in the list view.
           files:
             - src/pages/Messaging/components/TaskList.tsx
           operations:
-            - 'In `TaskList.tsx`, get `messagingView` and `setMessagingView` from the `useAppViewManager()` hook.'
-            - 'Get the `setActiveTaskView` action from the `useMessagingStore()` hook.'
-            - 'Add a `useEffect` hook to sync the URL state with the Zustand store: `useEffect(() => { setActiveTaskView(messagingView || "all_open"); }, [messagingView, setActiveTaskView]);`.'
-        - uuid: 'f2a3b4c5-d6e7-8f9a-0b1c-2d3e4f5a6b7c'
-          status: 'todo'
-          name: '3. Replace UI tabs with new view controls'
-          reason: |
-            The old `[all | unread]` tabs are now obsolete. They must be replaced with new tabs that control the `messagingView` via the URL.
-          files:
-            - src/pages/Messaging/components/TaskList.tsx
-          operations:
-            - 'Locate the `AnimatedTabs` component within `TaskList.tsx`.'
-            - 'Replace the existing `tabs` prop array with a new constant: `const TABS = [{ id: "all_open", label: "Open" }, { id: "unassigned", label: "Unassigned" }, { id: "done", label: "Done" }];`.'
-            - 'Update the `activeTab` prop to be driven by the URL: `activeTab={messagingView || "all_open"}`.'
-            - 'Update the `onTabChange` prop to call the URL setter: `onTabChange={(tabId) => setMessagingView(tabId as TaskView)}`.'
+            - 'In `src/pages/Messaging/components/TaskList.tsx`, import the `Lock` icon from `lucide-react`.'
+            - 'Inside the `getFilteredTasks().map(...)` loop that renders each task `Link`.'
+            - 'Check if `task.lockedBy` exists.'
+            - 'If it does, render the `<Lock />` icon next to the contact name or in another prominent spot within the list item.'
+            - 'Optionally, add a `group` class to the `Link` and a `group-hover:opacity-70` style to visually fade locked tasks slightly.'
       context_files:
         compact:
           - src/pages/Messaging/components/TaskList.tsx
-          - src/hooks/useAppViewManager.hook.ts
         medium:
           - src/pages/Messaging/components/TaskList.tsx
-          - src/hooks/useAppViewManager.hook.ts
-          - src/pages/Messaging/store/messaging.store.ts
           - src/pages/Messaging/types.ts
         extended:
           - src/pages/Messaging/components/TaskList.tsx
-          - src/hooks/useAppViewManager.hook.ts
-          - src/pages/Messaging/store/messaging.store.ts
           - src/pages/Messaging/types.ts
-          - src/components/layout/EnhancedSidebar.tsx
-    - uuid: '8d7e6f5a-4b3c-2d1e-0f9a-8b7c6d5e4f3a'
+          - src/pages/Messaging/store/messaging.store.ts
+    - uuid: 'a7b8c9d0-e1f2-3456-7890-bcdef1234567'
       status: 'todo'
-      name: 'Part 3: Integrate Filter Views into Sidebar'
+      name: 'Part 3: UI for Takeover in Task Detail View'
       reason: |
-        To provide quick, one-click access to the most important message views directly from the main application navigation, improving discoverability and workflow efficiency.
+        This is the core UX. When a user opens a locked conversation, we need to clearly communicate the situation and provide the correct action. This part builds the banner and buttons in the `TaskHeader` and disables input to prevent invalid actions.
       steps:
-        - uuid: '7c6d5e4f-3a2b-1c0d-9e8f-7a6b5c4d3e2f'
+        - uuid: 'b8c9d0e1-f2a3-4567-8901-cdef12345678'
           status: 'todo'
-          name: '1. Enhance navigation logic for URL parameters'
+          name: '1. Display Lock Banner and Conditional Buttons in Header'
           reason: |
-            The existing `navigateToPage` function only changes the URL path. We need to upgrade it to handle setting URL search parameters simultaneously, which is essential for activating our new views from the sidebar.
+            The `TaskHeader` is the perfect place to display who has locked the conversation. We'll add a banner with the agent's info and show the right button—"Request Takeover" for humans, "Take Over" for AI.
           files:
-            - src/hooks/useAppViewManager.hook.ts
+            - src/pages/Messaging/components/TaskHeader.tsx
           operations:
-            - 'Locate the `navigateToPage` function inside `useAppViewManager.hook.ts`.'
-            - 'Modify its signature to accept an optional `params` object: `const navigateToPage = (page: ActivePage, params?: Record<string, string | null>) => { ... };`.'
-            - 'Inside the function, create a new `URLSearchParams` instance from the current `searchParams`.'
-            - 'Iterate over the passed `params` object. If a value is `null` or `undefined`, `delete` the key from the search params. Otherwise, `set` the key/value.'
-            - 'Finally, call `navigate` with both the new pathname and the stringified search params: `navigate({ pathname: `/${page}`, search: newSearchParams.toString() });`.'
-        - uuid: '6b5c4d3e-2f1a-0b9c-8d7e-6f5a4b3c2d1e'
+            - 'In `src/pages/Messaging/components/TaskHeader.tsx`, import `Lock`, `UserCheck`, and `Bot` icons from `lucide-react`.'
+            - 'At the top of the component, check if `task.lockedBy` exists.'
+            - 'If it does, render a new banner-like `div`. This should contain the agent''s avatar (`task.lockedBy.agentAvatar`), name (`task.lockedBy.agentName`), and a message like "is currently handling this conversation."'
+            - 'Inside this banner, add a `Button`. The button''s text and `onClick` handler will be conditional.'
+            - 'If `task.lockedBy.agentType === "human"`, the button text is "Request Takeover".'
+            - 'If `task.lockedBy.agentType === "ai"`, the button text is "Take Over".'
+            - 'Hide the normal header controls (Assignee, Status, etc.) when the task is locked.'
+        - uuid: 'c9d0e1f2-a3b4-5678-9012-def123456789'
           status: 'todo'
-          name: '2. Refactor "Messaging" sidebar item into a collapsible section'
+          name: '2. Disable Message Input for Locked Tasks'
           reason: |
-            To create a container for the main "Messaging" link and its new sub-navigation links. This improves the information architecture and makes the sidebar more organized.
+            A user shouldn't be able to send messages in a conversation they don't control. We'll disable the input form in `TaskDetail` if the task is locked to enforce this rule.
           files:
-            - src/components/layout/EnhancedSidebar.tsx
+            - src/pages/Messaging/components/TaskDetail.tsx
           operations:
-            - 'In `EnhancedSidebar.tsx`, get `messagingView` and the modified `navigateToPage` from the `useAppViewManager()` hook.'
-            - 'Locate the `EnhancedSidebarMenuItem` for "Messaging" (where `page="messaging"`).'
-            - 'Remove this single menu item.'
-            - 'In its place, add a `<SidebarSection title="Inbox" isCollapsible={true}>`.'
-            - 'Inside this new section, add three `EnhancedSidebarMenuItem` components, one for each view:'
-            - "1. **All Open:** `label=\"All Open\"`, `page=\"messaging\"`, `onClick={() => navigateToPage('messaging', { messagingView: 'all_open' })}`, `isActive={activePage === 'messaging' && (messagingView === 'all_open' || !messagingView)}`."
-            - "2. **Unassigned:** `label=\"Unassigned\"`, `page=\"messaging\"`, `onClick={() => navigateToPage('messaging', { messagingView: 'unassigned' })}`, `isActive={activePage === 'messaging' && messagingView === 'unassigned'}`."
-            - "3. **Done:** `label=\"Done\"`, `page=\"messaging\"`, `onClick={() => navigateToPage('messaging', { messagingView: 'done' })}`, `isActive={activePage === 'messaging' && messagingView === 'done'}`."
-            - "Modify the `EnhancedSidebarMenuItem` component to accept and prioritize an `onClick` prop over its default navigation behavior. Update its `handleClick` to be `const handleClick = onClick ?? (() => navigateToPage(page));`."
+            - 'In `src/pages/Messaging/components/TaskDetail.tsx`, get the full task details, including `lockedBy`.'
+            - 'Locate the `div` containing the message input form (with `Textarea`, `Button`, etc.).'
+            - 'Add the `disabled` attribute to the `Textarea`, `Input`, and action `Button`s if `task.lockedBy` is not null.'
+            - 'You can also use CSS to visually indicate the disabled state, e.g., `opacity-50 cursor-not-allowed` on the form wrapper.'
       context_files:
         compact:
-          - src/components/layout/EnhancedSidebar.tsx
-          - src/hooks/useAppViewManager.hook.ts
+          - src/pages/Messaging/components/TaskHeader.tsx
+          - src/pages/Messaging/components/TaskDetail.tsx
         medium:
-          - src/components/layout/EnhancedSidebar.tsx
-          - src/hooks/useAppViewManager.hook.ts
-          - src/pages/Messaging/components/TaskList.tsx
+          - src/pages/Messaging/components/TaskHeader.tsx
+          - src/pages/Messaging/components/TaskDetail.tsx
+          - src/pages/Messaging/types.ts
         extended:
-          - src/components/layout/EnhancedSidebar.tsx
-          - src/hooks/useAppViewManager.hook.ts
-          - src/pages/Messaging/components/TaskList.tsx
-          - src/store/appShell.store.ts
-          - src/components/layout/Sidebar.tsx
+          - src/pages/Messaging/components/TaskHeader.tsx
+          - src/pages/Messaging/components/TaskDetail.tsx
+          - src/pages/Messaging/types.ts
+          - src/pages/Messaging/store/messaging.store.ts
+    - uuid: 'd0e1f2a3-b4c5-6789-0123-ef1234567890'
+      status: 'todo'
+      name: 'Part 4: Implement Takeover Logic & User Feedback'
+      reason: |
+        The final step is to make it all work. We need to implement the logic in the store actions and connect the UI buttons. Providing instant feedback with toast notifications is key to making the experience feel responsive and complete.
+      steps:
+        - uuid: 'e1f2a3b4-c5d6-7890-1234-f12345678901'
+          status: 'todo'
+          name: '1. Implement Store Actions with Toast Feedback'
+          reason: |
+            Now we flesh out the store actions. The `forceTakeover` will modify the state directly. `requestTakeover` will simulate an API call. Both will use `sonner` to show toasts, confirming to the user that their action was registered.
+          files:
+            - src/pages/Messaging/store/messaging.store.ts
+          operations:
+            - 'In `src/pages/Messaging/store/messaging.store.ts`, import `toast` from `sonner`.'
+            - 'Implement `forceTakeover(taskId)`. It should use `set` to find the task in the `tasks` array and update its `lockedBy` property to `null`. After updating, call `toast.success("You have taken over the conversation.")`.'
+            - 'Implement `requestTakeover(taskId)`. It won''t change state. Instead, find the task to get the agent''s name, then call `toast.info(`Takeover request sent to ${task.lockedBy.agentName}.`)`.'
+        - uuid: 'f2a3b4c5-d6e7-8901-2345-123456789012'
+          status: 'todo'
+          name: '2. Connect UI Buttons to Store Actions'
+          reason: |
+            Let's wire it up. The buttons we created in the `TaskHeader` need to be connected to the new Zustand store actions to trigger the logic and feedback.
+          files:
+            - src/pages/Messaging/components/TaskHeader.tsx
+          operations:
+            - 'In `src/pages/Messaging/components/TaskHeader.tsx`, import `useMessagingStore`.'
+            - 'Destructure the `requestTakeover` and `forceTakeover` actions from the store.'
+            - 'In the conditional button rendering, add the `onClick` handler.'
+            - 'For the "Request Takeover" button, call `onClick={() => requestTakeover(task.id)}`.'
+            - 'For the "Take Over" button, call `onClick={() => forceTakeover(task.id)}`.'
+      context_files:
+        compact:
+          - src/pages/Messaging/store/messaging.store.ts
+          - src/pages/Messaging/components/TaskHeader.tsx
+        medium:
+          - src/pages/Messaging/store/messaging.store.ts
+          - src/pages/Messaging/components/TaskHeader.tsx
+          - src/components/ui/toast.tsx
+        extended:
+          - src/pages/Messaging/store/messaging.store.ts
+          - src/pages/Messaging/components/TaskHeader.tsx
+          - src/components/ui/toast.tsx
+          - src/App.tsx
   conclusion: |
-    Once this is shipped, the messaging feature will be transformed from a simple inbox into a powerful, organized workspace. Users can triage tasks efficiently with direct navigation from the sidebar, and the URL-driven state makes the entire experience more stable and predictable. This is a massive leap forward in usability. LGTM.
+    Once this is done, the messaging feature will have a proper concurrency control mechanism. Users will get clear, immediate feedback on conversation status, preventing them from talking over each other or interfering with AI processes. This surgical refactor adds significant UX value with minimal disruption, making the whole system feel more robust and professional. Ship it.
   context_files:
     compact:
+      - src/pages/Messaging/types.ts
+      - src/pages/Messaging/data/mockData.ts
       - src/pages/Messaging/store/messaging.store.ts
       - src/pages/Messaging/components/TaskList.tsx
-      - src/components/layout/EnhancedSidebar.tsx
-      - src/hooks/useAppViewManager.hook.ts
-      - src/pages/Messaging/types.ts
+      - src/pages/Messaging/components/TaskHeader.tsx
+      - src/pages/Messaging/components/TaskDetail.tsx
     medium:
+      - src/pages/Messaging/types.ts
+      - src/pages/Messaging/data/mockData.ts
       - src/pages/Messaging/store/messaging.store.ts
       - src/pages/Messaging/components/TaskList.tsx
-      - src/components/layout/EnhancedSidebar.tsx
-      - src/hooks/useAppViewManager.hook.ts
-      - src/pages/Messaging/types.ts
-      - src/components/layout/Sidebar.tsx
+      - src/pages/Messaging/components/TaskHeader.tsx
+      - src/pages/Messaging/components/TaskDetail.tsx
+      - src/components/ui/toast.tsx
     extended:
+      - src/pages/Messaging/types.ts
+      - src/pages/Messaging/data/mockData.ts
       - src/pages/Messaging/store/messaging.store.ts
       - src/pages/Messaging/components/TaskList.tsx
-      - src/components/layout/EnhancedSidebar.tsx
-      - src/hooks/useAppViewManager.hook.ts
-      - src/pages/Messaging/types.ts
-      - src/components/layout/Sidebar.tsx
-      - src/store/appShell.store.ts
+      - src/pages/Messaging/components/TaskHeader.tsx
+      - src/pages/Messaging/components/TaskDetail.tsx
+      - src/components/ui/toast.tsx
+      - src/App.tsx
       - src/pages/Messaging/index.tsx
 ```
