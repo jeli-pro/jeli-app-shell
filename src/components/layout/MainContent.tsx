@@ -23,7 +23,7 @@ export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
       <div
         ref={ref}
         className={cn(
-        "flex flex-col h-full overflow-hidden bg-background",
+        "relative flex flex-col h-full overflow-hidden bg-background",
         isFullscreen && "fixed inset-0 z-[60]"
         )}
       >

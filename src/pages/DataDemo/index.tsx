@@ -18,6 +18,8 @@ import {
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu'
 import { PageLayout } from '@/components/shared/PageLayout'
+import { useScrollToBottom } from '@/hooks/useScrollToBottom.hook';
+import { ScrollToBottomButton } from '@/components/shared/ScrollToBottomButton';
 import { DataListView } from './components/DataListView'
 import { DataCardView } from './components/DataCardView'
 import { DataTableView } from './components/DataTableView'
@@ -84,9 +86,12 @@ function DataDemoContent() {
     { id: 'none', label: 'None' }, { id: 'status', label: 'Status' }, { id: 'priority', label: 'Priority' }, { id: 'category', label: 'Category' }
   ]
   const statsRef = useRef<HTMLDivElement>(null)
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   // Calculate stats from data
   const totalItems = mockDataItems.length
+  const { showScrollToBottom, scrollToBottom, handleScroll } = useScrollToBottom(scrollRef);
+
   const activeItems = mockDataItems.filter(item => item.status === 'active').length
   const highPriorityItems = mockDataItems.filter(item => item.priority === 'high' || item.priority === 'critical').length
   const avgCompletion = totalItems > 0 ? Math.round(
@@ -170,6 +175,8 @@ function DataDemoContent() {
 
   return (
     <PageLayout
+      scrollRef={scrollRef}
+      onScroll={handleScroll}
       // Note: Search functionality is handled by a separate SearchBar in the TopBar
     >
       <div className="space-y-8">
@@ -275,6 +282,7 @@ function DataDemoContent() {
           )}
         </div>
       </div>
+      <ScrollToBottomButton isVisible={showScrollToBottom} onClick={scrollToBottom} />
     </PageLayout>
   )
 }

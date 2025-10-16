@@ -1,5 +1,5 @@
-import { useRef } from 'react'
-import { 
+import { useRef, useCallback } from 'react'
+import {
   BarChart3, 
   TrendingUp, 
   Users, 
@@ -11,16 +11,17 @@ import {
   FileText,
   Star,
   ChevronRight,
-  MoreVertical,
-  ArrowDown
+  MoreVertical
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { DemoContent } from './DemoContent';
 import { useDashboardAnimations } from './hooks/useDashboardAnimations.motion.hook'
-import { useDashboardScroll } from './hooks/useDashboardScroll.hook'
+import { useAutoAnimateTopBar } from '@/hooks/useAutoAnimateTopBar';
+import { useScrollToBottom } from '@/hooks/useScrollToBottom.hook';
 import { useAppShellStore } from '@/store/appShell.store'
 import { BODY_STATES } from '@/lib/utils'
 import { PageHeader } from '@/components/shared/PageHeader';
+import { ScrollToBottomButton } from '@/components/shared/ScrollToBottomButton';
 import { StatCard } from '@/components/shared/StatCard';
 import { Card } from '@/components/ui/card';
 import { PageLayout } from '@/components/shared/PageLayout';
@@ -115,7 +116,14 @@ export function DashboardContent() {
     const featureCardsContainerRef = useRef<HTMLDivElement>(null);
     const bodyState = useAppShellStore(s => s.bodyState);
     const isInSidePane = bodyState === BODY_STATES.SIDE_PANE;
-    const { showScrollToBottom, handleScroll, scrollToBottom } = useDashboardScroll(scrollRef, isInSidePane);
+    
+    const { onScroll: handleTopBarScroll } = useAutoAnimateTopBar(isInSidePane);
+    const { showScrollToBottom, scrollToBottom, handleScroll: handleScrollToBottom } = useScrollToBottom(scrollRef);
+
+    const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+        handleTopBarScroll(e);
+        handleScrollToBottom(e);
+    }, [handleTopBarScroll, handleScrollToBottom]);
 
     useDashboardAnimations(contentRef, statsCardsContainerRef, featureCardsContainerRef);
 
@@ -270,16 +278,7 @@ export function DashboardContent() {
           </Card>
         </div>
       </div>
-      {showScrollToBottom && (
-        <button
-          onClick={scrollToBottom}
-          className="fixed bottom-8 right-8 w-12 h-12 bg-primary text-primary-foreground rounded-full flex items-center justify-center shadow-lg hover:bg-primary/90 transition-all animate-fade-in z-[51]"
-          style={{ animation: 'bounce 2s infinite' }}
-          title="Scroll to bottom"
-        >
-          <ArrowDown className="w-6 h-6" />
-        </button>
-      )}
+      <ScrollToBottomButton isVisible={showScrollToBottom} onClick={scrollToBottom} />
       </PageLayout>
     )
 }
