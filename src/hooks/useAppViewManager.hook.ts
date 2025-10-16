@@ -85,7 +85,7 @@ export function useAppViewManager() {
   }, [currentActivePage, prevActivePage, sidebarState, setSidebarState]);
 
   // DataDemo specific state
-  const viewMode = useMemo(() => (searchParams.get('view') as ViewMode) || 'list', [searchParams]);
+  const viewMode = useMemo(() => (searchParams.get('dataView') as ViewMode) || 'list', [searchParams]);
 	const page = useMemo(() => parseInt(searchParams.get('page') || '1', 10), [searchParams]);
 	const groupBy = useMemo(() => (searchParams.get('groupBy') as GroupableField | 'none') || 'none', [searchParams]);
 	const activeGroupTab = useMemo(() => searchParams.get('tab') || 'all', [searchParams]);
@@ -227,7 +227,7 @@ export function useAppViewManager() {
   }, [bodyState, currentActivePage, sidePaneContent, navigate]);
   
   // DataDemo actions
-  const setViewMode = (mode: ViewMode) => handleParamsChange({ view: mode });
+  const setViewMode = (mode: ViewMode) => handleParamsChange({ dataView: mode === 'list' ? null : mode });
   const setGroupBy = (val: string) => handleParamsChange({ groupBy: val === 'none' ? null : val }, true);
   const setActiveGroupTab = (tab: string) => handleParamsChange({ tab: tab === 'all' ? null : tab });
   const setFilters = (newFilters: FilterConfig) => {

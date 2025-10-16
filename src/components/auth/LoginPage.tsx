@@ -138,7 +138,7 @@ export function LoginPage() {
 	return (
 		<section className="flex max-lg:justify-center min-h-screen w-full login-page-theme bg-background text-foreground">
 			{/* Left Side */}
-			<div className="flex flex-col justify-center w-1/2 max-lg:hidden relative">
+			<div className="flex flex-col justify-center w-1/2 max-lg:hidden relative bg-muted">
 				<Ripple />
 				<TechOrbitDisplay />
 			</div>

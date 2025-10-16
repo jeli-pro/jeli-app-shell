@@ -12,7 +12,7 @@
     "files": true,
     "removeComments": false,
     "removeEmptyLines": false,
-    "compress": true,
+    "compress": false,
     "topFilesLength": 5,
     "showLineNumbers": false,
     "copyToClipboard": true,
@@ -24,14 +24,24 @@
   },
   "include": [
     // "README.md",
-    "package.json",
-    "vite.config.ts",
-    "tsconfig.json",
-    "tsconfig.node.json",
-    "tailwind.config.js",
-    "postcss.config.js",
-    "index.html",
-    "src"
+    // "package.json",
+    // "vite.config.ts",
+    // "tsconfig.json",
+    // "tsconfig.node.json",
+    // "tailwind.config.js",
+    // "postcss.config.js",
+    // "index.html",
+    // "src"
+    //
+    "src/App.tsx",
+    "src/components/auth/LoginPage.tsx",
+    "src/components/layout/ViewModeSwitcher.tsx",
+    "src/hooks/useAppViewManager.hook.ts",
+    "src/index.css",
+    "src/pages/DataDemo/components/DataViewModeSelector.tsx",
+    "src/pages/DataDemo/index.tsx",
+    "src/store/appShell.store.ts",
+    "tailwind.config.js"
 
     //
   ],

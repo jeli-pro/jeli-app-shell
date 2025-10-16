@@ -18,6 +18,13 @@ data demo page:
 - data list is not rendered when view mode change: split view mode, overlay side pane view mode
 - also view mode should not be affected when user interact with content like changing data view mode
 
+  "src/App.tsx",
+  "src/components/layout/ViewModeSwitcher.tsx",
+  "src/hooks/useAppViewManager.hook.ts",
+  "src/pages/DataDemo/components/DataViewModeSelector.tsx",
+  "src/pages/DataDemo/index.tsx",
+  "src/store/appShell.store.ts"
+
 ===
 
 top bar: left aligned is only for the breadcrumb, everything else should right aligned
@@ -33,6 +40,12 @@ message page: sidebar should always be collapsed for message page on first load 
 ===
 
 overlay side pane: fix erratic close open movement while user resizing the pane
+
+  "src/App.tsx",
+  "src/components/layout/AppShell.tsx",
+  "src/hooks/useAppViewManager.hook.ts",
+  "src/hooks/useResizablePanes.hook.ts",
+  "src/store/appShell.store.ts"
 
 === DONE
 
