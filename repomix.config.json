@@ -37,10 +37,16 @@
     "src/components/layout/AppShell.tsx",
     "src/components/layout/TopBar.tsx",
     "src/components/ui/button.tsx",
+    "src/components/ui/card.tsx",
     "src/components/ui/input.tsx",
     "src/hooks/useAppViewManager.hook.ts",
+    "src/lib/utils.ts",
     "src/pages/Dashboard/index.tsx",
-    "src/pages/DataDemo/index.tsx"
+    "src/pages/DataDemo/components/DataCardView.tsx",
+    "src/pages/DataDemo/components/DataListView.tsx",
+    "src/pages/DataDemo/components/DataTableView.tsx",
+    "src/pages/DataDemo/index.tsx",
+    "src/pages/DataDemo/types.ts"
 
     //
   ],

@@ -1,0 +1,735 @@
+uuid: d26fd833-289b-46d5-aa7f-d31e5f8f3073
+projectId: jeli-app-shell
+createdAt: '2025-10-16T13:22:56.044Z'
+gitCommitMsg: >-
+  feat(data-demo): add interactive CTA to all data views
+
+  Introduces a new polymorphic `AddDataItemCta` component to encourage user
+  interaction on the Data Demo page. This component renders a styled "Add Item"
+  call to action that adapts its layout for list, card/grid, and table views.
+
+  The CTA has been integrated into `DataListView`, `DataCardView`, and
+  `DataTableView` to ensure it's visible and consistent across all view modes,
+  improving the interactivity and user experience of the demo.
+promptSummary: >-
+  I need to add a "call to action" (CTA) item to the Data Demo page's list,
+  card, grid, and table views to encourage users to add their own data.
+reasoning:
+  - >-
+    This is an excellent plan. To improve the user experience on the Data Demo
+    page, I will create a reusable, polymorphic "Add Item" CTA component and
+    integrate it into all four data view modes: list, cards, grid, and table.
+    This will provide a clear and consistent prompt for users to engage with the
+    demo interactively.
+  - '### Part 1: Forge the Polymorphic CTA Component'
+  - >-
+    First, I'll create the new shared CTA component. This component will be able
+    to render itself correctly as a list item, a card, or a table row based on
+    the `viewMode` prop.
+  - '### Part 2: Inject the CTA into Data Views'
+  - >-
+    With the component ready, I will now integrate it into each of the three
+    view components.
+  - '#### Integrate CTA into List View'
+  - I'll add the CTA component to the end of the `DataListView`.
+  - '#### Integrate CTA into Card & Grid Views'
+  - >-
+    Next, I'll add the CTA to the `DataCardView`, which handles both "cards" and
+    "grid" modes.
+  - '#### Integrate CTA into Table View'
+  - >-
+    Finally, I'll add the CTA as a full-width row at the end of the
+    `DataTableView`.
+  - '---'
+operations:
+  - type: write
+    path: src/pages/DataDemo/components/shared/AddDataItemCta.tsx
+    content: >-
+      import { Plus } from 'lucide-react'
+
+      import { cn } from '@/lib/utils'
+
+
+      interface AddDataItemCtaProps {
+        viewMode: 'list' | 'cards' | 'grid' | 'table'
+        colSpan?: number
+      }
+
+
+      export function AddDataItemCta({ viewMode, colSpan }: AddDataItemCtaProps)
+      {
+        const isTable = viewMode === 'table'
+        const isList = viewMode === 'list'
+        const isCard = viewMode === 'cards' || viewMode === 'grid'
+
+        const content = (
+          <div
+            className={cn(
+              "flex items-center justify-center text-center w-full h-full p-6 gap-6",
+              isCard && "flex-col min-h-[300px]",
+              isList && "flex-row",
+              isTable && "flex-row py-8",
+            )}
+          >
+            <div className="flex-shrink-0">
+              <div className="w-16 h-16 bg-primary/10 border-2 border-dashed border-primary/30 rounded-full flex items-center justify-center text-primary">
+                <Plus className="w-8 h-8" />
+              </div>
+            </div>
+            <div className={cn("flex-1", isCard && "text-center", isList && "text-left", isTable && "text-left")}>
+              <h3 className="font-semibold text-lg mb-1 text-primary">
+                Showcase Your Own Data
+              </h3>
+              <p className="text-muted-foreground text-sm">
+                Click here to add a new item and see how it looks across all views in the demo.
+              </p>
+            </div>
+          </div>
+        )
+
+        if (isTable) {
+          return (
+            <tr className="group transition-colors duration-200 hover:bg-accent/20 cursor-pointer">
+              <td colSpan={colSpan}>
+                {content}
+              </td>
+            </tr>
+          )
+        }
+
+        return (
+          <div
+            className={cn(
+              "group relative overflow-hidden rounded-3xl border-2 border-dashed border-border bg-transparent transition-all duration-300 cursor-pointer",
+              "hover:bg-accent/50 hover:border-primary/30",
+              isList && "rounded-2xl"
+            )}
+          >
+            {content}
+          </div>
+        )
+      }
+    patchStrategy: replace
+  - type: write
+    path: src/pages/DataDemo/components/DataListView.tsx
+    content: |
+      --- src/pages/DataDemo/components/DataListView.tsx
+      +++ src/pages/DataDemo/components/DataListView.tsx
+      @@ -17,6 +17,7 @@
+         ItemPriorityBadge,
+         ItemDateInfo,
+       } from './shared/DataItemParts'
+      +import { AddDataItemCta } from './shared/AddDataItemCta'
+       
+       export function DataListView() {
+         const { groupBy, activeGroupTab, onItemSelect, itemId } = useAppViewManager();
+      @@ -33,7 +34,7 @@
+         }
+       
+         return (
+      -    <div ref={listRef} className="space-y-4">
+      +    <div ref={listRef} className="space-y-4 pb-4">
+             {items.map((item: DataItem) => {
+               const isSelected = selectedItem?.id === item.id
+               
+      @@ -102,6 +103,7 @@
+                 </div>
+               )
+             })}
+      +      <AddDataItemCta viewMode='list' />
+           </div>
+         )
+       }
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/DataDemo/components/DataCardView.tsx
+    content: |
+      --- src/pages/DataDemo/components/DataCardView.tsx
+      +++ src/pages/DataDemo/components/DataCardView.tsx
+      @@ -16,6 +16,7 @@
+         ItemTags,
+         ItemDateInfo,
+       } from './shared/DataItemParts'
+      +import { AddDataItemCta } from './shared/AddDataItemCta'
+       
+       export function DataCardView({ isGrid = false }: { isGrid?: boolean }) {
+         const { groupBy, activeGroupTab, onItemSelect, itemId } = useAppViewManager();
+      @@ -35,8 +36,9 @@
+             className={cn(
+               "gap-6",
+               isGrid
+      -          ? "grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))]"
+      -          : "grid grid-cols-[repeat(auto-fit,minmax(320px,1fr))]"
+      +          ? "grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))]"
+      +          : "grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))]",
+      +        "pb-4"
+             )}
+           >
+             {items.map((item: DataItem) => {
+      @@ -120,6 +122,7 @@
+                 </div>
+               )
+             })}
+      +      <AddDataItemCta viewMode={isGrid ? 'grid' : 'cards'} />
+           </div>
+         )
+       }
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/DataDemo/components/DataTableView.tsx
+    content: |
+      --- src/pages/DataDemo/components/DataTableView.tsx
+      +++ src/pages/DataDemo/components/DataTableView.tsx
+      @@ -20,6 +20,7 @@
+         ItemDateInfo,
+         ItemProgressBar,
+       } from './shared/DataItemParts'
+      +import { AddDataItemCta } from './shared/AddDataItemCta'
+       
+       export function DataTableView() {
+         const {
+      @@ -160,6 +161,7 @@
+                       ])
+                     : data.map(item => <TableRow key={item.id} item={item} isSelected={selectedItem?.id === item.id} onItemSelect={onItemSelect} />)
+                   }
+      +            <AddDataItemCta viewMode='table' colSpan={8} />
+                 </tbody>
+               </table>
+             </div>
+    patchStrategy: standard-diff
+snapshot:
+  src/pages/DataDemo/components/shared/AddDataItemCta.tsx: null
+  src/pages/DataDemo/components/DataCardView.tsx: >-
+    import { useRef } from 'react'
+
+    import { cn } from '@/lib/utils'
+
+    import { Badge } from '@/components/ui/badge'
+
+    import { ArrowUpRight } from 'lucide-react'
+
+    import type { DataItem } from '../types'
+
+    import { useStaggeredAnimation } from
+    '@/hooks/useStaggeredAnimation.motion.hook'
+
+    import { EmptyState } from './EmptyState'
+
+    import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
+
+    import {
+      useDataToRender,
+      useSelectedItem,
+    } from '../store/dataDemo.store'
+
+    import {
+      AssigneeInfo,
+      ItemMetrics,
+      ItemProgressBar,
+      ItemStatusBadge,
+      ItemTags,
+      ItemDateInfo,
+    } from './shared/DataItemParts'
+
+
+    export function DataCardView({ isGrid = false }: { isGrid?: boolean }) {
+      const { groupBy, activeGroupTab, onItemSelect, itemId } = useAppViewManager();
+      const data = useDataToRender(groupBy, activeGroupTab);
+      const selectedItem = useSelectedItem(itemId);
+
+      const containerRef = useRef<HTMLDivElement>(null)
+      useStaggeredAnimation(containerRef, [data], { mode: 'incremental', y: 40 });
+
+      const items = Array.isArray(data) ? data : [];
+      if (items.length === 0) {
+        return <EmptyState />
+      }
+
+      return (
+        <div 
+          ref={containerRef}
+          className={cn(
+            "gap-6",
+            isGrid
+              ? "grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))]"
+              : "grid grid-cols-[repeat(auto-fit,minmax(320px,1fr))]"
+          )}
+        >
+          {items.map((item: DataItem) => {
+            const isSelected = selectedItem?.id === item.id
+            
+            return (
+              <div
+                key={item.id}
+                onClick={() => onItemSelect(item)}
+                className={cn(
+                  "group relative overflow-hidden rounded-3xl border bg-card/50 backdrop-blur-sm transition-all duration-500 cursor-pointer",
+                  "hover:bg-card/80 hover:shadow-xl hover:shadow-primary/10 hover:border-primary/30 hover:-translate-y-2",
+                  "active:scale-[0.98]",
+                  isSelected && "ring-2 ring-primary/30 border-primary/40 bg-card/90 shadow-lg shadow-primary/20",
+                )}
+              >
+                {/* Card Header with Thumbnail */}
+                <div className="relative p-6 pb-4">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-primary/10 rounded-2xl flex items-center justify-center text-3xl group-hover:scale-110 transition-transform duration-300">
+                      {item.thumbnail}
+                    </div>
+                    <ArrowUpRight className="w-5 h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 group-hover:-translate-y-1 transition-all duration-300" />
+                  </div>
+
+                  {/* Priority indicator */}
+                  <div className="absolute top-4 right-4">
+                    <div className={cn(
+                      "w-3 h-3 rounded-full",
+                      item.priority === 'critical' && "bg-red-500",
+                      item.priority === 'high' && "bg-orange-500",
+                      item.priority === 'medium' && "bg-blue-500",
+                      item.priority === 'low' && "bg-green-500"
+                    )} />
+                  </div>
+                </div>
+
+                {/* Card Content */}
+                <div className="px-6 pb-6">
+                  {/* Title and Description */}
+                  <h3 className="font-semibold text-lg mb-2 group-hover:text-primary transition-colors line-clamp-2">
+                    {item.title}
+                  </h3>
+                  <p className="text-muted-foreground text-sm mb-4 line-clamp-3">
+                    {item.description}
+                  </p>
+
+                  {/* Status and Category */}
+                  <div className="flex items-center gap-2 mb-4">
+                    <ItemStatusBadge status={item.status} />
+                    <Badge variant="outline" className="bg-accent/50 text-xs">
+                      {item.category}
+                    </Badge>
+                  </div>
+
+                  {/* Tags */}
+                  <div className="mb-4"><ItemTags tags={item.tags} /></div>
+
+                  {/* Progress */}
+                  <div className="mb-4"><ItemProgressBar completion={item.metrics.completion} /></div>
+
+                  {/* Assignee */}
+                  <div className="mb-4"><AssigneeInfo assignee={item.assignee} /></div>
+
+                  {/* Metrics */}
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <ItemMetrics metrics={item.metrics} />
+                    <ItemDateInfo date={item.updatedAt} />
+                  </div>
+                </div>
+
+                {/* Hover gradient overlay */}
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+                
+                {/* Selection indicator */}
+                {isSelected && (
+                  <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-primary/5 pointer-events-none" />
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )
+    }
+  src/pages/DataDemo/components/DataListView.tsx: >-
+    import { useRef } from 'react'
+
+    import { cn } from '@/lib/utils'
+
+    import { Badge } from '@/components/ui/badge'
+
+    import { ArrowRight } from 'lucide-react'
+
+    import type { DataItem } from '../types'
+
+    import { useStaggeredAnimation } from
+    '@/hooks/useStaggeredAnimation.motion.hook'
+
+    import { EmptyState } from './EmptyState'
+
+    import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
+
+    import { 
+      useDataToRender,
+      useSelectedItem,
+    } from '../store/dataDemo.store'
+
+    import {
+      AssigneeInfo,
+      ItemMetrics,
+      ItemProgressBar,
+      ItemStatusBadge,
+      ItemPriorityBadge,
+      ItemDateInfo,
+    } from './shared/DataItemParts'
+
+
+    export function DataListView() {
+      const { groupBy, activeGroupTab, onItemSelect, itemId } = useAppViewManager();
+      const data = useDataToRender(groupBy, activeGroupTab);
+      const selectedItem = useSelectedItem(itemId);
+
+      const listRef = useRef<HTMLDivElement>(null)
+      useStaggeredAnimation(listRef, [data], { mode: 'incremental', scale: 1, y: 30, stagger: 0.08, duration: 0.5 });
+
+      const items = Array.isArray(data) ? data : [];
+      if (items.length === 0) {
+        return <EmptyState />
+      }
+
+      return (
+        <div ref={listRef} className="space-y-4">
+          {items.map((item: DataItem) => {
+            const isSelected = selectedItem?.id === item.id
+            
+            return (
+              <div
+                key={item.id}
+                onClick={() => onItemSelect(item)}
+                className={cn(
+                  "group relative overflow-hidden rounded-2xl border bg-card/50 backdrop-blur-sm transition-all duration-300 cursor-pointer",
+                  "hover:bg-card/80 hover:shadow-lg hover:shadow-primary/5 hover:border-primary/20",
+                  "active:scale-[0.99]",
+                  isSelected && "ring-2 ring-primary/20 border-primary/30 bg-card/90"
+                )}
+              >
+                <div className="p-6">
+                  <div className="flex items-start gap-4">
+                    {/* Thumbnail */}
+                    <div className="flex-shrink-0">
+                      <div className="w-14 h-14 bg-gradient-to-br from-primary/20 to-primary/10 rounded-xl flex items-center justify-center text-2xl">
+                        {item.thumbnail}
+                      </div>
+                    </div>
+
+                    {/* Content */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-semibold text-lg mb-1 group-hover:text-primary transition-colors">
+                            {item.title}
+                          </h3>
+                          <p className="text-muted-foreground text-sm mb-3 line-clamp-2">
+                            {item.description}
+                          </p>
+                        </div>
+                        <ArrowRight className="w-5 h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all duration-300 ml-4 flex-shrink-0" />
+                      </div>
+
+                      {/* Badges */}
+                      <div className="flex items-center gap-2 mb-4">
+                        <ItemStatusBadge status={item.status} />
+                        <ItemPriorityBadge priority={item.priority} />
+                        <Badge variant="outline" className="bg-accent/50">
+                          {item.category}
+                        </Badge>
+                      </div>
+
+                      {/* Meta info */}
+                      <div className="flex items-center justify-between text-muted-foreground">
+                        <div className="flex items-center gap-4">
+                          {/* Assignee */}
+                          <AssigneeInfo assignee={item.assignee} avatarClassName="w-7 h-7" />
+                          {/* Date */}
+                          <ItemDateInfo date={item.updatedAt} />
+                        </div>
+
+                        {/* Metrics */}
+                        <ItemMetrics metrics={item.metrics} />
+                      </div>
+
+                      {/* Progress bar */}
+                      <div className="mt-4"><ItemProgressBar completion={item.metrics.completion} /></div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Hover gradient overlay */}
+                <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+              </div>
+            )
+          })}
+        </div>
+      )
+    }
+  src/pages/DataDemo/components/DataTableView.tsx: >-
+    import { useRef, useLayoutEffect, useMemo } from 'react'
+
+    import { gsap } from 'gsap'
+
+    import { cn } from '@/lib/utils'
+
+    import { 
+      ArrowUpDown, 
+      ArrowUp, 
+      ArrowDown,
+      ExternalLink
+    } from 'lucide-react'
+
+    import type { DataItem, SortableField } from '../types'
+
+    import { EmptyState } from './EmptyState'
+
+    import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
+
+    import {
+      useDataToRender,
+      useSelectedItem,
+    } from '../store/dataDemo.store'
+
+    import { capitalize } from '@/lib/utils'
+
+    import {
+      AssigneeInfo,
+      ItemMetrics,
+      ItemStatusBadge,
+      ItemPriorityBadge,
+      ItemDateInfo,
+      ItemProgressBar,
+    } from './shared/DataItemParts'
+
+
+    export function DataTableView() {
+      const {
+        sortConfig,
+        setTableSort,
+        groupBy,
+        activeGroupTab,
+        onItemSelect,
+        itemId,
+      } = useAppViewManager();
+      const data = useDataToRender(groupBy, activeGroupTab);
+      const selectedItem = useSelectedItem(itemId);
+
+      const tableRef = useRef<HTMLTableElement>(null)
+      const animatedItemsCount = useRef(0)
+
+      useLayoutEffect(() => {
+        if (tableRef.current) {
+          // Only select item rows for animation, not group headers
+          const newItems = Array.from( 
+            tableRef.current.querySelectorAll('tbody tr')
+          ).filter(tr => !(tr as HTMLElement).dataset.groupHeader)
+           .slice(animatedItemsCount.current);
+          gsap.fromTo(newItems,
+            { y: 20, opacity: 0 },
+            {
+              duration: 0.5,
+              y: 0,
+              opacity: 1,
+              stagger: 0.05,
+              ease: "power2.out",
+            },
+          );
+          animatedItemsCount.current = data.length;
+        }
+      }, [data]);
+
+      const SortIcon = ({ field }: { field: SortableField }) => {
+        if (sortConfig?.key !== field) {
+          return <ArrowUpDown className="w-4 h-4 opacity-50" />
+        }
+        if (sortConfig.direction === 'asc') {
+          return <ArrowUp className="w-4 h-4 text-primary" />
+        }
+        if (sortConfig.direction === 'desc') {
+          return <ArrowDown className="w-4 h-4 text-primary" />
+        }
+        return <ArrowUpDown className="w-4 h-4 opacity-50" />
+      }
+
+      const handleSortClick = (field: SortableField) => {
+        setTableSort(field)
+      }
+
+      const groupedData = useMemo(() => {
+        if (groupBy === 'none') return null;
+        return (data as DataItem[]).reduce((acc, item) => {
+          const groupKey = item[groupBy as 'status' | 'priority' | 'category'] || 'N/A';
+          if (!acc[groupKey]) {
+            acc[groupKey] = [];
+          }
+          acc[groupKey].push(item);
+          return acc;
+        }, {} as Record<string, DataItem[]>);
+      }, [data, groupBy]);
+
+      if (data.length === 0) {
+        return <EmptyState />
+      }
+
+      return (
+        <div className="relative overflow-hidden rounded-2xl border bg-card/50 backdrop-blur-sm">
+          <div className="overflow-x-auto">
+            <table ref={tableRef} className="w-full">
+              <thead>
+                <tr className="border-b border-border/50 bg-muted/20">
+                  <th className="text-left p-4 font-semibold text-sm">
+                    <button
+                      onClick={() => handleSortClick('title')}
+                      className="flex items-center gap-2 hover:text-primary transition-colors"
+                    >
+                      Project
+                      <SortIcon field="title" />
+                    </button>
+                  </th>
+                  <th className="text-left p-4 font-semibold text-sm">
+                    <button
+                      onClick={() => handleSortClick('status')}
+                      className="flex items-center gap-2 hover:text-primary transition-colors"
+                    >
+                      Status
+                      <SortIcon field="status" />
+                    </button>
+                  </th>
+                  <th className="text-left p-4 font-semibold text-sm">
+                    <button
+                      onClick={() => handleSortClick('priority')}
+                      className="flex items-center gap-2 hover:text-primary transition-colors"
+                    >
+                      Priority
+                      <SortIcon field="priority" />
+                    </button>
+                  </th>
+                  <th className="text-left p-4 font-semibold text-sm">
+                    <button
+                      onClick={() => handleSortClick('assignee.name')}
+                      className="flex items-center gap-2 hover:text-primary transition-colors"
+                    >
+                      Assignee
+                      <SortIcon field="assignee.name" />
+                    </button>
+                  </th>
+                  <th className="text-left p-4 font-semibold text-sm">
+                    <button
+                      onClick={() => handleSortClick('metrics.completion')}
+                      className="flex items-center gap-2 hover:text-primary transition-colors"
+                    >
+                      Progress
+                      <SortIcon field="metrics.completion" />
+                    </button>
+                  </th>
+                  <th className="text-left p-4 font-semibold text-sm">
+                    <button
+                      onClick={() => handleSortClick('metrics.views')}
+                      className="flex items-center gap-2 hover:text-primary transition-colors"
+                    >
+                      Engagement
+                      <SortIcon field="metrics.views" />
+                    </button>
+                  </th>
+                  <th className="text-left p-4 font-semibold text-sm">Last Updated</th>
+                  <th className="text-center p-4 font-semibold text-sm w-16">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {groupedData
+                  ? Object.entries(groupedData).flatMap(([groupName, items]) => [
+                      <tr key={groupName} data-group-header="true" className="sticky top-0 z-10">
+                        <td colSpan={8} className="p-2 bg-muted/50 backdrop-blur-sm">
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-semibold text-sm">{capitalize(groupName)}</h3>
+                            <span className="text-xs px-2 py-0.5 bg-background rounded-full font-medium">{items.length}</span>
+                          </div>
+                        </td>
+                      </tr>,
+                      ...items.map(item => <TableRow key={item.id} item={item} isSelected={selectedItem?.id === item.id} onItemSelect={onItemSelect} />)
+                    ])
+                  : data.map(item => <TableRow key={item.id} item={item} isSelected={selectedItem?.id === item.id} onItemSelect={onItemSelect} />)
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )
+    }
+
+
+    function TableRow({ item, isSelected, onItemSelect }: { item: DataItem;
+    isSelected: boolean; onItemSelect: (item: DataItem) => void }) {
+      return (
+        <tr
+          onClick={() => onItemSelect(item)}
+          className={cn(
+            "group border-b border-border/30 transition-all duration-200 cursor-pointer",
+            "hover:bg-accent/20 hover:border-primary/20",
+            isSelected && "bg-primary/5 border-primary/30"
+          )}
+        >
+          {/* Project Column */}
+          <td className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-primary/20 to-primary/10 rounded-lg flex items-center justify-center text-lg flex-shrink-0">
+                {item.thumbnail}
+              </div>
+              <div className="min-w-0 flex-1">
+                <h4 className="font-medium group-hover:text-primary transition-colors truncate">
+                  {item.title}
+                </h4>
+                <p className="text-sm text-muted-foreground truncate">
+                  {item.category}
+                </p>
+              </div>
+            </div>
+          </td>
+
+          {/* Status Column */}
+          <td className="p-4">
+            <ItemStatusBadge status={item.status} />
+          </td>
+
+          {/* Priority Column */}
+          <td className="p-4">
+            <ItemPriorityBadge priority={item.priority} />
+          </td>
+
+          {/* Assignee Column */}
+          <td className="p-4">
+            <AssigneeInfo assignee={item.assignee} />
+          </td>
+
+          {/* Progress Column */}
+          {/* Note: This progress bar is custom for the table, so we don't use the shared component here. */}
+          <td className="p-4">
+            <ItemProgressBar completion={item.metrics.completion} showPercentage />
+          </td>
+
+          {/* Engagement Column */}
+          <td className="p-4">
+            <ItemMetrics metrics={item.metrics} />
+          </td>
+
+          {/* Date Column */}
+          <td className="p-4">
+            <ItemDateInfo date={item.updatedAt} />
+          </td>
+
+          {/* Actions Column */}
+          <td className="p-4">
+            <button 
+              onClick={(e) => {
+                e.stopPropagation()
+                onItemSelect(item)
+              }}
+              className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-accent transition-colors"
+              title="View details"
+            >
+              <ExternalLink className="w-4 h-4" />
+            </button>
+          </td>
+        </tr>
+      )
+    }
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 361

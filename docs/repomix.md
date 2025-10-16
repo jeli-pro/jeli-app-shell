@@ -7,18 +7,109 @@ src/
       TopBar.tsx
     ui/
       button.tsx
+      card.tsx
       input.tsx
   hooks/
     useAppViewManager.hook.ts
+  lib/
+    utils.ts
   pages/
     Dashboard/
       index.tsx
     DataDemo/
+      components/
+        DataCardView.tsx
+        DataListView.tsx
+        DataTableView.tsx
       index.tsx
+      types.ts
   App.tsx
 ```
 
 # Files
+
+## File: src/components/ui/card.tsx
+```typescript
+import * as React from "react"
+
+import { cn } from "@/lib/utils"
+
+const Card = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => (
+  <div
+    ref={ref}
+    className={cn(
+      "rounded-2xl border bg-card text-card-foreground",
+      className
+    )}
+    {...props}
+  />
+))
+Card.displayName = "Card"
+
+const CardHeader = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => (
+  <div
+    ref={ref}
+    className={cn("flex flex-col space-y-1.5 p-6", className)}
+    {...props}
+  />
+))
+CardHeader.displayName = "CardHeader"
+
+const CardTitle = React.forwardRef<
+  HTMLParagraphElement,
+  React.HTMLAttributes<HTMLHeadingElement>
+>(({ className, ...props }, ref) => (
+  <h3
+    ref={ref}
+    className={cn(
+      "text-lg font-semibold leading-none tracking-tight",
+      className
+    )}
+    {...props}
+  />
+))
+CardTitle.displayName = "CardTitle"
+
+const CardDescription = React.forwardRef<
+  HTMLParagraphElement,
+  React.HTMLAttributes<HTMLParagraphElement>
+>(({ className, ...props }, ref) => (
+  <p
+    ref={ref}
+    className={cn("text-sm text-muted-foreground", className)}
+    {...props}
+  />
+))
+CardDescription.displayName = "CardDescription"
+
+const CardContent = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => (
+  <div ref={ref} className={cn("p-6 pt-0", className)} {...props} />
+))
+CardContent.displayName = "CardContent"
+
+const CardFooter = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => (
+  <div
+    ref={ref}
+    className={cn("flex items-center p-6 pt-0", className)}
+    {...props}
+  />
+))
+CardFooter.displayName = "CardFooter"
+
+export { Card, CardHeader, CardFooter, CardTitle, CardDescription, CardContent }
+```
 
 ## File: src/components/ui/input.tsx
 ```typescript
@@ -108,6 +199,121 @@ Button.displayName = "Button"
 
 // eslint-disable-next-line react-refresh/only-export-components
 export { Button, buttonVariants }
+```
+
+## File: src/pages/DataDemo/types.ts
+```typescript
+export type ViewMode = 'list' | 'cards' | 'grid' | 'table'
+
+export type GroupableField = 'status' | 'priority' | 'category'
+
+export type SortableField = 'title' | 'status' | 'priority' | 'updatedAt' | 'assignee.name' | 'metrics.views' | 'metrics.completion' | 'createdAt'
+export type SortDirection = 'asc' | 'desc'
+export interface SortConfig {
+  key: SortableField
+  direction: SortDirection
+}
+
+export interface DataItem {
+  id: string
+  title: string
+  description: string
+  category: string
+  status: 'active' | 'pending' | 'completed' | 'archived'
+  priority: 'low' | 'medium' | 'high' | 'critical'
+  assignee: {
+    name: string
+    avatar: string
+    email: string
+  }
+  metrics: {
+    views: number
+    likes: number
+    shares: number
+    completion: number
+  }
+  tags: string[]
+  createdAt: string
+  updatedAt: string
+  dueDate?: string
+  thumbnail?: string
+  content?: {
+    summary: string
+    details: string
+    attachments?: Array<{
+      name: string
+      type: string
+      size: string
+      url: string
+    }>
+  }
+}
+
+export interface ViewProps {
+  data: DataItem[] | Record<string, DataItem[]>
+  onItemSelect: (item: DataItem) => void
+  selectedItem: DataItem | null
+  isGrid?: boolean
+
+  // Props for table view specifically
+  sortConfig?: SortConfig | null
+  onSort?: (field: SortableField) => void
+}
+
+export type Status = DataItem['status']
+export type Priority = DataItem['priority']
+```
+
+## File: src/lib/utils.ts
+```typescript
+import { type ClassValue, clsx } from "clsx"
+import { twMerge } from "tailwind-merge"
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs))
+}
+
+export const SIDEBAR_STATES = {
+  HIDDEN: 'hidden',
+  COLLAPSED: 'collapsed', 
+  EXPANDED: 'expanded',
+  PEEK: 'peek'
+} as const
+
+export const BODY_STATES = {
+  NORMAL: 'normal',
+  FULLSCREEN: 'fullscreen',
+  SIDE_PANE: 'side_pane',
+  SPLIT_VIEW: 'split_view'
+} as const
+
+export type SidebarState = typeof SIDEBAR_STATES[keyof typeof SIDEBAR_STATES]
+export type BodyState = typeof BODY_STATES[keyof typeof BODY_STATES]
+
+export function capitalize(str: string): string {
+  if (!str) return str
+  return str.charAt(0).toUpperCase() + str.slice(1)
+}
+
+export const getStatusColor = (status: string) => {
+  switch (status) {
+    case 'active': return 'bg-green-500/20 text-green-700 border-green-500/30'
+    case 'pending': return 'bg-yellow-500/20 text-yellow-700 border-yellow-500/30'
+    case 'completed': return 'bg-blue-500/20 text-blue-700 border-blue-500/30'
+    case 'archived': return 'bg-gray-500/20 text-gray-700 border-gray-500/30'
+    default: return 'bg-gray-500/20 text-gray-700 border-gray-500/30'
+  }
+}
+
+export const getPriorityColor = (priority: string) => {
+  switch (priority) {
+    case 'critical': return 'bg-red-500/20 text-red-700 border-red-500/30'
+    case 'high': return 'bg-orange-500/20 text-orange-700 border-orange-500/30'
+    case 'medium': return 'bg-blue-500/20 text-blue-700 border-blue-500/30'
+    case 'low': return 'bg-green-500/20 text-green-700 border-green-500/30'
+    default: return 'bg-gray-500/20 text-gray-700 border-gray-500/30'
+  }
+}
 ```
 
 ## File: src/hooks/useAppViewManager.hook.ts
@@ -414,6 +620,378 @@ export function useAppViewManager() {
 }
 ```
 
+## File: src/pages/DataDemo/components/DataListView.tsx
+```typescript
+import { useRef } from 'react'
+import { cn } from '@/lib/utils'
+import { Badge } from '@/components/ui/badge'
+import { ArrowRight } from 'lucide-react'
+import type { DataItem } from '../types'
+import { useStaggeredAnimation } from '@/hooks/useStaggeredAnimation.motion.hook'
+import { EmptyState } from './EmptyState'
+import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
+import { 
+  useDataToRender,
+  useSelectedItem,
+} from '../store/dataDemo.store'
+import {
+  AssigneeInfo,
+  ItemMetrics,
+  ItemProgressBar,
+  ItemStatusBadge,
+  ItemPriorityBadge,
+  ItemDateInfo,
+} from './shared/DataItemParts'
+
+export function DataListView() {
+  const { groupBy, activeGroupTab, onItemSelect, itemId } = useAppViewManager();
+  const data = useDataToRender(groupBy, activeGroupTab);
+  const selectedItem = useSelectedItem(itemId);
+
+  const listRef = useRef<HTMLDivElement>(null)
+  useStaggeredAnimation(listRef, [data], { mode: 'incremental', scale: 1, y: 30, stagger: 0.08, duration: 0.5 });
+
+  const items = Array.isArray(data) ? data : [];
+  if (items.length === 0) {
+    return <EmptyState />
+  }
+
+  return (
+    <div ref={listRef} className="space-y-4">
+      {items.map((item: DataItem) => {
+        const isSelected = selectedItem?.id === item.id
+        
+        return (
+          <div
+            key={item.id}
+            onClick={() => onItemSelect(item)}
+            className={cn(
+              "group relative overflow-hidden rounded-2xl border bg-card/50 backdrop-blur-sm transition-all duration-300 cursor-pointer",
+              "hover:bg-card/80 hover:shadow-lg hover:shadow-primary/5 hover:border-primary/20",
+              "active:scale-[0.99]",
+              isSelected && "ring-2 ring-primary/20 border-primary/30 bg-card/90"
+            )}
+          >
+            <div className="p-6">
+              <div className="flex items-start gap-4">
+                {/* Thumbnail */}
+                <div className="flex-shrink-0">
+                  <div className="w-14 h-14 bg-gradient-to-br from-primary/20 to-primary/10 rounded-xl flex items-center justify-center text-2xl">
+                    {item.thumbnail}
+                  </div>
+                </div>
+
+                {/* Content */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-lg mb-1 group-hover:text-primary transition-colors">
+                        {item.title}
+                      </h3>
+                      <p className="text-muted-foreground text-sm mb-3 line-clamp-2">
+                        {item.description}
+                      </p>
+                    </div>
+                    <ArrowRight className="w-5 h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all duration-300 ml-4 flex-shrink-0" />
+                  </div>
+
+                  {/* Badges */}
+                  <div className="flex items-center gap-2 mb-4">
+                    <ItemStatusBadge status={item.status} />
+                    <ItemPriorityBadge priority={item.priority} />
+                    <Badge variant="outline" className="bg-accent/50">
+                      {item.category}
+                    </Badge>
+                  </div>
+
+                  {/* Meta info */}
+                  <div className="flex items-center justify-between text-muted-foreground">
+                    <div className="flex items-center gap-4">
+                      {/* Assignee */}
+                      <AssigneeInfo assignee={item.assignee} avatarClassName="w-7 h-7" />
+                      {/* Date */}
+                      <ItemDateInfo date={item.updatedAt} />
+                    </div>
+
+                    {/* Metrics */}
+                    <ItemMetrics metrics={item.metrics} />
+                  </div>
+
+                  {/* Progress bar */}
+                  <div className="mt-4"><ItemProgressBar completion={item.metrics.completion} /></div>
+                </div>
+              </div>
+            </div>
+
+            {/* Hover gradient overlay */}
+            <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+```
+
+## File: src/pages/DataDemo/components/DataTableView.tsx
+```typescript
+import { useRef, useLayoutEffect, useMemo } from 'react'
+import { gsap } from 'gsap'
+import { cn } from '@/lib/utils'
+import { 
+  ArrowUpDown, 
+  ArrowUp, 
+  ArrowDown,
+  ExternalLink
+} from 'lucide-react'
+import type { DataItem, SortableField } from '../types'
+import { EmptyState } from './EmptyState'
+import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
+import {
+  useDataToRender,
+  useSelectedItem,
+} from '../store/dataDemo.store'
+import { capitalize } from '@/lib/utils'
+import {
+  AssigneeInfo,
+  ItemMetrics,
+  ItemStatusBadge,
+  ItemPriorityBadge,
+  ItemDateInfo,
+  ItemProgressBar,
+} from './shared/DataItemParts'
+
+export function DataTableView() {
+  const {
+    sortConfig,
+    setTableSort,
+    groupBy,
+    activeGroupTab,
+    onItemSelect,
+    itemId,
+  } = useAppViewManager();
+  const data = useDataToRender(groupBy, activeGroupTab);
+  const selectedItem = useSelectedItem(itemId);
+
+  const tableRef = useRef<HTMLTableElement>(null)
+  const animatedItemsCount = useRef(0)
+
+  useLayoutEffect(() => {
+    if (tableRef.current) {
+      // Only select item rows for animation, not group headers
+      const newItems = Array.from( 
+        tableRef.current.querySelectorAll('tbody tr')
+      ).filter(tr => !(tr as HTMLElement).dataset.groupHeader)
+       .slice(animatedItemsCount.current);
+      gsap.fromTo(newItems,
+        { y: 20, opacity: 0 },
+        {
+          duration: 0.5,
+          y: 0,
+          opacity: 1,
+          stagger: 0.05,
+          ease: "power2.out",
+        },
+      );
+      animatedItemsCount.current = data.length;
+    }
+  }, [data]);
+
+  const SortIcon = ({ field }: { field: SortableField }) => {
+    if (sortConfig?.key !== field) {
+      return <ArrowUpDown className="w-4 h-4 opacity-50" />
+    }
+    if (sortConfig.direction === 'asc') {
+      return <ArrowUp className="w-4 h-4 text-primary" />
+    }
+    if (sortConfig.direction === 'desc') {
+      return <ArrowDown className="w-4 h-4 text-primary" />
+    }
+    return <ArrowUpDown className="w-4 h-4 opacity-50" />
+  }
+
+  const handleSortClick = (field: SortableField) => {
+    setTableSort(field)
+  }
+
+  const groupedData = useMemo(() => {
+    if (groupBy === 'none') return null;
+    return (data as DataItem[]).reduce((acc, item) => {
+      const groupKey = item[groupBy as 'status' | 'priority' | 'category'] || 'N/A';
+      if (!acc[groupKey]) {
+        acc[groupKey] = [];
+      }
+      acc[groupKey].push(item);
+      return acc;
+    }, {} as Record<string, DataItem[]>);
+  }, [data, groupBy]);
+
+  if (data.length === 0) {
+    return <EmptyState />
+  }
+
+  return (
+    <div className="relative overflow-hidden rounded-2xl border bg-card/50 backdrop-blur-sm">
+      <div className="overflow-x-auto">
+        <table ref={tableRef} className="w-full">
+          <thead>
+            <tr className="border-b border-border/50 bg-muted/20">
+              <th className="text-left p-4 font-semibold text-sm">
+                <button
+                  onClick={() => handleSortClick('title')}
+                  className="flex items-center gap-2 hover:text-primary transition-colors"
+                >
+                  Project
+                  <SortIcon field="title" />
+                </button>
+              </th>
+              <th className="text-left p-4 font-semibold text-sm">
+                <button
+                  onClick={() => handleSortClick('status')}
+                  className="flex items-center gap-2 hover:text-primary transition-colors"
+                >
+                  Status
+                  <SortIcon field="status" />
+                </button>
+              </th>
+              <th className="text-left p-4 font-semibold text-sm">
+                <button
+                  onClick={() => handleSortClick('priority')}
+                  className="flex items-center gap-2 hover:text-primary transition-colors"
+                >
+                  Priority
+                  <SortIcon field="priority" />
+                </button>
+              </th>
+              <th className="text-left p-4 font-semibold text-sm">
+                <button
+                  onClick={() => handleSortClick('assignee.name')}
+                  className="flex items-center gap-2 hover:text-primary transition-colors"
+                >
+                  Assignee
+                  <SortIcon field="assignee.name" />
+                </button>
+              </th>
+              <th className="text-left p-4 font-semibold text-sm">
+                <button
+                  onClick={() => handleSortClick('metrics.completion')}
+                  className="flex items-center gap-2 hover:text-primary transition-colors"
+                >
+                  Progress
+                  <SortIcon field="metrics.completion" />
+                </button>
+              </th>
+              <th className="text-left p-4 font-semibold text-sm">
+                <button
+                  onClick={() => handleSortClick('metrics.views')}
+                  className="flex items-center gap-2 hover:text-primary transition-colors"
+                >
+                  Engagement
+                  <SortIcon field="metrics.views" />
+                </button>
+              </th>
+              <th className="text-left p-4 font-semibold text-sm">Last Updated</th>
+              <th className="text-center p-4 font-semibold text-sm w-16">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {groupedData
+              ? Object.entries(groupedData).flatMap(([groupName, items]) => [
+                  <tr key={groupName} data-group-header="true" className="sticky top-0 z-10">
+                    <td colSpan={8} className="p-2 bg-muted/50 backdrop-blur-sm">
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-semibold text-sm">{capitalize(groupName)}</h3>
+                        <span className="text-xs px-2 py-0.5 bg-background rounded-full font-medium">{items.length}</span>
+                      </div>
+                    </td>
+                  </tr>,
+                  ...items.map(item => <TableRow key={item.id} item={item} isSelected={selectedItem?.id === item.id} onItemSelect={onItemSelect} />)
+                ])
+              : data.map(item => <TableRow key={item.id} item={item} isSelected={selectedItem?.id === item.id} onItemSelect={onItemSelect} />)
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
+function TableRow({ item, isSelected, onItemSelect }: { item: DataItem; isSelected: boolean; onItemSelect: (item: DataItem) => void }) {
+  return (
+    <tr
+      onClick={() => onItemSelect(item)}
+      className={cn(
+        "group border-b border-border/30 transition-all duration-200 cursor-pointer",
+        "hover:bg-accent/20 hover:border-primary/20",
+        isSelected && "bg-primary/5 border-primary/30"
+      )}
+    >
+      {/* Project Column */}
+      <td className="p-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-gradient-to-br from-primary/20 to-primary/10 rounded-lg flex items-center justify-center text-lg flex-shrink-0">
+            {item.thumbnail}
+          </div>
+          <div className="min-w-0 flex-1">
+            <h4 className="font-medium group-hover:text-primary transition-colors truncate">
+              {item.title}
+            </h4>
+            <p className="text-sm text-muted-foreground truncate">
+              {item.category}
+            </p>
+          </div>
+        </div>
+      </td>
+
+      {/* Status Column */}
+      <td className="p-4">
+        <ItemStatusBadge status={item.status} />
+      </td>
+
+      {/* Priority Column */}
+      <td className="p-4">
+        <ItemPriorityBadge priority={item.priority} />
+      </td>
+
+      {/* Assignee Column */}
+      <td className="p-4">
+        <AssigneeInfo assignee={item.assignee} />
+      </td>
+
+      {/* Progress Column */}
+      {/* Note: This progress bar is custom for the table, so we don't use the shared component here. */}
+      <td className="p-4">
+        <ItemProgressBar completion={item.metrics.completion} showPercentage />
+      </td>
+
+      {/* Engagement Column */}
+      <td className="p-4">
+        <ItemMetrics metrics={item.metrics} />
+      </td>
+
+      {/* Date Column */}
+      <td className="p-4">
+        <ItemDateInfo date={item.updatedAt} />
+      </td>
+
+      {/* Actions Column */}
+      <td className="p-4">
+        <button 
+          onClick={(e) => {
+            e.stopPropagation()
+            onItemSelect(item)
+          }}
+          className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-accent transition-colors"
+          title="View details"
+        >
+          <ExternalLink className="w-4 h-4" />
+        </button>
+      </td>
+    </tr>
+  )
+}
+```
+
 ## File: src/pages/Dashboard/index.tsx
 ```typescript
 import { useRef } from 'react'
@@ -703,6 +1281,136 @@ export function DashboardContent() {
 }
 ```
 
+## File: src/pages/DataDemo/components/DataCardView.tsx
+```typescript
+import { useRef } from 'react'
+import { cn } from '@/lib/utils'
+import { Badge } from '@/components/ui/badge'
+import { ArrowUpRight } from 'lucide-react'
+import type { DataItem } from '../types'
+import { useStaggeredAnimation } from '@/hooks/useStaggeredAnimation.motion.hook'
+import { EmptyState } from './EmptyState'
+import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
+import {
+  useDataToRender,
+  useSelectedItem,
+} from '../store/dataDemo.store'
+import {
+  AssigneeInfo,
+  ItemMetrics,
+  ItemProgressBar,
+  ItemStatusBadge,
+  ItemTags,
+  ItemDateInfo,
+} from './shared/DataItemParts'
+
+export function DataCardView({ isGrid = false }: { isGrid?: boolean }) {
+  const { groupBy, activeGroupTab, onItemSelect, itemId } = useAppViewManager();
+  const data = useDataToRender(groupBy, activeGroupTab);
+  const selectedItem = useSelectedItem(itemId);
+
+  const containerRef = useRef<HTMLDivElement>(null)
+  useStaggeredAnimation(containerRef, [data], { mode: 'incremental', y: 40 });
+
+  const items = Array.isArray(data) ? data : [];
+  if (items.length === 0) {
+    return <EmptyState />
+  }
+
+  return (
+    <div 
+      ref={containerRef}
+      className={cn(
+        "gap-6",
+        isGrid
+          ? "grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))]"
+          : "grid grid-cols-[repeat(auto-fit,minmax(320px,1fr))]"
+      )}
+    >
+      {items.map((item: DataItem) => {
+        const isSelected = selectedItem?.id === item.id
+        
+        return (
+          <div
+            key={item.id}
+            onClick={() => onItemSelect(item)}
+            className={cn(
+              "group relative overflow-hidden rounded-3xl border bg-card/50 backdrop-blur-sm transition-all duration-500 cursor-pointer",
+              "hover:bg-card/80 hover:shadow-xl hover:shadow-primary/10 hover:border-primary/30 hover:-translate-y-2",
+              "active:scale-[0.98]",
+              isSelected && "ring-2 ring-primary/30 border-primary/40 bg-card/90 shadow-lg shadow-primary/20",
+            )}
+          >
+            {/* Card Header with Thumbnail */}
+            <div className="relative p-6 pb-4">
+              <div className="flex items-start justify-between mb-4">
+                <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-primary/10 rounded-2xl flex items-center justify-center text-3xl group-hover:scale-110 transition-transform duration-300">
+                  {item.thumbnail}
+                </div>
+                <ArrowUpRight className="w-5 h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 group-hover:-translate-y-1 transition-all duration-300" />
+              </div>
+
+              {/* Priority indicator */}
+              <div className="absolute top-4 right-4">
+                <div className={cn(
+                  "w-3 h-3 rounded-full",
+                  item.priority === 'critical' && "bg-red-500",
+                  item.priority === 'high' && "bg-orange-500",
+                  item.priority === 'medium' && "bg-blue-500",
+                  item.priority === 'low' && "bg-green-500"
+                )} />
+              </div>
+            </div>
+
+            {/* Card Content */}
+            <div className="px-6 pb-6">
+              {/* Title and Description */}
+              <h3 className="font-semibold text-lg mb-2 group-hover:text-primary transition-colors line-clamp-2">
+                {item.title}
+              </h3>
+              <p className="text-muted-foreground text-sm mb-4 line-clamp-3">
+                {item.description}
+              </p>
+
+              {/* Status and Category */}
+              <div className="flex items-center gap-2 mb-4">
+                <ItemStatusBadge status={item.status} />
+                <Badge variant="outline" className="bg-accent/50 text-xs">
+                  {item.category}
+                </Badge>
+              </div>
+
+              {/* Tags */}
+              <div className="mb-4"><ItemTags tags={item.tags} /></div>
+
+              {/* Progress */}
+              <div className="mb-4"><ItemProgressBar completion={item.metrics.completion} /></div>
+
+              {/* Assignee */}
+              <div className="mb-4"><AssigneeInfo assignee={item.assignee} /></div>
+
+              {/* Metrics */}
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <ItemMetrics metrics={item.metrics} />
+                <ItemDateInfo date={item.updatedAt} />
+              </div>
+            </div>
+
+            {/* Hover gradient overlay */}
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+            
+            {/* Selection indicator */}
+            {isSelected && (
+              <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-primary/5 pointer-events-none" />
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+```
+
 ## File: src/components/layout/TopBar.tsx
 ```typescript
 import React from 'react';
@@ -721,11 +1429,13 @@ import { ViewModeSwitcher } from './ViewModeSwitcher'
 import { useAppShellStore } from '@/store/appShell.store'
 
 interface TopBarProps {
-  children?: React.ReactNode
+  breadcrumbs?: React.ReactNode
+  pageControls?: React.ReactNode
 }
 
 export const TopBar = React.memo(({
-  children,
+  breadcrumbs,
+  pageControls,
 }: TopBarProps) => {
   const bodyState = useAppShellStore(s => s.bodyState)
   const isDarkMode = useAppShellStore(s => s.isDarkMode);
@@ -741,11 +1451,13 @@ export const TopBar = React.memo(({
     )}>
       {/* Left Section - Sidebar Controls & Breadcrumbs */}
       <div className="flex items-center gap-4">
-        {children}
+        {breadcrumbs}
       </div>
 
       {/* Right Section - page controls, and global controls */}
       <div className="flex items-center gap-3">
+        {pageControls}
+
         {/* Separator */}
         <div className="w-px h-6 bg-border mx-2" />
 
@@ -1416,6 +2128,8 @@ import { RightPane } from "./components/layout/RightPane";
 import { TopBar } from "./components/layout/TopBar";
 import { CommandPalette } from "./components/global/CommandPalette";
 import { ToasterProvider } from "./components/ui/toast";
+import { Input } from "./components/ui/input";
+import { Button } from "./components/ui/button";
 
 // --- Page/Content Components for Pages and Panes ---
 import { DashboardContent } from "./pages/Dashboard";
@@ -1481,74 +2195,91 @@ function ProtectedLayout() {
   );
 }
 
-// Content for the Top Bar (will be fully refactored in Part 2)
-function AppTopBar() {
-  const [searchTerm, setSearchTerm] = React.useState("");
-  const [isSearchFocused, setIsSearchFocused] = React.useState(false);
-  const location = useLocation();
-  const activePage = location.pathname.split('/').filter(Boolean).pop()?.replace('-', ' ') || 'dashboard';
+// Breadcrumbs for the Top Bar
+function AppBreadcrumbs() {
+  const { currentActivePage } = useAppViewManager();
+  const activePageName = currentActivePage.replace('-', ' ');
 
   return (
-    <div className="flex items-center gap-3">
-      <div
-        className={cn(
-          "hidden md:flex items-center gap-2 text-sm transition-opacity",
-          {
-            "opacity-0 pointer-events-none":
-              isSearchFocused && activePage === "dashboard",
-          },
-        )}
+    <div className="hidden md:flex items-center gap-2 text-sm">
+      <a
+        href="#"
+        className="text-muted-foreground hover:text-foreground transition-colors"
       >
-        <a
-          href="#"
-          className="text-muted-foreground hover:text-foreground transition-colors"
-        >
-          Home
-        </a>
-        <ChevronRight className="w-4 h-4 text-muted-foreground" />
-        <span className="font-medium text-foreground capitalize">
-          {activePage}
-        </span>
-      </div>
-
-      {/* Page-specific: Dashboard search and actions */}
-      {activePage === "dashboard" && (
-        <div className="flex items-center gap-2 flex-1 justify-end">
-          <div
-            className={cn(
-              "relative transition-all duration-300 ease-in-out",
-              isSearchFocused ? "flex-1 max-w-lg" : "w-auto",
-            )}
-          >
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4 pointer-events-none" />
-            <input
-              type="text"
-              placeholder="Search..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              onFocus={() => setIsSearchFocused(true)}
-              onBlur={() => setIsSearchFocused(false)}
-              className={cn(
-                "pl-9 pr-4 py-2 h-10 border-none rounded-lg bg-card focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300 ease-in-out w-full",
-                isSearchFocused ? "bg-background" : "w-48",
-              )}
-            />
-          </div>
-          <button className="h-10 w-10 flex-shrink-0 flex items-center justify-center hover:bg-accent rounded-full transition-colors">
-            <Filter className="w-5 h-5" />
-          </button>
-          <button className="bg-primary text-primary-foreground px-4 py-2 rounded-full hover:bg-primary/90 transition-colors flex items-center gap-2 h-10 flex-shrink-0">
-            <Plus className="w-5 h-5" />
-            <span
-              className={cn(isSearchFocused ? "hidden sm:inline" : "inline")}
-            >
-              New Project
-            </span>
-          </button>
-        </div>
-      )}
+        Home
+      </a>
+      <ChevronRight className="w-4 h-4 text-muted-foreground" />
+      <span className="font-medium text-foreground capitalize">
+        {activePageName}
+      </span>
     </div>
   );
+}
+
+// Page-specific controls for the Top Bar
+function TopBarPageControls() {
+  const { currentActivePage, filters, setFilters } = useAppViewManager();
+  const [searchTerm, setSearchTerm] = React.useState('');
+  const [isSearchFocused, setIsSearchFocused] = React.useState(false);
+
+  if (currentActivePage === 'dashboard') {
+    return (
+      <div className="flex items-center gap-2 flex-1 justify-end">
+        <div
+          className={cn(
+            "relative transition-all duration-300 ease-in-out",
+            isSearchFocused ? "flex-1 max-w-lg" : "w-auto",
+          )}
+        >
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4 pointer-events-none" />
+          <input
+            type="text"
+            placeholder="Search dashboard..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            onFocus={() => setIsSearchFocused(true)}
+            onBlur={() => setIsSearchFocused(false)}
+            className="pl-9 pr-4 py-2 h-10 border-none rounded-lg bg-card focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300 ease-in-out w-full"
+          />
+        </div>
+        <Button variant="ghost" size="icon" className="flex-shrink-0">
+          <Filter className="w-5 h-5" />
+        </Button>
+        <Button className="flex-shrink-0">
+          <Plus className="w-5 h-5 mr-0 sm:mr-2" />
+          <span className={cn(isSearchFocused ? "hidden sm:inline" : "inline")}>
+            New Project
+          </span>
+        </Button>
+      </div>
+    );
+  }
+
+  if (currentActivePage === 'data-demo') {
+    return (
+      <div className="flex items-center gap-2">
+        <div className="relative w-64">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
+          <Input
+            placeholder="Search items..."
+            className="pl-9 bg-card border-none"
+            value={filters.searchTerm}
+            onChange={(e) => setFilters({ ...filters, searchTerm: e.target.value })}
+          />
+        </div>
+        <Button variant="outline">
+          <Filter className="w-4 h-4 mr-2" />
+          Filter
+        </Button>
+        <Button>
+          <Plus className="w-4 h-4 mr-2" />
+          New Item
+        </Button>
+      </div>
+    );
+  }
+
+  return null;
 }
 
 // The main App component that composes the shell
@@ -1567,9 +2298,7 @@ function ComposedApp() {
       sidebar={<EnhancedSidebar />}
       onOverlayClick={viewManager.closeSidePane}
       topBar={
-        <TopBar>
-          <AppTopBar />
-        </TopBar>
+        <TopBar breadcrumbs={<AppBreadcrumbs />} pageControls={<TopBarPageControls />} />
       }
       mainContent={
         <MainContent>

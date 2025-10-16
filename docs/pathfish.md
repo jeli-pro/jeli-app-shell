@@ -122,3 +122,103 @@ plan:
       - src/components/ui/input.tsx
       - src/components/ui/button.tsx
 ```
+Here's the master plan for refactoring the Data Demo page. We're gonna juice the UX by adding a clear CTA to get users to play with adding data. No more dead ends in the demo.
+
+This plan will be broken down into two main parts. First, we'll forge a new, reusable CTA component that's smart enough to adapt to any view mode. Then, we'll inject this component into each of the existing data views—list, cards, grid, and table.
+
+The goal is to make the demo feel more interactive and guide the user towards a key action, making the whole experience less static and more engaging. Let's get this shipped.
+
+```yaml
+plan:
+  uuid: '3a1b9c4f-8d2e-4a6b-9f7c-5d1e8a2b0c3d'
+  status: 'todo'
+  title: "feat: Add 'Add Item' CTA to Data Demo Views"
+  introduction: |
+    Alright, we're going to inject some life into the Data Demo page. Right now, it's a static display of mock data. The goal is to pwn the user experience by adding a clear and attractive "call to action" (CTA) item within each view mode (list, cards, grid, table). This will lure users into adding their own data, making the demo feel more like a real, interactive application.
+
+    The approach is simple and clean. We'll first craft a single, reusable CTA component that can shape-shift its appearance based on the view mode it's in. This keeps our code DRY and consistent. Then, we'll strategically place this component at the end of the item list in each of the four view layouts. This refactor will improve user engagement without polluting the existing component structure.
+  parts:
+    - uuid: 'c9f8e7d6-a5b4-4c3a-8b1d-0e9f2a7b1c4e'
+      status: 'todo'
+      name: 'Part 1: Forge the Polymorphic CTA Component'
+      reason: |
+        To avoid writing the same boilerplate four times, we'll create one shared component for the CTA. This component needs to be flexible enough to render correctly as a list item, a card, or a table row. This is the cornerstone of the whole feature; a single source of truth for the CTA's look and feel.
+      steps:
+        - uuid: 'd1e2f3a4-b5c6-4d7e-8f9a-0b1c2d3e4f5a'
+          status: 'todo'
+          name: "1. Create 'AddDataItemCta.tsx' Component"
+          reason: |
+            This new file will house our shared CTA component. It will be responsible for rendering the different visual variants needed for each view in the Data Demo page.
+          files:
+            - 'src/pages/DataDemo/components/shared/AddDataItemCta.tsx'
+          operations:
+            - "Create a new file `AddDataItemCta.tsx` in `src/pages/DataDemo/components/shared/`."
+            - "Define a React component `AddDataItemCta` that accepts props: `viewMode: 'list' | 'cards' | 'grid' | 'table'` and an optional `colSpan?: number`."
+            - "Implement the component's JSX. It should render a `<tr>` element when `viewMode` is `'table'`. For all other view modes, it should render a `div`."
+            - "The content inside should be a CTA, e.g., an icon (`PlayCircle` or `Plus`), a title like 'Showcase your own data', and a short description."
+            - "Style the component with a dashed border to distinguish it from actual data items. Use `cn` for conditional classes based on `viewMode` to adjust layout (e.g., flex-row for list/table, flex-col for cards/grid)."
+            - "For the `'table'` variant, the inner `<td>` element must use the `colSpan` prop to span the entire width of the table."
+    - uuid: 'b8a7c6d5-e4f3-4a2b-9c1d-0f9e8a7b6c5d'
+      status: 'todo'
+      name: 'Part 2: Inject the CTA into Data Views'
+      reason: |
+        With the CTA component ready, we need to plug it into the existing view components. This ensures the CTA is visible to the user regardless of which data visualization they choose.
+      steps:
+        - uuid: 'a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d'
+          status: 'todo'
+          name: '1. Integrate CTA into List View'
+          reason: |
+            Add the CTA to the `DataListView` component so it appears as the last item in the list.
+          files:
+            - 'src/pages/DataDemo/components/DataListView.tsx'
+          operations:
+            - "Import the new `AddDataItemCta` component."
+            - "In the return statement, after the `dataToRender.map(...)` block, render `<AddDataItemCta viewMode='list' />`."
+        - uuid: 'f1e2d3c4-b5a6-4f7e-8d9c-0b1a2f3e4d5c'
+          status: 'todo'
+          name: '2. Integrate CTA into Card & Grid Views'
+          reason: |
+            Add the CTA to the `DataCardView` component, which handles both 'cards' and 'grid' layouts.
+          files:
+            - 'src/pages/DataDemo/components/DataCardView.tsx'
+          operations:
+            - "Import the new `AddDataItemCta` component."
+            - "After the `dataToRender.map(...)` block, render `<AddDataItemCta viewMode={isGrid ? 'grid' : 'cards'} />` to ensure it adapts to the current layout."
+        - uuid: 'e1f2a3b4-c5d6-4e7f-8a9b-0c1d2e3f4a5b'
+          status: 'todo'
+          name: '3. Integrate CTA into Table View'
+          reason: |
+            Add the CTA to the `DataTableView` as a full-width row at the end of the table body.
+          files:
+            - 'src/pages/DataDemo/components/DataTableView.tsx'
+          operations:
+            - "Import the new `AddDataItemCta` component."
+            - "In the `<tbody>` element, after the data mapping logic, render `<AddDataItemCta viewMode='table' colSpan={8} />`. The `colSpan` of 8 corresponds to the number of columns in the table."
+  conclusion: |
+    Once complete, this refactor will significantly enhance the Data Demo page's interactivity. Users will have a clear, consistent prompt to engage further with the application, turning a passive demo into an active sandbox.
+
+    The implementation is modular and clean, introducing a reusable component and making minimal, targeted changes to existing view files. This is a solid UX win with low technical debt. Ship it.
+  context_files:
+    compact:
+      - 'src/pages/DataDemo/components/DataListView.tsx'
+      - 'src/pages/DataDemo/components/DataCardView.tsx'
+      - 'src/pages/DataDemo/components/DataTableView.tsx'
+      - 'src/pages/DataDemo/components/shared/AddDataItemCta.tsx'
+    medium:
+      - 'src/pages/DataDemo/components/DataListView.tsx'
+      - 'src/pages/DataDemo/components/DataCardView.tsx'
+      - 'src/pages/DataDemo/components/DataTableView.tsx'
+      - 'src/pages/DataDemo/components/shared/AddDataItemCta.tsx'
+      - 'src/pages/DataDemo/index.tsx'
+      - 'src/pages/DataDemo/types.ts'
+    extended:
+      - 'src/pages/DataDemo/components/DataListView.tsx'
+      - 'src/pages/DataDemo/components/DataCardView.tsx'
+      - 'src/pages/DataDemo/components/DataTableView.tsx'
+      - 'src/pages/DataDemo/components/shared/AddDataItemCta.tsx'
+      - 'src/pages/DataDemo/index.tsx'
+      - 'src/pages/DataDemo/types.ts'
+      - 'src/components/ui/card.tsx'
+      - 'src/components/ui/button.tsx'
+      - 'src/lib/utils.ts'
+```

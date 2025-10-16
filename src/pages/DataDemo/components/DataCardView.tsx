@@ -18,6 +18,7 @@ import {
   ItemTags,
   ItemDateInfo,
 } from './shared/DataItemParts'
+import { AddDataItemCta } from './shared/AddDataItemCta'
 
 export function DataCardView({ isGrid = false }: { isGrid?: boolean }) {
   const { groupBy, activeGroupTab, onItemSelect, itemId } = useAppViewManager();
@@ -38,8 +39,9 @@ export function DataCardView({ isGrid = false }: { isGrid?: boolean }) {
       className={cn(
         "gap-6",
         isGrid
-          ? "grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))]"
-          : "grid grid-cols-[repeat(auto-fit,minmax(320px,1fr))]"
+          ? "grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))]"
+          : "grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))]",
+        "pb-4"
       )}
     >
       {items.map((item: DataItem) => {
@@ -121,6 +123,7 @@ export function DataCardView({ isGrid = false }: { isGrid?: boolean }) {
           </div>
         )
       })}
+      <AddDataItemCta viewMode={isGrid ? 'grid' : 'cards'} />
     </div>
   )
 }

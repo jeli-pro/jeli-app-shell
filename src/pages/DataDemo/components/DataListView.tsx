@@ -18,6 +18,7 @@ import {
   ItemPriorityBadge,
   ItemDateInfo,
 } from './shared/DataItemParts'
+import { AddDataItemCta } from './shared/AddDataItemCta'
 
 export function DataListView() {
   const { groupBy, activeGroupTab, onItemSelect, itemId } = useAppViewManager();
@@ -33,7 +34,7 @@ export function DataListView() {
   }
 
   return (
-    <div ref={listRef} className="space-y-4">
+    <div ref={listRef} className="space-y-4 pb-4">
       {items.map((item: DataItem) => {
         const isSelected = selectedItem?.id === item.id
         
@@ -104,6 +105,7 @@ export function DataListView() {
           </div>
         )
       })}
+      <AddDataItemCta viewMode='list' />
     </div>
   )
 }

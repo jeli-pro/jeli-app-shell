@@ -23,6 +23,7 @@ import {
   ItemDateInfo,
   ItemProgressBar,
 } from './shared/DataItemParts'
+import { AddDataItemCta } from './shared/AddDataItemCta'
 
 export function DataTableView() {
   const {
@@ -172,6 +173,7 @@ export function DataTableView() {
                 ])
               : data.map(item => <TableRow key={item.id} item={item} isSelected={selectedItem?.id === item.id} onItemSelect={onItemSelect} />)
             }
+            <AddDataItemCta viewMode='table' colSpan={8} />
           </tbody>
         </table>
       </div>
