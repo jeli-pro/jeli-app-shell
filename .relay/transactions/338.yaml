@@ -1,0 +1,357 @@
+uuid: b8a7d1a2-5881-424a-89ca-1ec9d150b4a7
+projectId: jeli-app-shell
+createdAt: '2025-10-16T08:16:58.914Z'
+gitCommitMsg: >-
+  feat(messaging): add single-scroll layout variant for right pane
+
+  Refactors the right-hand context pane in the messaging view to offer an
+  alternative "single scroll" layout. This variant removes sticky elements in
+  favor of a unified, document-style scrolling experience.
+
+  - The `MessagingContent` component is updated to combine the `TaskHeader` and
+  `AnimatedTabs` into a single header block that scrolls with the content. - The
+  `AnimatedTabs` component is enhanced with a new `size` prop ('default' | 'sm')
+  to allow for a more compact version, which is used in the new header layout.
+  The default size remains unchanged for other usages.
+promptSummary: >-
+  The user requested an alternative layout for the right-hand column in the
+  messaging view.
+reasoning:
+  - >-
+    Of course. Let's explore a different layout variant for the right-hand
+    column.
+  - >-
+    The current design has a sticky tab bar, which keeps the context-switching
+    controls visible but creates a visual separation between the main task
+    details and the tabbed content. For this alternative, I'll create a more
+    unified, "document-style" layout where the entire right pane scrolls as one
+    single unit.
+  - '### The "Single Scroll Pane" Variant'
+  - >-
+    1.  **Unified Scrolling:** I will remove all sticky behavior within the
+    right column. The Task Header and the tabs will now scroll away with the
+    content, creating a simpler and cleaner flow of information.
+  - >-
+    2.  **Combined Header:** The `TaskHeader` and the `AnimatedTabs` will be
+    grouped into a single header block with a single border at the bottom,
+    reinforcing the unified feel.
+  - >-
+    3.  **Compact Tabs:** To make the non-sticky header less intrusive, I will
+    make the `AnimatedTabs` component more versatile by adding a `size` prop.
+    I'll use a new `sm` size here, which reduces padding and font size for a
+    more compact appearance.
+  - >-
+    This approach trades the always-visible navigation of sticky tabs for a less
+    complex and more seamless scrolling experience.
+  - '### Step 1: Make `AnimatedTabs` Component More Versatile'
+  - >-
+    First, I'll update `animated-tabs.tsx` to accept a `size` prop (`'default'`
+    or `'sm'`). This will allow us to use a more compact version in the new
+    layout without affecting its usage elsewhere.
+  - '### Step 2: Implement the Single Scroll Pane Layout'
+  - >-
+    Now I will refactor `MessagingContent.tsx`. I'll remove the sticky container
+    for the tabs and group everything into a single header that scrolls with the
+    content. I'll also apply the new `size="sm"` prop to our compact
+    `AnimatedTabs`.
+  - >-
+    This change provides a distinct alternative layout for the right column,
+    focusing on simplicity and a unified scrolling experience.
+operations:
+  - type: write
+    path: src/components/ui/animated-tabs.tsx
+    content: >+
+      --- src/components/ui/animated-tabs.tsx
+
+      +++ src/components/ui/animated-tabs.tsx
+
+      @@ -8,11 +8,13 @@
+       interface AnimatedTabsProps extends React.HTMLAttributes<HTMLDivElement> {
+         tabs: Tab[]
+         activeTab: string
+      -  onTabChange: (tabId: string) => void
+
+      +  onTabChange: (tabId: string) => void,
+
+      +  size?: 'default' | 'sm'
+       }
+       
+       const AnimatedTabs = React.forwardRef<HTMLDivElement, AnimatedTabsProps>(
+      -  ({ className, tabs, activeTab, onTabChange, ...props }, ref) => {
+
+      +  ({ className, tabs, activeTab, onTabChange, size = 'default', ...props
+      }, ref) => {
+           const [activeIndex, setActiveIndex] = useState(0)
+           const [activeStyle, setActiveStyle] = useState({ left: "0px", width: "0px" })
+           const tabRefs = useRef<(HTMLButtonElement | null)[]>([])
+      @@ -66,13 +68,23 @@
+                   key={tab.id}
+                   ref={(el) => (tabRefs.current[index] = el)}
+                   className={cn(
+      -              "group relative cursor-pointer px-4 py-5 text-center
+      transition-colors duration-300 focus:outline-none focus-visible:ring-2
+      focus-visible:ring-ring focus-visible:ring-offset-2",
+
+      +              "group relative cursor-pointer text-center
+      transition-colors duration-300 focus:outline-none focus-visible:ring-2
+      focus-visible:ring-ring focus-visible:ring-offset-2",
+
+      +              size === 'default' ? "px-4 py-5" : "px-3 py-2.5",
+                     index === activeIndex 
+                       ? "text-primary" 
+                       : "text-muted-foreground hover:text-foreground"
+                   )}
+                   onClick={() => onTabChange(tab.id)}
+                 >
+      -            <span className="flex items-center gap-2 text-lg
+      font-semibold whitespace-nowrap">{tab.label}</span>
+
+      +            <span className={cn(
+
+      +              "flex items-center gap-2 whitespace-nowrap",
+
+      +              size === 'default' 
+
+      +                ? "text-lg font-semibold"
+
+      +                : "text-sm font-medium"
+
+      +            )}>
+
+      +              {tab.label}
+
+      +            </span>
+                 </button>
+               ))}
+             </div>
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/Messaging/components/MessagingContent.tsx
+    content: >+
+      --- src/pages/Messaging/components/MessagingContent.tsx
+
+      +++ src/pages/Messaging/components/MessagingContent.tsx
+
+      @@ -40,19 +40,19 @@
+         }
+         
+         return (
+      -    <div className="h-full flex-1 flex flex-col bg-background
+      overflow-y-auto">
+
+      -      {/* Task Management Header */}
+
+      -      <div className="p-6 border-b">
+
+      -        <TaskHeader task={task} />
+
+      +    <div className="h-full flex-1 flex flex-col bg-background
+      overflow-y-auto" data-testid="messaging-content-scroll-pane">
+
+      +      {/* Combined Header */}
+
+      +      <div className="flex-shrink-0 border-b">
+
+      +        <div className="p-6">
+
+      +          <TaskHeader task={task} />
+
+      +        </div>
+
+      +        <AnimatedTabs tabs={tabs} activeTab={activeTab}
+      onTabChange={setActiveTab} size="sm" className="px-6" />
+             </div>
+       
+      -      <div className="flex-shrink-0 border-b bg-background/80
+      backdrop-blur-sm sticky top-0 z-10">
+
+      -        <AnimatedTabs tabs={tabs} activeTab={activeTab}
+      onTabChange={setActiveTab} className="px-6" />
+
+      -      </div>
+
+      -
+
+      +      {/* Content Area */}
+             <div className="flex-1 p-6">
+               {activeTab === 'contact' && <ContactInfoPanel contact={task.contact} />}
+               {activeTab === 'ai' && <AIInsightsPanel task={task} />}
+               {activeTab === 'activity' && <ActivityPanel contact={task.contact} />}
+               {activeTab === 'notes' && <NotesPanel contact={task.contact} />}
+             </div>
+
+    patchStrategy: standard-diff
+snapshot:
+  src/components/ui/animated-tabs.tsx: |-
+    "use client"
+
+    import * as React from "react"
+    import { useState, useRef, useEffect, useLayoutEffect } from "react"
+    import { cn } from "@/lib/utils"
+
+    interface Tab {
+      id: string
+      label: React.ReactNode
+    }
+
+    interface AnimatedTabsProps extends React.HTMLAttributes<HTMLDivElement> {
+      tabs: Tab[]
+      activeTab: string
+      onTabChange: (tabId: string) => void
+    }
+
+    const AnimatedTabs = React.forwardRef<HTMLDivElement, AnimatedTabsProps>(
+      ({ className, tabs, activeTab, onTabChange, ...props }, ref) => {
+        const [activeIndex, setActiveIndex] = useState(0)
+        const [activeStyle, setActiveStyle] = useState({ left: "0px", width: "0px" })
+        const tabRefs = useRef<(HTMLButtonElement | null)[]>([])
+
+        // Update active index when controlled prop changes
+        useEffect(() => {
+          const newActiveIndex = tabs.findIndex(tab => tab.id === activeTab)
+          if (newActiveIndex !== -1 && newActiveIndex !== activeIndex) {
+            setActiveIndex(newActiveIndex)
+          }
+        }, [activeTab, tabs, activeIndex])
+        
+        // Update active indicator position
+        useEffect(() => {
+          const activeElement = tabRefs.current[activeIndex]
+          if (activeElement) {
+            const { offsetLeft, offsetWidth } = activeElement
+            setActiveStyle({
+              left: `${offsetLeft}px`,
+              width: `${offsetWidth}px`,
+            })
+          }
+        }, [activeIndex, tabs])
+
+        // Set initial position of active indicator
+        useLayoutEffect(() => {
+            const initialActiveIndex = activeTab ? tabs.findIndex(tab => tab.id === activeTab) : 0
+            const indexToUse = initialActiveIndex !== -1 ? initialActiveIndex : 0
+            
+            const firstElement = tabRefs.current[indexToUse]
+            if (firstElement) {
+              const { offsetLeft, offsetWidth } = firstElement
+              setActiveStyle({
+                left: `${offsetLeft}px`,
+                width: `${offsetWidth}px`,
+              })
+            }
+        }, [tabs, activeTab])
+
+        return (
+          <div 
+            ref={ref} 
+            className={cn("relative flex w-full items-center", className)} 
+            {...props}
+          >
+            {/* Active Indicator */}
+            <div
+              className="absolute -bottom-px h-0.5 bg-primary transition-all duration-300 ease-out"
+              style={activeStyle}
+            />
+
+            {/* Tabs */}
+            {tabs.map((tab, index) => (
+              <button
+                key={tab.id}
+                ref={(el) => (tabRefs.current[index] = el)}
+                className={cn(
+                  "group relative cursor-pointer px-4 py-5 text-center transition-colors duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                  index === activeIndex 
+                    ? "text-primary" 
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+                onClick={() => onTabChange(tab.id)}
+              >
+                <span className="flex items-center gap-2 text-lg font-semibold whitespace-nowrap">{tab.label}</span>
+              </button>
+            ))}
+          </div>
+        )
+      }
+    )
+    AnimatedTabs.displayName = "AnimatedTabs"
+
+    export { AnimatedTabs }
+  src/pages/Messaging/components/MessagingContent.tsx: >-
+    import React, { useState, useMemo } from 'react';
+
+    import { useMessagingStore } from '../store/messaging.store';
+
+    import { ContactInfoPanel } from './ContactInfoPanel';
+
+    import { AIInsightsPanel } from './AIInsightsPanel';
+
+    import { ActivityPanel } from './ActivityPanel';
+
+    import { NotesPanel } from './NotesPanel';
+
+    import { TaskHeader } from './TaskHeader';
+
+    import { AnimatedTabs } from '@/components/ui/animated-tabs';
+
+    import { TechOrbitDisplay } from '@/components/effects/OrbitingCircles';
+
+
+    interface MessagingContentProps {
+      conversationId?: string;
+    }
+
+
+    export const MessagingContent: React.FC<MessagingContentProps> = ({
+    conversationId }) => {
+      const [activeTab, setActiveTab] = useState('contact');
+      const task = useMessagingStore(state => conversationId ? state.getTaskById(conversationId) : undefined);
+      
+      const tabs = useMemo(() => [
+        { id: 'contact', label: 'Contact' },
+        { id: 'ai', label: 'AI Insights' },
+        { id: 'activity', label: 'Activity' },
+        { id: 'notes', label: 'Notes' },
+      ], []);
+
+      if (!task) {
+        return (
+          <div className="h-full flex-1 flex flex-col items-center justify-center bg-background p-6 relative overflow-hidden">
+            <TechOrbitDisplay text="Context" />
+            <div className="text-center z-10 bg-background/50 backdrop-blur-sm p-6 rounded-lg">
+                <h3 className="mt-4 text-lg font-medium">Select a Task</h3>
+                <p className="mt-1 text-sm text-muted-foreground">
+                    Task details and contact information will appear here.
+                </p>
+            </div>
+          </div>
+        );
+      }
+      
+      return (
+        <div className="h-full flex-1 flex flex-col bg-background overflow-y-auto">
+          {/* Task Management Header */}
+          <div className="p-6 border-b">
+            <TaskHeader task={task} />
+          </div>
+
+          <div className="flex-shrink-0 border-b bg-background/80 backdrop-blur-sm sticky top-0 z-10">
+            <AnimatedTabs tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} className="px-6" />
+          </div>
+
+          <div className="flex-1 p-6">
+            {activeTab === 'contact' && <ContactInfoPanel contact={task.contact} />}
+            {activeTab === 'ai' && <AIInsightsPanel task={task} />}
+            {activeTab === 'activity' && <ActivityPanel contact={task.contact} />}
+            {activeTab === 'notes' && <NotesPanel contact={task.contact} />}
+          </div>
+        </div>
+      );
+    };
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 338

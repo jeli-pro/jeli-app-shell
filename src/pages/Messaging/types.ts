@@ -1,6 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 
-export type Channel = 'whatsapp' | 'instagram' | 'facebook';
+export type Channel = 'whatsapp' | 'instagram' | 'facebook' | 'email';
 
 export interface ChannelIcon {
   Icon: LucideIcon;
@@ -9,7 +9,7 @@ export interface ChannelIcon {
 
 export interface Contact {
   id: string;
-  name: string;
+  name:string;
   avatar: string;
   online: boolean;
   tags: string[];
@@ -20,6 +20,12 @@ export interface Contact {
   role: string;
   activity: ActivityEvent[];
   notes: Note[];
+}
+
+export interface Assignee {
+  id: string;
+  name: string;
+  avatar: string;
 }
 
 export type ActivityEventType = 'note' | 'call' | 'email' | 'meeting';
@@ -35,12 +41,15 @@ export interface Note {
   content: string;
   createdAt: string;
 }
+
 export interface Message {
   id: string;
   text: string;
   timestamp: string;
-  sender: 'user' | 'contact';
+  sender: 'user' | 'contact' | 'system';
+  type: 'comment' | 'note' | 'system';
   read: boolean;
+  userId?: string; // for notes or system messages from users
 }
 
 export interface AISummary {
@@ -49,12 +58,21 @@ export interface AISummary {
   suggestedReplies: string[];
 }
 
-export interface Conversation {
+export type TaskStatus = 'open' | 'in-progress' | 'done' | 'snoozed';
+export type TaskPriority = 'none' | 'low' | 'medium' | 'high';
+
+export interface Task {
   id: string;
+  title: string;
   contactId: string;
   channel: Channel;
   unreadCount: number;
-  lastMessage: Message;
+  lastActivity: Message;
   messages: Message[];
+  status: TaskStatus;
+  assigneeId: string | null;
+  dueDate: string | null;
+  priority: TaskPriority;
+  tags: string[];
   aiSummary: AISummary;
 }

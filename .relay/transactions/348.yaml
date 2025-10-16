@@ -1,0 +1,396 @@
+uuid: 4894de8d-1940-4246-8dd3-68d7168d601b
+projectId: jeli-app-shell
+createdAt: '2025-10-16T09:58:38.769Z'
+gitCommitMsg: >-
+  feat(messaging): redesign TaskHeader with premium UI
+
+  - Introduces a new, more spacious layout for the TaskHeader component. - Adds
+  a large contact avatar as a primary visual anchor. - Restructures the layout
+  to be responsive, stacking on mobile and side-by-side on larger screens. -
+  Refines property control buttons for a cleaner, more consistent look and feel.
+  - Improves visual hierarchy and readability with increased white space.
+promptSummary: >-
+  Redesign the TaskHeader component with a more premium and spacious UI,
+  ensuring it's responsive.
+reasoning:
+  - >-
+    This is an excellent request! I'll redesign the `TaskHeader.tsx` component
+    to create a more premium, spacious, and modern user interface, while
+    ensuring it remains responsive and mobile-first.
+  - 'My plan is to:'
+  - >-
+    1.  **Introduce a Strong Visual Anchor**: I'll add a larger contact avatar
+    to the left of the task title, making the context immediately clear.
+  - >-
+    2.  **Improve Layout and Hierarchy**: The layout will be restructured to use
+    a responsive flexbox container. On wider screens, the avatar and title will
+    be side-by-side. On narrow screens, they will stack vertically for optimal
+    mobile viewing.
+  - >-
+    3.  **Refine Property Controls**: The property buttons (Assignee, Status,
+    etc.) will be restyled to be cleaner and more consistent, using a `ghost`
+    variant that feels less intrusive but still interactive.
+  - >-
+    4.  **Increase White Space**: I'll add more generous spacing throughout the
+    component to give it a more breathable, premium feel.
+  - >-
+    5.  **Enhance Interactivity Hints**: The "Due Date" button will be styled
+    like other properties, hinting that it could become an interactive element
+    (like a calendar popover) in the future.
+  - Here is the updated `TaskHeader.tsx` component.
+operations:
+  - type: write
+    path: src/pages/Messaging/components/TaskHeader.tsx
+    content: >-
+      import React from 'react';
+
+      import { useMessagingStore } from '../store/messaging.store';
+
+      import type { Task, TaskStatus, TaskPriority, Assignee, Contact } from
+      '../types';
+
+      import {
+        DropdownMenu,
+        DropdownMenuContent,
+        DropdownMenuItem,
+        DropdownMenuRadioGroup,
+        DropdownMenuRadioItem,
+        DropdownMenuTrigger,
+        DropdownMenuSeparator
+      } from '@/components/ui/dropdown-menu';
+
+      import { Button } from '@/components/ui/button';
+
+      import { Avatar, AvatarFallback, AvatarImage } from
+      '@/components/ui/avatar';
+
+      import { ChevronDown, Inbox, Zap, Shield, Clock, Calendar, Plus, User }
+      from 'lucide-react';
+
+      import { Badge } from '@/components/ui/badge';
+
+      import { format } from 'date-fns';
+
+
+      const statusOptions: { value: TaskStatus; label: string; icon:
+      React.ReactNode }[] = [
+          { value: 'open', label: 'Open', icon: <Inbox className="w-4 h-4" /> },
+          { value: 'in-progress', label: 'In Progress', icon: <Zap className="w-4 h-4" /> },
+          { value: 'done', label: 'Done', icon: <Shield className="w-4 h-4" /> },
+          { value: 'snoozed', label: 'Snoozed', icon: <Clock className="w-4 h-4" /> },
+      ];
+
+
+      const priorityOptions: { value: TaskPriority; label: string; icon:
+      React.ReactNode }[] = [
+          { value: 'high', label: 'High', icon: <div className="w-2.5 h-2.5 rounded-full bg-red-500" /> },
+          { value: 'medium', label: 'Medium', icon: <div className="w-2.5 h-2.5 rounded-full bg-yellow-500" /> },
+          { value: 'low', label: 'Low', icon: <div className="w-2.5 h-2.5 rounded-full bg-green-500" /> },
+          { value: 'none', label: 'None', icon: <div className="w-2.5 h-2.5 rounded-full bg-gray-400" /> },
+      ];
+
+
+
+      interface TaskHeaderProps {
+        task: (Task & { contact: Contact; assignee: Assignee | null });
+      }
+
+
+      export const TaskHeader: React.FC<TaskHeaderProps> = ({ task }) => {
+        const { updateTask, assignees } = useMessagingStore();
+        const currentStatus = statusOptions.find(o => o.value === task.status);
+        const currentPriority = priorityOptions.find(o => o.value === task.priority);
+
+        return (
+          <div className="space-y-6">
+            {/* Main Header with Avatar and Title */}
+            <div className="flex flex-col sm:flex-row sm:items-start sm:gap-6">
+              <Avatar className="h-14 w-14 sm:h-16 sm:w-16 border-2 border-background ring-2 ring-border flex-shrink-0">
+                <AvatarImage src={task.contact.avatar} alt={task.contact.name} />
+                <AvatarFallback>{task.contact.name.charAt(0)}</AvatarFallback>
+              </Avatar>
+
+              <div className="flex-1 min-w-0 mt-3 sm:mt-0">
+                <h2 className="font-bold text-xl lg:text-2xl tracking-tight truncate" title={task.title}>
+                  {task.title}
+                </h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  With{' '}
+                  <a href="#" className="font-medium text-foreground/80 hover:underline">
+                    {task.contact.name}
+                  </a>
+                  <span className="mx-1.5">&middot;</span>
+                  via <span className="capitalize font-medium text-foreground/80">{task.channel}</span>
+                </p>
+              </div>
+            </div>
+
+            {/* Properties Bar and Tags */}
+            <div className="space-y-4">
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+                {/* Assignee Dropdown */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm" className="gap-2 px-2 text-muted-foreground hover:text-foreground group">
+                      {task.assignee ? (
+                        <Avatar className="h-5 w-5"><AvatarImage src={task.assignee.avatar} /><AvatarFallback>{task.assignee.name.charAt(0)}</AvatarFallback></Avatar>
+                      ) : (
+                        <div className="w-5 h-5 flex items-center justify-center"><User className="h-4 w-4" /></div>
+                      )}
+                      <span className="font-medium text-foreground">{task.assignee?.name || 'Unassigned'}</span>
+                      <ChevronDown className="w-3 h-3 text-muted-foreground group-hover:text-foreground transition-colors" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    <DropdownMenuRadioGroup value={task.assigneeId || 'null'} onValueChange={val => updateTask(task.id, { assigneeId: val === 'null' ? null : val })}>
+                      <DropdownMenuRadioItem value="null">
+                        <User className="w-4 h-4 mr-2 text-muted-foreground" /> Unassigned
+                      </DropdownMenuRadioItem>
+                      <DropdownMenuSeparator />
+                      {assignees.map(a => (
+                        <DropdownMenuRadioItem key={a.id} value={a.id}>
+                          <Avatar className="h-5 w-5 mr-2"><AvatarImage src={a.avatar} /><AvatarFallback>{a.name.charAt(0)}</AvatarFallback></Avatar>
+                          {a.name}
+                        </DropdownMenuRadioItem>
+                      ))}
+                    </DropdownMenuRadioGroup>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                {/* Status Dropdown */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm" className="gap-2 px-2 text-muted-foreground hover:text-foreground group">
+                      <div className="w-5 h-5 flex items-center justify-center">{currentStatus?.icon}</div>
+                      <span className="font-medium text-foreground">{currentStatus?.label}</span>
+                      <ChevronDown className="w-3 h-3 text-muted-foreground group-hover:text-foreground transition-colors" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    {statusOptions.map(o => (
+                      <DropdownMenuItem key={o.value} onClick={() => updateTask(task.id, { status: o.value })}>
+                        <div className="flex items-center">
+                          <div className="w-4 h-4 mr-2">{o.icon}</div>
+                          <span>{o.label}</span>
+                        </div>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                
+                {/* Priority Dropdown */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm" className="gap-2 px-2 text-muted-foreground hover:text-foreground group">
+                      <div className="w-5 h-5 flex items-center justify-center">{currentPriority?.icon}</div>
+                      <span className="font-medium text-foreground">{currentPriority?.label}</span>
+                      <ChevronDown className="w-3 h-3 text-muted-foreground group-hover:text-foreground transition-colors" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    {priorityOptions.map(o => (
+                      <DropdownMenuItem key={o.value} onClick={() => updateTask(task.id, { priority: o.value })}>
+                        <div className="flex items-center">
+                          <div className="w-2.5 h-2.5 mr-2">{o.icon}</div>
+                          <span>{o.label}</span>
+                        </div>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                {/* Due Date - for display, could be a popover trigger */}
+                <Button variant="ghost" size="sm" className="gap-2 px-2 text-muted-foreground hover:text-foreground">
+                    <div className="w-5 h-5 flex items-center justify-center"><Calendar className="w-4 h-4" /></div>
+                    <span className="font-medium text-foreground">{task.dueDate ? format(new Date(task.dueDate), 'MMM d, yyyy') : 'No due date'}</span>
+                </Button>
+              </div>
+
+              {/* Tags */}
+              <div className="flex flex-wrap items-center gap-2">
+                {task.tags.map(t => <Badge variant="secondary" key={t}>{t}</Badge>)}
+                <Button variant="outline" size="sm" className="h-7 px-2 text-xs rounded-md border-dashed">
+                  <Plus className="w-3 h-3 mr-1" /> Tag
+                </Button>
+              </div>
+            </div>
+          </div>
+        );
+      };
+    patchStrategy: replace
+snapshot:
+  src/pages/Messaging/components/TaskHeader.tsx: >
+    import React from 'react';
+
+    import { useMessagingStore } from '../store/messaging.store';
+
+    import type { Task, TaskStatus, TaskPriority, Assignee, Contact } from
+    '../types';
+
+    import {
+      DropdownMenu,
+      DropdownMenuContent,
+      DropdownMenuItem,
+      DropdownMenuRadioGroup,
+      DropdownMenuRadioItem,
+      DropdownMenuTrigger,
+      DropdownMenuSeparator
+    } from '@/components/ui/dropdown-menu';
+
+    import { Button } from '@/components/ui/button';
+
+    import { Avatar, AvatarFallback, AvatarImage } from
+    '@/components/ui/avatar';
+
+    import { ChevronDown, Inbox, Zap, Shield, Clock, Calendar, Plus, User } from
+    'lucide-react';
+
+    import { Badge } from '@/components/ui/badge';
+
+    import { format } from 'date-fns';
+
+
+    const statusOptions: { value: TaskStatus; label: string; icon:
+    React.ReactNode }[] = [
+        { value: 'open', label: 'Open', icon: <Inbox className="w-4 h-4" /> },
+        { value: 'in-progress', label: 'In Progress', icon: <Zap className="w-4 h-4" /> },
+        { value: 'done', label: 'Done', icon: <Shield className="w-4 h-4" /> },
+        { value: 'snoozed', label: 'Snoozed', icon: <Clock className="w-4 h-4" /> },
+    ];
+
+
+    const priorityOptions: { value: TaskPriority; label: string; icon:
+    React.ReactNode }[] = [
+        { value: 'high', label: 'High', icon: <div className="w-2.5 h-2.5 rounded-full bg-red-500" /> },
+        { value: 'medium', label: 'Medium', icon: <div className="w-2.5 h-2.5 rounded-full bg-yellow-500" /> },
+        { value: 'low', label: 'Low', icon: <div className="w-2.5 h-2.5 rounded-full bg-green-500" /> },
+        { value: 'none', label: 'None', icon: <div className="w-2.5 h-2.5 rounded-full bg-gray-400" /> },
+    ];
+
+
+
+    interface TaskHeaderProps {
+      task: (Task & { contact: Contact; assignee: Assignee | null });
+    }
+
+
+    export const TaskHeader: React.FC<TaskHeaderProps> = ({ task }) => {
+      const { updateTask, assignees } = useMessagingStore();
+      const currentStatus = statusOptions.find(o => o.value === task.status);
+      const currentPriority = priorityOptions.find(o => o.value === task.priority);
+
+      return (
+        <div className="space-y-4">
+          {/* Task Title & Contact */}
+          <div className="overflow-hidden">
+            <h2 className="font-bold text-xl lg:text-2xl truncate" title={task.title}>
+              {task.title}
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              With <a href="#" className="hover:underline font-medium text-foreground/80">{task.contact.name}</a>
+              <span className="mx-1.5">&middot;</span>
+              via <span className="capitalize font-medium text-foreground/80">{task.channel}</span>
+            </p>
+          </div>
+
+          {/* Properties Bar */}
+          <div className="flex flex-wrap items-center gap-y-2 text-sm">
+            {/* Assignee Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-2 font-normal">
+                  {task.assignee ? (
+                    <Avatar className="h-5 w-5"><AvatarImage src={task.assignee.avatar} /><AvatarFallback>{task.assignee.name.charAt(0)}</AvatarFallback></Avatar>
+                  ) : (
+                    <User className="h-4 w-4 text-muted-foreground" />
+                  )}
+                  <span className="font-medium">{task.assignee?.name || 'Unassigned'}</span>
+                  <ChevronDown className="w-3 h-3 text-muted-foreground" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                <DropdownMenuRadioGroup value={task.assigneeId || 'null'} onValueChange={val => updateTask(task.id, { assigneeId: val === 'null' ? null : val })}>
+                  <DropdownMenuRadioItem value="null">
+                    <User className="w-4 h-4 mr-2 text-muted-foreground" /> Unassigned
+                  </DropdownMenuRadioItem>
+                  <DropdownMenuSeparator />
+                  {assignees.map(a => (
+                    <DropdownMenuRadioItem key={a.id} value={a.id}>
+                      <Avatar className="h-5 w-5 mr-2"><AvatarImage src={a.avatar} /><AvatarFallback>{a.name.charAt(0)}</AvatarFallback></Avatar>
+                      {a.name}
+                    </DropdownMenuRadioItem>
+                  ))}
+                </DropdownMenuRadioGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <div className="mx-2 h-4 w-px bg-border" />
+
+            {/* Status Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground hover:text-foreground">
+                  {currentStatus?.icon}
+                  <span className="font-medium text-foreground">{currentStatus?.label}</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                {statusOptions.map(o => (
+                  <DropdownMenuItem key={o.value} onClick={() => updateTask(task.id, { status: o.value })}>
+                    <div className="flex items-center">
+                      <div className="w-4 h-4 mr-2">{o.icon}</div>
+                      <span>{o.label}</span>
+                    </div>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+            
+            <div className="mx-2 h-4 w-px bg-border" />
+            
+            {/* Priority Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground hover:text-foreground">
+                  {currentPriority?.icon}
+                  <span className="font-medium text-foreground">{currentPriority?.label}</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                {priorityOptions.map(o => (
+                  <DropdownMenuItem key={o.value} onClick={() => updateTask(task.id, { priority: o.value })}>
+                    <div className="flex items-center">
+                      <div className="w-2.5 h-2.5 mr-2">{o.icon}</div>
+                      <span>{o.label}</span>
+                    </div>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <div className="mx-2 h-4 w-px bg-border" />
+
+            {/* Due Date - for display, could be a popover trigger */}
+            <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground cursor-default" disabled>
+                <Calendar className="w-4 h-4" />
+                <span className="font-medium text-foreground">{task.dueDate ? format(new Date(task.dueDate), 'MMM d, yyyy') : 'No due date'}</span>
+            </Button>
+          </div>
+
+          {/* Tags */}
+          <div className="flex flex-wrap items-center gap-2">
+            {task.tags.map(t => <Badge variant="secondary" key={t}>{t}</Badge>)}
+            <Button variant="outline" size="sm" className="h-7 px-2 text-xs rounded-md border-dashed">
+              <Plus className="w-3 h-3 mr-1" /> Tag
+            </Button>
+          </div>
+        </div>
+      );
+    };
+approved: false
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: undone
+id: 348

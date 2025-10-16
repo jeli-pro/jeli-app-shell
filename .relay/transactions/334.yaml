@@ -1,0 +1,635 @@
+uuid: c32c58a5-d5e4-4d80-be3e-908709e3bb07
+projectId: jeli-app-shell
+createdAt: '2025-10-16T07:54:33.337Z'
+gitCommitMsg: >-
+  refactor(messaging): improve layout cohesion and visual hierarchy
+
+  Refines the messaging view's right pane for a cleaner and more cohesive
+  design.
+
+  - The task header and context tabs are now unified into a single sticky header
+  block, removing the previous double-border layout. - The `AnimatedTabs`
+  component styling has been made more subtle (smaller text and padding) to
+  better serve as secondary navigation. - The corner radius for
+  `DropdownMenuContent` and `PopoverContent` has been reduced from `rounded-xl`
+  to `rounded-lg` for a sharper, more consistent design language across the
+  application.
+promptSummary: The user requested to make the UI "more clean and cohesive".
+reasoning:
+  - >-
+    Of course. "Clean and cohesive" is the goal. I'll make several targeted
+    adjustments to improve the visual hierarchy, reduce clutter, and create a
+    more unified design language across the components.
+  - 'Here is my plan:'
+  - >-
+    1.  **Unified Header**: I will merge the task management controls and the
+    context tabs into a single, sticky header block in the right-hand pane. This
+    removes the visually jarring double border and makes the relationship
+    between these controls much clearer.
+  - >-
+    2.  **Subtler Tabs**: The tabs themselves are currently quite large. I'll
+    reduce their size and font weight to make them feel like secondary
+    navigation within the header, reinforcing the focus on the task controls
+    above them.
+  - >-
+    3.  **Consistent Corner Radius**: I've noticed the pop-ups and dropdowns use
+    a large corner radius (`rounded-xl`). I will reduce this to `rounded-lg` for
+    a sharper, more modern feel that is consistent with other UI elements.
+  - These changes will result in a more polished and professional interface.
+  - '### Step 1: Unify the Right Pane Header'
+  - >-
+    I'll refactor `MessagingContent.tsx` to combine the `TaskHeader` and
+    `AnimatedTabs` into one cohesive, sticky block. This eliminates the
+    double-border and creates a cleaner look.
+  - '### Step 2: Refine Animated Tabs Styling'
+  - >-
+    Next, I'll adjust the `AnimatedTabs` component. By reducing the padding and
+    font size, they will appear more subtle and appropriate for their role as
+    secondary navigation.
+  - '### Step 3: Standardize Component Borders'
+  - >-
+    Finally, I'll update the border radius on the dropdown and popover
+    components for a cleaner, more consistent look across the application. A
+    subtle change like this significantly improves overall design cohesion.
+  - >-
+    These adjustments work together to create the clean, cohesive layout you
+    requested.
+operations:
+  - type: write
+    path: src/pages/Messaging/components/MessagingContent.tsx
+    content: >+
+      --- src/pages/Messaging/components/MessagingContent.tsx
+
+      +++ src/pages/Messaging/components/MessagingContent.tsx
+
+      @@ -40,14 +40,11 @@
+         
+         return (
+           <div className="h-full flex-1 flex flex-col bg-background overflow-y-auto">
+      -      {/* Task Management Header */}
+
+      -      <div className="p-6 border-b">
+
+      +      {/* Unified Header */}
+
+      +      <div className="flex-shrink-0 border-b bg-background/95
+      backdrop-blur-sm sticky top-0 z-10 px-6 pt-6">
+               <TaskHeader task={task} />
+      -      </div>
+
+      -
+
+      -      <div className="flex-shrink-0 border-b bg-background/80
+      backdrop-blur-sm sticky top-0 z-10">
+
+      -        <AnimatedTabs tabs={tabs} activeTab={activeTab}
+      onTabChange={setActiveTab} className="px-6" />
+
+      +        <AnimatedTabs tabs={tabs} activeTab={activeTab}
+      onTabChange={setActiveTab} className="mt-4" />
+             </div>
+       
+             <div className="flex-1 p-6">
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/components/ui/animated-tabs.tsx
+    content: >+
+      --- src/components/ui/animated-tabs.tsx
+
+      +++ src/components/ui/animated-tabs.tsx
+
+      @@ -46,17 +46,17 @@
+                   key={tab.id}
+                   ref={(el) => (tabRefs.current[index] = el)}
+                   className={cn(
+      -              "group relative cursor-pointer px-4 py-5 text-center
+      transition-colors duration-300 focus:outline-none focus-visible:ring-2
+      focus-visible:ring-ring focus-visible:ring-offset-2",
+
+      +              "group relative cursor-pointer px-3 py-3 text-center
+      transition-colors duration-300 focus:outline-none focus-visible:ring-2
+      focus-visible:ring-ring focus-visible:ring-offset-2",
+                     index === activeIndex 
+                       ? "text-primary" 
+                       : "text-muted-foreground hover:text-foreground"
+                   )}
+                   onClick={() => onTabChange(tab.id)}
+                 >
+      -            <span className="flex items-center gap-2 text-lg
+      font-semibold whitespace-nowrap">{tab.label}</span>
+
+      +            <span className="flex items-center gap-2 text-sm font-medium
+      whitespace-nowrap">{tab.label}</span>
+                 </button>
+               ))}
+             </div>
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/components/ui/dropdown-menu.tsx
+    content: >+
+      --- src/components/ui/dropdown-menu.tsx
+
+      +++ src/components/ui/dropdown-menu.tsx
+
+      @@ -73,7 +73,7 @@
+             ref={ref}
+             sideOffset={sideOffset}
+             className={cn(
+      -        "z-50 min-w-[8rem] overflow-hidden rounded-xl border bg-popover
+      p-1 text-popover-foreground shadow-xl outline-none
+      data-[state=open]:animate-in data-[state=closed]:animate-out
+      data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0
+      data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95
+      data-[side=bottom]:slide-in-from-top-2
+      data-[side=left]:slide-in-from-right-2
+      data-[side=right]:slide-in-from-left-2
+      data-[side=top]:slide-in-from-bottom-2",
+
+      +        "z-50 min-w-[8rem] overflow-hidden rounded-lg border bg-popover
+      p-1 text-popover-foreground shadow-xl outline-none
+      data-[state=open]:animate-in data-[state=closed]:animate-out
+      data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0
+      data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95
+      data-[side=bottom]:slide-in-from-top-2
+      data-[side=left]:slide-in-from-right-2
+      data-[side=right]:slide-in-from-left-2
+      data-[side=top]:slide-in-from-bottom-2",
+               className
+             )}
+             {...props}
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/components/ui/popover.tsx
+    content: >+
+      --- src/components/ui/popover.tsx
+
+      +++ src/components/ui/popover.tsx
+
+      @@ -19,7 +19,7 @@
+             align={align}
+             sideOffset={sideOffset}
+             className={cn(
+      -        "z-50 w-72 rounded-xl border bg-popover p-4
+      text-popover-foreground shadow-xl outline-none
+      data-[state=open]:animate-in data-[state=closed]:animate-out
+      data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0
+      data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95
+      data-[side=bottom]:slide-in-from-top-2
+      data-[side=left]:slide-in-from-right-2
+      data-[side=right]:slide-in-from-left-2
+      data-[side=top]:slide-in-from-bottom-2",
+
+      +        "z-50 w-72 rounded-lg border bg-popover p-4
+      text-popover-foreground shadow-xl outline-none
+      data-[state=open]:animate-in data-[state=closed]:animate-out
+      data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0
+      data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95
+      data-[side=bottom]:slide-in-from-top-2
+      data-[side=left]:slide-in-from-right-2
+      data-[side=right]:slide-in-from-left-2
+      data-[side=top]:slide-in-from-bottom-2",
+               useTriggerWidth && "w-[var(--radix-popover-trigger-width)]",
+               className
+             )}
+
+    patchStrategy: standard-diff
+snapshot:
+  src/pages/Messaging/components/MessagingContent.tsx: >-
+    import React, { useState, useMemo } from 'react';
+
+    import { useMessagingStore } from '../store/messaging.store';
+
+    import { ContactInfoPanel } from './ContactInfoPanel';
+
+    import { AIInsightsPanel } from './AIInsightsPanel';
+
+    import { ActivityPanel } from './ActivityPanel';
+
+    import { NotesPanel } from './NotesPanel';
+
+    import { TaskHeader } from './TaskHeader';
+
+    import { AnimatedTabs } from '@/components/ui/animated-tabs';
+
+    import { TechOrbitDisplay } from '@/components/effects/OrbitingCircles';
+
+
+    interface MessagingContentProps {
+      conversationId?: string;
+    }
+
+
+    export const MessagingContent: React.FC<MessagingContentProps> = ({
+    conversationId }) => {
+      const [activeTab, setActiveTab] = useState('contact');
+      const task = useMessagingStore(state => conversationId ? state.getTaskById(conversationId) : undefined);
+      
+      const tabs = useMemo(() => [
+        { id: 'contact', label: 'Contact' },
+        { id: 'ai', label: 'AI Insights' },
+        { id: 'activity', label: 'Activity' },
+        { id: 'notes', label: 'Notes' },
+      ], []);
+
+      if (!task) {
+        return (
+          <div className="h-full flex-1 flex flex-col items-center justify-center bg-background p-6 relative overflow-hidden">
+            <TechOrbitDisplay text="Context" />
+            <div className="text-center z-10 bg-background/50 backdrop-blur-sm p-6 rounded-lg">
+                <h3 className="mt-4 text-lg font-medium">Select a Task</h3>
+                <p className="mt-1 text-sm text-muted-foreground">
+                    Task details and contact information will appear here.
+                </p>
+            </div>
+          </div>
+        );
+      }
+      
+      return (
+        <div className="h-full flex-1 flex flex-col bg-background overflow-y-auto">
+          {/* Task Management Header */}
+          <div className="p-6 border-b">
+            <TaskHeader task={task} />
+          </div>
+
+          <div className="flex-shrink-0 border-b bg-background/80 backdrop-blur-sm sticky top-0 z-10">
+            <AnimatedTabs tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} className="px-6" />
+          </div>
+
+          <div className="flex-1 p-6">
+            {activeTab === 'contact' && <ContactInfoPanel contact={task.contact} />}
+            {activeTab === 'ai' && <AIInsightsPanel task={task} />}
+            {activeTab === 'activity' && <ActivityPanel contact={task.contact} />}
+            {activeTab === 'notes' && <NotesPanel contact={task.contact} />}
+          </div>
+        </div>
+      );
+    };
+  src/components/ui/animated-tabs.tsx: |-
+    "use client"
+
+    import * as React from "react"
+    import { useState, useRef, useEffect, useLayoutEffect } from "react"
+    import { cn } from "@/lib/utils"
+
+    interface Tab {
+      id: string
+      label: React.ReactNode
+    }
+
+    interface AnimatedTabsProps extends React.HTMLAttributes<HTMLDivElement> {
+      tabs: Tab[]
+      activeTab: string
+      onTabChange: (tabId: string) => void
+    }
+
+    const AnimatedTabs = React.forwardRef<HTMLDivElement, AnimatedTabsProps>(
+      ({ className, tabs, activeTab, onTabChange, ...props }, ref) => {
+        const [activeIndex, setActiveIndex] = useState(0)
+        const [activeStyle, setActiveStyle] = useState({ left: "0px", width: "0px" })
+        const tabRefs = useRef<(HTMLButtonElement | null)[]>([])
+
+        // Update active index when controlled prop changes
+        useEffect(() => {
+          const newActiveIndex = tabs.findIndex(tab => tab.id === activeTab)
+          if (newActiveIndex !== -1 && newActiveIndex !== activeIndex) {
+            setActiveIndex(newActiveIndex)
+          }
+        }, [activeTab, tabs, activeIndex])
+        
+        // Update active indicator position
+        useEffect(() => {
+          const activeElement = tabRefs.current[activeIndex]
+          if (activeElement) {
+            const { offsetLeft, offsetWidth } = activeElement
+            setActiveStyle({
+              left: `${offsetLeft}px`,
+              width: `${offsetWidth}px`,
+            })
+          }
+        }, [activeIndex, tabs])
+
+        // Set initial position of active indicator
+        useLayoutEffect(() => {
+            const initialActiveIndex = activeTab ? tabs.findIndex(tab => tab.id === activeTab) : 0
+            const indexToUse = initialActiveIndex !== -1 ? initialActiveIndex : 0
+            
+            const firstElement = tabRefs.current[indexToUse]
+            if (firstElement) {
+              const { offsetLeft, offsetWidth } = firstElement
+              setActiveStyle({
+                left: `${offsetLeft}px`,
+                width: `${offsetWidth}px`,
+              })
+            }
+        }, [tabs, activeTab])
+
+        return (
+          <div 
+            ref={ref} 
+            className={cn("relative flex w-full items-center", className)} 
+            {...props}
+          >
+            {/* Active Indicator */}
+            <div
+              className="absolute -bottom-px h-0.5 bg-primary transition-all duration-300 ease-out"
+              style={activeStyle}
+            />
+
+            {/* Tabs */}
+            {tabs.map((tab, index) => (
+              <button
+                key={tab.id}
+                ref={(el) => (tabRefs.current[index] = el)}
+                className={cn(
+                  "group relative cursor-pointer px-4 py-5 text-center transition-colors duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                  index === activeIndex 
+                    ? "text-primary" 
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+                onClick={() => onTabChange(tab.id)}
+              >
+                <span className="flex items-center gap-2 text-lg font-semibold whitespace-nowrap">{tab.label}</span>
+              </button>
+            ))}
+          </div>
+        )
+      }
+    )
+    AnimatedTabs.displayName = "AnimatedTabs"
+
+    export { AnimatedTabs }
+  src/components/ui/dropdown-menu.tsx: >-
+    import * as React from "react"
+
+    import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu"
+
+    import { Check, ChevronRight, Circle } from "lucide-react"
+
+
+    import { cn } from "@/lib/utils"
+
+
+    const DropdownMenu = DropdownMenuPrimitive.Root
+
+
+    const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger
+
+
+    const DropdownMenuGroup = DropdownMenuPrimitive.Group
+
+
+    const DropdownMenuPortal = DropdownMenuPrimitive.Portal
+
+
+    const DropdownMenuSub = DropdownMenuPrimitive.Sub
+
+
+    const DropdownMenuRadioGroup = DropdownMenuPrimitive.RadioGroup
+
+
+    const DropdownMenuSubTrigger = React.forwardRef<
+      React.ElementRef<typeof DropdownMenuPrimitive.SubTrigger>,
+      React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.SubTrigger> & {
+        inset?: boolean
+      }
+    >(({ className, inset, children, ...props }, ref) => (
+      <DropdownMenuPrimitive.SubTrigger
+        ref={ref}
+        className={cn(
+          "flex cursor-default select-none items-center rounded-lg px-3 py-2 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[state=open]:bg-accent",
+          inset && "pl-8",
+          className
+        )}
+        {...props}
+      >
+        {children}
+        <ChevronRight className="ml-auto h-4 w-4" />
+      </DropdownMenuPrimitive.SubTrigger>
+    ))
+
+    DropdownMenuSubTrigger.displayName =
+      DropdownMenuPrimitive.SubTrigger.displayName
+
+    const DropdownMenuSubContent = React.forwardRef<
+      React.ElementRef<typeof DropdownMenuPrimitive.SubContent>,
+      React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.SubContent>
+    >(({ className, ...props }, ref) => (
+      <DropdownMenuPrimitive.SubContent
+        ref={ref}
+        className={cn(
+          "z-50 min-w-[8rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-lg data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
+          className
+        )}
+        {...props}
+      />
+    ))
+
+    DropdownMenuSubContent.displayName =
+      DropdownMenuPrimitive.SubContent.displayName
+
+    const DropdownMenuContent = React.forwardRef<
+      React.ElementRef<typeof DropdownMenuPrimitive.Content>,
+      React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content>
+    >(({ className, sideOffset = 4, ...props }, ref) => (
+      <DropdownMenuPrimitive.Portal>
+        <DropdownMenuPrimitive.Content
+          ref={ref}
+          sideOffset={sideOffset}
+          className={cn(
+            "z-50 min-w-[8rem] overflow-hidden rounded-xl border bg-popover p-1 text-popover-foreground shadow-xl outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
+            className
+          )}
+          {...props}
+        />
+      </DropdownMenuPrimitive.Portal>
+    ))
+
+    DropdownMenuContent.displayName = DropdownMenuPrimitive.Content.displayName
+
+
+    const DropdownMenuItem = React.forwardRef<
+      React.ElementRef<typeof DropdownMenuPrimitive.Item>,
+      React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Item> & {
+        inset?: boolean
+      }
+    >(({ className, inset, ...props }, ref) => (
+      <DropdownMenuPrimitive.Item
+        ref={ref}
+        className={cn(
+          "relative flex cursor-default select-none items-center rounded-lg px-3 py-2 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+          inset && "pl-8",
+          className
+        )}
+        {...props}
+      />
+    ))
+
+    DropdownMenuItem.displayName = DropdownMenuPrimitive.Item.displayName
+
+
+    const DropdownMenuCheckboxItem = React.forwardRef<
+      React.ElementRef<typeof DropdownMenuPrimitive.CheckboxItem>,
+      React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.CheckboxItem>
+    >(({ className, children, checked, ...props }, ref) => (
+      <DropdownMenuPrimitive.CheckboxItem
+        ref={ref}
+        className={cn(
+          "relative flex cursor-default select-none items-center rounded-lg py-2 pl-8 pr-3 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+          className
+        )}
+        checked={checked}
+        {...props}
+      >
+        <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
+          <DropdownMenuPrimitive.ItemIndicator>
+            <Check className="h-4 w-4" />
+          </DropdownMenuPrimitive.ItemIndicator>
+        </span>
+        {children}
+      </DropdownMenuPrimitive.CheckboxItem>
+    ))
+
+    DropdownMenuCheckboxItem.displayName =
+      DropdownMenuPrimitive.CheckboxItem.displayName
+
+    const DropdownMenuRadioItem = React.forwardRef<
+      React.ElementRef<typeof DropdownMenuPrimitive.RadioItem>,
+      React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.RadioItem>
+    >(({ className, children, ...props }, ref) => (
+      <DropdownMenuPrimitive.RadioItem
+        ref={ref}
+        className={cn(
+          "relative flex cursor-default select-none items-center rounded-lg py-2 pl-8 pr-3 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+          className
+        )}
+        {...props}
+      >
+        <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
+          <DropdownMenuPrimitive.ItemIndicator>
+            <Circle className="h-2 w-2 fill-current" />
+          </DropdownMenuPrimitive.ItemIndicator>
+        </span>
+        {children}
+      </DropdownMenuPrimitive.RadioItem>
+    ))
+
+    DropdownMenuRadioItem.displayName =
+    DropdownMenuPrimitive.RadioItem.displayName
+
+
+    const DropdownMenuLabel = React.forwardRef<
+      React.ElementRef<typeof DropdownMenuPrimitive.Label>,
+      React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Label> & {
+        inset?: boolean
+      }
+    >(({ className, inset, ...props }, ref) => (
+      <DropdownMenuPrimitive.Label
+        ref={ref}
+        className={cn(
+          "px-2 py-1.5 text-sm font-semibold",
+          inset && "pl-8",
+          className
+        )}
+        {...props}
+      />
+    ))
+
+    DropdownMenuLabel.displayName = DropdownMenuPrimitive.Label.displayName
+
+
+    const DropdownMenuSeparator = React.forwardRef<
+      React.ElementRef<typeof DropdownMenuPrimitive.Separator>,
+      React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Separator>
+    >(({ className, ...props }, ref) => (
+      <DropdownMenuPrimitive.Separator
+        ref={ref}
+        className={cn("-mx-1 my-1 h-px bg-muted", className)}
+        {...props}
+      />
+    ))
+
+    DropdownMenuSeparator.displayName =
+    DropdownMenuPrimitive.Separator.displayName
+
+
+    const DropdownMenuShortcut = ({
+      className,
+      ...props
+    }: React.HTMLAttributes<HTMLSpanElement>) => {
+      return (
+        <span
+          className={cn("ml-auto text-xs tracking-widest opacity-60", className)}
+          {...props}
+        />
+      )
+    }
+
+    DropdownMenuShortcut.displayName = "DropdownMenuShortcut"
+
+
+    export {
+      DropdownMenu,
+      DropdownMenuTrigger,
+      DropdownMenuContent,
+      DropdownMenuItem,
+      DropdownMenuCheckboxItem,
+      DropdownMenuRadioItem,
+      DropdownMenuLabel,
+      DropdownMenuSeparator,
+      DropdownMenuShortcut,
+      DropdownMenuGroup,
+      DropdownMenuPortal,
+      DropdownMenuSub,
+      DropdownMenuSubContent,
+      DropdownMenuSubTrigger,
+      DropdownMenuRadioGroup,
+    }
+  src/components/ui/popover.tsx: |-
+    import * as React from "react"
+    import * as PopoverPrimitive from "@radix-ui/react-popover"
+
+    import { cn } from "@/lib/utils"
+
+    const Popover = PopoverPrimitive.Root
+
+    const PopoverTrigger = PopoverPrimitive.Trigger
+
+    interface PopoverContentProps
+      extends React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Content> {
+      useTriggerWidth?: boolean
+    }
+
+    const PopoverContent = React.forwardRef<
+      React.ElementRef<typeof PopoverPrimitive.Content>,
+      PopoverContentProps
+    >(
+      ({ className, align = "center", sideOffset = 4, useTriggerWidth = false, ...props }, ref) => (
+      <PopoverPrimitive.Portal>
+        <PopoverPrimitive.Content
+          ref={ref}
+          align={align}
+          sideOffset={sideOffset}
+          className={cn(
+            "z-50 w-72 rounded-xl border bg-popover p-4 text-popover-foreground shadow-xl outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
+            useTriggerWidth && "w-[var(--radix-popover-trigger-width)]",
+            className
+          )}
+          {...props}
+        />
+      </PopoverPrimitive.Portal>
+    ))
+    PopoverContent.displayName = PopoverPrimitive.Content.displayName
+
+    export { Popover, PopoverTrigger, PopoverContent }
+    export type { PopoverContentProps }
+approved: false
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: undone
+id: 334

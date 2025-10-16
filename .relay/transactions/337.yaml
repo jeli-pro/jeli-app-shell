@@ -1,0 +1,479 @@
+uuid: c3284534-1925-4c07-9b2c-63e8a72a912a
+projectId: jeli-app-shell
+createdAt: '2025-10-16T08:11:24.414Z'
+gitCommitMsg: >-
+  refactor(messaging): improve right pane layout and cohesion
+
+  Refines the layout of the right-hand pane in the messaging view for a cleaner
+  and more cohesive user experience.
+
+  - The `MessagingContent` layout is restructured to have a fixed header
+  containing task details and tabs, with only the tab content being scrollable.
+  This prevents critical controls from scrolling out of view. - The styling of
+  `AnimatedTabs` has been made smaller and lighter (`text-lg font-semibold` ->
+  `text-sm font-medium`), making it more suitable for secondary navigation
+  within a pane. - Vertical spacing in `TaskHeader` has been tightened to unify
+  it into a more compact and readable block.
+promptSummary: >-
+  The user requested a cleaner and more cohesive layout for the right column of
+  the messaging interface.
+reasoning:
+  - >-
+    Of course. I can definitely refine the right column to improve its visual
+    structure and create a cleaner, more cohesive feel. The previous changes
+    established the right components; now, I'll polish the layout that holds
+    them together.
+  - 'Here is my plan:'
+  - >-
+    1.  **Establish a Fixed Header:** I'll adjust the layout so that the
+    `TaskHeader` and the navigation tabs remain fixed at the top of the right
+    pane. This ensures that critical task information and controls are always
+    visible.
+  - >-
+    2.  **Create a Scrolling Content Area:** Only the content within the
+    selected tab (like Contact Info or AI Insights) will scroll. This is a much
+    more standard and user-friendly pattern for this type of interface.
+  - >-
+    3.  **Refine Component Styles:** I'll reduce the size and prominence of the
+    `AnimatedTabs` to make them more suitable for their new role as secondary
+    navigation within a pane. I will also tighten the spacing in the
+    `TaskHeader` to make it feel more like a single, unified block.
+  - These adjustments will result in a more professional and intuitive layout.
+  - '### Step 1: Restructure the Right Pane Layout'
+  - >-
+    I'll modify `MessagingContent.tsx` to create a non-scrolling header section
+    and a scrollable content area. This is the core change that will make the
+    layout feel more robust and organized.
+  - '### Step 2: Refine Tab and Header Component Styles'
+  - >-
+    To improve cohesion, I'll tighten the spacing in the `TaskHeader` and adjust
+    the `AnimatedTabs` to be less visually dominant.
+  - 'First, the `TaskHeader`:'
+  - >-
+    Next, I'll adjust the `AnimatedTabs` component. This change will also apply
+    to the `TaskList` view, where it will also look more appropriate.
+  - >-
+    These changes create a much cleaner and more professional right column, with
+    a clear visual hierarchy and more intuitive scrolling behavior.
+operations:
+  - type: write
+    path: src/pages/Messaging/components/MessagingContent.tsx
+    content: >+
+      --- src/pages/Messaging/components/MessagingContent.tsx
+
+      +++ src/pages/Messaging/components/MessagingContent.tsx
+
+      @@ -40,16 +40,16 @@
+         }
+         
+         return (
+      -    <div className="h-full flex-1 flex flex-col bg-background
+      overflow-y-auto">
+
+      +    <div className="h-full flex-1 flex flex-col bg-background">
+             {/* Task Management Header */}
+             <div className="p-6 border-b">
+               <TaskHeader task={task} />
+             </div>
+       
+      -      <div className="flex-shrink-0 border-b bg-background/80
+      backdrop-blur-sm sticky top-0 z-10">
+
+      -        <AnimatedTabs tabs={tabs} activeTab={activeTab}
+      onTabChange={setActiveTab} className="px-6" />
+
+      +      <div className="flex-shrink-0 border-b px-6">
+
+      +        <AnimatedTabs tabs={tabs} activeTab={activeTab}
+      onTabChange={setActiveTab} />
+             </div>
+       
+      -      <div className="flex-1 p-6">
+
+      +      <div className="flex-1 p-6 overflow-y-auto">
+               {activeTab === 'contact' && <ContactInfoPanel contact={task.contact} />}
+               {activeTab === 'ai' && <AIInsightsPanel task={task} />}
+               {activeTab === 'activity' && <ActivityPanel contact={task.contact} />}
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/Messaging/components/TaskHeader.tsx
+    content: |+
+      --- src/pages/Messaging/components/TaskHeader.tsx
+      +++ src/pages/Messaging/components/TaskHeader.tsx
+      @@ -29,7 +29,7 @@
+         const currentPriority = priorityOptions.find(o => o.value === task.priority);
+       
+         return (
+      -    <div className="space-y-4">
+      +    <div className="space-y-3">
+             {/* Task Title & Contact */}
+             <div className="overflow-hidden">
+               <h2 className="font-bold text-lg truncate" title={task.title}>{task.title}</h2>
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/components/ui/animated-tabs.tsx
+    content: >+
+      --- src/components/ui/animated-tabs.tsx
+
+      +++ src/components/ui/animated-tabs.tsx
+
+      @@ -70,12 +70,12 @@
+                   key={tab.id}
+                   ref={(el) => (tabRefs.current[index] = el)}
+                   className={cn(
+      -              "group relative cursor-pointer px-4 py-5 text-center
+      transition-colors duration-300 focus:outline-none focus-visible:ring-2
+      focus-visible:ring-ring focus-visible:ring-offset-2",
+
+      +              "group relative cursor-pointer px-3 py-3 text-center
+      transition-colors duration-300 focus:outline-none focus-visible:ring-2
+      focus-visible:ring-ring focus-visible:ring-offset-2",
+                     index === activeIndex 
+                       ? "text-primary" 
+                       : "text-muted-foreground hover:text-foreground"
+                   )}
+                   onClick={() => onTabChange(tab.id)}
+                 >
+      -            <span className="flex items-center gap-2 text-lg
+      font-semibold whitespace-nowrap">{tab.label}</span>
+
+      +            <span className="flex items-center gap-2 text-sm font-medium
+      whitespace-nowrap">{tab.label}</span>
+                 </button>
+               ))}
+             </div>
+
+    patchStrategy: standard-diff
+snapshot:
+  src/pages/Messaging/components/MessagingContent.tsx: >-
+    import React, { useState, useMemo } from 'react';
+
+    import { useMessagingStore } from '../store/messaging.store';
+
+    import { ContactInfoPanel } from './ContactInfoPanel';
+
+    import { AIInsightsPanel } from './AIInsightsPanel';
+
+    import { ActivityPanel } from './ActivityPanel';
+
+    import { NotesPanel } from './NotesPanel';
+
+    import { TaskHeader } from './TaskHeader';
+
+    import { AnimatedTabs } from '@/components/ui/animated-tabs';
+
+    import { TechOrbitDisplay } from '@/components/effects/OrbitingCircles';
+
+
+    interface MessagingContentProps {
+      conversationId?: string;
+    }
+
+
+    export const MessagingContent: React.FC<MessagingContentProps> = ({
+    conversationId }) => {
+      const [activeTab, setActiveTab] = useState('contact');
+      const task = useMessagingStore(state => conversationId ? state.getTaskById(conversationId) : undefined);
+      
+      const tabs = useMemo(() => [
+        { id: 'contact', label: 'Contact' },
+        { id: 'ai', label: 'AI Insights' },
+        { id: 'activity', label: 'Activity' },
+        { id: 'notes', label: 'Notes' },
+      ], []);
+
+      if (!task) {
+        return (
+          <div className="h-full flex-1 flex flex-col items-center justify-center bg-background p-6 relative overflow-hidden">
+            <TechOrbitDisplay text="Context" />
+            <div className="text-center z-10 bg-background/50 backdrop-blur-sm p-6 rounded-lg">
+                <h3 className="mt-4 text-lg font-medium">Select a Task</h3>
+                <p className="mt-1 text-sm text-muted-foreground">
+                    Task details and contact information will appear here.
+                </p>
+            </div>
+          </div>
+        );
+      }
+      
+      return (
+        <div className="h-full flex-1 flex flex-col bg-background overflow-y-auto">
+          {/* Task Management Header */}
+          <div className="p-6 border-b">
+            <TaskHeader task={task} />
+          </div>
+
+          <div className="flex-shrink-0 border-b bg-background/80 backdrop-blur-sm sticky top-0 z-10">
+            <AnimatedTabs tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} className="px-6" />
+          </div>
+
+          <div className="flex-1 p-6">
+            {activeTab === 'contact' && <ContactInfoPanel contact={task.contact} />}
+            {activeTab === 'ai' && <AIInsightsPanel task={task} />}
+            {activeTab === 'activity' && <ActivityPanel contact={task.contact} />}
+            {activeTab === 'notes' && <NotesPanel contact={task.contact} />}
+          </div>
+        </div>
+      );
+    };
+  src/components/ui/animated-tabs.tsx: |-
+    "use client"
+
+    import * as React from "react"
+    import { useState, useRef, useEffect, useLayoutEffect } from "react"
+    import { cn } from "@/lib/utils"
+
+    interface Tab {
+      id: string
+      label: React.ReactNode
+    }
+
+    interface AnimatedTabsProps extends React.HTMLAttributes<HTMLDivElement> {
+      tabs: Tab[]
+      activeTab: string
+      onTabChange: (tabId: string) => void
+    }
+
+    const AnimatedTabs = React.forwardRef<HTMLDivElement, AnimatedTabsProps>(
+      ({ className, tabs, activeTab, onTabChange, ...props }, ref) => {
+        const [activeIndex, setActiveIndex] = useState(0)
+        const [activeStyle, setActiveStyle] = useState({ left: "0px", width: "0px" })
+        const tabRefs = useRef<(HTMLButtonElement | null)[]>([])
+
+        // Update active index when controlled prop changes
+        useEffect(() => {
+          const newActiveIndex = tabs.findIndex(tab => tab.id === activeTab)
+          if (newActiveIndex !== -1 && newActiveIndex !== activeIndex) {
+            setActiveIndex(newActiveIndex)
+          }
+        }, [activeTab, tabs, activeIndex])
+        
+        // Update active indicator position
+        useEffect(() => {
+          const activeElement = tabRefs.current[activeIndex]
+          if (activeElement) {
+            const { offsetLeft, offsetWidth } = activeElement
+            setActiveStyle({
+              left: `${offsetLeft}px`,
+              width: `${offsetWidth}px`,
+            })
+          }
+        }, [activeIndex, tabs])
+
+        // Set initial position of active indicator
+        useLayoutEffect(() => {
+            const initialActiveIndex = activeTab ? tabs.findIndex(tab => tab.id === activeTab) : 0
+            const indexToUse = initialActiveIndex !== -1 ? initialActiveIndex : 0
+            
+            const firstElement = tabRefs.current[indexToUse]
+            if (firstElement) {
+              const { offsetLeft, offsetWidth } = firstElement
+              setActiveStyle({
+                left: `${offsetLeft}px`,
+                width: `${offsetWidth}px`,
+              })
+            }
+        }, [tabs, activeTab])
+
+        return (
+          <div 
+            ref={ref} 
+            className={cn("relative flex w-full items-center", className)} 
+            {...props}
+          >
+            {/* Active Indicator */}
+            <div
+              className="absolute -bottom-px h-0.5 bg-primary transition-all duration-300 ease-out"
+              style={activeStyle}
+            />
+
+            {/* Tabs */}
+            {tabs.map((tab, index) => (
+              <button
+                key={tab.id}
+                ref={(el) => (tabRefs.current[index] = el)}
+                className={cn(
+                  "group relative cursor-pointer px-4 py-5 text-center transition-colors duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                  index === activeIndex 
+                    ? "text-primary" 
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+                onClick={() => onTabChange(tab.id)}
+              >
+                <span className="flex items-center gap-2 text-lg font-semibold whitespace-nowrap">{tab.label}</span>
+              </button>
+            ))}
+          </div>
+        )
+      }
+    )
+    AnimatedTabs.displayName = "AnimatedTabs"
+
+    export { AnimatedTabs }
+  src/pages/Messaging/components/TaskHeader.tsx: >
+    import React from 'react';
+
+    import { useMessagingStore } from '../store/messaging.store';
+
+    import type { Task, TaskStatus, TaskPriority, Assignee, Contact } from
+    '../types';
+
+    import {
+      DropdownMenu,
+      DropdownMenuContent,
+      DropdownMenuItem,
+      DropdownMenuRadioGroup,
+      DropdownMenuRadioItem,
+      DropdownMenuTrigger,
+      DropdownMenuSeparator
+    } from '@/components/ui/dropdown-menu';
+
+    import { Button } from '@/components/ui/button';
+
+    import { Avatar, AvatarFallback, AvatarImage } from
+    '@/components/ui/avatar';
+
+    import { ChevronDown, Inbox, Zap, Shield, Clock, Calendar, Hash,
+    MessageSquare } from 'lucide-react';
+
+    import { Badge } from '@/components/ui/badge';
+
+    import { format } from 'date-fns';
+
+
+    const statusOptions: { value: TaskStatus; label: string; icon:
+    React.ReactNode }[] = [
+        { value: 'open', label: 'Open', icon: <Inbox className="w-4 h-4 mr-2" /> },
+        { value: 'in-progress', label: 'In Progress', icon: <Zap className="w-4 h-4 mr-2" /> },
+        { value: 'done', label: 'Done', icon: <Shield className="w-4 h-4 mr-2" /> },
+        { value: 'snoozed', label: 'Snoozed', icon: <Clock className="w-4 h-4 mr-2" /> },
+    ];
+
+
+    const priorityOptions: { value: TaskPriority; label: string; icon:
+    React.ReactNode }[] = [
+        { value: 'high', label: 'High', icon: <div className="w-2.5 h-2.5 rounded-full bg-red-500 mr-2" /> },
+        { value: 'medium', label: 'Medium', icon: <div className="w-2.5 h-2.5 rounded-full bg-yellow-500 mr-2" /> },
+        { value: 'low', label: 'Low', icon: <div className="w-2.5 h-2.5 rounded-full bg-green-500 mr-2" /> },
+        { value: 'none', label: 'None', icon: <div className="w-2.5 h-2.5 rounded-full bg-gray-400 mr-2" /> },
+    ];
+
+
+
+    interface TaskHeaderProps {
+      task: (Task & { contact: Contact; assignee: Assignee | null });
+    }
+
+
+    export const TaskHeader: React.FC<TaskHeaderProps> = ({ task }) => {
+      const { updateTask, assignees } = useMessagingStore();
+      const currentStatus = statusOptions.find(o => o.value === task.status);
+      const currentPriority = priorityOptions.find(o => o.value === task.priority);
+
+      return (
+        <div className="space-y-4">
+          {/* Task Title & Contact */}
+          <div className="overflow-hidden">
+            <h2 className="font-bold text-lg truncate" title={task.title}>{task.title}</h2>
+            <p className="text-sm text-muted-foreground">
+              with <a href="#" className="hover:underline font-medium text-foreground/80">{task.contact.name}</a>
+            </p>
+          </div>
+
+          {/* Interactive Controls */}
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Assignee Dropdown */}
+            <div className="flex-1 min-w-[150px]">
+                <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="w-full gap-2 justify-between">
+                        {task.assignee ? (
+                            <Avatar className="h-6 w-6"><AvatarImage src={task.assignee.avatar} /><AvatarFallback>{task.assignee.name.charAt(0)}</AvatarFallback></Avatar>
+                        ) : (
+                            <Avatar className="h-6 w-6"><AvatarFallback>?</AvatarFallback></Avatar>
+                        )}
+                        <span className="hidden sm:inline">{task.assignee?.name || 'Unassigned'}</span>
+                        <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                    <DropdownMenuRadioGroup value={task.assigneeId || 'null'} onValueChange={val => updateTask(task.id, { assigneeId: val === 'null' ? null : val })}>
+                        <DropdownMenuRadioItem value="null">Unassigned</DropdownMenuRadioItem>
+                        <DropdownMenuSeparator />
+                        {assignees.map(a => (
+                            <DropdownMenuRadioItem key={a.id} value={a.id}>
+                                <Avatar className="h-5 w-5 mr-2"><AvatarImage src={a.avatar} /><AvatarFallback>{a.name.charAt(0)}</AvatarFallback></Avatar>
+                                {a.name}
+                            </DropdownMenuRadioItem>
+                        ))}
+                    </DropdownMenuRadioGroup>
+                </DropdownMenuContent>
+                </DropdownMenu>
+            </div>
+
+            {/* Status Dropdown */}
+            <div className="flex-1 min-w-[120px]">
+                <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="w-full gap-2 justify-between">
+                        {currentStatus?.icon} {currentStatus?.label}
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                     {statusOptions.map(o => (
+                        <DropdownMenuItem key={o.value} onClick={() => updateTask(task.id, { status: o.value })}>
+                            {o.icon} {o.label}
+                        </DropdownMenuItem>
+                    ))}
+                </DropdownMenuContent>
+                </DropdownMenu>
+            </div>
+            
+            {/* Priority Dropdown */}
+            <div className="flex-1 min-w-[100px]">
+                <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="w-full gap-2 justify-between">
+                        {currentPriority?.icon} {currentPriority?.label}
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                     {priorityOptions.map(o => (
+                        <DropdownMenuItem key={o.value} onClick={() => updateTask(task.id, { priority: o.value })}>
+                            {o.icon} {o.label}
+                        </DropdownMenuItem>
+                    ))}
+                </DropdownMenuContent>
+                </DropdownMenu>
+            </div>
+          </div>
+
+          {/* Static Properties */}
+          <dl className="space-y-3 text-sm">
+            <div className="flex items-center justify-between">
+                <dt className="text-muted-foreground flex items-center gap-2"><Calendar className="w-4 h-4" /> Due Date</dt>
+                <dd className="font-medium">{task.dueDate ? format(new Date(task.dueDate), 'MMM d, yyyy') : 'No due date'}</dd>
+            </div>
+            <div className="flex items-center justify-between">
+                <dt className="text-muted-foreground flex items-center gap-2"><MessageSquare className="w-4 h-4" /> Channel</dt>
+                <dd className="font-medium capitalize">{task.channel}</dd>
+            </div>
+            <div className="flex items-start justify-between">
+                <dt className="text-muted-foreground flex items-center gap-2 pt-0.5"><Hash className="w-4 h-4" /> Tags</dt>
+                <dd className="flex flex-wrap gap-1.5 justify-end max-w-[70%]">
+                    {task.tags.length > 0 ? task.tags.map(t => <Badge variant="secondary" key={t}>{t}</Badge>) : 'No tags'}
+                </dd>
+            </div>
+          </dl>
+        </div>
+      );
+    };
+approved: false
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: undone
+id: 337

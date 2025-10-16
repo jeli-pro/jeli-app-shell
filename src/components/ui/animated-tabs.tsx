@@ -12,11 +12,12 @@ interface Tab {
 interface AnimatedTabsProps extends React.HTMLAttributes<HTMLDivElement> {
   tabs: Tab[]
   activeTab: string
-  onTabChange: (tabId: string) => void
+  onTabChange: (tabId: string) => void,
+  size?: 'default' | 'sm'
 }
 
 const AnimatedTabs = React.forwardRef<HTMLDivElement, AnimatedTabsProps>(
-  ({ className, tabs, activeTab, onTabChange, ...props }, ref) => {
+  ({ className, tabs, activeTab, onTabChange, size = 'default', ...props }, ref) => {
     const [activeIndex, setActiveIndex] = useState(0)
     const [activeStyle, setActiveStyle] = useState({ left: "0px", width: "0px" })
     const tabRefs = useRef<(HTMLButtonElement | null)[]>([])
@@ -74,14 +75,22 @@ const AnimatedTabs = React.forwardRef<HTMLDivElement, AnimatedTabsProps>(
             key={tab.id}
             ref={(el) => (tabRefs.current[index] = el)}
             className={cn(
-              "group relative cursor-pointer px-4 py-5 text-center transition-colors duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+              "group relative cursor-pointer text-center transition-colors duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+              size === 'default' ? "px-4 py-5" : "px-3 py-2.5",
               index === activeIndex 
                 ? "text-primary" 
                 : "text-muted-foreground hover:text-foreground"
             )}
             onClick={() => onTabChange(tab.id)}
           >
-            <span className="flex items-center gap-2 text-lg font-semibold whitespace-nowrap">{tab.label}</span>
+            <span className={cn(
+              "flex items-center gap-2 whitespace-nowrap",
+              size === 'default' 
+                ? "text-lg font-semibold"
+                : "text-sm font-medium"
+            )}>
+              {tab.label}
+            </span>
           </button>
         ))}
       </div>

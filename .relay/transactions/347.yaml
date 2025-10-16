@@ -1,0 +1,1123 @@
+uuid: 139e88d7-0130-4e36-b51f-614741498a44
+projectId: jeli-app-shell
+createdAt: '2025-10-16T09:56:00.663Z'
+gitCommitMsg: >-
+  feat(messaging): redesign task header for improved UI/UX
+
+  - Overhauled the TaskHeader component with a modern, spacious two-part layout.
+  - Left panel now prominently displays contact avatar, task title, and tags. -
+  Right panel organizes task properties (assignee, status, etc.) into a clean
+  vertical list. - Replaced assignee dropdown with a searchable command popover
+  for better usability. - Updated status and priority icons for improved visual
+  clarity and consistency. - Ensured icon consistency for 'done' status between
+  TaskList and TaskHeader.
+promptSummary: >-
+  The user wants to rebuild the layout for TaskHeader.tsx to have a more premium
+  UI, with features like a profile avatar and spacious design.
+reasoning:
+  - >-
+    This request involves a significant UI overhaul for the `TaskHeader`
+    component to give it a more spacious and premium feel. Here's the plan:
+  - >-
+    1.  **Redesign `TaskHeader.tsx`**: I'll restructure the component into a
+    two-part layout.
+  - >-
+    *   The left side will feature the contact's avatar, the task title, contact
+    details, and tags, creating a clear focal point for the task's subject.
+  - >-
+    *   The right side will be a neatly organized vertical list of task
+    properties (Assignee, Status, Priority, Due Date), acting as a metadata
+    panel.
+  - '2.  **Enhance UI Components**:'
+  - >-
+    *   I'll replace the basic `DropdownMenu` for assignees with a more
+    user-friendly, searchable `Command` palette inside a `Popover`. This is a
+    significant UX improvement, especially for lists with many users.
+  - >-
+    *   I'll update the icons for status and priority to be more descriptive and
+    visually appealing, using `CheckCircle2` for "Done" and colored `Flag` icons
+    for priorities.
+  - >-
+    3.  **Improve Code Quality**: I will create a small, reusable `PropertyItem`
+    component within `TaskHeader.tsx` to keep the JSX for the properties list
+    clean and maintainable.
+  - >-
+    4.  **Ensure Consistency**: I'll update the "Done" status icon in
+    `TaskList.tsx` to match the new icon in the header, ensuring a consistent
+    visual language across the messaging feature.
+  - >-
+    This will result in a more modern, organized, and aesthetically pleasing
+    task header.
+  - '### 1. Update Task List Icon for Consistency'
+  - >-
+    First, I'll update the status icon in `TaskList.tsx` to ensure it matches
+    the new icon I'll be introducing in the redesigned header.
+  - '### 2. Redesign the Task Header Component'
+  - >-
+    Now for the main event: a complete visual and functional overhaul of the
+    `TaskHeader.tsx` component.
+operations:
+  - type: write
+    path: src/pages/Messaging/components/TaskList.tsx
+    content: >+
+      --- src/pages/Messaging/components/TaskList.tsx
+
+      +++ src/pages/Messaging/components/TaskList.tsx
+
+      @@ -1,5 +1,5 @@
+       import { useState, useMemo } from 'react';
+      -import { Search, SlidersHorizontal, Check, Inbox, Clock, Zap, Shield }
+      from 'lucide-react';
+
+      +import { Search, SlidersHorizontal, Check, Inbox, Clock, Zap,
+      CheckCircle2 } from 'lucide-react';
+       import { Link, useParams } from 'react-router-dom';
+       import { formatDistanceToNow } from 'date-fns';
+       import { useMessagingStore } from '../store/messaging.store';
+      @@ -16,7 +16,7 @@
+           switch(status) {
+               case 'open': return <Inbox className="w-3 h-3 text-blue-500" />;
+               case 'in-progress': return <Zap className="w-3 h-3 text-yellow-500" />;
+      -        case 'done': return <Shield className="w-3 h-3 text-green-500"
+      />;
+
+      +        case 'done': return <CheckCircle2 className="w-3 h-3
+      text-green-500" />;
+               case 'snoozed': return <Clock className="w-3 h-3 text-gray-500" />;
+           }
+       };
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/Messaging/components/TaskHeader.tsx
+    content: >
+      --- src/pages/Messaging/components/TaskHeader.tsx
+
+      +++ src/pages/Messaging/components/TaskHeader.tsx
+
+      @@ -1,135 +1,159 @@
+       import React from 'react';
+       import { useMessagingStore } from '../store/messaging.store';
+       import type { Task, TaskStatus, TaskPriority, Assignee, Contact } from '../types';
+       import {
+         DropdownMenu,
+         DropdownMenuContent,
+         DropdownMenuItem,
+      -  DropdownMenuRadioGroup,
+
+      -  DropdownMenuRadioItem,
+         DropdownMenuTrigger,
+      -  DropdownMenuSeparator
+       } from '@/components/ui/dropdown-menu';
+       import { Button } from '@/components/ui/button';
+       import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+      -import { ChevronDown, Inbox, Zap, Shield, Clock, Calendar, Plus, User }
+      from 'lucide-react';
+
+      +import { ChevronDown, Inbox, Zap, Clock, Calendar, Plus, User, Flag,
+      CheckCircle2 } from 'lucide-react';
+       import { Badge } from '@/components/ui/badge';
+       import { format } from 'date-fns';
+      +import { Popover, PopoverContent, PopoverTrigger } from
+      '@/components/ui/popover';
+
+      +import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem,
+      CommandList } from '@/components/ui/command';
+
+      +import { cn } from '@/lib/utils';
+       
+       const statusOptions: { value: TaskStatus; label: string; icon: React.ReactNode }[] = [
+           { value: 'open', label: 'Open', icon: <Inbox className="w-4 h-4" /> },
+           { value: 'in-progress', label: 'In Progress', icon: <Zap className="w-4 h-4" /> },
+      -    { value: 'done', label: 'Done', icon: <Shield className="w-4 h-4" />
+      },
+
+      +    { value: 'done', label: 'Done', icon: <CheckCircle2 className="w-4
+      h-4" /> },
+           { value: 'snoozed', label: 'Snoozed', icon: <Clock className="w-4 h-4" /> },
+       ];
+       
+       const priorityOptions: { value: TaskPriority; label: string; icon: React.ReactNode }[] = [
+      -    { value: 'high', label: 'High', icon: <div className="w-2.5 h-2.5
+      rounded-full bg-red-500" /> },
+
+      -    { value: 'medium', label: 'Medium', icon: <div className="w-2.5 h-2.5
+      rounded-full bg-yellow-500" /> },
+
+      -    { value: 'low', label: 'Low', icon: <div className="w-2.5 h-2.5
+      rounded-full bg-green-500" /> },
+
+      -    { value: 'none', label: 'None', icon: <div className="w-2.5 h-2.5
+      rounded-full bg-gray-400" /> },
+
+      +    { value: 'high', label: 'High', icon: <Flag className="w-4 h-4
+      text-red-500" /> },
+
+      +    { value: 'medium', label: 'Medium', icon: <Flag className="w-4 h-4
+      text-yellow-500" /> },
+
+      +    { value: 'low', label: 'Low', icon: <Flag className="w-4 h-4
+      text-green-500" /> },
+
+      +    { value: 'none', label: 'None', icon: <Flag className="w-4 h-4
+      text-muted-foreground" /> },
+       ];
+       
+       
+       interface TaskHeaderProps {
+         task: (Task & { contact: Contact; assignee: Assignee | null });
+       }
+       
+      +const PropertyItem: React.FC<{ icon: React.ReactNode; label: string;
+      children: React.ReactNode }> = ({ icon, label, children }) => (
+
+      +  <div className="flex items-center justify-between py-2.5">
+
+      +    <div className="flex items-center gap-2 text-sm
+      text-muted-foreground">
+
+      +      {icon}
+
+      +      <span>{label}</span>
+
+      +    </div>
+
+      +    {children}
+
+      +  </div>
+
+      +);
+
+      +
+       export const TaskHeader: React.FC<TaskHeaderProps> = ({ task }) => {
+         const { updateTask, assignees } = useMessagingStore();
+         const currentStatus = statusOptions.find(o => o.value === task.status);
+         const currentPriority = priorityOptions.find(o => o.value === task.priority);
+       
+         return (
+      -    <div className="space-y-4">
+
+      -      {/* Task Title & Contact */}
+
+      -      <div className="overflow-hidden">
+
+      -        <h2 className="font-bold text-xl lg:text-2xl truncate"
+      title={task.title}>
+
+      -          {task.title}
+
+      -        </h2>
+
+      -        <p className="text-sm text-muted-foreground">
+
+      -          With <a href="#" className="hover:underline font-medium
+      text-foreground/80">{task.contact.name}</a>
+
+      -          <span className="mx-1.5">&middot;</span>
+
+      -          via <span className="capitalize font-medium
+      text-foreground/80">{task.channel}</span>
+
+      -        </p>
+
+      -      </div>
+
+      -
+
+      -      {/* Properties Bar */}
+
+      -      <div className="flex flex-wrap items-center gap-y-2 text-sm">
+
+      -        {/* Assignee Dropdown */}
+
+      -        <DropdownMenu>
+
+      -          <DropdownMenuTrigger asChild>
+
+      -            <Button variant="outline" size="sm" className="gap-2
+      font-normal">
+
+      -              {task.assignee ? (
+
+      -                <Avatar className="h-5 w-5"><AvatarImage
+      src={task.assignee.avatar}
+      /><AvatarFallback>{task.assignee.name.charAt(0)}</AvatarFallback></Avatar>
+
+      -              ) : (
+
+      -                <User className="h-4 w-4 text-muted-foreground" />
+
+      -              )}
+
+      -              <span className="font-medium">{task.assignee?.name ||
+      'Unassigned'}</span>
+
+      -              <ChevronDown className="w-3 h-3 text-muted-foreground" />
+
+      -            </Button>
+
+      -          </DropdownMenuTrigger>
+
+      -          <DropdownMenuContent align="start">
+
+      -            <DropdownMenuRadioGroup value={task.assigneeId || 'null'}
+      onValueChange={val => updateTask(task.id, { assigneeId: val === 'null' ?
+      null : val })}>
+
+      -              <DropdownMenuRadioItem value="null">
+
+      -                <User className="w-4 h-4 mr-2 text-muted-foreground" />
+      Unassigned
+
+      -              </DropdownMenuRadioItem>
+
+      -              <DropdownMenuSeparator />
+
+      -              {assignees.map(a => (
+
+      -                <DropdownMenuRadioItem key={a.id} value={a.id}>
+
+      -                  <Avatar className="h-5 w-5 mr-2"><AvatarImage
+      src={a.avatar}
+      /><AvatarFallback>{a.name.charAt(0)}</AvatarFallback></Avatar>
+
+      -                  {a.name}
+
+      -                </DropdownMenuRadioItem>
+
+      -              ))}
+
+      -            </DropdownMenuRadioGroup>
+
+      -          </DropdownMenuContent>
+
+      -        </DropdownMenu>
+
+      -
+
+      -        <div className="mx-2 h-4 w-px bg-border" />
+
+      -
+
+      -        {/* Status Dropdown */}
+
+      -        <DropdownMenu>
+
+      -          <DropdownMenuTrigger asChild>
+
+      -            <Button variant="ghost" size="sm" className="gap-2
+      text-muted-foreground hover:text-foreground">
+
+      -              {currentStatus?.icon}
+
+      -              <span className="font-medium
+      text-foreground">{currentStatus?.label}</span>
+
+      -            </Button>
+
+      -          </DropdownMenuTrigger>
+
+      -          <DropdownMenuContent align="start">
+
+      -            {statusOptions.map(o => (
+
+      -              <DropdownMenuItem key={o.value} onClick={() =>
+      updateTask(task.id, { status: o.value })}>
+
+      -                <div className="flex items-center">
+
+      -                  <div className="w-4 h-4 mr-2">{o.icon}</div>
+
+      -                  <span>{o.label}</span>
+
+      -                </div>
+
+      -              </DropdownMenuItem>
+
+      -            ))}
+
+      -          </DropdownMenuContent>
+
+      -        </DropdownMenu>
+
+      -        
+
+      -        <div className="mx-2 h-4 w-px bg-border" />
+
+      -        
+
+      -        {/* Priority Dropdown */}
+
+      -        <DropdownMenu>
+
+      -          <DropdownMenuTrigger asChild>
+
+      -            <Button variant="ghost" size="sm" className="gap-2
+      text-muted-foreground hover:text-foreground">
+
+      -              {currentPriority?.icon}
+
+      -              <span className="font-medium
+      text-foreground">{currentPriority?.label}</span>
+
+      -            </Button>
+
+      -          </DropdownMenuTrigger>
+
+      -          <DropdownMenuContent align="start">
+
+      -            {priorityOptions.map(o => (
+
+      -              <DropdownMenuItem key={o.value} onClick={() =>
+      updateTask(task.id, { priority: o.value })}>
+
+      -                <div className="flex items-center">
+
+      -                  <div className="w-2.5 h-2.5 mr-2">{o.icon}</div>
+
+      -                  <span>{o.label}</span>
+
+      -                </div>
+
+      -              </DropdownMenuItem>
+
+      -            ))}
+
+      -          </DropdownMenuContent>
+
+      -        </DropdownMenu>
+
+      -
+
+      -        <div className="mx-2 h-4 w-px bg-border" />
+
+      -
+
+      -        {/* Due Date - for display, could be a popover trigger */}
+
+      -        <Button variant="ghost" size="sm" className="gap-2
+      text-muted-foreground cursor-default" disabled>
+
+      -            <Calendar className="w-4 h-4" />
+
+      -            <span className="font-medium text-foreground">{task.dueDate ?
+      format(new Date(task.dueDate), 'MMM d, yyyy') : 'No due date'}</span>
+
+      -        </Button>
+
+      -      </div>
+
+      -
+
+      -      {/* Tags */}
+
+      -      <div className="flex flex-wrap items-center gap-2">
+
+      -        {task.tags.map(t => <Badge variant="secondary"
+      key={t}>{t}</Badge>)}
+
+      -        <Button variant="outline" size="sm" className="h-7 px-2 text-xs
+      rounded-md border-dashed">
+
+      -          <Plus className="w-3 h-3 mr-1" /> Tag
+
+      -        </Button>
+
+      +    <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
+
+      +      {/* Left side: Main task info */}
+
+      +      <div className="flex-1 flex gap-4 items-start">
+
+      +        <Avatar className="w-12 h-12 border">
+
+      +          <AvatarImage src={task.contact.avatar} alt={task.contact.name}
+      />
+
+      +          <AvatarFallback>{task.contact.name.charAt(0)}</AvatarFallback>
+
+      +        </Avatar>
+
+      +        <div className="flex-1 space-y-2 pt-1">
+
+      +            <h2 className="font-bold text-xl lg:text-2xl leading-tight"
+      title={task.title}>
+
+      +              {task.title}
+
+      +            </h2>
+
+      +            <p className="text-sm text-muted-foreground">
+
+      +              With <a href="#" className="hover:underline font-medium
+      text-foreground">{task.contact.name}</a>
+
+      +              <span className="mx-1.5">&middot;</span>
+
+      +              via <span className="capitalize font-medium
+      text-foreground">{task.channel}</span>
+
+      +            </p>
+
+      +             <div className="flex flex-wrap items-center gap-2 pt-1">
+
+      +              {task.tags.map(t => <Badge variant="secondary"
+      key={t}>{t}</Badge>)}
+
+      +              <Button variant="outline" size="sm" className="h-7 px-2
+      text-xs rounded-md border-dashed">
+
+      +                <Plus className="w-3 h-3 mr-1" /> Tag
+
+      +              </Button>
+
+      +            </div>
+
+      +        </div>
+             </div>
+      +
+
+      +      {/* Right side: Properties */}
+
+      +      <div className="lg:w-64 lg:border-l lg:pl-8 flex-shrink-0">
+
+      +        <div className="divide-y">
+
+      +            <PropertyItem icon={<User className="w-4 h-4" />}
+      label="Assignee">
+
+      +              <AssigneePopover
+
+      +                value={task.assigneeId}
+
+      +                onValueChange={val => updateTask(task.id, { assigneeId:
+      val === 'null' ? null : val })}
+
+      +                assignees={assignees}
+
+      +                trigger={
+
+      +                   <Button variant="ghost" size="sm" className="gap-2
+      font-medium text-foreground -mr-3">
+
+      +                    {task.assignee ? (
+
+      +                      <Avatar className="h-5 w-5"><AvatarImage
+      src={task.assignee.avatar}
+      /><AvatarFallback>{task.assignee.name.charAt(0)}</AvatarFallback></Avatar>
+
+      +                    ) : null}
+
+      +                    {task.assignee?.name || 'Unassigned'}
+
+      +                    <ChevronDown className="w-4 h-4
+      text-muted-foreground" />
+
+      +                  </Button>
+
+      +                }
+
+      +              />
+
+      +            </PropertyItem>
+
+      +
+
+      +            <PropertyItem icon={<CheckCircle2 className="w-4 h-4" />}
+      label="Status">
+
+      +              <DropdownMenu>
+
+      +                <DropdownMenuTrigger asChild>
+
+      +                  <Button variant="ghost" size="sm" className="gap-2
+      font-medium text-foreground -mr-3">
+
+      +                    {currentStatus?.icon}
+
+      +                    {currentStatus?.label}
+
+      +                  </Button>
+
+      +                </DropdownMenuTrigger>
+
+      +                <DropdownMenuContent align="end">
+
+      +                  {statusOptions.map(o => (
+
+      +                    <DropdownMenuItem key={o.value} onClick={() =>
+      updateTask(task.id, { status: o.value })}>
+
+      +                      <div className="w-4 h-4 mr-2">{o.icon}</div>
+
+      +                      <span>{o.label}</span>
+
+      +                    </DropdownMenuItem>
+
+      +                  ))}
+
+      +                </DropdownMenuContent>
+
+      +              </DropdownMenu>
+
+      +            </PropertyItem>
+
+      +            
+
+      +            <PropertyItem icon={<Flag className="w-4 h-4" />}
+      label="Priority">
+
+      +              <DropdownMenu>
+
+      +                <DropdownMenuTrigger asChild>
+
+      +                  <Button variant="ghost" size="sm" className="gap-2
+      font-medium text-foreground -mr-3">
+
+      +                    {currentPriority?.icon}
+
+      +                    {currentPriority?.label}
+
+      +                  </Button>
+
+      +                </DropdownMenuTrigger>
+
+      +                <DropdownMenuContent align="end">
+
+      +                  {priorityOptions.map(o => (
+
+      +                    <DropdownMenuItem key={o.value} onClick={() =>
+      updateTask(task.id, { priority: o.value })}>
+
+      +                      <div className="w-4 h-4 mr-2">{o.icon}</div>
+
+      +                      <span>{o.label}</span>
+
+      +                    </DropdownMenuItem>
+
+      +                  ))}
+
+      +                </DropdownMenuContent>
+
+      +              </DropdownMenu>
+
+      +            </PropertyItem>
+
+      +
+
+      +            <PropertyItem icon={<Calendar className="w-4 h-4" />}
+      label="Due Date">
+
+      +              <Button variant="ghost" size="sm" className="font-medium
+      text-foreground -mr-3" disabled>
+
+      +                {task.dueDate ? format(new Date(task.dueDate), 'MMM d,
+      yyyy') : 'Set date'}
+
+      +              </Button>
+
+      +            </PropertyItem>
+
+      +        </div>
+
+      +      </div>
+           </div>
+         );
+       };
+      +
+
+      +
+
+      +interface AssigneePopoverProps {
+
+      +  value: string | null;
+
+      +  onValueChange: (value: string) => void;
+
+      +  assignees: Assignee[];
+
+      +  trigger: React.ReactNode;
+
+      +}
+
+      +
+
+      +const AssigneePopover: React.FC<AssigneePopoverProps> = ({ value,
+      onValueChange, assignees, trigger }) => {
+
+      +  const [open, setOpen] = React.useState(false);
+
+      +  
+
+      +  return (
+
+      +    <Popover open={open} onOpenChange={setOpen}>
+
+      +      <PopoverTrigger asChild>{trigger}</PopoverTrigger>
+
+      +      <PopoverContent className="p-0 w-[240px]" align="end">
+
+      +        <Command>
+
+      +          <CommandInput placeholder="Assign to..." />
+
+      +          <CommandList>
+
+      +            <CommandEmpty>No user found.</CommandEmpty>
+
+      +            <CommandGroup>
+
+      +              <CommandItem onSelect={() => { onValueChange('null');
+      setOpen(false); }}>
+
+      +                <User className="w-4 h-4 mr-2 text-muted-foreground" />
+
+      +                Unassigned
+
+      +              </CommandItem>
+
+      +              {assignees.map(a => (
+
+      +                <CommandItem key={a.id} value={a.name} onSelect={() => {
+      onValueChange(a.id); setOpen(false); }}>
+
+      +                   <Avatar className="h-5 w-5 mr-2"><AvatarImage
+      src={a.avatar}
+      /><AvatarFallback>{a.name.charAt(0)}</AvatarFallback></Avatar>
+
+      +                   {a.name}
+
+      +                   <CheckCircle2 className={cn("ml-auto h-4 w-4
+      text-primary", value === a.id ? "opacity-100" : "opacity-0")} />
+
+      +                </CommandItem>
+
+      +              ))}
+
+      +            </CommandGroup>
+
+      +          </CommandList>
+
+      +        </Command>
+
+      +      </PopoverContent>
+
+      +    </Popover>
+
+      +  )
+
+      +}
+    patchStrategy: standard-diff
+snapshot:
+  src/pages/Messaging/components/TaskHeader.tsx: >
+    import React from 'react';
+
+    import { useMessagingStore } from '../store/messaging.store';
+
+    import type { Task, TaskStatus, TaskPriority, Assignee, Contact } from
+    '../types';
+
+    import {
+      DropdownMenu,
+      DropdownMenuContent,
+      DropdownMenuItem,
+      DropdownMenuRadioGroup,
+      DropdownMenuRadioItem,
+      DropdownMenuTrigger,
+      DropdownMenuSeparator
+    } from '@/components/ui/dropdown-menu';
+
+    import { Button } from '@/components/ui/button';
+
+    import { Avatar, AvatarFallback, AvatarImage } from
+    '@/components/ui/avatar';
+
+    import { ChevronDown, Inbox, Zap, Shield, Clock, Calendar, Plus, User } from
+    'lucide-react';
+
+    import { Badge } from '@/components/ui/badge';
+
+    import { format } from 'date-fns';
+
+
+    const statusOptions: { value: TaskStatus; label: string; icon:
+    React.ReactNode }[] = [
+        { value: 'open', label: 'Open', icon: <Inbox className="w-4 h-4" /> },
+        { value: 'in-progress', label: 'In Progress', icon: <Zap className="w-4 h-4" /> },
+        { value: 'done', label: 'Done', icon: <Shield className="w-4 h-4" /> },
+        { value: 'snoozed', label: 'Snoozed', icon: <Clock className="w-4 h-4" /> },
+    ];
+
+
+    const priorityOptions: { value: TaskPriority; label: string; icon:
+    React.ReactNode }[] = [
+        { value: 'high', label: 'High', icon: <div className="w-2.5 h-2.5 rounded-full bg-red-500" /> },
+        { value: 'medium', label: 'Medium', icon: <div className="w-2.5 h-2.5 rounded-full bg-yellow-500" /> },
+        { value: 'low', label: 'Low', icon: <div className="w-2.5 h-2.5 rounded-full bg-green-500" /> },
+        { value: 'none', label: 'None', icon: <div className="w-2.5 h-2.5 rounded-full bg-gray-400" /> },
+    ];
+
+
+
+    interface TaskHeaderProps {
+      task: (Task & { contact: Contact; assignee: Assignee | null });
+    }
+
+
+    export const TaskHeader: React.FC<TaskHeaderProps> = ({ task }) => {
+      const { updateTask, assignees } = useMessagingStore();
+      const currentStatus = statusOptions.find(o => o.value === task.status);
+      const currentPriority = priorityOptions.find(o => o.value === task.priority);
+
+      return (
+        <div className="space-y-4">
+          {/* Task Title & Contact */}
+          <div className="overflow-hidden">
+            <h2 className="font-bold text-xl lg:text-2xl truncate" title={task.title}>
+              {task.title}
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              With <a href="#" className="hover:underline font-medium text-foreground/80">{task.contact.name}</a>
+              <span className="mx-1.5">&middot;</span>
+              via <span className="capitalize font-medium text-foreground/80">{task.channel}</span>
+            </p>
+          </div>
+
+          {/* Properties Bar */}
+          <div className="flex flex-wrap items-center gap-y-2 text-sm">
+            {/* Assignee Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-2 font-normal">
+                  {task.assignee ? (
+                    <Avatar className="h-5 w-5"><AvatarImage src={task.assignee.avatar} /><AvatarFallback>{task.assignee.name.charAt(0)}</AvatarFallback></Avatar>
+                  ) : (
+                    <User className="h-4 w-4 text-muted-foreground" />
+                  )}
+                  <span className="font-medium">{task.assignee?.name || 'Unassigned'}</span>
+                  <ChevronDown className="w-3 h-3 text-muted-foreground" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                <DropdownMenuRadioGroup value={task.assigneeId || 'null'} onValueChange={val => updateTask(task.id, { assigneeId: val === 'null' ? null : val })}>
+                  <DropdownMenuRadioItem value="null">
+                    <User className="w-4 h-4 mr-2 text-muted-foreground" /> Unassigned
+                  </DropdownMenuRadioItem>
+                  <DropdownMenuSeparator />
+                  {assignees.map(a => (
+                    <DropdownMenuRadioItem key={a.id} value={a.id}>
+                      <Avatar className="h-5 w-5 mr-2"><AvatarImage src={a.avatar} /><AvatarFallback>{a.name.charAt(0)}</AvatarFallback></Avatar>
+                      {a.name}
+                    </DropdownMenuRadioItem>
+                  ))}
+                </DropdownMenuRadioGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <div className="mx-2 h-4 w-px bg-border" />
+
+            {/* Status Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground hover:text-foreground">
+                  {currentStatus?.icon}
+                  <span className="font-medium text-foreground">{currentStatus?.label}</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                {statusOptions.map(o => (
+                  <DropdownMenuItem key={o.value} onClick={() => updateTask(task.id, { status: o.value })}>
+                    <div className="flex items-center">
+                      <div className="w-4 h-4 mr-2">{o.icon}</div>
+                      <span>{o.label}</span>
+                    </div>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+            
+            <div className="mx-2 h-4 w-px bg-border" />
+            
+            {/* Priority Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground hover:text-foreground">
+                  {currentPriority?.icon}
+                  <span className="font-medium text-foreground">{currentPriority?.label}</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                {priorityOptions.map(o => (
+                  <DropdownMenuItem key={o.value} onClick={() => updateTask(task.id, { priority: o.value })}>
+                    <div className="flex items-center">
+                      <div className="w-2.5 h-2.5 mr-2">{o.icon}</div>
+                      <span>{o.label}</span>
+                    </div>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <div className="mx-2 h-4 w-px bg-border" />
+
+            {/* Due Date - for display, could be a popover trigger */}
+            <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground cursor-default" disabled>
+                <Calendar className="w-4 h-4" />
+                <span className="font-medium text-foreground">{task.dueDate ? format(new Date(task.dueDate), 'MMM d, yyyy') : 'No due date'}</span>
+            </Button>
+          </div>
+
+          {/* Tags */}
+          <div className="flex flex-wrap items-center gap-2">
+            {task.tags.map(t => <Badge variant="secondary" key={t}>{t}</Badge>)}
+            <Button variant="outline" size="sm" className="h-7 px-2 text-xs rounded-md border-dashed">
+              <Plus className="w-3 h-3 mr-1" /> Tag
+            </Button>
+          </div>
+        </div>
+      );
+    };
+  src/pages/Messaging/components/TaskList.tsx: >-
+    import { useState, useMemo } from 'react';
+
+    import { Search, SlidersHorizontal, Check, Inbox, Clock, Zap, Shield } from
+    'lucide-react';
+
+    import { Link, useParams } from 'react-router-dom';
+
+    import { formatDistanceToNow } from 'date-fns';
+
+    import { useMessagingStore } from '../store/messaging.store';
+
+    import { Button } from '@/components/ui/button';
+
+    import { Input } from '@/components/ui/input';
+
+    import { Avatar, AvatarFallback, AvatarImage } from
+    '@/components/ui/avatar';
+
+    import { Badge } from '@/components/ui/badge';
+
+    import { Popover, PopoverContent, PopoverTrigger } from
+    '@/components/ui/popover';
+
+    import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem,
+    CommandList, CommandSeparator } from '@/components/ui/command';
+
+    import { cn } from '@/lib/utils';
+
+    import { AnimatedTabs } from '@/components/ui/animated-tabs';
+
+    import type { TaskStatus, TaskPriority } from '../types';
+
+
+    // Local helpers for styling based on task properties
+
+    const getStatusIcon = (status: TaskStatus) => {
+        switch(status) {
+            case 'open': return <Inbox className="w-3 h-3 text-blue-500" />;
+            case 'in-progress': return <Zap className="w-3 h-3 text-yellow-500" />;
+            case 'done': return <Shield className="w-3 h-3 text-green-500" />;
+            case 'snoozed': return <Clock className="w-3 h-3 text-gray-500" />;
+        }
+    };
+
+
+    const getPriorityIcon = (priority: TaskPriority) => {
+        switch(priority) {
+            case 'high': return <div className="w-2 h-2 rounded-full bg-red-500" />;
+            case 'medium': return <div className="w-2 h-2 rounded-full bg-yellow-500" />;
+            case 'low': return <div className="w-2 h-2 rounded-full bg-green-500" />;
+            default: return <div className="w-2 h-2 rounded-full bg-gray-400" />;
+        }
+    };
+
+
+    const statusOptions: { value: TaskStatus; label: string }[] = [
+        { value: 'open', label: 'Open' }, { value: 'in-progress', label: 'In Progress' }, { value: 'done', label: 'Done' }, { value: 'snoozed', label: 'Snoozed' }
+    ];
+
+    const priorityOptions: { value: TaskPriority; label: string }[] = [
+        { value: 'high', label: 'High' }, { value: 'medium', label: 'Medium' }, { value: 'low', label: 'Low' }, { value: 'none', label: 'None' }
+    ];
+
+
+    export const TaskList = () => {
+      const { conversationId } = useParams<{ conversationId: string }>(); // This will be taskId later
+      const { 
+        getFilteredTasks,
+        searchTerm,
+        setSearchTerm,
+        activeFilters,
+       } = useMessagingStore();
+      const tasks = getFilteredTasks();
+      const [activeTab, setActiveTab] = useState('all');
+
+      const tabs = useMemo(() => [{ id: 'all', label: 'All Tasks' }, { id: 'unread', label: 'Unread' }], []);
+
+      const filteredTasks = useMemo(() => {
+        if (activeTab === 'unread') {
+          return tasks.filter(task => task.unreadCount > 0);
+        }
+        return tasks;
+      }, [tasks, activeTab]);
+      
+      const activeFilterCount = Object.values(activeFilters).reduce((count, filterArray) => count + filterArray.length, 0);
+
+
+      return (
+        <div className="h-full flex flex-col border-r bg-background/80">
+          {/* Header */}
+          <div className="flex-shrink-0 border-b bg-background/80 p-4 space-y-4">
+            <h2 className="text-xl font-bold tracking-tight">Inbox</h2>
+            <div className="flex gap-2">
+                <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input placeholder="Search tasks..." className="pl-9" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+                </div>
+                <Popover>
+                    <PopoverTrigger asChild>
+                        <Button variant="outline" size="sm" className="h-10 border-dashed gap-2">
+                            <SlidersHorizontal className="w-4 h-4" />
+                            Filters
+                            {activeFilterCount > 0 && <Badge variant="secondary" className="rounded-sm px-1 font-normal">{activeFilterCount}</Badge>}
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[240px] p-0" align="end">
+                        <FilterCommand />
+                    </PopoverContent>
+                </Popover>
+            </div>
+          </div>
+          <AnimatedTabs tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} />
+
+          {/* Task List */}
+          <div className="flex-1 overflow-y-auto">
+            <nav className="p-2 space-y-1">
+              {filteredTasks.map(task => (
+                <Link
+                  to={`/messaging/${task.id}`}
+                  key={task.id}
+                  className={cn(
+                    "block p-3 rounded-lg text-left transition-all duration-200 hover:bg-accent/50",
+                    "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 outline-none",
+                    conversationId === task.id && "bg-accent"
+                  )}
+                >
+                  <div className="flex items-start gap-3">
+                    <Avatar className="h-9 w-9 mt-1">
+                      <AvatarImage src={task.contact.avatar} alt={task.contact.name} />
+                      <AvatarFallback>{task.contact.name.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 overflow-hidden">
+                        <div className="flex justify-between items-center mb-1">
+                            <p className="text-sm font-semibold truncate pr-2">{task.contact.name}</p>
+                            <p className="text-xs text-muted-foreground whitespace-nowrap">{formatDistanceToNow(new Date(task.lastActivity.timestamp), { addSuffix: true })}</p>
+                        </div>
+                        <p className="text-sm truncate text-foreground">{task.title}</p>
+                        <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+                            <div className="flex items-center gap-1.5" title={task.status}>
+                                {getStatusIcon(task.status)}
+                                <span className="capitalize">{task.status.replace('-', ' ')}</span>
+                            </div>
+                            <div className="flex items-center gap-1.5" title={task.priority}>
+                                {getPriorityIcon(task.priority)}
+                                <span className="capitalize">{task.priority}</span>
+                            </div>
+                            {task.assignee && (
+                                <div className="flex items-center gap-1.5" title={`Assigned to ${task.assignee.name}`}>
+                                    <Avatar className="h-4 w-4"><AvatarImage src={task.assignee.avatar} /></Avatar>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                    {task.unreadCount > 0 && (
+                        <div className="flex items-center justify-center self-center ml-auto">
+                            <Badge className="bg-primary h-5 w-5 p-0 flex items-center justify-center">{task.unreadCount}</Badge>
+                        </div>
+                    )}
+                  </div>
+                </Link>
+              ))}
+            </nav>
+          </div>
+        </div>
+      );
+    };
+
+
+    // Filter component for popover
+
+    function FilterCommand() {
+        const { activeFilters, setFilters, assignees, getAvailableTags } = useMessagingStore();
+        const availableTags = useMemo(() => getAvailableTags(), [getAvailableTags]);
+
+        const handleSelect = (type: 'status' | 'priority' | 'assigneeId' | 'tags', value: string) => {
+            const current = new Set(activeFilters[type]);
+            current.has(value) ? current.delete(value) : current.add(value);
+            setFilters({ [type]: Array.from(current) });
+        };
+
+        const hasActiveFilters = Object.values(activeFilters).some(arr => arr.length > 0);
+
+        return (
+            <Command>
+                <CommandInput placeholder="Filter by..." />
+                <CommandList>
+                    <CommandEmpty>No results found.</CommandEmpty>
+                    <CommandGroup heading="Status">
+                        {statusOptions.map(o => (
+                            <CommandItem key={o.value} onSelect={() => handleSelect('status', o.value)}>
+                                <div className={cn('mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary', activeFilters.status.includes(o.value) ? 'bg-primary text-primary-foreground' : 'opacity-50 [&_svg]:invisible')}><Check className="h-4 w-4" /></div>
+                                <span>{o.label}</span>
+                            </CommandItem>
+                        ))}
+                    </CommandGroup>
+                    <CommandSeparator />
+                    <CommandGroup heading="Priority">
+                        {priorityOptions.map(o => (
+                            <CommandItem key={o.value} onSelect={() => handleSelect('priority', o.value)}>
+                                <div className={cn('mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary', activeFilters.priority.includes(o.value) ? 'bg-primary text-primary-foreground' : 'opacity-50 [&_svg]:invisible')}><Check className="h-4 w-4" /></div>
+                                <span>{o.label}</span>
+                            </CommandItem>
+                        ))}
+                    </CommandGroup>
+                    <CommandSeparator />
+                    <CommandGroup heading="Assignee">
+                        {assignees.map(a => (
+                            <CommandItem key={a.id} onSelect={() => handleSelect('assigneeId', a.id)}>
+                                <div className={cn('mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary', activeFilters.assigneeId.includes(a.id) ? 'bg-primary text-primary-foreground' : 'opacity-50 [&_svg]:invisible')}><Check className="h-4 w-4" /></div>
+                                <Avatar className="h-5 w-5 mr-2"><AvatarImage src={a.avatar} /><AvatarFallback>{a.name.charAt(0)}</AvatarFallback></Avatar>
+                                <span>{a.name}</span>
+                            </CommandItem>
+                        ))}
+                    </CommandGroup>
+                    <CommandSeparator />
+                    <CommandGroup heading="Tags">
+                        {availableTags.map(t => (
+                            <CommandItem key={t} onSelect={() => handleSelect('tags', t)}>
+                                <div className={cn('mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary', activeFilters.tags.includes(t) ? 'bg-primary text-primary-foreground' : 'opacity-50 [&_svg]:invisible')}><Check className="h-4 w-4" /></div>
+                                <span>{t}</span>
+                            </CommandItem>
+                        ))}
+                    </CommandGroup>
+
+                    {hasActiveFilters && (
+                        <>
+                            <CommandSeparator />
+                            <CommandGroup>
+                                <CommandItem onSelect={() => setFilters({ status: [], priority: [], assigneeId: [], tags: [], channels: [] })} className="justify-center text-center text-sm">Clear all filters</CommandItem>
+                            </CommandGroup>
+                        </>
+                    )}
+                </CommandList>
+            </Command>
+        );
+    }
+approved: false
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: undone
+id: 347

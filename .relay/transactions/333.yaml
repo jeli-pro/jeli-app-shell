@@ -1,0 +1,1103 @@
+uuid: b0c4f8d2-43ba-4497-8857-e6f77cc8521d
+projectId: jeli-app-shell
+createdAt: '2025-10-16T07:51:03.087Z'
+gitCommitMsg: >-
+  refactor(messaging): pivot right pane to be task-management focused
+
+  Refactors the messaging view's right-hand pane to prioritize task management
+  over contact details, based on user feedback. This creates a more intuitive
+  and powerful workflow.
+
+  - The `TaskHeader`, containing status, assignee, and priority controls, is now
+  elevated to the top of the right pane for immediate access. - The
+  `TaskPropertiesPanel` has been removed, and its information (due date, tags)
+  has been merged into the revamped `TaskHeader` to create a single, unified
+  task info block. - The central `TaskDetail` view is now purely for the
+  conversation feed and input. - Secondary context (Contact Details, AI
+  Insights, Activity, Notes) is now organized into tabs below the main task
+  management block. - Created new modular `ActivityPanel` and `NotesPanel`
+  components.
+promptSummary: >-
+  The user requested to pivot the right-pane UI from a "profile detail" view to
+  a "task management" view, with the main focus on changing task status and
+  properties.
+reasoning:
+  - >-
+    Excellent feedback. You're right, the previous design was too much like a
+    contact profile. The main purpose of this view is task management, so the UI
+    should absolutely reflect that. I will now pivot the design to be
+    task-centric.
+  - >-
+    My new plan is to elevate all task-related actions and information to the
+    top of the right pane, making them the primary focus. The contact and other
+    contextual details will be organized neatly into tabs below.
+  - 'Here are the changes:'
+  - >-
+    1.  **Elevate Task Management**: I will move the `TaskHeader` component from
+    the central conversation view to the very top of the right-hand pane. This
+    makes changing the task's status, assignee, and priority the most prominent
+    action.
+  - >-
+    2.  **Unify Task Info**: I'll merge the details from `TaskPropertiesPanel`
+    (like due date and tags) directly into the `TaskHeader`, creating a single,
+    comprehensive block for all task-related metadata and actions.
+  - >-
+    3.  **Refactor Context Tabs**: The tab section will now be dedicated to
+    secondary context. I'll break down the old `ContactInfoPanel` into smaller,
+    more focused components for new tabs: "Contact," "Activity," and "Notes,"
+    alongside the existing "AI Insights."
+  - >-
+    4.  **Streamline Layout**: The central pane will now be solely for the
+    conversation feed and message input, creating a clear distinction: the
+    middle is for communicating, and the right is for managing and context.
+  - >-
+    This restructuring will create a much more intuitive and powerful workflow,
+    centered around managing the task at hand.
+  - '### Step 1: Restructure Conversation Pane'
+  - >-
+    First, I'll simplify the `TaskDetail` component by removing the
+    `TaskHeader`. Its only job now is to display the conversation.
+  - '### Step 2: Create New Context Panels'
+  - >-
+    I'll create two new components, `ActivityPanel` and `NotesPanel`, by
+    breaking apart the old `ContactInfoPanel`.
+  - '### Step 3: Simplify and Refocus Remaining Panels'
+  - The `ContactInfoPanel` will now only display core contact details.
+  - Next, I'll delete the now-redundant `TaskPropertiesPanel`.
+  - >-
+    And I'll transform `TaskHeader` into the new, all-in-one task management
+    component.
+  - '### Step 4: Assemble the New Right Pane Layout'
+  - >-
+    Finally, I'll rewrite `MessagingContent.tsx` to implement the new
+    task-centric layout, with the unified `TaskHeader` at the top and the new
+    contextual tabs below.
+  - >-
+    This comprehensive refactor successfully shifts the focus of the right pane
+    from being a contact profile to a powerful task management hub, creating a
+    more logical and efficient user experience as requested.
+operations:
+  - type: write
+    path: src/pages/Messaging/components/TaskDetail.tsx
+    content: |+
+      --- src/pages/Messaging/components/TaskDetail.tsx
+      +++ src/pages/Messaging/components/TaskDetail.tsx
+      @@ -2,7 +2,6 @@
+       import React from 'react';
+       import { useParams } from 'react-router-dom';
+       import { useMessagingStore } from '../store/messaging.store';
+      -import { TaskHeader } from './TaskHeader';
+       import { ActivityFeed } from './ActivityFeed';
+       import { Input } from '@/components/ui/input';
+       import { Button } from '@/components/ui/button';
+      @@ -23,7 +22,6 @@
+       
+         return (
+           <div className="h-full flex flex-col bg-background">
+      -      <TaskHeader task={task} />
+             <ActivityFeed messages={task.messages} contact={task.contact} />
+       
+             {/* Input Form */}
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/Messaging/components/ActivityPanel.tsx
+    content: >-
+      import React from 'react';
+
+      import { format } from 'date-fns';
+
+      import { Mail, StickyNote, PhoneCall, Calendar } from 'lucide-react';
+
+      import type { Contact, ActivityEvent, ActivityEventType } from '../types';
+
+
+      const activityIcons: Record<ActivityEventType, React.ElementType> = {
+          note: StickyNote,
+          call: PhoneCall,
+          email: Mail,
+          meeting: Calendar,
+      };
+
+
+      const ActivityItem = ({ item }: { item: ActivityEvent }) => {
+          const Icon = activityIcons[item.type];
+          return (
+            <div className="flex items-start gap-4">
+              <div className="mt-1.5 h-8 flex items-center justify-center">
+                  <div className="h-full w-0.5 bg-border"></div>
+                  <div className="absolute p-1.5 bg-background border rounded-full">
+                      <Icon className="w-3.5 h-3.5 text-muted-foreground" />
+                  </div>
+              </div>
+              <div className="flex-1 text-sm pt-1.5 pb-5"><p>{item.content}</p><p className="text-xs text-muted-foreground mt-1">{format(new Date(item.timestamp), "MMM d, yyyy 'at' h:mm a")}</p></div>
+            </div>
+          )
+      };
+
+
+      interface ActivityPanelProps {
+        contact: Contact;
+      }
+
+
+      export const ActivityPanel: React.FC<ActivityPanelProps> = ({ contact })
+      => {
+          return (
+              <div className="relative">
+                  {contact.activity.map(item => <ActivityItem key={item.id} item={item} />)}
+              </div>
+          )
+      }
+    patchStrategy: replace
+  - type: write
+    path: src/pages/Messaging/components/NotesPanel.tsx
+    content: |-
+      import React from 'react';
+      import { format } from 'date-fns';
+      import { Send } from 'lucide-react';
+      import type { Contact } from '../types';
+      import { Button } from '@/components/ui/button';
+      import { Textarea } from '@/components/ui/textarea';
+
+      interface NotesPanelProps {
+        contact: Contact;
+      }
+
+      export const NotesPanel: React.FC<NotesPanelProps> = ({ contact }) => {
+          return (
+              <div className="space-y-4">
+                  {contact.notes.map(note => (
+                      <div key={note.id} className="text-sm bg-accent/50 p-3 rounded-lg"><p className="mb-1.5">{note.content}</p><p className="text-xs text-muted-foreground">{format(new Date(note.createdAt), "MMM d, yyyy")}</p></div>
+                  ))}
+                  <div className="relative">
+                      <Textarea placeholder="Add a new note..." className="min-h-[60px]" />
+                      <Button size="icon" className="absolute right-2 bottom-2 h-7 w-7"><Send className="w-3.5 h-3.5" /></Button>
+                  </div>
+              </div>
+          )
+      }
+    patchStrategy: replace
+  - type: write
+    path: src/pages/Messaging/components/ContactInfoPanel.tsx
+    content: >+
+      --- src/pages/Messaging/components/ContactInfoPanel.tsx
+
+      +++ src/pages/Messaging/components/ContactInfoPanel.tsx
+
+      @@ -1,58 +1,29 @@
+       import React from 'react';
+      -import { format } from 'date-fns';
+
+      -import { Mail, Phone, Briefcase, StickyNote, PhoneCall, Calendar, Send }
+      from 'lucide-react';
+
+      -import type { Task, Contact, Assignee, ActivityEvent, ActivityEventType }
+      from '../types';
+
+      -import { cn } from '@/lib/utils';
+
+      -import { Button } from '@/components/ui/button';
+
+      -import { Textarea } from '@/components/ui/textarea';
+
+      +import { Mail, Phone, Briefcase } from 'lucide-react';
+
+      +import type { Contact } from '../types';
+       
+       const DetailRow: React.FC<{icon: React.ReactNode, children: React.ReactNode}> = ({ icon, children }) => (
+           <div className="flex items-start gap-3 text-sm">
+               <div className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0">{icon}</div>
+               <div className="flex-1 text-foreground/90 break-all">{children}</div>
+           </div>
+       );
+       
+      -const activityIcons: Record<ActivityEventType, React.ElementType> = {
+
+      -    note: StickyNote,
+
+      -    call: PhoneCall,
+
+      -    email: Mail,
+
+      -    meeting: Calendar,
+
+      -};
+
+      -
+
+      -const ActivityItem = ({ item }: { item: ActivityEvent }) => {
+
+      -    const Icon = activityIcons[item.type];
+
+      -    return (
+
+      -      <div className="flex items-start gap-4">
+
+      -        <div className="mt-1.5 h-8 flex items-center justify-center">
+
+      -            <div className="h-full w-0.5 bg-border"></div>
+
+      -            <div className="absolute p-1.5 bg-background border
+      rounded-full">
+
+      -                <Icon className="w-3.5 h-3.5 text-muted-foreground" />
+
+      -            </div>
+
+      -        </div>
+
+      -        <div className="flex-1 text-sm pt-1.5
+      pb-5"><p>{item.content}</p><p className="text-xs text-muted-foreground
+      mt-1">{format(new Date(item.timestamp), "MMM d, yyyy 'at' h:mm
+      a")}</p></div>
+
+      -      </div>
+
+      -    )
+
+      -};
+
+      -
+       interface ContactInfoPanelProps {
+      -  task: (Task & { contact: Contact; assignee: Assignee | null });
+
+      +  contact: Contact;
+       }
+       
+      -export const ContactInfoPanel: React.FC<ContactInfoPanelProps> = ({ task
+      }) => {
+
+      -    const { contact } = task;
+
+      +export const ContactInfoPanel: React.FC<ContactInfoPanelProps> = ({
+      contact }) => {
+           return (
+      -        <div className="space-y-8">
+
+      -            {/* Contact Details */}
+
+      -            <div className="space-y-4">
+
+      -                <h4 className="font-semibold text-sm">Contact
+      Details</h4>
+
+      -                <DetailRow icon={<Mail />}>{contact.email}</DetailRow>
+
+      -                <DetailRow icon={<Phone />}>{contact.phone}</DetailRow>
+
+      -                <DetailRow icon={<Briefcase />}>
+
+      -                    {contact.role} at <strong>{contact.company}</strong>
+
+      -                </DetailRow>
+
+      -            </div>
+
+      -            
+
+      -            {/* Activity */}
+
+      -            <div className="space-y-1">
+
+      -                <h4 className="font-semibold text-sm mb-4">Activity</h4>
+
+      -                <div className="relative">
+
+      -                    {contact.activity.map(item => <ActivityItem
+      key={item.id} item={item} />)}
+
+      -                </div>
+
+      -            </div>
+
+      -
+
+      -            {/* Notes */}
+
+      -            <div className="space-y-4">
+
+      -                <h4 className="font-semibold text-sm">Notes</h4>
+
+      -                {contact.notes.map(note => (
+
+      -                    <div key={note.id} className="text-sm bg-accent/50
+      p-3 rounded-lg"><p className="mb-1.5">{note.content}</p><p
+      className="text-xs text-muted-foreground">{format(new
+      Date(note.createdAt), "MMM d, yyyy")}</p></div>
+
+      -                ))}
+
+      -                <div className="relative">
+
+      -                    <Textarea placeholder="Add a new note..."
+      className="min-h-[60px]" />
+
+      -                    <Button size="icon" className="absolute right-2
+      bottom-2 h-7 w-7"><Send className="w-3.5 h-3.5" /></Button>
+
+      -                </div>
+
+      -            </div>
+
+      +        <div className="space-y-4">
+
+      +            <DetailRow icon={<Mail />}>{contact.email}</DetailRow>
+
+      +            <DetailRow icon={<Phone />}>{contact.phone}</DetailRow>
+
+      +            <DetailRow icon={<Briefcase />}>
+
+      +                {contact.role} at <strong>{contact.company}</strong>
+
+      +            </DetailRow>
+               </div>
+           )
+       }
+
+    patchStrategy: standard-diff
+  - type: delete
+    path: src/pages/Messaging/components/TaskPropertiesPanel.tsx
+  - type: write
+    path: src/pages/Messaging/components/TaskHeader.tsx
+    content: >+
+      --- src/pages/Messaging/components/TaskHeader.tsx
+
+      +++ src/pages/Messaging/components/TaskHeader.tsx
+
+      @@ -10,7 +10,8 @@
+       } from '@/components/ui/dropdown-menu';
+       import { Button } from '@/components/ui/button';
+       import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+      -import { ChevronDown, Inbox, Zap, Shield, Clock } from 'lucide-react';
+
+      +import { ChevronDown, Inbox, Zap, Shield, Clock, Calendar, Hash,
+      MessageSquare } from 'lucide-react';
+
+      +import { Badge } from '@/components/ui/badge';
+
+      +import { format } from 'date-fns';
+       
+       const statusOptions: { value: TaskStatus; label: string; icon: React.ReactNode }[] = [
+           { value: 'open', label: 'Open', icon: <Inbox className="w-4 h-4 mr-2" /> },
+      @@ -35,16 +36,23 @@
+         const currentStatus = statusOptions.find(o => o.value === task.status);
+         const currentPriority = priorityOptions.find(o => o.value === task.priority);
+       
+         return (
+      -    <div className="flex items-center gap-4 p-4 border-b h-20
+      flex-shrink-0 bg-background/80 backdrop-blur-sm">
+
+      -      <div className="flex-1 overflow-hidden">
+
+      +    <div className="space-y-4">
+
+      +      {/* Task Title & Contact */}
+
+      +      <div className="overflow-hidden">
+               <h2 className="font-bold text-lg truncate" title={task.title}>{task.title}</h2>
+               <p className="text-sm text-muted-foreground">
+                 with <a href="#" className="hover:underline font-medium text-foreground/80">{task.contact.name}</a>
+               </p>
+             </div>
+      -      <div className="flex items-center gap-2">
+
+      +
+
+      +      {/* Interactive Controls */}
+
+      +      <div className="flex flex-wrap items-center gap-2">
+               {/* Assignee Dropdown */}
+      -        <DropdownMenu>
+
+      +        <div className="flex-1 min-w-[150px]">
+
+      +            <DropdownMenu>
+                   <DropdownMenuTrigger asChild>
+      -                <Button variant="ghost" size="sm" className="gap-2">
+
+      +                <Button variant="outline" size="sm" className="w-full
+      gap-2 justify-between">
+                           {task.assignee ? (
+                               <Avatar className="h-6 w-6"><AvatarImage src={task.assignee.avatar} /><AvatarFallback>{task.assignee.name.charAt(0)}</AvatarFallback></Avatar>
+                           ) : (
+      @@ -62,11 +70,13 @@
+                           ))}
+                       </DropdownMenuRadioGroup>
+                   </DropdownMenuContent>
+      -        </DropdownMenu>
+
+      +            </DropdownMenu>
+
+      +        </div>
+       
+               {/* Status Dropdown */}
+      -        <DropdownMenu>
+
+      +        <div className="flex-1 min-w-[120px]">
+
+      +            <DropdownMenu>
+                   <DropdownMenuTrigger asChild>
+      -                <Button variant="ghost" size="sm" className="gap-2">
+
+      +                <Button variant="outline" size="sm" className="w-full
+      gap-2 justify-between">
+                           {currentStatus?.icon} {currentStatus?.label}
+                       </Button>
+                   </DropdownMenuTrigger>
+      @@ -77,23 +87,42 @@
+                           </DropdownMenuItem>
+                       ))}
+                   </DropdownMenuContent>
+      -        </DropdownMenu>
+
+      +            </DropdownMenu>
+
+      +        </div>
+               
+               {/* Priority Dropdown */}
+      -        <DropdownMenu>
+
+      +        <div className="flex-1 min-w-[100px]">
+
+      +            <DropdownMenu>
+                   <DropdownMenuTrigger asChild>
+      -                <Button variant="ghost" size="sm" className="gap-2">
+
+      +                <Button variant="outline" size="sm" className="w-full
+      gap-2 justify-between">
+                           {currentPriority?.icon} {currentPriority?.label}
+                       </Button>
+                   </DropdownMenuTrigger>
+                   <DropdownMenuContent align="end">
+                        {priorityOptions.map(o => (
+                           <DropdownMenuItem key={o.value} onClick={() => updateTask(task.id, { priority: o.value })}>
+                               {o.icon} {o.label}
+                           </DropdownMenuItem>
+                       ))}
+                   </DropdownMenuContent>
+      -        </DropdownMenu>
+
+      +            </DropdownMenu>
+
+      +        </div>
+             </div>
+      +
+
+      +      {/* Static Properties */}
+
+      +      <dl className="space-y-3 text-sm">
+
+      +        <div className="flex items-center justify-between">
+
+      +            <dt className="text-muted-foreground flex items-center
+      gap-2"><Calendar className="w-4 h-4" /> Due Date</dt>
+
+      +            <dd className="font-medium">{task.dueDate ? format(new
+      Date(task.dueDate), 'MMM d, yyyy') : 'No due date'}</dd>
+
+      +        </div>
+
+      +        <div className="flex items-center justify-between">
+
+      +            <dt className="text-muted-foreground flex items-center
+      gap-2"><MessageSquare className="w-4 h-4" /> Channel</dt>
+
+      +            <dd className="font-medium capitalize">{task.channel}</dd>
+
+      +        </div>
+
+      +        <div className="flex items-start justify-between">
+
+      +            <dt className="text-muted-foreground flex items-center gap-2
+      pt-0.5"><Hash className="w-4 h-4" /> Tags</dt>
+
+      +            <dd className="flex flex-wrap gap-1.5 justify-end
+      max-w-[70%]">
+
+      +                {task.tags.length > 0 ? task.tags.map(t => <Badge
+      variant="secondary" key={t}>{t}</Badge>) : 'No tags'}
+
+      +            </dd>
+
+      +        </div>
+
+      +      </dl>
+           </div>
+         );
+       };
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/Messaging/components/MessagingContent.tsx
+    content: >-
+      import React, { useState, useMemo } from 'react';
+
+      import { useMessagingStore } from '../store/messaging.store';
+
+      import { ContactInfoPanel } from './ContactInfoPanel';
+
+      import { AIInsightsPanel } from './AIInsightsPanel';
+
+      import { ActivityPanel } from './ActivityPanel';
+
+      import { NotesPanel } from './NotesPanel';
+
+      import { TaskHeader } from './TaskHeader';
+
+      import { AnimatedTabs } from '@/components/ui/animated-tabs';
+
+      import { TechOrbitDisplay } from '@/components/effects/OrbitingCircles';
+
+
+      interface MessagingContentProps {
+        conversationId?: string;
+      }
+
+
+      export const MessagingContent: React.FC<MessagingContentProps> = ({
+      conversationId }) => {
+        const [activeTab, setActiveTab] = useState('contact');
+        const task = useMessagingStore(state => conversationId ? state.getTaskById(conversationId) : undefined);
+        
+        const tabs = useMemo(() => [
+          { id: 'contact', label: 'Contact' },
+          { id: 'ai', label: 'AI Insights' },
+          { id: 'activity', label: 'Activity' },
+          { id: 'notes', label: 'Notes' },
+        ], []);
+
+        if (!task) {
+          return (
+            <div className="h-full flex-1 flex flex-col items-center justify-center bg-background p-6 relative overflow-hidden">
+              <TechOrbitDisplay text="Context" />
+              <div className="text-center z-10 bg-background/50 backdrop-blur-sm p-6 rounded-lg">
+                  <h3 className="mt-4 text-lg font-medium">Select a Task</h3>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                      Task details and contact information will appear here.
+                  </p>
+              </div>
+            </div>
+          );
+        }
+        
+        return (
+          <div className="h-full flex-1 flex flex-col bg-background overflow-y-auto">
+            {/* Task Management Header */}
+            <div className="p-6 border-b">
+              <TaskHeader task={task} />
+            </div>
+
+            <div className="flex-shrink-0 border-b bg-background/80 backdrop-blur-sm sticky top-0 z-10">
+              <AnimatedTabs tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} className="px-6" />
+            </div>
+
+            <div className="flex-1 p-6">
+              {activeTab === 'contact' && <ContactInfoPanel contact={task.contact} />}
+              {activeTab === 'ai' && <AIInsightsPanel task={task} />}
+              {activeTab === 'activity' && <ActivityPanel contact={task.contact} />}
+              {activeTab === 'notes' && <NotesPanel contact={task.contact} />}
+            </div>
+          </div>
+        );
+      };
+    patchStrategy: replace
+snapshot:
+  src/pages/Messaging/components/NotesPanel.tsx: null
+  src/pages/Messaging/components/ActivityPanel.tsx: null
+  src/pages/Messaging/components/TaskDetail.tsx: >-
+    import React from 'react';
+
+    import { useParams } from 'react-router-dom';
+
+    import { useMessagingStore } from '../store/messaging.store';
+
+    import { TaskHeader } from './TaskHeader';
+
+    import { ActivityFeed } from './ActivityFeed';
+
+    import { Input } from '@/components/ui/input';
+
+    import { Button } from '@/components/ui/button';
+
+    import { Textarea } from '@/components/ui/textarea';
+
+    import { Paperclip, SendHorizontal, Smile, StickyNote } from 'lucide-react';
+
+    import { Tabs, TabsContent, TabsList, TabsTrigger } from
+    "@/components/ui/tabs";
+
+
+
+    export const TaskDetail: React.FC = () => {
+      const { conversationId: taskId } = useParams<{ conversationId: string }>();
+      const task = useMessagingStore(state => taskId ? state.getTaskById(taskId) : undefined);
+      
+      if (!taskId || !task) {
+        return (
+            <div className="h-full flex flex-col items-center justify-center p-6 bg-background">
+                <p className="text-muted-foreground">Select a task to see its details.</p>
+            </div>
+        );
+      }
+
+      return (
+        <div className="h-full flex flex-col bg-background">
+          <TaskHeader task={task} />
+          <ActivityFeed messages={task.messages} contact={task.contact} />
+
+          {/* Input Form */}
+          <div className="p-4 border-t flex-shrink-0 bg-background/50">
+            <Tabs defaultValue="comment" className="w-full">
+              <TabsList className="grid w-full grid-cols-2 mb-2">
+                <TabsTrigger value="comment">Comment</TabsTrigger>
+                <TabsTrigger value="note"><StickyNote className="w-4 h-4 mr-2" />Internal Note</TabsTrigger>
+              </TabsList>
+              <TabsContent value="comment">
+                 <div className="relative">
+                    <Textarea placeholder={`Reply to ${task.contact.name}...`} className="pr-24 min-h-[52px]" />
+                    <div className="absolute right-2 top-2 flex items-center gap-1">
+                        <Button variant="ghost" size="icon" className="rounded-full h-8 w-8"><Smile className="w-4 h-4" /></Button>
+                        <Button variant="ghost" size="icon" className="rounded-full h-8 w-8"><Paperclip className="w-4 h-4" /></Button>
+                        <Button size="icon" className="rounded-full h-8 w-8"><SendHorizontal className="w-4 h-4" /></Button>
+                    </div>
+                </div>
+              </TabsContent>
+              <TabsContent value="note">
+                <div className="relative">
+                    <Textarea placeholder="Add an internal note..." className="pr-24 min-h-[52px] bg-yellow-400/10 border-yellow-400/30 focus-visible:ring-yellow-500" />
+                    <div className="absolute right-2 top-2 flex items-center gap-1">
+                        <Button size="icon" className="rounded-full h-8 w-8"><SendHorizontal className="w-4 h-4" /></Button>
+                    </div>
+                </div>
+              </TabsContent>
+            </Tabs>
+          </div>
+        </div>
+      );
+    };
+  src/pages/Messaging/components/ContactInfoPanel.tsx: >-
+    import React from 'react';
+
+    import { format } from 'date-fns';
+
+    import { Mail, Phone, Briefcase, StickyNote, PhoneCall, Calendar, Send }
+    from 'lucide-react';
+
+    import type { Task, Contact, Assignee, ActivityEvent, ActivityEventType }
+    from '../types';
+
+    import { cn } from '@/lib/utils';
+
+    import { Button } from '@/components/ui/button';
+
+    import { Textarea } from '@/components/ui/textarea';
+
+
+    const DetailRow: React.FC<{icon: React.ReactNode, children:
+    React.ReactNode}> = ({ icon, children }) => (
+        <div className="flex items-start gap-3 text-sm">
+            <div className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0">{icon}</div>
+            <div className="flex-1 text-foreground/90 break-all">{children}</div>
+        </div>
+    );
+
+
+    const activityIcons: Record<ActivityEventType, React.ElementType> = {
+        note: StickyNote,
+        call: PhoneCall,
+        email: Mail,
+        meeting: Calendar,
+    };
+
+
+    const ActivityItem = ({ item }: { item: ActivityEvent }) => {
+        const Icon = activityIcons[item.type];
+        return (
+          <div className="flex items-start gap-4">
+            <div className="mt-1.5 h-8 flex items-center justify-center">
+                <div className="h-full w-0.5 bg-border"></div>
+                <div className="absolute p-1.5 bg-background border rounded-full">
+                    <Icon className="w-3.5 h-3.5 text-muted-foreground" />
+                </div>
+            </div>
+            <div className="flex-1 text-sm pt-1.5 pb-5"><p>{item.content}</p><p className="text-xs text-muted-foreground mt-1">{format(new Date(item.timestamp), "MMM d, yyyy 'at' h:mm a")}</p></div>
+          </div>
+        )
+    };
+
+
+    interface ContactInfoPanelProps {
+      task: (Task & { contact: Contact; assignee: Assignee | null });
+    }
+
+
+    export const ContactInfoPanel: React.FC<ContactInfoPanelProps> = ({ task })
+    => {
+        const { contact } = task;
+        return (
+            <div className="space-y-8">
+                {/* Contact Details */}
+                <div className="space-y-4">
+                    <h4 className="font-semibold text-sm">Contact Details</h4>
+                    <DetailRow icon={<Mail />}>{contact.email}</DetailRow>
+                    <DetailRow icon={<Phone />}>{contact.phone}</DetailRow>
+                    <DetailRow icon={<Briefcase />}>
+                        {contact.role} at <strong>{contact.company}</strong>
+                    </DetailRow>
+                </div>
+                
+                {/* Activity */}
+                <div className="space-y-1">
+                    <h4 className="font-semibold text-sm mb-4">Activity</h4>
+                    <div className="relative">
+                        {contact.activity.map(item => <ActivityItem key={item.id} item={item} />)}
+                    </div>
+                </div>
+
+                {/* Notes */}
+                <div className="space-y-4">
+                    <h4 className="font-semibold text-sm">Notes</h4>
+                    {contact.notes.map(note => (
+                        <div key={note.id} className="text-sm bg-accent/50 p-3 rounded-lg"><p className="mb-1.5">{note.content}</p><p className="text-xs text-muted-foreground">{format(new Date(note.createdAt), "MMM d, yyyy")}</p></div>
+                    ))}
+                    <div className="relative">
+                        <Textarea placeholder="Add a new note..." className="min-h-[60px]" />
+                        <Button size="icon" className="absolute right-2 bottom-2 h-7 w-7"><Send className="w-3.5 h-3.5" /></Button>
+                    </div>
+                </div>
+            </div>
+        )
+    }
+  src/pages/Messaging/components/TaskPropertiesPanel.tsx: >-
+    import React from 'react';
+
+    import { useMessagingStore } from '../store/messaging.store';
+
+    import type { Task, Contact, Assignee, TaskStatus, TaskPriority } from
+    '../types';
+
+    import { Avatar, AvatarFallback, AvatarImage } from
+    '@/components/ui/avatar';
+
+    import { Badge } from '@/components/ui/badge';
+
+    import { format } from 'date-fns';
+
+    import { Inbox, Zap, Shield, Clock, Calendar, Hash, User, MessageSquare }
+    from 'lucide-react';
+
+    import { cn } from '@/lib/utils';
+
+
+
+    const getStatusInfo = (status: TaskStatus) => {
+        switch(status) {
+            case 'open': return { label: 'Open', icon: <Inbox className="w-4 h-4" />, color: 'text-blue-500' };
+            case 'in-progress': return { label: 'In Progress', icon: <Zap className="w-4 h-4" />, color: 'text-yellow-500' };
+            case 'done': return { label: 'Done', icon: <Shield className="w-4 h-4" />, color: 'text-green-500' };
+            case 'snoozed': return { label: 'Snoozed', icon: <Clock className="w-4 h-4" />, color: 'text-gray-500' };
+        }
+    };
+
+
+    const getPriorityInfo = (priority: TaskPriority) => {
+        switch(priority) {
+            case 'high': return { label: 'High', icon: <div className="w-2.5 h-2.5 rounded-full bg-red-500" /> };
+            case 'medium': return { label: 'Medium', icon: <div className="w-2.5 h-2.5 rounded-full bg-yellow-500" /> };
+            case 'low': return { label: 'Low', icon: <div className="w-2.5 h-2.5 rounded-full bg-green-500" /> };
+            default: return { label: 'None', icon: <div className="w-2.5 h-2.5 rounded-full bg-gray-400" /> };
+        }
+    };
+
+
+    interface DetailRowProps {
+        icon: React.ReactNode;
+        label: string;
+        children: React.ReactNode;
+        className?: string;
+    }
+
+    const DetailRow: React.FC<DetailRowProps> = ({ icon, label, children,
+    className }) => (
+        <div className={cn("grid grid-cols-3 items-start gap-3 text-sm", className)}>
+            <dt className="col-span-1 text-muted-foreground flex items-center gap-2 pt-0.5"><div className="w-4 flex justify-center">{icon}</div>{label}</dt>
+            <dd className="col-span-2 font-medium text-foreground/90">{children}</dd>
+        </div>
+    );
+
+
+    interface TaskPropertiesPanelProps {
+      task: (Task & { contact: Contact; assignee: Assignee | null });
+    }
+
+
+    export const TaskPropertiesPanel: React.FC<TaskPropertiesPanelProps> = ({
+    task }) => {
+        const status = getStatusInfo(task.status);
+        const priority = getPriorityInfo(task.priority);
+
+        return (
+            <dl className="space-y-4">
+                    <DetailRow icon={status.icon} label="Status">
+                        <span className={cn("flex items-center gap-2", status.color)}>
+                            {status.label}
+                        </span>
+                    </DetailRow>
+                    <DetailRow icon={priority.icon} label="Priority">
+                        <span>{priority.label}</span>
+                    </DetailRow>
+                    <DetailRow icon={<User />} label="Assignee">
+                        {task.assignee ? (
+                            <div className="flex items-center gap-2">
+                                 <Avatar className="h-5 w-5"><AvatarImage src={task.assignee.avatar} /><AvatarFallback>{task.assignee.name.charAt(0)}</AvatarFallback></Avatar>
+                                 {task.assignee.name}
+                            </div>
+                        ) : 'Unassigned'}
+                    </DetailRow>
+                    <DetailRow icon={<Calendar />} label="Due Date">
+                        {task.dueDate ? format(new Date(task.dueDate), 'MMM d, yyyy') : 'No due date'}
+                    </DetailRow>
+                    <DetailRow icon={<MessageSquare />} label="Channel">
+                        <span className="capitalize">{task.channel}</span>
+                    </DetailRow>
+                     <DetailRow icon={<Hash />} label="Tags">
+                        <div className="flex flex-wrap gap-1.5">
+                            {task.tags.length > 0 ? task.tags.map(t => <Badge variant="secondary" key={t}>{t}</Badge>) : 'No tags'}
+                        </div>
+                    </DetailRow>
+            </dl>
+        )
+    }
+  src/pages/Messaging/components/TaskHeader.tsx: >
+    import React from 'react';
+
+    import { useMessagingStore } from '../store/messaging.store';
+
+    import type { Task, TaskStatus, TaskPriority, Assignee, Contact } from
+    '../types';
+
+    import {
+      DropdownMenu,
+      DropdownMenuContent,
+      DropdownMenuItem,
+      DropdownMenuRadioGroup,
+      DropdownMenuRadioItem,
+      DropdownMenuTrigger,
+      DropdownMenuSeparator
+    } from '@/components/ui/dropdown-menu';
+
+    import { Button } from '@/components/ui/button';
+
+    import { Avatar, AvatarFallback, AvatarImage } from
+    '@/components/ui/avatar';
+
+    import { ChevronDown, Inbox, Zap, Shield, Clock } from 'lucide-react';
+
+
+    const statusOptions: { value: TaskStatus; label: string; icon:
+    React.ReactNode }[] = [
+        { value: 'open', label: 'Open', icon: <Inbox className="w-4 h-4 mr-2" /> },
+        { value: 'in-progress', label: 'In Progress', icon: <Zap className="w-4 h-4 mr-2" /> },
+        { value: 'done', label: 'Done', icon: <Shield className="w-4 h-4 mr-2" /> },
+        { value: 'snoozed', label: 'Snoozed', icon: <Clock className="w-4 h-4 mr-2" /> },
+    ];
+
+
+    const priorityOptions: { value: TaskPriority; label: string; icon:
+    React.ReactNode }[] = [
+        { value: 'high', label: 'High', icon: <div className="w-2.5 h-2.5 rounded-full bg-red-500 mr-2" /> },
+        { value: 'medium', label: 'Medium', icon: <div className="w-2.5 h-2.5 rounded-full bg-yellow-500 mr-2" /> },
+        { value: 'low', label: 'Low', icon: <div className="w-2.5 h-2.5 rounded-full bg-green-500 mr-2" /> },
+        { value: 'none', label: 'None', icon: <div className="w-2.5 h-2.5 rounded-full bg-gray-400 mr-2" /> },
+    ];
+
+
+
+    interface TaskHeaderProps {
+      task: (Task & { contact: Contact; assignee: Assignee | null });
+    }
+
+
+    export const TaskHeader: React.FC<TaskHeaderProps> = ({ task }) => {
+      const { updateTask, assignees } = useMessagingStore();
+      const currentStatus = statusOptions.find(o => o.value === task.status);
+      const currentPriority = priorityOptions.find(o => o.value === task.priority);
+
+      return (
+        <div className="flex items-center gap-4 p-4 border-b h-20 flex-shrink-0 bg-background/80 backdrop-blur-sm">
+          <div className="flex-1 overflow-hidden">
+            <h2 className="font-bold text-lg truncate" title={task.title}>{task.title}</h2>
+            <p className="text-sm text-muted-foreground">
+              with <a href="#" className="hover:underline font-medium text-foreground/80">{task.contact.name}</a>
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            {/* Assignee Dropdown */}
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm" className="gap-2">
+                        {task.assignee ? (
+                            <Avatar className="h-6 w-6"><AvatarImage src={task.assignee.avatar} /><AvatarFallback>{task.assignee.name.charAt(0)}</AvatarFallback></Avatar>
+                        ) : (
+                            <Avatar className="h-6 w-6"><AvatarFallback>?</AvatarFallback></Avatar>
+                        )}
+                        <span className="hidden sm:inline">{task.assignee?.name || 'Unassigned'}</span>
+                        <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                    <DropdownMenuRadioGroup value={task.assigneeId || 'null'} onValueChange={val => updateTask(task.id, { assigneeId: val === 'null' ? null : val })}>
+                        <DropdownMenuRadioItem value="null">Unassigned</DropdownMenuRadioItem>
+                        <DropdownMenuSeparator />
+                        {assignees.map(a => (
+                            <DropdownMenuRadioItem key={a.id} value={a.id}>
+                                <Avatar className="h-5 w-5 mr-2"><AvatarImage src={a.avatar} /><AvatarFallback>{a.name.charAt(0)}</AvatarFallback></Avatar>
+                                {a.name}
+                            </DropdownMenuRadioItem>
+                        ))}
+                    </DropdownMenuRadioGroup>
+                </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Status Dropdown */}
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm" className="gap-2">
+                        {currentStatus?.icon} {currentStatus?.label}
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                     {statusOptions.map(o => (
+                        <DropdownMenuItem key={o.value} onClick={() => updateTask(task.id, { status: o.value })}>
+                            {o.icon} {o.label}
+                        </DropdownMenuItem>
+                    ))}
+                </DropdownMenuContent>
+            </DropdownMenu>
+            
+            {/* Priority Dropdown */}
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm" className="gap-2">
+                        {currentPriority?.icon} {currentPriority?.label}
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                     {priorityOptions.map(o => (
+                        <DropdownMenuItem key={o.value} onClick={() => updateTask(task.id, { priority: o.value })}>
+                            {o.icon} {o.label}
+                        </DropdownMenuItem>
+                    ))}
+                </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+      );
+    };
+  src/pages/Messaging/components/MessagingContent.tsx: >-
+    import React, { useState, useMemo } from 'react';
+
+    import { useMessagingStore } from '../store/messaging.store';
+
+    import { TaskPropertiesPanel } from './TaskPropertiesPanel';
+
+    import { ContactInfoPanel } from './ContactInfoPanel';
+
+    import { AIInsightsPanel } from './AIInsightsPanel';
+
+    import { AnimatedTabs } from '@/components/ui/animated-tabs';
+
+    import { TechOrbitDisplay } from '@/components/effects/OrbitingCircles';
+
+    import { Avatar, AvatarFallback, AvatarImage } from
+    '@/components/ui/avatar';
+
+    import { Badge } from '@/components/ui/badge';
+
+    import { Button } from '@/components/ui/button';
+
+    import { StickyNote, PhoneCall, Mail, CheckSquare } from 'lucide-react';
+
+
+    interface MessagingContentProps {
+      conversationId?: string;
+    }
+
+
+    export const MessagingContent: React.FC<MessagingContentProps> = ({
+    conversationId }) => {
+      const [activeTab, setActiveTab] = useState('task');
+      const task = useMessagingStore(state => conversationId ? state.getTaskById(conversationId) : undefined);
+      
+      const tabs = useMemo(() => [
+        { id: 'task', label: 'Task' },
+        { id: 'contact', label: 'Contact' },
+        { id: 'ai', label: 'AI Insights' },
+      ], []);
+
+      if (!task) {
+        return (
+          <div className="h-full flex-1 flex flex-col items-center justify-center bg-background p-6 relative overflow-hidden">
+            <TechOrbitDisplay text="Context" />
+            <div className="text-center z-10 bg-background/50 backdrop-blur-sm p-6 rounded-lg">
+                <h3 className="mt-4 text-lg font-medium">Select a Task</h3>
+                <p className="mt-1 text-sm text-muted-foreground">
+                    Task details and contact information will appear here.
+                </p>
+            </div>
+          </div>
+        );
+      }
+      
+      const { contact } = task;
+
+      return (
+        <div className="h-full flex-1 flex flex-col bg-background overflow-y-auto">
+          {/* Persistent Header */}
+          <div className="p-6 space-y-4 border-b">
+            <div className="flex items-start gap-4">
+              <Avatar className="h-16 w-16 border">
+                <AvatarImage src={contact.avatar} alt={contact.name} />
+                <AvatarFallback className="text-2xl">{contact.name.charAt(0)}</AvatarFallback>
+              </Avatar>
+              <div className="flex-1 pt-1">
+                <h2 className="text-xl font-bold">{contact.name}</h2>
+                <p className="text-sm text-muted-foreground">
+                  {contact.online ? 'Online' : `Last seen ${contact.lastSeen}`}
+                </p>
+                 <div className="flex flex-wrap gap-1.5 mt-2">
+                    {contact.tags.map(tag => (
+                      <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
+                    ))}
+                </div>
+              </div>
+            </div>
+             {/* Action Buttons */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <Button variant="outline" size="sm" className="gap-2"><StickyNote className="w-3.5 h-3.5" /> Note</Button>
+                <Button variant="outline" size="sm" className="gap-2"><PhoneCall className="w-3.5 h-3.5" /> Call</Button>
+                <Button variant="outline" size="sm" className="gap-2"><Mail className="w-3.5 h-3.5" /> Email</Button>
+                <Button variant="outline" size="sm" className="gap-2"><CheckSquare className="w-3.5 h-3.5" /> Task</Button>
+            </div>
+          </div>
+
+          <div className="flex-shrink-0 border-b bg-background/80 backdrop-blur-sm sticky top-0 z-10">
+            <AnimatedTabs tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} className="px-6" />
+          </div>
+
+          <div className="flex-1 p-6">
+            {activeTab === 'task' && <TaskPropertiesPanel task={task} />}
+            {activeTab === 'contact' && <ContactInfoPanel task={task} />}
+            {activeTab === 'ai' && <AIInsightsPanel task={task} />}
+          </div>
+        </div>
+      );
+    };
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 333

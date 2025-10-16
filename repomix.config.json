@@ -33,12 +33,29 @@
     // "index.html",
     // "src"
     //
-    //
-    "index.html",
     "src/App.tsx",
-    "src/components/layout/TopBar.tsx",
-    "src/features/settings/SettingsContent.tsx",
-    "src/store/appShell.store.ts"
+    "src/components/ui/animated-tabs.tsx",
+    "src/components/ui/dropdown-menu.tsx",
+    "src/components/ui/popover.tsx",
+    "src/hooks/useAppViewManager.hook.ts",
+    "src/pages/DataDemo/components/DataToolbar.tsx",
+    "src/pages/Messaging/components/ContactProfile.tsx",
+    "src/pages/Messaging/components/ConversationList.tsx",
+    "src/pages/Messaging/components/MessageThread.tsx",
+    "src/pages/Messaging/components/MessagingContent.tsx",
+    "src/pages/Messaging/data/mockData.ts",
+    "src/pages/Messaging/index.tsx",
+    "src/pages/Messaging/store/messaging.store.ts",
+    "src/pages/Messaging/types.ts",
+    "src/pages/Messaging/components/TaskList.tsx",
+    "src/pages/Messaging/components/ActivityFeed.tsx",
+    "src/pages/Messaging/components/ContactProfile.tsx",
+    "src/pages/Messaging/components/MessagingContent.tsx",
+    "src/pages/Messaging/components/TaskDetail.tsx",
+    "src/pages/Messaging/components/TaskHeader.tsx",
+    "src/pages/Messaging/components/TaskPropertiesPanel.tsx",
+    "src/pages/Messaging/index.tsx",
+    "src/pages/Messaging/store/messaging.store.ts"
   ],
   "ignore": {
     "useGitignore": true,

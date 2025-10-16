@@ -1,0 +1,1266 @@
+uuid: c8fd92e8-d456-4c22-b5df-1e5f8087902d
+projectId: jeli-app-shell
+createdAt: '2025-10-16T04:30:32.274Z'
+gitCommitMsg: >-
+  feat(messaging): Rearchitect feature to task-based inbox (Parts 1 & 2)
+
+  Overhauls the messaging feature's architecture to pivot from a simple chat
+  model to a task-based system.
+
+  Part 1: Data Layer Overhaul - Redefines data structures in `types.ts`,
+  replacing `Conversation` with a rich `Task` object that includes status,
+  priority, assignee, due date, and labels. - Updates `mockData.ts` to generate
+  `Task` objects and an activity feed with mixed message types (comments, notes,
+  system events). - Refactors `messaging.store.ts` to manage the new `Task`
+  state, introduces assignees, and adds advanced filtering logic for status,
+  priority, and assignees.
+
+  Part 2: Task List UI - Deletes the old `ConversationList.tsx` component. -
+  Creates a new `TaskList.tsx` component to display a dense, scannable list of
+  tasks with their key properties. - Implements a powerful filtering UI using a
+  popover with a command menu, allowing users to filter the inbox. - Integrates
+  the new `TaskList` into the main `MessagingPage` layout.
+promptSummary: >-
+  The user wants to refactor the messaging page to be a task-based inbox. This
+  involves overhauling the data model, mock data, and state management, and then
+  replacing the conversation list with a new, filterable task list component.
+  This commit covers the first two major parts of that refactor.
+reasoning:
+  - >-
+    This is a significant architectural refactor. I'm executing the first two
+    parts of our plan to pivot the messaging feature from a simple chat
+    application to a powerful, task-based inbox.
+  - >-
+    First, I'll overhaul the data layer. This involves redefining the core data
+    types in `types.ts`, replacing the `Conversation` model with a more robust
+    `Task` model that includes properties like status, priority, and assignees.
+    I'll then update the mock data in `mockData.ts` and the Zustand store in
+    `messaging.store.ts` to reflect this new structure, including adding
+    assignees and more complex filtering logic.
+  - >-
+    Second, I'll rebuild the UI for the left pane. I'm deleting the old
+    `ConversationList.tsx` and creating a new `TaskList.tsx` component from
+    scratch. This new component will provide a dense, scannable list of tasks
+    with their key properties visible at a glance. It also includes a
+    sophisticated filtering system, using a popover with a command menu, to
+    allow users to slice and dice their inbox by status, priority, assignee, and
+    tags. Finally, I'll update the main `MessagingPage` component to integrate
+    this new task list.
+  - '### Part 1: Overhaul Data Layer for Tasks'
+  - >-
+    I will now update the core data structures to represent conversations as
+    tasks.
+  - Next, I'll update the mock data to generate these new `Task` objects.
+  - >-
+    I'll now update the Zustand store to manage the new `Task` state and
+    filtering logic.
+  - '### Part 2: Rebuild Left Pane as a Task List'
+  - I will now delete the old conversation list.
+  - Next, I'll create the new `TaskList.tsx` component.
+  - >-
+    Finally, I'll update the main messaging page component to use the new
+    `TaskList`.
+operations:
+  - type: write
+    path: src/pages/Messaging/types.ts
+    content: |-
+      import type { LucideIcon } from "lucide-react";
+
+      export type Channel = 'whatsapp' | 'instagram' | 'facebook' | 'email';
+
+      export interface ChannelIcon {
+        Icon: LucideIcon;
+        color: string;
+      }
+
+      export interface Contact {
+        id: string;
+        name:string;
+        avatar: string;
+        online: boolean;
+        tags: string[];
+        email: string;
+        phone: string;
+        lastSeen: string;
+        company: string;
+        role: string;
+        activity: ActivityEvent[];
+        notes: Note[];
+      }
+
+      export interface Assignee {
+        id: string;
+        name: string;
+        avatar: string;
+      }
+
+      export type ActivityEventType = 'note' | 'call' | 'email' | 'meeting';
+
+      export interface ActivityEvent {
+        id: string;
+        type: ActivityEventType;
+        content: string;
+        timestamp: string;
+      }
+      export interface Note {
+        id: string;
+        content: string;
+        createdAt: string;
+      }
+
+      export interface Message {
+        id: string;
+        text: string;
+        timestamp: string;
+        sender: 'user' | 'contact' | 'system';
+        type: 'comment' | 'note' | 'system';
+        read: boolean;
+        userId?: string; // for notes or system messages from users
+      }
+
+      export interface AISummary {
+        sentiment: 'positive' | 'negative' | 'neutral';
+        summaryPoints: string[];
+        suggestedReplies: string[];
+      }
+
+      export type TaskStatus = 'open' | 'in-progress' | 'done' | 'snoozed';
+      export type TaskPriority = 'none' | 'low' | 'medium' | 'high';
+
+      export interface Task {
+        id: string;
+        title: string;
+        contactId: string;
+        channel: Channel;
+        unreadCount: number;
+        lastActivity: Message;
+        messages: Message[];
+        status: TaskStatus;
+        assigneeId: string | null;
+        dueDate: string | null;
+        priority: TaskPriority;
+        labels: string[];
+        aiSummary: AISummary;
+      }
+    patchStrategy: replace
+  - type: write
+    path: src/pages/Messaging/data/mockData.ts
+    content: >-
+      import type { Contact, Task, Message, ActivityEvent, Note, Assignee,
+      TaskStatus, TaskPriority } from '../types';
+
+
+      // --- ASSIGNEES ---
+
+      export const mockAssignees: Assignee[] = [
+        { id: 'user-1', name: 'You', avatar: `https://avatar.vercel.sh/you.png` },
+        { id: 'user-2', name: 'Alex Johnson', avatar: `https://avatar.vercel.sh/alex.png` },
+        { id: 'user-3', name: 'Samira Kumar', avatar: `https://avatar.vercel.sh/samira.png` },
+      ];
+
+
+      // --- HELPERS ---
+
+      const generateNotes = (contactName: string): Note[] => [
+        { id: `note-${Math.random()}`, content: `Initial discovery call with ${contactName}. Seemed very interested in our enterprise package.`, createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString() },
+        { id: `note-${Math.random()}`, content: `Followed up via email with pricing details.`, createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString() },
+      ];
+
+
+      const generateActivity = (contactName: string): ActivityEvent[] => [
+        { id: `act-${Math.random()}`, type: 'email', content: `Sent follow-up email regarding pricing.`, timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString() },
+        { id: `act-${Math.random()}`, type: 'call', content: `Had a 30-minute discovery call with ${contactName}.`, timestamp: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString() },
+        { id: `act-${Math.random()}`, type: 'meeting', content: `Scheduled a demo for next week.`, timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString() },
+      ];
+
+
+      // --- CONTACTS ---
+
+      export const mockContacts: Contact[] = [
+        { id: 'contact-1', name: 'Elena Rodriguez', avatar: `https://avatar.vercel.sh/elenarodriguez.png`, online: true, tags: ['VIP', 'New Lead'], email: 'elena.r@example.com', phone: '+1 234 567 8901', lastSeen: 'online', company: 'Innovate Inc.', role: 'CTO', activity: generateActivity('Elena Rodriguez'), notes: generateNotes('Elena Rodriguez'), },
+        { id: 'contact-2', name: 'Marcus Chen', avatar: `https://avatar.vercel.sh/marcuschen.png`, online: false, tags: ['Returning Customer'], email: 'marcus.c@example.com', phone: '+1 345 678 9012', lastSeen: '2 hours ago', company: 'Solutions Co.', role: 'Product Manager', activity: generateActivity('Marcus Chen'), notes: generateNotes('Marcus Chen'), },
+        { id: 'contact-3', name: 'Aisha Khan', avatar: `https://avatar.vercel.sh/aishakhan.png`, online: true, tags: ['Support Request'], email: 'aisha.k@example.com', phone: '+1 456 789 0123', lastSeen: 'online', company: 'Data Dynamics', role: 'Data Analyst', activity: generateActivity('Aisha Khan'), notes: generateNotes('Aisha Khan'), },
+        { id: 'contact-4', name: 'Leo Tolstoy', avatar: `https://avatar.vercel.sh/leotolstoy.png`, online: false, tags: [], email: 'leo.tolstoy@example.com', phone: '+44 20 7946 0958', lastSeen: 'yesterday', company: 'Classic Reads', role: 'Author', activity: generateActivity('Leo Tolstoy'), notes: generateNotes('Leo Tolstoy'), }
+      ];
+
+
+      // --- MESSAGE GENERATOR ---
+
+      const generateMessages = (count: number, contactName: string): Message[]
+      => {
+        const messages: Message[] = [];
+        const now = new Date();
+        for (let i = count - 1; i >= 0; i--) {
+          const random = Math.random();
+          let sender: Message['sender'] = 'contact';
+          let type: Message['type'] = 'comment';
+          let text = `This is a sample message number ${i} from ${contactName}.`;
+          let userId: string | undefined = undefined;
+
+          if (random > 0.85) { // Internal Note
+            sender = 'user';
+            type = 'note';
+            const user = mockAssignees[Math.floor(Math.random() * mockAssignees.length)];
+            userId = user.id;
+            text = `Internal note from ${user.name}: we should check their account history.`;
+          } else if (random > 0.7) { // System message
+            sender = 'system';
+            type = 'system';
+            text = `Task status changed to "in-progress"`;
+          } else if (random > 0.35) { // User comment
+            sender = 'user';
+            type = 'comment';
+            userId = 'user-1'; // "You"
+            text = `This is a reply from me. Time is roughly ${count - i} hours ago.`;
+          }
+          
+          messages.push({
+            id: `msg-${Math.random()}`,
+            text,
+            timestamp: new Date(now.getTime() - i * 60 * 60 * 1000).toISOString(),
+            sender,
+            type,
+            read: i < count - 2,
+            userId,
+          });
+        }
+        // Ensure the last message is from the contact for preview purposes
+        messages[messages.length - 1] = {
+          ...messages[messages.length-1],
+          sender: 'contact',
+          type: 'comment',
+          text: `Hey! This is the latest message from ${contactName}.`,
+          userId: undefined
+        };
+        return messages.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+      };
+
+
+      // --- TASKS ---
+
+      const statuses: TaskStatus[] = ['open', 'in-progress', 'done', 'snoozed'];
+
+      const priorities: TaskPriority[] = ['none', 'low', 'medium', 'high'];
+
+
+      export const mockTasks: Task[] = [
+        {
+          id: 'task-1',
+          title: 'Question about enterprise pricing',
+          contactId: 'contact-1',
+          channel: 'whatsapp',
+          unreadCount: 2,
+          messages: generateMessages(15, 'Elena Rodriguez'),
+          get lastActivity() { return this.messages[this.messages.length - 1]; },
+          status: 'in-progress',
+          assigneeId: 'user-2',
+          dueDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
+          priority: 'high',
+          labels: ['onboarding', 'pricing'],
+          aiSummary: { sentiment: 'positive', summaryPoints: ['Expressed strong interest in the new feature.', 'Asked about pricing tiers for enterprise.', 'Is ready for a follow-up call next week.',], suggestedReplies: ['Let\'s schedule that call!', 'Here is the pricing information.', 'Happy to hear you like it!',], },
+        },
+        {
+          id: 'task-2',
+          title: 'Minor issue with order #12345',
+          contactId: 'contact-2',
+          channel: 'instagram',
+          unreadCount: 0,
+          messages: generateMessages(8, 'Marcus Chen'),
+          get lastActivity() { return this.messages[this.messages.length - 1]; },
+          status: 'done',
+          assigneeId: 'user-1',
+          dueDate: null,
+          priority: 'medium',
+          labels: ['bug-report'],
+          aiSummary: { sentiment: 'neutral', summaryPoints: ['Reported a minor issue with order #12345.', 'Was satisfied with the proposed solution.', 'Inquired about the return policy.',], suggestedReplies: ['Can I help with anything else?', 'Here is our return policy.',], },
+        },
+        {
+          id: 'task-3',
+          title: 'Login issues, cannot reset password',
+          contactId: 'contact-3',
+          channel: 'facebook',
+          unreadCount: 5,
+          messages: generateMessages(20, 'Aisha Khan'),
+          get lastActivity() { return this.messages[this.messages.length - 1]; },
+          status: 'open',
+          assigneeId: null,
+          dueDate: null,
+          priority: 'high',
+          labels: ['urgent', 'tech-support'],
+          aiSummary: { sentiment: 'negative', summaryPoints: ['Frustrated with login issues.', 'Unable to reset password via email link.', 'Threatened to cancel their subscription.',], suggestedReplies: ['I\'m escalating this to our technical team.', 'Let\'s try a manual password reset.', 'We apologize for the inconvenience.',], },
+        },
+        {
+          id: 'task-4',
+          title: 'Follow-up on previous conversation',
+          contactId: 'contact-4',
+          channel: 'email',
+          unreadCount: 0,
+          messages: generateMessages(5, 'Leo Tolstoy'),
+          get lastActivity() { return this.messages[this.messages.length - 1]; },
+          status: 'snoozed',
+          assigneeId: 'user-3',
+          dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+          priority: 'low',
+          labels: [],
+          aiSummary: { sentiment: 'neutral', summaryPoints: ['Followed up on a previous conversation.', 'Confirmed meeting time for Thursday.', 'No outstanding issues.',], suggestedReplies: ['Sounds good!', 'See you then!',], },
+        },
+      ];
+    patchStrategy: replace
+  - type: write
+    path: src/pages/Messaging/store/messaging.store.ts
+    content: >-
+      import { create } from 'zustand';
+
+      import { mockTasks, mockContacts, mockAssignees } from '../data/mockData';
+
+      import type { Task, Contact, Channel, Assignee, TaskStatus, TaskPriority }
+      from '../types';
+
+
+      interface MessagingState {
+        tasks: Task[];
+        contacts: Contact[];
+        assignees: Assignee[];
+        searchTerm: string;
+        activeFilters: {
+          channels: Channel[];
+          tags: string[];
+          status: TaskStatus[];
+          priority: TaskPriority[];
+          assigneeId: string[];
+        };
+      }
+
+
+      interface MessagingActions {
+        getTaskById: (id: string) => (Task & { contact: Contact, assignee: Assignee | null }) | undefined;
+        getFilteredTasks: () => (Task & { contact: Contact, assignee: Assignee | null })[];
+        setSearchTerm: (term: string) => void;
+        setFilters: (filters: Partial<MessagingState['activeFilters']>) => void;
+        getAvailableTags: () => string[];
+      }
+
+
+      export const useMessagingStore = create<MessagingState &
+      MessagingActions>((set, get) => ({
+        tasks: mockTasks,
+        contacts: mockContacts,
+        assignees: mockAssignees,
+        searchTerm: '',
+        activeFilters: {
+          channels: [],
+          tags: [],
+          status: [],
+          priority: [],
+          assigneeId: [],
+        },
+
+        getTaskById: (id) => {
+          const task = get().tasks.find(t => t.id === id);
+          if (!task) return undefined;
+
+          const contact = get().contacts.find(c => c.id === task.contactId);
+          if (!contact) return undefined;
+
+          const assignee = get().assignees.find(a => a.id === task.assigneeId) || null;
+
+          return { ...task, contact, assignee };
+        },
+
+        getFilteredTasks: () => {
+          const { tasks, contacts, assignees, searchTerm, activeFilters } = get();
+          const lowercasedSearch = searchTerm.toLowerCase();
+
+          const mapped = tasks.map(task => {
+            const contact = contacts.find(c => c.id === task.contactId) as Contact;
+            const assignee = assignees.find(a => a.id === task.assigneeId) || null;
+            return { ...task, contact, assignee };
+          });
+
+          const filtered = mapped.filter(task => {
+            const searchMatch = task.title.toLowerCase().includes(lowercasedSearch) || task.contact.name.toLowerCase().includes(lowercasedSearch);
+            const channelMatch = activeFilters.channels.length === 0 || activeFilters.channels.includes(task.channel);
+            const tagMatch = activeFilters.tags.length === 0 || activeFilters.tags.some(tag => task.contact.tags.includes(tag));
+            const statusMatch = activeFilters.status.length === 0 || activeFilters.status.includes(task.status);
+            const priorityMatch = activeFilters.priority.length === 0 || activeFilters.priority.includes(task.priority);
+            const assigneeMatch = activeFilters.assigneeId.length === 0 || (task.assigneeId && activeFilters.assigneeId.includes(task.assigneeId));
+            
+            return searchMatch && channelMatch && tagMatch && statusMatch && priorityMatch && assigneeMatch;
+          });
+
+          return filtered.sort((a, b) => new Date(b.lastActivity.timestamp).getTime() - new Date(a.lastActivity.timestamp).getTime());
+        },
+
+        setSearchTerm: (term) => set({ searchTerm: term }),
+
+        setFilters: (newFilters) => set(state => ({
+          activeFilters: { ...state.activeFilters, ...newFilters }
+        })),
+
+        getAvailableTags: () => {
+          const allTags = new Set(get().contacts.flatMap(c => c.tags));
+          return Array.from(allTags);
+        }
+      }));
+    patchStrategy: replace
+  - type: delete
+    path: src/pages/Messaging/components/ConversationList.tsx
+  - type: write
+    path: src/pages/Messaging/components/TaskList.tsx
+    content: >-
+      import { useState, useMemo } from 'react';
+
+      import { Search, SlidersHorizontal, Check, Inbox, Clock, Zap, Shield }
+      from 'lucide-react';
+
+      import { Link, useParams } from 'react-router-dom';
+
+      import { formatDistanceToNow } from 'date-fns';
+
+      import { useMessagingStore } from '../store/messaging.store';
+
+      import { Button } from '@/components/ui/button';
+
+      import { Input } from '@/components/ui/input';
+
+      import { Avatar, AvatarFallback, AvatarImage } from
+      '@/components/ui/avatar';
+
+      import { Badge } from '@/components/ui/badge';
+
+      import { Popover, PopoverContent, PopoverTrigger } from
+      '@/components/ui/popover';
+
+      import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem,
+      CommandList, CommandSeparator } from '@/components/ui/command';
+
+      import { cn } from '@/lib/utils';
+
+      import { AnimatedTabs } from '@/components/ui/animated-tabs';
+
+      import type { TaskStatus, TaskPriority } from '../types';
+
+
+      // Local helpers for styling based on task properties
+
+      const getStatusIcon = (status: TaskStatus) => {
+          switch(status) {
+              case 'open': return <Inbox className="w-3 h-3 text-blue-500" />;
+              case 'in-progress': return <Zap className="w-3 h-3 text-yellow-500" />;
+              case 'done': return <Shield className="w-3 h-3 text-green-500" />;
+              case 'snoozed': return <Clock className="w-3 h-3 text-gray-500" />;
+          }
+      };
+
+
+      const getPriorityIcon = (priority: TaskPriority) => {
+          switch(priority) {
+              case 'high': return <div className="w-2 h-2 rounded-full bg-red-500" />;
+              case 'medium': return <div className="w-2 h-2 rounded-full bg-yellow-500" />;
+              case 'low': return <div className="w-2 h-2 rounded-full bg-green-500" />;
+              default: return <div className="w-2 h-2 rounded-full bg-gray-400" />;
+          }
+      };
+
+
+      const statusOptions: { value: TaskStatus; label: string }[] = [
+          { value: 'open', label: 'Open' }, { value: 'in-progress', label: 'In Progress' }, { value: 'done', label: 'Done' }, { value: 'snoozed', label: 'Snoozed' }
+      ];
+
+      const priorityOptions: { value: TaskPriority; label: string }[] = [
+          { value: 'high', label: 'High' }, { value: 'medium', label: 'Medium' }, { value: 'low', label: 'Low' }, { value: 'none', label: 'None' }
+      ];
+
+
+      export const TaskList = () => {
+        const { conversationId } = useParams<{ conversationId: string }>(); // This will be taskId later
+        const { 
+          getFilteredTasks,
+          searchTerm,
+          setSearchTerm,
+          activeFilters,
+         } = useMessagingStore();
+        const tasks = getFilteredTasks();
+        const [activeTab, setActiveTab] = useState('all');
+
+        const tabs = useMemo(() => [{ id: 'all', label: 'All Tasks' }, { id: 'unread', label: 'Unread' }], []);
+
+        const filteredTasks = useMemo(() => {
+          if (activeTab === 'unread') {
+            return tasks.filter(task => task.unreadCount > 0);
+          }
+          return tasks;
+        }, [tasks, activeTab]);
+        
+        const activeFilterCount = Object.values(activeFilters).reduce((count, filterArray) => count + filterArray.length, 0);
+
+
+        return (
+          <div className="h-full flex flex-col border-r bg-background/80">
+            {/* Header */}
+            <div className="flex-shrink-0 border-b bg-background/80 p-4 space-y-4">
+              <h2 className="text-xl font-bold tracking-tight">Inbox</h2>
+              <div className="flex gap-2">
+                  <div className="relative flex-1">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input placeholder="Search tasks..." className="pl-9" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+                  </div>
+                  <Popover>
+                      <PopoverTrigger asChild>
+                          <Button variant="outline" size="sm" className="h-10 border-dashed gap-2">
+                              <SlidersHorizontal className="w-4 h-4" />
+                              Filters
+                              {activeFilterCount > 0 && <Badge variant="secondary" className="rounded-sm px-1 font-normal">{activeFilterCount}</Badge>}
+                          </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[240px] p-0" align="end">
+                          <FilterCommand />
+                      </PopoverContent>
+                  </Popover>
+              </div>
+            </div>
+            <AnimatedTabs tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} />
+
+            {/* Task List */}
+            <div className="flex-1 overflow-y-auto">
+              <nav className="p-2 space-y-1">
+                {filteredTasks.map(task => (
+                  <Link
+                    to={`/messaging/${task.id}`}
+                    key={task.id}
+                    className={cn(
+                      "block p-3 rounded-lg text-left transition-all duration-200 hover:bg-accent/50",
+                      "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 outline-none",
+                      conversationId === task.id && "bg-accent"
+                    )}
+                  >
+                    <div className="flex items-start gap-3">
+                      <Avatar className="h-9 w-9 mt-1">
+                        <AvatarImage src={task.contact.avatar} alt={task.contact.name} />
+                        <AvatarFallback>{task.contact.name.charAt(0)}</AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 overflow-hidden">
+                          <div className="flex justify-between items-center mb-1">
+                              <p className="text-sm font-semibold truncate pr-2">{task.contact.name}</p>
+                              <p className="text-xs text-muted-foreground whitespace-nowrap">{formatDistanceToNow(new Date(task.lastActivity.timestamp), { addSuffix: true })}</p>
+                          </div>
+                          <p className="text-sm truncate text-foreground">{task.title}</p>
+                          <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+                              <div className="flex items-center gap-1.5" title={task.status}>
+                                  {getStatusIcon(task.status)}
+                                  <span className="capitalize">{task.status.replace('-', ' ')}</span>
+                              </div>
+                              <div className="flex items-center gap-1.5" title={task.priority}>
+                                  {getPriorityIcon(task.priority)}
+                                  <span className="capitalize">{task.priority}</span>
+                              </div>
+                              {task.assignee && (
+                                  <div className="flex items-center gap-1.5" title={`Assigned to ${task.assignee.name}`}>
+                                      <Avatar className="h-4 w-4"><AvatarImage src={task.assignee.avatar} /></Avatar>
+                                  </div>
+                              )}
+                          </div>
+                      </div>
+                      {task.unreadCount > 0 && (
+                          <div className="flex items-center justify-center self-center ml-auto">
+                              <Badge className="bg-primary h-5 w-5 p-0 flex items-center justify-center">{task.unreadCount}</Badge>
+                          </div>
+                      )}
+                    </div>
+                  </Link>
+                ))}
+              </nav>
+            </div>
+          </div>
+        );
+      };
+
+
+      // Filter component for popover
+
+      function FilterCommand() {
+          const { activeFilters, setFilters, assignees, getAvailableTags } = useMessagingStore();
+          const availableTags = useMemo(() => getAvailableTags(), [getAvailableTags]);
+
+          const handleSelect = (type: 'status' | 'priority' | 'assigneeId' | 'tags', value: string) => {
+              const current = new Set(activeFilters[type]);
+              current.has(value) ? current.delete(value) : current.add(value);
+              setFilters({ [type]: Array.from(current) });
+          };
+
+          const hasActiveFilters = Object.values(activeFilters).some(arr => arr.length > 0);
+
+          return (
+              <Command>
+                  <CommandInput placeholder="Filter by..." />
+                  <CommandList>
+                      <CommandEmpty>No results found.</CommandEmpty>
+                      <CommandGroup heading="Status">
+                          {statusOptions.map(o => (
+                              <CommandItem key={o.value} onSelect={() => handleSelect('status', o.value)}>
+                                  <div className={cn('mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary', activeFilters.status.includes(o.value) ? 'bg-primary text-primary-foreground' : 'opacity-50 [&_svg]:invisible')}><Check className="h-4 w-4" /></div>
+                                  <span>{o.label}</span>
+                              </CommandItem>
+                          ))}
+                      </CommandGroup>
+                      <CommandSeparator />
+                      <CommandGroup heading="Priority">
+                          {priorityOptions.map(o => (
+                              <CommandItem key={o.value} onSelect={() => handleSelect('priority', o.value)}>
+                                  <div className={cn('mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary', activeFilters.priority.includes(o.value) ? 'bg-primary text-primary-foreground' : 'opacity-50 [&_svg]:invisible')}><Check className="h-4 w-4" /></div>
+                                  <span>{o.label}</span>
+                              </CommandItem>
+                          ))}
+                      </CommandGroup>
+                      <CommandSeparator />
+                      <CommandGroup heading="Assignee">
+                          {assignees.map(a => (
+                              <CommandItem key={a.id} onSelect={() => handleSelect('assigneeId', a.id)}>
+                                  <div className={cn('mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary', activeFilters.assigneeId.includes(a.id) ? 'bg-primary text-primary-foreground' : 'opacity-50 [&_svg]:invisible')}><Check className="h-4 w-4" /></div>
+                                  <Avatar className="h-5 w-5 mr-2"><AvatarImage src={a.avatar} /><AvatarFallback>{a.name.charAt(0)}</AvatarFallback></Avatar>
+                                  <span>{a.name}</span>
+                              </CommandItem>
+                          ))}
+                      </CommandGroup>
+                      <CommandSeparator />
+                      <CommandGroup heading="Tags">
+                          {availableTags.map(t => (
+                              <CommandItem key={t} onSelect={() => handleSelect('tags', t)}>
+                                  <div className={cn('mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary', activeFilters.tags.includes(t) ? 'bg-primary text-primary-foreground' : 'opacity-50 [&_svg]:invisible')}><Check className="h-4 w-4" /></div>
+                                  <span>{t}</span>
+                              </CommandItem>
+                          ))}
+                      </CommandGroup>
+
+                      {hasActiveFilters && (
+                          <>
+                              <CommandSeparator />
+                              <CommandGroup>
+                                  <CommandItem onSelect={() => setFilters({ status: [], priority: [], assigneeId: [], tags: [], channels: [] })} className="justify-center text-center text-sm">Clear all filters</CommandItem>
+                              </CommandGroup>
+                          </>
+                      )}
+                  </CommandList>
+              </Command>
+          );
+      }
+    patchStrategy: replace
+  - type: write
+    path: src/pages/Messaging/index.tsx
+    content: |+
+      --- src/pages/Messaging/index.tsx
+      +++ src/pages/Messaging/index.tsx
+      @@ -1,7 +1,7 @@
+       import React, { useState, useRef, useEffect, useCallback } from "react";
+       import { useParams } from "react-router-dom";
+      -import { ConversationList } from "./components/ConversationList";
+      +import { TaskList } from "./components/TaskList";
+       import { MessageThread } from "./components/MessageThread";
+       import { cn } from "@/lib/utils";
+       
+      @@ -53,7 +53,7 @@
+             )}
+           >
+             <div style={{ width: `${listWidth}px` }} className="flex-shrink-0 h-full">
+      -        <ConversationList />
+      +        <TaskList />
+             </div>
+             <div onMouseDown={handleMouseDown} className="w-2 flex-shrink-0 cursor-col-resize group flex items-center justify-center">
+               <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200" />
+
+    patchStrategy: standard-diff
+snapshot:
+  src/pages/Messaging/components/TaskList.tsx: null
+  src/pages/Messaging/types.ts: |-
+    import type { LucideIcon } from "lucide-react";
+
+    export type Channel = 'whatsapp' | 'instagram' | 'facebook';
+
+    export interface ChannelIcon {
+      Icon: LucideIcon;
+      color: string;
+    }
+
+    export interface Contact {
+      id: string;
+      name: string;
+      avatar: string;
+      online: boolean;
+      tags: string[];
+      email: string;
+      phone: string;
+      lastSeen: string;
+      company: string;
+      role: string;
+      activity: ActivityEvent[];
+      notes: Note[];
+    }
+
+    export type ActivityEventType = 'note' | 'call' | 'email' | 'meeting';
+
+    export interface ActivityEvent {
+      id: string;
+      type: ActivityEventType;
+      content: string;
+      timestamp: string;
+    }
+    export interface Note {
+      id: string;
+      content: string;
+      createdAt: string;
+    }
+    export interface Message {
+      id: string;
+      text: string;
+      timestamp: string;
+      sender: 'user' | 'contact';
+      read: boolean;
+    }
+
+    export interface AISummary {
+      sentiment: 'positive' | 'negative' | 'neutral';
+      summaryPoints: string[];
+      suggestedReplies: string[];
+    }
+
+    export interface Conversation {
+      id: string;
+      contactId: string;
+      channel: Channel;
+      unreadCount: number;
+      lastMessage: Message;
+      messages: Message[];
+      aiSummary: AISummary;
+    }
+  src/pages/Messaging/data/mockData.ts: >-
+    import type { Contact, Conversation, Message, ActivityEvent, Note } from
+    '../types';
+
+
+    // --- HELPERS ---
+
+    const generateNotes = (contactName: string): Note[] => [
+      { id: `note-${Math.random()}`, content: `Initial discovery call with ${contactName}. Seemed very interested in our enterprise package.`, createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString() },
+      { id: `note-${Math.random()}`, content: `Followed up via email with pricing details.`, createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString() },
+    ];
+
+
+    const generateActivity = (contactName: string): ActivityEvent[] => [
+      { id: `act-${Math.random()}`, type: 'email', content: `Sent follow-up email regarding pricing.`, timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString() },
+      { id: `act-${Math.random()}`, type: 'call', content: `Had a 30-minute discovery call with ${contactName}.`, timestamp: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString() },
+      { id: `act-${Math.random()}`, type: 'meeting', content: `Scheduled a demo for next week.`, timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString() },
+    ];
+
+
+    // --- CONTACTS ---
+
+    export const mockContacts: Contact[] = [
+      {
+        id: 'contact-1',
+        name: 'Elena Rodriguez',
+        avatar: `https://avatar.vercel.sh/elenarodriguez.png`,
+        online: true,
+        tags: ['VIP', 'New Lead'],
+        email: 'elena.r@example.com',
+        phone: '+1 234 567 8901',
+        lastSeen: 'online',
+        company: 'Innovate Inc.',
+        role: 'CTO',
+        activity: generateActivity('Elena Rodriguez'),
+        notes: generateNotes('Elena Rodriguez'),
+      },
+      {
+        id: 'contact-2',
+        name: 'Marcus Chen',
+        avatar: `https://avatar.vercel.sh/marcuschen.png`,
+        online: false,
+        tags: ['Returning Customer'],
+        email: 'marcus.c@example.com',
+        phone: '+1 345 678 9012',
+        lastSeen: '2 hours ago',
+        company: 'Solutions Co.',
+        role: 'Product Manager',
+        activity: generateActivity('Marcus Chen'),
+        notes: generateNotes('Marcus Chen'),
+      },
+      {
+        id: 'contact-3',
+        name: 'Aisha Khan',
+        avatar: `https://avatar.vercel.sh/aishakhan.png`,
+        online: true,
+        tags: ['Support Request'],
+        email: 'aisha.k@example.com',
+        phone: '+1 456 789 0123',
+        lastSeen: 'online',
+        company: 'Data Dynamics',
+        role: 'Data Analyst',
+        activity: generateActivity('Aisha Khan'),
+        notes: generateNotes('Aisha Khan'),
+      },
+      {
+        id: 'contact-4',
+        name: 'Leo Tolstoy',
+        avatar: `https://avatar.vercel.sh/leotolstoy.png`,
+        online: false,
+        tags: [],
+        email: 'leo.tolstoy@example.com',
+        phone: '+44 20 7946 0958',
+        lastSeen: 'yesterday',
+        company: 'Classic Reads',
+        role: 'Author',
+        activity: generateActivity('Leo Tolstoy'),
+        notes: generateNotes('Leo Tolstoy'),
+      }
+    ];
+
+
+    // --- MESSAGE GENERATOR ---
+
+    const generateMessages = (count: number, contactName: string): Message[] =>
+    {
+      const messages: Message[] = [];
+      const now = new Date();
+      for (let i = count - 1; i >= 0; i--) {
+        const sender = Math.random() > 0.5 ? 'user' : 'contact';
+        messages.push({
+          id: `msg-${Math.random()}`,
+          text: `This is a sample message number ${i} from ${sender === 'user' ? 'me' : contactName}. The time is roughly ${count - i} hours ago.`,
+          timestamp: new Date(now.getTime() - i * 60 * 60 * 1000).toISOString(),
+          sender,
+          read: i < count - 2,
+        });
+      }
+      // Ensure the last message is from the contact for preview purposes
+      messages[messages.length - 1].sender = 'contact';
+      messages[messages.length - 1].text = `Hey! This is the latest message from ${contactName}.`;
+      return messages.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+    };
+
+
+    // --- CONVERSATIONS ---
+
+    export const mockConversations: Conversation[] = [
+      {
+        id: 'conv-1',
+        contactId: 'contact-1',
+        channel: 'whatsapp',
+        unreadCount: 2,
+        messages: generateMessages(15, 'Elena Rodriguez'),
+        get lastMessage() { return this.messages[this.messages.length - 1]; },
+        aiSummary: {
+          sentiment: 'positive',
+          summaryPoints: [
+            'Expressed strong interest in the new feature.',
+            'Asked about pricing tiers for enterprise.',
+            'Is ready for a follow-up call next week.',
+          ],
+          suggestedReplies: [
+            'Let\'s schedule that call!',
+            'Here is the pricing information.',
+            'Happy to hear you like it!',
+          ],
+        },
+      },
+      {
+        id: 'conv-2',
+        contactId: 'contact-2',
+        channel: 'instagram',
+        unreadCount: 0,
+        messages: generateMessages(8, 'Marcus Chen'),
+        get lastMessage() { return this.messages[this.messages.length - 1]; },
+        aiSummary: {
+          sentiment: 'neutral',
+          summaryPoints: [
+            'Reported a minor issue with order #12345.',
+            'Was satisfied with the proposed solution.',
+            'Inquired about the return policy.',
+          ],
+          suggestedReplies: [
+            'Can I help with anything else?',
+            'Here is our return policy.',
+          ],
+        },
+      },
+      {
+        id: 'conv-3',
+        contactId: 'contact-3',
+        channel: 'facebook',
+        unreadCount: 5,
+        messages: generateMessages(20, 'Aisha Khan'),
+        get lastMessage() { return this.messages[this.messages.length - 1]; },
+        aiSummary: {
+          sentiment: 'negative',
+          summaryPoints: [
+            'Frustrated with login issues.',
+            'Unable to reset password via email link.',
+            'Threatened to cancel their subscription.',
+          ],
+          suggestedReplies: [
+            'I\'m escalating this to our technical team.',
+            'Let\'s try a manual password reset.',
+            'We apologize for the inconvenience.',
+          ],
+        },
+      },
+      {
+        id: 'conv-4',
+        contactId: 'contact-4',
+        channel: 'whatsapp',
+        unreadCount: 0,
+        messages: generateMessages(5, 'Leo Tolstoy'),
+        get lastMessage() { return this.messages[this.messages.length - 1]; },
+        aiSummary: {
+          sentiment: 'neutral',
+          summaryPoints: [
+            'Followed up on a previous conversation.',
+            'Confirmed meeting time for Thursday.',
+            'No outstanding issues.',
+          ],
+          suggestedReplies: [
+            'Sounds good!',
+            'See you then!',
+          ],
+        },
+      },
+    ];
+  src/pages/Messaging/store/messaging.store.ts: >-
+    import { create } from 'zustand';
+
+    import { mockConversations, mockContacts } from '../data/mockData';
+
+    import type { Conversation, Contact, Channel } from '../types';
+
+
+    interface MessagingState {
+      conversations: Conversation[];
+      contacts: Contact[];
+      searchTerm: string;
+      activeFilters: {
+        channels: Channel[];
+        tags: string[];
+      };
+    }
+
+
+    interface MessagingActions {
+      getConversationById: (id: string) => (Conversation & { contact: Contact }) | undefined;
+      getConversationsWithContact: () => (Conversation & { contact: Contact })[];
+      setSearchTerm: (term: string) => void;
+      setFilters: (filters: Partial<MessagingState['activeFilters']>) => void;
+      getAvailableTags: () => string[];
+    }
+
+
+    export const useMessagingStore = create<MessagingState &
+    MessagingActions>((set, get) => ({
+      conversations: mockConversations,
+      contacts: mockContacts,
+      searchTerm: '',
+      activeFilters: {
+        channels: [],
+        tags: [],
+      },
+
+      getConversationById: (id) => {
+        const conversation = get().conversations.find(c => c.id === id);
+        if (!conversation) return undefined;
+
+        const contact = get().contacts.find(c => c.id === conversation.contactId);
+        if (!contact) return undefined; // Should not happen with consistent data
+
+        return { ...conversation, contact };
+      },
+
+      getConversationsWithContact: () => {
+        const { conversations, contacts, searchTerm, activeFilters } = get();
+        const lowercasedSearch = searchTerm.toLowerCase();
+
+        const mapped = conversations.map(convo => {
+          const contact = contacts.find(c => c.id === convo.contactId) as Contact;
+          return { ...convo, contact };
+        });
+
+        const filtered = mapped.filter(convo => {
+          const searchMatch = convo.contact.name.toLowerCase().includes(lowercasedSearch);
+          const channelMatch = activeFilters.channels.length === 0 || activeFilters.channels.includes(convo.channel);
+          const tagMatch = activeFilters.tags.length === 0 || activeFilters.tags.some(tag => convo.contact.tags.includes(tag));
+          return searchMatch && channelMatch && tagMatch;
+        });
+
+        return filtered.sort((a, b) => new Date(b.lastMessage.timestamp).getTime() - new Date(a.lastMessage.timestamp).getTime());
+      },
+
+      setSearchTerm: (term) => set({ searchTerm: term }),
+
+      setFilters: (newFilters) => set(state => ({
+        activeFilters: { ...state.activeFilters, ...newFilters }
+      })),
+
+      getAvailableTags: () => {
+        const allTags = new Set(get().contacts.flatMap(c => c.tags));
+        return Array.from(allTags);
+      }
+    }));
+  src/pages/Messaging/components/ConversationList.tsx: >-
+    import { useState, useMemo, useCallback } from 'react';
+
+    import { Search, SlidersHorizontal } from 'lucide-react';
+
+    import { Link, useParams } from 'react-router-dom';
+
+    import { formatDistanceToNow } from 'date-fns';
+
+    import { useMessagingStore } from '../store/messaging.store';
+
+    import { Button } from '@/components/ui/button';
+
+    import { Input } from '@/components/ui/input';
+
+    import { Avatar, AvatarFallback, AvatarImage } from
+    '@/components/ui/avatar';
+
+    import { Badge } from '@/components/ui/badge';
+
+    import { Popover, PopoverContent, PopoverTrigger } from
+    '@/components/ui/popover';
+
+    import { Checkbox } from '@/components/ui/checkbox';
+
+    import { cn } from '@/lib/utils';
+
+    import { AnimatedTabs } from '@/components/ui/animated-tabs';
+
+    import { ChannelIcon } from './ChannelIcons';
+
+    import type { Channel } from '../types';
+
+
+    const channels: { id: Channel, label: string }[] = [
+      { id: 'whatsapp', label: 'WhatsApp' },
+      { id: 'instagram', label: 'Instagram' },
+      { id: 'facebook', label: 'Facebook' },
+    ];
+
+
+    export const ConversationList = () => {
+      const { conversationId } = useParams<{ conversationId: string }>();
+      const { 
+        getConversationsWithContact,
+        searchTerm,
+        setSearchTerm,
+        activeFilters,
+        setFilters,
+        getAvailableTags,
+       } = useMessagingStore();
+      const conversations = getConversationsWithContact();
+      const [activeTab, setActiveTab] = useState('all');
+      const availableTags = useMemo(() => getAvailableTags(), [getAvailableTags]);
+
+      const tabs = useMemo(() => [{ id: 'all', label: 'All' }, { id: 'unread', label: 'Unread' }], []);
+
+      const handleChannelFilterChange = useCallback((channelId: Channel) => {
+        const newChannels = activeFilters.channels.includes(channelId)
+          ? activeFilters.channels.filter(c => c !== channelId)
+          : [...activeFilters.channels, channelId];
+        setFilters({ channels: newChannels });
+      }, [activeFilters.channels, setFilters]);
+
+      const handleTagFilterChange = useCallback((tag: string) => {
+        const newTags = activeFilters.tags.includes(tag)
+          ? activeFilters.tags.filter(t => t !== tag)
+          : [...activeFilters.tags, tag];
+        setFilters({ tags: newTags });
+      }, [activeFilters.tags, setFilters]);
+
+      const filteredConversations = useMemo(() => {
+        if (activeTab === 'unread') {
+          return conversations.filter(convo => convo.unreadCount > 0); // This now filters on the already filtered list from store
+        }
+        return conversations;
+      }, [conversations, activeTab]);
+
+      return (
+        <div className="h-full flex flex-col border-r bg-background/80">
+          {/* Header */}
+          <div className="flex-shrink-0 border-b bg-background/80">
+            <div className="px-4 pt-4">
+              <div className="flex items-center mb-4">
+                <h2 className="text-xl font-bold tracking-tight">Conversations</h2>
+              </div>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input placeholder="Search by name..." className="pl-9" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+                </div>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="icon" className="h-10 w-10 flex-shrink-0">
+                      <SlidersHorizontal className="w-4 h-4" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-64 p-4" align="end">
+                    <div className="space-y-4">
+                      <div>
+                        <h4 className="text-sm font-semibold mb-2">Channels</h4>
+                        <div className="space-y-2">
+                          {channels.map(channel => (
+                            <div key={channel.id} className="flex items-center gap-2">
+                              <Checkbox 
+                                id={`channel-${channel.id}`} 
+                                checked={activeFilters.channels.includes(channel.id)}
+                                onCheckedChange={() => handleChannelFilterChange(channel.id)}
+                              />
+                              <label htmlFor={`channel-${channel.id}`} className="text-sm cursor-pointer">{channel.label}</label>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-semibold mb-2">Tags</h4>
+                        <div className="space-y-2">
+                          {availableTags.map(tag => (
+                            <div key={tag} className="flex items-center gap-2">
+                              <Checkbox 
+                                id={`tag-${tag}`} 
+                                checked={activeFilters.tags.includes(tag)}
+                                onCheckedChange={() => handleTagFilterChange(tag)}
+                              />
+                              <label htmlFor={`tag-${tag}`} className="text-sm cursor-pointer">{tag}</label>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </div>
+            <AnimatedTabs tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} />
+          </div>
+
+          {/* Conversation List */}
+          <div className="flex-1 overflow-y-auto">
+            <nav className="p-3 space-y-1">
+              {filteredConversations.map(convo => (
+                <Link
+                  to={`/messaging/${convo.id}`}
+                  key={convo.id}
+                  className={cn(
+                    "flex items-start gap-4 p-4 rounded-xl text-left transition-all duration-200 hover:bg-accent/50",
+                    "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 outline-none",
+                    conversationId === convo.id && "bg-accent border-l-4 border-primary pl-3"
+                  )}
+                >
+                  <div className="relative">
+                    <Avatar className="h-12 w-12">
+                      <AvatarImage src={convo.contact.avatar} alt={convo.contact.name} />
+                      <AvatarFallback>{convo.contact.name.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                    <div className="absolute bottom-0 right-0">
+                        <ChannelIcon channel={convo.channel} className="bg-background rounded-full p-0.5" />
+                    </div>
+                  </div>
+                  <div className="flex-1 overflow-hidden">
+                    <div className="flex justify-between items-center">
+                      <p className="font-semibold truncate">{convo.contact.name}</p>
+                        <p className="text-xs text-muted-foreground whitespace-nowrap">{formatDistanceToNow(new Date(convo.lastMessage.timestamp), { addSuffix: false })}</p>
+                    </div>
+                    <p className="text-sm text-muted-foreground truncate">{convo.lastMessage.text}</p>
+                  </div>
+                  {convo.unreadCount > 0 && (
+                    <div className="flex items-center justify-center self-center ml-auto">
+                        <Badge className="bg-primary h-5 w-5 p-0 flex items-center justify-center">{convo.unreadCount}</Badge>
+                    </div>
+                  )}
+                </Link>
+              ))}
+            </nav>
+          </div>
+        </div>
+      );
+    };
+  src/pages/Messaging/index.tsx: |-
+    import React, { useState, useRef, useEffect, useCallback } from "react";
+    import { useParams } from "react-router-dom";
+    import { ConversationList } from "./components/ConversationList";
+    import { MessageThread } from "./components/MessageThread";
+    import { cn } from "@/lib/utils";
+
+    const useResizableMessagingPanes = (
+      containerRef: React.RefObject<HTMLDivElement>,
+      initialWidth: number = 320
+    ) => {
+      const [isResizing, setIsResizing] = useState(false);
+      const [listWidth, setListWidth] = useState(initialWidth);
+
+      const handleMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        setIsResizing(true);
+      }, []);
+
+      useEffect(() => {
+        const handleMouseMove = (e: MouseEvent) => {
+          if (!isResizing || !containerRef.current) return;
+          const containerRect = containerRef.current.getBoundingClientRect();
+          const newWidth = e.clientX - containerRect.left;
+          // Constraints for the conversation list pane
+          setListWidth(Math.max(280, Math.min(newWidth, containerRect.width - 500)));
+        };
+
+        const handleMouseUp = () => {
+          setIsResizing(false);
+        };
+
+        if (isResizing) {
+          document.body.style.cursor = 'col-resize';
+          document.body.style.userSelect = 'none';
+          window.addEventListener('mousemove', handleMouseMove);
+          window.addEventListener('mouseup', handleMouseUp, { once: true });
+        }
+
+        return () => {
+          window.removeEventListener('mousemove', handleMouseMove);
+          window.removeEventListener('mouseup', handleMouseUp);
+          if (document.body) {
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+          }
+        };
+      }, [isResizing, containerRef]);
+
+      return { listWidth, handleMouseDown, isResizing };
+    };
+
+    export default function MessagingPage() {
+      const { conversationId } = useParams<{ conversationId?: string }>();
+      const containerRef = useRef<HTMLDivElement>(null);
+
+      const { listWidth, handleMouseDown, isResizing } = useResizableMessagingPanes(containerRef);
+
+      return (
+        <div 
+          ref={containerRef}
+          className={cn(
+            "h-full w-full flex bg-background",
+            isResizing && "cursor-col-resize select-none"
+          )}
+        >
+          <div style={{ width: `${listWidth}px` }} className="flex-shrink-0 h-full">
+            <ConversationList />
+          </div>
+          <div onMouseDown={handleMouseDown} className="w-2 flex-shrink-0 cursor-col-resize group flex items-center justify-center">
+            <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200" />
+          </div>
+          <div className="flex-1 min-w-0 h-full">
+            <MessageThread conversationId={conversationId} />
+          </div>
+        </div>
+      );
+    }
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 326

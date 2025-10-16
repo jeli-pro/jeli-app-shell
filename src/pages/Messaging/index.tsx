@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { useParams } from "react-router-dom";
-import { ConversationList } from "./components/ConversationList";
-import { MessageThread } from "./components/MessageThread";
+import { TaskList } from "./components/TaskList";
+import { TaskDetail } from "./components/TaskDetail";
 import { cn } from "@/lib/utils";
 
 const useResizableMessagingPanes = (
@@ -64,13 +64,13 @@ export default function MessagingPage() {
       )}
     >
       <div style={{ width: `${listWidth}px` }} className="flex-shrink-0 h-full">
-        <ConversationList />
+        <TaskList />
       </div>
       <div onMouseDown={handleMouseDown} className="w-2 flex-shrink-0 cursor-col-resize group flex items-center justify-center">
         <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200" />
       </div>
       <div className="flex-1 min-w-0 h-full">
-        <MessageThread conversationId={conversationId} />
+        <TaskDetail />
       </div>
     </div>
   );

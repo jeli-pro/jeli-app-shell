@@ -1,0 +1,1296 @@
+uuid: 442b1008-59c4-42b9-9a67-fd4d445cc31d
+projectId: jeli-app-shell
+createdAt: '2025-10-16T07:31:17.493Z'
+gitCommitMsg: >-
+  feat(messaging): refactor right pane for improved UX and minimalism
+
+  Overhauls the UI/UX of the messaging right-hand context pane. This commit
+  introduces a more cohesive, minimalist, and intuitive design.
+
+  - Replaces nested tabs with a single, top-level tab structure ("Task",
+  "Contact", "AI Insights"). - Adds a persistent header with contact info and
+  action buttons, providing constant context. - Breaks down the monolithic
+  `ContactProfile` component into smaller, focused panels (`ContactInfoPanel`,
+  `AIInsightsPanel`), improving code structure. - Refines the visual styling of
+  all panels for better alignment, consistency, and a cleaner aesthetic. -
+  Unifies the data model by renaming `labels` to `tags` on Tasks for consistency
+  with Contacts.
+promptSummary: >-
+  The user requested a UI/UX overhaul of the right pane in the messaging feature
+  to be more "amazing cool, minimalism, also cohesive UX".
+reasoning:
+  - >-
+    Of course. I'll refactor the right-hand pane of the messaging view to create
+    a more modern, minimalist, and cohesive user experience.
+  - >-
+    The current design with nested tabs is confusing. I'll elevate the most
+    important information, create a persistent header for context, and simplify
+    the layout into a single, clean tab system. This will make the interface
+    feel more intuitive and visually polished.
+  - 'Here is my plan:'
+  - >-
+    1.  **Introduce a Persistent Header**: The contact's avatar, name, and
+    action buttons will be moved to a header at the top of the right pane,
+    ensuring they are always visible.
+  - >-
+    2.  **Simplify Tab Structure**: I will remove the nested tabs and create a
+    single, top-level tab group: "Task", "Contact", and "AI Insights". This
+    clarifies the information architecture.
+  - >-
+    3.  **Create Focused Panels**: I'll break the monolithic `ContactProfile`
+    component into smaller, specialized panels for each tab, improving
+    maintainability and clarity.
+  - >-
+    4.  **Refine Component Styles**: I'll update the styling of the info panels
+    to be more minimalist and visually consistent, using better alignment and
+    semantic HTML.
+  - >-
+    5.  **Unify Data Model**: I'll rename `labels` to `tags` on the Task object
+    for better consistency with the Contact object.
+  - Let's begin.
+  - '### Step 1: Unify Data Model for Tags'
+  - >-
+    First, for consistency, I'll update the `Task` type to use `tags` instead of
+    `labels`.
+  - Now I'll update the mock data to reflect this change.
+  - >-
+    And finally, I'll update the store's filter logic to use the task's tags and
+    to source available tags from both tasks and contacts.
+  - '### Step 2: Create New, Focused Components'
+  - >-
+    I'll create two new components, `AIInsightsPanel` and `ContactInfoPanel`, by
+    extracting logic from the old `ContactProfile` component.
+  - This is the new `AIInsightsPanel`.
+  - >-
+    This new `ContactInfoPanel` will display details, activity, and notes in a
+    single, clean, scrollable view.
+  - '### Step 3: Refine Existing Panels and Delete Old Component'
+  - >-
+    I'll update the `TaskPropertiesPanel` to be more minimalist and use a grid
+    for better alignment.
+  - >-
+    Now that its functionality has been split into new components,
+    `ContactProfile.tsx` is no longer needed.
+  - '### Step 4: Rebuild the Right Pane Layout'
+  - >-
+    Finally, I'll rewrite `MessagingContent.tsx` to assemble all the new pieces
+    into a cohesive and stylish layout, featuring the persistent header and the
+    simplified tab structure.
+  - >-
+    These changes completely overhaul the right-hand context pane, resulting in
+    a cleaner, more intuitive, and visually appealing interface that aligns
+    perfectly with the task-based messaging model.
+operations:
+  - type: write
+    path: src/pages/Messaging/types.ts
+    content: |+
+      --- src/pages/Messaging/types.ts
+      +++ src/pages/Messaging/types.ts
+      @@ -62,6 +62,6 @@
+         assigneeId: string | null;
+         dueDate: string | null;
+         priority: TaskPriority;
+      -  labels: string[];
+      +  tags: string[];
+         aiSummary: AISummary;
+       }
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/Messaging/data/mockData.ts
+    content: |+
+      --- src/pages/Messaging/data/mockData.ts
+      +++ src/pages/Messaging/data/mockData.ts
+      @@ -107,7 +107,7 @@
+           assigneeId: 'user-2',
+           dueDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
+           priority: 'high',
+      -    labels: ['onboarding', 'pricing'],
+      +    tags: ['onboarding', 'pricing'],
+           aiSummary: { sentiment: 'positive', summaryPoints: ['Expressed strong interest in the new feature.', 'Asked about pricing tiers for enterprise.', 'Is ready for a follow-up call next week.',], suggestedReplies: ['Let\'s schedule that call!', 'Here is the pricing information.', 'Happy to hear you like it!',], },
+         },
+         {
+      @@ -120,7 +120,7 @@
+           assigneeId: 'user-1',
+           dueDate: null,
+           priority: 'medium',
+      -    labels: ['bug-report'],
+      +    tags: ['bug-report'],
+           aiSummary: { sentiment: 'neutral', summaryPoints: ['Reported a minor issue with order #12345.', 'Was satisfied with the proposed solution.', 'Inquired about the return policy.',], suggestedReplies: ['Can I help with anything else?', 'Here is our return policy.',], },
+         },
+         {
+      @@ -133,7 +133,7 @@
+           assigneeId: null,
+           dueDate: null,
+           priority: 'high',
+      -    labels: ['urgent', 'tech-support'],
+      +    tags: ['urgent', 'tech-support'],
+           aiSummary: { sentiment: 'negative', summaryPoints: ['Frustrated with login issues.', 'Unable to reset password via email link.', 'Threatened to cancel their subscription.',], suggestedReplies: ['I\'m escalating this to our technical team.', 'Let\'s try a manual password reset.', 'We apologize for the inconvenience.',], },
+         },
+         {
+      @@ -146,7 +146,7 @@
+           assigneeId: 'user-3',
+           dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+           priority: 'low',
+      -    labels: [],
+      +    tags: [],
+           aiSummary: { sentiment: 'neutral', summaryPoints: ['Followed up on a previous conversation.', 'Confirmed meeting time for Thursday.', 'No outstanding issues.',], suggestedReplies: ['Sounds good!', 'See you then!',], },
+         },
+       ];
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/Messaging/store/messaging.store.ts
+    content: >+
+      --- src/pages/Messaging/store/messaging.store.ts
+
+      +++ src/pages/Messaging/store/messaging.store.ts
+
+      @@ -51,7 +51,7 @@
+           const filtered = mapped.filter(task => {
+             const searchMatch = task.title.toLowerCase().includes(lowercasedSearch) || task.contact.name.toLowerCase().includes(lowercasedSearch);
+             const channelMatch = activeFilters.channels.length === 0 || activeFilters.channels.includes(task.channel);
+      -      const tagMatch = activeFilters.tags.length === 0 ||
+      activeFilters.tags.some(tag => task.contact.tags.includes(tag));
+
+      +      const tagMatch = activeFilters.tags.length === 0 ||
+      activeFilters.tags.some(tag => task.tags.includes(tag));
+             const statusMatch = activeFilters.status.length === 0 || activeFilters.status.includes(task.status);
+             const priorityMatch = activeFilters.priority.length === 0 || activeFilters.priority.includes(task.priority);
+             const assigneeMatch = activeFilters.assigneeId.length === 0 || (task.assigneeId && activeFilters.assigneeId.includes(task.assigneeId));
+      @@ -78,7 +78,9 @@
+         },
+       
+         getAvailableTags: () => {
+      -    const allTags = new Set(get().contacts.flatMap(c => c.tags));
+
+      +    const contactTags = get().contacts.flatMap(c => c.tags);
+
+      +    const taskTags = get().tasks.flatMap(t => t.tags);
+
+      +    const allTags = new Set([...contactTags, ...taskTags]);
+           return Array.from(allTags);
+         }
+       }));
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/Messaging/components/AIInsightsPanel.tsx
+    content: >-
+      import React from 'react';
+
+      import type { Task, Contact, Assignee } from '../types';
+
+      import { Badge } from '@/components/ui/badge';
+
+      import { Button } from '@/components/ui/button';
+
+      import { Sparkles, Reply, ThumbsUp, ThumbsDown, Copy } from
+      'lucide-react';
+
+      import { toast } from 'sonner';
+
+
+      interface AIInsightsPanelProps {
+        task: (Task & { contact: Contact; assignee: Assignee | null });
+      }
+
+
+      export const AIInsightsPanel: React.FC<AIInsightsPanelProps> = ({ task })
+      => {
+          const { aiSummary } = task;
+
+          const handleCopy = (text: string) => {
+              navigator.clipboard.writeText(text);
+              toast.success('Copied to clipboard!');
+          };
+
+          return (
+              <div className="space-y-6">
+                  <div className="flex items-center gap-2">
+                      <span className="font-semibold text-sm">Sentiment:</span>
+                      <Badge variant={
+                        aiSummary.sentiment === 'positive' ? 'default' : aiSummary.sentiment === 'negative' ? 'destructive' : 'secondary'
+                      } className="capitalize">
+                        {aiSummary.sentiment === 'positive' && <ThumbsUp className="w-3 h-3 mr-1.5" />}
+                        {aiSummary.sentiment === 'negative' && <ThumbsDown className="w-3 h-3 mr-1.5" />}
+                        {aiSummary.sentiment}
+                      </Badge>
+                  </div>
+                  <div>
+                      <h4 className="font-semibold mb-2 flex items-center gap-2 text-sm"><Sparkles className="w-4 h-4 text-yellow-500" /> Key Points</h4>
+                      <ul className="list-disc list-inside space-y-1.5 text-sm text-muted-foreground pl-2">
+                        {aiSummary.summaryPoints.map((point, i) => <li key={i}>{point}</li>)}
+                      </ul>
+                  </div>
+                  <div>
+                      <h4 className="font-semibold mb-2 flex items-center gap-2 text-sm"><Reply className="w-4 h-4 text-blue-500" /> Suggested Replies</h4>
+                      <div className="flex flex-col gap-2">
+                        {aiSummary.suggestedReplies.map((reply, i) => (
+                          <Button 
+                            key={i} 
+                            variant="ghost" 
+                            size="sm" 
+                            className="w-full justify-between text-left h-auto py-2 px-3 group"
+                            onClick={() => handleCopy(reply)}
+                          >
+                            <span className="pr-4">{reply}</span>
+                            <Copy className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors flex-shrink-0" />
+                          </Button>
+                        ))}
+                      </div>
+                  </div>
+              </div>
+          )
+      }
+    patchStrategy: replace
+  - type: write
+    path: src/pages/Messaging/components/ContactInfoPanel.tsx
+    content: >-
+      import React from 'react';
+
+      import { format } from 'date-fns';
+
+      import { Mail, Phone, Briefcase, StickyNote, PhoneCall, Calendar, Send }
+      from 'lucide-react';
+
+      import type { Task, Contact, Assignee, ActivityEvent, ActivityEventType }
+      from '../types';
+
+      import { cn } from '@/lib/utils';
+
+      import { Button } from '@/components/ui/button';
+
+      import { Textarea } from '@/components/ui/textarea';
+
+
+      const DetailRow: React.FC<{icon: React.ReactNode, children:
+      React.ReactNode}> = ({ icon, children }) => (
+          <div className="flex items-start gap-3 text-sm">
+              <div className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0">{icon}</div>
+              <div className="flex-1 text-foreground/90 break-all">{children}</div>
+          </div>
+      );
+
+
+      const activityIcons: Record<ActivityEventType, React.ElementType> = {
+          note: StickyNote,
+          call: PhoneCall,
+          email: Mail,
+          meeting: Calendar,
+      };
+
+
+      const ActivityItem = ({ item }: { item: ActivityEvent }) => {
+          const Icon = activityIcons[item.type];
+          return (
+            <div className="flex items-start gap-4">
+              <div className="mt-1.5 h-8 flex items-center justify-center">
+                  <div className="h-full w-0.5 bg-border"></div>
+                  <div className="absolute p-1.5 bg-background border rounded-full">
+                      <Icon className="w-3.5 h-3.5 text-muted-foreground" />
+                  </div>
+              </div>
+              <div className="flex-1 text-sm pt-1.5 pb-5"><p>{item.content}</p><p className="text-xs text-muted-foreground mt-1">{format(new Date(item.timestamp), "MMM d, yyyy 'at' h:mm a")}</p></div>
+            </div>
+          )
+      };
+
+
+      interface ContactInfoPanelProps {
+        task: (Task & { contact: Contact; assignee: Assignee | null });
+      }
+
+
+      export const ContactInfoPanel: React.FC<ContactInfoPanelProps> = ({ task
+      }) => {
+          const { contact } = task;
+          return (
+              <div className="space-y-8">
+                  {/* Contact Details */}
+                  <div className="space-y-4">
+                      <h4 className="font-semibold text-sm">Contact Details</h4>
+                      <DetailRow icon={<Mail />}>{contact.email}</DetailRow>
+                      <DetailRow icon={<Phone />}>{contact.phone}</DetailRow>
+                      <DetailRow icon={<Briefcase />}>
+                          {contact.role} at <strong>{contact.company}</strong>
+                      </DetailRow>
+                  </div>
+                  
+                  {/* Activity */}
+                  <div className="space-y-1">
+                      <h4 className="font-semibold text-sm mb-4">Activity</h4>
+                      <div className="relative">
+                          {contact.activity.map(item => <ActivityItem key={item.id} item={item} />)}
+                      </div>
+                  </div>
+
+                  {/* Notes */}
+                  <div className="space-y-4">
+                      <h4 className="font-semibold text-sm">Notes</h4>
+                      {contact.notes.map(note => (
+                          <div key={note.id} className="text-sm bg-accent/50 p-3 rounded-lg"><p className="mb-1.5">{note.content}</p><p className="text-xs text-muted-foreground">{format(new Date(note.createdAt), "MMM d, yyyy")}</p></div>
+                      ))}
+                      <div className="relative">
+                          <Textarea placeholder="Add a new note..." className="min-h-[60px]" />
+                          <Button size="icon" className="absolute right-2 bottom-2 h-7 w-7"><Send className="w-3.5 h-3.5" /></Button>
+                      </div>
+                  </div>
+              </div>
+          )
+      }
+    patchStrategy: replace
+  - type: write
+    path: src/pages/Messaging/components/TaskPropertiesPanel.tsx
+    content: >+
+      --- src/pages/Messaging/components/TaskPropertiesPanel.tsx
+
+      +++ src/pages/Messaging/components/TaskPropertiesPanel.tsx
+
+      @@ -21,18 +21,17 @@
+           icon: React.ReactNode;
+           label: string;
+           children: React.ReactNode;
+      +    className?: string;
+       }
+      -const DetailRow: React.FC<DetailRowProps> = ({ icon, label, children })
+      => (
+
+      -    <div className="flex items-start text-sm">
+
+      -        <div className="w-28 text-muted-foreground flex-shrink-0 flex
+      items-center gap-2"><div className="w-4 flex
+      justify-center">{icon}</div>{label}</div>
+
+      -        <div className="flex-1 font-medium
+      text-foreground/90">{children}</div>
+
+      +const DetailRow: React.FC<DetailRowProps> = ({ icon, label, children,
+      className }) => (
+
+      +    <div className={cn("grid grid-cols-3 items-start gap-3 text-sm",
+      className)}>
+
+      +        <dt className="col-span-1 text-muted-foreground flex items-center
+      gap-2 pt-0.5"><div className="w-4 flex
+      justify-center">{icon}</div>{label}</dt>
+
+      +        <dd className="col-span-2 font-medium
+      text-foreground/90">{children}</dd>
+           </div>
+       );
+       
+       interface TaskPropertiesPanelProps {
+         task: (Task & { contact: Contact; assignee: Assignee | null });
+       }
+       
+       export const TaskPropertiesPanel: React.FC<TaskPropertiesPanelProps> = ({ task }) => {
+           const status = getStatusInfo(task.status);
+           const priority = getPriorityInfo(task.priority);
+       
+           return (
+      -        <div className="space-y-6">
+
+      -            <h3 className="font-semibold text-lg">Task Details</h3>
+
+      -            <div className="space-y-4">
+
+      +        <dl className="space-y-4">
+                       <DetailRow icon={status.icon} label="Status">
+                           <span className={cn("flex items-center gap-2", status.color)}>
+                               {status.label}
+      @@ -55,11 +54,10 @@
+                       <DetailRow icon={<MessageSquare />} label="Channel">
+                           <span className="capitalize">{task.channel}</span>
+                       </DetailRow>
+      -                 <DetailRow icon={<Hash />} label="Labels">
+
+      +                 <DetailRow icon={<Hash />} label="Tags">
+                           <div className="flex flex-wrap gap-1.5">
+      -                        {task.labels.length > 0 ? task.labels.map(l =>
+      <Badge variant="secondary" key={l}>{l}</Badge>) : 'No labels'}
+
+      +                        {task.tags.length > 0 ? task.tags.map(t => <Badge
+      variant="secondary" key={t}>{t}</Badge>) : 'No tags'}
+                           </div>
+                       </DetailRow>
+      -            </div>
+
+      -        </div>
+
+      +        </dl>
+           )
+       }
+
+    patchStrategy: standard-diff
+  - type: delete
+    path: src/pages/Messaging/components/ContactProfile.tsx
+  - type: write
+    path: src/pages/Messaging/components/MessagingContent.tsx
+    content: >+
+      --- src/pages/Messaging/components/MessagingContent.tsx
+
+      +++ src/pages/Messaging/components/MessagingContent.tsx
+
+      @@ -1,15 +1,24 @@
+       import React, { useState, useMemo } from 'react';
+       import { useMessagingStore } from '../store/messaging.store';
+      -import { ContactProfile } from './ContactProfile';
+       import { TaskPropertiesPanel } from './TaskPropertiesPanel';
+      +import { ContactInfoPanel } from './ContactInfoPanel';
+
+      +import { AIInsightsPanel } from './AIInsightsPanel';
+       import { AnimatedTabs } from '@/components/ui/animated-tabs';
+       import { TechOrbitDisplay } from '@/components/effects/OrbitingCircles';
+      +import { Avatar, AvatarFallback, AvatarImage } from
+      '@/components/ui/avatar';
+
+      +import { Badge } from '@/components/ui/badge';
+
+      +import { Button } from '@/components/ui/button';
+
+      +import { StickyNote, PhoneCall, Mail, CheckSquare } from 'lucide-react';
+       
+       interface MessagingContentProps {
+         conversationId?: string;
+       }
+       
+       export const MessagingContent: React.FC<MessagingContentProps> = ({ conversationId }) => {
+      -  const [activeTab, setActiveTab] = useState('details');
+
+      +  const [activeTab, setActiveTab] = useState('task');
+         const task = useMessagingStore(state => conversationId ? state.getTaskById(conversationId) : undefined);
+         
+         const tabs = useMemo(() => [
+      -    { id: 'details', label: 'Task' },
+
+      +    { id: 'task', label: 'Task' },
+           { id: 'contact', label: 'Contact' },
+      +    { id: 'ai', label: 'AI Insights' },
+         ], []);
+       
+         if (!task) {
+      @@ -26,16 +35,46 @@
+           );
+         }
+         
+      +  const { contact } = task;
+
+      +
+         return (
+      -    <div className="h-full flex-1 flex flex-col bg-background">
+
+      -      <div className="flex-shrink-0 border-b">
+
+      -        <AnimatedTabs tabs={tabs} activeTab={activeTab}
+      onTabChange={setActiveTab} className="px-4" />
+
+      +    <div className="h-full flex-1 flex flex-col bg-background
+      overflow-y-auto">
+
+      +      {/* Persistent Header */}
+
+      +      <div className="p-6 space-y-4 border-b">
+
+      +        <div className="flex items-start gap-4">
+
+      +          <Avatar className="h-16 w-16 border">
+
+      +            <AvatarImage src={contact.avatar} alt={contact.name} />
+
+      +            <AvatarFallback
+      className="text-2xl">{contact.name.charAt(0)}</AvatarFallback>
+
+      +          </Avatar>
+
+      +          <div className="flex-1 pt-1">
+
+      +            <h2 className="text-xl font-bold">{contact.name}</h2>
+
+      +            <p className="text-sm text-muted-foreground">
+
+      +              {contact.online ? 'Online' : `Last seen
+      ${contact.lastSeen}`}
+
+      +            </p>
+
+      +             <div className="flex flex-wrap gap-1.5 mt-2">
+
+      +                {contact.tags.map(tag => (
+
+      +                  <Badge key={tag} variant="secondary"
+      className="text-xs">{tag}</Badge>
+
+      +                ))}
+
+      +            </div>
+
+      +          </div>
+
+      +        </div>
+
+      +         {/* Action Buttons */}
+
+      +        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+
+      +            <Button variant="outline" size="sm"
+      className="gap-2"><StickyNote className="w-3.5 h-3.5" /> Note</Button>
+
+      +            <Button variant="outline" size="sm"
+      className="gap-2"><PhoneCall className="w-3.5 h-3.5" /> Call</Button>
+
+      +            <Button variant="outline" size="sm" className="gap-2"><Mail
+      className="w-3.5 h-3.5" /> Email</Button>
+
+      +            <Button variant="outline" size="sm"
+      className="gap-2"><CheckSquare className="w-3.5 h-3.5" /> Task</Button>
+
+      +        </div>
+
+      +      </div>
+
+      +
+
+      +      <div className="flex-shrink-0 border-b bg-background/80
+      backdrop-blur-sm sticky top-0 z-10">
+
+      +        <AnimatedTabs tabs={tabs} activeTab={activeTab}
+      onTabChange={setActiveTab} className="px-6" />
+             </div>
+       
+      -      <div className="flex-1 overflow-y-auto">
+
+      -        {activeTab === 'details' && <div
+      className="p-6"><TaskPropertiesPanel task={task} /></div>}
+
+      -        {activeTab === 'contact' && <ContactProfile
+      conversationId={conversationId} />}
+
+      +      <div className="flex-1 p-6">
+
+      +        {activeTab === 'task' && <TaskPropertiesPanel task={task} />}
+
+      +        {activeTab === 'contact' && <ContactInfoPanel task={task} />}
+
+      +        {activeTab === 'ai' && <AIInsightsPanel task={task} />}
+             </div>
+           </div>
+         );
+       };
+
+    patchStrategy: standard-diff
+snapshot:
+  src/pages/Messaging/components/AIInsightsPanel.tsx: null
+  src/pages/Messaging/components/ContactInfoPanel.tsx: null
+  src/pages/Messaging/types.ts: |-
+    import type { LucideIcon } from "lucide-react";
+
+    export type Channel = 'whatsapp' | 'instagram' | 'facebook' | 'email';
+
+    export interface ChannelIcon {
+      Icon: LucideIcon;
+      color: string;
+    }
+
+    export interface Contact {
+      id: string;
+      name:string;
+      avatar: string;
+      online: boolean;
+      tags: string[];
+      email: string;
+      phone: string;
+      lastSeen: string;
+      company: string;
+      role: string;
+      activity: ActivityEvent[];
+      notes: Note[];
+    }
+
+    export interface Assignee {
+      id: string;
+      name: string;
+      avatar: string;
+    }
+
+    export type ActivityEventType = 'note' | 'call' | 'email' | 'meeting';
+
+    export interface ActivityEvent {
+      id: string;
+      type: ActivityEventType;
+      content: string;
+      timestamp: string;
+    }
+    export interface Note {
+      id: string;
+      content: string;
+      createdAt: string;
+    }
+
+    export interface Message {
+      id: string;
+      text: string;
+      timestamp: string;
+      sender: 'user' | 'contact' | 'system';
+      type: 'comment' | 'note' | 'system';
+      read: boolean;
+      userId?: string; // for notes or system messages from users
+    }
+
+    export interface AISummary {
+      sentiment: 'positive' | 'negative' | 'neutral';
+      summaryPoints: string[];
+      suggestedReplies: string[];
+    }
+
+    export type TaskStatus = 'open' | 'in-progress' | 'done' | 'snoozed';
+    export type TaskPriority = 'none' | 'low' | 'medium' | 'high';
+
+    export interface Task {
+      id: string;
+      title: string;
+      contactId: string;
+      channel: Channel;
+      unreadCount: number;
+      lastActivity: Message;
+      messages: Message[];
+      status: TaskStatus;
+      assigneeId: string | null;
+      dueDate: string | null;
+      priority: TaskPriority;
+      labels: string[];
+      aiSummary: AISummary;
+    }
+  src/pages/Messaging/data/mockData.ts: >-
+    import type { Contact, Task, Message, ActivityEvent, Note, Assignee,
+    TaskStatus, TaskPriority } from '../types';
+
+
+    // --- ASSIGNEES ---
+
+    export const mockAssignees: Assignee[] = [
+      { id: 'user-1', name: 'You', avatar: `https://avatar.vercel.sh/you.png` },
+      { id: 'user-2', name: 'Alex Johnson', avatar: `https://avatar.vercel.sh/alex.png` },
+      { id: 'user-3', name: 'Samira Kumar', avatar: `https://avatar.vercel.sh/samira.png` },
+    ];
+
+
+    // --- HELPERS ---
+
+    const generateNotes = (contactName: string): Note[] => [
+      { id: `note-${Math.random()}`, content: `Initial discovery call with ${contactName}. Seemed very interested in our enterprise package.`, createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString() },
+      { id: `note-${Math.random()}`, content: `Followed up via email with pricing details.`, createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString() },
+    ];
+
+
+    const generateActivity = (contactName: string): ActivityEvent[] => [
+      { id: `act-${Math.random()}`, type: 'email', content: `Sent follow-up email regarding pricing.`, timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString() },
+      { id: `act-${Math.random()}`, type: 'call', content: `Had a 30-minute discovery call with ${contactName}.`, timestamp: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString() },
+      { id: `act-${Math.random()}`, type: 'meeting', content: `Scheduled a demo for next week.`, timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString() },
+    ];
+
+
+    // --- CONTACTS ---
+
+    export const mockContacts: Contact[] = [
+      { id: 'contact-1', name: 'Elena Rodriguez', avatar: `https://avatar.vercel.sh/elenarodriguez.png`, online: true, tags: ['VIP', 'New Lead'], email: 'elena.r@example.com', phone: '+1 234 567 8901', lastSeen: 'online', company: 'Innovate Inc.', role: 'CTO', activity: generateActivity('Elena Rodriguez'), notes: generateNotes('Elena Rodriguez'), },
+      { id: 'contact-2', name: 'Marcus Chen', avatar: `https://avatar.vercel.sh/marcuschen.png`, online: false, tags: ['Returning Customer'], email: 'marcus.c@example.com', phone: '+1 345 678 9012', lastSeen: '2 hours ago', company: 'Solutions Co.', role: 'Product Manager', activity: generateActivity('Marcus Chen'), notes: generateNotes('Marcus Chen'), },
+      { id: 'contact-3', name: 'Aisha Khan', avatar: `https://avatar.vercel.sh/aishakhan.png`, online: true, tags: ['Support Request'], email: 'aisha.k@example.com', phone: '+1 456 789 0123', lastSeen: 'online', company: 'Data Dynamics', role: 'Data Analyst', activity: generateActivity('Aisha Khan'), notes: generateNotes('Aisha Khan'), },
+      { id: 'contact-4', name: 'Leo Tolstoy', avatar: `https://avatar.vercel.sh/leotolstoy.png`, online: false, tags: [], email: 'leo.tolstoy@example.com', phone: '+44 20 7946 0958', lastSeen: 'yesterday', company: 'Classic Reads', role: 'Author', activity: generateActivity('Leo Tolstoy'), notes: generateNotes('Leo Tolstoy'), }
+    ];
+
+
+    // --- MESSAGE GENERATOR ---
+
+    const generateMessages = (count: number, contactName: string): Message[] =>
+    {
+      const messages: Message[] = [];
+      const now = new Date();
+      for (let i = count - 1; i >= 0; i--) {
+        const random = Math.random();
+        let sender: Message['sender'] = 'contact';
+        let type: Message['type'] = 'comment';
+        let text = `This is a sample message number ${i} from ${contactName}.`;
+        let userId: string | undefined = undefined;
+
+        if (random > 0.85) { // Internal Note
+          sender = 'user';
+          type = 'note';
+          const user = mockAssignees[Math.floor(Math.random() * mockAssignees.length)];
+          userId = user.id;
+          text = `Internal note from ${user.name}: we should check their account history.`;
+        } else if (random > 0.7) { // System message
+          sender = 'system';
+          type = 'system';
+          text = `Task status changed to "in-progress"`;
+        } else if (random > 0.35) { // User comment
+          sender = 'user';
+          type = 'comment';
+          userId = 'user-1'; // "You"
+          text = `This is a reply from me. Time is roughly ${count - i} hours ago.`;
+        }
+        
+        messages.push({
+          id: `msg-${Math.random()}`,
+          text,
+          timestamp: new Date(now.getTime() - i * 60 * 60 * 1000).toISOString(),
+          sender,
+          type,
+          read: i < count - 2,
+          userId,
+        });
+      }
+      // Ensure the last message is from the contact for preview purposes
+      messages[messages.length - 1] = {
+        ...messages[messages.length-1],
+        sender: 'contact',
+        type: 'comment',
+        text: `Hey! This is the latest message from ${contactName}.`,
+        userId: undefined
+      };
+      return messages.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+    };
+
+
+    // --- TASKS ---
+
+    const statuses: TaskStatus[] = ['open', 'in-progress', 'done', 'snoozed'];
+
+    const priorities: TaskPriority[] = ['none', 'low', 'medium', 'high'];
+
+
+    export const mockTasks: Task[] = [
+      {
+        id: 'task-1',
+        title: 'Question about enterprise pricing',
+        contactId: 'contact-1',
+        channel: 'whatsapp',
+        unreadCount: 2,
+        messages: generateMessages(15, 'Elena Rodriguez'),
+        get lastActivity() { return this.messages[this.messages.length - 1]; },
+        status: 'in-progress',
+        assigneeId: 'user-2',
+        dueDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
+        priority: 'high',
+        labels: ['onboarding', 'pricing'],
+        aiSummary: { sentiment: 'positive', summaryPoints: ['Expressed strong interest in the new feature.', 'Asked about pricing tiers for enterprise.', 'Is ready for a follow-up call next week.',], suggestedReplies: ['Let\'s schedule that call!', 'Here is the pricing information.', 'Happy to hear you like it!',], },
+      },
+      {
+        id: 'task-2',
+        title: 'Minor issue with order #12345',
+        contactId: 'contact-2',
+        channel: 'instagram',
+        unreadCount: 0,
+        messages: generateMessages(8, 'Marcus Chen'),
+        get lastActivity() { return this.messages[this.messages.length - 1]; },
+        status: 'done',
+        assigneeId: 'user-1',
+        dueDate: null,
+        priority: 'medium',
+        labels: ['bug-report'],
+        aiSummary: { sentiment: 'neutral', summaryPoints: ['Reported a minor issue with order #12345.', 'Was satisfied with the proposed solution.', 'Inquired about the return policy.',], suggestedReplies: ['Can I help with anything else?', 'Here is our return policy.',], },
+      },
+      {
+        id: 'task-3',
+        title: 'Login issues, cannot reset password',
+        contactId: 'contact-3',
+        channel: 'facebook',
+        unreadCount: 5,
+        messages: generateMessages(20, 'Aisha Khan'),
+        get lastActivity() { return this.messages[this.messages.length - 1]; },
+        status: 'open',
+        assigneeId: null,
+        dueDate: null,
+        priority: 'high',
+        labels: ['urgent', 'tech-support'],
+        aiSummary: { sentiment: 'negative', summaryPoints: ['Frustrated with login issues.', 'Unable to reset password via email link.', 'Threatened to cancel their subscription.',], suggestedReplies: ['I\'m escalating this to our technical team.', 'Let\'s try a manual password reset.', 'We apologize for the inconvenience.',], },
+      },
+      {
+        id: 'task-4',
+        title: 'Follow-up on previous conversation',
+        contactId: 'contact-4',
+        channel: 'email',
+        unreadCount: 0,
+        messages: generateMessages(5, 'Leo Tolstoy'),
+        get lastActivity() { return this.messages[this.messages.length - 1]; },
+        status: 'snoozed',
+        assigneeId: 'user-3',
+        dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+        priority: 'low',
+        labels: [],
+        aiSummary: { sentiment: 'neutral', summaryPoints: ['Followed up on a previous conversation.', 'Confirmed meeting time for Thursday.', 'No outstanding issues.',], suggestedReplies: ['Sounds good!', 'See you then!',], },
+      },
+    ];
+  src/pages/Messaging/store/messaging.store.ts: >-
+    import { create } from 'zustand';
+
+    import { mockTasks, mockContacts, mockAssignees } from '../data/mockData';
+
+    import type { Task, Contact, Channel, Assignee, TaskStatus, TaskPriority }
+    from '../types';
+
+
+    interface MessagingState {
+      tasks: Task[];
+      contacts: Contact[];
+      assignees: Assignee[];
+      searchTerm: string;
+      activeFilters: {
+        channels: Channel[];
+        tags: string[];
+        status: TaskStatus[];
+        priority: TaskPriority[];
+        assigneeId: string[];
+      };
+    }
+
+
+    interface MessagingActions {
+      getTaskById: (id: string) => (Task & { contact: Contact, assignee: Assignee | null }) | undefined;
+      getFilteredTasks: () => (Task & { contact: Contact, assignee: Assignee | null })[];
+      setSearchTerm: (term: string) => void;
+      setFilters: (filters: Partial<MessagingState['activeFilters']>) => void;
+      updateTask: (taskId: string, updates: Partial<Omit<Task, 'id'>>) => void;
+      getAssigneeById: (assigneeId: string) => Assignee | undefined;
+      getAvailableTags: () => string[];
+    }
+
+
+    export const useMessagingStore = create<MessagingState &
+    MessagingActions>((set, get) => ({
+      tasks: mockTasks,
+      contacts: mockContacts,
+      assignees: mockAssignees,
+      searchTerm: '',
+      activeFilters: {
+        channels: [],
+        tags: [],
+        status: [],
+        priority: [],
+        assigneeId: [],
+      },
+
+      getTaskById: (id) => {
+        const task = get().tasks.find(t => t.id === id);
+        if (!task) return undefined;
+
+        const contact = get().contacts.find(c => c.id === task.contactId);
+        if (!contact) return undefined;
+
+        const assignee = get().assignees.find(a => a.id === task.assigneeId) || null;
+
+        return { ...task, contact, assignee };
+      },
+
+      getFilteredTasks: () => {
+        const { tasks, contacts, assignees, searchTerm, activeFilters } = get();
+        const lowercasedSearch = searchTerm.toLowerCase();
+
+        const mapped = tasks.map(task => {
+          const contact = contacts.find(c => c.id === task.contactId) as Contact;
+          const assignee = assignees.find(a => a.id === task.assigneeId) || null;
+          return { ...task, contact, assignee };
+        });
+
+        const filtered = mapped.filter(task => {
+          const searchMatch = task.title.toLowerCase().includes(lowercasedSearch) || task.contact.name.toLowerCase().includes(lowercasedSearch);
+          const channelMatch = activeFilters.channels.length === 0 || activeFilters.channels.includes(task.channel);
+          const tagMatch = activeFilters.tags.length === 0 || activeFilters.tags.some(tag => task.contact.tags.includes(tag));
+          const statusMatch = activeFilters.status.length === 0 || activeFilters.status.includes(task.status);
+          const priorityMatch = activeFilters.priority.length === 0 || activeFilters.priority.includes(task.priority);
+          const assigneeMatch = activeFilters.assigneeId.length === 0 || (task.assigneeId && activeFilters.assigneeId.includes(task.assigneeId));
+          
+          return searchMatch && channelMatch && tagMatch && statusMatch && priorityMatch && assigneeMatch;
+        });
+
+        return filtered.sort((a, b) => new Date(b.lastActivity.timestamp).getTime() - new Date(a.lastActivity.timestamp).getTime());
+      },
+
+      setSearchTerm: (term) => set({ searchTerm: term }),
+
+      setFilters: (newFilters) => set(state => ({
+        activeFilters: { ...state.activeFilters, ...newFilters }
+      })),
+
+      updateTask: (taskId, updates) => set(state => ({
+        tasks: state.tasks.map(task => 
+          task.id === taskId 
+            ? { ...task, ...updates, lastActivity: { ...task.lastActivity, timestamp: new Date().toISOString() } } 
+            : task
+        )
+      })),
+
+      getAssigneeById: (assigneeId: string) => {
+        return get().assignees.find(a => a.id === assigneeId);
+      },
+
+      getAvailableTags: () => {
+        const allTags = new Set(get().contacts.flatMap(c => c.tags));
+        return Array.from(allTags);
+      }
+    }));
+  src/pages/Messaging/components/TaskPropertiesPanel.tsx: >-
+    import React from 'react';
+
+    import { useMessagingStore } from '../store/messaging.store';
+
+    import type { Task, Contact, Assignee, TaskStatus, TaskPriority } from
+    '../types';
+
+    import { Avatar, AvatarFallback, AvatarImage } from
+    '@/components/ui/avatar';
+
+    import { Badge } from '@/components/ui/badge';
+
+    import { format } from 'date-fns';
+
+    import { Inbox, Zap, Shield, Clock, Calendar, Hash, User, MessageSquare }
+    from 'lucide-react';
+
+    import { cn } from '@/lib/utils';
+
+
+
+    const getStatusInfo = (status: TaskStatus) => {
+        switch(status) {
+            case 'open': return { label: 'Open', icon: <Inbox className="w-4 h-4" />, color: 'text-blue-500' };
+            case 'in-progress': return { label: 'In Progress', icon: <Zap className="w-4 h-4" />, color: 'text-yellow-500' };
+            case 'done': return { label: 'Done', icon: <Shield className="w-4 h-4" />, color: 'text-green-500' };
+            case 'snoozed': return { label: 'Snoozed', icon: <Clock className="w-4 h-4" />, color: 'text-gray-500' };
+        }
+    };
+
+
+    const getPriorityInfo = (priority: TaskPriority) => {
+        switch(priority) {
+            case 'high': return { label: 'High', icon: <div className="w-2.5 h-2.5 rounded-full bg-red-500" /> };
+            case 'medium': return { label: 'Medium', icon: <div className="w-2.5 h-2.5 rounded-full bg-yellow-500" /> };
+            case 'low': return { label: 'Low', icon: <div className="w-2.5 h-2.5 rounded-full bg-green-500" /> };
+            default: return { label: 'None', icon: <div className="w-2.5 h-2.5 rounded-full bg-gray-400" /> };
+        }
+    };
+
+
+    interface DetailRowProps {
+        icon: React.ReactNode;
+        label: string;
+        children: React.ReactNode;
+    }
+
+    const DetailRow: React.FC<DetailRowProps> = ({ icon, label, children }) => (
+        <div className="flex items-start text-sm">
+            <div className="w-28 text-muted-foreground flex-shrink-0 flex items-center gap-2"><div className="w-4 flex justify-center">{icon}</div>{label}</div>
+            <div className="flex-1 font-medium text-foreground/90">{children}</div>
+        </div>
+    );
+
+
+    interface TaskPropertiesPanelProps {
+      task: (Task & { contact: Contact; assignee: Assignee | null });
+    }
+
+
+    export const TaskPropertiesPanel: React.FC<TaskPropertiesPanelProps> = ({
+    task }) => {
+        const status = getStatusInfo(task.status);
+        const priority = getPriorityInfo(task.priority);
+
+        return (
+            <div className="space-y-6">
+                <h3 className="font-semibold text-lg">Task Details</h3>
+                <div className="space-y-4">
+                    <DetailRow icon={status.icon} label="Status">
+                        <span className={cn("flex items-center gap-2", status.color)}>
+                            {status.label}
+                        </span>
+                    </DetailRow>
+                    <DetailRow icon={priority.icon} label="Priority">
+                        <span>{priority.label}</span>
+                    </DetailRow>
+                    <DetailRow icon={<User />} label="Assignee">
+                        {task.assignee ? (
+                            <div className="flex items-center gap-2">
+                                 <Avatar className="h-5 w-5"><AvatarImage src={task.assignee.avatar} /><AvatarFallback>{task.assignee.name.charAt(0)}</AvatarFallback></Avatar>
+                                 {task.assignee.name}
+                            </div>
+                        ) : 'Unassigned'}
+                    </DetailRow>
+                    <DetailRow icon={<Calendar />} label="Due Date">
+                        {task.dueDate ? format(new Date(task.dueDate), 'MMM d, yyyy') : 'No due date'}
+                    </DetailRow>
+                    <DetailRow icon={<MessageSquare />} label="Channel">
+                        <span className="capitalize">{task.channel}</span>
+                    </DetailRow>
+                     <DetailRow icon={<Hash />} label="Labels">
+                        <div className="flex flex-wrap gap-1.5">
+                            {task.labels.length > 0 ? task.labels.map(l => <Badge variant="secondary" key={l}>{l}</Badge>) : 'No labels'}
+                        </div>
+                    </DetailRow>
+                </div>
+            </div>
+        )
+    }
+  src/pages/Messaging/components/ContactProfile.tsx: >-
+    import React, { useState, useMemo } from 'react';
+
+    import { format } from 'date-fns';
+
+    import { Mail, Phone, Sparkles, Reply, ThumbsUp, ThumbsDown, Copy,
+    Briefcase, StickyNote, PhoneCall, CheckSquare, Calendar, Send } from
+    'lucide-react';
+
+    import { toast } from 'sonner';
+
+    import { useMessagingStore } from '../store/messaging.store';
+
+    import type { ActivityEvent, ActivityEventType } from '../types';
+
+    import { Avatar, AvatarFallback, AvatarImage } from
+    '@/components/ui/avatar';
+
+    import { Badge } from '@/components/ui/badge';
+
+    import { Card, CardContent } from '@/components/ui/card';
+
+    import { Button } from '@/components/ui/button';
+
+    import { Textarea } from '@/components/ui/textarea';
+
+    import { AnimatedTabs } from '@/components/ui/animated-tabs';
+
+    import { TechOrbitDisplay } from '@/components/effects/OrbitingCircles';
+
+    import { cn } from '@/lib/utils';
+
+
+    interface ContactProfileProps {
+      conversationId?: string;
+    }
+
+
+    export const ContactProfile: React.FC<ContactProfileProps> = ({
+    conversationId }) => {
+      const [activeTab, setActiveTab] = useState('insights');
+
+      const conversation = useMessagingStore(state =>
+        conversationId ? state.getTaskById(conversationId) : undefined
+      );
+
+      const tabs = useMemo(() => [
+        { id: 'insights', label: 'AI' },
+        { id: 'details', label: 'Details' },
+        { id: 'activity', label: 'Activity' },
+        { id: 'notes', label: 'Notes' },
+      ], []);
+
+      const handleCopy = (text: string) => {
+        navigator.clipboard.writeText(text);
+        toast.success('Copied to clipboard!');
+      };
+
+      const activityIcons: Record<ActivityEventType, React.ElementType> = {
+        note: StickyNote,
+        call: PhoneCall,
+        email: Mail,
+        meeting: Calendar,
+      };
+      
+      const ActivityItem = ({ item }: { item: ActivityEvent }) => {
+        const Icon = activityIcons[item.type];
+        return (
+          <div className="flex items-start gap-3">
+            <div className="mt-1"><Icon className="w-4 h-4 text-muted-foreground" /></div>
+            <div className="flex-1 text-sm"><p>{item.content}</p><p className="text-xs text-muted-foreground mt-1">{format(new Date(item.timestamp), "MMM d, yyyy 'at' h:mm a")}</p></div>
+          </div>
+        )
+      }
+      if (!conversation) {
+        return (
+          <div className="h-full flex-1 flex flex-col items-center justify-center bg-background p-6 relative overflow-hidden">
+            <TechOrbitDisplay text="Contact Intel" />
+            <div className="text-center z-10 bg-background/50 backdrop-blur-sm p-6 rounded-lg">
+                <h3 className="mt-4 text-lg font-medium">Select a Conversation</h3>
+                <p className="mt-1 text-sm text-muted-foreground">
+                    AI-powered insights and contact details will appear here.
+                </p>
+            </div>
+          </div>
+        );
+      }
+
+      const { contact, aiSummary } = conversation;
+
+      return (
+        <div className="h-full flex-1 flex flex-col bg-background overflow-y-auto antd-pro-pages-messaging-components-contact-profile">
+          <div className="p-6 space-y-6">
+            {/* Contact Header */}
+            <div className="flex flex-col items-center text-center">
+              <Avatar className="h-24 w-24 mb-4 border-4 border-background ring-2 ring-primary">
+                <AvatarImage src={contact.avatar} alt={contact.name} />
+                <AvatarFallback className="text-3xl">{contact.name.charAt(0)}</AvatarFallback>
+              </Avatar>
+              <h2 className="text-xl font-bold">{contact.name}</h2>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                {contact.online ? 'Online' : `Last seen ${contact.lastSeen}`}
+              </p>
+              <div className="flex flex-wrap gap-2 mt-4 justify-center">
+                {contact.tags.map(tag => (
+                  <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
+                ))}
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <Button variant="outline" size="sm" className="gap-2"><StickyNote className="w-4 h-4" /> Note</Button>
+                <Button variant="outline" size="sm" className="gap-2"><PhoneCall className="w-4 h-4" /> Call</Button>
+                <Button variant="outline" size="sm" className="gap-2"><Mail className="w-4 h-4" /> Email</Button>
+                <Button variant="outline" size="sm" className="gap-2"><CheckSquare className="w-4 h-4" /> Task</Button>
+            </div>
+
+            {/* Tabs for Details and AI Insights */}
+            <Card className="overflow-hidden">
+              <AnimatedTabs tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} className="px-6 border-b" />
+              
+              {activeTab === 'details' && (
+                <CardContent className="space-y-4 text-sm pt-6 leading-relaxed">
+                   <div className="flex items-start gap-3">
+                    <Mail className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                    <span className="text-foreground break-all">{contact.email}</span>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <Phone className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                    <span className="text-foreground">{contact.phone}</span>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <Briefcase className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                    <span className="text-foreground">{contact.role} at <strong>{contact.company}</strong></span>
+                  </div>
+                </CardContent>
+              )}
+
+              {activeTab === 'insights' && (
+                <CardContent className="space-y-6 pt-6">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-sm">Sentiment:</span>
+                    <Badge variant={
+                      aiSummary.sentiment === 'positive' ? 'default' : aiSummary.sentiment === 'negative' ? 'destructive' : 'secondary'
+                    } className="capitalize">
+                      {aiSummary.sentiment === 'positive' && <ThumbsUp className="w-3 h-3 mr-1.5" />}
+                      {aiSummary.sentiment === 'negative' && <ThumbsDown className="w-3 h-3 mr-1.5" />}
+                      {aiSummary.sentiment}
+                    </Badge>
+                  </div>
+                  <div>
+                    <h4 className="font-semibold mb-2 flex items-center gap-2 text-sm"><Sparkles className="w-4 h-4 text-yellow-500" /> Key Points</h4>
+                    <ul className="list-disc list-inside space-y-1.5 text-sm text-muted-foreground pl-2">
+                      {aiSummary.summaryPoints.map((point, i) => <li key={i}>{point}</li>)}
+                    </ul>
+                  </div>
+                  <div>
+                    <h4 className="font-semibold mb-2 flex items-center gap-2 text-sm"><Reply className="w-4 h-4 text-blue-500" /> Suggested Replies</h4>
+                    <div className="flex flex-col gap-2">
+                      {aiSummary.suggestedReplies.map((reply, i) => (
+                        <Button 
+                          key={i} 
+                          variant="ghost" 
+                          size="sm" 
+                          className="w-full justify-between text-left h-auto py-2 px-3 group"
+                          onClick={() => handleCopy(reply)}
+                        >
+                          <span className="pr-4">{reply}</span>
+                          <Copy className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                </CardContent>
+              )}
+
+              {activeTab === 'activity' && (
+                <CardContent className="pt-6">
+                  <div className="space-y-5 relative before:absolute before:left-[7px] before:top-2 before:bottom-2 before:w-0.5 before:bg-border">
+                    {contact.activity.map(item => <ActivityItem key={item.id} item={item} />)}
+                  </div>
+                </CardContent>
+              )}
+
+              {activeTab === 'notes' && (
+                <CardContent className="pt-6 space-y-4">
+                  <div className="space-y-4">
+                    {contact.notes.map(note => (
+                      <div key={note.id} className="text-sm bg-accent/50 p-3 rounded-lg"><p className="mb-1.5">{note.content}</p><p className="text-xs text-muted-foreground">{format(new Date(note.createdAt), "MMM d, yyyy")}</p></div>
+                    ))}
+                  </div>
+                  <Textarea placeholder="Add a new note..." className="min-h-[60px]" />
+                  <Button size="sm" className="w-full gap-2"><Send className="w-4 h-4" /> Save Note</Button>
+                </CardContent>
+              )}
+            </Card>
+          </div>
+        </div>
+      );
+    };
+  src/pages/Messaging/components/MessagingContent.tsx: >-
+    import React, { useState, useMemo } from 'react';
+
+    import { useMessagingStore } from '../store/messaging.store';
+
+    import { ContactProfile } from './ContactProfile';
+
+    import { TaskPropertiesPanel } from './TaskPropertiesPanel';
+
+    import { AnimatedTabs } from '@/components/ui/animated-tabs';
+
+    import { TechOrbitDisplay } from '@/components/effects/OrbitingCircles';
+
+
+    interface MessagingContentProps {
+      conversationId?: string;
+    }
+
+
+    export const MessagingContent: React.FC<MessagingContentProps> = ({
+    conversationId }) => {
+      const [activeTab, setActiveTab] = useState('details');
+      const task = useMessagingStore(state => conversationId ? state.getTaskById(conversationId) : undefined);
+      
+      const tabs = useMemo(() => [
+        { id: 'details', label: 'Task' },
+        { id: 'contact', label: 'Contact' },
+      ], []);
+
+      if (!task) {
+        return (
+          <div className="h-full flex-1 flex flex-col items-center justify-center bg-background p-6 relative overflow-hidden">
+            <TechOrbitDisplay text="Context" />
+            <div className="text-center z-10 bg-background/50 backdrop-blur-sm p-6 rounded-lg">
+                <h3 className="mt-4 text-lg font-medium">Select a Task</h3>
+                <p className="mt-1 text-sm text-muted-foreground">
+                    Task details and contact information will appear here.
+                </p>
+            </div>
+          </div>
+        );
+      }
+      
+      return (
+        <div className="h-full flex-1 flex flex-col bg-background">
+          <div className="flex-shrink-0 border-b">
+            <AnimatedTabs tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} className="px-4" />
+          </div>
+
+          <div className="flex-1 overflow-y-auto">
+            {activeTab === 'details' && <div className="p-6"><TaskPropertiesPanel task={task} /></div>}
+            {activeTab === 'contact' && <ContactProfile conversationId={conversationId} />}
+          </div>
+        </div>
+      );
+    };
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 329
