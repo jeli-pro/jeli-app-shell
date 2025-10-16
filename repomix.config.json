@@ -32,21 +32,20 @@
     // "postcss.config.js",
     // "index.html",
     // "src"
-
     //
-    // "src/components/layout/AppShell.tsx",
-    // "src/components/layout/RightPane.tsx",
-    // "src/hooks/useAppShellAnimations.hook.ts",
-    // "src/hooks/useResizablePanes.hook.ts",
+    // "src/pages/Messaging/components/TaskDetail.tsx",
+    // "src/pages/Messaging/types.ts",
     // "src/store/appShell.store.ts"
     //
     "src/components/layout/AppShell.tsx",
-    "src/components/layout/MainContent.tsx",
-    "src/hooks/useAutoAnimateTopBar.ts",
-    "src/pages/Dashboard/hooks/useDashboardScroll.hook.ts",
-    "src/pages/Dashboard/index.tsx",
-    "src/pages/DataDemo/index.tsx",
-    "src/components/shared/PageLayout.tsx"
+    "src/components/layout/RightPane.tsx",
+    "src/components/layout/TopBar.tsx",
+    "src/components/layout/ViewModeSwitcher.tsx",
+    "src/hooks/useAppViewManager.hook.ts",
+    "src/hooks/useRightPaneContent.hook.tsx",
+    "src/store/appShell.store.ts"
+
+    //
   ],
   "ignore": {
     "useGitignore": true,

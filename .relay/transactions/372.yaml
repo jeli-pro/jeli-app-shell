@@ -1,0 +1,271 @@
+uuid: c3288290-7988-4c6e-82b3-a81d4a04d2c8
+projectId: jeli-app-shell
+createdAt: '2025-10-16T23:01:57.851Z'
+gitCommitMsg: >-
+  feat(messaging): animate message input on lock state change
+
+  Introduces a slide-and-fade animation to the message input area in the
+  TaskDetail view. - When a task is locked, the input area animates out (slides
+  down, fades out). - When unlocked, it animates back into view. - Uses GSAP for
+  smooth animation and respects `reducedMotion` accessibility settings. - This
+  provides clear visual feedback to the user about their ability to interact
+  with the conversation.
+promptSummary: >-
+  Animate the message input area based on the locked state of the conversation
+  thread.
+reasoning:
+  - >-
+    I'll animate the message input area in `TaskDetail.tsx` to provide better
+    visual feedback for its locked/unlocked state.
+  - >-
+    I will use GSAP to create a smooth slide-and-fade animation. When the
+    conversation is locked, the input area will slide down and fade out. When
+    it's unlocked, it will slide up and fade back in. This will be achieved by:
+  - 1.  Adding `useRef` and `useEffect` hooks to the `TaskDetail` component.
+  - 2.  Creating a ref to target the input area's container `div`.
+  - >-
+    3.  Using a `useEffect` hook to trigger a GSAP animation whenever the
+    `isLocked` status changes.
+  - >-
+    4.  Adding `overflow-hidden` to the component's root element to ensure the
+    input area slides out of view cleanly.
+  - >-
+    5.  Checking for the user's `reducedMotion` preference from
+    `useAppShellStore` to disable animations for accessibility.
+  - >-
+    This change is self-contained within `TaskDetail.tsx` and will make the UI
+    feel more responsive and dynamic.
+operations:
+  - type: write
+    path: src/pages/Messaging/components/TaskDetail.tsx
+    content: >+
+      --- src/pages/Messaging/components/TaskDetail.tsx
+
+      +++ src/pages/Messaging/components/TaskDetail.tsx
+
+      @@ -1,16 +1,20 @@
+
+      -import React, { useMemo } from 'react';
+
+      +import React, { useMemo, useRef, useEffect } from 'react';
+       import { useParams } from 'react-router-dom';
+       import { useMessagingStore } from '../store/messaging.store';
+       import { ActivityFeed } from './ActivityFeed';
+       import { Button } from '@/components/ui/button';
+       import { Textarea } from '@/components/ui/textarea';
+       import { Paperclip, SendHorizontal, Smile, StickyNote } from 'lucide-react';
+       import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+       import { TakeoverBanner } from './TakeoverBanner';
+       import { useToast } from '@/components/ui/toast';
+      +import { gsap } from 'gsap';
+
+      +import { useAppShellStore } from '@/store/appShell.store';
+       
+       
+       export const TaskDetail: React.FC = () => {
+         const { conversationId: taskId } = useParams<{ conversationId: string }>();
+         const { show } = useToast();
+         const { getTaskById, takeOverTask, requestAndSimulateTakeover } = useMessagingStore();
+      +  const reducedMotion = useAppShellStore(s => s.reducedMotion);
+       
+         const task = useMemo(() => taskId ? getTaskById(taskId) : undefined, [taskId, getTaskById]);
+       
+      @@ -18,6 +22,32 @@
+         const currentUserId = 'user-1'; 
+       
+         const isLocked = !!task?.activeHandlerId && task.activeHandlerId !== currentUserId;
+      +  const inputAreaRef = useRef<HTMLDivElement>(null);
+
+      +  const isFirstRender = useRef(true);
+
+      +
+
+      +  useEffect(() => {
+
+      +    if (!inputAreaRef.current) return;
+
+      +
+
+      +    const target = {
+
+      +      y: isLocked ? 50 : 0,
+
+      +      opacity: isLocked ? 0 : 1,
+
+      +      pointerEvents: isLocked ? 'none' : 'auto' as const,
+
+      +    };
+
+      +
+
+      +    if (reducedMotion) {
+
+      +      gsap.set(inputAreaRef.current, target);
+
+      +      return;
+
+      +    }
+
+      +
+
+      +    if (isFirstRender.current) {
+
+      +      gsap.set(inputAreaRef.current, target);
+
+      +      isFirstRender.current = false;
+
+      +    } else {
+
+      +      gsap.to(inputAreaRef.current, {
+
+      +        ...target,
+
+      +        duration: 0.3,
+
+      +        ease: 'power2.inOut',
+
+      +      });
+
+      +    }
+
+      +  }, [isLocked, reducedMotion]);
+       
+         if (!taskId || !task) {
+           return (
+      @@ -52,7 +82,7 @@
+         };
+       
+         return (
+      -    <div className="h-full flex flex-col bg-background">
+
+      +    <div className="h-full flex flex-col bg-background overflow-hidden">
+             {isLocked && task.activeHandler && (
+               <TakeoverBanner
+                   activeHandler={task.activeHandler}
+      @@ -64,7 +94,7 @@
+             <ActivityFeed messages={task.messages} contact={task.contact} />
+       
+             {/* Input Form */}
+      -      <div className="p-4 border-t flex-shrink-0 bg-background/50">
+
+      +      <div ref={inputAreaRef} className="p-4 border-t flex-shrink-0
+      bg-background/50">
+               <Tabs defaultValue="comment" className="w-full" >
+                 <TabsList className="grid w-full grid-cols-2 mb-2">
+                   <TabsTrigger value="comment" disabled={isLocked}>Comment</TabsTrigger>
+
+    patchStrategy: standard-diff
+snapshot:
+  src/pages/Messaging/components/TaskDetail.tsx: >-
+    import React, { useMemo } from 'react';
+
+    import { useParams } from 'react-router-dom';
+
+    import { useMessagingStore } from '../store/messaging.store';
+
+    import { ActivityFeed } from './ActivityFeed';
+
+    import { Button } from '@/components/ui/button';
+
+    import { Textarea } from '@/components/ui/textarea';
+
+    import { Paperclip, SendHorizontal, Smile, StickyNote } from 'lucide-react';
+
+    import { Tabs, TabsContent, TabsList, TabsTrigger } from
+    "@/components/ui/tabs";
+
+    import { TakeoverBanner } from './TakeoverBanner';
+
+    import { useToast } from '@/components/ui/toast';
+
+
+
+    export const TaskDetail: React.FC = () => {
+      const { conversationId: taskId } = useParams<{ conversationId: string }>();
+      const { show } = useToast();
+      const { getTaskById, takeOverTask, requestAndSimulateTakeover } = useMessagingStore();
+
+      const task = useMemo(() => taskId ? getTaskById(taskId) : undefined, [taskId, getTaskById]);
+
+      // In a real app, this would come from the auth store
+      const currentUserId = 'user-1'; 
+
+      const isLocked = !!task?.activeHandlerId && task.activeHandlerId !== currentUserId;
+
+      if (!taskId || !task) {
+        return (
+            <div className="h-full flex flex-col items-center justify-center p-6 bg-background">
+                <p className="text-muted-foreground">Select a task to see its details.</p>
+            </div>
+        );
+      }
+
+      const handleTakeOver = () => {
+        takeOverTask(task.id, currentUserId);
+        show({
+            variant: 'success',
+            title: 'Task Taken Over',
+            message: `You are now handling the task from ${task.contact.name}.`
+        });
+      };
+
+      const handleRequestTakeover = () => {
+        requestAndSimulateTakeover(task.id, currentUserId);
+        if (task.activeHandler) {
+            show({
+                variant: 'default',
+                title: 'Request Sent',
+                message: `A takeover request has been sent to ${task.activeHandler.name}.`
+            });
+        }
+      };
+
+      return (
+        <div className="h-full flex flex-col bg-background">
+          {isLocked && task.activeHandler && (
+            <TakeoverBanner
+                activeHandler={task.activeHandler}
+                isRequesting={!!task.takeoverRequested}
+                onTakeOver={handleTakeOver}
+                onRequestTakeover={handleRequestTakeover}
+            />
+          )}
+          <ActivityFeed messages={task.messages} contact={task.contact} />
+
+          {/* Input Form */}
+          <div className="p-4 border-t flex-shrink-0 bg-background/50">
+            <Tabs defaultValue="comment" className="w-full" >
+              <TabsList className="grid w-full grid-cols-2 mb-2">
+                <TabsTrigger value="comment" disabled={isLocked}>Comment</TabsTrigger>
+                <TabsTrigger value="note" disabled={isLocked}><StickyNote className="w-4 h-4 mr-2" />Internal Note</TabsTrigger>
+              </TabsList>
+              <TabsContent value="comment">
+                 <div className="relative">
+                    <Textarea placeholder={isLocked ? "Take over to reply..." : `Reply to ${task.contact.name}...`} className="pr-24 min-h-[52px]" disabled={isLocked} />
+                    <div className="absolute right-2 top-2 flex items-center gap-1">
+                        <Button variant="ghost" size="icon" className="rounded-full h-8 w-8" disabled={isLocked}><Smile className="w-4 h-4" /></Button>
+                        <Button variant="ghost" size="icon" className="rounded-full h-8 w-8" disabled={isLocked}><Paperclip className="w-4 h-4" /></Button>
+                        <Button size="icon" className="rounded-full h-8 w-8" disabled={isLocked}><SendHorizontal className="w-4 h-4" /></Button>
+                    </div>
+                </div>
+              </TabsContent>
+              <TabsContent value="note">
+                <div className="relative">
+                    <Textarea placeholder={isLocked ? "Take over to add a note..." : "Add an internal note..."} className="pr-24 min-h-[52px] bg-yellow-400/10 border-yellow-400/30 focus-visible:ring-yellow-500" disabled={isLocked} />
+                    <div className="absolute right-2 top-2 flex items-center gap-1">
+                        <Button size="icon" className="rounded-full h-8 w-8" disabled={isLocked}><SendHorizontal className="w-4 h-4" /></Button>
+                    </div>
+                </div>
+              </TabsContent>
+            </Tabs>
+          </div>
+        </div>
+      );
+    };
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 372

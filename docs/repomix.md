@@ -4,773 +4,1068 @@ src/
   components/
     layout/
       AppShell.tsx
-      MainContent.tsx
-    shared/
-      PageLayout.tsx
+      RightPane.tsx
+      TopBar.tsx
+      ViewModeSwitcher.tsx
   hooks/
-    useAutoAnimateTopBar.ts
-  pages/
-    Dashboard/
-      hooks/
-        useDashboardScroll.hook.ts
-      index.tsx
-    DataDemo/
-      index.tsx
+    useAppViewManager.hook.ts
+    useRightPaneContent.hook.tsx
+  store/
+    appShell.store.ts
 ```
 
 # Files
 
-## File: src/pages/Dashboard/hooks/useDashboardScroll.hook.ts
+## File: src/hooks/useRightPaneContent.hook.tsx
 ```typescript
-import { useState, useCallback } from 'react';
-import { useAutoAnimateTopBar } from '@/hooks/useAutoAnimateTopBar';
-
-export function useDashboardScroll(
-  contentRef: React.RefObject<HTMLDivElement>,
-  isInSidePane: boolean
-) {
-  const [showScrollToBottom, setShowScrollToBottom] = useState(false);
-  const { onScroll: handleTopBarScroll } = useAutoAnimateTopBar(isInSidePane);
-
-  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
-    handleTopBarScroll(e);
-    if (!contentRef.current) return;
-    const { scrollTop, scrollHeight, clientHeight } = contentRef.current;
-    setShowScrollToBottom(scrollTop > 200 && scrollTop < scrollHeight - clientHeight - 200);
-  }, [handleTopBarScroll, contentRef]);
-
-  const scrollToBottom = () => {
-    contentRef.current?.scrollTo({
-      top: contentRef.current.scrollHeight,
-      behavior: 'smooth'
-    });
-  };
-
-  return { showScrollToBottom, handleScroll, scrollToBottom };
-}
-```
-
-## File: src/components/shared/PageLayout.tsx
-```typescript
-import React from 'react';
-import { cn } from '@/lib/utils';
-import { useAppShellStore } from '@/store/appShell.store';
-import { BODY_STATES } from '@/lib/utils';
-
-interface PageLayoutProps extends React.HTMLAttributes<HTMLDivElement> {
-  children: React.ReactNode;
-  scrollRef?: React.RefObject<HTMLDivElement>;
-}
-
-export const PageLayout = React.forwardRef<HTMLDivElement, PageLayoutProps>(
-  ({ children, onScroll, scrollRef, className, ...props }, ref) => {
-    const isTopBarVisible = useAppShellStore(s => s.isTopBarVisible);
-    const bodyState = useAppShellStore(s => s.bodyState);
-    const isFullscreen = bodyState === 'fullscreen';
-    const isInSidePane = bodyState === BODY_STATES.SIDE_PANE;
-
-    return (
-      <div
-        ref={scrollRef}
-        className={cn("h-full overflow-y-auto", className)}
-        onScroll={onScroll}
-      >
-        <div ref={ref} className={cn(
-          "space-y-8 transition-all duration-300",
-          !isInSidePane ? "px-6 lg:px-12 pb-6" : "px-6 pb-6",
-          isTopBarVisible && !isFullscreen ? "pt-24" : "pt-6"
-        )}
-        {...props}
-        >
-          {children}
-        </div>
-      </div>
-    );
-  }
-);
-
-PageLayout.displayName = 'PageLayout';
-```
-
-## File: src/hooks/useAutoAnimateTopBar.ts
-```typescript
-import { useRef, useCallback, useEffect } from 'react';
-import { useAppShellStore } from '@/store/appShell.store';
-import { BODY_STATES } from '@/lib/utils';
-
-export function useAutoAnimateTopBar(isPane = false) {
-  const bodyState = useAppShellStore(s => s.bodyState);
-  const lastScrollTop = useRef(0);
-  const scrollTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const onScroll = useCallback((event: React.UIEvent<HTMLDivElement>) => {
-    if (isPane || bodyState === BODY_STATES.SPLIT_VIEW || bodyState === BODY_STATES.FULLSCREEN) return;
-
-    // Clear previous timeout
-    if (scrollTimeout.current) {
-      clearTimeout(scrollTimeout.current);
-    }
-
-    const { scrollTop } = event.currentTarget;
-    const { setTopBarVisible } = useAppShellStore.getState();
-    
-    if (scrollTop > lastScrollTop.current && scrollTop > 200) {
-      setTopBarVisible(false);
-    } else if (scrollTop < lastScrollTop.current || scrollTop <= 0) {
-      setTopBarVisible(true);
-    }
-    
-    lastScrollTop.current = scrollTop <= 0 ? 0 : scrollTop;
-
-    // Set new timeout to show top bar when scrolling stops
-    scrollTimeout.current = setTimeout(() => {
-      // Don't hide, just ensure it's visible after scrolling stops
-      // and we are not at the top of the page.
-      if (scrollTop > 0) {
-        setTopBarVisible(true);
-      }
-    }, 250); // Adjust timeout as needed
-  }, [isPane, bodyState]);
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (scrollTimeout.current) {
-        clearTimeout(scrollTimeout.current);
-      }
-    };
-  }, []);
-
-  return { onScroll };
-}
-```
-
-## File: src/components/layout/MainContent.tsx
-```typescript
-import { forwardRef } from 'react'
-import { X } from 'lucide-react'
-import { cn } from '@/lib/utils';
-import { BODY_STATES } from '@/lib/utils'
-import { useAppShellStore } from '@/store/appShell.store'
-
-interface MainContentProps {
-  children?: React.ReactNode;
-}
-
-export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
-  ({ children }, ref) => {
-    const bodyState = useAppShellStore(s => s.bodyState);
-    const fullscreenTarget = useAppShellStore(s => s.fullscreenTarget);
-    const { toggleFullscreen } = useAppShellStore.getState();
-    const isFullscreen = bodyState === BODY_STATES.FULLSCREEN;
-
-    if (isFullscreen && fullscreenTarget === 'right') {
-      return null;
-    }
-
-    return (
-      <div
-        ref={ref}
-        className={cn(
-        "flex flex-col h-full overflow-hidden bg-background",
-        isFullscreen && "fixed inset-0 z-[60]"
-        )}
-      >
-        {isFullscreen && (
-          <button
-            onClick={() => toggleFullscreen()}
-            className="fixed top-6 right-6 lg:right-12 z-[100] h-12 w-12 flex items-center justify-center rounded-full bg-card/50 backdrop-blur-sm hover:bg-card/75 transition-colors group"
-            title="Exit Fullscreen"
-          >
-            <X className="w-6 h-6 group-hover:scale-110 group-hover:rotate-90 transition-all duration-300" />
-          </button>
-        )}
-
-        <div className="flex-1 min-h-0 flex flex-col">
-          {children}
-        </div>
-      </div>
-    )
-  }
-)
-MainContent.displayName = 'MainContent'
-```
-
-## File: src/pages/Dashboard/index.tsx
-```typescript
-import { useRef } from 'react'
-import { 
-  BarChart3, 
-  TrendingUp, 
-  Users, 
-  DollarSign, 
-  Activity,
-  Calendar,
-  Clock,
-  MessageSquare,
-  FileText,
-  Star,
-  ChevronRight,
-  MoreVertical,
-  ArrowDown
-} from 'lucide-react'
-import { cn } from '@/lib/utils'
-import { DemoContent } from './DemoContent';
-import { useDashboardAnimations } from './hooks/useDashboardAnimations.motion.hook'
-import { useDashboardScroll } from './hooks/useDashboardScroll.hook'
-import { useAppShellStore } from '@/store/appShell.store'
-import { BODY_STATES } from '@/lib/utils'
-import { PageHeader } from '@/components/shared/PageHeader';
-import { StatCard } from '@/components/shared/StatCard';
-import { Card } from '@/components/ui/card';
-import { PageLayout } from '@/components/shared/PageLayout';
-
-interface StatsCard {
-  title: string
-  value: string
-  change: string
-  trend: 'up' | 'down'
-  icon: React.ReactNode
-}
-
-interface ActivityItem {
-  id: string
-  type: 'comment' | 'file' | 'meeting' | 'task'
-  title: string
-  description: string
-  time: string
-  user: string
-}
-
-const statsCards: StatsCard[] = [
-  {
-    title: "Total Revenue",
-    value: "$45,231.89",
-    change: "+20.1%",
-    trend: "up",
-    icon: <DollarSign className="w-5 h-5" />
-  },
-  {
-    title: "Active Users",
-    value: "2,350",
-    change: "+180.1%",
-    trend: "up",
-    icon: <Users className="w-5 h-5" />
-  },
-  {
-    title: "Conversion Rate",
-    value: "12.5%",
-    change: "+19%",
-    trend: "up",
-    icon: <TrendingUp className="w-5 h-5" />
-  },
-  {
-    title: "Performance",
-    value: "573ms",
-    change: "-5.3%",
-    trend: "down",
-    icon: <Activity className="w-5 h-5" />
-  }
-]
-
-const recentActivity: ActivityItem[] = [
-  {
-    id: "1",
-    type: "comment",
-    title: "New comment on Project Alpha",
-    description: "Sarah Johnson added a comment to the design review",
-    time: "2 minutes ago",
-    user: "SJ"
-  },
-  {
-    id: "2",
-    type: "file",
-    title: "Document uploaded",
-    description: "quarterly-report.pdf was uploaded to Documents",
-    time: "15 minutes ago",
-    user: "MD"
-  },
-  {
-    id: "3",
-    type: "meeting",
-    title: "Meeting scheduled",
-    description: "Weekly standup meeting scheduled for tomorrow 9 AM",
-    time: "1 hour ago",
-    user: "RW"
-  },
-  {
-    id: "4",
-    type: "task",
-    title: "Task completed",
-    description: "UI wireframes for mobile app completed",
-    time: "2 hours ago",
-    user: "AL"
-  }
-]
-
-export function DashboardContent() {
-    const scrollRef = useRef<HTMLDivElement>(null)
-    const contentRef = useRef<HTMLDivElement>(null);
-    const statsCardsContainerRef = useRef<HTMLDivElement>(null);
-    const featureCardsContainerRef = useRef<HTMLDivElement>(null);
-    const bodyState = useAppShellStore(s => s.bodyState);
-    const isInSidePane = bodyState === BODY_STATES.SIDE_PANE;
-    const { showScrollToBottom, handleScroll, scrollToBottom } = useDashboardScroll(scrollRef, isInSidePane);
-
-    useDashboardAnimations(contentRef, statsCardsContainerRef, featureCardsContainerRef);
-
-    const getTypeIcon = (type: ActivityItem['type']) => {
-      switch (type) {
-        case 'comment':
-          return <MessageSquare className="w-4 h-4" />
-        case 'file':
-          return <FileText className="w-4 h-4" />
-        case 'meeting':
-          return <Calendar className="w-4 h-4" />
-        case 'task':
-          return <Star className="w-4 h-4" />
-        default:
-          return <Activity className="w-4 h-4" />
-      }
-    }
-
-    return (
-      <PageLayout scrollRef={scrollRef} onScroll={handleScroll} ref={contentRef}>
-        {/* Header */}
-        {!isInSidePane && (
-          <PageHeader
-            title="Dashboard"
-            description="Welcome to the Jeli App Shell demo! Explore all the features and customization options."
-          />
-        )}
-          {/* Stats Cards */}
-        <div ref={statsCardsContainerRef} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {statsCards.map((stat) => (
-            <StatCard
-              key={stat.title}
-              title={stat.title}
-              value={stat.value}
-              change={stat.change}
-              trend={stat.trend}
-              icon={stat.icon}
-            />
-          ))}
-        </div>
-
-        {/* Demo Content */}
-        <DemoContent ref={featureCardsContainerRef} />
-
-        {/* Main Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Chart Area */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Analytics Chart */}
-          <Card className="p-6 border-border/50">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-semibold">Analytics Overview</h3>
-              <button className="h-8 w-8 flex items-center justify-center hover:bg-accent rounded-full transition-colors">
-                <MoreVertical className="w-5 h-5" />
-              </button>
-            </div>
-            
-            {/* Mock Chart */}
-            <div className="h-64 bg-gradient-to-br from-primary/10 to-transparent rounded-xl flex items-center justify-center border border-border/50">
-              <div className="text-center">
-                <BarChart3 className="w-12 h-12 text-primary mx-auto mb-2" />
-                <p className="text-muted-foreground">Chart visualization would go here</p>
-              </div>
-            </div>
-          </Card>
-
-          {/* Recent Projects */}
-          <Card className="p-6 border-border/50">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-semibold">Recent Projects</h3>
-              <button className="text-primary hover:text-primary/80 text-sm font-medium flex items-center gap-1">
-                View All
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-            
-            <div className="space-y-4">
-              {[
-                { name: "E-commerce Platform", progress: 75, team: 5, deadline: "Dec 15" },
-                { name: "Mobile App Redesign", progress: 45, team: 3, deadline: "Jan 20" },
-                { name: "Marketing Website", progress: 90, team: 4, deadline: "Dec 5" }
-              ].map((project) => (
-                <div key={project.name} className="p-4 bg-accent/30 rounded-xl hover:bg-accent/50 transition-colors cursor-pointer">
-                  <div className="flex items-center justify-between mb-2">
-                    <h4 className="font-medium">{project.name}</h4>
-                    <span className="text-sm text-muted-foreground">{project.progress}%</span>
-                  </div>
-                  <div className="w-full bg-muted rounded-full h-2 mb-3">
-                    <div 
-                      className="bg-primary h-2 rounded-full transition-all duration-500"
-                      style={{ width: `${project.progress}%` }}
-                    />
-                  </div>
-                  <div className="flex items-center justify-between text-sm text-muted-foreground">
-                    <span>{project.team} team members</span>
-                    <span>Due {project.deadline}</span>
-                    </div>
-                </div>
-              ))}
-            </div>
-          </Card>
-        </div>
-
-        {/* Sidebar Content */}
-        <div className="space-y-6">
-          {/* Quick Actions */}
-          <Card className="p-6 border-border/50">
-            <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
-            <div className="space-y-3">
-              {[
-                { icon: <FileText className="w-4 h-4" />, label: "Create Document", color: "bg-blue-500/10 text-blue-600" },
-                { icon: <Calendar className="w-4 h-4" />, label: "Schedule Meeting", color: "bg-green-500/10 text-green-600" },
-                { icon: <Users className="w-4 h-4" />, label: "Invite Team", color: "bg-purple-500/10 text-purple-600" },
-                { icon: <BarChart3 className="w-4 h-4" />, label: "View Reports", color: "bg-orange-500/10 text-orange-600" }
-              ].map((action) => (
-                <button
-                  key={action.label}
-                  className="w-full flex items-center gap-3 p-3 hover:bg-accent rounded-lg transition-colors text-left"
-                >
-                  <div className={cn("p-2 rounded-full", action.color)}>
-                    {action.icon}
-                  </div>
-                  <span className="font-medium">{action.label}</span>
-                </button>
-              ))}
-            </div>
-          </Card>
-
-          {/* Recent Activity */}
-          <Card className="p-6 border-border/50">
-            <h3 className="text-lg font-semibold mb-4">Recent Activity</h3>
-            <div className="space-y-4">
-              {recentActivity.map((activity) => (
-                <div key={activity.id} className="flex items-start gap-3 p-3 hover:bg-accent/30 rounded-xl transition-colors cursor-pointer">
-                  <div className="p-2 bg-primary/10 rounded-full flex-shrink-0">
-                    {getTypeIcon(activity.type)}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h4 className="font-medium text-sm mb-1">{activity.title}</h4>
-                    <p className="text-xs text-muted-foreground mb-2">{activity.description}</p>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <Clock className="w-3 h-3" />
-                      <span>{activity.time}</span>
-                      <div className="w-5 h-5 bg-primary rounded-full flex items-center justify-center text-primary-foreground text-xs font-medium">
-                        {activity.user}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Card>
-        </div>
-      </div>
-      {showScrollToBottom && (
-        <button
-          onClick={scrollToBottom}
-          className="fixed bottom-8 right-8 w-12 h-12 bg-primary text-primary-foreground rounded-full flex items-center justify-center shadow-lg hover:bg-primary/90 transition-all animate-fade-in z-[51]"
-          style={{ animation: 'bounce 2s infinite' }}
-          title="Scroll to bottom"
-        >
-          <ArrowDown className="w-6 h-6" />
-        </button>
-      )}
-      </PageLayout>
-    )
-}
-```
-
-## File: src/pages/DataDemo/index.tsx
-```typescript
-import { useRef, useEffect, useCallback } from 'react'
+import { useMemo, useCallback } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import {
-  Layers, 
-  AlertTriangle, 
-  PlayCircle, 
-  TrendingUp,
-  Loader2,
-  ChevronsUpDown
-} from 'lucide-react'
-import { gsap } from 'gsap'
-import { cn } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuRadioGroup, 
-  DropdownMenuRadioItem, 
-  DropdownMenuTrigger 
-} from '@/components/ui/dropdown-menu'
-import { PageLayout } from '@/components/shared/PageLayout'
-import { DataListView } from './components/DataListView'
-import { DataCardView } from './components/DataCardView'
-import { DataTableView } from './components/DataTableView'
-import { DataViewModeSelector } from './components/DataViewModeSelector'
-import { AnimatedTabs } from '@/components/ui/animated-tabs'
-import { StatCard } from '@/components/shared/StatCard'
-import { AnimatedLoadingSkeleton } from './components/AnimatedLoadingSkeleton'
-import { DataToolbar } from './components/DataToolbar'
-import { mockDataItems } from './data/mockData'
-import type { GroupableField } from './types'
-import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
-import { 
-  useDataDemoStore,
-  useGroupTabs,
-  useDataToRender,
-} from './store/dataDemo.store'
+  LayoutDashboard,
+  Settings,
+  Component,
+  Bell,
+  SlidersHorizontal,
+  Database,
+  MessageSquare,
+} from 'lucide-react';
 
-type Stat = {
-  title: string;
-  value: string;
-  icon: React.ReactNode;
-  change: string;
-  trend: 'up' | 'down';
-  type?: 'card';
+import { DashboardContent } from "@/pages/Dashboard";
+import { SettingsContent } from "@/features/settings/SettingsContent";
+import { ToasterDemo } from "@/pages/ToasterDemo";
+import { NotificationsPage } from "@/pages/Notifications";
+import DataDemoPage from "@/pages/DataDemo";
+import { DataDetailPanel } from "@/pages/DataDemo/components/DataDetailPanel";
+import { mockDataItems } from "@/pages/DataDemo/data/mockData";
+import { MessagingContent } from "@/pages/Messaging/components/MessagingContent";
+import type { AppShellState } from '@/store/appShell.store';
+
+export function useRightPaneContent(sidePaneContent: AppShellState['sidePaneContent']) {
+  const navigate = useNavigate();
+  const { itemId, conversationId } = useParams<{ itemId: string; conversationId: string }>();
+
+  const staticContentMap = useMemo(() => ({
+    main: {
+      title: "Dashboard",
+      icon: LayoutDashboard,
+      page: "dashboard",
+      content: <DashboardContent />,
+    },
+    settings: {
+      title: "Settings",
+      icon: Settings,
+      page: "settings",
+      content: <div className="p-6"><SettingsContent /></div>,
+    },
+    toaster: {
+      title: "Toaster Demo",
+      icon: Component,
+      page: "toaster",
+      content: <ToasterDemo />,
+    },
+    notifications: {
+      title: "Notifications",
+      icon: Bell,
+      page: "notifications",
+      content: <NotificationsPage />,
+    },
+    dataDemo: {
+      title: "Data Showcase",
+      icon: Database,
+      page: "data-demo",
+      content: <DataDemoPage />,
+    },
+    details: {
+      title: "Details Panel",
+      icon: SlidersHorizontal,
+      content: (
+        <div className="p-6">
+          <p className="text-muted-foreground">
+            This is the side pane. It can be used to display contextual
+            information, forms, or actions related to the main content.
+          </p>
+        </div>
+      ),
+    },
+  }), []);
+
+  const contentMap = useMemo(() => ({
+    ...staticContentMap,
+    messaging: {
+      title: "Conversation",
+      icon: MessageSquare,
+      page: "messaging",
+      content: <MessagingContent conversationId={conversationId} />,
+    },
+  }), [conversationId, staticContentMap]);
+
+  const selectedItem = useMemo(() => {
+    if (!itemId) return null;
+    return mockDataItems.find(item => item.id === itemId) ?? null;
+  }, [itemId]);
+
+  const handleDataItemClose = useCallback(() => {
+    navigate('/data-demo');
+  }, [navigate]);
+
+  const { meta, content } = useMemo(() => {
+    if (sidePaneContent === 'dataItem' && selectedItem) {
+      return {
+        meta: { title: "Item Details", icon: Database, page: `data-demo/${itemId}` },
+        content: <DataDetailPanel item={selectedItem} onClose={handleDataItemClose} />,
+      };
+    }
+    const mappedContent = contentMap[sidePaneContent as keyof typeof contentMap] || contentMap.details;
+    return {
+      meta: mappedContent,
+      content: mappedContent.content,
+    };
+  }, [sidePaneContent, selectedItem, contentMap, itemId, handleDataItemClose]);
+
+  return { meta, content };
+}
+```
+
+## File: src/hooks/useAppViewManager.hook.ts
+```typescript
+import { useMemo, useCallback, useEffect, useRef } from 'react';
+import { useSearchParams, useNavigate, useLocation, useParams } from 'react-router-dom';
+import { useAppShellStore, type AppShellState, type ActivePage } from '@/store/appShell.store';
+import type { DataItem, ViewMode, SortConfig, SortableField, GroupableField, Status, Priority } from '@/pages/DataDemo/types';
+import type { FilterConfig } from '@/pages/DataDemo/components/DataToolbar';
+import type { TaskView } from '@/pages/Messaging/types';
+import { BODY_STATES, SIDEBAR_STATES } from '@/lib/utils';
+
+const pageToPaneMap: Record<string, AppShellState['sidePaneContent']> = {
+  dashboard: 'main',
+  settings: 'settings',
+  toaster: 'toaster',
+  notifications: 'notifications',
+  'data-demo': 'dataDemo',
+  messaging: 'messaging',
 };
 
-type ChartStat = {
-  title: string;
-  value: string;
-  icon: React.ReactNode;
-  change: string;
-  trend: 'up' | 'down';
-  type: 'chart';
-  chartData: number[];
-};
+function usePrevious<T>(value: T): T | undefined {
+  const ref = useRef<T>();
+  useEffect(() => {
+    ref.current = value;
+  });
+  return ref.current;
+}
 
-type StatItem = Stat | ChartStat;
+/**
+ * A centralized hook to manage and synchronize all URL-based view states.
+ * This is the single source of truth for view modes, side panes, split views,
+ * and page-specific parameters.
+ */
+export function useAppViewManager() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const params = useParams<{ itemId: string; conversationId: string }>();
+  const { itemId, conversationId } = params;
+  const { setSidebarState, sidebarState } = useAppShellStore();
 
-function DataDemoContent() {
-  const {
+  // --- DERIVED STATE FROM URL ---
+
+  const view = searchParams.get('view');
+  const sidePane = searchParams.get('sidePane');
+  const right = searchParams.get('right');
+  const messagingView = searchParams.get('messagingView') as TaskView | null;
+
+  const { bodyState, sidePaneContent } = useMemo(() => {
+    const validPanes: AppShellState['sidePaneContent'][] = ['details', 'settings', 'main', 'toaster', 'notifications', 'dataDemo', 'messaging'];
+    
+    // 1. Priority: Explicit side pane overlay via URL param
+    if (sidePane && validPanes.includes(sidePane as AppShellState['sidePaneContent'])) {
+      return { bodyState: BODY_STATES.SIDE_PANE, sidePaneContent: sidePane as AppShellState['sidePaneContent'] };
+    }
+
+    // 2. Data item detail view (can be overlay or split)
+    if (itemId) {
+      if (view === 'split') {
+        return { bodyState: BODY_STATES.SPLIT_VIEW, sidePaneContent: 'dataItem' as const };
+      }
+      return { bodyState: BODY_STATES.SIDE_PANE, sidePaneContent: 'dataItem' as const };
+    }
+
+    // 3. Messaging conversation view (always split)
+    if (conversationId) {
+      return { bodyState: BODY_STATES.SPLIT_VIEW, sidePaneContent: 'messaging' as const };
+    }
+
+    // 4. Generic split view via URL param
+    if (view === 'split' && right && validPanes.includes(right as AppShellState['sidePaneContent'])) {
+      return { bodyState: BODY_STATES.SPLIT_VIEW, sidePaneContent: right as AppShellState['sidePaneContent'] };
+    }
+
+    return { bodyState: BODY_STATES.NORMAL, sidePaneContent: 'details' as const };
+  }, [itemId, conversationId, view, sidePane, right]);
+  
+  const currentActivePage = useMemo(() => (location.pathname.split('/')[1] || 'dashboard') as ActivePage, [location.pathname]);
+  const prevActivePage = usePrevious(currentActivePage);
+
+  // --- SIDE EFFECTS ---
+  useEffect(() => {
+    // On navigating to messaging page, collapse sidebar if it's expanded.
+    // This ensures a good default view but allows the user to expand it again if they wish.
+    if (currentActivePage === 'messaging' && prevActivePage !== 'messaging' && sidebarState === SIDEBAR_STATES.EXPANDED) {
+      setSidebarState(SIDEBAR_STATES.COLLAPSED);
+    }
+  }, [currentActivePage, prevActivePage, sidebarState, setSidebarState]);
+
+  // DataDemo specific state
+  const viewMode = useMemo(() => (searchParams.get('dataView') as ViewMode) || 'list', [searchParams]);
+	const page = useMemo(() => parseInt(searchParams.get('page') || '1', 10), [searchParams]);
+	const groupBy = useMemo(() => (searchParams.get('groupBy') as GroupableField | 'none') || 'none', [searchParams]);
+	const activeGroupTab = useMemo(() => searchParams.get('tab') || 'all', [searchParams]);
+	const filters = useMemo<FilterConfig>(
+		() => ({
+			searchTerm: searchParams.get('q') || '',
+			status: (searchParams.get('status')?.split(',') || []).filter(Boolean) as Status[],
+			priority: (searchParams.get('priority')?.split(',') || []).filter(Boolean) as Priority[],
+		}),
+		[searchParams],
+	);
+	const sortConfig = useMemo<SortConfig | null>(() => {
+		const sortParam = searchParams.get('sort');
+		if (!sortParam) return { key: 'updatedAt', direction: 'desc' }; // Default sort
+		if (sortParam === 'default') return null;
+
+		const [key, direction] = sortParam.split('-');
+		return { key: key as SortableField, direction: direction as 'asc' | 'desc' };
+	}, [searchParams]);
+
+  // --- MUTATOR ACTIONS ---
+
+  const handleParamsChange = useCallback(
+		(newParams: Record<string, string | string[] | null | undefined>, resetPage = false) => {
+			setSearchParams(
+				(prev) => {
+					const updated = new URLSearchParams(prev);
+					
+					for (const [key, value] of Object.entries(newParams)) {
+						if (value === null || value === undefined || (Array.isArray(value) && value.length === 0) || value === '') {
+							updated.delete(key);
+						} else if (Array.isArray(value)) {
+							updated.set(key, value.join(','));
+						} else {
+							updated.set(key, String(value));
+						}
+					}
+
+					if (resetPage) {
+						updated.delete('page');
+					}
+					if ('groupBy' in newParams) {
+						updated.delete('tab');
+					}
+
+					return updated;
+				},
+				{ replace: true },
+			);
+		},
+		[setSearchParams],
+	);
+
+  const navigateTo = useCallback((page: string, params?: Record<string, string | null>) => {
+    const targetPath = page.startsWith('/') ? page : `/${page}`;
+    const isSamePage = location.pathname === targetPath;
+    
+    const newSearchParams = new URLSearchParams(isSamePage ? searchParams : undefined);
+
+    if (params) {
+      for (const [key, value] of Object.entries(params)) {
+        if (value === null || value === undefined) {
+          newSearchParams.delete(key);
+        } else {
+          newSearchParams.set(key, value);
+        }
+      }
+    }
+
+    navigate({ pathname: targetPath, search: newSearchParams.toString() });
+  }, [navigate, location.pathname, searchParams]);
+
+  const openSidePane = useCallback((pane: AppShellState['sidePaneContent']) => {
+    if (location.pathname === `/${Object.keys(pageToPaneMap).find(key => pageToPaneMap[key] === pane)}`) {
+        navigate({ pathname: '/dashboard', search: `?sidePane=${pane}` }, { replace: true });
+    } else {
+        handleParamsChange({ sidePane: pane, view: null, right: null });
+    }
+  }, [handleParamsChange, navigate, location.pathname]);
+
+  const closeSidePane = useCallback(() => {
+    if (itemId) {
+      navigate('/data-demo');
+    } else {
+      handleParamsChange({ sidePane: null, view: null, right: null });
+    }
+  }, [itemId, navigate, handleParamsChange]);
+
+  const toggleSidePane = useCallback((pane: AppShellState['sidePaneContent']) => {
+    if (sidePane === pane) {
+      closeSidePane();
+    } else {
+      openSidePane(pane);
+    }
+  }, [sidePane, openSidePane, closeSidePane]);
+
+  const toggleSplitView = useCallback(() => {
+    if (bodyState === BODY_STATES.SIDE_PANE) {
+      handleParamsChange({ view: 'split', right: sidePane, sidePane: null });
+    } else if (bodyState === BODY_STATES.SPLIT_VIEW) {
+      handleParamsChange({ sidePane: right, view: null, right: null });
+    } else { // From normal
+      const paneContent = pageToPaneMap[currentActivePage] || 'details';
+      handleParamsChange({ view: 'split', right: paneContent, sidePane: null });
+    }
+  }, [bodyState, sidePane, right, currentActivePage, handleParamsChange]);
+  
+  const setNormalView = useCallback(() => {
+      handleParamsChange({ sidePane: null, view: null, right: null });
+  }, [handleParamsChange]);
+
+  const switchSplitPanes = useCallback(() => {
+    if (bodyState !== BODY_STATES.SPLIT_VIEW) return;
+    const newSidePaneContent = pageToPaneMap[currentActivePage];
+    const newActivePage = Object.entries(pageToPaneMap).find(
+      ([, value]) => value === sidePaneContent
+    )?.[0] as ActivePage | undefined;
+
+    if (newActivePage && newSidePaneContent) {
+      navigate(`/${newActivePage}?view=split&right=${newSidePaneContent}`, { replace: true });
+    }
+  }, [bodyState, currentActivePage, sidePaneContent, navigate]);
+  
+  const closeSplitPane = useCallback((paneToClose: 'main' | 'right') => {
+    if (bodyState !== BODY_STATES.SPLIT_VIEW) return;
+    if (paneToClose === 'right') {
+      navigate(`/${currentActivePage}`, { replace: true });
+    } else { // Closing main pane
+      const pageToBecomeActive = Object.entries(pageToPaneMap).find(
+        ([, value]) => value === sidePaneContent
+      )?.[0] as ActivePage | undefined;
+      
+      if (pageToBecomeActive) {
+        navigate(`/${pageToBecomeActive}`, { replace: true });
+      } else {
+        navigate(`/dashboard`, { replace: true });
+      }
+    }
+  }, [bodyState, currentActivePage, sidePaneContent, navigate]);
+  
+  // DataDemo actions
+  const setViewMode = (mode: ViewMode) => handleParamsChange({ dataView: mode === 'list' ? null : mode });
+  const setGroupBy = (val: string) => handleParamsChange({ groupBy: val === 'none' ? null : val }, true);
+  const setActiveGroupTab = (tab: string) => handleParamsChange({ tab: tab === 'all' ? null : tab });
+  const setFilters = (newFilters: FilterConfig) => {
+    handleParamsChange({ q: newFilters.searchTerm, status: newFilters.status, priority: newFilters.priority }, true);
+  }
+  const setSort = (config: SortConfig | null) => {
+    if (!config) {
+      handleParamsChange({ sort: 'default' }, true);
+    } else {
+      handleParamsChange({ sort: `${config.key}-${config.direction}` }, true);
+    }
+  }
+  const setTableSort = (field: SortableField) => {
+    let newSort: string | null = `${field}-desc`;
+    if (sortConfig?.key === field) {
+      if (sortConfig.direction === 'desc') newSort = `${field}-asc`;
+      else if (sortConfig.direction === 'asc') newSort = 'default';
+    }
+    handleParamsChange({ sort: newSort }, true);
+  };
+  const setPage = (newPage: number) => handleParamsChange({ page: newPage.toString() });
+
+  const onItemSelect = useCallback((item: DataItem) => {
+		navigate(`/data-demo/${item.id}${location.search}`);
+	}, [navigate, location.search]);
+
+  const setMessagingView = (view: TaskView) => handleParamsChange({ messagingView: view });
+
+
+  return useMemo(() => ({
+    // State
+    bodyState,
+    sidePaneContent,
+    currentActivePage,
+    itemId,
+    messagingView,
+    // DataDemo State
     viewMode,
+    page,
     groupBy,
     activeGroupTab,
-    setGroupBy,
-    setActiveGroupTab,
-    page,
     filters,
     sortConfig,
+    // Actions
+    navigateTo,
+    openSidePane,
+    closeSidePane,
+    toggleSidePane,
+    toggleSplitView,
+    setNormalView,
+    switchSplitPanes,
+    setMessagingView,
+    closeSplitPane,
+    // DataDemo Actions
+    onItemSelect,
+    setViewMode,
+    setGroupBy,
+    setActiveGroupTab,
+    setFilters,
+    setSort,
+    setTableSort,
     setPage,
+  }), [
+    bodyState, sidePaneContent, currentActivePage, itemId, messagingView,
+    viewMode, page, groupBy, activeGroupTab, filters, sortConfig,
+    navigateTo, openSidePane, closeSidePane, toggleSidePane, toggleSplitView, setNormalView, setMessagingView,
+    switchSplitPanes, closeSplitPane, onItemSelect, setViewMode, setGroupBy, setActiveGroupTab, setFilters,
+    setSort, setTableSort, setPage
+  ]);
+}
+```
+
+## File: src/store/appShell.store.ts
+```typescript
+import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
+import { type ReactElement } from 'react';
+import { SIDEBAR_STATES, BODY_STATES, type SidebarState, type BodyState } from '@/lib/utils';
+
+export type ActivePage = 'dashboard' | 'settings' | 'toaster' | 'notifications' | 'data-demo' | 'messaging';
+
+// --- State and Action Types ---
+
+export interface AppShellState {
+  sidebarState: SidebarState;
+  bodyState: BodyState;
+  sidePaneContent: 'details' | 'settings' | 'main' | 'toaster' | 'notifications' | 'dataDemo' | 'dataItem' | 'messaging';
+  sidebarWidth: number;
+  sidePaneWidth: number;
+  splitPaneWidth: number;
+  defaultSidePaneWidth: number;
+  defaultSplitPaneWidth: number;
+  defaultWidthsSet: boolean;
+  previousBodyState: BodyState;
+  fullscreenTarget: 'main' | 'right' | null;
+  isResizing: boolean;
+  isResizingRightPane: boolean;
+  isTopBarVisible: boolean;
+  isTopBarHovered: boolean;
+  autoExpandSidebar: boolean;
+  reducedMotion: boolean;
+  compactMode: boolean;
+  primaryColor: string;
+  isCommandPaletteOpen: boolean;
+  isDarkMode: boolean;
+  appName?: string;
+  appLogo?: ReactElement;
+  draggedPage: 'dashboard' | 'settings' | 'toaster' | 'notifications' | 'data-demo' | 'messaging' | null;
+  dragHoverTarget: 'left' | 'right' | null;
+  hoveredPane: 'left' | 'right' | null;
+}
+
+export interface AppShellActions {
+    // Initialization
+    init: (config: { appName?: string; appLogo?: ReactElement; defaultSplitPaneWidth?: number }) => void;
+    
+    // Direct state setters
+    setSidebarState: (payload: SidebarState) => void;
+    setBodyState: (payload: BodyState) => void;
+    setSidePaneContent: (payload: AppShellState['sidePaneContent']) => void;
+    setSidebarWidth: (payload: number) => void;
+    setSidePaneWidth: (payload: number) => void;
+    setDefaultPaneWidths: () => void;
+    resetPaneWidths: () => void;
+    setSplitPaneWidth: (payload: number) => void;
+    setIsResizing: (payload: boolean) => void;
+    setFullscreenTarget: (payload: 'main' | 'right' | null) => void;
+    setIsResizingRightPane: (payload: boolean) => void;
+    setTopBarVisible: (payload: boolean) => void;
+    setAutoExpandSidebar: (payload: boolean) => void;
+    setReducedMotion: (payload: boolean) => void;
+    setCompactMode: (payload: boolean) => void;
+    setPrimaryColor: (payload: string) => void;
+    setDraggedPage: (payload: AppShellState['draggedPage']) => void;
+    setCommandPaletteOpen: (open: boolean) => void;
+    toggleDarkMode: () => void;
+    setDragHoverTarget: (payload: 'left' | 'right' | null) => void;
+    setTopBarHovered: (isHovered: boolean) => void;
+    setHoveredPane: (payload: 'left' | 'right' | null) => void;
+    
+    // Composite actions
+    toggleSidebar: () => void;
+    hideSidebar: () => void;
+    showSidebar: () => void;
+    peekSidebar: () => void;
+    toggleFullscreen: (target?: 'main' | 'right' | null) => void;
+    resetToDefaults: () => void;
+}
+
+const defaultState: AppShellState = {
+  sidebarState: SIDEBAR_STATES.EXPANDED,
+  bodyState: BODY_STATES.NORMAL,
+  sidePaneContent: 'details',
+  sidebarWidth: 280,
+  sidePaneWidth: typeof window !== 'undefined' ? Math.max(300, Math.round(window.innerWidth * 0.6)) : 400,
+  splitPaneWidth: typeof window !== 'undefined' ? Math.max(300, Math.round(window.innerWidth * 0.35)) : 400,
+  defaultSidePaneWidth: 400,
+  defaultSplitPaneWidth: 400,
+  defaultWidthsSet: false,
+  previousBodyState: BODY_STATES.NORMAL,
+  fullscreenTarget: null,
+  isResizing: false,
+  isResizingRightPane: false,
+  isTopBarVisible: true,
+  isTopBarHovered: false,
+  autoExpandSidebar: true,
+  reducedMotion: false,
+  compactMode: false,
+  primaryColor: '220 84% 60%',
+  isCommandPaletteOpen: false,
+  isDarkMode: false,
+  appName: 'Jeli App',
+  appLogo: undefined,
+  draggedPage: null,
+  dragHoverTarget: null,
+  hoveredPane: null,
+};
+
+
+export const useAppShellStore = create<AppShellState & AppShellActions>()(
+  persist(
+    (set, get) => ({
+      ...defaultState,
+
+      init: ({ appName, appLogo, defaultSplitPaneWidth }) => set(state => ({
+        ...state,
+        ...(appName && { appName }),
+        ...(appLogo && { appLogo }),
+        ...(defaultSplitPaneWidth && { splitPaneWidth: defaultSplitPaneWidth }),
+      })),
+      
+      setSidebarState: (payload) => set({ sidebarState: payload }),
+      setBodyState: (payload) => {
+        // If we're leaving fullscreen, reset the target and previous state
+        if (get().bodyState === BODY_STATES.FULLSCREEN && payload !== BODY_STATES.FULLSCREEN) {
+          set({ bodyState: payload, fullscreenTarget: null, previousBodyState: BODY_STATES.NORMAL });
+        } else {
+          set({ bodyState: payload });
+        }
+      },
+      setSidePaneContent: (payload) => set({ sidePaneContent: payload }),
+      setSidebarWidth: (payload) => set({ sidebarWidth: Math.max(200, Math.min(500, payload)) }),
+      setSidePaneWidth: (payload) => set({ sidePaneWidth: Math.max(300, Math.min(window.innerWidth * 0.8, payload)) }),
+      setDefaultPaneWidths: () => {
+        if (get().defaultWidthsSet) return;
+        set(state => ({
+            defaultSidePaneWidth: state.sidePaneWidth,
+            defaultSplitPaneWidth: state.splitPaneWidth,
+            defaultWidthsSet: true,
+        }));
+      },
+      resetPaneWidths: () => set(state => ({
+        sidePaneWidth: state.defaultSidePaneWidth,
+        splitPaneWidth: state.defaultSplitPaneWidth,
+      })),
+      setSplitPaneWidth: (payload) => set({ splitPaneWidth: Math.max(300, Math.min(window.innerWidth * 0.8, payload)) }),
+      setIsResizing: (payload) => set({ isResizing: payload }),
+      setFullscreenTarget: (payload) => set({ fullscreenTarget: payload }),
+      setIsResizingRightPane: (payload) => set({ isResizingRightPane: payload }),
+      setTopBarVisible: (payload) => set({ isTopBarVisible: payload }),
+      setAutoExpandSidebar: (payload) => set({ autoExpandSidebar: payload }),
+      setReducedMotion: (payload) => set({ reducedMotion: payload }),
+      setCompactMode: (payload) => set({ compactMode: payload }),
+      setPrimaryColor: (payload) => {
+        if (typeof document !== 'undefined') {
+            document.documentElement.style.setProperty('--primary-hsl', payload);
+        }
+        set({ primaryColor: payload });
+      },
+      setDraggedPage: (payload) => set({ draggedPage: payload }),
+      setCommandPaletteOpen: (open) => set({ isCommandPaletteOpen: open }),
+      toggleDarkMode: () => set((state) => ({ isDarkMode: !state.isDarkMode })),
+      setDragHoverTarget: (payload) => set({ dragHoverTarget: payload }),
+      setTopBarHovered: (isHovered) => set({ isTopBarHovered: isHovered }),
+      setHoveredPane: (payload) => set({ hoveredPane: payload }),
+      
+      toggleSidebar: () => {
+        const current = get().sidebarState;
+        if (current === SIDEBAR_STATES.HIDDEN) set({ sidebarState: SIDEBAR_STATES.COLLAPSED });
+        else if (current === SIDEBAR_STATES.COLLAPSED) set({ sidebarState: SIDEBAR_STATES.EXPANDED });
+        else if (current === SIDEBAR_STATES.EXPANDED) set({ sidebarState: SIDEBAR_STATES.COLLAPSED });
+      },
+      hideSidebar: () => set({ sidebarState: SIDEBAR_STATES.HIDDEN }),
+      showSidebar: () => set({ sidebarState: SIDEBAR_STATES.EXPANDED }),
+      peekSidebar: () => set({ sidebarState: SIDEBAR_STATES.PEEK }),
+      
+      toggleFullscreen: (target = null) => {
+        const { bodyState, previousBodyState } = get();
+        if (bodyState === BODY_STATES.FULLSCREEN) {
+          set({ 
+            bodyState: previousBodyState || BODY_STATES.NORMAL,
+            fullscreenTarget: null,
+            previousBodyState: BODY_STATES.NORMAL,
+          });
+        } else {
+          set({ 
+            previousBodyState: bodyState, 
+            bodyState: BODY_STATES.FULLSCREEN, 
+            fullscreenTarget: target 
+          });
+        }
+      },
+      
+      resetToDefaults: () => {
+        // Preserve props passed to provider and session defaults
+        set(state => {
+          const currentPrimaryColor = defaultState.primaryColor;
+          if (typeof document !== 'undefined') {
+            document.documentElement.style.setProperty('--primary-hsl', currentPrimaryColor);
+          }
+          return {
+            ...defaultState,
+            primaryColor: currentPrimaryColor,
+            appName: state.appName,
+            appLogo: state.appLogo,
+            defaultSidePaneWidth: state.defaultSidePaneWidth,
+            defaultSplitPaneWidth: state.defaultSplitPaneWidth,
+            defaultWidthsSet: state.defaultWidthsSet,
+            // Also reset current widths to the defaults
+            sidePaneWidth: state.defaultSidePaneWidth,
+            splitPaneWidth: state.defaultSplitPaneWidth,
+          };
+        });
+      },
+    }),
+    {
+      name: 'app-shell-storage',
+      partialize: (state) => ({
+        isDarkMode: state.isDarkMode,
+        sidebarState: state.sidebarState,
+        sidebarWidth: state.sidebarWidth,
+        sidePaneWidth: state.sidePaneWidth,
+        splitPaneWidth: state.splitPaneWidth,
+        autoExpandSidebar: state.autoExpandSidebar,
+        reducedMotion: state.reducedMotion,
+        compactMode: state.compactMode,
+        primaryColor: state.primaryColor,
+      }),
+    }
+  )
+);
+
+// Add a selector for the derived rightPaneWidth
+export const useRightPaneWidth = () => useAppShellStore(state => 
+    state.bodyState === BODY_STATES.SPLIT_VIEW ? state.splitPaneWidth : state.sidePaneWidth
+);
+```
+
+## File: src/components/layout/ViewModeSwitcher.tsx
+```typescript
+import { useState, useRef, useEffect } from 'react';
+import { gsap } from 'gsap';
+import { cn } from '@/lib/utils'
+import { useAppShellStore, type AppShellState, type ActivePage } from '@/store/appShell.store'
+import { BODY_STATES } from '@/lib/utils'
+import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
+import {
+  Columns,
+  PanelRightOpen,
+  SplitSquareHorizontal,
+  Maximize,
+  Minimize,
+  Layers,
+  X,
+  ArrowLeftRight
+} from 'lucide-react'
+
+export function ViewModeSwitcher({ pane, targetPage }: { pane?: 'main' | 'right', targetPage?: ActivePage }) {
+  const bodyState = useAppShellStore(s => s.bodyState);
+  const fullscreenTarget = useAppShellStore(s => s.fullscreenTarget);
+  const { toggleFullscreen } = useAppShellStore.getState();
+  const {
+    currentActivePage,
+    toggleSidePane,
+    toggleSplitView,
+    setNormalView,
+    navigateTo,
+    switchSplitPanes,
+    closeSplitPane,
   } = useAppViewManager();
 
-  const { hasMore, isLoading, isInitialLoading, totalItemCount, loadData } = useDataDemoStore(state => ({
-    hasMore: state.hasMore,
-    isLoading: state.isLoading,
-    isInitialLoading: state.isInitialLoading,
-    totalItemCount: state.totalItemCount,
-    loadData: state.loadData,
-  }));
+  const activePage = targetPage || currentActivePage;
+  const [isExpanded, setIsExpanded] = useState(false);
+  const buttonRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
-  const groupTabs = useGroupTabs(groupBy, activeGroupTab);
-  const dataToRender = useDataToRender(groupBy, activeGroupTab);
-
-  const groupOptions: { id: GroupableField | 'none'; label: string }[] = [
-    { id: 'none', label: 'None' }, { id: 'status', label: 'Status' }, { id: 'priority', label: 'Priority' }, { id: 'category', label: 'Category' }
-  ]
-  const statsRef = useRef<HTMLDivElement>(null)
-
-  // Calculate stats from data
-  const totalItems = mockDataItems.length
-  const activeItems = mockDataItems.filter(item => item.status === 'active').length
-  const highPriorityItems = mockDataItems.filter(item => item.priority === 'high' || item.priority === 'critical').length
-  const avgCompletion = totalItems > 0 ? Math.round(
-    mockDataItems.reduce((acc, item) => acc + item.metrics.completion, 0) / totalItems
-  ) : 0
-
-  const stats: StatItem[] = [
-    {
-      title: "Total Projects",
-      value: totalItems.toString(),
-      icon: <Layers className="w-5 h-5" />,
-      change: "+5.2% this month",
-      trend: "up" as const,
-      type: 'chart',
-      chartData: [120, 125, 122, 130, 135, 138, 142]
-    },
-    {
-      title: "Active Projects",
-      value: activeItems.toString(),
-      icon: <PlayCircle className="w-5 h-5" />,
-      change: "+2 this week", 
-      trend: "up" as const,
-      type: 'chart',
-      chartData: [45, 50, 48, 55, 53, 60, 58]
-    },
-    {
-      title: "High Priority",
-      value: highPriorityItems.toString(),
-      icon: <AlertTriangle className="w-5 h-5" />,
-      change: "-1 from last week",
-      trend: "down" as const,
-      type: 'chart',
-      chartData: [25, 26, 28, 27, 26, 24, 23]
-    },
-    {
-      title: "Avg. Completion",
-      value: `${avgCompletion}%`,
-      icon: <TrendingUp className="w-5 h-5" />,
-      change: "+3.2%",
-      trend: "up" as const,
-      type: 'chart',
-      chartData: [65, 68, 70, 69, 72, 75, 78]
-    }
-  ]
-
-  useEffect(() => {
-    // Animate stats cards in
-    if (!isInitialLoading && statsRef.current) {
-      gsap.fromTo(statsRef.current.children,
-        { y: 30, opacity: 0 },
-        {
-          duration: 0.6,
-          y: 0,
-          opacity: 1,
-          stagger: 0.1,
-          ease: "power2.out"
-        }
-      )
-    }
-  }, [isInitialLoading]);
-
-  useEffect(() => {
-    loadData({ page, groupBy, filters, sortConfig });
-  }, [page, groupBy, filters, sortConfig, loadData]);
-
-  const observer = useRef<IntersectionObserver>();
-  const loaderRef = useCallback(
-    (node: Element | null) => {
-      if (isLoading) return;
-      if (observer.current) observer.current.disconnect();
-
-      observer.current = new IntersectionObserver((entries) => {
-        if (entries[0].isIntersecting && hasMore) {
-          setPage(page + 1);
-        }
-      });
-      if (node) observer.current.observe(node);
-    },
-    [isLoading, hasMore, page, setPage],
+  const isFullscreen = bodyState === BODY_STATES.FULLSCREEN;
+  const isThisPaneFullscreen = isFullscreen && (
+    (pane === 'main' && fullscreenTarget !== 'right') ||
+    (pane === 'right' && fullscreenTarget === 'right') ||
+    (!pane && !fullscreenTarget) // Global switcher, global fullscreen
   );
 
+  useEffect(() => {
+    const buttonsToAnimate = buttonRefs.current.filter(Boolean) as HTMLButtonElement[];
+    if (buttonsToAnimate.length === 0) return;
+
+    gsap.killTweensOf(buttonsToAnimate);
+
+    if (isExpanded) {
+        gsap.to(buttonsToAnimate, {
+            width: 32, // h-8 w-8
+            opacity: 1,
+            pointerEvents: 'auto',
+            marginLeft: 4, // from gap-1 in original
+            duration: 0.2,
+            stagger: {
+                each: 0.05,
+                from: 'start'
+            },
+            ease: 'power2.out'
+        });
+    } else {
+        gsap.to(buttonsToAnimate, {
+            width: 0,
+            opacity: 0,
+            pointerEvents: 'none',
+            marginLeft: 0,
+            duration: 0.2,
+            stagger: {
+                each: 0.05,
+                from: 'end'
+            },
+            ease: 'power2.in'
+        });
+    }
+  }, [isExpanded, bodyState]); // re-run if bodyState changes to recalc buttons
+
+  const handlePaneClick = (type: 'side-pane' | 'split-view') => {
+    const pageToPaneMap: Record<ActivePage, AppShellState['sidePaneContent']> = { // This type is now stricter because ActivePage includes messaging
+      dashboard: 'main', settings: 'settings', toaster: 'toaster', notifications: 'notifications', 'data-demo': 'dataDemo',
+      messaging: 'messaging',
+    };
+    const paneContent = pageToPaneMap[activePage];
+    if (type === 'side-pane') toggleSidePane(paneContent);
+    else toggleSplitView();
+  }
+
+  const handleNormalViewClick = () => {
+    if (isFullscreen) {
+      toggleFullscreen();
+    }
+    if (targetPage && targetPage !== currentActivePage) {
+      navigateTo(targetPage);
+    } else {
+      setNormalView();
+    }
+  }
+
+  const buttons = [
+    {
+      id: 'normal',
+      onClick: handleNormalViewClick,
+      active: bodyState === BODY_STATES.NORMAL,
+      title: "Normal View",
+      icon: <Columns className="w-4 h-4" />
+    },
+    {
+      id: 'side-pane',
+      onClick: () => handlePaneClick('side-pane'),
+      active: bodyState === BODY_STATES.SIDE_PANE,
+      title: "Side Pane View",
+      icon: <PanelRightOpen className="w-4 h-4" />
+    },
+    {
+      id: 'split-view',
+      onClick: () => handlePaneClick('split-view'),
+      active: bodyState === BODY_STATES.SPLIT_VIEW,
+      title: bodyState === BODY_STATES.SPLIT_VIEW ? 'Switch to Overlay View' : 'Switch to Split View',
+      icon: bodyState === BODY_STATES.SPLIT_VIEW ? <Layers className="w-4 h-4" /> : <SplitSquareHorizontal className="w-4 h-4" />
+    },
+    {
+      id: 'fullscreen',
+      onClick: () => {
+        if (targetPage && targetPage !== currentActivePage ) {
+          navigateTo(targetPage);
+          setTimeout(() => toggleFullscreen(pane), 50);
+        } else {
+          toggleFullscreen(pane);
+        }
+      },
+      active: isThisPaneFullscreen,
+      title: "Toggle Fullscreen",
+      icon: isThisPaneFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />
+    }
+  ];
+
+  if (bodyState === BODY_STATES.SPLIT_VIEW) {
+    buttons.push({
+      id: 'switch',
+      onClick: switchSplitPanes,
+      active: false,
+      title: "Switch Panes",
+      icon: <ArrowLeftRight className="w-4 h-4" />
+    });
+    buttons.push({
+      id: 'close',
+      onClick: () => closeSplitPane(pane || 'right'),
+      active: false,
+      title: "Close Pane",
+      icon: <X className="w-4 h-4 text-muted-foreground group-hover:text-destructive" />
+    });
+  }
+
   return (
-    <PageLayout
-      // Note: Search functionality is handled by a separate SearchBar in the TopBar
+    <div
+      onMouseEnter={() => setIsExpanded(true)}
+      onMouseLeave={() => setIsExpanded(false)}
+      className="flex items-center gap-0 p-1 bg-card rounded-full border border-border"
     >
-      <div className="space-y-8">
-        {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div className="flex-1">
-            <h1 className="text-2xl font-bold tracking-tight">Data Showcase</h1>
-            <p className="text-muted-foreground">
-              {isInitialLoading 
-                ? "Loading projects..." 
-                : `Showing ${dataToRender.length} of ${totalItemCount} item(s)`}
-            </p>
-          </div>
-          <DataViewModeSelector />
-        </div>
-
-        {/* Stats Section */}
-        {!isInitialLoading && (
-          <div ref={statsRef} className="grid grid-cols-[repeat(auto-fit,minmax(250px,1fr))] gap-6">
-            {stats.map((stat) => (
-              <StatCard
-                key={stat.title}
-                title={stat.title}
-                value={stat.value}
-                change={stat.change}
-                trend={stat.trend}
-                icon={stat.icon}
-                chartData={stat.type === 'chart' ? stat.chartData : undefined}
-              />
-            ))}
-          </div>
-        )}
-
-        {/* Controls Area */}
-        <div className="space-y-6">
-          <DataToolbar />
-        </div>
-
-        {/* Group by and Tabs section */}
-        <div className={cn(
-          "flex items-center justify-between gap-4",
-          groupBy !== 'none' && "border-b"
-        )}>
-          {/* Tabs on the left, takes up available space */}
-          {groupBy !== 'none' && groupTabs.length > 1 ? (
-            <AnimatedTabs
-              tabs={groupTabs}
-              activeTab={activeGroupTab}
-              onTabChange={setActiveGroupTab}
-              className="flex-grow"
-            />
-          ) : (
-            <div className="h-[68px] flex-grow" /> // Placeholder for consistent height.
+        <button
+            className='h-8 w-8 flex-shrink-0 flex items-center justify-center rounded-full hover:bg-accent transition-colors'
+            title="View Modes"
+            onClick={() => setIsExpanded(!isExpanded)}
+        >
+            <Layers className="w-4 h-4" />
+        </button>
+      
+      {buttons.map((btn, index) => (
+        <button
+          key={btn.id}
+          ref={el => buttonRefs.current[index] = el}
+          onClick={btn.onClick}
+          className={cn(
+            'h-8 w-0 flex items-center justify-center rounded-full hover:bg-accent transition-colors group opacity-0',
+            btn.active && 'bg-accent text-accent-foreground',
+            btn.id === 'close' && 'hover:bg-destructive/20'
           )}
-          
-          {/* Group by dropdown on the right */}
-          <div className="flex items-center gap-2 shrink-0">
-            <span className="text-sm font-medium text-muted-foreground shrink-0">Group by:</span>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="w-[180px] justify-between">
-                  {groupOptions.find(o => o.id === groupBy)?.label}
-                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-[180px]">
-                <DropdownMenuRadioGroup value={groupBy} onValueChange={setGroupBy}>
-                  {groupOptions.map(option => (
-                    <DropdownMenuRadioItem key={option.id} value={option.id}>
-                      {option.label}
-                    </DropdownMenuRadioItem>
-                  ))}
-                </DropdownMenuRadioGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </div>
-
-        <div className="min-h-[500px]">
-          {isInitialLoading ? <AnimatedLoadingSkeleton viewMode={viewMode} /> : (
-            <div>
-              {viewMode === 'table' ? <DataTableView /> : (
-                <>
-                  {viewMode === 'list' && <DataListView />}
-                  {viewMode === 'cards' && <DataCardView />}
-                  {viewMode === 'grid' && <DataCardView isGrid />}
-                </>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Loader for infinite scroll */}
-        <div ref={loaderRef} className="flex justify-center items-center py-6">
-          {isLoading && !isInitialLoading && groupBy === 'none' && (
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <Loader2 className="w-5 h-5 animate-spin" />
-              <span>Loading more...</span>
-            </div>
-          )}
-          {!isLoading && !hasMore && dataToRender.length > 0 && !isInitialLoading && groupBy === 'none' && (
-            <p className="text-muted-foreground">You've reached the end.</p>
-          )}
-        </div>
-      </div>
-    </PageLayout>
+          style={{ pointerEvents: 'none', marginLeft: 0, overflow: 'hidden' }}
+          title={btn.title}
+        >
+          {btn.icon}
+        </button>
+      ))}
+    </div>
   )
 }
+```
 
-export default function DataDemoPage() {
-  return <DataDemoContent />;
+## File: src/components/layout/RightPane.tsx
+```typescript
+import { forwardRef, useMemo, useCallback, createElement, memo } from 'react'
+import {
+  ChevronRight,
+  X,
+  Layers,
+  SplitSquareHorizontal,
+  ChevronsLeftRight,
+} from 'lucide-react'
+import { cn, BODY_STATES } from '@/lib/utils';
+import { useAppShellStore } from '@/store/appShell.store';
+import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
+import { useRightPaneContent } from '@/hooks/useRightPaneContent.hook'
+
+export const RightPane = memo(forwardRef<HTMLDivElement, { className?: string }>(({ className }, ref) => {
+  const fullscreenTarget = useAppShellStore(s => s.fullscreenTarget)
+  const bodyState = useAppShellStore(s => s.bodyState)
+  const { toggleFullscreen, setIsResizingRightPane } =
+    useAppShellStore.getState()
+
+  const viewManager = useAppViewManager()
+  const { sidePaneContent, closeSidePane, toggleSplitView, navigateTo } = viewManager
+  
+  const { meta, content: children } = useRightPaneContent(sidePaneContent)
+  
+  const isSplitView = bodyState === BODY_STATES.SPLIT_VIEW;
+  const isFullscreen = bodyState === BODY_STATES.FULLSCREEN;
+
+  const handleMaximize = useCallback(() => {
+    if ("page" in meta && meta.page) {
+      navigateTo(meta.page);
+    }
+  }, [meta, navigateTo]);
+
+  const header = useMemo(() => (
+    <div className="flex items-center justify-between p-4 border-b border-border h-20 flex-shrink-0 pl-6">
+      {bodyState !== BODY_STATES.SPLIT_VIEW && 'icon' in meta ? (
+        <div className="flex items-center gap-2">
+          {meta.icon && createElement(meta.icon, { className: "w-5 h-5" })}
+          <h2 className="text-lg font-semibold whitespace-nowrap">{meta.title}</h2>
+        </div>
+      ) : <div />}
+      <div className="flex items-center">
+        {(bodyState === BODY_STATES.SIDE_PANE || bodyState === BODY_STATES.SPLIT_VIEW) && (
+          <button onClick={toggleSplitView} className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors" title={bodyState === BODY_STATES.SIDE_PANE ? "Switch to Split View" : "Switch to Overlay View"}>
+            {bodyState === BODY_STATES.SPLIT_VIEW ? <Layers className="w-5 h-5" /> : <SplitSquareHorizontal className="w-5 h-5" />}
+          </button>
+        )}
+        {bodyState !== BODY_STATES.SPLIT_VIEW && "page" in meta && meta.page && (
+          <button onClick={handleMaximize} className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors mr-2" title="Move to Main View">
+            <ChevronsLeftRight className="w-5 h-5" />
+          </button>
+        )}
+      </div>
+    </div>
+  ), [bodyState, meta, handleMaximize, toggleSplitView]);
+
+  if (isFullscreen && fullscreenTarget !== 'right') {
+    return null;
+  }
+
+  return (
+    <aside
+      ref={ref}
+      className={cn(
+        "border-l border-border flex flex-col h-full overflow-hidden",
+        isSplitView && "relative bg-background",
+        !isSplitView && !isFullscreen && "fixed top-0 right-0 z-[60] bg-card", // side pane overlay
+        isFullscreen && fullscreenTarget === 'right' && "fixed inset-0 z-[60] bg-card", // fullscreen
+        className,
+      )}
+    >
+      {isFullscreen && fullscreenTarget === 'right' && (
+        <button
+          onClick={() => toggleFullscreen()}
+          className="fixed top-6 right-6 lg:right-12 z-[100] h-12 w-12 flex items-center justify-center rounded-full bg-card/50 backdrop-blur-sm hover:bg-card/75 transition-colors group"
+          title="Exit Fullscreen"
+        >
+          <X className="w-6 h-6 group-hover:scale-110 group-hover:rotate-90 transition-all duration-300" />
+        </button>
+      )}
+      {bodyState !== BODY_STATES.SPLIT_VIEW && !isFullscreen && (
+        <button
+          onClick={closeSidePane}
+          className="absolute top-1/2 -left-px -translate-y-1/2 -translate-x-full w-8 h-16 bg-card border border-r-0 border-border rounded-l-lg flex items-center justify-center hover:bg-accent transition-colors group z-10"
+          title="Close pane"
+        >
+          <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-foreground transition-colors" />
+        </button>
+      )}
+      <div 
+        className={cn(
+          "absolute top-0 left-0 w-2 h-full bg-transparent hover:bg-primary/20 cursor-col-resize z-50 transition-colors duration-200 group -translate-x-1/2"
+        )}
+        onMouseDown={(e) => {
+          e.preventDefault()
+          setIsResizingRightPane(true);
+        }}
+      >
+        <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200 mx-auto" />
+      </div>
+      {!isSplitView && !isFullscreen && header}
+      <div className={cn("flex-1 overflow-y-auto")}>
+        {children}
+      </div>
+    </aside>
+  )
+}));
+RightPane.displayName = "RightPane"
+```
+
+## File: src/components/layout/TopBar.tsx
+```typescript
+import React from 'react';
+import {
+  Moon, 
+  Sun,
+  Settings,
+  Command,
+  Zap,
+} from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { BODY_STATES } from '@/lib/utils'
+import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
+import { UserDropdown } from './UserDropdown'
+import { ViewModeSwitcher } from './ViewModeSwitcher'
+import { useAppShellStore } from '@/store/appShell.store'
+
+interface TopBarProps {
+  breadcrumbs?: React.ReactNode
+  pageControls?: React.ReactNode
 }
+
+export const TopBar = React.memo(({
+  breadcrumbs,
+  pageControls,
+}: TopBarProps) => {
+  const bodyState = useAppShellStore(s => s.bodyState)
+  const isDarkMode = useAppShellStore(s => s.isDarkMode);
+  const { 
+    setCommandPaletteOpen,
+    toggleDarkMode,
+  } = useAppShellStore.getState();
+  const viewManager = useAppViewManager();
+
+  return (
+    <div className={cn(
+      "h-20 bg-background border-b border-border flex items-center justify-between px-6 z-50 gap-4"
+    )}>
+      {/* Left Section - Sidebar Controls & Breadcrumbs */}
+      <div className="flex items-center gap-4">
+        {breadcrumbs}
+      </div>
+
+      {/* Right Section - page controls, and global controls */}
+      <div className="flex items-center gap-3">
+        {pageControls}
+
+        {/* Separator */}
+        <div className="w-px h-6 bg-border mx-2" />
+
+        {/* Quick Actions */}
+        <div className="flex items-center gap-3">
+
+          <button
+            onClick={() => setCommandPaletteOpen(true)}
+            className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+            title="Command Palette (Ctrl+K)"
+          >
+            <Command className="w-5 h-5 group-hover:scale-110 transition-transform" />
+          </button>
+
+        <button
+          className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+          title="Quick Actions"
+        >
+          <Zap className="w-5 h-5 group-hover:scale-110 transition-transform" />
+        </button>
+
+        {bodyState !== BODY_STATES.SPLIT_VIEW && <ViewModeSwitcher />}
+
+        <div className="w-px h-6 bg-border mx-2" />
+
+        {/* Theme and Settings */}
+        <button
+          onClick={toggleDarkMode}
+          className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+          title="Toggle Dark Mode"
+        >
+          {isDarkMode ? (
+            <Sun className="w-5 h-5 group-hover:scale-110 transition-transform" />
+          ) : (
+            <Moon className="w-5 h-5 group-hover:scale-110 transition-transform" />
+          )}
+        </button>
+
+        <button
+          onClick={() => viewManager.toggleSidePane('settings')}
+          className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+          title="Settings"
+        >
+          <Settings className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
+        </button>
+        <UserDropdown />
+        </div>
+      </div>
+    </div>
+  )
+});
 ```
 
 ## File: src/components/layout/AppShell.tsx

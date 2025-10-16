@@ -4,12 +4,54 @@ I am obsessed with laravel filament... so make everything about data demo page i
 
 ===
 
+split view mode : loosing view mode switcher hover on pane active left:right pane
+
+===
+
+view mode switcher actions not working well from overlay side pane: especially fullscreen,and normal mode
+
+===
+
+mental model:
+
+message page : sometimes each audience has relation to certain company, and we can relate that audience to another audience within the same company also we can give the job title of a company to each audience
+
+1. present the mental model to message page UI UX with amazing look and cohesive manner
+2. always follow the architecture model that each audience, message, company are basically task units
+
+===
+
+split mode view on message page: should always set right pane to default value on page refresh on load because sometimes user from another page resize the right pane so global appshell size applied also in message page
+
+===
+
+animated tab switcher: while user switch tabs, it should gsap slide left right animate
+
+===
+
+message page : message thread: bottom message input area should animate slide in/up responding to thread locked state
+
+===
+
+1. scroll to bottom not appear in dashboard page
+2. also not working on message thread in message page
+
+---
+
+have you make sure the scroll to bottom icon button in message thread not obsturcting message input field area?
+
+also make sure works in dashboard page
+
+===
+
 scroll to bottom in dashboard is not stick to right bottom.
 also why not auto applied to another page like demo data?
 
 ===
 
-view mode switcher should be on overlay side pane header, replacing current switcher
+view mode switcher should be on overlay side pane header, replacing current switcher.
+
+make sure the feature working well from overlay side pane: especially fullscreen,and normal mode
 
 === DONE
 
@@ -41,7 +83,7 @@ dark light mode is not persisted on refresh
 
 message page: sidebar should always be collapsed for message page on first load and page refresh
 
-===
+=== DONE
 
 overlay side pane: fix erratic close open movement while user resizing the pane
 

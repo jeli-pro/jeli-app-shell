@@ -1,163 +1,94 @@
-howdy, fellow code wranglers.
+Yo, check it. We're about to level up the `RightPane`. Right now, it's got these clunky buttons for view modes. We're swapping that out for our slick `ViewModeSwitcher`. This gives users the full power of view management right from the side pane overlay—fullscreen, split view, back to normal—all in one spot. It's about making the UX tight and consistent.
 
-the scroll-to-bottom button on the dashboard is borked. it's using `position: fixed`, which pegs it to the viewport, making it look janky when side panes are open. the logic is also hard-wired into a dashboard-specific hook, which is a big no-no. we're gonna fix this the right way.
-
-we'll forge a new, reusable hook and a dedicated button component for this job. the hook will be pure, handling only the scroll logic, and the button will use `position: absolute` to stay neatly within its container. this decouples the logic from any specific page.
-
-once we've got our new toys, we'll refactor the dashboard to use them, squashing the positioning bug in the process. then, to prove our point and spread the wealth, we'll drop this shiny new feature into the data demo page. clean, reusable, and works everywhere. let's get it done.
+The plan is simple: First, we'll juice up the `ViewModeSwitcher` to handle dynamic routes, 'cause that's how the `RightPane` rolls with detailed views. Then, we'll slot it into the `RightPane`'s header, replacing the old controls. It'll only show up in overlay mode, keeping things clean. This is a surgical strike, minimal blast radius, maximum impact. Let's get it.
 
 ```yaml
 plan:
-  uuid: 'f8d3c1a0-7b6e-4f5a-8d1c-9e2f3a4b5c6d'
+  uuid: 'c4e9f5a0-8a1a-4d7b-9f2c-5678b3a0e1b2'
   status: 'todo'
-  title: 'Refactor Scroll-to-Bottom and Extend to Data Demo'
+  title: 'Refactor RightPane to use ViewModeSwitcher in Header'
   introduction: |
-    Alright, let's ship a fix and a feature. The current scroll-to-bottom button on the dashboard is misaligned because it's using `position: fixed` against the viewport instead of being contained within its scrollable area. The logic for it is also siloed in a dashboard-specific hook, which isn't scalable.
+    This refactoring plan aims to enhance the user experience by replacing the basic view control buttons in the `RightPane` header with the more comprehensive `ViewModeSwitcher` component. This change will only apply when the `RightPane` is in its overlay mode (`SIDE_PANE` state).
 
-    The plan is two-fold. First, we'll abstract the functionality into a generic hook and a reusable UI component. The new hook, `useScrollToBottom`, will encapsulate the scroll detection logic. The new component, `ScrollToBottomButton`, will handle the presentation and use `position: absolute` for correct placement.
-
-    Second, we'll refactor the Dashboard page to use these new, generalized tools, which will incidentally fix the positioning bug. Finally, we'll add the same functionality to the Data Demo page, demonstrating the reusability of our solution and improving UX on another key page.
+    The first part of the plan involves making the `ViewModeSwitcher` more flexible by allowing it to handle dynamic URL paths, which is essential for detail views often shown in the `RightPane`. The second part focuses on integrating this enhanced switcher into the `RightPane`'s header, providing users with a consistent and powerful set of view management tools (Normal, Split, Fullscreen) directly from the side pane. This will streamline the UI and improve the overall coherence of the application shell.
   parts:
-    - uuid: 'c1e2d3f4-5a6b-7c8d-9e0f-1a2b3c4d5e6f'
+    - uuid: 'e0d1f4b2-3c1a-4f9e-8b6d-7f8e1a0b3c2d'
       status: 'todo'
-      name: 'Part 1: Create Generic Scroll-to-Bottom Hook and Component'
+      name: 'Part 1: Enhance ViewModeSwitcher Flexibility'
       reason: |
-        The existing scroll logic is coupled with top bar animation and is not reusable. We need to create a dedicated, single-responsibility hook and a presentational component that can be used across any scrollable page.
+        The `ViewModeSwitcher` currently expects a static `ActivePage` type for its `targetPage` prop. To work correctly within the `RightPane`, which often displays content for dynamic routes (e.g., `/data-demo/item-123`), the component must be updated to handle arbitrary string paths. This change will allow it to correctly determine the base page and associated pane content for its actions.
       steps:
-        - uuid: 'a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d'
+        - uuid: 'a9b8c7d6-5e4f-4a3b-8c1d-9e0f1a2b3c4d'
           status: 'todo'
-          name: '1. Create `useScrollToBottom.hook.ts`'
+          name: '1. Update ViewModeSwitcher Props and Logic'
           reason: |
-            To extract and generalize the scroll detection logic from `useDashboardScroll.hook.ts`. This new hook will be responsible only for determining if the scroll-to-bottom button should be visible.
+            To accept dynamic routes, we need to change the `targetPage` prop type to `string` and add logic to parse the base path from it.
           files:
-            - 'src/hooks/useScrollToBottom.hook.ts'
+            - src/components/layout/ViewModeSwitcher.tsx
           operations:
-            - 'Create a new file `src/hooks/useScrollToBottom.hook.ts`.'
-            - 'Copy the core logic from `src/pages/Dashboard/hooks/useDashboardScroll.hook.ts`.'
-            - 'Remove the dependency and logic related to `useAutoAnimateTopBar`. The new hook should have a single responsibility.'
-            - 'The hook should accept a `scrollRef` (React.RefObject<HTMLDivElement>) as an argument.'
-            - 'It should return an object with `showScrollToBottom`, `scrollToBottom`, and the `handleScroll` function.'
-            - 'The `handleScroll` function will calculate scroll position and update the `showScrollToBottom` state.'
-        - uuid: 'b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d7e'
-          status: 'todo'
-          name: '2. Create `ScrollToBottomButton.tsx` Component'
-          reason: |
-            To create a reusable button component that handles its own presentation, including the correct absolute positioning and animations. This avoids duplicating JSX and CSS across pages.
-          files:
-            - 'src/components/shared/ScrollToBottomButton.tsx'
-          operations:
-            - 'Create a new file `src/components/shared/ScrollToBottomButton.tsx`.'
-            - 'Create a component that accepts `isVisible: boolean` and `onClick: () => void` as props.'
-            - 'Move the button JSX from `src/pages/Dashboard/index.tsx` into this component.'
-            - 'Change the button''s positioning from `fixed` to `absolute`. The class should be `absolute bottom-8 right-8 ...`.'
-            - 'Use a conditional render or a simple animation (like the existing `animate-fade-in`) based on the `isVisible` prop.'
-            - 'Import and use the `ArrowDown` icon from `lucide-react`.'
-    - uuid: 'd2e3f4a5-b6c7-8d9e-0f1a-2b3c4d5e6f7a'
-      status: 'todo'
-      name: 'Part 2: Refactor Dashboard and Clean Up'
-      reason: |
-        To apply the new reusable components to the Dashboard, fix the original positioning bug, and remove the old, now-redundant hook.
-      steps:
-        - uuid: 'c3d4e5f6-a7b8-9c0d-1e2f-3a4b5c6d7e8f'
-          status: 'todo'
-          name: '1. Update `DashboardContent` Component'
-          reason: |
-            To replace the old hook with the new generic implementation and fix the button's container.
-          files:
-            - 'src/pages/Dashboard/index.tsx'
-          operations:
-            - 'In `DashboardContent`, remove the import for `useDashboardScroll.hook.ts`.'
-            - 'Import the new `useScrollToBottom` from `@/hooks/useScrollToBottom.hook.ts` and `ScrollToBottomButton` from `@/components/shared/ScrollToBottomButton.tsx`.'
-            - 'The `PageLayout` component is already wrapped by `MainContent`, which will serve as our `relative` container. Add `position: relative` to `MainContent` component to ensure the button is positioned correctly.'
-            - 'Instantiate the new hook: `const { showScrollToBottom, scrollToBottom, handleScroll: handleScrollToBottom } = useScrollToBottom(scrollRef);`.'
-            - 'In the `useDashboardScroll` hook, combine the two scroll handlers. `const { onScroll: handleTopBarScroll } = useAutoAnimateTopBar(isInSidePane);`. Then create a new `handleScroll` function: `const handleScroll = (e: React.UIEvent<HTMLDivElement>) => { handleTopBarScroll(e); handleScrollToBottom(e); };`.'
-            - 'Update the `onScroll` prop of `PageLayout` to use this new combined `handleScroll` function.'
-            - 'Remove the old button JSX and replace it with `<ScrollToBottomButton isVisible={showScrollToBottom} onClick={scrollToBottom} />`.'
-            - 'Place the new `ScrollToBottomButton` component inside the `PageLayout` component, but as a direct child, so it is positioned relative to it.'
-        - uuid: 'e4f5a6b7-c8d9-e0f1-a2b3-c4d5e6f7a8b9'
-          status: 'todo'
-          name: '2. Update `MainContent` to be a positioning context'
-          reason: |
-            The `ScrollToBottomButton` needs a `relative` positioned ancestor to be positioned `absolute`ly correctly. `MainContent` is the logical choice.
-          files:
-            - src/components/layout/MainContent.tsx
-          operations:
-            - 'In `MainContent.tsx`, ensure the main wrapper `div` has the class `relative` in addition to its other classes. Like: `className={cn("relative flex flex-col h-full...", ...)}`'
-        - uuid: 'd4e5f6a7-b8c9-d0e1-f2a3-b4c5d6e7f8a9'
-          status: 'todo'
-          name: '3. Delete Old Dashboard Hook'
-          reason: |
-            The hook `useDashboardScroll.hook.ts` is now obsolete and should be removed to avoid confusion and code rot.
-          files:
-            - 'src/pages/Dashboard/hooks/useDashboardScroll.hook.ts'
-          operations:
-            - 'Delete the file `src/pages/Dashboard/hooks/useDashboardScroll.hook.ts`.'
+            - 'Change the prop type for `targetPage` from `ActivePage` to `string` in the component definition: `targetPage?: string`.'
+            - 'In the `handlePaneClick` function, update the logic to derive a `basePage` from the `activePage` variable (which holds the `targetPage` prop). Use `activePage.split('/')[0]` to extract the root path of the page.'
+            - 'Use this `basePage` to look up the corresponding `paneContent` from `pageToPaneMap`.'
+            - 'Remove the `ActivePage` type import as it''s no longer needed for the prop type.'
       context_files:
         compact:
-          - 'src/pages/Dashboard/index.tsx'
-          - 'src/pages/Dashboard/hooks/useDashboardScroll.hook.ts'
+          - src/components/layout/ViewModeSwitcher.tsx
         medium:
-          - 'src/pages/Dashboard/index.tsx'
-          - 'src/pages/Dashboard/hooks/useDashboardScroll.hook.ts'
-          - 'src/components/layout/PageLayout.tsx'
-          - 'src/components/layout/MainContent.tsx'
+          - src/components/layout/ViewModeSwitcher.tsx
+          - src/hooks/useAppViewManager.hook.ts
         extended:
-          - 'src/pages/Dashboard/index.tsx'
-          - 'src/pages/Dashboard/hooks/useDashboardScroll.hook.ts'
-          - 'src/components/layout/PageLayout.tsx'
-          - 'src/components/layout/MainContent.tsx'
-          - 'src/hooks/useAutoAnimateTopBar.ts'
-    - uuid: 'e3f4a5b6-c7d8-9e0f-1a2b-3c4d5e6f7a8b'
+          - src/components/layout/ViewModeSwitcher.tsx
+          - src/hooks/useAppViewManager.hook.ts
+          - src/store/appShell.store.ts
+    - uuid: 'f1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c'
       status: 'todo'
-      name: 'Part 3: Add Scroll-to-Bottom to Data Demo Page'
+      name: 'Part 2: Integrate ViewModeSwitcher into RightPane'
       reason: |
-        To enhance the user experience on the long, scrollable Data Demo page and to prove the reusability of our new components.
+        The primary goal is to provide a consistent and full-featured view management experience from the side pane overlay. Replacing the existing simple buttons with the `ViewModeSwitcher` achieves this by consolidating all view-related actions into a single, familiar component.
       steps:
-        - uuid: 'f4a5b6c7-d8e9-f0a1-b2c3-d4e5f6a7b8c9'
+        - uuid: 'b3c4d5e6-7f8a-4b9c-8d1e-2f3a4b5c6d7e'
           status: 'todo'
-          name: '1. Update `DataDemoContent` Component'
+          name: '1. Replace Header Controls in RightPane'
           reason: |
-            To integrate the new scroll-to-bottom functionality.
+            This step implements the core UI change, swapping out the old buttons for the new, more powerful switcher.
           files:
-            - 'src/pages/DataDemo/index.tsx'
+            - src/components/layout/RightPane.tsx
           operations:
-            - 'In `DataDemoContent`, import `useScrollToBottom` and `ScrollToBottomButton`.'
-            - 'Create a new `scrollRef` for the `PageLayout` component: `const scrollRef = useRef<HTMLDivElement>(null);`.'
-            - 'Instantiate the hook: `const { showScrollToBottom, scrollToBottom, handleScroll } = useScrollToBottom(scrollRef);`.'
-            - 'Pass the ref and the handler to the `PageLayout` component: `scrollRef={scrollRef}` and `onScroll={handleScroll}`.'
-            - 'Render the `<ScrollToBottomButton isVisible={showScrollToBottom} onClick={scrollToBottom} />` as a direct child of the `PageLayout` component.'
+            - 'Import the `ViewModeSwitcher` component at the top of `src/components/layout/RightPane.tsx`.'
+            - 'In the `useMemo` hook for the `header` constant, locate the `div` that contains the view control buttons (the one with `SplitSquareHorizontal` and `ChevronsLeftRight` icons).'
+            - 'Remove the entire contents of that `div`, including the two `button` elements.'
+            - 'Inside the now-empty `div`, add the `<ViewModeSwitcher />` component.'
+            - 'Conditionally render the switcher to ensure it only appears when `bodyState === BODY_STATES.SIDE_PANE` and the content has a navigable page (`"page" in meta && meta.page`).'
+            - 'Pass the necessary props to the switcher: `pane="right"` and `targetPage={meta.page}`.'
+            - 'Remove unused icon imports like `SplitSquareHorizontal`, `Layers`, and `ChevronsLeftRight` if they are no longer referenced anywhere else in the file.'
       context_files:
         compact:
-          - 'src/pages/DataDemo/index.tsx'
+          - src/components/layout/RightPane.tsx
         medium:
-          - 'src/pages/DataDemo/index.tsx'
-          - 'src/hooks/useScrollToBottom.hook.ts'
-          - 'src/components/shared/ScrollToBottomButton.tsx'
+          - src/components/layout/RightPane.tsx
+          - src/components/layout/ViewModeSwitcher.tsx
         extended:
-          - 'src/pages/DataDemo/index.tsx'
-          - 'src/hooks/useScrollToBottom.hook.ts'
-          - 'src/components/shared/ScrollToBottomButton.tsx'
-          - 'src/components/layout/PageLayout.tsx'
-          - 'src/components/layout/MainContent.tsx'
+          - src/components/layout/RightPane.tsx
+          - src/components/layout/ViewModeSwitcher.tsx
+          - src/hooks/useRightPaneContent.hook.tsx
+          - src/hooks/useAppViewManager.hook.ts
   conclusion: |
-    Upon completion, we will have a robust, reusable scroll-to-bottom feature that is correctly positioned within its content area, regardless of the app's layout state. The Dashboard page will be fixed, and the Data Demo page will be enhanced. This refactor improves code quality by adhering to DRY and Single Responsibility principles, making future maintenance easier and providing a consistent UX across the application.
+    Upon completion, the `RightPane` will feature the `ViewModeSwitcher` in its header during overlay mode, providing a significant UX improvement. Users will have a consistent and intuitive way to manage the view state of side pane content, including switching to normal view, split view, or fullscreen. This refactor successfully modularizes the view control logic and enhances the application shell's flexibility.
   context_files:
     compact:
-      - 'src/pages/Dashboard/index.tsx'
-      - 'src/pages/DataDemo/index.tsx'
-      - 'src/pages/Dashboard/hooks/useDashboardScroll.hook.ts'
+      - src/components/layout/ViewModeSwitcher.tsx
+      - src/components/layout/RightPane.tsx
     medium:
-      - 'src/pages/Dashboard/index.tsx'
-      - 'src/pages/DataDemo/index.tsx'
-      - 'src/pages/Dashboard/hooks/useDashboardScroll.hook.ts'
-      - 'src/components/layout/PageLayout.tsx'
-      - 'src/components/layout/MainContent.tsx'
+      - src/components/layout/ViewModeSwitcher.tsx
+      - src/components/layout/RightPane.tsx
+      - src/hooks/useAppViewManager.hook.ts
+      - src/hooks/useRightPaneContent.hook.tsx
     extended:
-      - 'src/pages/Dashboard/index.tsx'
-      - 'src/pages/DataDemo/index.tsx'
-      - 'src/pages/Dashboard/hooks/useDashboardScroll.hook.ts'
-      - 'src/components/layout/PageLayout.tsx'
-      - 'src/components/layout/MainContent.tsx'
-      - 'src/hooks/useAutoAnimateTopBar.ts'
-      - 'src/components/layout/AppShell.tsx'
+      - src/components/layout/ViewModeSwitcher.tsx
+      - src/components/layout/RightPane.tsx
+      - src/hooks/useAppViewManager.hook.ts
+      - src/hooks/useRightPaneContent.hook.tsx
+      - src/store/appShell.store.ts
+      - src/components/layout/TopBar.tsx
+      - src/components/layout/AppShell.tsx
 ```

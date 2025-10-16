@@ -1,0 +1,262 @@
+uuid: 4402660a-5c1a-45c5-a4b5-410a84e31e78
+projectId: jeli-app-shell
+createdAt: '2025-10-16T22:59:09.627Z'
+gitCommitMsg: >-
+  feat(messaging): animate message input on lock state change
+
+  Introduced a GSAP-powered slide and fade animation to the message input area
+  in the `TaskDetail` component.
+
+  - The input form now smoothly slides down and fades out when the conversation
+  is locked by another user. - It slides up and fades in when the user gains
+  control, providing clear visual feedback of the change in interactive state. -
+  The animation respects the user's `reducedMotion` preference for
+  accessibility. - Added `overflow-hidden` to the parent container to contain
+  the animation.
+promptSummary: >-
+  Animate the message input area in the messaging page based on its
+  locked/unlocked state.
+reasoning:
+  - >-
+    Okay, I see what you're getting at. We need to add a touch of motion to the
+    message input area to give the user a clear visual cue when it's locked or
+    unlocked. A smooth slide-in/out animation will make the UI feel more
+    responsive and polished. Let's get this done.
+  - '### Part 1: Implement Input Area Animation'
+  - >-
+    I'll modify `TaskDetail.tsx` to handle the animation. I'll use the existing
+    `isLocked` state to trigger a GSAP animation that slides and fades the input
+    area. I will also add `overflow-hidden` to the component's root element to
+    ensure the animation is contained properly. The user's `reducedMotion`
+    preference will be respected to ensure accessibility.
+  - '---'
+operations:
+  - type: write
+    path: src/pages/Messaging/components/TaskDetail.tsx
+    content: >+
+      --- src/pages/Messaging/components/TaskDetail.tsx
+
+      +++ src/pages/Messaging/components/TaskDetail.tsx
+
+      @@ -1,16 +1,19 @@
+
+      -import React, { useMemo } from 'react';
+
+      +import React, { useMemo, useRef, useEffect } from 'react';
+       import { useParams } from 'react-router-dom';
+      +import { gsap } from 'gsap';
+       import { useMessagingStore } from '../store/messaging.store';
+      +import { useAppShellStore } from '@/store/appShell.store';
+       import { ActivityFeed } from './ActivityFeed';
+       import { Button } from '@/components/ui/button';
+       import { Textarea } from '@/components/ui/textarea';
+       import { Paperclip, SendHorizontal, Smile, StickyNote } from 'lucide-react';
+      -import { Tabs, TabsContent, TabsList, TabsTrigger } from
+      "@/components/ui/tabs";
+
+      +import { Tabs, TabsContent, TabsList, TabsTrigger } from
+      '@/components/ui/tabs';
+       import { TakeoverBanner } from './TakeoverBanner';
+       import { useToast } from '@/components/ui/toast';
+       
+       export const TaskDetail: React.FC = () => {
+         const { conversationId: taskId } = useParams<{ conversationId: string }>();
+         const { show } = useToast();
+         const { getTaskById, takeOverTask, requestAndSimulateTakeover } = useMessagingStore();
+      +  const inputAreaRef = useRef<HTMLDivElement>(null);
+
+      +  const isFirstRender = useRef(true);
+
+      +  const reducedMotion = useAppShellStore((s) => s.reducedMotion);
+       
+         const task = useMemo(() => taskId ? getTaskById(taskId) : undefined, [taskId, getTaskById]);
+       
+      @@ -19,6 +22,29 @@
+       
+         const isLocked = !!task?.activeHandlerId && task.activeHandlerId !== currentUserId;
+       
+      +  useEffect(() => {
+
+      +    if (!inputAreaRef.current) return;
+
+      +
+
+      +    const targetState = {
+
+      +      y: isLocked ? 50 : 0,
+
+      +      opacity: isLocked ? 0 : 1,
+
+      +      pointerEvents: isLocked ? 'none' : 'auto' as const,
+
+      +    };
+
+      +
+
+      +    if (isFirstRender.current || reducedMotion) {
+
+      +      gsap.set(inputAreaRef.current, targetState);
+
+      +    } else {
+
+      +      gsap.to(inputAreaRef.current, {
+
+      +        ...targetState,
+
+      +        duration: 0.3,
+
+      +        ease: 'power2.out',
+
+      +      });
+
+      +    }
+
+      +
+
+      +    if (isFirstRender.current) {
+
+      +      isFirstRender.current = false;
+
+      +    }
+
+      +  }, [isLocked, reducedMotion]);
+         if (!taskId || !task) {
+           return (
+               <div className="h-full flex flex-col items-center justify-center p-6 bg-background">
+      @@ -51,7 +77,7 @@
+         };
+       
+         return (
+      -    <div className="h-full flex flex-col bg-background">
+
+      +    <div className="h-full flex flex-col bg-background overflow-hidden">
+             {isLocked && task.activeHandler && (
+               <TakeoverBanner
+                   activeHandler={task.activeHandler}
+      @@ -62,7 +88,7 @@
+             <ActivityFeed messages={task.messages} contact={task.contact} />
+       
+             {/* Input Form */}
+      -      <div className="p-4 border-t flex-shrink-0 bg-background/50">
+
+      +      <div ref={inputAreaRef} className="p-4 border-t flex-shrink-0
+      bg-background/50">
+               <Tabs defaultValue="comment" className="w-full" >
+                 <TabsList className="grid w-full grid-cols-2 mb-2">
+                   <TabsTrigger value="comment" disabled={isLocked}>Comment</TabsTrigger>
+
+    patchStrategy: standard-diff
+snapshot:
+  src/pages/Messaging/components/TaskDetail.tsx: >-
+    import React, { useMemo } from 'react';
+
+    import { useParams } from 'react-router-dom';
+
+    import { useMessagingStore } from '../store/messaging.store';
+
+    import { ActivityFeed } from './ActivityFeed';
+
+    import { Button } from '@/components/ui/button';
+
+    import { Textarea } from '@/components/ui/textarea';
+
+    import { Paperclip, SendHorizontal, Smile, StickyNote } from 'lucide-react';
+
+    import { Tabs, TabsContent, TabsList, TabsTrigger } from
+    "@/components/ui/tabs";
+
+    import { TakeoverBanner } from './TakeoverBanner';
+
+    import { useToast } from '@/components/ui/toast';
+
+
+
+    export const TaskDetail: React.FC = () => {
+      const { conversationId: taskId } = useParams<{ conversationId: string }>();
+      const { show } = useToast();
+      const { getTaskById, takeOverTask, requestAndSimulateTakeover } = useMessagingStore();
+
+      const task = useMemo(() => taskId ? getTaskById(taskId) : undefined, [taskId, getTaskById]);
+
+      // In a real app, this would come from the auth store
+      const currentUserId = 'user-1'; 
+
+      const isLocked = !!task?.activeHandlerId && task.activeHandlerId !== currentUserId;
+
+      if (!taskId || !task) {
+        return (
+            <div className="h-full flex flex-col items-center justify-center p-6 bg-background">
+                <p className="text-muted-foreground">Select a task to see its details.</p>
+            </div>
+        );
+      }
+
+      const handleTakeOver = () => {
+        takeOverTask(task.id, currentUserId);
+        show({
+            variant: 'success',
+            title: 'Task Taken Over',
+            message: `You are now handling the task from ${task.contact.name}.`
+        });
+      };
+
+      const handleRequestTakeover = () => {
+        requestAndSimulateTakeover(task.id, currentUserId);
+        if (task.activeHandler) {
+            show({
+                variant: 'default',
+                title: 'Request Sent',
+                message: `A takeover request has been sent to ${task.activeHandler.name}.`
+            });
+        }
+      };
+
+      return (
+        <div className="h-full flex flex-col bg-background">
+          {isLocked && task.activeHandler && (
+            <TakeoverBanner
+                activeHandler={task.activeHandler}
+                isRequesting={!!task.takeoverRequested}
+                onTakeOver={handleTakeOver}
+                onRequestTakeover={handleRequestTakeover}
+            />
+          )}
+          <ActivityFeed messages={task.messages} contact={task.contact} />
+
+          {/* Input Form */}
+          <div className="p-4 border-t flex-shrink-0 bg-background/50">
+            <Tabs defaultValue="comment" className="w-full" >
+              <TabsList className="grid w-full grid-cols-2 mb-2">
+                <TabsTrigger value="comment" disabled={isLocked}>Comment</TabsTrigger>
+                <TabsTrigger value="note" disabled={isLocked}><StickyNote className="w-4 h-4 mr-2" />Internal Note</TabsTrigger>
+              </TabsList>
+              <TabsContent value="comment">
+                 <div className="relative">
+                    <Textarea placeholder={isLocked ? "Take over to reply..." : `Reply to ${task.contact.name}...`} className="pr-24 min-h-[52px]" disabled={isLocked} />
+                    <div className="absolute right-2 top-2 flex items-center gap-1">
+                        <Button variant="ghost" size="icon" className="rounded-full h-8 w-8" disabled={isLocked}><Smile className="w-4 h-4" /></Button>
+                        <Button variant="ghost" size="icon" className="rounded-full h-8 w-8" disabled={isLocked}><Paperclip className="w-4 h-4" /></Button>
+                        <Button size="icon" className="rounded-full h-8 w-8" disabled={isLocked}><SendHorizontal className="w-4 h-4" /></Button>
+                    </div>
+                </div>
+              </TabsContent>
+              <TabsContent value="note">
+                <div className="relative">
+                    <Textarea placeholder={isLocked ? "Take over to add a note..." : "Add an internal note..."} className="pr-24 min-h-[52px] bg-yellow-400/10 border-yellow-400/30 focus-visible:ring-yellow-500" disabled={isLocked} />
+                    <div className="absolute right-2 top-2 flex items-center gap-1">
+                        <Button size="icon" className="rounded-full h-8 w-8" disabled={isLocked}><SendHorizontal className="w-4 h-4" /></Button>
+                    </div>
+                </div>
+              </TabsContent>
+            </Tabs>
+          </div>
+        </div>
+      );
+    };
+approved: false
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: undone
+id: 371
