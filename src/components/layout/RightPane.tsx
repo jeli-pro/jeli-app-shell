@@ -1,15 +1,13 @@
-import { forwardRef, useMemo, useCallback, createElement, memo } from 'react'
+import { forwardRef, useMemo, createElement, memo } from 'react'
 import {
   ChevronRight,
   X,
-  Layers,
-  SplitSquareHorizontal,
-  ChevronsLeftRight,
 } from 'lucide-react'
 import { cn, BODY_STATES } from '@/lib/utils';
 import { useAppShellStore } from '@/store/appShell.store';
 import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
 import { useRightPaneContent } from '@/hooks/useRightPaneContent.hook'
+import { ViewModeSwitcher } from './ViewModeSwitcher';
 
 export const RightPane = memo(forwardRef<HTMLDivElement, { className?: string }>(({ className }, ref) => {
   const fullscreenTarget = useAppShellStore(s => s.fullscreenTarget)
@@ -18,18 +16,12 @@ export const RightPane = memo(forwardRef<HTMLDivElement, { className?: string }>
     useAppShellStore.getState()
 
   const viewManager = useAppViewManager()
-  const { sidePaneContent, closeSidePane, toggleSplitView, navigateTo } = viewManager
+  const { sidePaneContent, closeSidePane } = viewManager
   
   const { meta, content: children } = useRightPaneContent(sidePaneContent)
   
   const isSplitView = bodyState === BODY_STATES.SPLIT_VIEW;
   const isFullscreen = bodyState === BODY_STATES.FULLSCREEN;
-
-  const handleMaximize = useCallback(() => {
-    if ("page" in meta && meta.page) {
-      navigateTo(meta.page);
-    }
-  }, [meta, navigateTo]);
 
   const header = useMemo(() => (
     <div className="flex items-center justify-between p-4 border-b border-border h-20 flex-shrink-0 pl-6">
@@ -40,19 +32,10 @@ export const RightPane = memo(forwardRef<HTMLDivElement, { className?: string }>
         </div>
       ) : <div />}
       <div className="flex items-center">
-        {(bodyState === BODY_STATES.SIDE_PANE || bodyState === BODY_STATES.SPLIT_VIEW) && (
-          <button onClick={toggleSplitView} className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors" title={bodyState === BODY_STATES.SIDE_PANE ? "Switch to Split View" : "Switch to Overlay View"}>
-            {bodyState === BODY_STATES.SPLIT_VIEW ? <Layers className="w-5 h-5" /> : <SplitSquareHorizontal className="w-5 h-5" />}
-          </button>
-        )}
-        {bodyState !== BODY_STATES.SPLIT_VIEW && "page" in meta && meta.page && (
-          <button onClick={handleMaximize} className="h-10 w-10 flex items-center justify-center hover:bg-accent rounded-full transition-colors mr-2" title="Move to Main View">
-            <ChevronsLeftRight className="w-5 h-5" />
-          </button>
-        )}
+        {bodyState === BODY_STATES.SIDE_PANE && 'page' in meta && meta.page && <ViewModeSwitcher pane="right" targetPage={meta.page} />}
       </div>
     </div>
-  ), [bodyState, meta, handleMaximize, toggleSplitView]);
+  ), [bodyState, meta]);
 
   if (isFullscreen && fullscreenTarget !== 'right') {
     return null;

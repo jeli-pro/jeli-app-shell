@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { gsap } from 'gsap';
 import { cn } from '@/lib/utils'
-import { useAppShellStore, type AppShellState, type ActivePage } from '@/store/appShell.store'
+import { useAppShellStore, type AppShellState } from '@/store/appShell.store'
 import { BODY_STATES } from '@/lib/utils'
 import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
 import {
@@ -15,7 +15,7 @@ import {
   ArrowLeftRight
 } from 'lucide-react'
 
-export function ViewModeSwitcher({ pane, targetPage }: { pane?: 'main' | 'right', targetPage?: ActivePage }) {
+export function ViewModeSwitcher({ pane, targetPage }: { pane?: 'main' | 'right', targetPage?: string }) {
   const bodyState = useAppShellStore(s => s.bodyState);
   const fullscreenTarget = useAppShellStore(s => s.fullscreenTarget);
   const { toggleFullscreen } = useAppShellStore.getState();
@@ -76,11 +76,12 @@ export function ViewModeSwitcher({ pane, targetPage }: { pane?: 'main' | 'right'
   }, [isExpanded, bodyState]); // re-run if bodyState changes to recalc buttons
 
   const handlePaneClick = (type: 'side-pane' | 'split-view') => {
-    const pageToPaneMap: Record<ActivePage, AppShellState['sidePaneContent']> = { // This type is now stricter because ActivePage includes messaging
+    const pageToPaneMap: Record<string, AppShellState['sidePaneContent']> = {
       dashboard: 'main', settings: 'settings', toaster: 'toaster', notifications: 'notifications', 'data-demo': 'dataDemo',
       messaging: 'messaging',
     };
-    const paneContent = pageToPaneMap[activePage];
+    const basePage = activePage.split('/')[0];
+    const paneContent = pageToPaneMap[basePage];
     if (type === 'side-pane') toggleSidePane(paneContent);
     else toggleSplitView();
   }
