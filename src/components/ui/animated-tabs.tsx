@@ -32,15 +32,16 @@ const AnimatedTabs = React.forwardRef<HTMLDivElement, AnimatedTabsProps>(
     
     // Update active indicator position
     useEffect(() => {
-      const activeElement = tabRefs.current[activeIndex]
+      const activeElement = tabRefs.current[activeIndex];
       if (activeElement) {
-        const { offsetLeft, offsetWidth } = activeElement
+        const { offsetLeft, offsetWidth } = activeElement;
         setActiveStyle({
           left: `${offsetLeft}px`,
           width: `${offsetWidth}px`,
-        })
+        });
+        activeElement.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
       }
-    }, [activeIndex, tabs])
+    }, [activeIndex, tabs]);
 
     // Set initial position of active indicator
     useLayoutEffect(() => {
@@ -60,39 +61,41 @@ const AnimatedTabs = React.forwardRef<HTMLDivElement, AnimatedTabsProps>(
     return (
       <div 
         ref={ref} 
-        className={cn("relative flex w-full items-center", className)} 
+        className={cn("overflow-x-auto overflow-y-hidden no-scrollbar", className)} 
         {...props}
       >
-        {/* Active Indicator */}
-        <div
-          className="absolute -bottom-px h-0.5 bg-primary transition-all duration-300 ease-out"
-          style={activeStyle}
-        />
+        <div className="relative flex w-max items-center whitespace-nowrap">
+          {/* Active Indicator */}
+          <div
+            className="absolute -bottom-px h-0.5 bg-primary transition-all duration-300 ease-out"
+            style={activeStyle}
+          />
 
-        {/* Tabs */}
-        {tabs.map((tab, index) => (
-          <button
-            key={tab.id}
-            ref={(el) => (tabRefs.current[index] = el)}
-            className={cn(
-              "group relative cursor-pointer text-center transition-colors duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-              size === 'default' ? "px-4 py-5" : "px-3 py-2.5",
-              index === activeIndex 
-                ? "text-primary" 
-                : "text-muted-foreground hover:text-foreground"
-            )}
-            onClick={() => onTabChange(tab.id)}
-          >
-            <span className={cn(
-              "flex items-center gap-2 whitespace-nowrap",
-              size === 'default' 
-                ? "text-lg font-semibold"
-                : "text-sm font-medium"
-            )}>
-              {tab.label}
-            </span>
-          </button>
-        ))}
+          {/* Tabs */}
+          {tabs.map((tab, index) => (
+            <button
+              key={tab.id}
+              ref={(el) => (tabRefs.current[index] = el)}
+              className={cn(
+                "group relative cursor-pointer text-center transition-colors duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                size === 'default' ? "px-4 py-5" : "px-3 py-2.5",
+                index === activeIndex 
+                  ? "text-primary" 
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+              onClick={() => onTabChange(tab.id)}
+            >
+              <span className={cn(
+                "flex items-center gap-2",
+                size === 'default' 
+                  ? "text-lg font-semibold"
+                  : "text-sm font-medium"
+              )}>
+                {tab.label}
+              </span>
+            </button>
+          ))}
+        </div>
       </div>
     )
   }

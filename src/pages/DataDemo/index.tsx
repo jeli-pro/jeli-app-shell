@@ -214,17 +214,16 @@ function DataDemoContent() {
           groupBy !== 'none' && "border-b"
         )}>
           {/* Tabs on the left, takes up available space */}
-          <div className="flex-grow overflow-x-auto overflow-y-hidden no-scrollbar">
-            {groupBy !== 'none' && groupTabs.length > 1 ? (
-              <AnimatedTabs
-                tabs={groupTabs}
-                activeTab={activeGroupTab}
-                onTabChange={setActiveGroupTab}
-              />
-            ) : (
-              <div className="h-[68px]" /> // Placeholder for consistent height.
-            )}
-          </div>
+          {groupBy !== 'none' && groupTabs.length > 1 ? (
+            <AnimatedTabs
+              tabs={groupTabs}
+              activeTab={activeGroupTab}
+              onTabChange={setActiveGroupTab}
+              className="flex-grow"
+            />
+          ) : (
+            <div className="h-[68px] flex-grow" /> // Placeholder for consistent height.
+          )}
           
           {/* Group by dropdown on the right */}
           <div className="flex items-center gap-2 shrink-0">

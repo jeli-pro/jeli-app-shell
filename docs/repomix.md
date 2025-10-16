@@ -3,474 +3,184 @@
 src/
   components/
     ui/
-      toast.tsx
+      animated-tabs.tsx
   pages/
+    DataDemo/
+      index.tsx
     Messaging/
       components/
-        TaskDetail.tsx
-        TaskHeader.tsx
+        MessagingContent.tsx
         TaskList.tsx
-      data/
-        mockData.ts
-      store/
-        messaging.store.ts
-      index.tsx
-      types.ts
-  App.tsx
+  index.css
 ```
 
 # Files
 
-## File: src/pages/Messaging/components/TaskDetail.tsx
+## File: src/components/ui/animated-tabs.tsx
 ```typescript
-import React from 'react';
-import { useParams } from 'react-router-dom';
-import { useMessagingStore } from '../store/messaging.store';
-import { ActivityFeed } from './ActivityFeed';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { Paperclip, SendHorizontal, Smile, StickyNote } from 'lucide-react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+"use client"
 
+import * as React from "react"
+import { useState, useRef, useEffect, useLayoutEffect } from "react"
+import { cn } from "@/lib/utils"
 
-export const TaskDetail: React.FC = () => {
-  const { conversationId: taskId } = useParams<{ conversationId: string }>();
-  const task = useMessagingStore(state => taskId ? state.getTaskById(taskId) : undefined);
-  
-  if (!taskId || !task) {
+interface Tab {
+  id: string
+  label: React.ReactNode
+}
+
+interface AnimatedTabsProps extends React.HTMLAttributes<HTMLDivElement> {
+  tabs: Tab[]
+  activeTab: string
+  onTabChange: (tabId: string) => void,
+  size?: 'default' | 'sm'
+}
+
+const AnimatedTabs = React.forwardRef<HTMLDivElement, AnimatedTabsProps>(
+  ({ className, tabs, activeTab, onTabChange, size = 'default', ...props }, ref) => {
+    const [activeIndex, setActiveIndex] = useState(0)
+    const [activeStyle, setActiveStyle] = useState({ left: "0px", width: "0px" })
+    const tabRefs = useRef<(HTMLButtonElement | null)[]>([])
+
+    // Update active index when controlled prop changes
+    useEffect(() => {
+      const newActiveIndex = tabs.findIndex(tab => tab.id === activeTab)
+      if (newActiveIndex !== -1 && newActiveIndex !== activeIndex) {
+        setActiveIndex(newActiveIndex)
+      }
+    }, [activeTab, tabs, activeIndex])
+    
+    // Update active indicator position
+    useEffect(() => {
+      const activeElement = tabRefs.current[activeIndex]
+      if (activeElement) {
+        const { offsetLeft, offsetWidth } = activeElement
+        setActiveStyle({
+          left: `${offsetLeft}px`,
+          width: `${offsetWidth}px`,
+        })
+      }
+    }, [activeIndex, tabs])
+
+    // Set initial position of active indicator
+    useLayoutEffect(() => {
+        const initialActiveIndex = activeTab ? tabs.findIndex(tab => tab.id === activeTab) : 0
+        const indexToUse = initialActiveIndex !== -1 ? initialActiveIndex : 0
+        
+        const firstElement = tabRefs.current[indexToUse]
+        if (firstElement) {
+          const { offsetLeft, offsetWidth } = firstElement
+          setActiveStyle({
+            left: `${offsetLeft}px`,
+            width: `${offsetWidth}px`,
+          })
+        }
+    }, [tabs, activeTab])
+
     return (
-        <div className="h-full flex flex-col items-center justify-center p-6 bg-background">
-            <p className="text-muted-foreground">Select a task to see its details.</p>
-        </div>
-    );
-  }
-
-  return (
-    <div className="h-full flex flex-col bg-background">
-      <ActivityFeed messages={task.messages} contact={task.contact} />
-
-      {/* Input Form */}
-      <div className="p-4 border-t flex-shrink-0 bg-background/50">
-        <Tabs defaultValue="comment" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-2">
-            <TabsTrigger value="comment">Comment</TabsTrigger>
-            <TabsTrigger value="note"><StickyNote className="w-4 h-4 mr-2" />Internal Note</TabsTrigger>
-          </TabsList>
-          <TabsContent value="comment">
-             <div className="relative">
-                <Textarea placeholder={`Reply to ${task.contact.name}...`} className="pr-24 min-h-[52px]" />
-                <div className="absolute right-2 top-2 flex items-center gap-1">
-                    <Button variant="ghost" size="icon" className="rounded-full h-8 w-8"><Smile className="w-4 h-4" /></Button>
-                    <Button variant="ghost" size="icon" className="rounded-full h-8 w-8"><Paperclip className="w-4 h-4" /></Button>
-                    <Button size="icon" className="rounded-full h-8 w-8"><SendHorizontal className="w-4 h-4" /></Button>
-                </div>
-            </div>
-          </TabsContent>
-          <TabsContent value="note">
-            <div className="relative">
-                <Textarea placeholder="Add an internal note..." className="pr-24 min-h-[52px] bg-yellow-400/10 border-yellow-400/30 focus-visible:ring-yellow-500" />
-                <div className="absolute right-2 top-2 flex items-center gap-1">
-                    <Button size="icon" className="rounded-full h-8 w-8"><SendHorizontal className="w-4 h-4" /></Button>
-                </div>
-            </div>
-          </TabsContent>
-        </Tabs>
-      </div>
-    </div>
-  );
-};
-```
-
-## File: src/pages/Messaging/components/TaskHeader.tsx
-```typescript
-import React from 'react';
-import { useMessagingStore } from '../store/messaging.store';
-import type { Task, TaskStatus, TaskPriority, Assignee, Contact } from '../types';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator
-} from '@/components/ui/dropdown-menu';
-import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ChevronDown, Inbox, Zap, Shield, Clock, Calendar, Plus, User } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
-import { format } from 'date-fns';
-
-const statusOptions: { value: TaskStatus; label: string; icon: React.ReactNode }[] = [
-    { value: 'open', label: 'Open', icon: <Inbox className="w-4 h-4" /> },
-    { value: 'in-progress', label: 'In Progress', icon: <Zap className="w-4 h-4" /> },
-    { value: 'done', label: 'Done', icon: <Shield className="w-4 h-4" /> },
-    { value: 'snoozed', label: 'Snoozed', icon: <Clock className="w-4 h-4" /> },
-];
-
-const priorityOptions: { value: TaskPriority; label: string; icon: React.ReactNode }[] = [
-    { value: 'high', label: 'High', icon: <div className="w-2.5 h-2.5 rounded-full bg-red-500" /> },
-    { value: 'medium', label: 'Medium', icon: <div className="w-2.5 h-2.5 rounded-full bg-yellow-500" /> },
-    { value: 'low', label: 'Low', icon: <div className="w-2.5 h-2.5 rounded-full bg-green-500" /> },
-    { value: 'none', label: 'None', icon: <div className="w-2.5 h-2.5 rounded-full bg-gray-400" /> },
-];
-
-
-interface TaskHeaderProps {
-  task: (Task & { contact: Contact; assignee: Assignee | null });
-}
-
-export const TaskHeader: React.FC<TaskHeaderProps> = ({ task }) => {
-  const { updateTask, assignees } = useMessagingStore();
-  const currentStatus = statusOptions.find(o => o.value === task.status);
-  const currentPriority = priorityOptions.find(o => o.value === task.priority);
-
-  return (
-    <div className="space-y-4">
-      {/* Task Title & Contact */}
-      <div className="overflow-hidden">
-        <h2 className="font-bold text-xl lg:text-2xl truncate" title={task.title}>
-          {task.title}
-        </h2>
-        <p className="text-sm text-muted-foreground">
-          With <a href="#" className="hover:underline font-medium text-foreground/80">{task.contact.name}</a>
-          <span className="mx-1.5">&middot;</span>
-          via <span className="capitalize font-medium text-foreground/80">{task.channel}</span>
-        </p>
-      </div>
-
-      {/* Properties Bar */}
-      <div className="flex flex-wrap items-center gap-y-2 text-sm">
-        {/* Assignee Dropdown */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" className="gap-2 font-normal">
-              {task.assignee ? (
-                <Avatar className="h-5 w-5"><AvatarImage src={task.assignee.avatar} /><AvatarFallback>{task.assignee.name.charAt(0)}</AvatarFallback></Avatar>
-              ) : (
-                <User className="h-4 w-4 text-muted-foreground" />
-              )}
-              <span className="font-medium">{task.assignee?.name || 'Unassigned'}</span>
-              <ChevronDown className="w-3 h-3 text-muted-foreground" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start">
-            <DropdownMenuRadioGroup value={task.assigneeId || 'null'} onValueChange={val => updateTask(task.id, { assigneeId: val === 'null' ? null : val })}>
-              <DropdownMenuRadioItem value="null">
-                <User className="w-4 h-4 mr-2 text-muted-foreground" /> Unassigned
-              </DropdownMenuRadioItem>
-              <DropdownMenuSeparator />
-              {assignees.map(a => (
-                <DropdownMenuRadioItem key={a.id} value={a.id}>
-                  <Avatar className="h-5 w-5 mr-2"><AvatarImage src={a.avatar} /><AvatarFallback>{a.name.charAt(0)}</AvatarFallback></Avatar>
-                  {a.name}
-                </DropdownMenuRadioItem>
-              ))}
-            </DropdownMenuRadioGroup>
-          </DropdownMenuContent>
-        </DropdownMenu>
-
-        <div className="mx-2 h-4 w-px bg-border" />
-
-        {/* Status Dropdown */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground hover:text-foreground">
-              {currentStatus?.icon}
-              <span className="font-medium text-foreground">{currentStatus?.label}</span>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start">
-            {statusOptions.map(o => (
-              <DropdownMenuItem key={o.value} onClick={() => updateTask(task.id, { status: o.value })}>
-                <div className="flex items-center">
-                  <div className="w-4 h-4 mr-2">{o.icon}</div>
-                  <span>{o.label}</span>
-                </div>
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-        
-        <div className="mx-2 h-4 w-px bg-border" />
-        
-        {/* Priority Dropdown */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground hover:text-foreground">
-              {currentPriority?.icon}
-              <span className="font-medium text-foreground">{currentPriority?.label}</span>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start">
-            {priorityOptions.map(o => (
-              <DropdownMenuItem key={o.value} onClick={() => updateTask(task.id, { priority: o.value })}>
-                <div className="flex items-center">
-                  <div className="w-2.5 h-2.5 mr-2">{o.icon}</div>
-                  <span>{o.label}</span>
-                </div>
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-
-        <div className="mx-2 h-4 w-px bg-border" />
-
-        {/* Due Date - for display, could be a popover trigger */}
-        <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground cursor-default" disabled>
-            <Calendar className="w-4 h-4" />
-            <span className="font-medium text-foreground">{task.dueDate ? format(new Date(task.dueDate), 'MMM d, yyyy') : 'No due date'}</span>
-        </Button>
-      </div>
-
-      {/* Tags */}
-      <div className="flex flex-wrap items-center gap-2">
-        {task.tags.map(t => <Badge variant="secondary" key={t}>{t}</Badge>)}
-        <Button variant="outline" size="sm" className="h-7 px-2 text-xs rounded-md border-dashed">
-          <Plus className="w-3 h-3 mr-1" /> Tag
-        </Button>
-      </div>
-    </div>
-  );
-};
-```
-
-## File: src/components/ui/toast.tsx
-```typescript
-import {
-  forwardRef,
-  useImperativeHandle,
-  createContext,
-  useContext,
-  useCallback,
-  useRef,
-  type ReactNode,
-} from "react";
-import { Toaster as SonnerToaster, toast as sonnerToast } from "sonner";
-import { CheckCircle, AlertCircle, Info, AlertTriangle, X } from "lucide-react";
-
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-
-type Variant = "default" | "success" | "error" | "warning";
-type Position =
-  | "top-left"
-  | "top-center"
-  | "top-right"
-  | "bottom-left"
-  | "bottom-center"
-  | "bottom-right";
-
-interface ActionButton {
-  label: string;
-  onClick: () => void;
-  variant?: "default" | "outline" | "ghost";
-}
-
-export interface ToasterProps {
-  title?: string;
-  message: string;
-  variant?: Variant;
-  duration?: number;
-  position?: Position;
-  actions?: ActionButton;
-  onDismiss?: () => void;
-  highlightTitle?: boolean;
-}
-
-export interface ToasterRef {
-  show: (props: ToasterProps) => void;
-}
-
-const variantStyles: Record<Variant, string> = {
-  default: "border-border",
-  success: "border-green-600/50",
-  error: "border-destructive/50",
-  warning: "border-amber-600/50",
-};
-
-const titleColor: Record<Variant, string> = {
-  default: "text-foreground",
-  success: "text-green-600 dark:text-green-400",
-  error: "text-destructive",
-  warning: "text-amber-600 dark:text-amber-400",
-};
-
-const iconColor: Record<Variant, string> = {
-  default: "text-muted-foreground",
-  success: "text-green-600 dark:text-green-400",
-  error: "text-destructive",
-  warning: "text-amber-600 dark:text-amber-400",
-};
-
-const variantIcons: Record<
-  Variant,
-  React.ComponentType<{ className?: string }>
-> = {
-  default: Info,
-  success: CheckCircle,
-  error: AlertCircle,
-  warning: AlertTriangle,
-};
-
-const CustomToast = ({
-  toastId,
-  title,
-  message,
-  variant = "default",
-  actions,
-  highlightTitle,
-}: Omit<ToasterProps, "duration" | "position" | "onDismiss"> & {
-  toastId: number | string;
-}) => {
-  const Icon = variantIcons[variant];
-
-  const handleDismiss = () => {
-    sonnerToast.dismiss(toastId);
-  };
-
-  return (
-    <div
-      className={cn(
-        "flex items-center justify-between w-full max-w-sm p-4 rounded-lg border shadow-xl bg-popover text-popover-foreground",
-        variantStyles[variant],
-      )}
-    >
-      <div className="flex items-start gap-3">
-        <Icon
-          className={cn("h-5 w-5 mt-0.5 flex-shrink-0", iconColor[variant])}
+      <div 
+        ref={ref} 
+        className={cn("relative flex w-full items-center", className)} 
+        {...props}
+      >
+        {/* Active Indicator */}
+        <div
+          className="absolute -bottom-px h-0.5 bg-primary transition-all duration-300 ease-out"
+          style={activeStyle}
         />
-        <div className="space-y-1">
-          {title && (
-            <h3
-              className={cn(
-                "text-sm font-semibold leading-none",
-                titleColor[variant],
-                highlightTitle && titleColor["success"],
-              )}
-            >
-              {title}
-            </h3>
-          )}
-          <p className="text-sm text-muted-foreground">{message}</p>
+
+        {/* Tabs */}
+        {tabs.map((tab, index) => (
+          <button
+            key={tab.id}
+            ref={(el) => (tabRefs.current[index] = el)}
+            className={cn(
+              "group relative cursor-pointer text-center transition-colors duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+              size === 'default' ? "px-4 py-5" : "px-3 py-2.5",
+              index === activeIndex 
+                ? "text-primary" 
+                : "text-muted-foreground hover:text-foreground"
+            )}
+            onClick={() => onTabChange(tab.id)}
+          >
+            <span className={cn(
+              "flex items-center gap-2 whitespace-nowrap",
+              size === 'default' 
+                ? "text-lg font-semibold"
+                : "text-sm font-medium"
+            )}>
+              {tab.label}
+            </span>
+          </button>
+        ))}
+      </div>
+    )
+  }
+)
+AnimatedTabs.displayName = "AnimatedTabs"
+
+export { AnimatedTabs }
+```
+
+## File: src/pages/Messaging/components/MessagingContent.tsx
+```typescript
+import React, { useState, useMemo } from 'react';
+import { useMessagingStore } from '../store/messaging.store';
+import { ContactInfoPanel } from './ContactInfoPanel';
+import { AIInsightsPanel } from './AIInsightsPanel';
+import { ActivityPanel } from './ActivityPanel';
+import { NotesPanel } from './NotesPanel';
+import { TaskHeader } from './TaskHeader';
+import { AnimatedTabs } from '@/components/ui/animated-tabs';
+import { TechOrbitDisplay } from '@/components/effects/OrbitingCircles';
+
+interface MessagingContentProps {
+  conversationId?: string;
+}
+
+export const MessagingContent: React.FC<MessagingContentProps> = ({ conversationId }) => {
+  const [activeTab, setActiveTab] = useState('contact');
+  const task = useMessagingStore(state => conversationId ? state.getTaskById(conversationId) : undefined);
+  
+  const tabs = useMemo(() => [
+    { id: 'contact', label: 'Contact' },
+    { id: 'ai', label: 'AI Insights' },
+    { id: 'activity', label: 'Activity' },
+    { id: 'notes', label: 'Notes' },
+  ], []);
+
+  if (!task) {
+    return (
+      <div className="h-full flex-1 flex flex-col items-center justify-center bg-background p-6 relative overflow-hidden">
+        <TechOrbitDisplay text="Context" />
+        <div className="text-center z-10 bg-background/50 backdrop-blur-sm p-6 rounded-lg">
+            <h3 className="mt-4 text-lg font-medium">Select a Task</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+                Task details and contact information will appear here.
+            </p>
         </div>
       </div>
+    );
+  }
+  
+  return (
+    <div className="h-full flex-1 flex flex-col bg-background overflow-y-auto" data-testid="messaging-content-scroll-pane">
+      {/* Combined Header */}
+      <div className="flex-shrink-0 border-b">
+        <div className="p-6">
+          <TaskHeader task={task} />
+        </div>
+        <AnimatedTabs tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} size="sm" className="px-6" />
+      </div>
 
-      <div className="flex items-center gap-2">
-        {actions?.label && (
-          <Button
-            variant={actions.variant || "outline"}
-            size="sm"
-            onClick={() => {
-              actions.onClick();
-              handleDismiss();
-            }}
-            className={cn(
-              "h-8 px-3 text-xs cursor-pointer",
-              variant === "success"
-                ? "text-green-600 border-green-600 hover:bg-green-600/10 dark:hover:bg-green-400/20"
-                : variant === "error"
-                  ? "text-destructive border-destructive hover:bg-destructive/10 dark:hover:bg-destructive/20"
-                  : variant === "warning"
-                    ? "text-amber-600 border-amber-600 hover:bg-amber-600/10 dark:hover:bg-amber-400/20"
-                    : "text-foreground border-border hover:bg-muted/10 dark:hover:bg-muted/20",
-            )}
-          >
-            {actions.label}
-          </Button>
-        )}
-        <button
-          onClick={handleDismiss}
-          className="rounded-md p-1 hover:bg-muted/50 dark:hover:bg-muted/30 transition-colors focus:outline-none focus:ring-2 focus:ring-ring"
-          aria-label="Dismiss notification"
-        >
-          <X className="h-4 w-4 text-muted-foreground" />
-        </button>
+      {/* Content Area */}
+      <div className="flex-1 p-6">
+        {activeTab === 'contact' && <ContactInfoPanel contact={task.contact} />}
+        {activeTab === 'ai' && <AIInsightsPanel task={task} />}
+        {activeTab === 'activity' && <ActivityPanel contact={task.contact} />}
+        {activeTab === 'notes' && <NotesPanel contact={task.contact} />}
       </div>
     </div>
-  );
-};
-
-const Toaster = forwardRef<ToasterRef, { defaultPosition?: Position }>(
-  ({ defaultPosition = "bottom-right" }, ref) => {
-    useImperativeHandle(ref, () => ({
-      show({
-        title,
-        message,
-        variant = "default",
-        duration = 4000,
-        position = defaultPosition,
-        actions,
-        onDismiss,
-        highlightTitle,
-      }) {
-        sonnerToast.custom(
-          (toastId) => (
-            <CustomToast
-              toastId={toastId}
-              title={title}
-              message={message}
-              variant={variant}
-              actions={actions}
-              highlightTitle={highlightTitle}
-            />
-          ),
-          {
-            duration,
-            position,
-            onDismiss,
-          },
-        );
-      },
-    }));
-
-    return (
-      <SonnerToaster
-        position={defaultPosition}
-        toastOptions={{
-          // By removing `unstyled`, sonner handles positioning and animations.
-          // We then use `classNames` to override only the styles we don't want,
-          // allowing our custom component to define the appearance.
-          classNames: {
-            toast: "p-0 border-none shadow-none bg-transparent", // Neutralize wrapper styles
-            // We can add specific styling to other parts if needed
-            // closeButton: '...',
-          },
-        }}
-        // The z-index is still useful as a safeguard
-        className="z-[2147483647]"
-      />
-    );
-  },
-);
-Toaster.displayName = "Toaster";
-
-const ToasterContext = createContext<((props: ToasterProps) => void) | null>(
-  null,
-);
-
-// eslint-disable-next-line react-refresh/only-export-components
-export const useToast = () => {
-  const context = useContext(ToasterContext);
-  if (!context) {
-    throw new Error("useToast must be used within a ToasterProvider");
-  }
-  return { show: context };
-};
-
-export const ToasterProvider = ({ children }: { children: ReactNode }) => {
-  const toasterRef = useRef<ToasterRef>(null);
-
-  const showToast = useCallback((props: ToasterProps) => {
-    toasterRef.current?.show(props);
-  }, []);
-
-  return (
-    <ToasterContext.Provider value={showToast}>
-      {children}
-      <Toaster ref={toasterRef} />
-    </ToasterContext.Provider>
   );
 };
 ```
@@ -478,7 +188,7 @@ export const ToasterProvider = ({ children }: { children: ReactNode }) => {
 ## File: src/pages/Messaging/components/TaskList.tsx
 ```typescript
 import { useEffect } from 'react';
-import { Search, SlidersHorizontal, Check, Inbox, Clock, Zap, Shield } from 'lucide-react';
+import { Search, SlidersHorizontal, Check, Inbox, Clock, Zap, Shield, Eye } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 import { useMessagingStore } from '../store/messaging.store';
@@ -576,51 +286,57 @@ export const TaskList = () => {
       {/* Task List */}
       <div className="flex-1 overflow-y-auto">
         <nav className="p-2 space-y-1">
-          {filteredTasks.map(task => (
-            <Link
-              to={`/messaging/${task.id}`}
-              key={task.id}
-              className={cn(
-                "block p-3 rounded-lg text-left transition-all duration-200 hover:bg-accent/50",
-                "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 outline-none",
-                conversationId === task.id && "bg-accent"
-              )}
-            >
-              <div className="flex items-start gap-3">
-                <Avatar className="h-9 w-9 mt-1">
-                  <AvatarImage src={task.contact.avatar} alt={task.contact.name} />
-                  <AvatarFallback>{task.contact.name.charAt(0)}</AvatarFallback>
-                </Avatar>
-                <div className="flex-1 overflow-hidden">
-                    <div className="flex justify-between items-center mb-1">
-                        <p className="text-sm font-semibold truncate pr-2">{task.contact.name}</p>
-                        <p className="text-xs text-muted-foreground whitespace-nowrap">{formatDistanceToNow(new Date(task.lastActivity.timestamp), { addSuffix: true })}</p>
-                    </div>
-                    <p className="text-sm truncate text-foreground">{task.title}</p>
-                    <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
-                        <div className="flex items-center gap-1.5" title={task.status}>
-                            {getStatusIcon(task.status)}
-                            <span className="capitalize">{task.status.replace('-', ' ')}</span>
-                        </div>
-                        <div className="flex items-center gap-1.5" title={task.priority}>
-                            {getPriorityIcon(task.priority)}
-                            <span className="capitalize">{task.priority}</span>
-                        </div>
-                        {task.assignee && (
-                            <div className="flex items-center gap-1.5" title={`Assigned to ${task.assignee.name}`}>
-                                <Avatar className="h-4 w-4"><AvatarImage src={task.assignee.avatar} /></Avatar>
-                            </div>
-                        )}
-                    </div>
-                </div>
-                {task.unreadCount > 0 && (
-                    <div className="flex items-center justify-center self-center ml-auto">
-                        <Badge className="bg-primary h-5 w-5 p-0 flex items-center justify-center">{task.unreadCount}</Badge>
-                    </div>
+          {filteredTasks.map(task => {
+            const currentUserId = 'user-1';
+            const isHandledByOther = task.activeHandlerId && task.activeHandlerId !== currentUserId;
+
+            return (
+              <Link
+                to={`/messaging/${task.id}`}
+                key={task.id}
+                className={cn(
+                  "block p-3 rounded-lg text-left transition-all duration-200 hover:bg-accent/50",
+                  "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 outline-none",
+                  conversationId === task.id && "bg-accent"
                 )}
-              </div>
-            </Link>
-          ))}
+              >
+                <div className="flex items-start gap-3">
+                  <Avatar className="h-9 w-9 mt-1">
+                    <AvatarImage src={task.contact.avatar} alt={task.contact.name} />
+                    <AvatarFallback>{task.contact.name.charAt(0)}</AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 overflow-hidden">
+                      <div className="flex justify-between items-center mb-1">
+                          <p className="text-sm font-semibold truncate pr-2">{task.contact.name}</p>
+                          <p className="text-xs text-muted-foreground whitespace-nowrap">{formatDistanceToNow(new Date(task.lastActivity.timestamp), { addSuffix: true })}</p>
+                      </div>
+                      <p className="text-sm truncate text-foreground">{task.title}</p>
+                      <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+                          <div className="flex items-center gap-1.5" title={task.status}>
+                              {getStatusIcon(task.status)}
+                              <span className="capitalize">{task.status.replace('-', ' ')}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5" title={task.priority}>
+                              {getPriorityIcon(task.priority)}
+                              <span className="capitalize">{task.priority}</span>
+                          </div>
+                          {task.assignee && (
+                              <div className="flex items-center gap-1.5" title={`Assigned to ${task.assignee.name}`}>
+                                  <Avatar className="h-4 w-4"><AvatarImage src={task.assignee.avatar} /></Avatar>
+                              </div>
+                          )}
+                          {isHandledByOther && <Eye className="w-3.5 h-3.5" title="Being handled by another user" />}
+                      </div>
+                  </div>
+                  {task.unreadCount > 0 && (
+                      <div className="flex items-center justify-center self-center ml-auto">
+                          <Badge className="bg-primary h-5 w-5 p-0 flex items-center justify-center">{task.unreadCount}</Badge>
+                      </div>
+                  )}
+                </div>
+              </Link>
+            )
+          })}
         </nav>
       </div>
     </div>
@@ -696,673 +412,411 @@ function FilterCommand() {
 }
 ```
 
-## File: src/pages/Messaging/data/mockData.ts
-```typescript
-import type { Contact, Task, Message, ActivityEvent, Note, Assignee, TaskStatus, TaskPriority } from '../types';
+## File: src/index.css
+```css
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import 'tailwindcss/utilities';
 
-// --- ASSIGNEES ---
-export const mockAssignees: Assignee[] = [
-  { id: 'user-1', name: 'You', avatar: `https://avatar.vercel.sh/you.png` },
-  { id: 'user-2', name: 'Alex Johnson', avatar: `https://avatar.vercel.sh/alex.png` },
-  { id: 'user-3', name: 'Samira Kumar', avatar: `https://avatar.vercel.sh/samira.png` },
-];
-
-// --- HELPERS ---
-const generateNotes = (contactName: string): Note[] => [
-  { id: `note-${Math.random()}`, content: `Initial discovery call with ${contactName}. Seemed very interested in our enterprise package.`, createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString() },
-  { id: `note-${Math.random()}`, content: `Followed up via email with pricing details.`, createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString() },
-];
-
-const generateActivity = (contactName: string): ActivityEvent[] => [
-  { id: `act-${Math.random()}`, type: 'email', content: `Sent follow-up email regarding pricing.`, timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString() },
-  { id: `act-${Math.random()}`, type: 'call', content: `Had a 30-minute discovery call with ${contactName}.`, timestamp: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString() },
-  { id: `act-${Math.random()}`, type: 'meeting', content: `Scheduled a demo for next week.`, timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString() },
-];
-
-// --- CONTACTS ---
-export const mockContacts: Contact[] = [
-  { id: 'contact-1', name: 'Elena Rodriguez', avatar: `https://avatar.vercel.sh/elenarodriguez.png`, online: true, tags: ['VIP', 'New Lead'], email: 'elena.r@example.com', phone: '+1 234 567 8901', lastSeen: 'online', company: 'Innovate Inc.', role: 'CTO', activity: generateActivity('Elena Rodriguez'), notes: generateNotes('Elena Rodriguez'), },
-  { id: 'contact-2', name: 'Marcus Chen', avatar: `https://avatar.vercel.sh/marcuschen.png`, online: false, tags: ['Returning Customer'], email: 'marcus.c@example.com', phone: '+1 345 678 9012', lastSeen: '2 hours ago', company: 'Solutions Co.', role: 'Product Manager', activity: generateActivity('Marcus Chen'), notes: generateNotes('Marcus Chen'), },
-  { id: 'contact-3', name: 'Aisha Khan', avatar: `https://avatar.vercel.sh/aishakhan.png`, online: true, tags: ['Support Request'], email: 'aisha.k@example.com', phone: '+1 456 789 0123', lastSeen: 'online', company: 'Data Dynamics', role: 'Data Analyst', activity: generateActivity('Aisha Khan'), notes: generateNotes('Aisha Khan'), },
-  { id: 'contact-4', name: 'Leo Tolstoy', avatar: `https://avatar.vercel.sh/leotolstoy.png`, online: false, tags: [], email: 'leo.tolstoy@example.com', phone: '+44 20 7946 0958', lastSeen: 'yesterday', company: 'Classic Reads', role: 'Author', activity: generateActivity('Leo Tolstoy'), notes: generateNotes('Leo Tolstoy'), }
-];
-
-// --- MESSAGE GENERATOR ---
-const generateMessages = (count: number, contactName: string): Message[] => {
-  const messages: Message[] = [];
-  const now = new Date();
-  for (let i = count - 1; i >= 0; i--) {
-    const random = Math.random();
-    let sender: Message['sender'] = 'contact';
-    let type: Message['type'] = 'comment';
-    let text = `This is a sample message number ${i} from ${contactName}.`;
-    let userId: string | undefined = undefined;
-
-    if (random > 0.85) { // Internal Note
-      sender = 'user';
-      type = 'note';
-      const user = mockAssignees[Math.floor(Math.random() * mockAssignees.length)];
-      userId = user.id;
-      text = `Internal note from ${user.name}: we should check their account history.`;
-    } else if (random > 0.7) { // System message
-      sender = 'system';
-      type = 'system';
-      text = `Task status changed to "in-progress"`;
-    } else if (random > 0.35) { // User comment
-      sender = 'user';
-      type = 'comment';
-      userId = 'user-1'; // "You"
-      text = `This is a reply from me. Time is roughly ${count - i} hours ago.`;
-    }
-    
-    messages.push({
-      id: `msg-${Math.random()}`,
-      text,
-      timestamp: new Date(now.getTime() - i * 60 * 60 * 1000).toISOString(),
-      sender,
-      type,
-      read: i < count - 2,
-      userId,
-    });
+@layer base {
+  :root {
+    --primary-hsl: 220 84% 60%;
+    --background: 210 40% 96.1%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: var(--primary-hsl);
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222.2 84% 4.9%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96%;
+    --accent-foreground: 222.2 84% 4.9%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: var(--primary-hsl);
+    --radius: 1rem;
   }
-  // Ensure the last message is from the contact for preview purposes
-  messages[messages.length - 1] = {
-    ...messages[messages.length-1],
-    sender: 'contact',
-    type: 'comment',
-    text: `Hey! This is the latest message from ${contactName}.`,
-    userId: undefined
-  };
-  return messages.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-};
 
-// --- TASKS ---
-const statuses: TaskStatus[] = ['open', 'in-progress', 'done', 'snoozed'];
-const priorities: TaskPriority[] = ['none', 'low', 'medium', 'high'];
+  .dark {
+    --background: 240 6% 9%;
+    --foreground: 210 40% 98%;
+    --card: 240 6% 14%;
+    --card-foreground: 210 40% 98%;
+    --popover: 240 6% 12%;
+    --popover-foreground: 210 40% 98%;
+    --primary: var(--primary-hsl);
+    --primary-foreground: 210 40% 98%;
+    --secondary: 240 5% 20%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 240 5% 20%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 240 5% 20%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 240 5% 20%;
+    --input: 240 5% 20%;
+    --ring: var(--primary-hsl);
+  }
+}
 
-export const mockTasks: Task[] = [
-  {
-    id: 'task-1',
-    title: 'Question about enterprise pricing',
-    contactId: 'contact-1',
-    channel: 'whatsapp',
-    unreadCount: 2,
-    messages: generateMessages(15, 'Elena Rodriguez'),
-    get lastActivity() { return this.messages[this.messages.length - 1]; },
-    status: 'in-progress',
-    assigneeId: 'user-2',
-    dueDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
-    priority: 'high',
-    tags: ['onboarding', 'pricing'],
-    aiSummary: { sentiment: 'positive', summaryPoints: ['Expressed strong interest in the new feature.', 'Asked about pricing tiers for enterprise.', 'Is ready for a follow-up call next week.',], suggestedReplies: ['Let\'s schedule that call!', 'Here is the pricing information.', 'Happy to hear you like it!',], },
-  },
-  {
-    id: 'task-2',
-    title: 'Minor issue with order #12345',
-    contactId: 'contact-2',
-    channel: 'instagram',
-    unreadCount: 0,
-    messages: generateMessages(8, 'Marcus Chen'),
-    get lastActivity() { return this.messages[this.messages.length - 1]; },
-    status: 'done',
-    assigneeId: 'user-1',
-    dueDate: null,
-    priority: 'medium',
-    tags: ['bug-report'],
-    aiSummary: { sentiment: 'neutral', summaryPoints: ['Reported a minor issue with order #12345.', 'Was satisfied with the proposed solution.', 'Inquired about the return policy.',], suggestedReplies: ['Can I help with anything else?', 'Here is our return policy.',], },
-  },
-  {
-    id: 'task-3',
-    title: 'Login issues, cannot reset password',
-    contactId: 'contact-3',
-    channel: 'facebook',
-    unreadCount: 5,
-    messages: generateMessages(20, 'Aisha Khan'),
-    get lastActivity() { return this.messages[this.messages.length - 1]; },
-    status: 'open',
-    assigneeId: null,
-    dueDate: null,
-    priority: 'high',
-    tags: ['urgent', 'tech-support'],
-    aiSummary: { sentiment: 'negative', summaryPoints: ['Frustrated with login issues.', 'Unable to reset password via email link.', 'Threatened to cancel their subscription.',], suggestedReplies: ['I\'m escalating this to our technical team.', 'Let\'s try a manual password reset.', 'We apologize for the inconvenience.',], },
-  },
-  {
-    id: 'task-4',
-    title: 'Follow-up on previous conversation',
-    contactId: 'contact-4',
-    channel: 'email',
-    unreadCount: 0,
-    messages: generateMessages(5, 'Leo Tolstoy'),
-    get lastActivity() { return this.messages[this.messages.length - 1]; },
-    status: 'snoozed',
-    assigneeId: 'user-3',
-    dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-    priority: 'low',
-    tags: [],
-    aiSummary: { sentiment: 'neutral', summaryPoints: ['Followed up on a previous conversation.', 'Confirmed meeting time for Thursday.', 'No outstanding issues.',], suggestedReplies: ['Sounds good!', 'See you then!',], },
-  },
-];
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Custom scrollbar styles */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-border rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-muted-foreground/50;
+}
+
+/* For UserDropdown */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
+
+@layer base {
+  .login-page-theme {
+    --background: hsl(0 0% 100%);
+    --foreground: hsl(0 0% 0%);
+    --skeleton: hsl(0 0% 90%);
+    --border: hsl(220 20% 90%);
+    --btn-border: hsl(214.3 31.8% 91.4%);
+    --input: hsl(220 20% 90%);
+    --radius: 0.5rem;
+  }
+ 
+  .dark .login-page-theme {
+    --background: hsl(222 94% 5%);
+    --foreground: hsl(0 0% 100%);
+    --skeleton: hsl(218 36% 16%);
+    --border: hsl(220 20% 90%);
+    --btn-border: hsl(217 32.6% 17.5%);
+    --input: hsl(219 63% 16%);
+    --radius: 0.5rem;
+  }
+}
+
+@layer components {
+  .g-button {
+    @apply rounded-[var(--radius)] border;
+    border-color: var(--btn-border);
+  }
+}
 ```
 
-## File: src/pages/Messaging/store/messaging.store.ts
+## File: src/pages/DataDemo/index.tsx
 ```typescript
-import { create } from 'zustand';
-import { mockTasks, mockContacts, mockAssignees } from '../data/mockData';
-import type { Task, Contact, Channel, Assignee, TaskStatus, TaskPriority, TaskView } from '../types';
+import { useRef, useEffect, useCallback } from 'react'
+import {
+  Layers, 
+  AlertTriangle, 
+  PlayCircle, 
+  TrendingUp,
+  Loader2,
+  ChevronsUpDown
+} from 'lucide-react'
+import { gsap } from 'gsap'
+import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuRadioGroup, 
+  DropdownMenuRadioItem, 
+  DropdownMenuTrigger 
+} from '@/components/ui/dropdown-menu'
+import { PageLayout } from '@/components/shared/PageLayout'
+import { DataListView } from './components/DataListView'
+import { DataCardView } from './components/DataCardView'
+import { DataTableView } from './components/DataTableView'
+import { DataViewModeSelector } from './components/DataViewModeSelector'
+import { AnimatedTabs } from '@/components/ui/animated-tabs'
+import { StatCard } from '@/components/shared/StatCard'
+import { AnimatedLoadingSkeleton } from './components/AnimatedLoadingSkeleton'
+import { DataToolbar } from './components/DataToolbar'
+import { mockDataItems } from './data/mockData'
+import type { GroupableField } from './types'
+import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
+import { 
+  useDataDemoStore,
+  useGroupTabs,
+  useDataToRender,
+} from './store/dataDemo.store'
 
-interface MessagingState {
-  tasks: Task[];
-  contacts: Contact[];
-  assignees: Assignee[];
-  searchTerm: string;
-  activeFilters: {
-    channels: Channel[];
-    tags: string[];
-    status: TaskStatus[];
-    priority: TaskPriority[];
-    assigneeId: string[];
-  };
-  activeTaskView: TaskView;
-}
-
-interface MessagingActions {
-  getTaskById: (id: string) => (Task & { contact: Contact, assignee: Assignee | null }) | undefined;
-  getFilteredTasks: () => (Task & { contact: Contact, assignee: Assignee | null })[];
-  setSearchTerm: (term: string) => void;
-  setActiveTaskView: (view: TaskView) => void;
-  setFilters: (filters: Partial<MessagingState['activeFilters']>) => void;
-  updateTask: (taskId: string, updates: Partial<Omit<Task, 'id'>>) => void;
-  getAssigneeById: (assigneeId: string) => Assignee | undefined;
-  getAvailableTags: () => string[];
-}
-
-export const useMessagingStore = create<MessagingState & MessagingActions>((set, get) => ({
-  tasks: mockTasks,
-  contacts: mockContacts,
-  assignees: mockAssignees,
-  searchTerm: '',
-  activeFilters: {
-    channels: [],
-    tags: [],
-    status: [],
-    priority: [],
-    assigneeId: [],
-  },
-  activeTaskView: 'all_open',
-
-  getTaskById: (id) => {
-    const task = get().tasks.find(t => t.id === id);
-    if (!task) return undefined;
-
-    const contact = get().contacts.find(c => c.id === task.contactId);
-    if (!contact) return undefined;
-
-    const assignee = get().assignees.find(a => a.id === task.assigneeId) || null;
-
-    return { ...task, contact, assignee };
-  },
-
-  getFilteredTasks: () => {
-    const { tasks, contacts, assignees, searchTerm, activeFilters, activeTaskView } = get();
-    const lowercasedSearch = searchTerm.toLowerCase();
-
-    const viewFilteredTasks = tasks.filter(task => {
-      switch (activeTaskView) {
-        case 'all_open':
-          return task.status === 'open' || task.status === 'in-progress';
-        case 'unassigned':
-          return !task.assigneeId && (task.status === 'open' || task.status === 'in-progress');
-        case 'done':
-          return task.status === 'done';
-        default:
-          return true;
-      }
-    });
-    const mapped = viewFilteredTasks.map(task => {
-      const contact = contacts.find(c => c.id === task.contactId) as Contact;
-      const assignee = assignees.find(a => a.id === task.assigneeId) || null;
-      return { ...task, contact, assignee };
-    });
-
-    const filtered = mapped.filter(task => {
-      const searchMatch = task.title.toLowerCase().includes(lowercasedSearch) || task.contact.name.toLowerCase().includes(lowercasedSearch);
-      const channelMatch = activeFilters.channels.length === 0 || activeFilters.channels.includes(task.channel);
-      const tagMatch = activeFilters.tags.length === 0 || activeFilters.tags.some(tag => task.tags.includes(tag));
-      const statusMatch = activeFilters.status.length === 0 || activeFilters.status.includes(task.status);
-      const priorityMatch = activeFilters.priority.length === 0 || activeFilters.priority.includes(task.priority);
-      const assigneeMatch = activeFilters.assigneeId.length === 0 || (task.assigneeId && activeFilters.assigneeId.includes(task.assigneeId));
-      
-      return searchMatch && channelMatch && tagMatch && statusMatch && priorityMatch && assigneeMatch;
-    });
-
-    return filtered.sort((a, b) => new Date(b.lastActivity.timestamp).getTime() - new Date(a.lastActivity.timestamp).getTime());
-  },
-
-  setSearchTerm: (term) => set({ searchTerm: term }),
-  
-  setActiveTaskView: (view) => set({ activeTaskView: view }),
-
-  setFilters: (newFilters) => set(state => ({
-    activeFilters: { ...state.activeFilters, ...newFilters }
-  })),
-
-  updateTask: (taskId, updates) => set(state => ({
-    tasks: state.tasks.map(task => 
-      task.id === taskId 
-        ? { ...task, ...updates, lastActivity: { ...task.lastActivity, timestamp: new Date().toISOString() } } 
-        : task
-    )
-  })),
-
-  getAssigneeById: (assigneeId: string) => {
-    return get().assignees.find(a => a.id === assigneeId);
-  },
-
-  getAvailableTags: () => {
-    const contactTags = get().contacts.flatMap(c => c.tags);
-    const taskTags = get().tasks.flatMap(t => t.tags);
-    const allTags = new Set([...contactTags, ...taskTags]);
-    return Array.from(allTags);
-  }
-}));
-```
-
-## File: src/pages/Messaging/types.ts
-```typescript
-import type { LucideIcon } from "lucide-react";
-
-export type Channel = 'whatsapp' | 'instagram' | 'facebook' | 'email';
-
-export interface ChannelIcon {
-  Icon: LucideIcon;
-  color: string;
-}
-
-export interface Contact {
-  id: string;
-  name:string;
-  avatar: string;
-  online: boolean;
-  tags: string[];
-  email: string;
-  phone: string;
-  lastSeen: string;
-  company: string;
-  role: string;
-  activity: ActivityEvent[];
-  notes: Note[];
-}
-
-export interface Assignee {
-  id: string;
-  name: string;
-  avatar: string;
-}
-
-export type ActivityEventType = 'note' | 'call' | 'email' | 'meeting';
-
-export interface ActivityEvent {
-  id: string;
-  type: ActivityEventType;
-  content: string;
-  timestamp: string;
-}
-export interface Note {
-  id: string;
-  content: string;
-  createdAt: string;
-}
-
-export interface Message {
-  id: string;
-  text: string;
-  timestamp: string;
-  sender: 'user' | 'contact' | 'system';
-  type: 'comment' | 'note' | 'system';
-  read: boolean;
-  userId?: string; // for notes or system messages from users
-}
-
-export interface AISummary {
-  sentiment: 'positive' | 'negative' | 'neutral';
-  summaryPoints: string[];
-  suggestedReplies: string[];
-}
-
-export type TaskStatus = 'open' | 'in-progress' | 'done' | 'snoozed';
-export type TaskPriority = 'none' | 'low' | 'medium' | 'high';
-
-export interface Task {
-  id: string;
+type Stat = {
   title: string;
-  contactId: string;
-  channel: Channel;
-  unreadCount: number;
-  lastActivity: Message;
-  messages: Message[];
-  status: TaskStatus;
-  assigneeId: string | null;
-  dueDate: string | null;
-  priority: TaskPriority;
-  tags: string[];
-  aiSummary: AISummary;
-}
-
-export type TaskView = 'all_open' | 'unassigned' | 'done';
-```
-
-## File: src/pages/Messaging/index.tsx
-```typescript
-import React, { useState, useRef, useEffect, useCallback } from "react";
-import { useParams } from "react-router-dom";
-import { TaskList } from "./components/TaskList";
-import { TaskDetail } from "./components/TaskDetail";
-import { cn } from "@/lib/utils";
-
-const useResizableMessagingPanes = (
-  containerRef: React.RefObject<HTMLDivElement>,
-  initialWidth: number = 320
-) => {
-  const [isResizing, setIsResizing] = useState(false);
-  const [listWidth, setListWidth] = useState(initialWidth);
-
-  const handleMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    setIsResizing(true);
-  }, []);
-
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!isResizing || !containerRef.current) return;
-      const containerRect = containerRef.current.getBoundingClientRect();
-      const newWidth = e.clientX - containerRect.left;
-      // Constraints for the conversation list pane
-      setListWidth(Math.max(280, Math.min(newWidth, containerRect.width - 500)));
-    };
-
-    const handleMouseUp = () => {
-      setIsResizing(false);
-    };
-
-    if (isResizing) {
-      document.body.style.cursor = 'col-resize';
-      document.body.style.userSelect = 'none';
-      window.addEventListener('mousemove', handleMouseMove);
-      window.addEventListener('mouseup', handleMouseUp, { once: true });
-    }
-
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
-      if (document.body) {
-        document.body.style.cursor = '';
-        document.body.style.userSelect = '';
-      }
-    };
-  }, [isResizing, containerRef]);
-
-  return { listWidth, handleMouseDown, isResizing };
+  value: string;
+  icon: React.ReactNode;
+  change: string;
+  trend: 'up' | 'down';
+  type?: 'card';
 };
 
-export default function MessagingPage() {
-  const { conversationId } = useParams<{ conversationId?: string }>();
-  const containerRef = useRef<HTMLDivElement>(null);
+type ChartStat = {
+  title: string;
+  value: string;
+  icon: React.ReactNode;
+  change: string;
+  trend: 'up' | 'down';
+  type: 'chart';
+  chartData: number[];
+};
 
-  const { listWidth, handleMouseDown, isResizing } = useResizableMessagingPanes(containerRef);
+type StatItem = Stat | ChartStat;
 
-  return (
-    <div 
-      ref={containerRef}
-      className={cn(
-        "h-full w-full flex bg-background",
-        isResizing && "cursor-col-resize select-none"
-      )}
-    >
-      <div style={{ width: `${listWidth}px` }} className="flex-shrink-0 h-full">
-        <TaskList />
-      </div>
-      <div onMouseDown={handleMouseDown} className="w-2 flex-shrink-0 cursor-col-resize group flex items-center justify-center">
-        <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200" />
-      </div>
-      <div className="flex-1 min-w-0 h-full">
-        <TaskDetail />
-      </div>
-    </div>
-  );
-}
-```
+function DataDemoContent() {
+  const {
+    viewMode,
+    groupBy,
+    activeGroupTab,
+    setGroupBy,
+    setActiveGroupTab,
+    page,
+    filters,
+    sortConfig,
+    setPage,
+  } = useAppViewManager();
 
-## File: src/App.tsx
-```typescript
-import React, { useEffect } from "react";
-import {
-  createBrowserRouter,
-  RouterProvider,
-  Outlet,
-  Navigate,
-  useNavigate, // used in LoginPageWrapper
-  useLocation,
-} from "react-router-dom";
+  const { hasMore, isLoading, isInitialLoading, totalItemCount, loadData } = useDataDemoStore(state => ({
+    hasMore: state.hasMore,
+    isLoading: state.isLoading,
+    isInitialLoading: state.isInitialLoading,
+    totalItemCount: state.totalItemCount,
+    loadData: state.loadData,
+  }));
 
-import { AppShell } from "./components/layout/AppShell";
-import { AppShellProvider } from "./providers/AppShellProvider";
-import { useAppShellStore } from "./store/appShell.store";
-import { useAuthStore } from "./store/authStore";
-import "./index.css";
+  const groupTabs = useGroupTabs(groupBy, activeGroupTab);
+  const dataToRender = useDataToRender(groupBy, activeGroupTab);
 
-// Import library components
-import { EnhancedSidebar } from "./components/layout/EnhancedSidebar";
-import { MainContent } from "./components/layout/MainContent";
-import { RightPane } from "./components/layout/RightPane";
-import { TopBar } from "./components/layout/TopBar";
-import { CommandPalette } from "./components/global/CommandPalette";
-import { ToasterProvider } from "./components/ui/toast";
+  const groupOptions: { id: GroupableField | 'none'; label: string }[] = [
+    { id: 'none', label: 'None' }, { id: 'status', label: 'Status' }, { id: 'priority', label: 'Priority' }, { id: 'category', label: 'Category' }
+  ]
+  const statsRef = useRef<HTMLDivElement>(null)
 
-// --- Page/Content Components for Pages and Panes ---
-import { DashboardContent } from "./pages/Dashboard";
-import { SettingsPage } from "./pages/Settings";
-import { ToasterDemo } from "./pages/ToasterDemo";
-import { NotificationsPage } from "./pages/Notifications";
-import DataDemoPage from "./pages/DataDemo";
-import MessagingPage from "./pages/Messaging";
-import { LoginPage } from "./components/auth/LoginPage";
+  // Calculate stats from data
+  const totalItems = mockDataItems.length
+  const activeItems = mockDataItems.filter(item => item.status === 'active').length
+  const highPriorityItems = mockDataItems.filter(item => item.priority === 'high' || item.priority === 'critical').length
+  const avgCompletion = totalItems > 0 ? Math.round(
+    mockDataItems.reduce((acc, item) => acc + item.metrics.completion, 0) / totalItems
+  ) : 0
 
-// --- Icons ---
-import {
-  Search,
-  Filter,
-  Plus,
-  ChevronRight,
-  Rocket,
-} from "lucide-react";
-
-// --- Utils & Hooks ---
-import { cn } from "./lib/utils";
-import { useAppViewManager } from "./hooks/useAppViewManager.hook";
-import { useRightPaneContent } from "./hooks/useRightPaneContent.hook";
-import { BODY_STATES } from "./lib/utils";
-
-// Checks for authentication and redirects to login if needed
-function ProtectedRoute() {
-  const { isAuthenticated } = useAuthStore();
-  const location = useLocation();
-  if (!isAuthenticated) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
-  }
-  return <Outlet />;
-}
-
-// A root component to apply global styles and effects
-function Root() {
-  const isDarkMode = useAppShellStore((state) => state.isDarkMode);
-
-  useEffect(() => {
-    document.documentElement.classList.toggle("dark", isDarkMode);
-  }, [isDarkMode]);
-
-  return <Outlet />;
-}
-
-// The main layout for authenticated parts of the application
-function ProtectedLayout() {
-
-  return (
-    <div className="h-screen w-screen overflow-hidden bg-background">
-      <AppShellProvider
-        appName="Jeli App"
-        appLogo={
-          <div className="p-2 bg-primary/20 rounded-lg">
-            <Rocket className="w-5 h-5 text-primary" />
-          </div>
-        }
-      >
-        <ComposedApp />
-      </AppShellProvider>
-    </div>
-  );
-}
-
-// Content for the Top Bar (will be fully refactored in Part 2)
-function AppTopBar() {
-  const [searchTerm, setSearchTerm] = React.useState("");
-  const [isSearchFocused, setIsSearchFocused] = React.useState(false);
-  const location = useLocation();
-  const activePage = location.pathname.split('/').filter(Boolean).pop()?.replace('-', ' ') || 'dashboard';
-
-  return (
-    <div className="flex items-center gap-3">
-      <div
-        className={cn(
-          "hidden md:flex items-center gap-2 text-sm transition-opacity",
-          {
-            "opacity-0 pointer-events-none":
-              isSearchFocused && activePage === "dashboard",
-          },
-        )}
-      >
-        <a
-          href="#"
-          className="text-muted-foreground hover:text-foreground transition-colors"
-        >
-          Home
-        </a>
-        <ChevronRight className="w-4 h-4 text-muted-foreground" />
-        <span className="font-medium text-foreground capitalize">
-          {activePage}
-        </span>
-      </div>
-
-      {/* Page-specific: Dashboard search and actions */}
-      {activePage === "dashboard" && (
-        <div className="flex items-center gap-2 flex-1 justify-end">
-          <div
-            className={cn(
-              "relative transition-all duration-300 ease-in-out",
-              isSearchFocused ? "flex-1 max-w-lg" : "w-auto",
-            )}
-          >
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4 pointer-events-none" />
-            <input
-              type="text"
-              placeholder="Search..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              onFocus={() => setIsSearchFocused(true)}
-              onBlur={() => setIsSearchFocused(false)}
-              className={cn(
-                "pl-9 pr-4 py-2 h-10 border-none rounded-lg bg-card focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300 ease-in-out w-full",
-                isSearchFocused ? "bg-background" : "w-48",
-              )}
-            />
-          </div>
-          <button className="h-10 w-10 flex-shrink-0 flex items-center justify-center hover:bg-accent rounded-full transition-colors">
-            <Filter className="w-5 h-5" />
-          </button>
-          <button className="bg-primary text-primary-foreground px-4 py-2 rounded-full hover:bg-primary/90 transition-colors flex items-center gap-2 h-10 flex-shrink-0">
-            <Plus className="w-5 h-5" />
-            <span
-              className={cn(isSearchFocused ? "hidden sm:inline" : "inline")}
-            >
-              New Project
-            </span>
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// The main App component that composes the shell
-function ComposedApp() {
-  const { setBodyState, setSidePaneContent } = useAppShellStore();
-  const viewManager = useAppViewManager();
-
-  // Sync URL state with AppShellStore
-  useEffect(() => {
-    setBodyState(viewManager.bodyState);
-    setSidePaneContent(viewManager.sidePaneContent);
-  }, [viewManager.bodyState, viewManager.sidePaneContent, setBodyState, setSidePaneContent]);
-
-  return (
-    <AppShell
-      sidebar={<EnhancedSidebar />}
-      onOverlayClick={viewManager.closeSidePane}
-      topBar={
-        <TopBar>
-          <AppTopBar />
-        </TopBar>
-      }
-      mainContent={
-        <MainContent>
-          <Outlet />
-        </MainContent>
-      }
-      rightPane={<RightPane />}
-      commandPalette={<CommandPalette />}
-    />
-  );
-}
-
-function App() {
-  const router = createBrowserRouter([
+  const stats: StatItem[] = [
     {
-      element: <Root />,
-      children: [
-        {
-          path: "/login",
-          element: <LoginPage />,
-        },
-        {
-          path: "/",
-          element: <ProtectedRoute />,
-          children: [
-            {
-              path: "/",
-              element: <ProtectedLayout />,
-              children: [
-                { index: true, element: <Navigate to="/dashboard" replace /> },
-                { path: "dashboard", element: <DashboardContent /> },
-                { path: "settings", element: <SettingsPage /> },
-                { path: "toaster", element: <ToasterDemo /> },
-                { path: "notifications", element: <NotificationsPage /> },
-                { path: "data-demo", element: <DataDemoPage /> },
-                { path: "data-demo/:itemId", element: <DataDemoPage /> },
-                { path: "messaging", element: <MessagingPage /> },
-                { path: "messaging/:conversationId", element: <MessagingPage /> },
-              ],
-            },
-          ],
-        },
-      ],
+      title: "Total Projects",
+      value: totalItems.toString(),
+      icon: <Layers className="w-5 h-5" />,
+      change: "+5.2% this month",
+      trend: "up" as const,
+      type: 'chart',
+      chartData: [120, 125, 122, 130, 135, 138, 142]
     },
-  ]);
+    {
+      title: "Active Projects",
+      value: activeItems.toString(),
+      icon: <PlayCircle className="w-5 h-5" />,
+      change: "+2 this week", 
+      trend: "up" as const,
+      type: 'chart',
+      chartData: [45, 50, 48, 55, 53, 60, 58]
+    },
+    {
+      title: "High Priority",
+      value: highPriorityItems.toString(),
+      icon: <AlertTriangle className="w-5 h-5" />,
+      change: "-1 from last week",
+      trend: "down" as const,
+      type: 'chart',
+      chartData: [25, 26, 28, 27, 26, 24, 23]
+    },
+    {
+      title: "Avg. Completion",
+      value: `${avgCompletion}%`,
+      icon: <TrendingUp className="w-5 h-5" />,
+      change: "+3.2%",
+      trend: "up" as const,
+      type: 'chart',
+      chartData: [65, 68, 70, 69, 72, 75, 78]
+    }
+  ]
+
+  useEffect(() => {
+    // Animate stats cards in
+    if (!isInitialLoading && statsRef.current) {
+      gsap.fromTo(statsRef.current.children,
+        { y: 30, opacity: 0 },
+        {
+          duration: 0.6,
+          y: 0,
+          opacity: 1,
+          stagger: 0.1,
+          ease: "power2.out"
+        }
+      )
+    }
+  }, [isInitialLoading]);
+
+  useEffect(() => {
+    loadData({ page, groupBy, filters, sortConfig });
+  }, [page, groupBy, filters, sortConfig, loadData]);
+
+  const observer = useRef<IntersectionObserver>();
+  const loaderRef = useCallback(
+    (node: Element | null) => {
+      if (isLoading) return;
+      if (observer.current) observer.current.disconnect();
+
+      observer.current = new IntersectionObserver((entries) => {
+        if (entries[0].isIntersecting && hasMore) {
+          setPage(page + 1);
+        }
+      });
+      if (node) observer.current.observe(node);
+    },
+    [isLoading, hasMore, page, setPage],
+  );
 
   return (
-    <ToasterProvider>
-      <RouterProvider router={router} />
-    </ToasterProvider>
-  );
+    <PageLayout
+      // Note: Search functionality is handled by a separate SearchBar in the TopBar
+    >
+      <div className="space-y-8">
+        {/* Header */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="flex-1">
+            <h1 className="text-2xl font-bold tracking-tight">Data Showcase</h1>
+            <p className="text-muted-foreground">
+              {isInitialLoading 
+                ? "Loading projects..." 
+                : `Showing ${dataToRender.length} of ${totalItemCount} item(s)`}
+            </p>
+          </div>
+          <DataViewModeSelector />
+        </div>
+
+        {/* Stats Section */}
+        {!isInitialLoading && (
+          <div ref={statsRef} className="grid grid-cols-[repeat(auto-fit,minmax(250px,1fr))] gap-6">
+            {stats.map((stat) => (
+              <StatCard
+                key={stat.title}
+                title={stat.title}
+                value={stat.value}
+                change={stat.change}
+                trend={stat.trend}
+                icon={stat.icon}
+                chartData={stat.type === 'chart' ? stat.chartData : undefined}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Controls Area */}
+        <div className="space-y-6">
+          <DataToolbar />
+        </div>
+
+        {/* Group by and Tabs section */}
+        <div className={cn(
+          "flex items-center justify-between gap-4",
+          groupBy !== 'none' && "border-b"
+        )}>
+          {/* Tabs on the left, takes up available space */}
+          <div className="flex-grow overflow-x-auto overflow-y-hidden no-scrollbar">
+            {groupBy !== 'none' && groupTabs.length > 1 ? (
+              <AnimatedTabs
+                tabs={groupTabs}
+                activeTab={activeGroupTab}
+                onTabChange={setActiveGroupTab}
+              />
+            ) : (
+              <div className="h-[68px]" /> // Placeholder for consistent height.
+            )}
+          </div>
+          
+          {/* Group by dropdown on the right */}
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="text-sm font-medium text-muted-foreground shrink-0">Group by:</span>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="w-[180px] justify-between">
+                  {groupOptions.find(o => o.id === groupBy)?.label}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-[180px]">
+                <DropdownMenuRadioGroup value={groupBy} onValueChange={setGroupBy}>
+                  {groupOptions.map(option => (
+                    <DropdownMenuRadioItem key={option.id} value={option.id}>
+                      {option.label}
+                    </DropdownMenuRadioItem>
+                  ))}
+                </DropdownMenuRadioGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+
+        <div className="min-h-[500px]">
+          {isInitialLoading ? <AnimatedLoadingSkeleton viewMode={viewMode} /> : (
+            <div>
+              {viewMode === 'table' ? <DataTableView /> : (
+                <>
+                  {viewMode === 'list' && <DataListView />}
+                  {viewMode === 'cards' && <DataCardView />}
+                  {viewMode === 'grid' && <DataCardView isGrid />}
+                </>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Loader for infinite scroll */}
+        <div ref={loaderRef} className="flex justify-center items-center py-6">
+          {isLoading && !isInitialLoading && groupBy === 'none' && (
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Loader2 className="w-5 h-5 animate-spin" />
+              <span>Loading more...</span>
+            </div>
+          )}
+          {!isLoading && !hasMore && dataToRender.length > 0 && !isInitialLoading && groupBy === 'none' && (
+            <p className="text-muted-foreground">You've reached the end.</p>
+          )}
+        </div>
+      </div>
+    </PageLayout>
+  )
 }
 
-export default App;
+export default function DataDemoPage() {
+  return <DataDemoContent />;
+}
 ```

@@ -38,7 +38,7 @@ overlay side pane: fix erratic close open movement while user resizing the pane
 
 on overlay side pane active: the main right content view should not be re-rendered
 
-===
+=== DONE
 
  animated tabs: should horizontally scrollable by default. so consumer no need to implement individually, also prevent from vertically scrollable
 
