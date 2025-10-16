@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -24,7 +24,7 @@ export function useRightPaneContent(sidePaneContent: AppShellState['sidePaneCont
   const navigate = useNavigate();
   const { itemId, conversationId } = useParams<{ itemId: string; conversationId: string }>();
 
-  const contentMap = useMemo(() => ({
+  const staticContentMap = useMemo(() => ({
     main: {
       title: "Dashboard",
       icon: LayoutDashboard,
@@ -35,7 +35,7 @@ export function useRightPaneContent(sidePaneContent: AppShellState['sidePaneCont
       title: "Settings",
       icon: Settings,
       page: "settings",
-      content: <div className="p-6"><SettingsContent /></div>
+      content: <div className="p-6"><SettingsContent /></div>,
     },
     toaster: {
       title: "Toaster Demo",
@@ -55,12 +55,6 @@ export function useRightPaneContent(sidePaneContent: AppShellState['sidePaneCont
       page: "data-demo",
       content: <DataDemoPage />,
     },
-    messaging: {
-      title: "Conversation",
-      icon: MessageSquare,
-      page: "messaging",
-      content: <MessagingContent conversationId={conversationId} />,
-    },
     details: {
       title: "Details Panel",
       icon: SlidersHorizontal,
@@ -73,18 +67,32 @@ export function useRightPaneContent(sidePaneContent: AppShellState['sidePaneCont
         </div>
       ),
     },
-  }), [conversationId]);
+  }), []);
+
+  const contentMap = useMemo(() => ({
+    ...staticContentMap,
+    messaging: {
+      title: "Conversation",
+      icon: MessageSquare,
+      page: "messaging",
+      content: <MessagingContent conversationId={conversationId} />,
+    },
+  }), [conversationId, staticContentMap]);
 
   const selectedItem = useMemo(() => {
     if (!itemId) return null;
     return mockDataItems.find(item => item.id === itemId) ?? null;
   }, [itemId]);
 
+  const handleDataItemClose = useCallback(() => {
+    navigate('/data-demo');
+  }, [navigate]);
+
   const { meta, content } = useMemo(() => {
     if (sidePaneContent === 'dataItem' && selectedItem) {
       return {
         meta: { title: "Item Details", icon: Database, page: `data-demo/${itemId}` },
-        content: <DataDetailPanel item={selectedItem} onClose={() => navigate('/data-demo')} />,
+        content: <DataDetailPanel item={selectedItem} onClose={handleDataItemClose} />,
       };
     }
     const mappedContent = contentMap[sidePaneContent as keyof typeof contentMap] || contentMap.details;
@@ -92,7 +100,7 @@ export function useRightPaneContent(sidePaneContent: AppShellState['sidePaneCont
       meta: mappedContent,
       content: mappedContent.content,
     };
-  }, [sidePaneContent, selectedItem, navigate, contentMap, itemId, conversationId]);
+  }, [sidePaneContent, selectedItem, contentMap, itemId, handleDataItemClose]);
 
   return { meta, content };
 }

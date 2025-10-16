@@ -1,87 +1,94 @@
-Here's the plan, architect.
+Ahoy. Let's sharpen our tools and dive into this codebase. We've got a classic performance bottleneck: the main content is re-rendering when an overlay side pane pops up. That's just lazy state management. The main view is just sitting there, minding its own business behind the overlay; it has no reason to churn.
 
-This refactor is a classic "make it Just Work™" situation. The `AnimatedTabs` component is clean but brittle; toss too many tabs at it and the layout goes bust, wrapping like a noob's first HTML page. That's not how we roll.
+Our target is the `useRightPaneContent` hook. It's the central nervous system for what gets displayed where, but it's currently got its wires crossed. A twitch in the side-pane state is causing a full-body spasm. We're going to perform some precision surgery on its memoization logic. By decoupling the main content's lifecycle from the side pane's, we'll stop the unnecessary renders dead in their tracks. This isn't just a bug fix; it's about making the UI feel instantaneous and respecting the component lifecycle.
 
-We're going to rebuild it to handle overflow like a champ. The core idea is to introduce a classic scroll container pattern: an outer div that acts as the viewport (`overflow-x: auto`) and an inner div that holds the content (`white-space: nowrap`), letting it grow as wide as it needs. This keeps everything on one line and makes it swipe-able. We'll hide the gross default scrollbar because aesthetics matter.
-
-To top it off, we'll add some UX magic. When a tab is selected, especially one that's off-screen, we'll programmatically scroll it into the center of the view. This makes the component feel responsive and intelligent. It's a small touch, but it separates the pros from the script kiddies. End result: a more robust, polished component that developers can drop in anywhere without worrying about overflow.
-
-Let's get it done.
+We'll split one monolithic, over-sensitive `useMemo` into several smaller, specialized ones. The main content will only listen for changes to the main page route. The side pane will listen for its own signals. Clean separation, no more wasted cycles. Let's get this done.
 
 ```yaml
 plan:
-  uuid: 'e8a1d4b2-c0e9-4f7a-8f6b-0a377d61b34c'
+  uuid: 'c8a3f9b1-7e6d-4c5a-8b1f-9d4e2f7b6c0a'
   status: 'todo'
-  title: 'Refactor: Make AnimatedTabs Horizontally Scrollable'
+  title: 'Decouple Main and Side Pane Rendering for Performance'
   introduction: |
-    The current `AnimatedTabs` component is slick but lacks robustness. When populated with more tabs than can fit its container, the layout breaks and tabs wrap to the next line, which is a poor user experience. This forces consumers of the component to wrap it in their own scrolling containers, which is not ideal.
+    We're seeing unnecessary re-renders in the main content area whenever an overlay side pane is activated. This is a classic performance drag, making the UI feel sluggish. The root cause is a state management flaw in the `useRightPaneContent` hook, where the memoization logic for the main content is improperly tied to the side pane's state.
 
-    This refactoring plan will enhance the `AnimatedTabs` component to handle overflow natively. We will restructure its internal layout to create a horizontally scrolling container, ensuring that all tabs remain on a single line. We will also add functionality to automatically scroll the active tab into view, providing a seamless and intuitive navigation experience, especially on smaller viewports or when dealing with a large number of tabs.
+    The plan is to refactor this hook to create a clean separation of concerns. We will split a single, overly-broad `useMemo` into distinct, focused memoization blocks. One block will handle the main content, depending *only* on the primary page route. Another will handle the side pane content, depending on its specific state triggers.
 
-    The goal is to make the component more resilient and "just work" out of the box, removing the burden of handling overflow from the developer and improving the overall UI/UX of the application.
+    This surgical change will ensure the main content component remains stable and does not re-render when its view is simply obscured by an overlay. The result will be a snappier, more efficient UI and a more maintainable and logical hook.
   parts:
-    - uuid: '9f2c11d3-a4e1-4c5b-98f2-d3a6c8e0b1d5'
+    - uuid: 'e0d9b1c2-3a4b-4f5c-8a6b-1d7c0f8e9a1b'
       status: 'todo'
-      name: 'Part 1: Implement Horizontal Scrolling in AnimatedTabs'
+      name: 'Part 1: Refactor `useRightPaneContent` Hook Memoization'
       reason: |
-        The core of this refactor is to modify the `AnimatedTabs` component's structure and styling to support horizontal scrolling when its content overflows. This makes the component self-contained and reliable in various layout contexts.
+        The core issue lies within the `useRightPaneContent` hook. Its primary `useMemo` has a dependency array that includes state for both the main content and the side pane. Consequently, any change to the side pane's visibility or content (e.g., adding `?side-pane=settings`) forces a recalculation of the `mainContentComponent`, generating a new component reference and triggering a wasteful re-render.
+
+        By isolating the memoization logic, we ensure each piece of content only updates when its specific dependencies change, adhering to React's performance best practices.
       steps:
-        - uuid: 'c6a3b09e-7c2a-41d5-8f1b-5e7e6f9d02c1'
+        - uuid: 'a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d'
           status: 'todo'
-          name: '1. Update JSX Structure for Scrolling'
+          name: '1. Isolate Main Content Component Memoization'
           reason: |
-            A nested structure is required to properly manage scrolling. The outer `div` will act as the scroll viewport, while a new inner `div` will contain the tabs and the active indicator, allowing them to expand beyond the viewport's bounds without wrapping.
+            To prevent the main content from re-rendering, we must ensure its component reference is stable. This is achieved by creating a dedicated `useMemo` block for it that only depends on `activePage`, the state variable that dictates which main page is currently visible.
           files:
-            - src/components/ui/animated-tabs.tsx
+            - src/hooks/useRightPaneContent.hook.tsx
           operations:
-            - 'Wrap the active indicator `div` and the `tabs.map(...)` block within a new inner `div`.'
-            - 'The existing, outermost `div` will now serve as the scroll container.'
-        - uuid: 'a1b7e45f-9c8d-4b3a-9e2c-3d1f0a2c8e3d'
+            - 'Locate the primary `useMemo` block inside the `useRightPaneContent` hook.'
+            - 'Extract the `switch (activePage)` logic responsible for selecting the main content component (e.g., `<DashboardContent />`, `<DataDemoPage />`).'
+            - 'Wrap this extracted logic in a new, separate `useMemo` hook, assigning its result to a `mainContentComponent` variable.'
+            - 'Ensure the dependency array for this new `useMemo` is `[activePage]`, making it independent of side pane state.'
+        - uuid: 'f7e8d9c0-b1a2-4c3d-8e4f-5a6b7c8d9e0f'
           status: 'todo'
-          name: '2. Apply CSS Classes for Overflow and Layout'
+          name: '2. Refactor Side Pane and Other Content Memoization'
           reason: |
-            With the new structure in place, we need to apply the correct CSS classes to enable the desired scrolling behavior and ensure the layout remains correct. This includes enabling `overflow-x`, preventing wrapping, and hiding the default scrollbar for a cleaner look. The `relative` positioning context for the animated indicator also needs to be on the new inner container.
+            With the main content memoized correctly, we need to ensure the side pane and other derived values (like page titles and icons) also have their own correct memoization logic. The side pane component *should* update when its state changes.
           files:
-            - src/components/ui/animated-tabs.tsx
+            - src/hooks/useRightPaneContent.hook.tsx
           operations:
-            - 'On the outer `div`, remove the `relative` class.'
-            - 'Add the following classes to the outer `div`: `overflow-x-auto`, `overflow-y-hidden`, and `no-scrollbar` to handle scrolling.'
-            - 'On the new inner `div`, add the following classes: `relative`, `flex`, `items-center`, `w-max`, and `whitespace-nowrap`. This ensures the tabs stay in a single line and provides the positioning context for the active indicator.'
-        - uuid: 'f8d3c5a1-e9c4-4a2b-8d1e-2a9c4b7b3c2e'
+            - "Identify all state variables from `useAppViewManager` that affect the right pane's content: `sidePanePage`, `dataItemId`, `conversationId`."
+            - 'Create a new `useMemo` block for the `rightPaneComponent`.'
+            - 'Move all logic for determining the side pane content into this new block.'
+            - 'Set its dependency array to include all relevant variables, such as `[sidePanePage, dataItemId, conversationId, mockDataItems]`. Note: `mockDataItems` is needed for the `DataDetailPanel`.'
+            - "Update the original `useMemo` to handle the remaining values like `pageTitle` and `pageIcon`, or create new memoization blocks for them as well. Ensure their dependency arrays are minimal and correct."
+        - uuid: 'b3c4d5e6-f7a8-4b9c-8d0e-1f2a3b4c5d6e'
           status: 'todo'
-          name: '3. Add Auto-Scroll to Active Tab'
+          name: '3. Update Hook Return Value'
           reason: |
-            To improve user experience, the active tab should always be visible. When a tab is selected (especially one that is currently off-screen), it should be automatically and smoothly scrolled into the center of the viewport.
+            Finally, the hook must be updated to return the newly created, separately memoized values.
           files:
-            - src/components/ui/animated-tabs.tsx
+            - src/hooks/useRightPaneContent.hook.tsx
           operations:
-            - 'Locate the `useEffect` hook that depends on `activeTab` and `tabs`.'
-            - 'Inside this effect, after getting the `activeIndex`, retrieve the corresponding tab element from `tabRefs.current[activeIndex]`.'
-            - 'If the element exists, call `element.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" })` to bring it into view.'
+            - 'Modify the `return` statement of the hook to be an object that includes the `mainContentComponent` and `rightPaneComponent` from their respective `useMemo` blocks.'
+            - 'Ensure all previously returned values (`pageTitle`, `pageIcon`, etc.) are still present in the returned object.'
+            - 'Remove the now-redundant logic for main and side pane components from the original `useMemo`, cleaning up the hook.'
       context_files:
         compact:
-          - src/components/ui/animated-tabs.tsx
+          - src/hooks/useRightPaneContent.hook.tsx
         medium:
-          - src/components/ui/animated-tabs.tsx
-          - src/index.css
+          - src/hooks/useRightPaneContent.hook.tsx
+          - src/App.tsx
+          - src/hooks/useAppViewManager.hook.ts
         extended:
-          - src/components/ui/animated-tabs.tsx
-          - src/index.css
-          - src/pages/Messaging/components/TaskList.tsx
-          - src/pages/DataDemo/index.tsx
-          - src/pages/Messaging/components/MessagingContent.tsx
+          - src/hooks/useRightPaneContent.hook.tsx
+          - src/App.tsx
+          - src/hooks/useAppViewManager.hook.ts
+          - src/components/layout/MainContent.tsx
+          - src/components/layout/RightPane.tsx
   conclusion: |
-    Upon completion, the `AnimatedTabs` component will be significantly more robust and user-friendly. It will gracefully handle any number of tabs by providing a smooth, horizontal scrolling experience, complete with an intelligent auto-scroll feature. This removes a potential layout bug, improves the developer experience by creating a more powerful primitive, and enhances the end-user's interaction with tabbed interfaces across the application.
+    Upon completion, this refactoring will eliminate the unnecessary re-rendering of the main content when overlay side panes are used. This yields a significant performance improvement, making the application feel more responsive and fluid.
+
+    Beyond the immediate performance gain, this change establishes a cleaner, more robust state management pattern within the `useRightPaneContent` hook. The logic becomes more self-contained and easier to reason about, reducing the likelihood of similar bugs in the future.
   context_files:
     compact:
-      - src/components/ui/animated-tabs.tsx
+      - src/hooks/useRightPaneContent.hook.tsx
     medium:
-      - src/components/ui/animated-tabs.tsx
-      - src/index.css
+      - src/hooks/useRightPaneContent.hook.tsx
+      - src/App.tsx
+      - src/hooks/useAppViewManager.hook.ts
     extended:
-      - src/components/ui/animated-tabs.tsx
-      - src/index.css
-      - src/pages/Messaging/components/TaskList.tsx
-      - src/pages/DataDemo/index.tsx
-      - src/pages/Messaging/components/MessagingContent.tsx
+      - src/hooks/useRightPaneContent.hook.tsx
+      - src/App.tsx
+      - src/hooks/useAppViewManager.hook.ts
+      - src/components/layout/MainContent.tsx
+      - src/components/layout/RightPane.tsx
+      - src/store/appShell.store.ts
 ```

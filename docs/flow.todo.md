@@ -34,7 +34,7 @@ message page: sidebar should always be collapsed for message page on first load 
 
 overlay side pane: fix erratic close open movement while user resizing the pane
 
-===
+=== DONE
 
 on overlay side pane active: the main right content view should not be re-rendered
 

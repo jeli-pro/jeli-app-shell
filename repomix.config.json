@@ -12,7 +12,7 @@
     "files": true,
     "removeComments": false,
     "removeEmptyLines": false,
-    "compress": false,
+    "compress": true,
     "topFilesLength": 5,
     "showLineNumbers": false,
     "copyToClipboard": true,
@@ -24,19 +24,15 @@
   },
   "include": [
     // "README.md",
-    // "package.json",
-    // "vite.config.ts",
-    // "tsconfig.json",
-    // "tsconfig.node.json",
-    // "tailwind.config.js",
-    // "postcss.config.js",
-    // "index.html",
-    // "src"
-    "src/components/ui/animated-tabs.tsx",
-    "src/index.css",
-    "src/pages/DataDemo/index.tsx",
-    "src/pages/Messaging/components/MessagingContent.tsx",
-    "src/pages/Messaging/components/TaskList.tsx"
+    "package.json",
+    "vite.config.ts",
+    "tsconfig.json",
+    "tsconfig.node.json",
+    "tailwind.config.js",
+    "postcss.config.js",
+    "index.html",
+    "src"
+
     //
   ],
   "ignore": {

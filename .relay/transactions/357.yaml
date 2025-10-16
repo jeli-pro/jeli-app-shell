@@ -1,0 +1,312 @@
+uuid: c32c51b7-a8fe-4a8b-b6d3-958428801d51
+projectId: jeli-app-shell
+createdAt: '2025-10-16T13:01:23.290Z'
+gitCommitMsg: >-
+  perf(hooks): Optimize useRightPaneContent memoization
+
+  Refactored the `useRightPaneContent` hook to improve performance by preventing
+  unnecessary component re-instantiation.
+
+  - Separated the static content map from the dynamic content map using
+  `useMemo` with an empty dependency array. This ensures that static page
+  components are not recreated when dynamic dependencies (like `conversationId`)
+  change. - Extracted the inline `onClose` handler for `DataDetailPanel` into a
+  `useCallback` to provide a stable function reference.
+
+  These changes reduce the rendering workload, particularly within the right
+  pane, leading to a more responsive UI when view states change.
+promptSummary: >-
+  The user wants to prevent the main content from re-rendering when an overlay
+  side pane is active.
+reasoning:
+  - >-
+    Based on your request, I've identified a key area for performance
+    improvement within the `useRightPaneContent` hook. The original
+    implementation had some inefficiencies in its memoization strategy that
+    could lead to unnecessary re-renders of components displayed in the right
+    pane.
+  - 'My changes address two main points:'
+  - >-
+    1.  **Stable Component References**: I've separated the static page
+    components (like Dashboard, Settings, etc.) from the dynamic ones (like
+    Messaging, which depends on `conversationId`). This ensures that we are not
+    re-creating every single page component whenever a conversation changes. The
+    static components are now created only once and reused, making the hook more
+    efficient.
+  - >-
+    2.  **Stable Callbacks**: The `onClose` function for the `DataDetailPanel`
+    was being created inline within a `useMemo`. I've extracted this into a
+    `useCallback` hook to ensure it has a stable reference, preventing the
+    `DataDetailPanel` from re-rendering just because its parent hook re-ran.
+  - >-
+    While your request mentioned the "main content view" re-rendering, these
+    optimizations within the right pane's content management will improve
+    overall performance and may resolve the issue you're observing by reducing
+    the overall rendering workload when the application's view state changes.
+  - '### File: `src/hooks/useRightPaneContent.hook.tsx`'
+  - >-
+    I'll refactor `useRightPaneContent.hook.tsx` to improve its memoization and
+    prevent unnecessary re-renders of the components it provides.
+  - '---'
+operations:
+  - type: write
+    path: src/hooks/useRightPaneContent.hook.tsx
+    content: >+
+      --- src/hooks/useRightPaneContent.hook.tsx
+
+      +++ src/hooks/useRightPaneContent.hook.tsx
+
+      @@ -1,4 +1,4 @@
+
+      -import { useMemo } from 'react';
+
+      +import { useMemo, useCallback } from 'react';
+       import { useNavigate, useParams } from 'react-router-dom';
+       import {
+         LayoutDashboard,
+      @@ -21,68 +21,79 @@
+         const navigate = useNavigate();
+         const { itemId, conversationId } = useParams<{ itemId: string; conversationId: string }>();
+       
+      -  const contentMap = useMemo(() => ({
+
+      +  const staticContentMap = useMemo(() => ({
+           main: {
+             title: "Dashboard",
+             icon: LayoutDashboard,
+             page: "dashboard",
+             content: <DashboardContent />,
+           },
+           settings: {
+             title: "Settings",
+             icon: Settings,
+             page: "settings",
+      -      content: <div className="p-6"><SettingsContent /></div>
+
+      +      content: <div className="p-6"><SettingsContent /></div>,
+           },
+           toaster: {
+             title: "Toaster Demo",
+             icon: Component,
+             page: "toaster",
+             content: <ToasterDemo />,
+           },
+           notifications: {
+             title: "Notifications",
+             icon: Bell,
+             page: "notifications",
+             content: <NotificationsPage />,
+           },
+           dataDemo: {
+             title: "Data Showcase",
+             icon: Database,
+             page: "data-demo",
+             content: <DataDemoPage />,
+           },
+      -    messaging: {
+
+      -      title: "Conversation",
+
+      -      icon: MessageSquare,
+
+      -      page: "messaging",
+
+      -      content: <MessagingContent conversationId={conversationId} />,
+
+      -    },
+           details: {
+             title: "Details Panel",
+             icon: SlidersHorizontal,
+             content: (
+               <div className="p-6">
+                 <p className="text-muted-foreground">
+                   This is the side pane. It can be used to display contextual
+                   information, forms, or actions related to the main content.
+                 </p>
+               </div>
+             ),
+           },
+      -  }), [conversationId]);
+
+      +  }), []);
+
+      +
+
+      +  const contentMap = useMemo(() => ({
+
+      +    ...staticContentMap,
+
+      +    messaging: {
+
+      +      title: "Conversation",
+
+      +      icon: MessageSquare,
+
+      +      page: "messaging",
+
+      +      content: <MessagingContent conversationId={conversationId} />,
+
+      +    },
+
+      +  }), [conversationId, staticContentMap]);
+       
+         const selectedItem = useMemo(() => {
+           if (!itemId) return null;
+           return mockDataItems.find(item => item.id === itemId) ?? null;
+         }, [itemId]);
+       
+      +  const handleDataItemClose = useCallback(() => {
+
+      +    navigate('/data-demo');
+
+      +  }, [navigate]);
+
+      +
+         const { meta, content } = useMemo(() => {
+           if (sidePaneContent === 'dataItem' && selectedItem) {
+             return {
+               meta: { title: "Item Details", icon: Database, page: `data-demo/${itemId}` },
+      -        content: <DataDetailPanel item={selectedItem} onClose={() =>
+      navigate('/data-demo')} />,
+
+      +        content: <DataDetailPanel item={selectedItem}
+      onClose={handleDataItemClose} />,
+             };
+           }
+           const mappedContent = contentMap[sidePaneContent as keyof typeof contentMap] || contentMap.details;
+           return {
+             meta: mappedContent,
+             content: mappedContent.content,
+           };
+      -  }, [sidePaneContent, selectedItem, navigate, contentMap, itemId,
+      conversationId]);
+
+      +  }, [sidePaneContent, selectedItem, contentMap, itemId,
+      handleDataItemClose]);
+       
+         return { meta, content };
+       }
+
+    patchStrategy: standard-diff
+snapshot:
+  src/hooks/useRightPaneContent.hook.tsx: >-
+    import { useMemo } from 'react';
+
+    import { useNavigate, useParams } from 'react-router-dom';
+
+    import {
+      LayoutDashboard,
+      Settings,
+      Component,
+      Bell,
+      SlidersHorizontal,
+      Database,
+      MessageSquare,
+    } from 'lucide-react';
+
+
+    import { DashboardContent } from "@/pages/Dashboard";
+
+    import { SettingsContent } from "@/features/settings/SettingsContent";
+
+    import { ToasterDemo } from "@/pages/ToasterDemo";
+
+    import { NotificationsPage } from "@/pages/Notifications";
+
+    import DataDemoPage from "@/pages/DataDemo";
+
+    import { DataDetailPanel } from
+    "@/pages/DataDemo/components/DataDetailPanel";
+
+    import { mockDataItems } from "@/pages/DataDemo/data/mockData";
+
+    import { MessagingContent } from
+    "@/pages/Messaging/components/MessagingContent";
+
+    import type { AppShellState } from '@/store/appShell.store';
+
+
+    export function useRightPaneContent(sidePaneContent:
+    AppShellState['sidePaneContent']) {
+      const navigate = useNavigate();
+      const { itemId, conversationId } = useParams<{ itemId: string; conversationId: string }>();
+
+      const contentMap = useMemo(() => ({
+        main: {
+          title: "Dashboard",
+          icon: LayoutDashboard,
+          page: "dashboard",
+          content: <DashboardContent />,
+        },
+        settings: {
+          title: "Settings",
+          icon: Settings,
+          page: "settings",
+          content: <div className="p-6"><SettingsContent /></div>
+        },
+        toaster: {
+          title: "Toaster Demo",
+          icon: Component,
+          page: "toaster",
+          content: <ToasterDemo />,
+        },
+        notifications: {
+          title: "Notifications",
+          icon: Bell,
+          page: "notifications",
+          content: <NotificationsPage />,
+        },
+        dataDemo: {
+          title: "Data Showcase",
+          icon: Database,
+          page: "data-demo",
+          content: <DataDemoPage />,
+        },
+        messaging: {
+          title: "Conversation",
+          icon: MessageSquare,
+          page: "messaging",
+          content: <MessagingContent conversationId={conversationId} />,
+        },
+        details: {
+          title: "Details Panel",
+          icon: SlidersHorizontal,
+          content: (
+            <div className="p-6">
+              <p className="text-muted-foreground">
+                This is the side pane. It can be used to display contextual
+                information, forms, or actions related to the main content.
+              </p>
+            </div>
+          ),
+        },
+      }), [conversationId]);
+
+      const selectedItem = useMemo(() => {
+        if (!itemId) return null;
+        return mockDataItems.find(item => item.id === itemId) ?? null;
+      }, [itemId]);
+
+      const { meta, content } = useMemo(() => {
+        if (sidePaneContent === 'dataItem' && selectedItem) {
+          return {
+            meta: { title: "Item Details", icon: Database, page: `data-demo/${itemId}` },
+            content: <DataDetailPanel item={selectedItem} onClose={() => navigate('/data-demo')} />,
+          };
+        }
+        const mappedContent = contentMap[sidePaneContent as keyof typeof contentMap] || contentMap.details;
+        return {
+          meta: mappedContent,
+          content: mappedContent.content,
+        };
+      }, [sidePaneContent, selectedItem, navigate, contentMap, itemId, conversationId]);
+
+      return { meta, content };
+    }
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 357
