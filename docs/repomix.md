@@ -14,6 +14,7 @@ src/
         shared/
           DataItemParts.tsx
         DataCardView.tsx
+        DataKanbanView.tsx
         DataViewModeSelector.tsx
       store/
         dataDemo.store.tsx
@@ -158,172 +159,220 @@ CardFooter.displayName = "CardFooter"
 export { Card, CardHeader, CardFooter, CardTitle, CardDescription, CardContent }
 ```
 
-## File: src/pages/DataDemo/store/dataDemo.store.tsx
+## File: src/pages/DataDemo/components/DataKanbanView.tsx
 ```typescript
-import { create } from 'zustand';
-import { type ReactNode } from 'react';
-import { capitalize, cn } from '@/lib/utils';
-import { Badge } from '@/components/ui/badge';
-import { mockDataItems } from '../data/mockData';
-import type { DataItem, GroupableField, SortConfig } from '../types';
-import type { FilterConfig } from '../components/DataToolbar';
+import { useState, useEffect } from "react";
+import {
+  GripVertical,
+  Plus,
+  Calendar,
+  MessageSquare,
+  Paperclip,
+} from "lucide-react";
+import type { DataItem } from "../types";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { cn, getPriorityColor } from "@/lib/utils";
+import { EmptyState } from "./EmptyState";
+import { useAppViewManager } from "@/hooks/useAppViewManager.hook";
+import { useDataDemoStore } from "../store/dataDemo.store";
 
-// --- State and Actions ---
-interface DataDemoState {
-    items: DataItem[];
-    hasMore: boolean;
-    isLoading: boolean;
-    isInitialLoading: boolean;
-    totalItemCount: number;
+interface KanbanCardProps {
+  item: DataItem;
+  isDragging: boolean;
 }
 
-interface DataDemoActions {
-    loadData: (params: {
-        page: number;
-        groupBy: GroupableField | 'none';
-        filters: FilterConfig;
-        sortConfig: SortConfig | null;
-    }) => void;
-}
+function KanbanCard({ item, isDragging, ...props }: KanbanCardProps & React.HTMLAttributes<HTMLDivElement>) {
+  const { onItemSelect } = useAppViewManager();
 
-const defaultState: DataDemoState = {
-    items: [],
-    hasMore: true,
-    isLoading: true,
-    isInitialLoading: true,
-    totalItemCount: 0,
-};
+  // Mock comment and attachment counts for UI purposes
+  const comments = Math.floor(item.metrics.views / 10);
+  const attachments = Math.floor(item.metrics.shares / 5);
 
-// --- Store Implementation ---
-export const useDataDemoStore = create<DataDemoState & DataDemoActions>((set) => ({
-    ...defaultState,
+  return (
+    <Card
+      {...props}
+      onClick={() => onItemSelect(item)}
+      className={cn(
+        "cursor-pointer transition-all duration-300 border bg-card/60 dark:bg-neutral-800/60 backdrop-blur-sm hover:bg-card/70 dark:hover:bg-neutral-700/70 active:cursor-grabbing",
+        isDragging && "opacity-50 ring-2 ring-primary ring-offset-2 ring-offset-background"
+      )}
+    >
+      <CardContent className="p-5">
+        <div className="space-y-4">
+          <div className="flex items-start justify-between">
+            <h4 className="font-semibold text-card-foreground dark:text-neutral-100 leading-tight">
+              {item.title}
+            </h4>
+            <GripVertical className="w-5 h-5 text-muted-foreground/60 dark:text-neutral-400 cursor-grab flex-shrink-0" />
+          </div>
 
-    loadData: ({ page, groupBy, filters, sortConfig }) => {
-        set({ isLoading: true, ...(page === 1 && { isInitialLoading: true }) });
-        const isFirstPage = page === 1;
+          <p className="text-sm text-muted-foreground dark:text-neutral-300 leading-relaxed line-clamp-2">
+            {item.description}
+          </p>
 
-        const filteredAndSortedData = (() => {
-            const filteredItems = mockDataItems.filter((item) => {
-                const searchTermMatch =
-                    item.title.toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
-                    item.description.toLowerCase().includes(filters.searchTerm.toLowerCase());
-                const statusMatch = filters.status.length === 0 || filters.status.includes(item.status);
-                const priorityMatch = filters.priority.length === 0 || filters.priority.includes(item.priority);
-                return searchTermMatch && statusMatch && priorityMatch;
-            });
-
-            if (sortConfig) {
-                filteredItems.sort((a, b) => {
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    const getNestedValue = (obj: DataItem, path: string): any =>
-                        path.split('.').reduce((o: any, k) => (o || {})[k], obj);
-
-                    const aValue = getNestedValue(a, sortConfig.key);
-                    const bValue = getNestedValue(b, sortConfig.key);
-
-                    if (aValue === undefined || bValue === undefined) return 0;
-                    if (typeof aValue === 'string' && typeof bValue === 'string') {
-                        return sortConfig.direction === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
-                    }
-                    if (typeof aValue === 'number' && typeof bValue === 'number') {
-                        return sortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue;
-                    }
-                    if (sortConfig.key === 'updatedAt' || sortConfig.key === 'createdAt') {
-                        if (typeof aValue === 'string' && typeof bValue === 'string') {
-                            return sortConfig.direction === 'asc'
-                                ? new Date(aValue).getTime() - new Date(bValue).getTime()
-                                : new Date(bValue).getTime() - new Date(aValue).getTime();
-                        }
-                    }
-                    return 0;
-                });
-            }
-            return filteredItems;
-        })();
-        
-        const totalItemCount = filteredAndSortedData.length;
-
-        setTimeout(() => {
-            if (groupBy !== 'none') {
-                set({
-                    items: filteredAndSortedData,
-                    hasMore: false,
-                    isLoading: false,
-                    isInitialLoading: false,
-                    totalItemCount,
-                });
-                return;
-            }
-
-            const pageSize = 12;
-            const newItems = filteredAndSortedData.slice((page - 1) * pageSize, page * pageSize);
-            
-            set(state => ({
-                items: isFirstPage ? newItems : [...state.items, ...newItems],
-                hasMore: totalItemCount > page * pageSize,
-                isLoading: false,
-                isInitialLoading: false,
-                totalItemCount,
-            }));
-
-        }, isFirstPage ? 1500 : 500);
-    }
-}));
-
-// --- Selectors ---
-export const useGroupTabs = (
-    groupBy: GroupableField | 'none',
-    activeGroupTab: string,
-) => useDataDemoStore(state => {
-    const items = state.items;
-    if (groupBy === 'none' || !items.length) return [];
-    
-    const groupCounts = items.reduce((acc, item) => {
-        const groupKey = String(item[groupBy as GroupableField]);
-        acc[groupKey] = (acc[groupKey] || 0) + 1;
-        return acc;
-    }, {} as Record<string, number>);
-
-    const sortedGroups = Object.keys(groupCounts).sort((a, b) => a.localeCompare(b));
-
-    const createLabel = (text: string, count: number, isActive: boolean): ReactNode => (
-        <>
-            {text}
-            <Badge variant={isActive ? 'default' : 'secondary'} className={cn('transition-colors duration-300 text-xs font-semibold', !isActive && 'group-hover:bg-accent group-hover:text-accent-foreground')}>
-                {count}
+          <div className="flex flex-wrap gap-2">
+            <Badge className={cn("text-xs border", getPriorityColor(item.priority))}>
+              {item.priority}
             </Badge>
-        </>
-    );
-    
-    const totalCount = items.length;
+            {item.tags.slice(0, 2).map((tag) => (
+              <Badge key={tag} variant="secondary" className="text-xs backdrop-blur-sm">
+                {tag}
+              </Badge>
+            ))}
+          </div>
 
-    return [
-        { id: 'all', label: createLabel('All', totalCount, activeGroupTab === 'all') },
-        ...sortedGroups.map((g) => ({
-            id: g,
-            label: createLabel(capitalize(g), groupCounts[g], activeGroupTab === g),
-        })),
-    ];
-});
+          <div className="flex items-center justify-between pt-2 border-t border-border/30 dark:border-neutral-700/30">
+            <div className="flex items-center gap-4 text-muted-foreground/80 dark:text-neutral-400">
+              {item.dueDate && (
+                <div className="flex items-center gap-1">
+                  <Calendar className="w-4 h-4" />
+                  <span className="text-xs font-medium">
+                    {new Date(item.dueDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                  </span>
+                </div>
+              )}
+              <div className="flex items-center gap-1">
+                <MessageSquare className="w-4 h-4" />
+                <span className="text-xs font-medium">{comments}</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <Paperclip className="w-4 h-4" />
+                <span className="text-xs font-medium">{attachments}</span>
+              </div>
+            </div>
 
-export const useDataToRender = (
-    groupBy: GroupableField | 'none',
-    activeGroupTab: string,
-) => useDataDemoStore(state => {
-    const items = state.items;
-    if (groupBy === 'none') {
-        return items;
+            <Avatar className="w-8 h-8 ring-2 ring-white/50 dark:ring-neutral-700/50">
+              <AvatarImage src={item.assignee.avatar} />
+              <AvatarFallback className="bg-muted dark:bg-neutral-700 text-foreground dark:text-neutral-200 font-medium">
+                {item.assignee.name.split(" ").map((n) => n[0]).join("")}
+              </AvatarFallback>
+            </Avatar>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+interface DataKanbanViewProps {
+  data: Record<string, DataItem[]>;
+}
+
+export function DataKanbanView({ data }: DataKanbanViewProps) {
+  const [columns, setColumns] = useState(data);
+  const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
+  const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
+  const { groupBy } = useAppViewManager();
+  const updateItem = useDataDemoStore(s => s.updateItem);
+
+  useEffect(() => {
+    setColumns(data);
+  }, [data]);
+
+  const handleDragStart = (e: React.DragEvent<HTMLDivElement>, item: DataItem, sourceColumnId: string) => {
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', JSON.stringify({ itemId: item.id, sourceColumnId }));
+    setDraggedItemId(item.id);
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+  };
+  
+  const handleDragEnter = (columnId: string) => {
+    setDragOverColumn(columnId);
+  }
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>, targetColumnId: string) => {
+    e.preventDefault();
+    setDragOverColumn(null);
+    try {
+      const { itemId, sourceColumnId } = JSON.parse(e.dataTransfer.getData('text/plain'));
+      if (sourceColumnId === targetColumnId) return;
+
+      const droppedItem = columns[sourceColumnId]?.find(i => i.id === itemId);
+      if (!droppedItem) return;
+
+      // Update local state for immediate feedback
+      setColumns(prev => {
+        const newColumns = { ...prev };
+        newColumns[sourceColumnId] = newColumns[sourceColumnId].filter(i => i.id !== itemId);
+        newColumns[targetColumnId] = [...newColumns[targetColumnId], droppedItem];
+        return newColumns;
+      });
+      
+      // Persist change to global store. The groupBy value tells us which property to update.
+      if (groupBy !== 'none') {
+        updateItem(itemId, { [groupBy]: targetColumnId } as Partial<DataItem>);
+      }
+
+    } catch (err) {
+      console.error("Failed to parse drag data", err)
+    } finally {
+      setDraggedItemId(null);
     }
-    if (activeGroupTab === 'all') {
-        return items;
-    }
-    return items.filter((item) => String(item[groupBy as GroupableField]) === activeGroupTab);
-});
+  };
 
-export const useSelectedItem = (itemId?: string) => {
-    if (!itemId) return null;
-    return mockDataItems.find(item => item.id === itemId) ?? null;
-};
+  const handleDragEnd = () => {
+    setDraggedItemId(null);
+    setDragOverColumn(null);
+  };
+
+  const initialColumns = Object.entries(data);
+
+  if (!initialColumns || initialColumns.length === 0) {
+    return <EmptyState />;
+  }
+
+  const statusColors: Record<string, string> = {
+    active: "bg-blue-500", pending: "bg-yellow-500", completed: "bg-green-500", archived: "bg-gray-500",
+    low: "bg-green-500", medium: "bg-blue-500", high: "bg-orange-500", critical: "bg-red-500",
+  };
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 items-start gap-6 pb-4">
+      {Object.entries(columns).map(([columnId, items]) => (
+        <div
+          key={columnId}
+          onDragOver={handleDragOver}
+          onDrop={(e) => handleDrop(e, columnId)}
+          onDragEnter={() => handleDragEnter(columnId)}
+          onDragLeave={() => setDragOverColumn(null)}
+          className={cn(
+            "bg-card/20 dark:bg-neutral-900/20 backdrop-blur-xl rounded-3xl p-5 border border-border dark:border-neutral-700/50 transition-all duration-300",
+            dragOverColumn === columnId && "bg-primary/10 border-primary/30"
+          )}
+        >
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <div className={cn("w-3.5 h-3.5 rounded-full", statusColors[columnId] || "bg-muted-foreground")} />
+              <h3 className="font-semibold text-card-foreground dark:text-neutral-100 capitalize">{columnId}</h3>
+              <Badge variant="secondary" className="backdrop-blur-sm">{items.length}</Badge>
+            </div>
+            <button className="p-1 rounded-full bg-card/30 dark:bg-neutral-800/30 hover:bg-card/50 dark:hover:bg-neutral-700/50 transition-colors">
+              <Plus className="w-4 h-4 text-muted-foreground dark:text-neutral-300" />
+            </button>
+          </div>
+
+          <div className="space-y-4 min-h-[100px]">
+            {items.map((item) => (
+              <KanbanCard 
+                key={item.id} 
+                item={item} 
+                isDragging={draggedItemId === item.id}
+                draggable
+                onDragStart={(e) => handleDragStart(e, item, columnId)}
+                onDragEnd={handleDragEnd}
+              />
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
 ```
 
 ## File: src/components/ui/badge.tsx
@@ -467,9 +516,193 @@ export function ItemTags({ tags }: { tags: string[] }) {
 }
 ```
 
+## File: src/pages/DataDemo/store/dataDemo.store.tsx
+```typescript
+import { create } from 'zustand';
+import { type ReactNode } from 'react';
+import { capitalize, cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
+import { mockDataItems } from '../data/mockData';
+import type { DataItem, GroupableField, SortConfig } from '../types';
+import type { FilterConfig } from '../components/DataToolbar';
+
+// --- State and Actions ---
+interface DataDemoState {
+    items: DataItem[];
+    hasMore: boolean;
+    isLoading: boolean;
+    isInitialLoading: boolean;
+    totalItemCount: number;
+}
+
+interface DataDemoActions {
+    loadData: (params: {
+        page: number;
+        groupBy: GroupableField | 'none';
+        filters: FilterConfig;
+        sortConfig: SortConfig | null;
+    }) => void;
+    updateItem: (itemId: string, updates: Partial<DataItem>) => void;
+}
+
+const defaultState: DataDemoState = {
+    items: [],
+    hasMore: true,
+    isLoading: true,
+    isInitialLoading: true,
+    totalItemCount: 0,
+};
+
+// --- Store Implementation ---
+export const useDataDemoStore = create<DataDemoState & DataDemoActions>((set, get) => ({
+    ...defaultState,
+
+    loadData: ({ page, groupBy, filters, sortConfig }) => {
+        set({ isLoading: true, ...(page === 1 && { isInitialLoading: true }) });
+        const isFirstPage = page === 1;
+
+        const filteredAndSortedData = (() => {
+            const filteredItems = mockDataItems.filter((item) => {
+                const searchTermMatch =
+                    item.title.toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
+                    item.description.toLowerCase().includes(filters.searchTerm.toLowerCase());
+                const statusMatch = filters.status.length === 0 || filters.status.includes(item.status);
+                const priorityMatch = filters.priority.length === 0 || filters.priority.includes(item.priority);
+                return searchTermMatch && statusMatch && priorityMatch;
+            });
+
+            if (sortConfig) {
+                filteredItems.sort((a, b) => {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const getNestedValue = (obj: DataItem, path: string): any =>
+                        path.split('.').reduce((o: any, k) => (o || {})[k], obj);
+
+                    const aValue = getNestedValue(a, sortConfig.key);
+                    const bValue = getNestedValue(b, sortConfig.key);
+
+                    if (aValue === undefined || bValue === undefined) return 0;
+                    if (typeof aValue === 'string' && typeof bValue === 'string') {
+                        return sortConfig.direction === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
+                    }
+                    if (typeof aValue === 'number' && typeof bValue === 'number') {
+                        return sortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue;
+                    }
+                    if (sortConfig.key === 'updatedAt' || sortConfig.key === 'createdAt') {
+                        if (typeof aValue === 'string' && typeof bValue === 'string') {
+                            return sortConfig.direction === 'asc'
+                                ? new Date(aValue).getTime() - new Date(bValue).getTime()
+                                : new Date(bValue).getTime() - new Date(aValue).getTime();
+                        }
+                    }
+                    return 0;
+                });
+            }
+            return filteredItems;
+        })();
+        
+        const totalItemCount = filteredAndSortedData.length;
+
+        setTimeout(() => {
+            if (groupBy !== 'none') {
+                set({
+                    items: filteredAndSortedData,
+                    hasMore: false,
+                    isLoading: false,
+                    isInitialLoading: false,
+                    totalItemCount,
+                });
+                return;
+            }
+
+            const pageSize = 12;
+            const newItems = filteredAndSortedData.slice((page - 1) * pageSize, page * pageSize);
+            
+            set(state => ({
+                items: isFirstPage ? newItems : [...state.items, ...newItems],
+                hasMore: totalItemCount > page * pageSize,
+                isLoading: false,
+                isInitialLoading: false,
+                totalItemCount,
+            }));
+
+        }, isFirstPage ? 1500 : 500);
+    },
+
+    updateItem: (itemId, updates) => {
+        // In a real app, this would be an API call. Here we update the mock source.
+        const itemIndex = mockDataItems.findIndex(i => i.id === itemId);
+        if (itemIndex > -1) {
+            mockDataItems[itemIndex] = { ...mockDataItems[itemIndex], ...updates };
+        }
+
+        // Also update the currently loaded items in the store's state for UI consistency
+        set(state => ({
+            items: state.items.map(item => 
+                item.id === itemId ? { ...item, ...updates } : item
+            ),
+        }));
+    },
+}));
+
+// --- Selectors ---
+export const useGroupTabs = (
+    groupBy: GroupableField | 'none',
+    activeGroupTab: string,
+) => useDataDemoStore(state => {
+    const items = state.items;
+    if (groupBy === 'none' || !items.length) return [];
+    
+    const groupCounts = items.reduce((acc, item) => {
+        const groupKey = String(item[groupBy as GroupableField]);
+        acc[groupKey] = (acc[groupKey] || 0) + 1;
+        return acc;
+    }, {} as Record<string, number>);
+
+    const sortedGroups = Object.keys(groupCounts).sort((a, b) => a.localeCompare(b));
+
+    const createLabel = (text: string, count: number, isActive: boolean): ReactNode => (
+        <>
+            {text}
+            <Badge variant={isActive ? 'default' : 'secondary'} className={cn('transition-colors duration-300 text-xs font-semibold', !isActive && 'group-hover:bg-accent group-hover:text-accent-foreground')}>
+                {count}
+            </Badge>
+        </>
+    );
+    
+    const totalCount = items.length;
+
+    return [
+        { id: 'all', label: createLabel('All', totalCount, activeGroupTab === 'all') },
+        ...sortedGroups.map((g) => ({
+            id: g,
+            label: createLabel(capitalize(g), groupCounts[g], activeGroupTab === g),
+        })),
+    ];
+});
+
+export const useDataToRender = (
+    groupBy: GroupableField | 'none',
+    activeGroupTab: string,
+) => useDataDemoStore(state => {
+    const items = state.items;
+    if (groupBy === 'none') {
+        return items;
+    }
+    if (activeGroupTab === 'all') {
+        return items;
+    }
+    return items.filter((item) => String(item[groupBy as GroupableField]) === activeGroupTab);
+});
+
+export const useSelectedItem = (itemId?: string) => {
+    if (!itemId) return null;
+    return mockDataItems.find(item => item.id === itemId) ?? null;
+};
+```
+
 ## File: src/pages/DataDemo/types.ts
 ```typescript
-export type ViewMode = 'list' | 'cards' | 'grid' | 'table'
+export type ViewMode = 'list' | 'cards' | 'grid' | 'table' | 'kanban'
 
 export type GroupableField = 'status' | 'priority' | 'category'
 
@@ -535,13 +768,14 @@ export type Priority = DataItem['priority']
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { gsap } from 'gsap'
 import { cn } from '@/lib/utils'
-import { List, Grid3X3, LayoutGrid, Table } from 'lucide-react'
+import { List, Grid3X3, LayoutGrid, Table, LayoutDashboard } from 'lucide-react'
 import type { ViewMode } from '../types'
 import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
 
 const viewModes = [
   { id: 'list' as ViewMode, label: 'List', icon: List, description: 'Compact list with details' },
   { id: 'cards' as ViewMode, label: 'Cards', icon: LayoutGrid, description: 'Rich card layout' },
+  { id: 'kanban' as ViewMode, label: 'Kanban', icon: LayoutDashboard, description: 'Interactive Kanban board' },
   { id: 'grid' as ViewMode, label: 'Grid', icon: Grid3X3, description: 'Masonry grid view' },
   { id: 'table' as ViewMode, label: 'Table', icon: Table, description: 'Structured data table' }
 ]
@@ -926,7 +1160,7 @@ export function useAppViewManager() {
   }
   const setSort = (config: SortConfig | null) => {
     if (!config) {
-      handleParamsChange({ sort: 'default' }, true);
+      handleParamsChange({ sort: null }, true);
     } else {
       handleParamsChange({ sort: `${config.key}-${config.direction}` }, true);
     }
@@ -935,7 +1169,7 @@ export function useAppViewManager() {
     let newSort: string | null = `${field}-desc`;
     if (sortConfig?.key === field) {
       if (sortConfig.direction === 'desc') newSort = `${field}-asc`;
-      else if (sortConfig.direction === 'asc') newSort = 'default';
+      else if (sortConfig.direction === 'asc') newSort = null;
     }
     handleParamsChange({ sort: newSort }, true);
   };
@@ -1149,6 +1383,7 @@ import { ScrollToBottomButton } from '@/components/shared/ScrollToBottomButton';
 import { DataListView } from './components/DataListView'
 import { DataCardView } from './components/DataCardView'
 import { DataTableView } from './components/DataTableView'
+import { DataKanbanView } from './components/DataKanbanView'
 import { DataViewModeSelector } from './components/DataViewModeSelector'
 import { AnimatedTabs } from '@/components/ui/animated-tabs'
 import { StatCard } from '@/components/shared/StatCard'
@@ -1189,6 +1424,7 @@ function DataDemoContent() {
     groupBy,
     activeGroupTab,
     setGroupBy,
+    setSort,
     setActiveGroupTab,
     page,
     filters,
@@ -1319,11 +1555,20 @@ function DataDemoContent() {
     },
     [isLoading, hasMore, page, setPage],
   );
+  
+  // Auto-group by status when switching to kanban view for the first time
+  useEffect(() => {
+    if (viewMode === 'kanban' && groupBy === 'none') {
+      setGroupBy('status');
+      setSort(null); // Kanban is manually sorted, so disable programmatic sort
+    }
+  }, [viewMode, groupBy, setGroupBy, setSort]);
 
   const renderViewForData = useCallback((data: DataItem[]) => {
     switch (viewMode) {
         case 'table': return <DataTableView data={data} />;
         case 'cards': return <DataCardView data={data} />;
+        case 'kanban': return null; // Kanban has its own render path below
         case 'grid': return <DataCardView data={data} isGrid />;
         case 'list':
         default:
@@ -1404,7 +1649,9 @@ function DataDemoContent() {
         <div className="min-h-[500px]">
           {isInitialLoading 
             ? <AnimatedLoadingSkeleton viewMode={viewMode} /> 
-            : !isGroupedView ? (
+            : viewMode === 'kanban' ? (
+              isGroupedView ? <DataKanbanView data={groupedData} /> : <div className="flex items-center justify-center h-96 text-muted-foreground">Group data by a metric to use the Kanban view.</div>
+            ) : !isGroupedView ? (
               // Not grouped view
               <>
                 <div className="flex items-center justify-between gap-4 h-[68px]">

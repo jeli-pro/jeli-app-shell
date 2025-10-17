@@ -290,8 +290,20 @@ function DataDemoContent() {
           {isInitialLoading 
             ? <AnimatedLoadingSkeleton viewMode={viewMode} /> 
             : viewMode === 'kanban' ? (
-              isGroupedView ? <DataKanbanView data={groupedData} /> : <div className="flex items-center justify-center h-96 text-muted-foreground">Group data by a metric to use the Kanban view.</div>
-            ) : !isGroupedView ? (
+              <>
+                <div className="flex items-center justify-end gap-4 h-[68px]">
+                  <GroupByDropdown />
+                </div>
+                {isGroupedView ? (
+                  <DataKanbanView data={groupedData} />
+                ) : (
+                  <div className="flex items-center justify-center h-96 text-muted-foreground">
+                    Group data by a metric to use the Kanban view.
+                  </div>
+                )}
+              </>
+            )
+            : !isGroupedView ? (
               // Not grouped view
               <>
                 <div className="flex items-center justify-between gap-4 h-[68px]">

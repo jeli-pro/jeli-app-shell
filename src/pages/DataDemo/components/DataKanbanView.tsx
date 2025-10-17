@@ -169,7 +169,7 @@ export function DataKanbanView({ data }: DataKanbanViewProps) {
   };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 items-start gap-6 pb-4">
+    <div className="flex items-start gap-6 pb-4 overflow-x-auto -mx-6 px-6">
       {Object.entries(columns).map(([columnId, items]) => (
         <div
           key={columnId}
@@ -178,7 +178,7 @@ export function DataKanbanView({ data }: DataKanbanViewProps) {
           onDragEnter={() => handleDragEnter(columnId)}
           onDragLeave={() => setDragOverColumn(null)}
           className={cn(
-            "bg-card/20 dark:bg-neutral-900/20 backdrop-blur-xl rounded-3xl p-5 border border-border dark:border-neutral-700/50 transition-all duration-300",
+            "w-80 flex-shrink-0 bg-card/20 dark:bg-neutral-900/20 backdrop-blur-xl rounded-3xl p-5 border border-border dark:border-neutral-700/50 transition-all duration-300",
             dragOverColumn === columnId && "bg-primary/10 border-primary/30"
           )}
         >

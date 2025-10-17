@@ -4,8 +4,12 @@ I am obsessed with laravel filament... so make everything about data demo page i
 
 ===
 
-data demo page: create kanban board view mode with amazing UI... at least like below ex:
+1. the kanban view mode should also has grouping selector just like other view mode
+2. also make sure the kanban is horizontally scrollable for extensive data group
 
+=== DONE
+
+data demo page: create kanban board view mode with amazing UI... at least like below ex:
 
 ===
 
