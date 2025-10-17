@@ -23,6 +23,7 @@ import { ScrollToBottomButton } from '@/components/shared/ScrollToBottomButton';
 import { DataListView } from './components/DataListView'
 import { DataCardView } from './components/DataCardView'
 import { DataTableView } from './components/DataTableView'
+import { DataKanbanView } from './components/DataKanbanView'
 import { DataViewModeSelector } from './components/DataViewModeSelector'
 import { AnimatedTabs } from '@/components/ui/animated-tabs'
 import { StatCard } from '@/components/shared/StatCard'
@@ -63,6 +64,7 @@ function DataDemoContent() {
     groupBy,
     activeGroupTab,
     setGroupBy,
+    setSort,
     setActiveGroupTab,
     page,
     filters,
@@ -193,11 +195,20 @@ function DataDemoContent() {
     },
     [isLoading, hasMore, page, setPage],
   );
+  
+  // Auto-group by status when switching to kanban view for the first time
+  useEffect(() => {
+    if (viewMode === 'kanban' && groupBy === 'none') {
+      setGroupBy('status');
+      setSort(null); // Kanban is manually sorted, so disable programmatic sort
+    }
+  }, [viewMode, groupBy, setGroupBy, setSort]);
 
   const renderViewForData = useCallback((data: DataItem[]) => {
     switch (viewMode) {
         case 'table': return <DataTableView data={data} />;
         case 'cards': return <DataCardView data={data} />;
+        case 'kanban': return null; // Kanban has its own render path below
         case 'grid': return <DataCardView data={data} isGrid />;
         case 'list':
         default:
@@ -278,7 +289,9 @@ function DataDemoContent() {
         <div className="min-h-[500px]">
           {isInitialLoading 
             ? <AnimatedLoadingSkeleton viewMode={viewMode} /> 
-            : !isGroupedView ? (
+            : viewMode === 'kanban' ? (
+              isGroupedView ? <DataKanbanView data={groupedData} /> : <div className="flex items-center justify-center h-96 text-muted-foreground">Group data by a metric to use the Kanban view.</div>
+            ) : !isGroupedView ? (
               // Not grouped view
               <>
                 <div className="flex items-center justify-between gap-4 h-[68px]">

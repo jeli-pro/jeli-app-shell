@@ -1,162 +1,229 @@
-Alright, let's architect this refactor. We're gonna juice up the messaging experience. Two main goals: tighten up the timestamps like a good one-liner, and drop in a search feature so users aren't scrolling for days. This is about making the UI faster, both in performance and perception.
+Alright, let's architect this refactor. The goal is to drop a seriously slick Kanban board view into the `DataDemo` page. We're talking drag-and-drop, clean aesthetics, the works. No messing around with heavy DnD libs; we'll leverage what the browser gives us.
 
-First, those verbose "about 5 minutes ago" timestamps gotta go. We'll replace them with a slick, short format like "5m ago". This is a classic HN-style tweak for information density. We'll cook up a new util function to handle this, then swap it in where needed. Quick, clean, and makes the whole message list feel more professional.
+The current setup is a good launchpad—it's already componentized and state-driven. We'll just extend it. This involves defining the new view type, adding the UI switch, building the board component itself, and then wiring it all into the main page logic. We'll manage the DnD state locally at first to nail the UX, with a clear path to persist changes via the existing Zustand store. This is about shipping a feature that not only works but feels great to use.
 
-Next, we're tackling the endless scroll problem in message threads. A simple, powerful search bar is the answer. This will be a client-side implementation for speed. We'll add an input to the thread view, filter messages in real-time as the user types, and highlight the matches. It's a massive UX win that makes the feature feel complete.
-
-Let's get this done.
+The plan is to slice this into four logical parts: foundational updates, component creation, implementing interactivity, and final integration. This approach minimizes complexity at each stage and ensures a clean, maintainable result. Let's get this thing built.
 
 ```yaml
 plan:
-  uuid: 'f2d8a1c3-4b5e-4f6a-8b7c-9d0e1a2f3b4c'
+  uuid: 'f4a8b1c2-3d9e-4a6f-8b7d-5e9c1a3b0f2e'
   status: 'todo'
-  title: 'Refactor Messaging UX: Concise Timestamps and Thread Search'
+  title: 'Implement Kanban Board View for Data Demo Page'
   introduction: |
-    This master plan outlines a two-pronged enhancement for the messaging feature. The goal is to improve user experience by increasing information density and adding critical search functionality.
+    This plan outlines the addition of a new 'Kanban' view mode to the Data Demo feature. The goal is to create a visually appealing, interactive board with columns based on data groups (like 'status') and draggable cards representing data items. This will enhance data visualization and user interaction beyond the existing list, card, and table views.
 
-    First, we will replace the default, verbose time-ago formatting (`formatDistanceToNow`) with a more compact and scannable version (e.g., "5m ago" instead of "about 5 minutes ago"). This will be achieved by creating a new utility function that wraps the existing library and applies custom formatting rules. This change will be applied to both the message list and the activity feed within a conversation.
-
-    Second, we will introduce a search functionality within individual message threads. This allows users to quickly find specific information in long conversations. A search input will be added to the task detail view, which will filter the displayed messages in real-time and highlight matching text. This is a crucial usability improvement for a core feature.
+    The approach involves four main phases. First, we'll establish the foundation by updating type definitions and UI controls to recognize the new Kanban view. Second, we will build the core `DataKanbanView` component, focusing on rendering the columns and cards with a modern aesthetic inspired by the user's example. Third, we will implement the drag-and-drop (DnD) functionality using the native HTML5 API for a lightweight and responsive experience. Finally, we'll integrate the new component into the main `DataDemoPage`, ensuring it works seamlessly with the existing view management and data grouping logic.
   parts:
     - uuid: 'a1b2c3d4-e5f6-7890-1234-567890abcdef'
       status: 'todo'
-      name: 'Part 1: Implement Concise Time Formatting'
+      name: 'Part 1: Foundational Updates for Kanban View'
       reason: |
-        The current timestamp format is too long for a high-density UI, reducing scannability. A shorter, more concise format improves readability and allows users to process information faster.
+        Before building the UI, we need to make the application aware of the new 'kanban' view mode. This involves updating core type definitions, the view mode selector component, and the URL state manager to handle the new option. This ensures the rest of the implementation can be built on a solid, recognized foundation.
       steps:
-        - uuid: 'b1c2d3e4-f5g6-7890-1234-567890abcdef'
+        - uuid: 'c7d8e9f0-1a2b-3c4d-5e6f-7a8b9c0d1e2f'
           status: 'todo'
-          name: '1. Create Utility for Short Timestamps'
+          name: '1. Update ViewMode Type Definition'
           reason: |
-            To ensure consistency and reusability, we'll centralize the time formatting logic in a new utility function.
+            To formally introduce the Kanban view, the `ViewMode` type in `types.ts` must be extended. This is a critical first step for type safety and enabling logic for the new view throughout the feature.
           files:
-            - 'src/lib/utils.ts'
+            - 'src/pages/DataDemo/types.ts'
           operations:
-            - "Import `formatDistanceToNow` from `date-fns`."
-            - "Create and export a new function `formatDistanceToNowShort(date: string | Date): string`."
-            - "Inside the function, call `formatDistanceToNow` with the provided date and `{ addSuffix: true }`."
-            - "Chain string replacement methods to shorten the output. For example, `.replace('about ', '')`, `.replace(' minutes', 'm')`, `.replace(' minute', 'm')`, etc."
-            - "Handle the edge case for 'less than a minute ago' by returning 'now'."
-        - uuid: 'c2d3e4f5-g6h7-8901-2345-67890abcdef'
+            - "In `src/pages/DataDemo/types.ts`, find the `ViewMode` type alias."
+            - "Add `'kanban'` as one of the possible literal types. The new type should be `export type ViewMode = 'list' | 'cards' | 'grid' | 'table' | 'kanban'`. "
+        - uuid: 'b3c4d5e6-f7a8-b9c0-d1e2-f3a4b5c6d7e8'
           status: 'todo'
-          name: '2. Update Task List View'
+          name: '2. Add Kanban Icon to View Mode Selector'
           reason: |
-            To apply the new concise timestamp format to the list of conversations.
+            The user needs a way to switch to the new Kanban view. This step adds a dedicated button to the `DataViewModeSelector` component, making the new view discoverable and accessible.
           files:
-            - 'src/pages/Messaging/components/TaskList.tsx'
+            - 'src/pages/DataDemo/components/DataViewModeSelector.tsx'
           operations:
-            - "Remove the existing import for `formatDistanceToNow` from `date-fns`."
-            - "Import the new `formatDistanceToNowShort` function from `@/lib/utils`."
-            - "Find the usage of `formatDistanceToNow(new Date(task.lastActivity.timestamp))` and replace it with `formatDistanceToNowShort(new Date(task.lastActivity.timestamp))`."
-        - uuid: 'd3e4f5g6-h7i8-9012-3456-7890abcdef'
+            - "Import a new icon for the Kanban view from `lucide-react`. The `KanbanSquare` or `LayoutDashboard` icon would be a good fit. Let's use `LayoutDashboard`."
+            - "In the `modes` array within the `DataViewModeSelector` component, add a new object for the Kanban view: `{ id: 'kanban', label: 'Kanban', icon: LayoutDashboard }`."
+            - "This will automatically render the new button and handle the `onClick` event via the existing `handleModeClick` function."
+        - uuid: 'e8f9a0b1-c2d3-e4f5-a6b7-c8d9e0f1a2b3'
           status: 'todo'
-          name: '3. Update Activity Feed View'
+          name: '3. Ensure App View Manager Handles Kanban Mode'
           reason: |
-            To apply the new concise timestamp format to individual messages within a conversation thread.
+            The `useAppViewManager` hook is the source of truth for view state derived from the URL. While it should work generically with the new 'kanban' value, it's good practice to confirm no hardcoded logic would prevent it from functioning correctly.
           files:
-            - 'src/pages/Messaging/components/ActivityFeed.tsx'
+            - 'src/hooks/useAppViewManager.hook.ts'
           operations:
-            - "Remove the existing import for `formatDistanceToNow` from `date-fns`."
-            - "Import the new `formatDistanceToNowShort` function from `@/lib/utils`."
-            - "Find the usage of `formatDistanceToNow(new Date(message.timestamp), { addSuffix: true })` and replace it with `formatDistanceToNowShort(new Date(message.timestamp))`."
+            - "Review the `useAppViewManager` hook to ensure the `viewMode` logic is generic."
+            - "The existing line `const viewMode = (searchParams.get('view') as ViewMode) ?? 'list'` should handle `'kanban'` correctly thanks to the type change in the previous step. No code change is likely needed, this is a verification step."
       context_files:
         compact:
-          - 'src/lib/utils.ts'
-          - 'src/pages/Messaging/components/TaskList.tsx'
-          - 'src/pages/Messaging/components/ActivityFeed.tsx'
+          - 'src/pages/DataDemo/types.ts'
+          - 'src/pages/DataDemo/components/DataViewModeSelector.tsx'
         medium:
-          - 'src/lib/utils.ts'
-          - 'src/pages/Messaging/components/TaskList.tsx'
-          - 'src/pages/Messaging/components/ActivityFeed.tsx'
+          - 'src/pages/DataDemo/types.ts'
+          - 'src/pages/DataDemo/components/DataViewModeSelector.tsx'
+          - 'src/hooks/useAppViewManager.hook.ts'
         extended:
-          - 'src/lib/utils.ts'
-          - 'src/pages/Messaging/components/TaskList.tsx'
-          - 'src/pages/Messaging/components/ActivityFeed.tsx'
-    - uuid: 'e6f7g8h9-i0j1-k2l3-m4n5-o6p7q8r9s0t'
-      status: 'todo'
-      name: 'Part 2: Implement In-Thread Search'
-      reason: |
-        Navigating long conversation histories is inefficient without a search function. This feature is a standard expectation and a significant usability improvement.
-      steps:
-        - uuid: 'f7g8h9i0-j1k2-l3m4-n5o6-p7q8r9s0t1u'
-          status: 'todo'
-          name: '1. Add Search UI and State to Task Detail'
-          reason: |
-            To provide the user with a visible control to initiate a search and to manage the search query within the component's state.
-          files:
-            - 'src/pages/Messaging/components/TaskDetail.tsx'
-          operations:
-            - "Import `useState`, `useMemo` from `react`, `Search` icon from `lucide-react`, and `Input` from `@/components/ui/input`."
-            - "In the `TaskDetail` component, add a new state for the search query: `const [searchTerm, setSearchTerm] = useState('');`."
-            - "Locate the `<TabsList>` component. Wrap it and a new search input inside a flex container: `<div className=\"flex items-center justify-between px-4 border-b\">`."
-            - "Add a container for the search input with a relative position."
-            - "Add the `Search` icon, absolutely positioned inside the input container."
-            - "Add the `Input` component, binding its `value` and `onChange` to the `searchTerm` state. Add padding to prevent text from overlapping the icon."
-            - "Adjust the `<TabsList>` styling to fit the new layout (e.g., `className=\"bg-transparent border-none p-0\"`)."
-        - uuid: 'g8h9i0j1-k2l3-m4n5-o6p7-q8r9s0t1u2v'
-          status: 'todo'
-          name: '2. Filter Messages and Pass Search Term'
-          reason: |
-            To dynamically update the displayed message list based on the user's search query.
-          files:
-            - 'src/pages/Messaging/components/TaskDetail.tsx'
-          operations:
-            - "Create a memoized variable `filteredMessages` using `useMemo` that depends on `conversation.messages` and `searchTerm`."
-            - "The filter logic should be case-insensitive: `messages.filter(msg => !searchTerm || msg.text.toLowerCase().includes(searchTerm.toLowerCase()))`."
-            - "Find the `<ActivityFeed />` component invocation."
-            - "Update its props to pass `messages={filteredMessages}` and add a new prop `searchTerm={searchTerm}`."
-        - uuid: 'h9i0j1k2-l3m4-n5o6-p7q8-r9s0t1u2v3w'
-          status: 'todo'
-          name: '3. Implement Search Term Highlighting'
-          reason: |
-            To visually indicate to the user why a particular message is included in the search results, improving clarity.
-          files:
-            - 'src/pages/Messaging/components/ActivityFeed.tsx'
-          operations:
-            - "Update the `ActivityFeedProps` interface to accept an optional `searchTerm?: string`."
-            - "Create a new internal component, `Highlight`, that accepts `text` and `highlight` string props."
-            - "In the `Highlight` component, if `highlight` is empty, return the plain `text`."
-            - "Otherwise, use a case-insensitive RegExp to split the `text` by the `highlight` term."
-            - "Map over the resulting array, wrapping the matching parts in a `<mark>` tag with appropriate theme-aware styling (e.g., `className=\"bg-primary/20 rounded\"`)."
-            - "In the `ActivityFeed`'s main render logic, replace where `message.text` is rendered with `<Highlight text={message.text} highlight={searchTerm} />`."
-      context_files:
-        compact:
-          - 'src/pages/Messaging/components/TaskDetail.tsx'
-          - 'src/pages/Messaging/components/ActivityFeed.tsx'
-        medium:
-          - 'src/pages/Messaging/components/TaskDetail.tsx'
-          - 'src/pages/Messaging/components/ActivityFeed.tsx'
-          - 'src/components/ui/input.tsx'
-          - 'src/components/ui/tabs.tsx'
-        extended:
-          - 'src/pages/Messaging/components/TaskDetail.tsx'
-          - 'src/pages/Messaging/components/ActivityFeed.tsx'
-          - 'src/components/ui/input.tsx'
-          - 'src/components/ui/tabs.tsx'
-          - 'src/pages/Messaging/types.ts'
-  conclusion: |
-    Upon completion, the messaging feature will be significantly more polished and user-friendly. The concise timestamps will enhance readability across the board, making the UI feel quicker and more professional.
+          - 'src/pages/DataDemo/types.ts'
+          - 'src/pages/DataDemo/components/DataViewModeSelector.tsx'
+          - 'src/hooks/useAppViewManager.hook.ts'
+          - 'src/pages/DataDemo/index.tsx'
 
-    The addition of in-thread search is a major functional upgrade, transforming the component from a simple message display into a powerful communication tool. This will directly improve user efficiency and satisfaction by reducing the time spent searching for information.
+    - uuid: 'b6e5f4d3-c2b1-a098-7654-321fedcba987'
+      status: 'todo'
+      name: 'Part 2: Create the DataKanbanView Component'
+      reason: |
+        This part involves creating the main component for the Kanban board. It will be responsible for rendering the columns and the cards within them, based on the grouped data it receives. The focus is on structuring the component and achieving the desired visual style.
+      steps:
+        - uuid: 'd9e8f7a6-b5c4-d3e2-f1a0-b9c8d7e6f5a4'
+          status: 'todo'
+          name: '1. Create New File: DataKanbanView.tsx'
+          reason: |
+            A dedicated component is needed to encapsulate the logic and rendering of the Kanban board. This promotes separation of concerns and keeps the main `DataDemoPage` component clean.
+          files:
+            - 'src/pages/DataDemo/components/DataKanbanView.tsx'
+          operations:
+            - "Create a new file at `src/pages/DataDemo/components/DataKanbanView.tsx`."
+            - "Define a new functional component `DataKanbanView` that accepts props similar to other views: `data: Record<string, DataItem[]>` and `onItemSelect: (item: DataItem) => void`."
+            - "Import necessary components like `Card`, `Badge`, `Avatar`, and types like `DataItem`."
+            - "Import icons from `lucide-react`: `GripVertical`, `Plus`, `Calendar`, `Paperclip`, etc."
+        - uuid: 'c3b2a190-8765-4321-fedc-ba9876543210'
+          status: 'todo'
+          name: '2. Implement Kanban Column and Card Structure'
+          reason: |
+            To build the board, we need to render columns from the grouped data and then map the items within each group to individual task cards. This step lays out the static UI structure.
+          files:
+            - 'src/pages/DataDemo/components/DataKanbanView.tsx'
+          operations:
+            - "In `DataKanbanView`, map over `Object.entries(data)` to create a container for each column."
+            - "Style the column container to match the example: `bg-white/20 dark:bg-neutral-900/20`, `backdrop-blur-xl`, `rounded-3xl`, `p-5`, `border`."
+            - "Inside each column, render a header with the column title (the key from the data object) and the count of items."
+            - "Map over the `tasks` (the `DataItem[]` array for each column) and render a placeholder for each `KanbanCard`."
+            - "Create a sub-component `KanbanCard` within the file that takes an `item: DataItem` as a prop."
+            - "Populate `KanbanCard` with key details from the `DataItem`, using shared components from `DataItemParts.tsx` where possible for assignee info, but also creating custom layouts for title, description, tags, and metrics (comments, attachments) as shown in the example."
+            - "Use `cn` and TailwindCSS to style the cards with `cursor-move`, background colors with transparency, and hover effects."
+      context_files:
+        compact:
+          - 'src/pages/DataDemo/types.ts'
+          - 'src/pages/DataDemo/components/shared/DataItemParts.tsx'
+          - 'src/components/ui/card.tsx'
+        medium:
+          - 'src/pages/DataDemo/types.ts'
+          - 'src/pages/DataDemo/components/shared/DataItemParts.tsx'
+          - 'src/components/ui/card.tsx'
+          - 'src/components/ui/badge.tsx'
+          - 'src/components/ui/avatar.tsx'
+        extended:
+          - 'src/pages/DataDemo/types.ts'
+          - 'src/pages/DataDemo/components/shared/DataItemParts.tsx'
+          - 'src/components/ui/card.tsx'
+          - 'src/components/ui/badge.tsx'
+          - 'src/components/ui/avatar.tsx'
+          - 'src/pages/DataDemo/components/DataCardView.tsx' # For reference on card layout
+
+    - uuid: 'e4d3c2b1-a098-7654-321f-edcba9876543'
+      status: 'todo'
+      name: 'Part 3: Implement Drag-and-Drop Interactivity'
+      reason: |
+        A static Kanban board is not very useful. This part adds the core drag-and-drop functionality, allowing users to move tasks between columns. We will use the native HTML5 DnD API to keep it lightweight.
+      steps:
+        - uuid: 'f1a0b9c8-d7e6-f5a4-b3c2-a19087654321'
+          status: 'todo'
+          name: '1. Manage Board State for DnD'
+          reason: |
+            To enable DnD, the component needs to manage its own state for the columns and tasks, which can be updated when a drop occurs.
+          files:
+            - 'src/pages/DataDemo/components/DataKanbanView.tsx'
+          operations:
+            - "In `DataKanbanView`, use `useState` and `useEffect` to manage a local copy of the board data. Initialize it from the `data` prop: `const [columns, setColumns] = useState(data);`"
+            - "Add a `useEffect` to sync the state when the incoming `data` prop changes: `useEffect(() => { setColumns(data); }, [data]);`"
+        - uuid: 'a9b8c7d6-e5f4-a3b2-c190-87654321fedc'
+          status: 'todo'
+          name: '2. Implement DnD Event Handlers'
+          reason: |
+            The drag-and-drop lifecycle is managed by a set of event handlers on both the draggable items (cards) and the drop targets (columns).
+          files:
+            - 'src/pages/DataDemo/components/DataKanbanView.tsx'
+          operations:
+            - "On the `KanbanCard` component, add the `draggable={true}` attribute."
+            - "Add an `onDragStart` handler to the `KanbanCard`. It should use `e.dataTransfer.setData()` to store the task's ID and its original column ID."
+            - "On the column container `div`, add an `onDragOver` handler that calls `e.preventDefault()` to allow the element to be a drop target."
+            - "On the column container `div`, add an `onDrop` handler. It should read the data from `e.dataTransfer.getData()`, find the task and source column, and then update the local `columns` state by removing the task from the source and adding it to the target column."
+            - "Add a placeholder comment in the `onDrop` handler: `// TODO: Call a store action to persist this change, e.g., updateItemStatus(taskId, newStatus)`."
+      context_files:
+        compact:
+          - 'src/pages/DataDemo/components/DataKanbanView.tsx'
+          - 'src/pages/DataDemo/types.ts'
+        medium:
+          - 'src/pages/DataDemo/components/DataKanbanView.tsx'
+          - 'src/pages/DataDemo/types.ts'
+          - 'src/pages/DataDemo/store/dataDemo.store.tsx'
+        extended:
+          - 'src/pages/DataDemo/components/DataKanbanView.tsx'
+          - 'src/pages/DataDemo/types.ts'
+          - 'src/pages/DataDemo/store/dataDemo.store.tsx'
+
+    - uuid: 'cba98765-4321-fedc-ba98-76543210fedc'
+      status: 'todo'
+      name: 'Part 4: Integrate Kanban View into DataDemo Page'
+      reason: |
+        With the component built and functional, the final step is to integrate it into the main page, so it renders when selected and receives the correct data. This also includes handling UX details, like ensuring data is grouped correctly for the board to display.
+      steps:
+        - uuid: '98765432-10fe-dcba-9876-543210fedcba'
+          status: 'todo'
+          name: '1. Conditionally Render DataKanbanView'
+          reason: |
+            The `DataDemoPage` needs to know when to render the new Kanban component based on the current `viewMode`.
+          files:
+            - 'src/pages/DataDemo/index.tsx'
+          operations:
+            - "Import `DataKanbanView` at the top of `src/pages/DataDemo/index.tsx`."
+            - "In the `renderContent` function or conditional rendering block, add a new case: `if (viewMode === 'kanban') { return <DataKanbanView data={groupedData} onItemSelect={handleItemSelect} />; }`."
+        - uuid: 'fedcba98-7654-3210-fedc-ba9876543210'
+          status: 'todo'
+          name: '2. Ensure Data is Grouped for Kanban View'
+          reason: |
+            The Kanban view is only useful when data is grouped (e.g., by status). We should enforce this grouping when the user switches to Kanban view for a better user experience.
+          files:
+            - 'src/pages/DataDemo/index.tsx'
+          operations:
+            - "In `DataDemoPage`, add a `useEffect` hook that listens for changes to `viewMode`."
+            - "Inside the effect, check if `viewMode === 'kanban'` and `groupBy === 'none'`. If true, call `setGroupBy('status')` to automatically switch to a useful grouping for the board."
+            - "This ensures users see a correctly formatted board by default when they select the Kanban view."
+      context_files:
+        compact:
+          - 'src/pages/DataDemo/index.tsx'
+          - 'src/pages/DataDemo/components/DataKanbanView.tsx'
+        medium:
+          - 'src/pages/DataDemo/index.tsx'
+          - 'src/pages/DataDemo/components/DataKanbanView.tsx'
+          - 'src/hooks/useAppViewManager.hook.ts'
+          - 'src/pages/DataDemo/store/dataDemo.store.tsx'
+        extended:
+          - 'src/pages/DataDemo/index.tsx'
+          - 'src/pages/DataDemo/components/DataKanbanView.tsx'
+          - 'src/hooks/useAppViewManager.hook.ts'
+          - 'src/pages/DataDemo/store/dataDemo.store.tsx'
+          - 'src/pages/DataDemo/types.ts'
+
+  conclusion: |
+    Upon completion of this plan, the Data Demo feature will be significantly enhanced with a new, fully interactive Kanban board view. This not only provides a powerful new way for users to visualize and manage their data but also showcases the extensibility of the existing application architecture. The new `DataKanbanView` component will be a well-encapsulated, reusable piece of UI, and the foundational changes will ensure it is a first-class citizen alongside the other view modes.
   context_files:
     compact:
-      - 'src/lib/utils.ts'
-      - 'src/pages/Messaging/components/TaskList.tsx'
-      - 'src/pages/Messaging/components/ActivityFeed.tsx'
-      - 'src/pages/Messaging/components/TaskDetail.tsx'
+      - 'src/pages/DataDemo/index.tsx'
+      - 'src/pages/DataDemo/types.ts'
+      - 'src/pages/DataDemo/components/DataViewModeSelector.tsx'
+      - 'src/pages/DataDemo/components/DataKanbanView.tsx'
     medium:
-      - 'src/lib/utils.ts'
-      - 'src/pages/Messaging/components/TaskList.tsx'
-      - 'src/pages/Messaging/components/ActivityFeed.tsx'
-      - 'src/pages/Messaging/components/TaskDetail.tsx'
-      - 'src/components/ui/input.tsx'
-      - 'src/components/ui/tabs.tsx'
+      - 'src/pages/DataDemo/index.tsx'
+      - 'src/pages/DataDemo/types.ts'
+      - 'src/pages/DataDemo/components/DataViewModeSelector.tsx'
+      - 'src/pages/DataDemo/components/DataKanbanView.tsx'
+      - 'src/hooks/useAppViewManager.hook.ts'
+      - 'src/pages/DataDemo/store/dataDemo.store.tsx'
     extended:
-      - 'src/lib/utils.ts'
-      - 'src/pages/Messaging/components/TaskList.tsx'
-      - 'src/pages/Messaging/components/ActivityFeed.tsx'
-      - 'src/pages/Messaging/components/TaskDetail.tsx'
-      - 'src/components/ui/input.tsx'
-      - 'src/components/ui/tabs.tsx'
-      - 'src/pages/Messaging/types.ts'
+      - 'src/pages/DataDemo/index.tsx'
+      - 'src/pages/DataDemo/types.ts'
+      - 'src/pages/DataDemo/components/DataViewModeSelector.tsx'
+      - 'src/pages/DataDemo/components/DataKanbanView.tsx'
+      - 'src/hooks/useAppViewManager.hook.ts'
+      - 'src/pages/DataDemo/store/dataDemo.store.tsx'
+      - 'src/pages/DataDemo/components/shared/DataItemParts.tsx'
+      - 'src/components/ui/card.tsx'
 ```

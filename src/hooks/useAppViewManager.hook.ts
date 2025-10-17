@@ -239,7 +239,7 @@ export function useAppViewManager() {
   }
   const setSort = (config: SortConfig | null) => {
     if (!config) {
-      handleParamsChange({ sort: 'default' }, true);
+      handleParamsChange({ sort: null }, true);
     } else {
       handleParamsChange({ sort: `${config.key}-${config.direction}` }, true);
     }
@@ -248,7 +248,7 @@ export function useAppViewManager() {
     let newSort: string | null = `${field}-desc`;
     if (sortConfig?.key === field) {
       if (sortConfig.direction === 'desc') newSort = `${field}-asc`;
-      else if (sortConfig.direction === 'asc') newSort = 'default';
+      else if (sortConfig.direction === 'asc') newSort = null;
     }
     handleParamsChange({ sort: newSort }, true);
   };

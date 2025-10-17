@@ -4,6 +4,11 @@ I am obsessed with laravel filament... so make everything about data demo page i
 
 ===
 
+data demo page: create kanban board view mode with amazing UI... at least like below ex:
+
+
+===
+
 split view mode : loosing view mode switcher hover on pane active left:right pane
 
 ===

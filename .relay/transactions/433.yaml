@@ -1,0 +1,894 @@
+uuid: c4086d77-6d2c-472e-8360-1e5b8543f4c1
+projectId: jeli-app-shell
+createdAt: '2025-10-17T23:11:00.811Z'
+gitCommitMsg: >-
+  feat(DataDemo): implement drag-and-drop for Kanban view
+
+  Adds full drag-and-drop functionality to the `DataKanbanView` component.
+
+  - Implements local state management within the Kanban component for immediate
+  UI feedback during drag operations. - Utilizes native HTML5 DnD APIs for a
+  lightweight and responsive experience. - Adds visual cues for dragged items
+  and drop targets. - Implements an `updateItem` action in the `dataDemo` store
+  and connects the `onDrop` event to it, ensuring that card movements are
+  persisted in the application's state.
+promptSummary: >-
+  Implement drag-and-drop functionality for the Kanban board, including local
+  state management for UI feedback and connecting it to the global store to
+  persist changes.
+reasoning:
+  - >-
+    Excellent, let's bring this Kanban board to life. I'll execute the final two
+    parts of our plan, focusing on adding the drag-and-drop interactivity and
+    ensuring a seamless integration.
+  - >-
+    First, to support persisting the changes, I'll add an `updateItem` action to
+    our Zustand store. This will allow the Kanban board to eventually sync its
+    state with our central data source.
+  - >-
+    Now, the main event. I'll upgrade `DataKanbanView.tsx` with full
+    drag-and-drop functionality using local state for immediate visual feedback.
+    This includes setting up drag handlers, managing the dragged item's state,
+    and providing visual cues like opacity changes and dropzone highlighting.
+    When a drop occurs, the component will update its local state and call the
+    `updateItem` action we just added to ensure the change is recorded.
+  - >-
+    This completes the implementation. The `DataDemo` feature now boasts a fully
+    functional, visually appealing Kanban board, seamlessly integrated with the
+    existing view management and state systems.
+operations:
+  - type: write
+    path: src/pages/DataDemo/store/dataDemo.store.tsx
+    content: >+
+      --- src/pages/DataDemo/store/dataDemo.store.tsx
+
+      +++ src/pages/DataDemo/store/dataDemo.store.tsx
+
+      @@ -15,6 +15,7 @@
+               filters: FilterConfig;
+               sortConfig: SortConfig | null;
+           }) => void;
+      +    updateItem: (itemId: string, updates: Partial<DataItem>) => void;
+       }
+       
+       const defaultState: DataDemoState = {
+      @@ -27,7 +28,7 @@
+       };
+       
+       // --- Store Implementation ---
+      -export const useDataDemoStore = create<DataDemoState &
+      DataDemoActions>((set) => ({
+
+      +export const useDataDemoStore = create<DataDemoState &
+      DataDemoActions>((set, get) => ({
+           ...defaultState,
+       
+           loadData: ({ page, groupBy, filters, sortConfig }) => {
+      @@ -107,7 +108,21 @@
+                   }));
+       
+               }, isFirstPage ? 1500 : 500);
+      -    }
+
+      +    },
+
+      +
+
+      +    updateItem: (itemId, updates) => {
+
+      +        // In a real app, this would be an API call. Here we update the
+      mock source.
+
+      +        const itemIndex = mockDataItems.findIndex(i => i.id === itemId);
+
+      +        if (itemIndex > -1) {
+
+      +            mockDataItems[itemIndex] = { ...mockDataItems[itemIndex],
+      ...updates };
+
+      +        }
+
+      +
+
+      +        // Also update the currently loaded items in the store's state
+      for UI consistency
+
+      +        set(state => ({
+
+      +            items: state.items.map(item => 
+
+      +                item.id === itemId ? { ...item, ...updates } : item
+
+      +            ),
+
+      +        }));
+
+      +    },
+       }));
+       
+       // --- Selectors ---
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/DataDemo/components/DataKanbanView.tsx
+    content: >
+      <<<<<<< SEARCH
+
+      import {
+        GripVertical,
+        Plus,
+        Calendar,
+        MessageSquare,
+        Paperclip,
+      } from "lucide-react";
+
+      import type { DataItem } from "../types";
+
+      import { Card, CardContent } from "@/components/ui/card";
+
+      import { Badge } from "@/components/ui/badge";
+
+      import { Avatar, AvatarFallback, AvatarImage } from
+      "@/components/ui/avatar";
+
+      import { cn, getPriorityColor } from "@/lib/utils";
+
+      import { EmptyState } from "./EmptyState";
+
+      import { useAppViewManager } from "@/hooks/useAppViewManager.hook";
+
+
+      interface KanbanCardProps {
+        item: DataItem;
+      }
+
+
+      function KanbanCard({ item }: KanbanCardProps) {
+        const { onItemSelect } = useAppViewManager();
+        
+        // Mock comment and attachment counts for UI purposes
+        const comments = Math.floor(item.metrics.views / 10);
+        const attachments = Math.floor(item.metrics.shares / 5);
+
+        return (
+          <Card
+            // draggable
+            // onDragStart={(e) => handleDragStart(e, task, column.id)}
+            onClick={() => onItemSelect(item)}
+            className="cursor-pointer transition-all duration-300 border bg-card/60 dark:bg-neutral-800/60 backdrop-blur-sm hover:bg-card/70 dark:hover:bg-neutral-700/70 active:cursor-grabbing"
+          >
+            <CardContent className="p-5">
+              <div className="space-y-4">
+                <div className="flex items-start justify-between">
+                  <h4 className="font-semibold text-card-foreground dark:text-neutral-100 leading-tight">
+                    {item.title}
+                  </h4>
+                  <GripVertical className="w-5 h-5 text-muted-foreground/60 dark:text-neutral-400 cursor-grab flex-shrink-0" />
+                </div>
+
+                <p className="text-sm text-muted-foreground dark:text-neutral-300 leading-relaxed line-clamp-2">
+                  {item.description}
+                </p>
+
+                <div className="flex flex-wrap gap-2">
+                  <Badge
+                    className={cn(
+                      "text-xs border",
+                      getPriorityColor(item.priority)
+                    )}
+                  >
+                    {item.priority}
+                  </Badge>
+                  {item.tags.slice(0, 2).map((tag) => (
+                    <Badge
+                      key={tag}
+                      variant="secondary"
+                      className="text-xs backdrop-blur-sm"
+                    >
+                      {tag}
+                    </Badge>
+                  ))}
+                </div>
+
+                <div className="flex items-center justify-between pt-2 border-t border-border/30 dark:border-neutral-700/30">
+                  <div className="flex items-center gap-4 text-muted-foreground/80 dark:text-neutral-400">
+                    {item.dueDate && (
+                      <div className="flex items-center gap-1">
+                        <Calendar className="w-4 h-4" />
+                        <span className="text-xs font-medium">
+                          {new Date(item.dueDate).toLocaleDateString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                          })}
+                        </span>
+                      </div>
+                    )}
+                    <div className="flex items-center gap-1">
+                      <MessageSquare className="w-4 h-4" />
+                      <span className="text-xs font-medium">{comments}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Paperclip className="w-4 h-4" />
+                      <span className="text-xs font-medium">{attachments}</span>
+                    </div>
+                  </div>
+
+                  <Avatar className="w-8 h-8 ring-2 ring-white/50 dark:ring-neutral-700/50">
+                    <AvatarImage src={item.assignee.avatar} />
+                    <AvatarFallback className="bg-muted dark:bg-neutral-700 text-foreground dark:text-neutral-200 font-medium">
+                      {item.assignee.name
+                        .split(" ")
+                        .map((n) => n[0])
+                        .join("")}
+                    </AvatarFallback>
+                  </Avatar>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        );
+      }
+
+
+      interface DataKanbanViewProps {
+        data: Record<string, DataItem[]>;
+      }
+
+
+      export function DataKanbanView({ data }: DataKanbanViewProps) {
+        const columns = Object.entries(data);
+
+        if (!columns || columns.length === 0) {
+          return <EmptyState />;
+        }
+
+        const statusColors: Record<string, string> = {
+          active: "bg-blue-500",
+          pending: "bg-yellow-500",
+          completed: "bg-green-500",
+          archived: "bg-gray-500",
+        };
+
+        return (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 items-start gap-6 pb-4">
+            {columns.map(([columnId, items]) => (
+              <div
+                key={columnId}
+                className="bg-card/20 dark:bg-neutral-900/20 backdrop-blur-xl rounded-3xl p-5 border border-border dark:border-neutral-700/50"
+                // onDragOver={handleDragOver}
+                // onDrop={(e) => handleDrop(e, column.id)}
+              >
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-3">
+                    <div
+                      className={cn(
+                        "w-3.5 h-3.5 rounded-full",
+                        statusColors[columnId] || "bg-muted-foreground"
+                      )}
+                    />
+                    <h3 className="font-semibold text-card-foreground dark:text-neutral-100 capitalize">
+                      {columnId}
+                    </h3>
+                    <Badge
+                      variant="secondary"
+                      className="backdrop-blur-sm"
+                    >
+                      {items.length}
+                    </Badge>
+                  </div>
+                  <button className="p-1 rounded-full bg-card/30 dark:bg-neutral-800/30 hover:bg-card/50 dark:hover:bg-neutral-700/50 transition-colors">
+                    <Plus className="w-4 h-4 text-muted-foreground dark:text-neutral-300" />
+                  </button>
+                </div>
+
+                <div className="space-y-4">
+                  {items.map((item) => (
+                    <KanbanCard key={item.id} item={item} />
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        );
+      }
+
+      =======
+
+      import { useState, useEffect } from "react";
+
+      import {
+        GripVertical,
+        Plus,
+        Calendar,
+        MessageSquare,
+        Paperclip,
+      } from "lucide-react";
+
+      import type { DataItem } from "../types";
+
+      import { Card, CardContent } from "@/components/ui/card";
+
+      import { Badge } from "@/components/ui/badge";
+
+      import { Avatar, AvatarFallback, AvatarImage } from
+      "@/components/ui/avatar";
+
+      import { cn, getPriorityColor } from "@/lib/utils";
+
+      import { EmptyState } from "./EmptyState";
+
+      import { useAppViewManager } from "@/hooks/useAppViewManager.hook";
+
+      import { useDataDemoStore } from "../store/dataDemo.store";
+
+
+      interface KanbanCardProps {
+        item: DataItem;
+        isDragging: boolean;
+      }
+
+
+      function KanbanCard({ item, isDragging, ...props }: KanbanCardProps &
+      React.HTMLAttributes<HTMLDivElement>) {
+        const { onItemSelect } = useAppViewManager();
+
+        // Mock comment and attachment counts for UI purposes
+        const comments = Math.floor(item.metrics.views / 10);
+        const attachments = Math.floor(item.metrics.shares / 5);
+
+        return (
+          <Card
+            {...props}
+            onClick={() => onItemSelect(item)}
+            className={cn(
+              "cursor-pointer transition-all duration-300 border bg-card/60 dark:bg-neutral-800/60 backdrop-blur-sm hover:bg-card/70 dark:hover:bg-neutral-700/70 active:cursor-grabbing",
+              isDragging && "opacity-50 ring-2 ring-primary ring-offset-2 ring-offset-background"
+            )}
+          >
+            <CardContent className="p-5">
+              <div className="space-y-4">
+                <div className="flex items-start justify-between">
+                  <h4 className="font-semibold text-card-foreground dark:text-neutral-100 leading-tight">
+                    {item.title}
+                  </h4>
+                  <GripVertical className="w-5 h-5 text-muted-foreground/60 dark:text-neutral-400 cursor-grab flex-shrink-0" />
+                </div>
+
+                <p className="text-sm text-muted-foreground dark:text-neutral-300 leading-relaxed line-clamp-2">
+                  {item.description}
+                </p>
+
+                <div className="flex flex-wrap gap-2">
+                  <Badge className={cn("text-xs border", getPriorityColor(item.priority))}>
+                    {item.priority}
+                  </Badge>
+                  {item.tags.slice(0, 2).map((tag) => (
+                    <Badge key={tag} variant="secondary" className="text-xs backdrop-blur-sm">
+                      {tag}
+                    </Badge>
+                  ))}
+                </div>
+
+                <div className="flex items-center justify-between pt-2 border-t border-border/30 dark:border-neutral-700/30">
+                  <div className="flex items-center gap-4 text-muted-foreground/80 dark:text-neutral-400">
+                    {item.dueDate && (
+                      <div className="flex items-center gap-1">
+                        <Calendar className="w-4 h-4" />
+                        <span className="text-xs font-medium">
+                          {new Date(item.dueDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                        </span>
+                      </div>
+                    )}
+                    <div className="flex items-center gap-1">
+                      <MessageSquare className="w-4 h-4" />
+                      <span className="text-xs font-medium">{comments}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Paperclip className="w-4 h-4" />
+                      <span className="text-xs font-medium">{attachments}</span>
+                    </div>
+                  </div>
+
+                  <Avatar className="w-8 h-8 ring-2 ring-white/50 dark:ring-neutral-700/50">
+                    <AvatarImage src={item.assignee.avatar} />
+                    <AvatarFallback className="bg-muted dark:bg-neutral-700 text-foreground dark:text-neutral-200 font-medium">
+                      {item.assignee.name.split(" ").map((n) => n[0]).join("")}
+                    </AvatarFallback>
+                  </Avatar>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        );
+      }
+
+
+      interface DataKanbanViewProps {
+        data: Record<string, DataItem[]>;
+      }
+
+
+      export function DataKanbanView({ data }: DataKanbanViewProps) {
+        const [columns, setColumns] = useState(data);
+        const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
+        const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
+        const { groupBy } = useAppViewManager();
+        const updateItem = useDataDemoStore(s => s.updateItem);
+
+        useEffect(() => {
+          setColumns(data);
+        }, [data]);
+
+        const handleDragStart = (e: React.DragEvent<HTMLDivElement>, item: DataItem, sourceColumnId: string) => {
+          e.dataTransfer.effectAllowed = 'move';
+          e.dataTransfer.setData('text/plain', JSON.stringify({ itemId: item.id, sourceColumnId }));
+          setDraggedItemId(item.id);
+        };
+
+        const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+          e.preventDefault();
+        };
+        
+        const handleDragEnter = (columnId: string) => {
+          setDragOverColumn(columnId);
+        }
+
+        const handleDrop = (e: React.DragEvent<HTMLDivElement>, targetColumnId: string) => {
+          e.preventDefault();
+          setDragOverColumn(null);
+          try {
+            const { itemId, sourceColumnId } = JSON.parse(e.dataTransfer.getData('text/plain'));
+            if (sourceColumnId === targetColumnId) return;
+
+            const droppedItem = columns[sourceColumnId]?.find(i => i.id === itemId);
+            if (!droppedItem) return;
+
+            // Update local state for immediate feedback
+            setColumns(prev => {
+              const newColumns = { ...prev };
+              newColumns[sourceColumnId] = newColumns[sourceColumnId].filter(i => i.id !== itemId);
+              newColumns[targetColumnId] = [...newColumns[targetColumnId], droppedItem];
+              return newColumns;
+            });
+            
+            // Persist change to global store. The groupBy value tells us which property to update.
+            if (groupBy !== 'none') {
+              updateItem(itemId, { [groupBy]: targetColumnId } as Partial<DataItem>);
+            }
+
+          } catch (err) {
+            console.error("Failed to parse drag data", err)
+          } finally {
+            setDraggedItemId(null);
+          }
+        };
+
+        const handleDragEnd = () => {
+          setDraggedItemId(null);
+          setDragOverColumn(null);
+        };
+
+        const initialColumns = Object.entries(data);
+
+        if (!initialColumns || initialColumns.length === 0) {
+          return <EmptyState />;
+        }
+
+        const statusColors: Record<string, string> = {
+          active: "bg-blue-500", pending: "bg-yellow-500", completed: "bg-green-500", archived: "bg-gray-500",
+          low: "bg-green-500", medium: "bg-blue-500", high: "bg-orange-500", critical: "bg-red-500",
+        };
+
+        return (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 items-start gap-6 pb-4">
+            {Object.entries(columns).map(([columnId, items]) => (
+              <div
+                key={columnId}
+                onDragOver={handleDragOver}
+                onDrop={(e) => handleDrop(e, columnId)}
+                onDragEnter={() => handleDragEnter(columnId)}
+                onDragLeave={() => setDragOverColumn(null)}
+                className={cn(
+                  "bg-card/20 dark:bg-neutral-900/20 backdrop-blur-xl rounded-3xl p-5 border border-border dark:border-neutral-700/50 transition-all duration-300",
+                  dragOverColumn === columnId && "bg-primary/10 border-primary/30"
+                )}
+              >
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-3">
+                    <div className={cn("w-3.5 h-3.5 rounded-full", statusColors[columnId] || "bg-muted-foreground")} />
+                    <h3 className="font-semibold text-card-foreground dark:text-neutral-100 capitalize">{columnId}</h3>
+                    <Badge variant="secondary" className="backdrop-blur-sm">{items.length}</Badge>
+                  </div>
+                  <button className="p-1 rounded-full bg-card/30 dark:bg-neutral-800/30 hover:bg-card/50 dark:hover:bg-neutral-700/50 transition-colors">
+                    <Plus className="w-4 h-4 text-muted-foreground dark:text-neutral-300" />
+                  </button>
+                </div>
+
+                <div className="space-y-4 min-h-[100px]">
+                  {items.map((item) => (
+                    <KanbanCard 
+                      key={item.id} 
+                      item={item} 
+                      isDragging={draggedItemId === item.id}
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, item, columnId)}
+                      onDragEnd={handleDragEnd}
+                    />
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        );
+      }
+
+      >>>>>>> REPLACE
+    patchStrategy: search-replace
+snapshot:
+  src/pages/DataDemo/components/DataKanbanView.tsx: >-
+    import {
+      GripVertical,
+      Plus,
+      Calendar,
+      MessageSquare,
+      Paperclip,
+    } from "lucide-react";
+
+    import type { DataItem } from "../types";
+
+    import { Card, CardContent } from "@/components/ui/card";
+
+    import { Badge } from "@/components/ui/badge";
+
+    import { Avatar, AvatarFallback, AvatarImage } from
+    "@/components/ui/avatar";
+
+    import { cn, getPriorityColor } from "@/lib/utils";
+
+    import { EmptyState } from "./EmptyState";
+
+    import { useAppViewManager } from "@/hooks/useAppViewManager.hook";
+
+
+    interface KanbanCardProps {
+      item: DataItem;
+    }
+
+
+    function KanbanCard({ item }: KanbanCardProps) {
+      const { onItemSelect } = useAppViewManager();
+      
+      // Mock comment and attachment counts for UI purposes
+      const comments = Math.floor(item.metrics.views / 10);
+      const attachments = Math.floor(item.metrics.shares / 5);
+
+      return (
+        <Card
+          // draggable
+          // onDragStart={(e) => handleDragStart(e, task, column.id)}
+          onClick={() => onItemSelect(item)}
+          className="cursor-pointer transition-all duration-300 border bg-card/60 dark:bg-neutral-800/60 backdrop-blur-sm hover:bg-card/70 dark:hover:bg-neutral-700/70 active:cursor-grabbing"
+        >
+          <CardContent className="p-5">
+            <div className="space-y-4">
+              <div className="flex items-start justify-between">
+                <h4 className="font-semibold text-card-foreground dark:text-neutral-100 leading-tight">
+                  {item.title}
+                </h4>
+                <GripVertical className="w-5 h-5 text-muted-foreground/60 dark:text-neutral-400 cursor-grab flex-shrink-0" />
+              </div>
+
+              <p className="text-sm text-muted-foreground dark:text-neutral-300 leading-relaxed line-clamp-2">
+                {item.description}
+              </p>
+
+              <div className="flex flex-wrap gap-2">
+                <Badge
+                  className={cn(
+                    "text-xs border",
+                    getPriorityColor(item.priority)
+                  )}
+                >
+                  {item.priority}
+                </Badge>
+                {item.tags.slice(0, 2).map((tag) => (
+                  <Badge
+                    key={tag}
+                    variant="secondary"
+                    className="text-xs backdrop-blur-sm"
+                  >
+                    {tag}
+                  </Badge>
+                ))}
+              </div>
+
+              <div className="flex items-center justify-between pt-2 border-t border-border/30 dark:border-neutral-700/30">
+                <div className="flex items-center gap-4 text-muted-foreground/80 dark:text-neutral-400">
+                  {item.dueDate && (
+                    <div className="flex items-center gap-1">
+                      <Calendar className="w-4 h-4" />
+                      <span className="text-xs font-medium">
+                        {new Date(item.dueDate).toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                        })}
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-1">
+                    <MessageSquare className="w-4 h-4" />
+                    <span className="text-xs font-medium">{comments}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Paperclip className="w-4 h-4" />
+                    <span className="text-xs font-medium">{attachments}</span>
+                  </div>
+                </div>
+
+                <Avatar className="w-8 h-8 ring-2 ring-white/50 dark:ring-neutral-700/50">
+                  <AvatarImage src={item.assignee.avatar} />
+                  <AvatarFallback className="bg-muted dark:bg-neutral-700 text-foreground dark:text-neutral-200 font-medium">
+                    {item.assignee.name
+                      .split(" ")
+                      .map((n) => n[0])
+                      .join("")}
+                  </AvatarFallback>
+                </Avatar>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      );
+    }
+
+
+    interface DataKanbanViewProps {
+      data: Record<string, DataItem[]>;
+    }
+
+
+    export function DataKanbanView({ data }: DataKanbanViewProps) {
+      const columns = Object.entries(data);
+
+      if (!columns || columns.length === 0) {
+        return <EmptyState />;
+      }
+
+      const statusColors: Record<string, string> = {
+        active: "bg-blue-500",
+        pending: "bg-yellow-500",
+        completed: "bg-green-500",
+        archived: "bg-gray-500",
+      };
+
+      return (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 items-start gap-6 pb-4">
+          {columns.map(([columnId, items]) => (
+            <div
+              key={columnId}
+              className="bg-card/20 dark:bg-neutral-900/20 backdrop-blur-xl rounded-3xl p-5 border border-border dark:border-neutral-700/50"
+              // onDragOver={handleDragOver}
+              // onDrop={(e) => handleDrop(e, column.id)}
+            >
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <div
+                    className={cn(
+                      "w-3.5 h-3.5 rounded-full",
+                      statusColors[columnId] || "bg-muted-foreground"
+                    )}
+                  />
+                  <h3 className="font-semibold text-card-foreground dark:text-neutral-100 capitalize">
+                    {columnId}
+                  </h3>
+                  <Badge
+                    variant="secondary"
+                    className="backdrop-blur-sm"
+                  >
+                    {items.length}
+                  </Badge>
+                </div>
+                <button className="p-1 rounded-full bg-card/30 dark:bg-neutral-800/30 hover:bg-card/50 dark:hover:bg-neutral-700/50 transition-colors">
+                  <Plus className="w-4 h-4 text-muted-foreground dark:text-neutral-300" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                {items.map((item) => (
+                  <KanbanCard key={item.id} item={item} />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      );
+    }
+  src/pages/DataDemo/store/dataDemo.store.tsx: >-
+    import { create } from 'zustand';
+
+    import { type ReactNode } from 'react';
+
+    import { capitalize, cn } from '@/lib/utils';
+
+    import { Badge } from '@/components/ui/badge';
+
+    import { mockDataItems } from '../data/mockData';
+
+    import type { DataItem, GroupableField, SortConfig } from '../types';
+
+    import type { FilterConfig } from '../components/DataToolbar';
+
+
+    // --- State and Actions ---
+
+    interface DataDemoState {
+        items: DataItem[];
+        hasMore: boolean;
+        isLoading: boolean;
+        isInitialLoading: boolean;
+        totalItemCount: number;
+    }
+
+
+    interface DataDemoActions {
+        loadData: (params: {
+            page: number;
+            groupBy: GroupableField | 'none';
+            filters: FilterConfig;
+            sortConfig: SortConfig | null;
+        }) => void;
+    }
+
+
+    const defaultState: DataDemoState = {
+        items: [],
+        hasMore: true,
+        isLoading: true,
+        isInitialLoading: true,
+        totalItemCount: 0,
+    };
+
+
+    // --- Store Implementation ---
+
+    export const useDataDemoStore = create<DataDemoState &
+    DataDemoActions>((set) => ({
+        ...defaultState,
+
+        loadData: ({ page, groupBy, filters, sortConfig }) => {
+            set({ isLoading: true, ...(page === 1 && { isInitialLoading: true }) });
+            const isFirstPage = page === 1;
+
+            const filteredAndSortedData = (() => {
+                const filteredItems = mockDataItems.filter((item) => {
+                    const searchTermMatch =
+                        item.title.toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
+                        item.description.toLowerCase().includes(filters.searchTerm.toLowerCase());
+                    const statusMatch = filters.status.length === 0 || filters.status.includes(item.status);
+                    const priorityMatch = filters.priority.length === 0 || filters.priority.includes(item.priority);
+                    return searchTermMatch && statusMatch && priorityMatch;
+                });
+
+                if (sortConfig) {
+                    filteredItems.sort((a, b) => {
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        const getNestedValue = (obj: DataItem, path: string): any =>
+                            path.split('.').reduce((o: any, k) => (o || {})[k], obj);
+
+                        const aValue = getNestedValue(a, sortConfig.key);
+                        const bValue = getNestedValue(b, sortConfig.key);
+
+                        if (aValue === undefined || bValue === undefined) return 0;
+                        if (typeof aValue === 'string' && typeof bValue === 'string') {
+                            return sortConfig.direction === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
+                        }
+                        if (typeof aValue === 'number' && typeof bValue === 'number') {
+                            return sortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue;
+                        }
+                        if (sortConfig.key === 'updatedAt' || sortConfig.key === 'createdAt') {
+                            if (typeof aValue === 'string' && typeof bValue === 'string') {
+                                return sortConfig.direction === 'asc'
+                                    ? new Date(aValue).getTime() - new Date(bValue).getTime()
+                                    : new Date(bValue).getTime() - new Date(aValue).getTime();
+                            }
+                        }
+                        return 0;
+                    });
+                }
+                return filteredItems;
+            })();
+            
+            const totalItemCount = filteredAndSortedData.length;
+
+            setTimeout(() => {
+                if (groupBy !== 'none') {
+                    set({
+                        items: filteredAndSortedData,
+                        hasMore: false,
+                        isLoading: false,
+                        isInitialLoading: false,
+                        totalItemCount,
+                    });
+                    return;
+                }
+
+                const pageSize = 12;
+                const newItems = filteredAndSortedData.slice((page - 1) * pageSize, page * pageSize);
+                
+                set(state => ({
+                    items: isFirstPage ? newItems : [...state.items, ...newItems],
+                    hasMore: totalItemCount > page * pageSize,
+                    isLoading: false,
+                    isInitialLoading: false,
+                    totalItemCount,
+                }));
+
+            }, isFirstPage ? 1500 : 500);
+        }
+    }));
+
+
+    // --- Selectors ---
+
+    export const useGroupTabs = (
+        groupBy: GroupableField | 'none',
+        activeGroupTab: string,
+    ) => useDataDemoStore(state => {
+        const items = state.items;
+        if (groupBy === 'none' || !items.length) return [];
+        
+        const groupCounts = items.reduce((acc, item) => {
+            const groupKey = String(item[groupBy as GroupableField]);
+            acc[groupKey] = (acc[groupKey] || 0) + 1;
+            return acc;
+        }, {} as Record<string, number>);
+
+        const sortedGroups = Object.keys(groupCounts).sort((a, b) => a.localeCompare(b));
+
+        const createLabel = (text: string, count: number, isActive: boolean): ReactNode => (
+            <>
+                {text}
+                <Badge variant={isActive ? 'default' : 'secondary'} className={cn('transition-colors duration-300 text-xs font-semibold', !isActive && 'group-hover:bg-accent group-hover:text-accent-foreground')}>
+                    {count}
+                </Badge>
+            </>
+        );
+        
+        const totalCount = items.length;
+
+        return [
+            { id: 'all', label: createLabel('All', totalCount, activeGroupTab === 'all') },
+            ...sortedGroups.map((g) => ({
+                id: g,
+                label: createLabel(capitalize(g), groupCounts[g], activeGroupTab === g),
+            })),
+        ];
+    });
+
+
+    export const useDataToRender = (
+        groupBy: GroupableField | 'none',
+        activeGroupTab: string,
+    ) => useDataDemoStore(state => {
+        const items = state.items;
+        if (groupBy === 'none') {
+            return items;
+        }
+        if (activeGroupTab === 'all') {
+            return items;
+        }
+        return items.filter((item) => String(item[groupBy as GroupableField]) === activeGroupTab);
+    });
+
+
+    export const useSelectedItem = (itemId?: string) => {
+        if (!itemId) return null;
+        return mockDataItems.find(item => item.id === itemId) ?? null;
+    };
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 433

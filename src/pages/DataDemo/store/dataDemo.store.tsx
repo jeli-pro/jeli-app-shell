@@ -22,6 +22,7 @@ interface DataDemoActions {
         filters: FilterConfig;
         sortConfig: SortConfig | null;
     }) => void;
+    updateItem: (itemId: string, updates: Partial<DataItem>) => void;
 }
 
 const defaultState: DataDemoState = {
@@ -33,7 +34,7 @@ const defaultState: DataDemoState = {
 };
 
 // --- Store Implementation ---
-export const useDataDemoStore = create<DataDemoState & DataDemoActions>((set) => ({
+export const useDataDemoStore = create<DataDemoState & DataDemoActions>((set, get) => ({
     ...defaultState,
 
     loadData: ({ page, groupBy, filters, sortConfig }) => {
@@ -105,7 +106,22 @@ export const useDataDemoStore = create<DataDemoState & DataDemoActions>((set) =>
             }));
 
         }, isFirstPage ? 1500 : 500);
-    }
+    },
+
+    updateItem: (itemId, updates) => {
+        // In a real app, this would be an API call. Here we update the mock source.
+        const itemIndex = mockDataItems.findIndex(i => i.id === itemId);
+        if (itemIndex > -1) {
+            mockDataItems[itemIndex] = { ...mockDataItems[itemIndex], ...updates };
+        }
+
+        // Also update the currently loaded items in the store's state for UI consistency
+        set(state => ({
+            items: state.items.map(item => 
+                item.id === itemId ? { ...item, ...updates } : item
+            ),
+        }));
+    },
 }));
 
 // --- Selectors ---

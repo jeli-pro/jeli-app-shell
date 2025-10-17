@@ -1,4 +1,4 @@
-export type ViewMode = 'list' | 'cards' | 'grid' | 'table'
+export type ViewMode = 'list' | 'cards' | 'grid' | 'table' | 'kanban'
 
 export type GroupableField = 'status' | 'priority' | 'category'
 
