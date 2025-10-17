@@ -1,49 +1,72 @@
-uuid: 4f17e337-33eb-460d-8381-805b5f89e4c1
+uuid: 4de2557c-f376-4d1a-8c5e-85c8ec23f46f
 projectId: jeli-app-shell
-createdAt: '2025-10-17T11:24:10.578Z'
+createdAt: '2025-10-17T11:26:18.767Z'
 gitCommitMsg: >-
-  feat(messaging): Show all journey tooltips on scrollbar hover
+  feat(messaging): Blur message thread when hovering journey scrollbar
 
-  Enhances the JourneyScrollbar by displaying all journey point tooltips
-  simultaneously when the user's mouse enters the scrollbar area.
+  Improves UX by applying a blur effect to the main message thread when the user
+  hovers over the JourneyScrollbar. This reduces background noise and enhances
+  the readability of the tooltips, which now show all at once on hover.
 
-  This provides a "bird's-eye view" of the entire customer journey at a glance,
-  allowing for quick scanning of all key events without needing to hover over
-  each dot individually. The tooltips are hidden together when the mouse leaves
-  the scrollbar area.
+  This is achieved by lifting the hover state from `JourneyScrollbar` up to
+  `TaskDetail`, which then conditionally applies CSS classes (`blur-sm`,
+  `pointer-events-none`) to the message container.
 promptSummary: >-
-  The user requested that all journey dot tooltips should become visible
-  simultaneously when hovering over the entire journey scrollbar area.
+  The user wanted to blur the message thread when the journey scrollbar tooltips
+  are visible to improve readability.
 reasoning:
   - >-
-    Of course. I can do that. You want a "bird's-eye view" of the entire journey
-    just by hovering over the scrollbar area.
+    Excellent idea. Blurring the background is a great way to improve
+    readability and focus on the tooltips.
   - >-
-    I'll modify the `JourneyScrollbar` component to track when the mouse is over
-    it and programmatically open all the journey point tooltips at once. This
-    will give you an immediate, scannable overview of all key events in the
-    conversation.
-  - 'Here is the patch for `src/pages/Messaging/components/JourneyScrollbar.tsx`:'
+    I'll implement this by having the `JourneyScrollbar` component notify its
+    parent (`TaskDetail`) when it's being hovered. The `TaskDetail` component
+    will then apply a blur effect to the message thread container.
+  - '### 1. Update `JourneyScrollbar` to Communicate Hover State'
+  - >-
+    First, I'll modify `JourneyScrollbar.tsx` to remove its local hover state
+    and instead use props to receive its hover status and a callback to report
+    changes.
+  - '### 2. Update `TaskDetail` to Apply the Blur Effect'
+  - >-
+    Now, I'll update `TaskDetail.tsx` to manage the hover state and
+    conditionally apply the blur effect to the `ActivityFeed`'s container.
 operations:
   - type: write
     path: src/pages/Messaging/components/JourneyScrollbar.tsx
     content: |+
       --- src/pages/Messaging/components/JourneyScrollbar.tsx
       +++ src/pages/Messaging/components/JourneyScrollbar.tsx
-      @@ -23,6 +23,7 @@
+      @@ -6,13 +6,14 @@
+         scrollContainerRef: React.RefObject<HTMLDivElement>;
+         journeyPoints: Message[];
+         onDotClick: (messageId: string) => void;
+      +  onHoverChange?: (isHovering: boolean) => void;
+      +  showAllTooltips?: boolean;
+       }
+       
+       const journeyInfoMap: Record<JourneyPointType, { Icon: LucideIcon; textColor: string; bgColor: string; }> = {
+         Consult: { Icon: MessageSquare, textColor: 'text-blue-500', bgColor: 'bg-blue-500' },
+      @@ -27,9 +28,11 @@
+         scrollContainerRef,
+         journeyPoints,
          onDotClick,
+      +  onHoverChange,
+      +  showAllTooltips,
        }) => {
          const [isOverflowing, setIsOverflowing] = useState(false);
-      +  const [isTrackHovered, setIsTrackHovered] = useState(false);
+      -  const [isTrackHovered, setIsTrackHovered] = useState(false);
          const trackRef = useRef<HTMLDivElement>(null);
          const dotsContainerRef = useRef<HTMLDivElement>(null);
          const thumbRef = useRef<HTMLDivElement>(null);
-      @@ -211,6 +212,8 @@
+      @@ -211,8 +214,8 @@
            <div
              ref={trackRef}
              className="absolute top-0 right-0 h-full w-8 py-2 z-10 cursor-pointer"
-      +      onMouseEnter={() => setIsTrackHovered(true)}
-      +      onMouseLeave={() => setIsTrackHovered(false)}
+      -      onMouseEnter={() => setIsTrackHovered(true)}
+      -      onMouseLeave={() => setIsTrackHovered(false)}
+      +      onMouseEnter={() => onHoverChange?.(true)}
+      +      onMouseLeave={() => onHoverChange?.(false)}
              onMouseDown={handleTrackClick}
            >
                <TooltipProvider delayDuration={100}>
@@ -51,11 +74,77 @@ operations:
                                key={point.id} 
                                className={cn("flex items-center justify-center", isOverflowing ? "h-8 flex-shrink-0" : "flex-1")}
                              >
-      -                          <Tooltip>
-      +                          <Tooltip open={isTrackHovered}>
+      -                          <Tooltip open={isTrackHovered}>
+      +                          <Tooltip open={showAllTooltips}>
                                      <TooltipTrigger asChild>
                                        <button
                                            data-dot-id={point.id}
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/Messaging/components/TaskDetail.tsx
+    content: >+
+      --- src/pages/Messaging/components/TaskDetail.tsx
+
+      +++ src/pages/Messaging/components/TaskDetail.tsx
+
+      @@ -1,4 +1,4 @@
+
+      -import React, { useRef, useEffect, useLayoutEffect } from 'react';
+
+      +import React, { useRef, useEffect, useLayoutEffect, useState } from
+      'react';
+       import { useParams } from 'react-router-dom';
+       import { useMessagingStore } from '../store/messaging.store';
+       import { ActivityFeed } from './ActivityFeed';
+      @@ -8,6 +8,7 @@
+       import { TakeoverBanner } from './TakeoverBanner';
+       import { useToast } from '@/components/ui/toast';
+       import { gsap } from 'gsap';
+      +import { cn } from '@/lib/utils';
+       import { useAppShellStore } from '@/store/appShell.store';
+       import { JourneyScrollbar } from './JourneyScrollbar';
+       
+      @@ -23,6 +24,7 @@
+         const isLocked = !!task?.activeHandlerId && task.activeHandlerId !== currentUserId;
+         const inputAreaRef = useRef<HTMLDivElement>(null);
+         const isFirstRender = useRef(true);
+      +  const [isJourneyHovered, setIsJourneyHovered] = useState(false);
+       
+         useLayoutEffect(() => {
+           // On conversation change, scroll to the bottom of the message list.
+      @@ -131,14 +133,21 @@
+             <div className="relative flex-1 overflow-hidden">
+               <div
+                 ref={scrollContainerRef}
+      -          className="h-full overflow-y-auto pr-8
+      [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none]
+      [scrollbar-width:none]"
+
+      +          className={cn(
+
+      +            "h-full overflow-y-auto pr-8 [&::-webkit-scrollbar]:hidden
+      [-ms-overflow-style:none] [scrollbar-width:none]",
+
+      +            "transition-all duration-200",
+
+      +            isJourneyHovered && "blur-sm pointer-events-none"
+
+      +          )}
+               >
+                 <ActivityFeed messages={task.messages} contact={task.contact} />
+               </div>
+               {journeyPoints.length > 0 && (
+                   <JourneyScrollbar
+                       scrollContainerRef={scrollContainerRef}
+                       journeyPoints={journeyPoints}
+                       onDotClick={handleDotClick}
+      +                onHoverChange={setIsJourneyHovered}
+
+      +                showAllTooltips={isJourneyHovered}
+                   />
+               )}
+             </div>
 
     patchStrategy: standard-diff
 snapshot:
@@ -100,6 +189,7 @@ snapshot:
       onDotClick,
     }) => {
       const [isOverflowing, setIsOverflowing] = useState(false);
+      const [isTrackHovered, setIsTrackHovered] = useState(false);
       const trackRef = useRef<HTMLDivElement>(null);
       const dotsContainerRef = useRef<HTMLDivElement>(null);
       const thumbRef = useRef<HTMLDivElement>(null);
@@ -283,6 +373,8 @@ snapshot:
         <div
           ref={trackRef}
           className="absolute top-0 right-0 h-full w-8 py-2 z-10 cursor-pointer"
+          onMouseEnter={() => setIsTrackHovered(true)}
+          onMouseLeave={() => setIsTrackHovered(false)}
           onMouseDown={handleTrackClick}
         >
             <TooltipProvider delayDuration={100}>
@@ -316,7 +408,7 @@ snapshot:
                             key={point.id} 
                             className={cn("flex items-center justify-center", isOverflowing ? "h-8 flex-shrink-0" : "flex-1")}
                           >
-                              <Tooltip>
+                              <Tooltip open={isTrackHovered}>
                                   <TooltipTrigger asChild>
                                     <button
                                         data-dot-id={point.id}
@@ -342,10 +434,206 @@ snapshot:
         </div>
       );
     };
+  src/pages/Messaging/components/TaskDetail.tsx: >-
+    import React, { useRef, useEffect, useLayoutEffect } from 'react';
+
+    import { useParams } from 'react-router-dom';
+
+    import { useMessagingStore } from '../store/messaging.store';
+
+    import { ActivityFeed } from './ActivityFeed';
+
+    import { Button } from '@/components/ui/button';
+
+    import { Textarea } from '@/components/ui/textarea';
+
+    import { Paperclip, SendHorizontal, Smile, StickyNote } from 'lucide-react';
+
+    import { Tabs, TabsContent, TabsList, TabsTrigger } from
+    "@/components/ui/tabs";
+
+    import { TakeoverBanner } from './TakeoverBanner';
+
+    import { useToast } from '@/components/ui/toast';
+
+    import { gsap } from 'gsap';
+
+    import { useAppShellStore } from '@/store/appShell.store';
+
+    import { JourneyScrollbar } from './JourneyScrollbar';
+
+
+
+    export const TaskDetail: React.FC = () => {
+      const { conversationId: taskId } = useParams<{ conversationId: string }>();
+      const { show } = useToast();
+      const { getTaskById, takeOverTask, requestAndSimulateTakeover } = useMessagingStore();
+      const reducedMotion = useAppShellStore(s => s.reducedMotion);
+      
+      const task = taskId ? getTaskById(taskId) : undefined;
+
+      // In a real app, this would come from the auth store
+      const currentUserId = 'user-1'; 
+
+      const scrollContainerRef = useRef<HTMLDivElement>(null);
+      const isLocked = !!task?.activeHandlerId && task.activeHandlerId !== currentUserId;
+      const inputAreaRef = useRef<HTMLDivElement>(null);
+      const isFirstRender = useRef(true);
+
+      useLayoutEffect(() => {
+        // On conversation change, scroll to the bottom of the message list.
+        // This ensures the user sees the latest message and that the scrollbar
+        // component has the correct scrollHeight to calculate its visibility.
+        if (scrollContainerRef.current) {
+          scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+        }
+      }, [taskId]);
+
+      useEffect(() => {
+        if (!inputAreaRef.current) return;
+
+        const initialBorderWidth = '1px'; // from 'border-t'
+        const initialPadding = '1rem';    // from 'p-4'
+
+        const target = isLocked
+          ? {
+              y: 20,
+              opacity: 0,
+              maxHeight: 0,
+              paddingTop: 0,
+              paddingBottom: 0,
+              borderTopWidth: 0,
+              pointerEvents: 'none' as const,
+            }
+          : {
+              y: 0,
+              opacity: 1,
+              maxHeight: 500, // Ample room for the input
+              paddingTop: initialPadding,
+              paddingBottom: initialPadding,
+              borderTopWidth: initialBorderWidth,
+              pointerEvents: 'auto' as const,
+            };
+
+        if (reducedMotion) {
+          gsap.set(inputAreaRef.current, target);
+          return;
+        }
+        
+        if (isFirstRender.current) {
+          gsap.set(inputAreaRef.current, target);
+          isFirstRender.current = false;
+        } else {
+          gsap.to(inputAreaRef.current, {
+            ...target,
+            duration: 0.35,
+            ease: 'power2.inOut',
+          });
+        }
+      }, [isLocked, reducedMotion]);
+
+      if (!taskId || !task) {
+        return (
+            <div className="h-full flex flex-col items-center justify-center p-6 bg-background">
+                <p className="text-muted-foreground">Select a task to see its details.</p>
+            </div>
+        );
+      }
+
+      const journeyPoints = task.messages.filter(m => m.journeyPoint);
+
+      const handleDotClick = (messageId: string) => {
+        const container = scrollContainerRef.current;
+        if (!container) return;
+        
+        const element = container.querySelector(`[data-message-id="${messageId}"]`);
+        
+        if (element) {
+          // Using 'center' to avoid the message being at the very top/bottom of the view
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      };
+
+      const handleTakeOver = () => {
+        takeOverTask(task.id, currentUserId);
+        show({
+            variant: 'success',
+            title: 'Task Taken Over',
+            message: `You are now handling the task from ${task.contact.name}.`
+        });
+      };
+
+      const handleRequestTakeover = () => {
+        requestAndSimulateTakeover(task.id, currentUserId);
+        if (task.activeHandler) {
+            show({
+                variant: 'default',
+                title: 'Request Sent',
+                message: `A takeover request has been sent to ${task.activeHandler.name}.`
+            });
+        }
+      };
+
+      return (
+        <div className="h-full flex flex-col bg-background overflow-hidden">
+          {isLocked && task.activeHandler && (
+            <TakeoverBanner
+                activeHandler={task.activeHandler}
+                isRequesting={!!task.takeoverRequested}
+                onTakeOver={handleTakeOver}
+                onRequestTakeover={handleRequestTakeover}
+            />
+          )}
+          <div className="relative flex-1 overflow-hidden">
+            <div
+              ref={scrollContainerRef}
+              className="h-full overflow-y-auto pr-8 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+            >
+              <ActivityFeed messages={task.messages} contact={task.contact} />
+            </div>
+            {journeyPoints.length > 0 && (
+                <JourneyScrollbar
+                    scrollContainerRef={scrollContainerRef}
+                    journeyPoints={journeyPoints}
+                    onDotClick={handleDotClick}
+                />
+            )}
+          </div>
+
+          {/* Input Form */}
+          <div ref={inputAreaRef} className="p-4 border-t flex-shrink-0 bg-background/50">
+            <Tabs defaultValue="comment" className="w-full" >
+              <TabsList className="grid w-full grid-cols-2 mb-2">
+                <TabsTrigger value="comment" disabled={isLocked}>Comment</TabsTrigger>
+                <TabsTrigger value="note" disabled={isLocked}><StickyNote className="w-4 h-4 mr-2" />Internal Note</TabsTrigger>
+              </TabsList>
+              <TabsContent value="comment">
+                 <div className="relative">
+                    <Textarea placeholder={isLocked ? "Take over to reply..." : `Reply to ${task.contact.name}...`} className="pr-24 min-h-[52px]" disabled={isLocked} />
+                    <div className="absolute right-2 top-2 flex items-center gap-1">
+                        <Button variant="ghost" size="icon" className="rounded-full h-8 w-8" disabled={isLocked}><Smile className="w-4 h-4" /></Button>
+                        <Button variant="ghost" size="icon" className="rounded-full h-8 w-8" disabled={isLocked}><Paperclip className="w-4 h-4" /></Button>
+                        <Button size="icon" className="rounded-full h-8 w-8" disabled={isLocked}><SendHorizontal className="w-4 h-4" /></Button>
+                    </div>
+                </div>
+              </TabsContent>
+              <TabsContent value="note">
+                <div className="relative">
+                    <Textarea placeholder={isLocked ? "Take over to add a note..." : "Add an internal note..."} className="pr-24 min-h-[52px] bg-yellow-400/10 border-yellow-400/30 focus-visible:ring-yellow-500" disabled={isLocked} />
+                    <div className="absolute right-2 top-2 flex items-center gap-1">
+                        <Button size="icon" className="rounded-full h-8 w-8" disabled={isLocked}><SendHorizontal className="w-4 h-4" /></Button>
+                    </div>
+                </div>
+              </TabsContent>
+            </Tabs>
+          </div>
+        </div>
+      );
+    };
 approved: true
 linesAdded: null
 linesRemoved: null
 linesDifference: null
-gitCommittedAt: '2025-10-17T11:24:48.479Z'
+gitCommittedAt: null
 status: committed
-id: 408
+id: 409

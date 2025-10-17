@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useLayoutEffect } from 'react';
+import React, { useRef, useEffect, useLayoutEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useMessagingStore } from '../store/messaging.store';
 import { ActivityFeed } from './ActivityFeed';
@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TakeoverBanner } from './TakeoverBanner';
 import { useToast } from '@/components/ui/toast';
 import { gsap } from 'gsap';
+import { cn } from '@/lib/utils';
 import { useAppShellStore } from '@/store/appShell.store';
 import { JourneyScrollbar } from './JourneyScrollbar';
 
@@ -28,6 +29,7 @@ export const TaskDetail: React.FC = () => {
   const isLocked = !!task?.activeHandlerId && task.activeHandlerId !== currentUserId;
   const inputAreaRef = useRef<HTMLDivElement>(null);
   const isFirstRender = useRef(true);
+  const [isJourneyHovered, setIsJourneyHovered] = useState(false);
 
   useLayoutEffect(() => {
     // On conversation change, scroll to the bottom of the message list.
@@ -136,7 +138,11 @@ export const TaskDetail: React.FC = () => {
       <div className="relative flex-1 overflow-hidden">
         <div
           ref={scrollContainerRef}
-          className="h-full overflow-y-auto pr-8 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+          className={cn(
+            "h-full overflow-y-auto pr-8 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]",
+            "transition-all duration-200",
+            isJourneyHovered && "blur-sm pointer-events-none"
+          )}
         >
           <ActivityFeed messages={task.messages} contact={task.contact} />
         </div>
@@ -145,6 +151,8 @@ export const TaskDetail: React.FC = () => {
                 scrollContainerRef={scrollContainerRef}
                 journeyPoints={journeyPoints}
                 onDotClick={handleDotClick}
+                onHoverChange={setIsJourneyHovered}
+                showAllTooltips={isJourneyHovered}
             />
         )}
       </div>

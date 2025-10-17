@@ -9,6 +9,8 @@ interface JourneyScrollbarProps {
   scrollContainerRef: React.RefObject<HTMLDivElement>;
   journeyPoints: Message[];
   onDotClick: (messageId: string) => void;
+  onHoverChange?: (isHovering: boolean) => void;
+  showAllTooltips?: boolean;
 }
 
 const journeyInfoMap: Record<JourneyPointType, { Icon: LucideIcon; textColor: string; bgColor: string; }> = {
@@ -24,9 +26,10 @@ export const JourneyScrollbar: React.FC<JourneyScrollbarProps> = ({
   scrollContainerRef,
   journeyPoints,
   onDotClick,
+  onHoverChange,
+  showAllTooltips,
 }) => {
   const [isOverflowing, setIsOverflowing] = useState(false);
-  const [isTrackHovered, setIsTrackHovered] = useState(false);
   const trackRef = useRef<HTMLDivElement>(null);
   const dotsContainerRef = useRef<HTMLDivElement>(null);
   const thumbRef = useRef<HTMLDivElement>(null);
@@ -210,8 +213,8 @@ export const JourneyScrollbar: React.FC<JourneyScrollbarProps> = ({
     <div
       ref={trackRef}
       className="absolute top-0 right-0 h-full w-8 py-2 z-10 cursor-pointer"
-      onMouseEnter={() => setIsTrackHovered(true)}
-      onMouseLeave={() => setIsTrackHovered(false)}
+      onMouseEnter={() => onHoverChange?.(true)}
+      onMouseLeave={() => onHoverChange?.(false)}
       onMouseDown={handleTrackClick}
     >
         <TooltipProvider delayDuration={100}>
@@ -245,7 +248,7 @@ export const JourneyScrollbar: React.FC<JourneyScrollbarProps> = ({
                         key={point.id} 
                         className={cn("flex items-center justify-center", isOverflowing ? "h-8 flex-shrink-0" : "flex-1")}
                       >
-                          <Tooltip open={isTrackHovered}>
+                          <Tooltip open={showAllTooltips}>
                               <TooltipTrigger asChild>
                                 <button
                                     data-dot-id={point.id}
