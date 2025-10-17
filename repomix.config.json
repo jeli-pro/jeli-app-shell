@@ -12,7 +12,7 @@
     "files": true,
     "removeComments": false,
     "removeEmptyLines": false,
-    "compress": false,
+    "compress": true,
     "topFilesLength": 5,
     "showLineNumbers": false,
     "copyToClipboard": true,
@@ -24,23 +24,23 @@
   },
   "include": [
     // "README.md",
-    // "package.json",
-    // "vite.config.ts",
-    // "tsconfig.json",
-    // "tsconfig.node.json",
-    // "tailwind.config.js",
-    // "postcss.config.js",
-    // "index.html",
-    // "src"
+    "package.json",
+    "vite.config.ts",
+    "tsconfig.json",
+    "tsconfig.node.json",
+    "tailwind.config.js",
+    "postcss.config.js",
+    "index.html",
+    "src"
 
-    "src/pages/Messaging/components/JourneyScrollbar.tsx",
-    "src/pages/Messaging/components/TaskDetail.tsx",
-    "src/pages/Messaging/components/TaskList.tsx",
-    // "src/pages/Messaging/data/mockData.ts",
-    "src/pages/Messaging/index.tsx",
-    "src/pages/Messaging/store/messaging.store.ts",
-    "src/pages/Messaging/types.ts"
-    //
+    // "src/pages/Messaging/components/JourneyScrollbar.tsx",
+    // "src/pages/Messaging/components/TaskDetail.tsx",
+    // "src/pages/Messaging/components/TaskList.tsx",
+    // // "src/pages/Messaging/data/mockData.ts",
+    // "src/pages/Messaging/index.tsx",
+    // "src/pages/Messaging/store/messaging.store.ts",
+    // "src/pages/Messaging/types.ts"
+    // //
     //
     //
   ],

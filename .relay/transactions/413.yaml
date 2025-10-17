@@ -1,0 +1,248 @@
+uuid: b9099411-9a70-420a-85d0-d5a2cd0f47e3
+projectId: jeli-app-shell
+createdAt: '2025-10-17T11:39:37.780Z'
+gitCommitMsg: >-
+  feat(messaging): add visual journey point dividers in activity feed
+
+  Introduces a new visual element in the ActivityFeed component to clearly
+  demarcate customer journey checkpoints within the conversation history.
+
+  When a message contains a `journeyPoint` property, it is now rendered as a
+  styled horizontal divider with a corresponding icon, title, and timestamp.
+  This provides immediate visual context for important milestones in the
+  customer interaction, improving readability and comprehension of the
+  conversation flow. The icons and colors are consistent with the
+  JourneyScrollbar component.
+promptSummary: Add visual cues for journey checkpoints in the messaging activity feed.
+reasoning:
+  - >-
+    This is an excellent idea to enhance the user experience. Adding visual cues
+    for journey checkpoints directly into the message feed will provide clear
+    context and structure to the conversation timeline. I will implement this by
+    adding a distinct visual separator for any message that is marked as a
+    `journeyPoint`.
+  - '### Step 1: Modify `ActivityFeed.tsx`'
+  - >-
+    I will edit `ActivityFeed.tsx` to handle messages with a `journeyPoint`
+    property.
+  - >-
+    1.  **Import necessary types and icons**: I'll import `JourneyPointType` and
+    the required icons from `lucide-react` to match the visual language of the
+    `JourneyScrollbar`.
+  - >-
+    2.  **Add `journeyInfoMap`**: I'll include the same `journeyInfoMap` object
+    used in `JourneyScrollbar.tsx` to ensure consistent icons and colors for
+    each journey point.
+  - >-
+    3.  **Implement new rendering logic**: Inside the `messages.map()` loop,
+    I'll add a new conditional check. If a message has a `journeyPoint`, it will
+    be rendered as a styled horizontal divider with the journey point's icon,
+    name, and timestamp. This will appear instead of the standard system message
+    format, providing a clear visual break in the conversation.
+  - >-
+    This approach ensures that the new UI is cleanly integrated, visually
+    consistent with other parts of the application, and provides the contextual
+    cues you requested.
+  - '---'
+operations:
+  - type: write
+    path: src/pages/Messaging/components/ActivityFeed.tsx
+    content: >+
+      --- src/pages/Messaging/components/ActivityFeed.tsx
+
+      +++ src/pages/Messaging/components/ActivityFeed.tsx
+
+      @@ -1,11 +1,21 @@
+       import React, { forwardRef } from 'react';
+       import { useMessagingStore } from '../store/messaging.store';
+      -import type { Message, Contact, Assignee } from '../types';
+
+      +import type { Message, Contact, Assignee, JourneyPointType } from
+      '../types';
+       import { cn } from '@/lib/utils';
+       import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+       import { formatDistanceToNow } from 'date-fns';
+      -import { StickyNote, Info } from 'lucide-react';
+
+      +import { StickyNote, Info, MessageSquare, ShoppingCart, PackageCheck,
+      AlertCircle, RefreshCw, MailQuestion, type LucideIcon } from
+      'lucide-react';
+       
+      +const journeyInfoMap: Record<JourneyPointType, { Icon: LucideIcon;
+      textColor: string; bgColor: string; }> = {
+
+      +  Consult: { Icon: MessageSquare, textColor: 'text-blue-500', bgColor:
+      'bg-blue-500' },
+
+      +  Order: { Icon: ShoppingCart, textColor: 'text-green-500', bgColor:
+      'bg-green-500' },
+
+      +  Delivered: { Icon: PackageCheck, textColor: 'text-emerald-500',
+      bgColor: 'bg-emerald-500' },
+
+      +  Complain: { Icon: AlertCircle, textColor: 'text-red-500', bgColor:
+      'bg-red-500' },
+
+      +  Reorder: { Icon: RefreshCw, textColor: 'text-indigo-500', bgColor:
+      'bg-indigo-500' },
+
+      +  'Follow-up': { Icon: MailQuestion, textColor: 'text-yellow-500',
+      bgColor: 'bg-yellow-500' },
+
+      +};
+
+      +
+       interface ActivityFeedProps {
+         messages: Message[];
+         contact: Contact;
+      @@ -17,6 +27,26 @@
+           <div ref={ref} className="flex-1 overflow-y-auto p-6 space-y-6 no-scrollbar">
+             {messages.map((message) => {
+               const assignee = message.userId ? getAssigneeById(message.userId) : null;
+      +        
+
+      +        if (message.journeyPoint) {
+
+      +          const journeyInfo = journeyInfoMap[message.journeyPoint];
+
+      +          const { Icon } = journeyInfo;
+
+      +          return (
+
+      +            <div key={message.id} data-message-id={message.id}
+      className="relative py-3">
+
+      +              <div className="absolute inset-0 flex items-center"
+      aria-hidden="true">
+
+      +                <div className="w-full border-t border-dashed" />
+
+      +              </div>
+
+      +              <div className="relative flex justify-center">
+
+      +                <div className="bg-background px-3 flex items-center
+      gap-2 text-sm font-medium">
+
+      +                  <Icon className={cn("w-4 h-4", journeyInfo.textColor)}
+      />
+
+      +                  <span className={cn("font-semibold",
+      journeyInfo.textColor)}>{message.journeyPoint}</span>
+
+      +                  <span className="text-xs text-muted-foreground
+      font-normal whitespace-nowrap">{formatDistanceToNow(new
+      Date(message.timestamp), { addSuffix: true })}</span>
+
+      +                </div>
+
+      +              </div>
+
+      +            </div>
+
+      +          );
+
+      +        }
+               
+               if (message.type === 'system') {
+                 return (
+
+    patchStrategy: standard-diff
+snapshot:
+  src/pages/Messaging/components/ActivityFeed.tsx: >
+    import React, { forwardRef } from 'react';
+
+    import { useMessagingStore } from '../store/messaging.store';
+
+    import type { Message, Contact, Assignee } from '../types';
+
+    import { cn } from '@/lib/utils';
+
+    import { Avatar, AvatarFallback, AvatarImage } from
+    '@/components/ui/avatar';
+
+    import { formatDistanceToNow } from 'date-fns';
+
+    import { StickyNote, Info } from 'lucide-react';
+
+
+    interface ActivityFeedProps {
+      messages: Message[];
+      contact: Contact;
+    }
+
+
+    export const ActivityFeed = forwardRef<HTMLDivElement, ActivityFeedProps>(({
+    messages, contact }, ref) => {
+      const getAssigneeById = useMessagingStore(state => state.getAssigneeById);
+
+      return (
+        <div ref={ref} className="flex-1 overflow-y-auto p-6 space-y-6 no-scrollbar">
+          {messages.map((message) => {
+            const assignee = message.userId ? getAssigneeById(message.userId) : null;
+            
+            if (message.type === 'system') {
+              return (
+                <div key={message.id} data-message-id={message.id} className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+                  <Info className="w-3.5 h-3.5" />
+                  <p>{message.text}</p>
+                  <p className="whitespace-nowrap">{formatDistanceToNow(new Date(message.timestamp), { addSuffix: true })}</p>
+                </div>
+              );
+            }
+
+            if (message.type === 'note') {
+              return (
+                <div key={message.id} data-message-id={message.id} className="flex items-start gap-3">
+                  <div className="p-1.5 bg-yellow-400/20 text-yellow-600 rounded-full mt-1.5">
+                    <StickyNote className="w-4 h-4" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <p className="font-semibold text-sm">{assignee?.name || 'User'}</p>
+                      <p className="text-xs text-muted-foreground">{formatDistanceToNow(new Date(message.timestamp), { addSuffix: true })}</p>
+                    </div>
+                    <div className="bg-card border rounded-lg p-3 text-sm">
+                      <p>{message.text}</p>
+                    </div>
+                  </div>
+                </div>
+              );
+            }
+
+            // Default: 'comment' type
+            return (
+              <div key={message.id} data-message-id={message.id} className={cn(
+                "flex items-end gap-3",
+                message.sender === 'user' ? 'justify-end' : 'justify-start'
+              )}>
+                {message.sender === 'contact' && (
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage src={contact.avatar} />
+                    <AvatarFallback>{contact.name.charAt(0)}</AvatarFallback>
+                  </Avatar>
+                )}
+                <div className={cn(
+                  "max-w-xs md:max-w-md lg:max-w-lg p-3 rounded-2xl",
+                  message.sender === 'user' 
+                    ? 'bg-primary text-primary-foreground rounded-br-none' 
+                    : 'bg-card border rounded-bl-none'
+                )}>
+                  <p className="text-sm">{message.text}</p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      );
+    });
+
+
+    ActivityFeed.displayName = 'ActivityFeed';
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 413

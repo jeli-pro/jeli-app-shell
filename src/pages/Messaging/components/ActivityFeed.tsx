@@ -1,10 +1,19 @@
 import React, { forwardRef } from 'react';
 import { useMessagingStore } from '../store/messaging.store';
-import type { Message, Contact, Assignee } from '../types';
+import type { Message, Contact, Assignee, JourneyPointType } from '../types';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { formatDistanceToNow } from 'date-fns';
-import { StickyNote, Info } from 'lucide-react';
+import { StickyNote, Info, MessageSquare, ShoppingCart, PackageCheck, AlertCircle, RefreshCw, MailQuestion, type LucideIcon } from 'lucide-react';
+
+const journeyInfoMap: Record<JourneyPointType, { Icon: LucideIcon; textColor: string; bgColor: string; }> = {
+  Consult: { Icon: MessageSquare, textColor: 'text-blue-500', bgColor: 'bg-blue-500' },
+  Order: { Icon: ShoppingCart, textColor: 'text-green-500', bgColor: 'bg-green-500' },
+  Delivered: { Icon: PackageCheck, textColor: 'text-emerald-500', bgColor: 'bg-emerald-500' },
+  Complain: { Icon: AlertCircle, textColor: 'text-red-500', bgColor: 'bg-red-500' },
+  Reorder: { Icon: RefreshCw, textColor: 'text-indigo-500', bgColor: 'bg-indigo-500' },
+  'Follow-up': { Icon: MailQuestion, textColor: 'text-yellow-500', bgColor: 'bg-yellow-500' },
+};
 
 interface ActivityFeedProps {
   messages: Message[];
@@ -18,6 +27,25 @@ export const ActivityFeed = forwardRef<HTMLDivElement, ActivityFeedProps>(({ mes
     <div ref={ref} className="flex-1 overflow-y-auto p-6 space-y-6 no-scrollbar">
       {messages.map((message) => {
         const assignee = message.userId ? getAssigneeById(message.userId) : null;
+        
+        if (message.journeyPoint) {
+          const journeyInfo = journeyInfoMap[message.journeyPoint];
+          const { Icon } = journeyInfo;
+          return (
+            <div key={message.id} data-message-id={message.id} className="relative py-3">
+              <div className="absolute inset-0 flex items-center" aria-hidden="true">
+                <div className="w-full border-t border-dashed" />
+              </div>
+              <div className="relative flex justify-center">
+                <div className="bg-background px-3 flex items-center gap-2 text-sm font-medium">
+                  <Icon className={cn("w-4 h-4", journeyInfo.textColor)} />
+                  <span className={cn("font-semibold", journeyInfo.textColor)}>{message.journeyPoint}</span>
+                  <span className="text-xs text-muted-foreground font-normal whitespace-nowrap">{formatDistanceToNow(new Date(message.timestamp), { addSuffix: true })}</span>
+                </div>
+              </div>
+            </div>
+          );
+        }
         
         if (message.type === 'system') {
           return (

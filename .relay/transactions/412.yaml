@@ -1,0 +1,757 @@
+uuid: 440263f9-673e-4687-b934-8c88f117c06d
+projectId: jeli-app-shell
+createdAt: '2025-10-17T11:37:03.591Z'
+gitCommitMsg: >-
+  feat(messaging): add journey point separators in activity feed
+
+  Introduces visual separators in the message thread to clearly mark customer
+  journey checkpoints.
+
+  - Created a shared `journey-config.ts` to centralize journey point styles
+  (icons, colors). - Refactored `JourneyScrollbar` to use the shared
+  configuration. - Updated `ActivityFeed` to render a styled separator above any
+  message that is marked as a journey point, enhancing conversation readability.
+promptSummary: >-
+  I need to add visual cues for customer journey checkpoints within the message
+  thread.
+reasoning:
+  - >-
+    Excellent! As an expert AI programmer, I'll add visual cues for customer
+    journey checkpoints in your messaging thread. This will involve creating a
+    shared configuration for journey point styles, updating the
+    `JourneyScrollbar` to use it, and modifying the `ActivityFeed` to render the
+    new visual separators.
+  - '### Step 1: Create a Shared Journey Configuration'
+  - >-
+    First, I'll create a new file to store the `journeyInfoMap`, which defines
+    the icons and colors for each journey point. This ensures consistency and
+    makes future updates easier. This map will be shared between the
+    `JourneyScrollbar` and the `ActivityFeed`.
+  - '### Step 2: Refactor `JourneyScrollbar`'
+  - >-
+    Next, I'll refactor `JourneyScrollbar.tsx` to remove its local
+    `journeyInfoMap` and import the new shared version. This keeps our styling
+    centralized.
+  - '### Step 3: Add Visual Checkpoints to the Activity Feed'
+  - >-
+    Finally, I'll update `ActivityFeed.tsx`. For each message that represents a
+    journey checkpoint, it will now render a distinct visual separator above the
+    message itself. This clearly delineates different stages of the customer
+    journey within the conversation thread.
+  - '---'
+operations:
+  - type: write
+    path: src/pages/Messaging/components/journey-config.ts
+    content: >-
+      import { MessageSquare, ShoppingCart, PackageCheck, AlertCircle,
+      RefreshCw, MailQuestion, type LucideIcon } from 'lucide-react';
+
+      import type { JourneyPointType } from '../types';
+
+
+      export const journeyInfoMap: Record<JourneyPointType, { Icon: LucideIcon;
+      textColor: string; bgColor: string; }> = {
+        Consult: { Icon: MessageSquare, textColor: 'text-blue-500', bgColor: 'bg-blue-500' },
+        Order: { Icon: ShoppingCart, textColor: 'text-green-500', bgColor: 'bg-green-500' },
+        Delivered: { Icon: PackageCheck, textColor: 'text-emerald-500', bgColor: 'bg-emerald-500' },
+        Complain: { Icon: AlertCircle, textColor: 'text-red-500', bgColor: 'bg-red-500' },
+        Reorder: { Icon: RefreshCw, textColor: 'text-indigo-500', bgColor: 'bg-indigo-500' },
+        'Follow-up': { Icon: MailQuestion, textColor: 'text-yellow-500', bgColor: 'bg-yellow-500' },
+      };
+    patchStrategy: replace
+  - type: write
+    path: src/pages/Messaging/components/JourneyScrollbar.tsx
+    content: >+
+      --- src/pages/Messaging/components/JourneyScrollbar.tsx
+
+      +++ src/pages/Messaging/components/JourneyScrollbar.tsx
+
+      @@ -2,8 +2,8 @@
+       import type { Message, JourneyPointType } from '../types';
+       import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+       import { gsap } from 'gsap';
+      -import { MessageSquare, ShoppingCart, PackageCheck, AlertCircle,
+      RefreshCw, MailQuestion, type LucideIcon } from 'lucide-react';
+       import { cn } from '@/lib/utils';
+      +import { journeyInfoMap } from './journey-config';
+       
+       interface JourneyScrollbarProps {
+         scrollContainerRef: React.RefObject<HTMLDivElement>;
+      @@ -13,15 +13,6 @@
+         showAllTooltips?: boolean;
+       }
+       
+      -const journeyInfoMap: Record<JourneyPointType, { Icon: LucideIcon;
+      textColor: string; bgColor: string; }> = {
+
+      -  Consult: { Icon: MessageSquare, textColor: 'text-blue-500', bgColor:
+      'bg-blue-500' },
+
+      -  Order: { Icon: ShoppingCart, textColor: 'text-green-500', bgColor:
+      'bg-green-500' },
+
+      -  Delivered: { Icon: PackageCheck, textColor: 'text-emerald-500',
+      bgColor: 'bg-emerald-500' },
+
+      -  Complain: { Icon: AlertCircle, textColor: 'text-red-500', bgColor:
+      'bg-red-500' },
+
+      -  Reorder: { Icon: RefreshCw, textColor: 'text-indigo-500', bgColor:
+      'bg-indigo-500' },
+
+      -  'Follow-up': { Icon: MailQuestion, textColor: 'text-yellow-500',
+      bgColor: 'bg-yellow-500' },
+
+      -};
+
+      -
+       export const JourneyScrollbar: React.FC<JourneyScrollbarProps> = ({
+         scrollContainerRef,
+         journeyPoints,
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/Messaging/components/ActivityFeed.tsx
+    content: >
+      --- src/pages/Messaging/components/ActivityFeed.tsx
+
+      +++ src/pages/Messaging/components/ActivityFeed.tsx
+
+      @@ -1,11 +1,14 @@
+       import React, { forwardRef } from 'react';
+       import { useMessagingStore } from '../store/messaging.store';
+      -import type { Message, Contact, Assignee } from '../types';
+
+      +import type { Message, Contact, Assignee } from '../types';
+       import { cn } from '@/lib/utils';
+       import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+       import { formatDistanceToNow } from 'date-fns';
+       import { StickyNote, Info } from 'lucide-react';
+      +import { journeyInfoMap } from './journey-config';
+       
+       interface ActivityFeedProps {
+         messages: Message[];
+      @@ -18,16 +21,44 @@
+         return (
+           <div ref={ref} className="p-4 md:p-6 space-y-6">
+             {messages.map((message, index) => {
+      +        const journeyInfo = message.journeyPoint ?
+      journeyInfoMap[message.journeyPoint] : null;
+               const isFromUser = message.sender === 'user';
+               const isSystem = message.sender === 'system';
+               const isNote = message.type === 'note';
+               
+      +        const journeySeparator = journeyInfo ? (
+
+      +          <div className="relative my-6"
+      data-journey-point={message.journeyPoint}>
+
+      +              <div className="absolute inset-0 flex items-center"
+      aria-hidden="true">
+
+      +                  <div className="w-full border-t border-dashed
+      border-border" />
+
+      +              </div>
+
+      +              <div className="relative flex justify-center">
+
+      +                  <span className={cn(
+
+      +                      "bg-background px-3 text-sm font-medium flex
+      items-center gap-2",
+
+      +                      journeyInfo.textColor
+
+      +                  )}>
+
+      +                      <journeyInfo.Icon className="w-4 h-4" />
+
+      +                      {message.journeyPoint}
+
+      +                  </span>
+
+      +              </div>
+
+      +          </div>
+
+      +        ) : null;
+
+      +
+               if (isNote) {
+                 const author = message.userId ? getAssigneeById(message.userId) : null;
+                 return (
+      -            <div data-message-id={message.id} key={message.id}
+      className="flex items-start gap-3 text-sm text-yellow-600
+      dark:text-yellow-400/80">
+
+      -              <StickyNote className="w-4 h-4 mt-1 flex-shrink-0" />
+
+      -              <div className="flex-1">
+
+      -                <p className="font-semibold mb-1">Internal Note {author ?
+      `by ${author.name}` : ''}</p>
+
+      -                <p>{message.text}</p>
+
+      -                <p className="text-xs mt-1
+      text-yellow-500/80">{formatDistanceToNow(new Date(message.timestamp), {
+      addSuffix: true })}</p>
+
+      +            <React.Fragment key={message.id}>
+
+      +              {journeySeparator}
+
+      +              <div data-message-id={message.id} className="flex
+      items-start gap-3 text-sm text-yellow-600 dark:text-yellow-400/80">
+
+      +                <StickyNote className="w-4 h-4 mt-1 flex-shrink-0" />
+
+      +                <div className="flex-1">
+
+      +                  <p className="font-semibold mb-1">Internal Note {author
+      ? `by ${author.name}` : ''}</p>
+
+      +                  <p>{message.text}</p>
+
+      +                  <p className="text-xs mt-1
+      text-yellow-500/80">{formatDistanceToNow(new Date(message.timestamp), {
+      addSuffix: true })}</p>
+
+      +                </div>
+                     </div>
+      -            </div>
+
+      +            </React.Fragment>
+                 );
+               }
+       
+      @@ -35,28 +66,33 @@
+                 return (
+      -            <div data-message-id={message.id} key={message.id}
+      className="text-center text-xs text-muted-foreground">
+
+      -              <div className="flex items-center justify-center gap-2">
+
+      -                <Info className="w-3.5 h-3.5" />
+
+      -                <span>{message.text} &middot; {formatDistanceToNow(new
+      Date(message.timestamp), { addSuffix: true })}</span>
+
+      +            <React.Fragment key={message.id}>
+
+      +              {journeySeparator}
+
+      +              <div data-message-id={message.id} className="text-center
+      text-xs text-muted-foreground">
+
+      +                <div className="flex items-center justify-center gap-2">
+
+      +                  <Info className="w-3.5 h-3.5" />
+
+      +                  <span>{message.text} &middot; {formatDistanceToNow(new
+      Date(message.timestamp), { addSuffix: true })}</span>
+
+      +                </div>
+                     </div>
+      -            </div>
+
+      +            </React.Fragment>
+                 );
+               }
+       
+               // Default: 'comment' type
+               return (
+      -          <div
+
+      -            key={message.id}
+
+      -            data-message-id={message.id}
+
+      -            className={cn(
+
+      -              "flex items-start gap-3",
+
+      -              isFromUser ? "flex-row-reverse" : "flex-row"
+
+      -            )}
+
+      -          >
+
+      -            <Avatar className="h-9 w-9 border">
+
+      -              <AvatarImage src={isFromUser ? undefined : contact.avatar}
+      alt={contact.name} />
+
+      -              <AvatarFallback>{isFromUser ? "You" :
+      contact.name.charAt(0)}</AvatarFallback>
+
+      -            </Avatar>
+
+      -            <div className={cn("flex flex-col gap-1 max-w-[70%]",
+      isFromUser ? "items-end" : "items-start")}>
+
+      -              <div className={cn(
+
+      -                  "p-3 rounded-xl",
+
+      -                  isFromUser ? "bg-primary text-primary-foreground
+      rounded-br-none" : "bg-muted rounded-bl-none"
+
+      -              )}>
+
+      -                <p className="text-sm">{message.text}</p>
+
+      +          <React.Fragment key={message.id}>
+
+      +            {journeySeparator}
+
+      +            <div
+
+      +              data-message-id={message.id}
+
+      +              className={cn(
+
+      +                "flex items-start gap-3",
+
+      +                isFromUser ? "flex-row-reverse" : "flex-row"
+
+      +              )}
+
+      +            >
+
+      +              <Avatar className="h-9 w-9 border">
+
+      +                <AvatarImage src={isFromUser ? undefined :
+      contact.avatar} alt={contact.name} />
+
+      +                <AvatarFallback>{isFromUser ? "You" :
+      contact.name.charAt(0)}</AvatarFallback>
+
+      +              </Avatar>
+
+      +              <div className={cn("flex flex-col gap-1 max-w-[70%]",
+      isFromUser ? "items-end" : "items-start")}>
+
+      +                <div className={cn(
+
+      +                    "p-3 rounded-xl",
+
+      +                    isFromUser ? "bg-primary text-primary-foreground
+      rounded-br-none" : "bg-muted rounded-bl-none"
+
+      +                )}>
+
+      +                  <p className="text-sm">{message.text}</p>
+
+      +                </div>
+
+      +                <p className="text-xs text-muted-foreground">
+
+      +                  {formatDistanceToNow(new Date(message.timestamp), {
+      addSuffix: true })}
+
+      +                </p>
+                     </div>
+      -              <p className="text-xs text-muted-foreground">
+
+      -                {formatDistanceToNow(new Date(message.timestamp), {
+      addSuffix: true })}
+
+      -              </p>
+                   </div>
+      -          </div>
+
+      +          </React.Fragment>
+               );
+             })}
+           </div>
+    patchStrategy: standard-diff
+snapshot:
+  src/pages/Messaging/components/journey-config.ts: null
+  src/pages/Messaging/components/JourneyScrollbar.tsx: >-
+    import React, { useState, useLayoutEffect, useRef, useCallback } from
+    'react';
+
+    import type { Message, JourneyPointType } from '../types';
+
+    import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from
+    '@/components/ui/tooltip';
+
+    import { gsap } from 'gsap';
+
+    import { MessageSquare, ShoppingCart, PackageCheck, AlertCircle, RefreshCw,
+    MailQuestion, type LucideIcon } from 'lucide-react';
+
+    import { cn } from '@/lib/utils';
+
+
+    interface JourneyScrollbarProps {
+      scrollContainerRef: React.RefObject<HTMLDivElement>;
+      journeyPoints: Message[];
+      onDotClick: (messageId: string) => void;
+      onHoverChange?: (isHovering: boolean) => void;
+      showAllTooltips?: boolean;
+    }
+
+
+    const journeyInfoMap: Record<JourneyPointType, { Icon: LucideIcon;
+    textColor: string; bgColor: string; }> = {
+      Consult: { Icon: MessageSquare, textColor: 'text-blue-500', bgColor: 'bg-blue-500' },
+      Order: { Icon: ShoppingCart, textColor: 'text-green-500', bgColor: 'bg-green-500' },
+      Delivered: { Icon: PackageCheck, textColor: 'text-emerald-500', bgColor: 'bg-emerald-500' },
+      Complain: { Icon: AlertCircle, textColor: 'text-red-500', bgColor: 'bg-red-500' },
+      Reorder: { Icon: RefreshCw, textColor: 'text-indigo-500', bgColor: 'bg-indigo-500' },
+      'Follow-up': { Icon: MailQuestion, textColor: 'text-yellow-500', bgColor: 'bg-yellow-500' },
+    };
+
+
+    export const JourneyScrollbar: React.FC<JourneyScrollbarProps> = ({
+      scrollContainerRef,
+      journeyPoints,
+      onDotClick,
+      onHoverChange,
+      showAllTooltips,
+    }) => {
+      const [isOverflowing, setIsOverflowing] = useState(false);
+      const trackRef = useRef<HTMLDivElement>(null);
+      const dotsContainerRef = useRef<HTMLDivElement>(null);
+      const thumbRef = useRef<HTMLDivElement>(null);
+      const isDraggingRef = useRef(false);
+      const dragOffsetY = useRef(0);
+      const activeJourneyPointIdRef = useRef<string | null>(null);
+
+      const updateScrollbar = useCallback(() => {
+        const container = scrollContainerRef.current;
+        if (!container || !trackRef.current || !thumbRef.current) return;
+
+        const { scrollTop, scrollHeight, clientHeight } = container;
+        
+        if (scrollHeight <= clientHeight) {
+          gsap.to(thumbRef.current, { autoAlpha: 0, duration: 0.1 });
+          return;
+        }
+
+        gsap.to(thumbRef.current, { autoAlpha: 1, duration: 0.1 });
+
+        // Calculate proportional thumb height, but cap it at 10% of the container height
+        // to prevent it from looking too long. A minimum of 20px is enforced for usability.
+        const thumbHeight = Math.max(20, Math.min((clientHeight / scrollHeight) * clientHeight, clientHeight * 0.1));
+        const thumbTop = (scrollTop / (scrollHeight - clientHeight)) * (clientHeight - thumbHeight);
+        
+        gsap.to(thumbRef.current, {
+          height: thumbHeight,
+          y: thumbTop,
+          duration: 0.1,
+          ease: 'power1.out',
+        });
+
+        // Active journey point logic
+        const viewportCenter = scrollTop + clientHeight / 2;
+        let closestPointId: string | null = null;
+        let minDistance = Infinity;
+
+        journeyPoints.forEach(point => {
+          const element = container.querySelector(`[data-message-id="${point.id}"]`) as HTMLElement;
+          if (element) {
+            const elementCenter = element.offsetTop + element.offsetHeight / 2;
+            const distance = Math.abs(viewportCenter - elementCenter);
+            if (distance < minDistance) {
+              minDistance = distance;
+              closestPointId = point.id;
+            }
+          }
+        });
+
+        if (closestPointId && activeJourneyPointIdRef.current !== closestPointId) {
+          if (activeJourneyPointIdRef.current) {
+            const oldActiveDot = trackRef.current.querySelector(`[data-dot-id="${activeJourneyPointIdRef.current}"]`);
+            gsap.to(oldActiveDot, { scale: 1, opacity: 0.5, duration: 0.2, ease: 'back.out' });
+          }
+          
+          const newActiveDot = trackRef.current.querySelector(`[data-dot-id="${closestPointId}"]`);
+          if (newActiveDot) {
+            gsap.to(newActiveDot, { scale: 1.75, opacity: 1, duration: 0.2, ease: 'back.out' });       
+            if (isOverflowing) {
+              (newActiveDot as HTMLElement).scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+            }
+          }
+          activeJourneyPointIdRef.current = closestPointId;
+        }
+      }, [scrollContainerRef, journeyPoints, isOverflowing]);
+
+      useLayoutEffect(() => {
+        const container = scrollContainerRef.current;
+        if (container) {
+          const handleScroll = () => {
+            if (!isDraggingRef.current) {
+              updateScrollbar();
+            }
+          };
+          updateScrollbar();
+          container.addEventListener('scroll', handleScroll, { passive: true });
+          return () => container.removeEventListener('scroll', handleScroll);
+        }
+      }, [scrollContainerRef, updateScrollbar]);
+
+      useLayoutEffect(() => {
+        const track = trackRef.current;
+        if (!track || journeyPoints.length === 0) return;
+
+        const MIN_DOT_SPACING = 32; // Corresponds to h-8 in Tailwind
+
+        const checkOverflow = () => {
+          const requiredHeight = journeyPoints.length * MIN_DOT_SPACING;
+          const trackHeight = track.clientHeight;
+          setIsOverflowing(requiredHeight > trackHeight);
+        };
+        
+        checkOverflow();
+        const resizeObserver = new ResizeObserver(() => {
+            checkOverflow();
+            updateScrollbar();
+        });
+        resizeObserver.observe(trackRef.current);
+
+        return () => {
+          resizeObserver.disconnect();
+        };
+      }, [journeyPoints.length, updateScrollbar]);
+
+      const handleMouseMove = useCallback((e: MouseEvent) => {
+        if (!isDraggingRef.current || !scrollContainerRef.current || !trackRef.current || !thumbRef.current) return;
+        
+        e.preventDefault();
+        const container = scrollContainerRef.current;
+        const track = trackRef.current;
+        const thumb = thumbRef.current;
+        
+        const { scrollHeight, clientHeight } = container;
+        const scrollableDist = scrollHeight - clientHeight;
+        if (scrollableDist <= 0) return;
+        
+        const trackRect = track.getBoundingClientRect();
+        const thumbHeight = thumb.offsetHeight;
+        
+        const newThumbTop = e.clientY - trackRect.top - dragOffsetY.current;
+        const clampedThumbTop = Math.max(0, Math.min(newThumbTop, trackRect.height - thumbHeight));
+        
+        const scrollRatio = clampedThumbTop / (trackRect.height - thumbHeight);
+        
+        gsap.to(container, {
+          scrollTop: scrollRatio * scrollableDist,
+          duration: 0,
+          onUpdate: updateScrollbar
+        });
+
+      }, [scrollContainerRef, updateScrollbar]);
+
+      const handleMouseUp = useCallback(() => {
+        isDraggingRef.current = false;
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+        window.removeEventListener('mousemove', handleMouseMove);
+        window.removeEventListener('mouseup', handleMouseUp);
+      }, [handleMouseMove]);
+
+      const handleMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        if (!scrollContainerRef.current || !thumbRef.current) return;
+        
+        isDraggingRef.current = true;
+        const thumbRect = thumbRef.current.getBoundingClientRect();
+        dragOffsetY.current = e.clientY - thumbRect.top;
+        
+        document.body.style.cursor = 'grabbing';
+        document.body.style.userSelect = 'none';
+
+        window.addEventListener('mousemove', handleMouseMove);
+        window.addEventListener('mouseup', handleMouseUp);
+      }, [scrollContainerRef, handleMouseMove, handleMouseUp]);
+      
+      const handleTrackClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+         if (e.target === thumbRef.current || (e.target as HTMLElement).closest('[data-dot-id]')) return;
+
+        const container = scrollContainerRef.current;
+        const track = trackRef.current;
+        if (!container || !track) return;
+        
+        const { scrollHeight, clientHeight } = container;
+        const trackRect = track.getBoundingClientRect();
+        const clickY = e.clientY - trackRect.top;
+        
+        const thumbHeight = Math.max(20, Math.min((clientHeight / scrollHeight) * clientHeight, clientHeight * 0.1));
+        const clickRatio = (clickY - thumbHeight / 2) / (trackRect.height - thumbHeight);
+        
+        gsap.to(container, {
+          scrollTop: (scrollHeight - clientHeight) * Math.max(0, Math.min(1, clickRatio)),
+          duration: 0.3,
+          ease: 'power2.out'
+        });
+        
+      }, [scrollContainerRef]);
+
+      return (
+        <div
+          ref={trackRef}
+          className="absolute top-0 right-0 h-full w-8 py-2 z-10 cursor-pointer"
+          onMouseEnter={() => onHoverChange?.(true)}
+          onMouseLeave={() => onHoverChange?.(false)}
+          onMouseDown={handleTrackClick}
+        >
+            <TooltipProvider delayDuration={100}>
+                <div className="relative h-full w-full">
+                    {/* Track Line */}
+                    <div className="track-line absolute top-0 left-1/2 -translate-x-1/2 h-full w-1 bg-border rounded-full" />
+
+                    {/* Thumb */}
+                    <div
+                        ref={thumbRef}
+                        className="absolute left-1/2 -translate-x-1/2 w-2 bg-muted-foreground hover:bg-muted-foreground/80 rounded-sm cursor-grab active:cursor-grabbing opacity-0"
+                        onMouseDown={handleMouseDown}
+                    />
+
+                    {/* Journey Dots */}
+                    <div
+                      ref={dotsContainerRef}
+                      className={cn(
+                        // This container is click-through so the thumb and track can be interactive.
+                        // Individual dots will re-enable pointer events for themselves.
+                        "absolute top-0 left-0 w-full h-full pointer-events-none",
+                        isOverflowing 
+                          ? "overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+                          : "flex flex-col"
+                      )}
+                    >
+                      {journeyPoints.map((point) => {
+                        const journeyInfo = point.journeyPoint ? journeyInfoMap[point.journeyPoint] : null;
+                        return (
+                          <div 
+                            key={point.id} 
+                            className={cn("flex items-center justify-center", isOverflowing ? "h-8 flex-shrink-0" : "flex-1")}
+                          >
+                              <Tooltip open={showAllTooltips}>
+                                  <TooltipTrigger asChild>
+                                    <button
+                                        data-dot-id={point.id}
+                                        onClick={(e) => { e.stopPropagation(); onDotClick(point.id); }}
+                                        // Dots are on top of the thumb and are clickable.
+                                        className={cn("relative z-10 pointer-events-auto w-2.5 h-2.5 opacity-50 rounded-full focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-background transition-all duration-200 hover:scale-125 hover:opacity-100",
+                                            journeyInfo ? journeyInfo.bgColor : 'bg-primary'
+                                        )}
+                                        aria-label={`Jump to message: ${point.text.substring(0, 30)}...`}
+                                    />
+                                  </TooltipTrigger>
+                                  <TooltipContent side="left" className="text-sm p-2 w-auto max-w-xs shadow-xl" sideOffset={8}>
+                                    {journeyInfo && <div className="flex items-center gap-2 font-semibold mb-1.5"><journeyInfo.Icon className={cn("w-4 h-4", journeyInfo.textColor)} /><span>{point.journeyPoint}</span></div>}
+                                    <p className="line-clamp-3 text-muted-foreground">{point.text}</p>
+                                  </TooltipContent>
+                              </Tooltip>
+                          </div>
+                        );
+                      })}
+                    </div>
+                </div>
+            </TooltipProvider>
+        </div>
+      );
+    };
+  src/pages/Messaging/components/ActivityFeed.tsx: >
+    import React, { forwardRef } from 'react';
+
+    import { useMessagingStore } from '../store/messaging.store';
+
+    import type { Message, Contact, Assignee } from '../types';
+
+    import { cn } from '@/lib/utils';
+
+    import { Avatar, AvatarFallback, AvatarImage } from
+    '@/components/ui/avatar';
+
+    import { formatDistanceToNow } from 'date-fns';
+
+    import { StickyNote, Info } from 'lucide-react';
+
+
+    interface ActivityFeedProps {
+      messages: Message[];
+      contact: Contact;
+    }
+
+
+    export const ActivityFeed = forwardRef<HTMLDivElement, ActivityFeedProps>(({
+    messages, contact }, ref) => {
+      const getAssigneeById = useMessagingStore(state => state.getAssigneeById);
+
+      return (
+        <div ref={ref} className="flex-1 overflow-y-auto p-6 space-y-6 no-scrollbar">
+          {messages.map((message) => {
+            const assignee = message.userId ? getAssigneeById(message.userId) : null;
+            
+            if (message.type === 'system') {
+              return (
+                <div key={message.id} data-message-id={message.id} className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+                  <Info className="w-3.5 h-3.5" />
+                  <p>{message.text}</p>
+                  <p className="whitespace-nowrap">{formatDistanceToNow(new Date(message.timestamp), { addSuffix: true })}</p>
+                </div>
+              );
+            }
+
+            if (message.type === 'note') {
+              return (
+                <div key={message.id} data-message-id={message.id} className="flex items-start gap-3">
+                  <div className="p-1.5 bg-yellow-400/20 text-yellow-600 rounded-full mt-1.5">
+                    <StickyNote className="w-4 h-4" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <p className="font-semibold text-sm">{assignee?.name || 'User'}</p>
+                      <p className="text-xs text-muted-foreground">{formatDistanceToNow(new Date(message.timestamp), { addSuffix: true })}</p>
+                    </div>
+                    <div className="bg-card border rounded-lg p-3 text-sm">
+                      <p>{message.text}</p>
+                    </div>
+                  </div>
+                </div>
+              );
+            }
+
+            // Default: 'comment' type
+            return (
+              <div key={message.id} data-message-id={message.id} className={cn(
+                "flex items-end gap-3",
+                message.sender === 'user' ? 'justify-end' : 'justify-start'
+              )}>
+                {message.sender === 'contact' && (
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage src={contact.avatar} />
+                    <AvatarFallback>{contact.name.charAt(0)}</AvatarFallback>
+                  </Avatar>
+                )}
+                <div className={cn(
+                  "max-w-xs md:max-w-md lg:max-w-lg p-3 rounded-2xl",
+                  message.sender === 'user' 
+                    ? 'bg-primary text-primary-foreground rounded-br-none' 
+                    : 'bg-card border rounded-bl-none'
+                )}>
+                  <p className="text-sm">{message.text}</p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      );
+    });
+
+
+    ActivityFeed.displayName = 'ActivityFeed';
+approved: false
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: undone
+id: 412
