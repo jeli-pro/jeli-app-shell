@@ -26,26 +26,26 @@ export const JourneyScrollbar: React.FC<JourneyScrollbarProps> = ({
   onDotClick,
 }) => {
   const [isOverflowing, setIsOverflowing] = useState(false);
+  const [isTrackHovered, setIsTrackHovered] = useState(false);
   const trackRef = useRef<HTMLDivElement>(null);
   const dotsContainerRef = useRef<HTMLDivElement>(null);
   const thumbRef = useRef<HTMLDivElement>(null);
-  const progressRef = useRef<HTMLDivElement>(null);
   const isDraggingRef = useRef(false);
   const dragOffsetY = useRef(0);
   const activeJourneyPointIdRef = useRef<string | null>(null);
 
   const updateScrollbar = useCallback(() => {
     const container = scrollContainerRef.current;
-    if (!container || !trackRef.current || !thumbRef.current || !progressRef.current) return;
+    if (!container || !trackRef.current || !thumbRef.current) return;
 
     const { scrollTop, scrollHeight, clientHeight } = container;
     
     if (scrollHeight <= clientHeight) {
-      gsap.to([thumbRef.current, progressRef.current], { autoAlpha: 0, duration: 0.1 });
+      gsap.to(thumbRef.current, { autoAlpha: 0, duration: 0.1 });
       return;
     }
 
-    gsap.to([thumbRef.current, progressRef.current], { autoAlpha: 1, duration: 0.1 });
+    gsap.to(thumbRef.current, { autoAlpha: 1, duration: 0.1 });
 
     // Calculate proportional thumb height, but cap it at 10% of the container height
     // to prevent it from looking too long. A minimum of 20px is enforced for usability.
@@ -57,12 +57,6 @@ export const JourneyScrollbar: React.FC<JourneyScrollbarProps> = ({
       y: thumbTop,
       duration: 0.1,
       ease: 'power1.out',
-    });
-    
-    gsap.to(progressRef.current, {
-        height: thumbTop,
-        duration: 0.1,
-        ease: 'power1.out'
     });
 
     // Active journey point logic
@@ -216,18 +210,14 @@ export const JourneyScrollbar: React.FC<JourneyScrollbarProps> = ({
     <div
       ref={trackRef}
       className="absolute top-0 right-0 h-full w-8 py-2 z-10 cursor-pointer"
+      onMouseEnter={() => setIsTrackHovered(true)}
+      onMouseLeave={() => setIsTrackHovered(false)}
       onMouseDown={handleTrackClick}
     >
         <TooltipProvider delayDuration={100}>
             <div className="relative h-full w-full">
                 {/* Track Line */}
                 <div className="track-line absolute top-0 left-1/2 -translate-x-1/2 h-full w-1 bg-border rounded-full" />
-                
-                {/* Progress Fill */}
-                <div 
-                  ref={progressRef}
-                  className="absolute top-0 left-1/2 -translate-x-1/2 w-1 bg-primary opacity-0"
-                />
 
                 {/* Thumb */}
                 <div
@@ -240,7 +230,9 @@ export const JourneyScrollbar: React.FC<JourneyScrollbarProps> = ({
                 <div
                   ref={dotsContainerRef}
                   className={cn(
-                    "absolute top-0 left-0 w-full h-full",
+                    // This container is click-through so the thumb and track can be interactive.
+                    // Individual dots will re-enable pointer events for themselves.
+                    "absolute top-0 left-0 w-full h-full pointer-events-none",
                     isOverflowing 
                       ? "overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
                       : "flex flex-col"
@@ -253,12 +245,13 @@ export const JourneyScrollbar: React.FC<JourneyScrollbarProps> = ({
                         key={point.id} 
                         className={cn("flex items-center justify-center", isOverflowing ? "h-8 flex-shrink-0" : "flex-1")}
                       >
-                          <Tooltip>
+                          <Tooltip open={isTrackHovered}>
                               <TooltipTrigger asChild>
                                 <button
                                     data-dot-id={point.id}
                                     onClick={(e) => { e.stopPropagation(); onDotClick(point.id); }}
-                                    className={cn("w-2.5 h-2.5 opacity-50 rounded-full focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-background transition-all duration-200 hover:scale-125 hover:opacity-100",
+                                    // Dots are on top of the thumb and are clickable.
+                                    className={cn("relative z-10 pointer-events-auto w-2.5 h-2.5 opacity-50 rounded-full focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-background transition-all duration-200 hover:scale-125 hover:opacity-100",
                                         journeyInfo ? journeyInfo.bgColor : 'bg-primary'
                                     )}
                                     aria-label={`Jump to message: ${point.text.substring(0, 30)}...`}
