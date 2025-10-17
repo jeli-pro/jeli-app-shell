@@ -36,7 +36,7 @@
     "src/pages/Messaging/components/JourneyScrollbar.tsx",
     "src/pages/Messaging/components/TaskDetail.tsx",
     "src/pages/Messaging/components/TaskList.tsx",
-    "src/pages/Messaging/data/mockData.ts",
+    // "src/pages/Messaging/data/mockData.ts",
     "src/pages/Messaging/index.tsx",
     "src/pages/Messaging/store/messaging.store.ts",
     "src/pages/Messaging/types.ts"

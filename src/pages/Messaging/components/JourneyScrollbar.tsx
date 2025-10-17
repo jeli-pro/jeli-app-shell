@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useLayoutEffect, useRef, useCallback } from 'react';
 import type { Message, JourneyPointType } from '../types';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { gsap } from 'gsap';
@@ -132,7 +132,7 @@ export const JourneyScrollbar: React.FC<JourneyScrollbarProps> = ({
 
   }, [scrollContainerRef, journeyPoints]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const container = scrollContainerRef.current;
     if (container) {
       const handleScroll = () => {
@@ -147,9 +147,9 @@ export const JourneyScrollbar: React.FC<JourneyScrollbarProps> = ({
     }
   }, [scrollContainerRef, updateScrollbar, calculateDotPositions]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const container = scrollContainerRef.current;
-    if (!container) return;
+    if (!container || !trackRef.current) return;
 
     const observerCallback = () => {
         updateScrollbar();
@@ -158,7 +158,7 @@ export const JourneyScrollbar: React.FC<JourneyScrollbarProps> = ({
 
     const resizeObserver = new ResizeObserver(observerCallback);
     resizeObserver.observe(container);
-    if(trackRef.current) resizeObserver.observe(trackRef.current);
+    resizeObserver.observe(trackRef.current);
 
     const mutationObserver = new MutationObserver(observerCallback);
     mutationObserver.observe(container, { childList: true, subtree: true, characterData: true });

@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useLayoutEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { useMessagingStore } from '../store/messaging.store';
 import { ActivityFeed } from './ActivityFeed';
@@ -28,6 +28,15 @@ export const TaskDetail: React.FC = () => {
   const isLocked = !!task?.activeHandlerId && task.activeHandlerId !== currentUserId;
   const inputAreaRef = useRef<HTMLDivElement>(null);
   const isFirstRender = useRef(true);
+
+  useLayoutEffect(() => {
+    // On conversation change, scroll to the bottom of the message list.
+    // This ensures the user sees the latest message and that the scrollbar
+    // component has the correct scrollHeight to calculate its visibility.
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+    }
+  }, [taskId]);
 
   useEffect(() => {
     if (!inputAreaRef.current) return;
@@ -124,11 +133,13 @@ export const TaskDetail: React.FC = () => {
             onRequestTakeover={handleRequestTakeover}
         />
       )}
-      <div 
-        ref={scrollContainerRef} 
-        className="relative flex-1 overflow-y-auto pr-8 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
-      >
-        <ActivityFeed messages={task.messages} contact={task.contact} />
+      <div className="relative flex-1 overflow-hidden">
+        <div
+          ref={scrollContainerRef}
+          className="h-full overflow-y-auto pr-8 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+        >
+          <ActivityFeed messages={task.messages} contact={task.contact} />
+        </div>
         {journeyPoints.length > 0 && (
             <JourneyScrollbar
                 scrollContainerRef={scrollContainerRef}

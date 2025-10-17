@@ -1,0 +1,299 @@
+uuid: d091a182-1d5d-4a11-a83d-3657731976eb
+projectId: jeli-app-shell
+createdAt: '2025-10-17T11:04:08.301Z'
+gitCommitMsg: >-
+  fix(messaging): refactor TaskDetail DOM for fixed JourneyScrollbar
+
+  The JourneyScrollbar was previously rendered inside the scrollable container
+  it was meant to control. This caused a rendering issue where the scrollbar
+  would scroll along with the content, making it disappear when scrolled down.
+
+  This commit refactors the DOM structure of `TaskDetail.tsx` by introducing a
+  new non-scrolling wrapper. The scrollable content area and the
+  JourneyScrollbar are now siblings within this wrapper. This decouples the
+  scrollbar's positioning from the content's scroll state, ensuring it acts as a
+  persistent overlay that is always visible, correctly taking up the full height
+  of the viewport.
+promptSummary: >-
+  The user is reporting that the JourneyScrollbar is not behaving as a fixed
+  overlay but is instead scrolling with the content, making it visible only at
+  the top of the message thread.
+reasoning:
+  - >-
+    You've nailed it. The problem is indeed the DOM structure. Placing an
+    absolutely positioned custom scrollbar *inside* the very container that
+    scrolls is a recipe for trouble. The browser is likely painting our
+    scrollbar as part of the scrollable content, so when you scroll down, the
+    scrollbar itself gets scrolled up and out of view. We only see it when we
+    scroll back to the top.
+  - >-
+    The fix is to architecturally separate the scrollbar from the content. I'll
+    restructure the `TaskDetail` component by wrapping the scrollable area and
+    the `JourneyScrollbar` in a new, non-scrolling parent container.
+  - >-
+    1.  A new `div` will act as a positioning context (`position: relative`) and
+    will fill the available space.
+  - >-
+    2.  Inside this wrapper, the message list will be in its own `div` that is
+    set to `h-full` and `overflow-y-auto`.
+  - >-
+    3.  The `JourneyScrollbar` will be a sibling to the message list `div`,
+    positioned absolutely relative to the new wrapper.
+  - >-
+    This ensures the `JourneyScrollbar` is an overlay on top of the scrollable
+    viewport, completely independent of the content's scroll position. It will
+    always be visible and correctly aligned to the viewport's height.
+operations:
+  - type: write
+    path: src/pages/Messaging/components/TaskDetail.tsx
+    content: >+
+      --- src/pages/Messaging/components/TaskDetail.tsx
+
+      +++ src/pages/Messaging/components/TaskDetail.tsx
+
+      @@ -107,20 +107,20 @@
+                   onRequestTakeover={handleRequestTakeover}
+               />
+             )}
+      -      <div 
+
+      -        ref={scrollContainerRef} 
+
+      -        className="relative flex-1 overflow-y-auto pr-8
+      [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none]
+      [scrollbar-width:none]"
+
+      -      >
+
+      -        <ActivityFeed messages={task.messages} contact={task.contact} />
+
+      +      <div className="relative flex-1 overflow-hidden">
+
+      +        <div
+
+      +          ref={scrollContainerRef}
+
+      +          className="h-full overflow-y-auto pr-8
+      [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none]
+      [scrollbar-width:none]"
+
+      +        >
+
+      +          <ActivityFeed messages={task.messages} contact={task.contact}
+      />
+
+      +        </div>
+               {journeyPoints.length > 0 && (
+                   <JourneyScrollbar
+                       scrollContainerRef={scrollContainerRef}
+                       journeyPoints={journeyPoints}
+                       onDotClick={handleDotClick}
+                   />
+               )}
+             </div>
+       
+             {/* Input Form */}
+
+    patchStrategy: standard-diff
+snapshot:
+  src/pages/Messaging/components/TaskDetail.tsx: >-
+    import React, { useRef, useEffect, useLayoutEffect } from 'react';
+
+    import { useParams } from 'react-router-dom';
+
+    import { useMessagingStore } from '../store/messaging.store';
+
+    import { ActivityFeed } from './ActivityFeed';
+
+    import { Button } from '@/components/ui/button';
+
+    import { Textarea } from '@/components/ui/textarea';
+
+    import { Paperclip, SendHorizontal, Smile, StickyNote } from 'lucide-react';
+
+    import { Tabs, TabsContent, TabsList, TabsTrigger } from
+    "@/components/ui/tabs";
+
+    import { TakeoverBanner } from './TakeoverBanner';
+
+    import { useToast } from '@/components/ui/toast';
+
+    import { gsap } from 'gsap';
+
+    import { useAppShellStore } from '@/store/appShell.store';
+
+    import { JourneyScrollbar } from './JourneyScrollbar';
+
+
+
+    export const TaskDetail: React.FC = () => {
+      const { conversationId: taskId } = useParams<{ conversationId: string }>();
+      const { show } = useToast();
+      const { getTaskById, takeOverTask, requestAndSimulateTakeover } = useMessagingStore();
+      const reducedMotion = useAppShellStore(s => s.reducedMotion);
+      
+      const task = taskId ? getTaskById(taskId) : undefined;
+
+      // In a real app, this would come from the auth store
+      const currentUserId = 'user-1'; 
+
+      const scrollContainerRef = useRef<HTMLDivElement>(null);
+      const isLocked = !!task?.activeHandlerId && task.activeHandlerId !== currentUserId;
+      const inputAreaRef = useRef<HTMLDivElement>(null);
+      const isFirstRender = useRef(true);
+
+      useLayoutEffect(() => {
+        // On conversation change, scroll to the bottom of the message list.
+        // This ensures the user sees the latest message and that the scrollbar
+        // component has the correct scrollHeight to calculate its visibility.
+        if (scrollContainerRef.current) {
+          scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+        }
+      }, [taskId]);
+
+      useEffect(() => {
+        if (!inputAreaRef.current) return;
+
+        const initialBorderWidth = '1px'; // from 'border-t'
+        const initialPadding = '1rem';    // from 'p-4'
+
+        const target = isLocked
+          ? {
+              y: 20,
+              opacity: 0,
+              maxHeight: 0,
+              paddingTop: 0,
+              paddingBottom: 0,
+              borderTopWidth: 0,
+              pointerEvents: 'none' as const,
+            }
+          : {
+              y: 0,
+              opacity: 1,
+              maxHeight: 500, // Ample room for the input
+              paddingTop: initialPadding,
+              paddingBottom: initialPadding,
+              borderTopWidth: initialBorderWidth,
+              pointerEvents: 'auto' as const,
+            };
+
+        if (reducedMotion) {
+          gsap.set(inputAreaRef.current, target);
+          return;
+        }
+        
+        if (isFirstRender.current) {
+          gsap.set(inputAreaRef.current, target);
+          isFirstRender.current = false;
+        } else {
+          gsap.to(inputAreaRef.current, {
+            ...target,
+            duration: 0.35,
+            ease: 'power2.inOut',
+          });
+        }
+      }, [isLocked, reducedMotion]);
+
+      if (!taskId || !task) {
+        return (
+            <div className="h-full flex flex-col items-center justify-center p-6 bg-background">
+                <p className="text-muted-foreground">Select a task to see its details.</p>
+            </div>
+        );
+      }
+
+      const journeyPoints = task.messages.filter(m => m.journeyPoint);
+
+      const handleDotClick = (messageId: string) => {
+        const container = scrollContainerRef.current;
+        if (!container) return;
+        
+        const element = container.querySelector(`[data-message-id="${messageId}"]`);
+        
+        if (element) {
+          // Using 'center' to avoid the message being at the very top/bottom of the view
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      };
+
+      const handleTakeOver = () => {
+        takeOverTask(task.id, currentUserId);
+        show({
+            variant: 'success',
+            title: 'Task Taken Over',
+            message: `You are now handling the task from ${task.contact.name}.`
+        });
+      };
+
+      const handleRequestTakeover = () => {
+        requestAndSimulateTakeover(task.id, currentUserId);
+        if (task.activeHandler) {
+            show({
+                variant: 'default',
+                title: 'Request Sent',
+                message: `A takeover request has been sent to ${task.activeHandler.name}.`
+            });
+        }
+      };
+
+      return (
+        <div className="h-full flex flex-col bg-background overflow-hidden">
+          {isLocked && task.activeHandler && (
+            <TakeoverBanner
+                activeHandler={task.activeHandler}
+                isRequesting={!!task.takeoverRequested}
+                onTakeOver={handleTakeOver}
+                onRequestTakeover={handleRequestTakeover}
+            />
+          )}
+          <div 
+            ref={scrollContainerRef} 
+            className="relative flex-1 overflow-y-auto pr-8 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+          >
+            <ActivityFeed messages={task.messages} contact={task.contact} />
+            {journeyPoints.length > 0 && (
+                <JourneyScrollbar
+                    scrollContainerRef={scrollContainerRef}
+                    journeyPoints={journeyPoints}
+                    onDotClick={handleDotClick}
+                />
+            )}
+          </div>
+
+          {/* Input Form */}
+          <div ref={inputAreaRef} className="p-4 border-t flex-shrink-0 bg-background/50">
+            <Tabs defaultValue="comment" className="w-full" >
+              <TabsList className="grid w-full grid-cols-2 mb-2">
+                <TabsTrigger value="comment" disabled={isLocked}>Comment</TabsTrigger>
+                <TabsTrigger value="note" disabled={isLocked}><StickyNote className="w-4 h-4 mr-2" />Internal Note</TabsTrigger>
+              </TabsList>
+              <TabsContent value="comment">
+                 <div className="relative">
+                    <Textarea placeholder={isLocked ? "Take over to reply..." : `Reply to ${task.contact.name}...`} className="pr-24 min-h-[52px]" disabled={isLocked} />
+                    <div className="absolute right-2 top-2 flex items-center gap-1">
+                        <Button variant="ghost" size="icon" className="rounded-full h-8 w-8" disabled={isLocked}><Smile className="w-4 h-4" /></Button>
+                        <Button variant="ghost" size="icon" className="rounded-full h-8 w-8" disabled={isLocked}><Paperclip className="w-4 h-4" /></Button>
+                        <Button size="icon" className="rounded-full h-8 w-8" disabled={isLocked}><SendHorizontal className="w-4 h-4" /></Button>
+                    </div>
+                </div>
+              </TabsContent>
+              <TabsContent value="note">
+                <div className="relative">
+                    <Textarea placeholder={isLocked ? "Take over to add a note..." : "Add an internal note..."} className="pr-24 min-h-[52px] bg-yellow-400/10 border-yellow-400/30 focus-visible:ring-yellow-500" disabled={isLocked} />
+                    <div className="absolute right-2 top-2 flex items-center gap-1">
+                        <Button size="icon" className="rounded-full h-8 w-8" disabled={isLocked}><SendHorizontal className="w-4 h-4" /></Button>
+                    </div>
+                </div>
+              </TabsContent>
+            </Tabs>
+          </div>
+        </div>
+      );
+    };
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 402
