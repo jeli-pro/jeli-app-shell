@@ -29,6 +29,12 @@ modify animated tab switcher: while user switch tabs, the content should gsap sl
 
 ===
 
+msssage page : message thread: we need custom scrollbar component where each message is represented by a clickable dot on the track. Each dot should show a preview of the message on hover and scroll the main content to that message when clicked.
+
+so it’s effectively a synthetic, content-aware minimap/scrollbar hybrid: it gives both continuous scrolling (via the handle) and discrete navigation (via the dots).
+
+=== DONE
+
 message page : message thread: bottom message input area should animate slide in/up responding to thread locked state
 
 ===

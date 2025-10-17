@@ -11,7 +11,6 @@ import type { DataItem, SortableField } from '../types'
 import { EmptyState } from './EmptyState'
 import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
 import {
-  useDataToRender,
   useSelectedItem,
 } from '../store/dataDemo.store'
 import { capitalize } from '@/lib/utils'
@@ -25,16 +24,14 @@ import {
 } from './shared/DataItemParts'
 import { AddDataItemCta } from './shared/AddDataItemCta'
 
-export function DataTableView() {
+export function DataTableView({ data }: { data: DataItem[] }) {
   const {
     sortConfig,
     setTableSort,
     groupBy,
-    activeGroupTab,
     onItemSelect,
     itemId,
   } = useAppViewManager();
-  const data = useDataToRender(groupBy, activeGroupTab);
   const selectedItem = useSelectedItem(itemId);
 
   const tableRef = useRef<HTMLTableElement>(null)

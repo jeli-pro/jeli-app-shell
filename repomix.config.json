@@ -41,7 +41,7 @@
     "src/pages/DataDemo/components/DataTableView.tsx",
     "src/pages/DataDemo/index.tsx",
     "src/pages/DataDemo/store/dataDemo.store.tsx",
-    "src/pages/Messaging/components/MessagingContent.tsx"
+    "src/pages/DataDemo/types.ts"
     //
   ],
   "ignore": {

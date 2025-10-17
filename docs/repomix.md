@@ -15,9 +15,7 @@ src/
       store/
         dataDemo.store.tsx
       index.tsx
-    Messaging/
-      components/
-        MessagingContent.tsx
+      types.ts
 ```
 
 # Files
@@ -190,6 +188,69 @@ export const useSelectedItem = (itemId?: string) => {
 };
 ```
 
+## File: src/pages/DataDemo/types.ts
+```typescript
+export type ViewMode = 'list' | 'cards' | 'grid' | 'table'
+
+export type GroupableField = 'status' | 'priority' | 'category'
+
+export type SortableField = 'title' | 'status' | 'priority' | 'updatedAt' | 'assignee.name' | 'metrics.views' | 'metrics.completion' | 'createdAt'
+export type SortDirection = 'asc' | 'desc'
+export interface SortConfig {
+  key: SortableField
+  direction: SortDirection
+}
+
+export interface DataItem {
+  id: string
+  title: string
+  description: string
+  category: string
+  status: 'active' | 'pending' | 'completed' | 'archived'
+  priority: 'low' | 'medium' | 'high' | 'critical'
+  assignee: {
+    name: string
+    avatar: string
+    email: string
+  }
+  metrics: {
+    views: number
+    likes: number
+    shares: number
+    completion: number
+  }
+  tags: string[]
+  createdAt: string
+  updatedAt: string
+  dueDate?: string
+  thumbnail?: string
+  content?: {
+    summary: string
+    details: string
+    attachments?: Array<{
+      name: string
+      type: string
+      size: string
+      url: string
+    }>
+  }
+}
+
+export interface ViewProps {
+  data: DataItem[] | Record<string, DataItem[]>
+  onItemSelect: (item: DataItem) => void
+  selectedItem: DataItem | null
+  isGrid?: boolean
+
+  // Props for table view specifically
+  sortConfig?: SortConfig | null
+  onSort?: (field: SortableField) => void
+}
+
+export type Status = DataItem['status']
+export type Priority = DataItem['priority']
+```
+
 ## File: src/components/ui/animated-tabs.tsx
 ```typescript
 "use client"
@@ -349,71 +410,6 @@ AnimatedTabs.displayName = "AnimatedTabs"
 export { AnimatedTabs }
 ```
 
-## File: src/pages/Messaging/components/MessagingContent.tsx
-```typescript
-import React, { useState, useMemo } from 'react';
-import { useMessagingStore } from '../store/messaging.store';
-import { ContactInfoPanel } from './ContactInfoPanel';
-import { AIInsightsPanel } from './AIInsightsPanel';
-import { ActivityPanel } from './ActivityPanel';
-import { NotesPanel } from './NotesPanel';
-import { TaskHeader } from './TaskHeader';
-import { AnimatedTabs } from '@/components/ui/animated-tabs';
-import { TechOrbitDisplay } from '@/components/effects/OrbitingCircles';
-
-interface MessagingContentProps {
-  conversationId?: string;
-}
-
-export const MessagingContent: React.FC<MessagingContentProps> = ({ conversationId }) => {
-  const [activeTab, setActiveTab] = useState('contact');
-  const task = useMessagingStore(state => conversationId ? state.getTaskById(conversationId) : undefined);
-  
-  const tabs = useMemo(() => [
-    { id: 'contact', label: 'Contact' },
-    { id: 'ai', label: 'AI Insights' },
-    { id: 'activity', label: 'Activity' },
-    { id: 'notes', label: 'Notes' },
-  ], []);
-
-  if (!task) {
-    return (
-      <div className="h-full flex-1 flex flex-col items-center justify-center bg-background p-6 relative overflow-hidden">
-        <TechOrbitDisplay text="Context" />
-        <div className="text-center z-10 bg-background/50 backdrop-blur-sm p-6 rounded-lg">
-            <h3 className="mt-4 text-lg font-medium">Select a Task</h3>
-            <p className="mt-1 text-sm text-muted-foreground">
-                Task details and contact information will appear here.
-            </p>
-        </div>
-      </div>
-    );
-  }
-  
-  return (
-    <div className="h-full flex-1 flex flex-col bg-background overflow-hidden" data-testid="messaging-content-scroll-pane">
-      <div className="flex-shrink-0 border-b p-6">
-        <TaskHeader task={task} />
-      </div>
-      <AnimatedTabs 
-        tabs={tabs} 
-        activeTab={activeTab} 
-        onTabChange={setActiveTab} 
-        size="sm" 
-        className="px-6 border-b flex-shrink-0"
-        wrapperClassName="flex-1 flex flex-col min-h-0"
-        contentClassName="flex-1 min-h-0"
-      >
-        <div className="p-6 h-full overflow-y-auto"><ContactInfoPanel contact={task.contact} /></div>
-        <div className="p-6 h-full overflow-y-auto"><AIInsightsPanel task={task} /></div>
-        <div className="p-6 h-full overflow-y-auto"><ActivityPanel contact={task.contact} /></div>
-        <div className="p-6 h-full overflow-y-auto"><NotesPanel contact={task.contact} /></div>
-      </AnimatedTabs>
-    </div>
-  );
-};
-```
-
 ## File: src/hooks/useAppViewManager.hook.ts
 ```typescript
 import { useMemo, useCallback, useEffect, useRef } from 'react';
@@ -460,6 +456,10 @@ export function useAppViewManager() {
   const sidePane = searchParams.get('sidePane');
   const right = searchParams.get('right');
   const messagingView = searchParams.get('messagingView') as TaskView | null;
+  const q = searchParams.get('q');
+  const status = searchParams.get('status');
+  const priority = searchParams.get('priority');
+  const sort = searchParams.get('sort');
 
   const { bodyState, sidePaneContent } = useMemo(() => {
     const validPanes: AppShellState['sidePaneContent'][] = ['details', 'settings', 'main', 'toaster', 'notifications', 'dataDemo', 'messaging'];
@@ -509,20 +509,20 @@ export function useAppViewManager() {
 	const activeGroupTab = useMemo(() => searchParams.get('tab') || 'all', [searchParams]);
 	const filters = useMemo<FilterConfig>(
 		() => ({
-			searchTerm: searchParams.get('q') || '',
-			status: (searchParams.get('status')?.split(',') || []).filter(Boolean) as Status[],
-			priority: (searchParams.get('priority')?.split(',') || []).filter(Boolean) as Priority[],
+			searchTerm: q || '',
+			status: (status?.split(',') || []).filter(Boolean) as Status[],
+			priority: (priority?.split(',') || []).filter(Boolean) as Priority[],
 		}),
-		[searchParams],
+		[q, status, priority],
 	);
 	const sortConfig = useMemo<SortConfig | null>(() => {
-		const sortParam = searchParams.get('sort');
+		const sortParam = sort;
 		if (!sortParam) return { key: 'updatedAt', direction: 'desc' }; // Default sort
 		if (sortParam === 'default') return null;
 
 		const [key, direction] = sortParam.split('-');
 		return { key: key as SortableField, direction: direction as 'asc' | 'desc' };
-	}, [searchParams]);
+	}, [sort]);
 
   // --- MUTATOR ACTIONS ---
 
@@ -729,7 +729,6 @@ import { useStaggeredAnimation } from '@/hooks/useStaggeredAnimation.motion.hook
 import { EmptyState } from './EmptyState'
 import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
 import { 
-  useDataToRender,
   useSelectedItem,
 } from '../store/dataDemo.store'
 import {
@@ -742,9 +741,8 @@ import {
 } from './shared/DataItemParts'
 import { AddDataItemCta } from './shared/AddDataItemCta'
 
-export function DataListView() {
-  const { groupBy, activeGroupTab, onItemSelect, itemId } = useAppViewManager();
-  const data = useDataToRender(groupBy, activeGroupTab);
+export function DataListView({ data }: { data: DataItem[] }) {
+  const { onItemSelect, itemId } = useAppViewManager();
   const selectedItem = useSelectedItem(itemId);
 
   const listRef = useRef<HTMLDivElement>(null)
@@ -848,7 +846,6 @@ import type { DataItem, SortableField } from '../types'
 import { EmptyState } from './EmptyState'
 import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
 import {
-  useDataToRender,
   useSelectedItem,
 } from '../store/dataDemo.store'
 import { capitalize } from '@/lib/utils'
@@ -862,16 +859,14 @@ import {
 } from './shared/DataItemParts'
 import { AddDataItemCta } from './shared/AddDataItemCta'
 
-export function DataTableView() {
+export function DataTableView({ data }: { data: DataItem[] }) {
   const {
     sortConfig,
     setTableSort,
     groupBy,
-    activeGroupTab,
     onItemSelect,
     itemId,
   } = useAppViewManager();
-  const data = useDataToRender(groupBy, activeGroupTab);
   const selectedItem = useSelectedItem(itemId);
 
   const tableRef = useRef<HTMLTableElement>(null)
@@ -1105,7 +1100,6 @@ import { useStaggeredAnimation } from '@/hooks/useStaggeredAnimation.motion.hook
 import { EmptyState } from './EmptyState'
 import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
 import {
-  useDataToRender,
   useSelectedItem,
 } from '../store/dataDemo.store'
 import {
@@ -1118,9 +1112,8 @@ import {
 } from './shared/DataItemParts'
 import { AddDataItemCta } from './shared/AddDataItemCta'
 
-export function DataCardView({ isGrid = false }: { isGrid?: boolean }) {
-  const { groupBy, activeGroupTab, onItemSelect, itemId } = useAppViewManager();
-  const data = useDataToRender(groupBy, activeGroupTab);
+export function DataCardView({ data, isGrid = false }: { data: DataItem[]; isGrid?: boolean }) {
+  const { onItemSelect, itemId } = useAppViewManager();
   const selectedItem = useSelectedItem(itemId);
 
   const containerRef = useRef<HTMLDivElement>(null)
@@ -1229,7 +1222,7 @@ export function DataCardView({ isGrid = false }: { isGrid?: boolean }) {
 
 ## File: src/pages/DataDemo/index.tsx
 ```typescript
-import { useRef, useEffect, useCallback } from 'react'
+import { useRef, useEffect, useCallback, useMemo } from 'react'
 import {
   Layers, 
   AlertTriangle, 
@@ -1260,12 +1253,11 @@ import { StatCard } from '@/components/shared/StatCard'
 import { AnimatedLoadingSkeleton } from './components/AnimatedLoadingSkeleton'
 import { DataToolbar } from './components/DataToolbar'
 import { mockDataItems } from './data/mockData'
-import type { GroupableField } from './types'
+import type { GroupableField, DataItem } from './types'
 import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
 import { 
-  useDataDemoStore,
-  useGroupTabs,
-  useDataToRender,
+  useDataDemoStore, 
+  useGroupTabs
 } from './store/dataDemo.store'
 
 type Stat = {
@@ -1311,11 +1303,26 @@ function DataDemoContent() {
   }));
 
   const groupTabs = useGroupTabs(groupBy, activeGroupTab);
-  const dataToRender = useDataToRender(groupBy, activeGroupTab);
+  const allItems = useDataDemoStore(s => s.items);
 
-  const groupOptions: { id: GroupableField | 'none'; label: string }[] = [
-    { id: 'none', label: 'None' }, { id: 'status', label: 'Status' }, { id: 'priority', label: 'Priority' }, { id: 'category', label: 'Category' }
-  ]
+  const groupedData = useMemo(() => {
+    if (groupBy === 'none') {
+        return null;
+    }
+    return allItems.reduce((acc, item) => {
+        const groupKey = String(item[groupBy as GroupableField]);
+        if (!acc[groupKey]) {
+            acc[groupKey] = [];
+        }
+        acc[groupKey].push(item);
+        return acc;
+    }, {} as Record<string, DataItem[]>);
+  }, [allItems, groupBy]);
+
+  const groupOptions = useMemo(() => [
+    { id: 'none' as const, label: 'None' }, { id: 'status' as const, label: 'Status' }, { id: 'priority' as const, label: 'Priority' }, { id: 'category' as const, label: 'Category' }
+  ], []);
+
   const statsRef = useRef<HTMLDivElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -1404,6 +1411,45 @@ function DataDemoContent() {
     [isLoading, hasMore, page, setPage],
   );
 
+  const renderViewForData = useCallback((data: DataItem[]) => {
+    switch (viewMode) {
+        case 'table': return <DataTableView data={data} />;
+        case 'cards': return <DataCardView data={data} />;
+        case 'grid': return <DataCardView data={data} isGrid />;
+        case 'list':
+        default:
+            return <DataListView data={data} />;
+    }
+  }, [viewMode]);
+
+  const GroupByDropdown = useCallback(() => (
+    <div className="flex items-center gap-2 shrink-0">
+      <span className="text-sm font-medium text-muted-foreground shrink-0">Group by:</span>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="outline" className="w-[180px] justify-between">
+            {groupOptions.find(o => o.id === groupBy)?.label}
+            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent className="w-[180px]">
+          <DropdownMenuRadioGroup value={groupBy} onValueChange={setGroupBy}>
+            {groupOptions.map(option => (
+              <DropdownMenuRadioItem key={option.id} value={option.id}>
+                {option.label}
+              </DropdownMenuRadioItem>
+            ))}
+          </DropdownMenuRadioGroup>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  ), [groupBy, setGroupBy, groupOptions]);
+
+  const isGroupedView = useMemo(() => 
+    groupBy !== 'none' && groupTabs.length > 1 && groupedData,
+  [groupBy, groupTabs.length, groupedData]);
+
+
   return (
     <PageLayout
       scrollRef={scrollRef}
@@ -1446,58 +1492,43 @@ function DataDemoContent() {
           <DataToolbar />
         </div>
 
-        {/* Group by and Tabs section */}
-        <div className={cn(
-          "flex items-center justify-between gap-4",
-          groupBy !== 'none' && "border-b"
-        )}>
-          {/* Tabs on the left, takes up available space */}
-          {groupBy !== 'none' && groupTabs.length > 1 ? (
-            <AnimatedTabs
-              tabs={groupTabs}
-              activeTab={activeGroupTab}
-              onTabChange={setActiveGroupTab}
-              className="flex-grow"
-            />
-          ) : (
-            <div className="h-[68px] flex-grow" /> // Placeholder for consistent height.
-          )}
-          
-          {/* Group by dropdown on the right */}
-          <div className="flex items-center gap-2 shrink-0">
-            <span className="text-sm font-medium text-muted-foreground shrink-0">Group by:</span>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="w-[180px] justify-between">
-                  {groupOptions.find(o => o.id === groupBy)?.label}
-                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-[180px]">
-                <DropdownMenuRadioGroup value={groupBy} onValueChange={setGroupBy}>
-                  {groupOptions.map(option => (
-                    <DropdownMenuRadioItem key={option.id} value={option.id}>
-                      {option.label}
-                    </DropdownMenuRadioItem>
-                  ))}
-                </DropdownMenuRadioGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </div>
-
         <div className="min-h-[500px]">
-          {isInitialLoading ? <AnimatedLoadingSkeleton viewMode={viewMode} /> : (
-            <div>
-              {viewMode === 'table' ? <DataTableView /> : (
-                <>
-                  {viewMode === 'list' && <DataListView />}
-                  {viewMode === 'cards' && <DataCardView />}
-                  {viewMode === 'grid' && <DataCardView isGrid />}
-                </>
-              )}
-            </div>
-          )}
+          {isInitialLoading 
+            ? <AnimatedLoadingSkeleton viewMode={viewMode} /> 
+            : !isGroupedView ? (
+              // Not grouped view
+              <>
+                <div className="flex items-center justify-between gap-4 h-[68px]">
+                  <div className="flex-grow border-b" /> {/* Mimic tab border */}
+                  <GroupByDropdown />
+                </div>
+                {renderViewForData(allItems)}
+              </>
+            ) : (
+              // Grouped view with AnimatedTabs
+              <div className="relative">
+                <AnimatedTabs
+                  tabs={groupTabs}
+                  activeTab={activeGroupTab}
+                  onTabChange={setActiveGroupTab}
+                  wrapperClassName="flex flex-col"
+                  className="border-b"
+                  contentClassName="pt-6 flex-grow"
+                >
+                  {groupTabs.map(tab => (
+                    <div key={tab.id} className="min-h-[440px]">
+                      {renderViewForData(
+                        tab.id === 'all' ? allItems : groupedData?.[tab.id] || []
+                      )}
+                    </div>
+                  ))}
+                </AnimatedTabs>
+                <div className="absolute top-[14px] right-0">
+                    <GroupByDropdown />
+                </div>
+              </div>
+            )
+          }
         </div>
 
         {/* Loader for infinite scroll */}

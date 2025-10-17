@@ -1,4 +1,4 @@
-import { useRef, useEffect, useCallback } from 'react'
+import { useRef, useEffect, useCallback, useMemo } from 'react'
 import {
   Layers, 
   AlertTriangle, 
@@ -29,12 +29,11 @@ import { StatCard } from '@/components/shared/StatCard'
 import { AnimatedLoadingSkeleton } from './components/AnimatedLoadingSkeleton'
 import { DataToolbar } from './components/DataToolbar'
 import { mockDataItems } from './data/mockData'
-import type { GroupableField } from './types'
+import type { GroupableField, DataItem } from './types'
 import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
 import { 
-  useDataDemoStore,
-  useGroupTabs,
-  useDataToRender,
+  useDataDemoStore, 
+  useGroupTabs
 } from './store/dataDemo.store'
 
 type Stat = {
@@ -80,11 +79,33 @@ function DataDemoContent() {
   }));
 
   const groupTabs = useGroupTabs(groupBy, activeGroupTab);
-  const dataToRender = useDataToRender(groupBy, activeGroupTab);
+  const allItems = useDataDemoStore(s => s.items);
 
-  const groupOptions: { id: GroupableField | 'none'; label: string }[] = [
-    { id: 'none', label: 'None' }, { id: 'status', label: 'Status' }, { id: 'priority', label: 'Priority' }, { id: 'category', label: 'Category' }
-  ]
+  const groupedData = useMemo(() => {
+    if (groupBy === 'none') {
+        return null;
+    }
+    return allItems.reduce((acc, item) => {
+        const groupKey = String(item[groupBy as GroupableField]);
+        if (!acc[groupKey]) {
+            acc[groupKey] = [];
+        }
+        acc[groupKey].push(item);
+        return acc;
+    }, {} as Record<string, DataItem[]>);
+  }, [allItems, groupBy]);
+
+  const dataToRender = useMemo(() => {
+    if (groupBy === 'none' || activeGroupTab === 'all' || !groupedData) {
+      return allItems;
+    }
+    return groupedData[activeGroupTab] || [];
+  }, [groupBy, activeGroupTab, allItems, groupedData]);
+
+  const groupOptions = useMemo(() => [
+    { id: 'none' as const, label: 'None' }, { id: 'status' as const, label: 'Status' }, { id: 'priority' as const, label: 'Priority' }, { id: 'category' as const, label: 'Category' }
+  ], []);
+
   const statsRef = useRef<HTMLDivElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -173,6 +194,45 @@ function DataDemoContent() {
     [isLoading, hasMore, page, setPage],
   );
 
+  const renderViewForData = useCallback((data: DataItem[]) => {
+    switch (viewMode) {
+        case 'table': return <DataTableView data={data} />;
+        case 'cards': return <DataCardView data={data} />;
+        case 'grid': return <DataCardView data={data} isGrid />;
+        case 'list':
+        default:
+            return <DataListView data={data} />;
+    }
+  }, [viewMode]);
+
+  const GroupByDropdown = useCallback(() => (
+    <div className="flex items-center gap-2 shrink-0">
+      <span className="text-sm font-medium text-muted-foreground shrink-0">Group by:</span>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="outline" className="w-[180px] justify-between">
+            {groupOptions.find(o => o.id === groupBy)?.label}
+            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent className="w-[180px]">
+          <DropdownMenuRadioGroup value={groupBy} onValueChange={setGroupBy}>
+            {groupOptions.map(option => (
+              <DropdownMenuRadioItem key={option.id} value={option.id}>
+                {option.label}
+              </DropdownMenuRadioItem>
+            ))}
+          </DropdownMenuRadioGroup>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  ), [groupBy, setGroupBy, groupOptions]);
+
+  const isGroupedView = useMemo(() => 
+    groupBy !== 'none' && groupTabs.length > 1 && groupedData,
+  [groupBy, groupTabs.length, groupedData]);
+
+
   return (
     <PageLayout
       scrollRef={scrollRef}
@@ -215,58 +275,43 @@ function DataDemoContent() {
           <DataToolbar />
         </div>
 
-        {/* Group by and Tabs section */}
-        <div className={cn(
-          "flex items-center justify-between gap-4",
-          groupBy !== 'none' && "border-b"
-        )}>
-          {/* Tabs on the left, takes up available space */}
-          {groupBy !== 'none' && groupTabs.length > 1 ? (
-            <AnimatedTabs
-              tabs={groupTabs}
-              activeTab={activeGroupTab}
-              onTabChange={setActiveGroupTab}
-              className="flex-grow"
-            />
-          ) : (
-            <div className="h-[68px] flex-grow" /> // Placeholder for consistent height.
-          )}
-          
-          {/* Group by dropdown on the right */}
-          <div className="flex items-center gap-2 shrink-0">
-            <span className="text-sm font-medium text-muted-foreground shrink-0">Group by:</span>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="w-[180px] justify-between">
-                  {groupOptions.find(o => o.id === groupBy)?.label}
-                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-[180px]">
-                <DropdownMenuRadioGroup value={groupBy} onValueChange={setGroupBy}>
-                  {groupOptions.map(option => (
-                    <DropdownMenuRadioItem key={option.id} value={option.id}>
-                      {option.label}
-                    </DropdownMenuRadioItem>
-                  ))}
-                </DropdownMenuRadioGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </div>
-
         <div className="min-h-[500px]">
-          {isInitialLoading ? <AnimatedLoadingSkeleton viewMode={viewMode} /> : (
-            <div>
-              {viewMode === 'table' ? <DataTableView /> : (
-                <>
-                  {viewMode === 'list' && <DataListView />}
-                  {viewMode === 'cards' && <DataCardView />}
-                  {viewMode === 'grid' && <DataCardView isGrid />}
-                </>
-              )}
-            </div>
-          )}
+          {isInitialLoading 
+            ? <AnimatedLoadingSkeleton viewMode={viewMode} /> 
+            : !isGroupedView ? (
+              // Not grouped view
+              <>
+                <div className="flex items-center justify-between gap-4 h-[68px]">
+                  <div className="flex-grow border-b" /> {/* Mimic tab border */}
+                  <GroupByDropdown />
+                </div>
+                {renderViewForData(allItems)}
+              </>
+            ) : (
+              // Grouped view with AnimatedTabs
+              <div className="relative">
+                <AnimatedTabs
+                  tabs={groupTabs}
+                  activeTab={activeGroupTab}
+                  onTabChange={setActiveGroupTab}
+                  wrapperClassName="flex flex-col"
+                  className="border-b"
+                  contentClassName="pt-6 flex-grow"
+                >
+                  {groupTabs.map(tab => (
+                    <div key={tab.id} className="min-h-[440px]">
+                      {renderViewForData(
+                        tab.id === 'all' ? allItems : groupedData?.[tab.id] || []
+                      )}
+                    </div>
+                  ))}
+                </AnimatedTabs>
+                <div className="absolute top-[14px] right-0">
+                    <GroupByDropdown />
+                </div>
+              </div>
+            )
+          }
         </div>
 
         {/* Loader for infinite scroll */}

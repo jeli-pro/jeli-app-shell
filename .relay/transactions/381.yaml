@@ -1,0 +1,715 @@
+uuid: 1e57c5f8-5807-4228-875f-25c27f311f9f
+projectId: jeli-app-shell
+createdAt: '2025-10-17T05:52:44.260Z'
+gitCommitMsg: >-
+  fix(data-demo): eliminate reloads and smooth tab animation
+
+  This commit resolves two performance issues on the Data Demo page: 1. Prevents
+  the loading skeleton from appearing on tab switches by stabilizing `filters`
+  and `sortConfig` object references in `useAppViewManager`. This stops the
+  data-loading effect from being triggered unnecessarily. 2. Smooths out the tab
+  content sliding animation by moving the data grouping logic into the
+  `DataDemoPage` component and memoizing it with `useMemo`. This prevents
+  expensive re-calculations and re-renders of all tab panels during the
+  animation, eliminating jank.
+promptSummary: >-
+  The user reported that the previous refactor still showed a loading state on
+  tab switching and that the subsequent animation was laggy. The plan is to fix
+  this by stabilizing state object references in `useAppViewManager` to prevent
+  unnecessary data fetches, and by memoizing the data grouping calculation in
+  the main page component to prevent expensive re-renders during the animation.
+reasoning:
+  - >-
+    I see what's happening. My previous changes laid the groundwork but missed
+    two subtle but critical performance issues that are causing the problems
+    you've described.
+  - >-
+    1.  **Unnecessary Loading State**: The `filters` and `sortConfig` objects
+    from the `useAppViewManager` hook were being recreated on every URL change
+    (even just for a tab switch). This created new object references, which
+    tricked the `DataDemoPage` into thinking the data requirements had changed,
+    triggering an unnecessary data load and showing the loading skeleton.
+  - >-
+    2.  **Heavy Animation**: The function to group the data was running on every
+    single render. This created brand-new `groupedData` objects and arrays
+    during the tab-switching animation, forcing all the off-screen tab panels to
+    re-render and re-run their own animations simultaneously. This is what made
+    the sliding transition feel heavy and laggy.
+  - I'll address both of these with the following targeted fixes.
+  - '### Step 1: Stabilize View Manager State'
+  - >-
+    First, I'll stabilize the `filters` and `sortConfig` objects in
+    `useAppViewManager` by making their memoization dependencies more granular.
+    This will prevent them from being recreated when only the `tab` parameter
+    changes, which will stop the unnecessary data loading.
+  - '### Step 2: Memoize Grouped Data and Clean Up Store'
+  - >-
+    Next, I'll remove the now-redundant and inefficient data selectors from the
+    Zustand store. The logic for grouping data will move directly into the
+    `DataDemoPage` component and be wrapped in a `useMemo` hook. This ensures
+    the complex grouping calculation only runs when the data actually changes,
+    not on every render, which will make the animation smooth.
+  - '### Step 3: Implement Data Memoization in the Page Component'
+  - >-
+    Finally, I'll update the `DataDemoPage` to use the new memoized grouping
+    logic and remove the old data selectors. This is the key to preventing the
+    heavy re-renders during the animation.
+  - >-
+    These changes should resolve both the lingering loading state and the
+    animation performance issue, resulting in the fast and fluid experience we
+    were aiming for.
+operations:
+  - type: write
+    path: src/hooks/useAppViewManager.hook.ts
+    content: "--- src/hooks/useAppViewManager.hook.ts\n+++ src/hooks/useAppViewManager.hook.ts\n@@ -23,6 +23,10 @@\n   const sidePane = searchParams.get('sidePane');\n   const right = searchParams.get('right');\n   const messagingView = searchParams.get('messagingView') as TaskView | null;\n+  const q = searchParams.get('q');\n+  const status = searchParams.get('status');\n+  const priority = searchParams.get('priority');\n+  const sort = searchParams.get('sort');\n \n   const { bodyState, sidePaneContent } = useMemo(() => {\n     const validPanes: AppShellState['sidePaneContent'][] = ['details', 'settings', 'main', 'toaster', 'notifications', 'dataDemo', 'messaging'];\n@@ -69,21 +73,21 @@\n \tconst activeGroupTab = useMemo(() => searchParams.get('tab') || 'all', [searchParams]);\n \tconst filters = useMemo<FilterConfig>(\n \t\t() => ({\n-\t\t\tsearchTerm: searchParams.get('q') || '',\n-\t\t\tstatus: (searchParams.get('status')?.split(',') || []).filter(Boolean) as Status[],\n-\t\t\tpriority: (searchParams.get('priority')?.split(',') || []).filter(Boolean) as Priority[],\n+\t\t\tsearchTerm: q || '',\n+\t\t\tstatus: (status?.split(',') || []).filter(Boolean) as Status[],\n+\t\t\tpriority: (priority?.split(',') || []).filter(Boolean) as Priority[],\n \t\t}),\n-\t\t[searchParams],\n+\t\t[q, status, priority],\n \t);\n \tconst sortConfig = useMemo<SortConfig | null>(() => {\n-\t\tconst sortParam = searchParams.get('sort');\n+\t\tconst sortParam = sort;\n \t\tif (!sortParam) return { key: 'updatedAt', direction: 'desc' }; // Default sort\n \t\tif (sortParam === 'default') return null;\n \n \t\tconst [key, direction] = sortParam.split('-');\n \t\treturn { key: key as SortableField, direction: direction as 'asc' | 'desc' };\n-\t}, [searchParams]);\n+\t}, [sort]);\n \n   // --- MUTATOR ACTIONS ---\n \n\n"
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/DataDemo/store/dataDemo.store.tsx
+    content: >+
+      --- src/pages/DataDemo/store/dataDemo.store.tsx
+
+      +++ src/pages/DataDemo/store/dataDemo.store.tsx
+
+      @@ -142,27 +142,6 @@
+           return items.filter((item) => String(item[groupBy as GroupableField]) === activeGroupTab);
+       });
+       
+      -export const useGroupedData = (groupBy: GroupableField | 'none') =>
+      useDataDemoStore(state => {
+
+      -    if (groupBy === 'none') {
+
+      -        return null;
+
+      -    }
+
+      -    const items = state.items;
+
+      -    
+
+      -    return items.reduce((acc, item) => {
+
+      -        const groupKey = String(item[groupBy as GroupableField]);
+
+      -        if (!acc[groupKey]) {
+
+      -            acc[groupKey] = [];
+
+      -        }
+
+      -        acc[groupKey].push(item);
+
+      -        return acc;
+
+      -    }, {} as Record<string, DataItem[]>);
+
+      -});
+
+      -
+       export const useSelectedItem = (itemId?: string) => {
+           if (!itemId) return null;
+           return mockDataItems.find(item => item.id === itemId) ?? null;
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/DataDemo/index.tsx
+    content: |+
+      --- src/pages/DataDemo/index.tsx
+      +++ src/pages/DataDemo/index.tsx
+      @@ -21,9 +21,7 @@
+       import type { GroupableField, DataItem } from './types'
+       import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
+       import { 
+      -  useDataDemoStore,
+      -  useGroupTabs,
+      -  useDataToRender,
+      -  useGroupedData,
+      +  useDataDemoStore, 
+      +  useGroupTabs
+       } from './store/dataDemo.store'
+       
+       type Stat = {
+      @@ -62,10 +60,22 @@
+         }));
+       
+         const groupTabs = useGroupTabs(groupBy, activeGroupTab);
+      -  const dataToRender = useDataToRender(groupBy, activeGroupTab);
+      -  const groupedData = useGroupedData(groupBy);
+         const allItems = useDataDemoStore(s => s.items);
+       
+      +  const groupedData = useMemo(() => {
+      +    if (groupBy === 'none') {
+      +        return null;
+      +    }
+      +    return allItems.reduce((acc, item) => {
+      +        const groupKey = String(item[groupBy as GroupableField]);
+      +        if (!acc[groupKey]) {
+      +            acc[groupKey] = [];
+      +        }
+      +        acc[groupKey].push(item);
+      +        return acc;
+      +    }, {} as Record<string, DataItem[]>);
+      +  }, [allItems, groupBy]);
+      +
+         const groupOptions = useMemo(() => [
+           { id: 'none' as const, label: 'None' }, { id: 'status' as const, label: 'Status' }, { id: 'priority' as const, label: 'Priority' }, { id: 'category' as const, label: 'Category' }
+         ], []);
+
+    patchStrategy: standard-diff
+snapshot:
+  src/hooks/useAppViewManager.hook.ts: "import { useMemo, useCallback, useEffect, useRef } from 'react';\nimport { useSearchParams, useNavigate, useLocation, useParams } from 'react-router-dom';\nimport { useAppShellStore, type AppShellState, type ActivePage } from '@/store/appShell.store';\nimport type { DataItem, ViewMode, SortConfig, SortableField, GroupableField, Status, Priority } from '@/pages/DataDemo/types';\nimport type { FilterConfig } from '@/pages/DataDemo/components/DataToolbar';\nimport type { TaskView } from '@/pages/Messaging/types';\nimport { BODY_STATES, SIDEBAR_STATES } from '@/lib/utils';\n\nconst pageToPaneMap: Record<string, AppShellState['sidePaneContent']> = {\n  dashboard: 'main',\n  settings: 'settings',\n  toaster: 'toaster',\n  notifications: 'notifications',\n  'data-demo': 'dataDemo',\n  messaging: 'messaging',\n};\n\nfunction usePrevious<T>(value: T): T | undefined {\n  const ref = useRef<T>();\n  useEffect(() => {\n    ref.current = value;\n  });\n  return ref.current;\n}\n\n/**\n * A centralized hook to manage and synchronize all URL-based view states.\n * This is the single source of truth for view modes, side panes, split views,\n * and page-specific parameters.\n */\nexport function useAppViewManager() {\n  const [searchParams, setSearchParams] = useSearchParams();\n  const navigate = useNavigate();\n  const location = useLocation();\n  const params = useParams<{ itemId: string; conversationId: string }>();\n  const { itemId, conversationId } = params;\n  const { setSidebarState, sidebarState } = useAppShellStore();\n\n  // --- DERIVED STATE FROM URL ---\n\n  const view = searchParams.get('view');\n  const sidePane = searchParams.get('sidePane');\n  const right = searchParams.get('right');\n  const messagingView = searchParams.get('messagingView') as TaskView | null;\n\n  const { bodyState, sidePaneContent } = useMemo(() => {\n    const validPanes: AppShellState['sidePaneContent'][] = ['details', 'settings', 'main', 'toaster', 'notifications', 'dataDemo', 'messaging'];\n    \n    // 1. Priority: Explicit side pane overlay via URL param\n    if (sidePane && validPanes.includes(sidePane as AppShellState['sidePaneContent'])) {\n      return { bodyState: BODY_STATES.SIDE_PANE, sidePaneContent: sidePane as AppShellState['sidePaneContent'] };\n    }\n\n    // 2. Data item detail view (can be overlay or split)\n    if (itemId) {\n      if (view === 'split') {\n        return { bodyState: BODY_STATES.SPLIT_VIEW, sidePaneContent: 'dataItem' as const };\n      }\n      return { bodyState: BODY_STATES.SIDE_PANE, sidePaneContent: 'dataItem' as const };\n    }\n\n    // 3. Messaging conversation view (always split)\n    if (conversationId) {\n      return { bodyState: BODY_STATES.SPLIT_VIEW, sidePaneContent: 'messaging' as const };\n    }\n\n    // 4. Generic split view via URL param\n    if (view === 'split' && right && validPanes.includes(right as AppShellState['sidePaneContent'])) {\n      return { bodyState: BODY_STATES.SPLIT_VIEW, sidePaneContent: right as AppShellState['sidePaneContent'] };\n    }\n\n    return { bodyState: BODY_STATES.NORMAL, sidePaneContent: 'details' as const };\n  }, [itemId, conversationId, view, sidePane, right]);\n  \n  const currentActivePage = useMemo(() => (location.pathname.split('/')[1] || 'dashboard') as ActivePage, [location.pathname]);\n  const prevActivePage = usePrevious(currentActivePage);\n\n  // --- SIDE EFFECTS ---\n  useEffect(() => {\n    // On navigating to messaging page, collapse sidebar if it's expanded.\n    // This ensures a good default view but allows the user to expand it again if they wish.\n    if (currentActivePage === 'messaging' && prevActivePage !== 'messaging' && sidebarState === SIDEBAR_STATES.EXPANDED) {\n      setSidebarState(SIDEBAR_STATES.COLLAPSED);\n    }\n  }, [currentActivePage, prevActivePage, sidebarState, setSidebarState]);\n\n  // DataDemo specific state\n  const viewMode = useMemo(() => (searchParams.get('dataView') as ViewMode) || 'list', [searchParams]);\n\tconst page = useMemo(() => parseInt(searchParams.get('page') || '1', 10), [searchParams]);\n\tconst groupBy = useMemo(() => (searchParams.get('groupBy') as GroupableField | 'none') || 'none', [searchParams]);\n\tconst activeGroupTab = useMemo(() => searchParams.get('tab') || 'all', [searchParams]);\n\tconst filters = useMemo<FilterConfig>(\n\t\t() => ({\n\t\t\tsearchTerm: searchParams.get('q') || '',\n\t\t\tstatus: (searchParams.get('status')?.split(',') || []).filter(Boolean) as Status[],\n\t\t\tpriority: (searchParams.get('priority')?.split(',') || []).filter(Boolean) as Priority[],\n\t\t}),\n\t\t[searchParams],\n\t);\n\tconst sortConfig = useMemo<SortConfig | null>(() => {\n\t\tconst sortParam = searchParams.get('sort');\n\t\tif (!sortParam) return { key: 'updatedAt', direction: 'desc' }; // Default sort\n\t\tif (sortParam === 'default') return null;\n\n\t\tconst [key, direction] = sortParam.split('-');\n\t\treturn { key: key as SortableField, direction: direction as 'asc' | 'desc' };\n\t}, [searchParams]);\n\n  // --- MUTATOR ACTIONS ---\n\n  const handleParamsChange = useCallback(\n\t\t(newParams: Record<string, string | string[] | null | undefined>, resetPage = false) => {\n\t\t\tsetSearchParams(\n\t\t\t\t(prev) => {\n\t\t\t\t\tconst updated = new URLSearchParams(prev);\n\t\t\t\t\t\n\t\t\t\t\tfor (const [key, value] of Object.entries(newParams)) {\n\t\t\t\t\t\tif (value === null || value === undefined || (Array.isArray(value) && value.length === 0) || value === '') {\n\t\t\t\t\t\t\tupdated.delete(key);\n\t\t\t\t\t\t} else if (Array.isArray(value)) {\n\t\t\t\t\t\t\tupdated.set(key, value.join(','));\n\t\t\t\t\t\t} else {\n\t\t\t\t\t\t\tupdated.set(key, String(value));\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\n\t\t\t\t\tif (resetPage) {\n\t\t\t\t\t\tupdated.delete('page');\n\t\t\t\t\t}\n\t\t\t\t\tif ('groupBy' in newParams) {\n\t\t\t\t\t\tupdated.delete('tab');\n\t\t\t\t\t}\n\n\t\t\t\t\treturn updated;\n\t\t\t\t},\n\t\t\t\t{ replace: true },\n\t\t\t);\n\t\t},\n\t\t[setSearchParams],\n\t);\n\n  const navigateTo = useCallback((page: string, params?: Record<string, string | null>) => {\n    const targetPath = page.startsWith('/') ? page : `/${page}`;\n    const isSamePage = location.pathname === targetPath;\n    \n    const newSearchParams = new URLSearchParams(isSamePage ? searchParams : undefined);\n\n    if (params) {\n      for (const [key, value] of Object.entries(params)) {\n        if (value === null || value === undefined) {\n          newSearchParams.delete(key);\n        } else {\n          newSearchParams.set(key, value);\n        }\n      }\n    }\n\n    navigate({ pathname: targetPath, search: newSearchParams.toString() });\n  }, [navigate, location.pathname, searchParams]);\n\n  const openSidePane = useCallback((pane: AppShellState['sidePaneContent']) => {\n    if (location.pathname === `/${Object.keys(pageToPaneMap).find(key => pageToPaneMap[key] === pane)}`) {\n        navigate({ pathname: '/dashboard', search: `?sidePane=${pane}` }, { replace: true });\n    } else {\n        handleParamsChange({ sidePane: pane, view: null, right: null });\n    }\n  }, [handleParamsChange, navigate, location.pathname]);\n\n  const closeSidePane = useCallback(() => {\n    if (itemId) {\n      navigate('/data-demo');\n    } else {\n      handleParamsChange({ sidePane: null, view: null, right: null });\n    }\n  }, [itemId, navigate, handleParamsChange]);\n\n  const toggleSidePane = useCallback((pane: AppShellState['sidePaneContent']) => {\n    if (sidePane === pane) {\n      closeSidePane();\n    } else {\n      openSidePane(pane);\n    }\n  }, [sidePane, openSidePane, closeSidePane]);\n\n  const toggleSplitView = useCallback(() => {\n    if (bodyState === BODY_STATES.SIDE_PANE) {\n      handleParamsChange({ view: 'split', right: sidePane, sidePane: null });\n    } else if (bodyState === BODY_STATES.SPLIT_VIEW) {\n      handleParamsChange({ sidePane: right, view: null, right: null });\n    } else { // From normal\n      const paneContent = pageToPaneMap[currentActivePage] || 'details';\n      handleParamsChange({ view: 'split', right: paneContent, sidePane: null });\n    }\n  }, [bodyState, sidePane, right, currentActivePage, handleParamsChange]);\n  \n  const setNormalView = useCallback(() => {\n      handleParamsChange({ sidePane: null, view: null, right: null });\n  }, [handleParamsChange]);\n\n  const switchSplitPanes = useCallback(() => {\n    if (bodyState !== BODY_STATES.SPLIT_VIEW) return;\n    const newSidePaneContent = pageToPaneMap[currentActivePage];\n    const newActivePage = Object.entries(pageToPaneMap).find(\n      ([, value]) => value === sidePaneContent\n    )?.[0] as ActivePage | undefined;\n\n    if (newActivePage && newSidePaneContent) {\n      navigate(`/${newActivePage}?view=split&right=${newSidePaneContent}`, { replace: true });\n    }\n  }, [bodyState, currentActivePage, sidePaneContent, navigate]);\n  \n  const closeSplitPane = useCallback((paneToClose: 'main' | 'right') => {\n    if (bodyState !== BODY_STATES.SPLIT_VIEW) return;\n    if (paneToClose === 'right') {\n      navigate(`/${currentActivePage}`, { replace: true });\n    } else { // Closing main pane\n      const pageToBecomeActive = Object.entries(pageToPaneMap).find(\n        ([, value]) => value === sidePaneContent\n      )?.[0] as ActivePage | undefined;\n      \n      if (pageToBecomeActive) {\n        navigate(`/${pageToBecomeActive}`, { replace: true });\n      } else {\n        navigate(`/dashboard`, { replace: true });\n      }\n    }\n  }, [bodyState, currentActivePage, sidePaneContent, navigate]);\n  \n  // DataDemo actions\n  const setViewMode = (mode: ViewMode) => handleParamsChange({ dataView: mode === 'list' ? null : mode });\n  const setGroupBy = (val: string) => handleParamsChange({ groupBy: val === 'none' ? null : val }, true);\n  const setActiveGroupTab = (tab: string) => handleParamsChange({ tab: tab === 'all' ? null : tab });\n  const setFilters = (newFilters: FilterConfig) => {\n    handleParamsChange({ q: newFilters.searchTerm, status: newFilters.status, priority: newFilters.priority }, true);\n  }\n  const setSort = (config: SortConfig | null) => {\n    if (!config) {\n      handleParamsChange({ sort: 'default' }, true);\n    } else {\n      handleParamsChange({ sort: `${config.key}-${config.direction}` }, true);\n    }\n  }\n  const setTableSort = (field: SortableField) => {\n    let newSort: string | null = `${field}-desc`;\n    if (sortConfig?.key === field) {\n      if (sortConfig.direction === 'desc') newSort = `${field}-asc`;\n      else if (sortConfig.direction === 'asc') newSort = 'default';\n    }\n    handleParamsChange({ sort: newSort }, true);\n  };\n  const setPage = (newPage: number) => handleParamsChange({ page: newPage.toString() });\n\n  const onItemSelect = useCallback((item: DataItem) => {\n\t\tnavigate(`/data-demo/${item.id}${location.search}`);\n\t}, [navigate, location.search]);\n\n  const setMessagingView = (view: TaskView) => handleParamsChange({ messagingView: view });\n\n\n  return useMemo(() => ({\n    // State\n    bodyState,\n    sidePaneContent,\n    currentActivePage,\n    itemId,\n    messagingView,\n    // DataDemo State\n    viewMode,\n    page,\n    groupBy,\n    activeGroupTab,\n    filters,\n    sortConfig,\n    // Actions\n    navigateTo,\n    openSidePane,\n    closeSidePane,\n    toggleSidePane,\n    toggleSplitView,\n    setNormalView,\n    switchSplitPanes,\n    setMessagingView,\n    closeSplitPane,\n    // DataDemo Actions\n    onItemSelect,\n    setViewMode,\n    setGroupBy,\n    setActiveGroupTab,\n    setFilters,\n    setSort,\n    setTableSort,\n    setPage,\n  }), [\n    bodyState, sidePaneContent, currentActivePage, itemId, messagingView,\n    viewMode, page, groupBy, activeGroupTab, filters, sortConfig,\n    navigateTo, openSidePane, closeSidePane, toggleSidePane, toggleSplitView, setNormalView, setMessagingView,\n    switchSplitPanes, closeSplitPane, onItemSelect, setViewMode, setGroupBy, setActiveGroupTab, setFilters,\n    setSort, setTableSort, setPage\n  ]);\n}"
+  src/pages/DataDemo/store/dataDemo.store.tsx: >-
+    import { create } from 'zustand';
+
+    import { type ReactNode } from 'react';
+
+    import { capitalize, cn } from '@/lib/utils';
+
+    import { Badge } from '@/components/ui/badge';
+
+    import { mockDataItems } from '../data/mockData';
+
+    import type { DataItem, GroupableField, SortConfig } from '../types';
+
+    import type { FilterConfig } from '../components/DataToolbar';
+
+
+    // --- State and Actions ---
+
+    interface DataDemoState {
+        items: DataItem[];
+        hasMore: boolean;
+        isLoading: boolean;
+        isInitialLoading: boolean;
+        totalItemCount: number;
+    }
+
+
+    interface DataDemoActions {
+        loadData: (params: {
+            page: number;
+            groupBy: GroupableField | 'none';
+            filters: FilterConfig;
+            sortConfig: SortConfig | null;
+        }) => void;
+    }
+
+
+    const defaultState: DataDemoState = {
+        items: [],
+        hasMore: true,
+        isLoading: true,
+        isInitialLoading: true,
+        totalItemCount: 0,
+    };
+
+
+    // --- Store Implementation ---
+
+    export const useDataDemoStore = create<DataDemoState &
+    DataDemoActions>((set) => ({
+        ...defaultState,
+
+        loadData: ({ page, groupBy, filters, sortConfig }) => {
+            set({ isLoading: true, ...(page === 1 && { isInitialLoading: true }) });
+            const isFirstPage = page === 1;
+
+            const filteredAndSortedData = (() => {
+                const filteredItems = mockDataItems.filter((item) => {
+                    const searchTermMatch =
+                        item.title.toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
+                        item.description.toLowerCase().includes(filters.searchTerm.toLowerCase());
+                    const statusMatch = filters.status.length === 0 || filters.status.includes(item.status);
+                    const priorityMatch = filters.priority.length === 0 || filters.priority.includes(item.priority);
+                    return searchTermMatch && statusMatch && priorityMatch;
+                });
+
+                if (sortConfig) {
+                    filteredItems.sort((a, b) => {
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        const getNestedValue = (obj: DataItem, path: string): any =>
+                            path.split('.').reduce((o: any, k) => (o || {})[k], obj);
+
+                        const aValue = getNestedValue(a, sortConfig.key);
+                        const bValue = getNestedValue(b, sortConfig.key);
+
+                        if (aValue === undefined || bValue === undefined) return 0;
+                        if (typeof aValue === 'string' && typeof bValue === 'string') {
+                            return sortConfig.direction === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
+                        }
+                        if (typeof aValue === 'number' && typeof bValue === 'number') {
+                            return sortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue;
+                        }
+                        if (sortConfig.key === 'updatedAt' || sortConfig.key === 'createdAt') {
+                            if (typeof aValue === 'string' && typeof bValue === 'string') {
+                                return sortConfig.direction === 'asc'
+                                    ? new Date(aValue).getTime() - new Date(bValue).getTime()
+                                    : new Date(bValue).getTime() - new Date(aValue).getTime();
+                            }
+                        }
+                        return 0;
+                    });
+                }
+                return filteredItems;
+            })();
+            
+            const totalItemCount = filteredAndSortedData.length;
+
+            setTimeout(() => {
+                if (groupBy !== 'none') {
+                    set({
+                        items: filteredAndSortedData,
+                        hasMore: false,
+                        isLoading: false,
+                        isInitialLoading: false,
+                        totalItemCount,
+                    });
+                    return;
+                }
+
+                const pageSize = 12;
+                const newItems = filteredAndSortedData.slice((page - 1) * pageSize, page * pageSize);
+                
+                set(state => ({
+                    items: isFirstPage ? newItems : [...state.items, ...newItems],
+                    hasMore: totalItemCount > page * pageSize,
+                    isLoading: false,
+                    isInitialLoading: false,
+                    totalItemCount,
+                }));
+
+            }, isFirstPage ? 1500 : 500);
+        }
+    }));
+
+
+    // --- Selectors ---
+
+    export const useGroupTabs = (
+        groupBy: GroupableField | 'none',
+        activeGroupTab: string,
+    ) => useDataDemoStore(state => {
+        const items = state.items;
+        if (groupBy === 'none' || !items.length) return [];
+        
+        const groupCounts = items.reduce((acc, item) => {
+            const groupKey = String(item[groupBy as GroupableField]);
+            acc[groupKey] = (acc[groupKey] || 0) + 1;
+            return acc;
+        }, {} as Record<string, number>);
+
+        const sortedGroups = Object.keys(groupCounts).sort((a, b) => a.localeCompare(b));
+
+        const createLabel = (text: string, count: number, isActive: boolean): ReactNode => (
+            <>
+                {text}
+                <Badge variant={isActive ? 'default' : 'secondary'} className={cn('transition-colors duration-300 text-xs font-semibold', !isActive && 'group-hover:bg-accent group-hover:text-accent-foreground')}>
+                    {count}
+                </Badge>
+            </>
+        );
+        
+        const totalCount = items.length;
+
+        return [
+            { id: 'all', label: createLabel('All', totalCount, activeGroupTab === 'all') },
+            ...sortedGroups.map((g) => ({
+                id: g,
+                label: createLabel(capitalize(g), groupCounts[g], activeGroupTab === g),
+            })),
+        ];
+    });
+
+
+    export const useDataToRender = (
+        groupBy: GroupableField | 'none',
+        activeGroupTab: string,
+    ) => useDataDemoStore(state => {
+        const items = state.items;
+        if (groupBy === 'none') {
+            return items;
+        }
+        if (activeGroupTab === 'all') {
+            return items;
+        }
+        return items.filter((item) => String(item[groupBy as GroupableField]) === activeGroupTab);
+    });
+
+
+    export const useGroupedData = (groupBy: GroupableField | 'none') =>
+    useDataDemoStore(state => {
+        if (groupBy === 'none') {
+            return null;
+        }
+        const items = state.items;
+        
+        return items.reduce((acc, item) => {
+            const groupKey = String(item[groupBy as GroupableField]);
+            if (!acc[groupKey]) {
+                acc[groupKey] = [];
+            }
+            acc[groupKey].push(item);
+            return acc;
+        }, {} as Record<string, DataItem[]>);
+    });
+
+
+    export const useSelectedItem = (itemId?: string) => {
+        if (!itemId) return null;
+        return mockDataItems.find(item => item.id === itemId) ?? null;
+    };
+  src/pages/DataDemo/index.tsx: >
+    import { useRef, useEffect, useCallback, useMemo } from 'react'
+
+    import {
+      Layers, 
+      AlertTriangle, 
+      PlayCircle, 
+      TrendingUp,
+      Loader2,
+      ChevronsUpDown
+    } from 'lucide-react'
+
+    import { gsap } from 'gsap'
+
+    import { cn } from '@/lib/utils'
+
+    import { Button } from '@/components/ui/button'
+
+    import { 
+      DropdownMenu, 
+      DropdownMenuContent, 
+      DropdownMenuRadioGroup, 
+      DropdownMenuRadioItem, 
+      DropdownMenuTrigger 
+    } from '@/components/ui/dropdown-menu'
+
+    import { PageLayout } from '@/components/shared/PageLayout'
+
+    import { useScrollToBottom } from '@/hooks/useScrollToBottom.hook';
+
+    import { ScrollToBottomButton } from
+    '@/components/shared/ScrollToBottomButton';
+
+    import { DataListView } from './components/DataListView'
+
+    import { DataCardView } from './components/DataCardView'
+
+    import { DataTableView } from './components/DataTableView'
+
+    import { DataViewModeSelector } from './components/DataViewModeSelector'
+
+    import { AnimatedTabs } from '@/components/ui/animated-tabs'
+
+    import { StatCard } from '@/components/shared/StatCard'
+
+    import { AnimatedLoadingSkeleton } from
+    './components/AnimatedLoadingSkeleton'
+
+    import { DataToolbar } from './components/DataToolbar'
+
+    import { mockDataItems } from './data/mockData'
+
+    import type { GroupableField, DataItem } from './types'
+
+    import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
+
+    import { 
+      useDataDemoStore,
+      useGroupTabs,
+      useDataToRender,
+      useGroupedData,
+    } from './store/dataDemo.store'
+
+
+    type Stat = {
+      title: string;
+      value: string;
+      icon: React.ReactNode;
+      change: string;
+      trend: 'up' | 'down';
+      type?: 'card';
+    };
+
+
+    type ChartStat = {
+      title: string;
+      value: string;
+      icon: React.ReactNode;
+      change: string;
+      trend: 'up' | 'down';
+      type: 'chart';
+      chartData: number[];
+    };
+
+
+    type StatItem = Stat | ChartStat;
+
+
+    function DataDemoContent() {
+      const {
+        viewMode,
+        groupBy,
+        activeGroupTab,
+        setGroupBy,
+        setActiveGroupTab,
+        page,
+        filters,
+        sortConfig,
+        setPage,
+      } = useAppViewManager();
+
+      const { hasMore, isLoading, isInitialLoading, totalItemCount, loadData } = useDataDemoStore(state => ({
+        hasMore: state.hasMore,
+        isLoading: state.isLoading,
+        isInitialLoading: state.isInitialLoading,
+        totalItemCount: state.totalItemCount,
+        loadData: state.loadData,
+      }));
+
+      const groupTabs = useGroupTabs(groupBy, activeGroupTab);
+      const dataToRender = useDataToRender(groupBy, activeGroupTab);
+      const groupedData = useGroupedData(groupBy);
+      const allItems = useDataDemoStore(s => s.items);
+
+      const groupOptions = useMemo(() => [
+        { id: 'none' as const, label: 'None' }, { id: 'status' as const, label: 'Status' }, { id: 'priority' as const, label: 'Priority' }, { id: 'category' as const, label: 'Category' }
+      ], []);
+
+      const statsRef = useRef<HTMLDivElement>(null)
+      const scrollRef = useRef<HTMLDivElement>(null);
+
+      // Calculate stats from data
+      const totalItems = mockDataItems.length
+      const { showScrollToBottom, scrollToBottom, handleScroll } = useScrollToBottom(scrollRef);
+
+      const activeItems = mockDataItems.filter(item => item.status === 'active').length
+      const highPriorityItems = mockDataItems.filter(item => item.priority === 'high' || item.priority === 'critical').length
+      const avgCompletion = totalItems > 0 ? Math.round(
+        mockDataItems.reduce((acc, item) => acc + item.metrics.completion, 0) / totalItems
+      ) : 0
+
+      const stats: StatItem[] = [
+        {
+          title: "Total Projects",
+          value: totalItems.toString(),
+          icon: <Layers className="w-5 h-5" />,
+          change: "+5.2% this month",
+          trend: "up" as const,
+          type: 'chart',
+          chartData: [120, 125, 122, 130, 135, 138, 142]
+        },
+        {
+          title: "Active Projects",
+          value: activeItems.toString(),
+          icon: <PlayCircle className="w-5 h-5" />,
+          change: "+2 this week", 
+          trend: "up" as const,
+          type: 'chart',
+          chartData: [45, 50, 48, 55, 53, 60, 58]
+        },
+        {
+          title: "High Priority",
+          value: highPriorityItems.toString(),
+          icon: <AlertTriangle className="w-5 h-5" />,
+          change: "-1 from last week",
+          trend: "down" as const,
+          type: 'chart',
+          chartData: [25, 26, 28, 27, 26, 24, 23]
+        },
+        {
+          title: "Avg. Completion",
+          value: `${avgCompletion}%`,
+          icon: <TrendingUp className="w-5 h-5" />,
+          change: "+3.2%",
+          trend: "up" as const,
+          type: 'chart',
+          chartData: [65, 68, 70, 69, 72, 75, 78]
+        }
+      ]
+
+      useEffect(() => {
+        // Animate stats cards in
+        if (!isInitialLoading && statsRef.current) {
+          gsap.fromTo(statsRef.current.children,
+            { y: 30, opacity: 0 },
+            {
+              duration: 0.6,
+              y: 0,
+              opacity: 1,
+              stagger: 0.1,
+              ease: "power2.out"
+            }
+          )
+        }
+      }, [isInitialLoading]);
+
+      useEffect(() => {
+        loadData({ page, groupBy, filters, sortConfig });
+      }, [page, groupBy, filters, sortConfig, loadData]);
+
+      const observer = useRef<IntersectionObserver>();
+      const loaderRef = useCallback(
+        (node: Element | null) => {
+          if (isLoading) return;
+          if (observer.current) observer.current.disconnect();
+
+          observer.current = new IntersectionObserver((entries) => {
+            if (entries[0].isIntersecting && hasMore) {
+              setPage(page + 1);
+            }
+          });
+          if (node) observer.current.observe(node);
+        },
+        [isLoading, hasMore, page, setPage],
+      );
+
+      const renderViewForData = useCallback((data: DataItem[]) => {
+        switch (viewMode) {
+            case 'table': return <DataTableView data={data} />;
+            case 'cards': return <DataCardView data={data} />;
+            case 'grid': return <DataCardView data={data} isGrid />;
+            case 'list':
+            default:
+                return <DataListView data={data} />;
+        }
+      }, [viewMode]);
+
+      const GroupByDropdown = useCallback(() => (
+        <div className="flex items-center gap-2 shrink-0">
+          <span className="text-sm font-medium text-muted-foreground shrink-0">Group by:</span>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="w-[180px] justify-between">
+                {groupOptions.find(o => o.id === groupBy)?.label}
+                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="w-[180px]">
+              <DropdownMenuRadioGroup value={groupBy} onValueChange={setGroupBy}>
+                {groupOptions.map(option => (
+                  <DropdownMenuRadioItem key={option.id} value={option.id}>
+                    {option.label}
+                  </DropdownMenuRadioItem>
+                ))}
+              </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      ), [groupBy, setGroupBy, groupOptions]);
+
+      const isGroupedView = useMemo(() => 
+        groupBy !== 'none' && groupTabs.length > 1 && groupedData,
+      [groupBy, groupTabs.length, groupedData]);
+
+
+      return (
+        <PageLayout
+          scrollRef={scrollRef}
+          onScroll={handleScroll}
+          // Note: Search functionality is handled by a separate SearchBar in the TopBar
+        >
+          <div className="space-y-8">
+            {/* Header */}
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div className="flex-1">
+                <h1 className="text-2xl font-bold tracking-tight">Data Showcase</h1>
+                <p className="text-muted-foreground">
+                  {isInitialLoading 
+                    ? "Loading projects..." 
+                    : `Showing ${dataToRender.length} of ${totalItemCount} item(s)`}
+                </p>
+              </div>
+              <DataViewModeSelector />
+            </div>
+
+            {/* Stats Section */}
+            {!isInitialLoading && (
+              <div ref={statsRef} className="grid grid-cols-[repeat(auto-fit,minmax(250px,1fr))] gap-6">
+                {stats.map((stat) => (
+                  <StatCard
+                    key={stat.title}
+                    title={stat.title}
+                    value={stat.value}
+                    change={stat.change}
+                    trend={stat.trend}
+                    icon={stat.icon}
+                    chartData={stat.type === 'chart' ? stat.chartData : undefined}
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* Controls Area */}
+            <div className="space-y-6">
+              <DataToolbar />
+            </div>
+
+            <div className="min-h-[500px]">
+              {isInitialLoading 
+                ? <AnimatedLoadingSkeleton viewMode={viewMode} /> 
+                : !isGroupedView ? (
+                  // Not grouped view
+                  <>
+                    <div className="flex items-center justify-between gap-4 h-[68px]">
+                      <div className="flex-grow border-b" /> {/* Mimic tab border */}
+                      <GroupByDropdown />
+                    </div>
+                    {renderViewForData(allItems)}
+                  </>
+                ) : (
+                  // Grouped view with AnimatedTabs
+                  <div className="relative">
+                    <AnimatedTabs
+                      tabs={groupTabs}
+                      activeTab={activeGroupTab}
+                      onTabChange={setActiveGroupTab}
+                      wrapperClassName="flex flex-col"
+                      className="border-b"
+                      contentClassName="pt-6 flex-grow"
+                    >
+                      {groupTabs.map(tab => (
+                        <div key={tab.id} className="min-h-[440px]">
+                          {renderViewForData(
+                            tab.id === 'all' ? allItems : groupedData?.[tab.id] || []
+                          )}
+                        </div>
+                      ))}
+                    </AnimatedTabs>
+                    <div className="absolute top-[14px] right-0">
+                        <GroupByDropdown />
+                    </div>
+                  </div>
+                )
+              }
+            </div>
+
+            {/* Loader for infinite scroll */}
+            <div ref={loaderRef} className="flex justify-center items-center py-6">
+              {isLoading && !isInitialLoading && groupBy === 'none' && (
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span>Loading more...</span>
+                </div>
+              )}
+              {!isLoading && !hasMore && dataToRender.length > 0 && !isInitialLoading && groupBy === 'none' && (
+                <p className="text-muted-foreground">You've reached the end.</p>
+              )}
+            </div>
+          </div>
+          <ScrollToBottomButton isVisible={showScrollToBottom} onClick={scrollToBottom} />
+        </PageLayout>
+      )
+    }
+
+
+    export default function DataDemoPage() {
+      return <DataDemoContent />;
+    }
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 381

@@ -42,6 +42,10 @@ export function useAppViewManager() {
   const sidePane = searchParams.get('sidePane');
   const right = searchParams.get('right');
   const messagingView = searchParams.get('messagingView') as TaskView | null;
+  const q = searchParams.get('q');
+  const status = searchParams.get('status');
+  const priority = searchParams.get('priority');
+  const sort = searchParams.get('sort');
 
   const { bodyState, sidePaneContent } = useMemo(() => {
     const validPanes: AppShellState['sidePaneContent'][] = ['details', 'settings', 'main', 'toaster', 'notifications', 'dataDemo', 'messaging'];
@@ -91,20 +95,20 @@ export function useAppViewManager() {
 	const activeGroupTab = useMemo(() => searchParams.get('tab') || 'all', [searchParams]);
 	const filters = useMemo<FilterConfig>(
 		() => ({
-			searchTerm: searchParams.get('q') || '',
-			status: (searchParams.get('status')?.split(',') || []).filter(Boolean) as Status[],
-			priority: (searchParams.get('priority')?.split(',') || []).filter(Boolean) as Priority[],
+			searchTerm: q || '',
+			status: (status?.split(',') || []).filter(Boolean) as Status[],
+			priority: (priority?.split(',') || []).filter(Boolean) as Priority[],
 		}),
-		[searchParams],
+		[q, status, priority],
 	);
 	const sortConfig = useMemo<SortConfig | null>(() => {
-		const sortParam = searchParams.get('sort');
+		const sortParam = sort;
 		if (!sortParam) return { key: 'updatedAt', direction: 'desc' }; // Default sort
 		if (sortParam === 'default') return null;
 
 		const [key, direction] = sortParam.split('-');
 		return { key: key as SortableField, direction: direction as 'asc' | 'desc' };
-	}, [searchParams]);
+	}, [sort]);
 
   // --- MUTATOR ACTIONS ---
 

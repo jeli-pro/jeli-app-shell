@@ -7,7 +7,6 @@ import { useStaggeredAnimation } from '@/hooks/useStaggeredAnimation.motion.hook
 import { EmptyState } from './EmptyState'
 import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
 import {
-  useDataToRender,
   useSelectedItem,
 } from '../store/dataDemo.store'
 import {
@@ -20,9 +19,8 @@ import {
 } from './shared/DataItemParts'
 import { AddDataItemCta } from './shared/AddDataItemCta'
 
-export function DataCardView({ isGrid = false }: { isGrid?: boolean }) {
-  const { groupBy, activeGroupTab, onItemSelect, itemId } = useAppViewManager();
-  const data = useDataToRender(groupBy, activeGroupTab);
+export function DataCardView({ data, isGrid = false }: { data: DataItem[]; isGrid?: boolean }) {
+  const { onItemSelect, itemId } = useAppViewManager();
   const selectedItem = useSelectedItem(itemId);
 
   const containerRef = useRef<HTMLDivElement>(null)
