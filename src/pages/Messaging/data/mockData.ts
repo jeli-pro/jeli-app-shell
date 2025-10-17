@@ -1,149 +1,155 @@
-import type { Contact, Task, Message, ActivityEvent, Note, Assignee, TaskStatus, TaskPriority } from '../types';
+import type { Contact, Task, Message, ActivityEvent, Note, Assignee, TaskStatus, TaskPriority, Channel, JourneyPointType } from '../types';
+import { faker } from '@faker-js/faker';
 
 // --- ASSIGNEES ---
 export const mockAssignees: Assignee[] = [
   { id: 'user-1', name: 'You', avatar: `https://avatar.vercel.sh/you.png`, type: 'human' },
   { id: 'user-2', name: 'Alex Johnson', avatar: `https://avatar.vercel.sh/alex.png`, type: 'human' },
   { id: 'user-3', name: 'Samira Kumar', avatar: `https://avatar.vercel.sh/samira.png`, type: 'human' },
+  { id: 'user-4', name: 'Casey Lee', avatar: `https://avatar.vercel.sh/casey.png`, type: 'human' },
+  { id: 'user-5', name: 'Jordan Rivera', avatar: `https://avatar.vercel.sh/jordan.png`, type: 'human' },
   { id: 'user-ai-1', name: 'AI Assistant', avatar: `https://avatar.vercel.sh/ai.png`, type: 'ai' },
 ];
 
 // --- HELPERS ---
 const generateNotes = (contactName: string): Note[] => [
-  { id: `note-${Math.random()}`, content: `Initial discovery call with ${contactName}. Seemed very interested in our enterprise package.`, createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString() },
-  { id: `note-${Math.random()}`, content: `Followed up via email with pricing details.`, createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString() },
+  { id: `note-${faker.string.uuid()}`, content: `Initial discovery call with ${contactName}. Seemed very interested in our enterprise package.`, createdAt: faker.date.past().toISOString() },
+  { id: `note-${faker.string.uuid()}`, content: `Followed up via email with pricing details.`, createdAt: faker.date.recent().toISOString() },
 ];
 
 const generateActivity = (contactName: string): ActivityEvent[] => [
-  { id: `act-${Math.random()}`, type: 'email', content: `Sent follow-up email regarding pricing.`, timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString() },
-  { id: `act-${Math.random()}`, type: 'call', content: `Had a 30-minute discovery call with ${contactName}.`, timestamp: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString() },
-  { id: `act-${Math.random()}`, type: 'meeting', content: `Scheduled a demo for next week.`, timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString() },
+  { id: `act-${faker.string.uuid()}`, type: 'email', content: `Sent follow-up email regarding pricing.`, timestamp: faker.date.past().toISOString() },
+  { id: `act-${faker.string.uuid()}`, type: 'call', content: `Had a 30-minute discovery call with ${contactName}.`, timestamp: faker.date.recent().toISOString() },
+  { id: `act-${faker.string.uuid()}`, type: 'meeting', content: `Scheduled a demo for next week.`, timestamp: faker.date.soon().toISOString() },
 ];
 
 // --- CONTACTS ---
-export const mockContacts: Contact[] = [
-  { id: 'contact-1', name: 'Elena Rodriguez', avatar: `https://avatar.vercel.sh/elenarodriguez.png`, online: true, tags: ['VIP', 'New Lead'], email: 'elena.r@example.com', phone: '+1 234 567 8901', lastSeen: 'online', company: 'Innovate Inc.', role: 'CTO', activity: generateActivity('Elena Rodriguez'), notes: generateNotes('Elena Rodriguez'), },
-  { id: 'contact-2', name: 'Marcus Chen', avatar: `https://avatar.vercel.sh/marcuschen.png`, online: false, tags: ['Returning Customer'], email: 'marcus.c@example.com', phone: '+1 345 678 9012', lastSeen: '2 hours ago', company: 'Solutions Co.', role: 'Product Manager', activity: generateActivity('Marcus Chen'), notes: generateNotes('Marcus Chen'), },
-  { id: 'contact-3', name: 'Aisha Khan', avatar: `https://avatar.vercel.sh/aishakhan.png`, online: true, tags: ['Support Request'], email: 'aisha.k@example.com', phone: '+1 456 789 0123', lastSeen: 'online', company: 'Data Dynamics', role: 'Data Analyst', activity: generateActivity('Aisha Khan'), notes: generateNotes('Aisha Khan'), },
-  { id: 'contact-4', name: 'Leo Tolstoy', avatar: `https://avatar.vercel.sh/leotolstoy.png`, online: false, tags: [], email: 'leo.tolstoy@example.com', phone: '+44 20 7946 0958', lastSeen: 'yesterday', company: 'Classic Reads', role: 'Author', activity: generateActivity('Leo Tolstoy'), notes: generateNotes('Leo Tolstoy'), }
-];
+export const mockContacts: Contact[] = Array.from({ length: 50 }, (_, i) => {
+    const firstName = faker.person.firstName();
+    const lastName = faker.person.lastName();
+    const name = `${firstName} ${lastName}`;
+    return {
+        id: `contact-${i + 1}`,
+        name,
+        avatar: `https://avatar.vercel.sh/${firstName.toLowerCase()}${lastName.toLowerCase()}.png`,
+        online: faker.datatype.boolean(),
+        tags: faker.helpers.arrayElements(['VIP', 'New Lead', 'Returning Customer', 'Support Request', 'High Value'], faker.number.int({ min: 1, max: 3 })),
+        email: faker.internet.email({ firstName, lastName }),
+        phone: faker.phone.number(),
+        lastSeen: faker.datatype.boolean() ? 'online' : `${faker.number.int({ min: 2, max: 59 })} minutes ago`,
+        company: faker.company.name(),
+        role: faker.person.jobTitle(),
+        activity: generateActivity(name),
+        notes: generateNotes(name),
+    };
+});
 
 // --- MESSAGE GENERATOR ---
-const generateMessages = (count: number, contactName: string): Message[] => {
+const generateMessages = (messageCount: number, contactName: string, journeyPath: JourneyPointType[]): Message[] => {
   const messages: Message[] = [];
   const now = new Date();
-  for (let i = count - 1; i >= 0; i--) {
+  
+  const journeyPointsWithIndices = journeyPath.map((point, index) => ({
+      point,
+      index: Math.floor((messageCount / journeyPath.length) * (index + Math.random() * 0.8))
+  }));
+
+  for (let i = 0; i < messageCount; i++) {
     const random = Math.random();
     let sender: Message['sender'] = 'contact';
     let type: Message['type'] = 'comment';
-    let text = `This is a sample message number ${i} from ${contactName}.`;
+    let text = faker.lorem.sentence();
     let userId: string | undefined = undefined;
 
     if (random > 0.85) { // Internal Note
       sender = 'user';
       type = 'note';
-      const user = mockAssignees[Math.floor(Math.random() * mockAssignees.length)];
+      const user = faker.helpers.arrayElement(mockAssignees.filter(u => u.type === 'human'));
       userId = user.id;
-      text = `Internal note from ${user.name}: we should check their account history.`;
+      text = `Internal note from ${user.name}: ${faker.lorem.sentence()}`;
     } else if (random > 0.7) { // System message
       sender = 'system';
       type = 'system';
-      text = `Task status changed to "in-progress"`;
+      text = faker.helpers.arrayElement(['Task status changed to "in-progress"', 'Task assigned to Alex Johnson', 'User joined the conversation']);
     } else if (random > 0.35) { // User comment
       sender = 'user';
       type = 'comment';
       userId = 'user-1'; // "You"
-      text = `This is a reply from me. Time is roughly ${count - i} hours ago.`;
+      text = faker.lorem.sentence();
     }
     
+    const journeyPointInfo = journeyPointsWithIndices.find(jp => jp.index === i);
+
     messages.push({
-      id: `msg-${Math.random()}`,
+      id: `msg-${faker.string.uuid()}`,
       text,
-      timestamp: new Date(now.getTime() - i * 60 * 60 * 1000).toISOString(),
+      timestamp: new Date(now.getTime() - (messageCount - i) * 60 * 60 * 100).toISOString(),
       sender,
       type,
-      read: i < count - 2,
+      read: i < messageCount - faker.number.int({min: 0, max: 5}),
       userId,
+      journeyPoint: journeyPointInfo?.point
     });
   }
+  
   // Ensure the last message is from the contact for preview purposes
   messages[messages.length - 1] = {
     ...messages[messages.length-1],
     sender: 'contact',
     type: 'comment',
-    text: `Hey! This is the latest message from ${contactName}.`,
+    text: `Hey! This is the latest message from ${contactName}. ${faker.lorem.sentence()}`,
     userId: undefined
   };
   return messages.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 };
 
-// --- TASKS ---
-const statuses: TaskStatus[] = ['open', 'in-progress', 'done', 'snoozed'];
-const priorities: TaskPriority[] = ['none', 'low', 'medium', 'high'];
+// --- TASK GENERATOR ---
+const generateTasks = (count: number): Task[] => {
+    const tasks: Task[] = [];
+    const statuses: TaskStatus[] = ['open', 'in-progress', 'done', 'snoozed'];
+    const priorities: TaskPriority[] = ['none', 'low', 'medium', 'high'];
+    const channels: Channel[] = ['whatsapp', 'instagram', 'facebook', 'email'];
+    const possibleJourneys: JourneyPointType[][] = [
+        ['Consult', 'Order', 'Delivered', 'Follow-up'],
+        ['Consult', 'Order', 'Complain', 'Follow-up'],
+        ['Consult', 'Order', 'Delivered', 'Reorder'],
+        ['Consult', 'Follow-up'],
+        ['Complain'],
+        ['Order', 'Delivered']
+    ];
 
-export const mockTasks: Task[] = [
-  {
-    id: 'task-1',
-    title: 'Question about enterprise pricing',
-    contactId: 'contact-1',
-    channel: 'whatsapp',
-    unreadCount: 2,
-    messages: generateMessages(15, 'Elena Rodriguez'),
-    get lastActivity() { return this.messages[this.messages.length - 1]; },
-    status: 'in-progress',
-    assigneeId: 'user-2',
-    dueDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
-    priority: 'high',
-    tags: ['onboarding', 'pricing'],
-    aiSummary: { sentiment: 'positive', summaryPoints: ['Expressed strong interest in the new feature.', 'Asked about pricing tiers for enterprise.', 'Is ready for a follow-up call next week.',], suggestedReplies: ['Let\'s schedule that call!', 'Here is the pricing information.', 'Happy to hear you like it!',], },
-    activeHandlerId: 'user-2', // Alex is handling this
-  },
-  {
-    id: 'task-2',
-    title: 'Minor issue with order #12345',
-    contactId: 'contact-2',
-    channel: 'instagram',
-    unreadCount: 0,
-    messages: generateMessages(8, 'Marcus Chen'),
-    get lastActivity() { return this.messages[this.messages.length - 1]; },
-    status: 'done',
-    assigneeId: 'user-1',
-    dueDate: null,
-    priority: 'medium',
-    tags: ['bug-report'],
-    aiSummary: { sentiment: 'neutral', summaryPoints: ['Reported a minor issue with order #12345.', 'Was satisfied with the proposed solution.', 'Inquired about the return policy.',], suggestedReplies: ['Can I help with anything else?', 'Here is our return policy.',], },
-    activeHandlerId: null,
-  },
-  {
-    id: 'task-3',
-    title: 'Login issues, cannot reset password',
-    contactId: 'contact-3',
-    channel: 'facebook',
-    unreadCount: 5,
-    messages: generateMessages(20, 'Aisha Khan'),
-    get lastActivity() { return this.messages[this.messages.length - 1]; },
-    status: 'open',
-    assigneeId: null,
-    dueDate: null,
-    priority: 'high',
-    tags: ['urgent', 'tech-support'],
-    aiSummary: { sentiment: 'negative', summaryPoints: ['Frustrated with login issues.', 'Unable to reset password via email link.', 'Threatened to cancel their subscription.',], suggestedReplies: ['I\'m escalating this to our technical team.', 'Let\'s try a manual password reset.', 'We apologize for the inconvenience.',], },
-    activeHandlerId: 'user-ai-1', // AI Assistant is handling this
-  },
-  {
-    id: 'task-4',
-    title: 'Follow-up on previous conversation',
-    contactId: 'contact-4',
-    channel: 'email',
-    unreadCount: 0,
-    messages: generateMessages(5, 'Leo Tolstoy'),
-    get lastActivity() { return this.messages[this.messages.length - 1]; },
-    status: 'snoozed',
-    assigneeId: 'user-3',
-    dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-    priority: 'low',
-    tags: [],
-    aiSummary: { sentiment: 'neutral', summaryPoints: ['Followed up on a previous conversation.', 'Confirmed meeting time for Thursday.', 'No outstanding issues.',], suggestedReplies: ['Sounds good!', 'See you then!',], },
-    activeHandlerId: null,
-  },
-];
+    for (let i = 0; i < count; i++) {
+        const contact = faker.helpers.arrayElement(mockContacts);
+        const status = faker.helpers.arrayElement(statuses);
+        const unreadCount = status === 'open' || status === 'in-progress' ? faker.number.int({ min: 0, max: 8 }) : 0;
+        const messageCount = faker.number.int({ min: 10, max: 150 });
+        const journey = faker.helpers.arrayElement(possibleJourneys);
+        const messages = generateMessages(messageCount, contact.name, journey);
+        const assignee = faker.datatype.boolean(0.8) ? faker.helpers.arrayElement(mockAssignees) : null;
+
+        const task: Task = {
+            id: `task-${i + 1}`,
+            title: faker.lorem.sentence({ min: 3, max: 7 }),
+            contactId: contact.id,
+            channel: faker.helpers.arrayElement(channels),
+            unreadCount,
+            messages,
+            get lastActivity() { return this.messages[this.messages.length - 1]; },
+            status,
+            assigneeId: assignee?.id || null,
+            dueDate: faker.datatype.boolean() ? faker.date.future().toISOString() : null,
+            priority: faker.helpers.arrayElement(priorities),
+            tags: faker.helpers.arrayElements(['onboarding', 'pricing', 'bug-report', 'urgent', 'tech-support'], faker.number.int({min: 0, max: 2})),
+            aiSummary: {
+                sentiment: faker.helpers.arrayElement(['positive', 'negative', 'neutral']),
+                summaryPoints: Array.from({ length: 3 }, () => faker.lorem.sentence()),
+                suggestedReplies: Array.from({ length: 2 }, () => faker.lorem.words({ min: 3, max: 6})),
+            },
+            activeHandlerId: faker.helpers.arrayElement([assignee?.id, null, 'user-ai-1']),
+        };
+        tasks.push(task);
+    }
+    return tasks;
+}
+
+export const mockTasks: Task[] = generateTasks(200);

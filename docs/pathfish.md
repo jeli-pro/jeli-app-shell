@@ -1,116 +1,135 @@
-Here is the master plan for refactoring the `JourneyScrollbar` component.
+Here's the plan, hot off the presses. We're about to supercharge the messaging demo. The current state is a ghost town; we're turning it into a bustling metropolis of user interaction. This is a two-pronged attack: first, we're injecting a massive amount of realistic, generated data to make the app feel alive. Forget a dozen conversations, we're talking hundreds, each with deep history.
+
+Second, we're evolving the `JourneyScrollbar` from a simple timeline into a meaningful customer journey map. It'll track the entire lifecycle—from initial contact and ordering to complaints and repeat business. Users will be able to see the entire story of a conversation at a glance. This isn't just about more data; it's about smarter, more insightful data visualization. We'll rip out the hardcoded mock data, replace it with dynamic generators, and give the UI the spit-and-polish it needs to handle the new depth.
+
+The result will be a demo that doesn't just show features but tells a story. It'll be more robust, more impressive, and a hell of a lot more convincing. Let's get to it.
 
 ```yaml
 plan:
-  uuid: 'c7b3e2a1-8d4f-4a9e-8b1a-9f01e2d4c5b6'
+  uuid: '3a1c8b9d-4e2f-4a6c-8b1e-9f0d7c5a3b21'
   status: 'todo'
-  title: 'Refactor JourneyScrollbar for Smoother Interaction and Enhanced Visuals'
+  title: 'Refactor: Supercharge Messaging Demo with Voluminous Data and Enhanced Journey Mapping'
   introduction: |
-    Alright, let's pimp this scrollbar. The current `JourneyScrollbar` is a good first pass, but it's got a critical bug where dragging the thumb doesn't actually scroll the content. Plus, the user wants it to be "cooler," referencing some slick `framer-motion` examples. We don't have that lib, but we've got `gsap` in the arsenal, so we'll use that to make it buttery smooth.
+    This refactoring plan aims to dramatically enhance the Messaging feature's demo capabilities. The current implementation uses a sparse, static set of mock data, which fails to showcase the application's potential for handling high-volume, complex user interactions.
 
-    This refactor is a two-pronged attack. First, we'll squash the drag-to-scroll bug and rip out the state-based animations that are probably causing jank. We'll replace them with direct DOM manipulation via refs and `gsap`, which is way more performant for high-frequency updates like scrolling.
+    The strategy is twofold. First, we will replace the hardcoded mock data with a robust generation system capable of producing a large and varied dataset—increasing the number of tasks by 20x and populating them with hundreds of messages. This will create a more realistic and performance-testing environment.
 
-    Second, we'll give it a visual overhaul. We'll add a progress fill to the track and make the "journey point" dots come alive, highlighting the one that's currently in view. The result will be a bug-free, high-performance, and visually engaging scrollbar that feels native to the app's polished aesthetic.
+    Second, we will enrich the data model and UI for the customer journey. The `JourneyScrollbar` will be upgraded to map distinct stages of customer interaction, such as 'Consult', 'Order', 'Delivered', and 'Complain', complete with unique icons. This transforms it from a simple progress bar into a powerful narrative tool, allowing users to instantly grasp the context of a conversation.
   parts:
-    - uuid: 'a1b2c3d4-e5f6-7890-1234-567890abcdef'
+    - uuid: 'b4d2c1a0-9e8f-4b1a-8c7d-6e3f2a1b0c9e'
       status: 'todo'
-      name: 'Part 1: Fix Drag Logic and Optimize Performance'
+      name: 'Part 1: Evolve Data Model for Richer Customer Journeys'
       reason: |
-        The scrollbar's core function—dragging the thumb to scroll—is broken. We need to implement a more robust calculation for this. Simultaneously, the current implementation relies on React state for positioning the thumb, causing re-renders on every scroll event. This is inefficient. We'll move all animation logic to GSAP and direct ref manipulation to decouple it from the React render cycle for a massive performance boost.
+        Before we can generate more data, we need to expand the data model to support a more detailed customer journey. This involves updating the types to include more nuanced stages of a customer interaction, which is foundational for the subsequent data generation and UI enhancements.
       steps:
-        - uuid: 'f1e2d3c4-b5a6-7890-1234-567890abcdef'
+        - uuid: 'c5e1f0a9-8d7c-4b3a-9e1f-0a9b8c7d6e5f'
           status: 'todo'
-          name: '1. Overhaul Drag-to-Scroll Logic'
+          name: '1. Expand JourneyPointType'
           reason: |
-            The existing drag calculation using deltas is likely the source of the bug. We will replace it with a more reliable method that maps the absolute mouse position within the scrollbar track directly to a scroll position in the content area. This eliminates complex state tracking during the drag operation.
+            To accurately model a customer's lifecycle, the existing `JourneyPointType` needs to be more comprehensive. We'll add key stages like 'Delivered' and 'Follow-up' to create a more complete narrative.
           files:
-            - src/pages/Messaging/components/JourneyScrollbar.tsx
+            - 'src/pages/Messaging/types.ts'
           operations:
-            - "In `handleMouseMove`, replace the current delta-based calculation with logic that determines the `scrollTop` based on the mouse's `clientY` relative to the track's bounding box."
-            - "The new logic should be similar to `handleTrackClick` but applied continuously during a drag."
-            - "Remove the `startYRef` and `startScrollTopRef` refs, as they are no longer needed for this new, simpler calculation."
-            - "Ensure the `useCallback` dependencies for `handleMouseMove` and `handleMouseDown` are updated correctly."
-        - uuid: 'g2h3i4j5-k6l7-8901-2345-67890abcdef'
-          status: 'todo'
-          name: '2. Animate Thumb with GSAP for Performance'
-          reason: |
-            Updating the thumb's position via `useState` is causing performance issues. We will create a ref for the thumb element and use `gsap` to animate its position, making the movement independent of React's render loop and significantly smoother.
-          files:
-            - src/pages/Messaging/components/JourneyScrollbar.tsx
-          operations:
-            - "Remove the `thumbStyle` state variable (`useState({ top: 0, height: 0 })`)."
-            - "Add a `useRef` for the thumb DOM element, e.g., `const thumbRef = useRef<HTMLDivElement>(null);`."
-            - "In the JSX, attach `thumbRef` to the thumb `div` and remove the inline `style` attribute that depends on state."
-            - "Modify the `updateThumb` function. Instead of `setThumbStyle`, use `gsap.to(thumbRef.current, ...)` to animate its `height` and `y` (translateY) properties. Set a short duration like `0.1` for responsiveness."
-            - "Ensure the `gsap` animation also handles the case where the thumb should be hidden (e.g., set `autoAlpha: 0` or `height: 0`)."
+            - "In `src/pages/Messaging/types.ts`, modify the `JourneyPointType`."
+            - "Expand the type definition from `'Consult' | 'Order' | 'Complain' | 'Reorder'` to `'Consult' | 'Order' | 'Delivered' | 'Complain' | 'Reorder' | 'Follow-up'`."
       context_files:
         compact:
-          - src/pages/Messaging/components/JourneyScrollbar.tsx
+          - 'src/pages/Messaging/types.ts'
         medium:
-          - src/pages/Messaging/components/JourneyScrollbar.tsx
-          - src/pages/Messaging/components/TaskDetail.tsx
+          - 'src/pages/Messaging/types.ts'
+          - 'src/pages/Messaging/data/mockData.ts'
         extended:
-          - src/pages/Messaging/components/JourneyScrollbar.tsx
-          - src/pages/Messaging/components/TaskDetail.tsx
-          - src/components/effects/BoxReveal.tsx
-    - uuid: 'b2c3d4e5-f6a7-8901-2345-67890abcdef'
-      status: 'todo'
-      name: 'Part 2: Enhance Scrollbar Visuals'
-      reason: |
-        To meet the user's request for a "cooler" scrollbar, we will add dynamic visual feedback. This includes highlighting the active journey point and showing a progress fill, making the component more interactive and aesthetically pleasing, using `gsap` for smooth animations.
-      steps:
-        - uuid: 'h3i4j5k6-l7m8-9012-3456-7890abcdef'
-          status: 'todo'
-          name: '1. Implement Active Journey Point Highlighting'
-          reason: |
-            Highlighting the currently visible "journey point" on the scrollbar provides valuable context to the user. We'll do this performantly using a ref to track the active item and GSAP to handle the animations, avoiding unnecessary re-renders.
-          files:
-            - src/pages/Messaging/components/JourneyScrollbar.tsx
-          operations:
-            - "Add a ref to store the ID of the active journey point, e.g., `activeJourneyPointIdRef = useRef<string | null>(null);`."
-            - "Inside the scroll handler (e.g., `updateThumb`), calculate which message element is closest to the center of the viewport."
-            - "If the active point has changed, use `gsap` to animate the previously active dot back to its default state (e.g., `scale: 1`)."
-            - "Use `gsap` to animate the new active dot to a highlighted state (e.g., `scale: 1.5`). Update `activeJourneyPointIdRef`."
-            - "To make this work, add a unique data attribute like `data-dot-id={pos.id}` to each journey point `button` for easy selection with `querySelector`."
-            - "Update the `className` for the journey point `button` to include `transition-transform` and `hover:scale-125` for a base effect, which will be gracefully overridden by GSAP."
-        - uuid: 'i4j5k6l7-m8n9-0123-4567-890abcdef'
-          status: 'todo'
-          name: '2. Add Animated Progress Fill to the Track'
-          reason: |
-            A progress fill provides a clear and satisfying indication of the user's overall position in the conversation. We'll add a new element and animate its height with GSAP for a smooth effect.
-          files:
-            - src/pages/Messaging/components/JourneyScrollbar.tsx
-          operations:
-            - "Add a new `div` inside the relative container of the scrollbar track. Style it to be the 'progress fill', positioned at the top of the track (e.g., `absolute top-0 left-1/2 -translate-x-1/2 w-[1.5px] bg-primary rounded-full`)."
-            - "Set its `transform-origin` to `top`."
-            - "Add a ref for this new element, e.g., `progressRef = useRef<HTMLDivElement>(null);`."
-            - "In the scroll handler, calculate the scroll progress as a percentage: `const progress = container.scrollTop / (container.scrollHeight - container.clientHeight);`."
-            - "Use `gsap.to(progressRef.current, { scaleY: progress, duration: 0.1 })` to animate the fill's height based on the scroll progress."
-      context_files:
-        compact:
-          - src/pages/Messaging/components/JourneyScrollbar.tsx
-        medium:
-          - src/pages/Messaging/components/JourneyScrollbar.tsx
-          - src/pages/Messaging/components/TaskDetail.tsx
-        extended:
-          - src/pages/Messaging/components/JourneyScrollbar.tsx
-          - src/pages/Messaging/components/TaskDetail.tsx
-          - src/components/effects/BoxReveal.tsx
-  conclusion: |
-    Once this refactor is complete, the `JourneyScrollbar` will be transformed from a slightly buggy, basic component into a key feature of the messaging UI. The drag-to-scroll functionality will be reliable and intuitive. Performance will be significantly improved, ensuring a fluid user experience even with long conversations.
+          - 'src/pages/Messaging/types.ts'
+          - 'src/pages/Messaging/data/mockData.ts'
+          - 'src/pages/Messaging/components/JourneyScrollbar.tsx'
 
-    The new visual enhancements—the active point highlighting and progress fill—will not only look great but also provide better context and navigation cues for the user, making the entire conversation view more functional and polished. This hack brings the component up to the high standard set by the rest of the application shell.
+    - uuid: 'a1b0c9d8-7e6f-4a5b-9c8d-1e2f3a4b5c6d'
+      status: 'todo'
+      name: 'Part 2: Implement High-Volume Mock Data Generation'
+      reason: |
+        The current static mock data is a major bottleneck for demonstrating the app's capabilities. Replacing it with a programmatic generator will allow us to create a large, diverse, and realistic dataset that properly simulates a production environment. This part focuses on creating the generation logic and integrating the enhanced journey points.
+      steps:
+        - uuid: 'd9e8f7c6-5b4a-4c3d-8b2a-1c0d9e8f7c6b'
+          status: 'todo'
+          name: '1. Create Task and Message Generators'
+          reason: |
+            Manually creating hundreds of tasks and thousands of messages is not feasible. We will build generator functions to automate this process, allowing for easy scalability and variation in the mock data.
+          files:
+            - 'src/pages/Messaging/data/mockData.ts'
+          operations:
+            - "In `src/pages/Messaging/data/mockData.ts`, create a new function `generateTasks(count: number): Task[]` to programmatically create a large number of tasks."
+            - "Modify the existing `generateMessages` function to accept a larger, variable count and to increase its output significantly."
+            - "Remove the hardcoded `mockTasks` array and replace it with a call to the new generator, e.g., `export const mockTasks = generateTasks(100);`."
+        - uuid: 'e7f6d5c4-3a2b-4d1c-9a0b-8e7f6d5c4b3a'
+          status: 'todo'
+          name: '2. Integrate Journey Points into Generated Data'
+          reason: |
+            The generated messages need to feel like real conversations. This step will inject the new journey points into the message data in a logical, sequential order to create coherent customer stories.
+          files:
+            - 'src/pages/Messaging/data/mockData.ts'
+          operations:
+            - "Inside the `generateMessages` function, define a logical sequence for journey points, such as `['Consult', 'Order', 'Delivered', 'Follow-up']`."
+            - "Add logic to the message generation loop to strategically assign `journeyPoint` properties to certain messages, ensuring they appear in a plausible order within a single conversation."
+            - "Introduce variability so that some conversations might end after 'Order', while others might include 'Complain' or 'Reorder' points."
+      context_files:
+        compact:
+          - 'src/pages/Messaging/data/mockData.ts'
+        medium:
+          - 'src/pages/Messaging/data/mockData.ts'
+          - 'src/pages/Messaging/types.ts'
+        extended:
+          - 'src/pages/Messaging/data/mockData.ts'
+          - 'src/pages/Messaging/types.ts'
+          - 'src/pages/Messaging/store/messaging.store.ts'
+
+    - uuid: 'f8c7b6a5-4d3e-4f2g-9h1i-2j3k4l5m6n7o'
+      status: 'todo'
+      name: 'Part 3: Enhance JourneyScrollbar UI with Icons'
+      reason: |
+        To make the new journey data immediately useful, the `JourneyScrollbar` UI needs to be updated. Adding distinct icons for each journey stage will provide at-a-glance context, making the feature more intuitive and visually appealing.
+      steps:
+        - uuid: '9a8b7c6d-5e4f-4g3h-9i2j-1k0l9m8n7p6q'
+          status: 'todo'
+          name: '1. Map Journey Points to Icons'
+          reason: |
+            Text-only tooltips are not enough. We will create a visual language for the customer journey by mapping each stage to a unique icon, improving usability and aesthetics.
+          files:
+            - 'src/pages/Messaging/components/JourneyScrollbar.tsx'
+          operations:
+            - "In `src/pages/Messaging/components/JourneyScrollbar.tsx`, import a set of icons from `lucide-react` corresponding to the journey stages (e.g., `MessageSquare` for 'Consult', `ShoppingCart` for 'Order', `PackageCheck` for 'Delivered', `Angry` for 'Complain')."
+            - "Create a helper function or a constant map within the component, e.g., `getJourneyIcon(point: JourneyPointType)`, that returns the appropriate icon component for each journey point type."
+            - "In the JSX for the `TooltipContent`, call this new helper function to render the icon next to the journey point's text label (`dot.message.journeyPoint`)."
+            - "Style the tooltip content to have the icon and text aligned, for example, using a flex container with a gap."
+      context_files:
+        compact:
+          - 'src/pages/Messaging/components/JourneyScrollbar.tsx'
+        medium:
+          - 'src/pages/Messaging/components/JourneyScrollbar.tsx'
+          - 'src/pages/Messaging/types.ts'
+        extended:
+          - 'src/pages/Messaging/components/JourneyScrollbar.tsx'
+          - 'src/pages/Messaging/types.ts'
+          - 'src/pages/Messaging/components/TaskDetail.tsx'
+
+  conclusion: |
+    Upon completion of this plan, the Messaging demo will be transformed from a proof-of-concept into a compelling, high-fidelity simulation of a real-world application. The massive increase in data volume will demonstrate the UI's performance and scalability, while the enhanced `JourneyScrollbar` will provide a powerful tool for narrative-driven data exploration. This refactor will significantly elevate the perceived value and robustness of the entire application shell.
   context_files:
     compact:
-      - src/pages/Messaging/components/JourneyScrollbar.tsx
+      - 'src/pages/Messaging/data/mockData.ts'
+      - 'src/pages/Messaging/types.ts'
+      - 'src/pages/Messaging/components/JourneyScrollbar.tsx'
     medium:
-      - src/pages/Messaging/components/JourneyScrollbar.tsx
-      - src/pages/Messaging/components/TaskDetail.tsx
-      - src/pages/Messaging/types.ts
+      - 'src/pages/Messaging/data/mockData.ts'
+      - 'src/pages/Messaging/types.ts'
+      - 'src/pages/Messaging/components/JourneyScrollbar.tsx'
+      - 'src/pages/Messaging/components/TaskDetail.tsx'
+      - 'src/pages/Messaging/store/messaging.store.ts'
     extended:
-      - src/pages/Messaging/components/JourneyScrollbar.tsx
-      - src/pages/Messaging/components/TaskDetail.tsx
-      - src/pages/Messaging/types.ts
-      - src/components/effects/BoxReveal.tsx
-      - src/lib/utils.ts
+      - 'src/pages/Messaging/data/mockData.ts'
+      - 'src/pages/Messaging/types.ts'
+      - 'src/pages/Messaging/components/JourneyScrollbar.tsx'
+      - 'src/pages/Messaging/components/TaskDetail.tsx'
+      - 'src/pages/Messaging/store/messaging.store.ts'
+      - 'src/pages/Messaging/index.tsx'
+      - 'src/pages/Messaging/components/TaskList.tsx'
 ```

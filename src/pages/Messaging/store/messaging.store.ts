@@ -2,18 +2,6 @@ import { create } from 'zustand';
 import { mockTasks, mockContacts, mockAssignees } from '../data/mockData';
 import type { Task, Contact, Channel, Assignee, TaskStatus, TaskPriority, TaskView, Message, JourneyPointType } from '../types';
 
-// Data augmentation to add journey points for demonstration
-const augmentedTasks = mockTasks.map(task => {
-  if (task.id === 'task-1' && task.messages.length > 8) {
-    const messagesWithJourneyPoints: Message[] = [...task.messages];
-    messagesWithJourneyPoints[2] = { ...messagesWithJourneyPoints[2], journeyPoint: 'Consult' as JourneyPointType };
-    messagesWithJourneyPoints[5] = { ...messagesWithJourneyPoints[5], journeyPoint: 'Order' as JourneyPointType };
-    messagesWithJourneyPoints[8] = { ...messagesWithJourneyPoints[8], journeyPoint: 'Complain' as JourneyPointType };
-    return { ...task, messages: messagesWithJourneyPoints };
-  }
-  return task;
-});
-
 interface MessagingState {
   tasks: Task[];
   contacts: Contact[];
@@ -43,7 +31,7 @@ interface MessagingActions {
 }
 
 export const useMessagingStore = create<MessagingState & MessagingActions>((set, get) => ({
-  tasks: augmentedTasks,
+  tasks: mockTasks,
   contacts: mockContacts,
   assignees: mockAssignees,
   searchTerm: '',

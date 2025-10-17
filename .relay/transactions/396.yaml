@@ -1,0 +1,133 @@
+uuid: c6e267d3-b413-4318-87d4-83b384d72834
+projectId: jeli-app-shell
+createdAt: '2025-10-17T10:25:57.612Z'
+gitCommitMsg: >-
+  feat(messaging): expand customer journey data model
+
+  Expanded the `JourneyPointType` to include 'Delivered' and 'Follow-up' stages.
+  This change enriches the data model to support a more comprehensive and
+  realistic customer journey simulation.
+promptSummary: Expand JourneyPointType in types.ts as per Part 1 of the plan.
+reasoning:
+  - >-
+    To begin, I'll expand the data model to support a richer customer journey,
+    which is a prerequisite for generating more detailed and realistic mock
+    data. This involves updating the `JourneyPointType` in our type definitions
+    to include more stages of a customer's interaction.
+operations:
+  - type: write
+    path: src/pages/Messaging/types.ts
+    content: >+
+      --- src/pages/Messaging/types.ts
+
+      +++ src/pages/Messaging/types.ts
+
+      @@ -52,7 +52,7 @@
+         createdAt: string;
+       }
+       
+      -export type JourneyPointType = 'Consult' | 'Order' | 'Complain' |
+      'Reorder';
+
+      +export type JourneyPointType = 'Consult' | 'Order' | 'Delivered' |
+      'Complain' | 'Reorder' | 'Follow-up';
+       
+       export interface Message {
+         id: string;
+
+    patchStrategy: standard-diff
+snapshot:
+  src/pages/Messaging/types.ts: |-
+    import type { LucideIcon } from "lucide-react";
+
+    export type Channel = 'whatsapp' | 'instagram' | 'facebook' | 'email';
+
+    export interface ChannelIcon {
+      Icon: LucideIcon;
+      color: string;
+    }
+
+    export interface Contact {
+      id: string;
+      name:string;
+      avatar: string;
+      online: boolean;
+      tags: string[];
+      email: string;
+      phone: string;
+      lastSeen: string;
+      company: string;
+      role: string;
+      activity: ActivityEvent[];
+      notes: Note[];
+    }
+
+    export interface Assignee {
+      id: string;
+      name: string;
+      avatar: string;
+      type: 'human' | 'ai';
+    }
+
+    export type ActivityEventType = 'note' | 'call' | 'email' | 'meeting';
+
+    export interface ActivityEvent {
+      id: string;
+      type: ActivityEventType;
+      content: string;
+      timestamp: string;
+    }
+    export interface Note {
+      id: string;
+      content: string;
+      createdAt: string;
+    }
+
+    export type JourneyPointType = 'Consult' | 'Order' | 'Complain' | 'Reorder';
+
+    export interface Message {
+      id: string;
+      text: string;
+      timestamp: string;
+      sender: 'user' | 'contact' | 'system';
+      type: 'comment' | 'note' | 'system';
+      read: boolean;
+      userId?: string; // for notes or system messages from users
+      journeyPoint?: JourneyPointType;
+    }
+
+    export interface AISummary {
+      sentiment: 'positive' | 'negative' | 'neutral';
+      summaryPoints: string[];
+      suggestedReplies: string[];
+    }
+
+    export type TaskStatus = 'open' | 'in-progress' | 'done' | 'snoozed';
+    export type TaskPriority = 'none' | 'low' | 'medium' | 'high';
+
+    export interface Task {
+      id: string;
+      title: string;
+      contactId: string;
+      channel: Channel;
+      unreadCount: number;
+      lastActivity: Message;
+      messages: Message[];
+      status: TaskStatus;
+      assigneeId: string | null;
+      dueDate: string | null;
+      priority: TaskPriority;
+      tags: string[];
+      aiSummary: AISummary;
+      activeHandlerId: string | null;
+      takeoverRequested?: boolean;
+    }
+
+    export type TaskView = 'all_open' | 'unassigned' | 'done';
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 396

@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import type { Message } from '../types';
+import type { Message, JourneyPointType } from '../types';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { gsap } from 'gsap';
+import { MessageSquare, ShoppingCart, PackageCheck, AlertCircle, RefreshCw, MailQuestion, type LucideIcon } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface JourneyScrollbarProps {
   scrollContainerRef: React.RefObject<HTMLDivElement>;
@@ -14,6 +16,15 @@ interface DotPosition {
   topPercentage: number;
   message: Message;
 }
+
+const journeyInfoMap: Record<JourneyPointType, { Icon: LucideIcon; textColor: string; bgColor: string; }> = {
+  Consult: { Icon: MessageSquare, textColor: 'text-blue-500', bgColor: 'bg-blue-500' },
+  Order: { Icon: ShoppingCart, textColor: 'text-green-500', bgColor: 'bg-green-500' },
+  Delivered: { Icon: PackageCheck, textColor: 'text-emerald-500', bgColor: 'bg-emerald-500' },
+  Complain: { Icon: AlertCircle, textColor: 'text-red-500', bgColor: 'bg-red-500' },
+  Reorder: { Icon: RefreshCw, textColor: 'text-indigo-500', bgColor: 'bg-indigo-500' },
+  'Follow-up': { Icon: MailQuestion, textColor: 'text-yellow-500', bgColor: 'bg-yellow-500' },
+};
 
 export const JourneyScrollbar: React.FC<JourneyScrollbarProps> = ({
   scrollContainerRef,
@@ -258,22 +269,28 @@ export const JourneyScrollbar: React.FC<JourneyScrollbarProps> = ({
                 />
 
                 {/* Journey Dots */}
-                {dotPositions.map((pos) => (
-                <Tooltip key={pos.id}>
-                    <TooltipTrigger asChild>
-                    <button
-                        data-dot-id={pos.id}
-                        onClick={(e) => { e.stopPropagation(); onDotClick(pos.id); }}
-                        className="absolute left-1/2 -translate-x-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-primary opacity-50 rounded-full focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-background transition-all duration-200 hover:scale-125 hover:opacity-100"
-                        style={{ top: `${pos.topPercentage}%` }}
-                        aria-label={`Jump to message: ${pos.message.text.substring(0, 30)}...`}
-                    />
-                    </TooltipTrigger>
-                    <TooltipContent side="left" className="text-sm p-2 w-auto max-w-xs shadow-xl" sideOffset={8}>
-                    <p className="line-clamp-3">{pos.message.text}</p>
-                    </TooltipContent>
-                </Tooltip>
-                ))}
+                {dotPositions.map((pos) => {
+                  const journeyInfo = pos.message.journeyPoint ? journeyInfoMap[pos.message.journeyPoint] : null;
+                  return (
+                    <Tooltip key={pos.id}>
+                        <TooltipTrigger asChild>
+                        <button
+                            data-dot-id={pos.id}
+                            onClick={(e) => { e.stopPropagation(); onDotClick(pos.id); }}
+                            className={cn("absolute left-1/2 -translate-x-1/2 -translate-y-1/2 w-2.5 h-2.5 opacity-50 rounded-full focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-background transition-all duration-200 hover:scale-125 hover:opacity-100",
+                                journeyInfo ? journeyInfo.bgColor : 'bg-primary'
+                            )}
+                            style={{ top: `${pos.topPercentage}%` }}
+                            aria-label={`Jump to message: ${pos.message.text.substring(0, 30)}...`}
+                        />
+                        </TooltipTrigger>
+                        <TooltipContent side="left" className="text-sm p-2 w-auto max-w-xs shadow-xl" sideOffset={8}>
+                          {journeyInfo && <div className="flex items-center gap-2 font-semibold mb-1.5"><journeyInfo.Icon className={cn("w-4 h-4", journeyInfo.textColor)} /><span>{pos.message.journeyPoint}</span></div>}
+                          <p className="line-clamp-3 text-muted-foreground">{pos.message.text}</p>
+                        </TooltipContent>
+                    </Tooltip>
+                  );
+                })}
             </div>
         </TooltipProvider>
     </div>

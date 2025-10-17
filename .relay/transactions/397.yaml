@@ -1,0 +1,594 @@
+uuid: d01202e8-b7c1-4b14-8771-ef6442656333
+projectId: jeli-app-shell
+createdAt: '2025-10-17T10:27:33.768Z'
+gitCommitMsg: >-
+  feat(messaging): implement high-volume mock data generation
+
+  Replaced the static mock data with a dynamic data generation system using
+  `@faker-js/faker`.
+
+  - Generates 200 tasks and 50 contacts to simulate a realistic, high-volume
+  environment. - Programmatically inserts customer journey points (`Consult`,
+  `Order`, `Complain`, etc.) into message history to create coherent narratives.
+  - Removed redundant data augmentation logic from the Zustand store, which now
+  consumes the richer mock data directly.
+promptSummary: Implement high-volume mock data generation and integrate journey points.
+reasoning:
+  - >-
+    Excellent, let's inject a massive amount of realistic data into the
+    application. This will make the demo feel alive and demonstrate its ability
+    to handle a high volume of conversations.
+  - >-
+    First, I will completely overhaul `src/pages/Messaging/data/mockData.ts`.
+    I'm replacing the small, static dataset with a dynamic generation system
+    using `@faker-js/faker` to produce 200 tasks and 50 contacts. The new
+    `generateMessages` function will intelligently place the expanded journey
+    points into the message history, creating coherent narratives for each task.
+  - >-
+    Next, I'll update the Zustand store. Since the new data generator now
+    handles journey points, the manual data augmentation in `messaging.store.ts`
+    is no longer needed. I'm removing that logic to simplify the store and rely
+    on the new, authoritative mock data source.
+operations:
+  - type: write
+    path: src/pages/Messaging/data/mockData.ts
+    content: >-
+      import type { Contact, Task, Message, ActivityEvent, Note, Assignee,
+      TaskStatus, TaskPriority, Channel, JourneyPointType } from '../types';
+
+      import { faker } from '@faker-js/faker';
+
+
+      // --- ASSIGNEES ---
+
+      export const mockAssignees: Assignee[] = [
+        { id: 'user-1', name: 'You', avatar: `https://avatar.vercel.sh/you.png`, type: 'human' },
+        { id: 'user-2', name: 'Alex Johnson', avatar: `https://avatar.vercel.sh/alex.png`, type: 'human' },
+        { id: 'user-3', name: 'Samira Kumar', avatar: `https://avatar.vercel.sh/samira.png`, type: 'human' },
+        { id: 'user-4', name: 'Casey Lee', avatar: `https://avatar.vercel.sh/casey.png`, type: 'human' },
+        { id: 'user-5', name: 'Jordan Rivera', avatar: `https://avatar.vercel.sh/jordan.png`, type: 'human' },
+        { id: 'user-ai-1', name: 'AI Assistant', avatar: `https://avatar.vercel.sh/ai.png`, type: 'ai' },
+      ];
+
+
+      // --- HELPERS ---
+
+      const generateNotes = (contactName: string): Note[] => [
+        { id: `note-${faker.string.uuid()}`, content: `Initial discovery call with ${contactName}. Seemed very interested in our enterprise package.`, createdAt: faker.date.past().toISOString() },
+        { id: `note-${faker.string.uuid()}`, content: `Followed up via email with pricing details.`, createdAt: faker.date.recent().toISOString() },
+      ];
+
+
+      const generateActivity = (contactName: string): ActivityEvent[] => [
+        { id: `act-${faker.string.uuid()}`, type: 'email', content: `Sent follow-up email regarding pricing.`, timestamp: faker.date.past().toISOString() },
+        { id: `act-${faker.string.uuid()}`, type: 'call', content: `Had a 30-minute discovery call with ${contactName}.`, timestamp: faker.date.recent().toISOString() },
+        { id: `act-${faker.string.uuid()}`, type: 'meeting', content: `Scheduled a demo for next week.`, timestamp: faker.date.soon().toISOString() },
+      ];
+
+
+      // --- CONTACTS ---
+
+      export const mockContacts: Contact[] = Array.from({ length: 50 }, (_, i)
+      => {
+          const firstName = faker.person.firstName();
+          const lastName = faker.person.lastName();
+          const name = `${firstName} ${lastName}`;
+          return {
+              id: `contact-${i + 1}`,
+              name,
+              avatar: `https://avatar.vercel.sh/${firstName.toLowerCase()}${lastName.toLowerCase()}.png`,
+              online: faker.datatype.boolean(),
+              tags: faker.helpers.arrayElements(['VIP', 'New Lead', 'Returning Customer', 'Support Request', 'High Value'], faker.number.int({ min: 1, max: 3 })),
+              email: faker.internet.email({ firstName, lastName }),
+              phone: faker.phone.number(),
+              lastSeen: faker.datatype.boolean() ? 'online' : `${faker.number.int({ min: 2, max: 59 })} minutes ago`,
+              company: faker.company.name(),
+              role: faker.person.jobTitle(),
+              activity: generateActivity(name),
+              notes: generateNotes(name),
+          };
+      });
+
+
+      // --- MESSAGE GENERATOR ---
+
+      const generateMessages = (messageCount: number, contactName: string,
+      journeyPath: JourneyPointType[]): Message[] => {
+        const messages: Message[] = [];
+        const now = new Date();
+        
+        const journeyPointsWithIndices = journeyPath.map((point, index) => ({
+            point,
+            index: Math.floor((messageCount / journeyPath.length) * (index + Math.random() * 0.8))
+        }));
+
+        for (let i = 0; i < messageCount; i++) {
+          const random = Math.random();
+          let sender: Message['sender'] = 'contact';
+          let type: Message['type'] = 'comment';
+          let text = faker.lorem.sentence();
+          let userId: string | undefined = undefined;
+
+          if (random > 0.85) { // Internal Note
+            sender = 'user';
+            type = 'note';
+            const user = faker.helpers.arrayElement(mockAssignees.filter(u => u.type === 'human'));
+            userId = user.id;
+            text = `Internal note from ${user.name}: ${faker.lorem.sentence()}`;
+          } else if (random > 0.7) { // System message
+            sender = 'system';
+            type = 'system';
+            text = faker.helpers.arrayElement(['Task status changed to "in-progress"', 'Task assigned to Alex Johnson', 'User joined the conversation']);
+          } else if (random > 0.35) { // User comment
+            sender = 'user';
+            type = 'comment';
+            userId = 'user-1'; // "You"
+            text = faker.lorem.sentence();
+          }
+          
+          const journeyPointInfo = journeyPointsWithIndices.find(jp => jp.index === i);
+
+          messages.push({
+            id: `msg-${faker.string.uuid()}`,
+            text,
+            timestamp: new Date(now.getTime() - (messageCount - i) * 60 * 60 * 100).toISOString(),
+            sender,
+            type,
+            read: i < messageCount - faker.number.int({min: 0, max: 5}),
+            userId,
+            journeyPoint: journeyPointInfo?.point
+          });
+        }
+        
+        // Ensure the last message is from the contact for preview purposes
+        messages[messages.length - 1] = {
+          ...messages[messages.length-1],
+          sender: 'contact',
+          type: 'comment',
+          text: `Hey! This is the latest message from ${contactName}. ${faker.lorem.sentence()}`,
+          userId: undefined
+        };
+        return messages.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+      };
+
+
+      // --- TASK GENERATOR ---
+
+      const generateTasks = (count: number): Task[] => {
+          const tasks: Task[] = [];
+          const statuses: TaskStatus[] = ['open', 'in-progress', 'done', 'snoozed'];
+          const priorities: TaskPriority[] = ['none', 'low', 'medium', 'high'];
+          const channels: Channel[] = ['whatsapp', 'instagram', 'facebook', 'email'];
+          const possibleJourneys: JourneyPointType[][] = [
+              ['Consult', 'Order', 'Delivered', 'Follow-up'],
+              ['Consult', 'Order', 'Complain', 'Follow-up'],
+              ['Consult', 'Order', 'Delivered', 'Reorder'],
+              ['Consult', 'Follow-up'],
+              ['Complain'],
+              ['Order', 'Delivered']
+          ];
+
+          for (let i = 0; i < count; i++) {
+              const contact = faker.helpers.arrayElement(mockContacts);
+              const status = faker.helpers.arrayElement(statuses);
+              const unreadCount = status === 'open' || status === 'in-progress' ? faker.number.int({ min: 0, max: 8 }) : 0;
+              const messageCount = faker.number.int({ min: 10, max: 150 });
+              const journey = faker.helpers.arrayElement(possibleJourneys);
+              const messages = generateMessages(messageCount, contact.name, journey);
+              const assignee = faker.datatype.boolean(0.8) ? faker.helpers.arrayElement(mockAssignees) : null;
+
+              const task: Task = {
+                  id: `task-${i + 1}`,
+                  title: faker.lorem.sentence({ min: 3, max: 7 }),
+                  contactId: contact.id,
+                  channel: faker.helpers.arrayElement(channels),
+                  unreadCount,
+                  messages,
+                  get lastActivity() { return this.messages[this.messages.length - 1]; },
+                  status,
+                  assigneeId: assignee?.id || null,
+                  dueDate: faker.datatype.boolean() ? faker.date.future().toISOString() : null,
+                  priority: faker.helpers.arrayElement(priorities),
+                  tags: faker.helpers.arrayElements(['onboarding', 'pricing', 'bug-report', 'urgent', 'tech-support'], faker.number.int({min: 0, max: 2})),
+                  aiSummary: {
+                      sentiment: faker.helpers.arrayElement(['positive', 'negative', 'neutral']),
+                      summaryPoints: Array.from({ length: 3 }, () => faker.lorem.sentence()),
+                      suggestedReplies: Array.from({ length: 2 }, () => faker.lorem.words({ min: 3, max: 6})),
+                  },
+                  activeHandlerId: faker.helpers.arrayElement([assignee?.id, null, 'user-ai-1']),
+              };
+              tasks.push(task);
+          }
+          return tasks;
+      }
+
+
+      export const mockTasks: Task[] = generateTasks(200);
+    patchStrategy: replace
+  - type: write
+    path: src/pages/Messaging/store/messaging.store.ts
+    content: >+
+      --- src/pages/Messaging/store/messaging.store.ts
+
+      +++ src/pages/Messaging/store/messaging.store.ts
+
+      @@ -2,17 +2,6 @@
+       import { mockTasks, mockContacts, mockAssignees } from '../data/mockData';
+       import type { Task, Contact, Channel, Assignee, TaskStatus, TaskPriority, TaskView, Message, JourneyPointType } from '../types';
+       
+      -// Data augmentation to add journey points for demonstration
+
+      -const augmentedTasks = mockTasks.map(task => {
+
+      -  if (task.id === 'task-1' && task.messages.length > 8) {
+
+      -    const messagesWithJourneyPoints: Message[] = [...task.messages];
+
+      -    messagesWithJourneyPoints[2] = { ...messagesWithJourneyPoints[2],
+      journeyPoint: 'Consult' as JourneyPointType };
+
+      -    messagesWithJourneyPoints[5] = { ...messagesWithJourneyPoints[5],
+      journeyPoint: 'Order' as JourneyPointType };
+
+      -    messagesWithJourneyPoints[8] = { ...messagesWithJourneyPoints[8],
+      journeyPoint: 'Complain' as JourneyPointType };
+
+      -    return { ...task, messages: messagesWithJourneyPoints };
+
+      -  }
+
+      -  return task;
+
+      -});
+
+      -
+       interface MessagingState {
+         tasks: Task[];
+         contacts: Contact[];
+      @@ -38,7 +27,7 @@
+       }
+       
+       export const useMessagingStore = create<MessagingState & MessagingActions>((set, get) => ({
+      -  tasks: augmentedTasks,
+
+      +  tasks: mockTasks,
+         contacts: mockContacts,
+         assignees: mockAssignees,
+         searchTerm: '',
+
+    patchStrategy: standard-diff
+snapshot:
+  src/pages/Messaging/data/mockData.ts: >-
+    import type { Contact, Task, Message, ActivityEvent, Note, Assignee,
+    TaskStatus, TaskPriority } from '../types';
+
+
+    // --- ASSIGNEES ---
+
+    export const mockAssignees: Assignee[] = [
+      { id: 'user-1', name: 'You', avatar: `https://avatar.vercel.sh/you.png`, type: 'human' },
+      { id: 'user-2', name: 'Alex Johnson', avatar: `https://avatar.vercel.sh/alex.png`, type: 'human' },
+      { id: 'user-3', name: 'Samira Kumar', avatar: `https://avatar.vercel.sh/samira.png`, type: 'human' },
+      { id: 'user-ai-1', name: 'AI Assistant', avatar: `https://avatar.vercel.sh/ai.png`, type: 'ai' },
+    ];
+
+
+    // --- HELPERS ---
+
+    const generateNotes = (contactName: string): Note[] => [
+      { id: `note-${Math.random()}`, content: `Initial discovery call with ${contactName}. Seemed very interested in our enterprise package.`, createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString() },
+      { id: `note-${Math.random()}`, content: `Followed up via email with pricing details.`, createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString() },
+    ];
+
+
+    const generateActivity = (contactName: string): ActivityEvent[] => [
+      { id: `act-${Math.random()}`, type: 'email', content: `Sent follow-up email regarding pricing.`, timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString() },
+      { id: `act-${Math.random()}`, type: 'call', content: `Had a 30-minute discovery call with ${contactName}.`, timestamp: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString() },
+      { id: `act-${Math.random()}`, type: 'meeting', content: `Scheduled a demo for next week.`, timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString() },
+    ];
+
+
+    // --- CONTACTS ---
+
+    export const mockContacts: Contact[] = [
+      { id: 'contact-1', name: 'Elena Rodriguez', avatar: `https://avatar.vercel.sh/elenarodriguez.png`, online: true, tags: ['VIP', 'New Lead'], email: 'elena.r@example.com', phone: '+1 234 567 8901', lastSeen: 'online', company: 'Innovate Inc.', role: 'CTO', activity: generateActivity('Elena Rodriguez'), notes: generateNotes('Elena Rodriguez'), },
+      { id: 'contact-2', name: 'Marcus Chen', avatar: `https://avatar.vercel.sh/marcuschen.png`, online: false, tags: ['Returning Customer'], email: 'marcus.c@example.com', phone: '+1 345 678 9012', lastSeen: '2 hours ago', company: 'Solutions Co.', role: 'Product Manager', activity: generateActivity('Marcus Chen'), notes: generateNotes('Marcus Chen'), },
+      { id: 'contact-3', name: 'Aisha Khan', avatar: `https://avatar.vercel.sh/aishakhan.png`, online: true, tags: ['Support Request'], email: 'aisha.k@example.com', phone: '+1 456 789 0123', lastSeen: 'online', company: 'Data Dynamics', role: 'Data Analyst', activity: generateActivity('Aisha Khan'), notes: generateNotes('Aisha Khan'), },
+      { id: 'contact-4', name: 'Leo Tolstoy', avatar: `https://avatar.vercel.sh/leotolstoy.png`, online: false, tags: [], email: 'leo.tolstoy@example.com', phone: '+44 20 7946 0958', lastSeen: 'yesterday', company: 'Classic Reads', role: 'Author', activity: generateActivity('Leo Tolstoy'), notes: generateNotes('Leo Tolstoy'), }
+    ];
+
+
+    // --- MESSAGE GENERATOR ---
+
+    const generateMessages = (count: number, contactName: string): Message[] =>
+    {
+      const messages: Message[] = [];
+      const now = new Date();
+      for (let i = count - 1; i >= 0; i--) {
+        const random = Math.random();
+        let sender: Message['sender'] = 'contact';
+        let type: Message['type'] = 'comment';
+        let text = `This is a sample message number ${i} from ${contactName}.`;
+        let userId: string | undefined = undefined;
+
+        if (random > 0.85) { // Internal Note
+          sender = 'user';
+          type = 'note';
+          const user = mockAssignees[Math.floor(Math.random() * mockAssignees.length)];
+          userId = user.id;
+          text = `Internal note from ${user.name}: we should check their account history.`;
+        } else if (random > 0.7) { // System message
+          sender = 'system';
+          type = 'system';
+          text = `Task status changed to "in-progress"`;
+        } else if (random > 0.35) { // User comment
+          sender = 'user';
+          type = 'comment';
+          userId = 'user-1'; // "You"
+          text = `This is a reply from me. Time is roughly ${count - i} hours ago.`;
+        }
+        
+        messages.push({
+          id: `msg-${Math.random()}`,
+          text,
+          timestamp: new Date(now.getTime() - i * 60 * 60 * 1000).toISOString(),
+          sender,
+          type,
+          read: i < count - 2,
+          userId,
+        });
+      }
+      // Ensure the last message is from the contact for preview purposes
+      messages[messages.length - 1] = {
+        ...messages[messages.length-1],
+        sender: 'contact',
+        type: 'comment',
+        text: `Hey! This is the latest message from ${contactName}.`,
+        userId: undefined
+      };
+      return messages.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+    };
+
+
+    // --- TASKS ---
+
+    const statuses: TaskStatus[] = ['open', 'in-progress', 'done', 'snoozed'];
+
+    const priorities: TaskPriority[] = ['none', 'low', 'medium', 'high'];
+
+
+    export const mockTasks: Task[] = [
+      {
+        id: 'task-1',
+        title: 'Question about enterprise pricing',
+        contactId: 'contact-1',
+        channel: 'whatsapp',
+        unreadCount: 2,
+        messages: generateMessages(15, 'Elena Rodriguez'),
+        get lastActivity() { return this.messages[this.messages.length - 1]; },
+        status: 'in-progress',
+        assigneeId: 'user-2',
+        dueDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
+        priority: 'high',
+        tags: ['onboarding', 'pricing'],
+        aiSummary: { sentiment: 'positive', summaryPoints: ['Expressed strong interest in the new feature.', 'Asked about pricing tiers for enterprise.', 'Is ready for a follow-up call next week.',], suggestedReplies: ['Let\'s schedule that call!', 'Here is the pricing information.', 'Happy to hear you like it!',], },
+        activeHandlerId: 'user-2', // Alex is handling this
+      },
+      {
+        id: 'task-2',
+        title: 'Minor issue with order #12345',
+        contactId: 'contact-2',
+        channel: 'instagram',
+        unreadCount: 0,
+        messages: generateMessages(8, 'Marcus Chen'),
+        get lastActivity() { return this.messages[this.messages.length - 1]; },
+        status: 'done',
+        assigneeId: 'user-1',
+        dueDate: null,
+        priority: 'medium',
+        tags: ['bug-report'],
+        aiSummary: { sentiment: 'neutral', summaryPoints: ['Reported a minor issue with order #12345.', 'Was satisfied with the proposed solution.', 'Inquired about the return policy.',], suggestedReplies: ['Can I help with anything else?', 'Here is our return policy.',], },
+        activeHandlerId: null,
+      },
+      {
+        id: 'task-3',
+        title: 'Login issues, cannot reset password',
+        contactId: 'contact-3',
+        channel: 'facebook',
+        unreadCount: 5,
+        messages: generateMessages(20, 'Aisha Khan'),
+        get lastActivity() { return this.messages[this.messages.length - 1]; },
+        status: 'open',
+        assigneeId: null,
+        dueDate: null,
+        priority: 'high',
+        tags: ['urgent', 'tech-support'],
+        aiSummary: { sentiment: 'negative', summaryPoints: ['Frustrated with login issues.', 'Unable to reset password via email link.', 'Threatened to cancel their subscription.',], suggestedReplies: ['I\'m escalating this to our technical team.', 'Let\'s try a manual password reset.', 'We apologize for the inconvenience.',], },
+        activeHandlerId: 'user-ai-1', // AI Assistant is handling this
+      },
+      {
+        id: 'task-4',
+        title: 'Follow-up on previous conversation',
+        contactId: 'contact-4',
+        channel: 'email',
+        unreadCount: 0,
+        messages: generateMessages(5, 'Leo Tolstoy'),
+        get lastActivity() { return this.messages[this.messages.length - 1]; },
+        status: 'snoozed',
+        assigneeId: 'user-3',
+        dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+        priority: 'low',
+        tags: [],
+        aiSummary: { sentiment: 'neutral', summaryPoints: ['Followed up on a previous conversation.', 'Confirmed meeting time for Thursday.', 'No outstanding issues.',], suggestedReplies: ['Sounds good!', 'See you then!',], },
+        activeHandlerId: null,
+      },
+    ];
+  src/pages/Messaging/store/messaging.store.ts: >-
+    import { create } from 'zustand';
+
+    import { mockTasks, mockContacts, mockAssignees } from '../data/mockData';
+
+    import type { Task, Contact, Channel, Assignee, TaskStatus, TaskPriority,
+    TaskView, Message, JourneyPointType } from '../types';
+
+
+    // Data augmentation to add journey points for demonstration
+
+    const augmentedTasks = mockTasks.map(task => {
+      if (task.id === 'task-1' && task.messages.length > 8) {
+        const messagesWithJourneyPoints: Message[] = [...task.messages];
+        messagesWithJourneyPoints[2] = { ...messagesWithJourneyPoints[2], journeyPoint: 'Consult' as JourneyPointType };
+        messagesWithJourneyPoints[5] = { ...messagesWithJourneyPoints[5], journeyPoint: 'Order' as JourneyPointType };
+        messagesWithJourneyPoints[8] = { ...messagesWithJourneyPoints[8], journeyPoint: 'Complain' as JourneyPointType };
+        return { ...task, messages: messagesWithJourneyPoints };
+      }
+      return task;
+    });
+
+
+    interface MessagingState {
+      tasks: Task[];
+      contacts: Contact[];
+      assignees: Assignee[];
+      searchTerm: string;
+      activeFilters: {
+        channels: Channel[];
+        tags: string[];
+        status: TaskStatus[];
+        priority: TaskPriority[];
+        assigneeId: string[];
+      };
+      activeTaskView: TaskView;
+    }
+
+
+    interface MessagingActions {
+      getTaskById: (id: string) => (Task & { contact: Contact, assignee: Assignee | null, activeHandler: Assignee | null }) | undefined;
+      getFilteredTasks: () => (Task & { contact: Contact, assignee: Assignee | null })[];
+      setSearchTerm: (term: string) => void;
+      setActiveTaskView: (view: TaskView) => void;
+      setFilters: (filters: Partial<MessagingState['activeFilters']>) => void;
+      updateTask: (taskId: string, updates: Partial<Omit<Task, 'id'>>) => void;
+      takeOverTask: (taskId: string, userId: string) => void;
+      requestAndSimulateTakeover: (taskId: string, requestedByUserId: string) => void;
+      getAssigneeById: (assigneeId: string) => Assignee | undefined;
+      getAvailableTags: () => string[];
+    }
+
+
+    export const useMessagingStore = create<MessagingState &
+    MessagingActions>((set, get) => ({
+      tasks: augmentedTasks,
+      contacts: mockContacts,
+      assignees: mockAssignees,
+      searchTerm: '',
+      activeFilters: {
+        channels: [],
+        tags: [],
+        status: [],
+        priority: [],
+        assigneeId: [],
+      },
+      activeTaskView: 'all_open',
+
+      getTaskById: (id) => {
+        const task = get().tasks.find(t => t.id === id);
+        if (!task) return undefined;
+
+        const contact = get().contacts.find(c => c.id === task.contactId);
+        if (!contact) return undefined;
+
+        const assignee = get().assignees.find(a => a.id === task.assigneeId) || null;
+        const activeHandler = get().assignees.find(a => a.id === task.activeHandlerId) || null;
+
+        return { ...task, contact, assignee, activeHandler };
+      },
+
+      getFilteredTasks: () => {
+        const { tasks, contacts, assignees, searchTerm, activeFilters, activeTaskView } = get();
+        const lowercasedSearch = searchTerm.toLowerCase();
+
+        const viewFilteredTasks = tasks.filter(task => {
+          switch (activeTaskView) {
+            case 'all_open':
+              return task.status === 'open' || task.status === 'in-progress';
+            case 'unassigned':
+              return !task.assigneeId && (task.status === 'open' || task.status === 'in-progress');
+            case 'done':
+              return task.status === 'done';
+            default:
+              return true;
+          }
+        });
+        const mapped = viewFilteredTasks.map(task => {
+          const contact = contacts.find(c => c.id === task.contactId) as Contact;
+          const assignee = assignees.find(a => a.id === task.assigneeId) || null;
+          return { ...task, contact, assignee };
+        });
+
+        const filtered = mapped.filter(task => {
+          const searchMatch = task.title.toLowerCase().includes(lowercasedSearch) || task.contact.name.toLowerCase().includes(lowercasedSearch);
+          const channelMatch = activeFilters.channels.length === 0 || activeFilters.channels.includes(task.channel);
+          const tagMatch = activeFilters.tags.length === 0 || activeFilters.tags.some(tag => task.tags.includes(tag));
+          const statusMatch = activeFilters.status.length === 0 || activeFilters.status.includes(task.status);
+          const priorityMatch = activeFilters.priority.length === 0 || activeFilters.priority.includes(task.priority);
+          const assigneeMatch = activeFilters.assigneeId.length === 0 || (task.assigneeId && activeFilters.assigneeId.includes(task.assigneeId));
+          
+          return searchMatch && channelMatch && tagMatch && statusMatch && priorityMatch && assigneeMatch;
+        });
+
+        return filtered.sort((a, b) => new Date(b.lastActivity.timestamp).getTime() - new Date(a.lastActivity.timestamp).getTime());
+      },
+
+      setSearchTerm: (term) => set({ searchTerm: term }),
+      
+      setActiveTaskView: (view) => set({ activeTaskView: view }),
+
+      setFilters: (newFilters) => set(state => ({
+        activeFilters: { ...state.activeFilters, ...newFilters }
+      })),
+
+      updateTask: (taskId, updates) => set(state => ({
+        tasks: state.tasks.map(task => 
+          task.id === taskId 
+            ? { ...task, ...updates, lastActivity: { ...task.lastActivity, timestamp: new Date().toISOString() } } 
+            : task
+        )
+      })),
+
+      takeOverTask: (taskId, userId) => set(state => ({
+        tasks: state.tasks.map(task => 
+          task.id === taskId 
+            ? { ...task, activeHandlerId: userId, takeoverRequested: false } 
+            : task
+        )
+      })),
+
+      requestAndSimulateTakeover: (taskId, requestedByUserId) => {
+        set(state => ({
+          tasks: state.tasks.map(task => 
+            task.id === taskId ? { ...task, takeoverRequested: true } : task
+          )
+        }));
+        // Simulate a 2-second delay for the other user to "approve"
+        setTimeout(() => get().takeOverTask(taskId, requestedByUserId), 2000);
+      },
+
+      getAssigneeById: (assigneeId: string) => {
+        return get().assignees.find(a => a.id === assigneeId);
+      },
+
+      getAvailableTags: () => {
+        const contactTags = get().contacts.flatMap(c => c.tags);
+        const taskTags = get().tasks.flatMap(t => t.tags);
+        const allTags = new Set([...contactTags, ...taskTags]);
+        return Array.from(allTags);
+      }
+    }));
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 397
