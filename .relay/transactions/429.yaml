@@ -1,0 +1,462 @@
+uuid: 18f88c83-057d-45f8-b78f-6ca14660e54d
+projectId: jeli-app-shell
+createdAt: '2025-10-17T13:33:53.797Z'
+gitCommitMsg: >-
+  feat(messaging): Implement floating search activated by keyboard shortcut
+
+  This commit refactors the in-thread search functionality to improve the user
+  interface. The search bar is no longer permanently visible.
+
+  - A floating search input now appears at the top-right of the message view
+  when the user presses `Ctrl+F` (or `Cmd+F`). - The search input is
+  automatically focused upon appearing. - The search can be dismissed by
+  clicking a close button or pressing the `Escape` key. - A subtle animation is
+  added for the appearance and disappearance of the search bar.
+promptSummary: >-
+  Change the message thread search to be a floating input that appears on
+  Ctrl+F.
+reasoning:
+  - >-
+    Got it. I'll transform the always-visible search bar into a floating one
+    that appears with a `Ctrl+F` keyboard shortcut and can be dismissed. This
+    provides a cleaner interface while keeping the powerful search functionality
+    readily accessible.
+  - 'Here are the changes for `TaskDetail.tsx`:'
+operations:
+  - type: write
+    path: src/pages/Messaging/components/TaskDetail.tsx
+    content: >+
+      --- src/pages/Messaging/components/TaskDetail.tsx
+
+      +++ src/pages/Messaging/components/TaskDetail.tsx
+
+      @@ -1,11 +1,11 @@
+       import React, { useRef, useEffect, useLayoutEffect, useState, useMemo } from 'react';
+       import { useParams } from 'react-router-dom';
+       import { useMessagingStore } from '../store/messaging.store';
+       import { ActivityFeed } from './ActivityFeed';
+       import { Button } from '@/components/ui/button';
+       import { Textarea } from '@/components/ui/textarea';
+      -import { Paperclip, Search, SendHorizontal, Smile, StickyNote } from
+      'lucide-react';
+
+      +import { Paperclip, Search, SendHorizontal, Smile, StickyNote, X } from
+      'lucide-react';
+       import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+       import { Input } from '@/components/ui/input';
+       import { TakeoverBanner } from './TakeoverBanner';
+      @@ -25,7 +25,10 @@
+         const inputAreaRef = useRef<HTMLDivElement>(null);
+         const isFirstRender = useRef(true);
+         const [isJourneyHovered, setIsJourneyHovered] = useState(false);
+      +
+         const [searchTerm, setSearchTerm] = useState('');
+      +  const [isSearchVisible, setIsSearchVisible] = useState(false);
+
+      +  const searchInputRef = useRef<HTMLInputElement>(null);
+       
+         useLayoutEffect(() => {
+           // On conversation change, scroll to the bottom of the message list.
+      @@ -35,6 +38,49 @@
+             scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+           }
+         }, [taskId]);
+      +
+
+      +  // Keyboard listener for search (Ctrl+F / Cmd+F and Escape)
+
+      +  useEffect(() => {
+
+      +    const handleKeyDown = (event: KeyboardEvent) => {
+
+      +      if ((event.metaKey || event.ctrlKey) && event.key === 'f') {
+
+      +        event.preventDefault();
+
+      +        setIsSearchVisible(true);
+
+      +      }
+
+      +      if (event.key === 'Escape' && isSearchVisible) {
+
+      +        event.preventDefault();
+
+      +        handleCloseSearch();
+
+      +      }
+
+      +    };
+
+      +
+
+      +    document.addEventListener('keydown', handleKeyDown);
+
+      +    return () => {
+
+      +      document.removeEventListener('keydown', handleKeyDown);
+
+      +    };
+
+      +  }, [isSearchVisible]); // Rerun if isSearchVisible changes to correctly
+      use it in the callback
+
+      +
+
+      +  // Focus input when search becomes visible
+
+      +  useEffect(() => {
+
+      +    if (isSearchVisible) {
+
+      +      searchInputRef.current?.focus();
+
+      +    }
+
+      +  }, [isSearchVisible]);
+
+      +
+
+      +  const searchContainerRef = useRef<HTMLDivElement>(null);
+
+      +  useLayoutEffect(() => {
+
+      +    const target = {
+
+      +      opacity: isSearchVisible ? 1 : 0,
+
+      +      y: isSearchVisible ? 0 : -16,
+
+      +      pointerEvents: isSearchVisible ? 'auto' : 'none' as const,
+
+      +    };
+
+      +
+
+      +    if (reducedMotion) {
+
+      +      gsap.set(searchContainerRef.current, target);
+
+      +      return;
+
+      +    }
+
+      +
+
+      +    gsap.to(searchContainerRef.current, { ...target, duration: 0.25,
+      ease: 'power2.out' });
+
+      +  }, [isSearchVisible, reducedMotion]);
+       
+         useEffect(() => {
+           if (!inputAreaRef.current) return;
+      @@ -87,6 +133,11 @@
+         }, [task.messages, searchTerm]);
+       
+         const handleDotClick = (messageId: string) => {
+           const container = scrollContainerRef.current;
+           if (!container) return;
+           
+           const element = container.querySelector(`[data-message-id="${messageId}"]`);
+           
+           if (element) {
+             // Using 'center' to avoid the message being at the very top/bottom of the view
+             element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+           }
+         };
+       
+         const handleTakeOver = () => {
+           takeOverTask(task.id, currentUserId);
+           show({
+               variant: 'success',
+               title: 'Task Taken Over',
+               message: `You are now handling the task from ${task.contact.name}.`
+           });
+         };
+       
+         const handleRequestTakeover = () => {
+           requestAndSimulateTakeover(task.id, currentUserId);
+           if (task.activeHandler) {
+               show({
+                   variant: 'default',
+                   title: 'Request Sent',
+                   message: `A takeover request has been sent to ${task.activeHandler.name}.`
+               });
+           }
+         };
+       
+      +  const handleCloseSearch = () => {
+
+      +    setIsSearchVisible(false);
+
+      +    setSearchTerm('');
+
+      +  };
+
+      +
+         return (
+           <div className="h-full flex flex-col bg-background overflow-hidden">
+             {isLocked && task.activeHandler && (
+      @@ -97,13 +148,15 @@
+                   onRequestTakeover={handleRequestTakeover}
+               />
+             )}
+      -      <div className="relative flex-1 overflow-hidden">
+
+      +      <div className="relative flex-1 overflow-hidden">
+
+      +        <div ref={searchContainerRef} className="absolute top-4 right-12
+      z-10 opacity-0 pointer-events-none">
+
+      +          <div className="relative flex items-center gap-2 p-1.5
+      rounded-lg bg-background shadow-lg border">
+
+      +            <Search className="absolute left-3 top-1/2 -translate-y-1/2
+      w-4 h-4 text-muted-foreground pointer-events-none" />
+
+      +            <Input ref={searchInputRef} placeholder="Search..."
+      className="pl-8 h-8" value={searchTerm} onChange={e =>
+      setSearchTerm(e.target.value)} />
+
+      +            <Button variant="ghost" size="icon" className="h-7 w-7
+      rounded-full flex-shrink-0" onClick={handleCloseSearch}><X className="w-4
+      h-4" /></Button>
+
+      +          </div>
+
+      +        </div>
+               <div
+                 ref={scrollContainerRef}
+                 className={cn(
+
+    patchStrategy: standard-diff
+snapshot:
+  src/pages/Messaging/components/TaskDetail.tsx: >-
+    import React, { useRef, useEffect, useLayoutEffect, useState, useMemo } from
+    'react';
+
+    import { useParams } from 'react-router-dom';
+
+    import { useMessagingStore } from '../store/messaging.store';
+
+    import { ActivityFeed } from './ActivityFeed';
+
+    import { Button } from '@/components/ui/button';
+
+    import { Textarea } from '@/components/ui/textarea';
+
+    import { Paperclip, Search, SendHorizontal, Smile, StickyNote } from
+    'lucide-react';
+
+    import { Tabs, TabsContent, TabsList, TabsTrigger } from
+    "@/components/ui/tabs";
+
+    import { Input } from '@/components/ui/input';
+
+    import { TakeoverBanner } from './TakeoverBanner';
+
+    import { useToast } from '@/components/ui/toast';
+
+    import { gsap } from 'gsap';
+
+    import { cn } from '@/lib/utils';
+
+    import { useAppShellStore } from '@/store/appShell.store';
+
+    import { JourneyScrollbar } from './JourneyScrollbar';
+
+
+
+    export const TaskDetail: React.FC = () => {
+      const { conversationId: taskId } = useParams<{ conversationId: string }>();
+      const { show } = useToast();
+      const { getTaskById, takeOverTask, requestAndSimulateTakeover } = useMessagingStore();
+      const reducedMotion = useAppShellStore(s => s.reducedMotion);
+      
+      const task = taskId ? getTaskById(taskId) : undefined;
+
+      // In a real app, this would come from the auth store
+      const currentUserId = 'user-1'; 
+
+      const scrollContainerRef = useRef<HTMLDivElement>(null);
+      const isLocked = !!task?.activeHandlerId && task.activeHandlerId !== currentUserId;
+      const inputAreaRef = useRef<HTMLDivElement>(null);
+      const isFirstRender = useRef(true);
+      const [isJourneyHovered, setIsJourneyHovered] = useState(false);
+      const [searchTerm, setSearchTerm] = useState('');
+
+      useLayoutEffect(() => {
+        // On conversation change, scroll to the bottom of the message list.
+        // This ensures the user sees the latest message and that the scrollbar
+        // component has the correct scrollHeight to calculate its visibility.
+        if (scrollContainerRef.current) {
+          scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+        }
+      }, [taskId]);
+
+      useEffect(() => {
+        if (!inputAreaRef.current) return;
+
+        const initialBorderWidth = '1px'; // from 'border-t'
+        const initialPadding = '1rem';    // from 'p-4'
+
+        const target = isLocked
+          ? {
+              y: 20,
+              opacity: 0,
+              maxHeight: 0,
+              paddingTop: 0,
+              paddingBottom: 0,
+              borderTopWidth: 0,
+              pointerEvents: 'none' as const,
+            }
+          : {
+              y: 0,
+              opacity: 1,
+              maxHeight: 500, // Ample room for the input
+              paddingTop: initialPadding,
+              paddingBottom: initialPadding,
+              borderTopWidth: initialBorderWidth,
+              pointerEvents: 'auto' as const,
+            };
+
+        if (reducedMotion) {
+          gsap.set(inputAreaRef.current, target);
+          return;
+        }
+        
+        if (isFirstRender.current) {
+          gsap.set(inputAreaRef.current, target);
+          isFirstRender.current = false;
+        } else {
+          gsap.to(inputAreaRef.current, {
+            ...target,
+            duration: 0.35,
+            ease: 'power2.inOut',
+          });
+        }
+      }, [isLocked, reducedMotion]);
+
+      if (!taskId || !task) {
+        return (
+            <div className="h-full flex flex-col items-center justify-center p-6 bg-background">
+                <p className="text-muted-foreground">Select a task to see its details.</p>
+            </div>
+        );
+      }
+
+      const journeyPoints = task.messages.filter(m => m.journeyPoint);
+
+      const filteredMessages = useMemo(() => {
+        if (!searchTerm) {
+          return task.messages;
+        }
+        return task.messages.filter(msg => msg.text.toLowerCase().includes(searchTerm.toLowerCase()));
+      }, [task.messages, searchTerm]);
+
+      const handleDotClick = (messageId: string) => {
+        const container = scrollContainerRef.current;
+        if (!container) return;
+        
+        const element = container.querySelector(`[data-message-id="${messageId}"]`);
+        
+        if (element) {
+          // Using 'center' to avoid the message being at the very top/bottom of the view
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      };
+
+      const handleTakeOver = () => {
+        takeOverTask(task.id, currentUserId);
+        show({
+            variant: 'success',
+            title: 'Task Taken Over',
+            message: `You are now handling the task from ${task.contact.name}.`
+        });
+      };
+
+      const handleRequestTakeover = () => {
+        requestAndSimulateTakeover(task.id, currentUserId);
+        if (task.activeHandler) {
+            show({
+                variant: 'default',
+                title: 'Request Sent',
+                message: `A takeover request has been sent to ${task.activeHandler.name}.`
+            });
+        }
+      };
+
+      return (
+        <div className="h-full flex flex-col bg-background overflow-hidden">
+          {isLocked && task.activeHandler && (
+            <TakeoverBanner
+                activeHandler={task.activeHandler}
+                isRequesting={!!task.takeoverRequested}
+                onTakeOver={handleTakeOver}
+                onRequestTakeover={handleRequestTakeover}
+            />
+          )}
+          <div className="flex-shrink-0 border-b p-3">
+              <div className="relative w-full">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input placeholder={`Search in conversation with ${task.contact.name}...`} className="pl-9" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+              </div>
+          </div>
+          <div className="relative flex-1 overflow-hidden">
+            <div
+              ref={scrollContainerRef}
+              className={cn(
+                "h-full overflow-y-auto pr-8 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]",
+                "transition-all duration-200",
+                isJourneyHovered && "blur-sm pointer-events-none"
+              )}
+            >
+              <ActivityFeed messages={filteredMessages} contact={task.contact} searchTerm={searchTerm} />
+            </div>
+            {journeyPoints.length > 0 && (
+                <JourneyScrollbar
+                    scrollContainerRef={scrollContainerRef}
+                    journeyPoints={journeyPoints}
+                    onDotClick={handleDotClick}
+                    onHoverChange={setIsJourneyHovered}
+                    showAllTooltips={isJourneyHovered}
+                />
+            )}
+          </div>
+
+          {/* Input Form */}
+          <div ref={inputAreaRef} className="p-4 border-t flex-shrink-0 bg-background/50">
+            <Tabs defaultValue="comment" className="w-full" >
+              <TabsList className="grid w-full grid-cols-2 mb-2">
+                <TabsTrigger value="comment" disabled={isLocked}>Comment</TabsTrigger>
+                <TabsTrigger value="note" disabled={isLocked}><StickyNote className="w-4 h-4 mr-2" />Internal Note</TabsTrigger>
+              </TabsList>
+              <TabsContent value="comment">
+                 <div className="relative">
+                    <Textarea placeholder={isLocked ? "Take over to reply..." : `Reply to ${task.contact.name}...`} className="pr-24 min-h-[52px]" disabled={isLocked} />
+                    <div className="absolute right-2 top-2 flex items-center gap-1">
+                        <Button variant="ghost" size="icon" className="rounded-full h-8 w-8" disabled={isLocked}><Smile className="w-4 h-4" /></Button>
+                        <Button variant="ghost" size="icon" className="rounded-full h-8 w-8" disabled={isLocked}><Paperclip className="w-4 h-4" /></Button>
+                        <Button size="icon" className="rounded-full h-8 w-8" disabled={isLocked}><SendHorizontal className="w-4 h-4" /></Button>
+                    </div>
+                </div>
+              </TabsContent>
+              <TabsContent value="note">
+                <div className="relative">
+                    <Textarea placeholder={isLocked ? "Take over to add a note..." : "Add an internal note..."} className="pr-24 min-h-[52px] bg-yellow-400/10 border-yellow-400/30 focus-visible:ring-yellow-500" disabled={isLocked} />
+                    <div className="absolute right-2 top-2 flex items-center gap-1">
+                        <Button size="icon" className="rounded-full h-8 w-8" disabled={isLocked}><SendHorizontal className="w-4 h-4" /></Button>
+                    </div>
+                </div>
+              </TabsContent>
+            </Tabs>
+          </div>
+        </div>
+      );
+    };
+approved: false
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: undone
+id: 429

@@ -108,6 +108,7 @@ export { Tabs, TabsList, TabsTrigger, TabsContent }
 ```typescript
 import { type ClassValue, clsx } from "clsx"
 import { twMerge } from "tailwind-merge"
+import { formatDistanceToNow } from "date-fns"
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -135,6 +136,21 @@ export function capitalize(str: string): string {
   return str.charAt(0).toUpperCase() + str.slice(1)
 }
 
+export function formatDistanceToNowShort(date: Date | string): string {
+  const dateObj = typeof date === 'string' ? new Date(date) : date;
+  const result = formatDistanceToNow(dateObj, { addSuffix: true });
+
+  if (result === 'less than a minute ago') return 'now';
+
+  return result
+    .replace('about ', '')
+    .replace(' minutes', 'm')
+    .replace(' minute', 'm')
+    .replace(' hours', 'h')
+    .replace(' hour', 'h')
+    .replace(' days', 'd')
+}
+
 export const getStatusColor = (status: string) => {
   switch (status) {
     case 'active': return 'bg-green-500/20 text-green-700 border-green-500/30'
@@ -160,10 +176,9 @@ export const getPriorityColor = (priority: string) => {
 ```typescript
 import React, { forwardRef } from 'react';
 import { useMessagingStore } from '../store/messaging.store';
-import type { Message, Contact, Assignee, JourneyPointType } from '../types';
-import { cn } from '@/lib/utils';
+import type { Message, Contact, JourneyPointType } from '../types';
+import { cn, formatDistanceToNowShort } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { formatDistanceToNow } from 'date-fns';
 import { StickyNote, Info, MessageSquare, ShoppingCart, PackageCheck, AlertCircle, RefreshCw, MailQuestion, FileText, CreditCard, Truck, XCircle, Undo2, Star, type LucideIcon } from 'lucide-react';
 
 const journeyInfoMap: Record<JourneyPointType, { Icon: LucideIcon; textColor: string; bgColor: string; }> = {
@@ -185,9 +200,28 @@ const journeyInfoMap: Record<JourneyPointType, { Icon: LucideIcon; textColor: st
 interface ActivityFeedProps {
   messages: Message[];
   contact: Contact;
+  searchTerm?: string;
 }
 
-export const ActivityFeed = forwardRef<HTMLDivElement, ActivityFeedProps>(({ messages, contact }, ref) => {
+const Highlight = ({ text, highlight }: { text: string; highlight?: string }) => {
+  if (!highlight) {
+    return <>{text}</>;
+  }
+  const parts = text.split(new RegExp(`(${highlight})`, 'gi'));
+  return (
+    <span>
+      {parts.map((part, i) =>
+        part.toLowerCase() === highlight.toLowerCase() ? (
+          <mark key={i} className="bg-primary/20 text-primary-foreground rounded px-0.5">{part}</mark>
+        ) : (
+          part
+        )
+      )}
+    </span>
+  );
+};
+
+export const ActivityFeed = forwardRef<HTMLDivElement, ActivityFeedProps>(({ messages, contact, searchTerm }, ref) => {
   const getAssigneeById = useMessagingStore(state => state.getAssigneeById);
 
   return (
@@ -207,7 +241,7 @@ export const ActivityFeed = forwardRef<HTMLDivElement, ActivityFeedProps>(({ mes
                 <div className="bg-background px-3 flex items-center gap-2 text-sm font-medium">
                   <Icon className={cn("w-4 h-4", journeyInfo.textColor)} />
                   <span className={cn("font-semibold", journeyInfo.textColor)}>{message.journeyPoint}</span>
-                  <span className="text-xs text-muted-foreground font-normal whitespace-nowrap">{formatDistanceToNow(new Date(message.timestamp), { addSuffix: true })}</span>
+                  <span className="text-xs text-muted-foreground font-normal whitespace-nowrap">{formatDistanceToNowShort(new Date(message.timestamp))}</span>
                 </div>
               </div>
             </div>
@@ -218,8 +252,8 @@ export const ActivityFeed = forwardRef<HTMLDivElement, ActivityFeedProps>(({ mes
           return (
             <div key={message.id} data-message-id={message.id} className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
               <Info className="w-3.5 h-3.5" />
-              <p>{message.text}</p>
-              <p className="whitespace-nowrap">{formatDistanceToNow(new Date(message.timestamp), { addSuffix: true })}</p>
+              <p><Highlight text={message.text} highlight={searchTerm} /></p>
+              <p className="whitespace-nowrap">{formatDistanceToNowShort(new Date(message.timestamp))}</p>
             </div>
           );
         }
@@ -233,10 +267,10 @@ export const ActivityFeed = forwardRef<HTMLDivElement, ActivityFeedProps>(({ mes
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
                   <p className="font-semibold text-sm">{assignee?.name || 'User'}</p>
-                  <p className="text-xs text-muted-foreground">{formatDistanceToNow(new Date(message.timestamp), { addSuffix: true })}</p>
+                  <p className="text-xs text-muted-foreground">{formatDistanceToNowShort(new Date(message.timestamp))}</p>
                 </div>
                 <div className="bg-card border rounded-lg p-3 text-sm">
-                  <p>{message.text}</p>
+                  <p><Highlight text={message.text} highlight={searchTerm} /></p>
                 </div>
               </div>
             </div>
@@ -261,7 +295,7 @@ export const ActivityFeed = forwardRef<HTMLDivElement, ActivityFeedProps>(({ mes
                 ? 'bg-primary text-primary-foreground rounded-br-none' 
                 : 'bg-card border rounded-bl-none'
             )}>
-              <p className="text-sm">{message.text}</p>
+              <p className="text-sm"><Highlight text={message.text} highlight={searchTerm} /></p>
             </div>
           </div>
         );
@@ -275,14 +309,15 @@ ActivityFeed.displayName = 'ActivityFeed';
 
 ## File: src/pages/Messaging/components/TaskDetail.tsx
 ```typescript
-import React, { useRef, useEffect, useLayoutEffect, useState } from 'react';
+import React, { useRef, useEffect, useLayoutEffect, useState, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { useMessagingStore } from '../store/messaging.store';
 import { ActivityFeed } from './ActivityFeed';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Paperclip, SendHorizontal, Smile, StickyNote } from 'lucide-react';
+import { Paperclip, Search, SendHorizontal, Smile, StickyNote } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from '@/components/ui/input';
 import { TakeoverBanner } from './TakeoverBanner';
 import { useToast } from '@/components/ui/toast';
 import { gsap } from 'gsap';
@@ -307,6 +342,7 @@ export const TaskDetail: React.FC = () => {
   const inputAreaRef = useRef<HTMLDivElement>(null);
   const isFirstRender = useRef(true);
   const [isJourneyHovered, setIsJourneyHovered] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
 
   useLayoutEffect(() => {
     // On conversation change, scroll to the bottom of the message list.
@@ -370,6 +406,13 @@ export const TaskDetail: React.FC = () => {
 
   const journeyPoints = task.messages.filter(m => m.journeyPoint);
 
+  const filteredMessages = useMemo(() => {
+    if (!searchTerm) {
+      return task.messages;
+    }
+    return task.messages.filter(msg => msg.text.toLowerCase().includes(searchTerm.toLowerCase()));
+  }, [task.messages, searchTerm]);
+
   const handleDotClick = (messageId: string) => {
     const container = scrollContainerRef.current;
     if (!container) return;
@@ -412,6 +455,12 @@ export const TaskDetail: React.FC = () => {
             onRequestTakeover={handleRequestTakeover}
         />
       )}
+      <div className="flex-shrink-0 border-b p-3">
+          <div className="relative w-full">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input placeholder={`Search in conversation with ${task.contact.name}...`} className="pl-9" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+          </div>
+      </div>
       <div className="relative flex-1 overflow-hidden">
         <div
           ref={scrollContainerRef}
@@ -421,7 +470,7 @@ export const TaskDetail: React.FC = () => {
             isJourneyHovered && "blur-sm pointer-events-none"
           )}
         >
-          <ActivityFeed messages={task.messages} contact={task.contact} />
+          <ActivityFeed messages={filteredMessages} contact={task.contact} searchTerm={searchTerm} />
         </div>
         {journeyPoints.length > 0 && (
             <JourneyScrollbar
@@ -471,7 +520,6 @@ export const TaskDetail: React.FC = () => {
 import { useEffect, useMemo } from 'react';
 import { Search, SlidersHorizontal, Check, Inbox, Clock, Zap, Shield, Eye } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
-import { formatDistanceToNow } from 'date-fns';
 import { useMessagingStore } from '../store/messaging.store';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -479,7 +527,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator } from '@/components/ui/command';
-import { cn } from '@/lib/utils';
+import { cn, formatDistanceToNowShort } from '@/lib/utils';
 import { AnimatedTabs } from '@/components/ui/animated-tabs';
 import type { TaskStatus, TaskPriority, TaskView } from '../types';
 import { useAppViewManager } from '@/hooks/useAppViewManager.hook';
@@ -600,13 +648,10 @@ export const TaskList = () => {
                     <AvatarFallback>{task.contact.name.charAt(0)}</AvatarFallback>
                   </Avatar>
                   <div className="flex-1 overflow-hidden">
-                      <div className="flex justify-between items-center mb-1">
-                          <p className="text-sm font-semibold truncate pr-2">
-                            {task.contact.name} <span className="text-muted-foreground font-normal">&middot; {task.contact.company}</span>
-                          </p>
-                          <p className="text-xs text-muted-foreground whitespace-nowrap">{formatDistanceToNow(new Date(task.lastActivity.timestamp), { addSuffix: true })}</p>
-                      </div>
-                      <p className="text-sm truncate text-foreground">{task.title}</p>
+                      <p className="text-sm font-semibold truncate pr-2">
+                        {task.contact.name} <span className="text-muted-foreground font-normal">&middot; {task.contact.company}</span>
+                      </p>
+                      <p className="text-sm truncate text-foreground mt-1">{task.title}</p>
                       <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
                           <div className="flex items-center gap-1.5" title={task.status}>
                               {getStatusIcon(task.status)}
@@ -624,11 +669,12 @@ export const TaskList = () => {
                           {isHandledByOther && <Eye className="w-3.5 h-3.5" title="Being handled by another user" />}
                       </div>
                   </div>
-                  {task.unreadCount > 0 && (
-                      <div className="flex items-center justify-center self-center ml-auto">
-                          <Badge className="bg-primary h-5 w-5 p-0 flex items-center justify-center">{task.unreadCount}</Badge>
-                      </div>
-                  )}
+                  <div className="flex flex-col items-end space-y-1.5 flex-shrink-0">
+                    <p className="text-xs text-muted-foreground whitespace-nowrap">{formatDistanceToNowShort(new Date(task.lastActivity.timestamp))}</p>
+                    {task.unreadCount > 0 ? (
+                        <Badge className="bg-primary h-5 w-5 p-0 flex items-center justify-center">{task.unreadCount}</Badge>
+                    ) : <div className="h-5 w-5" /> /* Spacer to maintain alignment */ }
+                  </div>
                 </div>
               </Link>
             )

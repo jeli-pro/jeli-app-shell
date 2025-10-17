@@ -4,7 +4,7 @@ import { useMessagingStore } from '../store/messaging.store';
 import { ActivityFeed } from './ActivityFeed';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Paperclip, Search, SendHorizontal, Smile, StickyNote } from 'lucide-react';
+import { Paperclip, Search, SendHorizontal, Smile, StickyNote, X } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from '@/components/ui/input';
 import { TakeoverBanner } from './TakeoverBanner';
@@ -31,7 +31,10 @@ export const TaskDetail: React.FC = () => {
   const inputAreaRef = useRef<HTMLDivElement>(null);
   const isFirstRender = useRef(true);
   const [isJourneyHovered, setIsJourneyHovered] = useState(false);
+  const [isSearchVisible, setIsSearchVisible] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const [isHoveringThread, setIsHoveringThread] = useState(false);
 
   useLayoutEffect(() => {
     // On conversation change, scroll to the bottom of the message list.
@@ -41,6 +44,31 @@ export const TaskDetail: React.FC = () => {
       scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
     }
   }, [taskId]);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key === 'f') {
+        event.preventDefault();
+        setIsSearchVisible(true);
+      }
+      if (event.key === 'Escape' && isSearchVisible) {
+        setIsSearchVisible(false);
+        setSearchTerm('');
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isSearchVisible]);
+
+  useEffect(() => {
+    if (isSearchVisible) {
+      // Timeout to allow for the element to be rendered and transitioned
+      setTimeout(() => searchInputRef.current?.focus(), 50);
+    }
+  }, [isSearchVisible]);
 
   useEffect(() => {
     if (!inputAreaRef.current) return;
@@ -144,13 +172,50 @@ export const TaskDetail: React.FC = () => {
             onRequestTakeover={handleRequestTakeover}
         />
       )}
-      <div className="flex-shrink-0 border-b p-3">
-          <div className="relative w-full">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input placeholder={`Search in conversation with ${task.contact.name}...`} className="pl-9" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+      <div
+        className="relative flex-1 overflow-hidden"
+        onMouseEnter={() => setIsHoveringThread(true)}
+        onMouseLeave={() => setIsHoveringThread(false)}
+      >
+        <div className={cn(
+          "absolute top-4 right-4 z-10 transition-all duration-300",
+          isJourneyHovered && "opacity-0 pointer-events-none",
+          !isHoveringThread && !isSearchVisible && "opacity-0"
+        )}>
+          <div className={cn(
+            "transition-opacity duration-300",
+            isSearchVisible ? "opacity-0 pointer-events-none" : "opacity-100"
+          )}>
+            <Button
+              variant="outline"
+              size="icon"
+              className="rounded-full shadow-lg bg-background/80 backdrop-blur-sm"
+              onClick={() => setIsSearchVisible(true)}
+            >
+              <Search className="w-4 h-4" />
+            </Button>
           </div>
-      </div>
-      <div className="relative flex-1 overflow-hidden">
+          <div className={cn(
+            "absolute top-0 right-0 transition-all duration-300 w-64 origin-right",
+            isSearchVisible ? "opacity-100 scale-x-100" : "opacity-0 scale-x-0 pointer-events-none"
+          )}>
+            <div className="relative w-full bg-background/80 backdrop-blur-sm rounded-full shadow-lg border">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                ref={searchInputRef}
+                placeholder="Search conversation..."
+                className="pl-9 pr-9 h-10 border-none bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+              />
+              <Button
+                variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full"
+                onClick={() => { setIsSearchVisible(false); setSearchTerm(''); }}>
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
         <div
           ref={scrollContainerRef}
           className={cn(
