@@ -8,24 +8,24 @@ interface PageViewConfig {
 
 /**
  * A hook for a page component to declaratively set its desired pane widths.
- * It sets the widths on mount and resets them to the application defaults on unmount.
+ * It sets the widths when config changes and resets them to the application defaults on unmount.
  * @param {PageViewConfig} config - The desired widths for side pane and split view.
  */
 export function usePageViewConfig(config: PageViewConfig) {
     const { setSidePaneWidth, setSplitPaneWidth, resetPaneWidths } = useAppShellStore.getState();
+    const { sidePaneWidth, splitPaneWidth } = config;
 
     useEffect(() => {
-        if (config.sidePaneWidth !== undefined) {
-            setSidePaneWidth(config.sidePaneWidth);
+        if (sidePaneWidth !== undefined) {
+            setSidePaneWidth(sidePaneWidth);
         }
-        if (config.splitPaneWidth !== undefined) {
-            setSplitPaneWidth(config.splitPaneWidth);
+        if (splitPaneWidth !== undefined) {
+            setSplitPaneWidth(splitPaneWidth);
         }
 
         // Return a cleanup function to reset widths when the component unmounts
         return () => {
             resetPaneWidths();
         };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []); // Run only once on mount and cleanup on unmount
+    }, [sidePaneWidth, splitPaneWidth, setSidePaneWidth, setSplitPaneWidth, resetPaneWidths]);
 }

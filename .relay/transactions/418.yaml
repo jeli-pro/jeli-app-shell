@@ -1,0 +1,249 @@
+uuid: c251c86a-7467-4e6f-9ac4-77f0a7114b7e
+projectId: jeli-app-shell
+createdAt: '2025-10-17T12:23:13.128Z'
+gitCommitMsg: >-
+  fix(layout): enforce default split pane width on messaging page
+
+  Made the `usePageViewConfig` hook reactive to its config prop, allowing it to
+  dynamically apply pane widths as URL params change.
+
+  Implemented this hook on the MessagingPage to reset the split pane width to
+  its default value whenever a conversation is viewed. This prevents resized
+  pane widths from other pages (e.g., DataDemo) from incorrectly affecting the
+  messaging layout, ensuring a consistent and predictable user experience.
+promptSummary: >-
+  The user wants to ensure the Messaging page's split view pane uses a default
+  width, ignoring any width that was set on other pages. This requires making a
+  layout hook reactive and applying it to the Messaging page.
+reasoning:
+  - >-
+    Excellent, a classic state management puzzle. A global state that's
+    beneficial in one context is causing unintended side effects in another. By
+    making our layout configuration hook reactive and applying it strategically,
+    we can enforce page-specific rules without a major refactor. Let's get this
+    done.
+  - >-
+    First, I'll update the `usePageViewConfig` hook to make it reactive.
+    Currently, its `useEffect` only runs on mount due to an empty dependency
+    array. I'll change this so it re-evaluates whenever the desired `config`
+    values change, allowing it to manage pane widths dynamically.
+  - >-
+    Now, I'll deploy this enhanced hook in the `MessagingPage`. It will watch
+    for a `conversationId` in the URL. When a conversation is active (triggering
+    the split view), the hook will enforce the default split pane width,
+    overriding any user-resized width from other pages. When no conversation is
+    selected, it will do nothing, preserving the standard layout.
+operations:
+  - type: write
+    path: src/hooks/usePageViewConfig.hook.ts
+    content: >+
+      --- src/hooks/usePageViewConfig.hook.ts
+
+      +++ src/hooks/usePageViewConfig.hook.ts
+
+      @@ -6,24 +6,24 @@
+       
+       /**
+        * A hook for a page component to declaratively set its desired pane widths.
+      - * It sets the widths on mount and resets them to the application
+      defaults on unmount.
+
+      + * It sets the widths when config changes and resets them to the
+      application defaults on unmount.
+        * @param {PageViewConfig} config - The desired widths for side pane and split view.
+        */
+       export function usePageViewConfig(config: PageViewConfig) {
+           const { setSidePaneWidth, setSplitPaneWidth, resetPaneWidths } = useAppShellStore.getState();
+      +    const { sidePaneWidth, splitPaneWidth } = config;
+       
+           useEffect(() => {
+      -        if (config.sidePaneWidth !== undefined) {
+
+      -            setSidePaneWidth(config.sidePaneWidth);
+
+      +        if (sidePaneWidth !== undefined) {
+
+      +            setSidePaneWidth(sidePaneWidth);
+               }
+      -        if (config.splitPaneWidth !== undefined) {
+
+      -            setSplitPaneWidth(config.splitPaneWidth);
+
+      +        if (splitPaneWidth !== undefined) {
+
+      +            setSplitPaneWidth(splitPaneWidth);
+               }
+       
+               // Return a cleanup function to reset widths when the component unmounts
+               return () => {
+                   resetPaneWidths();
+               };
+      -    // eslint-disable-next-line react-hooks/exhaustive-deps
+
+      -    }, []); // Run only once on mount and cleanup on unmount
+
+      +    }, [sidePaneWidth, splitPaneWidth, setSidePaneWidth,
+      setSplitPaneWidth, resetPaneWidths]);
+       }
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/Messaging/index.tsx
+    content: >+
+      --- src/pages/Messaging/index.tsx
+
+      +++ src/pages/Messaging/index.tsx
+
+      @@ -1,5 +1,7 @@
+       import React, { useState, useRef, useEffect, useCallback } from "react";
+       import { useParams } from "react-router-dom";
+      +import { usePageViewConfig } from "@/hooks/usePageViewConfig.hook";
+
+      +import { useAppShellStore } from "@/store/appShell.store";
+       import { TaskList } from "./components/TaskList";
+       import { TaskDetail } from "./components/TaskDetail";
+       import { cn } from "@/lib/utils";
+      @@ -52,8 +54,14 @@
+       export default function MessagingPage() {
+         const { conversationId } = useParams<{ conversationId?: string }>();
+         const containerRef = useRef<HTMLDivElement>(null);
+       
+      +  const defaultSplitPaneWidth = useAppShellStore((s) =>
+      s.defaultSplitPaneWidth);
+
+      +  // When a conversation is selected (split view), reset the pane width
+      to default.
+
+      +  // When no conversation is selected, we don't want to manage the width,
+      so pass undefined.
+
+      +  const desiredSplitPaneWidth = conversationId ? defaultSplitPaneWidth :
+      undefined;
+
+      +  usePageViewConfig({ splitPaneWidth: desiredSplitPaneWidth });
+
+      +
+         const { listWidth, handleMouseDown, isResizing } = useResizableMessagingPanes(containerRef);
+       
+         return (
+           <div 
+
+    patchStrategy: standard-diff
+snapshot:
+  src/pages/Messaging/index.tsx: |-
+    import React, { useState, useRef, useEffect, useCallback } from "react";
+    import { useParams } from "react-router-dom";
+    import { TaskList } from "./components/TaskList";
+    import { TaskDetail } from "./components/TaskDetail";
+    import { cn } from "@/lib/utils";
+
+    const useResizableMessagingPanes = (
+      containerRef: React.RefObject<HTMLDivElement>,
+      initialWidth: number = 320
+    ) => {
+      const [isResizing, setIsResizing] = useState(false);
+      const [listWidth, setListWidth] = useState(initialWidth);
+
+      const handleMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        setIsResizing(true);
+      }, []);
+
+      useEffect(() => {
+        const handleMouseMove = (e: MouseEvent) => {
+          if (!isResizing || !containerRef.current) return;
+          const containerRect = containerRef.current.getBoundingClientRect();
+          const newWidth = e.clientX - containerRect.left;
+          // Constraints for the conversation list pane
+          setListWidth(Math.max(280, Math.min(newWidth, containerRect.width - 500)));
+        };
+
+        const handleMouseUp = () => {
+          setIsResizing(false);
+        };
+
+        if (isResizing) {
+          document.body.style.cursor = 'col-resize';
+          document.body.style.userSelect = 'none';
+          window.addEventListener('mousemove', handleMouseMove);
+          window.addEventListener('mouseup', handleMouseUp, { once: true });
+        }
+
+        return () => {
+          window.removeEventListener('mousemove', handleMouseMove);
+          window.removeEventListener('mouseup', handleMouseUp);
+          if (document.body) {
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+          }
+        };
+      }, [isResizing, containerRef]);
+
+      return { listWidth, handleMouseDown, isResizing };
+    };
+
+    export default function MessagingPage() {
+      const { conversationId } = useParams<{ conversationId?: string }>();
+      const containerRef = useRef<HTMLDivElement>(null);
+
+      const { listWidth, handleMouseDown, isResizing } = useResizableMessagingPanes(containerRef);
+
+      return (
+        <div 
+          ref={containerRef}
+          className={cn(
+            "h-full w-full flex bg-background",
+            isResizing && "cursor-col-resize select-none"
+          )}
+        >
+          <div style={{ width: `${listWidth}px` }} className="flex-shrink-0 h-full">
+            <TaskList />
+          </div>
+          <div onMouseDown={handleMouseDown} className="w-2 flex-shrink-0 cursor-col-resize group flex items-center justify-center">
+            <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200" />
+          </div>
+          <div className="flex-1 min-w-0 h-full">
+            <TaskDetail />
+          </div>
+        </div>
+      );
+    }
+  src/hooks/usePageViewConfig.hook.ts: |-
+    import { useEffect } from 'react';
+    import { useAppShellStore } from '@/store/appShell.store';
+
+    interface PageViewConfig {
+        sidePaneWidth?: number;
+        splitPaneWidth?: number;
+    }
+
+    /**
+     * A hook for a page component to declaratively set its desired pane widths.
+     * It sets the widths on mount and resets them to the application defaults on unmount.
+     * @param {PageViewConfig} config - The desired widths for side pane and split view.
+     */
+    export function usePageViewConfig(config: PageViewConfig) {
+        const { setSidePaneWidth, setSplitPaneWidth, resetPaneWidths } = useAppShellStore.getState();
+
+        useEffect(() => {
+            if (config.sidePaneWidth !== undefined) {
+                setSidePaneWidth(config.sidePaneWidth);
+            }
+            if (config.splitPaneWidth !== undefined) {
+                setSplitPaneWidth(config.splitPaneWidth);
+            }
+
+            // Return a cleanup function to reset widths when the component unmounts
+            return () => {
+                resetPaneWidths();
+            };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        }, []); // Run only once on mount and cleanup on unmount
+    }
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 418

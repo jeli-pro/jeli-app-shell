@@ -27,7 +27,7 @@ split mode view on message page: should always set right pane to default value o
 
 modify animated tab switcher: while user switch tabs, the content should gsap slide left right animate... also should not re render content like in datademo
 
-===
+=== DONE
 
 msssage page : message thread: we need custom scrollbar component where certain audience journey like (Consult, Order, Complain, Reorder) is represented by a clickable dot on the track. Each dot should show a preview of the message on hover and scroll the main content to that message when clicked.
 

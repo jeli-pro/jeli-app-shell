@@ -1,135 +1,79 @@
-Here's the plan, hot off the presses. We're about to supercharge the messaging demo. The current state is a ghost town; we're turning it into a bustling metropolis of user interaction. This is a two-pronged attack: first, we're injecting a massive amount of realistic, generated data to make the app feel alive. Forget a dozen conversations, we're talking hundreds, each with deep history.
+Yo, what's up HN. We've got a classic state-bleed problem. Resizing a pane in one part of the app is screwing up the layout in another. Specifically, our slick new Messaging page gets its split-view pane width wrecked by whatever the user did last on the DataDemo page. Not a great look.
 
-Second, we're evolving the `JourneyScrollbar` from a simple timeline into a meaningful customer journey map. It'll track the entire lifecycle—from initial contact and ordering to complaints and repeat business. Users will be able to see the entire story of a conversation at a glance. This isn't just about more data; it's about smarter, more insightful data visualization. We'll rip out the hardcoded mock data, replace it with dynamic generators, and give the UI the spit-and-polish it needs to handle the new depth.
+The root cause is our global `appShell.store`, which persists pane widths to `localStorage`. Great for remembering a user's preference on one page, terrible for pages that need their own pristine layout.
 
-The result will be a demo that doesn't just show features but tells a story. It'll be more robust, more impressive, and a hell of a lot more convincing. Let's get to it.
+The plan is simple but effective. We're gonna upgrade an existing hook, `usePageViewConfig`, to be reactive. Right now, it's a one-and-done deal on mount. We'll make it listen for changes so it can dynamically enforce a page's desired layout. Then, we'll drop this suped-up hook into the Messaging page. It'll watch the URL for a conversation ID. When one appears, BAM, it slaps the split pane back to a clean default width. When the user leaves, it cleans up after itself. No more layout surprises. It's a surgical strike that fixes the UX without a massive rewrite.
+
+Let's get this done.
 
 ```yaml
 plan:
-  uuid: '3a1c8b9d-4e2f-4a6c-8b1e-9f0d7c5a3b21'
+  uuid: 'e1c9a0b1-3f4a-4e87-9b1b-a2e4f0c8d19f'
   status: 'todo'
-  title: 'Refactor: Supercharge Messaging Demo with Voluminous Data and Enhanced Journey Mapping'
+  title: 'Refactor: Enforce Default Split Pane Width on Messaging Page'
   introduction: |
-    This refactoring plan aims to dramatically enhance the Messaging feature's demo capabilities. The current implementation uses a sparse, static set of mock data, which fails to showcase the application's potential for handling high-volume, complex user interactions.
+    Alright, listen up. We've got a classic state-bleed problem. The global `appShell.store` persists pane widths, which is cool until it's not. Resizing a split pane on the DataDemo page messes with the layout on the Messaging page, which is supposed to have its own specific layout. This creates a janky, unpredictable UX.
 
-    The strategy is twofold. First, we will replace the hardcoded mock data with a robust generation system capable of producing a large and varied dataset—increasing the number of tasks by 20x and populating them with hundreds of messages. This will create a more realistic and performance-testing environment.
+    This plan is a two-step surgical strike. First, we're going to level-up the `usePageViewConfig` hook. Right now it's a fire-and-forget hook that only runs on mount. We'll make it reactive to prop changes, so it can enforce layout rules dynamically as the user navigates within a page.
 
-    Second, we will enrich the data model and UI for the customer journey. The `JourneyScrollbar` will be upgraded to map distinct stages of customer interaction, such as 'Consult', 'Order', 'Delivered', and 'Complain', complete with unique icons. This transforms it from a simple progress bar into a powerful narrative tool, allowing users to instantly grasp the context of a conversation.
+    Second, we'll deploy this enhanced hook on the Messaging page. It'll monitor the URL. As soon as a conversation ID pops up and the page enters split-view, the hook will force the right pane to a clean, default width, overriding any global shenanigans. On navigating away, it resets everything, leaving no trace. This fixes the immediate bug and gives us a more powerful tool for layout management across the app.
   parts:
-    - uuid: 'b4d2c1a0-9e8f-4b1a-8c7d-6e3f2a1b0c9e'
+    - uuid: '7d3b1f9c-5a2e-4b0d-9a8c-f0e6c1a8b3d4'
       status: 'todo'
-      name: 'Part 1: Evolve Data Model for Richer Customer Journeys'
+      name: 'Part 1: Make `usePageViewConfig` Hook Reactive'
       reason: |
-        Before we can generate more data, we need to expand the data model to support a more detailed customer journey. This involves updating the types to include more nuanced stages of a customer interaction, which is foundational for the subsequent data generation and UI enhancements.
+        The existing `usePageViewConfig` hook only runs on component mount because of a static, empty dependency array. This isn't good enough for pages that change their layout based on URL params without a full re-mount. To fix the Messaging page, we need this hook to react whenever the desired pane configuration changes.
       steps:
-        - uuid: 'c5e1f0a9-8d7c-4b3a-9e1f-0a9b8c7d6e5f'
+        - uuid: 'a5b2c3d4-8e1f-4a09-9f7b-6c8d7e9f0a1b'
           status: 'todo'
-          name: '1. Expand JourneyPointType'
+          name: '1. Update useEffect dependencies to be reactive'
           reason: |
-            To accurately model a customer's lifecycle, the existing `JourneyPointType` needs to be more comprehensive. We'll add key stages like 'Delivered' and 'Follow-up' to create a more complete narrative.
+            By changing the `useEffect`'s dependency array from `[]` to include the `config` values, the hook will re-evaluate and apply pane widths whenever those values change, not just on the initial mount. This is the key to making it work dynamically on the Messaging page.
           files:
-            - 'src/pages/Messaging/types.ts'
+            - 'src/hooks/usePageViewConfig.hook.ts'
           operations:
-            - "In `src/pages/Messaging/types.ts`, modify the `JourneyPointType`."
-            - "Expand the type definition from `'Consult' | 'Order' | 'Complain' | 'Reorder'` to `'Consult' | 'Order' | 'Delivered' | 'Complain' | 'Reorder' | 'Follow-up'`."
-      context_files:
-        compact:
-          - 'src/pages/Messaging/types.ts'
-        medium:
-          - 'src/pages/Messaging/types.ts'
-          - 'src/pages/Messaging/data/mockData.ts'
-        extended:
-          - 'src/pages/Messaging/types.ts'
-          - 'src/pages/Messaging/data/mockData.ts'
-          - 'src/pages/Messaging/components/JourneyScrollbar.tsx'
-
-    - uuid: 'a1b0c9d8-7e6f-4a5b-9c8d-1e2f3a4b5c6d'
+            - "In `useEffect`, replace the empty dependency array `[]` with `[config, resetPaneWidths, setSidePaneWidth, setSplitPaneWidth]`."
+            - "Destructure `config` inside the `useEffect` callback: `const { sidePaneWidth, splitPaneWidth } = config;`."
+            - "Update the `if` conditions to use the destructured variables: `if (sidePaneWidth)` and `if (splitPaneWidth)`."
+            - "Update the `useEffect` dependency array again to use the destructured properties for stability against object re-renders: `[sidePaneWidth, splitPaneWidth, resetPaneWidths, setSidePaneWidth, setSplitPaneWidth]`."
+            - "Remove the `// eslint-disable-next-line react-hooks/exhaustive-deps` comment as the dependencies are now correctly listed."
+    - uuid: 'b8e4f2a1-6d7c-4e09-8b45-1c2d3e4f5a6b'
       status: 'todo'
-      name: 'Part 2: Implement High-Volume Mock Data Generation'
+      name: 'Part 2: Implement Pane Width Logic in Messaging Page'
       reason: |
-        The current static mock data is a major bottleneck for demonstrating the app's capabilities. Replacing it with a programmatic generator will allow us to create a large, diverse, and realistic dataset that properly simulates a production environment. This part focuses on creating the generation logic and integrating the enhanced journey points.
+        With a reactive `usePageViewConfig` hook, we can now apply it to the Messaging page. This will enforce a default `splitPaneWidth` whenever a user views a conversation, solving the core problem of width settings bleeding over from other pages.
       steps:
-        - uuid: 'd9e8f7c6-5b4a-4c3d-8b2a-1c0d9e8f7c6b'
+        - uuid: 'c9f5d6a7-1b3e-4c8d-9a7f-8b9c0d1e2f3a'
           status: 'todo'
-          name: '1. Create Task and Message Generators'
+          name: '1. Integrate `usePageViewConfig` in MessagingPage'
           reason: |
-            Manually creating hundreds of tasks and thousands of messages is not feasible. We will build generator functions to automate this process, allowing for easy scalability and variation in the mock data.
+            This step connects the page's state (whether a conversation is active) to the AppShell's layout control. By calling the hook with a width only when needed, we ensure the layout is correct for the context.
           files:
-            - 'src/pages/Messaging/data/mockData.ts'
+            - 'src/pages/Messaging/index.tsx'
           operations:
-            - "In `src/pages/Messaging/data/mockData.ts`, create a new function `generateTasks(count: number): Task[]` to programmatically create a large number of tasks."
-            - "Modify the existing `generateMessages` function to accept a larger, variable count and to increase its output significantly."
-            - "Remove the hardcoded `mockTasks` array and replace it with a call to the new generator, e.g., `export const mockTasks = generateTasks(100);`."
-        - uuid: 'e7f6d5c4-3a2b-4d1c-9a0b-8e7f6d5c4b3a'
-          status: 'todo'
-          name: '2. Integrate Journey Points into Generated Data'
-          reason: |
-            The generated messages need to feel like real conversations. This step will inject the new journey points into the message data in a logical, sequential order to create coherent customer stories.
-          files:
-            - 'src/pages/Messaging/data/mockData.ts'
-          operations:
-            - "Inside the `generateMessages` function, define a logical sequence for journey points, such as `['Consult', 'Order', 'Delivered', 'Follow-up']`."
-            - "Add logic to the message generation loop to strategically assign `journeyPoint` properties to certain messages, ensuring they appear in a plausible order within a single conversation."
-            - "Introduce variability so that some conversations might end after 'Order', while others might include 'Complain' or 'Reorder' points."
-      context_files:
-        compact:
-          - 'src/pages/Messaging/data/mockData.ts'
-        medium:
-          - 'src/pages/Messaging/data/mockData.ts'
-          - 'src/pages/Messaging/types.ts'
-        extended:
-          - 'src/pages/Messaging/data/mockData.ts'
-          - 'src/pages/Messaging/types.ts'
-          - 'src/pages/Messaging/store/messaging.store.ts'
-
-    - uuid: 'f8c7b6a5-4d3e-4f2g-9h1i-2j3k4l5m6n7o'
-      status: 'todo'
-      name: 'Part 3: Enhance JourneyScrollbar UI with Icons'
-      reason: |
-        To make the new journey data immediately useful, the `JourneyScrollbar` UI needs to be updated. Adding distinct icons for each journey stage will provide at-a-glance context, making the feature more intuitive and visually appealing.
-      steps:
-        - uuid: '9a8b7c6d-5e4f-4g3h-9i2j-1k0l9m8n7p6q'
-          status: 'todo'
-          name: '1. Map Journey Points to Icons'
-          reason: |
-            Text-only tooltips are not enough. We will create a visual language for the customer journey by mapping each stage to a unique icon, improving usability and aesthetics.
-          files:
-            - 'src/pages/Messaging/components/JourneyScrollbar.tsx'
-          operations:
-            - "In `src/pages/Messaging/components/JourneyScrollbar.tsx`, import a set of icons from `lucide-react` corresponding to the journey stages (e.g., `MessageSquare` for 'Consult', `ShoppingCart` for 'Order', `PackageCheck` for 'Delivered', `Angry` for 'Complain')."
-            - "Create a helper function or a constant map within the component, e.g., `getJourneyIcon(point: JourneyPointType)`, that returns the appropriate icon component for each journey point type."
-            - "In the JSX for the `TooltipContent`, call this new helper function to render the icon next to the journey point's text label (`dot.message.journeyPoint`)."
-            - "Style the tooltip content to have the icon and text aligned, for example, using a flex container with a gap."
-      context_files:
-        compact:
-          - 'src/pages/Messaging/components/JourneyScrollbar.tsx'
-        medium:
-          - 'src/pages/Messaging/components/JourneyScrollbar.tsx'
-          - 'src/pages/Messaging/types.ts'
-        extended:
-          - 'src/pages/Messaging/components/JourneyScrollbar.tsx'
-          - 'src/pages/Messaging/types.ts'
-          - 'src/pages/Messaging/components/TaskDetail.tsx'
-
+            - "Import `usePageViewConfig` from `'@/hooks/usePageViewConfig.hook.ts'`."
+            - "Import `useAppShellStore` from `'@/store/appShell.store'`."
+            - "Inside the `MessagingPage` component, get the `defaultSplitPaneWidth` from the store: `const defaultSplitPaneWidth = useAppShellStore((s) => s.defaultSplitPaneWidth);`."
+            - "Conditionally determine the desired width based on the presence of `conversationId`: `const desiredSplitPaneWidth = conversationId ? defaultSplitPaneWidth : undefined;`."
+            - "Call the hook with the dynamic configuration: `usePageViewConfig({ splitPaneWidth: desiredSplitPaneWidth });`."
   conclusion: |
-    Upon completion of this plan, the Messaging demo will be transformed from a proof-of-concept into a compelling, high-fidelity simulation of a real-world application. The massive increase in data volume will demonstrate the UI's performance and scalability, while the enhanced `JourneyScrollbar` will provide a powerful tool for narrative-driven data exploration. This refactor will significantly elevate the perceived value and robustness of the entire application shell.
+    Once this is deployed, the Messaging page will finally have a predictable layout. No more weirdly sized panes because you were just on another page. The user experience will be more stable and professional.
+
+    As a side-benefit, we've toughened up the `usePageViewConfig` hook, making it a more versatile tool for future layout challenges. It's a win for the user and a win for future-devs. Solid day's work.
   context_files:
     compact:
-      - 'src/pages/Messaging/data/mockData.ts'
-      - 'src/pages/Messaging/types.ts'
-      - 'src/pages/Messaging/components/JourneyScrollbar.tsx'
-    medium:
-      - 'src/pages/Messaging/data/mockData.ts'
-      - 'src/pages/Messaging/types.ts'
-      - 'src/pages/Messaging/components/JourneyScrollbar.tsx'
-      - 'src/pages/Messaging/components/TaskDetail.tsx'
-      - 'src/pages/Messaging/store/messaging.store.ts'
-    extended:
-      - 'src/pages/Messaging/data/mockData.ts'
-      - 'src/pages/Messaging/types.ts'
-      - 'src/pages/Messaging/components/JourneyScrollbar.tsx'
-      - 'src/pages/Messaging/components/TaskDetail.tsx'
-      - 'src/pages/Messaging/store/messaging.store.ts'
+      - 'src/hooks/usePageViewConfig.hook.ts'
       - 'src/pages/Messaging/index.tsx'
-      - 'src/pages/Messaging/components/TaskList.tsx'
+    medium:
+      - 'src/hooks/usePageViewConfig.hook.ts'
+      - 'src/pages/Messaging/index.tsx'
+      - 'src/store/appShell.store.ts'
+      - 'src/App.tsx'
+    extended:
+      - 'src/hooks/usePageViewConfig.hook.ts'
+      - 'src/pages/Messaging/index.tsx'
+      - 'src/store/appShell.store.ts'
+      - 'src/App.tsx'
+      - 'src/hooks/useAppViewManager.hook.ts'
+      - 'src/components/layout/AppShell.tsx'
 ```

@@ -32,16 +32,12 @@
     // "postcss.config.js",
     // "index.html",
     // "src"
-
-    "src/pages/Messaging/components/JourneyScrollbar.tsx",
-    "src/pages/Messaging/components/TaskDetail.tsx",
-    "src/pages/Messaging/components/TaskList.tsx",
-    "src/pages/Messaging/data/mockData.ts",
+    "src/App.tsx",
+    "src/components/layout/AppShell.tsx",
+    "src/hooks/useAppViewManager.hook.ts",
+    "src/hooks/usePageViewConfig.hook.ts",
     "src/pages/Messaging/index.tsx",
-    "src/pages/Messaging/store/messaging.store.ts",
-    "src/pages/Messaging/types.ts",
-    "src/pages/Messaging/data/journey.config.ts",
-    "src/pages/Messaging/components/ActivityFeed.tsx"
+    "src/store/appShell.store.ts"
     // //
     //
     //
