@@ -11,12 +11,6 @@ interface JourneyScrollbarProps {
   onDotClick: (messageId: string) => void;
 }
 
-interface DotPosition {
-  id: string;
-  topPercentage: number;
-  message: Message;
-}
-
 const journeyInfoMap: Record<JourneyPointType, { Icon: LucideIcon; textColor: string; bgColor: string; }> = {
   Consult: { Icon: MessageSquare, textColor: 'text-blue-500', bgColor: 'bg-blue-500' },
   Order: { Icon: ShoppingCart, textColor: 'text-green-500', bgColor: 'bg-green-500' },
@@ -31,43 +25,14 @@ export const JourneyScrollbar: React.FC<JourneyScrollbarProps> = ({
   journeyPoints,
   onDotClick,
 }) => {
-  const [dotPositions, setDotPositions] = useState<DotPosition[]>([]);
+  const [isOverflowing, setIsOverflowing] = useState(false);
   const trackRef = useRef<HTMLDivElement>(null);
+  const dotsContainerRef = useRef<HTMLDivElement>(null);
   const thumbRef = useRef<HTMLDivElement>(null);
   const progressRef = useRef<HTMLDivElement>(null);
   const isDraggingRef = useRef(false);
   const dragOffsetY = useRef(0);
   const activeJourneyPointIdRef = useRef<string | null>(null);
-
-  const calculateDotPositions = useCallback(() => {
-    const container = scrollContainerRef.current;
-    if (!container || journeyPoints.length === 0) return;
-
-    const { scrollHeight } = container;
-    if (scrollHeight === 0) return;
-
-    const newPositions: DotPosition[] = journeyPoints
-      .map(point => {
-        const element = container.querySelector(`[data-message-id="${point.id}"]`) as HTMLElement;
-        if (element) {
-          const topPercentage = (element.offsetTop / scrollHeight) * 100;
-          return {
-            id: point.id,
-            topPercentage,
-            message: point,
-          };
-        }
-        return null;
-      })
-      .filter((p): p is DotPosition => p !== null);
-
-    setDotPositions(currentPositions => {
-        if (JSON.stringify(newPositions) !== JSON.stringify(currentPositions)) {
-            return newPositions;
-        }
-        return currentPositions;
-    });
-  }, [journeyPoints, scrollContainerRef]);
 
   const updateScrollbar = useCallback(() => {
     const container = scrollContainerRef.current;
@@ -125,12 +90,14 @@ export const JourneyScrollbar: React.FC<JourneyScrollbarProps> = ({
       
       const newActiveDot = trackRef.current.querySelector(`[data-dot-id="${closestPointId}"]`);
       if (newActiveDot) {
-        gsap.to(newActiveDot, { scale: 1.75, opacity: 1, duration: 0.2, ease: 'back.out' });
+        gsap.to(newActiveDot, { scale: 1.75, opacity: 1, duration: 0.2, ease: 'back.out' });       
+        if (isOverflowing) {
+          (newActiveDot as HTMLElement).scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        }
       }
       activeJourneyPointIdRef.current = closestPointId;
     }
-
-  }, [scrollContainerRef, journeyPoints]);
+  }, [scrollContainerRef, journeyPoints, isOverflowing]);
 
   useLayoutEffect(() => {
     const container = scrollContainerRef.current;
@@ -141,33 +108,34 @@ export const JourneyScrollbar: React.FC<JourneyScrollbarProps> = ({
         }
       };
       updateScrollbar();
-      calculateDotPositions();
       container.addEventListener('scroll', handleScroll, { passive: true });
       return () => container.removeEventListener('scroll', handleScroll);
     }
-  }, [scrollContainerRef, updateScrollbar, calculateDotPositions]);
+  }, [scrollContainerRef, updateScrollbar]);
 
   useLayoutEffect(() => {
-    const container = scrollContainerRef.current;
-    if (!container || !trackRef.current) return;
+    const track = trackRef.current;
+    if (!track || journeyPoints.length === 0) return;
 
-    const observerCallback = () => {
-        updateScrollbar();
-        calculateDotPositions();
+    const MIN_DOT_SPACING = 32; // Corresponds to h-8 in Tailwind
+
+    const checkOverflow = () => {
+      const requiredHeight = journeyPoints.length * MIN_DOT_SPACING;
+      const trackHeight = track.clientHeight;
+      setIsOverflowing(requiredHeight > trackHeight);
     };
-
-    const resizeObserver = new ResizeObserver(observerCallback);
-    resizeObserver.observe(container);
+    
+    checkOverflow();
+    const resizeObserver = new ResizeObserver(() => {
+        checkOverflow();
+        updateScrollbar();
+    });
     resizeObserver.observe(trackRef.current);
 
-    const mutationObserver = new MutationObserver(observerCallback);
-    mutationObserver.observe(container, { childList: true, subtree: true, characterData: true });
-
     return () => {
-        resizeObserver.disconnect();
-        mutationObserver.disconnect();
+      resizeObserver.disconnect();
     };
-  }, [calculateDotPositions, updateScrollbar, scrollContainerRef]);
+  }, [journeyPoints.length, updateScrollbar]);
 
   const handleMouseMove = useCallback((e: MouseEvent) => {
     if (!isDraggingRef.current || !scrollContainerRef.current || !trackRef.current || !thumbRef.current) return;
@@ -269,28 +237,42 @@ export const JourneyScrollbar: React.FC<JourneyScrollbarProps> = ({
                 />
 
                 {/* Journey Dots */}
-                {dotPositions.map((pos) => {
-                  const journeyInfo = pos.message.journeyPoint ? journeyInfoMap[pos.message.journeyPoint] : null;
-                  return (
-                    <Tooltip key={pos.id}>
-                        <TooltipTrigger asChild>
-                        <button
-                            data-dot-id={pos.id}
-                            onClick={(e) => { e.stopPropagation(); onDotClick(pos.id); }}
-                            className={cn("absolute left-1/2 -translate-x-1/2 -translate-y-1/2 w-2.5 h-2.5 opacity-50 rounded-full focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-background transition-all duration-200 hover:scale-125 hover:opacity-100",
-                                journeyInfo ? journeyInfo.bgColor : 'bg-primary'
-                            )}
-                            style={{ top: `${pos.topPercentage}%` }}
-                            aria-label={`Jump to message: ${pos.message.text.substring(0, 30)}...`}
-                        />
-                        </TooltipTrigger>
-                        <TooltipContent side="left" className="text-sm p-2 w-auto max-w-xs shadow-xl" sideOffset={8}>
-                          {journeyInfo && <div className="flex items-center gap-2 font-semibold mb-1.5"><journeyInfo.Icon className={cn("w-4 h-4", journeyInfo.textColor)} /><span>{pos.message.journeyPoint}</span></div>}
-                          <p className="line-clamp-3 text-muted-foreground">{pos.message.text}</p>
-                        </TooltipContent>
-                    </Tooltip>
-                  );
-                })}
+                <div
+                  ref={dotsContainerRef}
+                  className={cn(
+                    "absolute top-0 left-0 w-full h-full",
+                    isOverflowing 
+                      ? "overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+                      : "flex flex-col"
+                  )}
+                >
+                  {journeyPoints.map((point) => {
+                    const journeyInfo = point.journeyPoint ? journeyInfoMap[point.journeyPoint] : null;
+                    return (
+                      <div 
+                        key={point.id} 
+                        className={cn("flex items-center justify-center", isOverflowing ? "h-8 flex-shrink-0" : "flex-1")}
+                      >
+                          <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button
+                                    data-dot-id={point.id}
+                                    onClick={(e) => { e.stopPropagation(); onDotClick(point.id); }}
+                                    className={cn("w-2.5 h-2.5 opacity-50 rounded-full focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-background transition-all duration-200 hover:scale-125 hover:opacity-100",
+                                        journeyInfo ? journeyInfo.bgColor : 'bg-primary'
+                                    )}
+                                    aria-label={`Jump to message: ${point.text.substring(0, 30)}...`}
+                                />
+                              </TooltipTrigger>
+                              <TooltipContent side="left" className="text-sm p-2 w-auto max-w-xs shadow-xl" sideOffset={8}>
+                                {journeyInfo && <div className="flex items-center gap-2 font-semibold mb-1.5"><journeyInfo.Icon className={cn("w-4 h-4", journeyInfo.textColor)} /><span>{point.journeyPoint}</span></div>}
+                                <p className="line-clamp-3 text-muted-foreground">{point.text}</p>
+                              </TooltipContent>
+                          </Tooltip>
+                      </div>
+                    );
+                  })}
+                </div>
             </div>
         </TooltipProvider>
     </div>
