@@ -2,7 +2,7 @@ import React, { useState, useLayoutEffect, useRef, useCallback } from 'react';
 import type { Message, JourneyPointType } from '../types';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { gsap } from 'gsap';
-import { MessageSquare, ShoppingCart, PackageCheck, AlertCircle, RefreshCw, MailQuestion, type LucideIcon } from 'lucide-react';
+import { Info, MessageSquare, FileText, ShoppingCart, CreditCard, Truck, PackageCheck, XCircle, Undo2, AlertCircle, RefreshCw, MailQuestion, Star, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface JourneyScrollbarProps {
@@ -14,12 +14,19 @@ interface JourneyScrollbarProps {
 }
 
 const journeyInfoMap: Record<JourneyPointType, { Icon: LucideIcon; textColor: string; bgColor: string; }> = {
+  Inquiry: { Icon: Info, textColor: 'text-cyan-500', bgColor: 'bg-cyan-500' },
   Consult: { Icon: MessageSquare, textColor: 'text-blue-500', bgColor: 'bg-blue-500' },
+  Quote: { Icon: FileText, textColor: 'text-orange-500', bgColor: 'bg-orange-500' },
   Order: { Icon: ShoppingCart, textColor: 'text-green-500', bgColor: 'bg-green-500' },
+  Payment: { Icon: CreditCard, textColor: 'text-lime-500', bgColor: 'bg-lime-500' },
+  Shipped: { Icon: Truck, textColor: 'text-sky-500', bgColor: 'bg-sky-500' },
   Delivered: { Icon: PackageCheck, textColor: 'text-emerald-500', bgColor: 'bg-emerald-500' },
+  Canceled: { Icon: XCircle, textColor: 'text-slate-500', bgColor: 'bg-slate-500' },
+  Refund: { Icon: Undo2, textColor: 'text-rose-500', bgColor: 'bg-rose-500' },
   Complain: { Icon: AlertCircle, textColor: 'text-red-500', bgColor: 'bg-red-500' },
   Reorder: { Icon: RefreshCw, textColor: 'text-indigo-500', bgColor: 'bg-indigo-500' },
   'Follow-up': { Icon: MailQuestion, textColor: 'text-yellow-500', bgColor: 'bg-yellow-500' },
+  Review: { Icon: Star, textColor: 'text-amber-500', bgColor: 'bg-amber-500' },
 };
 
 export const JourneyScrollbar: React.FC<JourneyScrollbarProps> = ({

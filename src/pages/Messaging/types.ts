@@ -43,7 +43,7 @@ export interface Note {
   createdAt: string;
 }
 
-export type JourneyPointType = 'Consult' | 'Order' | 'Delivered' | 'Complain' | 'Reorder' | 'Follow-up';
+export type JourneyPointType = 'Inquiry' | 'Consult' | 'Quote' | 'Order' | 'Payment' | 'Shipped' | 'Delivered' | 'Canceled' | 'Refund' | 'Complain' | 'Reorder' | 'Follow-up' | 'Review';
 
 export interface Message {
   id: string;

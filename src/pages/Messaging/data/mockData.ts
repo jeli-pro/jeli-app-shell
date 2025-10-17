@@ -110,12 +110,19 @@ const generateTasks = (count: number): Task[] => {
     const priorities: TaskPriority[] = ['none', 'low', 'medium', 'high'];
     const channels: Channel[] = ['whatsapp', 'instagram', 'facebook', 'email'];
     const possibleJourneys: JourneyPointType[][] = [
-        ['Consult', 'Order', 'Delivered', 'Follow-up'],
-        ['Consult', 'Order', 'Complain', 'Follow-up'],
-        ['Consult', 'Order', 'Delivered', 'Reorder'],
+        ['Inquiry', 'Consult', 'Quote', 'Order', 'Payment', 'Shipped', 'Delivered', 'Review'],
+        ['Inquiry', 'Consult', 'Quote', 'Order', 'Payment', 'Shipped', 'Delivered', 'Follow-up'],
+        ['Inquiry', 'Consult', 'Follow-up'],
+        ['Inquiry', 'Consult', 'Quote', 'Order', 'Canceled'],
+        ['Consult', 'Order', 'Payment', 'Shipped', 'Delivered', 'Complain', 'Refund'],
+        ['Consult', 'Order', 'Payment', 'Shipped', 'Complain', 'Follow-up'],
+        ['Order', 'Delivered', 'Review', 'Reorder', 'Delivered'],
+        ['Complain', 'Follow-up', 'Refund'],
+        ['Quote', 'Follow-up', 'Order', 'Payment', 'Shipped', 'Delivered'],
+        ['Inquiry', 'Quote', 'Order', 'Payment', 'Shipped', 'Canceled', 'Refund'],
         ['Consult', 'Follow-up'],
         ['Complain'],
-        ['Order', 'Delivered']
+        ['Order', 'Delivered'],
     ];
 
     for (let i = 0; i < count; i++) {

@@ -1,0 +1,780 @@
+uuid: a65383f9-7f30-4e89-a29d-473d098e945c
+projectId: jeli-app-shell
+createdAt: '2025-10-17T11:52:00.990Z'
+gitCommitMsg: >-
+  feat(messaging): seed richer and more complex customer journeys
+
+  Expanded the mock data generation to include more diverse and realistic
+  customer journey scenarios, such as cancellations, refunds, and full sales
+  cycles.
+
+  This involved: - Updating `JourneyPointType` to include all possible stages. -
+  Aligning the `JourneyScrollbar` component to visualize all new journey types.
+  - Expanding the `possibleJourneys` array in the mock data generator to create
+  richer content.
+
+  This change enhances the demo data, making the journey scrollbar and activity
+  feed more representative of real-world use cases.
+promptSummary: >-
+  The user wants to seed more diverse journey points into the mock data to
+  populate the journey scrollbar.
+reasoning:
+  - >-
+    Of course. To enrich the journey scrollbar with more diverse scenarios, I
+    will first update our type definitions to include all the new journey
+    stages. Then, I'll ensure the `JourneyScrollbar` component can visually
+    represent these new stages. Finally, I'll update the mock data generator to
+    create tasks with these more complex and realistic customer journeys.
+  - '### Step 1: Update Journey Type Definitions'
+  - >-
+    First, I'll expand the `JourneyPointType` in `types.ts` to include all the
+    new, more detailed journey stages. This is the foundation for all other
+    changes.
+  - '### Step 2: Update Journey Scrollbar Component'
+  - >-
+    Next, I'll update the `JourneyScrollbar` component to recognize and display
+    all the new journey point types, ensuring it's visually consistent with the
+    `ActivityFeed`. This involves adding the new types to its internal
+    `journeyInfoMap` and importing the necessary icons.
+  - '### Step 3: Seed Richer Journey Data'
+  - >-
+    Finally, I'll update the `mockData.ts` file to generate tasks using these
+    new, complex journey paths. This will populate the application with a
+    variety of scenarios, from a perfect sale to a return and refund.
+  - >-
+    These changes will populate your application with richer, more varied
+    customer journey data, making the journey scrollbar a much more powerful and
+    interesting tool.
+operations:
+  - type: write
+    path: src/pages/Messaging/types.ts
+    content: >+
+      --- src/pages/Messaging/types.ts
+
+      +++ src/pages/Messaging/types.ts
+
+      @@ -40,7 +40,7 @@
+         createdAt: string;
+       }
+       
+      -export type JourneyPointType = 'Consult' | 'Order' | 'Delivered' |
+      'Complain' | 'Reorder' | 'Follow-up';
+
+      +export type JourneyPointType = 'Inquiry' | 'Consult' | 'Quote' | 'Order'
+      | 'Payment' | 'Shipped' | 'Delivered' | 'Canceled' | 'Refund' | 'Complain'
+      | 'Reorder' | 'Follow-up' | 'Review';
+       
+       export interface Message {
+         id: string;
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/Messaging/components/JourneyScrollbar.tsx
+    content: >+
+      --- src/pages/Messaging/components/JourneyScrollbar.tsx
+
+      +++ src/pages/Messaging/components/JourneyScrollbar.tsx
+
+      @@ -3,7 +3,7 @@
+       import type { Message, JourneyPointType } from '../types';
+       import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+       import { gsap } from 'gsap';
+      -import { MessageSquare, ShoppingCart, PackageCheck, AlertCircle,
+      RefreshCw, MailQuestion, type LucideIcon } from 'lucide-react';
+
+      +import { Info, MessageSquare, FileText, ShoppingCart, CreditCard, Truck,
+      PackageCheck, XCircle, Undo2, AlertCircle, RefreshCw, MailQuestion, Star,
+      type LucideIcon } from 'lucide-react';
+       import { cn } from '@/lib/utils';
+       
+       interface JourneyScrollbarProps {
+      @@ -14,13 +14,24 @@
+         showAllTooltips?: boolean;
+       }
+       
+       const journeyInfoMap: Record<JourneyPointType, { Icon: LucideIcon; textColor: string; bgColor: string; }> = {
+      -  Consult: { Icon: MessageSquare, textColor: 'text-blue-500', bgColor:
+      'bg-blue-500' },
+
+      -  Order: { Icon: ShoppingCart, textColor: 'text-green-500', bgColor:
+      'bg-green-500' },
+
+      -  Delivered: { Icon: PackageCheck, textColor: 'text-emerald-500',
+      bgColor: 'bg-emerald-500' },
+
+      -  Complain: { Icon: AlertCircle, textColor: 'text-red-500', bgColor:
+      'bg-red-500' },
+
+      -  Reorder: { Icon: RefreshCw, textColor: 'text-indigo-500', bgColor:
+      'bg-indigo-500' },
+
+      -  'Follow-up': { Icon: MailQuestion, textColor: 'text-yellow-500',
+      bgColor: 'bg-yellow-500' },
+
+      +  Inquiry: { Icon: Info, textColor: 'text-cyan-500', bgColor:
+      'bg-cyan-500' },
+
+      +  Consult: { Icon: MessageSquare, textColor: 'text-blue-500', bgColor:
+      'bg-blue-500' },
+
+      +  Quote: { Icon: FileText, textColor: 'text-orange-500', bgColor:
+      'bg-orange-500' },
+
+      +  Order: { Icon: ShoppingCart, textColor: 'text-green-500', bgColor:
+      'bg-green-500' },
+
+      +  Payment: { Icon: CreditCard, textColor: 'text-lime-500', bgColor:
+      'bg-lime-500' },
+
+      +  Shipped: { Icon: Truck, textColor: 'text-sky-500', bgColor:
+      'bg-sky-500' },
+
+      +  Delivered: { Icon: PackageCheck, textColor: 'text-emerald-500',
+      bgColor: 'bg-emerald-500' },
+
+      +  Canceled: { Icon: XCircle, textColor: 'text-slate-500', bgColor:
+      'bg-slate-500' },
+
+      +  Refund: { Icon: Undo2, textColor: 'text-rose-500', bgColor:
+      'bg-rose-500' },
+
+      +  Complain: { Icon: AlertCircle, textColor: 'text-red-500', bgColor:
+      'bg-red-500' },
+
+      +  Reorder: { Icon: RefreshCw, textColor: 'text-indigo-500', bgColor:
+      'bg-indigo-500' },
+
+      +  'Follow-up': { Icon: MailQuestion, textColor: 'text-yellow-500',
+      bgColor: 'bg-yellow-500' },
+
+      +  Review: { Icon: Star, textColor: 'text-amber-500', bgColor:
+      'bg-amber-500' },
+       };
+       
+       export const JourneyScrollbar: React.FC<JourneyScrollbarProps> = ({
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/Messaging/data/mockData.ts
+    content: >+
+      --- src/pages/Messaging/data/mockData.ts
+
+      +++ src/pages/Messaging/data/mockData.ts
+
+      @@ -118,13 +118,19 @@
+           const statuses: TaskStatus[] = ['open', 'in-progress', 'done', 'snoozed'];
+           const priorities: TaskPriority[] = ['none', 'low', 'medium', 'high'];
+           const channels: Channel[] = ['whatsapp', 'instagram', 'facebook', 'email'];
+           const possibleJourneys: JourneyPointType[][] = [
+      -        ['Consult', 'Order', 'Delivered', 'Follow-up'],
+
+      -        ['Consult', 'Order', 'Complain', 'Follow-up'],
+
+      -        ['Consult', 'Order', 'Delivered', 'Reorder'],
+
+      +        ['Inquiry', 'Consult', 'Quote', 'Order', 'Payment', 'Shipped',
+      'Delivered', 'Review'],
+
+      +        ['Inquiry', 'Consult', 'Quote', 'Order', 'Payment', 'Shipped',
+      'Delivered', 'Follow-up'],
+
+      +        ['Inquiry', 'Consult', 'Follow-up'],
+
+      +        ['Inquiry', 'Consult', 'Quote', 'Order', 'Canceled'],
+
+      +        ['Consult', 'Order', 'Payment', 'Shipped', 'Delivered',
+      'Complain', 'Refund'],
+
+      +        ['Consult', 'Order', 'Payment', 'Shipped', 'Complain',
+      'Follow-up'],
+
+      +        ['Order', 'Delivered', 'Review', 'Reorder', 'Delivered'],
+
+      +        ['Complain', 'Follow-up', 'Refund'],
+
+      +        ['Quote', 'Follow-up', 'Order', 'Payment', 'Shipped',
+      'Delivered'],
+
+      +        ['Inquiry', 'Quote', 'Order', 'Payment', 'Shipped', 'Canceled',
+      'Refund'],
+               ['Consult', 'Follow-up'],
+               ['Complain'],
+      -        ['Order', 'Delivered']
+
+      +        ['Order', 'Delivered'],
+           ];
+       
+           for (let i = 0; i < count; i++) {
+
+    patchStrategy: standard-diff
+snapshot:
+  src/pages/Messaging/types.ts: >-
+    import type { LucideIcon } from "lucide-react";
+
+
+    export type Channel = 'whatsapp' | 'instagram' | 'facebook' | 'email';
+
+
+    export interface ChannelIcon {
+      Icon: LucideIcon;
+      color: string;
+    }
+
+
+    export interface Contact {
+      id: string;
+      name:string;
+      avatar: string;
+      online: boolean;
+      tags: string[];
+      email: string;
+      phone: string;
+      lastSeen: string;
+      company: string;
+      role: string;
+      activity: ActivityEvent[];
+      notes: Note[];
+    }
+
+
+    export interface Assignee {
+      id: string;
+      name: string;
+      avatar: string;
+      type: 'human' | 'ai';
+    }
+
+
+    export type ActivityEventType = 'note' | 'call' | 'email' | 'meeting';
+
+
+    export interface ActivityEvent {
+      id: string;
+      type: ActivityEventType;
+      content: string;
+      timestamp: string;
+    }
+
+    export interface Note {
+      id: string;
+      content: string;
+      createdAt: string;
+    }
+
+
+    export type JourneyPointType = 'Consult' | 'Order' | 'Delivered' |
+    'Complain' | 'Reorder' | 'Follow-up';
+
+
+    export interface Message {
+      id: string;
+      text: string;
+      timestamp: string;
+      sender: 'user' | 'contact' | 'system';
+      type: 'comment' | 'note' | 'system';
+      read: boolean;
+      userId?: string; // for notes or system messages from users
+      journeyPoint?: JourneyPointType;
+    }
+
+
+    export interface AISummary {
+      sentiment: 'positive' | 'negative' | 'neutral';
+      summaryPoints: string[];
+      suggestedReplies: string[];
+    }
+
+
+    export type TaskStatus = 'open' | 'in-progress' | 'done' | 'snoozed';
+
+    export type TaskPriority = 'none' | 'low' | 'medium' | 'high';
+
+
+    export interface Task {
+      id: string;
+      title: string;
+      contactId: string;
+      channel: Channel;
+      unreadCount: number;
+      lastActivity: Message;
+      messages: Message[];
+      status: TaskStatus;
+      assigneeId: string | null;
+      dueDate: string | null;
+      priority: TaskPriority;
+      tags: string[];
+      aiSummary: AISummary;
+      activeHandlerId: string | null;
+      takeoverRequested?: boolean;
+    }
+
+
+    export type TaskView = 'all_open' | 'unassigned' | 'done';
+  src/pages/Messaging/data/mockData.ts: >-
+    import type { Contact, Task, Message, ActivityEvent, Note, Assignee,
+    TaskStatus, TaskPriority, Channel, JourneyPointType } from '../types';
+
+    import { faker } from '@faker-js/faker';
+
+
+    // --- ASSIGNEES ---
+
+    export const mockAssignees: Assignee[] = [
+      { id: 'user-1', name: 'You', avatar: `https://avatar.vercel.sh/you.png`, type: 'human' },
+      { id: 'user-2', name: 'Alex Johnson', avatar: `https://avatar.vercel.sh/alex.png`, type: 'human' },
+      { id: 'user-3', name: 'Samira Kumar', avatar: `https://avatar.vercel.sh/samira.png`, type: 'human' },
+      { id: 'user-4', name: 'Casey Lee', avatar: `https://avatar.vercel.sh/casey.png`, type: 'human' },
+      { id: 'user-5', name: 'Jordan Rivera', avatar: `https://avatar.vercel.sh/jordan.png`, type: 'human' },
+      { id: 'user-ai-1', name: 'AI Assistant', avatar: `https://avatar.vercel.sh/ai.png`, type: 'ai' },
+    ];
+
+
+    // --- HELPERS ---
+
+    const generateNotes = (contactName: string): Note[] => [
+      { id: `note-${faker.string.uuid()}`, content: `Initial discovery call with ${contactName}. Seemed very interested in our enterprise package.`, createdAt: faker.date.past().toISOString() },
+      { id: `note-${faker.string.uuid()}`, content: `Followed up via email with pricing details.`, createdAt: faker.date.recent().toISOString() },
+    ];
+
+
+    const generateActivity = (contactName: string): ActivityEvent[] => [
+      { id: `act-${faker.string.uuid()}`, type: 'email', content: `Sent follow-up email regarding pricing.`, timestamp: faker.date.past().toISOString() },
+      { id: `act-${faker.string.uuid()}`, type: 'call', content: `Had a 30-minute discovery call with ${contactName}.`, timestamp: faker.date.recent().toISOString() },
+      { id: `act-${faker.string.uuid()}`, type: 'meeting', content: `Scheduled a demo for next week.`, timestamp: faker.date.soon().toISOString() },
+    ];
+
+
+    // --- CONTACTS ---
+
+    export const mockContacts: Contact[] = Array.from({ length: 50 }, (_, i) =>
+    {
+        const firstName = faker.person.firstName();
+        const lastName = faker.person.lastName();
+        const name = `${firstName} ${lastName}`;
+        return {
+            id: `contact-${i + 1}`,
+            name,
+            avatar: `https://avatar.vercel.sh/${firstName.toLowerCase()}${lastName.toLowerCase()}.png`,
+            online: faker.datatype.boolean(),
+            tags: faker.helpers.arrayElements(['VIP', 'New Lead', 'Returning Customer', 'Support Request', 'High Value'], faker.number.int({ min: 1, max: 3 })),
+            email: faker.internet.email({ firstName, lastName }),
+            phone: faker.phone.number(),
+            lastSeen: faker.datatype.boolean() ? 'online' : `${faker.number.int({ min: 2, max: 59 })} minutes ago`,
+            company: faker.company.name(),
+            role: faker.person.jobTitle(),
+            activity: generateActivity(name),
+            notes: generateNotes(name),
+        };
+    });
+
+
+    // --- MESSAGE GENERATOR ---
+
+    const generateMessages = (messageCount: number, contactName: string,
+    journeyPath: JourneyPointType[]): Message[] => {
+      const messages: Message[] = [];
+      const now = new Date();
+      
+      const journeyPointsWithIndices = journeyPath.map((point, index) => ({
+          point,
+          index: Math.floor((messageCount / journeyPath.length) * (index + Math.random() * 0.8))
+      }));
+
+      for (let i = 0; i < messageCount; i++) {
+        const random = Math.random();
+        let sender: Message['sender'] = 'contact';
+        let type: Message['type'] = 'comment';
+        let text = faker.lorem.sentence();
+        let userId: string | undefined = undefined;
+
+        if (random > 0.85) { // Internal Note
+          sender = 'user';
+          type = 'note';
+          const user = faker.helpers.arrayElement(mockAssignees.filter(u => u.type === 'human'));
+          userId = user.id;
+          text = `Internal note from ${user.name}: ${faker.lorem.sentence()}`;
+        } else if (random > 0.7) { // System message
+          sender = 'system';
+          type = 'system';
+          text = faker.helpers.arrayElement(['Task status changed to "in-progress"', 'Task assigned to Alex Johnson', 'User joined the conversation']);
+        } else if (random > 0.35) { // User comment
+          sender = 'user';
+          type = 'comment';
+          userId = 'user-1'; // "You"
+          text = faker.lorem.sentence();
+        }
+        
+        const journeyPointInfo = journeyPointsWithIndices.find(jp => jp.index === i);
+
+        messages.push({
+          id: `msg-${faker.string.uuid()}`,
+          text,
+          timestamp: new Date(now.getTime() - (messageCount - i) * 60 * 60 * 100).toISOString(),
+          sender,
+          type,
+          read: i < messageCount - faker.number.int({min: 0, max: 5}),
+          userId,
+          journeyPoint: journeyPointInfo?.point
+        });
+      }
+      
+      // Ensure the last message is from the contact for preview purposes
+      messages[messages.length - 1] = {
+        ...messages[messages.length-1],
+        sender: 'contact',
+        type: 'comment',
+        text: `Hey! This is the latest message from ${contactName}. ${faker.lorem.sentence()}`,
+        userId: undefined
+      };
+      return messages.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+    };
+
+
+    // --- TASK GENERATOR ---
+
+    const generateTasks = (count: number): Task[] => {
+        const tasks: Task[] = [];
+        const statuses: TaskStatus[] = ['open', 'in-progress', 'done', 'snoozed'];
+        const priorities: TaskPriority[] = ['none', 'low', 'medium', 'high'];
+        const channels: Channel[] = ['whatsapp', 'instagram', 'facebook', 'email'];
+        const possibleJourneys: JourneyPointType[][] = [
+            ['Consult', 'Order', 'Delivered', 'Follow-up'],
+            ['Consult', 'Order', 'Complain', 'Follow-up'],
+            ['Consult', 'Order', 'Delivered', 'Reorder'],
+            ['Consult', 'Follow-up'],
+            ['Complain'],
+            ['Order', 'Delivered']
+        ];
+
+        for (let i = 0; i < count; i++) {
+            const contact = faker.helpers.arrayElement(mockContacts);
+            const status = faker.helpers.arrayElement(statuses);
+            const unreadCount = status === 'open' || status === 'in-progress' ? faker.number.int({ min: 0, max: 8 }) : 0;
+            const messageCount = faker.number.int({ min: 10, max: 150 });
+            const journey = faker.helpers.arrayElement(possibleJourneys);
+            const messages = generateMessages(messageCount, contact.name, journey);
+            const assignee = faker.datatype.boolean(0.8) ? faker.helpers.arrayElement(mockAssignees) : null;
+
+            const task: Task = {
+                id: `task-${i + 1}`,
+                title: faker.lorem.sentence({ min: 3, max: 7 }),
+                contactId: contact.id,
+                channel: faker.helpers.arrayElement(channels),
+                unreadCount,
+                messages,
+                get lastActivity() { return this.messages[this.messages.length - 1]; },
+                status,
+                assigneeId: assignee?.id || null,
+                dueDate: faker.datatype.boolean() ? faker.date.future().toISOString() : null,
+                priority: faker.helpers.arrayElement(priorities),
+                tags: faker.helpers.arrayElements(['onboarding', 'pricing', 'bug-report', 'urgent', 'tech-support'], faker.number.int({min: 0, max: 2})),
+                aiSummary: {
+                    sentiment: faker.helpers.arrayElement(['positive', 'negative', 'neutral']),
+                    summaryPoints: Array.from({ length: 3 }, () => faker.lorem.sentence()),
+                    suggestedReplies: Array.from({ length: 2 }, () => faker.lorem.words({ min: 3, max: 6})),
+                },
+                activeHandlerId: faker.helpers.arrayElement([assignee?.id, null, 'user-ai-1']),
+            };
+            tasks.push(task);
+        }
+        return tasks;
+    }
+
+
+    export const mockTasks: Task[] = generateTasks(200);
+  src/pages/Messaging/components/JourneyScrollbar.tsx: >-
+    import React, { useState, useLayoutEffect, useRef, useCallback } from
+    'react';
+
+    import type { Message, JourneyPointType } from '../types';
+
+    import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from
+    '@/components/ui/tooltip';
+
+    import { gsap } from 'gsap';
+
+    import { MessageSquare, ShoppingCart, PackageCheck, AlertCircle, RefreshCw,
+    MailQuestion, type LucideIcon } from 'lucide-react';
+
+    import { cn } from '@/lib/utils';
+
+
+    interface JourneyScrollbarProps {
+      scrollContainerRef: React.RefObject<HTMLDivElement>;
+      journeyPoints: Message[];
+      onDotClick: (messageId: string) => void;
+      onHoverChange?: (isHovering: boolean) => void;
+      showAllTooltips?: boolean;
+    }
+
+
+    const journeyInfoMap: Record<JourneyPointType, { Icon: LucideIcon;
+    textColor: string; bgColor: string; }> = {
+      Consult: { Icon: MessageSquare, textColor: 'text-blue-500', bgColor: 'bg-blue-500' },
+      Order: { Icon: ShoppingCart, textColor: 'text-green-500', bgColor: 'bg-green-500' },
+      Delivered: { Icon: PackageCheck, textColor: 'text-emerald-500', bgColor: 'bg-emerald-500' },
+      Complain: { Icon: AlertCircle, textColor: 'text-red-500', bgColor: 'bg-red-500' },
+      Reorder: { Icon: RefreshCw, textColor: 'text-indigo-500', bgColor: 'bg-indigo-500' },
+      'Follow-up': { Icon: MailQuestion, textColor: 'text-yellow-500', bgColor: 'bg-yellow-500' },
+    };
+
+
+    export const JourneyScrollbar: React.FC<JourneyScrollbarProps> = ({
+      scrollContainerRef,
+      journeyPoints,
+      onDotClick,
+      onHoverChange,
+      showAllTooltips,
+    }) => {
+      const [isOverflowing, setIsOverflowing] = useState(false);
+      const trackRef = useRef<HTMLDivElement>(null);
+      const dotsContainerRef = useRef<HTMLDivElement>(null);
+      const thumbRef = useRef<HTMLDivElement>(null);
+      const isDraggingRef = useRef(false);
+      const dragOffsetY = useRef(0);
+      const activeJourneyPointIdRef = useRef<string | null>(null);
+
+      const updateScrollbar = useCallback(() => {
+        const container = scrollContainerRef.current;
+        if (!container || !trackRef.current || !thumbRef.current) return;
+
+        const { scrollTop, scrollHeight, clientHeight } = container;
+        
+        if (scrollHeight <= clientHeight) {
+          gsap.to(thumbRef.current, { autoAlpha: 0, duration: 0.1 });
+          return;
+        }
+
+        gsap.to(thumbRef.current, { autoAlpha: 1, duration: 0.1 });
+
+        // Calculate proportional thumb height, but cap it at 10% of the container height
+        // to prevent it from looking too long. A minimum of 20px is enforced for usability.
+        const thumbHeight = Math.max(20, Math.min((clientHeight / scrollHeight) * clientHeight, clientHeight * 0.1));
+        const thumbTop = (scrollTop / (scrollHeight - clientHeight)) * (clientHeight - thumbHeight);
+        
+        gsap.to(thumbRef.current, {
+          height: thumbHeight,
+          y: thumbTop,
+          duration: 0.1,
+          ease: 'power1.out',
+        });
+
+        // Active journey point logic
+        const viewportCenter = scrollTop + clientHeight / 2;
+        let closestPointId: string | null = null;
+        let minDistance = Infinity;
+
+        journeyPoints.forEach(point => {
+          const element = container.querySelector(`[data-message-id="${point.id}"]`) as HTMLElement;
+          if (element) {
+            const elementCenter = element.offsetTop + element.offsetHeight / 2;
+            const distance = Math.abs(viewportCenter - elementCenter);
+            if (distance < minDistance) {
+              minDistance = distance;
+              closestPointId = point.id;
+            }
+          }
+        });
+
+        if (closestPointId && activeJourneyPointIdRef.current !== closestPointId) {
+          if (activeJourneyPointIdRef.current) {
+            const oldActiveDot = trackRef.current.querySelector(`[data-dot-id="${activeJourneyPointIdRef.current}"]`);
+            gsap.to(oldActiveDot, { scale: 1, opacity: 0.5, duration: 0.2, ease: 'back.out' });
+          }
+          
+          const newActiveDot = trackRef.current.querySelector(`[data-dot-id="${closestPointId}"]`);
+          if (newActiveDot) {
+            gsap.to(newActiveDot, { scale: 1.75, opacity: 1, duration: 0.2, ease: 'back.out' });       
+            if (isOverflowing) {
+              (newActiveDot as HTMLElement).scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+            }
+          }
+          activeJourneyPointIdRef.current = closestPointId;
+        }
+      }, [scrollContainerRef, journeyPoints, isOverflowing]);
+
+      useLayoutEffect(() => {
+        const container = scrollContainerRef.current;
+        if (container) {
+          const handleScroll = () => {
+            if (!isDraggingRef.current) {
+              updateScrollbar();
+            }
+          };
+          updateScrollbar();
+          container.addEventListener('scroll', handleScroll, { passive: true });
+          return () => container.removeEventListener('scroll', handleScroll);
+        }
+      }, [scrollContainerRef, updateScrollbar]);
+
+      useLayoutEffect(() => {
+        const track = trackRef.current;
+        if (!track || journeyPoints.length === 0) return;
+
+        const MIN_DOT_SPACING = 32; // Corresponds to h-8 in Tailwind
+
+        const checkOverflow = () => {
+          const requiredHeight = journeyPoints.length * MIN_DOT_SPACING;
+          const trackHeight = track.clientHeight;
+          setIsOverflowing(requiredHeight > trackHeight);
+        };
+        
+        checkOverflow();
+        const resizeObserver = new ResizeObserver(() => {
+            checkOverflow();
+            updateScrollbar();
+        });
+        resizeObserver.observe(trackRef.current);
+
+        return () => {
+          resizeObserver.disconnect();
+        };
+      }, [journeyPoints.length, updateScrollbar]);
+
+      const handleMouseMove = useCallback((e: MouseEvent) => {
+        if (!isDraggingRef.current || !scrollContainerRef.current || !trackRef.current || !thumbRef.current) return;
+        
+        e.preventDefault();
+        const container = scrollContainerRef.current;
+        const track = trackRef.current;
+        const thumb = thumbRef.current;
+        
+        const { scrollHeight, clientHeight } = container;
+        const scrollableDist = scrollHeight - clientHeight;
+        if (scrollableDist <= 0) return;
+        
+        const trackRect = track.getBoundingClientRect();
+        const thumbHeight = thumb.offsetHeight;
+        
+        const newThumbTop = e.clientY - trackRect.top - dragOffsetY.current;
+        const clampedThumbTop = Math.max(0, Math.min(newThumbTop, trackRect.height - thumbHeight));
+        
+        const scrollRatio = clampedThumbTop / (trackRect.height - thumbHeight);
+        
+        gsap.to(container, {
+          scrollTop: scrollRatio * scrollableDist,
+          duration: 0,
+          onUpdate: updateScrollbar
+        });
+
+      }, [scrollContainerRef, updateScrollbar]);
+
+      const handleMouseUp = useCallback(() => {
+        isDraggingRef.current = false;
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+        window.removeEventListener('mousemove', handleMouseMove);
+        window.removeEventListener('mouseup', handleMouseUp);
+      }, [handleMouseMove]);
+
+      const handleMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        if (!scrollContainerRef.current || !thumbRef.current) return;
+        
+        isDraggingRef.current = true;
+        const thumbRect = thumbRef.current.getBoundingClientRect();
+        dragOffsetY.current = e.clientY - thumbRect.top;
+        
+        document.body.style.cursor = 'grabbing';
+        document.body.style.userSelect = 'none';
+
+        window.addEventListener('mousemove', handleMouseMove);
+        window.addEventListener('mouseup', handleMouseUp);
+      }, [scrollContainerRef, handleMouseMove, handleMouseUp]);
+      
+      const handleTrackClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+         if (e.target === thumbRef.current || (e.target as HTMLElement).closest('[data-dot-id]')) return;
+
+        const container = scrollContainerRef.current;
+        const track = trackRef.current;
+        if (!container || !track) return;
+        
+        const { scrollHeight, clientHeight } = container;
+        const trackRect = track.getBoundingClientRect();
+        const clickY = e.clientY - trackRect.top;
+        
+        const thumbHeight = Math.max(20, Math.min((clientHeight / scrollHeight) * clientHeight, clientHeight * 0.1));
+        const clickRatio = (clickY - thumbHeight / 2) / (trackRect.height - thumbHeight);
+        
+        gsap.to(container, {
+          scrollTop: (scrollHeight - clientHeight) * Math.max(0, Math.min(1, clickRatio)),
+          duration: 0.3,
+          ease: 'power2.out'
+        });
+        
+      }, [scrollContainerRef]);
+
+      return (
+        <div
+          ref={trackRef}
+          className="absolute top-0 right-0 h-full w-8 py-2 z-10 cursor-pointer"
+          onMouseEnter={() => onHoverChange?.(true)}
+          onMouseLeave={() => onHoverChange?.(false)}
+          onMouseDown={handleTrackClick}
+        >
+            <TooltipProvider delayDuration={100}>
+                <div className="relative h-full w-full">
+                    {/* Track Line */}
+                    <div className="track-line absolute top-0 left-1/2 -translate-x-1/2 h-full w-1 bg-border rounded-full" />
+
+                    {/* Thumb */}
+                    <div
+                        ref={thumbRef}
+                        className="absolute left-1/2 -translate-x-1/2 w-2 bg-muted-foreground hover:bg-muted-foreground/80 rounded-sm cursor-grab active:cursor-grabbing opacity-0"
+                        onMouseDown={handleMouseDown}
+                    />
+
+                    {/* Journey Dots */}
+                    <div
+                      ref={dotsContainerRef}
+                      className={cn(
+                        // This container is click-through so the thumb and track can be interactive.
+                        // Individual dots will re-enable pointer events for themselves.
+                        "absolute top-0 left-0 w-full h-full pointer-events-none",
+                        isOverflowing 
+                          ? "overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+                          : "flex flex-col"
+                      )}
+                    >
+                      {journeyPoints.map((point) => {
+                        const journeyInfo = point.journeyPoint ? journeyInfoMap[point.journeyPoint] : null;
+                        return (
+                          <div 
+                            key={point.id} 
+                            className={cn("flex items-center justify-center", isOverflowing ? "h-8 flex-shrink-0" : "flex-1")}
+                          >
+                              <Tooltip open={showAllTooltips}>
+                                  <TooltipTrigger asChild>
+                                    <button
+                                        data-dot-id={point.id}
+                                        onClick={(e) => { e.stopPropagation(); onDotClick(point.id); }}
+                                        // Dots are on top of the thumb and are clickable.
+                                        className={cn("relative z-10 pointer-events-auto w-2.5 h-2.5 opacity-50 rounded-full focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-background transition-all duration-200 hover:scale-125 hover:opacity-100",
+                                            journeyInfo ? journeyInfo.bgColor : 'bg-primary'
+                                        )}
+                                        aria-label={`Jump to message: ${point.text.substring(0, 30)}...`}
+                                    />
+                                  </TooltipTrigger>
+                                  <TooltipContent side="left" className="text-sm p-2 w-auto max-w-xs shadow-xl" sideOffset={8}>
+                                    {journeyInfo && <div className="flex items-center gap-2 font-semibold mb-1.5"><journeyInfo.Icon className={cn("w-4 h-4", journeyInfo.textColor)} /><span>{point.journeyPoint}</span></div>}
+                                    <p className="line-clamp-3 text-muted-foreground">{point.text}</p>
+                                  </TooltipContent>
+                              </Tooltip>
+                          </div>
+                        );
+                      })}
+                    </div>
+                </div>
+            </TooltipProvider>
+        </div>
+      );
+    };
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 417
