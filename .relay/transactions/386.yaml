@@ -1,0 +1,371 @@
+uuid: c25f9b4c-9743-4e89-8d7d-e6a39b5b03f0
+projectId: jeli-app-shell
+createdAt: '2025-10-17T09:21:27.536Z'
+gitCommitMsg: >-
+  feat(messaging): add journey points to data model
+
+  This commit lays the groundwork for the content-aware journey scrollbar.
+
+  - Extends the `Message` type in `types.ts` with an optional `journeyPoint`
+  property to flag significant messages. - Augments the mock data within the
+  messaging store to include sample journey points for development and testing.
+promptSummary: >-
+  I need to create a custom scrollbar for the messaging page that shows
+  clickable dots for key moments in the conversation.
+reasoning:
+  - >-
+    Excellent, I'm starting work on the content-aware journey scrollbar. The
+    user's point about preserving standard scroll behavior is key—the new
+    component will be a functional scrollbar (with a draggable thumb and mouse
+    wheel support) *in addition* to having the journey point markers.
+  - >-
+    This first step is about laying the foundation. I'll update our data
+    structures to identify which messages are key "journey points" and seed our
+    mock data with a few examples so we have something to build with. This won't
+    change any UI or functionality yet; it's purely a preparatory step.
+  - '### Part 1: Data Model & Prerequisite UI Adjustments'
+  - >-
+    First, I'll modify the `Message` type to include an optional `journeyPoint`
+    property. This allows us to flag specific messages as significant events
+    like an "Order" or "Complain".
+  - >-
+    Next, I'll inject some of these new `journeyPoint` markers into our mock
+    data. Since I don't have the original data file, I'll add a small data
+    augmentation step directly inside the `messaging.store.ts` file. This
+    modifies the mock tasks as the store is created, adding journey points to
+    the first task for demonstration purposes.
+  - >-
+    Finally, as per the plan, I've confirmed that our existing `Popover`
+    component in `src/components/ui/popover.tsx` already supports being
+    positioned to the left of its trigger via the `side="left"` prop. No changes
+    are needed there.
+  - >-
+    With the data model updated, we're ready to start building the UI components
+    in the next step.
+operations:
+  - type: write
+    path: src/pages/Messaging/types.ts
+    content: >+
+      --- src/pages/Messaging/types.ts
+
+      +++ src/pages/Messaging/types.ts
+
+      @@ -40,12 +40,15 @@
+         createdAt: string;
+       }
+       
+      +export type JourneyPointType = 'Consult' | 'Order' | 'Complain' |
+      'Reorder';
+
+      +
+       export interface Message {
+         id: string;
+         text: string;
+         timestamp: string;
+         sender: 'user' | 'contact' | 'system';
+         type: 'comment' | 'note' | 'system';
+         read: boolean;
+         userId?: string; // for notes or system messages from users
+      +  journeyPoint?: JourneyPointType;
+       }
+       
+       export interface AISummary {
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/Messaging/store/messaging.store.ts
+    content: >+
+      --- src/pages/Messaging/store/messaging.store.ts
+
+      +++ src/pages/Messaging/store/messaging.store.ts
+
+      @@ -1,6 +1,18 @@
+       import { create } from 'zustand';
+       import { mockTasks, mockContacts, mockAssignees } from '../data/mockData';
+      -import type { Task, Contact, Channel, Assignee, TaskStatus, TaskPriority,
+      TaskView } from '../types';
+
+      +import type { Task, Contact, Channel, Assignee, TaskStatus, TaskPriority,
+      TaskView, Message, JourneyPointType } from '../types';
+
+      +
+
+      +// Data augmentation to add journey points for demonstration
+
+      +const augmentedTasks = mockTasks.map(task => {
+
+      +  if (task.id === 'task-1' && task.messages.length > 8) {
+
+      +    const messagesWithJourneyPoints: Message[] = [...task.messages];
+
+      +    messagesWithJourneyPoints[2] = { ...messagesWithJourneyPoints[2],
+      journeyPoint: 'Consult' as JourneyPointType };
+
+      +    messagesWithJourneyPoints[5] = { ...messagesWithJourneyPoints[5],
+      journeyPoint: 'Order' as JourneyPointType };
+
+      +    messagesWithJourneyPoints[8] = { ...messagesWithJourneyPoints[8],
+      journeyPoint: 'Complain' as JourneyPointType };
+
+      +    return { ...task, messages: messagesWithJourneyPoints };
+
+      +  }
+
+      +  return task;
+
+      +});
+       
+       interface MessagingState {
+         tasks: Task[];
+      @@ -25,7 +37,7 @@
+       }
+       
+       export const useMessagingStore = create<MessagingState & MessagingActions>((set, get) => ({
+      -  tasks: mockTasks,
+
+      +  tasks: augmentedTasks,
+         contacts: mockContacts,
+         assignees: mockAssignees,
+         searchTerm: '',
+
+    patchStrategy: standard-diff
+snapshot:
+  src/pages/Messaging/types.ts: |-
+    import type { LucideIcon } from "lucide-react";
+
+    export type Channel = 'whatsapp' | 'instagram' | 'facebook' | 'email';
+
+    export interface ChannelIcon {
+      Icon: LucideIcon;
+      color: string;
+    }
+
+    export interface Contact {
+      id: string;
+      name:string;
+      avatar: string;
+      online: boolean;
+      tags: string[];
+      email: string;
+      phone: string;
+      lastSeen: string;
+      company: string;
+      role: string;
+      activity: ActivityEvent[];
+      notes: Note[];
+    }
+
+    export interface Assignee {
+      id: string;
+      name: string;
+      avatar: string;
+      type: 'human' | 'ai';
+    }
+
+    export type ActivityEventType = 'note' | 'call' | 'email' | 'meeting';
+
+    export interface ActivityEvent {
+      id: string;
+      type: ActivityEventType;
+      content: string;
+      timestamp: string;
+    }
+    export interface Note {
+      id: string;
+      content: string;
+      createdAt: string;
+    }
+
+    export interface Message {
+      id: string;
+      text: string;
+      timestamp: string;
+      sender: 'user' | 'contact' | 'system';
+      type: 'comment' | 'note' | 'system';
+      read: boolean;
+      userId?: string; // for notes or system messages from users
+    }
+
+    export interface AISummary {
+      sentiment: 'positive' | 'negative' | 'neutral';
+      summaryPoints: string[];
+      suggestedReplies: string[];
+    }
+
+    export type TaskStatus = 'open' | 'in-progress' | 'done' | 'snoozed';
+    export type TaskPriority = 'none' | 'low' | 'medium' | 'high';
+
+    export interface Task {
+      id: string;
+      title: string;
+      contactId: string;
+      channel: Channel;
+      unreadCount: number;
+      lastActivity: Message;
+      messages: Message[];
+      status: TaskStatus;
+      assigneeId: string | null;
+      dueDate: string | null;
+      priority: TaskPriority;
+      tags: string[];
+      aiSummary: AISummary;
+      activeHandlerId: string | null;
+      takeoverRequested?: boolean;
+    }
+
+    export type TaskView = 'all_open' | 'unassigned' | 'done';
+  src/pages/Messaging/store/messaging.store.ts: >-
+    import { create } from 'zustand';
+
+    import { mockTasks, mockContacts, mockAssignees } from '../data/mockData';
+
+    import type { Task, Contact, Channel, Assignee, TaskStatus, TaskPriority,
+    TaskView } from '../types';
+
+
+    interface MessagingState {
+      tasks: Task[];
+      contacts: Contact[];
+      assignees: Assignee[];
+      searchTerm: string;
+      activeFilters: {
+        channels: Channel[];
+        tags: string[];
+        status: TaskStatus[];
+        priority: TaskPriority[];
+        assigneeId: string[];
+      };
+      activeTaskView: TaskView;
+    }
+
+
+    interface MessagingActions {
+      getTaskById: (id: string) => (Task & { contact: Contact, assignee: Assignee | null, activeHandler: Assignee | null }) | undefined;
+      getFilteredTasks: () => (Task & { contact: Contact, assignee: Assignee | null })[];
+      setSearchTerm: (term: string) => void;
+      setActiveTaskView: (view: TaskView) => void;
+      setFilters: (filters: Partial<MessagingState['activeFilters']>) => void;
+      updateTask: (taskId: string, updates: Partial<Omit<Task, 'id'>>) => void;
+      takeOverTask: (taskId: string, userId: string) => void;
+      requestAndSimulateTakeover: (taskId: string, requestedByUserId: string) => void;
+      getAssigneeById: (assigneeId: string) => Assignee | undefined;
+      getAvailableTags: () => string[];
+    }
+
+
+    export const useMessagingStore = create<MessagingState &
+    MessagingActions>((set, get) => ({
+      tasks: mockTasks,
+      contacts: mockContacts,
+      assignees: mockAssignees,
+      searchTerm: '',
+      activeFilters: {
+        channels: [],
+        tags: [],
+        status: [],
+        priority: [],
+        assigneeId: [],
+      },
+      activeTaskView: 'all_open',
+
+      getTaskById: (id) => {
+        const task = get().tasks.find(t => t.id === id);
+        if (!task) return undefined;
+
+        const contact = get().contacts.find(c => c.id === task.contactId);
+        if (!contact) return undefined;
+
+        const assignee = get().assignees.find(a => a.id === task.assigneeId) || null;
+        const activeHandler = get().assignees.find(a => a.id === task.activeHandlerId) || null;
+
+        return { ...task, contact, assignee, activeHandler };
+      },
+
+      getFilteredTasks: () => {
+        const { tasks, contacts, assignees, searchTerm, activeFilters, activeTaskView } = get();
+        const lowercasedSearch = searchTerm.toLowerCase();
+
+        const viewFilteredTasks = tasks.filter(task => {
+          switch (activeTaskView) {
+            case 'all_open':
+              return task.status === 'open' || task.status === 'in-progress';
+            case 'unassigned':
+              return !task.assigneeId && (task.status === 'open' || task.status === 'in-progress');
+            case 'done':
+              return task.status === 'done';
+            default:
+              return true;
+          }
+        });
+        const mapped = viewFilteredTasks.map(task => {
+          const contact = contacts.find(c => c.id === task.contactId) as Contact;
+          const assignee = assignees.find(a => a.id === task.assigneeId) || null;
+          return { ...task, contact, assignee };
+        });
+
+        const filtered = mapped.filter(task => {
+          const searchMatch = task.title.toLowerCase().includes(lowercasedSearch) || task.contact.name.toLowerCase().includes(lowercasedSearch);
+          const channelMatch = activeFilters.channels.length === 0 || activeFilters.channels.includes(task.channel);
+          const tagMatch = activeFilters.tags.length === 0 || activeFilters.tags.some(tag => task.tags.includes(tag));
+          const statusMatch = activeFilters.status.length === 0 || activeFilters.status.includes(task.status);
+          const priorityMatch = activeFilters.priority.length === 0 || activeFilters.priority.includes(task.priority);
+          const assigneeMatch = activeFilters.assigneeId.length === 0 || (task.assigneeId && activeFilters.assigneeId.includes(task.assigneeId));
+          
+          return searchMatch && channelMatch && tagMatch && statusMatch && priorityMatch && assigneeMatch;
+        });
+
+        return filtered.sort((a, b) => new Date(b.lastActivity.timestamp).getTime() - new Date(a.lastActivity.timestamp).getTime());
+      },
+
+      setSearchTerm: (term) => set({ searchTerm: term }),
+      
+      setActiveTaskView: (view) => set({ activeTaskView: view }),
+
+      setFilters: (newFilters) => set(state => ({
+        activeFilters: { ...state.activeFilters, ...newFilters }
+      })),
+
+      updateTask: (taskId, updates) => set(state => ({
+        tasks: state.tasks.map(task => 
+          task.id === taskId 
+            ? { ...task, ...updates, lastActivity: { ...task.lastActivity, timestamp: new Date().toISOString() } } 
+            : task
+        )
+      })),
+
+      takeOverTask: (taskId, userId) => set(state => ({
+        tasks: state.tasks.map(task => 
+          task.id === taskId 
+            ? { ...task, activeHandlerId: userId, takeoverRequested: false } 
+            : task
+        )
+      })),
+
+      requestAndSimulateTakeover: (taskId, requestedByUserId) => {
+        set(state => ({
+          tasks: state.tasks.map(task => 
+            task.id === taskId ? { ...task, takeoverRequested: true } : task
+          )
+        }));
+        // Simulate a 2-second delay for the other user to "approve"
+        setTimeout(() => get().takeOverTask(taskId, requestedByUserId), 2000);
+      },
+
+      getAssigneeById: (assigneeId: string) => {
+        return get().assignees.find(a => a.id === assigneeId);
+      },
+
+      getAvailableTags: () => {
+        const contactTags = get().contacts.flatMap(c => c.tags);
+        const taskTags = get().tasks.flatMap(t => t.tags);
+        const allTags = new Set([...contactTags, ...taskTags]);
+        return Array.from(allTags);
+      }
+    }));
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 386

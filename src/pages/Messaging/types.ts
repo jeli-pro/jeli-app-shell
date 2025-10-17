@@ -43,6 +43,8 @@ export interface Note {
   createdAt: string;
 }
 
+export type JourneyPointType = 'Consult' | 'Order' | 'Complain' | 'Reorder';
+
 export interface Message {
   id: string;
   text: string;
@@ -51,6 +53,7 @@ export interface Message {
   type: 'comment' | 'note' | 'system';
   read: boolean;
   userId?: string; // for notes or system messages from users
+  journeyPoint?: JourneyPointType;
 }
 
 export interface AISummary {

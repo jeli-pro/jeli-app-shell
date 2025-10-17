@@ -10,6 +10,7 @@ import { TakeoverBanner } from './TakeoverBanner';
 import { useToast } from '@/components/ui/toast';
 import { gsap } from 'gsap';
 import { useAppShellStore } from '@/store/appShell.store';
+import { JourneyScrollbar } from './JourneyScrollbar';
 
 
 export const TaskDetail: React.FC = () => {
@@ -23,6 +24,7 @@ export const TaskDetail: React.FC = () => {
   // In a real app, this would come from the auth store
   const currentUserId = 'user-1'; 
 
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const isLocked = !!task?.activeHandlerId && task.activeHandlerId !== currentUserId;
   const inputAreaRef = useRef<HTMLDivElement>(null);
   const isFirstRender = useRef(true);
@@ -78,6 +80,20 @@ export const TaskDetail: React.FC = () => {
     );
   }
 
+  const journeyPoints = task.messages.filter(m => m.journeyPoint);
+
+  const handleDotClick = (messageId: string) => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    
+    const element = container.querySelector(`[data-message-id="${messageId}"]`);
+    
+    if (element) {
+      // Using 'center' to avoid the message being at the very top/bottom of the view
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  };
+
   const handleTakeOver = () => {
     takeOverTask(task.id, currentUserId);
     show({
@@ -108,7 +124,19 @@ export const TaskDetail: React.FC = () => {
             onRequestTakeover={handleRequestTakeover}
         />
       )}
-      <ActivityFeed messages={task.messages} contact={task.contact} />
+      <div 
+        ref={scrollContainerRef} 
+        className="relative flex-1 overflow-y-auto pr-8 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+      >
+        <ActivityFeed messages={task.messages} contact={task.contact} />
+        {journeyPoints.length > 0 && (
+            <JourneyScrollbar
+                scrollContainerRef={scrollContainerRef}
+                journeyPoints={journeyPoints}
+                onDotClick={handleDotClick}
+            />
+        )}
+      </div>
 
       {/* Input Form */}
       <div ref={inputAreaRef} className="p-4 border-t flex-shrink-0 bg-background/50">

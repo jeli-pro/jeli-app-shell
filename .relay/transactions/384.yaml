@@ -1,0 +1,1001 @@
+uuid: 1e7371ac-02ef-4f0e-b2d9-e932ec79f323
+projectId: jeli-app-shell
+createdAt: '2025-10-17T06:04:35.710Z'
+gitCommitMsg: >-
+  feat(messaging): implement content-aware scrollbar minimap
+
+  Introduces a new `ContentAwareScrollbar` component that provides a
+  minimap-style view of a scrollable content area. Each item in the content is
+  represented by a dot on the scrollbar track.
+
+  - Dots can be clicked to smoothly scroll to the corresponding message. -
+  Hovering over a dot reveals a popover with a preview of the message content. -
+  The scrollbar thumb can be dragged for conventional scrolling. - The component
+  is fully integrated into the `TaskDetail` view to enhance navigation of long
+  message threads. - `ActivityFeed` is updated to support element refs and hover
+  highlighting.
+promptSummary: >-
+  Implement a custom content-aware scrollbar for the messaging page, acting as a
+  minimap with clickable dots for each message that show previews on hover and
+  scroll to the message on click.
+reasoning:
+  - >-
+    Of course. I'll implement the content-aware scrollbar as a minimap for your
+    messaging view. This will involve creating a new reusable scrollbar
+    component, and then integrating it into the `TaskDetail` and `ActivityFeed`
+    components to provide an enhanced navigation experience for message threads.
+  - '### Step 1: Create the `ContentAwareScrollbar` Component'
+  - >-
+    First, I'll create the new `ContentAwareScrollbar` component. This component
+    will be responsible for rendering the track, a draggable thumb, and a series
+    of dots representing each message. It will handle all the logic for
+    calculating positions, synchronizing with the content's scroll position, and
+    managing interactions like dragging, clicking on dots, and showing message
+    previews on hover. I'm using `gsap` and its `Draggable` plugin for smooth
+    animations and robust drag-and-drop functionality.
+  - '### Step 2: Export the New Component'
+  - >-
+    To make the component easily accessible throughout the app, I'll export it
+    from the main `index.ts` file.
+  - '### Step 3: Update `ActivityFeed` for Integration'
+  - >-
+    Next, I'll modify the `ActivityFeed` component. It needs to accept a
+    callback prop (`getMessageRef`) to register the DOM element of each message.
+    This is crucial for the scrollbar to know where to scroll. I'll also pass in
+    the `hoveredItemId` to apply a visual highlight to the corresponding message
+    when a dot is hovered on the scrollbar. The component's own scrolling
+    behavior will be removed, as the parent will now handle it.
+  - '### Step 4: Integrate the Scrollbar into `TaskDetail`'
+  - >-
+    Finally, I'll bring everything together in `TaskDetail.tsx`. I'll manage the
+    refs for the scrollable content area and the individual message elements.
+    I'll transform the message data into the format required by the scrollbar,
+    including generating preview components for the popovers. The JSX will be
+    restructured to place the `ActivityFeed` inside a scrollable container, with
+    the `ContentAwareScrollbar` alongside it.
+  - >-
+    With these changes, the messaging view now features a sophisticated,
+    content-aware scrollbar that acts as a minimap, significantly improving
+    navigation and usability for long conversation threads.
+  - '### Add `no-scrollbar` to CSS'
+  - >-
+    To hide the native scrollbar, I'll ensure the `no-scrollbar` utility is
+    defined in `index.css`. It's already there in your provided file, so no
+    changes are needed, but this is an important part of the implementation.
+  - >-
+    The provided `index.css` file already contains the necessary `.no-scrollbar`
+    utility class, so no changes are needed for that file.
+operations:
+  - type: write
+    path: src/components/ui/content-aware-scrollbar.tsx
+    content: >-
+      import React, { useState, useEffect, useRef, useLayoutEffect, useCallback
+      } from 'react';
+
+      import { Popover, PopoverContent, PopoverTrigger } from './popover';
+
+      import { cn } from '@/lib/utils';
+
+      import { gsap } from 'gsap';
+
+      import { Draggable } from 'gsap/Draggable';
+
+
+      gsap.registerPlugin(Draggable);
+
+
+      export interface ScrollbarItem {
+        id: string;
+        preview: React.ReactNode;
+        type: 'comment-user' | 'comment-contact' | 'note' | 'system' | string;
+      }
+
+
+      interface ContentAwareScrollbarProps {
+        contentRef: React.RefObject<HTMLDivElement>;
+        items: ScrollbarItem[];
+        itemRefs: React.MutableRefObject<Map<string, HTMLDivElement | null>>;
+        setHoveredItemId: (id: string | null) => void;
+      }
+
+
+      export const ContentAwareScrollbar: React.FC<ContentAwareScrollbarProps> =
+      ({ contentRef, items, itemRefs, setHoveredItemId }) => {
+        const scrollbarRef = useRef<HTMLDivElement>(null);
+        const thumbRef = useRef<HTMLDivElement>(null);
+        const [dotPositions, setDotPositions] = useState<Map<string, number>>(new Map());
+        const [isReady, setIsReady] = useState(false);
+
+        const calculatePositions = useCallback(() => {
+          if (!contentRef.current || items.length === 0) return;
+          const { scrollHeight, clientHeight } = contentRef.current;
+          if (scrollHeight <= clientHeight) {
+            setDotPositions(new Map());
+            setIsReady(false);
+            return;
+          }
+
+          const newPositions = new Map<string, number>();
+          items.forEach(item => {
+            const el = itemRefs.current.get(item.id);
+            if (el) {
+              const percentage = el.offsetTop / scrollHeight;
+              newPositions.set(item.id, percentage);
+            }
+          });
+          setDotPositions(newPositions);
+          setIsReady(true);
+        }, [contentRef, itemRefs, items]);
+
+        useLayoutEffect(() => {
+          calculatePositions();
+          const resizeObserver = new ResizeObserver(calculatePositions);
+          if (contentRef.current) {
+            resizeObserver.observe(contentRef.current);
+          }
+          return () => resizeObserver.disconnect();
+        }, [calculatePositions]);
+        
+        // For dynamic content changes (new messages)
+        useEffect(() => {
+          if (contentRef.current) {
+              const mutationObserver = new MutationObserver(calculatePositions);
+              mutationObserver.observe(contentRef.current, { childList: true, subtree: true });
+              return () => mutationObserver.disconnect();
+          }
+        }, [calculatePositions]);
+
+
+        useEffect(() => {
+          const contentEl = contentRef.current;
+          const thumbEl = thumbRef.current;
+          const scrollbarEl = scrollbarRef.current;
+
+          if (!contentEl || !thumbEl || !scrollbarEl || !isReady) return;
+
+          const updateThumb = () => {
+            const { scrollTop, scrollHeight, clientHeight } = contentEl;
+            const thumbHeight = Math.max(20, (clientHeight / scrollHeight) * scrollbarEl.clientHeight);
+            const thumbY = (scrollTop / (scrollHeight - clientHeight)) * (scrollbarEl.clientHeight - thumbHeight);
+            gsap.to(thumbEl, { height: thumbHeight, y: thumbY, duration: 0.1 });
+          };
+
+          contentEl.addEventListener('scroll', updateThumb);
+          updateThumb(); // Initial position
+
+          const drag = Draggable.create(thumbEl, {
+            type: 'y',
+            bounds: scrollbarEl,
+            onDrag: function() {
+              const { scrollHeight, clientHeight } = contentEl;
+              const scrollbarHeight = scrollbarEl.clientHeight;
+              const thumbHeight = thumbEl.getBoundingClientRect().height;
+              const scrollRatio = this.y / (scrollbarHeight - thumbHeight);
+              contentEl.scrollTop = scrollRatio * (scrollHeight - clientHeight);
+            }
+          });
+
+          return () => {
+            contentEl.removeEventListener('scroll', updateThumb);
+            drag[0].kill();
+          };
+        }, [isReady, contentRef]);
+
+        const handleDotClick = (item: ScrollbarItem) => {
+          const el = itemRefs.current.get(item.id);
+          if (el && contentRef.current) {
+            gsap.to(contentRef.current, {
+              scrollTop: el.offsetTop - 24, // Add some padding to the scroll
+              duration: 0.5,
+              ease: 'power2.inOut'
+            });
+          }
+        };
+
+        const getDotClass = (type: string) => {
+          switch (type) {
+            case 'comment-user':
+              return 'bg-primary';
+            case 'comment-contact':
+              return 'bg-muted-foreground/60';
+            case 'note':
+              return 'bg-yellow-500';
+            case 'system':
+              return 'bg-transparent border border-muted-foreground/60';
+            default:
+              return 'bg-muted-foreground';
+          }
+        };
+
+        if (!isReady) {
+          return null;
+        }
+
+        return (
+          <div ref={scrollbarRef} className="relative w-4 h-full py-2 flex-shrink-0">
+            <div ref={thumbRef} className="absolute left-1/2 -translate-x-1/2 w-1.5 bg-border rounded-full cursor-grab active:cursor-grabbing z-10" />
+            <div className="relative h-full">
+              {items.map(item => {
+                const topPercent = dotPositions.get(item.id);
+                if (topPercent === undefined) return null;
+                return (
+                  <Popover key={item.id} openDelay={100} closeDelay={100}>
+                    <PopoverTrigger asChild>
+                      <button
+                        onClick={() => handleDotClick(item)}
+                        onMouseEnter={() => setHoveredItemId(item.id)}
+                        onMouseLeave={() => setHoveredItemId(null)}
+                        className={cn(
+                          "absolute left-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-2 rounded-full focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 ring-offset-background",
+                          getDotClass(item.type)
+                        )}
+                        style={{ top: `${topPercent * 100}%` }}
+                      />
+                    </PopoverTrigger>
+                    <PopoverContent side="left" align="center" className="w-64 p-0" sideOffset={8}>
+                      {item.preview}
+                    </PopoverContent>
+                  </Popover>
+                );
+              })}
+            </div>
+          </div>
+        );
+      };
+    patchStrategy: replace
+  - type: write
+    path: src/index.ts
+    content: |+
+      --- src/index.ts
+      +++ src/index.ts
+      @@ -40,6 +40,7 @@
+       export * from './components/ui/label';
+       export * from './components/ui/popover';
+       export * from './components/ui/tabs';
+      +export * from './components/ui/content-aware-scrollbar';
+       export * from './components/ui/toast';
+       export { AnimatedTabs } from './components/ui/animated-tabs';
+       
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/Messaging/components/ActivityFeed.tsx
+    content: >+
+      --- src/pages/Messaging/components/ActivityFeed.tsx
+
+      +++ src/pages/Messaging/components/ActivityFeed.tsx
+
+      @@ -7,18 +7,22 @@
+       interface ActivityFeedProps {
+         messages: Message[];
+         contact: Contact;
+      +  getMessageRef: (id:string) => (el: HTMLDivElement | null) => void;
+
+      +  hoveredItemId?: string | null;
+       }
+       
+      -export const ActivityFeed: React.FC<ActivityFeedProps> = ({ messages,
+      contact }) => {
+
+      +export const ActivityFeed: React.FC<ActivityFeedProps> = ({ messages,
+      contact, getMessageRef, hoveredItemId }) => {
+         const getAssigneeById = useMessagingStore(state => state.getAssigneeById);
+       
+         return (
+      -    <div className="flex-1 overflow-y-auto p-6 space-y-6">
+
+      +    <div className="space-y-6">
+             {messages.map((message) => {
+               const assignee = message.userId ? getAssigneeById(message.userId) : null;
+               
+               if (message.type === 'system') {
+                 return (
+      -            <div key={message.id} className="flex items-center
+      justify-center gap-2 text-xs text-muted-foreground">
+
+      +            <div key={message.id} ref={getMessageRef(message.id)}
+      className={cn("flex items-center justify-center gap-2 text-xs
+      text-muted-foreground transition-colors p-1 rounded-md",
+
+      +              hoveredItemId === message.id && "bg-muted"
+
+      +            )}>
+                     <Info className="w-3.5 h-3.5" />
+                     <p>{message.text}</p>
+                     <p className="whitespace-nowrap">{formatDistanceToNow(new Date(message.timestamp), { addSuffix: true })}</p>
+      @@ -28,7 +32,10 @@
+       
+               if (message.type === 'note') {
+                 return (
+      -            <div key={message.id} className="flex items-start gap-3">
+
+      +            <div key={message.id} ref={getMessageRef(message.id)}
+      className={cn("flex items-start gap-3 transition-colors p-1 -m-1
+      rounded-md",
+
+      +              hoveredItemId === message.id && "bg-muted"
+
+      +            )}>
+                     <div className="p-1.5 bg-yellow-400/20 text-yellow-600 rounded-full mt-1.5">
+                       <StickyNote className="w-4 h-4" />
+                     </div>
+      @@ -47,7 +54,8 @@
+               // Default: 'comment' type
+               return (
+                 <div key={message.id} className={cn(
+      -            "flex items-end gap-3",
+
+      +            "flex items-end gap-3 group transition-colors p-1 -m-1
+      rounded-md",
+                   message.sender === 'user' ? 'justify-end' : 'justify-start'
+                 )}>
+                   {message.sender === 'contact' && (
+      @@ -57,7 +65,10 @@
+                   )}
+                   <div className={cn(
+                     "max-w-xs md:max-w-md lg:max-w-lg p-3 rounded-2xl",
+      -              message.sender === 'user' 
+
+      +              hoveredItemId === message.id 
+
+      +                ? 'ring-2 ring-primary/50 ring-offset-2
+      ring-offset-background'
+
+      +                : '',
+
+      +              message.sender === 'user'
+                       ? 'bg-primary text-primary-foreground rounded-br-none' 
+                       : 'bg-card border rounded-bl-none'
+                   )}>
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/Messaging/components/TaskDetail.tsx
+    content: >+
+      --- src/pages/Messaging/components/TaskDetail.tsx
+
+      +++ src/pages/Messaging/components/TaskDetail.tsx
+
+      @@ -1,4 +1,4 @@
+
+      -import React, { useRef, useEffect } from 'react';
+
+      +import React, { useRef, useEffect, useCallback, useMemo, useState } from
+      'react';
+       import { useParams } from 'react-router-dom';
+       import { useMessagingStore } from '../store/messaging.store';
+       import { ActivityFeed } from './ActivityFeed';
+      @@ -9,13 +9,18 @@
+       import { TakeoverBanner } from './TakeoverBanner';
+       import { useToast } from '@/components/ui/toast';
+       import { gsap } from 'gsap';
+      -import { useAppShellStore } from '@/store/appShell.store';
+
+      -
+
+      +import { useAppShellStore } from '@/store/appShell.store'; 
+
+      +import { ContentAwareScrollbar, ScrollbarItem } from
+      '@/components/ui/content-aware-scrollbar';
+
+      +import type { Message } from '../types';
+
+      +import { Avatar, AvatarFallback, AvatarImage } from
+      '@/components/ui/avatar';
+
+      +import { cn } from '@/lib/utils';
+       
+       export const TaskDetail: React.FC = () => {
+         const { conversationId: taskId } = useParams<{ conversationId: string }>();
+         const { show } = useToast();
+      -  const { getTaskById, takeOverTask, requestAndSimulateTakeover } =
+      useMessagingStore();
+
+      +  const { getTaskById, takeOverTask, requestAndSimulateTakeover,
+      getAssigneeById } = useMessagingStore(
+
+      +    (state) => ({ getTaskById: state.getTaskById, takeOverTask:
+      state.takeOverTask, requestAndSimulateTakeover:
+      state.requestAndSimulateTakeover, getAssigneeById: state.getAssigneeById
+      })
+
+      +  );
+         const reducedMotion = useAppShellStore(s => s.reducedMotion);
+         
+         const task = taskId ? getTaskById(taskId) : undefined;
+      @@ -26,6 +31,9 @@
+         const isLocked = !!task?.activeHandlerId && task.activeHandlerId !== currentUserId;
+         const inputAreaRef = useRef<HTMLDivElement>(null);
+         const isFirstRender = useRef(true);
+      +  const contentRef = useRef<HTMLDivElement>(null);
+
+      +  const messageRefs = useRef<Map<string, HTMLDivElement | null>>(new
+      Map());
+
+      +  const [hoveredItemId, setHoveredItemId] = useState<string |
+      null>(null);
+       
+         useEffect(() => {
+           if (!inputAreaRef.current) return;
+      @@ -64,6 +72,62 @@
+           }
+         }, [isLocked, reducedMotion]);
+       
+      +  const getMessageRef = useCallback((id: string) => (el: HTMLDivElement |
+      null) => {
+
+      +    if (el) {
+
+      +      messageRefs.current.set(id, el);
+
+      +    } else {
+
+      +      messageRefs.current.delete(id);
+
+      +    }
+
+      +  }, []);
+
+      +
+
+      +  const MessagePreview: React.FC<{ message: Message }> = ({ message }) =>
+      {
+
+      +    const assignee = message.userId ? getAssigneeById(message.userId) :
+      null;
+
+      +    if (message.type === 'note') {
+
+      +      return <div className='p-2 text-xs'>
+
+      +        <p className='font-bold text-yellow-500'>Internal Note by
+      {assignee?.name}</p>
+
+      +        <p className='truncate'>{message.text}</p>
+
+      +      </div>
+
+      +    }
+
+      +    if (message.type === 'system') {
+
+      +      return <div className='p-2 text-xs'><p
+      className='truncate'>{message.text}</p></div>
+
+      +    }
+
+      +    const senderName = message.sender === 'user' ? (assignee?.name ||
+      'You') : task!.contact.name;
+
+      +    return (
+
+      +      <div className='p-2 text-xs flex items-start gap-2'>
+
+      +        <Avatar className='h-5 w-5 mt-0.5'>
+
+      +          <AvatarImage src={message.sender === 'user' ? assignee?.avatar
+      : task?.contact.avatar} />
+
+      +          <AvatarFallback
+      className="text-[10px]">{senderName.charAt(0)}</AvatarFallback>
+
+      +        </Avatar>
+
+      +        <div>
+
+      +          <p className='font-bold'>{senderName}</p>
+
+      +          <p className='line-clamp-2'>{message.text}</p>
+
+      +        </div>
+
+      +      </div>
+
+      +    )
+
+      +  };
+
+      +
+
+      +  const scrollbarItems = useMemo((): ScrollbarItem[] => {
+
+      +    if (!task) return [];
+
+      +    return task.messages.map(message => {
+
+      +      let type: ScrollbarItem['type'] = message.type;
+
+      +      if (type === 'comment') {
+
+      +        type = message.sender === 'user' ? 'comment-user' :
+      'comment-contact';
+
+      +      }
+
+      +      return {
+
+      +        id: message.id,
+
+      +        type,
+
+      +        preview: <MessagePreview message={message} />,
+
+      +      }
+
+      +    });
+
+      +  }, [task, getAssigneeById]);
+
+      +
+
+      +  // Scroll to bottom on new task
+
+      +  useEffect(() => {
+
+      +    if (contentRef.current) {
+
+      +      contentRef.current.scrollTop = contentRef.current.scrollHeight;
+
+      +    }
+
+      +  }, [taskId]);
+
+      +
+         if (!taskId || !task) {
+           return (
+               <div className="h-full flex flex-col items-center justify-center p-6 bg-background">
+      @@ -92,15 +156,26 @@
+       
+         return (
+           <div className="h-full flex flex-col bg-background overflow-hidden">
+      -      {isLocked && task.activeHandler && (
+
+      -        <TakeoverBanner
+
+      -            activeHandler={task.activeHandler}
+
+      -            isRequesting={!!task.takeoverRequested}
+
+      -            onTakeOver={handleTakeOver}
+
+      -            onRequestTakeover={handleRequestTakeover}
+
+      -        />
+
+      -      )}
+
+      -      <ActivityFeed messages={task.messages} contact={task.contact} />
+
+      +      <div className="relative flex flex-1 overflow-hidden">
+
+      +        <div ref={contentRef} className="flex-1 overflow-y-auto p-6
+      no-scrollbar">
+
+      +          {isLocked && task.activeHandler && (
+
+      +            <div className='mb-4'>
+
+      +              <TakeoverBanner
+
+      +                  activeHandler={task.activeHandler}
+
+      +                  isRequesting={!!task.takeoverRequested}
+
+      +                  onTakeOver={handleTakeOver}
+
+      +                  onRequestTakeover={handleRequestTakeover}
+
+      +              />
+
+      +            </div>
+
+      +          )}
+
+      +          <ActivityFeed messages={task.messages} contact={task.contact}
+      getMessageRef={getMessageRef} hoveredItemId={hoveredItemId} />
+
+      +        </div>
+
+      +        <ContentAwareScrollbar 
+
+      +          contentRef={contentRef} 
+
+      +          items={scrollbarItems} 
+
+      +          itemRefs={messageRefs} 
+
+      +          setHoveredItemId={setHoveredItemId} />
+
+      +      </div>
+       
+             {/* Input Form */}
+             <div ref={inputAreaRef} className="p-4 border-t flex-shrink-0 bg-background/50">
+
+    patchStrategy: standard-diff
+snapshot:
+  src/components/ui/content-aware-scrollbar.tsx: null
+  src/index.ts: >-
+    // Context
+
+    export { AppShellProvider } from './providers/AppShellProvider';
+
+    export { useAppShellStore } from './store/appShell.store';
+
+
+    // Layout Components
+
+    export { AppShell } from './components/layout/AppShell';
+
+    export { MainContent } from './components/layout/MainContent';
+
+    export { ViewModeSwitcher } from './components/layout/ViewModeSwitcher';
+
+    export { RightPane } from './components/layout/RightPane';
+
+    export { TopBar } from './components/layout/TopBar';
+
+    export { UserDropdown } from './components/layout/UserDropdown';
+
+    export { Workspaces as WorkspaceProvider, WorkspaceTrigger, WorkspaceContent
+    } from './components/layout/WorkspaceSwitcher';
+
+
+    // Sidebar Primitives
+
+    export {
+      Sidebar,
+      SidebarBody,
+      SidebarContent,
+      SidebarFooter,
+      SidebarHeader,
+      SidebarSection,
+      SidebarTitle,
+      SidebarMenuItem,
+      SidebarMenuButton,
+      SidebarMenuAction,
+      SidebarLabel,
+      SidebarBadge,
+      SidebarTooltip,
+      SidebarIcon,
+      useSidebar,
+    } from './components/layout/Sidebar';
+
+
+    // Shared Components
+
+    export { ContentInSidePanePlaceholder } from
+    './components/shared/ContentInSidePanePlaceholder';
+
+    export { PageHeader } from './components/shared/PageHeader';
+
+    export { PageLayout } from './components/shared/PageLayout';
+
+
+    // Feature Components
+
+    export { SettingsContent } from './features/settings/SettingsContent';
+
+    export { SettingsSection } from './features/settings/SettingsSection';
+
+    export { SettingsToggle } from './features/settings/SettingsToggle';
+
+    export { LoginPage } from './components/auth/LoginPage';
+
+
+    // UI Components
+
+    export * from './components/ui/avatar';
+
+    export * from './components/ui/badge';
+
+    export * from './components/ui/button';
+
+    export * from './components/ui/card';
+
+    export * from './components/ui/command';
+
+    export * from './components/ui/dialog';
+
+    export * from './components/ui/dropdown-menu';
+
+    export * from './components/ui/input';
+
+    export * from './components/ui/label';
+
+    export * from './components/ui/popover';
+
+    export * from './components/ui/tabs';
+
+    export * from './components/ui/toast';
+
+    export { AnimatedTabs } from './components/ui/animated-tabs';
+
+
+    // Effects Components
+
+    export { AnimatedInput } from './components/effects/AnimatedInput';
+
+    export { BottomGradient } from './components/effects/BottomGradient';
+
+    export { BoxReveal } from './components/effects/BoxReveal';
+
+    export { OrbitingCircles, TechOrbitDisplay } from
+    './components/effects/OrbitingCircles';
+
+    export { Ripple } from './components/effects/Ripple';
+
+
+
+    // Global Components
+
+    export { CommandPalette } from './components/global/CommandPalette';
+
+
+    // Hooks
+
+    export { useAutoAnimateTopBar } from './hooks/useAutoAnimateTopBar';
+
+    export { useCommandPaletteToggle } from
+    './hooks/useCommandPaletteToggle.hook';
+
+
+    // Lib
+
+    export * from './lib/utils';
+
+
+    // Store
+
+    export type { ActivePage } from './store/appShell.store';
+
+    export { useAuthStore } from './store/authStore';
+  src/pages/Messaging/components/ActivityFeed.tsx: >
+    import React from 'react';
+
+    import { useMessagingStore } from '../store/messaging.store';
+
+    import type { Message, Contact, Assignee } from '../types';
+
+    import { cn } from '@/lib/utils';
+
+    import { Avatar, AvatarFallback, AvatarImage } from
+    '@/components/ui/avatar';
+
+    import { formatDistanceToNow } from 'date-fns';
+
+    import { StickyNote, Info } from 'lucide-react';
+
+
+    interface ActivityFeedProps {
+      messages: Message[];
+      contact: Contact;
+    }
+
+
+    export const ActivityFeed: React.FC<ActivityFeedProps> = ({ messages,
+    contact }) => {
+      const getAssigneeById = useMessagingStore(state => state.getAssigneeById);
+
+      return (
+        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          {messages.map((message) => {
+            const assignee = message.userId ? getAssigneeById(message.userId) : null;
+            
+            if (message.type === 'system') {
+              return (
+                <div key={message.id} className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+                  <Info className="w-3.5 h-3.5" />
+                  <p>{message.text}</p>
+                  <p className="whitespace-nowrap">{formatDistanceToNow(new Date(message.timestamp), { addSuffix: true })}</p>
+                </div>
+              );
+            }
+
+            if (message.type === 'note') {
+              return (
+                <div key={message.id} className="flex items-start gap-3">
+                  <div className="p-1.5 bg-yellow-400/20 text-yellow-600 rounded-full mt-1.5">
+                    <StickyNote className="w-4 h-4" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <p className="font-semibold text-sm">{assignee?.name || 'User'}</p>
+                      <p className="text-xs text-muted-foreground">{formatDistanceToNow(new Date(message.timestamp), { addSuffix: true })}</p>
+                    </div>
+                    <div className="bg-card border rounded-lg p-3 text-sm">
+                      <p>{message.text}</p>
+                    </div>
+                  </div>
+                </div>
+              )
+            }
+
+            // Default: 'comment' type
+            return (
+              <div key={message.id} className={cn(
+                "flex items-end gap-3",
+                message.sender === 'user' ? 'justify-end' : 'justify-start'
+              )}>
+                {message.sender === 'contact' && (
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage src={contact.avatar} />
+                    <AvatarFallback>{contact.name.charAt(0)}</AvatarFallback>
+                  </Avatar>
+                )}
+                <div className={cn(
+                  "max-w-xs md:max-w-md lg:max-w-lg p-3 rounded-2xl",
+                  message.sender === 'user' 
+                    ? 'bg-primary text-primary-foreground rounded-br-none' 
+                    : 'bg-card border rounded-bl-none'
+                )}>
+                  <p className="text-sm">{message.text}</p>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      );
+    };
+  src/pages/Messaging/components/TaskDetail.tsx: >-
+    import React, { useRef, useEffect } from 'react';
+
+    import { useParams } from 'react-router-dom';
+
+    import { useMessagingStore } from '../store/messaging.store';
+
+    import { ActivityFeed } from './ActivityFeed';
+
+    import { Button } from '@/components/ui/button';
+
+    import { Textarea } from '@/components/ui/textarea';
+
+    import { Paperclip, SendHorizontal, Smile, StickyNote } from 'lucide-react';
+
+    import { Tabs, TabsContent, TabsList, TabsTrigger } from
+    "@/components/ui/tabs";
+
+    import { TakeoverBanner } from './TakeoverBanner';
+
+    import { useToast } from '@/components/ui/toast';
+
+    import { gsap } from 'gsap';
+
+    import { useAppShellStore } from '@/store/appShell.store';
+
+
+
+    export const TaskDetail: React.FC = () => {
+      const { conversationId: taskId } = useParams<{ conversationId: string }>();
+      const { show } = useToast();
+      const { getTaskById, takeOverTask, requestAndSimulateTakeover } = useMessagingStore();
+      const reducedMotion = useAppShellStore(s => s.reducedMotion);
+      
+      const task = taskId ? getTaskById(taskId) : undefined;
+
+      // In a real app, this would come from the auth store
+      const currentUserId = 'user-1'; 
+
+      const isLocked = !!task?.activeHandlerId && task.activeHandlerId !== currentUserId;
+      const inputAreaRef = useRef<HTMLDivElement>(null);
+      const isFirstRender = useRef(true);
+
+      useEffect(() => {
+        if (!inputAreaRef.current) return;
+
+        const initialBorderWidth = '1px'; // from 'border-t'
+        const initialPadding = '1rem';    // from 'p-4'
+
+        const target = isLocked
+          ? {
+              y: 20,
+              opacity: 0,
+              maxHeight: 0,
+              paddingTop: 0,
+              paddingBottom: 0,
+              borderTopWidth: 0,
+              pointerEvents: 'none' as const,
+            }
+          : {
+              y: 0,
+              opacity: 1,
+              maxHeight: 500, // Ample room for the input
+              paddingTop: initialPadding,
+              paddingBottom: initialPadding,
+              borderTopWidth: initialBorderWidth,
+              pointerEvents: 'auto' as const,
+            };
+
+        if (reducedMotion) {
+          gsap.set(inputAreaRef.current, target);
+          return;
+        }
+        
+        if (isFirstRender.current) {
+          gsap.set(inputAreaRef.current, target);
+          isFirstRender.current = false;
+        } else {
+          gsap.to(inputAreaRef.current, {
+            ...target,
+            duration: 0.35,
+            ease: 'power2.inOut',
+          });
+        }
+      }, [isLocked, reducedMotion]);
+
+      if (!taskId || !task) {
+        return (
+            <div className="h-full flex flex-col items-center justify-center p-6 bg-background">
+                <p className="text-muted-foreground">Select a task to see its details.</p>
+            </div>
+        );
+      }
+
+      const handleTakeOver = () => {
+        takeOverTask(task.id, currentUserId);
+        show({
+            variant: 'success',
+            title: 'Task Taken Over',
+            message: `You are now handling the task from ${task.contact.name}.`
+        });
+      };
+
+      const handleRequestTakeover = () => {
+        requestAndSimulateTakeover(task.id, currentUserId);
+        if (task.activeHandler) {
+            show({
+                variant: 'default',
+                title: 'Request Sent',
+                message: `A takeover request has been sent to ${task.activeHandler.name}.`
+            });
+        }
+      };
+
+      return (
+        <div className="h-full flex flex-col bg-background overflow-hidden">
+          {isLocked && task.activeHandler && (
+            <TakeoverBanner
+                activeHandler={task.activeHandler}
+                isRequesting={!!task.takeoverRequested}
+                onTakeOver={handleTakeOver}
+                onRequestTakeover={handleRequestTakeover}
+            />
+          )}
+          <ActivityFeed messages={task.messages} contact={task.contact} />
+
+          {/* Input Form */}
+          <div ref={inputAreaRef} className="p-4 border-t flex-shrink-0 bg-background/50">
+            <Tabs defaultValue="comment" className="w-full" >
+              <TabsList className="grid w-full grid-cols-2 mb-2">
+                <TabsTrigger value="comment" disabled={isLocked}>Comment</TabsTrigger>
+                <TabsTrigger value="note" disabled={isLocked}><StickyNote className="w-4 h-4 mr-2" />Internal Note</TabsTrigger>
+              </TabsList>
+              <TabsContent value="comment">
+                 <div className="relative">
+                    <Textarea placeholder={isLocked ? "Take over to reply..." : `Reply to ${task.contact.name}...`} className="pr-24 min-h-[52px]" disabled={isLocked} />
+                    <div className="absolute right-2 top-2 flex items-center gap-1">
+                        <Button variant="ghost" size="icon" className="rounded-full h-8 w-8" disabled={isLocked}><Smile className="w-4 h-4" /></Button>
+                        <Button variant="ghost" size="icon" className="rounded-full h-8 w-8" disabled={isLocked}><Paperclip className="w-4 h-4" /></Button>
+                        <Button size="icon" className="rounded-full h-8 w-8" disabled={isLocked}><SendHorizontal className="w-4 h-4" /></Button>
+                    </div>
+                </div>
+              </TabsContent>
+              <TabsContent value="note">
+                <div className="relative">
+                    <Textarea placeholder={isLocked ? "Take over to add a note..." : "Add an internal note..."} className="pr-24 min-h-[52px] bg-yellow-400/10 border-yellow-400/30 focus-visible:ring-yellow-500" disabled={isLocked} />
+                    <div className="absolute right-2 top-2 flex items-center gap-1">
+                        <Button size="icon" className="rounded-full h-8 w-8" disabled={isLocked}><SendHorizontal className="w-4 h-4" /></Button>
+                    </div>
+                </div>
+              </TabsContent>
+            </Tabs>
+          </div>
+        </div>
+      );
+    };
+approved: false
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: undone
+id: 384

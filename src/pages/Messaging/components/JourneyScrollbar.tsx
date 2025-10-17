@@ -1,0 +1,281 @@
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import type { Message } from '../types';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { gsap } from 'gsap';
+
+interface JourneyScrollbarProps {
+  scrollContainerRef: React.RefObject<HTMLDivElement>;
+  journeyPoints: Message[];
+  onDotClick: (messageId: string) => void;
+}
+
+interface DotPosition {
+  id: string;
+  topPercentage: number;
+  message: Message;
+}
+
+export const JourneyScrollbar: React.FC<JourneyScrollbarProps> = ({
+  scrollContainerRef,
+  journeyPoints,
+  onDotClick,
+}) => {
+  const [dotPositions, setDotPositions] = useState<DotPosition[]>([]);
+  const trackRef = useRef<HTMLDivElement>(null);
+  const thumbRef = useRef<HTMLDivElement>(null);
+  const progressRef = useRef<HTMLDivElement>(null);
+  const isDraggingRef = useRef(false);
+  const dragOffsetY = useRef(0);
+  const activeJourneyPointIdRef = useRef<string | null>(null);
+
+  const calculateDotPositions = useCallback(() => {
+    const container = scrollContainerRef.current;
+    if (!container || journeyPoints.length === 0) return;
+
+    const { scrollHeight } = container;
+    if (scrollHeight === 0) return;
+
+    const newPositions: DotPosition[] = journeyPoints
+      .map(point => {
+        const element = container.querySelector(`[data-message-id="${point.id}"]`) as HTMLElement;
+        if (element) {
+          const topPercentage = (element.offsetTop / scrollHeight) * 100;
+          return {
+            id: point.id,
+            topPercentage,
+            message: point,
+          };
+        }
+        return null;
+      })
+      .filter((p): p is DotPosition => p !== null);
+
+    setDotPositions(currentPositions => {
+        if (JSON.stringify(newPositions) !== JSON.stringify(currentPositions)) {
+            return newPositions;
+        }
+        return currentPositions;
+    });
+  }, [journeyPoints, scrollContainerRef]);
+
+  const updateScrollbar = useCallback(() => {
+    const container = scrollContainerRef.current;
+    if (!container || !trackRef.current || !thumbRef.current || !progressRef.current) return;
+
+    const { scrollTop, scrollHeight, clientHeight } = container;
+    
+    if (scrollHeight <= clientHeight) {
+      gsap.to([thumbRef.current, progressRef.current], { autoAlpha: 0, duration: 0.1 });
+      return;
+    }
+
+    gsap.to([thumbRef.current, progressRef.current], { autoAlpha: 1, duration: 0.1 });
+
+    // Calculate proportional thumb height, but cap it at 10% of the container height
+    // to prevent it from looking too long. A minimum of 20px is enforced for usability.
+    const thumbHeight = Math.max(20, Math.min((clientHeight / scrollHeight) * clientHeight, clientHeight * 0.1));
+    const thumbTop = (scrollTop / (scrollHeight - clientHeight)) * (clientHeight - thumbHeight);
+    
+    gsap.to(thumbRef.current, {
+      height: thumbHeight,
+      y: thumbTop,
+      duration: 0.1,
+      ease: 'power1.out',
+    });
+    
+    gsap.to(progressRef.current, {
+        height: thumbTop,
+        duration: 0.1,
+        ease: 'power1.out'
+    });
+
+    // Active journey point logic
+    const viewportCenter = scrollTop + clientHeight / 2;
+    let closestPointId: string | null = null;
+    let minDistance = Infinity;
+
+    journeyPoints.forEach(point => {
+      const element = container.querySelector(`[data-message-id="${point.id}"]`) as HTMLElement;
+      if (element) {
+        const elementCenter = element.offsetTop + element.offsetHeight / 2;
+        const distance = Math.abs(viewportCenter - elementCenter);
+        if (distance < minDistance) {
+          minDistance = distance;
+          closestPointId = point.id;
+        }
+      }
+    });
+
+    if (closestPointId && activeJourneyPointIdRef.current !== closestPointId) {
+      if (activeJourneyPointIdRef.current) {
+        const oldActiveDot = trackRef.current.querySelector(`[data-dot-id="${activeJourneyPointIdRef.current}"]`);
+        gsap.to(oldActiveDot, { scale: 1, opacity: 0.5, duration: 0.2, ease: 'back.out' });
+      }
+      
+      const newActiveDot = trackRef.current.querySelector(`[data-dot-id="${closestPointId}"]`);
+      if (newActiveDot) {
+        gsap.to(newActiveDot, { scale: 1.75, opacity: 1, duration: 0.2, ease: 'back.out' });
+      }
+      activeJourneyPointIdRef.current = closestPointId;
+    }
+
+  }, [scrollContainerRef, journeyPoints]);
+
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (container) {
+      const handleScroll = () => {
+        if (!isDraggingRef.current) {
+          updateScrollbar();
+        }
+      };
+      updateScrollbar();
+      calculateDotPositions();
+      container.addEventListener('scroll', handleScroll, { passive: true });
+      return () => container.removeEventListener('scroll', handleScroll);
+    }
+  }, [scrollContainerRef, updateScrollbar, calculateDotPositions]);
+
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    const observerCallback = () => {
+        updateScrollbar();
+        calculateDotPositions();
+    };
+
+    const resizeObserver = new ResizeObserver(observerCallback);
+    resizeObserver.observe(container);
+    if(trackRef.current) resizeObserver.observe(trackRef.current);
+
+    const mutationObserver = new MutationObserver(observerCallback);
+    mutationObserver.observe(container, { childList: true, subtree: true, characterData: true });
+
+    return () => {
+        resizeObserver.disconnect();
+        mutationObserver.disconnect();
+    };
+  }, [calculateDotPositions, updateScrollbar, scrollContainerRef]);
+
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    if (!isDraggingRef.current || !scrollContainerRef.current || !trackRef.current || !thumbRef.current) return;
+    
+    e.preventDefault();
+    const container = scrollContainerRef.current;
+    const track = trackRef.current;
+    const thumb = thumbRef.current;
+    
+    const { scrollHeight, clientHeight } = container;
+    const scrollableDist = scrollHeight - clientHeight;
+    if (scrollableDist <= 0) return;
+    
+    const trackRect = track.getBoundingClientRect();
+    const thumbHeight = thumb.offsetHeight;
+    
+    const newThumbTop = e.clientY - trackRect.top - dragOffsetY.current;
+    const clampedThumbTop = Math.max(0, Math.min(newThumbTop, trackRect.height - thumbHeight));
+    
+    const scrollRatio = clampedThumbTop / (trackRect.height - thumbHeight);
+    
+    gsap.to(container, {
+      scrollTop: scrollRatio * scrollableDist,
+      duration: 0,
+      onUpdate: updateScrollbar
+    });
+
+  }, [scrollContainerRef, updateScrollbar]);
+
+  const handleMouseUp = useCallback(() => {
+    isDraggingRef.current = false;
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+    window.removeEventListener('mousemove', handleMouseMove);
+    window.removeEventListener('mouseup', handleMouseUp);
+  }, [handleMouseMove]);
+
+  const handleMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!scrollContainerRef.current || !thumbRef.current) return;
+    
+    isDraggingRef.current = true;
+    const thumbRect = thumbRef.current.getBoundingClientRect();
+    dragOffsetY.current = e.clientY - thumbRect.top;
+    
+    document.body.style.cursor = 'grabbing';
+    document.body.style.userSelect = 'none';
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+  }, [scrollContainerRef, handleMouseMove, handleMouseUp]);
+  
+  const handleTrackClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+     if (e.target === thumbRef.current || (e.target as HTMLElement).closest('[data-dot-id]')) return;
+
+    const container = scrollContainerRef.current;
+    const track = trackRef.current;
+    if (!container || !track) return;
+    
+    const { scrollHeight, clientHeight } = container;
+    const trackRect = track.getBoundingClientRect();
+    const clickY = e.clientY - trackRect.top;
+    
+    const thumbHeight = Math.max(20, Math.min((clientHeight / scrollHeight) * clientHeight, clientHeight * 0.1));
+    const clickRatio = (clickY - thumbHeight / 2) / (trackRect.height - thumbHeight);
+    
+    gsap.to(container, {
+      scrollTop: (scrollHeight - clientHeight) * Math.max(0, Math.min(1, clickRatio)),
+      duration: 0.3,
+      ease: 'power2.out'
+    });
+    
+  }, [scrollContainerRef]);
+
+  return (
+    <div
+      ref={trackRef}
+      className="absolute top-0 right-0 h-full w-8 py-2 z-10 cursor-pointer"
+      onMouseDown={handleTrackClick}
+    >
+        <TooltipProvider delayDuration={100}>
+            <div className="relative h-full w-full">
+                {/* Track Line */}
+                <div className="track-line absolute top-0 left-1/2 -translate-x-1/2 h-full w-1 bg-border rounded-full" />
+                
+                {/* Progress Fill */}
+                <div 
+                  ref={progressRef}
+                  className="absolute top-0 left-1/2 -translate-x-1/2 w-1 bg-primary opacity-0"
+                />
+
+                {/* Thumb */}
+                <div
+                    ref={thumbRef}
+                    className="absolute left-1/2 -translate-x-1/2 w-2 bg-muted-foreground hover:bg-muted-foreground/80 rounded-sm cursor-grab active:cursor-grabbing opacity-0"
+                    onMouseDown={handleMouseDown}
+                />
+
+                {/* Journey Dots */}
+                {dotPositions.map((pos) => (
+                <Tooltip key={pos.id}>
+                    <TooltipTrigger asChild>
+                    <button
+                        data-dot-id={pos.id}
+                        onClick={(e) => { e.stopPropagation(); onDotClick(pos.id); }}
+                        className="absolute left-1/2 -translate-x-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-primary opacity-50 rounded-full focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-background transition-all duration-200 hover:scale-125 hover:opacity-100"
+                        style={{ top: `${pos.topPercentage}%` }}
+                        aria-label={`Jump to message: ${pos.message.text.substring(0, 30)}...`}
+                    />
+                    </TooltipTrigger>
+                    <TooltipContent side="left" className="text-sm p-2 w-auto max-w-xs shadow-xl" sideOffset={8}>
+                    <p className="line-clamp-3">{pos.message.text}</p>
+                    </TooltipContent>
+                </Tooltip>
+                ))}
+            </div>
+        </TooltipProvider>
+    </div>
+  );
+};

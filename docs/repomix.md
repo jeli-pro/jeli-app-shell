@@ -2,1554 +2,692 @@
 ```
 src/
   components/
-    ui/
-      animated-tabs.tsx
-  hooks/
-    useAppViewManager.hook.ts
+    effects/
+      BoxReveal.tsx
+  lib/
+    utils.ts
   pages/
-    DataDemo/
+    Messaging/
       components/
-        DataCardView.tsx
-        DataListView.tsx
-        DataTableView.tsx
-      store/
-        dataDemo.store.tsx
-      index.tsx
+        JourneyScrollbar.tsx
+        TaskDetail.tsx
       types.ts
 ```
 
 # Files
 
-## File: src/pages/DataDemo/store/dataDemo.store.tsx
+## File: src/pages/Messaging/components/JourneyScrollbar.tsx
 ```typescript
-import { create } from 'zustand';
-import { type ReactNode } from 'react';
-import { capitalize, cn } from '@/lib/utils';
-import { Badge } from '@/components/ui/badge';
-import { mockDataItems } from '../data/mockData';
-import type { DataItem, GroupableField, SortConfig } from '../types';
-import type { FilterConfig } from '../components/DataToolbar';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import type { Message } from '../types';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { gsap } from 'gsap';
 
-// --- State and Actions ---
-interface DataDemoState {
-    items: DataItem[];
-    hasMore: boolean;
-    isLoading: boolean;
-    isInitialLoading: boolean;
-    totalItemCount: number;
+interface JourneyScrollbarProps {
+  scrollContainerRef: React.RefObject<HTMLDivElement>;
+  journeyPoints: Message[];
+  onDotClick: (messageId: string) => void;
 }
 
-interface DataDemoActions {
-    loadData: (params: {
-        page: number;
-        groupBy: GroupableField | 'none';
-        filters: FilterConfig;
-        sortConfig: SortConfig | null;
-    }) => void;
+interface DotPosition {
+  id: string;
+  topPercentage: number;
+  message: Message;
 }
 
-const defaultState: DataDemoState = {
-    items: [],
-    hasMore: true,
-    isLoading: true,
-    isInitialLoading: true,
-    totalItemCount: 0,
-};
+export const JourneyScrollbar: React.FC<JourneyScrollbarProps> = ({
+  scrollContainerRef,
+  journeyPoints,
+  onDotClick,
+}) => {
+  const [dotPositions, setDotPositions] = useState<DotPosition[]>([]);
+  const trackRef = useRef<HTMLDivElement>(null);
+  const thumbRef = useRef<HTMLDivElement>(null);
+  const progressRef = useRef<HTMLDivElement>(null);
+  const isDraggingRef = useRef(false);
+  const dragOffsetY = useRef(0);
+  const activeJourneyPointIdRef = useRef<string | null>(null);
 
-// --- Store Implementation ---
-export const useDataDemoStore = create<DataDemoState & DataDemoActions>((set) => ({
-    ...defaultState,
+  const calculateDotPositions = useCallback(() => {
+    const container = scrollContainerRef.current;
+    if (!container || journeyPoints.length === 0) return;
 
-    loadData: ({ page, groupBy, filters, sortConfig }) => {
-        set({ isLoading: true, ...(page === 1 && { isInitialLoading: true }) });
-        const isFirstPage = page === 1;
+    const { scrollHeight } = container;
+    if (scrollHeight === 0) return;
 
-        const filteredAndSortedData = (() => {
-            const filteredItems = mockDataItems.filter((item) => {
-                const searchTermMatch =
-                    item.title.toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
-                    item.description.toLowerCase().includes(filters.searchTerm.toLowerCase());
-                const statusMatch = filters.status.length === 0 || filters.status.includes(item.status);
-                const priorityMatch = filters.priority.length === 0 || filters.priority.includes(item.priority);
-                return searchTermMatch && statusMatch && priorityMatch;
-            });
-
-            if (sortConfig) {
-                filteredItems.sort((a, b) => {
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    const getNestedValue = (obj: DataItem, path: string): any =>
-                        path.split('.').reduce((o: any, k) => (o || {})[k], obj);
-
-                    const aValue = getNestedValue(a, sortConfig.key);
-                    const bValue = getNestedValue(b, sortConfig.key);
-
-                    if (aValue === undefined || bValue === undefined) return 0;
-                    if (typeof aValue === 'string' && typeof bValue === 'string') {
-                        return sortConfig.direction === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
-                    }
-                    if (typeof aValue === 'number' && typeof bValue === 'number') {
-                        return sortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue;
-                    }
-                    if (sortConfig.key === 'updatedAt' || sortConfig.key === 'createdAt') {
-                        if (typeof aValue === 'string' && typeof bValue === 'string') {
-                            return sortConfig.direction === 'asc'
-                                ? new Date(aValue).getTime() - new Date(bValue).getTime()
-                                : new Date(bValue).getTime() - new Date(aValue).getTime();
-                        }
-                    }
-                    return 0;
-                });
-            }
-            return filteredItems;
-        })();
-        
-        const totalItemCount = filteredAndSortedData.length;
-
-        setTimeout(() => {
-            if (groupBy !== 'none') {
-                set({
-                    items: filteredAndSortedData,
-                    hasMore: false,
-                    isLoading: false,
-                    isInitialLoading: false,
-                    totalItemCount,
-                });
-                return;
-            }
-
-            const pageSize = 12;
-            const newItems = filteredAndSortedData.slice((page - 1) * pageSize, page * pageSize);
-            
-            set(state => ({
-                items: isFirstPage ? newItems : [...state.items, ...newItems],
-                hasMore: totalItemCount > page * pageSize,
-                isLoading: false,
-                isInitialLoading: false,
-                totalItemCount,
-            }));
-
-        }, isFirstPage ? 1500 : 500);
-    }
-}));
-
-// --- Selectors ---
-export const useGroupTabs = (
-    groupBy: GroupableField | 'none',
-    activeGroupTab: string,
-) => useDataDemoStore(state => {
-    const items = state.items;
-    if (groupBy === 'none' || !items.length) return [];
-    
-    const groupCounts = items.reduce((acc, item) => {
-        const groupKey = String(item[groupBy as GroupableField]);
-        acc[groupKey] = (acc[groupKey] || 0) + 1;
-        return acc;
-    }, {} as Record<string, number>);
-
-    const sortedGroups = Object.keys(groupCounts).sort((a, b) => a.localeCompare(b));
-
-    const createLabel = (text: string, count: number, isActive: boolean): ReactNode => (
-        <>
-            {text}
-            <Badge variant={isActive ? 'default' : 'secondary'} className={cn('transition-colors duration-300 text-xs font-semibold', !isActive && 'group-hover:bg-accent group-hover:text-accent-foreground')}>
-                {count}
-            </Badge>
-        </>
-    );
-    
-    const totalCount = items.length;
-
-    return [
-        { id: 'all', label: createLabel('All', totalCount, activeGroupTab === 'all') },
-        ...sortedGroups.map((g) => ({
-            id: g,
-            label: createLabel(capitalize(g), groupCounts[g], activeGroupTab === g),
-        })),
-    ];
-});
-
-export const useDataToRender = (
-    groupBy: GroupableField | 'none',
-    activeGroupTab: string,
-) => useDataDemoStore(state => {
-    const items = state.items;
-    if (groupBy === 'none') {
-        return items;
-    }
-    if (activeGroupTab === 'all') {
-        return items;
-    }
-    return items.filter((item) => String(item[groupBy as GroupableField]) === activeGroupTab);
-});
-
-export const useSelectedItem = (itemId?: string) => {
-    if (!itemId) return null;
-    return mockDataItems.find(item => item.id === itemId) ?? null;
-};
-```
-
-## File: src/pages/DataDemo/types.ts
-```typescript
-export type ViewMode = 'list' | 'cards' | 'grid' | 'table'
-
-export type GroupableField = 'status' | 'priority' | 'category'
-
-export type SortableField = 'title' | 'status' | 'priority' | 'updatedAt' | 'assignee.name' | 'metrics.views' | 'metrics.completion' | 'createdAt'
-export type SortDirection = 'asc' | 'desc'
-export interface SortConfig {
-  key: SortableField
-  direction: SortDirection
-}
-
-export interface DataItem {
-  id: string
-  title: string
-  description: string
-  category: string
-  status: 'active' | 'pending' | 'completed' | 'archived'
-  priority: 'low' | 'medium' | 'high' | 'critical'
-  assignee: {
-    name: string
-    avatar: string
-    email: string
-  }
-  metrics: {
-    views: number
-    likes: number
-    shares: number
-    completion: number
-  }
-  tags: string[]
-  createdAt: string
-  updatedAt: string
-  dueDate?: string
-  thumbnail?: string
-  content?: {
-    summary: string
-    details: string
-    attachments?: Array<{
-      name: string
-      type: string
-      size: string
-      url: string
-    }>
-  }
-}
-
-export interface ViewProps {
-  data: DataItem[] | Record<string, DataItem[]>
-  onItemSelect: (item: DataItem) => void
-  selectedItem: DataItem | null
-  isGrid?: boolean
-
-  // Props for table view specifically
-  sortConfig?: SortConfig | null
-  onSort?: (field: SortableField) => void
-}
-
-export type Status = DataItem['status']
-export type Priority = DataItem['priority']
-```
-
-## File: src/components/ui/animated-tabs.tsx
-```typescript
-"use client"
-
-import React, { useState, useRef, useEffect, useLayoutEffect, useId } from "react"
-import { gsap } from "gsap"
-import { cn } from "@/lib/utils"
-
-interface Tab {
-  id: string
-  label: React.ReactNode
-}
-
-interface AnimatedTabsProps extends React.HTMLAttributes<HTMLDivElement> {
-  tabs: Tab[]
-  activeTab: string
-  onTabChange: (tabId: string) => void,
-  size?: 'default' | 'sm',
-  children?: React.ReactNode,
-  wrapperClassName?: string,
-  contentClassName?: string
-}
-
-const AnimatedTabs = React.forwardRef<HTMLDivElement, AnimatedTabsProps>(
-  ({ className, tabs, activeTab, onTabChange, size = 'default', children, wrapperClassName, contentClassName, ...props }, ref) => {
-    const [activeIndex, setActiveIndex] = useState(0)
-    const contentTrackRef = useRef<HTMLDivElement>(null)
-    const uniqueId = useId()
-    const [activeStyle, setActiveStyle] = useState({ left: "0px", width: "0px" })
-    const tabRefs = useRef<(HTMLButtonElement | null)[]>([])
-
-    // Update active index when controlled prop changes
-    useEffect(() => {
-      const newActiveIndex = tabs.findIndex(tab => tab.id === activeTab)
-      if (newActiveIndex !== -1 && newActiveIndex !== activeIndex) {
-        setActiveIndex(newActiveIndex)
-      }
-    }, [activeTab, tabs, activeIndex])
-    
-    // Update active indicator position
-    useLayoutEffect(() => {
-      const activeElement = tabRefs.current[activeIndex];
-      if (activeElement) {
-        const { offsetLeft, offsetWidth } = activeElement;
-        setActiveStyle({
-          left: `${offsetLeft}px`,
-          width: `${offsetWidth}px`,
-        });
-        activeElement.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
-      }
-    }, [activeIndex, tabs]);
-
-    // Animate content track position
-    useLayoutEffect(() => {
-      if (contentTrackRef.current) {
-        gsap.to(contentTrackRef.current, {
-          xPercent: -100 * activeIndex,
-          duration: 0.4,
-          ease: "power3.inOut",
-        })
-      }
-    }, [activeIndex]);
-
-    // Set initial position of active indicator
-    useLayoutEffect(() => {
-        const initialActiveIndex = activeTab ? tabs.findIndex(tab => tab.id === activeTab) : 0
-        const indexToUse = initialActiveIndex !== -1 ? initialActiveIndex : 0
-        
-        const firstElement = tabRefs.current[indexToUse]
-        if (firstElement) {
-          const { offsetLeft, offsetWidth } = firstElement
-          setActiveStyle({
-            left: `${offsetLeft}px`,
-            width: `${offsetWidth}px`,
-          })
+    const newPositions: DotPosition[] = journeyPoints
+      .map(point => {
+        const element = container.querySelector(`[data-message-id="${point.id}"]`) as HTMLElement;
+        if (element) {
+          const topPercentage = (element.offsetTop / scrollHeight) * 100;
+          return {
+            id: point.id,
+            topPercentage,
+            message: point,
+          };
         }
-    }, [tabs, activeTab])
+        return null;
+      })
+      .filter((p): p is DotPosition => p !== null);
 
-    const tabHeadersRootProps = {
-      className: cn("overflow-x-auto overflow-y-hidden no-scrollbar", className),
-      role: "tablist",
-      ...props
+    setDotPositions(currentPositions => {
+        if (JSON.stringify(newPositions) !== JSON.stringify(currentPositions)) {
+            return newPositions;
+        }
+        return currentPositions;
+    });
+  }, [journeyPoints, scrollContainerRef]);
+
+  const updateScrollbar = useCallback(() => {
+    const container = scrollContainerRef.current;
+    if (!container || !trackRef.current || !thumbRef.current || !progressRef.current) return;
+
+    const { scrollTop, scrollHeight, clientHeight } = container;
+    
+    if (scrollHeight <= clientHeight) {
+      gsap.to([thumbRef.current, progressRef.current], { autoAlpha: 0, duration: 0.1 });
+      return;
+    }
+
+    gsap.to([thumbRef.current, progressRef.current], { autoAlpha: 1, duration: 0.1 });
+
+    const thumbHeight = Math.max((clientHeight / scrollHeight) * clientHeight, 20);
+    const thumbTop = (scrollTop / (scrollHeight - clientHeight)) * (clientHeight - thumbHeight);
+    
+    gsap.to(thumbRef.current, {
+      height: thumbHeight,
+      y: thumbTop,
+      duration: 0.1,
+      ease: 'power1.out',
+    });
+    
+    gsap.to(progressRef.current, {
+        height: thumbTop,
+        duration: 0.1,
+        ease: 'power1.out'
+    });
+
+    // Active journey point logic
+    const viewportCenter = scrollTop + clientHeight / 2;
+    let closestPointId: string | null = null;
+    let minDistance = Infinity;
+
+    journeyPoints.forEach(point => {
+      const element = container.querySelector(`[data-message-id="${point.id}"]`) as HTMLElement;
+      if (element) {
+        const elementCenter = element.offsetTop + element.offsetHeight / 2;
+        const distance = Math.abs(viewportCenter - elementCenter);
+        if (distance < minDistance) {
+          minDistance = distance;
+          closestPointId = point.id;
+        }
+      }
+    });
+
+    if (closestPointId && activeJourneyPointIdRef.current !== closestPointId) {
+      if (activeJourneyPointIdRef.current) {
+        const oldActiveDot = trackRef.current.querySelector(`[data-dot-id="${activeJourneyPointIdRef.current}"]`);
+        gsap.to(oldActiveDot, { scale: 1, opacity: 0.5, duration: 0.2, ease: 'back.out' });
+      }
+      
+      const newActiveDot = trackRef.current.querySelector(`[data-dot-id="${closestPointId}"]`);
+      if (newActiveDot) {
+        gsap.to(newActiveDot, { scale: 1.75, opacity: 1, duration: 0.2, ease: 'back.out' });
+      }
+      activeJourneyPointIdRef.current = closestPointId;
+    }
+
+  }, [scrollContainerRef, journeyPoints]);
+
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (container) {
+      const handleScroll = () => {
+        if (!isDraggingRef.current) {
+          updateScrollbar();
+        }
+      };
+      updateScrollbar();
+      calculateDotPositions();
+      container.addEventListener('scroll', handleScroll, { passive: true });
+      return () => container.removeEventListener('scroll', handleScroll);
+    }
+  }, [scrollContainerRef, updateScrollbar, calculateDotPositions]);
+
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    const observerCallback = () => {
+        updateScrollbar();
+        calculateDotPositions();
     };
 
-    const TabHeadersContent = (
-      <div className="relative flex w-max items-center whitespace-nowrap">
-        {/* Active Indicator */}
-        <div
-          className="absolute -bottom-px h-0.5 bg-primary transition-all duration-300 ease-out"
-          style={activeStyle}
-        />
+    const resizeObserver = new ResizeObserver(observerCallback);
+    resizeObserver.observe(container);
+    if(trackRef.current) resizeObserver.observe(trackRef.current);
 
-        {/* Tabs */}
-        {tabs.map((tab, index) => (
-          <button
-            key={tab.id}
-            id={`tab-${uniqueId}-${tab.id}`}
-            ref={(el) => (tabRefs.current[index] = el)}
-            role="tab"
-            aria-selected={index === activeIndex}
-            aria-controls={`tabpanel-${uniqueId}-${tab.id}`}
-            className={cn(
-              "group relative cursor-pointer text-center transition-colors duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-              size === 'default' ? "px-4 py-5" : "px-3 py-2.5",
-              index === activeIndex 
-                ? "text-primary" 
-                : "text-muted-foreground hover:text-foreground"
-            )}
-            onClick={() => onTabChange(tab.id)}
-          >
-            <span className={cn(
-              "flex items-center gap-2",
-              size === 'default' 
-                ? "text-lg font-semibold"
-                : "text-sm font-medium"
-            )}>
-              {tab.label}
-            </span>
-          </button>
-        ))}
-      </div>
-    );
+    const mutationObserver = new MutationObserver(observerCallback);
+    mutationObserver.observe(container, { childList: true, subtree: true, characterData: true });
 
-    if (!children) {
-      return (
-        <div ref={ref} {...tabHeadersRootProps}>
-          {TabHeadersContent}
-        </div>
-      );
-    }
+    return () => {
+        resizeObserver.disconnect();
+        mutationObserver.disconnect();
+    };
+  }, [calculateDotPositions, updateScrollbar, scrollContainerRef]);
 
-    return (
-      <div ref={ref} className={wrapperClassName}>
-        <div {...tabHeadersRootProps}>{TabHeadersContent}</div>
-        <div className={cn("relative overflow-hidden", contentClassName)}>
-          <div ref={contentTrackRef} className="flex h-full w-full">
-            {React.Children.map(children, (child, index) => (
-              <div
-                key={tabs[index].id}
-                id={`tabpanel-${uniqueId}-${tabs[index].id}`}
-                role="tabpanel"
-                aria-labelledby={`tab-${uniqueId}-${tabs[index].id}`}
-                aria-hidden={activeIndex !== index}
-                className="h-full w-full flex-shrink-0"
-              >
-                {child}
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    )
-  }
-)
-AnimatedTabs.displayName = "AnimatedTabs"
-
-export { AnimatedTabs }
-```
-
-## File: src/hooks/useAppViewManager.hook.ts
-```typescript
-import { useMemo, useCallback, useEffect, useRef } from 'react';
-import { useSearchParams, useNavigate, useLocation, useParams } from 'react-router-dom';
-import { useAppShellStore, type AppShellState, type ActivePage } from '@/store/appShell.store';
-import type { DataItem, ViewMode, SortConfig, SortableField, GroupableField, Status, Priority } from '@/pages/DataDemo/types';
-import type { FilterConfig } from '@/pages/DataDemo/components/DataToolbar';
-import type { TaskView } from '@/pages/Messaging/types';
-import { BODY_STATES, SIDEBAR_STATES } from '@/lib/utils';
-
-const pageToPaneMap: Record<string, AppShellState['sidePaneContent']> = {
-  dashboard: 'main',
-  settings: 'settings',
-  toaster: 'toaster',
-  notifications: 'notifications',
-  'data-demo': 'dataDemo',
-  messaging: 'messaging',
-};
-
-function usePrevious<T>(value: T): T | undefined {
-  const ref = useRef<T>();
-  useEffect(() => {
-    ref.current = value;
-  });
-  return ref.current;
-}
-
-/**
- * A centralized hook to manage and synchronize all URL-based view states.
- * This is the single source of truth for view modes, side panes, split views,
- * and page-specific parameters.
- */
-export function useAppViewManager() {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const navigate = useNavigate();
-  const location = useLocation();
-  const params = useParams<{ itemId: string; conversationId: string }>();
-  const { itemId, conversationId } = params;
-  const { setSidebarState, sidebarState } = useAppShellStore();
-
-  // --- DERIVED STATE FROM URL ---
-
-  const view = searchParams.get('view');
-  const sidePane = searchParams.get('sidePane');
-  const right = searchParams.get('right');
-  const messagingView = searchParams.get('messagingView') as TaskView | null;
-  const q = searchParams.get('q');
-  const status = searchParams.get('status');
-  const priority = searchParams.get('priority');
-  const sort = searchParams.get('sort');
-
-  const { bodyState, sidePaneContent } = useMemo(() => {
-    const validPanes: AppShellState['sidePaneContent'][] = ['details', 'settings', 'main', 'toaster', 'notifications', 'dataDemo', 'messaging'];
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    if (!isDraggingRef.current || !scrollContainerRef.current || !trackRef.current || !thumbRef.current) return;
     
-    // 1. Priority: Explicit side pane overlay via URL param
-    if (sidePane && validPanes.includes(sidePane as AppShellState['sidePaneContent'])) {
-      return { bodyState: BODY_STATES.SIDE_PANE, sidePaneContent: sidePane as AppShellState['sidePaneContent'] };
-    }
-
-    // 2. Data item detail view (can be overlay or split)
-    if (itemId) {
-      if (view === 'split') {
-        return { bodyState: BODY_STATES.SPLIT_VIEW, sidePaneContent: 'dataItem' as const };
-      }
-      return { bodyState: BODY_STATES.SIDE_PANE, sidePaneContent: 'dataItem' as const };
-    }
-
-    // 3. Messaging conversation view (always split)
-    if (conversationId) {
-      return { bodyState: BODY_STATES.SPLIT_VIEW, sidePaneContent: 'messaging' as const };
-    }
-
-    // 4. Generic split view via URL param
-    if (view === 'split' && right && validPanes.includes(right as AppShellState['sidePaneContent'])) {
-      return { bodyState: BODY_STATES.SPLIT_VIEW, sidePaneContent: right as AppShellState['sidePaneContent'] };
-    }
-
-    return { bodyState: BODY_STATES.NORMAL, sidePaneContent: 'details' as const };
-  }, [itemId, conversationId, view, sidePane, right]);
-  
-  const currentActivePage = useMemo(() => (location.pathname.split('/')[1] || 'dashboard') as ActivePage, [location.pathname]);
-  const prevActivePage = usePrevious(currentActivePage);
-
-  // --- SIDE EFFECTS ---
-  useEffect(() => {
-    // On navigating to messaging page, collapse sidebar if it's expanded.
-    // This ensures a good default view but allows the user to expand it again if they wish.
-    if (currentActivePage === 'messaging' && prevActivePage !== 'messaging' && sidebarState === SIDEBAR_STATES.EXPANDED) {
-      setSidebarState(SIDEBAR_STATES.COLLAPSED);
-    }
-  }, [currentActivePage, prevActivePage, sidebarState, setSidebarState]);
-
-  // DataDemo specific state
-  const viewMode = useMemo(() => (searchParams.get('dataView') as ViewMode) || 'list', [searchParams]);
-	const page = useMemo(() => parseInt(searchParams.get('page') || '1', 10), [searchParams]);
-	const groupBy = useMemo(() => (searchParams.get('groupBy') as GroupableField | 'none') || 'none', [searchParams]);
-	const activeGroupTab = useMemo(() => searchParams.get('tab') || 'all', [searchParams]);
-	const filters = useMemo<FilterConfig>(
-		() => ({
-			searchTerm: q || '',
-			status: (status?.split(',') || []).filter(Boolean) as Status[],
-			priority: (priority?.split(',') || []).filter(Boolean) as Priority[],
-		}),
-		[q, status, priority],
-	);
-	const sortConfig = useMemo<SortConfig | null>(() => {
-		const sortParam = sort;
-		if (!sortParam) return { key: 'updatedAt', direction: 'desc' }; // Default sort
-		if (sortParam === 'default') return null;
-
-		const [key, direction] = sortParam.split('-');
-		return { key: key as SortableField, direction: direction as 'asc' | 'desc' };
-	}, [sort]);
-
-  // --- MUTATOR ACTIONS ---
-
-  const handleParamsChange = useCallback(
-		(newParams: Record<string, string | string[] | null | undefined>, resetPage = false) => {
-			setSearchParams(
-				(prev) => {
-					const updated = new URLSearchParams(prev);
-					
-					for (const [key, value] of Object.entries(newParams)) {
-						if (value === null || value === undefined || (Array.isArray(value) && value.length === 0) || value === '') {
-							updated.delete(key);
-						} else if (Array.isArray(value)) {
-							updated.set(key, value.join(','));
-						} else {
-							updated.set(key, String(value));
-						}
-					}
-
-					if (resetPage) {
-						updated.delete('page');
-					}
-					if ('groupBy' in newParams) {
-						updated.delete('tab');
-					}
-
-					return updated;
-				},
-				{ replace: true },
-			);
-		},
-		[setSearchParams],
-	);
-
-  const navigateTo = useCallback((page: string, params?: Record<string, string | null>) => {
-    const targetPath = page.startsWith('/') ? page : `/${page}`;
-    const isSamePage = location.pathname === targetPath;
+    e.preventDefault();
+    const container = scrollContainerRef.current;
+    const track = trackRef.current;
+    const thumb = thumbRef.current;
     
-    const newSearchParams = new URLSearchParams(isSamePage ? searchParams : undefined);
+    const { scrollHeight, clientHeight } = container;
+    const scrollableDist = scrollHeight - clientHeight;
+    if (scrollableDist <= 0) return;
+    
+    const trackRect = track.getBoundingClientRect();
+    const thumbHeight = thumb.offsetHeight;
+    
+    const newThumbTop = e.clientY - trackRect.top - dragOffsetY.current;
+    const clampedThumbTop = Math.max(0, Math.min(newThumbTop, trackRect.height - thumbHeight));
+    
+    const scrollRatio = clampedThumbTop / (trackRect.height - thumbHeight);
+    
+    gsap.to(container, {
+      scrollTop: scrollRatio * scrollableDist,
+      duration: 0,
+      onUpdate: updateScrollbar
+    });
 
-    if (params) {
-      for (const [key, value] of Object.entries(params)) {
-        if (value === null || value === undefined) {
-          newSearchParams.delete(key);
-        } else {
-          newSearchParams.set(key, value);
-        }
-      }
-    }
+  }, [scrollContainerRef, updateScrollbar]);
 
-    navigate({ pathname: targetPath, search: newSearchParams.toString() });
-  }, [navigate, location.pathname, searchParams]);
+  const handleMouseUp = useCallback(() => {
+    isDraggingRef.current = false;
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+    window.removeEventListener('mousemove', handleMouseMove);
+    window.removeEventListener('mouseup', handleMouseUp);
+  }, [handleMouseMove]);
 
-  const openSidePane = useCallback((pane: AppShellState['sidePaneContent']) => {
-    if (location.pathname === `/${Object.keys(pageToPaneMap).find(key => pageToPaneMap[key] === pane)}`) {
-        navigate({ pathname: '/dashboard', search: `?sidePane=${pane}` }, { replace: true });
-    } else {
-        handleParamsChange({ sidePane: pane, view: null, right: null });
-    }
-  }, [handleParamsChange, navigate, location.pathname]);
+  const handleMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
 
-  const closeSidePane = useCallback(() => {
-    if (itemId) {
-      navigate('/data-demo');
-    } else {
-      handleParamsChange({ sidePane: null, view: null, right: null });
-    }
-  }, [itemId, navigate, handleParamsChange]);
+    if (!scrollContainerRef.current || !thumbRef.current) return;
+    
+    isDraggingRef.current = true;
+    const thumbRect = thumbRef.current.getBoundingClientRect();
+    dragOffsetY.current = e.clientY - thumbRect.top;
+    
+    document.body.style.cursor = 'grabbing';
+    document.body.style.userSelect = 'none';
 
-  const toggleSidePane = useCallback((pane: AppShellState['sidePaneContent']) => {
-    if (sidePane === pane) {
-      closeSidePane();
-    } else {
-      openSidePane(pane);
-    }
-  }, [sidePane, openSidePane, closeSidePane]);
-
-  const toggleSplitView = useCallback(() => {
-    if (bodyState === BODY_STATES.SIDE_PANE) {
-      handleParamsChange({ view: 'split', right: sidePane, sidePane: null });
-    } else if (bodyState === BODY_STATES.SPLIT_VIEW) {
-      handleParamsChange({ sidePane: right, view: null, right: null });
-    } else { // From normal
-      const paneContent = pageToPaneMap[currentActivePage] || 'details';
-      handleParamsChange({ view: 'split', right: paneContent, sidePane: null });
-    }
-  }, [bodyState, sidePane, right, currentActivePage, handleParamsChange]);
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+  }, [scrollContainerRef, handleMouseMove, handleMouseUp]);
   
-  const setNormalView = useCallback(() => {
-      handleParamsChange({ sidePane: null, view: null, right: null });
-  }, [handleParamsChange]);
+  const handleTrackClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+     if (e.target === thumbRef.current || (e.target as HTMLElement).closest('[data-dot-id]')) return;
 
-  const switchSplitPanes = useCallback(() => {
-    if (bodyState !== BODY_STATES.SPLIT_VIEW) return;
-    const newSidePaneContent = pageToPaneMap[currentActivePage];
-    const newActivePage = Object.entries(pageToPaneMap).find(
-      ([, value]) => value === sidePaneContent
-    )?.[0] as ActivePage | undefined;
-
-    if (newActivePage && newSidePaneContent) {
-      navigate(`/${newActivePage}?view=split&right=${newSidePaneContent}`, { replace: true });
-    }
-  }, [bodyState, currentActivePage, sidePaneContent, navigate]);
-  
-  const closeSplitPane = useCallback((paneToClose: 'main' | 'right') => {
-    if (bodyState !== BODY_STATES.SPLIT_VIEW) return;
-    if (paneToClose === 'right') {
-      navigate(`/${currentActivePage}`, { replace: true });
-    } else { // Closing main pane
-      const pageToBecomeActive = Object.entries(pageToPaneMap).find(
-        ([, value]) => value === sidePaneContent
-      )?.[0] as ActivePage | undefined;
-      
-      if (pageToBecomeActive) {
-        navigate(`/${pageToBecomeActive}`, { replace: true });
-      } else {
-        navigate(`/dashboard`, { replace: true });
-      }
-    }
-  }, [bodyState, currentActivePage, sidePaneContent, navigate]);
-  
-  // DataDemo actions
-  const setViewMode = (mode: ViewMode) => handleParamsChange({ dataView: mode === 'list' ? null : mode });
-  const setGroupBy = (val: string) => handleParamsChange({ groupBy: val === 'none' ? null : val }, true);
-  const setActiveGroupTab = (tab: string) => handleParamsChange({ tab: tab === 'all' ? null : tab });
-  const setFilters = (newFilters: FilterConfig) => {
-    handleParamsChange({ q: newFilters.searchTerm, status: newFilters.status, priority: newFilters.priority }, true);
-  }
-  const setSort = (config: SortConfig | null) => {
-    if (!config) {
-      handleParamsChange({ sort: 'default' }, true);
-    } else {
-      handleParamsChange({ sort: `${config.key}-${config.direction}` }, true);
-    }
-  }
-  const setTableSort = (field: SortableField) => {
-    let newSort: string | null = `${field}-desc`;
-    if (sortConfig?.key === field) {
-      if (sortConfig.direction === 'desc') newSort = `${field}-asc`;
-      else if (sortConfig.direction === 'asc') newSort = 'default';
-    }
-    handleParamsChange({ sort: newSort }, true);
-  };
-  const setPage = (newPage: number) => handleParamsChange({ page: newPage.toString() });
-
-  const onItemSelect = useCallback((item: DataItem) => {
-		navigate(`/data-demo/${item.id}${location.search}`);
-	}, [navigate, location.search]);
-
-  const setMessagingView = (view: TaskView) => handleParamsChange({ messagingView: view });
-
-
-  return useMemo(() => ({
-    // State
-    bodyState,
-    sidePaneContent,
-    currentActivePage,
-    itemId,
-    messagingView,
-    // DataDemo State
-    viewMode,
-    page,
-    groupBy,
-    activeGroupTab,
-    filters,
-    sortConfig,
-    // Actions
-    navigateTo,
-    openSidePane,
-    closeSidePane,
-    toggleSidePane,
-    toggleSplitView,
-    setNormalView,
-    switchSplitPanes,
-    setMessagingView,
-    closeSplitPane,
-    // DataDemo Actions
-    onItemSelect,
-    setViewMode,
-    setGroupBy,
-    setActiveGroupTab,
-    setFilters,
-    setSort,
-    setTableSort,
-    setPage,
-  }), [
-    bodyState, sidePaneContent, currentActivePage, itemId, messagingView,
-    viewMode, page, groupBy, activeGroupTab, filters, sortConfig,
-    navigateTo, openSidePane, closeSidePane, toggleSidePane, toggleSplitView, setNormalView, setMessagingView,
-    switchSplitPanes, closeSplitPane, onItemSelect, setViewMode, setGroupBy, setActiveGroupTab, setFilters,
-    setSort, setTableSort, setPage
-  ]);
-}
-```
-
-## File: src/pages/DataDemo/components/DataListView.tsx
-```typescript
-import { useRef } from 'react'
-import { cn } from '@/lib/utils'
-import { Badge } from '@/components/ui/badge'
-import { ArrowRight } from 'lucide-react'
-import type { DataItem } from '../types'
-import { useStaggeredAnimation } from '@/hooks/useStaggeredAnimation.motion.hook'
-import { EmptyState } from './EmptyState'
-import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
-import { 
-  useSelectedItem,
-} from '../store/dataDemo.store'
-import {
-  AssigneeInfo,
-  ItemMetrics,
-  ItemProgressBar,
-  ItemStatusBadge,
-  ItemPriorityBadge,
-  ItemDateInfo,
-} from './shared/DataItemParts'
-import { AddDataItemCta } from './shared/AddDataItemCta'
-
-export function DataListView({ data }: { data: DataItem[] }) {
-  const { onItemSelect, itemId } = useAppViewManager();
-  const selectedItem = useSelectedItem(itemId);
-
-  const listRef = useRef<HTMLDivElement>(null)
-  useStaggeredAnimation(listRef, [data], { mode: 'incremental', scale: 1, y: 30, stagger: 0.08, duration: 0.5 });
-
-  const items = Array.isArray(data) ? data : [];
-  if (items.length === 0) {
-    return <EmptyState />
-  }
+    const container = scrollContainerRef.current;
+    const track = trackRef.current;
+    if (!container || !track) return;
+    
+    const { scrollHeight, clientHeight } = container;
+    const trackRect = track.getBoundingClientRect();
+    const clickY = e.clientY - trackRect.top;
+    
+    const thumbHeight = Math.max((clientHeight / scrollHeight) * clientHeight, 20);
+    const clickRatio = (clickY - thumbHeight / 2) / (trackRect.height - thumbHeight);
+    
+    gsap.to(container, {
+      scrollTop: (scrollHeight - clientHeight) * Math.max(0, Math.min(1, clickRatio)),
+      duration: 0.3,
+      ease: 'power2.out'
+    });
+    
+  }, [scrollContainerRef]);
 
   return (
-    <div ref={listRef} className="space-y-4 pb-4">
-      {items.map((item: DataItem) => {
-        const isSelected = selectedItem?.id === item.id
-        
-        return (
-          <div
-            key={item.id}
-            onClick={() => onItemSelect(item)}
-            className={cn(
-              "group relative overflow-hidden rounded-2xl border bg-card/50 backdrop-blur-sm transition-all duration-300 cursor-pointer",
-              "hover:bg-card/80 hover:shadow-lg hover:shadow-primary/5 hover:border-primary/20",
-              "active:scale-[0.99]",
-              isSelected && "ring-2 ring-primary/20 border-primary/30 bg-card/90"
-            )}
-          >
-            <div className="p-6">
-              <div className="flex items-start gap-4">
-                {/* Thumbnail */}
-                <div className="flex-shrink-0">
-                  <div className="w-14 h-14 bg-gradient-to-br from-primary/20 to-primary/10 rounded-xl flex items-center justify-center text-2xl">
-                    {item.thumbnail}
-                  </div>
-                </div>
-
-                {/* Content */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-lg mb-1 group-hover:text-primary transition-colors">
-                        {item.title}
-                      </h3>
-                      <p className="text-muted-foreground text-sm mb-3 line-clamp-2">
-                        {item.description}
-                      </p>
-                    </div>
-                    <ArrowRight className="w-5 h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all duration-300 ml-4 flex-shrink-0" />
-                  </div>
-
-                  {/* Badges */}
-                  <div className="flex items-center gap-2 mb-4">
-                    <ItemStatusBadge status={item.status} />
-                    <ItemPriorityBadge priority={item.priority} />
-                    <Badge variant="outline" className="bg-accent/50">
-                      {item.category}
-                    </Badge>
-                  </div>
-
-                  {/* Meta info */}
-                  <div className="flex items-center justify-between text-muted-foreground">
-                    <div className="flex items-center gap-4">
-                      {/* Assignee */}
-                      <AssigneeInfo assignee={item.assignee} avatarClassName="w-7 h-7" />
-                      {/* Date */}
-                      <ItemDateInfo date={item.updatedAt} />
-                    </div>
-
-                    {/* Metrics */}
-                    <ItemMetrics metrics={item.metrics} />
-                  </div>
-
-                  {/* Progress bar */}
-                  <div className="mt-4"><ItemProgressBar completion={item.metrics.completion} /></div>
-                </div>
-              </div>
-            </div>
-
-            {/* Hover gradient overlay */}
-            <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
-          </div>
-        )
-      })}
-      <AddDataItemCta viewMode='list' />
-    </div>
-  )
-}
-```
-
-## File: src/pages/DataDemo/components/DataTableView.tsx
-```typescript
-import { useRef, useLayoutEffect, useMemo } from 'react'
-import { gsap } from 'gsap'
-import { cn } from '@/lib/utils'
-import { 
-  ArrowUpDown, 
-  ArrowUp, 
-  ArrowDown,
-  ExternalLink
-} from 'lucide-react'
-import type { DataItem, SortableField } from '../types'
-import { EmptyState } from './EmptyState'
-import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
-import {
-  useSelectedItem,
-} from '../store/dataDemo.store'
-import { capitalize } from '@/lib/utils'
-import {
-  AssigneeInfo,
-  ItemMetrics,
-  ItemStatusBadge,
-  ItemPriorityBadge,
-  ItemDateInfo,
-  ItemProgressBar,
-} from './shared/DataItemParts'
-import { AddDataItemCta } from './shared/AddDataItemCta'
-
-export function DataTableView({ data }: { data: DataItem[] }) {
-  const {
-    sortConfig,
-    setTableSort,
-    groupBy,
-    onItemSelect,
-    itemId,
-  } = useAppViewManager();
-  const selectedItem = useSelectedItem(itemId);
-
-  const tableRef = useRef<HTMLTableElement>(null)
-  const animatedItemsCount = useRef(0)
-
-  useLayoutEffect(() => {
-    if (tableRef.current) {
-      // Only select item rows for animation, not group headers
-      const newItems = Array.from( 
-        tableRef.current.querySelectorAll('tbody tr')
-      ).filter(tr => !(tr as HTMLElement).dataset.groupHeader)
-       .slice(animatedItemsCount.current);
-      gsap.fromTo(newItems,
-        { y: 20, opacity: 0 },
-        {
-          duration: 0.5,
-          y: 0,
-          opacity: 1,
-          stagger: 0.05,
-          ease: "power2.out",
-        },
-      );
-      animatedItemsCount.current = data.length;
-    }
-  }, [data]);
-
-  const SortIcon = ({ field }: { field: SortableField }) => {
-    if (sortConfig?.key !== field) {
-      return <ArrowUpDown className="w-4 h-4 opacity-50" />
-    }
-    if (sortConfig.direction === 'asc') {
-      return <ArrowUp className="w-4 h-4 text-primary" />
-    }
-    if (sortConfig.direction === 'desc') {
-      return <ArrowDown className="w-4 h-4 text-primary" />
-    }
-    return <ArrowUpDown className="w-4 h-4 opacity-50" />
-  }
-
-  const handleSortClick = (field: SortableField) => {
-    setTableSort(field)
-  }
-
-  const groupedData = useMemo(() => {
-    if (groupBy === 'none') return null;
-    return (data as DataItem[]).reduce((acc, item) => {
-      const groupKey = item[groupBy as 'status' | 'priority' | 'category'] || 'N/A';
-      if (!acc[groupKey]) {
-        acc[groupKey] = [];
-      }
-      acc[groupKey].push(item);
-      return acc;
-    }, {} as Record<string, DataItem[]>);
-  }, [data, groupBy]);
-
-  if (data.length === 0) {
-    return <EmptyState />
-  }
-
-  return (
-    <div className="relative overflow-hidden rounded-2xl border bg-card/50 backdrop-blur-sm">
-      <div className="overflow-x-auto">
-        <table ref={tableRef} className="w-full">
-          <thead>
-            <tr className="border-b border-border/50 bg-muted/20">
-              <th className="text-left p-4 font-semibold text-sm">
-                <button
-                  onClick={() => handleSortClick('title')}
-                  className="flex items-center gap-2 hover:text-primary transition-colors"
-                >
-                  Project
-                  <SortIcon field="title" />
-                </button>
-              </th>
-              <th className="text-left p-4 font-semibold text-sm">
-                <button
-                  onClick={() => handleSortClick('status')}
-                  className="flex items-center gap-2 hover:text-primary transition-colors"
-                >
-                  Status
-                  <SortIcon field="status" />
-                </button>
-              </th>
-              <th className="text-left p-4 font-semibold text-sm">
-                <button
-                  onClick={() => handleSortClick('priority')}
-                  className="flex items-center gap-2 hover:text-primary transition-colors"
-                >
-                  Priority
-                  <SortIcon field="priority" />
-                </button>
-              </th>
-              <th className="text-left p-4 font-semibold text-sm">
-                <button
-                  onClick={() => handleSortClick('assignee.name')}
-                  className="flex items-center gap-2 hover:text-primary transition-colors"
-                >
-                  Assignee
-                  <SortIcon field="assignee.name" />
-                </button>
-              </th>
-              <th className="text-left p-4 font-semibold text-sm">
-                <button
-                  onClick={() => handleSortClick('metrics.completion')}
-                  className="flex items-center gap-2 hover:text-primary transition-colors"
-                >
-                  Progress
-                  <SortIcon field="metrics.completion" />
-                </button>
-              </th>
-              <th className="text-left p-4 font-semibold text-sm">
-                <button
-                  onClick={() => handleSortClick('metrics.views')}
-                  className="flex items-center gap-2 hover:text-primary transition-colors"
-                >
-                  Engagement
-                  <SortIcon field="metrics.views" />
-                </button>
-              </th>
-              <th className="text-left p-4 font-semibold text-sm">Last Updated</th>
-              <th className="text-center p-4 font-semibold text-sm w-16">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {groupedData
-              ? Object.entries(groupedData).flatMap(([groupName, items]) => [
-                  <tr key={groupName} data-group-header="true" className="sticky top-0 z-10">
-                    <td colSpan={8} className="p-2 bg-muted/50 backdrop-blur-sm">
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-semibold text-sm">{capitalize(groupName)}</h3>
-                        <span className="text-xs px-2 py-0.5 bg-background rounded-full font-medium">{items.length}</span>
-                      </div>
-                    </td>
-                  </tr>,
-                  ...items.map(item => <TableRow key={item.id} item={item} isSelected={selectedItem?.id === item.id} onItemSelect={onItemSelect} />)
-                ])
-              : data.map(item => <TableRow key={item.id} item={item} isSelected={selectedItem?.id === item.id} onItemSelect={onItemSelect} />)
-            }
-            <AddDataItemCta viewMode='table' colSpan={8} />
-          </tbody>
-        </table>
-      </div>
-    </div>
-  )
-}
-
-function TableRow({ item, isSelected, onItemSelect }: { item: DataItem; isSelected: boolean; onItemSelect: (item: DataItem) => void }) {
-  return (
-    <tr
-      onClick={() => onItemSelect(item)}
-      className={cn(
-        "group border-b border-border/30 transition-all duration-200 cursor-pointer",
-        "hover:bg-accent/20 hover:border-primary/20",
-        isSelected && "bg-primary/5 border-primary/30"
-      )}
+    <div
+      ref={trackRef}
+      className="absolute top-0 right-0 h-full w-8 py-2 z-10 cursor-pointer"
+      onMouseDown={handleTrackClick}
     >
-      {/* Project Column */}
-      <td className="p-4">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-gradient-to-br from-primary/20 to-primary/10 rounded-lg flex items-center justify-center text-lg flex-shrink-0">
-            {item.thumbnail}
-          </div>
-          <div className="min-w-0 flex-1">
-            <h4 className="font-medium group-hover:text-primary transition-colors truncate">
-              {item.title}
-            </h4>
-            <p className="text-sm text-muted-foreground truncate">
-              {item.category}
-            </p>
-          </div>
-        </div>
-      </td>
+        <TooltipProvider delayDuration={100}>
+            <div className="relative h-full w-full">
+                {/* Track Line */}
+                <div className="track-line absolute top-0 left-1/2 -translate-x-1/2 h-full w-1 bg-border rounded-full" />
+                
+                {/* Progress Fill */}
+                <div 
+                  ref={progressRef}
+                  className="absolute top-0 left-1/2 -translate-x-1/2 w-1 bg-primary opacity-0"
+                />
 
-      {/* Status Column */}
-      <td className="p-4">
-        <ItemStatusBadge status={item.status} />
-      </td>
+                {/* Thumb */}
+                <div
+                    ref={thumbRef}
+                    className="absolute left-1/2 -translate-x-1/2 w-2 bg-muted-foreground hover:bg-muted-foreground/80 rounded-sm cursor-grab active:cursor-grabbing opacity-0"
+                    onMouseDown={handleMouseDown}
+                />
 
-      {/* Priority Column */}
-      <td className="p-4">
-        <ItemPriorityBadge priority={item.priority} />
-      </td>
-
-      {/* Assignee Column */}
-      <td className="p-4">
-        <AssigneeInfo assignee={item.assignee} />
-      </td>
-
-      {/* Progress Column */}
-      {/* Note: This progress bar is custom for the table, so we don't use the shared component here. */}
-      <td className="p-4">
-        <ItemProgressBar completion={item.metrics.completion} showPercentage />
-      </td>
-
-      {/* Engagement Column */}
-      <td className="p-4">
-        <ItemMetrics metrics={item.metrics} />
-      </td>
-
-      {/* Date Column */}
-      <td className="p-4">
-        <ItemDateInfo date={item.updatedAt} />
-      </td>
-
-      {/* Actions Column */}
-      <td className="p-4">
-        <button 
-          onClick={(e) => {
-            e.stopPropagation()
-            onItemSelect(item)
-          }}
-          className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-accent transition-colors"
-          title="View details"
-        >
-          <ExternalLink className="w-4 h-4" />
-        </button>
-      </td>
-    </tr>
-  )
-}
-```
-
-## File: src/pages/DataDemo/components/DataCardView.tsx
-```typescript
-import { useRef } from 'react'
-import { cn } from '@/lib/utils'
-import { Badge } from '@/components/ui/badge'
-import { ArrowUpRight } from 'lucide-react'
-import type { DataItem } from '../types'
-import { useStaggeredAnimation } from '@/hooks/useStaggeredAnimation.motion.hook'
-import { EmptyState } from './EmptyState'
-import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
-import {
-  useSelectedItem,
-} from '../store/dataDemo.store'
-import {
-  AssigneeInfo,
-  ItemMetrics,
-  ItemProgressBar,
-  ItemStatusBadge,
-  ItemTags,
-  ItemDateInfo,
-} from './shared/DataItemParts'
-import { AddDataItemCta } from './shared/AddDataItemCta'
-
-export function DataCardView({ data, isGrid = false }: { data: DataItem[]; isGrid?: boolean }) {
-  const { onItemSelect, itemId } = useAppViewManager();
-  const selectedItem = useSelectedItem(itemId);
-
-  const containerRef = useRef<HTMLDivElement>(null)
-  useStaggeredAnimation(containerRef, [data], { mode: 'incremental', y: 40 });
-
-  const items = Array.isArray(data) ? data : [];
-  if (items.length === 0) {
-    return <EmptyState />
-  }
-
-  return (
-    <div 
-      ref={containerRef}
-      className={cn(
-        "gap-6",
-        isGrid
-          ? "grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))]"
-          : "grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))]",
-        "pb-4"
-      )}
-    >
-      {items.map((item: DataItem) => {
-        const isSelected = selectedItem?.id === item.id
-        
-        return (
-          <div
-            key={item.id}
-            onClick={() => onItemSelect(item)}
-            className={cn(
-              "group relative overflow-hidden rounded-3xl border bg-card/50 backdrop-blur-sm transition-all duration-500 cursor-pointer",
-              "hover:bg-card/80 hover:shadow-xl hover:shadow-primary/10 hover:border-primary/30 hover:-translate-y-2",
-              "active:scale-[0.98]",
-              isSelected && "ring-2 ring-primary/30 border-primary/40 bg-card/90 shadow-lg shadow-primary/20",
-            )}
-          >
-            {/* Card Header with Thumbnail */}
-            <div className="relative p-6 pb-4">
-              <div className="flex items-start justify-between mb-4">
-                <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-primary/10 rounded-2xl flex items-center justify-center text-3xl group-hover:scale-110 transition-transform duration-300">
-                  {item.thumbnail}
-                </div>
-                <ArrowUpRight className="w-5 h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 group-hover:-translate-y-1 transition-all duration-300" />
-              </div>
-
-              {/* Priority indicator */}
-              <div className="absolute top-4 right-4">
-                <div className={cn(
-                  "w-3 h-3 rounded-full",
-                  item.priority === 'critical' && "bg-red-500",
-                  item.priority === 'high' && "bg-orange-500",
-                  item.priority === 'medium' && "bg-blue-500",
-                  item.priority === 'low' && "bg-green-500"
-                )} />
-              </div>
+                {/* Journey Dots */}
+                {dotPositions.map((pos) => (
+                <Tooltip key={pos.id}>
+                    <TooltipTrigger asChild>
+                    <button
+                        data-dot-id={pos.id}
+                        onClick={(e) => { e.stopPropagation(); onDotClick(pos.id); }}
+                        className="absolute left-1/2 -translate-x-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-primary opacity-50 rounded-full focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-background transition-all duration-200 hover:scale-125 hover:opacity-100"
+                        style={{ top: `${pos.topPercentage}%` }}
+                        aria-label={`Jump to message: ${pos.message.text.substring(0, 30)}...`}
+                    />
+                    </TooltipTrigger>
+                    <TooltipContent side="left" className="text-sm p-2 w-auto max-w-xs shadow-xl" sideOffset={8}>
+                    <p className="line-clamp-3">{pos.message.text}</p>
+                    </TooltipContent>
+                </Tooltip>
+                ))}
             </div>
-
-            {/* Card Content */}
-            <div className="px-6 pb-6">
-              {/* Title and Description */}
-              <h3 className="font-semibold text-lg mb-2 group-hover:text-primary transition-colors line-clamp-2">
-                {item.title}
-              </h3>
-              <p className="text-muted-foreground text-sm mb-4 line-clamp-3">
-                {item.description}
-              </p>
-
-              {/* Status and Category */}
-              <div className="flex items-center gap-2 mb-4">
-                <ItemStatusBadge status={item.status} />
-                <Badge variant="outline" className="bg-accent/50 text-xs">
-                  {item.category}
-                </Badge>
-              </div>
-
-              {/* Tags */}
-              <div className="mb-4"><ItemTags tags={item.tags} /></div>
-
-              {/* Progress */}
-              <div className="mb-4"><ItemProgressBar completion={item.metrics.completion} /></div>
-
-              {/* Assignee */}
-              <div className="mb-4"><AssigneeInfo assignee={item.assignee} /></div>
-
-              {/* Metrics */}
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <ItemMetrics metrics={item.metrics} />
-                <ItemDateInfo date={item.updatedAt} />
-              </div>
-            </div>
-
-            {/* Hover gradient overlay */}
-            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
-            
-            {/* Selection indicator */}
-            {isSelected && (
-              <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-primary/5 pointer-events-none" />
-            )}
-          </div>
-        )
-      })}
-      <AddDataItemCta viewMode={isGrid ? 'grid' : 'cards'} />
+        </TooltipProvider>
     </div>
-  )
-}
-```
-
-## File: src/pages/DataDemo/index.tsx
-```typescript
-import { useRef, useEffect, useCallback, useMemo } from 'react'
-import {
-  Layers, 
-  AlertTriangle, 
-  PlayCircle, 
-  TrendingUp,
-  Loader2,
-  ChevronsUpDown
-} from 'lucide-react'
-import { gsap } from 'gsap'
-import { cn } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuRadioGroup, 
-  DropdownMenuRadioItem, 
-  DropdownMenuTrigger 
-} from '@/components/ui/dropdown-menu'
-import { PageLayout } from '@/components/shared/PageLayout'
-import { useScrollToBottom } from '@/hooks/useScrollToBottom.hook';
-import { ScrollToBottomButton } from '@/components/shared/ScrollToBottomButton';
-import { DataListView } from './components/DataListView'
-import { DataCardView } from './components/DataCardView'
-import { DataTableView } from './components/DataTableView'
-import { DataViewModeSelector } from './components/DataViewModeSelector'
-import { AnimatedTabs } from '@/components/ui/animated-tabs'
-import { StatCard } from '@/components/shared/StatCard'
-import { AnimatedLoadingSkeleton } from './components/AnimatedLoadingSkeleton'
-import { DataToolbar } from './components/DataToolbar'
-import { mockDataItems } from './data/mockData'
-import type { GroupableField, DataItem } from './types'
-import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
-import { 
-  useDataDemoStore, 
-  useGroupTabs
-} from './store/dataDemo.store'
-
-type Stat = {
-  title: string;
-  value: string;
-  icon: React.ReactNode;
-  change: string;
-  trend: 'up' | 'down';
-  type?: 'card';
-};
-
-type ChartStat = {
-  title: string;
-  value: string;
-  icon: React.ReactNode;
-  change: string;
-  trend: 'up' | 'down';
-  type: 'chart';
-  chartData: number[];
-};
-
-type StatItem = Stat | ChartStat;
-
-function DataDemoContent() {
-  const {
-    viewMode,
-    groupBy,
-    activeGroupTab,
-    setGroupBy,
-    setActiveGroupTab,
-    page,
-    filters,
-    sortConfig,
-    setPage,
-  } = useAppViewManager();
-
-  const { hasMore, isLoading, isInitialLoading, totalItemCount, loadData } = useDataDemoStore(state => ({
-    hasMore: state.hasMore,
-    isLoading: state.isLoading,
-    isInitialLoading: state.isInitialLoading,
-    totalItemCount: state.totalItemCount,
-    loadData: state.loadData,
-  }));
-
-  const groupTabs = useGroupTabs(groupBy, activeGroupTab);
-  const allItems = useDataDemoStore(s => s.items);
-
-  const groupedData = useMemo(() => {
-    if (groupBy === 'none') {
-        return null;
-    }
-    return allItems.reduce((acc, item) => {
-        const groupKey = String(item[groupBy as GroupableField]);
-        if (!acc[groupKey]) {
-            acc[groupKey] = [];
-        }
-        acc[groupKey].push(item);
-        return acc;
-    }, {} as Record<string, DataItem[]>);
-  }, [allItems, groupBy]);
-
-  const groupOptions = useMemo(() => [
-    { id: 'none' as const, label: 'None' }, { id: 'status' as const, label: 'Status' }, { id: 'priority' as const, label: 'Priority' }, { id: 'category' as const, label: 'Category' }
-  ], []);
-
-  const statsRef = useRef<HTMLDivElement>(null)
-  const scrollRef = useRef<HTMLDivElement>(null);
-
-  // Calculate stats from data
-  const totalItems = mockDataItems.length
-  const { showScrollToBottom, scrollToBottom, handleScroll } = useScrollToBottom(scrollRef);
-
-  const activeItems = mockDataItems.filter(item => item.status === 'active').length
-  const highPriorityItems = mockDataItems.filter(item => item.priority === 'high' || item.priority === 'critical').length
-  const avgCompletion = totalItems > 0 ? Math.round(
-    mockDataItems.reduce((acc, item) => acc + item.metrics.completion, 0) / totalItems
-  ) : 0
-
-  const stats: StatItem[] = [
-    {
-      title: "Total Projects",
-      value: totalItems.toString(),
-      icon: <Layers className="w-5 h-5" />,
-      change: "+5.2% this month",
-      trend: "up" as const,
-      type: 'chart',
-      chartData: [120, 125, 122, 130, 135, 138, 142]
-    },
-    {
-      title: "Active Projects",
-      value: activeItems.toString(),
-      icon: <PlayCircle className="w-5 h-5" />,
-      change: "+2 this week", 
-      trend: "up" as const,
-      type: 'chart',
-      chartData: [45, 50, 48, 55, 53, 60, 58]
-    },
-    {
-      title: "High Priority",
-      value: highPriorityItems.toString(),
-      icon: <AlertTriangle className="w-5 h-5" />,
-      change: "-1 from last week",
-      trend: "down" as const,
-      type: 'chart',
-      chartData: [25, 26, 28, 27, 26, 24, 23]
-    },
-    {
-      title: "Avg. Completion",
-      value: `${avgCompletion}%`,
-      icon: <TrendingUp className="w-5 h-5" />,
-      change: "+3.2%",
-      trend: "up" as const,
-      type: 'chart',
-      chartData: [65, 68, 70, 69, 72, 75, 78]
-    }
-  ]
-
-  useEffect(() => {
-    // Animate stats cards in
-    if (!isInitialLoading && statsRef.current) {
-      gsap.fromTo(statsRef.current.children,
-        { y: 30, opacity: 0 },
-        {
-          duration: 0.6,
-          y: 0,
-          opacity: 1,
-          stagger: 0.1,
-          ease: "power2.out"
-        }
-      )
-    }
-  }, [isInitialLoading]);
-
-  useEffect(() => {
-    loadData({ page, groupBy, filters, sortConfig });
-  }, [page, groupBy, filters, sortConfig, loadData]);
-
-  const observer = useRef<IntersectionObserver>();
-  const loaderRef = useCallback(
-    (node: Element | null) => {
-      if (isLoading) return;
-      if (observer.current) observer.current.disconnect();
-
-      observer.current = new IntersectionObserver((entries) => {
-        if (entries[0].isIntersecting && hasMore) {
-          setPage(page + 1);
-        }
-      });
-      if (node) observer.current.observe(node);
-    },
-    [isLoading, hasMore, page, setPage],
   );
+};
+```
 
-  const renderViewForData = useCallback((data: DataItem[]) => {
-    switch (viewMode) {
-        case 'table': return <DataTableView data={data} />;
-        case 'cards': return <DataCardView data={data} />;
-        case 'grid': return <DataCardView data={data} isGrid />;
-        case 'list':
-        default:
-            return <DataListView data={data} />;
+## File: src/components/effects/BoxReveal.tsx
+```typescript
+import { ReactNode, useEffect, useRef, memo } from 'react';
+import { gsap } from 'gsap';
+import { cn } from '@/lib/utils';
+
+type BoxRevealProps = {
+	children: ReactNode;
+	width?: string;
+	boxColor?: string;
+	duration?: number;
+	className?: string;
+};
+
+export const BoxReveal = memo(function BoxReveal({
+	children,
+	width = 'fit-content',
+	boxColor,
+	duration,
+	className,
+}: BoxRevealProps) {
+	const sectionRef = useRef<HTMLDivElement>(null);
+	const boxRef = useRef<HTMLDivElement>(null);
+	const childRef = useRef<HTMLDivElement>(null);
+
+	useEffect(() => {
+		const section = sectionRef.current;
+		if (!section) return;
+
+		const observer = new IntersectionObserver(
+			(entries) => {
+				entries.forEach((entry) => {
+					if (entry.isIntersecting) {
+						gsap.timeline()
+							.set(childRef.current, { opacity: 0, y: 50 })
+							.set(boxRef.current, { transformOrigin: 'right' })
+							.to(boxRef.current, {
+								scaleX: 0,
+								duration: duration ?? 0.5,
+								ease: 'power3.inOut',
+							})
+							.to(
+								childRef.current,
+								{ y: 0, opacity: 1, duration: duration ?? 0.5, ease: 'power3.out' },
+								'-=0.3',
+							);
+						observer.unobserve(section);
+					}
+				});
+			},
+			{ threshold: 0.1 },
+		);
+
+		observer.observe(section);
+
+		return () => {
+			if (section) {
+				observer.unobserve(section);
+			}
+		};
+	}, [duration]);
+
+	return (
+		<div ref={sectionRef} style={{ width }} className={cn('relative overflow-hidden', className)}>
+			<div ref={childRef}>{children}</div>
+			<div
+				ref={boxRef}
+				style={{
+					background: boxColor ?? 'hsl(var(--skeleton))',
+				}}
+				className="absolute top-1 bottom-1 left-0 right-0 z-20 rounded-sm"
+			/>
+		</div>
+	);
+});
+```
+
+## File: src/pages/Messaging/components/TaskDetail.tsx
+```typescript
+import React, { useRef, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
+import { useMessagingStore } from '../store/messaging.store';
+import { ActivityFeed } from './ActivityFeed';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { Paperclip, SendHorizontal, Smile, StickyNote } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { TakeoverBanner } from './TakeoverBanner';
+import { useToast } from '@/components/ui/toast';
+import { gsap } from 'gsap';
+import { useAppShellStore } from '@/store/appShell.store';
+import { JourneyScrollbar } from './JourneyScrollbar';
+
+
+export const TaskDetail: React.FC = () => {
+  const { conversationId: taskId } = useParams<{ conversationId: string }>();
+  const { show } = useToast();
+  const { getTaskById, takeOverTask, requestAndSimulateTakeover } = useMessagingStore();
+  const reducedMotion = useAppShellStore(s => s.reducedMotion);
+  
+  const task = taskId ? getTaskById(taskId) : undefined;
+
+  // In a real app, this would come from the auth store
+  const currentUserId = 'user-1'; 
+
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const isLocked = !!task?.activeHandlerId && task.activeHandlerId !== currentUserId;
+  const inputAreaRef = useRef<HTMLDivElement>(null);
+  const isFirstRender = useRef(true);
+
+  useEffect(() => {
+    if (!inputAreaRef.current) return;
+
+    const initialBorderWidth = '1px'; // from 'border-t'
+    const initialPadding = '1rem';    // from 'p-4'
+
+    const target = isLocked
+      ? {
+          y: 20,
+          opacity: 0,
+          maxHeight: 0,
+          paddingTop: 0,
+          paddingBottom: 0,
+          borderTopWidth: 0,
+          pointerEvents: 'none' as const,
+        }
+      : {
+          y: 0,
+          opacity: 1,
+          maxHeight: 500, // Ample room for the input
+          paddingTop: initialPadding,
+          paddingBottom: initialPadding,
+          borderTopWidth: initialBorderWidth,
+          pointerEvents: 'auto' as const,
+        };
+
+    if (reducedMotion) {
+      gsap.set(inputAreaRef.current, target);
+      return;
     }
-  }, [viewMode]);
+    
+    if (isFirstRender.current) {
+      gsap.set(inputAreaRef.current, target);
+      isFirstRender.current = false;
+    } else {
+      gsap.to(inputAreaRef.current, {
+        ...target,
+        duration: 0.35,
+        ease: 'power2.inOut',
+      });
+    }
+  }, [isLocked, reducedMotion]);
 
-  const GroupByDropdown = useCallback(() => (
-    <div className="flex items-center gap-2 shrink-0">
-      <span className="text-sm font-medium text-muted-foreground shrink-0">Group by:</span>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="outline" className="w-[180px] justify-between">
-            {groupOptions.find(o => o.id === groupBy)?.label}
-            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent className="w-[180px]">
-          <DropdownMenuRadioGroup value={groupBy} onValueChange={setGroupBy}>
-            {groupOptions.map(option => (
-              <DropdownMenuRadioItem key={option.id} value={option.id}>
-                {option.label}
-              </DropdownMenuRadioItem>
-            ))}
-          </DropdownMenuRadioGroup>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </div>
-  ), [groupBy, setGroupBy, groupOptions]);
+  if (!taskId || !task) {
+    return (
+        <div className="h-full flex flex-col items-center justify-center p-6 bg-background">
+            <p className="text-muted-foreground">Select a task to see its details.</p>
+        </div>
+    );
+  }
 
-  const isGroupedView = useMemo(() => 
-    groupBy !== 'none' && groupTabs.length > 1 && groupedData,
-  [groupBy, groupTabs.length, groupedData]);
+  const journeyPoints = task.messages.filter(m => m.journeyPoint);
 
+  const handleDotClick = (messageId: string) => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    
+    const element = container.querySelector(`[data-message-id="${messageId}"]`);
+    
+    if (element) {
+      // Using 'center' to avoid the message being at the very top/bottom of the view
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  };
+
+  const handleTakeOver = () => {
+    takeOverTask(task.id, currentUserId);
+    show({
+        variant: 'success',
+        title: 'Task Taken Over',
+        message: `You are now handling the task from ${task.contact.name}.`
+    });
+  };
+
+  const handleRequestTakeover = () => {
+    requestAndSimulateTakeover(task.id, currentUserId);
+    if (task.activeHandler) {
+        show({
+            variant: 'default',
+            title: 'Request Sent',
+            message: `A takeover request has been sent to ${task.activeHandler.name}.`
+        });
+    }
+  };
 
   return (
-    <PageLayout
-      scrollRef={scrollRef}
-      onScroll={handleScroll}
-      // Note: Search functionality is handled by a separate SearchBar in the TopBar
-    >
-      <div className="space-y-8">
-        {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div className="flex-1">
-            <h1 className="text-2xl font-bold tracking-tight">Data Showcase</h1>
-            <p className="text-muted-foreground">
-              {isInitialLoading 
-                ? "Loading projects..." 
-                : `Showing ${dataToRender.length} of ${totalItemCount} item(s)`}
-            </p>
-          </div>
-          <DataViewModeSelector />
-        </div>
-
-        {/* Stats Section */}
-        {!isInitialLoading && (
-          <div ref={statsRef} className="grid grid-cols-[repeat(auto-fit,minmax(250px,1fr))] gap-6">
-            {stats.map((stat) => (
-              <StatCard
-                key={stat.title}
-                title={stat.title}
-                value={stat.value}
-                change={stat.change}
-                trend={stat.trend}
-                icon={stat.icon}
-                chartData={stat.type === 'chart' ? stat.chartData : undefined}
-              />
-            ))}
-          </div>
+    <div className="h-full flex flex-col bg-background overflow-hidden">
+      {isLocked && task.activeHandler && (
+        <TakeoverBanner
+            activeHandler={task.activeHandler}
+            isRequesting={!!task.takeoverRequested}
+            onTakeOver={handleTakeOver}
+            onRequestTakeover={handleRequestTakeover}
+        />
+      )}
+      <div 
+        ref={scrollContainerRef} 
+        className="relative flex-1 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+      >
+        <ActivityFeed messages={task.messages} contact={task.contact} />
+        {journeyPoints.length > 0 && (
+            <JourneyScrollbar
+                scrollContainerRef={scrollContainerRef}
+                journeyPoints={journeyPoints}
+                onDotClick={handleDotClick}
+            />
         )}
-
-        {/* Controls Area */}
-        <div className="space-y-6">
-          <DataToolbar />
-        </div>
-
-        <div className="min-h-[500px]">
-          {isInitialLoading 
-            ? <AnimatedLoadingSkeleton viewMode={viewMode} /> 
-            : !isGroupedView ? (
-              // Not grouped view
-              <>
-                <div className="flex items-center justify-between gap-4 h-[68px]">
-                  <div className="flex-grow border-b" /> {/* Mimic tab border */}
-                  <GroupByDropdown />
-                </div>
-                {renderViewForData(allItems)}
-              </>
-            ) : (
-              // Grouped view with AnimatedTabs
-              <div className="relative">
-                <AnimatedTabs
-                  tabs={groupTabs}
-                  activeTab={activeGroupTab}
-                  onTabChange={setActiveGroupTab}
-                  wrapperClassName="flex flex-col"
-                  className="border-b"
-                  contentClassName="pt-6 flex-grow"
-                >
-                  {groupTabs.map(tab => (
-                    <div key={tab.id} className="min-h-[440px]">
-                      {renderViewForData(
-                        tab.id === 'all' ? allItems : groupedData?.[tab.id] || []
-                      )}
-                    </div>
-                  ))}
-                </AnimatedTabs>
-                <div className="absolute top-[14px] right-0">
-                    <GroupByDropdown />
-                </div>
-              </div>
-            )
-          }
-        </div>
-
-        {/* Loader for infinite scroll */}
-        <div ref={loaderRef} className="flex justify-center items-center py-6">
-          {isLoading && !isInitialLoading && groupBy === 'none' && (
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <Loader2 className="w-5 h-5 animate-spin" />
-              <span>Loading more...</span>
-            </div>
-          )}
-          {!isLoading && !hasMore && dataToRender.length > 0 && !isInitialLoading && groupBy === 'none' && (
-            <p className="text-muted-foreground">You've reached the end.</p>
-          )}
-        </div>
       </div>
-      <ScrollToBottomButton isVisible={showScrollToBottom} onClick={scrollToBottom} />
-    </PageLayout>
-  )
+
+      {/* Input Form */}
+      <div ref={inputAreaRef} className="p-4 border-t flex-shrink-0 bg-background/50">
+        <Tabs defaultValue="comment" className="w-full" >
+          <TabsList className="grid w-full grid-cols-2 mb-2">
+            <TabsTrigger value="comment" disabled={isLocked}>Comment</TabsTrigger>
+            <TabsTrigger value="note" disabled={isLocked}><StickyNote className="w-4 h-4 mr-2" />Internal Note</TabsTrigger>
+          </TabsList>
+          <TabsContent value="comment">
+             <div className="relative">
+                <Textarea placeholder={isLocked ? "Take over to reply..." : `Reply to ${task.contact.name}...`} className="pr-24 min-h-[52px]" disabled={isLocked} />
+                <div className="absolute right-2 top-2 flex items-center gap-1">
+                    <Button variant="ghost" size="icon" className="rounded-full h-8 w-8" disabled={isLocked}><Smile className="w-4 h-4" /></Button>
+                    <Button variant="ghost" size="icon" className="rounded-full h-8 w-8" disabled={isLocked}><Paperclip className="w-4 h-4" /></Button>
+                    <Button size="icon" className="rounded-full h-8 w-8" disabled={isLocked}><SendHorizontal className="w-4 h-4" /></Button>
+                </div>
+            </div>
+          </TabsContent>
+          <TabsContent value="note">
+            <div className="relative">
+                <Textarea placeholder={isLocked ? "Take over to add a note..." : "Add an internal note..."} className="pr-24 min-h-[52px] bg-yellow-400/10 border-yellow-400/30 focus-visible:ring-yellow-500" disabled={isLocked} />
+                <div className="absolute right-2 top-2 flex items-center gap-1">
+                    <Button size="icon" className="rounded-full h-8 w-8" disabled={isLocked}><SendHorizontal className="w-4 h-4" /></Button>
+                </div>
+            </div>
+          </TabsContent>
+        </Tabs>
+      </div>
+    </div>
+  );
+};
+```
+
+## File: src/lib/utils.ts
+```typescript
+import { type ClassValue, clsx } from "clsx"
+import { twMerge } from "tailwind-merge"
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs))
 }
 
-export default function DataDemoPage() {
-  return <DataDemoContent />;
+export const SIDEBAR_STATES = {
+  HIDDEN: 'hidden',
+  COLLAPSED: 'collapsed', 
+  EXPANDED: 'expanded',
+  PEEK: 'peek'
+} as const
+
+export const BODY_STATES = {
+  NORMAL: 'normal',
+  FULLSCREEN: 'fullscreen',
+  SIDE_PANE: 'side_pane',
+  SPLIT_VIEW: 'split_view'
+} as const
+
+export type SidebarState = typeof SIDEBAR_STATES[keyof typeof SIDEBAR_STATES]
+export type BodyState = typeof BODY_STATES[keyof typeof BODY_STATES]
+
+export function capitalize(str: string): string {
+  if (!str) return str
+  return str.charAt(0).toUpperCase() + str.slice(1)
 }
+
+export const getStatusColor = (status: string) => {
+  switch (status) {
+    case 'active': return 'bg-green-500/20 text-green-700 border-green-500/30'
+    case 'pending': return 'bg-yellow-500/20 text-yellow-700 border-yellow-500/30'
+    case 'completed': return 'bg-blue-500/20 text-blue-700 border-blue-500/30'
+    case 'archived': return 'bg-gray-500/20 text-gray-700 border-gray-500/30'
+    default: return 'bg-gray-500/20 text-gray-700 border-gray-500/30'
+  }
+}
+
+export const getPriorityColor = (priority: string) => {
+  switch (priority) {
+    case 'critical': return 'bg-red-500/20 text-red-700 border-red-500/30'
+    case 'high': return 'bg-orange-500/20 text-orange-700 border-orange-500/30'
+    case 'medium': return 'bg-blue-500/20 text-blue-700 border-blue-500/30'
+    case 'low': return 'bg-green-500/20 text-green-700 border-green-500/30'
+    default: return 'bg-gray-500/20 text-gray-700 border-gray-500/30'
+  }
+}
+```
+
+## File: src/pages/Messaging/types.ts
+```typescript
+import type { LucideIcon } from "lucide-react";
+
+export type Channel = 'whatsapp' | 'instagram' | 'facebook' | 'email';
+
+export interface ChannelIcon {
+  Icon: LucideIcon;
+  color: string;
+}
+
+export interface Contact {
+  id: string;
+  name:string;
+  avatar: string;
+  online: boolean;
+  tags: string[];
+  email: string;
+  phone: string;
+  lastSeen: string;
+  company: string;
+  role: string;
+  activity: ActivityEvent[];
+  notes: Note[];
+}
+
+export interface Assignee {
+  id: string;
+  name: string;
+  avatar: string;
+  type: 'human' | 'ai';
+}
+
+export type ActivityEventType = 'note' | 'call' | 'email' | 'meeting';
+
+export interface ActivityEvent {
+  id: string;
+  type: ActivityEventType;
+  content: string;
+  timestamp: string;
+}
+export interface Note {
+  id: string;
+  content: string;
+  createdAt: string;
+}
+
+export type JourneyPointType = 'Consult' | 'Order' | 'Complain' | 'Reorder';
+
+export interface Message {
+  id: string;
+  text: string;
+  timestamp: string;
+  sender: 'user' | 'contact' | 'system';
+  type: 'comment' | 'note' | 'system';
+  read: boolean;
+  userId?: string; // for notes or system messages from users
+  journeyPoint?: JourneyPointType;
+}
+
+export interface AISummary {
+  sentiment: 'positive' | 'negative' | 'neutral';
+  summaryPoints: string[];
+  suggestedReplies: string[];
+}
+
+export type TaskStatus = 'open' | 'in-progress' | 'done' | 'snoozed';
+export type TaskPriority = 'none' | 'low' | 'medium' | 'high';
+
+export interface Task {
+  id: string;
+  title: string;
+  contactId: string;
+  channel: Channel;
+  unreadCount: number;
+  lastActivity: Message;
+  messages: Message[];
+  status: TaskStatus;
+  assigneeId: string | null;
+  dueDate: string | null;
+  priority: TaskPriority;
+  tags: string[];
+  aiSummary: AISummary;
+  activeHandlerId: string | null;
+  takeoverRequested?: boolean;
+}
+
+export type TaskView = 'all_open' | 'unassigned' | 'done';
 ```

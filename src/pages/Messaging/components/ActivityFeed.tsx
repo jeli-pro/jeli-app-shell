@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { forwardRef } from 'react';
 import { useMessagingStore } from '../store/messaging.store';
 import type { Message, Contact, Assignee } from '../types';
 import { cn } from '@/lib/utils';
@@ -11,17 +11,17 @@ interface ActivityFeedProps {
   contact: Contact;
 }
 
-export const ActivityFeed: React.FC<ActivityFeedProps> = ({ messages, contact }) => {
+export const ActivityFeed = forwardRef<HTMLDivElement, ActivityFeedProps>(({ messages, contact }, ref) => {
   const getAssigneeById = useMessagingStore(state => state.getAssigneeById);
 
   return (
-    <div className="flex-1 overflow-y-auto p-6 space-y-6">
+    <div ref={ref} className="flex-1 overflow-y-auto p-6 space-y-6 no-scrollbar">
       {messages.map((message) => {
         const assignee = message.userId ? getAssigneeById(message.userId) : null;
         
         if (message.type === 'system') {
           return (
-            <div key={message.id} className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+            <div key={message.id} data-message-id={message.id} className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
               <Info className="w-3.5 h-3.5" />
               <p>{message.text}</p>
               <p className="whitespace-nowrap">{formatDistanceToNow(new Date(message.timestamp), { addSuffix: true })}</p>
@@ -31,7 +31,7 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({ messages, contact })
 
         if (message.type === 'note') {
           return (
-            <div key={message.id} className="flex items-start gap-3">
+            <div key={message.id} data-message-id={message.id} className="flex items-start gap-3">
               <div className="p-1.5 bg-yellow-400/20 text-yellow-600 rounded-full mt-1.5">
                 <StickyNote className="w-4 h-4" />
               </div>
@@ -45,12 +45,12 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({ messages, contact })
                 </div>
               </div>
             </div>
-          )
+          );
         }
 
         // Default: 'comment' type
         return (
-          <div key={message.id} className={cn(
+          <div key={message.id} data-message-id={message.id} className={cn(
             "flex items-end gap-3",
             message.sender === 'user' ? 'justify-end' : 'justify-start'
           )}>
@@ -69,8 +69,10 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({ messages, contact })
               <p className="text-sm">{message.text}</p>
             </div>
           </div>
-        )
+        );
       })}
     </div>
   );
-};
+});
+
+ActivityFeed.displayName = 'ActivityFeed';

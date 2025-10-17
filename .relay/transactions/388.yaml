@@ -1,0 +1,493 @@
+uuid: d8e5e1a9-34b7-4c4c-8302-3f1915904de1
+projectId: jeli-app-shell
+createdAt: '2025-10-17T09:26:21.747Z'
+gitCommitMsg: >-
+  feat(messaging): integrate journey scrollbar into task view
+
+  Integrates the `JourneyScrollbar` component into the `TaskDetail` page,
+  completing the feature implementation.
+
+  - `ActivityFeed` is refactored to use `forwardRef` and accept a ref for
+    its scrollable container. Messages are now tagged with a
+    `data-message-id` attribute.
+  - The native scrollbar on the `ActivityFeed` is now hidden. - `TaskDetail` now
+  orchestrates the `ActivityFeed` and `JourneyScrollbar`,
+    placing them in a relative layout container.
+  - A click handler is implemented to smoothly scroll the feed to the
+    message corresponding to a clicked journey dot.
+promptSummary: >-
+  Create a custom scrollbar for the messaging view that displays key "journey
+  points" as interactive dots. These dots show a message preview on hover and
+  scroll to the message on click.
+reasoning:
+  - Executing Part 3.
+  - >-
+    I'm now integrating the `JourneyScrollbar` into our messaging UI. This
+    involves a few coordinated changes.
+  - >-
+    First, I'll modify the `ActivityFeed` component. It needs to accept a `ref`
+    from its parent so we can control its scroll position. I'll also add a
+    `data-message-id` attribute to each message element, turning them into
+    targets for our scroll-to-click functionality. Finally, I'll apply a
+    `no-scrollbar` class to hide the default browser scrollbar, making way for
+    our custom solution.
+  - >-
+    Next, I'll update the `TaskDetail` component, which orchestrates the layout.
+    I will wrap the `ActivityFeed` in a `div` with relative positioning; this
+    creates a container for our absolutely positioned `JourneyScrollbar`. I'll
+    then implement the logic to handle clicks on the journey dots, using
+    `scrollIntoView` to smoothly navigate the user to the corresponding message.
+    With these pieces connected, the custom scrollbar will be fully integrated
+    and functional.
+  - '### Step 1: Update `ActivityFeed` for Integration'
+  - >-
+    I'm refactoring `ActivityFeed` to accept a forwarded ref, adding data
+    attributes to messages for targeting, and hiding the native scrollbar.
+  - '### Step 2: Integrate `JourneyScrollbar` into `TaskDetail`'
+  - >-
+    I am now placing the `JourneyScrollbar` alongside the `ActivityFeed` in
+    `TaskDetail` and wiring up the necessary refs and handlers.
+operations:
+  - type: write
+    path: src/pages/Messaging/components/ActivityFeed.tsx
+    content: >+
+      --- src/pages/Messaging/components/ActivityFeed.tsx
+
+      +++ src/pages/Messaging/components/ActivityFeed.tsx
+
+      @@ -1,4 +1,4 @@
+
+      -import React from 'react';
+
+      +import React, { forwardRef } from 'react';
+       import { useMessagingStore } from '../store/messaging.store';
+       import type { Message, Contact, Assignee } from '../types';
+       import { cn } from '@/lib/utils';
+      @@ -11,46 +11,47 @@
+         contact: Contact;
+       }
+       
+      -export const ActivityFeed: React.FC<ActivityFeedProps> = ({ messages,
+      contact }) => {
+
+      +export const ActivityFeed = forwardRef<HTMLDivElement,
+      ActivityFeedProps>(({ messages, contact }, ref) => {
+         const getAssigneeById = useMessagingStore(state => state.getAssigneeById);
+       
+         return (
+      -    <div className="flex-1 overflow-y-auto p-6 space-y-6">
+
+      +    <div ref={ref} className="flex-1 overflow-y-auto p-6 space-y-6
+      no-scrollbar">
+             {messages.map((message) => {
+               const assignee = message.userId ? getAssigneeById(message.userId) : null;
+               
+               if (message.type === 'system') {
+                 return (
+      -            <div key={message.id} className="flex items-center
+      justify-center gap-2 text-xs text-muted-foreground">
+
+      +            <div key={message.id} data-message-id={message.id}
+      className="flex items-center justify-center gap-2 text-xs
+      text-muted-foreground">
+                     <Info className="w-3.5 h-3.5" />
+                     <p>{message.text}</p>
+                     <p className="whitespace-nowrap">{formatDistanceToNow(new Date(message.timestamp), { addSuffix: true })}</p>
+                   </div>
+                 );
+               }
+       
+               if (message.type === 'note') {
+                 return (
+      -            <div key={message.id} className="flex items-start gap-3">
+
+      +            <div key={message.id} data-message-id={message.id}
+      className="flex items-start gap-3">
+                     <div className="p-1.5 bg-yellow-400/20 text-yellow-600 rounded-full mt-1.5">
+                       <StickyNote className="w-4 h-4" />
+                     </div>
+                     <div className="flex-1">
+                       <div className="flex items-center gap-2 mb-1">
+                         <p className="font-semibold text-sm">{assignee?.name || 'User'}</p>
+                         <p className="text-xs text-muted-foreground">{formatDistanceToNow(new Date(message.timestamp), { addSuffix: true })}</p>
+                       </div>
+                       <div className="bg-card border rounded-lg p-3 text-sm">
+                         <p>{message.text}</p>
+                       </div>
+                     </div>
+                   </div>
+      -          )
+
+      +          );
+               }
+       
+               // Default: 'comment' type
+               return (
+      -          <div key={message.id} className={cn(
+
+      +          <div key={message.id} data-message-id={message.id}
+      className={cn(
+                   "flex items-end gap-3",
+                   message.sender === 'user' ? 'justify-end' : 'justify-start'
+                 )}>
+      @@ -69,9 +70,11 @@
+                     <p className="text-sm">{message.text}</p>
+                   </div>
+                 </div>
+      -        )
+
+      +        );
+             })}
+           </div>
+         );
+      -};
+
+      +});
+
+      +
+
+      +ActivityFeed.displayName = 'ActivityFeed';
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/Messaging/components/TaskDetail.tsx
+    content: >+
+      --- src/pages/Messaging/components/TaskDetail.tsx
+
+      +++ src/pages/Messaging/components/TaskDetail.tsx
+
+      @@ -8,6 +8,7 @@
+       import { TakeoverBanner } from './TakeoverBanner';
+       import { useToast } from '@/components/ui/toast';
+       import { gsap } from 'gsap';
+       import { useAppShellStore } from '@/store/appShell.store';
+      +import { JourneyScrollbar } from './JourneyScrollbar';
+       
+       
+       export const TaskDetail: React.FC = () => {
+      @@ -19,6 +20,7 @@
+         // In a real app, this would come from the auth store
+         const currentUserId = 'user-1'; 
+       
+      +  const scrollContainerRef = useRef<HTMLDivElement>(null);
+         const isLocked = !!task?.activeHandlerId && task.activeHandlerId !== currentUserId;
+         const inputAreaRef = useRef<HTMLDivElement>(null);
+         const isFirstRender = useRef(true);
+      @@ -64,6 +66,20 @@
+           );
+         }
+       
+      +  const journeyPoints = task.messages.filter(m => m.journeyPoint);
+
+      +
+
+      +  const handleDotClick = (messageId: string) => {
+
+      +    const container = scrollContainerRef.current;
+
+      +    if (!container) return;
+
+      +    
+
+      +    const element =
+      container.querySelector(`[data-message-id="${messageId}"]`);
+
+      +    
+
+      +    if (element) {
+
+      +      // Using 'center' to avoid the message being at the very top/bottom
+      of the view
+
+      +      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+      +    }
+
+      +  };
+
+      +
+         const handleTakeOver = () => {
+           takeOverTask(task.id, currentUserId);
+           show({
+      @@ -93,7 +109,16 @@
+                   onRequestTakeover={handleRequestTakeover}
+               />
+             )}
+      -      <ActivityFeed messages={task.messages} contact={task.contact} />
+
+      +      <div className="relative flex-1 overflow-hidden">
+
+      +        <ActivityFeed ref={scrollContainerRef} messages={task.messages}
+      contact={task.contact} />
+
+      +        {journeyPoints.length > 0 && (
+
+      +            <JourneyScrollbar
+
+      +                scrollContainerRef={scrollContainerRef}
+
+      +                journeyPoints={journeyPoints}
+
+      +                onDotClick={handleDotClick}
+
+      +            />
+
+      +        )}
+
+      +      </div>
+       
+             {/* Input Form */}
+             <div ref={inputAreaRef} className="p-4 border-t flex-shrink-0 bg-background/50">
+
+    patchStrategy: standard-diff
+snapshot:
+  src/pages/Messaging/components/TaskDetail.tsx: >-
+    import React, { useRef, useEffect } from 'react';
+
+    import { useParams } from 'react-router-dom';
+
+    import { useMessagingStore } from '../store/messaging.store';
+
+    import { ActivityFeed } from './ActivityFeed';
+
+    import { Button } from '@/components/ui/button';
+
+    import { Textarea } from '@/components/ui/textarea';
+
+    import { Paperclip, SendHorizontal, Smile, StickyNote } from 'lucide-react';
+
+    import { Tabs, TabsContent, TabsList, TabsTrigger } from
+    "@/components/ui/tabs";
+
+    import { TakeoverBanner } from './TakeoverBanner';
+
+    import { useToast } from '@/components/ui/toast';
+
+    import { gsap } from 'gsap';
+
+    import { useAppShellStore } from '@/store/appShell.store';
+
+
+
+    export const TaskDetail: React.FC = () => {
+      const { conversationId: taskId } = useParams<{ conversationId: string }>();
+      const { show } = useToast();
+      const { getTaskById, takeOverTask, requestAndSimulateTakeover } = useMessagingStore();
+      const reducedMotion = useAppShellStore(s => s.reducedMotion);
+      
+      const task = taskId ? getTaskById(taskId) : undefined;
+
+      // In a real app, this would come from the auth store
+      const currentUserId = 'user-1'; 
+
+      const isLocked = !!task?.activeHandlerId && task.activeHandlerId !== currentUserId;
+      const inputAreaRef = useRef<HTMLDivElement>(null);
+      const isFirstRender = useRef(true);
+
+      useEffect(() => {
+        if (!inputAreaRef.current) return;
+
+        const initialBorderWidth = '1px'; // from 'border-t'
+        const initialPadding = '1rem';    // from 'p-4'
+
+        const target = isLocked
+          ? {
+              y: 20,
+              opacity: 0,
+              maxHeight: 0,
+              paddingTop: 0,
+              paddingBottom: 0,
+              borderTopWidth: 0,
+              pointerEvents: 'none' as const,
+            }
+          : {
+              y: 0,
+              opacity: 1,
+              maxHeight: 500, // Ample room for the input
+              paddingTop: initialPadding,
+              paddingBottom: initialPadding,
+              borderTopWidth: initialBorderWidth,
+              pointerEvents: 'auto' as const,
+            };
+
+        if (reducedMotion) {
+          gsap.set(inputAreaRef.current, target);
+          return;
+        }
+        
+        if (isFirstRender.current) {
+          gsap.set(inputAreaRef.current, target);
+          isFirstRender.current = false;
+        } else {
+          gsap.to(inputAreaRef.current, {
+            ...target,
+            duration: 0.35,
+            ease: 'power2.inOut',
+          });
+        }
+      }, [isLocked, reducedMotion]);
+
+      if (!taskId || !task) {
+        return (
+            <div className="h-full flex flex-col items-center justify-center p-6 bg-background">
+                <p className="text-muted-foreground">Select a task to see its details.</p>
+            </div>
+        );
+      }
+
+      const handleTakeOver = () => {
+        takeOverTask(task.id, currentUserId);
+        show({
+            variant: 'success',
+            title: 'Task Taken Over',
+            message: `You are now handling the task from ${task.contact.name}.`
+        });
+      };
+
+      const handleRequestTakeover = () => {
+        requestAndSimulateTakeover(task.id, currentUserId);
+        if (task.activeHandler) {
+            show({
+                variant: 'default',
+                title: 'Request Sent',
+                message: `A takeover request has been sent to ${task.activeHandler.name}.`
+            });
+        }
+      };
+
+      return (
+        <div className="h-full flex flex-col bg-background overflow-hidden">
+          {isLocked && task.activeHandler && (
+            <TakeoverBanner
+                activeHandler={task.activeHandler}
+                isRequesting={!!task.takeoverRequested}
+                onTakeOver={handleTakeOver}
+                onRequestTakeover={handleRequestTakeover}
+            />
+          )}
+          <ActivityFeed messages={task.messages} contact={task.contact} />
+
+          {/* Input Form */}
+          <div ref={inputAreaRef} className="p-4 border-t flex-shrink-0 bg-background/50">
+            <Tabs defaultValue="comment" className="w-full" >
+              <TabsList className="grid w-full grid-cols-2 mb-2">
+                <TabsTrigger value="comment" disabled={isLocked}>Comment</TabsTrigger>
+                <TabsTrigger value="note" disabled={isLocked}><StickyNote className="w-4 h-4 mr-2" />Internal Note</TabsTrigger>
+              </TabsList>
+              <TabsContent value="comment">
+                 <div className="relative">
+                    <Textarea placeholder={isLocked ? "Take over to reply..." : `Reply to ${task.contact.name}...`} className="pr-24 min-h-[52px]" disabled={isLocked} />
+                    <div className="absolute right-2 top-2 flex items-center gap-1">
+                        <Button variant="ghost" size="icon" className="rounded-full h-8 w-8" disabled={isLocked}><Smile className="w-4 h-4" /></Button>
+                        <Button variant="ghost" size="icon" className="rounded-full h-8 w-8" disabled={isLocked}><Paperclip className="w-4 h-4" /></Button>
+                        <Button size="icon" className="rounded-full h-8 w-8" disabled={isLocked}><SendHorizontal className="w-4 h-4" /></Button>
+                    </div>
+                </div>
+              </TabsContent>
+              <TabsContent value="note">
+                <div className="relative">
+                    <Textarea placeholder={isLocked ? "Take over to add a note..." : "Add an internal note..."} className="pr-24 min-h-[52px] bg-yellow-400/10 border-yellow-400/30 focus-visible:ring-yellow-500" disabled={isLocked} />
+                    <div className="absolute right-2 top-2 flex items-center gap-1">
+                        <Button size="icon" className="rounded-full h-8 w-8" disabled={isLocked}><SendHorizontal className="w-4 h-4" /></Button>
+                    </div>
+                </div>
+              </TabsContent>
+            </Tabs>
+          </div>
+        </div>
+      );
+    };
+  src/pages/Messaging/components/ActivityFeed.tsx: >
+    import React from 'react';
+
+    import { useMessagingStore } from '../store/messaging.store';
+
+    import type { Message, Contact, Assignee } from '../types';
+
+    import { cn } from '@/lib/utils';
+
+    import { Avatar, AvatarFallback, AvatarImage } from
+    '@/components/ui/avatar';
+
+    import { formatDistanceToNow } from 'date-fns';
+
+    import { StickyNote, Info } from 'lucide-react';
+
+
+    interface ActivityFeedProps {
+      messages: Message[];
+      contact: Contact;
+    }
+
+
+    export const ActivityFeed: React.FC<ActivityFeedProps> = ({ messages,
+    contact }) => {
+      const getAssigneeById = useMessagingStore(state => state.getAssigneeById);
+
+      return (
+        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          {messages.map((message) => {
+            const assignee = message.userId ? getAssigneeById(message.userId) : null;
+            
+            if (message.type === 'system') {
+              return (
+                <div key={message.id} className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+                  <Info className="w-3.5 h-3.5" />
+                  <p>{message.text}</p>
+                  <p className="whitespace-nowrap">{formatDistanceToNow(new Date(message.timestamp), { addSuffix: true })}</p>
+                </div>
+              );
+            }
+
+            if (message.type === 'note') {
+              return (
+                <div key={message.id} className="flex items-start gap-3">
+                  <div className="p-1.5 bg-yellow-400/20 text-yellow-600 rounded-full mt-1.5">
+                    <StickyNote className="w-4 h-4" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <p className="font-semibold text-sm">{assignee?.name || 'User'}</p>
+                      <p className="text-xs text-muted-foreground">{formatDistanceToNow(new Date(message.timestamp), { addSuffix: true })}</p>
+                    </div>
+                    <div className="bg-card border rounded-lg p-3 text-sm">
+                      <p>{message.text}</p>
+                    </div>
+                  </div>
+                </div>
+              )
+            }
+
+            // Default: 'comment' type
+            return (
+              <div key={message.id} className={cn(
+                "flex items-end gap-3",
+                message.sender === 'user' ? 'justify-end' : 'justify-start'
+              )}>
+                {message.sender === 'contact' && (
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage src={contact.avatar} />
+                    <AvatarFallback>{contact.name.charAt(0)}</AvatarFallback>
+                  </Avatar>
+                )}
+                <div className={cn(
+                  "max-w-xs md:max-w-md lg:max-w-lg p-3 rounded-2xl",
+                  message.sender === 'user' 
+                    ? 'bg-primary text-primary-foreground rounded-br-none' 
+                    : 'bg-card border rounded-bl-none'
+                )}>
+                  <p className="text-sm">{message.text}</p>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      );
+    };
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 388

@@ -1,0 +1,475 @@
+uuid: d06059fd-d106-4074-a6f9-0351717904aa
+projectId: jeli-app-shell
+createdAt: '2025-10-17T09:24:39.587Z'
+gitCommitMsg: >-
+  feat(messaging): implement content-aware journey scrollbar
+
+  Introduces a new `JourneyScrollbar` component to replace the native browser
+  scrollbar in the messaging thread view. This custom scrollbar enhances
+  navigation in long conversations by providing a visual minimap of key "journey
+  points" (e.g., Order, Complain).
+
+  Key Features: - A draggable thumb for conventional, smooth scrolling. -
+  Clickable dots representing journey point messages, positioned
+    proportionally along the track.
+  - Hovering over a dot displays a tooltip with a message preview. - Clicking a
+  dot smoothly scrolls the activity feed to that message. - Resilient to dynamic
+  content changes using ResizeObserver and
+    MutationObserver.
+
+  Also adds a standard `Tooltip` component to the UI library, which is utilized
+  by the new scrollbar.
+promptSummary: >-
+  Create a custom scrollbar for the messaging view that displays key "journey
+  points" as interactive dots. These dots show a message preview on hover and
+  scroll to the message on click.
+reasoning:
+  - Executing Part 2 of the plan.
+  - >-
+    I'll start by creating a new, reusable `Tooltip` component, as it's the most
+    appropriate UI for showing message previews on hover. This component, though
+    standard for this UI library, was not yet present in the project. After
+    creating it, I'll export it from the main `index.ts` file to make it
+    available throughout the application.
+  - >-
+    Next, I'll build the core feature: the `JourneyScrollbar` component. This
+    component is designed to be a fully functional scrollbar replacement. It
+    will feature a draggable thumb for smooth, continuous scrolling and will
+    also allow users to click the track to jump to a position.
+  - >-
+    The key enhancement is the "journey dots." The component will calculate the
+    positions of important messages and render them as interactive dots on the
+    scrollbar track. Hovering over these dots will trigger the new `Tooltip` to
+    display a preview of the message. Clicking a dot will smoothly scroll the
+    conversation to that exact point. To keep the scrollbar and dots perfectly
+    synchronized with the content, I'm using `ResizeObserver` and
+    `MutationObserver` to detect any changes in the message feed's layout or
+    content.
+  - '### Step 1: Create the `Tooltip` UI Component'
+  - >-
+    First, I'll create the standard `Tooltip` component which is perfect for the
+    hover-preview functionality.
+  - '### Step 2: Export the New `Tooltip` Component'
+  - >-
+    Now, I'll export the new `Tooltip` component from the main `index.ts` to
+    make it accessible.
+  - '### Step 3: Create the `JourneyScrollbar` Component'
+  - This is the main component that provides the custom scrollbar functionality.
+operations:
+  - type: write
+    path: src/components/ui/tooltip.tsx
+    content: |-
+      "use client"
+
+      import * as React from "react"
+      import * as TooltipPrimitive from "@radix-ui/react-tooltip"
+
+      import { cn } from "@/lib/utils"
+
+      const TooltipProvider = TooltipPrimitive.Provider
+
+      const Tooltip = TooltipPrimitive.Root
+
+      const TooltipTrigger = TooltipPrimitive.Trigger
+
+      const TooltipContent = React.forwardRef<
+        React.ElementRef<typeof TooltipPrimitive.Content>,
+        React.ComponentPropsWithoutRef<typeof TooltipPrimitive.Content>
+      >(({ className, sideOffset = 4, ...props }, ref) => (
+        <TooltipPrimitive.Content
+          ref={ref}
+          sideOffset={sideOffset}
+          className={cn(
+            "z-50 overflow-hidden rounded-md border bg-popover px-3 py-1.5 text-sm text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
+            className
+          )}
+          {...props}
+        />
+      ))
+      TooltipContent.displayName = TooltipPrimitive.Content.displayName
+
+      export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider }
+    patchStrategy: replace
+  - type: write
+    path: src/index.ts
+    content: |+
+      --- src/index.ts
+      +++ src/index.ts
+      @@ -43,6 +43,7 @@
+       export * from './components/ui/popover';
+       export * from './components/ui/tabs';
+       export * from './components/ui/toast';
+      +export * from './components/ui/tooltip';
+       export { AnimatedTabs } from './components/ui/animated-tabs';
+       
+       // Effects Components
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/Messaging/components/JourneyScrollbar.tsx
+    content: >-
+      import React, { useState, useEffect, useRef, useCallback } from 'react';
+
+      import type { Message } from '../types';
+
+      import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from
+      '@/components/ui/tooltip';
+
+
+      interface JourneyScrollbarProps {
+        scrollContainerRef: React.RefObject<HTMLDivElement>;
+        journeyPoints: Message[];
+        onDotClick: (messageId: string) => void;
+      }
+
+
+      interface DotPosition {
+        id: string;
+        topPercentage: number;
+        message: Message;
+      }
+
+
+      export const JourneyScrollbar: React.FC<JourneyScrollbarProps> = ({
+        scrollContainerRef,
+        journeyPoints,
+        onDotClick,
+      }) => {
+        const [thumbStyle, setThumbStyle] = useState({ top: 0, height: 0 });
+        const [dotPositions, setDotPositions] = useState<DotPosition[]>([]);
+        const trackRef = useRef<HTMLDivElement>(null);
+        const isDraggingRef = useRef(false);
+        const startYRef = useRef(0);
+        const startScrollTopRef = useRef(0);
+
+        const calculateDotPositions = useCallback(() => {
+          const container = scrollContainerRef.current;
+          if (!container || journeyPoints.length === 0) return;
+
+          const { scrollHeight } = container;
+          if (scrollHeight === 0) return;
+
+          const newPositions: DotPosition[] = journeyPoints
+            .map(point => {
+              const element = container.querySelector(`[data-message-id="${point.id}"]`) as HTMLElement;
+              if (element) {
+                const topPercentage = (element.offsetTop / scrollHeight) * 100;
+                return {
+                  id: point.id,
+                  topPercentage,
+                  message: point,
+                };
+              }
+              return null;
+            })
+            .filter((p): p is DotPosition => p !== null);
+
+          setDotPositions(currentPositions => {
+              if (JSON.stringify(newPositions) !== JSON.stringify(currentPositions)) {
+                  return newPositions;
+              }
+              return currentPositions;
+          });
+        }, [journeyPoints, scrollContainerRef]);
+
+        const updateThumb = useCallback(() => {
+          const container = scrollContainerRef.current;
+          if (!container) return;
+
+          const { scrollTop, scrollHeight, clientHeight } = container;
+          
+          if (scrollHeight <= clientHeight) {
+            setThumbStyle({ top: 0, height: 0 });
+            return;
+          }
+
+          const thumbHeight = Math.max((clientHeight / scrollHeight) * clientHeight, 20);
+          const thumbTop = (scrollTop / (scrollHeight - clientHeight)) * (clientHeight - thumbHeight);
+          
+          setThumbStyle({ top: thumbTop, height: thumbHeight });
+          
+        }, [scrollContainerRef]);
+
+        useEffect(() => {
+          const container = scrollContainerRef.current;
+          if (container) {
+            const handleScroll = () => {
+              updateThumb();
+            };
+            updateThumb();
+            calculateDotPositions();
+            container.addEventListener('scroll', handleScroll);
+            return () => container.removeEventListener('scroll', handleScroll);
+          }
+        }, [scrollContainerRef, updateThumb, calculateDotPositions]);
+
+        useEffect(() => {
+          const container = scrollContainerRef.current;
+          if (!container) return;
+
+          const observerCallback = () => {
+              updateThumb();
+              calculateDotPositions();
+          };
+
+          const resizeObserver = new ResizeObserver(observerCallback);
+          resizeObserver.observe(container);
+
+          const mutationObserver = new MutationObserver(observerCallback);
+          mutationObserver.observe(container, { childList: true, subtree: true, characterData: true });
+
+          return () => {
+              resizeObserver.disconnect();
+              mutationObserver.disconnect();
+          };
+        }, [calculateDotPositions, updateThumb, scrollContainerRef]);
+
+        const handleMouseMove = useCallback((e: MouseEvent) => {
+          if (!isDraggingRef.current || !scrollContainerRef.current || !trackRef.current) return;
+          
+          const container = scrollContainerRef.current;
+          const { scrollHeight, clientHeight } = container;
+          const trackHeight = trackRef.current.clientHeight;
+          
+          const deltaY = e.clientY - startYRef.current;
+          
+          const scrollableDist = scrollHeight - clientHeight;
+          const draggableDist = trackHeight - thumbStyle.height;
+
+          if (draggableDist <= 0) return;
+
+          const scrollRatio = deltaY / draggableDist;
+          
+          container.scrollTop = startScrollTopRef.current + (scrollRatio * scrollableDist);
+
+        }, [scrollContainerRef, thumbStyle.height]);
+
+        const handleMouseUp = useCallback(() => {
+          isDraggingRef.current = false;
+          document.body.style.cursor = '';
+          document.body.style.userSelect = '';
+          window.removeEventListener('mousemove', handleMouseMove);
+          window.removeEventListener('mouseup', handleMouseUp);
+        }, [handleMouseMove]);
+
+        const handleMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+          e.preventDefault();
+          e.stopPropagation();
+
+          if (!scrollContainerRef.current) return;
+          
+          isDraggingRef.current = true;
+          startYRef.current = e.clientY;
+          startScrollTopRef.current = scrollContainerRef.current.scrollTop;
+          document.body.style.cursor = 'grabbing';
+          document.body.style.userSelect = 'none';
+
+          window.addEventListener('mousemove', handleMouseMove);
+          window.addEventListener('mouseup', handleMouseUp);
+        }, [scrollContainerRef, handleMouseMove, handleMouseUp]);
+        
+        const handleTrackClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+           if (e.target !== e.currentTarget.querySelector('.track-line') && e.target !== e.currentTarget) return;
+
+          const container = scrollContainerRef.current;
+          const track = trackRef.current;
+          if (!container || !track) return;
+          
+          const { scrollHeight, clientHeight } = container;
+          const trackRect = track.getBoundingClientRect();
+          const clickY = e.clientY - trackRect.top;
+          
+          const thumbHeight = Math.max((clientHeight / scrollHeight) * clientHeight, 20);
+          const clickRatio = (clickY - thumbHeight / 2) / (trackRect.height - thumbHeight);
+          
+          container.scrollTop = (scrollHeight - clientHeight) * Math.max(0, Math.min(1, clickRatio));
+          
+        }, [scrollContainerRef]);
+
+        return (
+          <div
+            ref={trackRef}
+            className="absolute top-0 right-0 h-full w-4 py-1 z-10"
+            onMouseDown={handleTrackClick}
+          >
+              <TooltipProvider delayDuration={100}>
+                  <div className="relative h-full w-full">
+                      {/* Track Line */}
+                      <div className="track-line absolute top-0 left-1/2 -translate-x-1/2 h-full w-[1.5px] bg-border rounded-full" />
+                      
+                      {/* Thumb */}
+                      {thumbStyle.height > 0 && (
+                      <div
+                          className="absolute left-1/2 -translate-x-1/2 w-1.5 bg-muted-foreground/60 hover:bg-muted-foreground rounded-full cursor-grab active:cursor-grabbing"
+                          style={{ top: `${thumbStyle.top}px`, height: `${thumbStyle.height}px` }}
+                          onMouseDown={handleMouseDown}
+                      />
+                      )}
+
+                      {/* Journey Dots */}
+                      {dotPositions.map((pos) => (
+                      <Tooltip key={pos.id}>
+                          <TooltipTrigger asChild>
+                          <button
+                              onClick={(e) => { e.stopPropagation(); onDotClick(pos.id); }}
+                              className="absolute left-1/2 -translate-x-1/2 -translate-y-1/2 w-3 h-3 bg-background border-2 border-primary rounded-full focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background transition-transform hover:scale-125"
+                              style={{ top: `${pos.topPercentage}%` }}
+                              aria-label={`Jump to message: ${pos.message.text.substring(0, 30)}...`}
+                          />
+                          </TooltipTrigger>
+                          <TooltipContent side="left" className="text-sm p-2 w-auto max-w-xs shadow-xl" sideOffset={8}>
+                          <p className="line-clamp-3">{pos.message.text}</p>
+                          </TooltipContent>
+                      </Tooltip>
+                      ))}
+                  </div>
+              </TooltipProvider>
+          </div>
+        );
+      };
+    patchStrategy: replace
+snapshot:
+  src/components/ui/tooltip.tsx: null
+  src/pages/Messaging/components/JourneyScrollbar.tsx: null
+  src/index.ts: >-
+    // Context
+
+    export { AppShellProvider } from './providers/AppShellProvider';
+
+    export { useAppShellStore } from './store/appShell.store';
+
+
+    // Layout Components
+
+    export { AppShell } from './components/layout/AppShell';
+
+    export { MainContent } from './components/layout/MainContent';
+
+    export { ViewModeSwitcher } from './components/layout/ViewModeSwitcher';
+
+    export { RightPane } from './components/layout/RightPane';
+
+    export { TopBar } from './components/layout/TopBar';
+
+    export { UserDropdown } from './components/layout/UserDropdown';
+
+    export { Workspaces as WorkspaceProvider, WorkspaceTrigger, WorkspaceContent
+    } from './components/layout/WorkspaceSwitcher';
+
+
+    // Sidebar Primitives
+
+    export {
+      Sidebar,
+      SidebarBody,
+      SidebarContent,
+      SidebarFooter,
+      SidebarHeader,
+      SidebarSection,
+      SidebarTitle,
+      SidebarMenuItem,
+      SidebarMenuButton,
+      SidebarMenuAction,
+      SidebarLabel,
+      SidebarBadge,
+      SidebarTooltip,
+      SidebarIcon,
+      useSidebar,
+    } from './components/layout/Sidebar';
+
+
+    // Shared Components
+
+    export { ContentInSidePanePlaceholder } from
+    './components/shared/ContentInSidePanePlaceholder';
+
+    export { PageHeader } from './components/shared/PageHeader';
+
+    export { PageLayout } from './components/shared/PageLayout';
+
+
+    // Feature Components
+
+    export { SettingsContent } from './features/settings/SettingsContent';
+
+    export { SettingsSection } from './features/settings/SettingsSection';
+
+    export { SettingsToggle } from './features/settings/SettingsToggle';
+
+    export { LoginPage } from './components/auth/LoginPage';
+
+
+    // UI Components
+
+    export * from './components/ui/avatar';
+
+    export * from './components/ui/badge';
+
+    export * from './components/ui/button';
+
+    export * from './components/ui/card';
+
+    export * from './components/ui/command';
+
+    export * from './components/ui/dialog';
+
+    export * from './components/ui/dropdown-menu';
+
+    export * from './components/ui/input';
+
+    export * from './components/ui/label';
+
+    export * from './components/ui/popover';
+
+    export * from './components/ui/tabs';
+
+    export * from './components/ui/toast';
+
+    export { AnimatedTabs } from './components/ui/animated-tabs';
+
+
+    // Effects Components
+
+    export { AnimatedInput } from './components/effects/AnimatedInput';
+
+    export { BottomGradient } from './components/effects/BottomGradient';
+
+    export { BoxReveal } from './components/effects/BoxReveal';
+
+    export { OrbitingCircles, TechOrbitDisplay } from
+    './components/effects/OrbitingCircles';
+
+    export { Ripple } from './components/effects/Ripple';
+
+
+
+    // Global Components
+
+    export { CommandPalette } from './components/global/CommandPalette';
+
+
+    // Hooks
+
+    export { useAutoAnimateTopBar } from './hooks/useAutoAnimateTopBar';
+
+    export { useCommandPaletteToggle } from
+    './hooks/useCommandPaletteToggle.hook';
+
+
+    // Lib
+
+    export * from './lib/utils';
+
+
+    // Store
+
+    export type { ActivePage } from './store/appShell.store';
+
+    export { useAuthStore } from './store/authStore';
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 387
