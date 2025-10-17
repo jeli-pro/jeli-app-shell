@@ -32,12 +32,14 @@
     // "postcss.config.js",
     // "index.html",
     // "src"
-    "src/App.tsx",
-    "src/components/layout/AppShell.tsx",
-    "src/hooks/useAppViewManager.hook.ts",
-    "src/hooks/usePageViewConfig.hook.ts",
-    "src/pages/Messaging/index.tsx",
-    "src/store/appShell.store.ts"
+    //
+    "package.json",
+    "src/lib/utils.ts",
+    "src/pages/Messaging/components/ActivityPanel.tsx",
+    "src/pages/Messaging/components/MessagingContent.tsx",
+    "src/pages/Messaging/types.ts",
+    "tailwind.config.js"
+
     // //
     //
     //
