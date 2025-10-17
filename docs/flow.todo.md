@@ -4,6 +4,10 @@ I am obsessed with laravel filament... so make everything about data demo page i
 
 ===
 
+data demo page: create calendar view mode with amazing UI... at least like below ex:
+
+=== DONE
+
 1. the kanban view mode should also has grouping selector just like other view mode
 2. also make sure the kanban is horizontally scrollable for extensive data group
 

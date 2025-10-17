@@ -159,6 +159,147 @@ CardFooter.displayName = "CardFooter"
 export { Card, CardHeader, CardFooter, CardTitle, CardDescription, CardContent }
 ```
 
+## File: src/components/ui/badge.tsx
+```typescript
+import * as React from "react"
+import { cva, type VariantProps } from "class-variance-authority"
+
+import { cn } from "@/lib/utils"
+
+const badgeVariants = cva(
+  "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+  {
+    variants: {
+      variant: {
+        default:
+          "border-transparent bg-primary text-primary-foreground hover:bg-primary/80",
+        secondary:
+          "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80",
+        destructive:
+          "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80",
+        outline: "text-foreground",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+    },
+  },
+)
+
+export interface BadgeProps
+  extends React.HTMLAttributes<HTMLDivElement>,
+    VariantProps<typeof badgeVariants> {}
+
+function Badge({ className, variant, ...props }: BadgeProps) {
+  return (
+    <div className={cn(badgeVariants({ variant }), className)} {...props} />
+  )
+}
+
+// eslint-disable-next-line react-refresh/only-export-components
+export { Badge, badgeVariants }
+```
+
+## File: src/pages/DataDemo/components/shared/DataItemParts.tsx
+```typescript
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Badge } from '@/components/ui/badge'
+import { cn, getStatusColor, getPriorityColor } from '@/lib/utils'
+import { Clock, Eye, Heart, Share } from 'lucide-react'
+import type { DataItem } from '../../types'
+
+export function ItemStatusBadge({ status }: { status: DataItem['status'] }) {
+  return (
+    <Badge variant="outline" className={cn("font-medium", getStatusColor(status))}>
+      {status.charAt(0).toUpperCase() + status.slice(1)}
+    </Badge>
+  )
+}
+
+export function ItemPriorityBadge({ priority }: { priority: DataItem['priority'] }) {
+  return (
+    <Badge variant="outline" className={cn("font-medium", getPriorityColor(priority))}>
+      {priority.charAt(0).toUpperCase() + priority.slice(1)}
+    </Badge>
+  )
+}
+
+export function AssigneeInfo({
+  assignee,
+  avatarClassName = "w-8 h-8",
+}: {
+  assignee: DataItem['assignee']
+  avatarClassName?: string
+}) {
+  return (
+    <div className="flex items-center gap-2 group">
+      <Avatar className={cn("border-2 border-transparent group-hover:border-primary/50 transition-colors", avatarClassName)}>
+        <AvatarImage src={assignee.avatar} alt={assignee.name} />
+        <AvatarFallback>{assignee.name.charAt(0)}</AvatarFallback>
+      </Avatar>
+      <div className="min-w-0">
+        <p className="font-medium text-sm truncate">{assignee.name}</p>
+        <p className="text-xs text-muted-foreground truncate">{assignee.email}</p>
+      </div>
+    </div>
+  )
+}
+
+export function ItemMetrics({ metrics }: { metrics: DataItem['metrics'] }) {
+  return (
+    <div className="flex items-center gap-3 text-sm">
+      <div className="flex items-center gap-1"><Eye className="w-4 h-4" /> {metrics.views}</div>
+      <div className="flex items-center gap-1"><Heart className="w-4 h-4" /> {metrics.likes}</div>
+      <div className="flex items-center gap-1"><Share className="w-4 h-4" /> {metrics.shares}</div>
+    </div>
+  )
+}
+
+export function ItemProgressBar({ completion, showPercentage }: { completion: number; showPercentage?: boolean }) {
+  const bar = (
+    <div className="w-full bg-muted rounded-full h-2.5">
+      <div
+        className="bg-gradient-to-r from-primary to-primary/80 h-2.5 rounded-full transition-all duration-500"
+        style={{ width: `${completion}%` }}
+      />
+    </div>
+  );
+
+  if (!showPercentage) return bar;
+
+  return (
+    <div className="flex items-center gap-3">
+      <div className="flex-1 min-w-0">{bar}</div>
+      <span className="text-sm font-medium text-muted-foreground">{completion}%</span>
+    </div>
+  )
+}
+
+export function ItemDateInfo({ date }: { date: string }) {
+  return (
+    <div className="flex items-center gap-1.5 text-sm">
+      <Clock className="w-4 h-4" />
+      <span>{new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+    </div>
+  )
+}
+
+export function ItemTags({ tags }: { tags: string[] }) {
+  const MAX_TAGS = 3
+  const remainingTags = tags.length - MAX_TAGS
+  return (
+    <div className="flex items-center gap-1.5 flex-wrap">
+      {tags.slice(0, MAX_TAGS).map(tag => (
+        <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
+      ))}
+      {remainingTags > 0 && (
+        <Badge variant="outline" className="text-xs">+{remainingTags}</Badge>
+      )}
+    </div>
+  )
+}
+```
+
 ## File: src/pages/DataDemo/components/DataKanbanView.tsx
 ```typescript
 import { useState, useEffect } from "react";
@@ -332,7 +473,7 @@ export function DataKanbanView({ data }: DataKanbanViewProps) {
   };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 items-start gap-6 pb-4">
+    <div className="flex items-start gap-6 pb-4 overflow-x-auto -mx-6 px-6">
       {Object.entries(columns).map(([columnId, items]) => (
         <div
           key={columnId}
@@ -341,7 +482,7 @@ export function DataKanbanView({ data }: DataKanbanViewProps) {
           onDragEnter={() => handleDragEnter(columnId)}
           onDragLeave={() => setDragOverColumn(null)}
           className={cn(
-            "bg-card/20 dark:bg-neutral-900/20 backdrop-blur-xl rounded-3xl p-5 border border-border dark:border-neutral-700/50 transition-all duration-300",
+            "w-80 flex-shrink-0 bg-card/20 dark:bg-neutral-900/20 backdrop-blur-xl rounded-3xl p-5 border border-border dark:border-neutral-700/50 transition-all duration-300",
             dragOverColumn === columnId && "bg-primary/10 border-primary/30"
           )}
         >
@@ -372,147 +513,6 @@ export function DataKanbanView({ data }: DataKanbanViewProps) {
       ))}
     </div>
   );
-}
-```
-
-## File: src/components/ui/badge.tsx
-```typescript
-import * as React from "react"
-import { cva, type VariantProps } from "class-variance-authority"
-
-import { cn } from "@/lib/utils"
-
-const badgeVariants = cva(
-  "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
-  {
-    variants: {
-      variant: {
-        default:
-          "border-transparent bg-primary text-primary-foreground hover:bg-primary/80",
-        secondary:
-          "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        destructive:
-          "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80",
-        outline: "text-foreground",
-      },
-    },
-    defaultVariants: {
-      variant: "default",
-    },
-  },
-)
-
-export interface BadgeProps
-  extends React.HTMLAttributes<HTMLDivElement>,
-    VariantProps<typeof badgeVariants> {}
-
-function Badge({ className, variant, ...props }: BadgeProps) {
-  return (
-    <div className={cn(badgeVariants({ variant }), className)} {...props} />
-  )
-}
-
-// eslint-disable-next-line react-refresh/only-export-components
-export { Badge, badgeVariants }
-```
-
-## File: src/pages/DataDemo/components/shared/DataItemParts.tsx
-```typescript
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Badge } from '@/components/ui/badge'
-import { cn, getStatusColor, getPriorityColor } from '@/lib/utils'
-import { Clock, Eye, Heart, Share } from 'lucide-react'
-import type { DataItem } from '../../types'
-
-export function ItemStatusBadge({ status }: { status: DataItem['status'] }) {
-  return (
-    <Badge variant="outline" className={cn("font-medium", getStatusColor(status))}>
-      {status.charAt(0).toUpperCase() + status.slice(1)}
-    </Badge>
-  )
-}
-
-export function ItemPriorityBadge({ priority }: { priority: DataItem['priority'] }) {
-  return (
-    <Badge variant="outline" className={cn("font-medium", getPriorityColor(priority))}>
-      {priority.charAt(0).toUpperCase() + priority.slice(1)}
-    </Badge>
-  )
-}
-
-export function AssigneeInfo({
-  assignee,
-  avatarClassName = "w-8 h-8",
-}: {
-  assignee: DataItem['assignee']
-  avatarClassName?: string
-}) {
-  return (
-    <div className="flex items-center gap-2 group">
-      <Avatar className={cn("border-2 border-transparent group-hover:border-primary/50 transition-colors", avatarClassName)}>
-        <AvatarImage src={assignee.avatar} alt={assignee.name} />
-        <AvatarFallback>{assignee.name.charAt(0)}</AvatarFallback>
-      </Avatar>
-      <div className="min-w-0">
-        <p className="font-medium text-sm truncate">{assignee.name}</p>
-        <p className="text-xs text-muted-foreground truncate">{assignee.email}</p>
-      </div>
-    </div>
-  )
-}
-
-export function ItemMetrics({ metrics }: { metrics: DataItem['metrics'] }) {
-  return (
-    <div className="flex items-center gap-3 text-sm">
-      <div className="flex items-center gap-1"><Eye className="w-4 h-4" /> {metrics.views}</div>
-      <div className="flex items-center gap-1"><Heart className="w-4 h-4" /> {metrics.likes}</div>
-      <div className="flex items-center gap-1"><Share className="w-4 h-4" /> {metrics.shares}</div>
-    </div>
-  )
-}
-
-export function ItemProgressBar({ completion, showPercentage }: { completion: number; showPercentage?: boolean }) {
-  const bar = (
-    <div className="w-full bg-muted rounded-full h-2.5">
-      <div
-        className="bg-gradient-to-r from-primary to-primary/80 h-2.5 rounded-full transition-all duration-500"
-        style={{ width: `${completion}%` }}
-      />
-    </div>
-  );
-
-  if (!showPercentage) return bar;
-
-  return (
-    <div className="flex items-center gap-3">
-      <div className="flex-1 min-w-0">{bar}</div>
-      <span className="text-sm font-medium text-muted-foreground">{completion}%</span>
-    </div>
-  )
-}
-
-export function ItemDateInfo({ date }: { date: string }) {
-  return (
-    <div className="flex items-center gap-1.5 text-sm">
-      <Clock className="w-4 h-4" />
-      <span>{new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
-    </div>
-  )
-}
-
-export function ItemTags({ tags }: { tags: string[] }) {
-  const MAX_TAGS = 3
-  const remainingTags = tags.length - MAX_TAGS
-  return (
-    <div className="flex items-center gap-1.5 flex-wrap">
-      {tags.slice(0, MAX_TAGS).map(tag => (
-        <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
-      ))}
-      {remainingTags > 0 && (
-        <Badge variant="outline" className="text-xs">+{remainingTags}</Badge>
-      )}
-    </div>
-  )
 }
 ```
 
@@ -1650,8 +1650,20 @@ function DataDemoContent() {
           {isInitialLoading 
             ? <AnimatedLoadingSkeleton viewMode={viewMode} /> 
             : viewMode === 'kanban' ? (
-              isGroupedView ? <DataKanbanView data={groupedData} /> : <div className="flex items-center justify-center h-96 text-muted-foreground">Group data by a metric to use the Kanban view.</div>
-            ) : !isGroupedView ? (
+              <>
+                <div className="flex items-center justify-end gap-4 h-[68px]">
+                  <GroupByDropdown />
+                </div>
+                {isGroupedView ? (
+                  <DataKanbanView data={groupedData} />
+                ) : (
+                  <div className="flex items-center justify-center h-96 text-muted-foreground">
+                    Group data by a metric to use the Kanban view.
+                  </div>
+                )}
+              </>
+            )
+            : !isGroupedView ? (
               // Not grouped view
               <>
                 <div className="flex items-center justify-between gap-4 h-[68px]">

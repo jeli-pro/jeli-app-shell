@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, Fragment } from "react";
 import {
   GripVertical,
   Plus,
@@ -30,6 +30,7 @@ function KanbanCard({ item, isDragging, ...props }: KanbanCardProps & React.HTML
   return (
     <Card
       {...props}
+      data-draggable-id={item.id}
       onClick={() => onItemSelect(item)}
       className={cn(
         "cursor-pointer transition-all duration-300 border bg-card/60 dark:bg-neutral-800/60 backdrop-blur-sm hover:bg-card/70 dark:hover:bg-neutral-700/70 active:cursor-grabbing",
@@ -100,7 +101,7 @@ interface DataKanbanViewProps {
 export function DataKanbanView({ data }: DataKanbanViewProps) {
   const [columns, setColumns] = useState(data);
   const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
-  const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
+  const [dropIndicator, setDropIndicator] = useState<{ columnId: string; index: number } | null>(null);
   const { groupBy } = useAppViewManager();
   const updateItem = useDataDemoStore(s => s.updateItem);
 
@@ -114,20 +115,35 @@ export function DataKanbanView({ data }: DataKanbanViewProps) {
     setDraggedItemId(item.id);
   };
 
-  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
+  const getDropIndicatorIndex = (e: React.DragEvent, elements: HTMLElement[]) => {
+    const mouseY = e.clientY;
+    let closestIndex = elements.length;
+
+    elements.forEach((el, index) => {
+      const { top, height } = el.getBoundingClientRect();
+      const offset = mouseY - (top + height / 2);
+      if (offset < 0 && index < closestIndex) {
+        closestIndex = index;
+      }
+    });
+    return closestIndex;
   };
-  
-  const handleDragEnter = (columnId: string) => {
-    setDragOverColumn(columnId);
-  }
+
+  const handleDragOverCardsContainer = (e: React.DragEvent<HTMLDivElement>, columnId: string) => {
+    e.preventDefault();
+    const container = e.currentTarget;
+    const draggableElements = Array.from(container.querySelectorAll('[data-draggable-id]')) as HTMLElement[];
+    const index = getDropIndicatorIndex(e, draggableElements);
+
+    if (dropIndicator?.columnId === columnId && dropIndicator.index === index) return;
+    setDropIndicator({ columnId, index });
+  };
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>, targetColumnId: string) => {
     e.preventDefault();
-    setDragOverColumn(null);
+    setDropIndicator(null);
     try {
       const { itemId, sourceColumnId } = JSON.parse(e.dataTransfer.getData('text/plain'));
-      if (sourceColumnId === targetColumnId) return;
 
       const droppedItem = columns[sourceColumnId]?.find(i => i.id === itemId);
       if (!droppedItem) return;
@@ -135,13 +151,25 @@ export function DataKanbanView({ data }: DataKanbanViewProps) {
       // Update local state for immediate feedback
       setColumns(prev => {
         const newColumns = { ...prev };
-        newColumns[sourceColumnId] = newColumns[sourceColumnId].filter(i => i.id !== itemId);
-        newColumns[targetColumnId] = [...newColumns[targetColumnId], droppedItem];
+        const sourceCol = prev[sourceColumnId].filter(i => i.id !== itemId);
+
+        if (sourceColumnId === targetColumnId) {
+          const dropIndex = dropIndicator?.columnId === targetColumnId ? dropIndicator.index : sourceCol.length;
+          sourceCol.splice(dropIndex, 0, droppedItem);
+          newColumns[sourceColumnId] = sourceCol;
+        } else {
+          const targetCol = [...prev[targetColumnId]];
+          const dropIndex = dropIndicator?.columnId === targetColumnId ? dropIndicator.index : targetCol.length;
+          targetCol.splice(dropIndex, 0, droppedItem);
+          
+          newColumns[sourceColumnId] = sourceCol;
+          newColumns[targetColumnId] = targetCol;
+        }
         return newColumns;
       });
       
       // Persist change to global store. The groupBy value tells us which property to update.
-      if (groupBy !== 'none') {
+      if (groupBy !== 'none' && sourceColumnId !== targetColumnId) {
         updateItem(itemId, { [groupBy]: targetColumnId } as Partial<DataItem>);
       }
 
@@ -154,7 +182,7 @@ export function DataKanbanView({ data }: DataKanbanViewProps) {
 
   const handleDragEnd = () => {
     setDraggedItemId(null);
-    setDragOverColumn(null);
+    setDropIndicator(null);
   };
 
   const initialColumns = Object.entries(data);
@@ -168,18 +196,16 @@ export function DataKanbanView({ data }: DataKanbanViewProps) {
     low: "bg-green-500", medium: "bg-blue-500", high: "bg-orange-500", critical: "bg-red-500",
   };
 
+  const DropIndicator = () => <div className="h-1 my-2 rounded-full bg-primary/60" />;
+
   return (
     <div className="flex items-start gap-6 pb-4 overflow-x-auto -mx-6 px-6">
       {Object.entries(columns).map(([columnId, items]) => (
         <div
           key={columnId}
-          onDragOver={handleDragOver}
-          onDrop={(e) => handleDrop(e, columnId)}
-          onDragEnter={() => handleDragEnter(columnId)}
-          onDragLeave={() => setDragOverColumn(null)}
           className={cn(
             "w-80 flex-shrink-0 bg-card/20 dark:bg-neutral-900/20 backdrop-blur-xl rounded-3xl p-5 border border-border dark:border-neutral-700/50 transition-all duration-300",
-            dragOverColumn === columnId && "bg-primary/10 border-primary/30"
+            dropIndicator?.columnId === columnId && "bg-primary/10 border-primary/30"
           )}
         >
           <div className="flex items-center justify-between mb-6">
@@ -193,17 +219,29 @@ export function DataKanbanView({ data }: DataKanbanViewProps) {
             </button>
           </div>
 
-          <div className="space-y-4 min-h-[100px]">
-            {items.map((item) => (
-              <KanbanCard 
-                key={item.id} 
-                item={item} 
-                isDragging={draggedItemId === item.id}
-                draggable
-                onDragStart={(e) => handleDragStart(e, item, columnId)}
-                onDragEnd={handleDragEnd}
-              />
+          <div
+            onDragOver={(e) => handleDragOverCardsContainer(e, columnId)}
+            onDrop={(e) => handleDrop(e, columnId)}
+            onDragLeave={() => setDropIndicator(null)}
+            className="space-y-4 min-h-[100px]"
+          >
+            {items.map((item, index) => (
+              <Fragment key={item.id}>
+                {dropIndicator?.columnId === columnId && dropIndicator.index === index && (
+                  <DropIndicator />
+                )}
+                <KanbanCard
+                  item={item}
+                  isDragging={draggedItemId === item.id}
+                  draggable
+                  onDragStart={(e) => handleDragStart(e, item, columnId)}
+                  onDragEnd={handleDragEnd}
+                />
+              </Fragment>
             ))}
+            {dropIndicator?.columnId === columnId && dropIndicator.index === items.length && (
+              <DropIndicator />
+            )}
           </div>
         </div>
       ))}
