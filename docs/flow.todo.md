@@ -25,7 +25,7 @@ split mode view on message page: should always set right pane to default value o
 
 ===
 
-animated tab switcher: while user switch tabs, it should gsap slide left right animate
+modify animated tab switcher: while user switch tabs, the content should gsap slide left right animate... also should not re render content like in datademo
 
 ===
 

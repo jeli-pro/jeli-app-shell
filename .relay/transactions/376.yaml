@@ -1,0 +1,641 @@
+uuid: c32840d2-9907-4f9e-b9ef-d621b1998f45
+projectId: jeli-app-shell
+createdAt: '2025-10-17T05:21:06.793Z'
+gitCommitMsg: >-
+  feat(ui): enhance AnimatedTabs with animated content panes
+
+  Refactored the `AnimatedTabs` component to support content children and
+  provide a smooth, GSAP-powered sliding animation when switching between tabs.
+
+  - `AnimatedTabs` now accepts a `children` prop, rendering each child as
+    a distinct tab panel.
+  - Implemented a horizontal sliding transition using `gsap` for a more
+    fluid user experience.
+  - Ensured backward compatibility; the component functions as before if
+    no children are provided.
+  - Improved accessibility with `role` and `aria-*` attributes. - Updated
+  `MessagingContent` to adopt the new `AnimatedTabs` pattern,
+    replacing conditional rendering with the animated content container.
+    This simplifies the layout logic and improves perceived performance.
+promptSummary: >-
+  I need to refactor the AnimatedTabs component to support animated content
+  panes (sliding left/right with gsap) and then update the MessagingContent
+  component to use this new feature, eliminating conditional rendering and
+  improving the user experience.
+reasoning:
+  - >-
+    Of course. I will refactor the `AnimatedTabs` component to support animated
+    content panes using GSAP, and then update the `MessagingContent` component
+    to use this new functionality. This will provide a smoother, more fluid user
+    experience when switching between tabs.
+  - '### Part 1: Enhance `AnimatedTabs` Component'
+  - >-
+    First, I'll modify the `AnimatedTabs` component. It will now accept
+    `children`, which will serve as the content for each tab. I'll use `gsap` to
+    create a sliding animation between these content panes. The component will
+    remain backward-compatible, so existing implementations without content
+    children will not break. I'm also improving accessibility by adding the
+    appropriate ARIA roles and attributes.
+  - '### Part 2: Refactor `MessagingContent`'
+  - >-
+    Now, I will refactor `MessagingContent` to use the enhanced `AnimatedTabs`.
+    I'll replace the conditional rendering with the new component, passing the
+    panels as children. This simplifies the component's logic and enables the
+    smooth sliding animation between contact details, AI insights, activity, and
+    notes.
+operations:
+  - type: write
+    path: src/components/ui/animated-tabs.tsx
+    content: >+
+      --- src/components/ui/animated-tabs.tsx
+
+      +++ src/components/ui/animated-tabs.tsx
+
+      @@ -1,7 +1,8 @@
+       "use client"
+       
+      -import * as React from "react"
+
+      -import { useState, useRef, useEffect, useLayoutEffect } from "react"
+
+      +import React, { useState, useRef, useEffect, useLayoutEffect, useId }
+      from "react"
+
+      +import { gsap } from "gsap"
+       import { cn } from "@/lib/utils"
+       
+       interface Tab {
+      @@ -13,12 +14,17 @@
+         tabs: Tab[]
+         activeTab: string
+         onTabChange: (tabId: string) => void,
+      -  size?: 'default' | 'sm'
+
+      +  size?: 'default' | 'sm',
+
+      +  children?: React.ReactNode,
+
+      +  wrapperClassName?: string,
+
+      +  contentClassName?: string
+       }
+       
+       const AnimatedTabs = React.forwardRef<HTMLDivElement, AnimatedTabsProps>(
+      -  ({ className, tabs, activeTab, onTabChange, size = 'default', ...props
+      }, ref) => {
+
+      +  ({ className, tabs, activeTab, onTabChange, size = 'default', children,
+      wrapperClassName, contentClassName, ...props }, ref) => {
+           const [activeIndex, setActiveIndex] = useState(0)
+      +    const contentTrackRef = useRef<HTMLDivElement>(null)
+
+      +    const uniqueId = useId()
+           const [activeStyle, setActiveStyle] = useState({ left: "0px", width: "0px" })
+           const tabRefs = useRef<(HTMLButtonElement | null)[]>([])
+       
+      @@ -31,7 +37,7 @@
+           }, [activeTab, tabs, activeIndex])
+           
+           // Update active indicator position
+      -    useEffect(() => {
+
+      +    useLayoutEffect(() => {
+             const activeElement = tabRefs.current[activeIndex];
+             if (activeElement) {
+               const { offsetLeft, offsetWidth } = activeElement;
+      @@ -42,6 +48,17 @@
+               activeElement.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+             }
+           }, [activeIndex, tabs]);
+      +
+
+      +    // Animate content track position
+
+      +    useLayoutEffect(() => {
+
+      +      if (contentTrackRef.current) {
+
+      +        gsap.to(contentTrackRef.current, {
+
+      +          xPercent: -100 * activeIndex,
+
+      +          duration: 0.4,
+
+      +          ease: "power3.inOut",
+
+      +        })
+
+      +      }
+
+      +    }, [activeIndex]);
+       
+           // Set initial position of active indicator
+           useLayoutEffect(() => {
+      @@ -56,41 +73,73 @@
+               }
+           }, [tabs, activeTab])
+       
+      -    return (
+
+      -      <div 
+
+      -        ref={ref} 
+
+      -        className={cn("overflow-x-auto overflow-y-hidden no-scrollbar",
+      className)} 
+
+      -        {...props}
+
+      -      >
+
+      -        <div className="relative flex w-max items-center
+      whitespace-nowrap">
+
+      -          {/* Active Indicator */}
+
+      -          <div
+
+      -            className="absolute -bottom-px h-0.5 bg-primary
+      transition-all duration-300 ease-out"
+
+      -            style={activeStyle}
+
+      -          />
+
+      +    const tabHeadersRootProps = {
+
+      +      className: cn("overflow-x-auto overflow-y-hidden no-scrollbar",
+      className),
+
+      +      role: "tablist",
+
+      +      ...props
+
+      +    };
+       
+      -          {/* Tabs */}
+
+      -          {tabs.map((tab, index) => (
+
+      -            <button
+
+      -              key={tab.id}
+
+      -              ref={(el) => (tabRefs.current[index] = el)}
+
+      -              className={cn(
+
+      -                "group relative cursor-pointer text-center
+      transition-colors duration-300 focus:outline-none focus-visible:ring-2
+      focus-visible:ring-ring focus-visible:ring-offset-2",
+
+      -                size === 'default' ? "px-4 py-5" : "px-3 py-2.5",
+
+      -                index === activeIndex 
+
+      -                  ? "text-primary" 
+
+      -                  : "text-muted-foreground hover:text-foreground"
+
+      -              )}
+
+      -              onClick={() => onTabChange(tab.id)}
+
+      -            >
+
+      -              <span className={cn(
+
+      -                "flex items-center gap-2",
+
+      -                size === 'default' 
+
+      -                  ? "text-lg font-semibold"
+
+      -                  : "text-sm font-medium"
+
+      -              )}>
+
+      -                {tab.label}
+
+      -              </span>
+
+      -            </button>
+
+      -          ))}
+
+      -        </div>
+
+      +    const TabHeadersContent = (
+
+      +      <div className="relative flex w-max items-center
+      whitespace-nowrap">
+
+      +        {/* Active Indicator */}
+
+      +        <div
+
+      +          className="absolute -bottom-px h-0.5 bg-primary transition-all
+      duration-300 ease-out"
+
+      +          style={activeStyle}
+
+      +        />
+
+      +
+
+      +        {/* Tabs */}
+
+      +        {tabs.map((tab, index) => (
+
+      +          <button
+
+      +            key={tab.id}
+
+      +            id={`tab-${uniqueId}-${tab.id}`}
+
+      +            ref={(el) => (tabRefs.current[index] = el)}
+
+      +            role="tab"
+
+      +            aria-selected={index === activeIndex}
+
+      +            aria-controls={`tabpanel-${uniqueId}-${tab.id}`}
+
+      +            className={cn(
+
+      +              "group relative cursor-pointer text-center
+      transition-colors duration-300 focus:outline-none focus-visible:ring-2
+      focus-visible:ring-ring focus-visible:ring-offset-2",
+
+      +              size === 'default' ? "px-4 py-5" : "px-3 py-2.5",
+
+      +              index === activeIndex 
+
+      +                ? "text-primary" 
+
+      +                : "text-muted-foreground hover:text-foreground"
+
+      +            )}
+
+      +            onClick={() => onTabChange(tab.id)}
+
+      +          >
+
+      +            <span className={cn(
+
+      +              "flex items-center gap-2",
+
+      +              size === 'default' 
+
+      +                ? "text-lg font-semibold"
+
+      +                : "text-sm font-medium"
+
+      +            )}>
+
+      +              {tab.label}
+
+      +            </span>
+
+      +          </button>
+
+      +        ))}
+             </div>
+      +    );
+
+      +
+
+      +    if (!children) {
+
+      +      return (
+
+      +        <div ref={ref} {...tabHeadersRootProps}>
+
+      +          {TabHeadersContent}
+
+      +        </div>
+
+      +      );
+
+      +    }
+
+      +
+
+      +    return (
+
+      +      <div ref={ref} className={wrapperClassName}>
+
+      +        <div {...tabHeadersRootProps}>{TabHeadersContent}</div>
+
+      +        <div className={cn("relative overflow-hidden",
+      contentClassName)}>
+
+      +          <div ref={contentTrackRef} className="flex h-full w-full">
+
+      +            {React.Children.map(children, (child, index) => (
+
+      +              <div
+
+      +                key={tabs[index].id}
+
+      +                id={`tabpanel-${uniqueId}-${tabs[index].id}`}
+
+      +                role="tabpanel"
+
+      +                aria-labelledby={`tab-${uniqueId}-${tabs[index].id}`}
+
+      +                aria-hidden={activeIndex !== index}
+
+      +                className="h-full w-full flex-shrink-0"
+
+      +              >
+
+      +                {child}
+
+      +              </div>
+
+      +            ))}
+
+      +          </div>
+
+      +        </div>
+
+      +      </div>
+           )
+         }
+       )
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/Messaging/components/MessagingContent.tsx
+    content: >+
+      --- src/pages/Messaging/components/MessagingContent.tsx
+
+      +++ src/pages/Messaging/components/MessagingContent.tsx
+
+      @@ -34,22 +34,27 @@
+         }
+         
+         return (
+      -    <div className="h-full flex-1 flex flex-col bg-background
+      overflow-y-auto" data-testid="messaging-content-scroll-pane">
+
+      -      {/* Combined Header */}
+
+      -      <div className="flex-shrink-0 border-b">
+
+      -        <div className="p-6">
+
+      -          <TaskHeader task={task} />
+
+      -        </div>
+
+      -        <AnimatedTabs tabs={tabs} activeTab={activeTab}
+      onTabChange={setActiveTab} size="sm" className="px-6" />
+
+      +    <div className="h-full flex-1 flex flex-col bg-background
+      overflow-hidden" data-testid="messaging-content-scroll-pane">
+
+      +      <div className="flex-shrink-0 border-b p-6">
+
+      +        <TaskHeader task={task} />
+             </div>
+      -
+
+      -      {/* Content Area */}
+
+      -      <div className="flex-1 p-6">
+
+      -        {activeTab === 'contact' && <ContactInfoPanel
+      contact={task.contact} />}
+
+      -        {activeTab === 'ai' && <AIInsightsPanel task={task} />}
+
+      -        {activeTab === 'activity' && <ActivityPanel
+      contact={task.contact} />}
+
+      -        {activeTab === 'notes' && <NotesPanel contact={task.contact} />}
+
+      -      </div>
+
+      +      <AnimatedTabs 
+
+      +        tabs={tabs} 
+
+      +        activeTab={activeTab} 
+
+      +        onTabChange={setActiveTab} 
+
+      +        size="sm" 
+
+      +        className="px-6 border-b flex-shrink-0"
+
+      +        wrapperClassName="flex-1 flex flex-col min-h-0"
+
+      +        contentClassName="flex-1 min-h-0"
+
+      +      >
+
+      +        <div className="p-6 h-full overflow-y-auto"><ContactInfoPanel
+      contact={task.contact} /></div>
+
+      +        <div className="p-6 h-full overflow-y-auto"><AIInsightsPanel
+      task={task} /></div>
+
+      +        <div className="p-6 h-full overflow-y-auto"><ActivityPanel
+      contact={task.contact} /></div>
+
+      +        <div className="p-6 h-full overflow-y-auto"><NotesPanel
+      contact={task.contact} /></div>
+
+      +      </AnimatedTabs>
+           </div>
+         );
+       };
+
+    patchStrategy: standard-diff
+snapshot:
+  src/components/ui/animated-tabs.tsx: |-
+    "use client"
+
+    import * as React from "react"
+    import { useState, useRef, useEffect, useLayoutEffect } from "react"
+    import { cn } from "@/lib/utils"
+
+    interface Tab {
+      id: string
+      label: React.ReactNode
+    }
+
+    interface AnimatedTabsProps extends React.HTMLAttributes<HTMLDivElement> {
+      tabs: Tab[]
+      activeTab: string
+      onTabChange: (tabId: string) => void,
+      size?: 'default' | 'sm'
+    }
+
+    const AnimatedTabs = React.forwardRef<HTMLDivElement, AnimatedTabsProps>(
+      ({ className, tabs, activeTab, onTabChange, size = 'default', ...props }, ref) => {
+        const [activeIndex, setActiveIndex] = useState(0)
+        const [activeStyle, setActiveStyle] = useState({ left: "0px", width: "0px" })
+        const tabRefs = useRef<(HTMLButtonElement | null)[]>([])
+
+        // Update active index when controlled prop changes
+        useEffect(() => {
+          const newActiveIndex = tabs.findIndex(tab => tab.id === activeTab)
+          if (newActiveIndex !== -1 && newActiveIndex !== activeIndex) {
+            setActiveIndex(newActiveIndex)
+          }
+        }, [activeTab, tabs, activeIndex])
+        
+        // Update active indicator position
+        useEffect(() => {
+          const activeElement = tabRefs.current[activeIndex];
+          if (activeElement) {
+            const { offsetLeft, offsetWidth } = activeElement;
+            setActiveStyle({
+              left: `${offsetLeft}px`,
+              width: `${offsetWidth}px`,
+            });
+            activeElement.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+          }
+        }, [activeIndex, tabs]);
+
+        // Set initial position of active indicator
+        useLayoutEffect(() => {
+            const initialActiveIndex = activeTab ? tabs.findIndex(tab => tab.id === activeTab) : 0
+            const indexToUse = initialActiveIndex !== -1 ? initialActiveIndex : 0
+            
+            const firstElement = tabRefs.current[indexToUse]
+            if (firstElement) {
+              const { offsetLeft, offsetWidth } = firstElement
+              setActiveStyle({
+                left: `${offsetLeft}px`,
+                width: `${offsetWidth}px`,
+              })
+            }
+        }, [tabs, activeTab])
+
+        return (
+          <div 
+            ref={ref} 
+            className={cn("overflow-x-auto overflow-y-hidden no-scrollbar", className)} 
+            {...props}
+          >
+            <div className="relative flex w-max items-center whitespace-nowrap">
+              {/* Active Indicator */}
+              <div
+                className="absolute -bottom-px h-0.5 bg-primary transition-all duration-300 ease-out"
+                style={activeStyle}
+              />
+
+              {/* Tabs */}
+              {tabs.map((tab, index) => (
+                <button
+                  key={tab.id}
+                  ref={(el) => (tabRefs.current[index] = el)}
+                  className={cn(
+                    "group relative cursor-pointer text-center transition-colors duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                    size === 'default' ? "px-4 py-5" : "px-3 py-2.5",
+                    index === activeIndex 
+                      ? "text-primary" 
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                  onClick={() => onTabChange(tab.id)}
+                >
+                  <span className={cn(
+                    "flex items-center gap-2",
+                    size === 'default' 
+                      ? "text-lg font-semibold"
+                      : "text-sm font-medium"
+                  )}>
+                    {tab.label}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )
+      }
+    )
+    AnimatedTabs.displayName = "AnimatedTabs"
+
+    export { AnimatedTabs }
+  src/pages/Messaging/components/MessagingContent.tsx: >-
+    import React, { useState, useMemo } from 'react';
+
+    import { useMessagingStore } from '../store/messaging.store';
+
+    import { ContactInfoPanel } from './ContactInfoPanel';
+
+    import { AIInsightsPanel } from './AIInsightsPanel';
+
+    import { ActivityPanel } from './ActivityPanel';
+
+    import { NotesPanel } from './NotesPanel';
+
+    import { TaskHeader } from './TaskHeader';
+
+    import { AnimatedTabs } from '@/components/ui/animated-tabs';
+
+    import { TechOrbitDisplay } from '@/components/effects/OrbitingCircles';
+
+
+    interface MessagingContentProps {
+      conversationId?: string;
+    }
+
+
+    export const MessagingContent: React.FC<MessagingContentProps> = ({
+    conversationId }) => {
+      const [activeTab, setActiveTab] = useState('contact');
+      const task = useMessagingStore(state => conversationId ? state.getTaskById(conversationId) : undefined);
+      
+      const tabs = useMemo(() => [
+        { id: 'contact', label: 'Contact' },
+        { id: 'ai', label: 'AI Insights' },
+        { id: 'activity', label: 'Activity' },
+        { id: 'notes', label: 'Notes' },
+      ], []);
+
+      if (!task) {
+        return (
+          <div className="h-full flex-1 flex flex-col items-center justify-center bg-background p-6 relative overflow-hidden">
+            <TechOrbitDisplay text="Context" />
+            <div className="text-center z-10 bg-background/50 backdrop-blur-sm p-6 rounded-lg">
+                <h3 className="mt-4 text-lg font-medium">Select a Task</h3>
+                <p className="mt-1 text-sm text-muted-foreground">
+                    Task details and contact information will appear here.
+                </p>
+            </div>
+          </div>
+        );
+      }
+      
+      return (
+        <div className="h-full flex-1 flex flex-col bg-background overflow-y-auto" data-testid="messaging-content-scroll-pane">
+          {/* Combined Header */}
+          <div className="flex-shrink-0 border-b">
+            <div className="p-6">
+              <TaskHeader task={task} />
+            </div>
+            <AnimatedTabs tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} size="sm" className="px-6" />
+          </div>
+
+          {/* Content Area */}
+          <div className="flex-1 p-6">
+            {activeTab === 'contact' && <ContactInfoPanel contact={task.contact} />}
+            {activeTab === 'ai' && <AIInsightsPanel task={task} />}
+            {activeTab === 'activity' && <ActivityPanel contact={task.contact} />}
+            {activeTab === 'notes' && <NotesPanel contact={task.contact} />}
+          </div>
+        </div>
+      );
+    };
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 376

@@ -1,94 +1,166 @@
-Yo, check it. We're about to level up the `RightPane`. Right now, it's got these clunky buttons for view modes. We're swapping that out for our slick `ViewModeSwitcher`. This gives users the full power of view management right from the side pane overlay—fullscreen, split view, back to normal—all in one spot. It's about making the UX tight and consistent.
+Ah, the classic "it works, but not everywhere" scenario. The new `AnimatedTabs` is slick, but the `DataDemo` page is still doing a full refresh because it's tearing down and rebuilding its content on every tab switch. We need to teach it to keep its children alive and just slide them around.
 
-The plan is simple: First, we'll juice up the `ViewModeSwitcher` to handle dynamic routes, 'cause that's how the `RightPane` rolls with detailed views. Then, we'll slot it into the `RightPane`'s header, replacing the old controls. It'll only show up in overlay mode, keeping things clean. This is a surgical strike, minimal blast radius, maximum impact. Let's get it.
+The root of the issue is that `DataDemoContent` calculates a single filtered list (`dataToRender`) and passes it to a single instance of `DataListView` (or `CardView`, etc.). When you click a tab, that hook returns a new list, and the whole view component re-renders from scratch, triggering its stagger animation instead of a slide.
+
+To fix this, we need to restructure `DataDemoContent` to render *all* the panes at once and let `AnimatedTabs` handle the sliding, just like we did for `MessagingContent`. This will involve making the view components (`DataListView`, `DataCardView`, `DataTableView`) "dumber" by having them accept data via props instead of fetching it themselves with hooks. This makes them more reusable and fixes our animation problem.
+
+Here's the master plan to get those smooth slides working in the Data Demo.
 
 ```yaml
 plan:
-  uuid: 'c4e9f5a0-8a1a-4d7b-9f2c-5678b3a0e1b2'
+  uuid: 'a4b1c2d3-e5f6-4a7b-8c9d-0e1f2a3b4c5d'
   status: 'todo'
-  title: 'Refactor RightPane to use ViewModeSwitcher in Header'
+  title: 'Implement Sliding Content Panes in DataDemo Grouped Views'
   introduction: |
-    This refactoring plan aims to enhance the user experience by replacing the basic view control buttons in the `RightPane` header with the more comprehensive `ViewModeSwitcher` component. This change will only apply when the `RightPane` is in its overlay mode (`SIDE_PANE` state).
+    Following the successful enhancement of `AnimatedTabs`, the DataDemo page's "Group by" feature still exhibits a full content refresh on tab switching instead of the desired sliding animation. This is because the view components (`DataListView`, etc.) are being re-rendered with new data, rather than being persistent panes managed by `AnimatedTabs`.
 
-    The first part of the plan involves making the `ViewModeSwitcher` more flexible by allowing it to handle dynamic URL paths, which is essential for detail views often shown in the `RightPane`. The second part focuses on integrating this enhanced switcher into the `RightPane`'s header, providing users with a consistent and powerful set of view management tools (Normal, Split, Fullscreen) directly from the side pane. This will streamline the UI and improve the overall coherence of the application shell.
+    This plan will refactor the DataDemo page to fully adopt the new sliding pane pattern. We will modify the view components to be "pure" components that receive data via props, and then restructure the main `DataDemoContent` component to render all tab panes simultaneously as children of `AnimatedTabs`. This will enable the smooth GSAP-powered sliding animation and align the DataDemo page with the new, improved UX pattern.
   parts:
-    - uuid: 'e0d1f4b2-3c1a-4f9e-8b6d-7f8e1a0b3c2d'
+    - uuid: 'f1e2d3c4-b5a6-4987-8d9e-1f2a3b4c5d6e'
       status: 'todo'
-      name: 'Part 1: Enhance ViewModeSwitcher Flexibility'
+      name: 'Part 1: Refactor Data View Components to Accept Data Props'
       reason: |
-        The `ViewModeSwitcher` currently expects a static `ActivePage` type for its `targetPage` prop. To work correctly within the `RightPane`, which often displays content for dynamic routes (e.g., `/data-demo/item-123`), the component must be updated to handle arbitrary string paths. This change will allow it to correctly determine the base page and associated pane content for its actions.
+        To render all panes at once, the view components (`DataListView`, `DataCardView`, `DataTableView`) can no longer fetch their own filtered data using the `useDataToRender` hook. They need to be converted into purer components that simply render the data passed to them via props. This makes them more flexible and is a prerequisite for the sliding pane implementation.
       steps:
-        - uuid: 'a9b8c7d6-5e4f-4a3b-8c1d-9e0f1a2b3c4d'
+        - uuid: 'e2d3c4b5-a6f7-4876-9e8d-2f3a4b5c6d7f'
           status: 'todo'
-          name: '1. Update ViewModeSwitcher Props and Logic'
+          name: '1. Modify `DataListView` to accept a `data` prop'
           reason: |
-            To accept dynamic routes, we need to change the `targetPage` prop type to `string` and add logic to parse the base path from it.
+            Centralize data fetching logic in the parent component.
           files:
-            - src/components/layout/ViewModeSwitcher.tsx
+            - 'src/pages/DataDemo/components/DataListView.tsx'
           operations:
-            - 'Change the prop type for `targetPage` from `ActivePage` to `string` in the component definition: `targetPage?: string`.'
-            - 'In the `handlePaneClick` function, update the logic to derive a `basePage` from the `activePage` variable (which holds the `targetPage` prop). Use `activePage.split('/')[0]` to extract the root path of the page.'
-            - 'Use this `basePage` to look up the corresponding `paneContent` from `pageToPaneMap`.'
-            - 'Remove the `ActivePage` type import as it''s no longer needed for the prop type.'
+            - "Update the component signature to accept `({ data }: { data: DataItem[] })`."
+            - "Remove the `useDataToRender` and `useAppViewManager` hooks for `groupBy` and `activeGroupTab`."
+            - 'Change `const items = Array.isArray(data) ? data : [];` to `const items = data;`.'
+        - uuid: 'd3c4b5a6-f7e8-4765-8d9c-3f4a5b6c7d8e'
+          status: 'todo'
+          name: '2. Modify `DataCardView` to accept a `data` prop'
+          reason: |
+            Ensure consistency and prepare the component for use inside sliding panes.
+          files:
+            - 'src/pages/DataDemo/components/DataCardView.tsx'
+          operations:
+            - "Update the component signature to accept `({ isGrid = false, data }: { isGrid?: boolean, data: DataItem[] })`."
+            - "Remove the `useDataToRender` and `useAppViewManager` hooks for `groupBy` and `activeGroupTab`."
+            - 'Change `const items = Array.isArray(data) ? data : [];` to `const items = data;`.'
+        - uuid: 'c4b5a6f7-e8d9-4654-9c8b-4f5a6b7c8d9f'
+          status: 'todo'
+          name: '3. Modify `DataTableView` to accept a `data` prop'
+          reason: |
+            Complete the refactoring of all view components to the new data-prop pattern.
+          files:
+            - 'src/pages/DataDemo/components/DataTableView.tsx'
+          operations:
+            - "Update the component signature to accept `({ data }: { data: DataItem[] })`."
+            - "Remove the `useDataToRender` and `useAppViewManager` hooks for `groupBy` and `activeGroupTab`."
+            - 'Update the `useMemo` for `groupedData` to use the `data` prop directly.'
+            - 'Update the main render return to use `data.map` when not grouped, instead of the `useDataToRender` hook result.'
       context_files:
         compact:
-          - src/components/layout/ViewModeSwitcher.tsx
+          - 'src/pages/DataDemo/components/DataListView.tsx'
+          - 'src/pages/DataDemo/components/DataCardView.tsx'
+          - 'src/pages/DataDemo/components/DataTableView.tsx'
         medium:
-          - src/components/layout/ViewModeSwitcher.tsx
-          - src/hooks/useAppViewManager.hook.ts
+          - 'src/pages/DataDemo/components/DataListView.tsx'
+          - 'src/pages/DataDemo/components/DataCardView.tsx'
+          - 'src/pages/DataDemo/components/DataTableView.tsx'
+          - 'src/pages/DataDemo/index.tsx'
         extended:
-          - src/components/layout/ViewModeSwitcher.tsx
-          - src/hooks/useAppViewManager.hook.ts
-          - src/store/appShell.store.ts
-    - uuid: 'f1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c'
+          - 'src/pages/DataDemo/components/DataListView.tsx'
+          - 'src/pages/DataDemo/components/DataCardView.tsx'
+          - 'src/pages/DataDemo/components/DataTableView.tsx'
+          - 'src/pages/DataDemo/index.tsx'
+          - 'src/pages/DataDemo/store/dataDemo.store.tsx'
+    - uuid: 'b6a5f4e3-d2c1-4b3a-a987-6e5f4d3c2b1a'
       status: 'todo'
-      name: 'Part 2: Integrate ViewModeSwitcher into RightPane'
+      name: 'Part 2: Re-architect `DataDemoContent` to Use Sliding Panes'
       reason: |
-        The primary goal is to provide a consistent and full-featured view management experience from the side pane overlay. Replacing the existing simple buttons with the `ViewModeSwitcher` achieves this by consolidating all view-related actions into a single, familiar component.
+        With the view components ready, we can now restructure the main `DataDemoContent` component. It will render the `AnimatedTabs` with all content panes as children for grouped views, enabling the sliding animation, while preserving the existing logic for the non-grouped view to maintain infinite scroll functionality.
       steps:
-        - uuid: 'b3c4d5e6-7f8a-4b9c-8d1e-2f3a4b5c6d7e'
+        - uuid: 'a5f4e3d2-c1b0-4a29-b876-5e4f3d2c1b09'
           status: 'todo'
-          name: '1. Replace Header Controls in RightPane'
+          name: '1. Update `DataDemoContent` to handle grouped and non-grouped views differently'
           reason: |
-            This step implements the core UI change, swapping out the old buttons for the new, more powerful switcher.
+            The component needs to manage two rendering strategies: one for the standard list with infinite scroll, and a new one for the grouped view with sliding panes.
           files:
-            - src/components/layout/RightPane.tsx
+            - 'src/pages/DataDemo/index.tsx'
           operations:
-            - 'Import the `ViewModeSwitcher` component at the top of `src/components/layout/RightPane.tsx`.'
-            - 'In the `useMemo` hook for the `header` constant, locate the `div` that contains the view control buttons (the one with `SplitSquareHorizontal` and `ChevronsLeftRight` icons).'
-            - 'Remove the entire contents of that `div`, including the two `button` elements.'
-            - 'Inside the now-empty `div`, add the `<ViewModeSwitcher />` component.'
-            - 'Conditionally render the switcher to ensure it only appears when `bodyState === BODY_STATES.SIDE_PANE` and the content has a navigable page (`"page" in meta && meta.page`).'
-            - 'Pass the necessary props to the switcher: `pane="right"` and `targetPage={meta.page}`.'
-            - 'Remove unused icon imports like `SplitSquareHorizontal`, `Layers`, and `ChevronsLeftRight` if they are no longer referenced anywhere else in the file.'
+            - 'Remove the `useDataToRender` hook call. We will get data differently.'
+            - 'Get the full list of items directly from the store: `const allItems = useDataDemoStore(state => state.items);`'
+            - 'Inside the main content `div` (after `isInitialLoading` is false), create a conditional check: `if (groupBy !== "none" && groupTabs.length > 1)`.'
+            - 'In the `if` block, render the `<AnimatedTabs>` component configured for content panes.'
+            - 'In the `else` block, render the view components as before (for the non-grouped view).'
+        - uuid: 'f4e3d2c1-b0a9-4918-a765-4d3c2b1a09f8'
+          status: 'todo'
+          name: '2. Implement the `AnimatedTabs` for grouped view'
+          reason: |
+            This is where we construct the sliding panes by passing each group's filtered data to its own view component instance.
+          files:
+            - 'src/pages/DataDemo/index.tsx'
+          operations:
+            - "Inside the `if (groupBy !== 'none')` block, render `<AnimatedTabs>`."
+            - "Pass the required props: `tabs={groupTabs}`, `activeTab={activeGroupTab}`, `onTabChange={setActiveGroupTab}`."
+            - 'As children of `<AnimatedTabs>`, map over `groupTabs`: `{groupTabs.map(tab => ...)}`.'
+            - "Inside the map, filter `allItems` based on `tab.id` to get `dataForPane`."
+            - 'Create a helper function or switch statement `renderView(data)` that returns the correct view component (`DataListView`, `DataCardView`, etc.) based on the current `viewMode`, passing the provided `data` as a prop.'
+            - "For each tab in the map, return a container `div` with a unique `key={tab.id}` containing the result of `renderView(dataForPane)`."
+        - uuid: 'e3d2c1b0-a9f8-4807-b654-3c2b1a09f8e7'
+          status: 'todo'
+          name: '3. Update the non-grouped view logic'
+          reason: |
+            Since we removed `useDataToRender` and refactored the view components, we need to ensure the default, non-grouped view still receives its data correctly.
+          files:
+            - 'src/pages/DataDemo/index.tsx'
+          operations:
+            - 'In the `else` block (for `groupBy === "none"`), render the view components directly.'
+            - "Pass the `allItems` array from the store directly to the `data` prop of `DataListView`, `DataCardView`, and `DataTableView`."
       context_files:
         compact:
-          - src/components/layout/RightPane.tsx
+          - 'src/pages/DataDemo/index.tsx'
+          - 'src/pages/DataDemo/components/DataListView.tsx'
+          - 'src/pages/DataDemo/components/DataCardView.tsx'
+          - 'src/pages/DataDemo/components/DataTableView.tsx'
         medium:
-          - src/components/layout/RightPane.tsx
-          - src/components/layout/ViewModeSwitcher.tsx
+          - 'src/pages/DataDemo/index.tsx'
+          - 'src/pages/DataDemo/store/dataDemo.store.tsx'
+          - 'src/components/ui/animated-tabs.tsx'
+          - 'src/pages/DataDemo/components/DataListView.tsx'
+          - 'src/pages/DataDemo/components/DataCardView.tsx'
+          - 'src/pages/DataDemo/components/DataTableView.tsx'
         extended:
-          - src/components/layout/RightPane.tsx
-          - src/components/layout/ViewModeSwitcher.tsx
-          - src/hooks/useRightPaneContent.hook.tsx
-          - src/hooks/useAppViewManager.hook.ts
+          - 'src/pages/DataDemo/index.tsx'
+          - 'src/pages/DataDemo/store/dataDemo.store.tsx'
+          - 'src/components/ui/animated-tabs.tsx'
+          - 'src/pages/DataDemo/components/DataListView.tsx'
+          - 'src/pages/DataDemo/components/DataCardView.tsx'
+          - 'src/pages/DataDemo/components/DataTableView.tsx'
+          - 'src/hooks/useAppViewManager.hook.ts'
   conclusion: |
-    Upon completion, the `RightPane` will feature the `ViewModeSwitcher` in its header during overlay mode, providing a significant UX improvement. Users will have a consistent and intuitive way to manage the view state of side pane content, including switching to normal view, split view, or fullscreen. This refactor successfully modularizes the view control logic and enhances the application shell's flexibility.
+    By executing this plan, the DataDemo page will be significantly improved. The "Group by" tabs will now feature the same fluid, sliding content animations as the rest of the application, creating a consistent and polished user experience.
+
+    This refactor also improves the codebase by promoting a cleaner separation of concerns. Data-fetching and filtering logic will be centralized in the main page component, while the view components become simpler, reusable, and purely presentational. This makes the code easier to understand, maintain, and test.
   context_files:
     compact:
-      - src/components/layout/ViewModeSwitcher.tsx
-      - src/components/layout/RightPane.tsx
+      - 'src/pages/DataDemo/index.tsx'
+      - 'src/components/ui/animated-tabs.tsx'
+      - 'src/pages/DataDemo/components/DataListView.tsx'
+      - 'src/pages/DataDemo/components/DataCardView.tsx'
+      - 'src/pages/DataDemo/components/DataTableView.tsx'
     medium:
-      - src/components/layout/ViewModeSwitcher.tsx
-      - src/components/layout/RightPane.tsx
-      - src/hooks/useAppViewManager.hook.ts
-      - src/hooks/useRightPaneContent.hook.tsx
+      - 'src/pages/DataDemo/index.tsx'
+      - 'src/components/ui/animated-tabs.tsx'
+      - 'src/pages/DataDemo/components/DataListView.tsx'
+      - 'src/pages/DataDemo/components/DataCardView.tsx'
+      - 'src/pages/DataDemo/components/DataTableView.tsx'
+      - 'src/pages/DataDemo/store/dataDemo.store.tsx'
     extended:
-      - src/components/layout/ViewModeSwitcher.tsx
-      - src/components/layout/RightPane.tsx
-      - src/hooks/useAppViewManager.hook.ts
-      - src/hooks/useRightPaneContent.hook.tsx
-      - src/store/appShell.store.ts
-      - src/components/layout/TopBar.tsx
-      - src/components/layout/AppShell.tsx
+      - 'src/pages/DataDemo/index.tsx'
+      - 'src/components/ui/animated-tabs.tsx'
+      - 'src/pages/DataDemo/components/DataListView.tsx'
+      - 'src/pages/DataDemo/components/DataCardView.tsx'
+      - 'src/pages/DataDemo/components/DataTableView.tsx'
+      - 'src/pages/DataDemo/store/dataDemo.store.tsx'
+      - 'src/hooks/useAppViewManager.hook.ts'
+      - 'src/pages/Messaging/components/MessagingContent.tsx'
 ```

@@ -38,22 +38,24 @@ export const MessagingContent: React.FC<MessagingContentProps> = ({ conversation
   }
   
   return (
-    <div className="h-full flex-1 flex flex-col bg-background overflow-y-auto" data-testid="messaging-content-scroll-pane">
-      {/* Combined Header */}
-      <div className="flex-shrink-0 border-b">
-        <div className="p-6">
-          <TaskHeader task={task} />
-        </div>
-        <AnimatedTabs tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} size="sm" className="px-6" />
+    <div className="h-full flex-1 flex flex-col bg-background overflow-hidden" data-testid="messaging-content-scroll-pane">
+      <div className="flex-shrink-0 border-b p-6">
+        <TaskHeader task={task} />
       </div>
-
-      {/* Content Area */}
-      <div className="flex-1 p-6">
-        {activeTab === 'contact' && <ContactInfoPanel contact={task.contact} />}
-        {activeTab === 'ai' && <AIInsightsPanel task={task} />}
-        {activeTab === 'activity' && <ActivityPanel contact={task.contact} />}
-        {activeTab === 'notes' && <NotesPanel contact={task.contact} />}
-      </div>
+      <AnimatedTabs 
+        tabs={tabs} 
+        activeTab={activeTab} 
+        onTabChange={setActiveTab} 
+        size="sm" 
+        className="px-6 border-b flex-shrink-0"
+        wrapperClassName="flex-1 flex flex-col min-h-0"
+        contentClassName="flex-1 min-h-0"
+      >
+        <div className="p-6 h-full overflow-y-auto"><ContactInfoPanel contact={task.contact} /></div>
+        <div className="p-6 h-full overflow-y-auto"><AIInsightsPanel task={task} /></div>
+        <div className="p-6 h-full overflow-y-auto"><ActivityPanel contact={task.contact} /></div>
+        <div className="p-6 h-full overflow-y-auto"><NotesPanel contact={task.contact} /></div>
+      </AnimatedTabs>
     </div>
   );
 };

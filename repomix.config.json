@@ -33,18 +33,15 @@
     // "index.html",
     // "src"
     //
-    // "src/pages/Messaging/components/TaskDetail.tsx",
-    // "src/pages/Messaging/types.ts",
-    // "src/store/appShell.store.ts"
     //
-    "src/components/layout/AppShell.tsx",
-    "src/components/layout/RightPane.tsx",
-    "src/components/layout/TopBar.tsx",
-    "src/components/layout/ViewModeSwitcher.tsx",
+    "src/components/ui/animated-tabs.tsx",
     "src/hooks/useAppViewManager.hook.ts",
-    "src/hooks/useRightPaneContent.hook.tsx",
-    "src/store/appShell.store.ts"
-
+    "src/pages/DataDemo/components/DataCardView.tsx",
+    "src/pages/DataDemo/components/DataListView.tsx",
+    "src/pages/DataDemo/components/DataTableView.tsx",
+    "src/pages/DataDemo/index.tsx",
+    "src/pages/DataDemo/store/dataDemo.store.tsx",
+    "src/pages/Messaging/components/MessagingContent.tsx"
     //
   ],
   "ignore": {
