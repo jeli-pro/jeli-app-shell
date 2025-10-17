@@ -23,21 +23,25 @@ const generateActivity = (contactName: string): ActivityEvent[] => [
   { id: `act-${faker.string.uuid()}`, type: 'meeting', content: `Scheduled a demo for next week.`, timestamp: faker.date.soon().toISOString() },
 ];
 
+// --- COMPANIES ---
+const mockCompanies = Array.from({ length: 25 }, () => faker.company.name());
+
 // --- CONTACTS ---
-export const mockContacts: Contact[] = Array.from({ length: 50 }, (_, i) => {
+export const mockContacts: Contact[] = Array.from({ length: 80 }, (_, i) => {
     const firstName = faker.person.firstName();
     const lastName = faker.person.lastName();
     const name = `${firstName} ${lastName}`;
+    const company = faker.helpers.arrayElement(mockCompanies);
     return {
         id: `contact-${i + 1}`,
         name,
         avatar: `https://avatar.vercel.sh/${firstName.toLowerCase()}${lastName.toLowerCase()}.png`,
         online: faker.datatype.boolean(),
-        tags: faker.helpers.arrayElements(['VIP', 'New Lead', 'Returning Customer', 'Support Request', 'High Value'], faker.number.int({ min: 1, max: 3 })),
+        tags: faker.helpers.arrayElements(['VIP', 'New Lead', 'Returning Customer', 'Support Request', 'High Value'], { min: 1, max: 3 }),
         email: faker.internet.email({ firstName, lastName }),
         phone: faker.phone.number(),
         lastSeen: faker.datatype.boolean() ? 'online' : `${faker.number.int({ min: 2, max: 59 })} minutes ago`,
-        company: faker.company.name(),
+        company,
         role: faker.person.jobTitle(),
         activity: generateActivity(name),
         notes: generateNotes(name),

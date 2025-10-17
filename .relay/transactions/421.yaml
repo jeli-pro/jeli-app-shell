@@ -1,0 +1,1102 @@
+uuid: c2d37c7e-ebaa-46d2-9907-2708307d1052
+projectId: jeli-app-shell
+createdAt: '2025-10-17T12:49:34.858Z'
+gitCommitMsg: >-
+  feat(messaging): integrate company and colleague context into UI
+
+  This feature enriches the messaging interface by providing users with crucial
+  organizational context for their contacts.
+
+  - Updated mock data generation to create clusters of contacts within the same
+  company. - Implemented a new selector in the messaging store to retrieve
+  colleagues. - Overhauled the `ContactInfoPanel` to display a detailed contact
+  profile, including their company, role, and a list of known colleagues. -
+  Surfaced the contact's company name in the `TaskHeader` and `TaskList` for
+  immediate visibility.
+promptSummary: >-
+  The user wants to enhance the messaging UI to display company and colleague
+  information for each contact.
+reasoning:
+  - >-
+    Excellent. Executing the master plan to integrate company and colleague
+    context into the messaging interface. This will be a surgical, multi-file
+    update to bolster the data layer and then surface that new contextual
+    information across the UI for a more powerful user experience.
+  - '### Part 1: Bolster Data Layer'
+  - >-
+    First, I'll update the mock data generator to create clusters of contacts
+    who work for the same company. Then, I'll add a new selector to our state
+    manager to efficiently retrieve colleagues.
+  - '### Part 2: Integrate Company Context into UI'
+  - >-
+    With the data foundation in place, I'll overhaul the `ContactInfoPanel` to
+    serve as a rich intelligence briefing. Then, I will surface company
+    information directly in the `TaskHeader` and `TaskList` for immediate
+    context.
+  - >-
+    With these changes, the messaging page is now a more intelligent command
+    center, providing critical organizational context at a glance.
+operations:
+  - type: write
+    path: src/pages/Messaging/data/mockData.ts
+    content: >+
+      --- src/pages/Messaging/data/mockData.ts
+
+      +++ src/pages/Messaging/data/mockData.ts
+
+      @@ ... @@
+         { id: `act-${faker.string.uuid()}`, type: 'call', content: `Had a 30-minute discovery call with ${contactName}.`, timestamp: faker.date.recent().toISOString() },
+         { id: `act-${faker.string.uuid()}`, type: 'meeting', content: `Scheduled a demo for next week.`, timestamp: faker.date.soon().toISOString() },
+       ];
+      +
+
+      +// --- COMPANIES ---
+
+      +const mockCompanies = Array.from({ length: 15 }, () =>
+      faker.company.name());
+       
+       // --- CONTACTS ---
+       export const mockContacts: Contact[] = Array.from({ length: 50 }, (_, i) => {
+           const firstName = faker.person.firstName();
+           const lastName = faker.person.lastName();
+           const name = `${firstName} ${lastName}`;
+      +    const company = faker.helpers.arrayElement(mockCompanies);
+
+      +
+           return {
+               id: `contact-${i + 1}`,
+               name,
+      @@ ... @@
+               email: faker.internet.email({ firstName, lastName }),
+               phone: faker.phone.number(),
+               lastSeen: faker.datatype.boolean() ? 'online' : `${faker.number.int({ min: 2, max: 59 })} minutes ago`,
+      -        company: faker.company.name(),
+
+      +        company,
+               role: faker.person.jobTitle(),
+               activity: generateActivity(name),
+               notes: generateNotes(name),
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/Messaging/store/messaging.store.ts
+    content: >
+      --- src/pages/Messaging/store/messaging.store.ts
+
+      +++ src/pages/Messaging/store/messaging.store.ts
+
+      @@ ... @@
+         requestAndSimulateTakeover: (taskId: string, requestedByUserId: string) => void;
+         getAssigneeById: (assigneeId: string) => Assignee | undefined;
+         getAvailableTags: () => string[];
+      +  getContactsByCompany: (companyName: string, currentContactId: string)
+      => Contact[];
+       }
+       
+       export const useMessagingStore = create<MessagingState & MessagingActions>((set, get) => ({
+      @@ ... @@
+         getAvailableTags: () => {
+           const contactTags = get().contacts.flatMap(c => c.tags);
+           const taskTags = get().tasks.flatMap(t => t.tags);
+           const allTags = new Set([...contactTags, ...taskTags]);
+           return Array.from(allTags);
+      +  },
+
+      +  
+
+      +  getContactsByCompany: (companyName, currentContactId) => {
+
+      +    const { contacts } = get();
+
+      +    return contacts.filter(c => c.company === companyName && c.id !==
+      currentContactId);
+         }
+       }));
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/Messaging/components/ContactInfoPanel.tsx
+    content: >+
+      --- src/pages/Messaging/components/ContactInfoPanel.tsx
+
+      +++ src/pages/Messaging/components/ContactInfoPanel.tsx
+
+      @@ ... @@
+
+      -import React from 'react';
+
+      -import { Mail, Phone, Briefcase } from 'lucide-react';
+
+      +import React from 'react';
+
+      +import { Mail, Phone } from 'lucide-react';
+       import type { Contact } from '../types';
+      +import { useMessagingStore } from '../store/messaging.store';
+
+      +import { Avatar, AvatarFallback, AvatarImage } from
+      '@/components/ui/avatar';
+
+      +import { Separator } from '@/components/ui/separator';
+       
+       const DetailRow: React.FC<{icon: React.ReactNode, children: React.ReactNode}> = ({ icon, children }) => (
+           <div className="flex items-start gap-3 text-sm">
+      @@ ... @@
+       }
+       
+       export const ContactInfoPanel: React.FC<ContactInfoPanelProps> = ({ contact }) => {
+      +    const getContactsByCompany = useMessagingStore(state =>
+      state.getContactsByCompany);
+
+      +    const colleagues = getContactsByCompany(contact.company, contact.id);
+
+      +
+           return (
+      -        <div className="space-y-4">
+
+      -            <DetailRow icon={<Mail />}>{contact.email}</DetailRow>
+
+      -            <DetailRow icon={<Phone />}>{contact.phone}</DetailRow>
+
+      -            <DetailRow icon={<Briefcase />}>
+
+      -                {contact.role} at <strong>{contact.company}</strong>
+
+      -            </DetailRow>
+
+      +        <div className="space-y-6">
+
+      +            <div className="flex flex-col items-center text-center
+      gap-3">
+
+      +                <Avatar className="h-20 w-20">
+
+      +                    <AvatarImage src={contact.avatar} alt={contact.name}
+      />
+
+      +                   
+      <AvatarFallback>{contact.name.charAt(0)}</AvatarFallback>
+
+      +                </Avatar>
+
+      +                <div>
+
+      +                    <h3 className="font-semibold
+      text-lg">{contact.name}</h3>
+
+      +                    <p className="text-sm
+      text-muted-foreground">{contact.role} at
+      <strong>{contact.company}</strong></p>
+
+      +                </div>
+
+      +            </div>
+
+      +            
+
+      +            <Separator />
+
+      +
+
+      +            {colleagues.length > 0 && (
+
+      +                <div className="space-y-3">
+
+      +                    <h4 className="font-medium text-sm
+      text-muted-foreground">Colleagues from {contact.company}</h4>
+
+      +                    <ul className="space-y-3">
+
+      +                        {colleagues.map(colleague => (
+
+      +                            <li key={colleague.id} className="flex
+      items-center gap-3">
+
+      +                                <Avatar className="h-8 w-8">
+
+      +                                    <AvatarImage src={colleague.avatar}
+      alt={colleague.name} />
+
+      +                                   
+      <AvatarFallback>{colleague.name.charAt(0)}</AvatarFallback>
+
+      +                                </Avatar>
+
+      +                                <div>
+
+      +                                    <p className="font-medium
+      text-sm">{colleague.name}</p>
+
+      +                                    <p className="text-xs
+      text-muted-foreground">{colleague.role}</p>
+
+      +                                </div>
+
+      +                            </li>
+
+      +                        ))}
+
+      +                    </ul>
+
+      +                </div>
+
+      +            )}
+
+      +
+
+      +            <div className="space-y-3">
+
+      +                <h4 className="font-medium text-sm
+      text-muted-foreground">Contact Details</h4>
+
+      +                <DetailRow icon={<Mail />}>{contact.email}</DetailRow>
+
+      +                <DetailRow icon={<Phone />}>{contact.phone}</DetailRow>
+
+      +            </div>
+               </div>
+           )
+       }
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/Messaging/components/TaskHeader.tsx
+    content: >+
+      --- src/pages/Messaging/components/TaskHeader.tsx
+
+      +++ src/pages/Messaging/components/TaskHeader.tsx
+
+      @@ ... @@
+               <h2 className="font-bold text-xl lg:text-2xl truncate" title={task.title}>
+                 {task.title}
+               </h2>
+               <p className="text-sm text-muted-foreground">
+      -          With <a href="#" className="hover:underline font-medium
+      text-foreground/80">{task.contact.name}</a>
+
+      +          With <a href="#" className="hover:underline font-medium
+      text-foreground/80">{task.contact.name}</a> at <strong
+      className="font-medium text-foreground/80">{task.contact.company}</strong>
+                 <span className="mx-1.5">&middot;</span>
+                 via <span className="capitalize font-medium text-foreground/80">{task.channel}</span>
+               </p>
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/Messaging/components/TaskList.tsx
+    content: >+
+      --- src/pages/Messaging/components/TaskList.tsx
+
+      +++ src/pages/Messaging/components/TaskList.tsx
+
+      @@ ... @@
+                         </Avatar>
+                         <div className="flex-1 overflow-hidden">
+                             <div className="flex justify-between items-center mb-1">
+      -                          <p className="text-sm font-semibold truncate
+      pr-2">{task.contact.name}</p>
+
+      +                          <p className="text-sm font-semibold truncate
+      pr-2">{task.contact.name} <span className="font-normal
+      text-muted-foreground/90">&middot; {task.contact.company}</span></p>
+                                 <p className="text-xs text-muted-foreground whitespace-nowrap">{formatDistanceToNow(new Date(task.lastActivity.timestamp), { addSuffix: true })}</p>
+                             </div>
+                             <p className="text-sm truncate text-foreground">{task.title}</p>
+
+    patchStrategy: standard-diff
+snapshot:
+  src/pages/Messaging/data/mockData.ts: >-
+    import type { Contact, Task, Message, ActivityEvent, Note, Assignee,
+    TaskStatus, TaskPriority, Channel, JourneyPointType } from '../types';
+
+    import { faker } from '@faker-js/faker';
+
+
+    // --- ASSIGNEES ---
+
+    export const mockAssignees: Assignee[] = [
+      { id: 'user-1', name: 'You', avatar: `https://avatar.vercel.sh/you.png`, type: 'human' },
+      { id: 'user-2', name: 'Alex Johnson', avatar: `https://avatar.vercel.sh/alex.png`, type: 'human' },
+      { id: 'user-3', name: 'Samira Kumar', avatar: `https://avatar.vercel.sh/samira.png`, type: 'human' },
+      { id: 'user-4', name: 'Casey Lee', avatar: `https://avatar.vercel.sh/casey.png`, type: 'human' },
+      { id: 'user-5', name: 'Jordan Rivera', avatar: `https://avatar.vercel.sh/jordan.png`, type: 'human' },
+      { id: 'user-ai-1', name: 'AI Assistant', avatar: `https://avatar.vercel.sh/ai.png`, type: 'ai' },
+    ];
+
+
+    // --- HELPERS ---
+
+    const generateNotes = (contactName: string): Note[] => [
+      { id: `note-${faker.string.uuid()}`, content: `Initial discovery call with ${contactName}. Seemed very interested in our enterprise package.`, createdAt: faker.date.past().toISOString() },
+      { id: `note-${faker.string.uuid()}`, content: `Followed up via email with pricing details.`, createdAt: faker.date.recent().toISOString() },
+    ];
+
+
+    const generateActivity = (contactName: string): ActivityEvent[] => [
+      { id: `act-${faker.string.uuid()}`, type: 'email', content: `Sent follow-up email regarding pricing.`, timestamp: faker.date.past().toISOString() },
+      { id: `act-${faker.string.uuid()}`, type: 'call', content: `Had a 30-minute discovery call with ${contactName}.`, timestamp: faker.date.recent().toISOString() },
+      { id: `act-${faker.string.uuid()}`, type: 'meeting', content: `Scheduled a demo for next week.`, timestamp: faker.date.soon().toISOString() },
+    ];
+
+
+    // --- CONTACTS ---
+
+    export const mockContacts: Contact[] = Array.from({ length: 50 }, (_, i) =>
+    {
+        const firstName = faker.person.firstName();
+        const lastName = faker.person.lastName();
+        const name = `${firstName} ${lastName}`;
+        return {
+            id: `contact-${i + 1}`,
+            name,
+            avatar: `https://avatar.vercel.sh/${firstName.toLowerCase()}${lastName.toLowerCase()}.png`,
+            online: faker.datatype.boolean(),
+            tags: faker.helpers.arrayElements(['VIP', 'New Lead', 'Returning Customer', 'Support Request', 'High Value'], faker.number.int({ min: 1, max: 3 })),
+            email: faker.internet.email({ firstName, lastName }),
+            phone: faker.phone.number(),
+            lastSeen: faker.datatype.boolean() ? 'online' : `${faker.number.int({ min: 2, max: 59 })} minutes ago`,
+            company: faker.company.name(),
+            role: faker.person.jobTitle(),
+            activity: generateActivity(name),
+            notes: generateNotes(name),
+        };
+    });
+
+
+    // --- MESSAGE GENERATOR ---
+
+    const generateMessages = (messageCount: number, contactName: string,
+    journeyPath: JourneyPointType[]): Message[] => {
+      const messages: Message[] = [];
+      const now = new Date();
+      
+      const journeyPointsWithIndices = journeyPath.map((point, index) => ({
+          point,
+          index: Math.floor((messageCount / journeyPath.length) * (index + Math.random() * 0.8))
+      }));
+
+      for (let i = 0; i < messageCount; i++) {
+        const random = Math.random();
+        let sender: Message['sender'] = 'contact';
+        let type: Message['type'] = 'comment';
+        let text = faker.lorem.sentence();
+        let userId: string | undefined = undefined;
+
+        if (random > 0.85) { // Internal Note
+          sender = 'user';
+          type = 'note';
+          const user = faker.helpers.arrayElement(mockAssignees.filter(u => u.type === 'human'));
+          userId = user.id;
+          text = `Internal note from ${user.name}: ${faker.lorem.sentence()}`;
+        } else if (random > 0.7) { // System message
+          sender = 'system';
+          type = 'system';
+          text = faker.helpers.arrayElement(['Task status changed to "in-progress"', 'Task assigned to Alex Johnson', 'User joined the conversation']);
+        } else if (random > 0.35) { // User comment
+          sender = 'user';
+          type = 'comment';
+          userId = 'user-1'; // "You"
+          text = faker.lorem.sentence();
+        }
+        
+        const journeyPointInfo = journeyPointsWithIndices.find(jp => jp.index === i);
+
+        messages.push({
+          id: `msg-${faker.string.uuid()}`,
+          text,
+          timestamp: new Date(now.getTime() - (messageCount - i) * 60 * 60 * 100).toISOString(),
+          sender,
+          type,
+          read: i < messageCount - faker.number.int({min: 0, max: 5}),
+          userId,
+          journeyPoint: journeyPointInfo?.point
+        });
+      }
+      
+      // Ensure the last message is from the contact for preview purposes
+      messages[messages.length - 1] = {
+        ...messages[messages.length-1],
+        sender: 'contact',
+        type: 'comment',
+        text: `Hey! This is the latest message from ${contactName}. ${faker.lorem.sentence()}`,
+        userId: undefined
+      };
+      return messages.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+    };
+
+
+    // --- TASK GENERATOR ---
+
+    const generateTasks = (count: number): Task[] => {
+        const tasks: Task[] = [];
+        const statuses: TaskStatus[] = ['open', 'in-progress', 'done', 'snoozed'];
+        const priorities: TaskPriority[] = ['none', 'low', 'medium', 'high'];
+        const channels: Channel[] = ['whatsapp', 'instagram', 'facebook', 'email'];
+        const possibleJourneys: JourneyPointType[][] = [
+            ['Inquiry', 'Consult', 'Quote', 'Order', 'Payment', 'Shipped', 'Delivered', 'Review'],
+            ['Inquiry', 'Consult', 'Quote', 'Order', 'Payment', 'Shipped', 'Delivered', 'Follow-up'],
+            ['Inquiry', 'Consult', 'Follow-up'],
+            ['Inquiry', 'Consult', 'Quote', 'Order', 'Canceled'],
+            ['Consult', 'Order', 'Payment', 'Shipped', 'Delivered', 'Complain', 'Refund'],
+            ['Consult', 'Order', 'Payment', 'Shipped', 'Complain', 'Follow-up'],
+            ['Order', 'Delivered', 'Review', 'Reorder', 'Delivered'],
+            ['Complain', 'Follow-up', 'Refund'],
+            ['Quote', 'Follow-up', 'Order', 'Payment', 'Shipped', 'Delivered'],
+            ['Inquiry', 'Quote', 'Order', 'Payment', 'Shipped', 'Canceled', 'Refund'],
+            ['Consult', 'Follow-up'],
+            ['Complain'],
+            ['Order', 'Delivered'],
+        ];
+
+        for (let i = 0; i < count; i++) {
+            const contact = faker.helpers.arrayElement(mockContacts);
+            const status = faker.helpers.arrayElement(statuses);
+            const unreadCount = status === 'open' || status === 'in-progress' ? faker.number.int({ min: 0, max: 8 }) : 0;
+            const messageCount = faker.number.int({ min: 10, max: 150 });
+            const journey = faker.helpers.arrayElement(possibleJourneys);
+            const messages = generateMessages(messageCount, contact.name, journey);
+            const assignee = faker.datatype.boolean(0.8) ? faker.helpers.arrayElement(mockAssignees) : null;
+
+            const task: Task = {
+                id: `task-${i + 1}`,
+                title: faker.lorem.sentence({ min: 3, max: 7 }),
+                contactId: contact.id,
+                channel: faker.helpers.arrayElement(channels),
+                unreadCount,
+                messages,
+                get lastActivity() { return this.messages[this.messages.length - 1]; },
+                status,
+                assigneeId: assignee?.id || null,
+                dueDate: faker.datatype.boolean() ? faker.date.future().toISOString() : null,
+                priority: faker.helpers.arrayElement(priorities),
+                tags: faker.helpers.arrayElements(['onboarding', 'pricing', 'bug-report', 'urgent', 'tech-support'], faker.number.int({min: 0, max: 2})),
+                aiSummary: {
+                    sentiment: faker.helpers.arrayElement(['positive', 'negative', 'neutral']),
+                    summaryPoints: Array.from({ length: 3 }, () => faker.lorem.sentence()),
+                    suggestedReplies: Array.from({ length: 2 }, () => faker.lorem.words({ min: 3, max: 6})),
+                },
+                activeHandlerId: faker.helpers.arrayElement([assignee?.id, null, 'user-ai-1']),
+            };
+            tasks.push(task);
+        }
+        return tasks;
+    }
+
+
+    export const mockTasks: Task[] = generateTasks(200);
+  src/pages/Messaging/store/messaging.store.ts: >-
+    import { create } from 'zustand';
+
+    import { mockTasks, mockContacts, mockAssignees } from '../data/mockData';
+
+    import type { Task, Contact, Channel, Assignee, TaskStatus, TaskPriority,
+    TaskView, Message, JourneyPointType } from '../types';
+
+
+    interface MessagingState {
+      tasks: Task[];
+      contacts: Contact[];
+      assignees: Assignee[];
+      searchTerm: string;
+      activeFilters: {
+        channels: Channel[];
+        tags: string[];
+        status: TaskStatus[];
+        priority: TaskPriority[];
+        assigneeId: string[];
+      };
+      activeTaskView: TaskView;
+    }
+
+
+    interface MessagingActions {
+      getTaskById: (id: string) => (Task & { contact: Contact, assignee: Assignee | null, activeHandler: Assignee | null }) | undefined;
+      getFilteredTasks: () => (Task & { contact: Contact, assignee: Assignee | null })[];
+      setSearchTerm: (term: string) => void;
+      setActiveTaskView: (view: TaskView) => void;
+      setFilters: (filters: Partial<MessagingState['activeFilters']>) => void;
+      updateTask: (taskId: string, updates: Partial<Omit<Task, 'id'>>) => void;
+      takeOverTask: (taskId: string, userId: string) => void;
+      requestAndSimulateTakeover: (taskId: string, requestedByUserId: string) => void;
+      getAssigneeById: (assigneeId: string) => Assignee | undefined;
+      getAvailableTags: () => string[];
+    }
+
+
+    export const useMessagingStore = create<MessagingState &
+    MessagingActions>((set, get) => ({
+      tasks: mockTasks,
+      contacts: mockContacts,
+      assignees: mockAssignees,
+      searchTerm: '',
+      activeFilters: {
+        channels: [],
+        tags: [],
+        status: [],
+        priority: [],
+        assigneeId: [],
+      },
+      activeTaskView: 'all_open',
+
+      getTaskById: (id) => {
+        const task = get().tasks.find(t => t.id === id);
+        if (!task) return undefined;
+
+        const contact = get().contacts.find(c => c.id === task.contactId);
+        if (!contact) return undefined;
+
+        const assignee = get().assignees.find(a => a.id === task.assigneeId) || null;
+        const activeHandler = get().assignees.find(a => a.id === task.activeHandlerId) || null;
+
+        return { ...task, contact, assignee, activeHandler };
+      },
+
+      getFilteredTasks: () => {
+        const { tasks, contacts, assignees, searchTerm, activeFilters, activeTaskView } = get();
+        const lowercasedSearch = searchTerm.toLowerCase();
+
+        const viewFilteredTasks = tasks.filter(task => {
+          switch (activeTaskView) {
+            case 'all_open':
+              return task.status === 'open' || task.status === 'in-progress';
+            case 'unassigned':
+              return !task.assigneeId && (task.status === 'open' || task.status === 'in-progress');
+            case 'done':
+              return task.status === 'done';
+            default:
+              return true;
+          }
+        });
+        const mapped = viewFilteredTasks.map(task => {
+          const contact = contacts.find(c => c.id === task.contactId) as Contact;
+          const assignee = assignees.find(a => a.id === task.assigneeId) || null;
+          return { ...task, contact, assignee };
+        });
+
+        const filtered = mapped.filter(task => {
+          const searchMatch = task.title.toLowerCase().includes(lowercasedSearch) || task.contact.name.toLowerCase().includes(lowercasedSearch);
+          const channelMatch = activeFilters.channels.length === 0 || activeFilters.channels.includes(task.channel);
+          const tagMatch = activeFilters.tags.length === 0 || activeFilters.tags.some(tag => task.tags.includes(tag));
+          const statusMatch = activeFilters.status.length === 0 || activeFilters.status.includes(task.status);
+          const priorityMatch = activeFilters.priority.length === 0 || activeFilters.priority.includes(task.priority);
+          const assigneeMatch = activeFilters.assigneeId.length === 0 || (task.assigneeId && activeFilters.assigneeId.includes(task.assigneeId));
+          
+          return searchMatch && channelMatch && tagMatch && statusMatch && priorityMatch && assigneeMatch;
+        });
+
+        return filtered.sort((a, b) => new Date(b.lastActivity.timestamp).getTime() - new Date(a.lastActivity.timestamp).getTime());
+      },
+
+      setSearchTerm: (term) => set({ searchTerm: term }),
+      
+      setActiveTaskView: (view) => set({ activeTaskView: view }),
+
+      setFilters: (newFilters) => set(state => ({
+        activeFilters: { ...state.activeFilters, ...newFilters }
+      })),
+
+      updateTask: (taskId, updates) => set(state => ({
+        tasks: state.tasks.map(task => 
+          task.id === taskId 
+            ? { ...task, ...updates, lastActivity: { ...task.lastActivity, timestamp: new Date().toISOString() } } 
+            : task
+        )
+      })),
+
+      takeOverTask: (taskId, userId) => set(state => ({
+        tasks: state.tasks.map(task => 
+          task.id === taskId 
+            ? { ...task, activeHandlerId: userId, takeoverRequested: false } 
+            : task
+        )
+      })),
+
+      requestAndSimulateTakeover: (taskId, requestedByUserId) => {
+        set(state => ({
+          tasks: state.tasks.map(task => 
+            task.id === taskId ? { ...task, takeoverRequested: true } : task
+          )
+        }));
+        // Simulate a 2-second delay for the other user to "approve"
+        setTimeout(() => get().takeOverTask(taskId, requestedByUserId), 2000);
+      },
+
+      getAssigneeById: (assigneeId: string) => {
+        return get().assignees.find(a => a.id === assigneeId);
+      },
+
+      getAvailableTags: () => {
+        const contactTags = get().contacts.flatMap(c => c.tags);
+        const taskTags = get().tasks.flatMap(t => t.tags);
+        const allTags = new Set([...contactTags, ...taskTags]);
+        return Array.from(allTags);
+      }
+    }));
+  src/pages/Messaging/components/ContactInfoPanel.tsx: >-
+    import React from 'react';
+
+    import { Mail, Phone, Briefcase } from 'lucide-react';
+
+    import type { Contact } from '../types';
+
+
+    const DetailRow: React.FC<{icon: React.ReactNode, children:
+    React.ReactNode}> = ({ icon, children }) => (
+        <div className="flex items-start gap-3 text-sm">
+            <div className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0">{icon}</div>
+            <div className="flex-1 text-foreground/90 break-all">{children}</div>
+        </div>
+    );
+
+
+    interface ContactInfoPanelProps {
+      contact: Contact;
+    }
+
+
+    export const ContactInfoPanel: React.FC<ContactInfoPanelProps> = ({ contact
+    }) => {
+        return (
+            <div className="space-y-4">
+                <DetailRow icon={<Mail />}>{contact.email}</DetailRow>
+                <DetailRow icon={<Phone />}>{contact.phone}</DetailRow>
+                <DetailRow icon={<Briefcase />}>
+                    {contact.role} at <strong>{contact.company}</strong>
+                </DetailRow>
+            </div>
+        )
+    }
+  src/pages/Messaging/components/TaskList.tsx: >-
+    import { useEffect } from 'react';
+
+    import { Search, SlidersHorizontal, Check, Inbox, Clock, Zap, Shield, Eye }
+    from 'lucide-react';
+
+    import { Link, useParams } from 'react-router-dom';
+
+    import { formatDistanceToNow } from 'date-fns';
+
+    import { useMessagingStore } from '../store/messaging.store';
+
+    import { Button } from '@/components/ui/button';
+
+    import { Input } from '@/components/ui/input';
+
+    import { Avatar, AvatarFallback, AvatarImage } from
+    '@/components/ui/avatar';
+
+    import { Badge } from '@/components/ui/badge';
+
+    import { Popover, PopoverContent, PopoverTrigger } from
+    '@/components/ui/popover';
+
+    import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem,
+    CommandList, CommandSeparator } from '@/components/ui/command';
+
+    import { cn } from '@/lib/utils';
+
+    import { AnimatedTabs } from '@/components/ui/animated-tabs';
+
+    import type { TaskStatus, TaskPriority, TaskView } from '../types';
+
+    import { useAppViewManager } from '@/hooks/useAppViewManager.hook';
+
+
+    // Local helpers for styling based on task properties
+
+    const getStatusIcon = (status: TaskStatus) => {
+        switch(status) {
+            case 'open': return <Inbox className="w-3 h-3 text-blue-500" />;
+            case 'in-progress': return <Zap className="w-3 h-3 text-yellow-500" />;
+            case 'done': return <Shield className="w-3 h-3 text-green-500" />;
+            case 'snoozed': return <Clock className="w-3 h-3 text-gray-500" />;
+        }
+    };
+
+
+    const getPriorityIcon = (priority: TaskPriority) => {
+        switch(priority) {
+            case 'high': return <div className="w-2 h-2 rounded-full bg-red-500" />;
+            case 'medium': return <div className="w-2 h-2 rounded-full bg-yellow-500" />;
+            case 'low': return <div className="w-2 h-2 rounded-full bg-green-500" />;
+            default: return <div className="w-2 h-2 rounded-full bg-gray-400" />;
+        }
+    };
+
+
+    const statusOptions: { value: TaskStatus; label: string }[] = [
+        { value: 'open', label: 'Open' }, { value: 'in-progress', label: 'In Progress' }, { value: 'done', label: 'Done' }, { value: 'snoozed', label: 'Snoozed' }
+    ];
+
+    const priorityOptions: { value: TaskPriority; label: string }[] = [
+        { value: 'high', label: 'High' }, { value: 'medium', label: 'Medium' }, { value: 'low', label: 'Low' }, { value: 'none', label: 'None' }
+    ];
+
+
+    export const TaskList = () => {
+      const { conversationId } = useParams<{ conversationId: string }>(); // This will be taskId later
+      const { 
+        getFilteredTasks,
+        setSearchTerm,
+        activeFilters,
+        setActiveTaskView,
+        searchTerm,
+       } = useMessagingStore();
+       const { messagingView, setMessagingView } = useAppViewManager();
+
+      useEffect(() => {
+        setActiveTaskView(messagingView || 'all_open');
+      }, [messagingView, setActiveTaskView]);
+
+      const filteredTasks = getFilteredTasks();
+      const activeFilterCount = Object.values(activeFilters).reduce((count, filterArray) => count + filterArray.length, 0);
+
+      const TABS: { id: TaskView, label: string }[] = [
+        { id: 'all_open', label: 'Open' },
+        { id: 'unassigned', label: 'Unassigned' },
+        { id: 'done', label: 'Done' }
+      ];
+
+      return (
+        <div className="h-full flex flex-col bg-background/80">
+          {/* Header */}
+          <div className="flex-shrink-0 border-b bg-background/80 p-4 space-y-4">
+            <h2 className="text-xl font-bold tracking-tight">Inbox</h2>
+            <div className="flex gap-2">
+                <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input placeholder="Search tasks..." className="pl-9" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+                </div>
+                <Popover>
+                    <PopoverTrigger asChild>
+                        <Button variant="outline" size="sm" className="h-10 border-dashed gap-2">
+                            <SlidersHorizontal className="w-4 h-4" />
+                            Filters
+                            {activeFilterCount > 0 && <Badge variant="secondary" className="rounded-sm px-1 font-normal">{activeFilterCount}</Badge>}
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[240px] p-0" align="end">
+                        <FilterCommand />
+                    </PopoverContent>
+                </Popover>
+            </div>
+          </div>
+          <AnimatedTabs
+            tabs={TABS}
+            activeTab={messagingView || 'all_open'}
+            onTabChange={(tabId) => setMessagingView(tabId as TaskView)}
+          />
+
+          {/* Task List */}
+          <div className="flex-1 overflow-y-auto">
+            <nav className="p-2 space-y-1">
+              {filteredTasks.map(task => {
+                const currentUserId = 'user-1';
+                const isHandledByOther = task.activeHandlerId && task.activeHandlerId !== currentUserId;
+
+                return (
+                  <Link
+                    to={`/messaging/${task.id}`}
+                    key={task.id}
+                    className={cn(
+                      "block p-3 rounded-lg text-left transition-all duration-200 hover:bg-accent/50",
+                      "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 outline-none",
+                      conversationId === task.id && "bg-accent"
+                    )}
+                  >
+                    <div className="flex items-start gap-3">
+                      <Avatar className="h-9 w-9 mt-1">
+                        <AvatarImage src={task.contact.avatar} alt={task.contact.name} />
+                        <AvatarFallback>{task.contact.name.charAt(0)}</AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 overflow-hidden">
+                          <div className="flex justify-between items-center mb-1">
+                              <p className="text-sm font-semibold truncate pr-2">{task.contact.name}</p>
+                              <p className="text-xs text-muted-foreground whitespace-nowrap">{formatDistanceToNow(new Date(task.lastActivity.timestamp), { addSuffix: true })}</p>
+                          </div>
+                          <p className="text-sm truncate text-foreground">{task.title}</p>
+                          <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+                              <div className="flex items-center gap-1.5" title={task.status}>
+                                  {getStatusIcon(task.status)}
+                                  <span className="capitalize">{task.status.replace('-', ' ')}</span>
+                              </div>
+                              <div className="flex items-center gap-1.5" title={task.priority}>
+                                  {getPriorityIcon(task.priority)}
+                                  <span className="capitalize">{task.priority}</span>
+                              </div>
+                              {task.assignee && (
+                                  <div className="flex items-center gap-1.5" title={`Assigned to ${task.assignee.name}`}>
+                                      <Avatar className="h-4 w-4"><AvatarImage src={task.assignee.avatar} /></Avatar>
+                                  </div>
+                              )}
+                              {isHandledByOther && <Eye className="w-3.5 h-3.5" title="Being handled by another user" />}
+                          </div>
+                      </div>
+                      {task.unreadCount > 0 && (
+                          <div className="flex items-center justify-center self-center ml-auto">
+                              <Badge className="bg-primary h-5 w-5 p-0 flex items-center justify-center">{task.unreadCount}</Badge>
+                          </div>
+                      )}
+                    </div>
+                  </Link>
+                )
+              })}
+            </nav>
+          </div>
+        </div>
+      );
+    };
+
+
+    // Filter component for popover
+
+    function FilterCommand() {
+        const { activeFilters, setFilters, assignees, getAvailableTags } = useMessagingStore();
+        const availableTags = getAvailableTags();
+
+        const handleSelect = (type: 'status' | 'priority' | 'assigneeId' | 'tags', value: string) => {
+            const current = new Set(activeFilters[type]);
+            current.has(value) ? current.delete(value) : current.add(value);
+            setFilters({ [type]: Array.from(current) });
+        };
+
+        const hasActiveFilters = Object.values(activeFilters).some(arr => arr.length > 0);
+
+        return (
+            <Command>
+                <CommandInput placeholder="Filter by..." />
+                <CommandList>
+                    <CommandEmpty>No results found.</CommandEmpty>
+                    <CommandGroup heading="Status">
+                        {statusOptions.map(o => (
+                            <CommandItem key={o.value} onSelect={() => handleSelect('status', o.value)}>
+                                <div className={cn('mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary', activeFilters.status.includes(o.value) ? 'bg-primary text-primary-foreground' : 'opacity-50 [&_svg]:invisible')}><Check className="h-4 w-4" /></div>
+                                <span>{o.label}</span>
+                            </CommandItem>
+                        ))}
+                    </CommandGroup>
+                    <CommandSeparator />
+                    <CommandGroup heading="Priority">
+                        {priorityOptions.map(o => (
+                            <CommandItem key={o.value} onSelect={() => handleSelect('priority', o.value)}>
+                                <div className={cn('mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary', activeFilters.priority.includes(o.value) ? 'bg-primary text-primary-foreground' : 'opacity-50 [&_svg]:invisible')}><Check className="h-4 w-4" /></div>
+                                <span>{o.label}</span>
+                            </CommandItem>
+                        ))}
+                    </CommandGroup>
+                    <CommandSeparator />
+                    <CommandGroup heading="Assignee">
+                        {assignees.map(a => (
+                            <CommandItem key={a.id} onSelect={() => handleSelect('assigneeId', a.id)}>
+                                <div className={cn('mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary', activeFilters.assigneeId.includes(a.id) ? 'bg-primary text-primary-foreground' : 'opacity-50 [&_svg]:invisible')}><Check className="h-4 w-4" /></div>
+                                <Avatar className="h-5 w-5 mr-2"><AvatarImage src={a.avatar} /><AvatarFallback>{a.name.charAt(0)}</AvatarFallback></Avatar>
+                                <span>{a.name}</span>
+                            </CommandItem>
+                        ))}
+                    </CommandGroup>
+                    <CommandSeparator />
+                    <CommandGroup heading="Tags">
+                        {availableTags.map(t => (
+                            <CommandItem key={t} onSelect={() => handleSelect('tags', t)}>
+                                <div className={cn('mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary', activeFilters.tags.includes(t) ? 'bg-primary text-primary-foreground' : 'opacity-50 [&_svg]:invisible')}><Check className="h-4 w-4" /></div>
+                                <span>{t}</span>
+                            </CommandItem>
+                        ))}
+                    </CommandGroup>
+
+                    {hasActiveFilters && (
+                        <>
+                            <CommandSeparator />
+                            <CommandGroup>
+                                <CommandItem onSelect={() => setFilters({ status: [], priority: [], assigneeId: [], tags: [], channels: [] })} className="justify-center text-center text-sm">Clear all filters</CommandItem>
+                            </CommandGroup>
+                        </>
+                    )}
+                </CommandList>
+            </Command>
+        );
+    }
+  src/pages/Messaging/components/TaskHeader.tsx: >
+    import React from 'react';
+
+    import { useMessagingStore } from '../store/messaging.store';
+
+    import type { Task, TaskStatus, TaskPriority, Assignee, Contact } from
+    '../types';
+
+    import {
+      DropdownMenu,
+      DropdownMenuContent,
+      DropdownMenuItem,
+      DropdownMenuRadioGroup,
+      DropdownMenuRadioItem,
+      DropdownMenuTrigger,
+      DropdownMenuSeparator
+    } from '@/components/ui/dropdown-menu';
+
+    import { Button } from '@/components/ui/button';
+
+    import { Avatar, AvatarFallback, AvatarImage } from
+    '@/components/ui/avatar';
+
+    import { ChevronDown, Inbox, Zap, Shield, Clock, Calendar, Plus, User, Eye }
+    from 'lucide-react';
+
+    import { Badge } from '@/components/ui/badge';
+
+    import { format } from 'date-fns';
+
+
+    const statusOptions: { value: TaskStatus; label: string; icon:
+    React.ReactNode }[] = [
+        { value: 'open', label: 'Open', icon: <Inbox className="w-4 h-4" /> },
+        { value: 'in-progress', label: 'In Progress', icon: <Zap className="w-4 h-4" /> },
+        { value: 'done', label: 'Done', icon: <Shield className="w-4 h-4" /> },
+        { value: 'snoozed', label: 'Snoozed', icon: <Clock className="w-4 h-4" /> },
+    ];
+
+
+    const priorityOptions: { value: TaskPriority; label: string; icon:
+    React.ReactNode }[] = [
+        { value: 'high', label: 'High', icon: <div className="w-2.5 h-2.5 rounded-full bg-red-500" /> },
+        { value: 'medium', label: 'Medium', icon: <div className="w-2.5 h-2.5 rounded-full bg-yellow-500" /> },
+        { value: 'low', label: 'Low', icon: <div className="w-2.5 h-2.5 rounded-full bg-green-500" /> },
+        { value: 'none', label: 'None', icon: <div className="w-2.5 h-2.5 rounded-full bg-gray-400" /> },
+    ];
+
+
+
+    interface TaskHeaderProps {
+      task: (Task & { contact: Contact; assignee: Assignee | null });
+    }
+
+
+    export const TaskHeader: React.FC<TaskHeaderProps> = ({ task }) => {
+      const { updateTask, assignees } = useMessagingStore();
+      const currentStatus = statusOptions.find(o => o.value === task.status);
+      const currentPriority = priorityOptions.find(o => o.value === task.priority);
+      const currentUserId = 'user-1'; // Mock current user
+      const isHandledByOther = task.activeHandler && task.activeHandlerId !== currentUserId;
+
+
+      return (
+        <div className="space-y-4">
+          {/* Task Title & Contact */}
+          <div className="overflow-hidden">
+            <h2 className="font-bold text-xl lg:text-2xl truncate" title={task.title}>
+              {task.title}
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              With <a href="#" className="hover:underline font-medium text-foreground/80">{task.contact.name}</a>
+              <span className="mx-1.5">&middot;</span>
+              via <span className="capitalize font-medium text-foreground/80">{task.channel}</span>
+            </p>
+          </div>
+
+          {/* Properties Bar */}
+          <div className="flex flex-wrap items-center gap-y-2 text-sm">
+            {/* Assignee Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-2 font-normal">
+                  {task.assignee ? (
+                    <Avatar className="h-5 w-5"><AvatarImage src={task.assignee.avatar} /><AvatarFallback>{task.assignee.name.charAt(0)}</AvatarFallback></Avatar>
+                  ) : (
+                    <User className="h-4 w-4 text-muted-foreground" />
+                  )}
+                  <span className="font-medium">{task.assignee?.name || 'Unassigned'}</span>
+                  <ChevronDown className="w-3 h-3 text-muted-foreground" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                <DropdownMenuRadioGroup value={task.assigneeId || 'null'} onValueChange={val => updateTask(task.id, { assigneeId: val === 'null' ? null : val })}>
+                  <DropdownMenuRadioItem value="null">
+                    <User className="w-4 h-4 mr-2 text-muted-foreground" /> Unassigned
+                  </DropdownMenuRadioItem>
+                  <DropdownMenuSeparator />
+                  {assignees.map(a => (
+                    <DropdownMenuRadioItem key={a.id} value={a.id}>
+                      <Avatar className="h-5 w-5 mr-2"><AvatarImage src={a.avatar} /><AvatarFallback>{a.name.charAt(0)}</AvatarFallback></Avatar>
+                      {a.name}
+                    </DropdownMenuRadioItem>
+                  ))}
+                </DropdownMenuRadioGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {isHandledByOther && (
+                <>
+                    <div className="mx-2 h-4 w-px bg-border" />
+                    <Badge variant="outline" className="gap-2 font-normal text-amber-600 border-amber-600/50">
+                        <Eye className="w-3.5 h-3.5" /> Viewing: {task.activeHandler?.name}
+                    </Badge>
+                </>
+            )}
+            <div className="mx-2 h-4 w-px bg-border" />
+
+            {/* Status Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground hover:text-foreground">
+                  {currentStatus?.icon}
+                  <span className="font-medium text-foreground">{currentStatus?.label}</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                {statusOptions.map(o => (
+                  <DropdownMenuItem key={o.value} onClick={() => updateTask(task.id, { status: o.value })}>
+                    <div className="flex items-center">
+                      <div className="w-4 h-4 mr-2">{o.icon}</div>
+                      <span>{o.label}</span>
+                    </div>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+            
+            <div className="mx-2 h-4 w-px bg-border" />
+            
+            {/* Priority Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground hover:text-foreground">
+                  {currentPriority?.icon}
+                  <span className="font-medium text-foreground">{currentPriority?.label}</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                {priorityOptions.map(o => (
+                  <DropdownMenuItem key={o.value} onClick={() => updateTask(task.id, { priority: o.value })}>
+                    <div className="flex items-center">
+                      <div className="w-2.5 h-2.5 mr-2">{o.icon}</div>
+                      <span>{o.label}</span>
+                    </div>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <div className="mx-2 h-4 w-px bg-border" />
+
+            {/* Due Date - for display, could be a popover trigger */}
+            <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground cursor-default" disabled>
+                <Calendar className="w-4 h-4" />
+                <span className="font-medium text-foreground">{task.dueDate ? format(new Date(task.dueDate), 'MMM d, yyyy') : 'No due date'}</span>
+            </Button>
+          </div>
+
+          {/* Tags */}
+          <div className="flex flex-wrap items-center gap-2">
+            {task.tags.map(t => <Badge variant="secondary" key={t}>{t}</Badge>)}
+            <Button variant="outline" size="sm" className="h-7 px-2 text-xs rounded-md border-dashed">
+              <Plus className="w-3 h-3 mr-1" /> Tag
+            </Button>
+          </div>
+        </div>
+      );
+    };
+approved: false
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: undone
+id: 421

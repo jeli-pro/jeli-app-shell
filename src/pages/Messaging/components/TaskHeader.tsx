@@ -51,8 +51,8 @@ export const TaskHeader: React.FC<TaskHeaderProps> = ({ task }) => {
           {task.title}
         </h2>
         <p className="text-sm text-muted-foreground">
-          With <a href="#" className="hover:underline font-medium text-foreground/80">{task.contact.name}</a>
-          <span className="mx-1.5">&middot;</span>
+          With <a href="#" className="hover:underline font-medium text-foreground/80">{task.contact.name}</a> from <strong className="font-medium text-foreground/80">{task.contact.company}</strong>
+          <span className="mx-1">&middot;</span>
           via <span className="capitalize font-medium text-foreground/80">{task.channel}</span>
         </p>
       </div>

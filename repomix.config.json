@@ -33,13 +33,14 @@
     // "index.html",
     // "src"
     //
-    "package.json",
-    "src/lib/utils.ts",
-    "src/pages/Messaging/components/ActivityPanel.tsx",
-    "src/pages/Messaging/components/MessagingContent.tsx",
-    "src/pages/Messaging/types.ts",
-    "tailwind.config.js"
-
+    "src/pages/Messaging/components/ContactInfoPanel.tsx",
+    "src/pages/Messaging/components/TaskDetail.tsx",
+    "src/pages/Messaging/components/TaskHeader.tsx",
+    "src/pages/Messaging/components/TaskList.tsx",
+    "src/pages/Messaging/data/mockData.ts",
+    "src/pages/Messaging/index.tsx",
+    "src/pages/Messaging/store/messaging.store.ts",
+    "src/pages/Messaging/types.ts"
     // //
     //
     //

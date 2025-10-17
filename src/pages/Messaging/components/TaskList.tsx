@@ -118,7 +118,9 @@ export const TaskList = () => {
                   </Avatar>
                   <div className="flex-1 overflow-hidden">
                       <div className="flex justify-between items-center mb-1">
-                          <p className="text-sm font-semibold truncate pr-2">{task.contact.name}</p>
+                          <p className="text-sm font-semibold truncate pr-2">
+                            {task.contact.name} <span className="text-muted-foreground font-normal">&middot; {task.contact.company}</span>
+                          </p>
                           <p className="text-xs text-muted-foreground whitespace-nowrap">{formatDistanceToNow(new Date(task.lastActivity.timestamp), { addSuffix: true })}</p>
                       </div>
                       <p className="text-sm truncate text-foreground">{task.title}</p>

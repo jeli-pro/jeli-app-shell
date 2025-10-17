@@ -1,290 +1,946 @@
 # Directory Structure
 ```
 src/
-  lib/
-    utils.ts
   pages/
     Messaging/
       components/
-        ActivityPanel.tsx
-        MessagingContent.tsx
+        ContactInfoPanel.tsx
+        TaskDetail.tsx
+        TaskHeader.tsx
+        TaskList.tsx
+      data/
+        mockData.ts
+      store/
+        messaging.store.ts
+      index.tsx
       types.ts
-package.json
-tailwind.config.js
 ```
 
 # Files
 
-## File: src/pages/Messaging/components/ActivityPanel.tsx
+## File: src/pages/Messaging/components/ContactInfoPanel.tsx
 ```typescript
 import React from 'react';
-import { format } from 'date-fns';
-import { Mail, StickyNote, PhoneCall, Calendar } from 'lucide-react';
-import type { Contact, ActivityEvent, ActivityEventType } from '../types';
+import { Mail, Phone, Briefcase } from 'lucide-react';
+import type { Contact } from '../types';
 
-const activityIcons: Record<ActivityEventType, React.ElementType> = {
-    note: StickyNote,
-    call: PhoneCall,
-    email: Mail,
-    meeting: Calendar,
-};
+const DetailRow: React.FC<{icon: React.ReactNode, children: React.ReactNode}> = ({ icon, children }) => (
+    <div className="flex items-start gap-3 text-sm">
+        <div className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0">{icon}</div>
+        <div className="flex-1 text-foreground/90 break-all">{children}</div>
+    </div>
+);
 
-const ActivityItem = ({ item }: { item: ActivityEvent }) => {
-    const Icon = activityIcons[item.type];
-    return (
-      <div className="flex items-start gap-4">
-        <div className="mt-1.5 h-8 flex items-center justify-center">
-            <div className="h-full w-0.5 bg-border"></div>
-            <div className="absolute p-1.5 bg-background border rounded-full">
-                <Icon className="w-3.5 h-3.5 text-muted-foreground" />
-            </div>
-        </div>
-        <div className="flex-1 text-sm pt-1.5 pb-5"><p>{item.content}</p><p className="text-xs text-muted-foreground mt-1">{format(new Date(item.timestamp), "MMM d, yyyy 'at' h:mm a")}</p></div>
-      </div>
-    )
-};
-
-interface ActivityPanelProps {
+interface ContactInfoPanelProps {
   contact: Contact;
 }
 
-export const ActivityPanel: React.FC<ActivityPanelProps> = ({ contact }) => {
+export const ContactInfoPanel: React.FC<ContactInfoPanelProps> = ({ contact }) => {
     return (
-        <div className="relative">
-            {contact.activity.map(item => <ActivityItem key={item.id} item={item} />)}
+        <div className="space-y-4">
+            <DetailRow icon={<Mail />}>{contact.email}</DetailRow>
+            <DetailRow icon={<Phone />}>{contact.phone}</DetailRow>
+            <DetailRow icon={<Briefcase />}>
+                {contact.role} at <strong>{contact.company}</strong>
+            </DetailRow>
         </div>
     )
 }
 ```
 
-## File: tailwind.config.js
-```javascript
-/** @type {import('tailwindcss').Config} */
-export default {
-  content: [
-    "./index.html",
-    "./src/**/*.{js,ts,jsx,tsx}",
-  ],
-  darkMode: "class",
-  theme: {
-    extend: {
-      colors: {
-        border: "hsl(var(--border))",
-        input: "hsl(var(--input))",
-        ring: "hsl(var(--ring))",
-        background: "hsl(var(--background))",
-        foreground: "hsl(var(--foreground))",
-        primary: {
-          DEFAULT: "hsl(var(--primary))",
-          foreground: "hsl(var(--primary-foreground))",
-        },
-        secondary: {
-          DEFAULT: "hsl(var(--secondary))",
-          foreground: "hsl(var(--secondary-foreground))",
-        },
-        destructive: {
-          DEFAULT: "hsl(var(--destructive))",
-          foreground: "hsl(var(--destructive-foreground))",
-        },
-        muted: {
-          DEFAULT: "hsl(var(--muted))",
-          foreground: "hsl(var(--muted-foreground))",
-        },
-        accent: {
-          DEFAULT: "hsl(var(--accent))",
-          foreground: "hsl(var(--accent-foreground))",
-        },
-        popover: {
-          DEFAULT: "hsl(var(--popover))",
-          foreground: "hsl(var(--popover-foreground))",
-        },
-        card: {
-          DEFAULT: "hsl(var(--card))",
-          foreground: "hsl(var(--card-foreground))",
-        },
-      },
-      borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 4px)",
-        sm: "calc(var(--radius) - 8px)",
-        DEFAULT: "0.5rem",
-      },
-      boxShadow: {
-        input: [
-          "0px 2px 3px -1px rgba(0, 0, 0, 0.1)",
-          "0px 1px 0px 0px rgba(25, 28, 33, 0.02)",
-          "0px 0px 0px 1px rgba(25, 28, 33, 0.08)",
-        ].join(", "),
-      },
-      animation: {
-        "fade-in": "fadeIn 0.5s ease-in-out",
-        "slide-in": "slideIn 0.3s ease-out",
-        "scale-in": "scaleIn 0.2s ease-out",
-        ripple: "ripple 2s ease calc(var(--i, 0) * 0.2s) infinite",
-        orbit: "orbit calc(var(--duration) * 1s) linear infinite",
-      },
-      keyframes: {
-        fadeIn: {
-          "0%": { opacity: "0" },
-          "100%": { opacity: "1" },
-        },
-        slideIn: {
-          "0%": { transform: "translateX(-100%)" },
-          "100%": { transform: "translateX(0)" },
-        },
-        scaleIn: {
-          "0%": { transform: "scale(0.95)", opacity: "0" },
-          "100%": { transform: "scale(1)", opacity: "1" },
-        },
-        ripple: {
-          "0%, 100%": { transform: "translate(-50%, -50%) scale(1)" },
-          "50%": { transform: "translate(-50%, -50%) scale(0.9)" },
-        },
-        orbit: {
-          "0%": {
-            transform:
-              "rotate(0deg) translateY(calc(var(--radius) * 1px)) rotate(0deg)",
-          },
-          "100%": {
-            transform:
-              "rotate(360deg) translateY(calc(var(--radius) * 1px)) rotate(-360deg)",
-          },
-        }
-      },
-    },
-  },
-  plugins: [
-    require("tailwindcss-animate"),
-    require("tailwindcss/plugin")(function ({ addUtilities }) {
-      addUtilities({
-        ".no-scrollbar::-webkit-scrollbar": {
-          display: "none",
-        },
-        ".no-scrollbar": {
-          "-ms-overflow-style": "none",
-          "scrollbar-width": "none",
-        },
-      });
-    }),
-  ],
-}
-```
-
-## File: src/lib/utils.ts
+## File: src/pages/Messaging/components/TaskHeader.tsx
 ```typescript
-import { type ClassValue, clsx } from "clsx"
-import { twMerge } from "tailwind-merge"
-
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
-}
-
-export const SIDEBAR_STATES = {
-  HIDDEN: 'hidden',
-  COLLAPSED: 'collapsed', 
-  EXPANDED: 'expanded',
-  PEEK: 'peek'
-} as const
-
-export const BODY_STATES = {
-  NORMAL: 'normal',
-  FULLSCREEN: 'fullscreen',
-  SIDE_PANE: 'side_pane',
-  SPLIT_VIEW: 'split_view'
-} as const
-
-export type SidebarState = typeof SIDEBAR_STATES[keyof typeof SIDEBAR_STATES]
-export type BodyState = typeof BODY_STATES[keyof typeof BODY_STATES]
-
-export function capitalize(str: string): string {
-  if (!str) return str
-  return str.charAt(0).toUpperCase() + str.slice(1)
-}
-
-export const getStatusColor = (status: string) => {
-  switch (status) {
-    case 'active': return 'bg-green-500/20 text-green-700 border-green-500/30'
-    case 'pending': return 'bg-yellow-500/20 text-yellow-700 border-yellow-500/30'
-    case 'completed': return 'bg-blue-500/20 text-blue-700 border-blue-500/30'
-    case 'archived': return 'bg-gray-500/20 text-gray-700 border-gray-500/30'
-    default: return 'bg-gray-500/20 text-gray-700 border-gray-500/30'
-  }
-}
-
-export const getPriorityColor = (priority: string) => {
-  switch (priority) {
-    case 'critical': return 'bg-red-500/20 text-red-700 border-red-500/30'
-    case 'high': return 'bg-orange-500/20 text-orange-700 border-orange-500/30'
-    case 'medium': return 'bg-blue-500/20 text-blue-700 border-blue-500/30'
-    case 'low': return 'bg-green-500/20 text-green-700 border-green-500/30'
-    default: return 'bg-gray-500/20 text-gray-700 border-gray-500/30'
-  }
-}
-```
-
-## File: src/pages/Messaging/components/MessagingContent.tsx
-```typescript
-import React, { useState, useMemo } from 'react';
+import React from 'react';
 import { useMessagingStore } from '../store/messaging.store';
-import { ContactInfoPanel } from './ContactInfoPanel';
-import { AIInsightsPanel } from './AIInsightsPanel';
-import { ActivityPanel } from './ActivityPanel';
-import { NotesPanel } from './NotesPanel';
-import { TaskHeader } from './TaskHeader';
-import { AnimatedTabs } from '@/components/ui/animated-tabs';
-import { TechOrbitDisplay } from '@/components/effects/OrbitingCircles';
+import type { Task, TaskStatus, TaskPriority, Assignee, Contact } from '../types';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator
+} from '@/components/ui/dropdown-menu';
+import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { ChevronDown, Inbox, Zap, Shield, Clock, Calendar, Plus, User, Eye } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { format } from 'date-fns';
 
-interface MessagingContentProps {
-  conversationId?: string;
+const statusOptions: { value: TaskStatus; label: string; icon: React.ReactNode }[] = [
+    { value: 'open', label: 'Open', icon: <Inbox className="w-4 h-4" /> },
+    { value: 'in-progress', label: 'In Progress', icon: <Zap className="w-4 h-4" /> },
+    { value: 'done', label: 'Done', icon: <Shield className="w-4 h-4" /> },
+    { value: 'snoozed', label: 'Snoozed', icon: <Clock className="w-4 h-4" /> },
+];
+
+const priorityOptions: { value: TaskPriority; label: string; icon: React.ReactNode }[] = [
+    { value: 'high', label: 'High', icon: <div className="w-2.5 h-2.5 rounded-full bg-red-500" /> },
+    { value: 'medium', label: 'Medium', icon: <div className="w-2.5 h-2.5 rounded-full bg-yellow-500" /> },
+    { value: 'low', label: 'Low', icon: <div className="w-2.5 h-2.5 rounded-full bg-green-500" /> },
+    { value: 'none', label: 'None', icon: <div className="w-2.5 h-2.5 rounded-full bg-gray-400" /> },
+];
+
+
+interface TaskHeaderProps {
+  task: (Task & { contact: Contact; assignee: Assignee | null });
 }
 
-export const MessagingContent: React.FC<MessagingContentProps> = ({ conversationId }) => {
-  const [activeTab, setActiveTab] = useState('contact');
-  const task = useMessagingStore(state => conversationId ? state.getTaskById(conversationId) : undefined);
-  
-  const tabs = useMemo(() => [
-    { id: 'contact', label: 'Contact' },
-    { id: 'ai', label: 'AI Insights' },
-    { id: 'activity', label: 'Activity' },
-    { id: 'notes', label: 'Notes' },
-  ], []);
+export const TaskHeader: React.FC<TaskHeaderProps> = ({ task }) => {
+  const { updateTask, assignees } = useMessagingStore();
+  const currentStatus = statusOptions.find(o => o.value === task.status);
+  const currentPriority = priorityOptions.find(o => o.value === task.priority);
+  const currentUserId = 'user-1'; // Mock current user
+  const isHandledByOther = task.activeHandler && task.activeHandlerId !== currentUserId;
 
-  if (!task) {
-    return (
-      <div className="h-full flex-1 flex flex-col items-center justify-center bg-background p-6 relative overflow-hidden">
-        <TechOrbitDisplay text="Context" />
-        <div className="text-center z-10 bg-background/50 backdrop-blur-sm p-6 rounded-lg">
-            <h3 className="mt-4 text-lg font-medium">Select a Task</h3>
-            <p className="mt-1 text-sm text-muted-foreground">
-                Task details and contact information will appear here.
-            </p>
-        </div>
-      </div>
-    );
-  }
-  
+
   return (
-    <div className="h-full flex-1 flex flex-col bg-background overflow-hidden" data-testid="messaging-content-scroll-pane">
-      <div className="flex-shrink-0 border-b p-6">
-        <TaskHeader task={task} />
+    <div className="space-y-4">
+      {/* Task Title & Contact */}
+      <div className="overflow-hidden">
+        <h2 className="font-bold text-xl lg:text-2xl truncate" title={task.title}>
+          {task.title}
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          With <a href="#" className="hover:underline font-medium text-foreground/80">{task.contact.name}</a>
+          <span className="mx-1.5">&middot;</span>
+          via <span className="capitalize font-medium text-foreground/80">{task.channel}</span>
+        </p>
       </div>
-      <AnimatedTabs 
-        tabs={tabs} 
-        activeTab={activeTab} 
-        onTabChange={setActiveTab} 
-        size="sm" 
-        className="px-6 border-b flex-shrink-0"
-        wrapperClassName="flex-1 flex flex-col min-h-0"
-        contentClassName="flex-1 min-h-0"
-      >
-        <div className="p-6 h-full overflow-y-auto"><ContactInfoPanel contact={task.contact} /></div>
-        <div className="p-6 h-full overflow-y-auto"><AIInsightsPanel task={task} /></div>
-        <div className="p-6 h-full overflow-y-auto"><ActivityPanel contact={task.contact} /></div>
-        <div className="p-6 h-full overflow-y-auto"><NotesPanel contact={task.contact} /></div>
-      </AnimatedTabs>
+
+      {/* Properties Bar */}
+      <div className="flex flex-wrap items-center gap-y-2 text-sm">
+        {/* Assignee Dropdown */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" className="gap-2 font-normal">
+              {task.assignee ? (
+                <Avatar className="h-5 w-5"><AvatarImage src={task.assignee.avatar} /><AvatarFallback>{task.assignee.name.charAt(0)}</AvatarFallback></Avatar>
+              ) : (
+                <User className="h-4 w-4 text-muted-foreground" />
+              )}
+              <span className="font-medium">{task.assignee?.name || 'Unassigned'}</span>
+              <ChevronDown className="w-3 h-3 text-muted-foreground" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            <DropdownMenuRadioGroup value={task.assigneeId || 'null'} onValueChange={val => updateTask(task.id, { assigneeId: val === 'null' ? null : val })}>
+              <DropdownMenuRadioItem value="null">
+                <User className="w-4 h-4 mr-2 text-muted-foreground" /> Unassigned
+              </DropdownMenuRadioItem>
+              <DropdownMenuSeparator />
+              {assignees.map(a => (
+                <DropdownMenuRadioItem key={a.id} value={a.id}>
+                  <Avatar className="h-5 w-5 mr-2"><AvatarImage src={a.avatar} /><AvatarFallback>{a.name.charAt(0)}</AvatarFallback></Avatar>
+                  {a.name}
+                </DropdownMenuRadioItem>
+              ))}
+            </DropdownMenuRadioGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        {isHandledByOther && (
+            <>
+                <div className="mx-2 h-4 w-px bg-border" />
+                <Badge variant="outline" className="gap-2 font-normal text-amber-600 border-amber-600/50">
+                    <Eye className="w-3.5 h-3.5" /> Viewing: {task.activeHandler?.name}
+                </Badge>
+            </>
+        )}
+        <div className="mx-2 h-4 w-px bg-border" />
+
+        {/* Status Dropdown */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground hover:text-foreground">
+              {currentStatus?.icon}
+              <span className="font-medium text-foreground">{currentStatus?.label}</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            {statusOptions.map(o => (
+              <DropdownMenuItem key={o.value} onClick={() => updateTask(task.id, { status: o.value })}>
+                <div className="flex items-center">
+                  <div className="w-4 h-4 mr-2">{o.icon}</div>
+                  <span>{o.label}</span>
+                </div>
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+        
+        <div className="mx-2 h-4 w-px bg-border" />
+        
+        {/* Priority Dropdown */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground hover:text-foreground">
+              {currentPriority?.icon}
+              <span className="font-medium text-foreground">{currentPriority?.label}</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            {priorityOptions.map(o => (
+              <DropdownMenuItem key={o.value} onClick={() => updateTask(task.id, { priority: o.value })}>
+                <div className="flex items-center">
+                  <div className="w-2.5 h-2.5 mr-2">{o.icon}</div>
+                  <span>{o.label}</span>
+                </div>
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        <div className="mx-2 h-4 w-px bg-border" />
+
+        {/* Due Date - for display, could be a popover trigger */}
+        <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground cursor-default" disabled>
+            <Calendar className="w-4 h-4" />
+            <span className="font-medium text-foreground">{task.dueDate ? format(new Date(task.dueDate), 'MMM d, yyyy') : 'No due date'}</span>
+        </Button>
+      </div>
+
+      {/* Tags */}
+      <div className="flex flex-wrap items-center gap-2">
+        {task.tags.map(t => <Badge variant="secondary" key={t}>{t}</Badge>)}
+        <Button variant="outline" size="sm" className="h-7 px-2 text-xs rounded-md border-dashed">
+          <Plus className="w-3 h-3 mr-1" /> Tag
+        </Button>
+      </div>
     </div>
   );
 };
+```
+
+## File: src/pages/Messaging/components/TaskList.tsx
+```typescript
+import { useEffect } from 'react';
+import { Search, SlidersHorizontal, Check, Inbox, Clock, Zap, Shield, Eye } from 'lucide-react';
+import { Link, useParams } from 'react-router-dom';
+import { formatDistanceToNow } from 'date-fns';
+import { useMessagingStore } from '../store/messaging.store';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator } from '@/components/ui/command';
+import { cn } from '@/lib/utils';
+import { AnimatedTabs } from '@/components/ui/animated-tabs';
+import type { TaskStatus, TaskPriority, TaskView } from '../types';
+import { useAppViewManager } from '@/hooks/useAppViewManager.hook';
+
+// Local helpers for styling based on task properties
+const getStatusIcon = (status: TaskStatus) => {
+    switch(status) {
+        case 'open': return <Inbox className="w-3 h-3 text-blue-500" />;
+        case 'in-progress': return <Zap className="w-3 h-3 text-yellow-500" />;
+        case 'done': return <Shield className="w-3 h-3 text-green-500" />;
+        case 'snoozed': return <Clock className="w-3 h-3 text-gray-500" />;
+    }
+};
+
+const getPriorityIcon = (priority: TaskPriority) => {
+    switch(priority) {
+        case 'high': return <div className="w-2 h-2 rounded-full bg-red-500" />;
+        case 'medium': return <div className="w-2 h-2 rounded-full bg-yellow-500" />;
+        case 'low': return <div className="w-2 h-2 rounded-full bg-green-500" />;
+        default: return <div className="w-2 h-2 rounded-full bg-gray-400" />;
+    }
+};
+
+const statusOptions: { value: TaskStatus; label: string }[] = [
+    { value: 'open', label: 'Open' }, { value: 'in-progress', label: 'In Progress' }, { value: 'done', label: 'Done' }, { value: 'snoozed', label: 'Snoozed' }
+];
+const priorityOptions: { value: TaskPriority; label: string }[] = [
+    { value: 'high', label: 'High' }, { value: 'medium', label: 'Medium' }, { value: 'low', label: 'Low' }, { value: 'none', label: 'None' }
+];
+
+export const TaskList = () => {
+  const { conversationId } = useParams<{ conversationId: string }>(); // This will be taskId later
+  const { 
+    getFilteredTasks,
+    setSearchTerm,
+    activeFilters,
+    setActiveTaskView,
+    searchTerm,
+   } = useMessagingStore();
+   const { messagingView, setMessagingView } = useAppViewManager();
+
+  useEffect(() => {
+    setActiveTaskView(messagingView || 'all_open');
+  }, [messagingView, setActiveTaskView]);
+
+  const filteredTasks = getFilteredTasks();
+  const activeFilterCount = Object.values(activeFilters).reduce((count, filterArray) => count + filterArray.length, 0);
+
+  const TABS: { id: TaskView, label: string }[] = [
+    { id: 'all_open', label: 'Open' },
+    { id: 'unassigned', label: 'Unassigned' },
+    { id: 'done', label: 'Done' }
+  ];
+
+  return (
+    <div className="h-full flex flex-col bg-background/80">
+      {/* Header */}
+      <div className="flex-shrink-0 border-b bg-background/80 p-4 space-y-4">
+        <h2 className="text-xl font-bold tracking-tight">Inbox</h2>
+        <div className="flex gap-2">
+            <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input placeholder="Search tasks..." className="pl-9" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+            </div>
+            <Popover>
+                <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className="h-10 border-dashed gap-2">
+                        <SlidersHorizontal className="w-4 h-4" />
+                        Filters
+                        {activeFilterCount > 0 && <Badge variant="secondary" className="rounded-sm px-1 font-normal">{activeFilterCount}</Badge>}
+                    </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[240px] p-0" align="end">
+                    <FilterCommand />
+                </PopoverContent>
+            </Popover>
+        </div>
+      </div>
+      <AnimatedTabs
+        tabs={TABS}
+        activeTab={messagingView || 'all_open'}
+        onTabChange={(tabId) => setMessagingView(tabId as TaskView)}
+      />
+
+      {/* Task List */}
+      <div className="flex-1 overflow-y-auto">
+        <nav className="p-2 space-y-1">
+          {filteredTasks.map(task => {
+            const currentUserId = 'user-1';
+            const isHandledByOther = task.activeHandlerId && task.activeHandlerId !== currentUserId;
+
+            return (
+              <Link
+                to={`/messaging/${task.id}`}
+                key={task.id}
+                className={cn(
+                  "block p-3 rounded-lg text-left transition-all duration-200 hover:bg-accent/50",
+                  "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 outline-none",
+                  conversationId === task.id && "bg-accent"
+                )}
+              >
+                <div className="flex items-start gap-3">
+                  <Avatar className="h-9 w-9 mt-1">
+                    <AvatarImage src={task.contact.avatar} alt={task.contact.name} />
+                    <AvatarFallback>{task.contact.name.charAt(0)}</AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 overflow-hidden">
+                      <div className="flex justify-between items-center mb-1">
+                          <p className="text-sm font-semibold truncate pr-2">{task.contact.name}</p>
+                          <p className="text-xs text-muted-foreground whitespace-nowrap">{formatDistanceToNow(new Date(task.lastActivity.timestamp), { addSuffix: true })}</p>
+                      </div>
+                      <p className="text-sm truncate text-foreground">{task.title}</p>
+                      <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+                          <div className="flex items-center gap-1.5" title={task.status}>
+                              {getStatusIcon(task.status)}
+                              <span className="capitalize">{task.status.replace('-', ' ')}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5" title={task.priority}>
+                              {getPriorityIcon(task.priority)}
+                              <span className="capitalize">{task.priority}</span>
+                          </div>
+                          {task.assignee && (
+                              <div className="flex items-center gap-1.5" title={`Assigned to ${task.assignee.name}`}>
+                                  <Avatar className="h-4 w-4"><AvatarImage src={task.assignee.avatar} /></Avatar>
+                              </div>
+                          )}
+                          {isHandledByOther && <Eye className="w-3.5 h-3.5" title="Being handled by another user" />}
+                      </div>
+                  </div>
+                  {task.unreadCount > 0 && (
+                      <div className="flex items-center justify-center self-center ml-auto">
+                          <Badge className="bg-primary h-5 w-5 p-0 flex items-center justify-center">{task.unreadCount}</Badge>
+                      </div>
+                  )}
+                </div>
+              </Link>
+            )
+          })}
+        </nav>
+      </div>
+    </div>
+  );
+};
+
+// Filter component for popover
+function FilterCommand() {
+    const { activeFilters, setFilters, assignees, getAvailableTags } = useMessagingStore();
+    const availableTags = getAvailableTags();
+
+    const handleSelect = (type: 'status' | 'priority' | 'assigneeId' | 'tags', value: string) => {
+        const current = new Set(activeFilters[type]);
+        current.has(value) ? current.delete(value) : current.add(value);
+        setFilters({ [type]: Array.from(current) });
+    };
+
+    const hasActiveFilters = Object.values(activeFilters).some(arr => arr.length > 0);
+
+    return (
+        <Command>
+            <CommandInput placeholder="Filter by..." />
+            <CommandList>
+                <CommandEmpty>No results found.</CommandEmpty>
+                <CommandGroup heading="Status">
+                    {statusOptions.map(o => (
+                        <CommandItem key={o.value} onSelect={() => handleSelect('status', o.value)}>
+                            <div className={cn('mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary', activeFilters.status.includes(o.value) ? 'bg-primary text-primary-foreground' : 'opacity-50 [&_svg]:invisible')}><Check className="h-4 w-4" /></div>
+                            <span>{o.label}</span>
+                        </CommandItem>
+                    ))}
+                </CommandGroup>
+                <CommandSeparator />
+                <CommandGroup heading="Priority">
+                    {priorityOptions.map(o => (
+                        <CommandItem key={o.value} onSelect={() => handleSelect('priority', o.value)}>
+                            <div className={cn('mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary', activeFilters.priority.includes(o.value) ? 'bg-primary text-primary-foreground' : 'opacity-50 [&_svg]:invisible')}><Check className="h-4 w-4" /></div>
+                            <span>{o.label}</span>
+                        </CommandItem>
+                    ))}
+                </CommandGroup>
+                <CommandSeparator />
+                <CommandGroup heading="Assignee">
+                    {assignees.map(a => (
+                        <CommandItem key={a.id} onSelect={() => handleSelect('assigneeId', a.id)}>
+                            <div className={cn('mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary', activeFilters.assigneeId.includes(a.id) ? 'bg-primary text-primary-foreground' : 'opacity-50 [&_svg]:invisible')}><Check className="h-4 w-4" /></div>
+                            <Avatar className="h-5 w-5 mr-2"><AvatarImage src={a.avatar} /><AvatarFallback>{a.name.charAt(0)}</AvatarFallback></Avatar>
+                            <span>{a.name}</span>
+                        </CommandItem>
+                    ))}
+                </CommandGroup>
+                <CommandSeparator />
+                <CommandGroup heading="Tags">
+                    {availableTags.map(t => (
+                        <CommandItem key={t} onSelect={() => handleSelect('tags', t)}>
+                            <div className={cn('mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary', activeFilters.tags.includes(t) ? 'bg-primary text-primary-foreground' : 'opacity-50 [&_svg]:invisible')}><Check className="h-4 w-4" /></div>
+                            <span>{t}</span>
+                        </CommandItem>
+                    ))}
+                </CommandGroup>
+
+                {hasActiveFilters && (
+                    <>
+                        <CommandSeparator />
+                        <CommandGroup>
+                            <CommandItem onSelect={() => setFilters({ status: [], priority: [], assigneeId: [], tags: [], channels: [] })} className="justify-center text-center text-sm">Clear all filters</CommandItem>
+                        </CommandGroup>
+                    </>
+                )}
+            </CommandList>
+        </Command>
+    );
+}
+```
+
+## File: src/pages/Messaging/components/TaskDetail.tsx
+```typescript
+import React, { useRef, useEffect, useLayoutEffect, useState } from 'react';
+import { useParams } from 'react-router-dom';
+import { useMessagingStore } from '../store/messaging.store';
+import { ActivityFeed } from './ActivityFeed';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { Paperclip, SendHorizontal, Smile, StickyNote } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { TakeoverBanner } from './TakeoverBanner';
+import { useToast } from '@/components/ui/toast';
+import { gsap } from 'gsap';
+import { cn } from '@/lib/utils';
+import { useAppShellStore } from '@/store/appShell.store';
+import { JourneyScrollbar } from './JourneyScrollbar';
+
+
+export const TaskDetail: React.FC = () => {
+  const { conversationId: taskId } = useParams<{ conversationId: string }>();
+  const { show } = useToast();
+  const { getTaskById, takeOverTask, requestAndSimulateTakeover } = useMessagingStore();
+  const reducedMotion = useAppShellStore(s => s.reducedMotion);
+  
+  const task = taskId ? getTaskById(taskId) : undefined;
+
+  // In a real app, this would come from the auth store
+  const currentUserId = 'user-1'; 
+
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const isLocked = !!task?.activeHandlerId && task.activeHandlerId !== currentUserId;
+  const inputAreaRef = useRef<HTMLDivElement>(null);
+  const isFirstRender = useRef(true);
+  const [isJourneyHovered, setIsJourneyHovered] = useState(false);
+
+  useLayoutEffect(() => {
+    // On conversation change, scroll to the bottom of the message list.
+    // This ensures the user sees the latest message and that the scrollbar
+    // component has the correct scrollHeight to calculate its visibility.
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+    }
+  }, [taskId]);
+
+  useEffect(() => {
+    if (!inputAreaRef.current) return;
+
+    const initialBorderWidth = '1px'; // from 'border-t'
+    const initialPadding = '1rem';    // from 'p-4'
+
+    const target = isLocked
+      ? {
+          y: 20,
+          opacity: 0,
+          maxHeight: 0,
+          paddingTop: 0,
+          paddingBottom: 0,
+          borderTopWidth: 0,
+          pointerEvents: 'none' as const,
+        }
+      : {
+          y: 0,
+          opacity: 1,
+          maxHeight: 500, // Ample room for the input
+          paddingTop: initialPadding,
+          paddingBottom: initialPadding,
+          borderTopWidth: initialBorderWidth,
+          pointerEvents: 'auto' as const,
+        };
+
+    if (reducedMotion) {
+      gsap.set(inputAreaRef.current, target);
+      return;
+    }
+    
+    if (isFirstRender.current) {
+      gsap.set(inputAreaRef.current, target);
+      isFirstRender.current = false;
+    } else {
+      gsap.to(inputAreaRef.current, {
+        ...target,
+        duration: 0.35,
+        ease: 'power2.inOut',
+      });
+    }
+  }, [isLocked, reducedMotion]);
+
+  if (!taskId || !task) {
+    return (
+        <div className="h-full flex flex-col items-center justify-center p-6 bg-background">
+            <p className="text-muted-foreground">Select a task to see its details.</p>
+        </div>
+    );
+  }
+
+  const journeyPoints = task.messages.filter(m => m.journeyPoint);
+
+  const handleDotClick = (messageId: string) => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    
+    const element = container.querySelector(`[data-message-id="${messageId}"]`);
+    
+    if (element) {
+      // Using 'center' to avoid the message being at the very top/bottom of the view
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  };
+
+  const handleTakeOver = () => {
+    takeOverTask(task.id, currentUserId);
+    show({
+        variant: 'success',
+        title: 'Task Taken Over',
+        message: `You are now handling the task from ${task.contact.name}.`
+    });
+  };
+
+  const handleRequestTakeover = () => {
+    requestAndSimulateTakeover(task.id, currentUserId);
+    if (task.activeHandler) {
+        show({
+            variant: 'default',
+            title: 'Request Sent',
+            message: `A takeover request has been sent to ${task.activeHandler.name}.`
+        });
+    }
+  };
+
+  return (
+    <div className="h-full flex flex-col bg-background overflow-hidden">
+      {isLocked && task.activeHandler && (
+        <TakeoverBanner
+            activeHandler={task.activeHandler}
+            isRequesting={!!task.takeoverRequested}
+            onTakeOver={handleTakeOver}
+            onRequestTakeover={handleRequestTakeover}
+        />
+      )}
+      <div className="relative flex-1 overflow-hidden">
+        <div
+          ref={scrollContainerRef}
+          className={cn(
+            "h-full overflow-y-auto pr-8 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]",
+            "transition-all duration-200",
+            isJourneyHovered && "blur-sm pointer-events-none"
+          )}
+        >
+          <ActivityFeed messages={task.messages} contact={task.contact} />
+        </div>
+        {journeyPoints.length > 0 && (
+            <JourneyScrollbar
+                scrollContainerRef={scrollContainerRef}
+                journeyPoints={journeyPoints}
+                onDotClick={handleDotClick}
+                onHoverChange={setIsJourneyHovered}
+                showAllTooltips={isJourneyHovered}
+            />
+        )}
+      </div>
+
+      {/* Input Form */}
+      <div ref={inputAreaRef} className="p-4 border-t flex-shrink-0 bg-background/50">
+        <Tabs defaultValue="comment" className="w-full" >
+          <TabsList className="grid w-full grid-cols-2 mb-2">
+            <TabsTrigger value="comment" disabled={isLocked}>Comment</TabsTrigger>
+            <TabsTrigger value="note" disabled={isLocked}><StickyNote className="w-4 h-4 mr-2" />Internal Note</TabsTrigger>
+          </TabsList>
+          <TabsContent value="comment">
+             <div className="relative">
+                <Textarea placeholder={isLocked ? "Take over to reply..." : `Reply to ${task.contact.name}...`} className="pr-24 min-h-[52px]" disabled={isLocked} />
+                <div className="absolute right-2 top-2 flex items-center gap-1">
+                    <Button variant="ghost" size="icon" className="rounded-full h-8 w-8" disabled={isLocked}><Smile className="w-4 h-4" /></Button>
+                    <Button variant="ghost" size="icon" className="rounded-full h-8 w-8" disabled={isLocked}><Paperclip className="w-4 h-4" /></Button>
+                    <Button size="icon" className="rounded-full h-8 w-8" disabled={isLocked}><SendHorizontal className="w-4 h-4" /></Button>
+                </div>
+            </div>
+          </TabsContent>
+          <TabsContent value="note">
+            <div className="relative">
+                <Textarea placeholder={isLocked ? "Take over to add a note..." : "Add an internal note..."} className="pr-24 min-h-[52px] bg-yellow-400/10 border-yellow-400/30 focus-visible:ring-yellow-500" disabled={isLocked} />
+                <div className="absolute right-2 top-2 flex items-center gap-1">
+                    <Button size="icon" className="rounded-full h-8 w-8" disabled={isLocked}><SendHorizontal className="w-4 h-4" /></Button>
+                </div>
+            </div>
+          </TabsContent>
+        </Tabs>
+      </div>
+    </div>
+  );
+};
+```
+
+## File: src/pages/Messaging/data/mockData.ts
+```typescript
+import type { Contact, Task, Message, ActivityEvent, Note, Assignee, TaskStatus, TaskPriority, Channel, JourneyPointType } from '../types';
+import { faker } from '@faker-js/faker';
+
+// --- ASSIGNEES ---
+export const mockAssignees: Assignee[] = [
+  { id: 'user-1', name: 'You', avatar: `https://avatar.vercel.sh/you.png`, type: 'human' },
+  { id: 'user-2', name: 'Alex Johnson', avatar: `https://avatar.vercel.sh/alex.png`, type: 'human' },
+  { id: 'user-3', name: 'Samira Kumar', avatar: `https://avatar.vercel.sh/samira.png`, type: 'human' },
+  { id: 'user-4', name: 'Casey Lee', avatar: `https://avatar.vercel.sh/casey.png`, type: 'human' },
+  { id: 'user-5', name: 'Jordan Rivera', avatar: `https://avatar.vercel.sh/jordan.png`, type: 'human' },
+  { id: 'user-ai-1', name: 'AI Assistant', avatar: `https://avatar.vercel.sh/ai.png`, type: 'ai' },
+];
+
+// --- HELPERS ---
+const generateNotes = (contactName: string): Note[] => [
+  { id: `note-${faker.string.uuid()}`, content: `Initial discovery call with ${contactName}. Seemed very interested in our enterprise package.`, createdAt: faker.date.past().toISOString() },
+  { id: `note-${faker.string.uuid()}`, content: `Followed up via email with pricing details.`, createdAt: faker.date.recent().toISOString() },
+];
+
+const generateActivity = (contactName: string): ActivityEvent[] => [
+  { id: `act-${faker.string.uuid()}`, type: 'email', content: `Sent follow-up email regarding pricing.`, timestamp: faker.date.past().toISOString() },
+  { id: `act-${faker.string.uuid()}`, type: 'call', content: `Had a 30-minute discovery call with ${contactName}.`, timestamp: faker.date.recent().toISOString() },
+  { id: `act-${faker.string.uuid()}`, type: 'meeting', content: `Scheduled a demo for next week.`, timestamp: faker.date.soon().toISOString() },
+];
+
+// --- CONTACTS ---
+export const mockContacts: Contact[] = Array.from({ length: 50 }, (_, i) => {
+    const firstName = faker.person.firstName();
+    const lastName = faker.person.lastName();
+    const name = `${firstName} ${lastName}`;
+    return {
+        id: `contact-${i + 1}`,
+        name,
+        avatar: `https://avatar.vercel.sh/${firstName.toLowerCase()}${lastName.toLowerCase()}.png`,
+        online: faker.datatype.boolean(),
+        tags: faker.helpers.arrayElements(['VIP', 'New Lead', 'Returning Customer', 'Support Request', 'High Value'], faker.number.int({ min: 1, max: 3 })),
+        email: faker.internet.email({ firstName, lastName }),
+        phone: faker.phone.number(),
+        lastSeen: faker.datatype.boolean() ? 'online' : `${faker.number.int({ min: 2, max: 59 })} minutes ago`,
+        company: faker.company.name(),
+        role: faker.person.jobTitle(),
+        activity: generateActivity(name),
+        notes: generateNotes(name),
+    };
+});
+
+// --- MESSAGE GENERATOR ---
+const generateMessages = (messageCount: number, contactName: string, journeyPath: JourneyPointType[]): Message[] => {
+  const messages: Message[] = [];
+  const now = new Date();
+  
+  const journeyPointsWithIndices = journeyPath.map((point, index) => ({
+      point,
+      index: Math.floor((messageCount / journeyPath.length) * (index + Math.random() * 0.8))
+  }));
+
+  for (let i = 0; i < messageCount; i++) {
+    const random = Math.random();
+    let sender: Message['sender'] = 'contact';
+    let type: Message['type'] = 'comment';
+    let text = faker.lorem.sentence();
+    let userId: string | undefined = undefined;
+
+    if (random > 0.85) { // Internal Note
+      sender = 'user';
+      type = 'note';
+      const user = faker.helpers.arrayElement(mockAssignees.filter(u => u.type === 'human'));
+      userId = user.id;
+      text = `Internal note from ${user.name}: ${faker.lorem.sentence()}`;
+    } else if (random > 0.7) { // System message
+      sender = 'system';
+      type = 'system';
+      text = faker.helpers.arrayElement(['Task status changed to "in-progress"', 'Task assigned to Alex Johnson', 'User joined the conversation']);
+    } else if (random > 0.35) { // User comment
+      sender = 'user';
+      type = 'comment';
+      userId = 'user-1'; // "You"
+      text = faker.lorem.sentence();
+    }
+    
+    const journeyPointInfo = journeyPointsWithIndices.find(jp => jp.index === i);
+
+    messages.push({
+      id: `msg-${faker.string.uuid()}`,
+      text,
+      timestamp: new Date(now.getTime() - (messageCount - i) * 60 * 60 * 100).toISOString(),
+      sender,
+      type,
+      read: i < messageCount - faker.number.int({min: 0, max: 5}),
+      userId,
+      journeyPoint: journeyPointInfo?.point
+    });
+  }
+  
+  // Ensure the last message is from the contact for preview purposes
+  messages[messages.length - 1] = {
+    ...messages[messages.length-1],
+    sender: 'contact',
+    type: 'comment',
+    text: `Hey! This is the latest message from ${contactName}. ${faker.lorem.sentence()}`,
+    userId: undefined
+  };
+  return messages.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+};
+
+// --- TASK GENERATOR ---
+const generateTasks = (count: number): Task[] => {
+    const tasks: Task[] = [];
+    const statuses: TaskStatus[] = ['open', 'in-progress', 'done', 'snoozed'];
+    const priorities: TaskPriority[] = ['none', 'low', 'medium', 'high'];
+    const channels: Channel[] = ['whatsapp', 'instagram', 'facebook', 'email'];
+    const possibleJourneys: JourneyPointType[][] = [
+        ['Inquiry', 'Consult', 'Quote', 'Order', 'Payment', 'Shipped', 'Delivered', 'Review'],
+        ['Inquiry', 'Consult', 'Quote', 'Order', 'Payment', 'Shipped', 'Delivered', 'Follow-up'],
+        ['Inquiry', 'Consult', 'Follow-up'],
+        ['Inquiry', 'Consult', 'Quote', 'Order', 'Canceled'],
+        ['Consult', 'Order', 'Payment', 'Shipped', 'Delivered', 'Complain', 'Refund'],
+        ['Consult', 'Order', 'Payment', 'Shipped', 'Complain', 'Follow-up'],
+        ['Order', 'Delivered', 'Review', 'Reorder', 'Delivered'],
+        ['Complain', 'Follow-up', 'Refund'],
+        ['Quote', 'Follow-up', 'Order', 'Payment', 'Shipped', 'Delivered'],
+        ['Inquiry', 'Quote', 'Order', 'Payment', 'Shipped', 'Canceled', 'Refund'],
+        ['Consult', 'Follow-up'],
+        ['Complain'],
+        ['Order', 'Delivered'],
+    ];
+
+    for (let i = 0; i < count; i++) {
+        const contact = faker.helpers.arrayElement(mockContacts);
+        const status = faker.helpers.arrayElement(statuses);
+        const unreadCount = status === 'open' || status === 'in-progress' ? faker.number.int({ min: 0, max: 8 }) : 0;
+        const messageCount = faker.number.int({ min: 10, max: 150 });
+        const journey = faker.helpers.arrayElement(possibleJourneys);
+        const messages = generateMessages(messageCount, contact.name, journey);
+        const assignee = faker.datatype.boolean(0.8) ? faker.helpers.arrayElement(mockAssignees) : null;
+
+        const task: Task = {
+            id: `task-${i + 1}`,
+            title: faker.lorem.sentence({ min: 3, max: 7 }),
+            contactId: contact.id,
+            channel: faker.helpers.arrayElement(channels),
+            unreadCount,
+            messages,
+            get lastActivity() { return this.messages[this.messages.length - 1]; },
+            status,
+            assigneeId: assignee?.id || null,
+            dueDate: faker.datatype.boolean() ? faker.date.future().toISOString() : null,
+            priority: faker.helpers.arrayElement(priorities),
+            tags: faker.helpers.arrayElements(['onboarding', 'pricing', 'bug-report', 'urgent', 'tech-support'], faker.number.int({min: 0, max: 2})),
+            aiSummary: {
+                sentiment: faker.helpers.arrayElement(['positive', 'negative', 'neutral']),
+                summaryPoints: Array.from({ length: 3 }, () => faker.lorem.sentence()),
+                suggestedReplies: Array.from({ length: 2 }, () => faker.lorem.words({ min: 3, max: 6})),
+            },
+            activeHandlerId: faker.helpers.arrayElement([assignee?.id, null, 'user-ai-1']),
+        };
+        tasks.push(task);
+    }
+    return tasks;
+}
+
+export const mockTasks: Task[] = generateTasks(200);
+```
+
+## File: src/pages/Messaging/store/messaging.store.ts
+```typescript
+import { create } from 'zustand';
+import { mockTasks, mockContacts, mockAssignees } from '../data/mockData';
+import type { Task, Contact, Channel, Assignee, TaskStatus, TaskPriority, TaskView, Message, JourneyPointType } from '../types';
+
+interface MessagingState {
+  tasks: Task[];
+  contacts: Contact[];
+  assignees: Assignee[];
+  searchTerm: string;
+  activeFilters: {
+    channels: Channel[];
+    tags: string[];
+    status: TaskStatus[];
+    priority: TaskPriority[];
+    assigneeId: string[];
+  };
+  activeTaskView: TaskView;
+}
+
+interface MessagingActions {
+  getTaskById: (id: string) => (Task & { contact: Contact, assignee: Assignee | null, activeHandler: Assignee | null }) | undefined;
+  getFilteredTasks: () => (Task & { contact: Contact, assignee: Assignee | null })[];
+  setSearchTerm: (term: string) => void;
+  setActiveTaskView: (view: TaskView) => void;
+  setFilters: (filters: Partial<MessagingState['activeFilters']>) => void;
+  updateTask: (taskId: string, updates: Partial<Omit<Task, 'id'>>) => void;
+  takeOverTask: (taskId: string, userId: string) => void;
+  requestAndSimulateTakeover: (taskId: string, requestedByUserId: string) => void;
+  getAssigneeById: (assigneeId: string) => Assignee | undefined;
+  getAvailableTags: () => string[];
+}
+
+export const useMessagingStore = create<MessagingState & MessagingActions>((set, get) => ({
+  tasks: mockTasks,
+  contacts: mockContacts,
+  assignees: mockAssignees,
+  searchTerm: '',
+  activeFilters: {
+    channels: [],
+    tags: [],
+    status: [],
+    priority: [],
+    assigneeId: [],
+  },
+  activeTaskView: 'all_open',
+
+  getTaskById: (id) => {
+    const task = get().tasks.find(t => t.id === id);
+    if (!task) return undefined;
+
+    const contact = get().contacts.find(c => c.id === task.contactId);
+    if (!contact) return undefined;
+
+    const assignee = get().assignees.find(a => a.id === task.assigneeId) || null;
+    const activeHandler = get().assignees.find(a => a.id === task.activeHandlerId) || null;
+
+    return { ...task, contact, assignee, activeHandler };
+  },
+
+  getFilteredTasks: () => {
+    const { tasks, contacts, assignees, searchTerm, activeFilters, activeTaskView } = get();
+    const lowercasedSearch = searchTerm.toLowerCase();
+
+    const viewFilteredTasks = tasks.filter(task => {
+      switch (activeTaskView) {
+        case 'all_open':
+          return task.status === 'open' || task.status === 'in-progress';
+        case 'unassigned':
+          return !task.assigneeId && (task.status === 'open' || task.status === 'in-progress');
+        case 'done':
+          return task.status === 'done';
+        default:
+          return true;
+      }
+    });
+    const mapped = viewFilteredTasks.map(task => {
+      const contact = contacts.find(c => c.id === task.contactId) as Contact;
+      const assignee = assignees.find(a => a.id === task.assigneeId) || null;
+      return { ...task, contact, assignee };
+    });
+
+    const filtered = mapped.filter(task => {
+      const searchMatch = task.title.toLowerCase().includes(lowercasedSearch) || task.contact.name.toLowerCase().includes(lowercasedSearch);
+      const channelMatch = activeFilters.channels.length === 0 || activeFilters.channels.includes(task.channel);
+      const tagMatch = activeFilters.tags.length === 0 || activeFilters.tags.some(tag => task.tags.includes(tag));
+      const statusMatch = activeFilters.status.length === 0 || activeFilters.status.includes(task.status);
+      const priorityMatch = activeFilters.priority.length === 0 || activeFilters.priority.includes(task.priority);
+      const assigneeMatch = activeFilters.assigneeId.length === 0 || (task.assigneeId && activeFilters.assigneeId.includes(task.assigneeId));
+      
+      return searchMatch && channelMatch && tagMatch && statusMatch && priorityMatch && assigneeMatch;
+    });
+
+    return filtered.sort((a, b) => new Date(b.lastActivity.timestamp).getTime() - new Date(a.lastActivity.timestamp).getTime());
+  },
+
+  setSearchTerm: (term) => set({ searchTerm: term }),
+  
+  setActiveTaskView: (view) => set({ activeTaskView: view }),
+
+  setFilters: (newFilters) => set(state => ({
+    activeFilters: { ...state.activeFilters, ...newFilters }
+  })),
+
+  updateTask: (taskId, updates) => set(state => ({
+    tasks: state.tasks.map(task => 
+      task.id === taskId 
+        ? { ...task, ...updates, lastActivity: { ...task.lastActivity, timestamp: new Date().toISOString() } } 
+        : task
+    )
+  })),
+
+  takeOverTask: (taskId, userId) => set(state => ({
+    tasks: state.tasks.map(task => 
+      task.id === taskId 
+        ? { ...task, activeHandlerId: userId, takeoverRequested: false } 
+        : task
+    )
+  })),
+
+  requestAndSimulateTakeover: (taskId, requestedByUserId) => {
+    set(state => ({
+      tasks: state.tasks.map(task => 
+        task.id === taskId ? { ...task, takeoverRequested: true } : task
+      )
+    }));
+    // Simulate a 2-second delay for the other user to "approve"
+    setTimeout(() => get().takeOverTask(taskId, requestedByUserId), 2000);
+  },
+
+  getAssigneeById: (assigneeId: string) => {
+    return get().assignees.find(a => a.id === assigneeId);
+  },
+
+  getAvailableTags: () => {
+    const contactTags = get().contacts.flatMap(c => c.tags);
+    const taskTags = get().tasks.flatMap(t => t.tags);
+    const allTags = new Set([...contactTags, ...taskTags]);
+    return Array.from(allTags);
+  }
+}));
 ```
 
 ## File: src/pages/Messaging/types.ts
@@ -377,79 +1033,91 @@ export interface Task {
 export type TaskView = 'all_open' | 'unassigned' | 'done';
 ```
 
-## File: package.json
-```json
-{
-  "name": "jeli-app-shell",
-  "private": false,
-  "version": "1.0.1",
-  "type": "module",
-  "files": [
-    "dist"
-  ],
-  "main": "./dist/jeli-app-shell.umd.js",
-  "module": "./dist/jeli-app-shell.es.js",
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "import": "./dist/jeli-app-shell.es.js",
-      "require": "./dist/jeli-app-shell.umd.js"
-    },
-    "./dist/style.css": "./dist/style.css"
-  },
-  "sideEffects": [
-    "**/*.css"
-  ],
-  "scripts": {
-    "dev": "vite",
-    "build": "tsc && vite build",
-    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "preview": "vite preview"
-  },
-  "peerDependencies": {
-    "@iconify/react": "^4.1.1",
-    "@radix-ui/react-avatar": "^1.0.4",
-    "@radix-ui/react-dialog": "^1.0.5",
-    "@radix-ui/react-dropdown-menu": "^2.0.6",
-    "@radix-ui/react-label": "^2.1.7",
-    "@radix-ui/react-popover": "^1.0.7",
-    "@radix-ui/react-slot": "^1.0.2",
-    "@radix-ui/react-tabs": "^1.0.4",
-    "class-variance-authority": "^0.7.0",
-    "clsx": "^2.0.0",
-    "cmdk": "^0.2.0",
-    "date-fns": "^3.6.0",
-    "gsap": "^3.13.0",
-    "lucide-react": "^0.294.0",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "react-router-dom": "^6.22.3",
-    "sonner": "^1.2.4",
-    "tailwind-merge": "^2.0.0",
-    "tailwindcss": "^3.3.5",
-    "zustand": "^4.5.7"
-  },
-  "devDependencies": {
-    "@types/node": "^20.10.0",
-    "@types/react": "^18.2.37",
-    "@types/react-dom": "^18.2.15",
-    "@typescript-eslint/eslint-plugin": "^6.10.0",
-    "@typescript-eslint/parser": "^6.10.0",
-    "@vitejs/plugin-react": "^4.1.1",
-    "autoprefixer": "^10.4.16",
-    "eslint": "^8.53.0",
-    "eslint-plugin-react-hooks": "^4.6.0",
-    "eslint-plugin-react-refresh": "^0.4.4",
-    "postcss": "^8.4.31",
-    "tailwindcss": "^3.3.5",
-    "tailwindcss-animate": "^1.0.7",
-    "typescript": "^5.2.2",
-    "vite": "^4.5.0"
-  },
-  "dependencies": {
-    "@faker-js/faker": "^10.1.0",
-    "@radix-ui/react-checkbox": "^1.3.3",
-    "@radix-ui/react-tooltip": "^1.2.8"
-  }
+## File: src/pages/Messaging/index.tsx
+```typescript
+import React, { useState, useRef, useEffect, useCallback } from "react";
+import { useParams } from "react-router-dom";
+import { usePageViewConfig } from "@/hooks/usePageViewConfig.hook";
+import { useAppShellStore } from "@/store/appShell.store";
+import { TaskList } from "./components/TaskList";
+import { TaskDetail } from "./components/TaskDetail";
+import { cn } from "@/lib/utils";
+
+const useResizableMessagingPanes = (
+  containerRef: React.RefObject<HTMLDivElement>,
+  initialWidth: number = 320
+) => {
+  const [isResizing, setIsResizing] = useState(false);
+  const [listWidth, setListWidth] = useState(initialWidth);
+
+  const handleMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsResizing(true);
+  }, []);
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizing || !containerRef.current) return;
+      const containerRect = containerRef.current.getBoundingClientRect();
+      const newWidth = e.clientX - containerRect.left;
+      // Constraints for the conversation list pane
+      setListWidth(Math.max(280, Math.min(newWidth, containerRect.width - 500)));
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+    };
+
+    if (isResizing) {
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp, { once: true });
+    }
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+      if (document.body) {
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+      }
+    };
+  }, [isResizing, containerRef]);
+
+  return { listWidth, handleMouseDown, isResizing };
+};
+
+export default function MessagingPage() {
+  const { conversationId } = useParams<{ conversationId?: string }>();
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const defaultSplitPaneWidth = useAppShellStore((s) => s.defaultSplitPaneWidth);
+  // When a conversation is selected (split view), reset the pane width to default.
+  // When no conversation is selected, we don't want to manage the width, so pass undefined.
+  const desiredSplitPaneWidth = conversationId ? defaultSplitPaneWidth : undefined;
+  usePageViewConfig({ splitPaneWidth: desiredSplitPaneWidth });
+
+  const { listWidth, handleMouseDown, isResizing } = useResizableMessagingPanes(containerRef);
+
+  return (
+    <div 
+      ref={containerRef}
+      className={cn(
+        "h-full w-full flex bg-background",
+        isResizing && "cursor-col-resize select-none"
+      )}
+    >
+      <div style={{ width: `${listWidth}px` }} className="flex-shrink-0 h-full">
+        <TaskList />
+      </div>
+      <div onMouseDown={handleMouseDown} className="w-2 flex-shrink-0 cursor-col-resize group flex items-center justify-center">
+        <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200" />
+      </div>
+      <div className="flex-1 min-w-0 h-full">
+        <TaskDetail />
+      </div>
+    </div>
+  );
 }
 ```

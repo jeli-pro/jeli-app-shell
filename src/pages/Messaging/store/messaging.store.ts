@@ -27,6 +27,7 @@ interface MessagingActions {
   takeOverTask: (taskId: string, userId: string) => void;
   requestAndSimulateTakeover: (taskId: string, requestedByUserId: string) => void;
   getAssigneeById: (assigneeId: string) => Assignee | undefined;
+  getContactsByCompany: (companyName: string, currentContactId: string) => Contact[];
   getAvailableTags: () => string[];
 }
 
@@ -129,6 +130,12 @@ export const useMessagingStore = create<MessagingState & MessagingActions>((set,
 
   getAssigneeById: (assigneeId: string) => {
     return get().assignees.find(a => a.id === assigneeId);
+  },
+
+  getContactsByCompany: (companyName, currentContactId) => {
+    return get().contacts.filter(
+      c => c.company === companyName && c.id !== currentContactId
+    );
   },
 
   getAvailableTags: () => {

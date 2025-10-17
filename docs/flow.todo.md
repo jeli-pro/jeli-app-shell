@@ -19,7 +19,7 @@ message page : sometimes each audience has relation to certain company, and we c
 1. present the mental model to message page UI UX with amazing look and cohesive manner
 2. always follow the architecture model that each audience, message, company are basically task units
 
-===
+=== DONE
 
 split mode view on message page: should always set right pane to default value on page refresh on load because sometimes user from another page resize the right pane so global appshell size applied also in message page
 
