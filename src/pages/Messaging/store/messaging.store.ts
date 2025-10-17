@@ -1,6 +1,9 @@
+import { useState, useEffect } from 'react';
 import { create } from 'zustand';
 import { mockTasks, mockContacts, mockAssignees } from '../data/mockData';
 import type { Task, Contact, Channel, Assignee, TaskStatus, TaskPriority, TaskView, Message, JourneyPointType } from '../types';
+
+const currentUserId = 'user-1'; // Mock current user
 
 interface MessagingState {
   tasks: Task[];
@@ -68,6 +71,8 @@ export const useMessagingStore = create<MessagingState & MessagingActions>((set,
           return task.status === 'open' || task.status === 'in-progress';
         case 'unassigned':
           return !task.assigneeId && (task.status === 'open' || task.status === 'in-progress');
+        case 'me':
+          return task.assigneeId === currentUserId && (task.status === 'open' || task.status === 'in-progress');
         case 'done':
           return task.status === 'done';
         default:
@@ -145,3 +150,43 @@ export const useMessagingStore = create<MessagingState & MessagingActions>((set,
     return Array.from(allTags);
   }
 }));
+
+export const useMessagingTaskCounts = () => {
+  const tasks = useMessagingStore(s => s.tasks);
+  const [counts, setCounts] = useState<Record<TaskView, number>>({
+    all_open: 0,
+    unassigned: 0,
+    me: 0,
+    done: 0,
+  });
+
+  useEffect(() => {
+    // Deferring the count calculation until after the first paint.
+    // This frees up the main thread for initial animations to run smoothly.
+    const animationFrameId = requestAnimationFrame(() => {
+        const newCounts: Record<TaskView, number> = {
+            all_open: 0,
+            unassigned: 0,
+            me: 0,
+            done: 0,
+        };
+
+        for (const task of tasks) {
+            const isOpenOrInProgress = task.status === 'open' || task.status === 'in-progress';
+
+            if (isOpenOrInProgress) {
+                newCounts.all_open++;
+                if (!task.assigneeId) newCounts.unassigned++;
+                if (task.assigneeId === currentUserId) newCounts.me++;
+            } else if (task.status === 'done') {
+                newCounts.done++;
+            }
+        }
+        setCounts(newCounts);
+    });
+
+    return () => cancelAnimationFrame(animationFrameId);
+  }, [tasks]);
+
+  return counts;
+};

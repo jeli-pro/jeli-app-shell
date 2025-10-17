@@ -33,9 +33,10 @@
     // "index.html",
     // "src"
     //
-    "src/pages/Messaging/components/ContactInfoPanel.tsx",
+    "src/components/ui/animated-tabs.tsx",
+    "src/hooks/useAppViewManager.hook.ts",
+    "src/pages/Messaging/components/MessagingContent.tsx",
     "src/pages/Messaging/components/TaskDetail.tsx",
-    "src/pages/Messaging/components/TaskHeader.tsx",
     "src/pages/Messaging/components/TaskList.tsx",
     "src/pages/Messaging/data/mockData.ts",
     "src/pages/Messaging/index.tsx",

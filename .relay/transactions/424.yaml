@@ -1,0 +1,951 @@
+uuid: d2ec9e47-e14f-42e7-8b01-5256e297fc98
+projectId: jeli-app-shell
+createdAt: '2025-10-17T13:08:47.341Z'
+gitCommitMsg: >-
+  feat(messaging): enhance task list tabs with 'Me' view and hover counts
+
+  This commit introduces several UX improvements to the messaging task list:
+
+  -   A new 'Me' tab is added to allow users to quickly view tasks assigned to
+  them. -   The `AnimatedTabs` component is enhanced to support an optional
+  `count` property, which is displayed on hover or when the tab is active. This
+  provides contextual information without cluttering the UI. -   The tabs in the
+  `TaskList` are resized to 'sm' for a more compact and cleaner appearance. -  
+  A new Zustand selector hook, `useMessagingTaskCounts`, is created to
+  efficiently calculate and provide task counts to the UI.
+promptSummary: >-
+  The user wants to improve the messaging task list by adding a 'Me' tab for
+  tasks assigned to the current user, reducing the size of the tabs, and
+  displaying the task count for each tab view only on hover.
+reasoning:
+  - >-
+    I will now execute the plan to refactor the messaging task list. The changes
+    involve updating the Zustand store with new logic, enhancing the
+    `AnimatedTabs` component to support hover-based counts, and finally
+    integrating these updates into the `TaskList` component to add a "Me" tab,
+    reduce tab size, and show task counts on hover.
+  - >-
+    First, I'll update the `TaskView` type to include the new `'me'` view, which
+    is a prerequisite for the store and component changes.
+  - >-
+    Next, I'll modify the messaging store. I'll add logic to filter tasks for
+    the new "Me" view and create a new selector hook, `useMessagingTaskCounts`,
+    to efficiently calculate the number of tasks for each tab view.
+  - >-
+    Now I will upgrade the generic `AnimatedTabs` component. I'll add an
+    optional `count` property to its `Tab` interface and implement the logic to
+    display this count when a tab is hovered over or active.
+  - >-
+    Finally, I'll update the `TaskList` component to bring all the changes
+    together. I'll add the "Me" tab, set the tab size to small, and use the new
+    store hook to fetch and display the task counts via the enhanced
+    `AnimatedTabs` component.
+operations:
+  - type: write
+    path: src/pages/Messaging/types.ts
+    content: |+
+      --- src/pages/Messaging/types.ts
+      +++ src/pages/Messaging/types.ts
+      @@ -87,4 +87,4 @@
+         takeoverRequested?: boolean;
+       }
+       
+      -export type TaskView = 'all_open' | 'unassigned' | 'done';
+      +export type TaskView = 'all_open' | 'unassigned' | 'me' | 'done';
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/Messaging/store/messaging.store.ts
+    content: >+
+      --- src/pages/Messaging/store/messaging.store.ts
+
+      +++ src/pages/Messaging/store/messaging.store.ts
+
+      @@ -1,7 +1,10 @@
+
+      +import { useMemo } from 'react';
+       import { create } from 'zustand';
+       import { mockTasks, mockContacts, mockAssignees } from '../data/mockData';
+       import type { Task, Contact, Channel, Assignee, TaskStatus, TaskPriority, TaskView, Message, JourneyPointType } from '../types';
+       
+      +const currentUserId = 'user-1'; // Mock current user
+
+      +
+       interface MessagingState {
+         tasks: Task[];
+         contacts: Contact[];
+      @@ -53,6 +56,8 @@
+                 return task.status === 'open' || task.status === 'in-progress';
+               case 'unassigned':
+                 return !task.assigneeId && (task.status === 'open' || task.status === 'in-progress');
+      +        case 'me':
+
+      +          return task.assigneeId === currentUserId && (task.status ===
+      'open' || task.status === 'in-progress');
+               case 'done':
+                 return task.status === 'done';
+               default:
+      @@ -124,3 +129,31 @@
+           return Array.from(allTags);
+         }
+       }));
+      +
+
+      +export const useMessagingTaskCounts = () => {
+
+      +  const tasks = useMessagingStore(s => s.tasks);
+
+      +
+
+      +  return useMemo(() => {
+
+      +      const counts: Record<TaskView, number> = {
+
+      +          all_open: 0,
+
+      +          unassigned: 0,
+
+      +          me: 0,
+
+      +          done: 0,
+
+      +      };
+
+      +
+
+      +      for (const task of tasks) {
+
+      +          const isOpenOrInProgress = task.status === 'open' ||
+      task.status === 'in-progress';
+
+      +
+
+      +          if (isOpenOrInProgress) {
+
+      +              counts.all_open++;
+
+      +              if (!task.assigneeId) {
+
+      +                  counts.unassigned++;
+
+      +              }
+
+      +              if (task.assigneeId === currentUserId) {
+
+      +                  counts.me++;
+
+      +              }
+
+      +          } else if (task.status === 'done') {
+
+      +              counts.done++;
+
+      +          }
+
+      +      }
+
+      +      return counts;
+
+      +  }, [tasks]);
+
+      +};
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/components/ui/animated-tabs.tsx
+    content: >+
+      --- src/components/ui/animated-tabs.tsx
+
+      +++ src/components/ui/animated-tabs.tsx
+
+      @@ -5,6 +5,7 @@
+       interface Tab {
+         id: string
+         label: React.ReactNode
+      +  count?: number
+       }
+       
+       interface AnimatedTabsProps extends React.HTMLAttributes<HTMLDivElement> {
+      @@ -19,6 +20,7 @@
+       const AnimatedTabs = React.forwardRef<HTMLDivElement, AnimatedTabsProps>(
+         ({ className, tabs, activeTab, onTabChange, size = 'default', children, wrapperClassName, contentClassName, ...props }, ref) => {
+           const [activeIndex, setActiveIndex] = useState(0)
+      +    const [hoveredTabId, setHoveredTabId] = useState<string | null>(null)
+           const contentTrackRef = useRef<HTMLDivElement>(null)
+           const uniqueId = useId()
+           const [activeStyle, setActiveStyle] = useState({ left: "0px", width: "0px" })
+      @@ -99,14 +101,21 @@
+                       ? "text-primary" 
+                       : "text-muted-foreground hover:text-foreground"
+                   )}
+                   onClick={() => onTabChange(tab.id)}
+      +            onMouseEnter={() => setHoveredTabId(tab.id)}
+
+      +            onMouseLeave={() => setHoveredTabId(null)}
+                 >
+                   <span className={cn(
+                     "flex items-center gap-2",
+                     size === 'default' 
+                       ? "text-lg font-semibold"
+                       : "text-sm font-medium"
+                   )}>
+                     {tab.label}
+      +              {typeof tab.count === 'number' && (tab.id === activeTab ||
+      tab.id === hoveredTabId) && (
+
+      +                <span className="ml-1 rounded-full bg-muted px-2 py-0.5
+      text-xs font-normal text-muted-foreground">
+
+      +                  {tab.count}
+
+      +                </span>
+
+      +              )}
+                   </span>
+                 </button>
+               ))}
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/Messaging/components/TaskList.tsx
+    content: |+
+      --- src/pages/Messaging/components/TaskList.tsx
+      +++ src/pages/Messaging/components/TaskList.tsx
+      @@ -8,8 +8,9 @@
+       import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+       import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator } from '@/components/ui/command';
+       import { cn } from '@/lib/utils';
+       import { AnimatedTabs } from '@/components/ui/animated-tabs';
+      -import type { TaskStatus, TaskPriority, TaskView } from '../types';
+      +import type { TaskStatus, TaskPriority, TaskView } from '../types';
+       import { useAppViewManager } from '@/hooks/useAppViewManager.hook';
+      +import { useMessagingTaskCounts } from '../store/messaging.store';
+       
+       // Local helpers for styling based on task properties
+       const getStatusIcon = (status: TaskStatus) => {
+      @@ -51,20 +52,29 @@
+           setActiveTaskView,
+           searchTerm,
+          } = useMessagingStore();
+          const { messagingView, setMessagingView } = useAppViewManager();
+      +   const taskCounts = useMessagingTaskCounts();
+       
+         useEffect(() => {
+           setActiveTaskView(messagingView || 'all_open');
+         }, [messagingView, setActiveTaskView]);
+       
+         const filteredTasks = getFilteredTasks();
+         const activeFilterCount = Object.values(activeFilters).reduce((count, filterArray) => count + filterArray.length, 0);
+       
+      -  const TABS: { id: TaskView, label: string }[] = [
+      +  const TABS_CONFIG: { id: TaskView, label: string }[] = [
+           { id: 'all_open', label: 'Open' },
+           { id: 'unassigned', label: 'Unassigned' },
+      +    { id: 'me', label: 'Me' },
+           { id: 'done', label: 'Done' }
+         ];
+       
+      +  const TABS = TABS_CONFIG.map(tab => ({
+      +    ...tab,
+      +    count: taskCounts[tab.id as keyof typeof taskCounts]
+      +  }));
+      +
+         return (
+           <div className="h-full flex flex-col bg-background/80">
+             {/* Header */}
+      @@ -86,7 +96,9 @@
+             <AnimatedTabs
+               tabs={TABS}
+               activeTab={messagingView || 'all_open'}
+               onTabChange={(tabId) => setMessagingView(tabId as TaskView)}
+      +        size="sm"
+      +        className="px-4"
+             />
+       
+             {/* Task List */}
+             <div className="flex-1 overflow-y-auto">
+
+    patchStrategy: standard-diff
+snapshot:
+  src/pages/Messaging/types.ts: >-
+    import type { LucideIcon } from "lucide-react";
+
+
+    export type Channel = 'whatsapp' | 'instagram' | 'facebook' | 'email';
+
+
+    export interface ChannelIcon {
+      Icon: LucideIcon;
+      color: string;
+    }
+
+
+    export interface Contact {
+      id: string;
+      name:string;
+      avatar: string;
+      online: boolean;
+      tags: string[];
+      email: string;
+      phone: string;
+      lastSeen: string;
+      company: string;
+      role: string;
+      activity: ActivityEvent[];
+      notes: Note[];
+    }
+
+
+    export interface Assignee {
+      id: string;
+      name: string;
+      avatar: string;
+      type: 'human' | 'ai';
+    }
+
+
+    export type ActivityEventType = 'note' | 'call' | 'email' | 'meeting';
+
+
+    export interface ActivityEvent {
+      id: string;
+      type: ActivityEventType;
+      content: string;
+      timestamp: string;
+    }
+
+    export interface Note {
+      id: string;
+      content: string;
+      createdAt: string;
+    }
+
+
+    export type JourneyPointType = 'Inquiry' | 'Consult' | 'Quote' | 'Order' |
+    'Payment' | 'Shipped' | 'Delivered' | 'Canceled' | 'Refund' | 'Complain' |
+    'Reorder' | 'Follow-up' | 'Review';
+
+
+    export interface Message {
+      id: string;
+      text: string;
+      timestamp: string;
+      sender: 'user' | 'contact' | 'system';
+      type: 'comment' | 'note' | 'system';
+      read: boolean;
+      userId?: string; // for notes or system messages from users
+      journeyPoint?: JourneyPointType;
+    }
+
+
+    export interface AISummary {
+      sentiment: 'positive' | 'negative' | 'neutral';
+      summaryPoints: string[];
+      suggestedReplies: string[];
+    }
+
+
+    export type TaskStatus = 'open' | 'in-progress' | 'done' | 'snoozed';
+
+    export type TaskPriority = 'none' | 'low' | 'medium' | 'high';
+
+
+    export interface Task {
+      id: string;
+      title: string;
+      contactId: string;
+      channel: Channel;
+      unreadCount: number;
+      lastActivity: Message;
+      messages: Message[];
+      status: TaskStatus;
+      assigneeId: string | null;
+      dueDate: string | null;
+      priority: TaskPriority;
+      tags: string[];
+      aiSummary: AISummary;
+      activeHandlerId: string | null;
+      takeoverRequested?: boolean;
+    }
+
+
+    export type TaskView = 'all_open' | 'unassigned' | 'done';
+  src/pages/Messaging/store/messaging.store.ts: >-
+    import { create } from 'zustand';
+
+    import { mockTasks, mockContacts, mockAssignees } from '../data/mockData';
+
+    import type { Task, Contact, Channel, Assignee, TaskStatus, TaskPriority,
+    TaskView, Message, JourneyPointType } from '../types';
+
+
+    interface MessagingState {
+      tasks: Task[];
+      contacts: Contact[];
+      assignees: Assignee[];
+      searchTerm: string;
+      activeFilters: {
+        channels: Channel[];
+        tags: string[];
+        status: TaskStatus[];
+        priority: TaskPriority[];
+        assigneeId: string[];
+      };
+      activeTaskView: TaskView;
+    }
+
+
+    interface MessagingActions {
+      getTaskById: (id: string) => (Task & { contact: Contact, assignee: Assignee | null, activeHandler: Assignee | null }) | undefined;
+      getFilteredTasks: () => (Task & { contact: Contact, assignee: Assignee | null })[];
+      setSearchTerm: (term: string) => void;
+      setActiveTaskView: (view: TaskView) => void;
+      setFilters: (filters: Partial<MessagingState['activeFilters']>) => void;
+      updateTask: (taskId: string, updates: Partial<Omit<Task, 'id'>>) => void;
+      takeOverTask: (taskId: string, userId: string) => void;
+      requestAndSimulateTakeover: (taskId: string, requestedByUserId: string) => void;
+      getAssigneeById: (assigneeId: string) => Assignee | undefined;
+      getContactsByCompany: (companyName: string, currentContactId: string) => Contact[];
+      getAvailableTags: () => string[];
+    }
+
+
+    export const useMessagingStore = create<MessagingState &
+    MessagingActions>((set, get) => ({
+      tasks: mockTasks,
+      contacts: mockContacts,
+      assignees: mockAssignees,
+      searchTerm: '',
+      activeFilters: {
+        channels: [],
+        tags: [],
+        status: [],
+        priority: [],
+        assigneeId: [],
+      },
+      activeTaskView: 'all_open',
+
+      getTaskById: (id) => {
+        const task = get().tasks.find(t => t.id === id);
+        if (!task) return undefined;
+
+        const contact = get().contacts.find(c => c.id === task.contactId);
+        if (!contact) return undefined;
+
+        const assignee = get().assignees.find(a => a.id === task.assigneeId) || null;
+        const activeHandler = get().assignees.find(a => a.id === task.activeHandlerId) || null;
+
+        return { ...task, contact, assignee, activeHandler };
+      },
+
+      getFilteredTasks: () => {
+        const { tasks, contacts, assignees, searchTerm, activeFilters, activeTaskView } = get();
+        const lowercasedSearch = searchTerm.toLowerCase();
+
+        const viewFilteredTasks = tasks.filter(task => {
+          switch (activeTaskView) {
+            case 'all_open':
+              return task.status === 'open' || task.status === 'in-progress';
+            case 'unassigned':
+              return !task.assigneeId && (task.status === 'open' || task.status === 'in-progress');
+            case 'done':
+              return task.status === 'done';
+            default:
+              return true;
+          }
+        });
+        const mapped = viewFilteredTasks.map(task => {
+          const contact = contacts.find(c => c.id === task.contactId) as Contact;
+          const assignee = assignees.find(a => a.id === task.assigneeId) || null;
+          return { ...task, contact, assignee };
+        });
+
+        const filtered = mapped.filter(task => {
+          const searchMatch = task.title.toLowerCase().includes(lowercasedSearch) || task.contact.name.toLowerCase().includes(lowercasedSearch);
+          const channelMatch = activeFilters.channels.length === 0 || activeFilters.channels.includes(task.channel);
+          const tagMatch = activeFilters.tags.length === 0 || activeFilters.tags.some(tag => task.tags.includes(tag));
+          const statusMatch = activeFilters.status.length === 0 || activeFilters.status.includes(task.status);
+          const priorityMatch = activeFilters.priority.length === 0 || activeFilters.priority.includes(task.priority);
+          const assigneeMatch = activeFilters.assigneeId.length === 0 || (task.assigneeId && activeFilters.assigneeId.includes(task.assigneeId));
+          
+          return searchMatch && channelMatch && tagMatch && statusMatch && priorityMatch && assigneeMatch;
+        });
+
+        return filtered.sort((a, b) => new Date(b.lastActivity.timestamp).getTime() - new Date(a.lastActivity.timestamp).getTime());
+      },
+
+      setSearchTerm: (term) => set({ searchTerm: term }),
+      
+      setActiveTaskView: (view) => set({ activeTaskView: view }),
+
+      setFilters: (newFilters) => set(state => ({
+        activeFilters: { ...state.activeFilters, ...newFilters }
+      })),
+
+      updateTask: (taskId, updates) => set(state => ({
+        tasks: state.tasks.map(task => 
+          task.id === taskId 
+            ? { ...task, ...updates, lastActivity: { ...task.lastActivity, timestamp: new Date().toISOString() } } 
+            : task
+        )
+      })),
+
+      takeOverTask: (taskId, userId) => set(state => ({
+        tasks: state.tasks.map(task => 
+          task.id === taskId 
+            ? { ...task, activeHandlerId: userId, takeoverRequested: false } 
+            : task
+        )
+      })),
+
+      requestAndSimulateTakeover: (taskId, requestedByUserId) => {
+        set(state => ({
+          tasks: state.tasks.map(task => 
+            task.id === taskId ? { ...task, takeoverRequested: true } : task
+          )
+        }));
+        // Simulate a 2-second delay for the other user to "approve"
+        setTimeout(() => get().takeOverTask(taskId, requestedByUserId), 2000);
+      },
+
+      getAssigneeById: (assigneeId: string) => {
+        return get().assignees.find(a => a.id === assigneeId);
+      },
+
+      getContactsByCompany: (companyName, currentContactId) => {
+        return get().contacts.filter(
+          c => c.company === companyName && c.id !== currentContactId
+        );
+      },
+
+      getAvailableTags: () => {
+        const contactTags = get().contacts.flatMap(c => c.tags);
+        const taskTags = get().tasks.flatMap(t => t.tags);
+        const allTags = new Set([...contactTags, ...taskTags]);
+        return Array.from(allTags);
+      }
+    }));
+  src/pages/Messaging/components/TaskList.tsx: >-
+    import { useEffect } from 'react';
+
+    import { Search, SlidersHorizontal, Check, Inbox, Clock, Zap, Shield, Eye }
+    from 'lucide-react';
+
+    import { Link, useParams } from 'react-router-dom';
+
+    import { formatDistanceToNow } from 'date-fns';
+
+    import { useMessagingStore } from '../store/messaging.store';
+
+    import { Button } from '@/components/ui/button';
+
+    import { Input } from '@/components/ui/input';
+
+    import { Avatar, AvatarFallback, AvatarImage } from
+    '@/components/ui/avatar';
+
+    import { Badge } from '@/components/ui/badge';
+
+    import { Popover, PopoverContent, PopoverTrigger } from
+    '@/components/ui/popover';
+
+    import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem,
+    CommandList, CommandSeparator } from '@/components/ui/command';
+
+    import { cn } from '@/lib/utils';
+
+    import { AnimatedTabs } from '@/components/ui/animated-tabs';
+
+    import type { TaskStatus, TaskPriority, TaskView } from '../types';
+
+    import { useAppViewManager } from '@/hooks/useAppViewManager.hook';
+
+
+    // Local helpers for styling based on task properties
+
+    const getStatusIcon = (status: TaskStatus) => {
+        switch(status) {
+            case 'open': return <Inbox className="w-3 h-3 text-blue-500" />;
+            case 'in-progress': return <Zap className="w-3 h-3 text-yellow-500" />;
+            case 'done': return <Shield className="w-3 h-3 text-green-500" />;
+            case 'snoozed': return <Clock className="w-3 h-3 text-gray-500" />;
+        }
+    };
+
+
+    const getPriorityIcon = (priority: TaskPriority) => {
+        switch(priority) {
+            case 'high': return <div className="w-2 h-2 rounded-full bg-red-500" />;
+            case 'medium': return <div className="w-2 h-2 rounded-full bg-yellow-500" />;
+            case 'low': return <div className="w-2 h-2 rounded-full bg-green-500" />;
+            default: return <div className="w-2 h-2 rounded-full bg-gray-400" />;
+        }
+    };
+
+
+    const statusOptions: { value: TaskStatus; label: string }[] = [
+        { value: 'open', label: 'Open' }, { value: 'in-progress', label: 'In Progress' }, { value: 'done', label: 'Done' }, { value: 'snoozed', label: 'Snoozed' }
+    ];
+
+    const priorityOptions: { value: TaskPriority; label: string }[] = [
+        { value: 'high', label: 'High' }, { value: 'medium', label: 'Medium' }, { value: 'low', label: 'Low' }, { value: 'none', label: 'None' }
+    ];
+
+
+    export const TaskList = () => {
+      const { conversationId } = useParams<{ conversationId: string }>(); // This will be taskId later
+      const { 
+        getFilteredTasks,
+        setSearchTerm,
+        activeFilters,
+        setActiveTaskView,
+        searchTerm,
+       } = useMessagingStore();
+       const { messagingView, setMessagingView } = useAppViewManager();
+
+      useEffect(() => {
+        setActiveTaskView(messagingView || 'all_open');
+      }, [messagingView, setActiveTaskView]);
+
+      const filteredTasks = getFilteredTasks();
+      const activeFilterCount = Object.values(activeFilters).reduce((count, filterArray) => count + filterArray.length, 0);
+
+      const TABS: { id: TaskView, label: string }[] = [
+        { id: 'all_open', label: 'Open' },
+        { id: 'unassigned', label: 'Unassigned' },
+        { id: 'done', label: 'Done' }
+      ];
+
+      return (
+        <div className="h-full flex flex-col bg-background/80">
+          {/* Header */}
+          <div className="flex-shrink-0 border-b bg-background/80 p-4 space-y-4">
+            <h2 className="text-xl font-bold tracking-tight">Inbox</h2>
+            <div className="flex gap-2">
+                <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input placeholder="Search tasks..." className="pl-9" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+                </div>
+                <Popover>
+                    <PopoverTrigger asChild>
+                        <Button variant="outline" size="sm" className="h-10 border-dashed gap-2">
+                            <SlidersHorizontal className="w-4 h-4" />
+                            Filters
+                            {activeFilterCount > 0 && <Badge variant="secondary" className="rounded-sm px-1 font-normal">{activeFilterCount}</Badge>}
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[240px] p-0" align="end">
+                        <FilterCommand />
+                    </PopoverContent>
+                </Popover>
+            </div>
+          </div>
+          <AnimatedTabs
+            tabs={TABS}
+            activeTab={messagingView || 'all_open'}
+            onTabChange={(tabId) => setMessagingView(tabId as TaskView)}
+          />
+
+          {/* Task List */}
+          <div className="flex-1 overflow-y-auto">
+            <nav className="p-2 space-y-1">
+              {filteredTasks.map(task => {
+                const currentUserId = 'user-1';
+                const isHandledByOther = task.activeHandlerId && task.activeHandlerId !== currentUserId;
+
+                return (
+                  <Link
+                    to={`/messaging/${task.id}`}
+                    key={task.id}
+                    className={cn(
+                      "block p-3 rounded-lg text-left transition-all duration-200 hover:bg-accent/50",
+                      "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 outline-none",
+                      conversationId === task.id && "bg-accent"
+                    )}
+                  >
+                    <div className="flex items-start gap-3">
+                      <Avatar className="h-9 w-9 mt-1">
+                        <AvatarImage src={task.contact.avatar} alt={task.contact.name} />
+                        <AvatarFallback>{task.contact.name.charAt(0)}</AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 overflow-hidden">
+                          <div className="flex justify-between items-center mb-1">
+                              <p className="text-sm font-semibold truncate pr-2">
+                                {task.contact.name} <span className="text-muted-foreground font-normal">&middot; {task.contact.company}</span>
+                              </p>
+                              <p className="text-xs text-muted-foreground whitespace-nowrap">{formatDistanceToNow(new Date(task.lastActivity.timestamp), { addSuffix: true })}</p>
+                          </div>
+                          <p className="text-sm truncate text-foreground">{task.title}</p>
+                          <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+                              <div className="flex items-center gap-1.5" title={task.status}>
+                                  {getStatusIcon(task.status)}
+                                  <span className="capitalize">{task.status.replace('-', ' ')}</span>
+                              </div>
+                              <div className="flex items-center gap-1.5" title={task.priority}>
+                                  {getPriorityIcon(task.priority)}
+                                  <span className="capitalize">{task.priority}</span>
+                              </div>
+                              {task.assignee && (
+                                  <div className="flex items-center gap-1.5" title={`Assigned to ${task.assignee.name}`}>
+                                      <Avatar className="h-4 w-4"><AvatarImage src={task.assignee.avatar} /></Avatar>
+                                  </div>
+                              )}
+                              {isHandledByOther && <Eye className="w-3.5 h-3.5" title="Being handled by another user" />}
+                          </div>
+                      </div>
+                      {task.unreadCount > 0 && (
+                          <div className="flex items-center justify-center self-center ml-auto">
+                              <Badge className="bg-primary h-5 w-5 p-0 flex items-center justify-center">{task.unreadCount}</Badge>
+                          </div>
+                      )}
+                    </div>
+                  </Link>
+                )
+              })}
+            </nav>
+          </div>
+        </div>
+      );
+    };
+
+
+    // Filter component for popover
+
+    function FilterCommand() {
+        const { activeFilters, setFilters, assignees, getAvailableTags } = useMessagingStore();
+        const availableTags = getAvailableTags();
+
+        const handleSelect = (type: 'status' | 'priority' | 'assigneeId' | 'tags', value: string) => {
+            const current = new Set(activeFilters[type]);
+            current.has(value) ? current.delete(value) : current.add(value);
+            setFilters({ [type]: Array.from(current) });
+        };
+
+        const hasActiveFilters = Object.values(activeFilters).some(arr => arr.length > 0);
+
+        return (
+            <Command>
+                <CommandInput placeholder="Filter by..." />
+                <CommandList>
+                    <CommandEmpty>No results found.</CommandEmpty>
+                    <CommandGroup heading="Status">
+                        {statusOptions.map(o => (
+                            <CommandItem key={o.value} onSelect={() => handleSelect('status', o.value)}>
+                                <div className={cn('mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary', activeFilters.status.includes(o.value) ? 'bg-primary text-primary-foreground' : 'opacity-50 [&_svg]:invisible')}><Check className="h-4 w-4" /></div>
+                                <span>{o.label}</span>
+                            </CommandItem>
+                        ))}
+                    </CommandGroup>
+                    <CommandSeparator />
+                    <CommandGroup heading="Priority">
+                        {priorityOptions.map(o => (
+                            <CommandItem key={o.value} onSelect={() => handleSelect('priority', o.value)}>
+                                <div className={cn('mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary', activeFilters.priority.includes(o.value) ? 'bg-primary text-primary-foreground' : 'opacity-50 [&_svg]:invisible')}><Check className="h-4 w-4" /></div>
+                                <span>{o.label}</span>
+                            </CommandItem>
+                        ))}
+                    </CommandGroup>
+                    <CommandSeparator />
+                    <CommandGroup heading="Assignee">
+                        {assignees.map(a => (
+                            <CommandItem key={a.id} onSelect={() => handleSelect('assigneeId', a.id)}>
+                                <div className={cn('mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary', activeFilters.assigneeId.includes(a.id) ? 'bg-primary text-primary-foreground' : 'opacity-50 [&_svg]:invisible')}><Check className="h-4 w-4" /></div>
+                                <Avatar className="h-5 w-5 mr-2"><AvatarImage src={a.avatar} /><AvatarFallback>{a.name.charAt(0)}</AvatarFallback></Avatar>
+                                <span>{a.name}</span>
+                            </CommandItem>
+                        ))}
+                    </CommandGroup>
+                    <CommandSeparator />
+                    <CommandGroup heading="Tags">
+                        {availableTags.map(t => (
+                            <CommandItem key={t} onSelect={() => handleSelect('tags', t)}>
+                                <div className={cn('mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary', activeFilters.tags.includes(t) ? 'bg-primary text-primary-foreground' : 'opacity-50 [&_svg]:invisible')}><Check className="h-4 w-4" /></div>
+                                <span>{t}</span>
+                            </CommandItem>
+                        ))}
+                    </CommandGroup>
+
+                    {hasActiveFilters && (
+                        <>
+                            <CommandSeparator />
+                            <CommandGroup>
+                                <CommandItem onSelect={() => setFilters({ status: [], priority: [], assigneeId: [], tags: [], channels: [] })} className="justify-center text-center text-sm">Clear all filters</CommandItem>
+                            </CommandGroup>
+                        </>
+                    )}
+                </CommandList>
+            </Command>
+        );
+    }
+  src/components/ui/animated-tabs.tsx: >-
+    "use client"
+
+
+    import React, { useState, useRef, useEffect, useLayoutEffect, useId } from
+    "react"
+
+    import { gsap } from "gsap"
+
+    import { cn } from "@/lib/utils"
+
+
+    interface Tab {
+      id: string
+      label: React.ReactNode
+    }
+
+
+    interface AnimatedTabsProps extends React.HTMLAttributes<HTMLDivElement> {
+      tabs: Tab[]
+      activeTab: string
+      onTabChange: (tabId: string) => void,
+      size?: 'default' | 'sm',
+      children?: React.ReactNode,
+      wrapperClassName?: string,
+      contentClassName?: string
+    }
+
+
+    const AnimatedTabs = React.forwardRef<HTMLDivElement, AnimatedTabsProps>(
+      ({ className, tabs, activeTab, onTabChange, size = 'default', children, wrapperClassName, contentClassName, ...props }, ref) => {
+        const [activeIndex, setActiveIndex] = useState(0)
+        const contentTrackRef = useRef<HTMLDivElement>(null)
+        const uniqueId = useId()
+        const [activeStyle, setActiveStyle] = useState({ left: "0px", width: "0px" })
+        const tabRefs = useRef<(HTMLButtonElement | null)[]>([])
+
+        // Update active index when controlled prop changes
+        useEffect(() => {
+          const newActiveIndex = tabs.findIndex(tab => tab.id === activeTab)
+          if (newActiveIndex !== -1 && newActiveIndex !== activeIndex) {
+            setActiveIndex(newActiveIndex)
+          }
+        }, [activeTab, tabs, activeIndex])
+        
+        // Update active indicator position
+        useLayoutEffect(() => {
+          const activeElement = tabRefs.current[activeIndex];
+          if (activeElement) {
+            const { offsetLeft, offsetWidth } = activeElement;
+            setActiveStyle({
+              left: `${offsetLeft}px`,
+              width: `${offsetWidth}px`,
+            });
+            activeElement.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+          }
+        }, [activeIndex, tabs]);
+
+        // Animate content track position
+        useLayoutEffect(() => {
+          if (contentTrackRef.current) {
+            gsap.to(contentTrackRef.current, {
+              xPercent: -100 * activeIndex,
+              duration: 0.4,
+              ease: "power3.inOut",
+            })
+          }
+        }, [activeIndex]);
+
+        // Set initial position of active indicator
+        useLayoutEffect(() => {
+            const initialActiveIndex = activeTab ? tabs.findIndex(tab => tab.id === activeTab) : 0
+            const indexToUse = initialActiveIndex !== -1 ? initialActiveIndex : 0
+            
+            const firstElement = tabRefs.current[indexToUse]
+            if (firstElement) {
+              const { offsetLeft, offsetWidth } = firstElement
+              setActiveStyle({
+                left: `${offsetLeft}px`,
+                width: `${offsetWidth}px`,
+              })
+            }
+        }, [tabs, activeTab])
+
+        const tabHeadersRootProps = {
+          className: cn("overflow-x-auto overflow-y-hidden no-scrollbar", className),
+          role: "tablist",
+          ...props
+        };
+
+        const TabHeadersContent = (
+          <div className="relative flex w-max items-center whitespace-nowrap">
+            {/* Active Indicator */}
+            <div
+              className="absolute -bottom-px h-0.5 bg-primary transition-all duration-300 ease-out"
+              style={activeStyle}
+            />
+
+            {/* Tabs */}
+            {tabs.map((tab, index) => (
+              <button
+                key={tab.id}
+                id={`tab-${uniqueId}-${tab.id}`}
+                ref={(el) => (tabRefs.current[index] = el)}
+                role="tab"
+                aria-selected={index === activeIndex}
+                aria-controls={`tabpanel-${uniqueId}-${tab.id}`}
+                className={cn(
+                  "group relative cursor-pointer text-center transition-colors duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                  size === 'default' ? "px-4 py-5" : "px-3 py-2.5",
+                  index === activeIndex 
+                    ? "text-primary" 
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+                onClick={() => onTabChange(tab.id)}
+              >
+                <span className={cn(
+                  "flex items-center gap-2",
+                  size === 'default' 
+                    ? "text-lg font-semibold"
+                    : "text-sm font-medium"
+                )}>
+                  {tab.label}
+                </span>
+              </button>
+            ))}
+          </div>
+        );
+
+        if (!children) {
+          return (
+            <div ref={ref} {...tabHeadersRootProps}>
+              {TabHeadersContent}
+            </div>
+          );
+        }
+
+        return (
+          <div ref={ref} className={wrapperClassName}>
+            <div {...tabHeadersRootProps}>{TabHeadersContent}</div>
+            <div className={cn("relative overflow-hidden", contentClassName)}>
+              <div ref={contentTrackRef} className="flex h-full w-full">
+                {React.Children.map(children, (child, index) => (
+                  <div
+                    key={tabs[index].id}
+                    id={`tabpanel-${uniqueId}-${tabs[index].id}`}
+                    role="tabpanel"
+                    aria-labelledby={`tab-${uniqueId}-${tabs[index].id}`}
+                    aria-hidden={activeIndex !== index}
+                    className="h-full w-full flex-shrink-0"
+                  >
+                    {child}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )
+      }
+    )
+
+    AnimatedTabs.displayName = "AnimatedTabs"
+
+
+    export { AnimatedTabs }
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 424

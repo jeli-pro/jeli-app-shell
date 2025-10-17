@@ -10,7 +10,15 @@ split view mode : loosing view mode switcher hover on pane active left:right pan
 
 view mode switcher actions not working well from overlay side pane: especially fullscreen,and normal mode
 
-===
+=== DONE
+
+message page : message list:
+
+1. we have open, unAssigned, done tabs. add `Me` (assigned to me)
+2. reduce tabs size
+3. show data count on tab hover only
+
+=== DONE
 
 mental model:
 

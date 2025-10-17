@@ -83,4 +83,4 @@ export interface Task {
   takeoverRequested?: boolean;
 }
 
-export type TaskView = 'all_open' | 'unassigned' | 'done';
+export type TaskView = 'all_open' | 'unassigned' | 'me' | 'done';

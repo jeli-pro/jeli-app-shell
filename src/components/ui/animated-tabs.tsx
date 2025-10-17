@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils"
 interface Tab {
   id: string
   label: React.ReactNode
+  count?: number
 }
 
 interface AnimatedTabsProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -22,6 +23,7 @@ interface AnimatedTabsProps extends React.HTMLAttributes<HTMLDivElement> {
 const AnimatedTabs = React.forwardRef<HTMLDivElement, AnimatedTabsProps>(
   ({ className, tabs, activeTab, onTabChange, size = 'default', children, wrapperClassName, contentClassName, ...props }, ref) => {
     const [activeIndex, setActiveIndex] = useState(0)
+    const [hoveredTabId, setHoveredTabId] = useState<string | null>(null)
     const contentTrackRef = useRef<HTMLDivElement>(null)
     const uniqueId = useId()
     const [activeStyle, setActiveStyle] = useState({ left: "0px", width: "0px" })
@@ -105,6 +107,8 @@ const AnimatedTabs = React.forwardRef<HTMLDivElement, AnimatedTabsProps>(
                 : "text-muted-foreground hover:text-foreground"
             )}
             onClick={() => onTabChange(tab.id)}
+            onMouseEnter={() => setHoveredTabId(tab.id)}
+            onMouseLeave={() => setHoveredTabId(null)}
           >
             <span className={cn(
               "flex items-center gap-2",
@@ -113,6 +117,11 @@ const AnimatedTabs = React.forwardRef<HTMLDivElement, AnimatedTabsProps>(
                 : "text-sm font-medium"
             )}>
               {tab.label}
+              {typeof tab.count === 'number' && (tab.id === activeTab || tab.id === hoveredTabId) && (
+                <span className="ml-1 rounded-full bg-muted px-2 py-0.5 text-xs font-normal text-muted-foreground">
+                  {tab.count}
+                </span>
+              )}
             </span>
           </button>
         ))}

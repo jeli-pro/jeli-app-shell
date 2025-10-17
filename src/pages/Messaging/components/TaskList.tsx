@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Search, SlidersHorizontal, Check, Inbox, Clock, Zap, Shield, Eye } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils';
 import { AnimatedTabs } from '@/components/ui/animated-tabs';
 import type { TaskStatus, TaskPriority, TaskView } from '../types';
 import { useAppViewManager } from '@/hooks/useAppViewManager.hook';
+import { useMessagingTaskCounts } from '../store/messaging.store';
 
 // Local helpers for styling based on task properties
 const getStatusIcon = (status: TaskStatus) => {
@@ -40,6 +41,13 @@ const priorityOptions: { value: TaskPriority; label: string }[] = [
     { value: 'high', label: 'High' }, { value: 'medium', label: 'Medium' }, { value: 'low', label: 'Low' }, { value: 'none', label: 'None' }
 ];
 
+const TABS_CONFIG: { id: TaskView, label: string }[] = [
+  { id: 'all_open', label: 'Open' },
+  { id: 'unassigned', label: 'Unassigned' },
+  { id: 'me', label: 'Me' },
+  { id: 'done', label: 'Done' }
+];
+
 export const TaskList = () => {
   const { conversationId } = useParams<{ conversationId: string }>(); // This will be taskId later
   const { 
@@ -50,6 +58,7 @@ export const TaskList = () => {
     searchTerm,
    } = useMessagingStore();
    const { messagingView, setMessagingView } = useAppViewManager();
+   const taskCounts = useMessagingTaskCounts();
 
   useEffect(() => {
     setActiveTaskView(messagingView || 'all_open');
@@ -58,11 +67,13 @@ export const TaskList = () => {
   const filteredTasks = getFilteredTasks();
   const activeFilterCount = Object.values(activeFilters).reduce((count, filterArray) => count + filterArray.length, 0);
 
-  const TABS: { id: TaskView, label: string }[] = [
-    { id: 'all_open', label: 'Open' },
-    { id: 'unassigned', label: 'Unassigned' },
-    { id: 'done', label: 'Done' }
-  ];
+  const TABS = useMemo(() => 
+    TABS_CONFIG.map(tab => ({
+      ...tab,
+      count: taskCounts[tab.id as keyof typeof taskCounts]
+    })), 
+    [taskCounts]
+  );
 
   return (
     <div className="h-full flex flex-col bg-background/80">
@@ -92,6 +103,8 @@ export const TaskList = () => {
         tabs={TABS}
         activeTab={messagingView || 'all_open'}
         onTabChange={(tabId) => setMessagingView(tabId as TaskView)}
+        size="sm"
+        className="px-4"
       />
 
       {/* Task List */}

@@ -1,12 +1,16 @@
 # Directory Structure
 ```
 src/
+  components/
+    ui/
+      animated-tabs.tsx
+  hooks/
+    useAppViewManager.hook.ts
   pages/
     Messaging/
       components/
-        ContactInfoPanel.tsx
+        MessagingContent.tsx
         TaskDetail.tsx
-        TaskHeader.tsx
         TaskList.tsx
       data/
         mockData.ts
@@ -18,196 +22,225 @@ src/
 
 # Files
 
-## File: src/pages/Messaging/components/ContactInfoPanel.tsx
+## File: src/components/ui/animated-tabs.tsx
 ```typescript
-import React from 'react';
-import { Mail, Phone, Briefcase } from 'lucide-react';
-import type { Contact } from '../types';
+"use client"
 
-const DetailRow: React.FC<{icon: React.ReactNode, children: React.ReactNode}> = ({ icon, children }) => (
-    <div className="flex items-start gap-3 text-sm">
-        <div className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0">{icon}</div>
-        <div className="flex-1 text-foreground/90 break-all">{children}</div>
-    </div>
-);
+import React, { useState, useRef, useEffect, useLayoutEffect, useId } from "react"
+import { gsap } from "gsap"
+import { cn } from "@/lib/utils"
 
-interface ContactInfoPanelProps {
-  contact: Contact;
+interface Tab {
+  id: string
+  label: React.ReactNode
 }
 
-export const ContactInfoPanel: React.FC<ContactInfoPanelProps> = ({ contact }) => {
-    return (
-        <div className="space-y-4">
-            <DetailRow icon={<Mail />}>{contact.email}</DetailRow>
-            <DetailRow icon={<Phone />}>{contact.phone}</DetailRow>
-            <DetailRow icon={<Briefcase />}>
-                {contact.role} at <strong>{contact.company}</strong>
-            </DetailRow>
+interface AnimatedTabsProps extends React.HTMLAttributes<HTMLDivElement> {
+  tabs: Tab[]
+  activeTab: string
+  onTabChange: (tabId: string) => void,
+  size?: 'default' | 'sm',
+  children?: React.ReactNode,
+  wrapperClassName?: string,
+  contentClassName?: string
+}
+
+const AnimatedTabs = React.forwardRef<HTMLDivElement, AnimatedTabsProps>(
+  ({ className, tabs, activeTab, onTabChange, size = 'default', children, wrapperClassName, contentClassName, ...props }, ref) => {
+    const [activeIndex, setActiveIndex] = useState(0)
+    const contentTrackRef = useRef<HTMLDivElement>(null)
+    const uniqueId = useId()
+    const [activeStyle, setActiveStyle] = useState({ left: "0px", width: "0px" })
+    const tabRefs = useRef<(HTMLButtonElement | null)[]>([])
+
+    // Update active index when controlled prop changes
+    useEffect(() => {
+      const newActiveIndex = tabs.findIndex(tab => tab.id === activeTab)
+      if (newActiveIndex !== -1 && newActiveIndex !== activeIndex) {
+        setActiveIndex(newActiveIndex)
+      }
+    }, [activeTab, tabs, activeIndex])
+    
+    // Update active indicator position
+    useLayoutEffect(() => {
+      const activeElement = tabRefs.current[activeIndex];
+      if (activeElement) {
+        const { offsetLeft, offsetWidth } = activeElement;
+        setActiveStyle({
+          left: `${offsetLeft}px`,
+          width: `${offsetWidth}px`,
+        });
+        activeElement.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+      }
+    }, [activeIndex, tabs]);
+
+    // Animate content track position
+    useLayoutEffect(() => {
+      if (contentTrackRef.current) {
+        gsap.to(contentTrackRef.current, {
+          xPercent: -100 * activeIndex,
+          duration: 0.4,
+          ease: "power3.inOut",
+        })
+      }
+    }, [activeIndex]);
+
+    // Set initial position of active indicator
+    useLayoutEffect(() => {
+        const initialActiveIndex = activeTab ? tabs.findIndex(tab => tab.id === activeTab) : 0
+        const indexToUse = initialActiveIndex !== -1 ? initialActiveIndex : 0
+        
+        const firstElement = tabRefs.current[indexToUse]
+        if (firstElement) {
+          const { offsetLeft, offsetWidth } = firstElement
+          setActiveStyle({
+            left: `${offsetLeft}px`,
+            width: `${offsetWidth}px`,
+          })
+        }
+    }, [tabs, activeTab])
+
+    const tabHeadersRootProps = {
+      className: cn("overflow-x-auto overflow-y-hidden no-scrollbar", className),
+      role: "tablist",
+      ...props
+    };
+
+    const TabHeadersContent = (
+      <div className="relative flex w-max items-center whitespace-nowrap">
+        {/* Active Indicator */}
+        <div
+          className="absolute -bottom-px h-0.5 bg-primary transition-all duration-300 ease-out"
+          style={activeStyle}
+        />
+
+        {/* Tabs */}
+        {tabs.map((tab, index) => (
+          <button
+            key={tab.id}
+            id={`tab-${uniqueId}-${tab.id}`}
+            ref={(el) => (tabRefs.current[index] = el)}
+            role="tab"
+            aria-selected={index === activeIndex}
+            aria-controls={`tabpanel-${uniqueId}-${tab.id}`}
+            className={cn(
+              "group relative cursor-pointer text-center transition-colors duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+              size === 'default' ? "px-4 py-5" : "px-3 py-2.5",
+              index === activeIndex 
+                ? "text-primary" 
+                : "text-muted-foreground hover:text-foreground"
+            )}
+            onClick={() => onTabChange(tab.id)}
+          >
+            <span className={cn(
+              "flex items-center gap-2",
+              size === 'default' 
+                ? "text-lg font-semibold"
+                : "text-sm font-medium"
+            )}>
+              {tab.label}
+            </span>
+          </button>
+        ))}
+      </div>
+    );
+
+    if (!children) {
+      return (
+        <div ref={ref} {...tabHeadersRootProps}>
+          {TabHeadersContent}
         </div>
+      );
+    }
+
+    return (
+      <div ref={ref} className={wrapperClassName}>
+        <div {...tabHeadersRootProps}>{TabHeadersContent}</div>
+        <div className={cn("relative overflow-hidden", contentClassName)}>
+          <div ref={contentTrackRef} className="flex h-full w-full">
+            {React.Children.map(children, (child, index) => (
+              <div
+                key={tabs[index].id}
+                id={`tabpanel-${uniqueId}-${tabs[index].id}`}
+                role="tabpanel"
+                aria-labelledby={`tab-${uniqueId}-${tabs[index].id}`}
+                aria-hidden={activeIndex !== index}
+                className="h-full w-full flex-shrink-0"
+              >
+                {child}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
     )
-}
+  }
+)
+AnimatedTabs.displayName = "AnimatedTabs"
+
+export { AnimatedTabs }
 ```
 
-## File: src/pages/Messaging/components/TaskHeader.tsx
+## File: src/pages/Messaging/components/MessagingContent.tsx
 ```typescript
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import { useMessagingStore } from '../store/messaging.store';
-import type { Task, TaskStatus, TaskPriority, Assignee, Contact } from '../types';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator
-} from '@/components/ui/dropdown-menu';
-import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ChevronDown, Inbox, Zap, Shield, Clock, Calendar, Plus, User, Eye } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
-import { format } from 'date-fns';
+import { ContactInfoPanel } from './ContactInfoPanel';
+import { AIInsightsPanel } from './AIInsightsPanel';
+import { ActivityPanel } from './ActivityPanel';
+import { NotesPanel } from './NotesPanel';
+import { TaskHeader } from './TaskHeader';
+import { AnimatedTabs } from '@/components/ui/animated-tabs';
+import { TechOrbitDisplay } from '@/components/effects/OrbitingCircles';
 
-const statusOptions: { value: TaskStatus; label: string; icon: React.ReactNode }[] = [
-    { value: 'open', label: 'Open', icon: <Inbox className="w-4 h-4" /> },
-    { value: 'in-progress', label: 'In Progress', icon: <Zap className="w-4 h-4" /> },
-    { value: 'done', label: 'Done', icon: <Shield className="w-4 h-4" /> },
-    { value: 'snoozed', label: 'Snoozed', icon: <Clock className="w-4 h-4" /> },
-];
-
-const priorityOptions: { value: TaskPriority; label: string; icon: React.ReactNode }[] = [
-    { value: 'high', label: 'High', icon: <div className="w-2.5 h-2.5 rounded-full bg-red-500" /> },
-    { value: 'medium', label: 'Medium', icon: <div className="w-2.5 h-2.5 rounded-full bg-yellow-500" /> },
-    { value: 'low', label: 'Low', icon: <div className="w-2.5 h-2.5 rounded-full bg-green-500" /> },
-    { value: 'none', label: 'None', icon: <div className="w-2.5 h-2.5 rounded-full bg-gray-400" /> },
-];
-
-
-interface TaskHeaderProps {
-  task: (Task & { contact: Contact; assignee: Assignee | null });
+interface MessagingContentProps {
+  conversationId?: string;
 }
 
-export const TaskHeader: React.FC<TaskHeaderProps> = ({ task }) => {
-  const { updateTask, assignees } = useMessagingStore();
-  const currentStatus = statusOptions.find(o => o.value === task.status);
-  const currentPriority = priorityOptions.find(o => o.value === task.priority);
-  const currentUserId = 'user-1'; // Mock current user
-  const isHandledByOther = task.activeHandler && task.activeHandlerId !== currentUserId;
+export const MessagingContent: React.FC<MessagingContentProps> = ({ conversationId }) => {
+  const [activeTab, setActiveTab] = useState('contact');
+  const task = useMessagingStore(state => conversationId ? state.getTaskById(conversationId) : undefined);
+  
+  const tabs = useMemo(() => [
+    { id: 'contact', label: 'Contact' },
+    { id: 'ai', label: 'AI Insights' },
+    { id: 'activity', label: 'Activity' },
+    { id: 'notes', label: 'Notes' },
+  ], []);
 
-
+  if (!task) {
+    return (
+      <div className="h-full flex-1 flex flex-col items-center justify-center bg-background p-6 relative overflow-hidden">
+        <TechOrbitDisplay text="Context" />
+        <div className="text-center z-10 bg-background/50 backdrop-blur-sm p-6 rounded-lg">
+            <h3 className="mt-4 text-lg font-medium">Select a Task</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+                Task details and contact information will appear here.
+            </p>
+        </div>
+      </div>
+    );
+  }
+  
   return (
-    <div className="space-y-4">
-      {/* Task Title & Contact */}
-      <div className="overflow-hidden">
-        <h2 className="font-bold text-xl lg:text-2xl truncate" title={task.title}>
-          {task.title}
-        </h2>
-        <p className="text-sm text-muted-foreground">
-          With <a href="#" className="hover:underline font-medium text-foreground/80">{task.contact.name}</a>
-          <span className="mx-1.5">&middot;</span>
-          via <span className="capitalize font-medium text-foreground/80">{task.channel}</span>
-        </p>
+    <div className="h-full flex-1 flex flex-col bg-background overflow-hidden" data-testid="messaging-content-scroll-pane">
+      <div className="flex-shrink-0 border-b p-6">
+        <TaskHeader task={task} />
       </div>
-
-      {/* Properties Bar */}
-      <div className="flex flex-wrap items-center gap-y-2 text-sm">
-        {/* Assignee Dropdown */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" className="gap-2 font-normal">
-              {task.assignee ? (
-                <Avatar className="h-5 w-5"><AvatarImage src={task.assignee.avatar} /><AvatarFallback>{task.assignee.name.charAt(0)}</AvatarFallback></Avatar>
-              ) : (
-                <User className="h-4 w-4 text-muted-foreground" />
-              )}
-              <span className="font-medium">{task.assignee?.name || 'Unassigned'}</span>
-              <ChevronDown className="w-3 h-3 text-muted-foreground" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start">
-            <DropdownMenuRadioGroup value={task.assigneeId || 'null'} onValueChange={val => updateTask(task.id, { assigneeId: val === 'null' ? null : val })}>
-              <DropdownMenuRadioItem value="null">
-                <User className="w-4 h-4 mr-2 text-muted-foreground" /> Unassigned
-              </DropdownMenuRadioItem>
-              <DropdownMenuSeparator />
-              {assignees.map(a => (
-                <DropdownMenuRadioItem key={a.id} value={a.id}>
-                  <Avatar className="h-5 w-5 mr-2"><AvatarImage src={a.avatar} /><AvatarFallback>{a.name.charAt(0)}</AvatarFallback></Avatar>
-                  {a.name}
-                </DropdownMenuRadioItem>
-              ))}
-            </DropdownMenuRadioGroup>
-          </DropdownMenuContent>
-        </DropdownMenu>
-
-        {isHandledByOther && (
-            <>
-                <div className="mx-2 h-4 w-px bg-border" />
-                <Badge variant="outline" className="gap-2 font-normal text-amber-600 border-amber-600/50">
-                    <Eye className="w-3.5 h-3.5" /> Viewing: {task.activeHandler?.name}
-                </Badge>
-            </>
-        )}
-        <div className="mx-2 h-4 w-px bg-border" />
-
-        {/* Status Dropdown */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground hover:text-foreground">
-              {currentStatus?.icon}
-              <span className="font-medium text-foreground">{currentStatus?.label}</span>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start">
-            {statusOptions.map(o => (
-              <DropdownMenuItem key={o.value} onClick={() => updateTask(task.id, { status: o.value })}>
-                <div className="flex items-center">
-                  <div className="w-4 h-4 mr-2">{o.icon}</div>
-                  <span>{o.label}</span>
-                </div>
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-        
-        <div className="mx-2 h-4 w-px bg-border" />
-        
-        {/* Priority Dropdown */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground hover:text-foreground">
-              {currentPriority?.icon}
-              <span className="font-medium text-foreground">{currentPriority?.label}</span>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start">
-            {priorityOptions.map(o => (
-              <DropdownMenuItem key={o.value} onClick={() => updateTask(task.id, { priority: o.value })}>
-                <div className="flex items-center">
-                  <div className="w-2.5 h-2.5 mr-2">{o.icon}</div>
-                  <span>{o.label}</span>
-                </div>
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-
-        <div className="mx-2 h-4 w-px bg-border" />
-
-        {/* Due Date - for display, could be a popover trigger */}
-        <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground cursor-default" disabled>
-            <Calendar className="w-4 h-4" />
-            <span className="font-medium text-foreground">{task.dueDate ? format(new Date(task.dueDate), 'MMM d, yyyy') : 'No due date'}</span>
-        </Button>
-      </div>
-
-      {/* Tags */}
-      <div className="flex flex-wrap items-center gap-2">
-        {task.tags.map(t => <Badge variant="secondary" key={t}>{t}</Badge>)}
-        <Button variant="outline" size="sm" className="h-7 px-2 text-xs rounded-md border-dashed">
-          <Plus className="w-3 h-3 mr-1" /> Tag
-        </Button>
-      </div>
+      <AnimatedTabs 
+        tabs={tabs} 
+        activeTab={activeTab} 
+        onTabChange={setActiveTab} 
+        size="sm" 
+        className="px-6 border-b flex-shrink-0"
+        wrapperClassName="flex-1 flex flex-col min-h-0"
+        contentClassName="flex-1 min-h-0"
+      >
+        <div className="p-6 h-full overflow-y-auto"><ContactInfoPanel contact={task.contact} /></div>
+        <div className="p-6 h-full overflow-y-auto"><AIInsightsPanel task={task} /></div>
+        <div className="p-6 h-full overflow-y-auto"><ActivityPanel contact={task.contact} /></div>
+        <div className="p-6 h-full overflow-y-auto"><NotesPanel contact={task.contact} /></div>
+      </AnimatedTabs>
     </div>
   );
 };
@@ -335,7 +368,9 @@ export const TaskList = () => {
                   </Avatar>
                   <div className="flex-1 overflow-hidden">
                       <div className="flex justify-between items-center mb-1">
-                          <p className="text-sm font-semibold truncate pr-2">{task.contact.name}</p>
+                          <p className="text-sm font-semibold truncate pr-2">
+                            {task.contact.name} <span className="text-muted-foreground font-normal">&middot; {task.contact.company}</span>
+                          </p>
                           <p className="text-xs text-muted-foreground whitespace-nowrap">{formatDistanceToNow(new Date(task.lastActivity.timestamp), { addSuffix: true })}</p>
                       </div>
                       <p className="text-sm truncate text-foreground">{task.title}</p>
@@ -660,21 +695,25 @@ const generateActivity = (contactName: string): ActivityEvent[] => [
   { id: `act-${faker.string.uuid()}`, type: 'meeting', content: `Scheduled a demo for next week.`, timestamp: faker.date.soon().toISOString() },
 ];
 
+// --- COMPANIES ---
+const mockCompanies = Array.from({ length: 25 }, () => faker.company.name());
+
 // --- CONTACTS ---
-export const mockContacts: Contact[] = Array.from({ length: 50 }, (_, i) => {
+export const mockContacts: Contact[] = Array.from({ length: 80 }, (_, i) => {
     const firstName = faker.person.firstName();
     const lastName = faker.person.lastName();
     const name = `${firstName} ${lastName}`;
+    const company = faker.helpers.arrayElement(mockCompanies);
     return {
         id: `contact-${i + 1}`,
         name,
         avatar: `https://avatar.vercel.sh/${firstName.toLowerCase()}${lastName.toLowerCase()}.png`,
         online: faker.datatype.boolean(),
-        tags: faker.helpers.arrayElements(['VIP', 'New Lead', 'Returning Customer', 'Support Request', 'High Value'], faker.number.int({ min: 1, max: 3 })),
+        tags: faker.helpers.arrayElements(['VIP', 'New Lead', 'Returning Customer', 'Support Request', 'High Value'], { min: 1, max: 3 }),
         email: faker.internet.email({ firstName, lastName }),
         phone: faker.phone.number(),
         lastSeen: faker.datatype.boolean() ? 'online' : `${faker.number.int({ min: 2, max: 59 })} minutes ago`,
-        company: faker.company.name(),
+        company,
         role: faker.person.jobTitle(),
         activity: generateActivity(name),
         notes: generateNotes(name),
@@ -830,6 +869,7 @@ interface MessagingActions {
   takeOverTask: (taskId: string, userId: string) => void;
   requestAndSimulateTakeover: (taskId: string, requestedByUserId: string) => void;
   getAssigneeById: (assigneeId: string) => Assignee | undefined;
+  getContactsByCompany: (companyName: string, currentContactId: string) => Contact[];
   getAvailableTags: () => string[];
 }
 
@@ -934,6 +974,12 @@ export const useMessagingStore = create<MessagingState & MessagingActions>((set,
     return get().assignees.find(a => a.id === assigneeId);
   },
 
+  getContactsByCompany: (companyName, currentContactId) => {
+    return get().contacts.filter(
+      c => c.company === companyName && c.id !== currentContactId
+    );
+  },
+
   getAvailableTags: () => {
     const contactTags = get().contacts.flatMap(c => c.tags);
     const taskTags = get().tasks.flatMap(t => t.tags);
@@ -1031,6 +1077,314 @@ export interface Task {
 }
 
 export type TaskView = 'all_open' | 'unassigned' | 'done';
+```
+
+## File: src/hooks/useAppViewManager.hook.ts
+```typescript
+import { useMemo, useCallback, useEffect, useRef } from 'react';
+import { useSearchParams, useNavigate, useLocation, useParams } from 'react-router-dom';
+import { useAppShellStore, type AppShellState, type ActivePage } from '@/store/appShell.store';
+import type { DataItem, ViewMode, SortConfig, SortableField, GroupableField, Status, Priority } from '@/pages/DataDemo/types';
+import type { FilterConfig } from '@/pages/DataDemo/components/DataToolbar';
+import type { TaskView } from '@/pages/Messaging/types';
+import { BODY_STATES, SIDEBAR_STATES } from '@/lib/utils';
+
+const pageToPaneMap: Record<string, AppShellState['sidePaneContent']> = {
+  dashboard: 'main',
+  settings: 'settings',
+  toaster: 'toaster',
+  notifications: 'notifications',
+  'data-demo': 'dataDemo',
+  messaging: 'messaging',
+};
+
+function usePrevious<T>(value: T): T | undefined {
+  const ref = useRef<T>();
+  useEffect(() => {
+    ref.current = value;
+  });
+  return ref.current;
+}
+
+/**
+ * A centralized hook to manage and synchronize all URL-based view states.
+ * This is the single source of truth for view modes, side panes, split views,
+ * and page-specific parameters.
+ */
+export function useAppViewManager() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const params = useParams<{ itemId: string; conversationId: string }>();
+  const { itemId, conversationId } = params;
+  const { setSidebarState, sidebarState } = useAppShellStore();
+
+  // --- DERIVED STATE FROM URL ---
+
+  const view = searchParams.get('view');
+  const sidePane = searchParams.get('sidePane');
+  const right = searchParams.get('right');
+  const messagingView = searchParams.get('messagingView') as TaskView | null;
+  const q = searchParams.get('q');
+  const status = searchParams.get('status');
+  const priority = searchParams.get('priority');
+  const sort = searchParams.get('sort');
+
+  const { bodyState, sidePaneContent } = useMemo(() => {
+    const validPanes: AppShellState['sidePaneContent'][] = ['details', 'settings', 'main', 'toaster', 'notifications', 'dataDemo', 'messaging'];
+    
+    // 1. Priority: Explicit side pane overlay via URL param
+    if (sidePane && validPanes.includes(sidePane as AppShellState['sidePaneContent'])) {
+      return { bodyState: BODY_STATES.SIDE_PANE, sidePaneContent: sidePane as AppShellState['sidePaneContent'] };
+    }
+
+    // 2. Data item detail view (can be overlay or split)
+    if (itemId) {
+      if (view === 'split') {
+        return { bodyState: BODY_STATES.SPLIT_VIEW, sidePaneContent: 'dataItem' as const };
+      }
+      return { bodyState: BODY_STATES.SIDE_PANE, sidePaneContent: 'dataItem' as const };
+    }
+
+    // 3. Messaging conversation view (always split)
+    if (conversationId) {
+      return { bodyState: BODY_STATES.SPLIT_VIEW, sidePaneContent: 'messaging' as const };
+    }
+
+    // 4. Generic split view via URL param
+    if (view === 'split' && right && validPanes.includes(right as AppShellState['sidePaneContent'])) {
+      return { bodyState: BODY_STATES.SPLIT_VIEW, sidePaneContent: right as AppShellState['sidePaneContent'] };
+    }
+
+    return { bodyState: BODY_STATES.NORMAL, sidePaneContent: 'details' as const };
+  }, [itemId, conversationId, view, sidePane, right]);
+  
+  const currentActivePage = useMemo(() => (location.pathname.split('/')[1] || 'dashboard') as ActivePage, [location.pathname]);
+  const prevActivePage = usePrevious(currentActivePage);
+
+  // --- SIDE EFFECTS ---
+  useEffect(() => {
+    // On navigating to messaging page, collapse sidebar if it's expanded.
+    // This ensures a good default view but allows the user to expand it again if they wish.
+    if (currentActivePage === 'messaging' && prevActivePage !== 'messaging' && sidebarState === SIDEBAR_STATES.EXPANDED) {
+      setSidebarState(SIDEBAR_STATES.COLLAPSED);
+    }
+  }, [currentActivePage, prevActivePage, sidebarState, setSidebarState]);
+
+  // DataDemo specific state
+  const viewMode = useMemo(() => (searchParams.get('dataView') as ViewMode) || 'list', [searchParams]);
+	const page = useMemo(() => parseInt(searchParams.get('page') || '1', 10), [searchParams]);
+	const groupBy = useMemo(() => (searchParams.get('groupBy') as GroupableField | 'none') || 'none', [searchParams]);
+	const activeGroupTab = useMemo(() => searchParams.get('tab') || 'all', [searchParams]);
+	const filters = useMemo<FilterConfig>(
+		() => ({
+			searchTerm: q || '',
+			status: (status?.split(',') || []).filter(Boolean) as Status[],
+			priority: (priority?.split(',') || []).filter(Boolean) as Priority[],
+		}),
+		[q, status, priority],
+	);
+	const sortConfig = useMemo<SortConfig | null>(() => {
+		const sortParam = sort;
+		if (!sortParam) return { key: 'updatedAt', direction: 'desc' }; // Default sort
+		if (sortParam === 'default') return null;
+
+		const [key, direction] = sortParam.split('-');
+		return { key: key as SortableField, direction: direction as 'asc' | 'desc' };
+	}, [sort]);
+
+  // --- MUTATOR ACTIONS ---
+
+  const handleParamsChange = useCallback(
+		(newParams: Record<string, string | string[] | null | undefined>, resetPage = false) => {
+			setSearchParams(
+				(prev) => {
+					const updated = new URLSearchParams(prev);
+					
+					for (const [key, value] of Object.entries(newParams)) {
+						if (value === null || value === undefined || (Array.isArray(value) && value.length === 0) || value === '') {
+							updated.delete(key);
+						} else if (Array.isArray(value)) {
+							updated.set(key, value.join(','));
+						} else {
+							updated.set(key, String(value));
+						}
+					}
+
+					if (resetPage) {
+						updated.delete('page');
+					}
+					if ('groupBy' in newParams) {
+						updated.delete('tab');
+					}
+
+					return updated;
+				},
+				{ replace: true },
+			);
+		},
+		[setSearchParams],
+	);
+
+  const navigateTo = useCallback((page: string, params?: Record<string, string | null>) => {
+    const targetPath = page.startsWith('/') ? page : `/${page}`;
+    const isSamePage = location.pathname === targetPath;
+    
+    const newSearchParams = new URLSearchParams(isSamePage ? searchParams : undefined);
+
+    if (params) {
+      for (const [key, value] of Object.entries(params)) {
+        if (value === null || value === undefined) {
+          newSearchParams.delete(key);
+        } else {
+          newSearchParams.set(key, value);
+        }
+      }
+    }
+
+    navigate({ pathname: targetPath, search: newSearchParams.toString() });
+  }, [navigate, location.pathname, searchParams]);
+
+  const openSidePane = useCallback((pane: AppShellState['sidePaneContent']) => {
+    if (location.pathname === `/${Object.keys(pageToPaneMap).find(key => pageToPaneMap[key] === pane)}`) {
+        navigate({ pathname: '/dashboard', search: `?sidePane=${pane}` }, { replace: true });
+    } else {
+        handleParamsChange({ sidePane: pane, view: null, right: null });
+    }
+  }, [handleParamsChange, navigate, location.pathname]);
+
+  const closeSidePane = useCallback(() => {
+    if (itemId) {
+      navigate('/data-demo');
+    } else {
+      handleParamsChange({ sidePane: null, view: null, right: null });
+    }
+  }, [itemId, navigate, handleParamsChange]);
+
+  const toggleSidePane = useCallback((pane: AppShellState['sidePaneContent']) => {
+    if (sidePane === pane) {
+      closeSidePane();
+    } else {
+      openSidePane(pane);
+    }
+  }, [sidePane, openSidePane, closeSidePane]);
+
+  const toggleSplitView = useCallback(() => {
+    if (bodyState === BODY_STATES.SIDE_PANE) {
+      handleParamsChange({ view: 'split', right: sidePane, sidePane: null });
+    } else if (bodyState === BODY_STATES.SPLIT_VIEW) {
+      handleParamsChange({ sidePane: right, view: null, right: null });
+    } else { // From normal
+      const paneContent = pageToPaneMap[currentActivePage] || 'details';
+      handleParamsChange({ view: 'split', right: paneContent, sidePane: null });
+    }
+  }, [bodyState, sidePane, right, currentActivePage, handleParamsChange]);
+  
+  const setNormalView = useCallback(() => {
+      handleParamsChange({ sidePane: null, view: null, right: null });
+  }, [handleParamsChange]);
+
+  const switchSplitPanes = useCallback(() => {
+    if (bodyState !== BODY_STATES.SPLIT_VIEW) return;
+    const newSidePaneContent = pageToPaneMap[currentActivePage];
+    const newActivePage = Object.entries(pageToPaneMap).find(
+      ([, value]) => value === sidePaneContent
+    )?.[0] as ActivePage | undefined;
+
+    if (newActivePage && newSidePaneContent) {
+      navigate(`/${newActivePage}?view=split&right=${newSidePaneContent}`, { replace: true });
+    }
+  }, [bodyState, currentActivePage, sidePaneContent, navigate]);
+  
+  const closeSplitPane = useCallback((paneToClose: 'main' | 'right') => {
+    if (bodyState !== BODY_STATES.SPLIT_VIEW) return;
+    if (paneToClose === 'right') {
+      navigate(`/${currentActivePage}`, { replace: true });
+    } else { // Closing main pane
+      const pageToBecomeActive = Object.entries(pageToPaneMap).find(
+        ([, value]) => value === sidePaneContent
+      )?.[0] as ActivePage | undefined;
+      
+      if (pageToBecomeActive) {
+        navigate(`/${pageToBecomeActive}`, { replace: true });
+      } else {
+        navigate(`/dashboard`, { replace: true });
+      }
+    }
+  }, [bodyState, currentActivePage, sidePaneContent, navigate]);
+  
+  // DataDemo actions
+  const setViewMode = (mode: ViewMode) => handleParamsChange({ dataView: mode === 'list' ? null : mode });
+  const setGroupBy = (val: string) => handleParamsChange({ groupBy: val === 'none' ? null : val }, true);
+  const setActiveGroupTab = (tab: string) => handleParamsChange({ tab: tab === 'all' ? null : tab });
+  const setFilters = (newFilters: FilterConfig) => {
+    handleParamsChange({ q: newFilters.searchTerm, status: newFilters.status, priority: newFilters.priority }, true);
+  }
+  const setSort = (config: SortConfig | null) => {
+    if (!config) {
+      handleParamsChange({ sort: 'default' }, true);
+    } else {
+      handleParamsChange({ sort: `${config.key}-${config.direction}` }, true);
+    }
+  }
+  const setTableSort = (field: SortableField) => {
+    let newSort: string | null = `${field}-desc`;
+    if (sortConfig?.key === field) {
+      if (sortConfig.direction === 'desc') newSort = `${field}-asc`;
+      else if (sortConfig.direction === 'asc') newSort = 'default';
+    }
+    handleParamsChange({ sort: newSort }, true);
+  };
+  const setPage = (newPage: number) => handleParamsChange({ page: newPage.toString() });
+
+  const onItemSelect = useCallback((item: DataItem) => {
+		navigate(`/data-demo/${item.id}${location.search}`);
+	}, [navigate, location.search]);
+
+  const setMessagingView = (view: TaskView) => handleParamsChange({ messagingView: view });
+
+
+  return useMemo(() => ({
+    // State
+    bodyState,
+    sidePaneContent,
+    currentActivePage,
+    itemId,
+    messagingView,
+    // DataDemo State
+    viewMode,
+    page,
+    groupBy,
+    activeGroupTab,
+    filters,
+    sortConfig,
+    // Actions
+    navigateTo,
+    openSidePane,
+    closeSidePane,
+    toggleSidePane,
+    toggleSplitView,
+    setNormalView,
+    switchSplitPanes,
+    setMessagingView,
+    closeSplitPane,
+    // DataDemo Actions
+    onItemSelect,
+    setViewMode,
+    setGroupBy,
+    setActiveGroupTab,
+    setFilters,
+    setSort,
+    setTableSort,
+    setPage,
+  }), [
+    bodyState, sidePaneContent, currentActivePage, itemId, messagingView,
+    viewMode, page, groupBy, activeGroupTab, filters, sortConfig,
+    navigateTo, openSidePane, closeSidePane, toggleSidePane, toggleSplitView, setNormalView, setMessagingView,
+    switchSplitPanes, closeSplitPane, onItemSelect, setViewMode, setGroupBy, setActiveGroupTab, setFilters,
+    setSort, setTableSort, setPage
+  ]);
+}
 ```
 
 ## File: src/pages/Messaging/index.tsx
