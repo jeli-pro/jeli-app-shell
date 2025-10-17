@@ -1,7 +1,6 @@
 import { useEffect, useMemo } from 'react';
 import { Search, SlidersHorizontal, Check, Inbox, Clock, Zap, Shield, Eye } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
-import { formatDistanceToNow } from 'date-fns';
 import { useMessagingStore } from '../store/messaging.store';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,7 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator } from '@/components/ui/command';
-import { cn } from '@/lib/utils';
+import { cn, formatDistanceToNowShort } from '@/lib/utils';
 import { AnimatedTabs } from '@/components/ui/animated-tabs';
 import type { TaskStatus, TaskPriority, TaskView } from '../types';
 import { useAppViewManager } from '@/hooks/useAppViewManager.hook';
@@ -130,13 +129,10 @@ export const TaskList = () => {
                     <AvatarFallback>{task.contact.name.charAt(0)}</AvatarFallback>
                   </Avatar>
                   <div className="flex-1 overflow-hidden">
-                      <div className="flex justify-between items-center mb-1">
-                          <p className="text-sm font-semibold truncate pr-2">
-                            {task.contact.name} <span className="text-muted-foreground font-normal">&middot; {task.contact.company}</span>
-                          </p>
-                          <p className="text-xs text-muted-foreground whitespace-nowrap">{formatDistanceToNow(new Date(task.lastActivity.timestamp), { addSuffix: true })}</p>
-                      </div>
-                      <p className="text-sm truncate text-foreground">{task.title}</p>
+                      <p className="text-sm font-semibold truncate pr-2">
+                        {task.contact.name} <span className="text-muted-foreground font-normal">&middot; {task.contact.company}</span>
+                      </p>
+                      <p className="text-sm truncate text-foreground mt-1">{task.title}</p>
                       <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
                           <div className="flex items-center gap-1.5" title={task.status}>
                               {getStatusIcon(task.status)}
@@ -154,11 +150,12 @@ export const TaskList = () => {
                           {isHandledByOther && <Eye className="w-3.5 h-3.5" title="Being handled by another user" />}
                       </div>
                   </div>
-                  {task.unreadCount > 0 && (
-                      <div className="flex items-center justify-center self-center ml-auto">
-                          <Badge className="bg-primary h-5 w-5 p-0 flex items-center justify-center">{task.unreadCount}</Badge>
-                      </div>
-                  )}
+                  <div className="flex flex-col items-end space-y-1.5 flex-shrink-0">
+                    <p className="text-xs text-muted-foreground whitespace-nowrap">{formatDistanceToNowShort(new Date(task.lastActivity.timestamp))}</p>
+                    {task.unreadCount > 0 ? (
+                        <Badge className="bg-primary h-5 w-5 p-0 flex items-center justify-center">{task.unreadCount}</Badge>
+                    ) : <div className="h-5 w-5" /> /* Spacer to maintain alignment */ }
+                  </div>
                 </div>
               </Link>
             )

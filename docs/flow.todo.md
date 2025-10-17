@@ -10,6 +10,11 @@ split view mode : loosing view mode switcher hover on pane active left:right pan
 
 view mode switcher actions not working well from overlay side pane: especially fullscreen,and normal mode
 
+===
+
+-message page : message list: time ago use short word like 3s ago, 3m ago, 3h ago etc
+-message thread : add message search feature
+
 === DONE
 
 message page : message list:

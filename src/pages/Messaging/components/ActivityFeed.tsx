@@ -1,9 +1,8 @@
 import React, { forwardRef } from 'react';
 import { useMessagingStore } from '../store/messaging.store';
-import type { Message, Contact, Assignee, JourneyPointType } from '../types';
-import { cn } from '@/lib/utils';
+import type { Message, Contact, JourneyPointType } from '../types';
+import { cn, formatDistanceToNowShort } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { formatDistanceToNow } from 'date-fns';
 import { StickyNote, Info, MessageSquare, ShoppingCart, PackageCheck, AlertCircle, RefreshCw, MailQuestion, FileText, CreditCard, Truck, XCircle, Undo2, Star, type LucideIcon } from 'lucide-react';
 
 const journeyInfoMap: Record<JourneyPointType, { Icon: LucideIcon; textColor: string; bgColor: string; }> = {
@@ -25,9 +24,28 @@ const journeyInfoMap: Record<JourneyPointType, { Icon: LucideIcon; textColor: st
 interface ActivityFeedProps {
   messages: Message[];
   contact: Contact;
+  searchTerm?: string;
 }
 
-export const ActivityFeed = forwardRef<HTMLDivElement, ActivityFeedProps>(({ messages, contact }, ref) => {
+const Highlight = ({ text, highlight }: { text: string; highlight?: string }) => {
+  if (!highlight) {
+    return <>{text}</>;
+  }
+  const parts = text.split(new RegExp(`(${highlight})`, 'gi'));
+  return (
+    <span>
+      {parts.map((part, i) =>
+        part.toLowerCase() === highlight.toLowerCase() ? (
+          <mark key={i} className="bg-primary/20 text-primary-foreground rounded px-0.5">{part}</mark>
+        ) : (
+          part
+        )
+      )}
+    </span>
+  );
+};
+
+export const ActivityFeed = forwardRef<HTMLDivElement, ActivityFeedProps>(({ messages, contact, searchTerm }, ref) => {
   const getAssigneeById = useMessagingStore(state => state.getAssigneeById);
 
   return (
@@ -47,7 +65,7 @@ export const ActivityFeed = forwardRef<HTMLDivElement, ActivityFeedProps>(({ mes
                 <div className="bg-background px-3 flex items-center gap-2 text-sm font-medium">
                   <Icon className={cn("w-4 h-4", journeyInfo.textColor)} />
                   <span className={cn("font-semibold", journeyInfo.textColor)}>{message.journeyPoint}</span>
-                  <span className="text-xs text-muted-foreground font-normal whitespace-nowrap">{formatDistanceToNow(new Date(message.timestamp), { addSuffix: true })}</span>
+                  <span className="text-xs text-muted-foreground font-normal whitespace-nowrap">{formatDistanceToNowShort(new Date(message.timestamp))}</span>
                 </div>
               </div>
             </div>
@@ -58,8 +76,8 @@ export const ActivityFeed = forwardRef<HTMLDivElement, ActivityFeedProps>(({ mes
           return (
             <div key={message.id} data-message-id={message.id} className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
               <Info className="w-3.5 h-3.5" />
-              <p>{message.text}</p>
-              <p className="whitespace-nowrap">{formatDistanceToNow(new Date(message.timestamp), { addSuffix: true })}</p>
+              <p><Highlight text={message.text} highlight={searchTerm} /></p>
+              <p className="whitespace-nowrap">{formatDistanceToNowShort(new Date(message.timestamp))}</p>
             </div>
           );
         }
@@ -73,10 +91,10 @@ export const ActivityFeed = forwardRef<HTMLDivElement, ActivityFeedProps>(({ mes
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
                   <p className="font-semibold text-sm">{assignee?.name || 'User'}</p>
-                  <p className="text-xs text-muted-foreground">{formatDistanceToNow(new Date(message.timestamp), { addSuffix: true })}</p>
+                  <p className="text-xs text-muted-foreground">{formatDistanceToNowShort(new Date(message.timestamp))}</p>
                 </div>
                 <div className="bg-card border rounded-lg p-3 text-sm">
-                  <p>{message.text}</p>
+                  <p><Highlight text={message.text} highlight={searchTerm} /></p>
                 </div>
               </div>
             </div>
@@ -101,7 +119,7 @@ export const ActivityFeed = forwardRef<HTMLDivElement, ActivityFeedProps>(({ mes
                 ? 'bg-primary text-primary-foreground rounded-br-none' 
                 : 'bg-card border rounded-bl-none'
             )}>
-              <p className="text-sm">{message.text}</p>
+              <p className="text-sm"><Highlight text={message.text} highlight={searchTerm} /></p>
             </div>
           </div>
         );

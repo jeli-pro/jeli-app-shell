@@ -1,0 +1,1022 @@
+uuid: c32c9164-90aa-4581-8b01-5121b65b1281
+projectId: jeli-app-shell
+createdAt: '2025-10-17T13:26:37.266Z'
+gitCommitMsg: >-
+  feat(messaging): Implement concise timestamps and in-thread search
+
+  This commit enhances the messaging user experience by introducing two key
+  features:
+
+  1.  **Concise Timestamps**: A new utility function `formatDistanceToNowShort`
+  is created to display shorter, more scannable timestamps (e.g., "5m", "2h").
+  This is applied to both the task list and the activity feed for a denser,
+  cleaner UI.
+
+  2.  **In-Thread Search**: A search bar is added to the `TaskDetail` view,
+  allowing users to filter messages within a conversation in real-time. Matching
+  text is highlighted in the activity feed, significantly improving usability
+  for long message histories.
+promptSummary: >-
+  I need to make two changes to the messaging page:
+
+  1.  In the message list, change the timestamp format to be short (e.g., "3m
+  ago", "5h ago").
+
+  2.  In the message thread view, add a search feature to filter and find
+  specific messages.
+reasoning:
+  - >-
+    Here are the modifications to implement concise timestamps and an in-thread
+    message search.
+  - >-
+    First, I'll add a new utility function to format dates into a shorter, more
+    scannable format (e.g., "5m" instead of "5 minutes ago").
+  - >-
+    Next, I'll update the `TaskList` component to use this new, concise
+    timestamp format.
+  - >-
+    Now, I'll add the search functionality to the `TaskDetail` view. This
+    includes adding the search input field and the logic to filter messages.
+  - >-
+    Finally, I'll update the `ActivityFeed` to use the new timestamp format,
+    accept the search term, and highlight matching text in messages.
+operations:
+  - type: write
+    path: src/lib/utils.ts
+    content: |+
+      --- src/lib/utils.ts
+      +++ src/lib/utils.ts
+      @@ -1,5 +1,6 @@
+       import { type ClassValue, clsx } from "clsx"
+       import { twMerge } from "tailwind-merge"
+      +import { formatDistanceToNow } from "date-fns"
+       
+       export function cn(...inputs: ClassValue[]) {
+         return twMerge(clsx(inputs))
+      @@ -25,6 +26,21 @@
+         return str.charAt(0).toUpperCase() + str.slice(1)
+       }
+       
+      +export function formatDistanceToNowShort(date: Date | string): string {
+      +  const dateObj = typeof date === 'string' ? new Date(date) : date;
+      +  const result = formatDistanceToNow(dateObj, { addSuffix: true });
+      +
+      +  if (result === 'less than a minute ago') return 'now';
+      +
+      +  return result
+      +    .replace('about ', '')
+      +    .replace(' minutes', 'm')
+      +    .replace(' minute', 'm')
+      +    .replace(' hours', 'h')
+      +    .replace(' hour', 'h')
+      +    .replace(' days', 'd')
+      +}
+      +
+       export const getStatusColor = (status: string) => {
+         switch (status) {
+           case 'active': return 'bg-green-500/20 text-green-700 border-green-500/30'
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/Messaging/components/TaskList.tsx
+    content: >+
+      --- src/pages/Messaging/components/TaskList.tsx
+
+      +++ src/pages/Messaging/components/TaskList.tsx
+
+      @@ -2,13 +2,12 @@
+       import { Search, SlidersHorizontal, Check, Inbox, Clock, Zap, Shield, Eye } from 'lucide-react';
+       import { Link, useParams } from 'react-router-dom';
+      -import { formatDistanceToNow } from 'date-fns';
+       import { useMessagingStore } from '../store/messaging.store';
+       import { Button } from '@/components/ui/button';
+       import { Input } from '@/components/ui/input';
+       import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+       import { Badge } from '@/components/ui/badge';
+       import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+       import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator } from '@/components/ui/command';
+      -import { cn } from '@/lib/utils';
+
+      +import { cn, formatDistanceToNowShort } from '@/lib/utils';
+       import { AnimatedTabs } from '@/components/ui/animated-tabs';
+       import type { TaskStatus, TaskPriority, TaskView } from '../types';
+       import { useAppViewManager } from '@/hooks/useAppViewManager.hook';
+      @@ -134,7 +133,7 @@
+                                 <p className="text-sm font-semibold truncate pr-2">
+                                   {task.contact.name} <span className="text-muted-foreground font-normal">&middot; {task.contact.company}</span>
+                                 </p>
+      -                          <p className="text-xs text-muted-foreground
+      whitespace-nowrap">{formatDistanceToNow(new
+      Date(task.lastActivity.timestamp), { addSuffix: true })}</p>
+
+      +                          <p className="text-xs text-muted-foreground
+      whitespace-nowrap">{formatDistanceToNowShort(new
+      Date(task.lastActivity.timestamp))}</p>
+                             </div>
+                             <p className="text-sm truncate text-foreground">{task.title}</p>
+                             <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/Messaging/components/TaskDetail.tsx
+    content: >+
+      --- src/pages/Messaging/components/TaskDetail.tsx
+
+      +++ src/pages/Messaging/components/TaskDetail.tsx
+
+      @@ -1,11 +1,12 @@
+
+      -import React, { useRef, useEffect, useLayoutEffect, useState } from
+      'react';
+
+      +import React, { useRef, useEffect, useLayoutEffect, useState, useMemo }
+      from 'react';
+       import { useParams } from 'react-router-dom';
+       import { useMessagingStore } from '../store/messaging.store';
+       import { ActivityFeed } from './ActivityFeed';
+       import { Button } from '@/components/ui/button';
+       import { Textarea } from '@/components/ui/textarea';
+      -import { Paperclip, SendHorizontal, Smile, StickyNote } from
+      'lucide-react';
+
+      +import { Paperclip, Search, SendHorizontal, Smile, StickyNote } from
+      'lucide-react';
+       import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+      +import { Input } from '@/components/ui/input';
+       import { TakeoverBanner } from './TakeoverBanner';
+       import { useToast } from '@/components/ui/toast';
+       import { gsap } from 'gsap';
+      @@ -26,6 +27,7 @@
+         const inputAreaRef = useRef<HTMLDivElement>(null);
+         const isFirstRender = useRef(true);
+         const [isJourneyHovered, setIsJourneyHovered] = useState(false);
+      +  const [searchTerm, setSearchTerm] = useState('');
+       
+         useLayoutEffect(() => {
+           // On conversation change, scroll to the bottom of the message list.
+      @@ -83,6 +85,13 @@
+         }
+       
+         const journeyPoints = task.messages.filter(m => m.journeyPoint);
+      +
+
+      +  const filteredMessages = useMemo(() => {
+
+      +    if (!searchTerm) {
+
+      +      return task.messages;
+
+      +    }
+
+      +    return task.messages.filter(msg =>
+      msg.text.toLowerCase().includes(searchTerm.toLowerCase()));
+
+      +  }, [task.messages, searchTerm]);
+       
+         const handleDotClick = (messageId: string) => {
+           const container = scrollContainerRef.current;
+      @@ -118,6 +127,12 @@
+                   onRequestTakeover={handleRequestTakeover}
+               />
+             )}
+      +      <div className="flex-shrink-0 border-b p-3">
+
+      +          <div className="relative w-full">
+
+      +            <Search className="absolute left-3 top-1/2 -translate-y-1/2
+      w-4 h-4 text-muted-foreground" />
+
+      +            <Input placeholder={`Search in conversation with
+      ${task.contact.name}...`} className="pl-9" value={searchTerm} onChange={e
+      => setSearchTerm(e.target.value)} />
+
+      +          </div>
+
+      +      </div>
+             <div className="relative flex-1 overflow-hidden">
+               <div
+                 ref={scrollContainerRef}
+      @@ -126,7 +141,7 @@
+                   isJourneyHovered && "blur-sm pointer-events-none"
+                 )}
+               >
+      -          <ActivityFeed messages={task.messages} contact={task.contact}
+      />
+
+      +          <ActivityFeed messages={filteredMessages}
+      contact={task.contact} searchTerm={searchTerm} />
+               </div>
+               {journeyPoints.length > 0 && (
+                   <JourneyScrollbar
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/Messaging/components/ActivityFeed.tsx
+    content: >+
+      --- src/pages/Messaging/components/ActivityFeed.tsx
+
+      +++ src/pages/Messaging/components/ActivityFeed.tsx
+
+      @@ -1,9 +1,8 @@
+       import React, { forwardRef } from 'react';
+       import { useMessagingStore } from '../store/messaging.store';
+      -import type { Message, Contact, Assignee, JourneyPointType } from
+      '../types';
+
+      -import { cn } from '@/lib/utils';
+
+      +import type { Message, Contact, JourneyPointType } from '../types';
+
+      +import { cn, formatDistanceToNowShort } from '@/lib/utils';
+       import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+      -import { formatDistanceToNow } from 'date-fns';
+       import { StickyNote, Info, MessageSquare, ShoppingCart, PackageCheck, AlertCircle, RefreshCw, MailQuestion, FileText, CreditCard, Truck, XCircle, Undo2, Star, type LucideIcon } from 'lucide-react';
+       
+       const journeyInfoMap: Record<JourneyPointType, { Icon: LucideIcon; textColor: string; bgColor: string; }> = {
+      @@ -24,10 +23,26 @@
+       interface ActivityFeedProps {
+         messages: Message[];
+         contact: Contact;
+      +  searchTerm?: string;
+       }
+       
+      -export const ActivityFeed = forwardRef<HTMLDivElement,
+      ActivityFeedProps>(({ messages, contact }, ref) => {
+
+      +const Highlight = ({ text, highlight }: { text: string; highlight?:
+      string }) => {
+
+      +  if (!highlight) {
+
+      +    return <>{text}</>;
+
+      +  }
+
+      +  const parts = text.split(new RegExp(`(${highlight})`, 'gi'));
+
+      +  return (
+
+      +    <span>
+
+      +      {parts.map((part, i) =>
+
+      +        part.toLowerCase() === highlight.toLowerCase() ? (
+
+      +          <mark key={i} className="bg-primary/20 text-primary-foreground
+      rounded px-0.5">{part}</mark>
+
+      +        ) : (
+
+      +          part
+
+      +        )
+
+      +      )}
+
+      +    </span>
+
+      +  );
+
+      +};
+
+      +
+
+      +export const ActivityFeed = forwardRef<HTMLDivElement,
+      ActivityFeedProps>(({ messages, contact, searchTerm }, ref) => {
+         const getAssigneeById = useMessagingStore(state => state.getAssigneeById);
+       
+         return (
+      @@ -48,7 +63,7 @@
+                       <div className="bg-background px-3 flex items-center gap-2 text-sm font-medium">
+                         <Icon className={cn("w-4 h-4", journeyInfo.textColor)} />
+                         <span className={cn("font-semibold", journeyInfo.textColor)}>{message.journeyPoint}</span>
+      -                  <span className="text-xs text-muted-foreground
+      font-normal whitespace-nowrap">{formatDistanceToNow(new
+      Date(message.timestamp), { addSuffix: true })}</span>
+
+      +                  <span className="text-xs text-muted-foreground
+      font-normal whitespace-nowrap">{formatDistanceToNowShort(new
+      Date(message.timestamp))}</span>
+                       </div>
+                     </div>
+                   </div>
+      @@ -59,8 +74,8 @@
+                 return (
+                   <div key={message.id} data-message-id={message.id} className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+                     <Info className="w-3.5 h-3.5" />
+      -              <p>{message.text}</p>
+
+      -              <p className="whitespace-nowrap">{formatDistanceToNow(new
+      Date(message.timestamp), { addSuffix: true })}</p>
+
+      +              <p><Highlight text={message.text} highlight={searchTerm}
+      /></p>
+
+      +              <p
+      className="whitespace-nowrap">{formatDistanceToNowShort(new
+      Date(message.timestamp))}</p>
+                   </div>
+                 );
+               }
+      @@ -74,10 +89,10 @@
+                     <div className="flex-1">
+                       <div className="flex items-center gap-2 mb-1">
+                         <p className="font-semibold text-sm">{assignee?.name || 'User'}</p>
+      -                  <p className="text-xs
+      text-muted-foreground">{formatDistanceToNow(new Date(message.timestamp), {
+      addSuffix: true })}</p>
+
+      +                  <p className="text-xs
+      text-muted-foreground">{formatDistanceToNowShort(new
+      Date(message.timestamp))}</p>
+                       </div>
+                       <div className="bg-card border rounded-lg p-3 text-sm">
+      -                  <p>{message.text}</p>
+
+      +                  <p><Highlight text={message.text}
+      highlight={searchTerm} /></p>
+                       </div>
+                     </div>
+                   </div>
+      @@ -99,7 +114,7 @@
+                       ? 'bg-primary text-primary-foreground rounded-br-none' 
+                       : 'bg-card border rounded-bl-none'
+                   )}>
+      -              <p className="text-sm">{message.text}</p>
+
+      +              <p className="text-sm"><Highlight text={message.text}
+      highlight={searchTerm} /></p>
+                   </div>
+                 </div>
+               );
+
+    patchStrategy: standard-diff
+snapshot:
+  src/lib/utils.ts: >-
+    import { type ClassValue, clsx } from "clsx"
+
+    import { twMerge } from "tailwind-merge"
+
+
+    export function cn(...inputs: ClassValue[]) {
+      return twMerge(clsx(inputs))
+    }
+
+
+    export const SIDEBAR_STATES = {
+      HIDDEN: 'hidden',
+      COLLAPSED: 'collapsed', 
+      EXPANDED: 'expanded',
+      PEEK: 'peek'
+    } as const
+
+
+    export const BODY_STATES = {
+      NORMAL: 'normal',
+      FULLSCREEN: 'fullscreen',
+      SIDE_PANE: 'side_pane',
+      SPLIT_VIEW: 'split_view'
+    } as const
+
+
+    export type SidebarState = typeof SIDEBAR_STATES[keyof typeof
+    SIDEBAR_STATES]
+
+    export type BodyState = typeof BODY_STATES[keyof typeof BODY_STATES]
+
+
+    export function capitalize(str: string): string {
+      if (!str) return str
+      return str.charAt(0).toUpperCase() + str.slice(1)
+    }
+
+
+    export const getStatusColor = (status: string) => {
+      switch (status) {
+        case 'active': return 'bg-green-500/20 text-green-700 border-green-500/30'
+        case 'pending': return 'bg-yellow-500/20 text-yellow-700 border-yellow-500/30'
+        case 'completed': return 'bg-blue-500/20 text-blue-700 border-blue-500/30'
+        case 'archived': return 'bg-gray-500/20 text-gray-700 border-gray-500/30'
+        default: return 'bg-gray-500/20 text-gray-700 border-gray-500/30'
+      }
+    }
+
+
+    export const getPriorityColor = (priority: string) => {
+      switch (priority) {
+        case 'critical': return 'bg-red-500/20 text-red-700 border-red-500/30'
+        case 'high': return 'bg-orange-500/20 text-orange-700 border-orange-500/30'
+        case 'medium': return 'bg-blue-500/20 text-blue-700 border-blue-500/30'
+        case 'low': return 'bg-green-500/20 text-green-700 border-green-500/30'
+        default: return 'bg-gray-500/20 text-gray-700 border-gray-500/30'
+      }
+    }
+  src/pages/Messaging/components/TaskDetail.tsx: >-
+    import React, { useRef, useEffect, useLayoutEffect, useState } from 'react';
+
+    import { useParams } from 'react-router-dom';
+
+    import { useMessagingStore } from '../store/messaging.store';
+
+    import { ActivityFeed } from './ActivityFeed';
+
+    import { Button } from '@/components/ui/button';
+
+    import { Textarea } from '@/components/ui/textarea';
+
+    import { Paperclip, SendHorizontal, Smile, StickyNote } from 'lucide-react';
+
+    import { Tabs, TabsContent, TabsList, TabsTrigger } from
+    "@/components/ui/tabs";
+
+    import { TakeoverBanner } from './TakeoverBanner';
+
+    import { useToast } from '@/components/ui/toast';
+
+    import { gsap } from 'gsap';
+
+    import { cn } from '@/lib/utils';
+
+    import { useAppShellStore } from '@/store/appShell.store';
+
+    import { JourneyScrollbar } from './JourneyScrollbar';
+
+
+
+    export const TaskDetail: React.FC = () => {
+      const { conversationId: taskId } = useParams<{ conversationId: string }>();
+      const { show } = useToast();
+      const { getTaskById, takeOverTask, requestAndSimulateTakeover } = useMessagingStore();
+      const reducedMotion = useAppShellStore(s => s.reducedMotion);
+      
+      const task = taskId ? getTaskById(taskId) : undefined;
+
+      // In a real app, this would come from the auth store
+      const currentUserId = 'user-1'; 
+
+      const scrollContainerRef = useRef<HTMLDivElement>(null);
+      const isLocked = !!task?.activeHandlerId && task.activeHandlerId !== currentUserId;
+      const inputAreaRef = useRef<HTMLDivElement>(null);
+      const isFirstRender = useRef(true);
+      const [isJourneyHovered, setIsJourneyHovered] = useState(false);
+
+      useLayoutEffect(() => {
+        // On conversation change, scroll to the bottom of the message list.
+        // This ensures the user sees the latest message and that the scrollbar
+        // component has the correct scrollHeight to calculate its visibility.
+        if (scrollContainerRef.current) {
+          scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+        }
+      }, [taskId]);
+
+      useEffect(() => {
+        if (!inputAreaRef.current) return;
+
+        const initialBorderWidth = '1px'; // from 'border-t'
+        const initialPadding = '1rem';    // from 'p-4'
+
+        const target = isLocked
+          ? {
+              y: 20,
+              opacity: 0,
+              maxHeight: 0,
+              paddingTop: 0,
+              paddingBottom: 0,
+              borderTopWidth: 0,
+              pointerEvents: 'none' as const,
+            }
+          : {
+              y: 0,
+              opacity: 1,
+              maxHeight: 500, // Ample room for the input
+              paddingTop: initialPadding,
+              paddingBottom: initialPadding,
+              borderTopWidth: initialBorderWidth,
+              pointerEvents: 'auto' as const,
+            };
+
+        if (reducedMotion) {
+          gsap.set(inputAreaRef.current, target);
+          return;
+        }
+        
+        if (isFirstRender.current) {
+          gsap.set(inputAreaRef.current, target);
+          isFirstRender.current = false;
+        } else {
+          gsap.to(inputAreaRef.current, {
+            ...target,
+            duration: 0.35,
+            ease: 'power2.inOut',
+          });
+        }
+      }, [isLocked, reducedMotion]);
+
+      if (!taskId || !task) {
+        return (
+            <div className="h-full flex flex-col items-center justify-center p-6 bg-background">
+                <p className="text-muted-foreground">Select a task to see its details.</p>
+            </div>
+        );
+      }
+
+      const journeyPoints = task.messages.filter(m => m.journeyPoint);
+
+      const handleDotClick = (messageId: string) => {
+        const container = scrollContainerRef.current;
+        if (!container) return;
+        
+        const element = container.querySelector(`[data-message-id="${messageId}"]`);
+        
+        if (element) {
+          // Using 'center' to avoid the message being at the very top/bottom of the view
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      };
+
+      const handleTakeOver = () => {
+        takeOverTask(task.id, currentUserId);
+        show({
+            variant: 'success',
+            title: 'Task Taken Over',
+            message: `You are now handling the task from ${task.contact.name}.`
+        });
+      };
+
+      const handleRequestTakeover = () => {
+        requestAndSimulateTakeover(task.id, currentUserId);
+        if (task.activeHandler) {
+            show({
+                variant: 'default',
+                title: 'Request Sent',
+                message: `A takeover request has been sent to ${task.activeHandler.name}.`
+            });
+        }
+      };
+
+      return (
+        <div className="h-full flex flex-col bg-background overflow-hidden">
+          {isLocked && task.activeHandler && (
+            <TakeoverBanner
+                activeHandler={task.activeHandler}
+                isRequesting={!!task.takeoverRequested}
+                onTakeOver={handleTakeOver}
+                onRequestTakeover={handleRequestTakeover}
+            />
+          )}
+          <div className="relative flex-1 overflow-hidden">
+            <div
+              ref={scrollContainerRef}
+              className={cn(
+                "h-full overflow-y-auto pr-8 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]",
+                "transition-all duration-200",
+                isJourneyHovered && "blur-sm pointer-events-none"
+              )}
+            >
+              <ActivityFeed messages={task.messages} contact={task.contact} />
+            </div>
+            {journeyPoints.length > 0 && (
+                <JourneyScrollbar
+                    scrollContainerRef={scrollContainerRef}
+                    journeyPoints={journeyPoints}
+                    onDotClick={handleDotClick}
+                    onHoverChange={setIsJourneyHovered}
+                    showAllTooltips={isJourneyHovered}
+                />
+            )}
+          </div>
+
+          {/* Input Form */}
+          <div ref={inputAreaRef} className="p-4 border-t flex-shrink-0 bg-background/50">
+            <Tabs defaultValue="comment" className="w-full" >
+              <TabsList className="grid w-full grid-cols-2 mb-2">
+                <TabsTrigger value="comment" disabled={isLocked}>Comment</TabsTrigger>
+                <TabsTrigger value="note" disabled={isLocked}><StickyNote className="w-4 h-4 mr-2" />Internal Note</TabsTrigger>
+              </TabsList>
+              <TabsContent value="comment">
+                 <div className="relative">
+                    <Textarea placeholder={isLocked ? "Take over to reply..." : `Reply to ${task.contact.name}...`} className="pr-24 min-h-[52px]" disabled={isLocked} />
+                    <div className="absolute right-2 top-2 flex items-center gap-1">
+                        <Button variant="ghost" size="icon" className="rounded-full h-8 w-8" disabled={isLocked}><Smile className="w-4 h-4" /></Button>
+                        <Button variant="ghost" size="icon" className="rounded-full h-8 w-8" disabled={isLocked}><Paperclip className="w-4 h-4" /></Button>
+                        <Button size="icon" className="rounded-full h-8 w-8" disabled={isLocked}><SendHorizontal className="w-4 h-4" /></Button>
+                    </div>
+                </div>
+              </TabsContent>
+              <TabsContent value="note">
+                <div className="relative">
+                    <Textarea placeholder={isLocked ? "Take over to add a note..." : "Add an internal note..."} className="pr-24 min-h-[52px] bg-yellow-400/10 border-yellow-400/30 focus-visible:ring-yellow-500" disabled={isLocked} />
+                    <div className="absolute right-2 top-2 flex items-center gap-1">
+                        <Button size="icon" className="rounded-full h-8 w-8" disabled={isLocked}><SendHorizontal className="w-4 h-4" /></Button>
+                    </div>
+                </div>
+              </TabsContent>
+            </Tabs>
+          </div>
+        </div>
+      );
+    };
+  src/pages/Messaging/components/TaskList.tsx: >-
+    import { useEffect, useMemo } from 'react';
+
+    import { Search, SlidersHorizontal, Check, Inbox, Clock, Zap, Shield, Eye }
+    from 'lucide-react';
+
+    import { Link, useParams } from 'react-router-dom';
+
+    import { formatDistanceToNow } from 'date-fns';
+
+    import { useMessagingStore } from '../store/messaging.store';
+
+    import { Button } from '@/components/ui/button';
+
+    import { Input } from '@/components/ui/input';
+
+    import { Avatar, AvatarFallback, AvatarImage } from
+    '@/components/ui/avatar';
+
+    import { Badge } from '@/components/ui/badge';
+
+    import { Popover, PopoverContent, PopoverTrigger } from
+    '@/components/ui/popover';
+
+    import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem,
+    CommandList, CommandSeparator } from '@/components/ui/command';
+
+    import { cn } from '@/lib/utils';
+
+    import { AnimatedTabs } from '@/components/ui/animated-tabs';
+
+    import type { TaskStatus, TaskPriority, TaskView } from '../types';
+
+    import { useAppViewManager } from '@/hooks/useAppViewManager.hook';
+
+    import { useMessagingTaskCounts } from '../store/messaging.store';
+
+
+    // Local helpers for styling based on task properties
+
+    const getStatusIcon = (status: TaskStatus) => {
+        switch(status) {
+            case 'open': return <Inbox className="w-3 h-3 text-blue-500" />;
+            case 'in-progress': return <Zap className="w-3 h-3 text-yellow-500" />;
+            case 'done': return <Shield className="w-3 h-3 text-green-500" />;
+            case 'snoozed': return <Clock className="w-3 h-3 text-gray-500" />;
+        }
+    };
+
+
+    const getPriorityIcon = (priority: TaskPriority) => {
+        switch(priority) {
+            case 'high': return <div className="w-2 h-2 rounded-full bg-red-500" />;
+            case 'medium': return <div className="w-2 h-2 rounded-full bg-yellow-500" />;
+            case 'low': return <div className="w-2 h-2 rounded-full bg-green-500" />;
+            default: return <div className="w-2 h-2 rounded-full bg-gray-400" />;
+        }
+    };
+
+
+    const statusOptions: { value: TaskStatus; label: string }[] = [
+        { value: 'open', label: 'Open' }, { value: 'in-progress', label: 'In Progress' }, { value: 'done', label: 'Done' }, { value: 'snoozed', label: 'Snoozed' }
+    ];
+
+    const priorityOptions: { value: TaskPriority; label: string }[] = [
+        { value: 'high', label: 'High' }, { value: 'medium', label: 'Medium' }, { value: 'low', label: 'Low' }, { value: 'none', label: 'None' }
+    ];
+
+
+    const TABS_CONFIG: { id: TaskView, label: string }[] = [
+      { id: 'all_open', label: 'Open' },
+      { id: 'unassigned', label: 'Unassigned' },
+      { id: 'me', label: 'Me' },
+      { id: 'done', label: 'Done' }
+    ];
+
+
+    export const TaskList = () => {
+      const { conversationId } = useParams<{ conversationId: string }>(); // This will be taskId later
+      const { 
+        getFilteredTasks,
+        setSearchTerm,
+        activeFilters,
+        setActiveTaskView,
+        searchTerm,
+       } = useMessagingStore();
+       const { messagingView, setMessagingView } = useAppViewManager();
+       const taskCounts = useMessagingTaskCounts();
+
+      useEffect(() => {
+        setActiveTaskView(messagingView || 'all_open');
+      }, [messagingView, setActiveTaskView]);
+
+      const filteredTasks = getFilteredTasks();
+      const activeFilterCount = Object.values(activeFilters).reduce((count, filterArray) => count + filterArray.length, 0);
+
+      const TABS = useMemo(() => 
+        TABS_CONFIG.map(tab => ({
+          ...tab,
+          count: taskCounts[tab.id as keyof typeof taskCounts]
+        })), 
+        [taskCounts]
+      );
+
+      return (
+        <div className="h-full flex flex-col bg-background/80">
+          {/* Header */}
+          <div className="flex-shrink-0 border-b bg-background/80 p-4 space-y-4">
+            <h2 className="text-xl font-bold tracking-tight">Inbox</h2>
+            <div className="flex gap-2">
+                <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input placeholder="Search tasks..." className="pl-9" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+                </div>
+                <Popover>
+                    <PopoverTrigger asChild>
+                        <Button variant="outline" size="sm" className="h-10 border-dashed gap-2">
+                            <SlidersHorizontal className="w-4 h-4" />
+                            Filters
+                            {activeFilterCount > 0 && <Badge variant="secondary" className="rounded-sm px-1 font-normal">{activeFilterCount}</Badge>}
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[240px] p-0" align="end">
+                        <FilterCommand />
+                    </PopoverContent>
+                </Popover>
+            </div>
+          </div>
+          <AnimatedTabs
+            tabs={TABS}
+            activeTab={messagingView || 'all_open'}
+            onTabChange={(tabId) => setMessagingView(tabId as TaskView)}
+            size="sm"
+            className="px-4"
+          />
+
+          {/* Task List */}
+          <div className="flex-1 overflow-y-auto">
+            <nav className="p-2 space-y-1">
+              {filteredTasks.map(task => {
+                const currentUserId = 'user-1';
+                const isHandledByOther = task.activeHandlerId && task.activeHandlerId !== currentUserId;
+
+                return (
+                  <Link
+                    to={`/messaging/${task.id}`}
+                    key={task.id}
+                    className={cn(
+                      "block p-3 rounded-lg text-left transition-all duration-200 hover:bg-accent/50",
+                      "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 outline-none",
+                      conversationId === task.id && "bg-accent"
+                    )}
+                  >
+                    <div className="flex items-start gap-3">
+                      <Avatar className="h-9 w-9 mt-1">
+                        <AvatarImage src={task.contact.avatar} alt={task.contact.name} />
+                        <AvatarFallback>{task.contact.name.charAt(0)}</AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 overflow-hidden">
+                          <div className="flex justify-between items-center mb-1">
+                              <p className="text-sm font-semibold truncate pr-2">
+                                {task.contact.name} <span className="text-muted-foreground font-normal">&middot; {task.contact.company}</span>
+                              </p>
+                              <p className="text-xs text-muted-foreground whitespace-nowrap">{formatDistanceToNow(new Date(task.lastActivity.timestamp), { addSuffix: true })}</p>
+                          </div>
+                          <p className="text-sm truncate text-foreground">{task.title}</p>
+                          <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+                              <div className="flex items-center gap-1.5" title={task.status}>
+                                  {getStatusIcon(task.status)}
+                                  <span className="capitalize">{task.status.replace('-', ' ')}</span>
+                              </div>
+                              <div className="flex items-center gap-1.5" title={task.priority}>
+                                  {getPriorityIcon(task.priority)}
+                                  <span className="capitalize">{task.priority}</span>
+                              </div>
+                              {task.assignee && (
+                                  <div className="flex items-center gap-1.5" title={`Assigned to ${task.assignee.name}`}>
+                                      <Avatar className="h-4 w-4"><AvatarImage src={task.assignee.avatar} /></Avatar>
+                                  </div>
+                              )}
+                              {isHandledByOther && <Eye className="w-3.5 h-3.5" title="Being handled by another user" />}
+                          </div>
+                      </div>
+                      {task.unreadCount > 0 && (
+                          <div className="flex items-center justify-center self-center ml-auto">
+                              <Badge className="bg-primary h-5 w-5 p-0 flex items-center justify-center">{task.unreadCount}</Badge>
+                          </div>
+                      )}
+                    </div>
+                  </Link>
+                )
+              })}
+            </nav>
+          </div>
+        </div>
+      );
+    };
+
+
+    // Filter component for popover
+
+    function FilterCommand() {
+        const { activeFilters, setFilters, assignees, getAvailableTags } = useMessagingStore();
+        const availableTags = getAvailableTags();
+
+        const handleSelect = (type: 'status' | 'priority' | 'assigneeId' | 'tags', value: string) => {
+            const current = new Set(activeFilters[type]);
+            current.has(value) ? current.delete(value) : current.add(value);
+            setFilters({ [type]: Array.from(current) });
+        };
+
+        const hasActiveFilters = Object.values(activeFilters).some(arr => arr.length > 0);
+
+        return (
+            <Command>
+                <CommandInput placeholder="Filter by..." />
+                <CommandList>
+                    <CommandEmpty>No results found.</CommandEmpty>
+                    <CommandGroup heading="Status">
+                        {statusOptions.map(o => (
+                            <CommandItem key={o.value} onSelect={() => handleSelect('status', o.value)}>
+                                <div className={cn('mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary', activeFilters.status.includes(o.value) ? 'bg-primary text-primary-foreground' : 'opacity-50 [&_svg]:invisible')}><Check className="h-4 w-4" /></div>
+                                <span>{o.label}</span>
+                            </CommandItem>
+                        ))}
+                    </CommandGroup>
+                    <CommandSeparator />
+                    <CommandGroup heading="Priority">
+                        {priorityOptions.map(o => (
+                            <CommandItem key={o.value} onSelect={() => handleSelect('priority', o.value)}>
+                                <div className={cn('mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary', activeFilters.priority.includes(o.value) ? 'bg-primary text-primary-foreground' : 'opacity-50 [&_svg]:invisible')}><Check className="h-4 w-4" /></div>
+                                <span>{o.label}</span>
+                            </CommandItem>
+                        ))}
+                    </CommandGroup>
+                    <CommandSeparator />
+                    <CommandGroup heading="Assignee">
+                        {assignees.map(a => (
+                            <CommandItem key={a.id} onSelect={() => handleSelect('assigneeId', a.id)}>
+                                <div className={cn('mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary', activeFilters.assigneeId.includes(a.id) ? 'bg-primary text-primary-foreground' : 'opacity-50 [&_svg]:invisible')}><Check className="h-4 w-4" /></div>
+                                <Avatar className="h-5 w-5 mr-2"><AvatarImage src={a.avatar} /><AvatarFallback>{a.name.charAt(0)}</AvatarFallback></Avatar>
+                                <span>{a.name}</span>
+                            </CommandItem>
+                        ))}
+                    </CommandGroup>
+                    <CommandSeparator />
+                    <CommandGroup heading="Tags">
+                        {availableTags.map(t => (
+                            <CommandItem key={t} onSelect={() => handleSelect('tags', t)}>
+                                <div className={cn('mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary', activeFilters.tags.includes(t) ? 'bg-primary text-primary-foreground' : 'opacity-50 [&_svg]:invisible')}><Check className="h-4 w-4" /></div>
+                                <span>{t}</span>
+                            </CommandItem>
+                        ))}
+                    </CommandGroup>
+
+                    {hasActiveFilters && (
+                        <>
+                            <CommandSeparator />
+                            <CommandGroup>
+                                <CommandItem onSelect={() => setFilters({ status: [], priority: [], assigneeId: [], tags: [], channels: [] })} className="justify-center text-center text-sm">Clear all filters</CommandItem>
+                            </CommandGroup>
+                        </>
+                    )}
+                </CommandList>
+            </Command>
+        );
+    }
+  src/pages/Messaging/components/ActivityFeed.tsx: >
+    import React, { forwardRef } from 'react';
+
+    import { useMessagingStore } from '../store/messaging.store';
+
+    import type { Message, Contact, Assignee, JourneyPointType } from
+    '../types';
+
+    import { cn } from '@/lib/utils';
+
+    import { Avatar, AvatarFallback, AvatarImage } from
+    '@/components/ui/avatar';
+
+    import { formatDistanceToNow } from 'date-fns';
+
+    import { StickyNote, Info, MessageSquare, ShoppingCart, PackageCheck,
+    AlertCircle, RefreshCw, MailQuestion, FileText, CreditCard, Truck, XCircle,
+    Undo2, Star, type LucideIcon } from 'lucide-react';
+
+
+    const journeyInfoMap: Record<JourneyPointType, { Icon: LucideIcon;
+    textColor: string; bgColor: string; }> = {
+      Inquiry: { Icon: Info, textColor: 'text-cyan-500', bgColor: 'bg-cyan-500' },
+      Consult: { Icon: MessageSquare, textColor: 'text-blue-500', bgColor: 'bg-blue-500' },
+      Quote: { Icon: FileText, textColor: 'text-orange-500', bgColor: 'bg-orange-500' },
+      Order: { Icon: ShoppingCart, textColor: 'text-green-500', bgColor: 'bg-green-500' },
+      Payment: { Icon: CreditCard, textColor: 'text-lime-500', bgColor: 'bg-lime-500' },
+      Shipped: { Icon: Truck, textColor: 'text-sky-500', bgColor: 'bg-sky-500' },
+      Delivered: { Icon: PackageCheck, textColor: 'text-emerald-500', bgColor: 'bg-emerald-500' },
+      Canceled: { Icon: XCircle, textColor: 'text-slate-500', bgColor: 'bg-slate-500' },
+      Refund: { Icon: Undo2, textColor: 'text-rose-500', bgColor: 'bg-rose-500' },
+      Complain: { Icon: AlertCircle, textColor: 'text-red-500', bgColor: 'bg-red-500' },
+      Reorder: { Icon: RefreshCw, textColor: 'text-indigo-500', bgColor: 'bg-indigo-500' },
+      'Follow-up': { Icon: MailQuestion, textColor: 'text-yellow-500', bgColor: 'bg-yellow-500' },
+      Review: { Icon: Star, textColor: 'text-amber-500', bgColor: 'bg-amber-500' },
+    };
+
+
+    interface ActivityFeedProps {
+      messages: Message[];
+      contact: Contact;
+    }
+
+
+    export const ActivityFeed = forwardRef<HTMLDivElement, ActivityFeedProps>(({
+    messages, contact }, ref) => {
+      const getAssigneeById = useMessagingStore(state => state.getAssigneeById);
+
+      return (
+        <div ref={ref} className="flex-1 overflow-y-auto p-6 space-y-6 no-scrollbar">
+          {messages.map((message) => {
+            const assignee = message.userId ? getAssigneeById(message.userId) : null;
+            
+            if (message.journeyPoint) {
+              const journeyInfo = journeyInfoMap[message.journeyPoint];
+              const { Icon } = journeyInfo;
+              return (
+                <div key={message.id} data-message-id={message.id} className="relative py-3">
+                  <div className="absolute inset-0 flex items-center" aria-hidden="true">
+                    <div className="w-full border-t border-dashed" />
+                  </div>
+                  <div className="relative flex justify-center">
+                    <div className="bg-background px-3 flex items-center gap-2 text-sm font-medium">
+                      <Icon className={cn("w-4 h-4", journeyInfo.textColor)} />
+                      <span className={cn("font-semibold", journeyInfo.textColor)}>{message.journeyPoint}</span>
+                      <span className="text-xs text-muted-foreground font-normal whitespace-nowrap">{formatDistanceToNow(new Date(message.timestamp), { addSuffix: true })}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            }
+            
+            if (message.type === 'system') {
+              return (
+                <div key={message.id} data-message-id={message.id} className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+                  <Info className="w-3.5 h-3.5" />
+                  <p>{message.text}</p>
+                  <p className="whitespace-nowrap">{formatDistanceToNow(new Date(message.timestamp), { addSuffix: true })}</p>
+                </div>
+              );
+            }
+
+            if (message.type === 'note') {
+              return (
+                <div key={message.id} data-message-id={message.id} className="flex items-start gap-3">
+                  <div className="p-1.5 bg-yellow-400/20 text-yellow-600 rounded-full mt-1.5">
+                    <StickyNote className="w-4 h-4" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <p className="font-semibold text-sm">{assignee?.name || 'User'}</p>
+                      <p className="text-xs text-muted-foreground">{formatDistanceToNow(new Date(message.timestamp), { addSuffix: true })}</p>
+                    </div>
+                    <div className="bg-card border rounded-lg p-3 text-sm">
+                      <p>{message.text}</p>
+                    </div>
+                  </div>
+                </div>
+              );
+            }
+
+            // Default: 'comment' type
+            return (
+              <div key={message.id} data-message-id={message.id} className={cn(
+                "flex items-end gap-3",
+                message.sender === 'user' ? 'justify-end' : 'justify-start'
+              )}>
+                {message.sender === 'contact' && (
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage src={contact.avatar} />
+                    <AvatarFallback>{contact.name.charAt(0)}</AvatarFallback>
+                  </Avatar>
+                )}
+                <div className={cn(
+                  "max-w-xs md:max-w-md lg:max-w-lg p-3 rounded-2xl",
+                  message.sender === 'user' 
+                    ? 'bg-primary text-primary-foreground rounded-br-none' 
+                    : 'bg-card border rounded-bl-none'
+                )}>
+                  <p className="text-sm">{message.text}</p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      );
+    });
+
+
+    ActivityFeed.displayName = 'ActivityFeed';
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 426

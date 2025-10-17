@@ -1,5 +1,6 @@
 import { type ClassValue, clsx } from "clsx"
 import { twMerge } from "tailwind-merge"
+import { formatDistanceToNow } from "date-fns"
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -25,6 +26,21 @@ export type BodyState = typeof BODY_STATES[keyof typeof BODY_STATES]
 export function capitalize(str: string): string {
   if (!str) return str
   return str.charAt(0).toUpperCase() + str.slice(1)
+}
+
+export function formatDistanceToNowShort(date: Date | string): string {
+  const dateObj = typeof date === 'string' ? new Date(date) : date;
+  const result = formatDistanceToNow(dateObj, { addSuffix: true });
+
+  if (result === 'less than a minute ago') return 'now';
+
+  return result
+    .replace('about ', '')
+    .replace(' minutes', 'm')
+    .replace(' minute', 'm')
+    .replace(' hours', 'h')
+    .replace(' hour', 'h')
+    .replace(' days', 'd')
 }
 
 export const getStatusColor = (status: string) => {

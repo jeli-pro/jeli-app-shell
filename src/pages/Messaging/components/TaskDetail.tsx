@@ -1,11 +1,12 @@
-import React, { useRef, useEffect, useLayoutEffect, useState } from 'react';
+import React, { useRef, useEffect, useLayoutEffect, useState, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { useMessagingStore } from '../store/messaging.store';
 import { ActivityFeed } from './ActivityFeed';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Paperclip, SendHorizontal, Smile, StickyNote } from 'lucide-react';
+import { Paperclip, Search, SendHorizontal, Smile, StickyNote } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from '@/components/ui/input';
 import { TakeoverBanner } from './TakeoverBanner';
 import { useToast } from '@/components/ui/toast';
 import { gsap } from 'gsap';
@@ -30,6 +31,7 @@ export const TaskDetail: React.FC = () => {
   const inputAreaRef = useRef<HTMLDivElement>(null);
   const isFirstRender = useRef(true);
   const [isJourneyHovered, setIsJourneyHovered] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
 
   useLayoutEffect(() => {
     // On conversation change, scroll to the bottom of the message list.
@@ -93,6 +95,13 @@ export const TaskDetail: React.FC = () => {
 
   const journeyPoints = task.messages.filter(m => m.journeyPoint);
 
+  const filteredMessages = useMemo(() => {
+    if (!searchTerm) {
+      return task.messages;
+    }
+    return task.messages.filter(msg => msg.text.toLowerCase().includes(searchTerm.toLowerCase()));
+  }, [task.messages, searchTerm]);
+
   const handleDotClick = (messageId: string) => {
     const container = scrollContainerRef.current;
     if (!container) return;
@@ -135,6 +144,12 @@ export const TaskDetail: React.FC = () => {
             onRequestTakeover={handleRequestTakeover}
         />
       )}
+      <div className="flex-shrink-0 border-b p-3">
+          <div className="relative w-full">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input placeholder={`Search in conversation with ${task.contact.name}...`} className="pl-9" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+          </div>
+      </div>
       <div className="relative flex-1 overflow-hidden">
         <div
           ref={scrollContainerRef}
@@ -144,7 +159,7 @@ export const TaskDetail: React.FC = () => {
             isJourneyHovered && "blur-sm pointer-events-none"
           )}
         >
-          <ActivityFeed messages={task.messages} contact={task.contact} />
+          <ActivityFeed messages={filteredMessages} contact={task.contact} searchTerm={searchTerm} />
         </div>
         {journeyPoints.length > 0 && (
             <JourneyScrollbar
