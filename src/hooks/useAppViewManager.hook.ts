@@ -1,7 +1,7 @@
 import { useMemo, useCallback, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate, useLocation, useParams } from 'react-router-dom';
 import { useAppShellStore, type AppShellState, type ActivePage } from '@/store/appShell.store';
-import type { DataItem, ViewMode, SortConfig, SortableField, GroupableField, Status, Priority } from '@/pages/DataDemo/types';
+import type { DataItem, ViewMode, SortConfig, SortableField, GroupableField, Status, Priority, CalendarDateProp, CalendarDisplayProp } from '@/pages/DataDemo/types';
 import type { FilterConfig } from '@/pages/DataDemo/components/DataToolbar';
 import type { TaskView } from '@/pages/Messaging/types';
 import { BODY_STATES, SIDEBAR_STATES } from '@/lib/utils';
@@ -46,6 +46,9 @@ export function useAppViewManager() {
   const status = searchParams.get('status');
   const priority = searchParams.get('priority');
   const sort = searchParams.get('sort');
+  const calDate = searchParams.get('calDate');
+  const calDisplay = searchParams.get('calDisplay');
+  const calLimit = searchParams.get('calLimit');
 
   const { bodyState, sidePaneContent } = useMemo(() => {
     const validPanes: AppShellState['sidePaneContent'][] = ['details', 'settings', 'main', 'toaster', 'notifications', 'dataDemo', 'messaging'];
@@ -109,6 +112,16 @@ export function useAppViewManager() {
 		const [key, direction] = sortParam.split('-');
 		return { key: key as SortableField, direction: direction as 'asc' | 'desc' };
 	}, [sort]);
+  const calendarDateProp = useMemo(() => (calDate || 'dueDate') as CalendarDateProp, [calDate]);
+  const calendarDisplayProps = useMemo(
+    () => (calDisplay?.split(',') || ['priority', 'assignee']) as CalendarDisplayProp[],
+    [calDisplay]
+  );
+  const calendarItemLimit = useMemo(() => {
+    const limit = parseInt(calLimit || '3', 10);
+    if (calLimit === 'all') return 'all';
+    return isNaN(limit) ? 3 : limit;
+  }, [calLimit]);
 
   // --- MUTATOR ACTIONS ---
 
@@ -254,6 +267,11 @@ export function useAppViewManager() {
   };
   const setPage = (newPage: number) => handleParamsChange({ page: newPage.toString() });
 
+  // Calendar specific actions
+  const setCalendarDateProp = (prop: CalendarDateProp) => handleParamsChange({ calDate: prop === 'dueDate' ? null : prop });
+  const setCalendarDisplayProps = (props: CalendarDisplayProp[]) => handleParamsChange({ calDisplay: props.join(',') });
+  const setCalendarItemLimit = (limit: number | 'all') => handleParamsChange({ calLimit: limit === 3 ? null : String(limit) });
+
   const onItemSelect = useCallback((item: DataItem) => {
 		navigate(`/data-demo/${item.id}${location.search}`);
 	}, [navigate, location.search]);
@@ -275,6 +293,9 @@ export function useAppViewManager() {
     activeGroupTab,
     filters,
     sortConfig,
+    calendarDateProp,
+    calendarDisplayProps,
+    calendarItemLimit,
     // Actions
     navigateTo,
     openSidePane,
@@ -294,11 +315,15 @@ export function useAppViewManager() {
     setSort,
     setTableSort,
     setPage,
+    setCalendarDateProp,
+    setCalendarDisplayProps,
+    setCalendarItemLimit,
   }), [
-    bodyState, sidePaneContent, currentActivePage, itemId, messagingView,
-    viewMode, page, groupBy, activeGroupTab, filters, sortConfig,
+    bodyState, sidePaneContent, currentActivePage, itemId, messagingView, viewMode,
+    page, groupBy, activeGroupTab, filters, sortConfig, calendarDateProp,
+    calendarDisplayProps, calendarItemLimit,
     navigateTo, openSidePane, closeSidePane, toggleSidePane, toggleSplitView, setNormalView, setMessagingView,
     switchSplitPanes, closeSplitPane, onItemSelect, setViewMode, setGroupBy, setActiveGroupTab, setFilters,
-    setSort, setTableSort, setPage
+    setSort, setTableSort, setPage, setCalendarDateProp, setCalendarDisplayProps, setCalendarItemLimit
   ]);
 }

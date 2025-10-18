@@ -2,6 +2,12 @@ export type ViewMode = 'list' | 'cards' | 'grid' | 'table' | 'kanban' | 'calenda
 
 export type GroupableField = 'status' | 'priority' | 'category'
 
+export type CalendarDateProp = 'dueDate' | 'createdAt' | 'updatedAt';
+export type CalendarDisplayProp = 'priority' | 'assignee' | 'tags';
+
+export type CalendarDateProp = 'dueDate' | 'createdAt' | 'updatedAt';
+export type CalendarDisplayProp = 'priority' | 'assignee' | 'tags';
+
 export type SortableField = 'title' | 'status' | 'priority' | 'updatedAt' | 'assignee.name' | 'metrics.views' | 'metrics.completion' | 'createdAt'
 export type SortDirection = 'asc' | 'desc'
 export interface SortConfig {

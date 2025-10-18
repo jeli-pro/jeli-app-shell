@@ -10,6 +10,7 @@ import { cn, getPriorityColor } from "@/lib/utils";
 import type { DataItem } from "../types";
 import { useAppViewManager } from "@/hooks/useAppViewManager.hook";
 import { useSelectedItem, useDataDemoStore } from "../store/dataDemo.store";
+import { CalendarViewControls } from "./DataCalendarViewControls";
 
 interface CalendarViewProps {
   data: DataItem[];
@@ -28,6 +29,7 @@ function CalendarHeader({ currentDate, onPrevMonth, onNextMonth, onToday }: {
       </h2>
       <div className="flex items-center gap-2">
         <Button variant="outline" size="sm" onClick={onToday}>Today</Button>
+        <CalendarViewControls />
         <div className="flex items-center">
           <Button variant="outline" size="icon" className="h-9 w-9" onClick={onPrevMonth}>
             <ChevronLeft className="h-4 w-4" />

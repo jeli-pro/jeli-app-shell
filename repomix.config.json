@@ -39,7 +39,7 @@
     // "src/components/ui/card.tsx",
     "src/hooks/useAppViewManager.hook.ts",
     "src/lib/utils.ts",
-    "src/pages/DataDemo/components/DataCardView.tsx",
+    // "src/pages/DataDemo/components/DataCardView.tsx",
     "src/pages/DataDemo/components/DataKanbanView.tsx",
     // "src/pages/DataDemo/components/DataListView.tsx",
     // "src/pages/DataDemo/components/DataTableView.tsx",
@@ -58,6 +58,7 @@
     "src/pages/DataDemo/components/DataKanbanView.tsx",
     "src/pages/DataDemo/components/DataToolbar.tsx",
     "src/pages/DataDemo/components/DataViewModeSelector.tsx",
+    "src/pages/DataDemo/components/DataCalendarViewControls.tsx",
     "src/pages/DataDemo/index.tsx",
     "src/pages/DataDemo/store/dataDemo.store.tsx",
     "src/pages/DataDemo/types.ts"

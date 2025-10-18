@@ -1,0 +1,156 @@
+uuid: d8e5e3b5-7c0a-426b-967b-22f3c7e7f78d
+projectId: jeli-app-shell
+createdAt: '2025-10-18T06:23:42.063Z'
+gitCommitMsg: >-
+  fix(ui): add missing radio-group, switch, and separator components
+
+  Adds the standard implementations for the `RadioGroup`, `Switch`, and
+  `Separator` components. These were referenced in the new `DataCalendarView`
+  controls but were missing from the project, causing module loading failures.
+promptSummary: >-
+  The user is reporting module loading failures for `radio-group`, `switch`, and
+  `separator` components, which indicates they are missing. I will create these
+  standard Shadcn UI component files to resolve the errors.
+reasoning:
+  - >-
+    It looks like you're running into module loading errors because the UI
+    components `RadioGroup`, `Switch`, and `Separator` that we added to
+    `DataCalendarView.tsx` don't exist in your project yet. My apologies, I
+    should have included them.
+  - >-
+    Let's fix this by creating the missing component files. These are standard
+    implementations for Shadcn UI components.
+  - First, I'll create the `RadioGroup` component.
+  - Next, I'll create the `Switch` component.
+  - Finally, here is the `Separator` component.
+  - >-
+    These new files should resolve the loading errors and get your application
+    running again.
+operations:
+  - type: write
+    path: src/components/ui/radio-group.tsx
+    content: |-
+      "use client"
+
+      import * as React from "react"
+      import * as RadioGroupPrimitive from "@radix-ui/react-radio-group"
+      import { Circle } from "lucide-react"
+
+      import { cn } from "@/lib/utils"
+
+      const RadioGroup = React.forwardRef<
+        React.ElementRef<typeof RadioGroupPrimitive.Root>,
+        React.ComponentPropsWithoutRef<typeof RadioGroupPrimitive.Root>
+      >(({ className, ...props }, ref) => {
+        return (
+          <RadioGroupPrimitive.Root
+            className={cn("grid gap-2", className)}
+            {...props}
+            ref={ref}
+          />
+        )
+      })
+      RadioGroup.displayName = RadioGroupPrimitive.Root.displayName
+
+      const RadioGroupItem = React.forwardRef<
+        React.ElementRef<typeof RadioGroupPrimitive.Item>,
+        React.ComponentPropsWithoutRef<typeof RadioGroupPrimitive.Item>
+      >(({ className, ...props }, ref) => {
+        return (
+          <RadioGroupPrimitive.Item
+            ref={ref}
+            className={cn(
+              "aspect-square h-4 w-4 rounded-full border border-primary text-primary ring-offset-background focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+              className
+            )}
+            {...props}
+          >
+            <RadioGroupPrimitive.Indicator className="flex items-center justify-center">
+              <Circle className="h-2.5 w-2.5 fill-current text-current" />
+            </RadioGroupPrimitive.Indicator>
+          </RadioGroupPrimitive.Item>
+        )
+      })
+      RadioGroupItem.displayName = RadioGroupPrimitive.Item.displayName
+
+      export { RadioGroup, RadioGroupItem }
+    patchStrategy: replace
+  - type: write
+    path: src/components/ui/switch.tsx
+    content: |-
+      "use client"
+
+      import * as React from "react"
+      import * as SwitchPrimitives from "@radix-ui/react-switch"
+
+      import { cn } from "@/lib/utils"
+
+      const Switch = React.forwardRef<
+        React.ElementRef<typeof SwitchPrimitives.Root>,
+        React.ComponentPropsWithoutRef<typeof SwitchPrimitives.Root>
+      >(({ className, ...props }, ref) => (
+        <SwitchPrimitives.Root
+          className={cn(
+            "peer inline-flex h-[24px] w-[44px] shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-primary data-[state=unchecked]:bg-input",
+            className
+          )}
+          {...props}
+          ref={ref}
+        >
+          <SwitchPrimitives.Thumb
+            className={cn(
+              "pointer-events-none block h-5 w-5 rounded-full bg-background shadow-lg ring-0 transition-transform data-[state=checked]:translate-x-5 data-[state=unchecked]:translate-x-0"
+            )}
+          />
+        </SwitchPrimitives.Root>
+      ))
+      Switch.displayName = SwitchPrimitives.Root.displayName
+
+      export { Switch }
+    patchStrategy: replace
+  - type: write
+    path: src/components/ui/separator.tsx
+    content: |-
+      "use client"
+
+      import * as React from "react"
+      import * as SeparatorPrimitive from "@radix-ui/react-separator"
+
+      import { cn } from "@/lib/utils"
+
+      const Separator = React.forwardRef<
+        React.ElementRef<typeof SeparatorPrimitive.Root>,
+        React.ComponentPropsWithoutRef<typeof SeparatorPrimitive.Root>
+      >(
+        (
+          { className, orientation = "horizontal", decorative = true, ...props },
+          ref
+        ) => (
+          <SeparatorPrimitive.Root
+            ref={ref}
+            decorative={decorative}
+            orientation={orientation}
+            className={cn(
+              "shrink-0 bg-border",
+              orientation === "horizontal" ? "h-[1px] w-full" : "h-full w-[1px]",
+              className
+            )}
+            {...props}
+          />
+        )
+      )
+      Separator.displayName = SeparatorPrimitive.Root.displayName
+
+      export { Separator }
+    patchStrategy: replace
+snapshot:
+  src/components/ui/radio-group.tsx: null
+  src/components/ui/switch.tsx: null
+  src/components/ui/separator.tsx: null
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 448

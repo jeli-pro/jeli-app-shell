@@ -4,11 +4,17 @@ I am obsessed with laravel filament... so make everything about data demo page i
 
 ===
 
+should gsap animamte auto hide stats card on page scroll down for all view mode, so user can focus on the content.
+
+===
+
 data demo page: calendar view
 
-- user can select any timestamp type data to show on calendar view
-- add calendar view control to control
+- add calendar view control (make sure UX cohesive) so user can control:
   1. wether to show all items on calendar blocks or only first 3/5 items with show all text button
+  2. what data to show on calendar items within blocks
+  3. user can select any timestamp type data to show on calendar view
+
 
 ===
 

@@ -9,7 +9,6 @@ src/
     DataDemo/
       components/
         DataCalendarView.tsx
-        DataCardView.tsx
         DataKanbanView.tsx
         DataToolbar.tsx
         DataViewModeSelector.tsx
@@ -22,23 +21,215 @@ src/
 
 # Files
 
+## File: src/index.css
+```css
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import 'tailwindcss/utilities';
+
+@layer base {
+  :root {
+    --primary-hsl: 220 84% 60%;
+    --background: 210 40% 96.1%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: var(--primary-hsl);
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222.2 84% 4.9%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96%;
+    --accent-foreground: 222.2 84% 4.9%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: var(--primary-hsl);
+    --radius: 1rem;
+  }
+
+  .dark {
+    --background: 240 6% 9%;
+    --foreground: 210 40% 98%;
+    --card: 240 6% 14%;
+    --card-foreground: 210 40% 98%;
+    --popover: 240 6% 12%;
+    --popover-foreground: 210 40% 98%;
+    --primary: var(--primary-hsl);
+    --primary-foreground: 210 40% 98%;
+    --secondary: 240 5% 20%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 240 5% 20%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 240 5% 20%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 240 5% 20%;
+    --input: 240 5% 20%;
+    --ring: var(--primary-hsl);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Custom scrollbar styles */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-border rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-muted-foreground/50;
+}
+
+/* For UserDropdown */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
+
+@layer base {
+  .login-page-theme {
+    --background: hsl(0 0% 100%);
+    --foreground: hsl(0 0% 0%);
+    --skeleton: hsl(0 0% 90%);
+    --border: hsl(220 20% 90%);
+    --btn-border: hsl(214.3 31.8% 91.4%);
+    --input: hsl(220 20% 90%);
+    --radius: 0.5rem;
+  }
+ 
+  .dark .login-page-theme {
+    --background: hsl(222 94% 5%);
+    --foreground: hsl(0 0% 100%);
+    --skeleton: hsl(218 36% 16%);
+    --border: hsl(220 20% 90%);
+    --btn-border: hsl(217 32.6% 17.5%);
+    --input: hsl(219 63% 16%);
+    --radius: 0.5rem;
+  }
+}
+
+@layer components {
+  .g-button {
+    @apply rounded-[var(--radius)] border;
+    border-color: var(--btn-border);
+  }
+}
+```
+
 ## File: src/pages/DataDemo/components/DataCalendarView.tsx
 ```typescript
 import { useState, useMemo } from "react";
 import { format, addMonths, subMonths, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isToday, isSameDay, } from "date-fns";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Settings } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
+import { Separator } from "@/components/ui/separator";
 import { cn, getPriorityColor } from "@/lib/utils";
-import type { DataItem } from "../types";
+import type { DataItem, CalendarDateProp, CalendarDisplayProp } from "../types";
 import { useAppViewManager } from "@/hooks/useAppViewManager.hook";
 import { useSelectedItem, useDataDemoStore } from "../store/dataDemo.store";
 
 interface CalendarViewProps {
   data: DataItem[];
+}
+
+function CalendarViewControls() {
+    const { 
+        calendarDateProp, setCalendarDateProp,
+        calendarDisplayProps, setCalendarDisplayProps,
+        calendarItemLimit, setCalendarItemLimit
+    } = useAppViewManager();
+
+    const handleDisplayPropChange = (prop: CalendarDisplayProp, checked: boolean) => {
+        const newProps = checked 
+            ? [...calendarDisplayProps, prop] 
+            : calendarDisplayProps.filter(p => p !== prop);
+        setCalendarDisplayProps(newProps);
+    };
+
+    return (
+        <Popover>
+            <PopoverTrigger asChild>
+                <Button variant="outline" size="icon" className="h-9 w-9">
+                    <Settings className="h-4 w-4" />
+                </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-80" align="end">
+                <div className="grid gap-4">
+                    <div className="space-y-2">
+                        <h4 className="font-medium leading-none">Calendar Settings</h4>
+                        <p className="text-sm text-muted-foreground">
+                            Customize the calendar view.
+                        </p>
+                    </div>
+                    <Separator />
+                    <div className="grid gap-2">
+                        <Label>Date Field</Label>
+                        <RadioGroup defaultValue={calendarDateProp} onValueChange={(v) => setCalendarDateProp(v as CalendarDateProp)}>
+                            <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="dueDate" id="dueDate" />
+                                <Label htmlFor="dueDate">Due Date</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="createdAt" id="createdAt" />
+                                <Label htmlFor="createdAt">Created Date</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="updatedAt" id="updatedAt" />
+                                <Label htmlFor="updatedAt">Updated Date</Label>
+                            </div>
+                        </RadioGroup>
+                    </div>
+                    <div className="grid gap-2">
+                        <Label>Card Details</Label>
+                        {(['priority', 'assignee', 'tags'] as CalendarDisplayProp[]).map(prop => (
+                            <div key={prop} className="flex items-center space-x-2">
+                                <Checkbox id={prop} checked={calendarDisplayProps.includes(prop)} onCheckedChange={(c) => handleDisplayPropChange(prop, !!c)} />
+                                <Label htmlFor={prop} className="capitalize">{prop}</Label>
+                            </div>
+                        ))}
+                    </div>
+                    <div className="flex items-center justify-between">
+                        <Label htmlFor="show-all">Show all items per day</Label>
+                        <Switch id="show-all" checked={calendarItemLimit === 'all'} onCheckedChange={(c) => setCalendarItemLimit(c ? 'all' : 3)} />
+                    </div>
+                </div>
+            </PopoverContent>
+        </Popover>
+    );
 }
 
 function CalendarHeader({ currentDate, onPrevMonth, onNextMonth, onToday }: {
@@ -54,6 +245,7 @@ function CalendarHeader({ currentDate, onPrevMonth, onNextMonth, onToday }: {
       </h2>
       <div className="flex items-center gap-2">
         <Button variant="outline" size="sm" onClick={onToday}>Today</Button>
+        <CalendarViewControls />
         <div className="flex items-center">
           <Button variant="outline" size="icon" className="h-9 w-9" onClick={onPrevMonth}>
             <ChevronLeft className="h-4 w-4" />
@@ -74,7 +266,6 @@ function CalendarEvent({ item, isSelected, isDragging, onDragStart }: {
     onDragStart: (e: React.DragEvent<HTMLDivElement>, itemId: string) => void;
 }) {
   const { onItemSelect } = useAppViewManager();
-    const { onItemSelect } = useAppViewManager();
 
     return (
         <motion.div
@@ -109,6 +300,7 @@ function CalendarEvent({ item, isSelected, isDragging, onDragStart }: {
             </div>
         </motion.div>
     );
+}
 
 export function DataCalendarView({ data }: CalendarViewProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -124,7 +316,7 @@ export function DataCalendarView({ data }: CalendarViewProps) {
 
   const eventsByDate = useMemo(() => {
     const eventsMap = new Map<string, DataItem[]>();
-
+    itemsWithDueDate.forEach(item => {
       const dueDate = new Date(item.dueDate as string);
       const dateKey = format(dueDate, "yyyy-MM-dd");
       if (!eventsMap.has(dateKey)) {
@@ -263,126 +455,6 @@ export function DataCalendarView({ data }: CalendarViewProps) {
       )}
     </div>
   );
-}
-```
-
-## File: src/index.css
-```css
-@import 'tailwindcss/base';
-@import 'tailwindcss/components';
-@import 'tailwindcss/utilities';
-
-@layer base {
-  :root {
-    --primary-hsl: 220 84% 60%;
-    --background: 210 40% 96.1%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: var(--primary-hsl);
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 222.2 84% 4.9%;
-    --muted: 210 40% 96%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96%;
-    --accent-foreground: 222.2 84% 4.9%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: var(--primary-hsl);
-    --radius: 1rem;
-  }
-
-  .dark {
-    --background: 240 6% 9%;
-    --foreground: 210 40% 98%;
-    --card: 240 6% 14%;
-    --card-foreground: 210 40% 98%;
-    --popover: 240 6% 12%;
-    --popover-foreground: 210 40% 98%;
-    --primary: var(--primary-hsl);
-    --primary-foreground: 210 40% 98%;
-    --secondary: 240 5% 20%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 240 5% 20%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 240 5% 20%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 240 5% 20%;
-    --input: 240 5% 20%;
-    --ring: var(--primary-hsl);
-  }
-}
-
-@layer base {
-  * {
-    @apply border-border;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
-}
-
-/* Custom scrollbar styles */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-
-::-webkit-scrollbar-track {
-  @apply bg-transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  @apply bg-border rounded-full;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  @apply bg-muted-foreground/50;
-}
-
-/* For UserDropdown */
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-.no-scrollbar {
-  -ms-overflow-style: none; /* IE and Edge */
-  scrollbar-width: none; /* Firefox */
-}
-
-@layer base {
-  .login-page-theme {
-    --background: hsl(0 0% 100%);
-    --foreground: hsl(0 0% 0%);
-    --skeleton: hsl(0 0% 90%);
-    --border: hsl(220 20% 90%);
-    --btn-border: hsl(214.3 31.8% 91.4%);
-    --input: hsl(220 20% 90%);
-    --radius: 0.5rem;
-  }
- 
-  .dark .login-page-theme {
-    --background: hsl(222 94% 5%);
-    --foreground: hsl(0 0% 100%);
-    --skeleton: hsl(218 36% 16%);
-    --border: hsl(220 20% 90%);
-    --btn-border: hsl(217 32.6% 17.5%);
-    --input: hsl(219 63% 16%);
-    --radius: 0.5rem;
-  }
-}
-
-@layer components {
-  .g-button {
-    @apply rounded-[var(--radius)] border;
-    border-color: var(--btn-border);
-  }
 }
 ```
 
@@ -1154,6 +1226,12 @@ export type ViewMode = 'list' | 'cards' | 'grid' | 'table' | 'kanban' | 'calenda
 
 export type GroupableField = 'status' | 'priority' | 'category'
 
+export type CalendarDateProp = 'dueDate' | 'createdAt' | 'updatedAt';
+export type CalendarDisplayProp = 'priority' | 'assignee' | 'tags';
+
+export type CalendarDateProp = 'dueDate' | 'createdAt' | 'updatedAt';
+export type CalendarDisplayProp = 'priority' | 'assignee' | 'tags';
+
 export type SortableField = 'title' | 'status' | 'priority' | 'updatedAt' | 'assignee.name' | 'metrics.views' | 'metrics.completion' | 'createdAt'
 export type SortDirection = 'asc' | 'desc'
 export interface SortConfig {
@@ -1371,7 +1449,7 @@ export function DataViewModeSelector() {
 import { useMemo, useCallback, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate, useLocation, useParams } from 'react-router-dom';
 import { useAppShellStore, type AppShellState, type ActivePage } from '@/store/appShell.store';
-import type { DataItem, ViewMode, SortConfig, SortableField, GroupableField, Status, Priority } from '@/pages/DataDemo/types';
+import type { DataItem, ViewMode, SortConfig, SortableField, GroupableField, Status, Priority, CalendarDateProp, CalendarDisplayProp } from '@/pages/DataDemo/types';
 import type { FilterConfig } from '@/pages/DataDemo/components/DataToolbar';
 import type { TaskView } from '@/pages/Messaging/types';
 import { BODY_STATES, SIDEBAR_STATES } from '@/lib/utils';
@@ -1416,6 +1494,9 @@ export function useAppViewManager() {
   const status = searchParams.get('status');
   const priority = searchParams.get('priority');
   const sort = searchParams.get('sort');
+  const calDate = searchParams.get('calDate');
+  const calDisplay = searchParams.get('calDisplay');
+  const calLimit = searchParams.get('calLimit');
 
   const { bodyState, sidePaneContent } = useMemo(() => {
     const validPanes: AppShellState['sidePaneContent'][] = ['details', 'settings', 'main', 'toaster', 'notifications', 'dataDemo', 'messaging'];
@@ -1479,6 +1560,16 @@ export function useAppViewManager() {
 		const [key, direction] = sortParam.split('-');
 		return { key: key as SortableField, direction: direction as 'asc' | 'desc' };
 	}, [sort]);
+  const calendarDateProp = useMemo(() => (calDate || 'dueDate') as CalendarDateProp, [calDate]);
+  const calendarDisplayProps = useMemo(
+    () => (calDisplay?.split(',') || ['priority', 'assignee']) as CalendarDisplayProp[],
+    [calDisplay]
+  );
+  const calendarItemLimit = useMemo(() => {
+    const limit = parseInt(calLimit || '3', 10);
+    if (calLimit === 'all') return 'all';
+    return isNaN(limit) ? 3 : limit;
+  }, [calLimit]);
 
   // --- MUTATOR ACTIONS ---
 
@@ -1624,6 +1715,11 @@ export function useAppViewManager() {
   };
   const setPage = (newPage: number) => handleParamsChange({ page: newPage.toString() });
 
+  // Calendar specific actions
+  const setCalendarDateProp = (prop: CalendarDateProp) => handleParamsChange({ calDate: prop === 'dueDate' ? null : prop });
+  const setCalendarDisplayProps = (props: CalendarDisplayProp[]) => handleParamsChange({ calDisplay: props.join(',') });
+  const setCalendarItemLimit = (limit: number | 'all') => handleParamsChange({ calLimit: limit === 3 ? null : String(limit) });
+
   const onItemSelect = useCallback((item: DataItem) => {
 		navigate(`/data-demo/${item.id}${location.search}`);
 	}, [navigate, location.search]);
@@ -1645,6 +1741,9 @@ export function useAppViewManager() {
     activeGroupTab,
     filters,
     sortConfig,
+    calendarDateProp,
+    calendarDisplayProps,
+    calendarItemLimit,
     // Actions
     navigateTo,
     openSidePane,
@@ -1664,144 +1763,17 @@ export function useAppViewManager() {
     setSort,
     setTableSort,
     setPage,
+    setCalendarDateProp,
+    setCalendarDisplayProps,
+    setCalendarItemLimit,
   }), [
-    bodyState, sidePaneContent, currentActivePage, itemId, messagingView,
-    viewMode, page, groupBy, activeGroupTab, filters, sortConfig,
+    bodyState, sidePaneContent, currentActivePage, itemId, messagingView, viewMode,
+    page, groupBy, activeGroupTab, filters, sortConfig, calendarDateProp,
+    calendarDisplayProps, calendarItemLimit,
     navigateTo, openSidePane, closeSidePane, toggleSidePane, toggleSplitView, setNormalView, setMessagingView,
     switchSplitPanes, closeSplitPane, onItemSelect, setViewMode, setGroupBy, setActiveGroupTab, setFilters,
-    setSort, setTableSort, setPage
+    setSort, setTableSort, setPage, setCalendarDateProp, setCalendarDisplayProps, setCalendarItemLimit
   ]);
-}
-```
-
-## File: src/pages/DataDemo/components/DataCardView.tsx
-```typescript
-import { useRef } from 'react'
-import { cn } from '@/lib/utils'
-import { Badge } from '@/components/ui/badge'
-import { ArrowUpRight } from 'lucide-react'
-import type { DataItem } from '../types'
-import { useStaggeredAnimation } from '@/hooks/useStaggeredAnimation.motion.hook'
-import { EmptyState } from './EmptyState'
-import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
-import {
-  useSelectedItem,
-} from '../store/dataDemo.store'
-import {
-  AssigneeInfo,
-  ItemMetrics,
-  ItemProgressBar,
-  ItemStatusBadge,
-  ItemTags,
-  ItemDateInfo,
-} from './shared/DataItemParts'
-import { AddDataItemCta } from './shared/AddDataItemCta'
-
-export function DataCardView({ data, isGrid = false }: { data: DataItem[]; isGrid?: boolean }) {
-  const { onItemSelect, itemId } = useAppViewManager();
-  const selectedItem = useSelectedItem(itemId);
-
-  const containerRef = useRef<HTMLDivElement>(null)
-  useStaggeredAnimation(containerRef, [data], { mode: 'incremental', y: 40 });
-
-  const items = Array.isArray(data) ? data : [];
-  if (items.length === 0) {
-    return <EmptyState />
-  }
-
-  return (
-    <div 
-      ref={containerRef}
-      className={cn(
-        "gap-6",
-        isGrid
-          ? "grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))]"
-          : "grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))]",
-        "pb-4"
-      )}
-    >
-      {items.map((item: DataItem) => {
-        const isSelected = selectedItem?.id === item.id
-        
-        return (
-          <div
-            key={item.id}
-            onClick={() => onItemSelect(item)}
-            className={cn(
-              "group relative overflow-hidden rounded-3xl border bg-card/50 backdrop-blur-sm transition-all duration-500 cursor-pointer",
-              "hover:bg-card/80 hover:shadow-xl hover:shadow-primary/10 hover:border-primary/30 hover:-translate-y-2",
-              "active:scale-[0.98]",
-              isSelected && "ring-2 ring-primary/30 border-primary/40 bg-card/90 shadow-lg shadow-primary/20",
-            )}
-          >
-            {/* Card Header with Thumbnail */}
-            <div className="relative p-6 pb-4">
-              <div className="flex items-start justify-between mb-4">
-                <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-primary/10 rounded-2xl flex items-center justify-center text-3xl group-hover:scale-110 transition-transform duration-300">
-                  {item.thumbnail}
-                </div>
-                <ArrowUpRight className="w-5 h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 group-hover:-translate-y-1 transition-all duration-300" />
-              </div>
-
-              {/* Priority indicator */}
-              <div className="absolute top-4 right-4">
-                <div className={cn(
-                  "w-3 h-3 rounded-full",
-                  item.priority === 'critical' && "bg-red-500",
-                  item.priority === 'high' && "bg-orange-500",
-                  item.priority === 'medium' && "bg-blue-500",
-                  item.priority === 'low' && "bg-green-500"
-                )} />
-              </div>
-            </div>
-
-            {/* Card Content */}
-            <div className="px-6 pb-6">
-              {/* Title and Description */}
-              <h3 className="font-semibold text-lg mb-2 group-hover:text-primary transition-colors line-clamp-2">
-                {item.title}
-              </h3>
-              <p className="text-muted-foreground text-sm mb-4 line-clamp-3">
-                {item.description}
-              </p>
-
-              {/* Status and Category */}
-              <div className="flex items-center gap-2 mb-4">
-                <ItemStatusBadge status={item.status} />
-                <Badge variant="outline" className="bg-accent/50 text-xs">
-                  {item.category}
-                </Badge>
-              </div>
-
-              {/* Tags */}
-              <div className="mb-4"><ItemTags tags={item.tags} /></div>
-
-              {/* Progress */}
-              <div className="mb-4"><ItemProgressBar completion={item.metrics.completion} /></div>
-
-              {/* Assignee */}
-              <div className="mb-4"><AssigneeInfo assignee={item.assignee} /></div>
-
-              {/* Metrics */}
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <ItemMetrics metrics={item.metrics} />
-                <ItemDateInfo date={item.updatedAt} />
-              </div>
-            </div>
-
-            {/* Hover gradient overlay */}
-            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
-            
-            {/* Selection indicator */}
-            {isSelected && (
-              <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-primary/5 pointer-events-none" />
-            )}
-          </div>
-        )
-      })}
-      <AddDataItemCta viewMode={isGrid ? 'grid' : 'cards'} />
-    </div>
-  )
 }
 ```
 
