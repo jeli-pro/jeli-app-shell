@@ -1,146 +1,113 @@
-Listen up, folks. The current list view in the Data Demo is a relic. It's chunky, wastes space, and feels like something from 2015. We're talking big, card-like items that scream "bootstrap boilerplate". Users want information density and a clean, fast interface. They want Notion. We're going to give them that vibe.
+Fellas, we're diving into the `DataDemo` page to juice up the calendar controls. Right now, it's just a pretty face. We're going to wire it up, make it slick, and ensure it plays nice with the rest of the app's state management.
 
-The plan is to completely gut the existing `DataListView` and rebuild it from the ground up as a sleek, row-based list. We're ditching the heavy card styling, the distracting hover gradients, and the clunky animations. In its place, we'll ship a minimalist layout that's all about typography, subtle interactions, and putting the data front-and-center. Each item will be a clean, clickable row with horizontally arranged properties. This refactor will not only pwn the aesthetics but also significantly improve the UX, making the entire page feel more cohesive and professional. Let's ship it.
+The plan is simple: First, we'll fortify our `useAppViewManager` hook to be the single source of truth for all calendar settings, pulling state from the URL like a champ. Then, we'll overhaul the `DataCalendarViewControls` component, connecting its switches and knobs to the hook and polishing its UI until it shines. Finally, we'll make the `DataCalendarView` itself dance to the new tune, dynamically updating what it shows based on the user's choices.
+
+This refactor will turn a static piece of UI into a fully interactive feature, giving users granular control over their calendar view. It's about making the thing *actually work* and look good while doing it. No more mockups, just pure, unadulterated functionality. Let's get it.
 
 ```yaml
 plan:
-  uuid: 'e5b9f1d8-4a7b-4c2f-8a9d-0f1c2b3e4a5b'
+  uuid: '3a8d1e2f-b4c1-4f9e-a0d3-5b8c76a9f1b0'
   status: 'todo'
-  title: 'Refactor Data Demo List View to Emulate Notion''s UI/UX'
+  title: 'Refactor Data Demo Calendar Controls for Full Functionality and UI Consistency'
   introduction: |
-    The current list view in the Data Demo page uses a card-based metaphor which is inefficient for displaying lists of items. It lacks the information density and modern feel of applications like Notion or Linear. This master plan outlines the process of refactoring `DataListView.tsx` to transform it into a clean, row-based interface.
+    This master plan details the refactoring of the calendar view controls within the `DataDemo` feature. Currently, the UI for these controls is present but not fully functional. The goal is to wire up the controls to a centralized state manager, make them actively control the calendar's display, and refine their styling to align with the application's global design system.
 
-    We will remove the card-like structure, replacing it with a minimalist design that emphasizes typography and horizontal data layout. The goal is to create a more "amazing UI and cohesive UX" by stripping away unnecessary visual clutter, refining hover and selection states, and improving the overall scannability of the list. The staggered animation will be replaced with a more subtle effect suitable for a list view.
+    The approach involves three main phases. First, we will ensure the `useAppViewManager` hook is robust enough to manage all calendar-related state (date property, display options, item limits) via URL search parameters. Second, we will refactor the `DataCalendarViewControls` component to use this hook, making the UI fully interactive and improving its layout and styling for a better user experience. Finally, we will modify the `DataCalendarView` component to consume the state from the hook, dynamically altering its presentation based on user-configured settings.
+
+    This refactor will transform the static controls into a powerful, state-driven feature, enhancing user experience by providing meaningful customization of the calendar interface.
   parts:
-    - uuid: 'a1b2c3d4-e5f6-7890-1234-567890abcdef'
+    - uuid: 'd9b0e5a1-c3f7-4a6b-8b2c-1f4a90e3d2a1'
       status: 'todo'
-      name: 'Part 1: Structural and Logical Overhaul of DataListView'
+      name: 'Part 1: Solidify Calendar State Management in `useAppViewManager`'
       reason: |
-        Before we can make it look good, we need to gut the underlying structure. The current component is built around a card concept, complete with thumbnails, progress bars, and metrics that don't belong in a high-density list view. We're also swapping out the heavy, staggered animation for something more appropriate.
+        The `useAppViewManager` hook is the central authority for view-related state stored in the URL. We must first ensure it correctly parses, manages, and updates all calendar-specific parameters to provide a reliable foundation for the UI components.
       steps:
-        - uuid: 'c1d2e3f4-g5h6-i7j8-k9l0-m1n2o3p4q5r'
+        - uuid: 'e1f8c0a3-d4e1-4b7f-8c3c-2a0e1f9b8d0a'
           status: 'todo'
-          name: '1. De-Cardify the List Item Structure'
+          name: '1. Verify and Enhance Calendar State Logic'
           reason: |
-            The fundamental unit needs to change from a 'card' to a 'row'. This involves removing the main card wrapper, the thumbnail, progress bar, and metrics, which are not suitable for a Notion-style list view.
+            To ensure robustness, we need to confirm that the hook correctly reads calendar view parameters from the URL, provides sensible defaults for missing or invalid values, and exposes them to the application.
           files:
-            - src/pages/DataDemo/components/DataListView.tsx
+            - src/hooks/useAppViewManager.hook.ts
           operations:
-            - 'Locate the main `div` that wraps each list item.'
-            - 'Remove the card-like classes like `bg-card`, `border`, `rounded-lg`, `shadow-sm`, etc.'
-            - 'Replace the wrapper with a `button` element to make the entire row interactive, or a `div` with `role="button"`.'
-            - 'Remove the `Thumbnail` section entirely.'
-            - 'Remove the `ItemProgressBar` component from the render path.'
-            - 'Remove the `ItemMetrics` component from the render path.'
-            - 'Remove the `div` responsible for the "Hover gradient overlay".'
-        - uuid: 'd2e3f4g5-h6i7-j8k9-l0m1-n2o3p4q5r6s'
-          status: 'todo'
-          name: '2. Rearrange Components into a Horizontal Flex Layout'
-          reason: |
-            Notion's list is defined by its horizontal arrangement of properties. We need to restructure the JSX to use flexbox, creating a clean row with elements spaced out logically.
-          files:
-            - src/pages/DataDemo/components/DataListView.tsx
-          operations:
-            - 'Wrap the contents of the item `button`/`div` in a parent `div` with `flex items-center gap-4`.'
-            - 'Arrange the components in the following order: `ItemStatusBadge`, `ItemPriorityBadge`, the main `title`, then `ItemTags`.'
-            - 'Add a spacer element `<div className="flex-grow" />` after the tags.'
-            - 'Place `AssigneeInfo` and `ItemDateInfo` after the spacer.'
-            - 'Keep the `ArrowRight` icon at the end, but we will style its visibility later.'
-        - uuid: 'e3f4g5h6-i7j8-k9l0-m1n2-o3p4q5r6s7t'
-          status: 'todo'
-          name: '3. Replace Staggered Animation'
-          reason: |
-            The `useStaggeredAnimation` hook is designed for grid/card layouts and feels too heavy for a simple list. We'll remove it to improve performance and better match the minimalist aesthetic. A simpler, list-wide animation can be considered later if needed.
-          files:
-            - src/pages/DataDemo/components/DataListView.tsx
-          operations:
-            - 'Remove the import for `useStaggeredAnimation`.'
-            - 'Delete the `useStaggeredAnimation(...)` hook invocation.'
-            - 'The main list container `ref` that was passed to the hook can now be used for other purposes or removed if not needed.'
-        - uuid: 'f4g5h6i7-j8k9-l0m1-n2o3-p4q5r6s7t8u'
-          status: 'todo'
-          name: '4. Update Interaction Logic and Selection State'
-          reason: |
-            The click handler and selection state need to be applied to the new row structure.
-          files:
-            - src/pages/DataDemo/components/DataListView.tsx
-          operations:
-            - 'Move the `onClick={() => onItemSelect(item)}` handler to the main row `button` element.'
-            - 'Use `cn` utility to conditionally apply styling for the selected item. For example: `cn({"bg-muted": isSelected})`.'
-            - 'Wrap the entire row `button` in a `group` class to control hover effects on child elements (like the arrow icon).'
-      context_files:
-        compact:
-          - src/pages/DataDemo/components/DataListView.tsx
-        medium:
-          - src/pages/DataDemo/components/DataListView.tsx
-          - src/hooks/useStaggeredAnimation.motion.hook.ts
-        extended:
-          - src/pages/DataDemo/components/DataListView.tsx
-          - src/hooks/useStaggeredAnimation.motion.hook.ts
-          - src/pages/DataDemo/components/shared/DataItemParts.tsx
-    - uuid: 'b2c3d4e5-f6g7-8901-2345-67890abcdef1'
-      status: 'todo'
-      name: 'Part 2: Applying Notion-esque Styling and Polish'
-      reason: |
-        With the structure in place, this part focuses on the aesthetics. We'll use TailwindCSS to achieve the minimalist design, focusing on typography, subtle borders, and clean hover states that define the Notion experience.
-      steps:
-        - uuid: 'g5h6i7j8-k9l0-m1n2-o3p4-q5r6s7t8u9v'
-          status: 'todo'
-          name: '1. Implement Row and Typography Styles'
-          reason: |
-            This step translates the Notion design into CSS classes, defining the core look and feel of each row.
-          files:
-            - src/pages/DataDemo/components/DataListView.tsx
-          operations:
-            - 'Apply styles to the main row `button`: `w-full text-left px-2 py-1.5 transition-colors duration-150 rounded-md hover:bg-muted/50`.'
-            - 'Add a subtle bottom border to the list container items, not the last one: `[&>button]:border-b [&>button]:border-border/60 [&>button:last-child]:border-b-0`.'
-            - 'Style the item `title`: `font-medium text-foreground/90 truncate`.'
-            - 'Ensure other text elements like date and assignee name use `text-sm text-muted-foreground`.'
-        - uuid: 'h6i7j8k9-l0m1-n2o3-p4q5-r6s7t8u9v0w'
-          status: 'todo'
-          name: '2. Refine Hover and Action Indicator Styles'
-          reason: |
-            A key part of cohesive UX is how interactive elements reveal themselves. The arrow icon should only appear on hover, guiding the user without cluttering the UI.
-          files:
-            - src/pages/DataDemo/components/DataListView.tsx
-          operations:
-            - 'For the `ArrowRight` icon, apply `opacity-0 group-hover:opacity-100 transition-opacity`.'
-            - 'Ensure the icon has `text-muted-foreground` to keep it subtle.'
-        - uuid: 'i7j8k9l0-m1n2-o3p4-q5r6-s7t8u9v0w1x'
-          status: 'todo'
-          name: '3. Adjust Shared Component Styles'
-          reason: |
-            The shared components might need slight tweaks to fit into the more compact, horizontal layout.
-          files:
-            - src/pages/DataDemo/components/shared/DataItemParts.tsx
-            - src/pages/DataDemo/components/DataListView.tsx
-          operations:
-            - 'In `DataListView.tsx`, when calling `AssigneeInfo`, pass a smaller avatar class: `avatarClassName="w-5 h-5"`.'
-            - 'In `DataItemParts.tsx`, ensure `AssigneeInfo` can accept and apply the `avatarClassName` prop correctly to its `Avatar` component.'
-            - 'Verify that badges and other elements in `DataItemParts.tsx` don''t have excessive margins that would disrupt the horizontal alignment.'
-      context_files:
-        compact:
-          - src/pages/DataDemo/components/DataListView.tsx
-        medium:
-          - src/pages/DataDemo/components/DataListView.tsx
-          - src/pages/DataDemo/components/shared/DataItemParts.tsx
-        extended:
-          - src/pages/DataDemo/components/DataListView.tsx
-          - src/pages/DataDemo/components/shared/DataItemParts.tsx
-          - src/lib/utils.ts
-  conclusion: |
-    Upon completion, the Data Demo's list view will be completely transformed. We will have replaced the dated, card-based layout with a sleek, minimalist, and highly-functional row-based list that mirrors the best-in-class UI of modern productivity apps.
+            - 'In `useAppViewManager`, locate the logic that derives `calendarDateProp`, `calendarDisplayProps`, and `calendarItemLimit` from `searchParams`.'
+            - 'Confirm the default values are sensible: `calendarDateProp` defaults to `dueDate`, `calendarDisplayProps` to `['priority', 'assignee']`, and `calendarItemLimit` to a number like `3`.'
+            - 'Ensure the parsing logic for `calendarDisplayProps` correctly handles a comma-separated string from the `calDisplay` URL param, converting it to an array.'
+            - 'Verify that the corresponding setter functions (`setCalendarDateProp`, `setCalendarDisplayProps`, `setCalendarItemLimit`) correctly update the URL search parameters.'
 
-    This refactor will not only be a significant visual upgrade but will also enhance usability by increasing information density and improving scannability. The UX will feel more cohesive and intuitive, providing a solid foundation for any future list-based interfaces in the application.
+    - uuid: 'b6f2d1e8-a5c3-4d0f-9e1b-7c6d9a3b0f5e'
+      status: 'todo'
+      name: 'Part 2: Implement and Style Calendar View Controls'
+      reason: |
+        The `DataCalendarViewControls` component needs to be transformed from a static UI into a fully interactive panel. This involves connecting its inputs to the state management hook and refining its visual presentation for clarity and consistency with the application's design language.
+      steps:
+        - uuid: 'c5d3a0b1-e2f9-4c8a-9a0b-1f8d9c7a4b0c'
+          status: 'todo'
+          name: '1. Connect Controls to State Manager'
+          reason: |
+            To make the controls functional, they must read their current state from `useAppViewManager` and use its mutator functions to update that state.
+          files:
+            - src/pages/DataDemo/components/DataCalendarViewControls.tsx
+          operations:
+            - 'Import and call `useAppViewManager` to get `calendarDateProp`, `calendarDisplayProps`, `calendarItemLimit`, and their respective setters.'
+            - 'Wire up the `RadioGroup` for "Date Property": set its `value` to `calendarDateProp` and its `onValueChange` to `setCalendarDateProp`.'
+            - 'Wire up the `Checkbox`es for "Display Properties": for each checkbox, set `checked` based on whether its corresponding property exists in the `calendarDisplayProps` array.'
+            - 'Update the `handleDisplayPropChange` function to correctly add/remove properties from the `calendarDisplayProps` array and call `setCalendarDisplayProps` with the new array.'
+            - 'Wire up the `Switch` for "Item Limit": set its `checked` state based on `calendarItemLimit === 'all'`. The `onCheckedChange` handler should call `setCalendarItemLimit`, toggling between `'all'` and a default number (e.g., `3`).'
+
+        - uuid: 'a9e0f3b2-d1c8-4e7b-8f1d-2c5e6a4b3d9c'
+          status: 'todo'
+          name: '2. Refine UI Layout and Styling'
+          reason: |
+            A clean, well-organized UI improves usability. We will restructure the popover content to be more scannable and visually consistent with other control panels in the app.
+          files:
+            - src/pages/DataDemo/components/DataCalendarViewControls.tsx
+          operations:
+            - 'Restructure the popover content using a main container with padding (e.g., `p-4`) and a standard width (e.g., `w-80`).'
+            - 'Organize controls into logical sections titled "Date Property", "Display Options", and "View Options" using `<h4>` tags or similar.'
+            - 'Add descriptive text under section titles using `text-sm text-muted-foreground` for better user guidance.'
+            - 'Insert `<Separator className="my-4" />` between sections for clear visual separation.'
+            - 'Improve the layout of each control. For each `RadioGroupItem` and `Checkbox`, wrap it and its `Label` in a `div` with `flex items-center gap-2` for proper alignment.'
+            - 'Ensure all `Label` components use the `htmlFor` attribute, pointing to the `id` of their corresponding input for accessibility.'
+
+    - uuid: 'f8e1d7a3-c2b9-4d6f-8a0e-9c1d2b0a3c4d'
+      status: 'todo'
+      name: 'Part 3: Apply Settings to the Calendar View'
+      reason: |
+        The calendar grid must dynamically update to reflect the user's selections in the control panel. This step involves reading the shared state and altering the rendering logic accordingly.
+      steps:
+        - uuid: '1b2a3d4c-e5f6-4a7b-8c9d-0e1f2a3b4c5d'
+          status: 'todo'
+          name: '1. Make Calendar Grid Dynamically Respond to Settings'
+          reason: |
+            To complete the feature, the `DataCalendarView` needs to consume the state from `useAppViewManager` and use it to control which data is shown and how it's presented.
+          files:
+            - src/pages/DataDemo/components/DataCalendarView.tsx
+          operations:
+            - 'In `DataCalendarView`, get `calendarDateProp`, `calendarDisplayProps`, and `calendarItemLimit` from the `useAppViewManager` hook.'
+            - 'Modify the logic that groups items by day to use the date field specified by `calendarDateProp` (e.g., `item[calendarDateProp]`) instead of a hardcoded value.'
+            - 'Inside the render logic for each calendar item, use `calendarDisplayProps` to conditionally render components like priority badges, assignee info, and tags.'
+            - 'Before rendering the items for a given day, check `calendarItemLimit`. If it is a number, use `.slice(0, calendarItemLimit)` on the items array.'
+            - 'If the number of items for a day exceeds `calendarItemLimit`, render a "+X more" indicator to inform the user that some items are hidden.'
+  conclusion: |
+    Upon completion of this plan, the `DataDemo` calendar view will be a fully functional and polished feature. The controls will be intuitively styled and will reliably manage the calendar's display state via URL parameters, making user preferences bookmarkable and shareable.
+
+    This refactor not only delivers a requested user-facing feature but also reinforces a clean architecture by centralizing view state in the `useAppViewManager` hook. This improves code maintainability and sets a clear pattern for implementing similar state-driven UI features in the future.
   context_files:
     compact:
-      - src/pages/DataDemo/components/DataListView.tsx
+      - src/pages/DataDemo/components/DataCalendarViewControls.tsx
+      - src/pages/DataDemo/components/DataCalendarView.tsx
+      - src/hooks/useAppViewManager.hook.ts
     medium:
-      - src/pages/DataDemo/components/DataListView.tsx
-      - src/pages/DataDemo/components/shared/DataItemParts.tsx
+      - src/pages/DataDemo/components/DataCalendarViewControls.tsx
+      - src/pages/DataDemo/components/DataCalendarView.tsx
+      - src/hooks/useAppViewManager.hook.ts
+      - src/pages/DataDemo/types.ts
     extended:
-      - src/pages/DataDemo/components/DataListView.tsx
-      - src/pages/DataDemo/components/shared/DataItemParts.tsx
-      - src/hooks/useStaggeredAnimation.motion.hook.ts
+      - src/pages/DataDemo/components/DataCalendarViewControls.tsx
+      - src/pages/DataDemo/components/DataCalendarView.tsx
+      - src/hooks/useAppViewManager.hook.ts
+      - src/pages/DataDemo/types.ts
       - src/pages/DataDemo/index.tsx
+      - src/pages/DataDemo/components/shared/DataItemParts.tsx
 ```

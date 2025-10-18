@@ -2,17 +2,16 @@
 ```
 src/
   hooks/
-    useStaggeredAnimation.motion.hook.ts
-  lib/
-    utils.ts
+    useAppViewManager.hook.ts
   pages/
     DataDemo/
       components/
         shared/
           DataItemParts.tsx
-        DataKanbanView.tsx
-        DataListView.tsx
+        DataCalendarView.tsx
+        DataCalendarViewControls.tsx
       index.tsx
+      types.ts
   index.css
 index.html
 package.json
@@ -32,6 +31,86 @@ export default {
     tailwindcss: {},
     autoprefixer: {},
   },
+}
+```
+
+## File: src/pages/DataDemo/components/DataCalendarViewControls.tsx
+```typescript
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Button } from "@/components/ui/button";
+import { Settings } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
+import { Separator } from "@/components/ui/separator";
+import { useAppViewManager } from "@/hooks/useAppViewManager.hook";
+import type { CalendarDateProp, CalendarDisplayProp } from "../types";
+
+export function CalendarViewControls() {
+    const { 
+        calendarDateProp, setCalendarDateProp,
+        calendarDisplayProps, setCalendarDisplayProps,
+        calendarItemLimit, setCalendarItemLimit
+    } = useAppViewManager();
+
+    const handleDisplayPropChange = (prop: CalendarDisplayProp, checked: boolean) => {
+        const newProps = checked 
+            ? [...calendarDisplayProps, prop] 
+            : calendarDisplayProps.filter(p => p !== prop);
+        setCalendarDisplayProps(newProps);
+    };
+
+    return (
+        <Popover>
+            <PopoverTrigger asChild>
+                <Button variant="outline" size="icon" className="h-9 w-9">
+                    <Settings className="h-4 w-4" />
+                </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-80" align="end">
+                <div className="grid gap-4">
+                    <div className="space-y-2">
+                        <h4 className="font-medium leading-none">Calendar Settings</h4>
+                        <p className="text-sm text-muted-foreground">
+                            Customize the calendar view.
+                        </p>
+                    </div>
+                    <Separator />
+                    <div className="grid gap-2">
+                        <Label>Date Field</Label>
+                        <RadioGroup defaultValue={calendarDateProp} onValueChange={(v) => setCalendarDateProp(v as CalendarDateProp)}>
+                            <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="dueDate" id="dueDate" />
+                                <Label htmlFor="dueDate">Due Date</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="createdAt" id="createdAt" />
+                                <Label htmlFor="createdAt">Created Date</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="updatedAt" id="updatedAt" />
+                                <Label htmlFor="updatedAt">Updated Date</Label>
+                            </div>
+                        </RadioGroup>
+                    </div>
+                    <div className="grid gap-2">
+                        <Label>Card Details</Label>
+                        {(['priority', 'assignee', 'tags'] as CalendarDisplayProp[]).map(prop => (
+                            <div key={prop} className="flex items-center space-x-2">
+                                <Checkbox id={prop} checked={calendarDisplayProps.includes(prop)} onCheckedChange={(c) => handleDisplayPropChange(prop, !!c)} />
+                                <Label htmlFor={prop} className="capitalize">{prop}</Label>
+                            </div>
+                        ))}
+                    </div>
+                    <div className="flex items-center justify-between">
+                        <Label htmlFor="show-all">Show all items per day</Label>
+                        <Switch id="show-all" checked={calendarItemLimit === 'all'} onCheckedChange={(c) => setCalendarItemLimit(c ? 'all' : 3)} />
+                    </div>
+                </div>
+            </PopoverContent>
+        </Popover>
+    );
 }
 ```
 
@@ -152,116 +231,6 @@ export default {
     @apply rounded-[var(--radius)] border;
     border-color: var(--btn-border);
   }
-}
-```
-
-## File: src/pages/DataDemo/components/shared/DataItemParts.tsx
-```typescript
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Badge } from '@/components/ui/badge'
-import { cn, getStatusColor, getPriorityColor } from '@/lib/utils'
-import { Clock, Eye, Heart, Share } from 'lucide-react'
-import type { DataItem } from '../../types'
-
-export function ItemStatusBadge({ status }: { status: DataItem['status'] }) {
-  return (
-    <Badge variant="outline" className={cn("font-medium", getStatusColor(status))}>
-      {status.charAt(0).toUpperCase() + status.slice(1)}
-    </Badge>
-  )
-}
-
-export function ItemPriorityBadge({ priority }: { priority: DataItem['priority'] }) {
-  return (
-    <Badge variant="outline" className={cn("font-medium", getPriorityColor(priority))}>
-      {priority.charAt(0).toUpperCase() + priority.slice(1)}
-    </Badge>
-  )
-}
-
-export function AssigneeInfo({
-  assignee,
-  avatarClassName = "w-8 h-8",
-  compact = false,
-}: {
-  assignee: DataItem['assignee']
-  avatarClassName?: string
-  compact?: boolean
-}) {
-  const avatar = (
-    <Avatar className={cn("border-2 border-transparent group-hover:border-primary/50 transition-colors", avatarClassName)}>
-      <AvatarImage src={assignee.avatar} alt={assignee.name} />
-      <AvatarFallback>{assignee.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
-    </Avatar>
-  )
-
-  if (compact) {
-    return avatar
-  }
-
-  return (
-    <div className="flex items-center gap-2 group">
-      {avatar}
-      <div className="min-w-0">
-        <p className="font-medium text-sm truncate">{assignee.name}</p>
-        <p className="text-xs text-muted-foreground truncate">{assignee.email}</p>
-      </div>
-    </div>
-  )
-}
-
-export function ItemMetrics({ metrics }: { metrics: DataItem['metrics'] }) {
-  return (
-    <div className="flex items-center gap-3 text-sm">
-      <div className="flex items-center gap-1"><Eye className="w-4 h-4" /> {metrics.views}</div>
-      <div className="flex items-center gap-1"><Heart className="w-4 h-4" /> {metrics.likes}</div>
-      <div className="flex items-center gap-1"><Share className="w-4 h-4" /> {metrics.shares}</div>
-    </div>
-  )
-}
-
-export function ItemProgressBar({ completion, showPercentage }: { completion: number; showPercentage?: boolean }) {
-  const bar = (
-    <div className="w-full bg-muted rounded-full h-2.5">
-      <div
-        className="bg-gradient-to-r from-primary to-primary/80 h-2.5 rounded-full transition-all duration-500"
-        style={{ width: `${completion}%` }}
-      />
-    </div>
-  );
-
-  if (!showPercentage) return bar;
-
-  return (
-    <div className="flex items-center gap-3">
-      <div className="flex-1 min-w-0">{bar}</div>
-      <span className="text-sm font-medium text-muted-foreground">{completion}%</span>
-    </div>
-  )
-}
-
-export function ItemDateInfo({ date }: { date: string }) {
-  return (
-    <div className="flex items-center gap-1.5 text-sm">
-      <Clock className="w-4 h-4" />
-      <span>{new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
-    </div>
-  )
-}
-
-export function ItemTags({ tags }: { tags: string[] }) {
-  const MAX_TAGS = 3
-  const remainingTags = tags.length - MAX_TAGS
-  return (
-    <div className="flex items-center gap-1.5 flex-wrap">
-      {tags.slice(0, MAX_TAGS).map(tag => (
-        <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
-      ))}
-      {remainingTags > 0 && (
-        <Badge variant="outline" className="text-xs">+{remainingTags}</Badge>
-      )}
-    </div>
-  )
 }
 ```
 
@@ -475,348 +444,113 @@ export default {
 }
 ```
 
-## File: src/hooks/useStaggeredAnimation.motion.hook.ts
+## File: src/pages/DataDemo/components/shared/DataItemParts.tsx
 ```typescript
-import { useLayoutEffect, useRef } from 'react';
-import { gsap } from 'gsap';
-import { useAppShellStore } from '@/store/appShell.store';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Badge } from '@/components/ui/badge'
+import { cn, getStatusColor, getPriorityColor } from '@/lib/utils'
+import { Clock, Eye, Heart, Share } from 'lucide-react'
+import type { DataItem } from '../../types'
 
-interface StaggeredAnimationOptions {
-	stagger?: number;
-	duration?: number;
-	y?: number;
-	scale?: number;
-	ease?: string;
-	mode?: 'full' | 'incremental';
-}
-
-/**
- * Animates the direct children of a container element with a staggered fade-in effect.
- *
- * @param containerRef Ref to the container element.
- * @param deps Dependency array to trigger the animation.
- * @param options Animation options.
- * @param options.mode - 'full' (default): animates all children every time deps change.
- *                       'incremental': only animates new children added to the container.
- */
-export function useStaggeredAnimation<T extends HTMLElement>(
-	containerRef: React.RefObject<T>,
-	deps: React.DependencyList,
-	options: StaggeredAnimationOptions = {},
-) {
-	const reducedMotion = useAppShellStore(s => s.reducedMotion);
-	const {
-		stagger = 0.08,
-		duration = 0.6,
-		y = 30,
-		scale = 1,
-		ease = 'power3.out',
-		mode = 'full',
-	} = options;
-
-	const animatedItemsCount = useRef(0);
-
-	useLayoutEffect(() => {
-		if (reducedMotion || !containerRef.current) return;
-
-		const children = Array.from(containerRef.current.children) as HTMLElement[];
-
-		if (mode === 'incremental') {
-			// On dependency change, if the number of children is less than what we've animated,
-			// it's a list reset (e.g., filtering), so reset the counter.
-			if (children.length < animatedItemsCount.current) {
-				animatedItemsCount.current = 0;
-			}
-
-			const newItems = children.slice(animatedItemsCount.current);
-
-			if (newItems.length > 0) {
-				gsap.fromTo(
-					newItems,
-					{ y, opacity: 0, scale },
-					{
-						duration,
-						y: 0,
-						opacity: 1,
-						scale: 1,
-						stagger,
-						ease,
-					},
-				);
-				animatedItemsCount.current = children.length;
-			}
-		} else {
-			if (children.length) {
-				gsap.fromTo(
-					children,
-					{ y, opacity: 0, scale },
-					{
-						duration,
-						y: 0,
-						opacity: 1,
-						scale: 1,
-						stagger,
-						ease,
-					},
-				);
-			}
-		}
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [containerRef, ...deps]);
-}
-```
-
-## File: src/pages/DataDemo/components/DataKanbanView.tsx
-```typescript
-import { useState, useEffect, Fragment } from "react";
-import {
-  GripVertical,
-  Plus,
-  Calendar,
-  MessageSquare,
-  Paperclip,
-} from "lucide-react";
-import type { DataItem } from "../types";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { cn, getPriorityColor } from "@/lib/utils";
-import { EmptyState } from "./EmptyState";
-import { useAppViewManager } from "@/hooks/useAppViewManager.hook";
-import { useDataDemoStore } from "../store/dataDemo.store";
-
-interface KanbanCardProps {
-  item: DataItem;
-  isDragging: boolean;
-}
-
-function KanbanCard({ item, isDragging, ...props }: KanbanCardProps & React.HTMLAttributes<HTMLDivElement>) {
-  const { onItemSelect } = useAppViewManager();
-
-  // Mock comment and attachment counts for UI purposes
-  const comments = Math.floor(item.metrics.views / 10);
-  const attachments = Math.floor(item.metrics.shares / 5);
-
+export function ItemStatusBadge({ status, className }: { status: DataItem['status']; className?: string }) {
   return (
-    <Card
-      {...props}
-      data-draggable-id={item.id}
-      onClick={() => onItemSelect(item)}
-      className={cn(
-        "cursor-pointer transition-all duration-300 border bg-card/60 dark:bg-neutral-800/60 backdrop-blur-sm hover:bg-card/70 dark:hover:bg-neutral-700/70 active:cursor-grabbing",
-        isDragging && "opacity-50 ring-2 ring-primary ring-offset-2 ring-offset-background"
-      )}
-    >
-      <CardContent className="p-5">
-        <div className="space-y-4">
-          <div className="flex items-start justify-between">
-            <h4 className="font-semibold text-card-foreground dark:text-neutral-100 leading-tight">
-              {item.title}
-            </h4>
-            <GripVertical className="w-5 h-5 text-muted-foreground/60 dark:text-neutral-400 cursor-grab flex-shrink-0" />
-          </div>
-
-          <p className="text-sm text-muted-foreground dark:text-neutral-300 leading-relaxed line-clamp-2">
-            {item.description}
-          </p>
-
-          <div className="flex flex-wrap gap-2">
-            <Badge className={cn("text-xs border", getPriorityColor(item.priority))}>
-              {item.priority}
-            </Badge>
-            {item.tags.slice(0, 2).map((tag) => (
-              <Badge key={tag} variant="secondary" className="text-xs backdrop-blur-sm">
-                {tag}
-              </Badge>
-            ))}
-          </div>
-
-          <div className="flex items-center justify-between pt-2 border-t border-border/30 dark:border-neutral-700/30">
-            <div className="flex items-center gap-4 text-muted-foreground/80 dark:text-neutral-400">
-              {item.dueDate && (
-                <div className="flex items-center gap-1">
-                  <Calendar className="w-4 h-4" />
-                  <span className="text-xs font-medium">
-                    {new Date(item.dueDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                  </span>
-                </div>
-              )}
-              <div className="flex items-center gap-1">
-                <MessageSquare className="w-4 h-4" />
-                <span className="text-xs font-medium">{comments}</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <Paperclip className="w-4 h-4" />
-                <span className="text-xs font-medium">{attachments}</span>
-              </div>
-            </div>
-
-            <Avatar className="w-8 h-8 ring-2 ring-white/50 dark:ring-neutral-700/50">
-              <AvatarImage src={item.assignee.avatar} />
-              <AvatarFallback className="bg-muted dark:bg-neutral-700 text-foreground dark:text-neutral-200 font-medium">
-                {item.assignee.name.split(" ").map((n) => n[0]).join("")}
-              </AvatarFallback>
-            </Avatar>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
+    <Badge variant="outline" className={cn("font-medium", getStatusColor(status), className)}>
+      {status.charAt(0).toUpperCase() + status.slice(1)}
+    </Badge>
+  )
 }
 
-interface DataKanbanViewProps {
-  data: Record<string, DataItem[]>;
+export function ItemPriorityBadge({ priority, className }: { priority: DataItem['priority']; className?: string }) {
+  return (
+    <Badge variant="outline" className={cn("font-medium", getPriorityColor(priority), className)}>
+      {priority.charAt(0).toUpperCase() + priority.slice(1)}
+    </Badge>
+  )
 }
 
-export function DataKanbanView({ data }: DataKanbanViewProps) {
-  const [columns, setColumns] = useState(data);
-  const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
-  const [dropIndicator, setDropIndicator] = useState<{ columnId: string; index: number } | null>(null);
-  const { groupBy } = useAppViewManager();
-  const updateItem = useDataDemoStore(s => s.updateItem);
+export function AssigneeInfo({
+  assignee,
+  avatarClassName = "w-8 h-8",
+  compact = false,
+}: {
+  assignee: DataItem['assignee']
+  avatarClassName?: string
+  compact?: boolean
+}) {
+  const avatar = (
+    <Avatar className={cn("border-2 border-transparent group-hover:border-primary/50 transition-colors", avatarClassName)}>
+      <AvatarImage src={assignee.avatar} alt={assignee.name} />
+      <AvatarFallback>{assignee.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+    </Avatar>
+  )
 
-  useEffect(() => {
-    setColumns(data);
-  }, [data]);
-
-  const handleDragStart = (e: React.DragEvent<HTMLDivElement>, item: DataItem, sourceColumnId: string) => {
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', JSON.stringify({ itemId: item.id, sourceColumnId }));
-    setDraggedItemId(item.id);
-  };
-
-  const getDropIndicatorIndex = (e: React.DragEvent, elements: HTMLElement[]) => {
-    const mouseY = e.clientY;
-    let closestIndex = elements.length;
-
-    elements.forEach((el, index) => {
-      const { top, height } = el.getBoundingClientRect();
-      const offset = mouseY - (top + height / 2);
-      if (offset < 0 && index < closestIndex) {
-        closestIndex = index;
-      }
-    });
-    return closestIndex;
-  };
-
-  const handleDragOverCardsContainer = (e: React.DragEvent<HTMLDivElement>, columnId: string) => {
-    e.preventDefault();
-    const container = e.currentTarget;
-    const draggableElements = Array.from(container.querySelectorAll('[data-draggable-id]')) as HTMLElement[];
-    const index = getDropIndicatorIndex(e, draggableElements);
-
-    if (dropIndicator?.columnId === columnId && dropIndicator.index === index) return;
-    setDropIndicator({ columnId, index });
-  };
-
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>, targetColumnId: string) => {
-    e.preventDefault();
-    setDropIndicator(null);
-    try {
-      const { itemId, sourceColumnId } = JSON.parse(e.dataTransfer.getData('text/plain'));
-
-      const droppedItem = columns[sourceColumnId]?.find(i => i.id === itemId);
-      if (!droppedItem) return;
-
-      // Update local state for immediate feedback
-      setColumns(prev => {
-        const newColumns = { ...prev };
-        const sourceCol = prev[sourceColumnId].filter(i => i.id !== itemId);
-
-        if (sourceColumnId === targetColumnId) {
-          const dropIndex = dropIndicator?.columnId === targetColumnId ? dropIndicator.index : sourceCol.length;
-          sourceCol.splice(dropIndex, 0, droppedItem);
-          newColumns[sourceColumnId] = sourceCol;
-        } else {
-          const targetCol = [...prev[targetColumnId]];
-          const dropIndex = dropIndicator?.columnId === targetColumnId ? dropIndicator.index : targetCol.length;
-          targetCol.splice(dropIndex, 0, droppedItem);
-          
-          newColumns[sourceColumnId] = sourceCol;
-          newColumns[targetColumnId] = targetCol;
-        }
-        return newColumns;
-      });
-      
-      // Persist change to global store. The groupBy value tells us which property to update.
-      if (groupBy !== 'none' && sourceColumnId !== targetColumnId) {
-        updateItem(itemId, { [groupBy]: targetColumnId } as Partial<DataItem>);
-      }
-
-    } catch (err) {
-      console.error("Failed to parse drag data", err)
-    } finally {
-      setDraggedItemId(null);
-    }
-  };
-
-  const handleDragEnd = () => {
-    setDraggedItemId(null);
-    setDropIndicator(null);
-  };
-
-  const initialColumns = Object.entries(data);
-
-  if (!initialColumns || initialColumns.length === 0) {
-    return <EmptyState />;
+  if (compact) {
+    return avatar
   }
 
-  const statusColors: Record<string, string> = {
-    active: "bg-blue-500", pending: "bg-yellow-500", completed: "bg-green-500", archived: "bg-gray-500",
-    low: "bg-green-500", medium: "bg-blue-500", high: "bg-orange-500", critical: "bg-red-500",
-  };
-
-  const DropIndicator = () => <div className="h-1 my-2 rounded-full bg-primary/60" />;
-
   return (
-    <div className="flex items-start gap-6 pb-4 overflow-x-auto -mx-6 px-6">
-      {Object.entries(columns).map(([columnId, items]) => (
-        <div
-          key={columnId}
-          className={cn(
-            "w-80 flex-shrink-0 bg-card/20 dark:bg-neutral-900/20 backdrop-blur-xl rounded-3xl p-5 border border-border dark:border-neutral-700/50 transition-all duration-300",
-            dropIndicator?.columnId === columnId && "bg-primary/10 border-primary/30"
-          )}
-        >
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-              <div className={cn("w-3.5 h-3.5 rounded-full", statusColors[columnId] || "bg-muted-foreground")} />
-              <h3 className="font-semibold text-card-foreground dark:text-neutral-100 capitalize">{columnId}</h3>
-              <Badge variant="secondary" className="backdrop-blur-sm">{items.length}</Badge>
-            </div>
-            <button className="p-1 rounded-full bg-card/30 dark:bg-neutral-800/30 hover:bg-card/50 dark:hover:bg-neutral-700/50 transition-colors">
-              <Plus className="w-4 h-4 text-muted-foreground dark:text-neutral-300" />
-            </button>
-          </div>
+    <div className="flex items-center gap-2 group">
+      {avatar}
+      <div className="min-w-0">
+        <p className="font-medium text-sm truncate">{assignee.name}</p>
+        <p className="text-xs text-muted-foreground truncate">{assignee.email}</p>
+      </div>
+    </div>
+  )
+}
 
-          <div
-            onDragOver={(e) => handleDragOverCardsContainer(e, columnId)}
-            onDrop={(e) => handleDrop(e, columnId)}
-            onDragLeave={() => setDropIndicator(null)}
-            className="space-y-4 min-h-[100px]"
-          >
-            {items.map((item, index) => (
-              <Fragment key={item.id}>
-                {dropIndicator?.columnId === columnId && dropIndicator.index === index && (
-                  <DropIndicator />
-                )}
-                <KanbanCard
-                  item={item}
-                  isDragging={draggedItemId === item.id}
-                  draggable
-                  onDragStart={(e) => handleDragStart(e, item, columnId)}
-                  onDragEnd={handleDragEnd}
-                />
-              </Fragment>
-            ))}
-            {dropIndicator?.columnId === columnId && dropIndicator.index === items.length && (
-              <DropIndicator />
-            )}
-          </div>
-        </div>
-      ))}
+export function ItemMetrics({ metrics }: { metrics: DataItem['metrics'] }) {
+  return (
+    <div className="flex items-center gap-3 text-sm">
+      <div className="flex items-center gap-1"><Eye className="w-4 h-4" /> {metrics.views}</div>
+      <div className="flex items-center gap-1"><Heart className="w-4 h-4" /> {metrics.likes}</div>
+      <div className="flex items-center gap-1"><Share className="w-4 h-4" /> {metrics.shares}</div>
+    </div>
+  )
+}
+
+export function ItemProgressBar({ completion, showPercentage }: { completion: number; showPercentage?: boolean }) {
+  const bar = (
+    <div className="w-full bg-muted rounded-full h-2.5">
+      <div
+        className="bg-gradient-to-r from-primary to-primary/80 h-2.5 rounded-full transition-all duration-500"
+        style={{ width: `${completion}%` }}
+      />
     </div>
   );
+
+  if (!showPercentage) return bar;
+
+  return (
+    <div className="flex items-center gap-3">
+      <div className="flex-1 min-w-0">{bar}</div>
+      <span className="text-sm font-medium text-muted-foreground">{completion}%</span>
+    </div>
+  )
+}
+
+export function ItemDateInfo({ date }: { date: string }) {
+  return (
+    <div className="flex items-center gap-1.5 text-sm">
+      <Clock className="w-4 h-4" />
+      <span>{new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+    </div>
+  )
+}
+
+export function ItemTags({ tags }: { tags: string[] }) {
+  const MAX_TAGS = 2
+  const remainingTags = tags.length - MAX_TAGS
+  return (
+    <div className="flex items-center gap-1.5 flex-wrap">
+      {tags.slice(0, MAX_TAGS).map(tag => (
+        <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
+      ))}
+      {remainingTags > 0 && (
+        <Badge variant="outline" className="text-xs">+{remainingTags}</Badge>
+      )}
+    </div>
+  )
 }
 ```
 
@@ -864,155 +598,675 @@ export default defineConfig({
 })
 ```
 
-## File: src/lib/utils.ts
+## File: src/pages/DataDemo/components/DataCalendarView.tsx
 ```typescript
-import { type ClassValue, clsx } from "clsx"
-import { twMerge } from "tailwind-merge"
-import { formatDistanceToNow } from "date-fns"
+import { useState, useMemo, useRef } from "react";
+import { format, addMonths, subMonths, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isToday, isSameDay, } from "date-fns";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
 
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { cn, getPriorityColor } from "@/lib/utils";
+import type { DataItem } from "../types";
+import { useAppViewManager } from "@/hooks/useAppViewManager.hook";
+import { useResizeObserver } from "@/hooks/useResizeObserver.hook";
+import { useSelectedItem, useDataDemoStore } from "../store/dataDemo.store";
+import { CalendarViewControls } from "./DataCalendarViewControls";
+
+interface CalendarViewProps {
+  data: DataItem[];
 }
 
-export const SIDEBAR_STATES = {
-  HIDDEN: 'hidden',
-  COLLAPSED: 'collapsed', 
-  EXPANDED: 'expanded',
-  PEEK: 'peek'
-} as const
-
-export const BODY_STATES = {
-  NORMAL: 'normal',
-  FULLSCREEN: 'fullscreen',
-  SIDE_PANE: 'side_pane',
-  SPLIT_VIEW: 'split_view'
-} as const
-
-export type SidebarState = typeof SIDEBAR_STATES[keyof typeof SIDEBAR_STATES]
-export type BodyState = typeof BODY_STATES[keyof typeof BODY_STATES]
-
-export function capitalize(str: string): string {
-  if (!str) return str
-  return str.charAt(0).toUpperCase() + str.slice(1)
+function CalendarHeader({ currentDate, onPrevMonth, onNextMonth, onToday }: {
+  currentDate: Date;
+  onPrevMonth: () => void;
+  onNextMonth: () => void;
+  onToday: () => void;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-4 mb-6">
+      <h2 className="text-xl font-bold md:text-2xl tracking-tight">
+        {format(currentDate, "MMMM yyyy")}
+      </h2>
+      <div className="flex items-center gap-2">
+        <Button variant="outline" size="sm" onClick={onToday}>Today</Button>
+        <CalendarViewControls />
+        <div className="flex items-center">
+          <Button variant="outline" size="icon" className="h-9 w-9" onClick={onPrevMonth}>
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <Button variant="outline" size="icon" className="h-9 w-9" onClick={onNextMonth}>
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
-export function formatDistanceToNowShort(date: Date | string): string {
-  const dateObj = typeof date === 'string' ? new Date(date) : date;
-  const result = formatDistanceToNow(dateObj, { addSuffix: true });
+function CalendarEvent({ item, isSelected, isDragging, onDragStart }: { 
+    item: DataItem; 
+    isSelected: boolean;
+    isDragging: boolean;
+    onDragStart: (e: React.DragEvent<HTMLDivElement>, itemId: string) => void;
+}) {
+  const { onItemSelect } = useAppViewManager();
 
-  if (result === 'less than a minute ago') return 'now';
-
-  return result
-    .replace('about ', '')
-    .replace(' minutes', 'm')
-    .replace(' minute', 'm')
-    .replace(' hours', 'h')
-    .replace(' hour', 'h')
-    .replace(' days', 'd')
+    return (
+        <motion.div
+            layout
+            draggable
+            onDragStart={(e) => onDragStart(e, item.id)}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+            onClick={() => onItemSelect(item)}
+            className={cn(
+                "p-2.5 rounded-xl cursor-grab transition-all duration-200 border bg-card/60 dark:bg-neutral-800/60 backdrop-blur-sm",
+                "hover:bg-card/80 dark:hover:bg-neutral-700/70",
+                isSelected && "ring-2 ring-primary ring-offset-background ring-offset-2 bg-card/90",
+                isDragging && "opacity-50 ring-2 ring-primary cursor-grabbing"
+            )}
+        >
+            <h4 className="font-semibold text-sm leading-tight text-card-foreground/90 line-clamp-2">
+                {item.title}
+            </h4>
+            <div className="flex items-center justify-between mt-2 pt-2 border-t border-border/30 dark:border-neutral-700/50">
+                <Badge className={cn("text-xs border capitalize", getPriorityColor(item.priority))}>
+                    {item.priority}
+                </Badge>
+                <Avatar className="w-5 h-5">
+                    <AvatarImage src={item.assignee.avatar} />
+                    <AvatarFallback className="text-[10px] bg-muted dark:bg-neutral-700 text-foreground dark:text-neutral-200 font-medium">
+                        {item.assignee.name.split(" ").map((n) => n[0]).join("")}
+                    </AvatarFallback>
+                </Avatar>
+            </div>
+        </motion.div>
+    );
 }
 
-export const getStatusColor = (status: string) => {
-  switch (status) {
-    case 'active': return 'bg-green-500/20 text-green-700 border-green-500/30'
-    case 'pending': return 'bg-yellow-500/20 text-yellow-700 border-yellow-500/30'
-    case 'completed': return 'bg-blue-500/20 text-blue-700 border-blue-500/30'
-    case 'archived': return 'bg-gray-500/20 text-gray-700 border-gray-500/30'
-    default: return 'bg-gray-500/20 text-gray-700 border-gray-500/30'
-  }
-}
+export function DataCalendarView({ data }: CalendarViewProps) {
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const { itemId } = useAppViewManager();
+  const selectedItem = useSelectedItem(itemId);
+  const updateItem = useDataDemoStore(s => s.updateItem);
+  
+  // Drag & Drop State
+  const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
+  const [dropTargetDate, setDropTargetDate] = useState<Date | null>(null);
 
-export const getPrioritySolidColor = (priority: string) => {
-  switch (priority) {
-    case 'critical': return 'bg-red-500'
-    case 'high': return 'bg-orange-500'
-    case 'medium': return 'bg-blue-500'
-    case 'low': return 'bg-green-500'
-    default: return 'bg-gray-500'
-  }
-}
+  // Responsive Calendar State
+  const calendarContainerRef = useRef<HTMLDivElement>(null);
+  const { width } = useResizeObserver(calendarContainerRef);
+  const MIN_DAY_WIDTH = 160; // px
+  const numColumns = useMemo(() => {
+    if (width === 0) return 7;
+    const cols = Math.floor(width / MIN_DAY_WIDTH);
+    return Math.max(3, Math.min(7, cols));
+  }, [width]);
 
-export const getPriorityColor = (priority: string) => {
-  switch (priority) {
-    case 'critical': return 'bg-red-500/20 text-red-700 border-red-500/30'
-    case 'high': return 'bg-orange-500/20 text-orange-700 border-orange-500/30'
-    case 'medium': return 'bg-blue-500/20 text-blue-700 border-blue-500/30'
-    case 'low': return 'bg-green-500/20 text-green-700 border-green-500/30'
-    default: return 'bg-gray-500/20 text-gray-700 border-gray-500/30'
-  }
+  const itemsWithDueDate = useMemo(() => data.filter(item => !!item.dueDate), [data]);
+
+  const eventsByDate = useMemo(() => {
+    const eventsMap = new Map<string, DataItem[]>();
+    itemsWithDueDate.forEach(item => {
+      const dueDate = new Date(item.dueDate as string);
+      const dateKey = format(dueDate, "yyyy-MM-dd");
+      if (!eventsMap.has(dateKey)) {
+        eventsMap.set(dateKey, []);
+      }
+      eventsMap.get(dateKey)?.push(item);
+    });
+    return eventsMap;
+  }, [itemsWithDueDate]);
+
+  const monthStart = startOfMonth(currentDate);
+  const monthEnd = endOfMonth(monthStart);
+  const startDate = startOfWeek(monthStart, { weekStartsOn: 0 }); // Sunday
+  const endDate = endOfWeek(monthEnd, { weekStartsOn: 0 });
+
+  const days = eachDayOfInterval({ start: startDate, end: endDate });
+  const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  
+  // D&D Handlers
+  const handleDragStart = (e: React.DragEvent, itemId: string) => {
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', itemId);
+    setDraggedItemId(itemId);
+  };
+  
+  const handleDragEnd = () => {
+    setDraggedItemId(null);
+    setDropTargetDate(null);
+  };
+
+  const handleDragOver = (e: React.DragEvent, day: Date) => {
+    e.preventDefault();
+    if (dropTargetDate === null || !isSameDay(day, dropTargetDate)) {
+        setDropTargetDate(day);
+    }
+  };
+
+  const handleDragLeave = () => {
+    setDropTargetDate(null);
+  };
+
+  const handleDrop = (e: React.DragEvent, day: Date) => {
+    e.preventDefault();
+    const itemIdToUpdate = e.dataTransfer.getData('text/plain');
+    if (itemIdToUpdate) {
+        const originalItem = itemsWithDueDate.find(i => i.id === itemIdToUpdate);
+        if (originalItem && originalItem.dueDate) {
+            const originalDate = new Date(originalItem.dueDate);
+            // Preserve the time, only change the date part
+            const newDueDate = new Date(day);
+            newDueDate.setHours(originalDate.getHours(), originalDate.getMinutes(), originalDate.getSeconds(), originalDate.getMilliseconds());
+            updateItem(itemIdToUpdate, { dueDate: newDueDate.toISOString() });
+        }
+    }
+    handleDragEnd(); // Reset state
+  };
+  
+  const handlePrevMonth = () => setCurrentDate(subMonths(currentDate, 1));
+  const handleNextMonth = () => setCurrentDate(addMonths(currentDate, 1));
+  const handleToday = () => setCurrentDate(new Date());
+
+  return (
+    <div ref={calendarContainerRef} className="-mx-4 md:-mx-6">
+      <div className="px-4 md:px-6 pb-2">
+        <CalendarHeader currentDate={currentDate} onPrevMonth={handlePrevMonth} onNextMonth={handleNextMonth} onToday={handleToday} />
+      </div>
+      {itemsWithDueDate.length === 0 ? (
+        <div className="flex items-center justify-center h-96 text-muted-foreground rounded-lg border bg-card/30 mx-4 md:mx-6">
+          No items with due dates to display on the calendar.
+        </div>
+      ) : (
+        <div className="px-2" onDragEnd={handleDragEnd}>
+          {numColumns === 7 && (
+            <div className="grid grid-cols-7">
+              {weekdays.map(day => (
+                <div key={day} className="py-2 px-3 text-center text-xs font-semibold text-muted-foreground">
+                  {day}
+                </div>
+              ))}
+            </div>
+          )}
+
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={format(currentDate, "yyyy-MM")}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3 }}
+              style={{
+                display: 'grid',
+                gridTemplateColumns: `repeat(${numColumns}, minmax(0, 1fr))`,
+                gap: '0.5rem',
+              }}
+            >
+              {days.map(day => {
+                const dateKey = format(day, "yyyy-MM-dd");
+                const dayEvents = eventsByDate.get(dateKey) || [];
+                const isCurrentMonthDay = isSameMonth(day, currentDate);
+                const isDropTarget = dropTargetDate && isSameDay(day, dropTargetDate);
+                return (
+                  <div
+                    key={day.toString()}
+                    onDragOver={(e) => handleDragOver(e, day)}
+                    onDragLeave={handleDragLeave}
+                    onDrop={(e) => handleDrop(e, day)}
+                    className={cn(
+                      "relative min-h-[150px] rounded-2xl p-2 flex flex-col gap-2 transition-all duration-300 border",
+                      isCurrentMonthDay ? "bg-card/40 dark:bg-neutral-900/40 border-transparent" : "bg-muted/30 dark:bg-neutral-800/20 border-transparent text-muted-foreground/60",
+                      isDropTarget ? "border-primary/50 bg-primary/10" : "hover:border-primary/20 hover:bg-card/60"
+                    )}
+                  >
+                    <div className="font-semibold text-sm">
+                      {isToday(day) ? (
+                        <div className="flex items-center justify-center w-7 h-7 rounded-full bg-primary text-primary-foreground">
+                          {format(day, 'd')}
+                        </div>
+                      ) : (
+                        <div className="flex items-baseline gap-1.5 px-1 py-0.5">
+                          {numColumns < 7 && <span className="text-xs opacity-70">{format(day, 'eee')}</span>}
+                          <span>{format(day, 'd')}</span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="space-y-2 overflow-y-auto flex-grow custom-scrollbar">
+                      <AnimatePresence>
+                        {dayEvents.slice(0, 4).map(item => (
+                          <CalendarEvent
+                            key={item.id} 
+                            item={item} 
+                            isSelected={selectedItem?.id === item.id}
+                            isDragging={draggedItemId === item.id}
+                            onDragStart={handleDragStart}
+                          />
+                        ))}
+                      </AnimatePresence>
+                    </div>
+                    {dayEvents.length > 4 && (
+                      <div className="absolute bottom-1 right-2 text-xs font-bold text-muted-foreground">
+                        +{dayEvents.length - 4} more
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </motion.div>
+          </AnimatePresence>
+        </div>
+      )}
+    </div>
+  );
 }
 ```
 
-## File: src/pages/DataDemo/components/DataListView.tsx
+## File: src/pages/DataDemo/types.ts
 ```typescript
-import { useRef } from 'react'
-import { cn } from '@/lib/utils'
-import type { DataItem } from '../types'
-import { useStaggeredAnimation } from '@/hooks/useStaggeredAnimation.motion.hook'
-import { EmptyState } from './EmptyState'
-import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
-import { 
-  useSelectedItem,
-} from '../store/dataDemo.store'
-import {
-  AssigneeInfo,
-  ItemStatusBadge,
-  ItemPriorityBadge,
-  ItemDateInfo,
-  ItemTags,
-} from './shared/DataItemParts'
-import { AddDataItemCta } from './shared/AddDataItemCta'
+export type ViewMode = 'list' | 'cards' | 'grid' | 'table' | 'kanban' | 'calendar'
 
-export function DataListView({ data }: { data: DataItem[] }) {
-  const { onItemSelect, itemId } = useAppViewManager();
-  const selectedItem = useSelectedItem(itemId);
+export type GroupableField = 'status' | 'priority' | 'category'
 
-  const listRef = useRef<HTMLDivElement>(null)
-  useStaggeredAnimation(listRef, [data], { mode: 'incremental', scale: 1, y: 20, stagger: 0.05, duration: 0.4 });
+export type CalendarDateProp = 'dueDate' | 'createdAt' | 'updatedAt';
+export type CalendarDisplayProp = 'priority' | 'assignee' | 'tags';
 
-  const items = Array.isArray(data) ? data : [];
-  if (items.length === 0) {
-    return <EmptyState />
+export type CalendarDateProp = 'dueDate' | 'createdAt' | 'updatedAt';
+export type CalendarDisplayProp = 'priority' | 'assignee' | 'tags';
+
+export type SortableField = 'title' | 'status' | 'priority' | 'updatedAt' | 'assignee.name' | 'metrics.views' | 'metrics.completion' | 'createdAt'
+export type SortDirection = 'asc' | 'desc'
+export interface SortConfig {
+  key: SortableField
+  direction: SortDirection
+}
+
+export interface DataItem {
+  id: string
+  title: string
+  description: string
+  category: string
+  status: 'active' | 'pending' | 'completed' | 'archived'
+  priority: 'low' | 'medium' | 'high' | 'critical'
+  assignee: {
+    name: string
+    avatar: string
+    email: string
   }
+  metrics: {
+    views: number
+    likes: number
+    shares: number
+    completion: number
+  }
+  tags: string[]
+  createdAt: string
+  updatedAt: string
+  dueDate?: string
+  thumbnail?: string
+  content?: {
+    summary: string
+    details: string
+    attachments?: Array<{
+      name: string
+      type: string
+      size: string
+      url: string
+    }>
+  }
+}
 
-  return (
-    <div ref={listRef} className="border-t">
-      {items.map((item: DataItem) => {
-        const isSelected = selectedItem?.id === item.id
-        
-        return (
-          <div
-            key={item.id}
-            onClick={() => onItemSelect(item)}
-            className={cn(
-              "group flex items-center px-4 py-2 border-b transition-colors duration-200 cursor-pointer",
-              "hover:bg-accent/80",
-              isSelected ? "bg-accent" : "bg-transparent"
-            )}
-          >
-            {/* Left side: Icon and Title */}
-            <div className="flex items-center gap-3 flex-1 min-w-0">
-              <span className="text-xl flex-shrink-0 w-8 text-center">{item.thumbnail}</span>
-              <p className="font-medium truncate text-card-foreground group-hover:text-primary">{item.title}</p>
-            </div>
+export interface ViewProps {
+  data: DataItem[] | Record<string, DataItem[]>
+  onItemSelect: (item: DataItem) => void
+  selectedItem: DataItem | null
+  isGrid?: boolean
 
-            {/* Right side: Metadata */}
-            <div className="flex items-center gap-4 ml-4 text-sm text-muted-foreground shrink-0">
-              <div className="hidden lg:flex items-center gap-4">
-                <ItemStatusBadge status={item.status} />
-                <ItemTags tags={item.tags} />
-              </div>
-              <div className="hidden md:flex items-center gap-4">
-                <ItemDateInfo date={item.updatedAt} />
-              </div>
-              <AssigneeInfo assignee={item.assignee} avatarClassName="w-7 h-7" compact />
-              <ItemPriorityBadge priority={item.priority} />
-            </div>
-          </div>
-        )
-      })}
-      <AddDataItemCta viewMode='list' />
-    </div>
-  )
+  // Props for table view specifically
+  sortConfig?: SortConfig | null
+  onSort?: (field: SortableField) => void
+}
+
+export type Status = DataItem['status']
+export type Priority = DataItem['priority']
+```
+
+## File: src/hooks/useAppViewManager.hook.ts
+```typescript
+import { useMemo, useCallback, useEffect, useRef } from 'react';
+import { useSearchParams, useNavigate, useLocation, useParams } from 'react-router-dom';
+import { useAppShellStore, type AppShellState, type ActivePage } from '@/store/appShell.store';
+import type { DataItem, ViewMode, SortConfig, SortableField, GroupableField, Status, Priority, CalendarDateProp, CalendarDisplayProp } from '@/pages/DataDemo/types';
+import type { FilterConfig } from '@/pages/DataDemo/components/DataToolbar';
+import type { TaskView } from '@/pages/Messaging/types';
+import { BODY_STATES, SIDEBAR_STATES } from '@/lib/utils';
+
+const pageToPaneMap: Record<string, AppShellState['sidePaneContent']> = {
+  dashboard: 'main',
+  settings: 'settings',
+  toaster: 'toaster',
+  notifications: 'notifications',
+  'data-demo': 'dataDemo',
+  messaging: 'messaging',
+};
+
+function usePrevious<T>(value: T): T | undefined {
+  const ref = useRef<T>();
+  useEffect(() => {
+    ref.current = value;
+  });
+  return ref.current;
+}
+
+/**
+ * A centralized hook to manage and synchronize all URL-based view states.
+ * This is the single source of truth for view modes, side panes, split views,
+ * and page-specific parameters.
+ */
+export function useAppViewManager() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const params = useParams<{ itemId: string; conversationId: string }>();
+  const { itemId, conversationId } = params;
+  const { setSidebarState, sidebarState } = useAppShellStore();
+
+  // --- DERIVED STATE FROM URL ---
+
+  const view = searchParams.get('view');
+  const sidePane = searchParams.get('sidePane');
+  const right = searchParams.get('right');
+  const messagingView = searchParams.get('messagingView') as TaskView | null;
+  const q = searchParams.get('q');
+  const status = searchParams.get('status');
+  const priority = searchParams.get('priority');
+  const sort = searchParams.get('sort');
+  const calDate = searchParams.get('calDate');
+  const calDisplay = searchParams.get('calDisplay');
+  const calLimit = searchParams.get('calLimit');
+
+  const { bodyState, sidePaneContent } = useMemo(() => {
+    const validPanes: AppShellState['sidePaneContent'][] = ['details', 'settings', 'main', 'toaster', 'notifications', 'dataDemo', 'messaging'];
+    
+    // 1. Priority: Explicit side pane overlay via URL param
+    if (sidePane && validPanes.includes(sidePane as AppShellState['sidePaneContent'])) {
+      return { bodyState: BODY_STATES.SIDE_PANE, sidePaneContent: sidePane as AppShellState['sidePaneContent'] };
+    }
+
+    // 2. Data item detail view (can be overlay or split)
+    if (itemId) {
+      if (view === 'split') {
+        return { bodyState: BODY_STATES.SPLIT_VIEW, sidePaneContent: 'dataItem' as const };
+      }
+      return { bodyState: BODY_STATES.SIDE_PANE, sidePaneContent: 'dataItem' as const };
+    }
+
+    // 3. Messaging conversation view (always split)
+    if (conversationId) {
+      return { bodyState: BODY_STATES.SPLIT_VIEW, sidePaneContent: 'messaging' as const };
+    }
+
+    // 4. Generic split view via URL param
+    if (view === 'split' && right && validPanes.includes(right as AppShellState['sidePaneContent'])) {
+      return { bodyState: BODY_STATES.SPLIT_VIEW, sidePaneContent: right as AppShellState['sidePaneContent'] };
+    }
+
+    return { bodyState: BODY_STATES.NORMAL, sidePaneContent: 'details' as const };
+  }, [itemId, conversationId, view, sidePane, right]);
+  
+  const currentActivePage = useMemo(() => (location.pathname.split('/')[1] || 'dashboard') as ActivePage, [location.pathname]);
+  const prevActivePage = usePrevious(currentActivePage);
+
+  // --- SIDE EFFECTS ---
+  useEffect(() => {
+    // On navigating to messaging page, collapse sidebar if it's expanded.
+    // This ensures a good default view but allows the user to expand it again if they wish.
+    if (currentActivePage === 'messaging' && prevActivePage !== 'messaging' && sidebarState === SIDEBAR_STATES.EXPANDED) {
+      setSidebarState(SIDEBAR_STATES.COLLAPSED);
+    }
+  }, [currentActivePage, prevActivePage, sidebarState, setSidebarState]);
+
+  // DataDemo specific state
+  const viewMode = useMemo(() => (searchParams.get('dataView') as ViewMode) || 'list', [searchParams]);
+	const page = useMemo(() => parseInt(searchParams.get('page') || '1', 10), [searchParams]);
+	const groupBy = useMemo(() => (searchParams.get('groupBy') as GroupableField | 'none') || 'none', [searchParams]);
+	const activeGroupTab = useMemo(() => searchParams.get('tab') || 'all', [searchParams]);
+	const filters = useMemo<FilterConfig>(
+		() => ({
+			searchTerm: q || '',
+			status: (status?.split(',') || []).filter(Boolean) as Status[],
+			priority: (priority?.split(',') || []).filter(Boolean) as Priority[],
+		}),
+		[q, status, priority],
+	);
+	const sortConfig = useMemo<SortConfig | null>(() => {
+		const sortParam = sort;
+		if (!sortParam) return { key: 'updatedAt', direction: 'desc' }; // Default sort
+		if (sortParam === 'default') return null;
+
+		const [key, direction] = sortParam.split('-');
+		return { key: key as SortableField, direction: direction as 'asc' | 'desc' };
+	}, [sort]);
+  const calendarDateProp = useMemo(() => (calDate || 'dueDate') as CalendarDateProp, [calDate]);
+  const calendarDisplayProps = useMemo(
+    () => (calDisplay?.split(',') || ['priority', 'assignee']) as CalendarDisplayProp[],
+    [calDisplay]
+  );
+  const calendarItemLimit = useMemo(() => {
+    const limit = parseInt(calLimit || '3', 10);
+    if (calLimit === 'all') return 'all';
+    return isNaN(limit) ? 3 : limit;
+  }, [calLimit]);
+
+  // --- MUTATOR ACTIONS ---
+
+  const handleParamsChange = useCallback(
+		(newParams: Record<string, string | string[] | null | undefined>, resetPage = false) => {
+			setSearchParams(
+				(prev) => {
+					const updated = new URLSearchParams(prev);
+					
+					for (const [key, value] of Object.entries(newParams)) {
+						if (value === null || value === undefined || (Array.isArray(value) && value.length === 0) || value === '') {
+							updated.delete(key);
+						} else if (Array.isArray(value)) {
+							updated.set(key, value.join(','));
+						} else {
+							updated.set(key, String(value));
+						}
+					}
+
+					if (resetPage) {
+						updated.delete('page');
+					}
+					if ('groupBy' in newParams) {
+						updated.delete('tab');
+					}
+
+					return updated;
+				},
+				{ replace: true },
+			);
+		},
+		[setSearchParams],
+	);
+
+  const navigateTo = useCallback((page: string, params?: Record<string, string | null>) => {
+    const targetPath = page.startsWith('/') ? page : `/${page}`;
+    const isSamePage = location.pathname === targetPath;
+    
+    const newSearchParams = new URLSearchParams(isSamePage ? searchParams : undefined);
+
+    if (params) {
+      for (const [key, value] of Object.entries(params)) {
+        if (value === null || value === undefined) {
+          newSearchParams.delete(key);
+        } else {
+          newSearchParams.set(key, value);
+        }
+      }
+    }
+
+    navigate({ pathname: targetPath, search: newSearchParams.toString() });
+  }, [navigate, location.pathname, searchParams]);
+
+  const openSidePane = useCallback((pane: AppShellState['sidePaneContent']) => {
+    if (location.pathname === `/${Object.keys(pageToPaneMap).find(key => pageToPaneMap[key] === pane)}`) {
+        navigate({ pathname: '/dashboard', search: `?sidePane=${pane}` }, { replace: true });
+    } else {
+        handleParamsChange({ sidePane: pane, view: null, right: null });
+    }
+  }, [handleParamsChange, navigate, location.pathname]);
+
+  const closeSidePane = useCallback(() => {
+    if (itemId) {
+      navigate('/data-demo');
+    } else {
+      handleParamsChange({ sidePane: null, view: null, right: null });
+    }
+  }, [itemId, navigate, handleParamsChange]);
+
+  const toggleSidePane = useCallback((pane: AppShellState['sidePaneContent']) => {
+    if (sidePane === pane) {
+      closeSidePane();
+    } else {
+      openSidePane(pane);
+    }
+  }, [sidePane, openSidePane, closeSidePane]);
+
+  const toggleSplitView = useCallback(() => {
+    if (bodyState === BODY_STATES.SIDE_PANE) {
+      handleParamsChange({ view: 'split', right: sidePane, sidePane: null });
+    } else if (bodyState === BODY_STATES.SPLIT_VIEW) {
+      handleParamsChange({ sidePane: right, view: null, right: null });
+    } else { // From normal
+      const paneContent = pageToPaneMap[currentActivePage] || 'details';
+      handleParamsChange({ view: 'split', right: paneContent, sidePane: null });
+    }
+  }, [bodyState, sidePane, right, currentActivePage, handleParamsChange]);
+  
+  const setNormalView = useCallback(() => {
+      handleParamsChange({ sidePane: null, view: null, right: null });
+  }, [handleParamsChange]);
+
+  const switchSplitPanes = useCallback(() => {
+    if (bodyState !== BODY_STATES.SPLIT_VIEW) return;
+    const newSidePaneContent = pageToPaneMap[currentActivePage];
+    const newActivePage = Object.entries(pageToPaneMap).find(
+      ([, value]) => value === sidePaneContent
+    )?.[0] as ActivePage | undefined;
+
+    if (newActivePage && newSidePaneContent) {
+      navigate(`/${newActivePage}?view=split&right=${newSidePaneContent}`, { replace: true });
+    }
+  }, [bodyState, currentActivePage, sidePaneContent, navigate]);
+  
+  const closeSplitPane = useCallback((paneToClose: 'main' | 'right') => {
+    if (bodyState !== BODY_STATES.SPLIT_VIEW) return;
+    if (paneToClose === 'right') {
+      navigate(`/${currentActivePage}`, { replace: true });
+    } else { // Closing main pane
+      const pageToBecomeActive = Object.entries(pageToPaneMap).find(
+        ([, value]) => value === sidePaneContent
+      )?.[0] as ActivePage | undefined;
+      
+      if (pageToBecomeActive) {
+        navigate(`/${pageToBecomeActive}`, { replace: true });
+      } else {
+        navigate(`/dashboard`, { replace: true });
+      }
+    }
+  }, [bodyState, currentActivePage, sidePaneContent, navigate]);
+  
+  // DataDemo actions
+  const setViewMode = (mode: ViewMode) => handleParamsChange({ dataView: mode === 'list' ? null : mode });
+  const setGroupBy = (val: string) => handleParamsChange({ groupBy: val === 'none' ? null : val }, true);
+  const setActiveGroupTab = (tab: string) => handleParamsChange({ tab: tab === 'all' ? null : tab });
+  const setFilters = (newFilters: FilterConfig) => {
+    handleParamsChange({ q: newFilters.searchTerm, status: newFilters.status, priority: newFilters.priority }, true);
+  }
+  const setSort = (config: SortConfig | null) => {
+    if (!config) {
+      handleParamsChange({ sort: null }, true);
+    } else {
+      handleParamsChange({ sort: `${config.key}-${config.direction}` }, true);
+    }
+  }
+  const setTableSort = (field: SortableField) => {
+    let newSort: string | null = `${field}-desc`;
+    if (sortConfig?.key === field) {
+      if (sortConfig.direction === 'desc') newSort = `${field}-asc`;
+      else if (sortConfig.direction === 'asc') newSort = null;
+    }
+    handleParamsChange({ sort: newSort }, true);
+  };
+  const setPage = (newPage: number) => handleParamsChange({ page: newPage.toString() });
+
+  // Calendar specific actions
+  const setCalendarDateProp = (prop: CalendarDateProp) => handleParamsChange({ calDate: prop === 'dueDate' ? null : prop });
+  const setCalendarDisplayProps = (props: CalendarDisplayProp[]) => handleParamsChange({ calDisplay: props.join(',') });
+  const setCalendarItemLimit = (limit: number | 'all') => handleParamsChange({ calLimit: limit === 3 ? null : String(limit) });
+
+  const onItemSelect = useCallback((item: DataItem) => {
+		navigate(`/data-demo/${item.id}${location.search}`);
+	}, [navigate, location.search]);
+
+  const setMessagingView = (view: TaskView) => handleParamsChange({ messagingView: view });
+
+
+  return useMemo(() => ({
+    // State
+    bodyState,
+    sidePaneContent,
+    currentActivePage,
+    itemId,
+    messagingView,
+    // DataDemo State
+    viewMode,
+    page,
+    groupBy,
+    activeGroupTab,
+    filters,
+    sortConfig,
+    calendarDateProp,
+    calendarDisplayProps,
+    calendarItemLimit,
+    // Actions
+    navigateTo,
+    openSidePane,
+    closeSidePane,
+    toggleSidePane,
+    toggleSplitView,
+    setNormalView,
+    switchSplitPanes,
+    setMessagingView,
+    closeSplitPane,
+    // DataDemo Actions
+    onItemSelect,
+    setViewMode,
+    setGroupBy,
+    setActiveGroupTab,
+    setFilters,
+    setSort,
+    setTableSort,
+    setPage,
+    setCalendarDateProp,
+    setCalendarDisplayProps,
+    setCalendarItemLimit,
+  }), [
+    bodyState, sidePaneContent, currentActivePage, itemId, messagingView, viewMode,
+    page, groupBy, activeGroupTab, filters, sortConfig, calendarDateProp,
+    calendarDisplayProps, calendarItemLimit,
+    navigateTo, openSidePane, closeSidePane, toggleSidePane, toggleSplitView, setNormalView, setMessagingView,
+    switchSplitPanes, closeSplitPane, onItemSelect, setViewMode, setGroupBy, setActiveGroupTab, setFilters,
+    setSort, setTableSort, setPage, setCalendarDateProp, setCalendarDisplayProps, setCalendarItemLimit
+  ]);
 }
 ```
 

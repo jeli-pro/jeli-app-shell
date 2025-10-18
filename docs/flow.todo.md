@@ -4,6 +4,46 @@ I am obsessed with laravel filament... so make everything about data demo page i
 
 ===
 
+data demo page: we need centralized control of (search, filter, sort) for amazing UX . reusable for all view mode
+
+===
+
+data demo page: stats card should only be horizontally scrollable, not vertically
+
+===
+
+fix: message page : opening message thread from list causing this error
+
+===
+
+data demo page: data demo detail page: overlay side pane: remove back to list text button
+
+===
+
+data demo page: list  view mode: remove line separator
+
+===
+
+data demo page: the data model should be based on message page,
+
+===
+
+data demo page: calendar view : just like date property that user can select, also add calendar item background color that user can select based on what data
+
+===
+
+data demo page: calendar view : fix flickering calendar items animation on load within blocks
+
+===
+
+data demo page: calendar view control: I want all the features real working, also make the UI styling and spacing consistent global style.
+
+===
+
+data demo page: list view should be super responsive, how many attributes to show is depending on the widht viewport size
+
+=== DONE
+
 data demo page: list view should be like notion list view, so the item not like cards
 
 === DONE

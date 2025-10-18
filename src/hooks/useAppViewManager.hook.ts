@@ -114,7 +114,11 @@ export function useAppViewManager() {
 	}, [sort]);
   const calendarDateProp = useMemo(() => (calDate || 'dueDate') as CalendarDateProp, [calDate]);
   const calendarDisplayProps = useMemo(
-    () => (calDisplay?.split(',') || ['priority', 'assignee']) as CalendarDisplayProp[],
+    () => {
+      if (calDisplay === null) return []; // Default is now nothing
+      if (calDisplay === '') return []; // Explicitly empty is also nothing
+      return calDisplay.split(',') as CalendarDisplayProp[];
+    },
     [calDisplay]
   );
   const calendarItemLimit = useMemo(() => {
@@ -269,7 +273,11 @@ export function useAppViewManager() {
 
   // Calendar specific actions
   const setCalendarDateProp = (prop: CalendarDateProp) => handleParamsChange({ calDate: prop === 'dueDate' ? null : prop });
-  const setCalendarDisplayProps = (props: CalendarDisplayProp[]) => handleParamsChange({ calDisplay: props.join(',') });
+  const setCalendarDisplayProps = (props: CalendarDisplayProp[]) => {
+    // Check for default state to keep URL clean
+    const isDefault = props.length === 0;
+    handleParamsChange({ calDisplay: isDefault ? null : props.join(',') });
+  };
   const setCalendarItemLimit = (limit: number | 'all') => handleParamsChange({ calLimit: limit === 3 ? null : String(limit) });
 
   const onItemSelect = useCallback((item: DataItem) => {

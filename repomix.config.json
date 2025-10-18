@@ -33,13 +33,13 @@
     "index.html",
     "src/index.css",
     // "src"
-    "src/hooks/useStaggeredAnimation.motion.hook.ts",
-    "src/lib/utils.ts",
-    "src/pages/DataDemo/components/DataListView.tsx",
-    "src/pages/DataDemo/components/DataKanbanView.tsx",
+
+    "src/hooks/useAppViewManager.hook.ts",
+    "src/pages/DataDemo/components/DataCalendarView.tsx",
+    "src/pages/DataDemo/components/DataCalendarViewControls.tsx",
     "src/pages/DataDemo/components/shared/DataItemParts.tsx",
-    "src/pages/DataDemo/index.tsx"
-    // // //
+    "src/pages/DataDemo/index.tsx",
+    "src/pages/DataDemo/types.ts"
     //
     //
   ],
