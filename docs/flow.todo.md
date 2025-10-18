@@ -6,7 +6,7 @@ I am obsessed with laravel filament... so make everything about data demo page i
 
 data demo page: list view should be like notion list view, so the item not like cards
 
-===
+=== DONE
 
 data demo page: lets turn stats card to become horizontally slideable, should only need one row even on small screen... for responsive design, just make the stats cards smaller
 

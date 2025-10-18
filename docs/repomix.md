@@ -1,15 +1,18 @@
 # Directory Structure
 ```
 src/
-  components/
-    shared/
-      StatCard.tsx
+  hooks/
+    useStaggeredAnimation.motion.hook.ts
+  lib/
+    utils.ts
   pages/
     DataDemo/
-      hooks/
-        useAutoAnimateStats.hook.ts
+      components/
+        shared/
+          DataItemParts.tsx
+        DataKanbanView.tsx
+        DataListView.tsx
       index.tsx
-      types.ts
   index.css
 index.html
 package.json
@@ -152,205 +155,113 @@ export default {
 }
 ```
 
-## File: src/components/shared/StatCard.tsx
+## File: src/pages/DataDemo/components/shared/DataItemParts.tsx
 ```typescript
-import React, { useLayoutEffect, useRef } from 'react';
-import { gsap } from 'gsap';
-import { cn } from '@/lib/utils';
-import { Card } from '@/components/ui/card';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Badge } from '@/components/ui/badge'
+import { cn, getStatusColor, getPriorityColor } from '@/lib/utils'
+import { Clock, Eye, Heart, Share } from 'lucide-react'
+import type { DataItem } from '../../types'
 
-interface StatCardProps {
-  title: string;
-  value: string;
-  change: string;
-  trend: 'up' | 'down';
-  icon: React.ReactNode;
-  chartData?: number[];
+export function ItemStatusBadge({ status }: { status: DataItem['status'] }) {
+  return (
+    <Badge variant="outline" className={cn("font-medium", getStatusColor(status))}>
+      {status.charAt(0).toUpperCase() + status.slice(1)}
+    </Badge>
+  )
 }
 
-export function StatCard({ title, value, change, trend, icon, chartData }: StatCardProps) {
-  const chartRef = useRef<SVGSVGElement>(null);
+export function ItemPriorityBadge({ priority }: { priority: DataItem['priority'] }) {
+  return (
+    <Badge variant="outline" className={cn("font-medium", getPriorityColor(priority))}>
+      {priority.charAt(0).toUpperCase() + priority.slice(1)}
+    </Badge>
+  )
+}
 
-  useLayoutEffect(() => {
-    // Only run animation if chartData is present
-    if (chartRef.current && chartData) {
-      const line = chartRef.current.querySelector('.chart-line');
-      const area = chartRef.current.querySelector('.chart-area');
-      if (line instanceof SVGPathElement && area) {
-        const length = line.getTotalLength();
-        gsap.set(line, { strokeDasharray: length, strokeDashoffset: length });
-        gsap.to(line, { strokeDashoffset: 0, duration: 1.2, ease: 'power2.inOut' });
-        gsap.fromTo(area, { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.8, ease: 'power2.out', delay: 0.4 });
-      }
-    }
-  }, [chartData]);
+export function AssigneeInfo({
+  assignee,
+  avatarClassName = "w-8 h-8",
+  compact = false,
+}: {
+  assignee: DataItem['assignee']
+  avatarClassName?: string
+  compact?: boolean
+}) {
+  const avatar = (
+    <Avatar className={cn("border-2 border-transparent group-hover:border-primary/50 transition-colors", avatarClassName)}>
+      <AvatarImage src={assignee.avatar} alt={assignee.name} />
+      <AvatarFallback>{assignee.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+    </Avatar>
+  )
 
-  // --- Chart rendering logic (only if chartData is provided) ---
-  const renderChart = () => {
-    if (!chartData || chartData.length < 2) return null;
-
-    // SVG dimensions
-    const width = 150;
-    const height = 60;
-
-    // Normalize data
-    const max = Math.max(...chartData);
-    const min = Math.min(...chartData);
-    const range = max - min === 0 ? 1 : max - min;
-
-    const points = chartData
-      .map((val, i) => {
-        const x = (i / (chartData.length - 1)) * width;
-        const y = height - ((val - min) / range) * (height - 10) + 5; // Add vertical padding
-        return `${x},${y}`;
-      });
-
-    const linePath = "M" + points.join(" L");
-    const areaPath = `${linePath} L${width},${height} L0,${height} Z`;
-
-    return (
-      <div className="mt-4 -mb-2 -mx-2">
-        <svg ref={chartRef} viewBox={`0 0 ${width} ${height}`} className="w-full h-auto" preserveAspectRatio="none">
-          <defs>
-            <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" className="text-primary" stopColor="currentColor" stopOpacity={0.3} />
-              <stop offset="100%" className="text-primary" stopColor="currentColor" stopOpacity={0} />
-            </linearGradient>
-          </defs>
-          <path
-            className="chart-area"
-            d={areaPath}
-            fill="url(#chartGradient)"
-          />
-          <path
-            className="chart-line"
-            d={linePath}
-            fill="none"
-            stroke="hsl(var(--primary))"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-      </div>
-    );
-  };
-  // --- End of chart rendering logic ---
+  if (compact) {
+    return avatar
+  }
 
   return (
-    <Card className={cn(
-        "p-6 border-border/50 hover:border-primary/30 transition-all duration-300 group cursor-pointer flex flex-col justify-between",
-        !chartData && "h-full" // Ensure cards without charts have consistent height if needed
-    )}>
-      <div>
-        <div className="flex items-center justify-between">
-          <div className="p-3 bg-primary/10 rounded-full group-hover:bg-primary/20 transition-colors">
-            {icon}
-          </div>
-          <div className={cn(
-            "text-sm font-medium",
-            trend === 'up' ? "text-green-600" : "text-red-600"
-          )}>
-            {change}
-          </div>
-        </div>
-        <div className="mt-4">
-          <h3 className="text-2xl font-bold">{value}</h3>
-          <p className="text-sm text-muted-foreground mt-1">{title}</p>
-        </div>
+    <div className="flex items-center gap-2 group">
+      {avatar}
+      <div className="min-w-0">
+        <p className="font-medium text-sm truncate">{assignee.name}</p>
+        <p className="text-xs text-muted-foreground truncate">{assignee.email}</p>
       </div>
-      {renderChart()}
-    </Card>
-  );
+    </div>
+  )
 }
-```
 
-## File: src/pages/DataDemo/hooks/useAutoAnimateStats.hook.ts
-```typescript
-import { useEffect, useRef, useCallback } from 'react';
-import { gsap } from 'gsap';
+export function ItemMetrics({ metrics }: { metrics: DataItem['metrics'] }) {
+  return (
+    <div className="flex items-center gap-3 text-sm">
+      <div className="flex items-center gap-1"><Eye className="w-4 h-4" /> {metrics.views}</div>
+      <div className="flex items-center gap-1"><Heart className="w-4 h-4" /> {metrics.likes}</div>
+      <div className="flex items-center gap-1"><Share className="w-4 h-4" /> {metrics.shares}</div>
+    </div>
+  )
+}
 
-/**
- * A hook that animates a stats container in and out of view based on scroll direction.
- * It creates a "sliver app bar" effect for the stats section.
- * @param scrollContainerRef Ref to the main scrolling element.
- * @param statsContainerRef Ref to the stats container element to be animated.
- */
-export function useAutoAnimateStats(
-  scrollContainerRef: React.RefObject<HTMLElement>,
-  statsContainerRef: React.RefObject<HTMLElement>
-) {
-  const lastScrollY = useRef(0);
-  const isHidden = useRef(false);
-  const originalMarginTop = useRef<string | null>(null);
+export function ItemProgressBar({ completion, showPercentage }: { completion: number; showPercentage?: boolean }) {
+  const bar = (
+    <div className="w-full bg-muted rounded-full h-2.5">
+      <div
+        className="bg-gradient-to-r from-primary to-primary/80 h-2.5 rounded-full transition-all duration-500"
+        style={{ width: `${completion}%` }}
+      />
+    </div>
+  );
 
-  const handleScroll = useCallback(() => {
-    if (!scrollContainerRef.current || !statsContainerRef.current) return;
+  if (!showPercentage) return bar;
 
-    const scrollY = scrollContainerRef.current.scrollTop;
-    
-    // Initialize original margin on first scroll event if not set
-    if (originalMarginTop.current === null) {
-      const computedStyle = getComputedStyle(statsContainerRef.current);
-      originalMarginTop.current = computedStyle.getPropertyValue('margin-top');
-    }
+  return (
+    <div className="flex items-center gap-3">
+      <div className="flex-1 min-w-0">{bar}</div>
+      <span className="text-sm font-medium text-muted-foreground">{completion}%</span>
+    </div>
+  )
+}
 
-    // On any significant scroll down, hide the stats.
-    // The small 10px threshold prevents firing on minor scroll-jiggles.
-    if (scrollY > lastScrollY.current && scrollY > 10 && !isHidden.current) {
-      isHidden.current = true;
-      gsap.to(statsContainerRef.current, {
-        duration: 0.4,
-        height: 0,
-        autoAlpha: 0,
-        marginTop: 0,
-        ease: 'power2.inOut',
-        overwrite: true,
-      });
-    } 
+export function ItemDateInfo({ date }: { date: string }) {
+  return (
+    <div className="flex items-center gap-1.5 text-sm">
+      <Clock className="w-4 h-4" />
+      <span>{new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+    </div>
+  )
+}
 
-    lastScrollY.current = scrollY < 0 ? 0 : scrollY;
-  }, [scrollContainerRef, statsContainerRef]);
-
-  const handleWheel = useCallback((event: WheelEvent) => {
-    if (!scrollContainerRef.current || !statsContainerRef.current) return;
-    
-    const isAtTop = scrollContainerRef.current.scrollTop === 0;
-    const isScrollingUp = event.deltaY < 0;
-
-    // Only reveal if we are at the top, scrolling up, and stats are hidden.
-    // This creates the "pull to reveal" effect.
-    if (isAtTop && isScrollingUp && isHidden.current) {
-        isHidden.current = false;
-        gsap.to(statsContainerRef.current, {
-          duration: 0.4,
-          height: 'auto',
-          autoAlpha: 1,
-          marginTop: originalMarginTop.current || 0,
-          ease: 'power2.out',
-          overwrite: true,
-        });
-    }
-  }, [scrollContainerRef, statsContainerRef]);
-
-  useEffect(() => {
-    const scrollContainer = scrollContainerRef.current;
-    if (scrollContainer) {
-      scrollContainer.addEventListener('scroll', handleScroll, { passive: true });
-      scrollContainer.addEventListener('wheel', handleWheel, { passive: true });
-    }
-
-    return () => {
-      if (scrollContainer) {
-        scrollContainer.removeEventListener('scroll', handleScroll);
-        scrollContainer.removeEventListener('wheel', handleWheel);
-      }
-      // When component unmounts, kill any running animations on the stats ref
-      if (statsContainerRef.current) {
-        gsap.killTweensOf(statsContainerRef.current);
-      }
-    };
-  }, [scrollContainerRef, statsContainerRef, handleScroll, handleWheel]);
+export function ItemTags({ tags }: { tags: string[] }) {
+  const MAX_TAGS = 3
+  const remainingTags = tags.length - MAX_TAGS
+  return (
+    <div className="flex items-center gap-1.5 flex-wrap">
+      {tags.slice(0, MAX_TAGS).map(tag => (
+        <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
+      ))}
+      {remainingTags > 0 && (
+        <Badge variant="outline" className="text-xs">+{remainingTags}</Badge>
+      )}
+    </div>
+  )
 }
 ```
 
@@ -564,6 +475,351 @@ export default {
 }
 ```
 
+## File: src/hooks/useStaggeredAnimation.motion.hook.ts
+```typescript
+import { useLayoutEffect, useRef } from 'react';
+import { gsap } from 'gsap';
+import { useAppShellStore } from '@/store/appShell.store';
+
+interface StaggeredAnimationOptions {
+	stagger?: number;
+	duration?: number;
+	y?: number;
+	scale?: number;
+	ease?: string;
+	mode?: 'full' | 'incremental';
+}
+
+/**
+ * Animates the direct children of a container element with a staggered fade-in effect.
+ *
+ * @param containerRef Ref to the container element.
+ * @param deps Dependency array to trigger the animation.
+ * @param options Animation options.
+ * @param options.mode - 'full' (default): animates all children every time deps change.
+ *                       'incremental': only animates new children added to the container.
+ */
+export function useStaggeredAnimation<T extends HTMLElement>(
+	containerRef: React.RefObject<T>,
+	deps: React.DependencyList,
+	options: StaggeredAnimationOptions = {},
+) {
+	const reducedMotion = useAppShellStore(s => s.reducedMotion);
+	const {
+		stagger = 0.08,
+		duration = 0.6,
+		y = 30,
+		scale = 1,
+		ease = 'power3.out',
+		mode = 'full',
+	} = options;
+
+	const animatedItemsCount = useRef(0);
+
+	useLayoutEffect(() => {
+		if (reducedMotion || !containerRef.current) return;
+
+		const children = Array.from(containerRef.current.children) as HTMLElement[];
+
+		if (mode === 'incremental') {
+			// On dependency change, if the number of children is less than what we've animated,
+			// it's a list reset (e.g., filtering), so reset the counter.
+			if (children.length < animatedItemsCount.current) {
+				animatedItemsCount.current = 0;
+			}
+
+			const newItems = children.slice(animatedItemsCount.current);
+
+			if (newItems.length > 0) {
+				gsap.fromTo(
+					newItems,
+					{ y, opacity: 0, scale },
+					{
+						duration,
+						y: 0,
+						opacity: 1,
+						scale: 1,
+						stagger,
+						ease,
+					},
+				);
+				animatedItemsCount.current = children.length;
+			}
+		} else {
+			if (children.length) {
+				gsap.fromTo(
+					children,
+					{ y, opacity: 0, scale },
+					{
+						duration,
+						y: 0,
+						opacity: 1,
+						scale: 1,
+						stagger,
+						ease,
+					},
+				);
+			}
+		}
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [containerRef, ...deps]);
+}
+```
+
+## File: src/pages/DataDemo/components/DataKanbanView.tsx
+```typescript
+import { useState, useEffect, Fragment } from "react";
+import {
+  GripVertical,
+  Plus,
+  Calendar,
+  MessageSquare,
+  Paperclip,
+} from "lucide-react";
+import type { DataItem } from "../types";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { cn, getPriorityColor } from "@/lib/utils";
+import { EmptyState } from "./EmptyState";
+import { useAppViewManager } from "@/hooks/useAppViewManager.hook";
+import { useDataDemoStore } from "../store/dataDemo.store";
+
+interface KanbanCardProps {
+  item: DataItem;
+  isDragging: boolean;
+}
+
+function KanbanCard({ item, isDragging, ...props }: KanbanCardProps & React.HTMLAttributes<HTMLDivElement>) {
+  const { onItemSelect } = useAppViewManager();
+
+  // Mock comment and attachment counts for UI purposes
+  const comments = Math.floor(item.metrics.views / 10);
+  const attachments = Math.floor(item.metrics.shares / 5);
+
+  return (
+    <Card
+      {...props}
+      data-draggable-id={item.id}
+      onClick={() => onItemSelect(item)}
+      className={cn(
+        "cursor-pointer transition-all duration-300 border bg-card/60 dark:bg-neutral-800/60 backdrop-blur-sm hover:bg-card/70 dark:hover:bg-neutral-700/70 active:cursor-grabbing",
+        isDragging && "opacity-50 ring-2 ring-primary ring-offset-2 ring-offset-background"
+      )}
+    >
+      <CardContent className="p-5">
+        <div className="space-y-4">
+          <div className="flex items-start justify-between">
+            <h4 className="font-semibold text-card-foreground dark:text-neutral-100 leading-tight">
+              {item.title}
+            </h4>
+            <GripVertical className="w-5 h-5 text-muted-foreground/60 dark:text-neutral-400 cursor-grab flex-shrink-0" />
+          </div>
+
+          <p className="text-sm text-muted-foreground dark:text-neutral-300 leading-relaxed line-clamp-2">
+            {item.description}
+          </p>
+
+          <div className="flex flex-wrap gap-2">
+            <Badge className={cn("text-xs border", getPriorityColor(item.priority))}>
+              {item.priority}
+            </Badge>
+            {item.tags.slice(0, 2).map((tag) => (
+              <Badge key={tag} variant="secondary" className="text-xs backdrop-blur-sm">
+                {tag}
+              </Badge>
+            ))}
+          </div>
+
+          <div className="flex items-center justify-between pt-2 border-t border-border/30 dark:border-neutral-700/30">
+            <div className="flex items-center gap-4 text-muted-foreground/80 dark:text-neutral-400">
+              {item.dueDate && (
+                <div className="flex items-center gap-1">
+                  <Calendar className="w-4 h-4" />
+                  <span className="text-xs font-medium">
+                    {new Date(item.dueDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                  </span>
+                </div>
+              )}
+              <div className="flex items-center gap-1">
+                <MessageSquare className="w-4 h-4" />
+                <span className="text-xs font-medium">{comments}</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <Paperclip className="w-4 h-4" />
+                <span className="text-xs font-medium">{attachments}</span>
+              </div>
+            </div>
+
+            <Avatar className="w-8 h-8 ring-2 ring-white/50 dark:ring-neutral-700/50">
+              <AvatarImage src={item.assignee.avatar} />
+              <AvatarFallback className="bg-muted dark:bg-neutral-700 text-foreground dark:text-neutral-200 font-medium">
+                {item.assignee.name.split(" ").map((n) => n[0]).join("")}
+              </AvatarFallback>
+            </Avatar>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+interface DataKanbanViewProps {
+  data: Record<string, DataItem[]>;
+}
+
+export function DataKanbanView({ data }: DataKanbanViewProps) {
+  const [columns, setColumns] = useState(data);
+  const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
+  const [dropIndicator, setDropIndicator] = useState<{ columnId: string; index: number } | null>(null);
+  const { groupBy } = useAppViewManager();
+  const updateItem = useDataDemoStore(s => s.updateItem);
+
+  useEffect(() => {
+    setColumns(data);
+  }, [data]);
+
+  const handleDragStart = (e: React.DragEvent<HTMLDivElement>, item: DataItem, sourceColumnId: string) => {
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', JSON.stringify({ itemId: item.id, sourceColumnId }));
+    setDraggedItemId(item.id);
+  };
+
+  const getDropIndicatorIndex = (e: React.DragEvent, elements: HTMLElement[]) => {
+    const mouseY = e.clientY;
+    let closestIndex = elements.length;
+
+    elements.forEach((el, index) => {
+      const { top, height } = el.getBoundingClientRect();
+      const offset = mouseY - (top + height / 2);
+      if (offset < 0 && index < closestIndex) {
+        closestIndex = index;
+      }
+    });
+    return closestIndex;
+  };
+
+  const handleDragOverCardsContainer = (e: React.DragEvent<HTMLDivElement>, columnId: string) => {
+    e.preventDefault();
+    const container = e.currentTarget;
+    const draggableElements = Array.from(container.querySelectorAll('[data-draggable-id]')) as HTMLElement[];
+    const index = getDropIndicatorIndex(e, draggableElements);
+
+    if (dropIndicator?.columnId === columnId && dropIndicator.index === index) return;
+    setDropIndicator({ columnId, index });
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>, targetColumnId: string) => {
+    e.preventDefault();
+    setDropIndicator(null);
+    try {
+      const { itemId, sourceColumnId } = JSON.parse(e.dataTransfer.getData('text/plain'));
+
+      const droppedItem = columns[sourceColumnId]?.find(i => i.id === itemId);
+      if (!droppedItem) return;
+
+      // Update local state for immediate feedback
+      setColumns(prev => {
+        const newColumns = { ...prev };
+        const sourceCol = prev[sourceColumnId].filter(i => i.id !== itemId);
+
+        if (sourceColumnId === targetColumnId) {
+          const dropIndex = dropIndicator?.columnId === targetColumnId ? dropIndicator.index : sourceCol.length;
+          sourceCol.splice(dropIndex, 0, droppedItem);
+          newColumns[sourceColumnId] = sourceCol;
+        } else {
+          const targetCol = [...prev[targetColumnId]];
+          const dropIndex = dropIndicator?.columnId === targetColumnId ? dropIndicator.index : targetCol.length;
+          targetCol.splice(dropIndex, 0, droppedItem);
+          
+          newColumns[sourceColumnId] = sourceCol;
+          newColumns[targetColumnId] = targetCol;
+        }
+        return newColumns;
+      });
+      
+      // Persist change to global store. The groupBy value tells us which property to update.
+      if (groupBy !== 'none' && sourceColumnId !== targetColumnId) {
+        updateItem(itemId, { [groupBy]: targetColumnId } as Partial<DataItem>);
+      }
+
+    } catch (err) {
+      console.error("Failed to parse drag data", err)
+    } finally {
+      setDraggedItemId(null);
+    }
+  };
+
+  const handleDragEnd = () => {
+    setDraggedItemId(null);
+    setDropIndicator(null);
+  };
+
+  const initialColumns = Object.entries(data);
+
+  if (!initialColumns || initialColumns.length === 0) {
+    return <EmptyState />;
+  }
+
+  const statusColors: Record<string, string> = {
+    active: "bg-blue-500", pending: "bg-yellow-500", completed: "bg-green-500", archived: "bg-gray-500",
+    low: "bg-green-500", medium: "bg-blue-500", high: "bg-orange-500", critical: "bg-red-500",
+  };
+
+  const DropIndicator = () => <div className="h-1 my-2 rounded-full bg-primary/60" />;
+
+  return (
+    <div className="flex items-start gap-6 pb-4 overflow-x-auto -mx-6 px-6">
+      {Object.entries(columns).map(([columnId, items]) => (
+        <div
+          key={columnId}
+          className={cn(
+            "w-80 flex-shrink-0 bg-card/20 dark:bg-neutral-900/20 backdrop-blur-xl rounded-3xl p-5 border border-border dark:border-neutral-700/50 transition-all duration-300",
+            dropIndicator?.columnId === columnId && "bg-primary/10 border-primary/30"
+          )}
+        >
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <div className={cn("w-3.5 h-3.5 rounded-full", statusColors[columnId] || "bg-muted-foreground")} />
+              <h3 className="font-semibold text-card-foreground dark:text-neutral-100 capitalize">{columnId}</h3>
+              <Badge variant="secondary" className="backdrop-blur-sm">{items.length}</Badge>
+            </div>
+            <button className="p-1 rounded-full bg-card/30 dark:bg-neutral-800/30 hover:bg-card/50 dark:hover:bg-neutral-700/50 transition-colors">
+              <Plus className="w-4 h-4 text-muted-foreground dark:text-neutral-300" />
+            </button>
+          </div>
+
+          <div
+            onDragOver={(e) => handleDragOverCardsContainer(e, columnId)}
+            onDrop={(e) => handleDrop(e, columnId)}
+            onDragLeave={() => setDropIndicator(null)}
+            className="space-y-4 min-h-[100px]"
+          >
+            {items.map((item, index) => (
+              <Fragment key={item.id}>
+                {dropIndicator?.columnId === columnId && dropIndicator.index === index && (
+                  <DropIndicator />
+                )}
+                <KanbanCard
+                  item={item}
+                  isDragging={draggedItemId === item.id}
+                  draggable
+                  onDragStart={(e) => handleDragStart(e, item, columnId)}
+                  onDragEnd={handleDragEnd}
+                />
+              </Fragment>
+            ))}
+            {dropIndicator?.columnId === columnId && dropIndicator.index === items.length && (
+              <DropIndicator />
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+```
+
 ## File: vite.config.ts
 ```typescript
 import { defineConfig } from 'vite'
@@ -608,73 +864,156 @@ export default defineConfig({
 })
 ```
 
-## File: src/pages/DataDemo/types.ts
+## File: src/lib/utils.ts
 ```typescript
-export type ViewMode = 'list' | 'cards' | 'grid' | 'table' | 'kanban' | 'calendar'
+import { type ClassValue, clsx } from "clsx"
+import { twMerge } from "tailwind-merge"
+import { formatDistanceToNow } from "date-fns"
 
-export type GroupableField = 'status' | 'priority' | 'category'
-
-export type CalendarDateProp = 'dueDate' | 'createdAt' | 'updatedAt';
-export type CalendarDisplayProp = 'priority' | 'assignee' | 'tags';
-
-export type CalendarDateProp = 'dueDate' | 'createdAt' | 'updatedAt';
-export type CalendarDisplayProp = 'priority' | 'assignee' | 'tags';
-
-export type SortableField = 'title' | 'status' | 'priority' | 'updatedAt' | 'assignee.name' | 'metrics.views' | 'metrics.completion' | 'createdAt'
-export type SortDirection = 'asc' | 'desc'
-export interface SortConfig {
-  key: SortableField
-  direction: SortDirection
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs))
 }
 
-export interface DataItem {
-  id: string
-  title: string
-  description: string
-  category: string
-  status: 'active' | 'pending' | 'completed' | 'archived'
-  priority: 'low' | 'medium' | 'high' | 'critical'
-  assignee: {
-    name: string
-    avatar: string
-    email: string
-  }
-  metrics: {
-    views: number
-    likes: number
-    shares: number
-    completion: number
-  }
-  tags: string[]
-  createdAt: string
-  updatedAt: string
-  dueDate?: string
-  thumbnail?: string
-  content?: {
-    summary: string
-    details: string
-    attachments?: Array<{
-      name: string
-      type: string
-      size: string
-      url: string
-    }>
+export const SIDEBAR_STATES = {
+  HIDDEN: 'hidden',
+  COLLAPSED: 'collapsed', 
+  EXPANDED: 'expanded',
+  PEEK: 'peek'
+} as const
+
+export const BODY_STATES = {
+  NORMAL: 'normal',
+  FULLSCREEN: 'fullscreen',
+  SIDE_PANE: 'side_pane',
+  SPLIT_VIEW: 'split_view'
+} as const
+
+export type SidebarState = typeof SIDEBAR_STATES[keyof typeof SIDEBAR_STATES]
+export type BodyState = typeof BODY_STATES[keyof typeof BODY_STATES]
+
+export function capitalize(str: string): string {
+  if (!str) return str
+  return str.charAt(0).toUpperCase() + str.slice(1)
+}
+
+export function formatDistanceToNowShort(date: Date | string): string {
+  const dateObj = typeof date === 'string' ? new Date(date) : date;
+  const result = formatDistanceToNow(dateObj, { addSuffix: true });
+
+  if (result === 'less than a minute ago') return 'now';
+
+  return result
+    .replace('about ', '')
+    .replace(' minutes', 'm')
+    .replace(' minute', 'm')
+    .replace(' hours', 'h')
+    .replace(' hour', 'h')
+    .replace(' days', 'd')
+}
+
+export const getStatusColor = (status: string) => {
+  switch (status) {
+    case 'active': return 'bg-green-500/20 text-green-700 border-green-500/30'
+    case 'pending': return 'bg-yellow-500/20 text-yellow-700 border-yellow-500/30'
+    case 'completed': return 'bg-blue-500/20 text-blue-700 border-blue-500/30'
+    case 'archived': return 'bg-gray-500/20 text-gray-700 border-gray-500/30'
+    default: return 'bg-gray-500/20 text-gray-700 border-gray-500/30'
   }
 }
 
-export interface ViewProps {
-  data: DataItem[] | Record<string, DataItem[]>
-  onItemSelect: (item: DataItem) => void
-  selectedItem: DataItem | null
-  isGrid?: boolean
-
-  // Props for table view specifically
-  sortConfig?: SortConfig | null
-  onSort?: (field: SortableField) => void
+export const getPrioritySolidColor = (priority: string) => {
+  switch (priority) {
+    case 'critical': return 'bg-red-500'
+    case 'high': return 'bg-orange-500'
+    case 'medium': return 'bg-blue-500'
+    case 'low': return 'bg-green-500'
+    default: return 'bg-gray-500'
+  }
 }
 
-export type Status = DataItem['status']
-export type Priority = DataItem['priority']
+export const getPriorityColor = (priority: string) => {
+  switch (priority) {
+    case 'critical': return 'bg-red-500/20 text-red-700 border-red-500/30'
+    case 'high': return 'bg-orange-500/20 text-orange-700 border-orange-500/30'
+    case 'medium': return 'bg-blue-500/20 text-blue-700 border-blue-500/30'
+    case 'low': return 'bg-green-500/20 text-green-700 border-green-500/30'
+    default: return 'bg-gray-500/20 text-gray-700 border-gray-500/30'
+  }
+}
+```
+
+## File: src/pages/DataDemo/components/DataListView.tsx
+```typescript
+import { useRef } from 'react'
+import { cn } from '@/lib/utils'
+import type { DataItem } from '../types'
+import { useStaggeredAnimation } from '@/hooks/useStaggeredAnimation.motion.hook'
+import { EmptyState } from './EmptyState'
+import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
+import { 
+  useSelectedItem,
+} from '../store/dataDemo.store'
+import {
+  AssigneeInfo,
+  ItemStatusBadge,
+  ItemPriorityBadge,
+  ItemDateInfo,
+  ItemTags,
+} from './shared/DataItemParts'
+import { AddDataItemCta } from './shared/AddDataItemCta'
+
+export function DataListView({ data }: { data: DataItem[] }) {
+  const { onItemSelect, itemId } = useAppViewManager();
+  const selectedItem = useSelectedItem(itemId);
+
+  const listRef = useRef<HTMLDivElement>(null)
+  useStaggeredAnimation(listRef, [data], { mode: 'incremental', scale: 1, y: 20, stagger: 0.05, duration: 0.4 });
+
+  const items = Array.isArray(data) ? data : [];
+  if (items.length === 0) {
+    return <EmptyState />
+  }
+
+  return (
+    <div ref={listRef} className="border-t">
+      {items.map((item: DataItem) => {
+        const isSelected = selectedItem?.id === item.id
+        
+        return (
+          <div
+            key={item.id}
+            onClick={() => onItemSelect(item)}
+            className={cn(
+              "group flex items-center px-4 py-2 border-b transition-colors duration-200 cursor-pointer",
+              "hover:bg-accent/80",
+              isSelected ? "bg-accent" : "bg-transparent"
+            )}
+          >
+            {/* Left side: Icon and Title */}
+            <div className="flex items-center gap-3 flex-1 min-w-0">
+              <span className="text-xl flex-shrink-0 w-8 text-center">{item.thumbnail}</span>
+              <p className="font-medium truncate text-card-foreground group-hover:text-primary">{item.title}</p>
+            </div>
+
+            {/* Right side: Metadata */}
+            <div className="flex items-center gap-4 ml-4 text-sm text-muted-foreground shrink-0">
+              <div className="hidden lg:flex items-center gap-4">
+                <ItemStatusBadge status={item.status} />
+                <ItemTags tags={item.tags} />
+              </div>
+              <div className="hidden md:flex items-center gap-4">
+                <ItemDateInfo date={item.updatedAt} />
+              </div>
+              <AssigneeInfo assignee={item.assignee} avatarClassName="w-7 h-7" compact />
+              <ItemPriorityBadge priority={item.priority} />
+            </div>
+          </div>
+        )
+      })}
+      <AddDataItemCta viewMode='list' />
+    </div>
+  )
+}
 ```
 
 ## File: package.json
@@ -765,9 +1104,13 @@ import {
   Layers, 
   AlertTriangle, 
   PlayCircle, 
-  TrendingUp,
   Loader2,
-  ChevronsUpDown
+  ChevronsUpDown,
+  TrendingUp,
+  CheckCircle,
+  Clock,
+  Archive,
+  PlusCircle
 } from 'lucide-react'
 import { gsap } from 'gsap'
 import { cn } from '@/lib/utils'
@@ -923,7 +1266,37 @@ function DataDemoContent() {
       change: "+3.2%",
       trend: "up" as const,
       type: 'chart',
-      chartData: [65, 68, 70, 69, 72, 75, 78]
+      chartData: [65, 68, 70, 69, 72, 75, 78],
+    },
+    {
+      title: "Completion Rate",
+      value: "88%",
+      icon: <CheckCircle className="w-5 h-5" />,
+      change: "+1.5% this month",
+      trend: "up" as const,
+      type: 'chart',
+      chartData: [80, 82, 81, 84, 85, 87, 88],
+    },
+    {
+      title: "Overdue Items",
+      value: "8",
+      icon: <Clock className="w-5 h-5" />,
+      change: "-3 this week",
+      trend: "down" as const,
+    },
+    {
+      title: "New This Week",
+      value: "12",
+      icon: <PlusCircle className="w-5 h-5" />,
+      change: "+2 from last week",
+      trend: "up" as const,
+    },
+    {
+      title: "Archived Projects",
+      value: "153",
+      icon: <Archive className="w-5 h-5" />,
+      change: "+20 this month",
+      trend: "up" as const,
     }
   ]
 
@@ -1044,7 +1417,7 @@ function DataDemoContent() {
 
         {/* Stats Section */}
         {!isInitialLoading && (
-          <div ref={statsRef} className="grid grid-cols-[repeat(auto-fit,minmax(250px,1fr))] gap-6">
+          <div ref={statsRef} className="flex overflow-x-auto gap-6 pb-2 no-scrollbar">
             {stats.map((stat) => (
               <StatCard
                 key={stat.title}

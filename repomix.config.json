@@ -33,11 +33,12 @@
     "index.html",
     "src/index.css",
     // "src"
-    "src/components/shared/StatCard.tsx",
-    "src/index.css",
-    "src/pages/DataDemo/hooks/useAutoAnimateStats.hook.ts",
-    "src/pages/DataDemo/index.tsx",
-    "src/pages/DataDemo/types.ts"
+    "src/hooks/useStaggeredAnimation.motion.hook.ts",
+    "src/lib/utils.ts",
+    "src/pages/DataDemo/components/DataListView.tsx",
+    "src/pages/DataDemo/components/DataKanbanView.tsx",
+    "src/pages/DataDemo/components/shared/DataItemParts.tsx",
+    "src/pages/DataDemo/index.tsx"
     // // //
     //
     //

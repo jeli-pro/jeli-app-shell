@@ -1,117 +1,146 @@
-Alright, let's architect this refactor. The current stats grid on the DataDemo page is a bit too rigid for its own good. It wraps, which is fine, but we can do better. We're going to ditch the wrapping grid for a slick, horizontally scrollable container. This gives us infinite horizontal space for stats, makes the UI feel more modern and touch-friendly, and it's a cleaner look on smaller viewports.
+Listen up, folks. The current list view in the Data Demo is a relic. It's chunky, wastes space, and feels like something from 2015. We're talking big, card-like items that scream "bootstrap boilerplate". Users want information density and a clean, fast interface. They want Notion. We're going to give them that vibe.
 
-The plan is simple: we'll add more stat cards to prove the concept, then rip out the old grid classes and replace them with a flexbox setup. We'll tweak the card component itself to play nice in this new container, ensuring it doesn't get squished. Finally, we'll add a touch of CSS elegance with a custom, minimalist scrollbar that doesn't scream "1998". It's a quick, high-impact change that levels up the UX.
-
-Let's get this planned out for the code-gen bot.
+The plan is to completely gut the existing `DataListView` and rebuild it from the ground up as a sleek, row-based list. We're ditching the heavy card styling, the distracting hover gradients, and the clunky animations. In its place, we'll ship a minimalist layout that's all about typography, subtle interactions, and putting the data front-and-center. Each item will be a clean, clickable row with horizontally arranged properties. This refactor will not only pwn the aesthetics but also significantly improve the UX, making the entire page feel more cohesive and professional. Let's ship it.
 
 ```yaml
 plan:
-  uuid: 'c8b4a2d1-e9f7-4a0b-8d1c-5f3e7a09b9f2'
+  uuid: 'e5b9f1d8-4a7b-4c2f-8a9d-0f1c2b3e4a5b'
   status: 'todo'
-  title: 'Refactor DataDemo Stats to be Horizontally Scrollable'
+  title: 'Refactor Data Demo List View to Emulate Notion''s UI/UX'
   introduction: |
-    This plan outlines the refactoring of the statistics card section on the DataDemo page. The current implementation uses a responsive grid that wraps cards onto new lines on smaller screens. This approach can lead to inconsistent layout heights and feels somewhat dated.
+    The current list view in the Data Demo page uses a card-based metaphor which is inefficient for displaying lists of items. It lacks the information density and modern feel of applications like Notion or Linear. This master plan outlines the process of refactoring `DataListView.tsx` to transform it into a clean, row-based interface.
 
-    The goal is to transform this section into a single, horizontally scrollable row. This change will not only modernize the user interface, providing a "slideable" feel common in dashboards, but also make the section more scalable, allowing for an arbitrary number of stats cards without breaking the layout. The refactor involves updating the data source to include more cards, modifying the container's styling from grid to flex, adjusting the card component to maintain a consistent size, and adding custom CSS for a subtle, on-brand scrollbar.
+    We will remove the card-like structure, replacing it with a minimalist design that emphasizes typography and horizontal data layout. The goal is to create a more "amazing UI and cohesive UX" by stripping away unnecessary visual clutter, refining hover and selection states, and improving the overall scannability of the list. The staggered animation will be replaced with a more subtle effect suitable for a list view.
   parts:
-    - uuid: 'a1b3c2d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d'
+    - uuid: 'a1b2c3d4-e5f6-7890-1234-567890abcdef'
       status: 'todo'
-      name: 'Part 1: Expand the Stats Card Data'
+      name: 'Part 1: Structural and Logical Overhaul of DataListView'
       reason: |
-        To properly demonstrate and test the effectiveness of a horizontally scrollable container, we need more content than the original four cards. Adding more stats makes the need for scrolling immediately apparent and validates the new design's scalability.
+        Before we can make it look good, we need to gut the underlying structure. The current component is built around a card concept, complete with thumbnails, progress bars, and metrics that don't belong in a high-density list view. We're also swapping out the heavy, staggered animation for something more appropriate.
       steps:
-        - uuid: 'b2c4d5e6-f7g8-9a0b-1c2d-3e4f5a6b7c8d'
+        - uuid: 'c1d2e3f4-g5h6-i7j8-k9l0-m1n2o3p4q5r'
           status: 'todo'
-          name: '1. Add more StatItem objects'
+          name: '1. De-Cardify the List Item Structure'
           reason: |
-            We'll add four new stat cards to the existing array. This will provide enough items to cause an overflow on most screen sizes, making the horizontal scroll functional and visible.
+            The fundamental unit needs to change from a 'card' to a 'row'. This involves removing the main card wrapper, the thumbnail, progress bar, and metrics, which are not suitable for a Notion-style list view.
           files:
-            - src/pages/DataDemo/index.tsx
+            - src/pages/DataDemo/components/DataListView.tsx
           operations:
-            - "In the `stats` constant declared with `useMemo`, add four new objects to the array. These new stats should be plausible metrics for the demo, such as 'Completion Rate', 'Overdue Items', 'New This Week', and 'Archived'."
-            - "Ensure the new stat objects conform to the `StatItem` type, providing `title`, `value`, `icon`, `change`, and `trend` properties."
+            - 'Locate the main `div` that wraps each list item.'
+            - 'Remove the card-like classes like `bg-card`, `border`, `rounded-lg`, `shadow-sm`, etc.'
+            - 'Replace the wrapper with a `button` element to make the entire row interactive, or a `div` with `role="button"`.'
+            - 'Remove the `Thumbnail` section entirely.'
+            - 'Remove the `ItemProgressBar` component from the render path.'
+            - 'Remove the `ItemMetrics` component from the render path.'
+            - 'Remove the `div` responsible for the "Hover gradient overlay".'
+        - uuid: 'd2e3f4g5-h6i7-j8k9-l0m1-n2o3p4q5r6s'
+          status: 'todo'
+          name: '2. Rearrange Components into a Horizontal Flex Layout'
+          reason: |
+            Notion's list is defined by its horizontal arrangement of properties. We need to restructure the JSX to use flexbox, creating a clean row with elements spaced out logically.
+          files:
+            - src/pages/DataDemo/components/DataListView.tsx
+          operations:
+            - 'Wrap the contents of the item `button`/`div` in a parent `div` with `flex items-center gap-4`.'
+            - 'Arrange the components in the following order: `ItemStatusBadge`, `ItemPriorityBadge`, the main `title`, then `ItemTags`.'
+            - 'Add a spacer element `<div className="flex-grow" />` after the tags.'
+            - 'Place `AssigneeInfo` and `ItemDateInfo` after the spacer.'
+            - 'Keep the `ArrowRight` icon at the end, but we will style its visibility later.'
+        - uuid: 'e3f4g5h6-i7j8-k9l0-m1n2-o3p4q5r6s7t'
+          status: 'todo'
+          name: '3. Replace Staggered Animation'
+          reason: |
+            The `useStaggeredAnimation` hook is designed for grid/card layouts and feels too heavy for a simple list. We'll remove it to improve performance and better match the minimalist aesthetic. A simpler, list-wide animation can be considered later if needed.
+          files:
+            - src/pages/DataDemo/components/DataListView.tsx
+          operations:
+            - 'Remove the import for `useStaggeredAnimation`.'
+            - 'Delete the `useStaggeredAnimation(...)` hook invocation.'
+            - 'The main list container `ref` that was passed to the hook can now be used for other purposes or removed if not needed.'
+        - uuid: 'f4g5h6i7-j8k9-l0m1-n2o3-p4q5r6s7t8u'
+          status: 'todo'
+          name: '4. Update Interaction Logic and Selection State'
+          reason: |
+            The click handler and selection state need to be applied to the new row structure.
+          files:
+            - src/pages/DataDemo/components/DataListView.tsx
+          operations:
+            - 'Move the `onClick={() => onItemSelect(item)}` handler to the main row `button` element.'
+            - 'Use `cn` utility to conditionally apply styling for the selected item. For example: `cn({"bg-muted": isSelected})`.'
+            - 'Wrap the entire row `button` in a `group` class to control hover effects on child elements (like the arrow icon).'
       context_files:
         compact:
-          - src/pages/DataDemo/index.tsx
+          - src/pages/DataDemo/components/DataListView.tsx
         medium:
-          - src/pages/DataDemo/index.tsx
-          - src/pages/DataDemo/types.ts
+          - src/pages/DataDemo/components/DataListView.tsx
+          - src/hooks/useStaggeredAnimation.motion.hook.ts
         extended:
-          - src/pages/DataDemo/index.tsx
-          - src/pages/DataDemo/types.ts
-    - uuid: 'd3e5f6g7-h8i9-0j1k-2l3m-4n5o6p7q8r9s'
+          - src/pages/DataDemo/components/DataListView.tsx
+          - src/hooks/useStaggeredAnimation.motion.hook.ts
+          - src/pages/DataDemo/components/shared/DataItemParts.tsx
+    - uuid: 'b2c3d4e5-f6g7-8901-2345-67890abcdef1'
       status: 'todo'
-      name: 'Part 2: Implement Horizontally Scrollable Layout'
+      name: 'Part 2: Applying Notion-esque Styling and Polish'
       reason: |
-        This is the core of the refactor. We need to change the container's CSS to facilitate horizontal scrolling and adjust the child components to behave correctly within this new layout paradigm.
+        With the structure in place, this part focuses on the aesthetics. We'll use TailwindCSS to achieve the minimalist design, focusing on typography, subtle borders, and clean hover states that define the Notion experience.
       steps:
-        - uuid: 'e4f6g7h8-i9j0-k1l2-m3n4-o5p6q7r8s9t0'
+        - uuid: 'g5h6i7j8-k9l0-m1n2-o3p4-q5r6s7t8u9v'
           status: 'todo'
-          name: '1. Update stats container styling'
+          name: '1. Implement Row and Typography Styles'
           reason: |
-            The current `grid` layout must be replaced with a `flex` layout that allows for horizontal overflow. This is the fundamental change that enables the desired scrolling behavior.
+            This step translates the Notion design into CSS classes, defining the core look and feel of each row.
           files:
-            - src/pages/DataDemo/index.tsx
+            - src/pages/DataDemo/components/DataListView.tsx
           operations:
-            - "Locate the `div` that directly wraps the mapped `StatCard` components within the 'Stats Section'."
-            - "Replace the existing Tailwind CSS classes `grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4` with `flex gap-4 overflow-x-auto pb-4 horizontal-scrollbar`."
-            - "The `overflow-x-auto` enables scrolling, `pb-4` adds space for the new scrollbar, and `horizontal-scrollbar` is a custom class we will define next."
-        - uuid: 'f5g7h8i9-j0k1-l2m3-n4o5-p6q7r8s9t0u1'
+            - 'Apply styles to the main row `button`: `w-full text-left px-2 py-1.5 transition-colors duration-150 rounded-md hover:bg-muted/50`.'
+            - 'Add a subtle bottom border to the list container items, not the last one: `[&>button]:border-b [&>button]:border-border/60 [&>button:last-child]:border-b-0`.'
+            - 'Style the item `title`: `font-medium text-foreground/90 truncate`.'
+            - 'Ensure other text elements like date and assignee name use `text-sm text-muted-foreground`.'
+        - uuid: 'h6i7j8k9-l0m1-n2o3-p4q5-r6s7t8u9v0w'
           status: 'todo'
-          name: '2. Adjust StatCard component styling'
+          name: '2. Refine Hover and Action Indicator Styles'
           reason: |
-            By default, items in a flex container can shrink. We need to prevent this to maintain a consistent card width and ensure the container overflows as intended.
+            A key part of cohesive UX is how interactive elements reveal themselves. The arrow icon should only appear on hover, guiding the user without cluttering the UI.
           files:
-            - src/components/shared/StatCard.tsx
+            - src/pages/DataDemo/components/DataListView.tsx
           operations:
-            - "In the `StatCard` component, locate the `<Card>` element."
-            - "Append `flex-shrink-0 w-72` to its `className` prop using the `cn` utility. This prevents the card from shrinking and sets a consistent base width of `18rem` (288px)."
-        - uuid: 'g6h8i9j0-k1l2-m3n4-o5p6-q7r8s9t0u1v2'
+            - 'For the `ArrowRight` icon, apply `opacity-0 group-hover:opacity-100 transition-opacity`.'
+            - 'Ensure the icon has `text-muted-foreground` to keep it subtle.'
+        - uuid: 'i7j8k9l0-m1n2-o3p4-q5r6-s7t8u9v0w1x'
           status: 'todo'
-          name: '3. Add custom horizontal scrollbar styles'
+          name: '3. Adjust Shared Component Styles'
           reason: |
-            Default browser scrollbars can be obtrusive. A custom, styled scrollbar provides a more polished and integrated look that matches the application's aesthetic.
+            The shared components might need slight tweaks to fit into the more compact, horizontal layout.
           files:
-            - src/index.css
+            - src/pages/DataDemo/components/shared/DataItemParts.tsx
+            - src/pages/DataDemo/components/DataListView.tsx
           operations:
-            - "In `src/index.css`, inside the `@layer components` block, add new CSS rules for the `.horizontal-scrollbar` class."
-            - "Define styles for `::-webkit-scrollbar` to set a small height (e.g., `height: 6px;`)."
-            - "Style `::-webkit-scrollbar-track` to be transparent (`@apply bg-transparent;`)."
-            - "Style `::-webkit-scrollbar-thumb` to have a subtle background color and be rounded (`@apply bg-border rounded-full;`)."
-            - "Add a hover state for `::-webkit-scrollbar-thumb:hover` to improve interactivity (`@apply bg-muted-foreground/50;`)."
+            - 'In `DataListView.tsx`, when calling `AssigneeInfo`, pass a smaller avatar class: `avatarClassName="w-5 h-5"`.'
+            - 'In `DataItemParts.tsx`, ensure `AssigneeInfo` can accept and apply the `avatarClassName` prop correctly to its `Avatar` component.'
+            - 'Verify that badges and other elements in `DataItemParts.tsx` don''t have excessive margins that would disrupt the horizontal alignment.'
       context_files:
         compact:
-          - src/pages/DataDemo/index.tsx
-          - src/components/shared/StatCard.tsx
-          - src/index.css
+          - src/pages/DataDemo/components/DataListView.tsx
         medium:
-          - src/pages/DataDemo/index.tsx
-          - src/components/shared/StatCard.tsx
-          - src/index.css
-          - src/pages/DataDemo/hooks/useAutoAnimateStats.hook.ts
+          - src/pages/DataDemo/components/DataListView.tsx
+          - src/pages/DataDemo/components/shared/DataItemParts.tsx
         extended:
-          - src/pages/DataDemo/index.tsx
-          - src/components/shared/StatCard.tsx
-          - src/index.css
-          - src/pages/DataDemo/hooks/useAutoAnimateStats.hook.ts
-          - tailwind.config.js
+          - src/pages/DataDemo/components/DataListView.tsx
+          - src/pages/DataDemo/components/shared/DataItemParts.tsx
+          - src/lib/utils.ts
   conclusion: |
-    Upon completion, the DataDemo page's statistics section will be transformed into a modern, horizontally scrollable container. This enhancement improves the user experience, especially on smaller screens, by preventing layout shifts caused by wrapping content. The new design is also more scalable, cleanly accommodating a larger number of stat cards without compromising the page's structure. The addition of a custom-styled scrollbar ensures the new functionality feels polished and visually consistent with the rest of the application.
+    Upon completion, the Data Demo's list view will be completely transformed. We will have replaced the dated, card-based layout with a sleek, minimalist, and highly-functional row-based list that mirrors the best-in-class UI of modern productivity apps.
+
+    This refactor will not only be a significant visual upgrade but will also enhance usability by increasing information density and improving scannability. The UX will feel more cohesive and intuitive, providing a solid foundation for any future list-based interfaces in the application.
   context_files:
     compact:
-      - src/pages/DataDemo/index.tsx
-      - src/components/shared/StatCard.tsx
-      - src/index.css
+      - src/pages/DataDemo/components/DataListView.tsx
     medium:
-      - src/pages/DataDemo/index.tsx
-      - src/components/shared/StatCard.tsx
-      - src/index.css
-      - src/pages/DataDemo/types.ts
+      - src/pages/DataDemo/components/DataListView.tsx
+      - src/pages/DataDemo/components/shared/DataItemParts.tsx
     extended:
+      - src/pages/DataDemo/components/DataListView.tsx
+      - src/pages/DataDemo/components/shared/DataItemParts.tsx
+      - src/hooks/useStaggeredAnimation.motion.hook.ts
       - src/pages/DataDemo/index.tsx
-      - src/components/shared/StatCard.tsx
-      - src/index.css
-      - src/pages/DataDemo/types.ts
-      - src/pages/DataDemo/hooks/useAutoAnimateStats.hook.ts
-      - tailwind.config.js
 ```

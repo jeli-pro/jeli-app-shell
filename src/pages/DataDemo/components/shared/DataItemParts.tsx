@@ -4,17 +4,17 @@ import { cn, getStatusColor, getPriorityColor } from '@/lib/utils'
 import { Clock, Eye, Heart, Share } from 'lucide-react'
 import type { DataItem } from '../../types'
 
-export function ItemStatusBadge({ status }: { status: DataItem['status'] }) {
+export function ItemStatusBadge({ status, className }: { status: DataItem['status']; className?: string }) {
   return (
-    <Badge variant="outline" className={cn("font-medium", getStatusColor(status))}>
+    <Badge variant="outline" className={cn("font-medium", getStatusColor(status), className)}>
       {status.charAt(0).toUpperCase() + status.slice(1)}
     </Badge>
   )
 }
 
-export function ItemPriorityBadge({ priority }: { priority: DataItem['priority'] }) {
+export function ItemPriorityBadge({ priority, className }: { priority: DataItem['priority']; className?: string }) {
   return (
-    <Badge variant="outline" className={cn("font-medium", getPriorityColor(priority))}>
+    <Badge variant="outline" className={cn("font-medium", getPriorityColor(priority), className)}>
       {priority.charAt(0).toUpperCase() + priority.slice(1)}
     </Badge>
   )
@@ -23,16 +23,26 @@ export function ItemPriorityBadge({ priority }: { priority: DataItem['priority']
 export function AssigneeInfo({
   assignee,
   avatarClassName = "w-8 h-8",
+  compact = false,
 }: {
   assignee: DataItem['assignee']
   avatarClassName?: string
+  compact?: boolean
 }) {
+  const avatar = (
+    <Avatar className={cn("border-2 border-transparent group-hover:border-primary/50 transition-colors", avatarClassName)}>
+      <AvatarImage src={assignee.avatar} alt={assignee.name} />
+      <AvatarFallback>{assignee.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+    </Avatar>
+  )
+
+  if (compact) {
+    return avatar
+  }
+
   return (
     <div className="flex items-center gap-2 group">
-      <Avatar className={cn("border-2 border-transparent group-hover:border-primary/50 transition-colors", avatarClassName)}>
-        <AvatarImage src={assignee.avatar} alt={assignee.name} />
-        <AvatarFallback>{assignee.name.charAt(0)}</AvatarFallback>
-      </Avatar>
+      {avatar}
       <div className="min-w-0">
         <p className="font-medium text-sm truncate">{assignee.name}</p>
         <p className="text-xs text-muted-foreground truncate">{assignee.email}</p>
@@ -81,7 +91,7 @@ export function ItemDateInfo({ date }: { date: string }) {
 }
 
 export function ItemTags({ tags }: { tags: string[] }) {
-  const MAX_TAGS = 3
+  const MAX_TAGS = 2
   const remainingTags = tags.length - MAX_TAGS
   return (
     <div className="flex items-center gap-1.5 flex-wrap">

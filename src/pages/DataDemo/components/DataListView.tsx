@@ -1,7 +1,5 @@
 import { useRef } from 'react'
 import { cn } from '@/lib/utils'
-import { Badge } from '@/components/ui/badge'
-import { ArrowRight } from 'lucide-react'
 import type { DataItem } from '../types'
 import { useStaggeredAnimation } from '@/hooks/useStaggeredAnimation.motion.hook'
 import { EmptyState } from './EmptyState'
@@ -11,11 +9,10 @@ import {
 } from '../store/dataDemo.store'
 import {
   AssigneeInfo,
-  ItemMetrics,
-  ItemProgressBar,
   ItemStatusBadge,
   ItemPriorityBadge,
   ItemDateInfo,
+  ItemTags,
 } from './shared/DataItemParts'
 import { AddDataItemCta } from './shared/AddDataItemCta'
 
@@ -24,7 +21,7 @@ export function DataListView({ data }: { data: DataItem[] }) {
   const selectedItem = useSelectedItem(itemId);
 
   const listRef = useRef<HTMLDivElement>(null)
-  useStaggeredAnimation(listRef, [data], { mode: 'incremental', scale: 1, y: 30, stagger: 0.08, duration: 0.5 });
+  useStaggeredAnimation(listRef, [data], { mode: 'incremental', scale: 1, y: 20, stagger: 0.05, duration: 0.4 });
 
   const items = Array.isArray(data) ? data : [];
   if (items.length === 0) {
@@ -32,74 +29,38 @@ export function DataListView({ data }: { data: DataItem[] }) {
   }
 
   return (
-    <div ref={listRef} className="space-y-4 pb-4">
+    <div ref={listRef} className="border-t">
       {items.map((item: DataItem) => {
         const isSelected = selectedItem?.id === item.id
         
         return (
-          <div
-            key={item.id}
-            onClick={() => onItemSelect(item)}
-            className={cn(
-              "group relative overflow-hidden rounded-2xl border bg-card/50 backdrop-blur-sm transition-all duration-300 cursor-pointer",
-              "hover:bg-card/80 hover:shadow-lg hover:shadow-primary/5 hover:border-primary/20",
-              "active:scale-[0.99]",
-              isSelected && "ring-2 ring-primary/20 border-primary/30 bg-card/90"
-            )}
-          >
-            <div className="p-6">
-              <div className="flex items-start gap-4">
-                {/* Thumbnail */}
-                <div className="flex-shrink-0">
-                  <div className="w-14 h-14 bg-gradient-to-br from-primary/20 to-primary/10 rounded-xl flex items-center justify-center text-2xl">
-                    {item.thumbnail}
-                  </div>
+          <div key={item.id} onClick={() => onItemSelect(item)} className="border-b cursor-pointer px-2">
+            <div
+              className={cn(
+                "group flex items-center px-2 py-2 rounded-md transition-colors duration-200",
+                "hover:bg-accent/80",
+                isSelected ? "bg-accent" : "bg-transparent"
+              )}
+            >
+              {/* Left side: Icon and Title */}
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                <span className="text-xl flex-shrink-0 w-8 text-center">{item.thumbnail}</span>
+                <p className="font-medium truncate text-card-foreground group-hover:text-primary">{item.title}</p>
+              </div>
+
+              {/* Right side: Metadata */}
+              <div className="flex items-center gap-4 ml-4 text-sm text-muted-foreground shrink-0">
+                <div className="hidden lg:flex items-center gap-4">
+                  <ItemStatusBadge status={item.status} />
+                  <ItemTags tags={item.tags} />
                 </div>
-
-                {/* Content */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-lg mb-1 group-hover:text-primary transition-colors">
-                        {item.title}
-                      </h3>
-                      <p className="text-muted-foreground text-sm mb-3 line-clamp-2">
-                        {item.description}
-                      </p>
-                    </div>
-                    <ArrowRight className="w-5 h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all duration-300 ml-4 flex-shrink-0" />
-                  </div>
-
-                  {/* Badges */}
-                  <div className="flex items-center gap-2 mb-4">
-                    <ItemStatusBadge status={item.status} />
-                    <ItemPriorityBadge priority={item.priority} />
-                    <Badge variant="outline" className="bg-accent/50">
-                      {item.category}
-                    </Badge>
-                  </div>
-
-                  {/* Meta info */}
-                  <div className="flex items-center justify-between text-muted-foreground">
-                    <div className="flex items-center gap-4">
-                      {/* Assignee */}
-                      <AssigneeInfo assignee={item.assignee} avatarClassName="w-7 h-7" />
-                      {/* Date */}
-                      <ItemDateInfo date={item.updatedAt} />
-                    </div>
-
-                    {/* Metrics */}
-                    <ItemMetrics metrics={item.metrics} />
-                  </div>
-
-                  {/* Progress bar */}
-                  <div className="mt-4"><ItemProgressBar completion={item.metrics.completion} /></div>
+                <div className="hidden md:flex items-center gap-4">
+                  <ItemDateInfo date={item.updatedAt} />
                 </div>
+                <AssigneeInfo assignee={item.assignee} avatarClassName="w-7 h-7" compact />
+                <ItemPriorityBadge priority={item.priority} className="hidden sm:inline-flex" />
               </div>
             </div>
-
-            {/* Hover gradient overlay */}
-            <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
           </div>
         )
       })}

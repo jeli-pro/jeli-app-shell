@@ -1,0 +1,298 @@
+uuid: c32c66c3-1f19-4824-a744-88f117f7b301
+projectId: jeli-app-shell
+createdAt: '2025-10-18T08:38:30.304Z'
+gitCommitMsg: >-
+  refactor(DataListView): Improve responsiveness of list view items
+
+  Adjusted the responsive breakpoints for metadata in the `DataListView` to
+  prevent overflow on smaller screen sizes. Items are now hidden more
+  granularly: - `ItemTags` is visible from the `xl` breakpoint. -
+  `ItemStatusBadge` is visible from the `lg` breakpoint.
+
+  Additionally, updated the `ItemTags` component to be more compact by showing a
+  maximum of 2 tags and preventing wrapping, which ensures consistent row
+  height.
+promptSummary: Make the data demo list view responsive when the screen width is reduced.
+reasoning:
+  - >-
+    To enhance the responsiveness of the `DataListView` and prevent layout
+    issues on smaller screens, I'll implement two key changes.
+  - >-
+    First, in `DataListView.tsx`, I'll adjust the responsive breakpoints for the
+    metadata items on the right side of each list item. I will make the
+    `ItemTags` component appear only on extra-large screens (`xl`) and the
+    `ItemStatusBadge` on large screens (`lg`) and up. This progressive
+    disclosure of information ensures that the layout remains clean and doesn't
+    overflow as the screen width is reduced, while keeping the most critical
+    information visible. I'm keeping `shrink-0` on the container to ensure the
+    title truncates before the metadata becomes squished.
+  - >-
+    Second, to support this change and improve layout stability, I'll modify the
+    `ItemTags` component in `DataItemParts.tsx`. I'll remove the `flex-wrap`
+    property to prevent tags from wrapping to a new line, which could cause
+    inconsistent row heights. Additionally, I'll reduce the maximum number of
+    visible tags from three to two, making the component more compact and
+    predictable in width.
+  - >-
+    These modifications will create a more robust and visually consistent
+    responsive experience for the list view.
+  - '### `src/pages/DataDemo/components/DataListView.tsx`'
+  - I'll adjust the responsive visibility of the metadata items.
+  - '### `src/pages/DataDemo/components/shared/DataItemParts.tsx`'
+  - >-
+    I'll update the `ItemTags` component to prevent wrapping and reduce the
+    number of tags shown.
+operations:
+  - type: write
+    path: src/pages/DataDemo/components/DataListView.tsx
+    content: |
+      <<<<<<< SEARCH
+                    <div className="hidden lg:flex items-center gap-4">
+                      <ItemStatusBadge status={item.status} />
+                      <ItemTags tags={item.tags} />
+                    </div>
+                    <div className="hidden md:flex items-center gap-4">
+                      <ItemDateInfo date={item.updatedAt} />
+                    </div>
+      =======
+                    <div className="hidden xl:flex">
+                      <ItemTags tags={item.tags} />
+                    </div>
+                    <div className="hidden lg:flex">
+                      <ItemStatusBadge status={item.status} />
+                    </div>
+                    <div className="hidden md:flex">
+                      <ItemDateInfo date={item.updatedAt} />
+                    </div>
+      >>>>>>> REPLACE
+    patchStrategy: search-replace
+  - type: write
+    path: src/pages/DataDemo/components/shared/DataItemParts.tsx
+    content: |+
+      --- src/pages/DataDemo/components/shared/DataItemParts.tsx
+      +++ src/pages/DataDemo/components/shared/DataItemParts.tsx
+      @@ -95,10 +95,10 @@
+       }
+       
+       export function ItemTags({ tags }: { tags: string[] }) {
+      -  const MAX_TAGS = 3
+      +  const MAX_TAGS = 2
+         const remainingTags = tags.length - MAX_TAGS
+         return (
+      -    <div className="flex items-center gap-1.5 flex-wrap">
+      +    <div className="flex items-center gap-1.5">
+             {tags.slice(0, MAX_TAGS).map(tag => (
+               <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
+             ))}
+
+    patchStrategy: standard-diff
+snapshot:
+  src/pages/DataDemo/components/DataListView.tsx: >-
+    import { useRef } from 'react'
+
+    import { cn } from '@/lib/utils'
+
+    import type { DataItem } from '../types'
+
+    import { useStaggeredAnimation } from
+    '@/hooks/useStaggeredAnimation.motion.hook'
+
+    import { EmptyState } from './EmptyState'
+
+    import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
+
+    import { 
+      useSelectedItem,
+    } from '../store/dataDemo.store'
+
+    import {
+      AssigneeInfo,
+      ItemStatusBadge,
+      ItemPriorityBadge,
+      ItemDateInfo,
+      ItemTags,
+    } from './shared/DataItemParts'
+
+    import { AddDataItemCta } from './shared/AddDataItemCta'
+
+
+    export function DataListView({ data }: { data: DataItem[] }) {
+      const { onItemSelect, itemId } = useAppViewManager();
+      const selectedItem = useSelectedItem(itemId);
+
+      const listRef = useRef<HTMLDivElement>(null)
+      useStaggeredAnimation(listRef, [data], { mode: 'incremental', scale: 1, y: 20, stagger: 0.05, duration: 0.4 });
+
+      const items = Array.isArray(data) ? data : [];
+      if (items.length === 0) {
+        return <EmptyState />
+      }
+
+      return (
+        <div ref={listRef} className="border-t">
+          {items.map((item: DataItem) => {
+            const isSelected = selectedItem?.id === item.id
+            
+            return (
+              <div
+                key={item.id}
+                onClick={() => onItemSelect(item)}
+                className={cn(
+                  "group flex items-center px-4 py-2 border-b transition-colors duration-200 cursor-pointer",
+                  "hover:bg-accent/80",
+                  isSelected ? "bg-accent" : "bg-transparent"
+                )}
+              >
+                {/* Left side: Icon and Title */}
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <span className="text-xl flex-shrink-0 w-8 text-center">{item.thumbnail}</span>
+                  <p className="font-medium truncate text-card-foreground group-hover:text-primary">{item.title}</p>
+                </div>
+
+                {/* Right side: Metadata */}
+                <div className="flex items-center gap-4 ml-4 text-sm text-muted-foreground shrink-0">
+                  <div className="hidden lg:flex items-center gap-4">
+                    <ItemStatusBadge status={item.status} />
+                    <ItemTags tags={item.tags} />
+                  </div>
+                  <div className="hidden md:flex items-center gap-4">
+                    <ItemDateInfo date={item.updatedAt} />
+                  </div>
+                  <AssigneeInfo assignee={item.assignee} avatarClassName="w-7 h-7" compact />
+                  <ItemPriorityBadge priority={item.priority} />
+                </div>
+              </div>
+            )
+          })}
+          <AddDataItemCta viewMode='list' />
+        </div>
+      )
+    }
+  src/pages/DataDemo/components/shared/DataItemParts.tsx: >-
+    import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+
+    import { Badge } from '@/components/ui/badge'
+
+    import { cn, getStatusColor, getPriorityColor } from '@/lib/utils'
+
+    import { Clock, Eye, Heart, Share } from 'lucide-react'
+
+    import type { DataItem } from '../../types'
+
+
+    export function ItemStatusBadge({ status }: { status: DataItem['status'] })
+    {
+      return (
+        <Badge variant="outline" className={cn("font-medium", getStatusColor(status))}>
+          {status.charAt(0).toUpperCase() + status.slice(1)}
+        </Badge>
+      )
+    }
+
+
+    export function ItemPriorityBadge({ priority }: { priority:
+    DataItem['priority'] }) {
+      return (
+        <Badge variant="outline" className={cn("font-medium", getPriorityColor(priority))}>
+          {priority.charAt(0).toUpperCase() + priority.slice(1)}
+        </Badge>
+      )
+    }
+
+
+    export function AssigneeInfo({
+      assignee,
+      avatarClassName = "w-8 h-8",
+      compact = false,
+    }: {
+      assignee: DataItem['assignee']
+      avatarClassName?: string
+      compact?: boolean
+    }) {
+      const avatar = (
+        <Avatar className={cn("border-2 border-transparent group-hover:border-primary/50 transition-colors", avatarClassName)}>
+          <AvatarImage src={assignee.avatar} alt={assignee.name} />
+          <AvatarFallback>{assignee.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+        </Avatar>
+      )
+
+      if (compact) {
+        return avatar
+      }
+
+      return (
+        <div className="flex items-center gap-2 group">
+          {avatar}
+          <div className="min-w-0">
+            <p className="font-medium text-sm truncate">{assignee.name}</p>
+            <p className="text-xs text-muted-foreground truncate">{assignee.email}</p>
+          </div>
+        </div>
+      )
+    }
+
+
+    export function ItemMetrics({ metrics }: { metrics: DataItem['metrics'] }) {
+      return (
+        <div className="flex items-center gap-3 text-sm">
+          <div className="flex items-center gap-1"><Eye className="w-4 h-4" /> {metrics.views}</div>
+          <div className="flex items-center gap-1"><Heart className="w-4 h-4" /> {metrics.likes}</div>
+          <div className="flex items-center gap-1"><Share className="w-4 h-4" /> {metrics.shares}</div>
+        </div>
+      )
+    }
+
+
+    export function ItemProgressBar({ completion, showPercentage }: {
+    completion: number; showPercentage?: boolean }) {
+      const bar = (
+        <div className="w-full bg-muted rounded-full h-2.5">
+          <div
+            className="bg-gradient-to-r from-primary to-primary/80 h-2.5 rounded-full transition-all duration-500"
+            style={{ width: `${completion}%` }}
+          />
+        </div>
+      );
+
+      if (!showPercentage) return bar;
+
+      return (
+        <div className="flex items-center gap-3">
+          <div className="flex-1 min-w-0">{bar}</div>
+          <span className="text-sm font-medium text-muted-foreground">{completion}%</span>
+        </div>
+      )
+    }
+
+
+    export function ItemDateInfo({ date }: { date: string }) {
+      return (
+        <div className="flex items-center gap-1.5 text-sm">
+          <Clock className="w-4 h-4" />
+          <span>{new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+        </div>
+      )
+    }
+
+
+    export function ItemTags({ tags }: { tags: string[] }) {
+      const MAX_TAGS = 3
+      const remainingTags = tags.length - MAX_TAGS
+      return (
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {tags.slice(0, MAX_TAGS).map(tag => (
+            <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
+          ))}
+          {remainingTags > 0 && (
+            <Badge variant="outline" className="text-xs">+{remainingTags}</Badge>
+          )}
+        </div>
+      )
+    }
+approved: false
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: undone
+id: 474

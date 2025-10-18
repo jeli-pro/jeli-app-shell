@@ -1,0 +1,409 @@
+uuid: 44b02d6b-0e86-4e5a-a3a8-4447432095f9
+projectId: jeli-app-shell
+createdAt: '2025-10-18T08:17:04.435Z'
+gitCommitMsg: >-
+  feat(DataDemo): Refactor list view to Notion-style UI
+
+  This commit completely revamps the DataListView component, replacing the
+  previous card-based layout with a sleek, minimalist, row-based design inspired
+  by Notion.
+
+  - Replaced card structure with interactive `<button>` rows for a cleaner
+  aesthetic and better UX. - Removed the heavy staggered animation in favor of
+  subtle hover transitions, improving performance and feel. - Rearranged data
+  elements into a horizontal flex layout, prioritizing information density and
+  scannability. - Updated `AssigneeInfo` to allow for a compact, avatar-only
+  view suitable for dense lists. - Removed `flex-wrap` from `ItemTags` to
+  prevent layout breaks in single-line views.
+promptSummary: >-
+  I want to refactor the data demo page's list view to be more like Notion's
+  list view. The current card-based items are inefficient. I'm looking for a
+  clean, row-based design with an amazing UI and cohesive UX.
+reasoning:
+  - >-
+    This is a complete refactor of the `DataListView` component to transform it
+    from a card-based layout to a sleek, Notion-inspired row-based list. This
+    change dramatically improves information density and provides a more modern,
+    cohesive user experience.
+  - >-
+    First, I'll modify shared components. In `DataItemParts.tsx`, I'm updating
+    `AssigneeInfo` to conditionally hide user details, which is crucial for a
+    compact list view. I'm also removing `flex-wrap` from `ItemTags` to ensure
+    it renders correctly on a single line.
+  - >-
+    Next, I am completely replacing the content of `DataListView.tsx`. The new
+    implementation ditches the card styles, removes the heavy staggered
+    animation, and rearranges the data into a clean, horizontal, and interactive
+    row. The result is a much more scannable and efficient list view.
+operations:
+  - type: write
+    path: src/pages/DataDemo/components/shared/DataItemParts.tsx
+    content: >+
+      --- src/pages/DataDemo/components/shared/DataItemParts.tsx
+
+      +++ src/pages/DataDemo/components/shared/DataItemParts.tsx
+
+      @@ -20,19 +20,23 @@
+       export function AssigneeInfo({
+         assignee,
+         avatarClassName = "w-8 h-8",
+      +  showDetails = true,
+       }: {
+         assignee: DataItem['assignee']
+         avatarClassName?: string
+      +  showDetails?: boolean
+       }) {
+         return (
+           <div className="flex items-center gap-2 group">
+             <Avatar className={cn("border-2 border-transparent group-hover:border-primary/50 transition-colors", avatarClassName)}>
+               <AvatarImage src={assignee.avatar} alt={assignee.name} />
+               <AvatarFallback>{assignee.name.charAt(0)}</AvatarFallback>
+             </Avatar>
+      -      <div className="min-w-0">
+
+      -        <p className="font-medium text-sm truncate">{assignee.name}</p>
+
+      -        <p className="text-xs text-muted-foreground
+      truncate">{assignee.email}</p>
+
+      -      </div>
+
+      +      {showDetails && (
+
+      +        <div className="min-w-0">
+
+      +          <p className="font-medium text-sm truncate">{assignee.name}</p>
+
+      +          <p className="text-xs text-muted-foreground
+      truncate">{assignee.email}</p>
+
+      +        </div>
+
+      +      )}
+           </div>
+         )
+       }
+      @@ -82,7 +86,7 @@
+         const MAX_TAGS = 3
+         const remainingTags = tags.length - MAX_TAGS
+         return (
+      -    <div className="flex items-center gap-1.5 flex-wrap">
+
+      +    <div className="flex items-center gap-1.5">
+             {tags.slice(0, MAX_TAGS).map(tag => (
+               <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
+             ))}
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/DataDemo/components/DataListView.tsx
+    content: |-
+      import { cn } from '@/lib/utils'
+      import { ArrowRight } from 'lucide-react'
+      import type { DataItem } from '../types'
+      import { EmptyState } from './EmptyState'
+      import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
+      import { 
+        useSelectedItem,
+      } from '../store/dataDemo.store'
+      import {
+        AssigneeInfo,
+        ItemStatusBadge,
+        ItemDateInfo,
+        ItemTags,
+      } from './shared/DataItemParts'
+      import { AddDataItemCta } from './shared/AddDataItemCta'
+
+      export function DataListView({ data }: { data: DataItem[] }) {
+        const { onItemSelect, itemId } = useAppViewManager();
+        const selectedItem = useSelectedItem(itemId);
+
+        const items = Array.isArray(data) ? data : [];
+        if (items.length === 0) {
+          return <EmptyState />
+        }
+
+        return (
+          <div className="pb-4">
+            <div className="border-t">
+              {items.map((item: DataItem) => {
+                const isSelected = selectedItem?.id === item.id
+                
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => onItemSelect(item)}
+                    className={cn(
+                      "group flex w-full items-center gap-3 border-b px-3 py-2 text-left text-sm transition-colors duration-150",
+                      "hover:bg-muted/50",
+                      isSelected && "bg-muted"
+                    )}
+                  >
+                    {/* Left side: Icon, Title, Tags */}
+                    <div className="flex flex-1 items-center gap-3 overflow-hidden">
+                      <span className="flex-shrink-0 text-lg">{item.thumbnail}</span>
+                      <span className="truncate font-medium text-foreground/90">{item.title}</span>
+                      <ItemTags tags={item.tags} />
+                    </div>
+
+                    {/* Right side: Metadata */}
+                    <div className="ml-auto flex flex-shrink-0 items-center gap-4 text-muted-foreground">
+                      <ItemStatusBadge status={item.status} />
+                      <AssigneeInfo assignee={item.assignee} avatarClassName="h-6 w-6" showDetails={false} />
+                      <div className="w-24 text-right">
+                        <ItemDateInfo date={item.updatedAt} />
+                      </div>
+                      <ArrowRight className="h-4 w-4 opacity-0 transition-opacity group-hover:opacity-100" />
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+            <div className="mt-4">
+              <AddDataItemCta viewMode='list' />
+            </div>
+          </div>
+        )
+      }
+    patchStrategy: replace
+snapshot:
+  src/pages/DataDemo/components/shared/DataItemParts.tsx: >-
+    import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+
+    import { Badge } from '@/components/ui/badge'
+
+    import { cn, getStatusColor, getPriorityColor } from '@/lib/utils'
+
+    import { Clock, Eye, Heart, Share } from 'lucide-react'
+
+    import type { DataItem } from '../../types'
+
+
+    export function ItemStatusBadge({ status }: { status: DataItem['status'] })
+    {
+      return (
+        <Badge variant="outline" className={cn("font-medium", getStatusColor(status))}>
+          {status.charAt(0).toUpperCase() + status.slice(1)}
+        </Badge>
+      )
+    }
+
+
+    export function ItemPriorityBadge({ priority }: { priority:
+    DataItem['priority'] }) {
+      return (
+        <Badge variant="outline" className={cn("font-medium", getPriorityColor(priority))}>
+          {priority.charAt(0).toUpperCase() + priority.slice(1)}
+        </Badge>
+      )
+    }
+
+
+    export function AssigneeInfo({
+      assignee,
+      avatarClassName = "w-8 h-8",
+    }: {
+      assignee: DataItem['assignee']
+      avatarClassName?: string
+    }) {
+      return (
+        <div className="flex items-center gap-2 group">
+          <Avatar className={cn("border-2 border-transparent group-hover:border-primary/50 transition-colors", avatarClassName)}>
+            <AvatarImage src={assignee.avatar} alt={assignee.name} />
+            <AvatarFallback>{assignee.name.charAt(0)}</AvatarFallback>
+          </Avatar>
+          <div className="min-w-0">
+            <p className="font-medium text-sm truncate">{assignee.name}</p>
+            <p className="text-xs text-muted-foreground truncate">{assignee.email}</p>
+          </div>
+        </div>
+      )
+    }
+
+
+    export function ItemMetrics({ metrics }: { metrics: DataItem['metrics'] }) {
+      return (
+        <div className="flex items-center gap-3 text-sm">
+          <div className="flex items-center gap-1"><Eye className="w-4 h-4" /> {metrics.views}</div>
+          <div className="flex items-center gap-1"><Heart className="w-4 h-4" /> {metrics.likes}</div>
+          <div className="flex items-center gap-1"><Share className="w-4 h-4" /> {metrics.shares}</div>
+        </div>
+      )
+    }
+
+
+    export function ItemProgressBar({ completion, showPercentage }: {
+    completion: number; showPercentage?: boolean }) {
+      const bar = (
+        <div className="w-full bg-muted rounded-full h-2.5">
+          <div
+            className="bg-gradient-to-r from-primary to-primary/80 h-2.5 rounded-full transition-all duration-500"
+            style={{ width: `${completion}%` }}
+          />
+        </div>
+      );
+
+      if (!showPercentage) return bar;
+
+      return (
+        <div className="flex items-center gap-3">
+          <div className="flex-1 min-w-0">{bar}</div>
+          <span className="text-sm font-medium text-muted-foreground">{completion}%</span>
+        </div>
+      )
+    }
+
+
+    export function ItemDateInfo({ date }: { date: string }) {
+      return (
+        <div className="flex items-center gap-1.5 text-sm">
+          <Clock className="w-4 h-4" />
+          <span>{new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+        </div>
+      )
+    }
+
+
+    export function ItemTags({ tags }: { tags: string[] }) {
+      const MAX_TAGS = 3
+      const remainingTags = tags.length - MAX_TAGS
+      return (
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {tags.slice(0, MAX_TAGS).map(tag => (
+            <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
+          ))}
+          {remainingTags > 0 && (
+            <Badge variant="outline" className="text-xs">+{remainingTags}</Badge>
+          )}
+        </div>
+      )
+    }
+  src/pages/DataDemo/components/DataListView.tsx: >-
+    import { useRef } from 'react'
+
+    import { cn } from '@/lib/utils'
+
+    import { Badge } from '@/components/ui/badge'
+
+    import { ArrowRight } from 'lucide-react'
+
+    import type { DataItem } from '../types'
+
+    import { useStaggeredAnimation } from
+    '@/hooks/useStaggeredAnimation.motion.hook'
+
+    import { EmptyState } from './EmptyState'
+
+    import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
+
+    import { 
+      useSelectedItem,
+    } from '../store/dataDemo.store'
+
+    import {
+      AssigneeInfo,
+      ItemMetrics,
+      ItemProgressBar,
+      ItemStatusBadge,
+      ItemPriorityBadge,
+      ItemDateInfo,
+    } from './shared/DataItemParts'
+
+    import { AddDataItemCta } from './shared/AddDataItemCta'
+
+
+    export function DataListView({ data }: { data: DataItem[] }) {
+      const { onItemSelect, itemId } = useAppViewManager();
+      const selectedItem = useSelectedItem(itemId);
+
+      const listRef = useRef<HTMLDivElement>(null)
+      useStaggeredAnimation(listRef, [data], { mode: 'incremental', scale: 1, y: 30, stagger: 0.08, duration: 0.5 });
+
+      const items = Array.isArray(data) ? data : [];
+      if (items.length === 0) {
+        return <EmptyState />
+      }
+
+      return (
+        <div ref={listRef} className="space-y-4 pb-4">
+          {items.map((item: DataItem) => {
+            const isSelected = selectedItem?.id === item.id
+            
+            return (
+              <div
+                key={item.id}
+                onClick={() => onItemSelect(item)}
+                className={cn(
+                  "group relative overflow-hidden rounded-2xl border bg-card/50 backdrop-blur-sm transition-all duration-300 cursor-pointer",
+                  "hover:bg-card/80 hover:shadow-lg hover:shadow-primary/5 hover:border-primary/20",
+                  "active:scale-[0.99]",
+                  isSelected && "ring-2 ring-primary/20 border-primary/30 bg-card/90"
+                )}
+              >
+                <div className="p-6">
+                  <div className="flex items-start gap-4">
+                    {/* Thumbnail */}
+                    <div className="flex-shrink-0">
+                      <div className="w-14 h-14 bg-gradient-to-br from-primary/20 to-primary/10 rounded-xl flex items-center justify-center text-2xl">
+                        {item.thumbnail}
+                      </div>
+                    </div>
+
+                    {/* Content */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-semibold text-lg mb-1 group-hover:text-primary transition-colors">
+                            {item.title}
+                          </h3>
+                          <p className="text-muted-foreground text-sm mb-3 line-clamp-2">
+                            {item.description}
+                          </p>
+                        </div>
+                        <ArrowRight className="w-5 h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all duration-300 ml-4 flex-shrink-0" />
+                      </div>
+
+                      {/* Badges */}
+                      <div className="flex items-center gap-2 mb-4">
+                        <ItemStatusBadge status={item.status} />
+                        <ItemPriorityBadge priority={item.priority} />
+                        <Badge variant="outline" className="bg-accent/50">
+                          {item.category}
+                        </Badge>
+                      </div>
+
+                      {/* Meta info */}
+                      <div className="flex items-center justify-between text-muted-foreground">
+                        <div className="flex items-center gap-4">
+                          {/* Assignee */}
+                          <AssigneeInfo assignee={item.assignee} avatarClassName="w-7 h-7" />
+                          {/* Date */}
+                          <ItemDateInfo date={item.updatedAt} />
+                        </div>
+
+                        {/* Metrics */}
+                        <ItemMetrics metrics={item.metrics} />
+                      </div>
+
+                      {/* Progress bar */}
+                      <div className="mt-4"><ItemProgressBar completion={item.metrics.completion} /></div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Hover gradient overlay */}
+                <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+              </div>
+            )
+          })}
+          <AddDataItemCta viewMode='list' />
+        </div>
+      )
+    }
+approved: false
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: undone
+id: 470
