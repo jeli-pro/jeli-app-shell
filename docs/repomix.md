@@ -34,86 +34,6 @@ export default {
 }
 ```
 
-## File: src/pages/DataDemo/components/DataCalendarViewControls.tsx
-```typescript
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Button } from "@/components/ui/button";
-import { Settings } from "lucide-react";
-import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Switch } from "@/components/ui/switch";
-import { Separator } from "@/components/ui/separator";
-import { useAppViewManager } from "@/hooks/useAppViewManager.hook";
-import type { CalendarDateProp, CalendarDisplayProp } from "../types";
-
-export function CalendarViewControls() {
-    const { 
-        calendarDateProp, setCalendarDateProp,
-        calendarDisplayProps, setCalendarDisplayProps,
-        calendarItemLimit, setCalendarItemLimit
-    } = useAppViewManager();
-
-    const handleDisplayPropChange = (prop: CalendarDisplayProp, checked: boolean) => {
-        const newProps = checked 
-            ? [...calendarDisplayProps, prop] 
-            : calendarDisplayProps.filter(p => p !== prop);
-        setCalendarDisplayProps(newProps);
-    };
-
-    return (
-        <Popover>
-            <PopoverTrigger asChild>
-                <Button variant="outline" size="icon" className="h-9 w-9">
-                    <Settings className="h-4 w-4" />
-                </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-80" align="end">
-                <div className="grid gap-4">
-                    <div className="space-y-2">
-                        <h4 className="font-medium leading-none">Calendar Settings</h4>
-                        <p className="text-sm text-muted-foreground">
-                            Customize the calendar view.
-                        </p>
-                    </div>
-                    <Separator />
-                    <div className="grid gap-2">
-                        <Label>Date Field</Label>
-                        <RadioGroup defaultValue={calendarDateProp} onValueChange={(v) => setCalendarDateProp(v as CalendarDateProp)}>
-                            <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="dueDate" id="dueDate" />
-                                <Label htmlFor="dueDate">Due Date</Label>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="createdAt" id="createdAt" />
-                                <Label htmlFor="createdAt">Created Date</Label>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="updatedAt" id="updatedAt" />
-                                <Label htmlFor="updatedAt">Updated Date</Label>
-                            </div>
-                        </RadioGroup>
-                    </div>
-                    <div className="grid gap-2">
-                        <Label>Card Details</Label>
-                        {(['priority', 'assignee', 'tags'] as CalendarDisplayProp[]).map(prop => (
-                            <div key={prop} className="flex items-center space-x-2">
-                                <Checkbox id={prop} checked={calendarDisplayProps.includes(prop)} onCheckedChange={(c) => handleDisplayPropChange(prop, !!c)} />
-                                <Label htmlFor={prop} className="capitalize">{prop}</Label>
-                            </div>
-                        ))}
-                    </div>
-                    <div className="flex items-center justify-between">
-                        <Label htmlFor="show-all">Show all items per day</Label>
-                        <Switch id="show-all" checked={calendarItemLimit === 'all'} onCheckedChange={(c) => setCalendarItemLimit(c ? 'all' : 3)} />
-                    </div>
-                </div>
-            </PopoverContent>
-        </Popover>
-    );
-}
-```
-
 ## File: src/index.css
 ```css
 @import 'tailwindcss/base';
@@ -231,6 +151,92 @@ export function CalendarViewControls() {
     @apply rounded-[var(--radius)] border;
     border-color: var(--btn-border);
   }
+}
+```
+
+## File: src/pages/DataDemo/components/DataCalendarViewControls.tsx
+```typescript
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Button } from "@/components/ui/button";
+import { Settings } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
+import { Separator } from "@/components/ui/separator";
+import { useAppViewManager } from "@/hooks/useAppViewManager.hook";
+import type { CalendarDateProp, CalendarDisplayProp } from "../types";
+
+export function CalendarViewControls() {
+    const { 
+        calendarDateProp, setCalendarDateProp,
+        calendarDisplayProps, setCalendarDisplayProps,
+        calendarItemLimit, setCalendarItemLimit
+    } = useAppViewManager();
+
+    const handleDisplayPropChange = (prop: CalendarDisplayProp, checked: boolean) => {
+        const newProps = checked 
+            ? [...calendarDisplayProps, prop] 
+            : calendarDisplayProps.filter(p => p !== prop);
+        setCalendarDisplayProps(newProps);
+    };
+
+    return (
+        <Popover>
+            <PopoverTrigger asChild>
+                <Button variant="outline" size="icon" className="h-9 w-9">
+                    <Settings className="h-4 w-4" />
+                </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-80 p-4" align="end">
+                <div className="space-y-4">
+                    <div className="space-y-1">
+                        <h4 className="font-medium leading-none">Calendar Settings</h4>
+                        <p className="text-sm text-muted-foreground">
+                            Customize the calendar view.
+                        </p>
+                    </div>
+                    <Separator />
+                    <div className="space-y-3">
+                        <Label className="font-semibold">Date Property</Label>
+                        <RadioGroup value={calendarDateProp} onValueChange={(v) => setCalendarDateProp(v as CalendarDateProp)} className="gap-2">
+                            <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="dueDate" id="dueDate" />
+                                <Label htmlFor="dueDate" className="font-normal">Due Date</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="createdAt" id="createdAt" />
+                                <Label htmlFor="createdAt" className="font-normal">Created Date</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="updatedAt" id="updatedAt" />
+                                <Label htmlFor="updatedAt" className="font-normal">Updated Date</Label>
+                            </div>
+                        </RadioGroup>
+                    </div>
+                    <div className="space-y-3">
+                        <Label className="font-semibold">Card Details</Label>
+                        <div className="space-y-2">
+                            {(['priority', 'assignee', 'tags'] as CalendarDisplayProp[]).map(prop => (
+                                <div key={prop} className="flex items-center space-x-2">
+                                    <Checkbox id={prop} checked={calendarDisplayProps.includes(prop)} onCheckedChange={(c) => handleDisplayPropChange(prop, !!c)} />
+                                    <Label htmlFor={prop} className="capitalize font-normal">{prop}</Label>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                    <Separator />
+                    <div className="flex items-center justify-between">
+                         <div className="space-y-0.5">
+                            <Label htmlFor="show-all" className="font-semibold">Show all items</Label>
+                            <p className="text-xs text-muted-foreground">Display all items on a given day.</p>
+                        </div>
+                        <Switch id="show-all" checked={calendarItemLimit === 'all'} onCheckedChange={(c) => setCalendarItemLimit(c ? 'all' : 3)} />
+                    </div>
+                </div>
+            </PopoverContent>
+        </Popover>
+    );
 }
 ```
 
@@ -609,11 +615,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn, getPriorityColor } from "@/lib/utils";
-import type { DataItem } from "../types";
+import type { DataItem, CalendarDisplayProp, CalendarDateProp } from "../types";
 import { useAppViewManager } from "@/hooks/useAppViewManager.hook";
 import { useResizeObserver } from "@/hooks/useResizeObserver.hook";
 import { useSelectedItem, useDataDemoStore } from "../store/dataDemo.store";
 import { CalendarViewControls } from "./DataCalendarViewControls";
+import { ItemTags } from "./shared/DataItemParts";
 
 interface CalendarViewProps {
   data: DataItem[];
@@ -646,13 +653,15 @@ function CalendarHeader({ currentDate, onPrevMonth, onNextMonth, onToday }: {
   );
 }
 
-function CalendarEvent({ item, isSelected, isDragging, onDragStart }: { 
+function CalendarEvent({ item, isSelected, isDragging, onDragStart, displayProps }: { 
     item: DataItem; 
     isSelected: boolean;
     isDragging: boolean;
     onDragStart: (e: React.DragEvent<HTMLDivElement>, itemId: string) => void;
+    displayProps: CalendarDisplayProp[];
 }) {
   const { onItemSelect } = useAppViewManager();
+    const hasFooter = displayProps.includes('priority') || displayProps.includes('assignee');
 
     return (
         <motion.div
@@ -665,7 +674,7 @@ function CalendarEvent({ item, isSelected, isDragging, onDragStart }: {
             transition={{ duration: 0.2 }}
             onClick={() => onItemSelect(item)}
             className={cn(
-                "p-2.5 rounded-xl cursor-grab transition-all duration-200 border bg-card/60 dark:bg-neutral-800/60 backdrop-blur-sm",
+                "p-2 rounded-lg cursor-grab transition-all duration-200 border bg-card/60 dark:bg-neutral-800/60 backdrop-blur-sm space-y-1",
                 "hover:bg-card/80 dark:hover:bg-neutral-700/70",
                 isSelected && "ring-2 ring-primary ring-offset-background ring-offset-2 bg-card/90",
                 isDragging && "opacity-50 ring-2 ring-primary cursor-grabbing"
@@ -674,24 +683,46 @@ function CalendarEvent({ item, isSelected, isDragging, onDragStart }: {
             <h4 className="font-semibold text-sm leading-tight text-card-foreground/90 line-clamp-2">
                 {item.title}
             </h4>
-            <div className="flex items-center justify-between mt-2 pt-2 border-t border-border/30 dark:border-neutral-700/50">
-                <Badge className={cn("text-xs border capitalize", getPriorityColor(item.priority))}>
-                    {item.priority}
-                </Badge>
-                <Avatar className="w-5 h-5">
-                    <AvatarImage src={item.assignee.avatar} />
-                    <AvatarFallback className="text-[10px] bg-muted dark:bg-neutral-700 text-foreground dark:text-neutral-200 font-medium">
-                        {item.assignee.name.split(" ").map((n) => n[0]).join("")}
-                    </AvatarFallback>
-                </Avatar>
-            </div>
+
+            {displayProps.includes('tags') && item.tags.length > 0 && (
+                <ItemTags tags={item.tags} />
+            )}
+
+            {hasFooter && (
+                <div className="flex items-center justify-between pt-1 border-t border-border/30 dark:border-neutral-700/50">
+                    {displayProps.includes('priority') ? (
+                        <Badge className={cn("text-xs border capitalize", getPriorityColor(item.priority))}>
+                            {item.priority}
+                        </Badge>
+                    ) : <div />}
+                    {displayProps.includes('assignee') && (
+                        <Avatar className="w-5 h-5">
+                            <AvatarImage src={item.assignee.avatar} />
+                            <AvatarFallback className="text-[10px] bg-muted dark:bg-neutral-700 text-foreground dark:text-neutral-200 font-medium">
+                                {item.assignee.name.split(" ").map((n) => n[0]).join("")}
+                            </AvatarFallback>
+                        </Avatar>
+                    )}
+                </div>
+            )}
         </motion.div>
     );
 }
 
+const datePropLabels: Record<CalendarDateProp, string> = {
+  dueDate: 'due dates',
+  createdAt: 'creation dates',
+  updatedAt: 'update dates',
+};
+
 export function DataCalendarView({ data }: CalendarViewProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
-  const { itemId } = useAppViewManager();
+  const { 
+    itemId, 
+    calendarDateProp, 
+    calendarDisplayProps, 
+    calendarItemLimit 
+  } = useAppViewManager();
   const selectedItem = useSelectedItem(itemId);
   const updateItem = useDataDemoStore(s => s.updateItem);
   
@@ -709,20 +740,22 @@ export function DataCalendarView({ data }: CalendarViewProps) {
     return Math.max(3, Math.min(7, cols));
   }, [width]);
 
-  const itemsWithDueDate = useMemo(() => data.filter(item => !!item.dueDate), [data]);
+  const itemsByDateProp = useMemo(() => data.filter(item => !!item[calendarDateProp]), [data, calendarDateProp]);
 
   const eventsByDate = useMemo(() => {
     const eventsMap = new Map<string, DataItem[]>();
-    itemsWithDueDate.forEach(item => {
-      const dueDate = new Date(item.dueDate as string);
-      const dateKey = format(dueDate, "yyyy-MM-dd");
+    itemsByDateProp.forEach(item => {
+      const dateValue = item[calendarDateProp];
+      if (!dateValue) return;
+      const date = new Date(dateValue as string);
+      const dateKey = format(date, "yyyy-MM-dd");
       if (!eventsMap.has(dateKey)) {
         eventsMap.set(dateKey, []);
       }
       eventsMap.get(dateKey)?.push(item);
     });
     return eventsMap;
-  }, [itemsWithDueDate]);
+  }, [itemsByDateProp, calendarDateProp]);
 
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(monthStart);
@@ -759,13 +792,13 @@ export function DataCalendarView({ data }: CalendarViewProps) {
     e.preventDefault();
     const itemIdToUpdate = e.dataTransfer.getData('text/plain');
     if (itemIdToUpdate) {
-        const originalItem = itemsWithDueDate.find(i => i.id === itemIdToUpdate);
-        if (originalItem && originalItem.dueDate) {
-            const originalDate = new Date(originalItem.dueDate);
+        const originalItem = itemsByDateProp.find(i => i.id === itemIdToUpdate);
+        if (originalItem && originalItem[calendarDateProp]) {
+            const originalDate = new Date(originalItem[calendarDateProp] as string);
             // Preserve the time, only change the date part
             const newDueDate = new Date(day);
             newDueDate.setHours(originalDate.getHours(), originalDate.getMinutes(), originalDate.getSeconds(), originalDate.getMilliseconds());
-            updateItem(itemIdToUpdate, { dueDate: newDueDate.toISOString() });
+            updateItem(itemIdToUpdate, { [calendarDateProp]: newDueDate.toISOString() });
         }
     }
     handleDragEnd(); // Reset state
@@ -780,9 +813,9 @@ export function DataCalendarView({ data }: CalendarViewProps) {
       <div className="px-4 md:px-6 pb-2">
         <CalendarHeader currentDate={currentDate} onPrevMonth={handlePrevMonth} onNextMonth={handleNextMonth} onToday={handleToday} />
       </div>
-      {itemsWithDueDate.length === 0 ? (
+      {itemsByDateProp.length === 0 ? (
         <div className="flex items-center justify-center h-96 text-muted-foreground rounded-lg border bg-card/30 mx-4 md:mx-6">
-          No items with due dates to display on the calendar.
+          No items with {datePropLabels[calendarDateProp]} to display on the calendar.
         </div>
       ) : (
         <div className="px-2" onDragEnd={handleDragEnd}>
@@ -812,6 +845,10 @@ export function DataCalendarView({ data }: CalendarViewProps) {
               {days.map(day => {
                 const dateKey = format(day, "yyyy-MM-dd");
                 const dayEvents = eventsByDate.get(dateKey) || [];
+                const visibleEvents = calendarItemLimit === 'all' 
+                    ? dayEvents 
+                    : dayEvents.slice(0, calendarItemLimit as number);
+                const hiddenEventsCount = dayEvents.length - visibleEvents.length;
                 const isCurrentMonthDay = isSameMonth(day, currentDate);
                 const isDropTarget = dropTargetDate && isSameDay(day, dropTargetDate);
                 return (
@@ -840,20 +877,21 @@ export function DataCalendarView({ data }: CalendarViewProps) {
                     </div>
                     <div className="space-y-2 overflow-y-auto flex-grow custom-scrollbar">
                       <AnimatePresence>
-                        {dayEvents.slice(0, 4).map(item => (
+                        {visibleEvents.map(item => (
                           <CalendarEvent
                             key={item.id} 
                             item={item} 
                             isSelected={selectedItem?.id === item.id}
                             isDragging={draggedItemId === item.id}
                             onDragStart={handleDragStart}
+                            displayProps={calendarDisplayProps}
                           />
                         ))}
                       </AnimatePresence>
                     </div>
-                    {dayEvents.length > 4 && (
+                    {hiddenEventsCount > 0 && (
                       <div className="absolute bottom-1 right-2 text-xs font-bold text-muted-foreground">
-                        +{dayEvents.length - 4} more
+                        +{hiddenEventsCount} more
                       </div>
                     )}
                   </div>
@@ -873,9 +911,6 @@ export function DataCalendarView({ data }: CalendarViewProps) {
 export type ViewMode = 'list' | 'cards' | 'grid' | 'table' | 'kanban' | 'calendar'
 
 export type GroupableField = 'status' | 'priority' | 'category'
-
-export type CalendarDateProp = 'dueDate' | 'createdAt' | 'updatedAt';
-export type CalendarDisplayProp = 'priority' | 'assignee' | 'tags';
 
 export type CalendarDateProp = 'dueDate' | 'createdAt' | 'updatedAt';
 export type CalendarDisplayProp = 'priority' | 'assignee' | 'tags';
@@ -1055,7 +1090,11 @@ export function useAppViewManager() {
 	}, [sort]);
   const calendarDateProp = useMemo(() => (calDate || 'dueDate') as CalendarDateProp, [calDate]);
   const calendarDisplayProps = useMemo(
-    () => (calDisplay?.split(',') || ['priority', 'assignee']) as CalendarDisplayProp[],
+    () => {
+      if (calDisplay === null) return []; // Default is now nothing
+      if (calDisplay === '') return []; // Explicitly empty is also nothing
+      return calDisplay.split(',') as CalendarDisplayProp[];
+    },
     [calDisplay]
   );
   const calendarItemLimit = useMemo(() => {
@@ -1210,7 +1249,11 @@ export function useAppViewManager() {
 
   // Calendar specific actions
   const setCalendarDateProp = (prop: CalendarDateProp) => handleParamsChange({ calDate: prop === 'dueDate' ? null : prop });
-  const setCalendarDisplayProps = (props: CalendarDisplayProp[]) => handleParamsChange({ calDisplay: props.join(',') });
+  const setCalendarDisplayProps = (props: CalendarDisplayProp[]) => {
+    // Check for default state to keep URL clean
+    const isDefault = props.length === 0;
+    handleParamsChange({ calDisplay: isDefault ? null : props.join(',') });
+  };
   const setCalendarItemLimit = (limit: number | 'all') => handleParamsChange({ calLimit: limit === 3 ? null : String(limit) });
 
   const onItemSelect = useCallback((item: DataItem) => {

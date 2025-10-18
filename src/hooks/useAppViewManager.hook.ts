@@ -1,7 +1,7 @@
 import { useMemo, useCallback, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate, useLocation, useParams } from 'react-router-dom';
 import { useAppShellStore, type AppShellState, type ActivePage } from '@/store/appShell.store';
-import type { DataItem, ViewMode, SortConfig, SortableField, GroupableField, Status, Priority, CalendarDateProp, CalendarDisplayProp } from '@/pages/DataDemo/types';
+import type { DataItem, ViewMode, SortConfig, SortableField, GroupableField, Status, Priority, CalendarDateProp, CalendarDisplayProp, CalendarColorProp } from '@/pages/DataDemo/types';
 import type { FilterConfig } from '@/pages/DataDemo/components/DataToolbar';
 import type { TaskView } from '@/pages/Messaging/types';
 import { BODY_STATES, SIDEBAR_STATES } from '@/lib/utils';
@@ -49,6 +49,7 @@ export function useAppViewManager() {
   const calDate = searchParams.get('calDate');
   const calDisplay = searchParams.get('calDisplay');
   const calLimit = searchParams.get('calLimit');
+  const calColor = searchParams.get('calColor');
 
   const { bodyState, sidePaneContent } = useMemo(() => {
     const validPanes: AppShellState['sidePaneContent'][] = ['details', 'settings', 'main', 'toaster', 'notifications', 'dataDemo', 'messaging'];
@@ -126,6 +127,7 @@ export function useAppViewManager() {
     if (calLimit === 'all') return 'all';
     return isNaN(limit) ? 3 : limit;
   }, [calLimit]);
+  const calendarColorProp = useMemo(() => (calColor || 'none') as CalendarColorProp, [calColor]);
 
   // --- MUTATOR ACTIONS ---
 
@@ -279,6 +281,7 @@ export function useAppViewManager() {
     handleParamsChange({ calDisplay: isDefault ? null : props.join(',') });
   };
   const setCalendarItemLimit = (limit: number | 'all') => handleParamsChange({ calLimit: limit === 3 ? null : String(limit) });
+  const setCalendarColorProp = (prop: CalendarColorProp) => handleParamsChange({ calColor: prop === 'none' ? null : prop });
 
   const onItemSelect = useCallback((item: DataItem) => {
 		navigate(`/data-demo/${item.id}${location.search}`);
@@ -304,6 +307,7 @@ export function useAppViewManager() {
     calendarDateProp,
     calendarDisplayProps,
     calendarItemLimit,
+    calendarColorProp,
     // Actions
     navigateTo,
     openSidePane,
@@ -326,12 +330,13 @@ export function useAppViewManager() {
     setCalendarDateProp,
     setCalendarDisplayProps,
     setCalendarItemLimit,
+    setCalendarColorProp,
   }), [
     bodyState, sidePaneContent, currentActivePage, itemId, messagingView, viewMode,
     page, groupBy, activeGroupTab, filters, sortConfig, calendarDateProp,
-    calendarDisplayProps, calendarItemLimit,
+    calendarDisplayProps, calendarItemLimit, calendarColorProp,
     navigateTo, openSidePane, closeSidePane, toggleSidePane, toggleSplitView, setNormalView, setMessagingView,
     switchSplitPanes, closeSplitPane, onItemSelect, setViewMode, setGroupBy, setActiveGroupTab, setFilters,
-    setSort, setTableSort, setPage, setCalendarDateProp, setCalendarDisplayProps, setCalendarItemLimit
+    setSort, setTableSort, setPage, setCalendarDateProp, setCalendarDisplayProps, setCalendarItemLimit, setCalendarColorProp
   ]);
 }

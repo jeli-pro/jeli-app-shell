@@ -4,6 +4,7 @@ export type GroupableField = 'status' | 'priority' | 'category'
 
 export type CalendarDateProp = 'dueDate' | 'createdAt' | 'updatedAt';
 export type CalendarDisplayProp = 'priority' | 'assignee' | 'tags';
+export type CalendarColorProp = 'none' | 'priority' | 'status' | 'category';
 
 export type SortableField = 'title' | 'status' | 'priority' | 'updatedAt' | 'assignee.name' | 'metrics.views' | 'metrics.completion' | 'createdAt'
 export type SortDirection = 'asc' | 'desc'

@@ -28,7 +28,7 @@ data demo page: the data model should be based on message page,
 
 ===
 
-data demo page: calendar view : just like date property that user can select, also add calendar item background color that user can select based on what data
+data demo page: calendar view : just like date property that user can select, also add calendar item background color feature that user can select based on what data
 
 ===
 

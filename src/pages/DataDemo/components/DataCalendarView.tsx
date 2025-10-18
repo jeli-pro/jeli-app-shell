@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn, getPriorityColor } from "@/lib/utils";
-import type { DataItem, CalendarDisplayProp, CalendarDateProp } from "../types";
+import type { DataItem, CalendarDisplayProp, CalendarDateProp, CalendarColorProp, Status, Priority } from "../types";
 import { useAppViewManager } from "@/hooks/useAppViewManager.hook";
 import { useResizeObserver } from "@/hooks/useResizeObserver.hook";
 import { useSelectedItem, useDataDemoStore } from "../store/dataDemo.store";
@@ -17,6 +17,37 @@ import { ItemTags } from "./shared/DataItemParts";
 interface CalendarViewProps {
   data: DataItem[];
 }
+
+const PRIORITY_BG_COLORS: Record<Priority, string> = {
+  low: 'bg-blue-500/80 border-blue-600/80 text-white',
+  medium: 'bg-yellow-500/80 border-yellow-600/80 text-yellow-950',
+  high: 'bg-orange-500/80 border-orange-600/80 text-white',
+  critical: 'bg-red-600/80 border-red-700/80 text-white',
+};
+
+const STATUS_BG_COLORS: Record<Status, string> = {
+  active: 'bg-sky-500/80 border-sky-600/80 text-white',
+  pending: 'bg-amber-500/80 border-amber-600/80 text-amber-950',
+  completed: 'bg-emerald-600/80 border-emerald-700/80 text-white',
+  archived: 'bg-zinc-500/80 border-zinc-600/80 text-white',
+};
+
+const CATEGORY_BG_COLORS = [
+  'bg-rose-500/80 border-rose-600/80 text-white',
+  'bg-fuchsia-500/80 border-fuchsia-600/80 text-white',
+  'bg-indigo-500/80 border-indigo-600/80 text-white',
+  'bg-teal-500/80 border-teal-600/80 text-white',
+  'bg-lime-500/80 border-lime-600/80 text-lime-950',
+];
+
+const getCategoryBgColor = (category: string) => {
+  let hash = 0;
+  for (let i = 0; i < category.length; i++) {
+    hash = category.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const index = Math.abs(hash % CATEGORY_BG_COLORS.length);
+  return CATEGORY_BG_COLORS[index];
+};
 
 function CalendarHeader({ currentDate, onPrevMonth, onNextMonth, onToday }: {
   currentDate: Date;
@@ -45,15 +76,25 @@ function CalendarHeader({ currentDate, onPrevMonth, onNextMonth, onToday }: {
   );
 }
 
-function CalendarEvent({ item, isSelected, isDragging, onDragStart, displayProps }: { 
+function CalendarEvent({ item, isSelected, isDragging, onDragStart, displayProps, colorProp }: { 
     item: DataItem; 
     isSelected: boolean;
     isDragging: boolean;
     onDragStart: (e: React.DragEvent<HTMLDivElement>, itemId: string) => void;
     displayProps: CalendarDisplayProp[];
+    colorProp: CalendarColorProp;
 }) {
   const { onItemSelect } = useAppViewManager();
     const hasFooter = displayProps.includes('priority') || displayProps.includes('assignee');
+
+    const colorClass = useMemo(() => {
+      switch (colorProp) {
+        case 'priority': return PRIORITY_BG_COLORS[item.priority];
+        case 'status': return STATUS_BG_COLORS[item.status];
+        case 'category': return getCategoryBgColor(item.category);
+        default: return null;
+      }
+    }, [colorProp, item.priority, item.status, item.category]);
 
     return (
         <motion.div
@@ -66,13 +107,18 @@ function CalendarEvent({ item, isSelected, isDragging, onDragStart, displayProps
             transition={{ duration: 0.2 }}
             onClick={() => onItemSelect(item)}
             className={cn(
-                "p-2 rounded-lg cursor-grab transition-all duration-200 border bg-card/60 dark:bg-neutral-800/60 backdrop-blur-sm space-y-1",
-                "hover:bg-card/80 dark:hover:bg-neutral-700/70",
-                isSelected && "ring-2 ring-primary ring-offset-background ring-offset-2 bg-card/90",
-                isDragging && "opacity-50 ring-2 ring-primary cursor-grabbing"
+                "p-2 rounded-lg cursor-grab transition-all duration-200 border space-y-1",
+                isSelected && "ring-2 ring-primary ring-offset-background ring-offset-2",
+                isDragging && "opacity-50 ring-2 ring-primary cursor-grabbing",
+                colorClass 
+                  ? `${colorClass} hover:brightness-95 dark:hover:brightness-110`
+                  : "bg-card/60 dark:bg-neutral-800/60 backdrop-blur-sm hover:bg-card/80 dark:hover:bg-neutral-700/70"
             )}
         >
-            <h4 className="font-semibold text-sm leading-tight text-card-foreground/90 line-clamp-2">
+            <h4 className={cn(
+              "font-semibold text-sm leading-tight line-clamp-2",
+              colorClass ? "text-inherit" : "text-card-foreground/90"
+            )}>
                 {item.title}
             </h4>
 
@@ -81,7 +127,10 @@ function CalendarEvent({ item, isSelected, isDragging, onDragStart, displayProps
             )}
 
             {hasFooter && (
-                <div className="flex items-center justify-between pt-1 border-t border-border/30 dark:border-neutral-700/50">
+                <div className={cn(
+                    "flex items-center justify-between pt-1 border-t",
+                    colorClass ? "border-black/10 dark:border-white/10" : "border-border/30 dark:border-neutral-700/50"
+                )}>
                     {displayProps.includes('priority') ? (
                         <Badge className={cn("text-xs border capitalize", getPriorityColor(item.priority))}>
                             {item.priority}
@@ -110,10 +159,11 @@ const datePropLabels: Record<CalendarDateProp, string> = {
 export function DataCalendarView({ data }: CalendarViewProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const { 
-    itemId, 
+    itemId,
     calendarDateProp, 
     calendarDisplayProps, 
-    calendarItemLimit 
+    calendarItemLimit,
+    calendarColorProp,
   } = useAppViewManager();
   const selectedItem = useSelectedItem(itemId);
   const updateItem = useDataDemoStore(s => s.updateItem);
@@ -277,6 +327,7 @@ export function DataCalendarView({ data }: CalendarViewProps) {
                             isDragging={draggedItemId === item.id}
                             onDragStart={handleDragStart}
                             displayProps={calendarDisplayProps}
+                            colorProp={calendarColorProp}
                           />
                         ))}
                       </AnimatePresence>

@@ -7,13 +7,14 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { useAppViewManager } from "@/hooks/useAppViewManager.hook";
-import type { CalendarDateProp, CalendarDisplayProp } from "../types";
+import type { CalendarDateProp, CalendarDisplayProp, CalendarColorProp } from "../types";
 
 export function CalendarViewControls() {
     const { 
         calendarDateProp, setCalendarDateProp,
         calendarDisplayProps, setCalendarDisplayProps,
-        calendarItemLimit, setCalendarItemLimit
+        calendarItemLimit, setCalendarItemLimit,
+        calendarColorProp, setCalendarColorProp,
     } = useAppViewManager();
 
     const handleDisplayPropChange = (prop: CalendarDisplayProp, checked: boolean) => {
@@ -37,6 +38,28 @@ export function CalendarViewControls() {
                         <p className="text-sm text-muted-foreground">
                             Customize the calendar view.
                         </p>
+                    </div>
+                    <Separator />
+                    <div className="space-y-3">
+                        <Label className="font-semibold">Item Background Color</Label>
+                        <RadioGroup value={calendarColorProp} onValueChange={(v) => setCalendarColorProp(v as CalendarColorProp)} className="gap-2">
+                            <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="none" id="color-none" />
+                                <Label htmlFor="color-none" className="font-normal">None</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="priority" id="color-priority" />
+                                <Label htmlFor="color-priority" className="font-normal">By Priority</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="status" id="color-status" />
+                                <Label htmlFor="color-status" className="font-normal">By Status</Label>
+                            </div>
+                             <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="category" id="color-category" />
+                                <Label htmlFor="color-category" className="font-normal">By Category</Label>
+                            </div>
+                        </RadioGroup>
                     </div>
                     <Separator />
                     <div className="space-y-3">
