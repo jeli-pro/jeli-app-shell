@@ -61,3 +61,9 @@ export interface ViewProps {
 
 export type Status = DataItem['status']
 export type Priority = DataItem['priority']
+
+export interface FilterConfig {
+  searchTerm: string
+  status: Status[]
+  priority: Priority[]
+}

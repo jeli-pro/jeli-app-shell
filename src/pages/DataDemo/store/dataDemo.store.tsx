@@ -3,8 +3,7 @@ import { type ReactNode } from 'react';
 import { capitalize, cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { mockDataItems } from '../data/mockData';
-import type { DataItem, GroupableField, SortConfig } from '../types';
-import type { FilterConfig } from '../components/DataToolbar';
+import type { DataItem, GroupableField, SortConfig, FilterConfig } from '../types';
 
 // --- State and Actions ---
 interface DataDemoState {

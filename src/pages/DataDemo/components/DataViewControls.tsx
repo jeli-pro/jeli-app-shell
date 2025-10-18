@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { Check, ListFilter, Search, SortAsc } from 'lucide-react'
+import { Check, ListFilter, Search, SortAsc, ChevronsUpDown } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -25,14 +25,8 @@ import {
   CommandSeparator,
 } from '@/components/ui/command'
 
-import type { SortableField, Status, Priority } from '../types'
+import type { SortableField, Status, Priority, FilterConfig, GroupableField } from '../types'
 import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
-
-export interface FilterConfig {
-  searchTerm: string
-  status: Status[]
-  priority: Priority[]
-}
 
 const statusOptions: { value: Status; label: string }[] = [
   { value: 'active', label: 'Active' },
@@ -56,13 +50,19 @@ const sortOptions: { value: SortableField, label: string }[] = [
   { value: 'metrics.completion', label: 'Progress' },
 ]
 
+export interface DataViewControlsProps {
+  groupOptions: { id: GroupableField | 'none'; label: string }[];
+}
 
-export function DataToolbar() {
+export function DataViewControls({ groupOptions }: DataViewControlsProps) {
   const {
     filters,
     setFilters,
     sortConfig,
     setSort,
+    groupBy,
+    setGroupBy,
+    viewMode,
   } = useAppViewManager();
 
   const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -72,78 +72,101 @@ export function DataToolbar() {
   const activeFilterCount = filters.status.length + filters.priority.length
 
   return (
-    <div className="flex flex-col md:flex-row items-center justify-between gap-4 w-full">
-      {/* Left side: Search, Filters */}
-      <div className="flex flex-col sm:flex-row items-center gap-2 w-full md:w-auto">
-        <div className="relative w-full sm:w-auto">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search projects..."
-            className="pl-9 w-full sm:w-64"
-            value={filters.searchTerm}
-            onChange={handleSearchChange}
-          />
+    <div className="flex flex-col sm:flex-row items-center gap-2 w-full">
+      {/* Search */}
+      <div className="relative w-full sm:w-auto">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder="Search projects..."
+          className="pl-9 w-full sm:w-64"
+          value={filters.searchTerm}
+          onChange={handleSearchChange}
+        />
+      </div>
+
+      {/* Filters */}
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button variant="outline" size="sm" className="h-9 w-full sm:w-auto justify-start border-dashed">
+            <ListFilter className="mr-2 h-4 w-4" />
+            Filters
+            {activeFilterCount > 0 && (
+              <>
+                <div className="mx-2 h-4 w-px bg-muted-foreground/50" />
+                <Badge variant="secondary" className="rounded-sm px-1 font-normal">
+                  {activeFilterCount}
+                </Badge>
+              </>
+            )}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-[240px] p-0" align="start">
+          <CombinedFilter filters={filters} onFiltersChange={setFilters} />
+        </PopoverContent>
+      </Popover>
+
+      {activeFilterCount > 0 && (
+        <Button variant="ghost" size="sm" onClick={() => setFilters({ searchTerm: filters.searchTerm, status: [], priority: [] })}>Reset</Button>
+      )}
+
+      {/* Spacer */}
+      <div className="hidden md:block flex-grow" />
+
+      {/* Sorter */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="outline" size="sm" className="h-9 w-full sm:w-auto justify-start">
+            <SortAsc className="mr-2 h-4 w-4" />
+            Sort by: {sortOptions.find(o => o.value === sortConfig?.key)?.label || 'Default'}
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-[200px]">
+          <DropdownMenuLabel>Sort by</DropdownMenuLabel>
+          <DropdownMenuRadioGroup
+            value={`${sortConfig?.key || 'default'}-${sortConfig?.direction || ''}`}
+            onValueChange={(value) => {
+              if (value.startsWith('default')) {
+                setSort(null)
+              } else {
+                const [key, direction] = value.split('-')
+                setSort({ key: key as SortableField, direction: direction as 'asc' | 'desc' })
+              }
+            }}
+          >
+            <DropdownMenuRadioItem value="default-">Default</DropdownMenuRadioItem>
+            <DropdownMenuSeparator />
+            {sortOptions.map(option => (
+              <React.Fragment key={option.value}>
+                <DropdownMenuRadioItem value={`${option.value}-desc`}>{option.label} (Desc)</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value={`${option.value}-asc`}>{option.label} (Asc)</DropdownMenuRadioItem>
+              </React.Fragment>
+            ))}
+          </DropdownMenuRadioGroup>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      {/* Group By Dropdown */}
+      {viewMode !== 'calendar' && (
+        <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="h-9 w-full justify-between">
+                Group by: {groupOptions.find(o => o.id === groupBy)?.label}
+                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="w-[180px]">
+              <DropdownMenuRadioGroup value={groupBy} onValueChange={setGroupBy}>
+                {groupOptions.map(option => (
+                  <DropdownMenuRadioItem key={option.id} value={option.id}>
+                    {option.label}
+                  </DropdownMenuRadioItem>
+                ))}
+              </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
-
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button variant="outline" size="sm" className="h-9 w-full sm:w-auto justify-start border-dashed">
-              <ListFilter className="mr-2 h-4 w-4" />
-              Filters
-              {activeFilterCount > 0 && (
-                <>
-                  <div className="mx-2 h-4 w-px bg-muted-foreground/50" />
-                  <Badge variant="secondary" className="rounded-sm px-1 font-normal">
-                    {activeFilterCount}
-                  </Badge>
-                </>
-              )}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-[240px] p-0" align="start">
-            <CombinedFilter filters={filters} onFiltersChange={setFilters} />
-          </PopoverContent>
-        </Popover>
-
-        {activeFilterCount > 0 && (
-          <Button variant="ghost" onClick={() => setFilters({ searchTerm: filters.searchTerm, status: [], priority: [] })}>Reset</Button>
-        )}
-      </div>
-
-      {/* Right side: Sorter */}
-      <div className="flex items-center gap-2 w-full md:w-auto justify-start md:justify-end">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="w-full sm:w-auto justify-start">
-              <SortAsc className="mr-2 h-4 w-4" />
-              Sort by: {sortOptions.find(o => o.value === sortConfig?.key)?.label || 'Default'}
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-[200px]">
-            <DropdownMenuLabel>Sort by</DropdownMenuLabel>
-            <DropdownMenuRadioGroup
-              value={`${sortConfig?.key || 'default'}-${sortConfig?.direction || ''}`}
-              onValueChange={(value) => {
-                if (value.startsWith('default')) {
-                  setSort(null)
-                } else {
-                  const [key, direction] = value.split('-')
-                  setSort({ key: key as SortableField, direction: direction as 'asc' | 'desc' })
-                }
-              }}
-            >
-              <DropdownMenuRadioItem value="default-">Default</DropdownMenuRadioItem>
-              <DropdownMenuSeparator />
-              {sortOptions.map(option => (
-                <React.Fragment key={option.value}>
-                  <DropdownMenuRadioItem value={`${option.value}-desc`}>{option.label} (Desc)</DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value={`${option.value}-asc`}>{option.label} (Asc)</DropdownMenuRadioItem>
-                </React.Fragment>
-              ))}
-            </DropdownMenuRadioGroup>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
+      )}
     </div>
   )
 }

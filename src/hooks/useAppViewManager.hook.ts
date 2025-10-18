@@ -2,7 +2,7 @@ import { useMemo, useCallback, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate, useLocation, useParams } from 'react-router-dom';
 import { useAppShellStore, type AppShellState, type ActivePage } from '@/store/appShell.store';
 import type { DataItem, ViewMode, SortConfig, SortableField, GroupableField, Status, Priority, CalendarDateProp, CalendarDisplayProp, CalendarColorProp } from '@/pages/DataDemo/types';
-import type { FilterConfig } from '@/pages/DataDemo/components/DataToolbar';
+import type { FilterConfig } from '@/pages/DataDemo/types';
 import type { TaskView } from '@/pages/Messaging/types';
 import { BODY_STATES, SIDEBAR_STATES } from '@/lib/utils';
 

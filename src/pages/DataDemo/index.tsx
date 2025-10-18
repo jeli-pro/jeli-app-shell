@@ -4,7 +4,6 @@ import {
   AlertTriangle, 
   PlayCircle, 
   Loader2,
-  ChevronsUpDown,
   TrendingUp,
   CheckCircle,
   Clock,
@@ -13,14 +12,6 @@ import {
 } from 'lucide-react'
 import { gsap } from 'gsap'
 import { cn } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuRadioGroup, 
-  DropdownMenuRadioItem, 
-  DropdownMenuTrigger 
-} from '@/components/ui/dropdown-menu'
 import { PageLayout } from '@/components/shared/PageLayout'
 import { useScrollToBottom } from '@/hooks/useScrollToBottom.hook';
 import { ScrollToBottomButton } from '@/components/shared/ScrollToBottomButton';
@@ -33,7 +24,7 @@ import { DataViewModeSelector } from './components/DataViewModeSelector'
 import { AnimatedTabs } from '@/components/ui/animated-tabs'
 import { StatCard } from '@/components/shared/StatCard'
 import { AnimatedLoadingSkeleton } from './components/AnimatedLoadingSkeleton'
-import { DataToolbar } from './components/DataToolbar'
+import { DataViewControls } from './components/DataViewControls'
 import { mockDataItems } from './data/mockData'
 import type { GroupableField, DataItem } from './types'
 import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
@@ -110,9 +101,12 @@ function DataDemoContent() {
     return groupedData[activeGroupTab] || [];
   }, [groupBy, activeGroupTab, allItems, groupedData]);
 
-  const groupOptions = useMemo(() => [
-    { id: 'none' as const, label: 'None' }, { id: 'status' as const, label: 'Status' }, { id: 'priority' as const, label: 'Priority' }, { id: 'category' as const, label: 'Category' }
-  ], []);
+  const groupOptions = useMemo(() => ([
+    { id: 'none' as const, label: 'None' }, 
+    { id: 'status' as const, label: 'Status' }, 
+    { id: 'priority' as const, label: 'Priority' }, 
+    { id: 'category' as const, label: 'Category' }
+  ]), []);
 
   const statsRef = useRef<HTMLDivElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -248,10 +242,10 @@ function DataDemoContent() {
       setSort(null); // Kanban is manually sorted, so disable programmatic sort
     }
     // For calendar view, we don't want grouping.
-    if (viewMode === 'calendar') {
-      if (groupBy !== 'none') setGroupBy('none');
+    if (viewMode === 'calendar' && groupBy !== 'none') {
+      setGroupBy('none');
     }
-  }, [viewMode, groupBy, setGroupBy]);
+  }, [viewMode, groupBy, setGroupBy, setSort]);
 
   const renderViewForData = useCallback((data: DataItem[]) => {
     switch (viewMode) {
@@ -266,29 +260,6 @@ function DataDemoContent() {
     }
   }, [viewMode]);
 
-  const GroupByDropdown = useCallback(() => (
-    <div className="flex items-center gap-2 shrink-0">
-      <span className="text-sm font-medium text-muted-foreground shrink-0">Group by:</span>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="outline" className="w-[180px] justify-between">
-            {groupOptions.find(o => o.id === groupBy)?.label}
-            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent className="w-[180px]">
-          <DropdownMenuRadioGroup value={groupBy} onValueChange={setGroupBy}>
-            {groupOptions.map(option => (
-              <DropdownMenuRadioItem key={option.id} value={option.id}>
-                {option.label}
-              </DropdownMenuRadioItem>
-            ))}
-          </DropdownMenuRadioGroup>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </div>
-  ), [groupBy, setGroupBy, groupOptions]);
-
   const isGroupedView = useMemo(() => 
     groupBy !== 'none' && groupTabs.length > 1 && groupedData,
   [groupBy, groupTabs.length, groupedData]);
@@ -300,18 +271,21 @@ function DataDemoContent() {
       onScroll={handleScroll}
       // Note: Search functionality is handled by a separate SearchBar in the TopBar
     >
-      <div className="space-y-8">
+      <div className="space-y-6">
         {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div className="flex-1">
-            <h1 className="text-2xl font-bold tracking-tight">Data Showcase</h1>
-            <p className="text-muted-foreground">
-              {isInitialLoading 
-                ? "Loading projects..." 
-                : `Showing ${dataToRender.length} of ${totalItemCount} item(s)`}
-            </p>
+        <div className="space-y-4">
+          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+            <div className="flex-1">
+              <h1 className="text-2xl font-bold tracking-tight">Data Showcase</h1>
+              <p className="text-muted-foreground">
+                {isInitialLoading 
+                  ? "Loading projects..." 
+                  : `Showing ${dataToRender.length} of ${totalItemCount} item(s)`}
+              </p>
+            </div>
+            <DataViewModeSelector />
           </div>
-          <DataViewModeSelector />
+          <DataViewControls groupOptions={groupOptions} />
         </div>
 
         {/* Stats Section */}
@@ -332,11 +306,6 @@ function DataDemoContent() {
           </div>
         )}
 
-        {/* Controls Area */}
-        <div className="space-y-6">
-          <DataToolbar />
-        </div>
-
         <div className="min-h-[500px]">
           {isInitialLoading 
             ? <AnimatedLoadingSkeleton viewMode={viewMode} /> 
@@ -344,29 +313,15 @@ function DataDemoContent() {
               <DataCalendarView data={allItems} />
             )
             : viewMode === 'kanban' ? (
-              <>
-                <div className="flex items-center justify-end gap-4 h-[68px]">
-                  <GroupByDropdown />
+              isGroupedView ? (
+                <DataKanbanView data={groupedData} />
+              ) : (
+                <div className="flex items-center justify-center h-96 text-muted-foreground">
+                  Group data by a metric to use the Kanban view.
                 </div>
-                {isGroupedView ? (
-                  <DataKanbanView data={groupedData} />
-                ) : (
-                  <div className="flex items-center justify-center h-96 text-muted-foreground">
-                    Group data by a metric to use the Kanban view.
-                  </div>
-                )}
-              </>
+              )
             )
-            : !isGroupedView ? (
-              // Not grouped view
-              <>
-                <div className="flex items-center justify-between gap-4 h-[68px]">
-                  <div className="flex-grow border-b" /> {/* Mimic tab border */}
-                  <GroupByDropdown />
-                </div>
-                {renderViewForData(allItems)}
-              </>
-            ) : (
+            : !isGroupedView ? renderViewForData(allItems) : (
               // Grouped view with AnimatedTabs
               <div className="relative">
                 <AnimatedTabs
@@ -385,9 +340,6 @@ function DataDemoContent() {
                     </div>
                   ))}
                 </AnimatedTabs>
-                <div className="absolute top-[14px] right-0">
-                    <GroupByDropdown />
-                </div>
               </div>
             )
           }
