@@ -33,16 +33,11 @@
     "index.html",
     "src/index.css",
     // "src"
-    "src/components/shared/PageLayout.tsx",
     "src/components/shared/StatCard.tsx",
-    "src/hooks/useAutoAnimateTopBar.ts",
+    "src/index.css",
+    "src/pages/DataDemo/hooks/useAutoAnimateStats.hook.ts",
     "src/pages/DataDemo/index.tsx",
-    //
-    // "src/hooks/useAppViewManager.hook.ts",
-    // "src/lib/utils.ts",
-    // "src/pages/DataDemo/components/DataCalendarView.tsx",
-    "src/pages/DataDemo/index.tsx"
-    // "src/pages/DataDemo/types.ts"
+    "src/pages/DataDemo/types.ts"
     // // //
     //
     //

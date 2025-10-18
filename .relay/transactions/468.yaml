@@ -1,35 +1,195 @@
-uuid: c2584ec6-3914-41d3-a5fe-001091a13470
+uuid: c25841ba-7b00-41ab-881c-4b53112b322f
 projectId: jeli-app-shell
-createdAt: '2025-10-18T07:53:28.260Z'
+createdAt: '2025-10-18T08:07:27.339Z'
 gitCommitMsg: >-
-  perf: Tweak animation timings for stat cards
+  feat(DataDemo): Convert stats section to a horizontal scroll container
 
-  Adjusted the GSAP animation durations and staggers for the stat cards and
-  their internal charts. This makes the animations feel snappier and more
-  responsive, mitigating the perceived performance heaviness introduced by the
-  scroll-based container animation.
+  Refactored the stats card section on the DataDemo page from a responsive grid
+  to a horizontally scrollable flex container. This provides a more modern,
+  scalable, and touch-friendly UI for displaying dashboard statistics,
+  especially on smaller viewports.
+
+  - Added four new stat cards to demonstrate scrolling functionality. - Replaced
+  the grid layout with a flexbox layout using `overflow-x-auto`. - Utilized the
+  existing `.no-scrollbar` utility to hide the scrollbar for a cleaner look. -
+  Updated `StatCard` to have a fixed width (`w-72`) and prevent shrinking
+  (`flex-shrink-0`) to ensure a consistent layout within the scrolling
+  container.
 promptSummary: >-
-  The user wants to fix a perceived lag in the stats cards animations after
-  adding a "scroll magnetism" feature. The animations feel heavy.
+  I want to make the stats cards on the data demo page horizontally scrollable
+  instead of wrapping in a grid. They should be in a single row, even on small
+  screens, and the cards should be smaller for responsive design. I also want
+  more than four stats cards.
 reasoning:
   - >-
-    The "scroll magnetism" feature, which animates the stats card container on
-    scroll, can make other animations on the page feel heavy or laggy,
-    especially if they are long-running. To address this, I will adjust the
-    animation timings for both the initial reveal of the stat cards and the
-    chart animations within each card. By making these animations faster and
-    snappier, the overall user experience will feel lighter and more responsive,
-    mitigating the perceived lag.
+    Based on your request, I will refactor the statistics section on the Data
+    Demo page to be a horizontally scrollable container. This will improve
+    responsiveness and allow for more stat cards without breaking the layout. I
+    will add more stat cards to demonstrate this new functionality and adjust
+    the styling to create the sliding effect with a hidden scrollbar.
   - >-
-    First, I will modify the `StatCard` component to shorten the duration of the
-    line-drawing and area-reveal animations for the mini-charts.
+    First, I'll update the `DataDemo` page to include more statistics. This will
+    ensure there's enough content to necessitate scrolling. I'll also add the
+    necessary icons for the new stats.
   - >-
-    Next, I will adjust the initial stagger animation for the group of stat
-    cards in the `DataDemo` page, making it complete more quickly.
+    Next, I'll modify the `StatCard` component. I'll give it a fixed width and
+    prevent it from shrinking inside the new flex container. This ensures all
+    cards are a consistent size, which is crucial for a smooth horizontal
+    scrolling experience.
   - >-
-    These adjustments will make the animations crisper and should resolve the
-    feeling of sluggishness when interacting with the page.
+    Finally, I'll replace the grid layout for the stats section with a flexbox
+    layout. By enabling horizontal overflow and using an existing utility class
+    to hide the scrollbar, we achieve the desired "slideable" effect.
+  - >-
+    I've noticed I've provided the same change for
+    `src/pages/DataDemo/index.tsx` twice. I will consolidate my changes into a
+    single block for that file. My apologies. Here is the corrected sequence.
+  - >-
+    First, I'll update the `DataDemo` page to include more statistics and the
+    necessary icons. At the same time, I will replace the grid layout with a
+    horizontally scrolling flex container.
+  - >-
+    Next, I'll modify the `StatCard` component, giving it a fixed width and
+    preventing it from shrinking to ensure a consistent look within the new
+    scrolling container.
+  - >-
+    These changes convert the stats section into a responsive,
+    horizontally-scrolling list, which is a more modern and scalable approach
+    for dashboards.
 operations:
+  - type: write
+    path: src/pages/DataDemo/index.tsx
+    content: >+
+      --- src/pages/DataDemo/index.tsx
+
+      +++ src/pages/DataDemo/index.tsx
+
+      @@ -1,11 +1,15 @@
+       import { useRef, useEffect, useCallback, useMemo } from 'react'
+       import {
+      -  Layers, 
+
+      -  AlertTriangle, 
+
+      -  PlayCircle, 
+
+      +  Layers,
+
+      +  AlertTriangle,
+
+      +  PlayCircle,
+         TrendingUp,
+         Loader2,
+      -  ChevronsUpDown
+
+      +  ChevronsUpDown,
+
+      +  Archive,
+
+      +  Clock,
+
+      +  PlusSquare,
+
+      +  BadgeCheck,
+       } from 'lucide-react'
+       import { gsap } from 'gsap'
+       import { cn } from '@/lib/utils'
+      @@ -141,7 +145,43 @@
+             trend: "up" as const,
+             type: 'chart',
+             chartData: [65, 68, 70, 69, 72, 75, 78]
+      -    }
+
+      +    },
+
+      +    {
+
+      +      title: "Overdue Items",
+
+      +      value: "12",
+
+      +      icon: <Clock className="w-5 h-5" />,
+
+      +      change: "+2 this week",
+
+      +      trend: "down",
+
+      +      type: 'chart',
+
+      +      chartData: [8, 9, 11, 10, 12, 12, 12],
+
+      +    },
+
+      +    {
+
+      +      title: "New This Week",
+
+      +      value: "27",
+
+      +      icon: <PlusSquare className="w-5 h-5" />,
+
+      +      change: "+15.8%",
+
+      +      trend: "up",
+
+      +      type: 'chart',
+
+      +      chartData: [15, 18, 22, 20, 25, 26, 27],
+
+      +    },
+
+      +    {
+
+      +      title: "Archived",
+
+      +      value: "153",
+
+      +      icon: <Archive className="w-5 h-5" />,
+
+      +      change: "+10 last month",
+
+      +      trend: "up",
+
+      +      type: 'chart',
+
+      +      chartData: [130, 135, 138, 140, 142, 148, 153],
+
+      +    },
+
+      +    {
+
+      +      title: "Quality Score",
+
+      +      value: "92.7%",
+
+      +      icon: <BadgeCheck className="w-5 h-5" />,
+
+      +      change: "-0.5%",
+
+      +      trend: "down",
+
+      +      type: 'chart',
+
+      +      chartData: [95, 94, 93.5, 93, 93.2, 92.8, 92.7],
+
+      +    },
+         ]
+       
+         useEffect(() => {
+      @@ -282,7 +322,7 @@
+       
+               {/* Stats Section */}
+               {!isInitialLoading && (
+      -          <div ref={statsRef} className="grid
+      grid-cols-[repeat(auto-fit,minmax(250px,1fr))] gap-6">
+
+      +          <div ref={statsRef} className="flex gap-6 overflow-x-auto pb-2
+      no-scrollbar">
+                   {stats.map((stat) => (
+                     <StatCard
+                       key={stat.title}
+
+    patchStrategy: standard-diff
   - type: write
     path: src/components/shared/StatCard.tsx
     content: >+
@@ -37,163 +197,206 @@ operations:
 
       +++ src/components/shared/StatCard.tsx
 
-      @@ -19,8 +19,8 @@
-             if (line instanceof SVGPathElement && area) {
-               const length = line.getTotalLength();
-               gsap.set(line, { strokeDasharray: length, strokeDashoffset: length });
-      -        gsap.to(line, { strokeDashoffset: 0, duration: 1.5, ease:
-      'power2.inOut' });
+      @@ -95,8 +95,8 @@
+       
+         return (
+           <Card className={cn(
+      -        "p-6 border-border/50 hover:border-primary/30 transition-all
+      duration-300 group cursor-pointer flex flex-col justify-between",
 
-      -        gsap.fromTo(area, { opacity: 0, y: 10 }, { opacity: 1, y: 0,
-      duration: 1, ease: 'power2.out', delay: 0.5 });
-
-      +        gsap.to(line, { strokeDashoffset: 0, duration: 1.2, ease:
-      'power2.inOut' });
-
-      +        gsap.fromTo(area, { opacity: 0, y: 10 }, { opacity: 1, y: 0,
-      duration: 0.8, ease: 'power2.out', delay: 0.4 });
-             }
-           }
-         }, [chartData]);
+      +        "p-6 border-border/50 hover:border-primary/30 transition-all
+      duration-300 group cursor-pointer flex flex-col justify-between
+      flex-shrink-0 w-72",
+               !chartData && "h-full" // Ensure cards without charts have consistent height if needed
+           )}>
+             <div>
 
     patchStrategy: standard-diff
   - type: write
     path: src/pages/DataDemo/index.tsx
-    content: |+
+    content: >+
       --- src/pages/DataDemo/index.tsx
+
       +++ src/pages/DataDemo/index.tsx
-      @@ -176,10 +176,10 @@
-             gsap.fromTo(statsRef.current.children,
-               { y: 30, opacity: 0 },
-               {
-      -          duration: 0.6,
-      +          duration: 0.5,
-                 y: 0,
-                 opacity: 1,
-      -          stagger: 0.1,
-      +          stagger: 0.08,
-                 ease: "power2.out"
-               }
-             )
+
+      @@ -282,7 +282,7 @@
+       
+               {/* Stats Section */}
+               {!isInitialLoading && (
+      -          <div ref={statsRef} className="grid
+      grid-cols-[repeat(auto-fit,minmax(250px,1fr))] gap-6">
+
+      +          <div ref={statsRef} className="flex gap-6 overflow-x-auto pb-2
+      no-scrollbar">
+                   {stats.map((stat) => (
+                     <StatCard
+                       key={stat.title}
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/DataDemo/index.tsx
+    content: >+
+      --- src/pages/DataDemo/index.tsx
+
+      +++ src/pages/DataDemo/index.tsx
+
+      @@ -1,11 +1,15 @@
+       import { useRef, useEffect, useCallback, useMemo } from 'react'
+       import {
+      -  Layers, 
+
+      -  AlertTriangle, 
+
+      -  PlayCircle, 
+
+      +  Layers,
+
+      +  AlertTriangle,
+
+      +  PlayCircle,
+         TrendingUp,
+         Loader2,
+      -  ChevronsUpDown
+
+      +  ChevronsUpDown,
+
+      +  Archive,
+
+      +  Clock,
+
+      +  PlusSquare,
+
+      +  BadgeCheck,
+       } from 'lucide-react'
+       import { gsap } from 'gsap'
+       import { cn } from '@/lib/utils'
+      @@ -141,7 +145,43 @@
+             trend: "up" as const,
+             type: 'chart',
+             chartData: [65, 68, 70, 69, 72, 75, 78]
+      -    }
+
+      +    },
+
+      +    {
+
+      +      title: "Overdue Items",
+
+      +      value: "12",
+
+      +      icon: <Clock className="w-5 h-5" />,
+
+      +      change: "+2 this week",
+
+      +      trend: "down",
+
+      +      type: 'chart',
+
+      +      chartData: [8, 9, 11, 10, 12, 12, 12],
+
+      +    },
+
+      +    {
+
+      +      title: "New This Week",
+
+      +      value: "27",
+
+      +      icon: <PlusSquare className="w-5 h-5" />,
+
+      +      change: "+15.8%",
+
+      +      trend: "up",
+
+      +      type: 'chart',
+
+      +      chartData: [15, 18, 22, 20, 25, 26, 27],
+
+      +    },
+
+      +    {
+
+      +      title: "Archived",
+
+      +      value: "153",
+
+      +      icon: <Archive className="w-5 h-5" />,
+
+      +      change: "+10 last month",
+
+      +      trend: "up",
+
+      +      type: 'chart',
+
+      +      chartData: [130, 135, 138, 140, 142, 148, 153],
+
+      +    },
+
+      +    {
+
+      +      title: "Quality Score",
+
+      +      value: "92.7%",
+
+      +      icon: <BadgeCheck className="w-5 h-5" />,
+
+      +      change: "-0.5%",
+
+      +      trend: "down",
+
+      +      type: 'chart',
+
+      +      chartData: [95, 94, 93.5, 93, 93.2, 92.8, 92.7],
+
+      +    },
+         ]
+       
+         useEffect(() => {
+      @@ -282,7 +322,7 @@
+       
+               {/* Stats Section */}
+               {!isInitialLoading && (
+      -          <div ref={statsRef} className="grid
+      grid-cols-[repeat(auto-fit,minmax(250px,1fr))] gap-6">
+
+      +          <div ref={statsRef} className="flex gap-6 overflow-x-auto pb-2
+      no-scrollbar">
+                   {stats.map((stat) => (
+                     <StatCard
+                       key={stat.title}
+      @@ -296,6 +336,7 @@
+                   ))}
+                 </div>
+               )}
+      +
+       
+               {/* Controls Area */}
+               <div className="space-y-6">
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/components/shared/StatCard.tsx
+    content: >+
+      --- src/components/shared/StatCard.tsx
+
+      +++ src/components/shared/StatCard.tsx
+
+      @@ -95,7 +95,7 @@
+       
+         return (
+           <Card className={cn(
+      -        "p-6 border-border/50 hover:border-primary/30 transition-all
+      duration-300 group cursor-pointer flex flex-col justify-between",
+
+      +        "p-6 border-border/50 hover:border-primary/30 transition-all
+      duration-300 group cursor-pointer flex flex-col justify-between
+      flex-shrink-0 w-72",
+               !chartData && "h-full" // Ensure cards without charts have consistent height if needed
+           )}>
+             <div>
 
     patchStrategy: standard-diff
 snapshot:
-  src/components/shared/StatCard.tsx: >-
-    import React, { useLayoutEffect, useRef } from 'react';
-
-    import { gsap } from 'gsap';
-
-    import { cn } from '@/lib/utils';
-
-    import { Card } from '@/components/ui/card';
-
-
-    interface StatCardProps {
-      title: string;
-      value: string;
-      change: string;
-      trend: 'up' | 'down';
-      icon: React.ReactNode;
-      chartData?: number[];
-    }
-
-
-    export function StatCard({ title, value, change, trend, icon, chartData }:
-    StatCardProps) {
-      const chartRef = useRef<SVGSVGElement>(null);
-
-      useLayoutEffect(() => {
-        // Only run animation if chartData is present
-        if (chartRef.current && chartData) {
-          const line = chartRef.current.querySelector('.chart-line');
-          const area = chartRef.current.querySelector('.chart-area');
-          if (line instanceof SVGPathElement && area) {
-            const length = line.getTotalLength();
-            gsap.set(line, { strokeDasharray: length, strokeDashoffset: length });
-            gsap.to(line, { strokeDashoffset: 0, duration: 1.5, ease: 'power2.inOut' });
-            gsap.fromTo(area, { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 1, ease: 'power2.out', delay: 0.5 });
-          }
-        }
-      }, [chartData]);
-
-      // --- Chart rendering logic (only if chartData is provided) ---
-      const renderChart = () => {
-        if (!chartData || chartData.length < 2) return null;
-
-        // SVG dimensions
-        const width = 150;
-        const height = 60;
-
-        // Normalize data
-        const max = Math.max(...chartData);
-        const min = Math.min(...chartData);
-        const range = max - min === 0 ? 1 : max - min;
-
-        const points = chartData
-          .map((val, i) => {
-            const x = (i / (chartData.length - 1)) * width;
-            const y = height - ((val - min) / range) * (height - 10) + 5; // Add vertical padding
-            return `${x},${y}`;
-          });
-
-        const linePath = "M" + points.join(" L");
-        const areaPath = `${linePath} L${width},${height} L0,${height} Z`;
-
-        return (
-          <div className="mt-4 -mb-2 -mx-2">
-            <svg ref={chartRef} viewBox={`0 0 ${width} ${height}`} className="w-full h-auto" preserveAspectRatio="none">
-              <defs>
-                <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" className="text-primary" stopColor="currentColor" stopOpacity={0.3} />
-                  <stop offset="100%" className="text-primary" stopColor="currentColor" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <path
-                className="chart-area"
-                d={areaPath}
-                fill="url(#chartGradient)"
-              />
-              <path
-                className="chart-line"
-                d={linePath}
-                fill="none"
-                stroke="hsl(var(--primary))"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </div>
-        );
-      };
-      // --- End of chart rendering logic ---
-
-      return (
-        <Card className={cn(
-            "p-6 border-border/50 hover:border-primary/30 transition-all duration-300 group cursor-pointer flex flex-col justify-between",
-            !chartData && "h-full" // Ensure cards without charts have consistent height if needed
-        )}>
-          <div>
-            <div className="flex items-center justify-between">
-              <div className="p-3 bg-primary/10 rounded-full group-hover:bg-primary/20 transition-colors">
-                {icon}
-              </div>
-              <div className={cn(
-                "text-sm font-medium",
-                trend === 'up' ? "text-green-600" : "text-red-600"
-              )}>
-                {change}
-              </div>
-            </div>
-            <div className="mt-4">
-              <h3 className="text-2xl font-bold">{value}</h3>
-              <p className="text-sm text-muted-foreground mt-1">{title}</p>
-            </div>
-          </div>
-          {renderChart()}
-        </Card>
-      );
-    }
   src/pages/DataDemo/index.tsx: >
     import { useRef, useEffect, useCallback, useMemo } from 'react'
 
@@ -397,10 +600,10 @@ snapshot:
           gsap.fromTo(statsRef.current.children,
             { y: 30, opacity: 0 },
             {
-              duration: 0.6,
+              duration: 0.5,
               y: 0,
               opacity: 1,
-              stagger: 0.1,
+              stagger: 0.08,
               ease: "power2.out"
             }
           )
@@ -606,10 +809,126 @@ snapshot:
     export default function DataDemoPage() {
       return <DataDemoContent />;
     }
-approved: true
+  src/components/shared/StatCard.tsx: >-
+    import React, { useLayoutEffect, useRef } from 'react';
+
+    import { gsap } from 'gsap';
+
+    import { cn } from '@/lib/utils';
+
+    import { Card } from '@/components/ui/card';
+
+
+    interface StatCardProps {
+      title: string;
+      value: string;
+      change: string;
+      trend: 'up' | 'down';
+      icon: React.ReactNode;
+      chartData?: number[];
+    }
+
+
+    export function StatCard({ title, value, change, trend, icon, chartData }:
+    StatCardProps) {
+      const chartRef = useRef<SVGSVGElement>(null);
+
+      useLayoutEffect(() => {
+        // Only run animation if chartData is present
+        if (chartRef.current && chartData) {
+          const line = chartRef.current.querySelector('.chart-line');
+          const area = chartRef.current.querySelector('.chart-area');
+          if (line instanceof SVGPathElement && area) {
+            const length = line.getTotalLength();
+            gsap.set(line, { strokeDasharray: length, strokeDashoffset: length });
+            gsap.to(line, { strokeDashoffset: 0, duration: 1.2, ease: 'power2.inOut' });
+            gsap.fromTo(area, { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.8, ease: 'power2.out', delay: 0.4 });
+          }
+        }
+      }, [chartData]);
+
+      // --- Chart rendering logic (only if chartData is provided) ---
+      const renderChart = () => {
+        if (!chartData || chartData.length < 2) return null;
+
+        // SVG dimensions
+        const width = 150;
+        const height = 60;
+
+        // Normalize data
+        const max = Math.max(...chartData);
+        const min = Math.min(...chartData);
+        const range = max - min === 0 ? 1 : max - min;
+
+        const points = chartData
+          .map((val, i) => {
+            const x = (i / (chartData.length - 1)) * width;
+            const y = height - ((val - min) / range) * (height - 10) + 5; // Add vertical padding
+            return `${x},${y}`;
+          });
+
+        const linePath = "M" + points.join(" L");
+        const areaPath = `${linePath} L${width},${height} L0,${height} Z`;
+
+        return (
+          <div className="mt-4 -mb-2 -mx-2">
+            <svg ref={chartRef} viewBox={`0 0 ${width} ${height}`} className="w-full h-auto" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" className="text-primary" stopColor="currentColor" stopOpacity={0.3} />
+                  <stop offset="100%" className="text-primary" stopColor="currentColor" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <path
+                className="chart-area"
+                d={areaPath}
+                fill="url(#chartGradient)"
+              />
+              <path
+                className="chart-line"
+                d={linePath}
+                fill="none"
+                stroke="hsl(var(--primary))"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </div>
+        );
+      };
+      // --- End of chart rendering logic ---
+
+      return (
+        <Card className={cn(
+            "p-6 border-border/50 hover:border-primary/30 transition-all duration-300 group cursor-pointer flex flex-col justify-between",
+            !chartData && "h-full" // Ensure cards without charts have consistent height if needed
+        )}>
+          <div>
+            <div className="flex items-center justify-between">
+              <div className="p-3 bg-primary/10 rounded-full group-hover:bg-primary/20 transition-colors">
+                {icon}
+              </div>
+              <div className={cn(
+                "text-sm font-medium",
+                trend === 'up' ? "text-green-600" : "text-red-600"
+              )}>
+                {change}
+              </div>
+            </div>
+            <div className="mt-4">
+              <h3 className="text-2xl font-bold">{value}</h3>
+              <p className="text-sm text-muted-foreground mt-1">{title}</p>
+            </div>
+          </div>
+          {renderChart()}
+        </Card>
+      );
+    }
+approved: false
 linesAdded: null
 linesRemoved: null
 linesDifference: null
-gitCommittedAt: '2025-10-18T07:53:53.259Z'
-status: committed
-id: 466
+gitCommittedAt: null
+status: undone
+id: 468

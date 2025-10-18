@@ -83,7 +83,7 @@ export function StatCard({ title, value, change, trend, icon, chartData }: StatC
 
   return (
     <Card className={cn(
-        "p-6 border-border/50 hover:border-primary/30 transition-all duration-300 group cursor-pointer flex flex-col justify-between",
+        "flex-shrink-0 w-64 md:w-72 p-6 border-border/50 hover:border-primary/30 transition-all duration-300 group cursor-pointer flex flex-col justify-between",
         !chartData && "h-full" // Ensure cards without charts have consistent height if needed
     )}>
       <div>

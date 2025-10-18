@@ -1,34 +1,36 @@
-uuid: c2584ec6-3914-41d3-a5fe-001091a13470
+uuid: 489f6b92-5645-427f-9467-f65568da47f6
 projectId: jeli-app-shell
-createdAt: '2025-10-18T07:53:28.260Z'
+createdAt: '2025-10-18T08:03:51.146Z'
 gitCommitMsg: >-
-  perf: Tweak animation timings for stat cards
+  feat(DataDemo): Rework stats section to be horizontally scrollable
 
-  Adjusted the GSAP animation durations and staggers for the stat cards and
-  their internal charts. This makes the animations feel snappier and more
-  responsive, mitigating the perceived performance heaviness introduced by the
-  scroll-based container animation.
+  Refactored the stats card section on the Data Demo page from a responsive grid
+  to a horizontally scrollable flex container. This change provides a more
+  modern, scalable, and touch-friendly UI, especially on smaller viewports.
+
+  - Replaced the grid layout with a flexbox layout with `overflow-x-auto`. -
+  Added more stat cards to demonstrate the scrolling functionality. -
+  Constrained `StatCard` width to prevent shrinking in the flex container. -
+  Added custom CSS for a minimal, styled horizontal scrollbar.
 promptSummary: >-
-  The user wants to fix a perceived lag in the stats cards animations after
-  adding a "scroll magnetism" feature. The animations feel heavy.
+  I need to change the stats card section on the data demo page to be
+  horizontally scrollable instead of a wrapping grid. I also need to add more
+  stats cards to demonstrate this behavior and ensure the design is responsive
+  by making the cards smaller if needed.
 reasoning:
   - >-
-    The "scroll magnetism" feature, which animates the stats card container on
-    scroll, can make other animations on the page feel heavy or laggy,
-    especially if they are long-running. To address this, I will adjust the
-    animation timings for both the initial reveal of the stat cards and the
-    chart animations within each card. By making these animations faster and
-    snappier, the overall user experience will feel lighter and more responsive,
-    mitigating the perceived lag.
+    Of course. I will refactor the stats card section to be a horizontally
+    scrollable container, add more stat cards to demonstrate the functionality,
+    and apply custom styling for a polished scrollbar. Here are the required
+    changes.
   - >-
-    First, I will modify the `StatCard` component to shorten the duration of the
-    line-drawing and area-reveal animations for the mini-charts.
+    First, I'll modify the `StatCard` component to ensure it maintains a
+    consistent width and doesn't shrink within a flex container.
+  - Next, I'll add the custom CSS for the horizontal scrollbar.
   - >-
-    Next, I will adjust the initial stagger animation for the group of stat
-    cards in the `DataDemo` page, making it complete more quickly.
-  - >-
-    These adjustments will make the animations crisper and should resolve the
-    feeling of sluggishness when interacting with the page.
+    Finally, I'll update the main `DataDemo` page. I'm adding more stat cards to
+    showcase the scrolling, importing the necessary icons, and replacing the
+    grid layout with a `flex` container that enables horizontal scrolling.
 operations:
   - type: write
     path: src/components/shared/StatCard.tsx
@@ -37,44 +39,165 @@ operations:
 
       +++ src/components/shared/StatCard.tsx
 
-      @@ -19,8 +19,8 @@
-             if (line instanceof SVGPathElement && area) {
-               const length = line.getTotalLength();
-               gsap.set(line, { strokeDasharray: length, strokeDashoffset: length });
-      -        gsap.to(line, { strokeDashoffset: 0, duration: 1.5, ease:
-      'power2.inOut' });
+      @@ -100,7 +100,7 @@
+       
+         return (
+           <Card className={cn(
+      -        "p-6 border-border/50 hover:border-primary/30 transition-all
+      duration-300 group cursor-pointer flex flex-col justify-between",
 
-      -        gsap.fromTo(area, { opacity: 0, y: 10 }, { opacity: 1, y: 0,
-      duration: 1, ease: 'power2.out', delay: 0.5 });
+      +        "p-6 border-border/50 hover:border-primary/30 transition-all
+      duration-300 group cursor-pointer flex flex-col justify-between
+      flex-shrink-0 w-72",
+               !chartData && "h-full" // Ensure cards without charts have consistent height if needed
+           )}>
+             <div>
 
-      +        gsap.to(line, { strokeDashoffset: 0, duration: 1.2, ease:
-      'power2.inOut' });
-
-      +        gsap.fromTo(area, { opacity: 0, y: 10 }, { opacity: 1, y: 0,
-      duration: 0.8, ease: 'power2.out', delay: 0.4 });
-             }
-           }
-         }, [chartData]);
+    patchStrategy: standard-diff
+  - type: write
+    path: src/index.css
+    content: |+
+      --- src/index.css
+      +++ src/index.css
+      @@ -124,4 +124,16 @@
+           @apply rounded-[var(--radius)] border;
+           border-color: var(--btn-border);
+         }
+      +
+      +  .horizontal-scrollbar::-webkit-scrollbar {
+      +    height: 6px;
+      +  }
+      +  .horizontal-scrollbar::-webkit-scrollbar-track {
+      +    @apply bg-transparent;
+      +  }
+      +  .horizontal-scrollbar::-webkit-scrollbar-thumb {
+      +    @apply bg-border rounded-full;
+      +  }
+      +  .horizontal-scrollbar::-webkit-scrollbar-thumb:hover {
+      +    @apply bg-muted-foreground/50;
+      +  }
+       }
 
     patchStrategy: standard-diff
   - type: write
     path: src/pages/DataDemo/index.tsx
-    content: |+
+    content: >+
       --- src/pages/DataDemo/index.tsx
+
       +++ src/pages/DataDemo/index.tsx
-      @@ -176,10 +176,10 @@
-             gsap.fromTo(statsRef.current.children,
-               { y: 30, opacity: 0 },
-               {
-      -          duration: 0.6,
-      +          duration: 0.5,
-                 y: 0,
-                 opacity: 1,
-      -          stagger: 0.1,
-      +          stagger: 0.08,
-                 ease: "power2.out"
-               }
-             )
+
+      @@ -3,11 +3,15 @@
+         Layers, 
+         AlertTriangle, 
+         PlayCircle, 
+         TrendingUp,
+         Loader2,
+      -  ChevronsUpDown
+
+      +  ChevronsUpDown,
+
+      +  CheckCircle2,
+
+      +  CalendarClock,
+
+      +  Zap,
+
+      +  Archive
+       } from 'lucide-react'
+       import { gsap } from 'gsap'
+       import { cn } from '@/lib/utils'
+      @@ -140,7 +144,40 @@
+             trend: "up" as const,
+             type: 'chart',
+             chartData: [65, 68, 70, 69, 72, 75, 78]
+      -    }
+
+      +    },
+
+      +    {
+
+      +      title: "Completion Rate",
+
+      +      value: "88%",
+
+      +      icon: <CheckCircle2 className="w-5 h-5" />,
+
+      +      change: "+1.5% this month",
+
+      +      trend: "up" as const,
+
+      +      type: 'chart',
+
+      +      chartData: [82, 83, 85, 84, 86, 88, 88],
+
+      +    },
+
+      +    {
+
+      +      title: "Overdue Items",
+
+      +      value: "12",
+
+      +      icon: <CalendarClock className="w-5 h-5" />,
+
+      +      change: "+3 this week",
+
+      +      trend: "down" as const, // More is bad, so trend is down
+
+      +      type: 'chart',
+
+      +      chartData: [5, 6, 8, 7, 9, 10, 12],
+
+      +    },
+
+      +    {
+
+      +      title: "New This Week",
+
+      +      value: "25",
+
+      +      icon: <Zap className="w-5 h-5" />,
+
+      +      change: "stable",
+
+      +      trend: "up" as const,
+
+      +      type: 'chart',
+
+      +      chartData: [15, 20, 18, 22, 25, 23, 25],
+
+      +    },
+
+      +    {
+
+      +      title: "Archived",
+
+      +      value: "153",
+
+      +      icon: <Archive className="w-5 h-5" />,
+
+      +      change: "+20 this month",
+
+      +      trend: "up" as const,
+
+      +      type: 'card',
+
+      +    },
+         ]
+       
+         useEffect(() => {
+      @@ -321,7 +358,7 @@
+       
+               {/* Stats Section */}
+               {!isInitialLoading && (
+      -          <div ref={statsRef} className="grid
+      grid-cols-[repeat(auto-fit,minmax(250px,1fr))] gap-6">
+
+      +          <div ref={statsRef} className="flex gap-6 overflow-x-auto pb-4
+      horizontal-scrollbar">
+                   {stats.map((stat) => (
+                     <StatCard
+                       key={stat.title}
 
     patchStrategy: standard-diff
 snapshot:
@@ -110,8 +233,8 @@ snapshot:
           if (line instanceof SVGPathElement && area) {
             const length = line.getTotalLength();
             gsap.set(line, { strokeDasharray: length, strokeDashoffset: length });
-            gsap.to(line, { strokeDashoffset: 0, duration: 1.5, ease: 'power2.inOut' });
-            gsap.fromTo(area, { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 1, ease: 'power2.out', delay: 0.5 });
+            gsap.to(line, { strokeDashoffset: 0, duration: 1.2, ease: 'power2.inOut' });
+            gsap.fromTo(area, { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.8, ease: 'power2.out', delay: 0.4 });
           }
         }
       }, [chartData]);
@@ -193,6 +316,123 @@ snapshot:
           {renderChart()}
         </Card>
       );
+    }
+  src/index.css: |-
+    @import 'tailwindcss/base';
+    @import 'tailwindcss/components';
+    @import 'tailwindcss/utilities';
+
+    @layer base {
+      :root {
+        --primary-hsl: 220 84% 60%;
+        --background: 210 40% 96.1%;
+        --foreground: 222.2 84% 4.9%;
+        --card: 0 0% 100%;
+        --card-foreground: 222.2 84% 4.9%;
+        --popover: 0 0% 100%;
+        --popover-foreground: 222.2 84% 4.9%;
+        --primary: var(--primary-hsl);
+        --primary-foreground: 210 40% 98%;
+        --secondary: 210 40% 96%;
+        --secondary-foreground: 222.2 84% 4.9%;
+        --muted: 210 40% 96%;
+        --muted-foreground: 215.4 16.3% 46.9%;
+        --accent: 210 40% 96%;
+        --accent-foreground: 222.2 84% 4.9%;
+        --destructive: 0 84.2% 60.2%;
+        --destructive-foreground: 210 40% 98%;
+        --border: 214.3 31.8% 91.4%;
+        --input: 214.3 31.8% 91.4%;
+        --ring: var(--primary-hsl);
+        --radius: 1rem;
+      }
+
+      .dark {
+        --background: 240 6% 9%;
+        --foreground: 210 40% 98%;
+        --card: 240 6% 14%;
+        --card-foreground: 210 40% 98%;
+        --popover: 240 6% 12%;
+        --popover-foreground: 210 40% 98%;
+        --primary: var(--primary-hsl);
+        --primary-foreground: 210 40% 98%;
+        --secondary: 240 5% 20%;
+        --secondary-foreground: 210 40% 98%;
+        --muted: 240 5% 20%;
+        --muted-foreground: 215 20.2% 65.1%;
+        --accent: 240 5% 20%;
+        --accent-foreground: 210 40% 98%;
+        --destructive: 0 62.8% 30.6%;
+        --destructive-foreground: 210 40% 98%;
+        --border: 240 5% 20%;
+        --input: 240 5% 20%;
+        --ring: var(--primary-hsl);
+      }
+    }
+
+    @layer base {
+      * {
+        @apply border-border;
+      }
+      body {
+        @apply bg-background text-foreground;
+      }
+    }
+
+    /* Custom scrollbar styles */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      @apply bg-transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      @apply bg-border rounded-full;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      @apply bg-muted-foreground/50;
+    }
+
+    /* For UserDropdown */
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none; /* IE and Edge */
+      scrollbar-width: none; /* Firefox */
+    }
+
+    @layer base {
+      .login-page-theme {
+        --background: hsl(0 0% 100%);
+        --foreground: hsl(0 0% 0%);
+        --skeleton: hsl(0 0% 90%);
+        --border: hsl(220 20% 90%);
+        --btn-border: hsl(214.3 31.8% 91.4%);
+        --input: hsl(220 20% 90%);
+        --radius: 0.5rem;
+      }
+     
+      .dark .login-page-theme {
+        --background: hsl(222 94% 5%);
+        --foreground: hsl(0 0% 100%);
+        --skeleton: hsl(218 36% 16%);
+        --border: hsl(220 20% 90%);
+        --btn-border: hsl(217 32.6% 17.5%);
+        --input: hsl(219 63% 16%);
+        --radius: 0.5rem;
+      }
+    }
+
+    @layer components {
+      .g-button {
+        @apply rounded-[var(--radius)] border;
+        border-color: var(--btn-border);
+      }
     }
   src/pages/DataDemo/index.tsx: >
     import { useRef, useEffect, useCallback, useMemo } from 'react'
@@ -397,10 +637,10 @@ snapshot:
           gsap.fromTo(statsRef.current.children,
             { y: 30, opacity: 0 },
             {
-              duration: 0.6,
+              duration: 0.5,
               y: 0,
               opacity: 1,
-              stagger: 0.1,
+              stagger: 0.08,
               ease: "power2.out"
             }
           )
@@ -606,10 +846,10 @@ snapshot:
     export default function DataDemoPage() {
       return <DataDemoContent />;
     }
-approved: true
+approved: false
 linesAdded: null
 linesRemoved: null
 linesDifference: null
-gitCommittedAt: '2025-10-18T07:53:53.259Z'
-status: committed
-id: 466
+gitCommittedAt: null
+status: undone
+id: 467

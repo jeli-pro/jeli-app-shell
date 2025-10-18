@@ -3,9 +3,13 @@ import {
   Layers, 
   AlertTriangle, 
   PlayCircle, 
-  TrendingUp,
   Loader2,
-  ChevronsUpDown
+  ChevronsUpDown,
+  TrendingUp,
+  CheckCircle,
+  Clock,
+  Archive,
+  PlusCircle
 } from 'lucide-react'
 import { gsap } from 'gsap'
 import { cn } from '@/lib/utils'
@@ -161,7 +165,37 @@ function DataDemoContent() {
       change: "+3.2%",
       trend: "up" as const,
       type: 'chart',
-      chartData: [65, 68, 70, 69, 72, 75, 78]
+      chartData: [65, 68, 70, 69, 72, 75, 78],
+    },
+    {
+      title: "Completion Rate",
+      value: "88%",
+      icon: <CheckCircle className="w-5 h-5" />,
+      change: "+1.5% this month",
+      trend: "up" as const,
+      type: 'chart',
+      chartData: [80, 82, 81, 84, 85, 87, 88],
+    },
+    {
+      title: "Overdue Items",
+      value: "8",
+      icon: <Clock className="w-5 h-5" />,
+      change: "-3 this week",
+      trend: "down" as const,
+    },
+    {
+      title: "New This Week",
+      value: "12",
+      icon: <PlusCircle className="w-5 h-5" />,
+      change: "+2 from last week",
+      trend: "up" as const,
+    },
+    {
+      title: "Archived Projects",
+      value: "153",
+      icon: <Archive className="w-5 h-5" />,
+      change: "+20 this month",
+      trend: "up" as const,
     }
   ]
 
@@ -282,7 +316,7 @@ function DataDemoContent() {
 
         {/* Stats Section */}
         {!isInitialLoading && (
-          <div ref={statsRef} className="grid grid-cols-[repeat(auto-fit,minmax(250px,1fr))] gap-6">
+          <div ref={statsRef} className="flex overflow-x-auto gap-6 pb-2 no-scrollbar">
             {stats.map((stat) => (
               <StatCard
                 key={stat.title}

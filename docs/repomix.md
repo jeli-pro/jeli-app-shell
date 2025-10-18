@@ -3,13 +3,13 @@
 src/
   components/
     shared/
-      PageLayout.tsx
       StatCard.tsx
-  hooks/
-    useAutoAnimateTopBar.ts
   pages/
     DataDemo/
+      hooks/
+        useAutoAnimateStats.hook.ts
       index.tsx
+      types.ts
   index.css
 index.html
 package.json
@@ -29,119 +29,6 @@ export default {
     tailwindcss: {},
     autoprefixer: {},
   },
-}
-```
-
-## File: src/components/shared/StatCard.tsx
-```typescript
-import React, { useLayoutEffect, useRef } from 'react';
-import { gsap } from 'gsap';
-import { cn } from '@/lib/utils';
-import { Card } from '@/components/ui/card';
-
-interface StatCardProps {
-  title: string;
-  value: string;
-  change: string;
-  trend: 'up' | 'down';
-  icon: React.ReactNode;
-  chartData?: number[];
-}
-
-export function StatCard({ title, value, change, trend, icon, chartData }: StatCardProps) {
-  const chartRef = useRef<SVGSVGElement>(null);
-
-  useLayoutEffect(() => {
-    // Only run animation if chartData is present
-    if (chartRef.current && chartData) {
-      const line = chartRef.current.querySelector('.chart-line');
-      const area = chartRef.current.querySelector('.chart-area');
-      if (line instanceof SVGPathElement && area) {
-        const length = line.getTotalLength();
-        gsap.set(line, { strokeDasharray: length, strokeDashoffset: length });
-        gsap.to(line, { strokeDashoffset: 0, duration: 1.5, ease: 'power2.inOut' });
-        gsap.fromTo(area, { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 1, ease: 'power2.out', delay: 0.5 });
-      }
-    }
-  }, [chartData]);
-
-  // --- Chart rendering logic (only if chartData is provided) ---
-  const renderChart = () => {
-    if (!chartData || chartData.length < 2) return null;
-
-    // SVG dimensions
-    const width = 150;
-    const height = 60;
-
-    // Normalize data
-    const max = Math.max(...chartData);
-    const min = Math.min(...chartData);
-    const range = max - min === 0 ? 1 : max - min;
-
-    const points = chartData
-      .map((val, i) => {
-        const x = (i / (chartData.length - 1)) * width;
-        const y = height - ((val - min) / range) * (height - 10) + 5; // Add vertical padding
-        return `${x},${y}`;
-      });
-
-    const linePath = "M" + points.join(" L");
-    const areaPath = `${linePath} L${width},${height} L0,${height} Z`;
-
-    return (
-      <div className="mt-4 -mb-2 -mx-2">
-        <svg ref={chartRef} viewBox={`0 0 ${width} ${height}`} className="w-full h-auto" preserveAspectRatio="none">
-          <defs>
-            <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" className="text-primary" stopColor="currentColor" stopOpacity={0.3} />
-              <stop offset="100%" className="text-primary" stopColor="currentColor" stopOpacity={0} />
-            </linearGradient>
-          </defs>
-          <path
-            className="chart-area"
-            d={areaPath}
-            fill="url(#chartGradient)"
-          />
-          <path
-            className="chart-line"
-            d={linePath}
-            fill="none"
-            stroke="hsl(var(--primary))"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-      </div>
-    );
-  };
-  // --- End of chart rendering logic ---
-
-  return (
-    <Card className={cn(
-        "p-6 border-border/50 hover:border-primary/30 transition-all duration-300 group cursor-pointer flex flex-col justify-between",
-        !chartData && "h-full" // Ensure cards without charts have consistent height if needed
-    )}>
-      <div>
-        <div className="flex items-center justify-between">
-          <div className="p-3 bg-primary/10 rounded-full group-hover:bg-primary/20 transition-colors">
-            {icon}
-          </div>
-          <div className={cn(
-            "text-sm font-medium",
-            trend === 'up' ? "text-green-600" : "text-red-600"
-          )}>
-            {change}
-          </div>
-        </div>
-        <div className="mt-4">
-          <h3 className="text-2xl font-bold">{value}</h3>
-          <p className="text-sm text-muted-foreground mt-1">{title}</p>
-        </div>
-      </div>
-      {renderChart()}
-    </Card>
-  );
 }
 ```
 
@@ -262,6 +149,208 @@ export function StatCard({ title, value, change, trend, icon, chartData }: StatC
     @apply rounded-[var(--radius)] border;
     border-color: var(--btn-border);
   }
+}
+```
+
+## File: src/components/shared/StatCard.tsx
+```typescript
+import React, { useLayoutEffect, useRef } from 'react';
+import { gsap } from 'gsap';
+import { cn } from '@/lib/utils';
+import { Card } from '@/components/ui/card';
+
+interface StatCardProps {
+  title: string;
+  value: string;
+  change: string;
+  trend: 'up' | 'down';
+  icon: React.ReactNode;
+  chartData?: number[];
+}
+
+export function StatCard({ title, value, change, trend, icon, chartData }: StatCardProps) {
+  const chartRef = useRef<SVGSVGElement>(null);
+
+  useLayoutEffect(() => {
+    // Only run animation if chartData is present
+    if (chartRef.current && chartData) {
+      const line = chartRef.current.querySelector('.chart-line');
+      const area = chartRef.current.querySelector('.chart-area');
+      if (line instanceof SVGPathElement && area) {
+        const length = line.getTotalLength();
+        gsap.set(line, { strokeDasharray: length, strokeDashoffset: length });
+        gsap.to(line, { strokeDashoffset: 0, duration: 1.2, ease: 'power2.inOut' });
+        gsap.fromTo(area, { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.8, ease: 'power2.out', delay: 0.4 });
+      }
+    }
+  }, [chartData]);
+
+  // --- Chart rendering logic (only if chartData is provided) ---
+  const renderChart = () => {
+    if (!chartData || chartData.length < 2) return null;
+
+    // SVG dimensions
+    const width = 150;
+    const height = 60;
+
+    // Normalize data
+    const max = Math.max(...chartData);
+    const min = Math.min(...chartData);
+    const range = max - min === 0 ? 1 : max - min;
+
+    const points = chartData
+      .map((val, i) => {
+        const x = (i / (chartData.length - 1)) * width;
+        const y = height - ((val - min) / range) * (height - 10) + 5; // Add vertical padding
+        return `${x},${y}`;
+      });
+
+    const linePath = "M" + points.join(" L");
+    const areaPath = `${linePath} L${width},${height} L0,${height} Z`;
+
+    return (
+      <div className="mt-4 -mb-2 -mx-2">
+        <svg ref={chartRef} viewBox={`0 0 ${width} ${height}`} className="w-full h-auto" preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" className="text-primary" stopColor="currentColor" stopOpacity={0.3} />
+              <stop offset="100%" className="text-primary" stopColor="currentColor" stopOpacity={0} />
+            </linearGradient>
+          </defs>
+          <path
+            className="chart-area"
+            d={areaPath}
+            fill="url(#chartGradient)"
+          />
+          <path
+            className="chart-line"
+            d={linePath}
+            fill="none"
+            stroke="hsl(var(--primary))"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </div>
+    );
+  };
+  // --- End of chart rendering logic ---
+
+  return (
+    <Card className={cn(
+        "p-6 border-border/50 hover:border-primary/30 transition-all duration-300 group cursor-pointer flex flex-col justify-between",
+        !chartData && "h-full" // Ensure cards without charts have consistent height if needed
+    )}>
+      <div>
+        <div className="flex items-center justify-between">
+          <div className="p-3 bg-primary/10 rounded-full group-hover:bg-primary/20 transition-colors">
+            {icon}
+          </div>
+          <div className={cn(
+            "text-sm font-medium",
+            trend === 'up' ? "text-green-600" : "text-red-600"
+          )}>
+            {change}
+          </div>
+        </div>
+        <div className="mt-4">
+          <h3 className="text-2xl font-bold">{value}</h3>
+          <p className="text-sm text-muted-foreground mt-1">{title}</p>
+        </div>
+      </div>
+      {renderChart()}
+    </Card>
+  );
+}
+```
+
+## File: src/pages/DataDemo/hooks/useAutoAnimateStats.hook.ts
+```typescript
+import { useEffect, useRef, useCallback } from 'react';
+import { gsap } from 'gsap';
+
+/**
+ * A hook that animates a stats container in and out of view based on scroll direction.
+ * It creates a "sliver app bar" effect for the stats section.
+ * @param scrollContainerRef Ref to the main scrolling element.
+ * @param statsContainerRef Ref to the stats container element to be animated.
+ */
+export function useAutoAnimateStats(
+  scrollContainerRef: React.RefObject<HTMLElement>,
+  statsContainerRef: React.RefObject<HTMLElement>
+) {
+  const lastScrollY = useRef(0);
+  const isHidden = useRef(false);
+  const originalMarginTop = useRef<string | null>(null);
+
+  const handleScroll = useCallback(() => {
+    if (!scrollContainerRef.current || !statsContainerRef.current) return;
+
+    const scrollY = scrollContainerRef.current.scrollTop;
+    
+    // Initialize original margin on first scroll event if not set
+    if (originalMarginTop.current === null) {
+      const computedStyle = getComputedStyle(statsContainerRef.current);
+      originalMarginTop.current = computedStyle.getPropertyValue('margin-top');
+    }
+
+    // On any significant scroll down, hide the stats.
+    // The small 10px threshold prevents firing on minor scroll-jiggles.
+    if (scrollY > lastScrollY.current && scrollY > 10 && !isHidden.current) {
+      isHidden.current = true;
+      gsap.to(statsContainerRef.current, {
+        duration: 0.4,
+        height: 0,
+        autoAlpha: 0,
+        marginTop: 0,
+        ease: 'power2.inOut',
+        overwrite: true,
+      });
+    } 
+
+    lastScrollY.current = scrollY < 0 ? 0 : scrollY;
+  }, [scrollContainerRef, statsContainerRef]);
+
+  const handleWheel = useCallback((event: WheelEvent) => {
+    if (!scrollContainerRef.current || !statsContainerRef.current) return;
+    
+    const isAtTop = scrollContainerRef.current.scrollTop === 0;
+    const isScrollingUp = event.deltaY < 0;
+
+    // Only reveal if we are at the top, scrolling up, and stats are hidden.
+    // This creates the "pull to reveal" effect.
+    if (isAtTop && isScrollingUp && isHidden.current) {
+        isHidden.current = false;
+        gsap.to(statsContainerRef.current, {
+          duration: 0.4,
+          height: 'auto',
+          autoAlpha: 1,
+          marginTop: originalMarginTop.current || 0,
+          ease: 'power2.out',
+          overwrite: true,
+        });
+    }
+  }, [scrollContainerRef, statsContainerRef]);
+
+  useEffect(() => {
+    const scrollContainer = scrollContainerRef.current;
+    if (scrollContainer) {
+      scrollContainer.addEventListener('scroll', handleScroll, { passive: true });
+      scrollContainer.addEventListener('wheel', handleWheel, { passive: true });
+    }
+
+    return () => {
+      if (scrollContainer) {
+        scrollContainer.removeEventListener('scroll', handleScroll);
+        scrollContainer.removeEventListener('wheel', handleWheel);
+      }
+      // When component unmounts, kill any running animations on the stats ref
+      if (statsContainerRef.current) {
+        gsap.killTweensOf(statsContainerRef.current);
+      }
+    };
+  }, [scrollContainerRef, statsContainerRef, handleScroll, handleWheel]);
 }
 ```
 
@@ -475,48 +564,6 @@ export default {
 }
 ```
 
-## File: src/components/shared/PageLayout.tsx
-```typescript
-import React from 'react';
-import { cn } from '@/lib/utils';
-import { useAppShellStore } from '@/store/appShell.store';
-import { BODY_STATES } from '@/lib/utils';
-
-interface PageLayoutProps extends React.HTMLAttributes<HTMLDivElement> {
-  children: React.ReactNode;
-  scrollRef?: React.RefObject<HTMLDivElement>;
-}
-
-export const PageLayout = React.forwardRef<HTMLDivElement, PageLayoutProps>(
-  ({ children, onScroll, scrollRef, className, ...props }, ref) => {
-    const isTopBarVisible = useAppShellStore(s => s.isTopBarVisible);
-    const bodyState = useAppShellStore(s => s.bodyState);
-    const isFullscreen = bodyState === 'fullscreen';
-    const isInSidePane = bodyState === BODY_STATES.SIDE_PANE;
-
-    return (
-      <div
-        ref={scrollRef}
-        className={cn("h-full overflow-y-auto", className)}
-        onScroll={onScroll}
-      >
-        <div ref={ref} className={cn(
-          "space-y-8 transition-all duration-300",
-          !isInSidePane ? "px-6 lg:px-12 pb-6" : "px-6 pb-6",
-          isTopBarVisible && !isFullscreen ? "pt-24" : "pt-6"
-        )}
-        {...props}
-        >
-          {children}
-        </div>
-      </div>
-    );
-  }
-);
-
-PageLayout.displayName = 'PageLayout';
-```
-
 ## File: vite.config.ts
 ```typescript
 import { defineConfig } from 'vite'
@@ -561,57 +608,73 @@ export default defineConfig({
 })
 ```
 
-## File: src/hooks/useAutoAnimateTopBar.ts
+## File: src/pages/DataDemo/types.ts
 ```typescript
-import { useRef, useCallback, useEffect } from 'react';
-import { useAppShellStore } from '@/store/appShell.store';
-import { BODY_STATES } from '@/lib/utils';
+export type ViewMode = 'list' | 'cards' | 'grid' | 'table' | 'kanban' | 'calendar'
 
-export function useAutoAnimateTopBar(isPane = false) {
-  const bodyState = useAppShellStore(s => s.bodyState);
-  const lastScrollTop = useRef(0);
-  const scrollTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+export type GroupableField = 'status' | 'priority' | 'category'
 
-  const onScroll = useCallback((event: React.UIEvent<HTMLDivElement>) => {
-    if (isPane || bodyState === BODY_STATES.SPLIT_VIEW || bodyState === BODY_STATES.FULLSCREEN) return;
+export type CalendarDateProp = 'dueDate' | 'createdAt' | 'updatedAt';
+export type CalendarDisplayProp = 'priority' | 'assignee' | 'tags';
 
-    // Clear previous timeout
-    if (scrollTimeout.current) {
-      clearTimeout(scrollTimeout.current);
-    }
+export type CalendarDateProp = 'dueDate' | 'createdAt' | 'updatedAt';
+export type CalendarDisplayProp = 'priority' | 'assignee' | 'tags';
 
-    const { scrollTop } = event.currentTarget;
-    const { setTopBarVisible } = useAppShellStore.getState();
-    
-    if (scrollTop > lastScrollTop.current && scrollTop > 200) {
-      setTopBarVisible(false);
-    } else if (scrollTop < lastScrollTop.current || scrollTop <= 0) {
-      setTopBarVisible(true);
-    }
-    
-    lastScrollTop.current = scrollTop <= 0 ? 0 : scrollTop;
-
-    // Set new timeout to show top bar when scrolling stops
-    scrollTimeout.current = setTimeout(() => {
-      // Don't hide, just ensure it's visible after scrolling stops
-      // and we are not at the top of the page.
-      if (scrollTop > 0) {
-        setTopBarVisible(true);
-      }
-    }, 250); // Adjust timeout as needed
-  }, [isPane, bodyState]);
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (scrollTimeout.current) {
-        clearTimeout(scrollTimeout.current);
-      }
-    };
-  }, []);
-
-  return { onScroll };
+export type SortableField = 'title' | 'status' | 'priority' | 'updatedAt' | 'assignee.name' | 'metrics.views' | 'metrics.completion' | 'createdAt'
+export type SortDirection = 'asc' | 'desc'
+export interface SortConfig {
+  key: SortableField
+  direction: SortDirection
 }
+
+export interface DataItem {
+  id: string
+  title: string
+  description: string
+  category: string
+  status: 'active' | 'pending' | 'completed' | 'archived'
+  priority: 'low' | 'medium' | 'high' | 'critical'
+  assignee: {
+    name: string
+    avatar: string
+    email: string
+  }
+  metrics: {
+    views: number
+    likes: number
+    shares: number
+    completion: number
+  }
+  tags: string[]
+  createdAt: string
+  updatedAt: string
+  dueDate?: string
+  thumbnail?: string
+  content?: {
+    summary: string
+    details: string
+    attachments?: Array<{
+      name: string
+      type: string
+      size: string
+      url: string
+    }>
+  }
+}
+
+export interface ViewProps {
+  data: DataItem[] | Record<string, DataItem[]>
+  onItemSelect: (item: DataItem) => void
+  selectedItem: DataItem | null
+  isGrid?: boolean
+
+  // Props for table view specifically
+  sortConfig?: SortConfig | null
+  onSort?: (field: SortableField) => void
+}
+
+export type Status = DataItem['status']
+export type Priority = DataItem['priority']
 ```
 
 ## File: package.json
@@ -870,10 +933,10 @@ function DataDemoContent() {
       gsap.fromTo(statsRef.current.children,
         { y: 30, opacity: 0 },
         {
-          duration: 0.6,
+          duration: 0.5,
           y: 0,
           opacity: 1,
-          stagger: 0.1,
+          stagger: 0.08,
           ease: "power2.out"
         }
       )

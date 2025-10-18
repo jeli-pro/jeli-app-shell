@@ -1,102 +1,117 @@
-Here's the master plan for the refactor, crafted in the requested style.
+Alright, let's architect this refactor. The current stats grid on the DataDemo page is a bit too rigid for its own good. It wraps, which is fine, but we can do better. We're going to ditch the wrapping grid for a slick, horizontally scrollable container. This gives us infinite horizontal space for stats, makes the UI feel more modern and touch-friendly, and it's a cleaner look on smaller viewports.
 
----
+The plan is simple: we'll add more stat cards to prove the concept, then rip out the old grid classes and replace them with a flexbox setup. We'll tweak the card component itself to play nice in this new container, ensuring it doesn't get squished. Finally, we'll add a touch of CSS elegance with a custom, minimalist scrollbar that doesn't scream "1998". It's a quick, high-impact change that levels up the UX.
 
-Alright, listen up. The `DataDemo` page is slick, but those stat cards are sticky. They hog vertical space like a bad ad banner, especially when you're deep-diving into the data. We're going to fix that.
-
-The plan is to give them the "sliver app bar" treatment. When the user scrolls down, the stats container will gracefully GTFO. When they scroll back up, it'll slide right back in. This keeps the key metrics accessible at the top but prioritizes the content when the user is in the zone.
-
-We'll forge a new, reusable hook to encapsulate the scroll-jacking and `gsap` magic. This keeps the page component clean and makes the pattern portable. Then, we'll wire it up in `DataDemoPage`. Simple, clean, effective. Let's make this thing feel alive.
+Let's get this planned out for the code-gen bot.
 
 ```yaml
 plan:
-  uuid: '3a8d4f1c-6b2e-4f9a-8c7d-9e1b2f0a5c4d'
+  uuid: 'c8b4a2d1-e9f7-4a0b-8d1c-5f3e7a09b9f2'
   status: 'todo'
-  title: 'Sliver-ize the Data Demo Stats Header'
+  title: 'Refactor DataDemo Stats to be Horizontally Scrollable'
   introduction: |
-    Right now, the stats cards on the Data Demo page are static. They eat up valuable screen real estate, especially on smaller viewports, forcing users to scroll past them every time. This is a classic UX bottleneck.
+    This plan outlines the refactoring of the statistics card section on the DataDemo page. The current implementation uses a responsive grid that wraps cards onto new lines on smaller screens. This approach can lead to inconsistent layout heights and feels somewhat dated.
 
-    We're going to refactor this to implement a sliver-style header for the stats section. The stats will gracefully animate out of view on a scroll-down gesture and reappear instantly on a scroll-up, letting users focus on the core data grid, list, or kanban board.
-
-    To achieve this, we'll first encapsulate the animation logic within a new, dedicated hook (`useAutoAnimateStats.hook.ts`). This promotes reusability and keeps our component logic clean. Then, we'll integrate this hook into the `DataDemoPage` component, attaching it to the relevant DOM elements. The result will be a more dynamic and content-focused user experience.
+    The goal is to transform this section into a single, horizontally scrollable row. This change will not only modernize the user interface, providing a "slideable" feel common in dashboards, but also make the section more scalable, allowing for an arbitrary number of stats cards without breaking the layout. The refactor involves updating the data source to include more cards, modifying the container's styling from grid to flex, adjusting the card component to maintain a consistent size, and adding custom CSS for a subtle, on-brand scrollbar.
   parts:
-    - uuid: 'c1b9e0a2-f4d3-4e8b-9a1f-6c5d7e8f0a3b'
+    - uuid: 'a1b3c2d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d'
       status: 'todo'
-      name: 'Part 1: Forge the Auto-Animation Hook'
+      name: 'Part 1: Expand the Stats Card Data'
       reason: |
-        To avoid cluttering the `DataDemoPage` component with raw scroll event listeners and animation logic, we will create a self-contained, reusable hook. This encapsulates the behavior, making it easier to maintain, test, and apply to other components in the future.
+        To properly demonstrate and test the effectiveness of a horizontally scrollable container, we need more content than the original four cards. Adding more stats makes the need for scrolling immediately apparent and validates the new design's scalability.
       steps:
-        - uuid: 'f8e7d6a5-3c1b-4f0a-9e2d-1a8c7b6f4d3c'
+        - uuid: 'b2c4d5e6-f7g8-9a0b-1c2d-3e4f5a6b7c8d'
           status: 'todo'
-          name: '1. Create `useAutoAnimateStats.hook.ts`'
+          name: '1. Add more StatItem objects'
           reason: |
-            This new file will house the custom hook responsible for tracking scroll position and triggering the animations on the stats container.
+            We'll add four new stat cards to the existing array. This will provide enough items to cause an overflow on most screen sizes, making the horizontal scroll functional and visible.
           files:
-            - 'src/pages/DataDemo/hooks/useAutoAnimateStats.hook.ts'
+            - src/pages/DataDemo/index.tsx
           operations:
-            - "Create a new file at `src/pages/DataDemo/hooks/useAutoAnimateStats.hook.ts`."
-            - "Import `useEffect`, `useRef`, and `useCallback` from `react`, and `gsap` from `gsap`."
-            - "Define the hook `useAutoAnimateStats` that accepts two arguments: `scrollContainerRef: React.RefObject<HTMLElement>` and `statsContainerRef: React.RefObject<HTMLElement>`."
-            - "Inside the hook, use `useRef` to track `lastScrollY` and the animation state to prevent redundant tweens."
-            - "Use `useEffect` to add and clean up a `scroll` event listener on `scrollContainerRef.current`."
-            - "Implement the scroll handler logic: if scrolling down past a threshold (e.g., 150px), animate the `statsContainerRef` element's `height`, `autoAlpha`, and `margin` to 0 using `gsap`. If scrolling up, animate it back to its original state using `height: 'auto'`."
-            - "Ensure the animation is fast and non-intrusive, with a duration of around `0.3s` and a `power2.inOut` ease."
+            - "In the `stats` constant declared with `useMemo`, add four new objects to the array. These new stats should be plausible metrics for the demo, such as 'Completion Rate', 'Overdue Items', 'New This Week', and 'Archived'."
+            - "Ensure the new stat objects conform to the `StatItem` type, providing `title`, `value`, `icon`, `change`, and `trend` properties."
       context_files:
         compact:
-          - 'src/hooks/useAutoAnimateTopBar.ts'
+          - src/pages/DataDemo/index.tsx
         medium:
-          - 'src/hooks/useAutoAnimateTopBar.ts'
-          - 'src/pages/DataDemo/index.tsx'
+          - src/pages/DataDemo/index.tsx
+          - src/pages/DataDemo/types.ts
         extended:
-          - 'src/hooks/useAutoAnimateTopBar.ts'
-          - 'src/pages/DataDemo/index.tsx'
-          - 'src/components/shared/PageLayout.tsx'
-
-    - uuid: 'a9b2d1c3-e5f6-4a7b-8d9c-0e1f2a3b4c5d'
+          - src/pages/DataDemo/index.tsx
+          - src/pages/DataDemo/types.ts
+    - uuid: 'd3e5f6g7-h8i9-0j1k-2l3m-4n5o6p7q8r9s'
       status: 'todo'
-      name: 'Part 2: Integrate Hook into DataDemo Page'
+      name: 'Part 2: Implement Horizontally Scrollable Layout'
       reason: |
-        With the animation logic encapsulated, we now need to apply it to the `DataDemoPage`. This involves creating a `ref` for the stats container and invoking the newly created hook to link the scroll container with the element to be animated.
+        This is the core of the refactor. We need to change the container's CSS to facilitate horizontal scrolling and adjust the child components to behave correctly within this new layout paradigm.
       steps:
-        - uuid: 'b4d5e6f7-1a2b-3c4d-5e6f-7a8b9c0d1e2f'
+        - uuid: 'e4f6g7h8-i9j0-k1l2-m3n4-o5p6q7r8s9t0'
           status: 'todo'
-          name: '1. Wire up the hook in `DataDemoPage`'
+          name: '1. Update stats container styling'
           reason: |
-            This step connects the abstract hook logic to the concrete DOM elements within the Data Demo page, bringing the dynamic behavior to life.
+            The current `grid` layout must be replaced with a `flex` layout that allows for horizontal overflow. This is the fundamental change that enables the desired scrolling behavior.
           files:
-            - 'src/pages/DataDemo/index.tsx'
+            - src/pages/DataDemo/index.tsx
           operations:
-            - "In `src/pages/DataDemo/index.tsx`, import the new `useAutoAnimateStats` hook."
-            - "Create a new `ref` for the stats container: `const statsContainerRef = useRef<HTMLDivElement>(null);`."
-            - "Attach this `statsContainerRef` to the `div` that wraps the `StatCard` components. The target is the `div` with class `grid gap-4 md:grid-cols-2 lg:grid-cols-4 mt-6`."
-            - "Call the hook within the `DataDemoPage` component, passing the existing `contentRef` (the scroll container) and the new `statsContainerRef`: `useAutoAnimateStats(contentRef, statsContainerRef);`."
+            - "Locate the `div` that directly wraps the mapped `StatCard` components within the 'Stats Section'."
+            - "Replace the existing Tailwind CSS classes `grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4` with `flex gap-4 overflow-x-auto pb-4 horizontal-scrollbar`."
+            - "The `overflow-x-auto` enables scrolling, `pb-4` adds space for the new scrollbar, and `horizontal-scrollbar` is a custom class we will define next."
+        - uuid: 'f5g7h8i9-j0k1-l2m3-n4o5-p6q7r8s9t0u1'
+          status: 'todo'
+          name: '2. Adjust StatCard component styling'
+          reason: |
+            By default, items in a flex container can shrink. We need to prevent this to maintain a consistent card width and ensure the container overflows as intended.
+          files:
+            - src/components/shared/StatCard.tsx
+          operations:
+            - "In the `StatCard` component, locate the `<Card>` element."
+            - "Append `flex-shrink-0 w-72` to its `className` prop using the `cn` utility. This prevents the card from shrinking and sets a consistent base width of `18rem` (288px)."
+        - uuid: 'g6h8i9j0-k1l2-m3n4-o5p6-q7r8s9t0u1v2'
+          status: 'todo'
+          name: '3. Add custom horizontal scrollbar styles'
+          reason: |
+            Default browser scrollbars can be obtrusive. A custom, styled scrollbar provides a more polished and integrated look that matches the application's aesthetic.
+          files:
+            - src/index.css
+          operations:
+            - "In `src/index.css`, inside the `@layer components` block, add new CSS rules for the `.horizontal-scrollbar` class."
+            - "Define styles for `::-webkit-scrollbar` to set a small height (e.g., `height: 6px;`)."
+            - "Style `::-webkit-scrollbar-track` to be transparent (`@apply bg-transparent;`)."
+            - "Style `::-webkit-scrollbar-thumb` to have a subtle background color and be rounded (`@apply bg-border rounded-full;`)."
+            - "Add a hover state for `::-webkit-scrollbar-thumb:hover` to improve interactivity (`@apply bg-muted-foreground/50;`)."
       context_files:
         compact:
-          - 'src/pages/DataDemo/index.tsx'
-          - 'src/pages/DataDemo/hooks/useAutoAnimateStats.hook.ts'
+          - src/pages/DataDemo/index.tsx
+          - src/components/shared/StatCard.tsx
+          - src/index.css
         medium:
-          - 'src/pages/DataDemo/index.tsx'
-          - 'src/pages/DataDemo/hooks/useAutoAnimateStats.hook.ts'
-          - 'src/components/shared/PageLayout.tsx'
+          - src/pages/DataDemo/index.tsx
+          - src/components/shared/StatCard.tsx
+          - src/index.css
+          - src/pages/DataDemo/hooks/useAutoAnimateStats.hook.ts
         extended:
-          - 'src/pages/DataDemo/index.tsx'
-          - 'src/pages/DataDemo/hooks/useAutoAnimateStats.hook.ts'
-          - 'src/components/shared/PageLayout.tsx'
-          - 'src/components/shared/StatCard.tsx'
-
+          - src/pages/DataDemo/index.tsx
+          - src/components/shared/StatCard.tsx
+          - src/index.css
+          - src/pages/DataDemo/hooks/useAutoAnimateStats.hook.ts
+          - tailwind.config.js
   conclusion: |
-    Once complete, this refactor will significantly improve the user experience on the Data Demo page. The content becomes the primary focus during interaction, with statistical data smartly tucked away and readily available at the top of the view.
-
-    The creation of the `useAutoAnimateStats` hook provides a robust, reusable pattern for similar dynamic UI behaviors elsewhere in the application, adhering to DRY principles and improving the overall quality and maintainability of the codebase. The final result is a more polished, modern, and professional-feeling interface.
+    Upon completion, the DataDemo page's statistics section will be transformed into a modern, horizontally scrollable container. This enhancement improves the user experience, especially on smaller screens, by preventing layout shifts caused by wrapping content. The new design is also more scalable, cleanly accommodating a larger number of stat cards without compromising the page's structure. The addition of a custom-styled scrollbar ensures the new functionality feels polished and visually consistent with the rest of the application.
   context_files:
     compact:
-      - 'src/pages/DataDemo/index.tsx'
+      - src/pages/DataDemo/index.tsx
+      - src/components/shared/StatCard.tsx
+      - src/index.css
     medium:
-      - 'src/pages/DataDemo/index.tsx'
-      - 'src/hooks/useAutoAnimateTopBar.ts'
+      - src/pages/DataDemo/index.tsx
+      - src/components/shared/StatCard.tsx
+      - src/index.css
+      - src/pages/DataDemo/types.ts
     extended:
-      - 'src/pages/DataDemo/index.tsx'
-      - 'src/hooks/useAutoAnimateTopBar.ts'
-      - 'src/components/shared/PageLayout.tsx'
-      - 'src/components/shared/StatCard.tsx'
+      - src/pages/DataDemo/index.tsx
+      - src/components/shared/StatCard.tsx
+      - src/index.css
+      - src/pages/DataDemo/types.ts
+      - src/pages/DataDemo/hooks/useAutoAnimateStats.hook.ts
+      - tailwind.config.js
 ```
