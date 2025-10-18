@@ -24,22 +24,26 @@
   },
   "include": [
     // "README.md",
-    "package.json",
-    "vite.config.ts",
-    "tsconfig.json",
-    "tsconfig.node.json",
-    "tailwind.config.js",
-    "postcss.config.js",
-    "index.html",
-    "src/index.css",
+    // "package.json",
+    // "vite.config.ts",
+    // "tsconfig.json",
+    // "tsconfig.node.json",
+    // "tailwind.config.js",
+    // "postcss.config.js",
+    // "index.html",
+    // "src/index.css",
     // "src"
+    // "src/components/shared/PageLayout.tsx",
+    // "src/components/shared/StatCard.tsx",
+    // "src/hooks/useAutoAnimateTopBar.ts",
+    // "src/pages/DataDemo/index.tsx"
     //
-    "src/hooks/useAppViewManager.hook.ts",
-    "src/lib/utils.ts",
-    "src/pages/DataDemo/components/DataCalendarView.tsx",
-    "src/pages/DataDemo/index.tsx",
-    "src/pages/DataDemo/types.ts"
-    // //
+    // "src/hooks/useAppViewManager.hook.ts",
+    // "src/lib/utils.ts",
+    // "src/pages/DataDemo/components/DataCalendarView.tsx",
+    // "src/pages/DataDemo/index.tsx",
+    // "src/pages/DataDemo/types.ts"
+    // // //
     //
     //
   ],

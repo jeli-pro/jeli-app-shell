@@ -1,0 +1,225 @@
+uuid: 4a3e790d-8583-4923-b14e-b2d9ffb53e7f
+projectId: jeli-app-shell
+createdAt: '2025-10-18T07:15:44.281Z'
+gitCommitMsg: >-
+  fix(DataDemo): stabilize auto-hiding stats header animation
+
+  Refactored the `useAutoAnimateStats` hook to fix erratic open/close movements.
+  The new implementation prevents animation overlaps, uses more reliable state
+  detection by checking GSAP properties directly, and simplifies the show/hide
+  logic.
+
+  The stats container now hides only when scrolling down past a threshold and
+  shows whenever the user is scrolled near the top of the page, providing a much
+  smoother and more predictable user experience.
+promptSummary: >-
+  The sliver animation for the stats cards is erratic. I need to fix it so the
+  open/close movements are smooth and predictable.
+reasoning:
+  - >-
+    Of course. The erratic movement is a classic sign of scroll event handlers
+    fighting with animations, especially with momentum scrolling. The logic
+    needs to be more robust to handle this.
+  - >-
+    I've rewritten the `useAutoAnimateStats` hook to be more resilient. Here are
+    the key improvements:
+  - >-
+    1.  **Stateful Animation Check**: I've added an `isAnimating` ref to prevent
+    new scroll events from triggering another animation while one is already in
+    progress.
+  - >-
+    2.  **More Reliable State Detection**: Instead of relying on a separate
+    `isHidden` ref which could get out of sync, the hook now directly checks the
+    element's `autoAlpha` property (set by GSAP) to determine if it's visible or
+    hidden before starting a new animation.
+  - '3.  **Simpler, Clearer Logic**: The conditions are now much clearer:'
+  - >-
+    *   **Hide**: Only triggers if you are actively scrolling *down* AND you've
+    passed a 150px threshold.
+  - >-
+    *   **Show**: Triggers whenever the scroll position is *at or above* the
+    150px threshold, regardless of scroll direction. This ensures it always
+    reappears when you're at the top of the page.
+  - >-
+    4.  **Cleaner Collapse**: I'm now also animating `marginTop` to 0 to
+    properly collapse the space created by Tailwind's `space-y-*` utility. The
+    "show" animation then clears these properties, allowing CSS classes to take
+    over seamlessly.
+  - >-
+    This revised approach will provide a much smoother and more predictable
+    "sliver" effect, eliminating the erratic behavior.
+  - 'Here is the updated hook:'
+operations:
+  - type: write
+    path: src/hooks/useAutoAnimateStats.hook.ts
+    content: |-
+      import { useEffect, useRef, useCallback } from 'react';
+      import { gsap } from 'gsap';
+
+      export function useAutoAnimateStats(
+        scrollContainerRef: React.RefObject<HTMLElement>,
+        statsContainerRef: React.RefObject<HTMLElement>
+      ) {
+        const lastScrollY = useRef(0);
+        const isAnimating = useRef(false);
+
+        const handleScroll = useCallback(() => {
+          if (!scrollContainerRef.current || !statsContainerRef.current || isAnimating.current) {
+            return;
+          }
+
+          const scrollY = scrollContainerRef.current.scrollTop;
+          const isScrollingDown = scrollY > lastScrollY.current;
+
+          // Hide if scrolling down and past the threshold
+          if (isScrollingDown && scrollY > 150) {
+            // Only hide if it's currently visible
+            if (gsap.getProperty(statsContainerRef.current, 'autoAlpha') === 1) {
+              isAnimating.current = true;
+              gsap.to(statsContainerRef.current, {
+                height: 0,
+                autoAlpha: 0,
+                marginTop: 0, // Animate margin to collapse space from `space-y`
+                duration: 0.3,
+                ease: 'power2.inOut',
+                overwrite: true,
+                onComplete: () => {
+                  isAnimating.current = false;
+                }
+              });
+            }
+          }
+          // Show if we've scrolled back up into the threshold area
+          else if (scrollY <= 150) {
+             // Only show if it's currently hidden
+            if (gsap.getProperty(statsContainerRef.current, 'autoAlpha') === 0) {
+              isAnimating.current = true;
+              gsap.to(statsContainerRef.current, {
+                duration: 0.3,
+                ease: 'power2.out',
+                overwrite: true,
+                // Clear props to allow CSS classes to take over again
+                clearProps: 'height,autoAlpha,marginTop', 
+                onComplete: () => {
+                  isAnimating.current = false;
+                }
+              });
+            }
+          }
+
+          lastScrollY.current = scrollY < 0 ? 0 : scrollY;
+        }, [scrollContainerRef, statsContainerRef]);
+
+        useEffect(() => {
+          const scrollEl = scrollContainerRef.current;
+          if (scrollEl) {
+            lastScrollY.current = scrollEl.scrollTop;
+            scrollEl.addEventListener('scroll', handleScroll, { passive: true });
+          }
+          return () => {
+            if (scrollEl) {
+              scrollEl.removeEventListener('scroll', handleScroll);
+            }
+            gsap.killTweensOf(statsContainerRef.current);
+          };
+        }, [handleScroll, scrollContainerRef, statsContainerRef]);
+      }
+    patchStrategy: replace
+snapshot:
+  src/hooks/useAutoAnimateStats.hook.ts: |-
+    import { useEffect, useRef, useCallback } from 'react';
+    import { gsap } from 'gsap';
+
+    export function useAutoAnimateStats(
+      scrollContainerRef: React.RefObject<HTMLElement>,
+      statsContainerRef: React.RefObject<HTMLElement>
+    ) {
+      const lastScrollY = useRef(0);
+      const isHidden = useRef(false);
+      const animation = useRef<gsap.core.Tween | null>(null);
+      const originalDisplay = useRef<string>('');
+
+      useEffect(() => {
+        // On mount, store the original display property if the ref is available
+        if (statsContainerRef.current) {
+            originalDisplay.current = window.getComputedStyle(statsContainerRef.current).display;
+        }
+      }, [statsContainerRef]);
+
+      const handleScroll = useCallback(() => {
+        if (!scrollContainerRef.current || !statsContainerRef.current) return;
+
+        // Ensure we have originalDisplay. It might not be available on first scroll if ref isn't ready.
+        if (!originalDisplay.current && statsContainerRef.current) {
+            originalDisplay.current = window.getComputedStyle(statsContainerRef.current).display;
+            if (!originalDisplay.current || originalDisplay.current === 'none') {
+              // Fallback if it's still none (e.g. initially hidden)
+              originalDisplay.current = 'grid';
+            }
+        }
+        
+        const scrollY = scrollContainerRef.current.scrollTop;
+
+        if (animation.current && animation.current.isActive()) {
+          return;
+        }
+
+        // Scroll down past threshold
+        if (scrollY > lastScrollY.current && scrollY > 150 && !isHidden.current) {
+          isHidden.current = true;
+          animation.current = gsap.to(statsContainerRef.current, {
+            height: 0,
+            autoAlpha: 0,
+            duration: 0.3,
+            ease: 'power2.inOut',
+            overwrite: true,
+            onComplete: () => {
+                if (statsContainerRef.current) {
+                    statsContainerRef.current.style.display = 'none';
+                }
+            }
+          });
+        } 
+        // Scroll up
+        else if (scrollY < lastScrollY.current && isHidden.current) {
+          isHidden.current = false;
+          
+          if (statsContainerRef.current) {
+            statsContainerRef.current.style.display = originalDisplay.current;
+            
+            animation.current = gsap.from(statsContainerRef.current, {
+              height: 0,
+              autoAlpha: 0,
+              duration: 0.3,
+              ease: 'power2.out',
+              overwrite: true,
+              clearProps: 'all' // Clean up inline styles after animation
+            });
+          }
+        }
+
+        lastScrollY.current = scrollY < 0 ? 0 : scrollY;
+      }, [scrollContainerRef, statsContainerRef]);
+
+      useEffect(() => {
+        const scrollEl = scrollContainerRef.current;
+        if (scrollEl) {
+          scrollEl.addEventListener('scroll', handleScroll, { passive: true });
+        }
+        return () => {
+          if (scrollEl) {
+            scrollEl.removeEventListener('scroll', handleScroll);
+          }
+          if (animation.current) {
+            animation.current.kill();
+          }
+        };
+      }, [handleScroll, scrollContainerRef]);
+    }
+approved: false
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: undone
+id: 454

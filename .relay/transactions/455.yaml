@@ -1,0 +1,555 @@
+uuid: d8225547-73d7-4638-96d2-28c0b719463c
+projectId: jeli-app-shell
+createdAt: '2025-10-18T07:18:12.520Z'
+gitCommitMsg: >-
+  feat(DataDemo): implement auto-hiding stats header on scroll
+
+  Introduces a sliver-style header for the stats cards section on the Data Demo
+  page. The stats container now gracefully animates out of view when scrolling
+  down and animates back in when scrolling up, improving content visibility.
+
+  - Created a new reusable hook, `useAutoAnimateStats`, to encapsulate the GSAP
+  animation and scroll-handling logic. - Integrated the hook into the `DataDemo`
+  page component to link the behavior to the scroll container and stats section.
+  - This provides a more dynamic and focused user experience, especially when
+  interacting with large datasets.
+promptSummary: >-
+  Implement a sliver-style auto-hiding header for the stats cards on the Data
+  Demo page. The cards should animate out of view on scroll down and back in on
+  scroll up.
+reasoning:
+  - >-
+    Of course. I will implement a sliver-style header for the stats cards on the
+    `DataDemo` page. When the user scrolls down, the stats container will
+    animate out of view, and when they scroll up, it will reappear. This will be
+    encapsulated in a new, reusable hook to keep the component logic clean.
+  - >-
+    First, I'll create the new custom hook `useAutoAnimateStats.hook.ts`. This
+    hook will contain all the logic for tracking scroll position and using GSAP
+    to animate the stats container. It's designed to be efficient, firing
+    animations only when the scroll direction changes past a certain threshold,
+    and to be conflict-free by using GSAP's `overwrite` feature.
+  - >-
+    Next, I'll integrate this new hook into the `DataDemoContent` component.
+    I'll import `useAutoAnimateStats` and call it with the existing `scrollRef`
+    for the page layout and `statsRef` for the stats container. This will
+    connect the animation logic to the correct elements.
+operations:
+  - type: write
+    path: src/pages/DataDemo/hooks/useAutoAnimateStats.hook.ts
+    content: |-
+      import { useEffect, useRef, useCallback } from 'react';
+      import { gsap } from 'gsap';
+
+      /**
+       * A hook that animates a stats container in and out of view based on scroll direction.
+       * It creates a "sliver app bar" effect for the stats section.
+       * @param scrollContainerRef Ref to the main scrolling element.
+       * @param statsContainerRef Ref to the stats container element to be animated.
+       */
+      export function useAutoAnimateStats(
+        scrollContainerRef: React.RefObject<HTMLElement>,
+        statsContainerRef: React.RefObject<HTMLElement>
+      ) {
+        const lastScrollY = useRef(0);
+        const isHidden = useRef(false);
+        const originalMarginTop = useRef<string | null>(null);
+
+        const handleScroll = useCallback(() => {
+          if (!scrollContainerRef.current || !statsContainerRef.current) return;
+
+          const scrollY = scrollContainerRef.current.scrollTop;
+          
+          // Initialize original margin on first scroll event if not set
+          if (originalMarginTop.current === null) {
+            const computedStyle = getComputedStyle(statsContainerRef.current);
+            originalMarginTop.current = computedStyle.getPropertyValue('margin-top');
+          }
+
+          // Scroll down past threshold, hide stats
+          if (scrollY > lastScrollY.current && scrollY > 150 && !isHidden.current) {
+            isHidden.current = true;
+            gsap.to(statsContainerRef.current, {
+              duration: 0.4,
+              height: 0,
+              autoAlpha: 0,
+              marginTop: 0,
+              ease: 'power2.inOut',
+              overwrite: true,
+            });
+          } 
+          // Scroll up or back to top, show stats
+          else if ((scrollY < lastScrollY.current || scrollY <= 150) && isHidden.current) {
+            isHidden.current = false;
+            gsap.to(statsContainerRef.current, {
+              duration: 0.4,
+              height: 'auto',
+              autoAlpha: 1,
+              marginTop: originalMarginTop.current || 0,
+              ease: 'power2.out',
+              overwrite: true,
+            });
+          }
+
+          lastScrollY.current = scrollY < 0 ? 0 : scrollY;
+        }, [scrollContainerRef, statsContainerRef]);
+
+        useEffect(() => {
+          const scrollContainer = scrollContainerRef.current;
+          if (scrollContainer) {
+            scrollContainer.addEventListener('scroll', handleScroll, { passive: true });
+          }
+
+          return () => {
+            if (scrollContainer) {
+              scrollContainer.removeEventListener('scroll', handleScroll);
+            }
+            // When component unmounts, kill any running animations on the stats ref
+            if (statsContainerRef.current) {
+              gsap.killTweensOf(statsContainerRef.current);
+            }
+          };
+        }, [scrollContainerRef, statsContainerRef, handleScroll]);
+      }
+    patchStrategy: replace
+  - type: write
+    path: src/pages/DataDemo/index.tsx
+    content: |+
+      --- src/pages/DataDemo/index.tsx
+      +++ src/pages/DataDemo/index.tsx
+      @@ -21,6 +21,7 @@
+       import { mockDataItems } from './data/mockData'
+       import type { GroupableField, DataItem } from './types'
+       import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
+      +import { useAutoAnimateStats } from './hooks/useAutoAnimateStats.hook'
+       import { 
+         useDataDemoStore, 
+         useGroupTabs
+      @@ -109,6 +110,9 @@
+         const statsRef = useRef<HTMLDivElement>(null)
+         const scrollRef = useRef<HTMLDivElement>(null);
+       
+      +  // Auto-hide stats container on scroll down
+      +  useAutoAnimateStats(scrollRef, statsRef);
+      +
+         // Calculate stats from data
+         const totalItems = mockDataItems.length
+         const { showScrollToBottom, scrollToBottom, handleScroll } = useScrollToBottom(scrollRef);
+
+    patchStrategy: standard-diff
+snapshot:
+  src/pages/DataDemo/hooks/useAutoAnimateStats.hook.ts: null
+  src/pages/DataDemo/index.tsx: >
+    import { useRef, useEffect, useCallback, useMemo } from 'react'
+
+    import {
+      Layers, 
+      AlertTriangle, 
+      PlayCircle, 
+      TrendingUp,
+      Loader2,
+      ChevronsUpDown
+    } from 'lucide-react'
+
+    import { gsap } from 'gsap'
+
+    import { cn } from '@/lib/utils'
+
+    import { Button } from '@/components/ui/button'
+
+    import { 
+      DropdownMenu, 
+      DropdownMenuContent, 
+      DropdownMenuRadioGroup, 
+      DropdownMenuRadioItem, 
+      DropdownMenuTrigger 
+    } from '@/components/ui/dropdown-menu'
+
+    import { PageLayout } from '@/components/shared/PageLayout'
+
+    import { useScrollToBottom } from '@/hooks/useScrollToBottom.hook';
+
+    import { ScrollToBottomButton } from
+    '@/components/shared/ScrollToBottomButton';
+
+    import { DataListView } from './components/DataListView'
+
+    import { DataCardView } from './components/DataCardView'
+
+    import { DataTableView } from './components/DataTableView'
+
+    import { DataKanbanView } from './components/DataKanbanView'
+
+    import { DataCalendarView } from './components/DataCalendarView'
+
+    import { DataViewModeSelector } from './components/DataViewModeSelector'
+
+    import { AnimatedTabs } from '@/components/ui/animated-tabs'
+
+    import { StatCard } from '@/components/shared/StatCard'
+
+    import { AnimatedLoadingSkeleton } from
+    './components/AnimatedLoadingSkeleton'
+
+    import { DataToolbar } from './components/DataToolbar'
+
+    import { mockDataItems } from './data/mockData'
+
+    import type { GroupableField, DataItem } from './types'
+
+    import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
+
+    import { 
+      useDataDemoStore, 
+      useGroupTabs
+    } from './store/dataDemo.store'
+
+
+    type Stat = {
+      title: string;
+      value: string;
+      icon: React.ReactNode;
+      change: string;
+      trend: 'up' | 'down';
+      type?: 'card';
+    };
+
+
+    type ChartStat = {
+      title: string;
+      value: string;
+      icon: React.ReactNode;
+      change: string;
+      trend: 'up' | 'down';
+      type: 'chart';
+      chartData: number[];
+    };
+
+
+    type StatItem = Stat | ChartStat;
+
+
+    function DataDemoContent() {
+      const {
+        viewMode,
+        groupBy,
+        activeGroupTab,
+        setGroupBy,
+        setSort,
+        setActiveGroupTab,
+        page,
+        filters,
+        sortConfig,
+        setPage,
+      } = useAppViewManager();
+
+      const { hasMore, isLoading, isInitialLoading, totalItemCount, loadData } = useDataDemoStore(state => ({
+        hasMore: state.hasMore,
+        isLoading: state.isLoading,
+        isInitialLoading: state.isInitialLoading,
+        totalItemCount: state.totalItemCount,
+        loadData: state.loadData,
+      }));
+
+      const groupTabs = useGroupTabs(groupBy, activeGroupTab);
+      const allItems = useDataDemoStore(s => s.items);
+
+      const groupedData = useMemo(() => {
+        if (groupBy === 'none') {
+            return null;
+        }
+        return allItems.reduce((acc, item) => {
+            const groupKey = String(item[groupBy as GroupableField]);
+            if (!acc[groupKey]) {
+                acc[groupKey] = [];
+            }
+            acc[groupKey].push(item);
+            return acc;
+        }, {} as Record<string, DataItem[]>);
+      }, [allItems, groupBy]);
+
+      const dataToRender = useMemo(() => {
+        if (groupBy === 'none' || activeGroupTab === 'all' || !groupedData) {
+          return allItems;
+        }
+        return groupedData[activeGroupTab] || [];
+      }, [groupBy, activeGroupTab, allItems, groupedData]);
+
+      const groupOptions = useMemo(() => [
+        { id: 'none' as const, label: 'None' }, { id: 'status' as const, label: 'Status' }, { id: 'priority' as const, label: 'Priority' }, { id: 'category' as const, label: 'Category' }
+      ], []);
+
+      const statsRef = useRef<HTMLDivElement>(null)
+      const scrollRef = useRef<HTMLDivElement>(null);
+
+      // Calculate stats from data
+      const totalItems = mockDataItems.length
+      const { showScrollToBottom, scrollToBottom, handleScroll } = useScrollToBottom(scrollRef);
+
+      const activeItems = mockDataItems.filter(item => item.status === 'active').length
+      const highPriorityItems = mockDataItems.filter(item => item.priority === 'high' || item.priority === 'critical').length
+      const avgCompletion = totalItems > 0 ? Math.round(
+        mockDataItems.reduce((acc, item) => acc + item.metrics.completion, 0) / totalItems
+      ) : 0
+
+      const stats: StatItem[] = [
+        {
+          title: "Total Projects",
+          value: totalItems.toString(),
+          icon: <Layers className="w-5 h-5" />,
+          change: "+5.2% this month",
+          trend: "up" as const,
+          type: 'chart',
+          chartData: [120, 125, 122, 130, 135, 138, 142]
+        },
+        {
+          title: "Active Projects",
+          value: activeItems.toString(),
+          icon: <PlayCircle className="w-5 h-5" />,
+          change: "+2 this week", 
+          trend: "up" as const,
+          type: 'chart',
+          chartData: [45, 50, 48, 55, 53, 60, 58]
+        },
+        {
+          title: "High Priority",
+          value: highPriorityItems.toString(),
+          icon: <AlertTriangle className="w-5 h-5" />,
+          change: "-1 from last week",
+          trend: "down" as const,
+          type: 'chart',
+          chartData: [25, 26, 28, 27, 26, 24, 23]
+        },
+        {
+          title: "Avg. Completion",
+          value: `${avgCompletion}%`,
+          icon: <TrendingUp className="w-5 h-5" />,
+          change: "+3.2%",
+          trend: "up" as const,
+          type: 'chart',
+          chartData: [65, 68, 70, 69, 72, 75, 78]
+        }
+      ]
+
+      useEffect(() => {
+        // Animate stats cards in
+        if (!isInitialLoading && statsRef.current) {
+          gsap.fromTo(statsRef.current.children,
+            { y: 30, opacity: 0 },
+            {
+              duration: 0.6,
+              y: 0,
+              opacity: 1,
+              stagger: 0.1,
+              ease: "power2.out"
+            }
+          )
+        }
+      }, [isInitialLoading]);
+
+      useEffect(() => {
+        loadData({
+          page,
+          groupBy,
+          filters,
+          sortConfig,
+          isFullLoad: viewMode === 'calendar',
+        });
+      }, [page, groupBy, filters, sortConfig, loadData, viewMode]);
+
+      const observer = useRef<IntersectionObserver>();
+      const loaderRef = useCallback(
+        (node: Element | null) => {
+          if (isLoading) return;
+          if (observer.current) observer.current.disconnect();
+
+          observer.current = new IntersectionObserver((entries) => {
+            if (entries[0].isIntersecting && hasMore) {
+              setPage(page + 1);
+            }
+          });
+          if (node) observer.current.observe(node);
+        },
+        [isLoading, hasMore, page, setPage],
+      );
+      
+      // Auto-group by status when switching to kanban view for the first time
+      useEffect(() => {
+        if (viewMode === 'kanban' && groupBy === 'none') {
+          setGroupBy('status');
+          setSort(null); // Kanban is manually sorted, so disable programmatic sort
+        }
+        // For calendar view, we don't want grouping.
+        if (viewMode === 'calendar') {
+          if (groupBy !== 'none') setGroupBy('none');
+        }
+      }, [viewMode, groupBy, setGroupBy]);
+
+      const renderViewForData = useCallback((data: DataItem[]) => {
+        switch (viewMode) {
+            case 'table': return <DataTableView data={data} />;
+            case 'cards': return <DataCardView data={data} />;
+            case 'calendar': return null; // Calendar has its own render path below
+            case 'kanban': return null; // Kanban has its own render path below
+            case 'grid': return <DataCardView data={data} isGrid />;
+            case 'list':
+            default:
+                return <DataListView data={data} />;
+        }
+      }, [viewMode]);
+
+      const GroupByDropdown = useCallback(() => (
+        <div className="flex items-center gap-2 shrink-0">
+          <span className="text-sm font-medium text-muted-foreground shrink-0">Group by:</span>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="w-[180px] justify-between">
+                {groupOptions.find(o => o.id === groupBy)?.label}
+                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="w-[180px]">
+              <DropdownMenuRadioGroup value={groupBy} onValueChange={setGroupBy}>
+                {groupOptions.map(option => (
+                  <DropdownMenuRadioItem key={option.id} value={option.id}>
+                    {option.label}
+                  </DropdownMenuRadioItem>
+                ))}
+              </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      ), [groupBy, setGroupBy, groupOptions]);
+
+      const isGroupedView = useMemo(() => 
+        groupBy !== 'none' && groupTabs.length > 1 && groupedData,
+      [groupBy, groupTabs.length, groupedData]);
+
+
+      return (
+        <PageLayout
+          scrollRef={scrollRef}
+          onScroll={handleScroll}
+          // Note: Search functionality is handled by a separate SearchBar in the TopBar
+        >
+          <div className="space-y-8">
+            {/* Header */}
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div className="flex-1">
+                <h1 className="text-2xl font-bold tracking-tight">Data Showcase</h1>
+                <p className="text-muted-foreground">
+                  {isInitialLoading 
+                    ? "Loading projects..." 
+                    : `Showing ${dataToRender.length} of ${totalItemCount} item(s)`}
+                </p>
+              </div>
+              <DataViewModeSelector />
+            </div>
+
+            {/* Stats Section */}
+            {!isInitialLoading && (
+              <div ref={statsRef} className="grid grid-cols-[repeat(auto-fit,minmax(250px,1fr))] gap-6">
+                {stats.map((stat) => (
+                  <StatCard
+                    key={stat.title}
+                    title={stat.title}
+                    value={stat.value}
+                    change={stat.change}
+                    trend={stat.trend}
+                    icon={stat.icon}
+                    chartData={stat.type === 'chart' ? stat.chartData : undefined}
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* Controls Area */}
+            <div className="space-y-6">
+              <DataToolbar />
+            </div>
+
+            <div className="min-h-[500px]">
+              {isInitialLoading 
+                ? <AnimatedLoadingSkeleton viewMode={viewMode} /> 
+                : viewMode === 'calendar' ? (
+                  <DataCalendarView data={allItems} />
+                )
+                : viewMode === 'kanban' ? (
+                  <>
+                    <div className="flex items-center justify-end gap-4 h-[68px]">
+                      <GroupByDropdown />
+                    </div>
+                    {isGroupedView ? (
+                      <DataKanbanView data={groupedData} />
+                    ) : (
+                      <div className="flex items-center justify-center h-96 text-muted-foreground">
+                        Group data by a metric to use the Kanban view.
+                      </div>
+                    )}
+                  </>
+                )
+                : !isGroupedView ? (
+                  // Not grouped view
+                  <>
+                    <div className="flex items-center justify-between gap-4 h-[68px]">
+                      <div className="flex-grow border-b" /> {/* Mimic tab border */}
+                      <GroupByDropdown />
+                    </div>
+                    {renderViewForData(allItems)}
+                  </>
+                ) : (
+                  // Grouped view with AnimatedTabs
+                  <div className="relative">
+                    <AnimatedTabs
+                      tabs={groupTabs}
+                      activeTab={activeGroupTab}
+                      onTabChange={setActiveGroupTab}
+                      wrapperClassName="flex flex-col"
+                      className="border-b"
+                      contentClassName="pt-6 flex-grow"
+                    >
+                      {groupTabs.map(tab => (
+                        <div key={tab.id} className="min-h-[440px]">
+                          {renderViewForData(
+                            tab.id === 'all' ? allItems : groupedData?.[tab.id] || []
+                          )}
+                        </div>
+                      ))}
+                    </AnimatedTabs>
+                    <div className="absolute top-[14px] right-0">
+                        <GroupByDropdown />
+                    </div>
+                  </div>
+                )
+              }
+            </div>
+
+            {/* Loader for infinite scroll */}
+            <div ref={loaderRef} className="flex justify-center items-center py-6">
+              {isLoading && !isInitialLoading && groupBy === 'none' && viewMode !== 'calendar' && (
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span>Loading more...</span>
+                </div>
+              )}
+              {!isLoading && !hasMore && dataToRender.length > 0 && !isInitialLoading && groupBy === 'none' && viewMode !== 'calendar' && (
+                <p className="text-muted-foreground">You've reached the end.</p>
+              )}
+            </div>
+          </div>
+          <ScrollToBottomButton isVisible={showScrollToBottom} onClick={scrollToBottom} />
+        </PageLayout>
+      )
+    }
+
+
+    export default function DataDemoPage() {
+      return <DataDemoContent />;
+    }
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 455

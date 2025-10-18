@@ -1,16 +1,15 @@
 # Directory Structure
 ```
 src/
+  components/
+    shared/
+      PageLayout.tsx
+      StatCard.tsx
   hooks/
-    useAppViewManager.hook.ts
-  lib/
-    utils.ts
+    useAutoAnimateTopBar.ts
   pages/
     DataDemo/
-      components/
-        DataCalendarView.tsx
       index.tsx
-      types.ts
   index.css
 index.html
 package.json
@@ -30,6 +29,119 @@ export default {
     tailwindcss: {},
     autoprefixer: {},
   },
+}
+```
+
+## File: src/components/shared/StatCard.tsx
+```typescript
+import React, { useLayoutEffect, useRef } from 'react';
+import { gsap } from 'gsap';
+import { cn } from '@/lib/utils';
+import { Card } from '@/components/ui/card';
+
+interface StatCardProps {
+  title: string;
+  value: string;
+  change: string;
+  trend: 'up' | 'down';
+  icon: React.ReactNode;
+  chartData?: number[];
+}
+
+export function StatCard({ title, value, change, trend, icon, chartData }: StatCardProps) {
+  const chartRef = useRef<SVGSVGElement>(null);
+
+  useLayoutEffect(() => {
+    // Only run animation if chartData is present
+    if (chartRef.current && chartData) {
+      const line = chartRef.current.querySelector('.chart-line');
+      const area = chartRef.current.querySelector('.chart-area');
+      if (line instanceof SVGPathElement && area) {
+        const length = line.getTotalLength();
+        gsap.set(line, { strokeDasharray: length, strokeDashoffset: length });
+        gsap.to(line, { strokeDashoffset: 0, duration: 1.5, ease: 'power2.inOut' });
+        gsap.fromTo(area, { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 1, ease: 'power2.out', delay: 0.5 });
+      }
+    }
+  }, [chartData]);
+
+  // --- Chart rendering logic (only if chartData is provided) ---
+  const renderChart = () => {
+    if (!chartData || chartData.length < 2) return null;
+
+    // SVG dimensions
+    const width = 150;
+    const height = 60;
+
+    // Normalize data
+    const max = Math.max(...chartData);
+    const min = Math.min(...chartData);
+    const range = max - min === 0 ? 1 : max - min;
+
+    const points = chartData
+      .map((val, i) => {
+        const x = (i / (chartData.length - 1)) * width;
+        const y = height - ((val - min) / range) * (height - 10) + 5; // Add vertical padding
+        return `${x},${y}`;
+      });
+
+    const linePath = "M" + points.join(" L");
+    const areaPath = `${linePath} L${width},${height} L0,${height} Z`;
+
+    return (
+      <div className="mt-4 -mb-2 -mx-2">
+        <svg ref={chartRef} viewBox={`0 0 ${width} ${height}`} className="w-full h-auto" preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" className="text-primary" stopColor="currentColor" stopOpacity={0.3} />
+              <stop offset="100%" className="text-primary" stopColor="currentColor" stopOpacity={0} />
+            </linearGradient>
+          </defs>
+          <path
+            className="chart-area"
+            d={areaPath}
+            fill="url(#chartGradient)"
+          />
+          <path
+            className="chart-line"
+            d={linePath}
+            fill="none"
+            stroke="hsl(var(--primary))"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </div>
+    );
+  };
+  // --- End of chart rendering logic ---
+
+  return (
+    <Card className={cn(
+        "p-6 border-border/50 hover:border-primary/30 transition-all duration-300 group cursor-pointer flex flex-col justify-between",
+        !chartData && "h-full" // Ensure cards without charts have consistent height if needed
+    )}>
+      <div>
+        <div className="flex items-center justify-between">
+          <div className="p-3 bg-primary/10 rounded-full group-hover:bg-primary/20 transition-colors">
+            {icon}
+          </div>
+          <div className={cn(
+            "text-sm font-medium",
+            trend === 'up' ? "text-green-600" : "text-red-600"
+          )}>
+            {change}
+          </div>
+        </div>
+        <div className="mt-4">
+          <h3 className="text-2xl font-bold">{value}</h3>
+          <p className="text-sm text-muted-foreground mt-1">{title}</p>
+        </div>
+      </div>
+      {renderChart()}
+    </Card>
+  );
 }
 ```
 
@@ -363,250 +475,46 @@ export default {
 }
 ```
 
-## File: src/pages/DataDemo/components/DataCalendarView.tsx
+## File: src/components/shared/PageLayout.tsx
 ```typescript
-import { useState, useMemo } from "react";
-import { format, addMonths, subMonths, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isToday, isSameDay, } from "date-fns";
-import { ChevronLeft, ChevronRight } from "lucide-react";
-import { AnimatePresence, motion } from "framer-motion";
+import React from 'react';
+import { cn } from '@/lib/utils';
+import { useAppShellStore } from '@/store/appShell.store';
+import { BODY_STATES } from '@/lib/utils';
 
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { cn, getPriorityColor } from "@/lib/utils";
-import type { DataItem } from "../types";
-import { useAppViewManager } from "@/hooks/useAppViewManager.hook";
-import { useSelectedItem, useDataDemoStore } from "../store/dataDemo.store";
-import { CalendarViewControls } from "./DataCalendarViewControls";
-
-interface CalendarViewProps {
-  data: DataItem[];
+interface PageLayoutProps extends React.HTMLAttributes<HTMLDivElement> {
+  children: React.ReactNode;
+  scrollRef?: React.RefObject<HTMLDivElement>;
 }
 
-function CalendarHeader({ currentDate, onPrevMonth, onNextMonth, onToday }: {
-  currentDate: Date;
-  onPrevMonth: () => void;
-  onNextMonth: () => void;
-  onToday: () => void;
-}) {
-  return (
-    <div className="flex items-center justify-between gap-4 mb-6">
-      <h2 className="text-xl font-bold md:text-2xl tracking-tight">
-        {format(currentDate, "MMMM yyyy")}
-      </h2>
-      <div className="flex items-center gap-2">
-        <Button variant="outline" size="sm" onClick={onToday}>Today</Button>
-        <CalendarViewControls />
-        <div className="flex items-center">
-          <Button variant="outline" size="icon" className="h-9 w-9" onClick={onPrevMonth}>
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <Button variant="outline" size="icon" className="h-9 w-9" onClick={onNextMonth}>
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function CalendarEvent({ item, isSelected, isDragging, onDragStart }: { 
-    item: DataItem; 
-    isSelected: boolean;
-    isDragging: boolean;
-    onDragStart: (e: React.DragEvent<HTMLDivElement>, itemId: string) => void;
-}) {
-  const { onItemSelect } = useAppViewManager();
+export const PageLayout = React.forwardRef<HTMLDivElement, PageLayoutProps>(
+  ({ children, onScroll, scrollRef, className, ...props }, ref) => {
+    const isTopBarVisible = useAppShellStore(s => s.isTopBarVisible);
+    const bodyState = useAppShellStore(s => s.bodyState);
+    const isFullscreen = bodyState === 'fullscreen';
+    const isInSidePane = bodyState === BODY_STATES.SIDE_PANE;
 
     return (
-        <motion.div
-            layout
-            draggable
-            onDragStart={(e) => onDragStart(e, item.id)}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.2 }}
-            onClick={() => onItemSelect(item)}
-            className={cn(
-                "p-2.5 rounded-xl cursor-grab transition-all duration-200 border bg-card/60 dark:bg-neutral-800/60 backdrop-blur-sm",
-                "hover:bg-card/80 dark:hover:bg-neutral-700/70",
-                isSelected && "ring-2 ring-primary ring-offset-background ring-offset-2 bg-card/90",
-                isDragging && "opacity-50 ring-2 ring-primary cursor-grabbing"
-            )}
+      <div
+        ref={scrollRef}
+        className={cn("h-full overflow-y-auto", className)}
+        onScroll={onScroll}
+      >
+        <div ref={ref} className={cn(
+          "space-y-8 transition-all duration-300",
+          !isInSidePane ? "px-6 lg:px-12 pb-6" : "px-6 pb-6",
+          isTopBarVisible && !isFullscreen ? "pt-24" : "pt-6"
+        )}
+        {...props}
         >
-            <h4 className="font-semibold text-sm leading-tight text-card-foreground/90 line-clamp-2">
-                {item.title}
-            </h4>
-            <div className="flex items-center justify-between mt-2 pt-2 border-t border-border/30 dark:border-neutral-700/50">
-                <Badge className={cn("text-xs border capitalize", getPriorityColor(item.priority))}>
-                    {item.priority}
-                </Badge>
-                <Avatar className="w-5 h-5">
-                    <AvatarImage src={item.assignee.avatar} />
-                    <AvatarFallback className="text-[10px] bg-muted dark:bg-neutral-700 text-foreground dark:text-neutral-200 font-medium">
-                        {item.assignee.name.split(" ").map((n) => n[0]).join("")}
-                    </AvatarFallback>
-                </Avatar>
-            </div>
-        </motion.div>
-    );
-}
-
-export function DataCalendarView({ data }: CalendarViewProps) {
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const { itemId } = useAppViewManager();
-  const selectedItem = useSelectedItem(itemId);
-  const updateItem = useDataDemoStore(s => s.updateItem);
-  
-  // Drag & Drop State
-  const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
-  const [dropTargetDate, setDropTargetDate] = useState<Date | null>(null);
-
-  const itemsWithDueDate = useMemo(() => data.filter(item => !!item.dueDate), [data]);
-
-  const eventsByDate = useMemo(() => {
-    const eventsMap = new Map<string, DataItem[]>();
-    itemsWithDueDate.forEach(item => {
-      const dueDate = new Date(item.dueDate as string);
-      const dateKey = format(dueDate, "yyyy-MM-dd");
-      if (!eventsMap.has(dateKey)) {
-        eventsMap.set(dateKey, []);
-      }
-      eventsMap.get(dateKey)?.push(item);
-    });
-    return eventsMap;
-  }, [itemsWithDueDate]);
-
-  const monthStart = startOfMonth(currentDate);
-  const monthEnd = endOfMonth(monthStart);
-  const startDate = startOfWeek(monthStart, { weekStartsOn: 0 }); // Sunday
-  const endDate = endOfWeek(monthEnd, { weekStartsOn: 0 });
-
-  const days = eachDayOfInterval({ start: startDate, end: endDate });
-  const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-  
-  // D&D Handlers
-  const handleDragStart = (e: React.DragEvent, itemId: string) => {
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', itemId);
-    setDraggedItemId(itemId);
-  };
-  
-  const handleDragEnd = () => {
-    setDraggedItemId(null);
-    setDropTargetDate(null);
-  };
-
-  const handleDragOver = (e: React.DragEvent, day: Date) => {
-    e.preventDefault();
-    if (dropTargetDate === null || !isSameDay(day, dropTargetDate)) {
-        setDropTargetDate(day);
-    }
-  };
-
-  const handleDragLeave = () => {
-    setDropTargetDate(null);
-  };
-
-  const handleDrop = (e: React.DragEvent, day: Date) => {
-    e.preventDefault();
-    const itemIdToUpdate = e.dataTransfer.getData('text/plain');
-    if (itemIdToUpdate) {
-        const originalItem = itemsWithDueDate.find(i => i.id === itemIdToUpdate);
-        if (originalItem && originalItem.dueDate) {
-            const originalDate = new Date(originalItem.dueDate);
-            // Preserve the time, only change the date part
-            const newDueDate = new Date(day);
-            newDueDate.setHours(originalDate.getHours(), originalDate.getMinutes(), originalDate.getSeconds(), originalDate.getMilliseconds());
-            updateItem(itemIdToUpdate, { dueDate: newDueDate.toISOString() });
-        }
-    }
-    handleDragEnd(); // Reset state
-  };
-  
-  const handlePrevMonth = () => setCurrentDate(subMonths(currentDate, 1));
-  const handleNextMonth = () => setCurrentDate(addMonths(currentDate, 1));
-  const handleToday = () => setCurrentDate(new Date());
-
-  return (
-    <div className="-mx-4 md:-mx-6">
-      <div className="px-4 md:px-6">
-        <CalendarHeader currentDate={currentDate} onPrevMonth={handlePrevMonth} onNextMonth={handleNextMonth} onToday={handleToday} />
+          {children}
+        </div>
       </div>
-      {itemsWithDueDate.length === 0 ? (
-        <div className="flex items-center justify-center h-96 text-muted-foreground rounded-lg border bg-card/30 mx-4 md:mx-6">
-          No items with due dates to display on the calendar.
-        </div>
-      ) : (
-        <div className="grid grid-cols-7 p-2 gap-2" onDragEnd={handleDragEnd}>
-          {weekdays.map(day => (
-            <div key={day} className="py-2 px-3 text-center text-xs font-semibold text-muted-foreground">
-              {day}
-            </div>
-          ))}
+    );
+  }
+);
 
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={format(currentDate, "yyyy-MM")}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.3 }}
-              className="col-span-7 grid grid-cols-7 gap-2"
-            >
-              {days.map(day => {
-                const dateKey = format(day, "yyyy-MM-dd");
-                const dayEvents = eventsByDate.get(dateKey) || [];
-                const isCurrentMonthDay = isSameMonth(day, currentDate);
-                const isDropTarget = dropTargetDate && isSameDay(day, dropTargetDate);
-
-                return (
-                  <div
-                    key={day.toString()}
-                    onDragOver={(e) => handleDragOver(e, day)}
-                    onDragLeave={handleDragLeave}
-                    onDrop={(e) => handleDrop(e, day)}
-                    className={cn(
-                      "relative min-h-[150px] rounded-2xl p-3 flex flex-col gap-2 transition-all duration-300 border",
-                      isCurrentMonthDay ? "bg-card/40 dark:bg-neutral-900/40 border-transparent" : "bg-muted/30 dark:bg-neutral-800/20 border-transparent text-muted-foreground/60",
-                      isDropTarget ? "border-primary/50 bg-primary/10" : "hover:border-primary/20 hover:bg-card/60"
-                    )}
-                  >
-                    <span className={cn(
-                      "font-semibold text-sm",
-                      isToday(day) && "flex items-center justify-center w-7 h-7 rounded-full bg-primary text-primary-foreground"
-                    )}>
-                      {format(day, "d")}
-                    </span>
-                    <div className="space-y-2 overflow-y-auto flex-grow custom-scrollbar">
-                      <AnimatePresence>
-                        {dayEvents.slice(0, 4).map(item => (
-                          <CalendarEvent
-                            key={item.id} 
-                            item={item} 
-                            isSelected={selectedItem?.id === item.id}
-                            isDragging={draggedItemId === item.id}
-                            onDragStart={handleDragStart}
-                          />
-                        ))}
-                      </AnimatePresence>
-                    </div>
-                    {dayEvents.length > 4 && (
-                      <div className="absolute bottom-1 right-2 text-xs font-bold text-muted-foreground">
-                        +{dayEvents.length - 4} more
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </motion.div>
-          </AnimatePresence>
-        </div>
-      )}
-    </div>
-  );
-}
+PageLayout.displayName = 'PageLayout';
 ```
 
 ## File: vite.config.ts
@@ -653,483 +561,56 @@ export default defineConfig({
 })
 ```
 
-## File: src/lib/utils.ts
+## File: src/hooks/useAutoAnimateTopBar.ts
 ```typescript
-import { type ClassValue, clsx } from "clsx"
-import { twMerge } from "tailwind-merge"
-import { formatDistanceToNow } from "date-fns"
+import { useRef, useCallback, useEffect } from 'react';
+import { useAppShellStore } from '@/store/appShell.store';
+import { BODY_STATES } from '@/lib/utils';
 
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
-}
+export function useAutoAnimateTopBar(isPane = false) {
+  const bodyState = useAppShellStore(s => s.bodyState);
+  const lastScrollTop = useRef(0);
+  const scrollTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-export const SIDEBAR_STATES = {
-  HIDDEN: 'hidden',
-  COLLAPSED: 'collapsed', 
-  EXPANDED: 'expanded',
-  PEEK: 'peek'
-} as const
+  const onScroll = useCallback((event: React.UIEvent<HTMLDivElement>) => {
+    if (isPane || bodyState === BODY_STATES.SPLIT_VIEW || bodyState === BODY_STATES.FULLSCREEN) return;
 
-export const BODY_STATES = {
-  NORMAL: 'normal',
-  FULLSCREEN: 'fullscreen',
-  SIDE_PANE: 'side_pane',
-  SPLIT_VIEW: 'split_view'
-} as const
+    // Clear previous timeout
+    if (scrollTimeout.current) {
+      clearTimeout(scrollTimeout.current);
+    }
 
-export type SidebarState = typeof SIDEBAR_STATES[keyof typeof SIDEBAR_STATES]
-export type BodyState = typeof BODY_STATES[keyof typeof BODY_STATES]
-
-export function capitalize(str: string): string {
-  if (!str) return str
-  return str.charAt(0).toUpperCase() + str.slice(1)
-}
-
-export function formatDistanceToNowShort(date: Date | string): string {
-  const dateObj = typeof date === 'string' ? new Date(date) : date;
-  const result = formatDistanceToNow(dateObj, { addSuffix: true });
-
-  if (result === 'less than a minute ago') return 'now';
-
-  return result
-    .replace('about ', '')
-    .replace(' minutes', 'm')
-    .replace(' minute', 'm')
-    .replace(' hours', 'h')
-    .replace(' hour', 'h')
-    .replace(' days', 'd')
-}
-
-export const getStatusColor = (status: string) => {
-  switch (status) {
-    case 'active': return 'bg-green-500/20 text-green-700 border-green-500/30'
-    case 'pending': return 'bg-yellow-500/20 text-yellow-700 border-yellow-500/30'
-    case 'completed': return 'bg-blue-500/20 text-blue-700 border-blue-500/30'
-    case 'archived': return 'bg-gray-500/20 text-gray-700 border-gray-500/30'
-    default: return 'bg-gray-500/20 text-gray-700 border-gray-500/30'
-  }
-}
-
-export const getPrioritySolidColor = (priority: string) => {
-  switch (priority) {
-    case 'critical': return 'bg-red-500'
-    case 'high': return 'bg-orange-500'
-    case 'medium': return 'bg-blue-500'
-    case 'low': return 'bg-green-500'
-    default: return 'bg-gray-500'
-  }
-}
-
-export const getPriorityColor = (priority: string) => {
-  switch (priority) {
-    case 'critical': return 'bg-red-500/20 text-red-700 border-red-500/30'
-    case 'high': return 'bg-orange-500/20 text-orange-700 border-orange-500/30'
-    case 'medium': return 'bg-blue-500/20 text-blue-700 border-blue-500/30'
-    case 'low': return 'bg-green-500/20 text-green-700 border-green-500/30'
-    default: return 'bg-gray-500/20 text-gray-700 border-gray-500/30'
-  }
-}
-```
-
-## File: src/pages/DataDemo/types.ts
-```typescript
-export type ViewMode = 'list' | 'cards' | 'grid' | 'table' | 'kanban' | 'calendar'
-
-export type GroupableField = 'status' | 'priority' | 'category'
-
-export type CalendarDateProp = 'dueDate' | 'createdAt' | 'updatedAt';
-export type CalendarDisplayProp = 'priority' | 'assignee' | 'tags';
-
-export type CalendarDateProp = 'dueDate' | 'createdAt' | 'updatedAt';
-export type CalendarDisplayProp = 'priority' | 'assignee' | 'tags';
-
-export type SortableField = 'title' | 'status' | 'priority' | 'updatedAt' | 'assignee.name' | 'metrics.views' | 'metrics.completion' | 'createdAt'
-export type SortDirection = 'asc' | 'desc'
-export interface SortConfig {
-  key: SortableField
-  direction: SortDirection
-}
-
-export interface DataItem {
-  id: string
-  title: string
-  description: string
-  category: string
-  status: 'active' | 'pending' | 'completed' | 'archived'
-  priority: 'low' | 'medium' | 'high' | 'critical'
-  assignee: {
-    name: string
-    avatar: string
-    email: string
-  }
-  metrics: {
-    views: number
-    likes: number
-    shares: number
-    completion: number
-  }
-  tags: string[]
-  createdAt: string
-  updatedAt: string
-  dueDate?: string
-  thumbnail?: string
-  content?: {
-    summary: string
-    details: string
-    attachments?: Array<{
-      name: string
-      type: string
-      size: string
-      url: string
-    }>
-  }
-}
-
-export interface ViewProps {
-  data: DataItem[] | Record<string, DataItem[]>
-  onItemSelect: (item: DataItem) => void
-  selectedItem: DataItem | null
-  isGrid?: boolean
-
-  // Props for table view specifically
-  sortConfig?: SortConfig | null
-  onSort?: (field: SortableField) => void
-}
-
-export type Status = DataItem['status']
-export type Priority = DataItem['priority']
-```
-
-## File: src/hooks/useAppViewManager.hook.ts
-```typescript
-import { useMemo, useCallback, useEffect, useRef } from 'react';
-import { useSearchParams, useNavigate, useLocation, useParams } from 'react-router-dom';
-import { useAppShellStore, type AppShellState, type ActivePage } from '@/store/appShell.store';
-import type { DataItem, ViewMode, SortConfig, SortableField, GroupableField, Status, Priority, CalendarDateProp, CalendarDisplayProp } from '@/pages/DataDemo/types';
-import type { FilterConfig } from '@/pages/DataDemo/components/DataToolbar';
-import type { TaskView } from '@/pages/Messaging/types';
-import { BODY_STATES, SIDEBAR_STATES } from '@/lib/utils';
-
-const pageToPaneMap: Record<string, AppShellState['sidePaneContent']> = {
-  dashboard: 'main',
-  settings: 'settings',
-  toaster: 'toaster',
-  notifications: 'notifications',
-  'data-demo': 'dataDemo',
-  messaging: 'messaging',
-};
-
-function usePrevious<T>(value: T): T | undefined {
-  const ref = useRef<T>();
-  useEffect(() => {
-    ref.current = value;
-  });
-  return ref.current;
-}
-
-/**
- * A centralized hook to manage and synchronize all URL-based view states.
- * This is the single source of truth for view modes, side panes, split views,
- * and page-specific parameters.
- */
-export function useAppViewManager() {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const navigate = useNavigate();
-  const location = useLocation();
-  const params = useParams<{ itemId: string; conversationId: string }>();
-  const { itemId, conversationId } = params;
-  const { setSidebarState, sidebarState } = useAppShellStore();
-
-  // --- DERIVED STATE FROM URL ---
-
-  const view = searchParams.get('view');
-  const sidePane = searchParams.get('sidePane');
-  const right = searchParams.get('right');
-  const messagingView = searchParams.get('messagingView') as TaskView | null;
-  const q = searchParams.get('q');
-  const status = searchParams.get('status');
-  const priority = searchParams.get('priority');
-  const sort = searchParams.get('sort');
-  const calDate = searchParams.get('calDate');
-  const calDisplay = searchParams.get('calDisplay');
-  const calLimit = searchParams.get('calLimit');
-
-  const { bodyState, sidePaneContent } = useMemo(() => {
-    const validPanes: AppShellState['sidePaneContent'][] = ['details', 'settings', 'main', 'toaster', 'notifications', 'dataDemo', 'messaging'];
+    const { scrollTop } = event.currentTarget;
+    const { setTopBarVisible } = useAppShellStore.getState();
     
-    // 1. Priority: Explicit side pane overlay via URL param
-    if (sidePane && validPanes.includes(sidePane as AppShellState['sidePaneContent'])) {
-      return { bodyState: BODY_STATES.SIDE_PANE, sidePaneContent: sidePane as AppShellState['sidePaneContent'] };
+    if (scrollTop > lastScrollTop.current && scrollTop > 200) {
+      setTopBarVisible(false);
+    } else if (scrollTop < lastScrollTop.current || scrollTop <= 0) {
+      setTopBarVisible(true);
     }
-
-    // 2. Data item detail view (can be overlay or split)
-    if (itemId) {
-      if (view === 'split') {
-        return { bodyState: BODY_STATES.SPLIT_VIEW, sidePaneContent: 'dataItem' as const };
-      }
-      return { bodyState: BODY_STATES.SIDE_PANE, sidePaneContent: 'dataItem' as const };
-    }
-
-    // 3. Messaging conversation view (always split)
-    if (conversationId) {
-      return { bodyState: BODY_STATES.SPLIT_VIEW, sidePaneContent: 'messaging' as const };
-    }
-
-    // 4. Generic split view via URL param
-    if (view === 'split' && right && validPanes.includes(right as AppShellState['sidePaneContent'])) {
-      return { bodyState: BODY_STATES.SPLIT_VIEW, sidePaneContent: right as AppShellState['sidePaneContent'] };
-    }
-
-    return { bodyState: BODY_STATES.NORMAL, sidePaneContent: 'details' as const };
-  }, [itemId, conversationId, view, sidePane, right]);
-  
-  const currentActivePage = useMemo(() => (location.pathname.split('/')[1] || 'dashboard') as ActivePage, [location.pathname]);
-  const prevActivePage = usePrevious(currentActivePage);
-
-  // --- SIDE EFFECTS ---
-  useEffect(() => {
-    // On navigating to messaging page, collapse sidebar if it's expanded.
-    // This ensures a good default view but allows the user to expand it again if they wish.
-    if (currentActivePage === 'messaging' && prevActivePage !== 'messaging' && sidebarState === SIDEBAR_STATES.EXPANDED) {
-      setSidebarState(SIDEBAR_STATES.COLLAPSED);
-    }
-  }, [currentActivePage, prevActivePage, sidebarState, setSidebarState]);
-
-  // DataDemo specific state
-  const viewMode = useMemo(() => (searchParams.get('dataView') as ViewMode) || 'list', [searchParams]);
-	const page = useMemo(() => parseInt(searchParams.get('page') || '1', 10), [searchParams]);
-	const groupBy = useMemo(() => (searchParams.get('groupBy') as GroupableField | 'none') || 'none', [searchParams]);
-	const activeGroupTab = useMemo(() => searchParams.get('tab') || 'all', [searchParams]);
-	const filters = useMemo<FilterConfig>(
-		() => ({
-			searchTerm: q || '',
-			status: (status?.split(',') || []).filter(Boolean) as Status[],
-			priority: (priority?.split(',') || []).filter(Boolean) as Priority[],
-		}),
-		[q, status, priority],
-	);
-	const sortConfig = useMemo<SortConfig | null>(() => {
-		const sortParam = sort;
-		if (!sortParam) return { key: 'updatedAt', direction: 'desc' }; // Default sort
-		if (sortParam === 'default') return null;
-
-		const [key, direction] = sortParam.split('-');
-		return { key: key as SortableField, direction: direction as 'asc' | 'desc' };
-	}, [sort]);
-  const calendarDateProp = useMemo(() => (calDate || 'dueDate') as CalendarDateProp, [calDate]);
-  const calendarDisplayProps = useMemo(
-    () => (calDisplay?.split(',') || ['priority', 'assignee']) as CalendarDisplayProp[],
-    [calDisplay]
-  );
-  const calendarItemLimit = useMemo(() => {
-    const limit = parseInt(calLimit || '3', 10);
-    if (calLimit === 'all') return 'all';
-    return isNaN(limit) ? 3 : limit;
-  }, [calLimit]);
-
-  // --- MUTATOR ACTIONS ---
-
-  const handleParamsChange = useCallback(
-		(newParams: Record<string, string | string[] | null | undefined>, resetPage = false) => {
-			setSearchParams(
-				(prev) => {
-					const updated = new URLSearchParams(prev);
-					
-					for (const [key, value] of Object.entries(newParams)) {
-						if (value === null || value === undefined || (Array.isArray(value) && value.length === 0) || value === '') {
-							updated.delete(key);
-						} else if (Array.isArray(value)) {
-							updated.set(key, value.join(','));
-						} else {
-							updated.set(key, String(value));
-						}
-					}
-
-					if (resetPage) {
-						updated.delete('page');
-					}
-					if ('groupBy' in newParams) {
-						updated.delete('tab');
-					}
-
-					return updated;
-				},
-				{ replace: true },
-			);
-		},
-		[setSearchParams],
-	);
-
-  const navigateTo = useCallback((page: string, params?: Record<string, string | null>) => {
-    const targetPath = page.startsWith('/') ? page : `/${page}`;
-    const isSamePage = location.pathname === targetPath;
     
-    const newSearchParams = new URLSearchParams(isSamePage ? searchParams : undefined);
+    lastScrollTop.current = scrollTop <= 0 ? 0 : scrollTop;
 
-    if (params) {
-      for (const [key, value] of Object.entries(params)) {
-        if (value === null || value === undefined) {
-          newSearchParams.delete(key);
-        } else {
-          newSearchParams.set(key, value);
-        }
+    // Set new timeout to show top bar when scrolling stops
+    scrollTimeout.current = setTimeout(() => {
+      // Don't hide, just ensure it's visible after scrolling stops
+      // and we are not at the top of the page.
+      if (scrollTop > 0) {
+        setTopBarVisible(true);
       }
-    }
+    }, 250); // Adjust timeout as needed
+  }, [isPane, bodyState]);
 
-    navigate({ pathname: targetPath, search: newSearchParams.toString() });
-  }, [navigate, location.pathname, searchParams]);
-
-  const openSidePane = useCallback((pane: AppShellState['sidePaneContent']) => {
-    if (location.pathname === `/${Object.keys(pageToPaneMap).find(key => pageToPaneMap[key] === pane)}`) {
-        navigate({ pathname: '/dashboard', search: `?sidePane=${pane}` }, { replace: true });
-    } else {
-        handleParamsChange({ sidePane: pane, view: null, right: null });
-    }
-  }, [handleParamsChange, navigate, location.pathname]);
-
-  const closeSidePane = useCallback(() => {
-    if (itemId) {
-      navigate('/data-demo');
-    } else {
-      handleParamsChange({ sidePane: null, view: null, right: null });
-    }
-  }, [itemId, navigate, handleParamsChange]);
-
-  const toggleSidePane = useCallback((pane: AppShellState['sidePaneContent']) => {
-    if (sidePane === pane) {
-      closeSidePane();
-    } else {
-      openSidePane(pane);
-    }
-  }, [sidePane, openSidePane, closeSidePane]);
-
-  const toggleSplitView = useCallback(() => {
-    if (bodyState === BODY_STATES.SIDE_PANE) {
-      handleParamsChange({ view: 'split', right: sidePane, sidePane: null });
-    } else if (bodyState === BODY_STATES.SPLIT_VIEW) {
-      handleParamsChange({ sidePane: right, view: null, right: null });
-    } else { // From normal
-      const paneContent = pageToPaneMap[currentActivePage] || 'details';
-      handleParamsChange({ view: 'split', right: paneContent, sidePane: null });
-    }
-  }, [bodyState, sidePane, right, currentActivePage, handleParamsChange]);
-  
-  const setNormalView = useCallback(() => {
-      handleParamsChange({ sidePane: null, view: null, right: null });
-  }, [handleParamsChange]);
-
-  const switchSplitPanes = useCallback(() => {
-    if (bodyState !== BODY_STATES.SPLIT_VIEW) return;
-    const newSidePaneContent = pageToPaneMap[currentActivePage];
-    const newActivePage = Object.entries(pageToPaneMap).find(
-      ([, value]) => value === sidePaneContent
-    )?.[0] as ActivePage | undefined;
-
-    if (newActivePage && newSidePaneContent) {
-      navigate(`/${newActivePage}?view=split&right=${newSidePaneContent}`, { replace: true });
-    }
-  }, [bodyState, currentActivePage, sidePaneContent, navigate]);
-  
-  const closeSplitPane = useCallback((paneToClose: 'main' | 'right') => {
-    if (bodyState !== BODY_STATES.SPLIT_VIEW) return;
-    if (paneToClose === 'right') {
-      navigate(`/${currentActivePage}`, { replace: true });
-    } else { // Closing main pane
-      const pageToBecomeActive = Object.entries(pageToPaneMap).find(
-        ([, value]) => value === sidePaneContent
-      )?.[0] as ActivePage | undefined;
-      
-      if (pageToBecomeActive) {
-        navigate(`/${pageToBecomeActive}`, { replace: true });
-      } else {
-        navigate(`/dashboard`, { replace: true });
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (scrollTimeout.current) {
+        clearTimeout(scrollTimeout.current);
       }
-    }
-  }, [bodyState, currentActivePage, sidePaneContent, navigate]);
-  
-  // DataDemo actions
-  const setViewMode = (mode: ViewMode) => handleParamsChange({ dataView: mode === 'list' ? null : mode });
-  const setGroupBy = (val: string) => handleParamsChange({ groupBy: val === 'none' ? null : val }, true);
-  const setActiveGroupTab = (tab: string) => handleParamsChange({ tab: tab === 'all' ? null : tab });
-  const setFilters = (newFilters: FilterConfig) => {
-    handleParamsChange({ q: newFilters.searchTerm, status: newFilters.status, priority: newFilters.priority }, true);
-  }
-  const setSort = (config: SortConfig | null) => {
-    if (!config) {
-      handleParamsChange({ sort: null }, true);
-    } else {
-      handleParamsChange({ sort: `${config.key}-${config.direction}` }, true);
-    }
-  }
-  const setTableSort = (field: SortableField) => {
-    let newSort: string | null = `${field}-desc`;
-    if (sortConfig?.key === field) {
-      if (sortConfig.direction === 'desc') newSort = `${field}-asc`;
-      else if (sortConfig.direction === 'asc') newSort = null;
-    }
-    handleParamsChange({ sort: newSort }, true);
-  };
-  const setPage = (newPage: number) => handleParamsChange({ page: newPage.toString() });
+    };
+  }, []);
 
-  // Calendar specific actions
-  const setCalendarDateProp = (prop: CalendarDateProp) => handleParamsChange({ calDate: prop === 'dueDate' ? null : prop });
-  const setCalendarDisplayProps = (props: CalendarDisplayProp[]) => handleParamsChange({ calDisplay: props.join(',') });
-  const setCalendarItemLimit = (limit: number | 'all') => handleParamsChange({ calLimit: limit === 3 ? null : String(limit) });
-
-  const onItemSelect = useCallback((item: DataItem) => {
-		navigate(`/data-demo/${item.id}${location.search}`);
-	}, [navigate, location.search]);
-
-  const setMessagingView = (view: TaskView) => handleParamsChange({ messagingView: view });
-
-
-  return useMemo(() => ({
-    // State
-    bodyState,
-    sidePaneContent,
-    currentActivePage,
-    itemId,
-    messagingView,
-    // DataDemo State
-    viewMode,
-    page,
-    groupBy,
-    activeGroupTab,
-    filters,
-    sortConfig,
-    calendarDateProp,
-    calendarDisplayProps,
-    calendarItemLimit,
-    // Actions
-    navigateTo,
-    openSidePane,
-    closeSidePane,
-    toggleSidePane,
-    toggleSplitView,
-    setNormalView,
-    switchSplitPanes,
-    setMessagingView,
-    closeSplitPane,
-    // DataDemo Actions
-    onItemSelect,
-    setViewMode,
-    setGroupBy,
-    setActiveGroupTab,
-    setFilters,
-    setSort,
-    setTableSort,
-    setPage,
-    setCalendarDateProp,
-    setCalendarDisplayProps,
-    setCalendarItemLimit,
-  }), [
-    bodyState, sidePaneContent, currentActivePage, itemId, messagingView, viewMode,
-    page, groupBy, activeGroupTab, filters, sortConfig, calendarDateProp,
-    calendarDisplayProps, calendarItemLimit,
-    navigateTo, openSidePane, closeSidePane, toggleSidePane, toggleSplitView, setNormalView, setMessagingView,
-    switchSplitPanes, closeSplitPane, onItemSelect, setViewMode, setGroupBy, setActiveGroupTab, setFilters,
-    setSort, setTableSort, setPage, setCalendarDateProp, setCalendarDisplayProps, setCalendarItemLimit
-  ]);
+  return { onScroll };
 }
 ```
 

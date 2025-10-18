@@ -4,9 +4,9 @@ I am obsessed with laravel filament... so make everything about data demo page i
 
 ===
 
-should gsap animamte auto hide stats card on page scroll down for all view mode, so user can focus on the content.
+data demo page: should gsap animamte auto hide stats card on page scroll down for all view mode, just like SliverAppBar in flutter, so user can focus on the content.
 
-===
+=== DONE
 
 calendar view grid block should be aware of viewport so know how much columns to show for certain widht size
 
