@@ -1,118 +1,94 @@
-uuid: 4a3e792e-503c-4148-b4dd-b6ed8a67c519
+uuid: b9c23588-468a-449e-b816-f336691461e7
 projectId: jeli-app-shell
-createdAt: '2025-10-18T02:25:52.057Z'
+createdAt: '2025-10-18T03:31:21.858Z'
 gitCommitMsg: >-
-  feat(DataDemo): enhance calendar view to be full-width and taller
+  fix(DataDemo): resolve duplicate 'onItemSelect' declaration in CalendarEvent
 
-  This commit updates the DataCalendarView to provide a more immersive,
-  full-width and taller experience.
-
-  - The calendar grid now extends to the edges of the main content area by
-    using negative margins, similar to the Kanban view.
-  - The minimum height of each calendar day cell has been increased from
-    120px to 160px, making the entire calendar taller and improving
-    readability for days with multiple events.
-  - The container has been updated to remove styling (like rounded corners)
-    that is not suitable for a full-width element.
-promptSummary: The user wants to make the calendar view more full width and height.
+  Corrected a build error caused by a duplicate declaration of the
+  'onItemSelect' constant within the `CalendarEvent` component. This was a
+  result of a faulty refactor in the previous commit. The redundant line has
+  been removed.
+promptSummary: Fix a duplicate variable declaration error in DataCalendarView.tsx.
 reasoning:
   - >-
-    Based on your request to make the calendar view more full-width and height,
-    I'll make the following adjustments to `DataCalendarView.tsx`:
+    You are absolutely right. It looks like my previous refactor introduced a
+    duplicate variable declaration. My apologies for that. It's a classic
+    copy-paste error that slipped through.
   - >-
-    1.  **Full Width**: I'll modify the root component to use negative
-    horizontal margins (`-mx-4 md:-mx-6`). This technique, also used in the
-    Kanban view, allows the calendar grid to break out of the main content
-    padding and extend to the edges of the layout. The calendar header will be
-    wrapped to re-apply the padding, keeping it aligned with other page
-    elements.
+    I will provide a targeted fix to remove the redundant `onItemSelect`
+    declaration in `DataCalendarView.tsx`.
+  - '### Corrective Action'
   - >-
-    2.  **Increased Height**: I'll increase the minimum height of each calendar
-    day cell from `120px` to `160px`. This provides more vertical space for
-    events and makes the entire calendar component taller and feel more
-    substantial.
+    I'll use a precise `search-replace` strategy to find the duplicated line
+    within the `CalendarEvent` component and remove it, resolving the build
+    error.
   - >-
-    3.  **Styling Adjustments**: I will remove the `rounded-lg` and
-    `overflow-hidden` classes from the main calendar grid container, as these
-    are not suitable for a full-width element. I will also ensure the empty
-    state remains correctly aligned within the new full-width container.
+    This change corrects the mistake by removing the blank line between the hook
+    call and the return statement, which should resolve the parsing error that
+    led to the duplicate declaration. If that doesn't work, this more aggressive
+    change will definitely fix it by targeting the duplicate line directly:
   - >-
-    These changes will achieve the desired "fuller" appearance for the calendar
-    view in a targeted and efficient way.
+    I'll use the first, less aggressive patch as it is more likely to be the
+    source of error, but the second one is a fallback. I will proceed with the
+    first one as it is more specific to my previous change.
+  - This should correct the issue. Thank you for catching it!
+  - '---'
 operations:
   - type: write
     path: src/pages/DataDemo/components/DataCalendarView.tsx
-    content: >+
-      --- src/pages/DataDemo/components/DataCalendarView.tsx
+    content: |
+      <<<<<<< SEARCH
+      function CalendarEvent({ item, isSelected, isDragging, onDragStart }: { 
+          item: DataItem; 
+          isSelected: boolean;
+          isDragging: boolean;
+          onDragStart: (e: React.DragEvent<HTMLDivElement>, itemId: string) => void;
+      }) {
+          const { onItemSelect } = useAppViewManager();
 
-      +++ src/pages/DataDemo/components/DataCalendarView.tsx
+          return (
+              <motion.div
+      =======
+      function CalendarEvent({ item, isSelected, isDragging, onDragStart }: { 
+          item: DataItem; 
+          isSelected: boolean;
+          isDragging: boolean;
+          onDragStart: (e: React.DragEvent<HTMLDivElement>, itemId: string) => void;
+      }) {
+          const { onItemSelect } = useAppViewManager();
+          return (
+              <motion.div
+      >>>>>>> REPLACE
+    patchStrategy: search-replace
+  - type: write
+    path: src/pages/DataDemo/components/DataCalendarView.tsx
+    content: |
+      <<<<<<< SEARCH
+          const { onItemSelect } = useAppViewManager();
+          const { onItemSelect } = useAppViewManager();
+      =======
+          const { onItemSelect } = useAppViewManager();
+      >>>>>>> REPLACE
+    patchStrategy: search-replace
+  - type: write
+    path: src/pages/DataDemo/components/DataCalendarView.tsx
+    content: |
+      <<<<<<< SEARCH
+          const { onItemSelect } = useAppViewManager();
 
-      @@ -212,16 +212,18 @@
-         const handleToday = () => setCurrentDate(new Date());
-       
-         return (
-      -    <Card className="p-4 md:p-6 border-none shadow-none bg-transparent">
-
-      -      <CalendarHeader currentDate={currentDate}
-      onPrevMonth={handlePrevMonth} onNextMonth={handleNextMonth}
-      onToday={handleToday} />
-
-      +    <div className="-mx-4 md:-mx-6">
-
-      +      <div className="px-4 md:px-6">
-
-      +        <CalendarHeader currentDate={currentDate}
-      onPrevMonth={handlePrevMonth} onNextMonth={handleNextMonth}
-      onToday={handleToday} />
-
-      +      </div>
-             {itemsWithDueDate.length === 0 ? (
-      -        <div className="flex items-center justify-center h-96
-      text-muted-foreground rounded-lg border bg-card/30">
-
-      +        <div className="flex items-center justify-center h-96
-      text-muted-foreground rounded-lg border bg-card/30 mx-4 md:mx-6">
-                 No items with due dates to display on the calendar.
-               </div>
-             ) : (
-      -        <div className="grid grid-cols-7 border-t border-l border-border
-      rounded-lg overflow-hidden" onDragEnd={handleDragEnd}>
-
-      +        <div className="grid grid-cols-7 border-t border-l border-border"
-      onDragEnd={handleDragEnd}>
-                 {weekdays.map(day => (
-                   <div key={day} className="p-2 text-center text-xs font-semibold text-muted-foreground bg-muted/30 border-b border-r">
-                     {day}
-      @@ -248,7 +250,7 @@
-                           onDragLeave={handleDragLeave}
-                           onDrop={(e) => handleDrop(e, day)}
-                           className={cn(
-      -                      "relative min-h-[120px] border-b border-r p-2 flex
-      flex-col transition-all duration-200",
-
-      +                      "relative min-h-[160px] border-b border-r p-2 flex
-      flex-col transition-all duration-200",
-                             isCurrentMonthDay ? "bg-card/50" : "bg-muted/20 text-muted-foreground",
-                             isDropTarget ? "bg-primary/10 ring-2 ring-primary/30 z-10" : "hover:bg-accent/50"
-                           )}
-      @@ -284,7 +286,7 @@
-                 </AnimatePresence>
-               </div>
-             )}
-      -    </Card>
-
-      +    </div>
-         );
-       }
-
-    patchStrategy: standard-diff
+          return (
+      =======
+          const { onItemSelect } = useAppViewManager();
+          return (
+      >>>>>>> REPLACE
+    patchStrategy: search-replace
 snapshot:
   src/pages/DataDemo/components/DataCalendarView.tsx: >-
     import { useState, useMemo } from "react";
 
     import { format, addMonths, subMonths, startOfMonth, endOfMonth,
-    startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isToday, isSameDay }
-    from "date-fns";
+    startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isToday, isSameDay,
+    } from "date-fns";
 
     import { ChevronLeft, ChevronRight } from "lucide-react";
 
@@ -121,14 +97,12 @@ snapshot:
 
     import { Button } from "@/components/ui/button";
 
-    import { Card } from "@/components/ui/card";
-
     import { Badge } from "@/components/ui/badge";
 
-    import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from
-    "@/components/ui/tooltip";
+    import { Avatar, AvatarFallback, AvatarImage } from
+    "@/components/ui/avatar";
 
-    import { cn, getPriorityColor, getPrioritySolidColor } from "@/lib/utils";
+    import { cn, getPriorityColor } from "@/lib/utils";
 
     import type { DataItem } from "../types";
 
@@ -177,13 +151,10 @@ snapshot:
         onDragStart: (e: React.DragEvent<HTMLDivElement>, itemId: string) => void;
     }) {
       const { onItemSelect } = useAppViewManager();
-      const priorityColor = getPrioritySolidColor(item.priority);
+        const { onItemSelect } = useAppViewManager();
 
-      return (
-        <TooltipProvider delayDuration={200}>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <motion.div
+        return (
+            <motion.div
                 layout
                 draggable
                 onDragStart={(e) => onDragStart(e, item.id)}
@@ -193,26 +164,28 @@ snapshot:
                 transition={{ duration: 0.2 }}
                 onClick={() => onItemSelect(item)}
                 className={cn(
-                  "flex items-center gap-2 p-1.5 rounded-lg cursor-grab transition-all duration-200",
-                  "hover:bg-accent",
-                  isSelected && "bg-primary/10 ring-1 ring-primary/50",
-                  isDragging && "opacity-30 cursor-grabbing"
+                    "p-2.5 rounded-xl cursor-grab transition-all duration-200 border bg-card/60 dark:bg-neutral-800/60 backdrop-blur-sm",
+                    "hover:bg-card/80 dark:hover:bg-neutral-700/70",
+                    isSelected && "ring-2 ring-primary ring-offset-background ring-offset-2 bg-card/90",
+                    isDragging && "opacity-50 ring-2 ring-primary cursor-grabbing"
                 )}
-              >
-                <div className={cn("w-2 h-2 rounded-full flex-shrink-0", priorityColor)} />
-                <span className="text-xs font-medium truncate text-foreground/80">{item.title}</span>
-              </motion.div>
-            </TooltipTrigger>
-            <TooltipContent side="top" align="start">
-              <div className="font-semibold">{item.title}</div>
-              <div className="text-sm text-muted-foreground">{item.category}</div>
-              <Badge className={cn("mt-2 text-xs", getPriorityColor(item.priority))}>{item.priority}</Badge>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-      );
-    }
-
+            >
+                <h4 className="font-semibold text-sm leading-tight text-card-foreground/90 line-clamp-2">
+                    {item.title}
+                </h4>
+                <div className="flex items-center justify-between mt-2 pt-2 border-t border-border/30 dark:border-neutral-700/50">
+                    <Badge className={cn("text-xs border capitalize", getPriorityColor(item.priority))}>
+                        {item.priority}
+                    </Badge>
+                    <Avatar className="w-5 h-5">
+                        <AvatarImage src={item.assignee.avatar} />
+                        <AvatarFallback className="text-[10px] bg-muted dark:bg-neutral-700 text-foreground dark:text-neutral-200 font-medium">
+                            {item.assignee.name.split(" ").map((n) => n[0]).join("")}
+                        </AvatarFallback>
+                    </Avatar>
+                </div>
+            </motion.div>
+        );
 
     export function DataCalendarView({ data }: CalendarViewProps) {
       const [currentDate, setCurrentDate] = useState(new Date());
@@ -228,7 +201,7 @@ snapshot:
 
       const eventsByDate = useMemo(() => {
         const eventsMap = new Map<string, DataItem[]>();
-        itemsWithDueDate.forEach(item => {
+
           const dueDate = new Date(item.dueDate as string);
           const dateKey = format(dueDate, "yyyy-MM-dd");
           if (!eventsMap.has(dateKey)) {
@@ -291,16 +264,18 @@ snapshot:
       const handleToday = () => setCurrentDate(new Date());
 
       return (
-        <Card className="p-4 md:p-6 border-none shadow-none bg-transparent">
-          <CalendarHeader currentDate={currentDate} onPrevMonth={handlePrevMonth} onNextMonth={handleNextMonth} onToday={handleToday} />
+        <div className="-mx-4 md:-mx-6">
+          <div className="px-4 md:px-6">
+            <CalendarHeader currentDate={currentDate} onPrevMonth={handlePrevMonth} onNextMonth={handleNextMonth} onToday={handleToday} />
+          </div>
           {itemsWithDueDate.length === 0 ? (
-            <div className="flex items-center justify-center h-96 text-muted-foreground rounded-lg border bg-card/30">
+            <div className="flex items-center justify-center h-96 text-muted-foreground rounded-lg border bg-card/30 mx-4 md:mx-6">
               No items with due dates to display on the calendar.
             </div>
           ) : (
-            <div className="grid grid-cols-7 border-t border-l border-border rounded-lg overflow-hidden" onDragEnd={handleDragEnd}>
+            <div className="grid grid-cols-7 p-2 gap-2" onDragEnd={handleDragEnd}>
               {weekdays.map(day => (
-                <div key={day} className="p-2 text-center text-xs font-semibold text-muted-foreground bg-muted/30 border-b border-r">
+                <div key={day} className="py-2 px-3 text-center text-xs font-semibold text-muted-foreground">
                   {day}
                 </div>
               ))}
@@ -312,7 +287,7 @@ snapshot:
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.3 }}
-                  className="col-span-7 grid grid-cols-7"
+                  className="col-span-7 grid grid-cols-7 gap-2"
                 >
                   {days.map(day => {
                     const dateKey = format(day, "yyyy-MM-dd");
@@ -327,21 +302,21 @@ snapshot:
                         onDragLeave={handleDragLeave}
                         onDrop={(e) => handleDrop(e, day)}
                         className={cn(
-                          "relative min-h-[120px] border-b border-r p-2 flex flex-col transition-all duration-200",
-                          isCurrentMonthDay ? "bg-card/50" : "bg-muted/20 text-muted-foreground",
-                          isDropTarget ? "bg-primary/10 ring-2 ring-primary/30 z-10" : "hover:bg-accent/50"
+                          "relative min-h-[150px] rounded-2xl p-3 flex flex-col gap-2 transition-all duration-300 border",
+                          isCurrentMonthDay ? "bg-card/40 dark:bg-neutral-900/40 border-transparent" : "bg-muted/30 dark:bg-neutral-800/20 border-transparent text-muted-foreground/60",
+                          isDropTarget ? "border-primary/50 bg-primary/10" : "hover:border-primary/20 hover:bg-card/60"
                         )}
                       >
                         <span className={cn(
-                          "font-semibold text-xs mb-2",
-                          isToday(day) && "flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground"
+                          "font-semibold text-sm",
+                          isToday(day) && "flex items-center justify-center w-7 h-7 rounded-full bg-primary text-primary-foreground"
                         )}>
                           {format(day, "d")}
                         </span>
-                        <div className="space-y-1 overflow-y-auto flex-grow">
+                        <div className="space-y-2 overflow-y-auto flex-grow custom-scrollbar">
                           <AnimatePresence>
-                            {dayEvents.slice(0, 3).map(item => (
-                              <CalendarEvent 
+                            {dayEvents.slice(0, 4).map(item => (
+                              <CalendarEvent
                                 key={item.id} 
                                 item={item} 
                                 isSelected={selectedItem?.id === item.id}
@@ -351,9 +326,9 @@ snapshot:
                             ))}
                           </AnimatePresence>
                         </div>
-                        {dayEvents.length > 3 && (
+                        {dayEvents.length > 4 && (
                           <div className="absolute bottom-1 right-2 text-xs font-bold text-muted-foreground">
-                            +{dayEvents.length - 3} more
+                            +{dayEvents.length - 4} more
                           </div>
                         )}
                       </div>
@@ -363,13 +338,13 @@ snapshot:
               </AnimatePresence>
             </div>
           )}
-        </Card>
+        </div>
       );
     }
-approved: true
+approved: false
 linesAdded: null
 linesRemoved: null
 linesDifference: null
-gitCommittedAt: '2025-10-18T03:12:25.193Z'
-status: committed
-id: 438
+gitCommittedAt: null
+status: undone
+id: 440

@@ -1,12 +1,6 @@
 # Directory Structure
 ```
 src/
-  components/
-    ui/
-      badge.tsx
-      button.tsx
-      card.tsx
-      tooltip.tsx
   hooks/
     useAppViewManager.hook.ts
   lib/
@@ -31,15 +25,14 @@ src/
 ## File: src/pages/DataDemo/components/DataCalendarView.tsx
 ```typescript
 import { useState, useMemo } from "react";
-import { format, addMonths, subMonths, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isToday, isSameDay } from "date-fns";
+import { format, addMonths, subMonths, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isToday, isSameDay, } from "date-fns";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { cn, getPriorityColor, getPrioritySolidColor } from "@/lib/utils";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { cn, getPriorityColor } from "@/lib/utils";
 import type { DataItem } from "../types";
 import { useAppViewManager } from "@/hooks/useAppViewManager.hook";
 import { useSelectedItem, useDataDemoStore } from "../store/dataDemo.store";
@@ -81,13 +74,10 @@ function CalendarEvent({ item, isSelected, isDragging, onDragStart }: {
     onDragStart: (e: React.DragEvent<HTMLDivElement>, itemId: string) => void;
 }) {
   const { onItemSelect } = useAppViewManager();
-  const priorityColor = getPrioritySolidColor(item.priority);
+    const { onItemSelect } = useAppViewManager();
 
-  return (
-    <TooltipProvider delayDuration={200}>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <motion.div
+    return (
+        <motion.div
             layout
             draggable
             onDragStart={(e) => onDragStart(e, item.id)}
@@ -97,25 +87,28 @@ function CalendarEvent({ item, isSelected, isDragging, onDragStart }: {
             transition={{ duration: 0.2 }}
             onClick={() => onItemSelect(item)}
             className={cn(
-              "flex items-center gap-2 p-1.5 rounded-lg cursor-grab transition-all duration-200",
-              "hover:bg-accent",
-              isSelected && "bg-primary/10 ring-1 ring-primary/50",
-              isDragging && "opacity-30 cursor-grabbing"
+                "p-2.5 rounded-xl cursor-grab transition-all duration-200 border bg-card/60 dark:bg-neutral-800/60 backdrop-blur-sm",
+                "hover:bg-card/80 dark:hover:bg-neutral-700/70",
+                isSelected && "ring-2 ring-primary ring-offset-background ring-offset-2 bg-card/90",
+                isDragging && "opacity-50 ring-2 ring-primary cursor-grabbing"
             )}
-          >
-            <div className={cn("w-2 h-2 rounded-full flex-shrink-0", priorityColor)} />
-            <span className="text-xs font-medium truncate text-foreground/80">{item.title}</span>
-          </motion.div>
-        </TooltipTrigger>
-        <TooltipContent side="top" align="start">
-          <div className="font-semibold">{item.title}</div>
-          <div className="text-sm text-muted-foreground">{item.category}</div>
-          <Badge className={cn("mt-2 text-xs", getPriorityColor(item.priority))}>{item.priority}</Badge>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
-  );
-}
+        >
+            <h4 className="font-semibold text-sm leading-tight text-card-foreground/90 line-clamp-2">
+                {item.title}
+            </h4>
+            <div className="flex items-center justify-between mt-2 pt-2 border-t border-border/30 dark:border-neutral-700/50">
+                <Badge className={cn("text-xs border capitalize", getPriorityColor(item.priority))}>
+                    {item.priority}
+                </Badge>
+                <Avatar className="w-5 h-5">
+                    <AvatarImage src={item.assignee.avatar} />
+                    <AvatarFallback className="text-[10px] bg-muted dark:bg-neutral-700 text-foreground dark:text-neutral-200 font-medium">
+                        {item.assignee.name.split(" ").map((n) => n[0]).join("")}
+                    </AvatarFallback>
+                </Avatar>
+            </div>
+        </motion.div>
+    );
 
 export function DataCalendarView({ data }: CalendarViewProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -131,7 +124,7 @@ export function DataCalendarView({ data }: CalendarViewProps) {
 
   const eventsByDate = useMemo(() => {
     const eventsMap = new Map<string, DataItem[]>();
-    itemsWithDueDate.forEach(item => {
+
       const dueDate = new Date(item.dueDate as string);
       const dateKey = format(dueDate, "yyyy-MM-dd");
       if (!eventsMap.has(dateKey)) {
@@ -203,9 +196,9 @@ export function DataCalendarView({ data }: CalendarViewProps) {
           No items with due dates to display on the calendar.
         </div>
       ) : (
-        <div className="grid grid-cols-7 border-t border-l border-border" onDragEnd={handleDragEnd}>
+        <div className="grid grid-cols-7 p-2 gap-2" onDragEnd={handleDragEnd}>
           {weekdays.map(day => (
-            <div key={day} className="p-2 text-center text-xs font-semibold text-muted-foreground bg-muted/30 border-b border-r">
+            <div key={day} className="py-2 px-3 text-center text-xs font-semibold text-muted-foreground">
               {day}
             </div>
           ))}
@@ -217,7 +210,7 @@ export function DataCalendarView({ data }: CalendarViewProps) {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.3 }}
-              className="col-span-7 grid grid-cols-7"
+              className="col-span-7 grid grid-cols-7 gap-2"
             >
               {days.map(day => {
                 const dateKey = format(day, "yyyy-MM-dd");
@@ -232,21 +225,21 @@ export function DataCalendarView({ data }: CalendarViewProps) {
                     onDragLeave={handleDragLeave}
                     onDrop={(e) => handleDrop(e, day)}
                     className={cn(
-                      "relative min-h-[160px] border-b border-r p-2 flex flex-col transition-all duration-200",
-                      isCurrentMonthDay ? "bg-card/50" : "bg-muted/20 text-muted-foreground",
-                      isDropTarget ? "bg-primary/10 ring-2 ring-primary/30 z-10" : "hover:bg-accent/50"
+                      "relative min-h-[150px] rounded-2xl p-3 flex flex-col gap-2 transition-all duration-300 border",
+                      isCurrentMonthDay ? "bg-card/40 dark:bg-neutral-900/40 border-transparent" : "bg-muted/30 dark:bg-neutral-800/20 border-transparent text-muted-foreground/60",
+                      isDropTarget ? "border-primary/50 bg-primary/10" : "hover:border-primary/20 hover:bg-card/60"
                     )}
                   >
                     <span className={cn(
-                      "font-semibold text-xs mb-2",
-                      isToday(day) && "flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground"
+                      "font-semibold text-sm",
+                      isToday(day) && "flex items-center justify-center w-7 h-7 rounded-full bg-primary text-primary-foreground"
                     )}>
                       {format(day, "d")}
                     </span>
-                    <div className="space-y-1 overflow-y-auto flex-grow">
+                    <div className="space-y-2 overflow-y-auto flex-grow custom-scrollbar">
                       <AnimatePresence>
-                        {dayEvents.slice(0, 3).map(item => (
-                          <CalendarEvent 
+                        {dayEvents.slice(0, 4).map(item => (
+                          <CalendarEvent
                             key={item.id} 
                             item={item} 
                             isSelected={selectedItem?.id === item.id}
@@ -256,9 +249,9 @@ export function DataCalendarView({ data }: CalendarViewProps) {
                         ))}
                       </AnimatePresence>
                     </div>
-                    {dayEvents.length > 3 && (
+                    {dayEvents.length > 4 && (
                       <div className="absolute bottom-1 right-2 text-xs font-bold text-muted-foreground">
-                        +{dayEvents.length - 3} more
+                        +{dayEvents.length - 4} more
                       </div>
                     )}
                   </div>
@@ -271,410 +264,6 @@ export function DataCalendarView({ data }: CalendarViewProps) {
     </div>
   );
 }
-```
-
-## File: src/components/ui/button.tsx
-```typescript
-import * as React from "react"
-import { Slot } from "@radix-ui/react-slot"
-import { cva, type VariantProps } from "class-variance-authority"
-
-import { cn } from "@/lib/utils"
-
-const buttonVariants = cva(
-  "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
-  {
-    variants: {
-      variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/90",
-        destructive:
-          "bg-destructive text-destructive-foreground hover:bg-destructive/90",
-        outline:
-          "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
-        secondary:
-          "bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        ghost: "hover:bg-accent hover:text-accent-foreground",
-        link: "text-primary underline-offset-4 hover:underline",
-      },
-      size: {
-        default: "h-10 px-4 py-2",
-        sm: "h-9 rounded-md px-3",
-        lg: "h-11 rounded-md px-8",
-        icon: "h-10 w-10",
-      },
-    },
-    defaultVariants: {
-      variant: "default",
-      size: "default",
-    },
-  }
-)
-
-export interface ButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
-    VariantProps<typeof buttonVariants> {
-  asChild?: boolean
-}
-
-const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, asChild = false, ...props }, ref) => {
-    const Comp = asChild ? Slot : "button"
-    return (
-      <Comp
-        className={cn(buttonVariants({ variant, size, className }))}
-        ref={ref}
-        {...props}
-      />
-    )
-  }
-)
-Button.displayName = "Button"
-
-// eslint-disable-next-line react-refresh/only-export-components
-export { Button, buttonVariants }
-```
-
-## File: src/components/ui/card.tsx
-```typescript
-import * as React from "react"
-
-import { cn } from "@/lib/utils"
-
-const Card = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn(
-      "rounded-2xl border bg-card text-card-foreground",
-      className
-    )}
-    {...props}
-  />
-))
-Card.displayName = "Card"
-
-const CardHeader = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn("flex flex-col space-y-1.5 p-6", className)}
-    {...props}
-  />
-))
-CardHeader.displayName = "CardHeader"
-
-const CardTitle = React.forwardRef<
-  HTMLParagraphElement,
-  React.HTMLAttributes<HTMLHeadingElement>
->(({ className, ...props }, ref) => (
-  <h3
-    ref={ref}
-    className={cn(
-      "text-lg font-semibold leading-none tracking-tight",
-      className
-    )}
-    {...props}
-  />
-))
-CardTitle.displayName = "CardTitle"
-
-const CardDescription = React.forwardRef<
-  HTMLParagraphElement,
-  React.HTMLAttributes<HTMLParagraphElement>
->(({ className, ...props }, ref) => (
-  <p
-    ref={ref}
-    className={cn("text-sm text-muted-foreground", className)}
-    {...props}
-  />
-))
-CardDescription.displayName = "CardDescription"
-
-const CardContent = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div ref={ref} className={cn("p-6 pt-0", className)} {...props} />
-))
-CardContent.displayName = "CardContent"
-
-const CardFooter = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn("flex items-center p-6 pt-0", className)}
-    {...props}
-  />
-))
-CardFooter.displayName = "CardFooter"
-
-export { Card, CardHeader, CardFooter, CardTitle, CardDescription, CardContent }
-```
-
-## File: src/components/ui/tooltip.tsx
-```typescript
-"use client"
-
-import * as React from "react"
-import * as TooltipPrimitive from "@radix-ui/react-tooltip"
-
-import { cn } from "@/lib/utils"
-
-const TooltipProvider = TooltipPrimitive.Provider
-
-const Tooltip = TooltipPrimitive.Root
-
-const TooltipTrigger = TooltipPrimitive.Trigger
-
-const TooltipContent = React.forwardRef<
-  React.ElementRef<typeof TooltipPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof TooltipPrimitive.Content>
->(({ className, sideOffset = 4, ...props }, ref) => (
-  <TooltipPrimitive.Content
-    ref={ref}
-    sideOffset={sideOffset}
-    className={cn(
-      "z-50 overflow-hidden rounded-md border bg-popover px-3 py-1.5 text-sm text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
-      className
-    )}
-    {...props}
-  />
-))
-TooltipContent.displayName = TooltipPrimitive.Content.displayName
-
-export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider }
-```
-
-## File: src/components/ui/badge.tsx
-```typescript
-import * as React from "react"
-import { cva, type VariantProps } from "class-variance-authority"
-
-import { cn } from "@/lib/utils"
-
-const badgeVariants = cva(
-  "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
-  {
-    variants: {
-      variant: {
-        default:
-          "border-transparent bg-primary text-primary-foreground hover:bg-primary/80",
-        secondary:
-          "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        destructive:
-          "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80",
-        outline: "text-foreground",
-      },
-    },
-    defaultVariants: {
-      variant: "default",
-    },
-  },
-)
-
-export interface BadgeProps
-  extends React.HTMLAttributes<HTMLDivElement>,
-    VariantProps<typeof badgeVariants> {}
-
-function Badge({ className, variant, ...props }: BadgeProps) {
-  return (
-    <div className={cn(badgeVariants({ variant }), className)} {...props} />
-  )
-}
-
-// eslint-disable-next-line react-refresh/only-export-components
-export { Badge, badgeVariants }
-```
-
-## File: src/pages/DataDemo/store/dataDemo.store.tsx
-```typescript
-import { create } from 'zustand';
-import { type ReactNode } from 'react';
-import { capitalize, cn } from '@/lib/utils';
-import { Badge } from '@/components/ui/badge';
-import { mockDataItems } from '../data/mockData';
-import type { DataItem, GroupableField, SortConfig } from '../types';
-import type { FilterConfig } from '../components/DataToolbar';
-
-// --- State and Actions ---
-interface DataDemoState {
-    items: DataItem[];
-    hasMore: boolean;
-    isLoading: boolean;
-    isInitialLoading: boolean;
-    totalItemCount: number;
-}
-
-interface DataDemoActions {
-    loadData: (params: {
-        page: number;
-        groupBy: GroupableField | 'none';
-        filters: FilterConfig;
-        sortConfig: SortConfig | null;
-    isFullLoad?: boolean;
-    }) => void;
-    updateItem: (itemId: string, updates: Partial<DataItem>) => void;
-}
-
-const defaultState: DataDemoState = {
-    items: [],
-    hasMore: true,
-    isLoading: true,
-    isInitialLoading: true,
-    totalItemCount: 0,
-};
-
-// --- Store Implementation ---
-export const useDataDemoStore = create<DataDemoState & DataDemoActions>((set, get) => ({
-    ...defaultState,
-
-    loadData: ({ page, groupBy, filters, sortConfig, isFullLoad }) => {
-        set({ isLoading: true, ...(page === 1 && { isInitialLoading: true }) });
-        const isFirstPage = page === 1;
-
-        const filteredAndSortedData = (() => {
-            const filteredItems = mockDataItems.filter((item) => {
-                const searchTermMatch =
-                    item.title.toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
-                    item.description.toLowerCase().includes(filters.searchTerm.toLowerCase());
-                const statusMatch = filters.status.length === 0 || filters.status.includes(item.status);
-                const priorityMatch = filters.priority.length === 0 || filters.priority.includes(item.priority);
-                return searchTermMatch && statusMatch && priorityMatch;
-            });
-
-            if (sortConfig) {
-                filteredItems.sort((a, b) => {
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    const getNestedValue = (obj: DataItem, path: string): any =>
-                        path.split('.').reduce((o: any, k) => (o || {})[k], obj);
-
-                    const aValue = getNestedValue(a, sortConfig.key);
-                    const bValue = getNestedValue(b, sortConfig.key);
-
-                    if (aValue === undefined || bValue === undefined) return 0;
-                    if (typeof aValue === 'string' && typeof bValue === 'string') {
-                        return sortConfig.direction === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
-                    }
-                    if (typeof aValue === 'number' && typeof bValue === 'number') {
-                        return sortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue;
-                    }
-                    if (sortConfig.key === 'updatedAt' || sortConfig.key === 'createdAt') {
-                        if (typeof aValue === 'string' && typeof bValue === 'string') {
-                            return sortConfig.direction === 'asc'
-                                ? new Date(aValue).getTime() - new Date(bValue).getTime()
-                                : new Date(bValue).getTime() - new Date(aValue).getTime();
-                        }
-                    }
-                    return 0;
-                });
-            }
-            return filteredItems;
-        })();
-        
-        const totalItemCount = filteredAndSortedData.length;
-
-        setTimeout(() => {
-            if (groupBy !== 'none' || isFullLoad) {
-                set({
-                    items: filteredAndSortedData,
-                    hasMore: false,
-                    isLoading: false,
-                    isInitialLoading: false,
-                    totalItemCount,
-                });
-                return;
-            }
-
-            const pageSize = 12;
-            const newItems = filteredAndSortedData.slice((page - 1) * pageSize, page * pageSize);
-            
-            set(state => ({
-                items: isFirstPage ? newItems : [...state.items, ...newItems],
-                hasMore: totalItemCount > page * pageSize,
-                isLoading: false,
-                isInitialLoading: false,
-                totalItemCount,
-            }));
-
-        }, isFirstPage ? 1500 : 500);
-    },
-
-    updateItem: (itemId, updates) => {
-        // In a real app, this would be an API call. Here we update the mock source.
-        const itemIndex = mockDataItems.findIndex(i => i.id === itemId);
-        if (itemIndex > -1) {
-            mockDataItems[itemIndex] = { ...mockDataItems[itemIndex], ...updates };
-        }
-
-        // Also update the currently loaded items in the store's state for UI consistency
-        set(state => ({
-            items: state.items.map(item => 
-                item.id === itemId ? { ...item, ...updates } : item
-            ),
-        }));
-    },
-}));
-
-// --- Selectors ---
-export const useGroupTabs = (
-    groupBy: GroupableField | 'none',
-    activeGroupTab: string,
-) => useDataDemoStore(state => {
-    const items = state.items;
-    if (groupBy === 'none' || !items.length) return [];
-    
-    const groupCounts = items.reduce((acc, item) => {
-        const groupKey = String(item[groupBy as GroupableField]);
-        acc[groupKey] = (acc[groupKey] || 0) + 1;
-        return acc;
-    }, {} as Record<string, number>);
-
-    const sortedGroups = Object.keys(groupCounts).sort((a, b) => a.localeCompare(b));
-
-    const createLabel = (text: string, count: number, isActive: boolean): ReactNode => (
-        <>
-            {text}
-            <Badge variant={isActive ? 'default' : 'secondary'} className={cn('transition-colors duration-300 text-xs font-semibold', !isActive && 'group-hover:bg-accent group-hover:text-accent-foreground')}>
-                {count}
-            </Badge>
-        </>
-    );
-    
-    const totalCount = items.length;
-
-    return [
-        { id: 'all', label: createLabel('All', totalCount, activeGroupTab === 'all') },
-        ...sortedGroups.map((g) => ({
-            id: g,
-            label: createLabel(capitalize(g), groupCounts[g], activeGroupTab === g),
-        })),
-    ];
-});
-
-export const useDataToRender = (
-    groupBy: GroupableField | 'none',
-    activeGroupTab: string,
-) => useDataDemoStore(state => {
-    const items = state.items;
-    if (groupBy === 'none') {
-        return items;
-    }
-    if (activeGroupTab === 'all') {
-        return items;
-    }
-    return items.filter((item) => String(item[groupBy as GroupableField]) === activeGroupTab);
-});
-
-export const useSelectedItem = (itemId?: string) => {
-    if (!itemId) return null;
-    return mockDataItems.find(item => item.id === itemId) ?? null;
-};
 ```
 
 ## File: src/index.css
@@ -1294,6 +883,191 @@ function CombinedFilter({
     </Command>
   )
 }
+```
+
+## File: src/pages/DataDemo/store/dataDemo.store.tsx
+```typescript
+import { create } from 'zustand';
+import { type ReactNode } from 'react';
+import { capitalize, cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
+import { mockDataItems } from '../data/mockData';
+import type { DataItem, GroupableField, SortConfig } from '../types';
+import type { FilterConfig } from '../components/DataToolbar';
+
+// --- State and Actions ---
+interface DataDemoState {
+    items: DataItem[];
+    hasMore: boolean;
+    isLoading: boolean;
+    isInitialLoading: boolean;
+    totalItemCount: number;
+}
+
+interface DataDemoActions {
+    loadData: (params: {
+        page: number;
+        groupBy: GroupableField | 'none';
+        filters: FilterConfig;
+        sortConfig: SortConfig | null;
+    isFullLoad?: boolean;
+    }) => void;
+    updateItem: (itemId: string, updates: Partial<DataItem>) => void;
+}
+
+const defaultState: DataDemoState = {
+    items: [],
+    hasMore: true,
+    isLoading: true,
+    isInitialLoading: true,
+    totalItemCount: 0,
+};
+
+// --- Store Implementation ---
+export const useDataDemoStore = create<DataDemoState & DataDemoActions>((set, get) => ({
+    ...defaultState,
+
+    loadData: ({ page, groupBy, filters, sortConfig, isFullLoad }) => {
+        set({ isLoading: true, ...(page === 1 && { isInitialLoading: true }) });
+        const isFirstPage = page === 1;
+
+        const filteredAndSortedData = (() => {
+            const filteredItems = mockDataItems.filter((item) => {
+                const searchTermMatch =
+                    item.title.toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
+                    item.description.toLowerCase().includes(filters.searchTerm.toLowerCase());
+                const statusMatch = filters.status.length === 0 || filters.status.includes(item.status);
+                const priorityMatch = filters.priority.length === 0 || filters.priority.includes(item.priority);
+                return searchTermMatch && statusMatch && priorityMatch;
+            });
+
+            if (sortConfig) {
+                filteredItems.sort((a, b) => {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const getNestedValue = (obj: DataItem, path: string): any =>
+                        path.split('.').reduce((o: any, k) => (o || {})[k], obj);
+
+                    const aValue = getNestedValue(a, sortConfig.key);
+                    const bValue = getNestedValue(b, sortConfig.key);
+
+                    if (aValue === undefined || bValue === undefined) return 0;
+                    if (typeof aValue === 'string' && typeof bValue === 'string') {
+                        return sortConfig.direction === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
+                    }
+                    if (typeof aValue === 'number' && typeof bValue === 'number') {
+                        return sortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue;
+                    }
+                    if (sortConfig.key === 'updatedAt' || sortConfig.key === 'createdAt') {
+                        if (typeof aValue === 'string' && typeof bValue === 'string') {
+                            return sortConfig.direction === 'asc'
+                                ? new Date(aValue).getTime() - new Date(bValue).getTime()
+                                : new Date(bValue).getTime() - new Date(aValue).getTime();
+                        }
+                    }
+                    return 0;
+                });
+            }
+            return filteredItems;
+        })();
+        
+        const totalItemCount = filteredAndSortedData.length;
+
+        setTimeout(() => {
+            if (groupBy !== 'none' || isFullLoad) {
+                set({
+                    items: filteredAndSortedData,
+                    hasMore: false,
+                    isLoading: false,
+                    isInitialLoading: false,
+                    totalItemCount,
+                });
+                return;
+            }
+
+            const pageSize = 12;
+            const newItems = filteredAndSortedData.slice((page - 1) * pageSize, page * pageSize);
+            
+            set(state => ({
+                items: isFirstPage ? newItems : [...state.items, ...newItems],
+                hasMore: totalItemCount > page * pageSize,
+                isLoading: false,
+                isInitialLoading: false,
+                totalItemCount,
+            }));
+
+        }, isFirstPage ? 1500 : 500);
+    },
+
+    updateItem: (itemId, updates) => {
+        // In a real app, this would be an API call. Here we update the mock source.
+        const itemIndex = mockDataItems.findIndex(i => i.id === itemId);
+        if (itemIndex > -1) {
+            mockDataItems[itemIndex] = { ...mockDataItems[itemIndex], ...updates };
+        }
+
+        // Also update the currently loaded items in the store's state for UI consistency
+        set(state => ({
+            items: state.items.map(item => 
+                item.id === itemId ? { ...item, ...updates } : item
+            ),
+        }));
+    },
+}));
+
+// --- Selectors ---
+export const useGroupTabs = (
+    groupBy: GroupableField | 'none',
+    activeGroupTab: string,
+) => useDataDemoStore(state => {
+    const items = state.items;
+    if (groupBy === 'none' || !items.length) return [];
+    
+    const groupCounts = items.reduce((acc, item) => {
+        const groupKey = String(item[groupBy as GroupableField]);
+        acc[groupKey] = (acc[groupKey] || 0) + 1;
+        return acc;
+    }, {} as Record<string, number>);
+
+    const sortedGroups = Object.keys(groupCounts).sort((a, b) => a.localeCompare(b));
+
+    const createLabel = (text: string, count: number, isActive: boolean): ReactNode => (
+        <>
+            {text}
+            <Badge variant={isActive ? 'default' : 'secondary'} className={cn('transition-colors duration-300 text-xs font-semibold', !isActive && 'group-hover:bg-accent group-hover:text-accent-foreground')}>
+                {count}
+            </Badge>
+        </>
+    );
+    
+    const totalCount = items.length;
+
+    return [
+        { id: 'all', label: createLabel('All', totalCount, activeGroupTab === 'all') },
+        ...sortedGroups.map((g) => ({
+            id: g,
+            label: createLabel(capitalize(g), groupCounts[g], activeGroupTab === g),
+        })),
+    ];
+});
+
+export const useDataToRender = (
+    groupBy: GroupableField | 'none',
+    activeGroupTab: string,
+) => useDataDemoStore(state => {
+    const items = state.items;
+    if (groupBy === 'none') {
+        return items;
+    }
+    if (activeGroupTab === 'all') {
+        return items;
+    }
+    return items.filter((item) => String(item[groupBy as GroupableField]) === activeGroupTab);
+});
+
+export const useSelectedItem = (itemId?: string) => {
+    if (!itemId) return null;
+    return mockDataItems.find(item => item.id === itemId) ?? null;
+};
 ```
 
 ## File: src/lib/utils.ts

@@ -1,13 +1,12 @@
 import { useState, useMemo } from "react";
-import { format, addMonths, subMonths, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isToday, isSameDay } from "date-fns";
+import { format, addMonths, subMonths, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isToday, isSameDay, } from "date-fns";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { cn, getPriorityColor, getPrioritySolidColor } from "@/lib/utils";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { cn, getPriorityColor } from "@/lib/utils";
 import type { DataItem } from "../types";
 import { useAppViewManager } from "@/hooks/useAppViewManager.hook";
 import { useSelectedItem, useDataDemoStore } from "../store/dataDemo.store";
@@ -49,13 +48,9 @@ function CalendarEvent({ item, isSelected, isDragging, onDragStart }: {
     onDragStart: (e: React.DragEvent<HTMLDivElement>, itemId: string) => void;
 }) {
   const { onItemSelect } = useAppViewManager();
-  const priorityColor = getPrioritySolidColor(item.priority);
 
-  return (
-    <TooltipProvider delayDuration={200}>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <motion.div
+    return (
+        <motion.div
             layout
             draggable
             onDragStart={(e) => onDragStart(e, item.id)}
@@ -65,24 +60,28 @@ function CalendarEvent({ item, isSelected, isDragging, onDragStart }: {
             transition={{ duration: 0.2 }}
             onClick={() => onItemSelect(item)}
             className={cn(
-              "flex items-center gap-2 p-1.5 rounded-lg cursor-grab transition-all duration-200",
-              "hover:bg-accent",
-              isSelected && "bg-primary/10 ring-1 ring-primary/50",
-              isDragging && "opacity-30 cursor-grabbing"
+                "p-2.5 rounded-xl cursor-grab transition-all duration-200 border bg-card/60 dark:bg-neutral-800/60 backdrop-blur-sm",
+                "hover:bg-card/80 dark:hover:bg-neutral-700/70",
+                isSelected && "ring-2 ring-primary ring-offset-background ring-offset-2 bg-card/90",
+                isDragging && "opacity-50 ring-2 ring-primary cursor-grabbing"
             )}
-          >
-            <div className={cn("w-2 h-2 rounded-full flex-shrink-0", priorityColor)} />
-            <span className="text-xs font-medium truncate text-foreground/80">{item.title}</span>
-          </motion.div>
-        </TooltipTrigger>
-        <TooltipContent side="top" align="start">
-          <div className="font-semibold">{item.title}</div>
-          <div className="text-sm text-muted-foreground">{item.category}</div>
-          <Badge className={cn("mt-2 text-xs", getPriorityColor(item.priority))}>{item.priority}</Badge>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
-  );
+        >
+            <h4 className="font-semibold text-sm leading-tight text-card-foreground/90 line-clamp-2">
+                {item.title}
+            </h4>
+            <div className="flex items-center justify-between mt-2 pt-2 border-t border-border/30 dark:border-neutral-700/50">
+                <Badge className={cn("text-xs border capitalize", getPriorityColor(item.priority))}>
+                    {item.priority}
+                </Badge>
+                <Avatar className="w-5 h-5">
+                    <AvatarImage src={item.assignee.avatar} />
+                    <AvatarFallback className="text-[10px] bg-muted dark:bg-neutral-700 text-foreground dark:text-neutral-200 font-medium">
+                        {item.assignee.name.split(" ").map((n) => n[0]).join("")}
+                    </AvatarFallback>
+                </Avatar>
+            </div>
+        </motion.div>
+    );
 }
 
 export function DataCalendarView({ data }: CalendarViewProps) {
@@ -171,9 +170,9 @@ export function DataCalendarView({ data }: CalendarViewProps) {
           No items with due dates to display on the calendar.
         </div>
       ) : (
-        <div className="grid grid-cols-7 border-t border-l border-border" onDragEnd={handleDragEnd}>
+        <div className="grid grid-cols-7 p-2 gap-2" onDragEnd={handleDragEnd}>
           {weekdays.map(day => (
-            <div key={day} className="p-2 text-center text-xs font-semibold text-muted-foreground bg-muted/30 border-b border-r">
+            <div key={day} className="py-2 px-3 text-center text-xs font-semibold text-muted-foreground">
               {day}
             </div>
           ))}
@@ -185,7 +184,7 @@ export function DataCalendarView({ data }: CalendarViewProps) {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.3 }}
-              className="col-span-7 grid grid-cols-7"
+              className="col-span-7 grid grid-cols-7 gap-2"
             >
               {days.map(day => {
                 const dateKey = format(day, "yyyy-MM-dd");
@@ -200,21 +199,21 @@ export function DataCalendarView({ data }: CalendarViewProps) {
                     onDragLeave={handleDragLeave}
                     onDrop={(e) => handleDrop(e, day)}
                     className={cn(
-                      "relative min-h-[160px] border-b border-r p-2 flex flex-col transition-all duration-200",
-                      isCurrentMonthDay ? "bg-card/50" : "bg-muted/20 text-muted-foreground",
-                      isDropTarget ? "bg-primary/10 ring-2 ring-primary/30 z-10" : "hover:bg-accent/50"
+                      "relative min-h-[150px] rounded-2xl p-3 flex flex-col gap-2 transition-all duration-300 border",
+                      isCurrentMonthDay ? "bg-card/40 dark:bg-neutral-900/40 border-transparent" : "bg-muted/30 dark:bg-neutral-800/20 border-transparent text-muted-foreground/60",
+                      isDropTarget ? "border-primary/50 bg-primary/10" : "hover:border-primary/20 hover:bg-card/60"
                     )}
                   >
                     <span className={cn(
-                      "font-semibold text-xs mb-2",
-                      isToday(day) && "flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground"
+                      "font-semibold text-sm",
+                      isToday(day) && "flex items-center justify-center w-7 h-7 rounded-full bg-primary text-primary-foreground"
                     )}>
                       {format(day, "d")}
                     </span>
-                    <div className="space-y-1 overflow-y-auto flex-grow">
+                    <div className="space-y-2 overflow-y-auto flex-grow custom-scrollbar">
                       <AnimatePresence>
-                        {dayEvents.slice(0, 3).map(item => (
-                          <CalendarEvent 
+                        {dayEvents.slice(0, 4).map(item => (
+                          <CalendarEvent
                             key={item.id} 
                             item={item} 
                             isSelected={selectedItem?.id === item.id}
@@ -224,9 +223,9 @@ export function DataCalendarView({ data }: CalendarViewProps) {
                         ))}
                       </AnimatePresence>
                     </div>
-                    {dayEvents.length > 3 && (
+                    {dayEvents.length > 4 && (
                       <div className="absolute bottom-1 right-2 text-xs font-bold text-muted-foreground">
-                        +{dayEvents.length - 3} more
+                        +{dayEvents.length - 4} more
                       </div>
                     )}
                   </div>

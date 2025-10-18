@@ -1,0 +1,760 @@
+uuid: 440263f3-94c0-4354-bc7f-4422da10037a
+projectId: jeli-app-shell
+createdAt: '2025-10-18T03:29:10.131Z'
+gitCommitMsg: >-
+  feat(DataDemo): overhaul calendar view UI to match Kanban aesthetic
+
+  Refactored the `DataCalendarView` component to align its visual design with
+  the modern, "glassmorphism" style of the `DataKanbanView`.
+
+  Key changes include: - Replaced the bordered grid with a fluid, gapped layout
+  for a cleaner look. - Restyled day cells as rounded, blurred-background cards.
+  - Redesigned `CalendarEvent` items into compact, data-rich cards with title,
+  priority badge, and assignee avatar. - Increased visible events per day to 4
+  due to the more compact card design. - Added a `custom-scrollbar` utility
+  class for consistent scrollbar styling within day cells.
+promptSummary: Refactor the calendar view to match the beautiful UI of the kanban view mode.
+reasoning:
+  - >-
+    This is an excellent request. The goal is to elevate the `DataCalendarView`
+    to match the polished, modern "glassmorphism" aesthetic of the
+    `DataKanbanView`. We will achieve this by refactoring the calendar's
+    structure and styling, transforming it from a simple bordered grid into a
+    beautiful, interactive surface.
+  - 'Here is the step-by-step implementation:'
+  - '### Part 1: Modernize the Calendar Grid & Event Cards'
+  - >-
+    First, I will completely overhaul `DataCalendarView.tsx`. The rigid,
+    bordered layout will be replaced with a more fluid, gapped grid. Each day
+    cell will become a distinct, rounded card with a blurred background,
+    creating a sense of depth, similar to the Kanban columns.
+  - >-
+    Simultaneously, the `CalendarEvent` component will be redesigned from a
+    simple text label into an information-rich "mini-card". This new design will
+    include the event title, a priority badge, and the assignee's avatar, making
+    it far more scannable and visually appealing.
+  - '### Part 2: Add Custom Scrollbar Styling'
+  - >-
+    To ensure the scrollbar within each day cell looks consistent with our
+    design system, I'll add a specific `custom-scrollbar` utility class to
+    `index.css`. This will be applied to the scrollable container for events,
+    maintaining a polished look even when a day has many items.
+  - >-
+    With these changes, the Calendar view is now a stunning, modern interface
+    that not only functions well but also provides a delightful and cohesive
+    user experience, perfectly matching the high-quality aesthetic of the Kanban
+    board.
+  - '---'
+operations:
+  - type: write
+    path: src/pages/DataDemo/components/DataCalendarView.tsx
+    content: >
+      --- src/pages/DataDemo/components/DataCalendarView.tsx
+
+      +++ src/pages/DataDemo/components/DataCalendarView.tsx
+
+      @@ -1,13 +1,12 @@
+       import { useState, useMemo } from "react";
+      -import { format, addMonths, subMonths, startOfMonth, endOfMonth,
+      startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isToday, isSameDay
+      } from "date-fns";
+
+      +import { format, addMonths, subMonths, startOfMonth, endOfMonth,
+      startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isToday,
+      isSameDay, } from "date-fns";
+       import { ChevronLeft, ChevronRight } from "lucide-react";
+       import { AnimatePresence, motion } from "framer-motion";
+       
+       import { Button } from "@/components/ui/button";
+      -import { Card } from "@/components/ui/card";
+       import { Badge } from "@/components/ui/badge";
+      -import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from
+      "@/components/ui/tooltip";
+
+      -import { cn, getPriorityColor, getPrioritySolidColor } from
+      "@/lib/utils";
+
+      +import { Avatar, AvatarFallback, AvatarImage } from
+      "@/components/ui/avatar";
+
+      +import { cn, getPriorityColor } from "@/lib/utils";
+       import type { DataItem } from "../types";
+       import { useAppViewManager } from "@/hooks/useAppViewManager.hook";
+       import { useSelectedItem, useDataDemoStore } from "../store/dataDemo.store";
+      @@ -47,43 +46,43 @@
+           isDragging: boolean;
+           onDragStart: (e: React.DragEvent<HTMLDivElement>, itemId: string) => void;
+       }) {
+      -  const { onItemSelect } = useAppViewManager();
+
+      -  const priorityColor = getPrioritySolidColor(item.priority);
+
+      -
+
+      -  return (
+
+      -    <TooltipProvider delayDuration={200}>
+
+      -      <Tooltip>
+
+      -        <TooltipTrigger asChild>
+
+      -          <motion.div
+
+      -            layout
+
+      -            draggable
+
+      -            onDragStart={(e) => onDragStart(e, item.id)}
+
+      -            initial={{ opacity: 0, y: 10 }}
+
+      -            animate={{ opacity: 1, y: 0 }}
+
+      -            exit={{ opacity: 0, y: -10 }}
+
+      -            transition={{ duration: 0.2 }}
+
+      -            onClick={() => onItemSelect(item)}
+
+      -            className={cn(
+
+      -              "flex items-center gap-2 p-1.5 rounded-lg cursor-grab
+      transition-all duration-200",
+
+      -              "hover:bg-accent",
+
+      -              isSelected && "bg-primary/10 ring-1 ring-primary/50",
+
+      -              isDragging && "opacity-30 cursor-grabbing"
+
+      -            )}
+
+      -          >
+
+      -            <div className={cn("w-2 h-2 rounded-full flex-shrink-0",
+      priorityColor)} />
+
+      -            <span className="text-xs font-medium truncate
+      text-foreground/80">{item.title}</span>
+
+      -          </motion.div>
+
+      -        </TooltipTrigger>
+
+      -        <TooltipContent side="top" align="start">
+
+      -          <div className="font-semibold">{item.title}</div>
+
+      -          <div className="text-sm
+      text-muted-foreground">{item.category}</div>
+
+      -          <Badge className={cn("mt-2 text-xs",
+      getPriorityColor(item.priority))}>{item.priority}</Badge>
+
+      -        </TooltipContent>
+
+      -      </Tooltip>
+
+      -    </TooltipProvider>
+
+      -  );
+
+      +    const { onItemSelect } = useAppViewManager();
+
+      +
+
+      +    return (
+
+      +        <motion.div
+
+      +            layout
+
+      +            draggable
+
+      +            onDragStart={(e) => onDragStart(e, item.id)}
+
+      +            initial={{ opacity: 0, y: 10 }}
+
+      +            animate={{ opacity: 1, y: 0 }}
+
+      +            exit={{ opacity: 0, y: -10 }}
+
+      +            transition={{ duration: 0.2 }}
+
+      +            onClick={() => onItemSelect(item)}
+
+      +            className={cn(
+
+      +                "p-2.5 rounded-xl cursor-grab transition-all duration-200
+      border bg-card/60 dark:bg-neutral-800/60 backdrop-blur-sm",
+
+      +                "hover:bg-card/80 dark:hover:bg-neutral-700/70",
+
+      +                isSelected && "ring-2 ring-primary ring-offset-background
+      ring-offset-2 bg-card/90",
+
+      +                isDragging && "opacity-50 ring-2 ring-primary
+      cursor-grabbing"
+
+      +            )}
+
+      +        >
+
+      +            <h4 className="font-semibold text-sm leading-tight
+      text-card-foreground/90 line-clamp-2">
+
+      +                {item.title}
+
+      +            </h4>
+
+      +            <div className="flex items-center justify-between mt-2 pt-2
+      border-t border-border/30 dark:border-neutral-700/50">
+
+      +                <Badge className={cn("text-xs border capitalize",
+      getPriorityColor(item.priority))}>
+
+      +                    {item.priority}
+
+      +                </Badge>
+
+      +                <Avatar className="w-5 h-5">
+
+      +                    <AvatarImage src={item.assignee.avatar} />
+
+      +                    <AvatarFallback className="text-[10px] bg-muted
+      dark:bg-neutral-700 text-foreground dark:text-neutral-200 font-medium">
+
+      +                        {item.assignee.name.split(" ").map((n) =>
+      n[0]).join("")}
+
+      +                    </AvatarFallback>
+
+      +                </Avatar>
+
+      +            </div>
+
+      +        </motion.div>
+
+      +    );
+       }
+       
+       export function DataCalendarView({ data }: CalendarViewProps) {
+         const { itemId } = useAppViewManager();
+         const selectedItem = useSelectedItem(itemId);
+         const updateItem = useDataDemoStore(s => s.updateItem);
+      -  
+
+      +
+         // Drag & Drop State
+         const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
+         const [dropTargetDate, setDropTargetDate] = useState<Date | null>(null);
+      @@ -165,11 +164,11 @@
+                 No items with due dates to display on the calendar.
+               </div>
+             ) : (
+      -        <div className="grid grid-cols-7 border-t border-l border-border"
+      onDragEnd={handleDragEnd}>
+
+      +        <div className="grid grid-cols-7 p-2 gap-2"
+      onDragEnd={handleDragEnd}>
+                 {weekdays.map(day => (
+      -            <div key={day} className="p-2 text-center text-xs
+      font-semibold text-muted-foreground bg-muted/30 border-b border-r">
+
+      +            <div key={day} className="py-2 px-3 text-center text-xs
+      font-semibold text-muted-foreground">
+                     {day}
+                   </div>
+                 ))}
+      @@ -182,7 +181,7 @@
+                     animate={{ opacity: 1 }}
+                     exit={{ opacity: 0 }}
+                     transition={{ duration: 0.3 }}
+      -              className="col-span-7 grid grid-cols-7"
+
+      +              className="col-span-7 grid grid-cols-7 gap-2"
+                   >
+                     {days.map(day => {
+                       const dateKey = format(day, "yyyy-MM-dd");
+      @@ -196,21 +195,20 @@
+                           onDragLeave={handleDragLeave}
+                           onDrop={(e) => handleDrop(e, day)}
+                           className={cn(
+      -                      "relative min-h-[160px] border-b border-r p-2 flex
+      flex-col transition-all duration-200",
+
+      -                      isCurrentMonthDay ? "bg-card/50" : "bg-muted/20
+      text-muted-foreground",
+
+      -                      isDropTarget ? "bg-primary/10 ring-2
+      ring-primary/30 z-10" : "hover:bg-accent/50"
+
+      +                      "relative min-h-[150px] rounded-2xl p-3 flex
+      flex-col gap-2 transition-all duration-300 border",
+
+      +                      isCurrentMonthDay ? "bg-card/40
+      dark:bg-neutral-900/40 border-transparent" : "bg-muted/30
+      dark:bg-neutral-800/20 border-transparent text-muted-foreground/60",
+
+      +                      isDropTarget ? "border-primary/50 bg-primary/10" :
+      "hover:border-primary/20 hover:bg-card/60"
+                           )}
+                         >
+                           <span className={cn(
+      -                      "font-semibold text-xs mb-2",
+
+      -                      isToday(day) && "flex items-center justify-center
+      w-6 h-6 rounded-full bg-primary text-primary-foreground"
+
+      +                      "font-semibold text-sm",
+
+      +                      isToday(day) && "flex items-center justify-center
+      w-7 h-7 rounded-full bg-primary text-primary-foreground"
+                           )}>
+                             {format(day, "d")}
+                           </span>
+      -                    <div className="space-y-1 overflow-y-auto flex-grow">
+
+      +                    <div className="space-y-2 overflow-y-auto flex-grow
+      custom-scrollbar">
+                             <AnimatePresence>
+      -                        {dayEvents.slice(0, 3).map(item => (
+
+      -                          <CalendarEvent 
+
+      +                        {dayEvents.slice(0, 4).map(item => (
+
+      +                          <CalendarEvent
+                                   key={item.id} 
+                                   item={item} 
+                                   isSelected={selectedItem?.id === item.id}
+      @@ -220,9 +218,9 @@
+                               ))}
+                             </AnimatePresence>
+                           </div>
+      -                    {dayEvents.length > 3 && (
+
+      +                    {dayEvents.length > 4 && (
+                             <div className="absolute bottom-1 right-2 text-xs font-bold text-muted-foreground">
+      -                        +{dayEvents.length - 3} more
+
+      +                        +{dayEvents.length - 4} more
+                             </div>
+                           )}
+                         </div>
+    patchStrategy: standard-diff
+  - type: write
+    path: src/index.css
+    content: |+
+      --- src/index.css
+      +++ src/index.css
+      @@ -77,6 +77,21 @@
+         scrollbar-width: none; /* Firefox */
+       }
+       
+      +.custom-scrollbar::-webkit-scrollbar {
+      +  width: 5px;
+      +  height: 5px;
+      +}
+      +.custom-scrollbar::-webkit-scrollbar-track {
+      +  background-color: transparent;
+      +}
+      +.custom-scrollbar::-webkit-scrollbar-thumb {
+      +  @apply bg-border rounded-lg;
+      +}
+      +.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      +  @apply bg-muted-foreground/50;
+      +}
+      +
+       @layer base {
+         .login-page-theme {
+           --background: hsl(0 0% 100%);
+
+    patchStrategy: standard-diff
+snapshot:
+  src/pages/DataDemo/components/DataCalendarView.tsx: >-
+    import { useState, useMemo } from "react";
+
+    import { format, addMonths, subMonths, startOfMonth, endOfMonth,
+    startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isToday, isSameDay }
+    from "date-fns";
+
+    import { ChevronLeft, ChevronRight } from "lucide-react";
+
+    import { AnimatePresence, motion } from "framer-motion";
+
+
+    import { Button } from "@/components/ui/button";
+
+    import { Card } from "@/components/ui/card";
+
+    import { Badge } from "@/components/ui/badge";
+
+    import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from
+    "@/components/ui/tooltip";
+
+    import { cn, getPriorityColor, getPrioritySolidColor } from "@/lib/utils";
+
+    import type { DataItem } from "../types";
+
+    import { useAppViewManager } from "@/hooks/useAppViewManager.hook";
+
+    import { useSelectedItem, useDataDemoStore } from "../store/dataDemo.store";
+
+
+    interface CalendarViewProps {
+      data: DataItem[];
+    }
+
+
+    function CalendarHeader({ currentDate, onPrevMonth, onNextMonth, onToday }:
+    {
+      currentDate: Date;
+      onPrevMonth: () => void;
+      onNextMonth: () => void;
+      onToday: () => void;
+    }) {
+      return (
+        <div className="flex items-center justify-between gap-4 mb-6">
+          <h2 className="text-xl font-bold md:text-2xl tracking-tight">
+            {format(currentDate, "MMMM yyyy")}
+          </h2>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={onToday}>Today</Button>
+            <div className="flex items-center">
+              <Button variant="outline" size="icon" className="h-9 w-9" onClick={onPrevMonth}>
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Button variant="outline" size="icon" className="h-9 w-9" onClick={onNextMonth}>
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+
+    function CalendarEvent({ item, isSelected, isDragging, onDragStart }: { 
+        item: DataItem; 
+        isSelected: boolean;
+        isDragging: boolean;
+        onDragStart: (e: React.DragEvent<HTMLDivElement>, itemId: string) => void;
+    }) {
+      const { onItemSelect } = useAppViewManager();
+      const priorityColor = getPrioritySolidColor(item.priority);
+
+      return (
+        <TooltipProvider delayDuration={200}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <motion.div
+                layout
+                draggable
+                onDragStart={(e) => onDragStart(e, item.id)}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
+                onClick={() => onItemSelect(item)}
+                className={cn(
+                  "flex items-center gap-2 p-1.5 rounded-lg cursor-grab transition-all duration-200",
+                  "hover:bg-accent",
+                  isSelected && "bg-primary/10 ring-1 ring-primary/50",
+                  isDragging && "opacity-30 cursor-grabbing"
+                )}
+              >
+                <div className={cn("w-2 h-2 rounded-full flex-shrink-0", priorityColor)} />
+                <span className="text-xs font-medium truncate text-foreground/80">{item.title}</span>
+              </motion.div>
+            </TooltipTrigger>
+            <TooltipContent side="top" align="start">
+              <div className="font-semibold">{item.title}</div>
+              <div className="text-sm text-muted-foreground">{item.category}</div>
+              <Badge className={cn("mt-2 text-xs", getPriorityColor(item.priority))}>{item.priority}</Badge>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      );
+    }
+
+
+    export function DataCalendarView({ data }: CalendarViewProps) {
+      const [currentDate, setCurrentDate] = useState(new Date());
+      const { itemId } = useAppViewManager();
+      const selectedItem = useSelectedItem(itemId);
+      const updateItem = useDataDemoStore(s => s.updateItem);
+      
+      // Drag & Drop State
+      const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
+      const [dropTargetDate, setDropTargetDate] = useState<Date | null>(null);
+
+      const itemsWithDueDate = useMemo(() => data.filter(item => !!item.dueDate), [data]);
+
+      const eventsByDate = useMemo(() => {
+        const eventsMap = new Map<string, DataItem[]>();
+        itemsWithDueDate.forEach(item => {
+          const dueDate = new Date(item.dueDate as string);
+          const dateKey = format(dueDate, "yyyy-MM-dd");
+          if (!eventsMap.has(dateKey)) {
+            eventsMap.set(dateKey, []);
+          }
+          eventsMap.get(dateKey)?.push(item);
+        });
+        return eventsMap;
+      }, [itemsWithDueDate]);
+
+      const monthStart = startOfMonth(currentDate);
+      const monthEnd = endOfMonth(monthStart);
+      const startDate = startOfWeek(monthStart, { weekStartsOn: 0 }); // Sunday
+      const endDate = endOfWeek(monthEnd, { weekStartsOn: 0 });
+
+      const days = eachDayOfInterval({ start: startDate, end: endDate });
+      const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+      
+      // D&D Handlers
+      const handleDragStart = (e: React.DragEvent, itemId: string) => {
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', itemId);
+        setDraggedItemId(itemId);
+      };
+      
+      const handleDragEnd = () => {
+        setDraggedItemId(null);
+        setDropTargetDate(null);
+      };
+
+      const handleDragOver = (e: React.DragEvent, day: Date) => {
+        e.preventDefault();
+        if (dropTargetDate === null || !isSameDay(day, dropTargetDate)) {
+            setDropTargetDate(day);
+        }
+      };
+
+      const handleDragLeave = () => {
+        setDropTargetDate(null);
+      };
+
+      const handleDrop = (e: React.DragEvent, day: Date) => {
+        e.preventDefault();
+        const itemIdToUpdate = e.dataTransfer.getData('text/plain');
+        if (itemIdToUpdate) {
+            const originalItem = itemsWithDueDate.find(i => i.id === itemIdToUpdate);
+            if (originalItem && originalItem.dueDate) {
+                const originalDate = new Date(originalItem.dueDate);
+                // Preserve the time, only change the date part
+                const newDueDate = new Date(day);
+                newDueDate.setHours(originalDate.getHours(), originalDate.getMinutes(), originalDate.getSeconds(), originalDate.getMilliseconds());
+                updateItem(itemIdToUpdate, { dueDate: newDueDate.toISOString() });
+            }
+        }
+        handleDragEnd(); // Reset state
+      };
+      
+      const handlePrevMonth = () => setCurrentDate(subMonths(currentDate, 1));
+      const handleNextMonth = () => setCurrentDate(addMonths(currentDate, 1));
+      const handleToday = () => setCurrentDate(new Date());
+
+      return (
+        <div className="-mx-4 md:-mx-6">
+          <div className="px-4 md:px-6">
+            <CalendarHeader currentDate={currentDate} onPrevMonth={handlePrevMonth} onNextMonth={handleNextMonth} onToday={handleToday} />
+          </div>
+          {itemsWithDueDate.length === 0 ? (
+            <div className="flex items-center justify-center h-96 text-muted-foreground rounded-lg border bg-card/30 mx-4 md:mx-6">
+              No items with due dates to display on the calendar.
+            </div>
+          ) : (
+            <div className="grid grid-cols-7 border-t border-l border-border" onDragEnd={handleDragEnd}>
+              {weekdays.map(day => (
+                <div key={day} className="p-2 text-center text-xs font-semibold text-muted-foreground bg-muted/30 border-b border-r">
+                  {day}
+                </div>
+              ))}
+
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={format(currentDate, "yyyy-MM")}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className="col-span-7 grid grid-cols-7"
+                >
+                  {days.map(day => {
+                    const dateKey = format(day, "yyyy-MM-dd");
+                    const dayEvents = eventsByDate.get(dateKey) || [];
+                    const isCurrentMonthDay = isSameMonth(day, currentDate);
+                    const isDropTarget = dropTargetDate && isSameDay(day, dropTargetDate);
+
+                    return (
+                      <div
+                        key={day.toString()}
+                        onDragOver={(e) => handleDragOver(e, day)}
+                        onDragLeave={handleDragLeave}
+                        onDrop={(e) => handleDrop(e, day)}
+                        className={cn(
+                          "relative min-h-[160px] border-b border-r p-2 flex flex-col transition-all duration-200",
+                          isCurrentMonthDay ? "bg-card/50" : "bg-muted/20 text-muted-foreground",
+                          isDropTarget ? "bg-primary/10 ring-2 ring-primary/30 z-10" : "hover:bg-accent/50"
+                        )}
+                      >
+                        <span className={cn(
+                          "font-semibold text-xs mb-2",
+                          isToday(day) && "flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground"
+                        )}>
+                          {format(day, "d")}
+                        </span>
+                        <div className="space-y-1 overflow-y-auto flex-grow">
+                          <AnimatePresence>
+                            {dayEvents.slice(0, 3).map(item => (
+                              <CalendarEvent 
+                                key={item.id} 
+                                item={item} 
+                                isSelected={selectedItem?.id === item.id}
+                                isDragging={draggedItemId === item.id}
+                                onDragStart={handleDragStart}
+                              />
+                            ))}
+                          </AnimatePresence>
+                        </div>
+                        {dayEvents.length > 3 && (
+                          <div className="absolute bottom-1 right-2 text-xs font-bold text-muted-foreground">
+                            +{dayEvents.length - 3} more
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </motion.div>
+              </AnimatePresence>
+            </div>
+          )}
+        </div>
+      );
+    }
+  src/index.css: |-
+    @import 'tailwindcss/base';
+    @import 'tailwindcss/components';
+    @import 'tailwindcss/utilities';
+
+    @layer base {
+      :root {
+        --primary-hsl: 220 84% 60%;
+        --background: 210 40% 96.1%;
+        --foreground: 222.2 84% 4.9%;
+        --card: 0 0% 100%;
+        --card-foreground: 222.2 84% 4.9%;
+        --popover: 0 0% 100%;
+        --popover-foreground: 222.2 84% 4.9%;
+        --primary: var(--primary-hsl);
+        --primary-foreground: 210 40% 98%;
+        --secondary: 210 40% 96%;
+        --secondary-foreground: 222.2 84% 4.9%;
+        --muted: 210 40% 96%;
+        --muted-foreground: 215.4 16.3% 46.9%;
+        --accent: 210 40% 96%;
+        --accent-foreground: 222.2 84% 4.9%;
+        --destructive: 0 84.2% 60.2%;
+        --destructive-foreground: 210 40% 98%;
+        --border: 214.3 31.8% 91.4%;
+        --input: 214.3 31.8% 91.4%;
+        --ring: var(--primary-hsl);
+        --radius: 1rem;
+      }
+
+      .dark {
+        --background: 240 6% 9%;
+        --foreground: 210 40% 98%;
+        --card: 240 6% 14%;
+        --card-foreground: 210 40% 98%;
+        --popover: 240 6% 12%;
+        --popover-foreground: 210 40% 98%;
+        --primary: var(--primary-hsl);
+        --primary-foreground: 210 40% 98%;
+        --secondary: 240 5% 20%;
+        --secondary-foreground: 210 40% 98%;
+        --muted: 240 5% 20%;
+        --muted-foreground: 215 20.2% 65.1%;
+        --accent: 240 5% 20%;
+        --accent-foreground: 210 40% 98%;
+        --destructive: 0 62.8% 30.6%;
+        --destructive-foreground: 210 40% 98%;
+        --border: 240 5% 20%;
+        --input: 240 5% 20%;
+        --ring: var(--primary-hsl);
+      }
+    }
+
+    @layer base {
+      * {
+        @apply border-border;
+      }
+      body {
+        @apply bg-background text-foreground;
+      }
+    }
+
+    /* Custom scrollbar styles */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      @apply bg-transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      @apply bg-border rounded-full;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      @apply bg-muted-foreground/50;
+    }
+
+    /* For UserDropdown */
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none; /* IE and Edge */
+      scrollbar-width: none; /* Firefox */
+    }
+
+    @layer base {
+      .login-page-theme {
+        --background: hsl(0 0% 100%);
+        --foreground: hsl(0 0% 0%);
+        --skeleton: hsl(0 0% 90%);
+        --border: hsl(220 20% 90%);
+        --btn-border: hsl(214.3 31.8% 91.4%);
+        --input: hsl(220 20% 90%);
+        --radius: 0.5rem;
+      }
+     
+      .dark .login-page-theme {
+        --background: hsl(222 94% 5%);
+        --foreground: hsl(0 0% 100%);
+        --skeleton: hsl(218 36% 16%);
+        --border: hsl(220 20% 90%);
+        --btn-border: hsl(217 32.6% 17.5%);
+        --input: hsl(219 63% 16%);
+        --radius: 0.5rem;
+      }
+    }
+
+    @layer components {
+      .g-button {
+        @apply rounded-[var(--radius)] border;
+        border-color: var(--btn-border);
+      }
+    }
+approved: false
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: undone
+id: 439

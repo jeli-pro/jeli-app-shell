@@ -4,6 +4,14 @@ I am obsessed with laravel filament... so make everything about data demo page i
 
 ===
 
+data demo page: calendar view
+
+- user can select any timestamp type data to show on calendar view
+- add calendar view control to control
+  1. wether to show all items on calendar blocks or only first 3/5 items with show all text button
+
+===
+
 data demo page:
 
 - create calendar view mode with amazing UI... at least like below ex:
