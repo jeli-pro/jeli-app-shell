@@ -316,9 +316,10 @@ function DataDemoContent() {
 
         {/* Stats Section */}
         {!isInitialLoading && (
-          <div ref={statsRef} className="flex overflow-x-auto gap-6 pb-2 no-scrollbar">
+          <div ref={statsRef} className="flex overflow-x-auto gap-6 pb-4 no-scrollbar">
             {stats.map((stat) => (
               <StatCard
+                className="w-64 md:w-72 flex-shrink-0"
                 key={stat.title}
                 title={stat.title}
                 value={stat.value}
