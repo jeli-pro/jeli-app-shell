@@ -1,0 +1,232 @@
+uuid: 4a259929-7975-4d08-a92c-5b583f73315a
+projectId: jeli-app-shell
+createdAt: '2025-10-18T15:43:13.177Z'
+gitCommitMsg: >-
+  feat(DataListView): implement responsive metadata display
+
+  Refactored the `DataListView` to be container-aware and responsive. It now
+  uses the `useResizeObserver` hook to measure its own width and conditionally
+  renders metadata attributes (tags, date, status, etc.) based on available
+  space.
+
+  This replaces the previous TailwindCSS-based breakpoint classes with a more
+  robust and encapsulated solution, ensuring the list view is usable and looks
+  great across a wide range of component sizes, not just viewport sizes. The
+  assignee information also becomes more compact on smaller widths.
+promptSummary: >-
+  Make the DataListView responsive by dynamically showing/hiding attributes
+  based on viewport width.
+reasoning:
+  - >-
+    I will now refactor the `DataListView` component to be fully responsive by
+    dynamically adjusting the displayed metadata based on the component's width.
+    This is achieved using our existing `useResizeObserver` hook, transitioning
+    from viewport-based media queries to a more robust container-aware approach.
+    This ensures the component remains clean and usable across all screen sizes.
+  - >-
+    I'll start by modifying `DataListView.tsx`. I'll import `useResizeObserver`,
+    attach it to the list's container element, and then use the measured width
+    to conditionally render metadata elements like tags, dates, and status
+    badges. I'll also make the assignee information more compact on smaller
+    widths.
+operations:
+  - type: write
+    path: src/pages/DataDemo/components/DataListView.tsx
+    content: >+
+      --- src/pages/DataDemo/components/DataListView.tsx
+
+      +++ src/pages/DataDemo/components/DataListView.tsx
+
+      @@ -3,6 +3,7 @@
+       import type { DataItem } from '../types'
+       import { useStaggeredAnimation } from '@/hooks/useStaggeredAnimation.motion.hook'
+       import { EmptyState } from './EmptyState'
+       import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
+      +import { useResizeObserver } from '@/hooks/useResizeObserver.hook'
+       import { 
+         useSelectedItem,
+       } from '../store/dataDemo.store'
+      @@ -19,6 +20,15 @@
+       
+         const listRef = useRef<HTMLDivElement>(null)
+         useStaggeredAnimation(listRef, [data], { mode: 'incremental', scale: 1, y: 20, stagger: 0.05, duration: 0.4 });
+      +  const { width } = useResizeObserver(listRef);
+
+      +
+
+      +  // Breakpoints for responsive metadata
+
+      +  const showTags = width > 1050;
+
+      +  const showDate = width > 850;
+
+      +  const showStatus = width > 700;
+
+      +  const compactAssignee = width < 600;
+
+      +  const showPriority = width > 450;
+       
+         const items = Array.isArray(data) ? data : [];
+         if (items.length === 0) {
+      @@ -31,12 +41,11 @@
+               const isSelected = selectedItem?.id === item.id
+               
+               return (
+      -          <div key={item.id} onClick={() => onItemSelect(item)}
+      className="border-b cursor-pointer px-2">
+
+      -            <div
+
+      -              className={cn(
+
+      -                "group flex items-center px-2 py-2 rounded-md
+      transition-colors duration-200",
+
+      +          <div key={item.id} className="border-b px-2">
+
+      +            <div
+
+      +              onClick={() => onItemSelect(item)}
+
+      +              className={cn(
+
+      +                "group flex items-center px-2 py-2 rounded-md
+      transition-colors duration-200 cursor-pointer",
+                       "hover:bg-accent/80",
+                       isSelected ? "bg-accent" : "bg-transparent"
+                     )}
+      @@ -48,16 +57,12 @@
+                     </div>
+       
+                     {/* Right side: Metadata */}
+      -              <div className="flex items-center gap-4 ml-4 text-sm
+      text-muted-foreground shrink-0">
+
+      -                <div className="hidden lg:flex items-center gap-4">
+
+      -                  <ItemStatusBadge status={item.status} />
+
+      -                  <ItemTags tags={item.tags} />
+
+      -                </div>
+
+      -                <div className="hidden md:flex items-center gap-4">
+
+      -                  <ItemDateInfo date={item.updatedAt} />
+
+      -                </div>
+
+      -                <AssigneeInfo assignee={item.assignee}
+      avatarClassName="w-7 h-7" compact />
+
+      -                <ItemPriorityBadge priority={item.priority}
+      className="hidden sm:inline-flex" />
+
+      +              <div className="flex shrink-0 items-center gap-2 sm:gap-4
+      md:gap-6 ml-4 text-sm text-muted-foreground">
+
+      +                {showStatus && <ItemStatusBadge status={item.status} />}
+
+      +                {showTags && <ItemTags tags={item.tags} />}
+
+      +                {showDate && <ItemDateInfo date={item.updatedAt} />}
+
+      +                <AssigneeInfo assignee={item.assignee}
+      avatarClassName="w-7 h-7" compact={compactAssignee} />
+
+      +                {showPriority && <ItemPriorityBadge
+      priority={item.priority} />}
+                     </div>
+                   </div>
+                 </div>
+
+    patchStrategy: standard-diff
+snapshot:
+  src/pages/DataDemo/components/DataListView.tsx: >-
+    import { useRef } from 'react'
+
+    import { cn } from '@/lib/utils'
+
+    import type { DataItem } from '../types'
+
+    import { useStaggeredAnimation } from
+    '@/hooks/useStaggeredAnimation.motion.hook'
+
+    import { EmptyState } from './EmptyState'
+
+    import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
+
+    import { 
+      useSelectedItem,
+    } from '../store/dataDemo.store'
+
+    import {
+      AssigneeInfo,
+      ItemStatusBadge,
+      ItemPriorityBadge,
+      ItemDateInfo,
+      ItemTags,
+    } from './shared/DataItemParts'
+
+    import { AddDataItemCta } from './shared/AddDataItemCta'
+
+
+    export function DataListView({ data }: { data: DataItem[] }) {
+      const { onItemSelect, itemId } = useAppViewManager();
+      const selectedItem = useSelectedItem(itemId);
+
+      const listRef = useRef<HTMLDivElement>(null)
+      useStaggeredAnimation(listRef, [data], { mode: 'incremental', scale: 1, y: 20, stagger: 0.05, duration: 0.4 });
+
+      const items = Array.isArray(data) ? data : [];
+      if (items.length === 0) {
+        return <EmptyState />
+      }
+
+      return (
+        <div ref={listRef} className="border-t">
+          {items.map((item: DataItem) => {
+            const isSelected = selectedItem?.id === item.id
+            
+            return (
+              <div key={item.id} onClick={() => onItemSelect(item)} className="border-b cursor-pointer px-2">
+                <div
+                  className={cn(
+                    "group flex items-center px-2 py-2 rounded-md transition-colors duration-200",
+                    "hover:bg-accent/80",
+                    isSelected ? "bg-accent" : "bg-transparent"
+                  )}
+                >
+                  {/* Left side: Icon and Title */}
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <span className="text-xl flex-shrink-0 w-8 text-center">{item.thumbnail}</span>
+                    <p className="font-medium truncate text-card-foreground group-hover:text-primary">{item.title}</p>
+                  </div>
+
+                  {/* Right side: Metadata */}
+                  <div className="flex items-center gap-4 ml-4 text-sm text-muted-foreground shrink-0">
+                    <div className="hidden lg:flex items-center gap-4">
+                      <ItemStatusBadge status={item.status} />
+                      <ItemTags tags={item.tags} />
+                    </div>
+                    <div className="hidden md:flex items-center gap-4">
+                      <ItemDateInfo date={item.updatedAt} />
+                    </div>
+                    <AssigneeInfo assignee={item.assignee} avatarClassName="w-7 h-7" compact />
+                    <ItemPriorityBadge priority={item.priority} className="hidden sm:inline-flex" />
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+          <AddDataItemCta viewMode='list' />
+        </div>
+      )
+    }
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 482

@@ -4,6 +4,7 @@ import type { DataItem } from '../types'
 import { useStaggeredAnimation } from '@/hooks/useStaggeredAnimation.motion.hook'
 import { EmptyState } from './EmptyState'
 import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
+import { useResizeObserver } from '@/hooks/useResizeObserver.hook'
 import { 
   useSelectedItem,
 } from '../store/dataDemo.store'
@@ -22,6 +23,14 @@ export function DataListView({ data }: { data: DataItem[] }) {
 
   const listRef = useRef<HTMLDivElement>(null)
   useStaggeredAnimation(listRef, [data], { mode: 'incremental', scale: 1, y: 20, stagger: 0.05, duration: 0.4 });
+  const { width } = useResizeObserver(listRef);
+
+  // Breakpoints for responsive metadata
+  const showTags = width > 1050;
+  const showDate = width > 850;
+  const showStatus = width > 700;
+  const compactAssignee = width < 600;
+  const showPriority = width > 450;
 
   const items = Array.isArray(data) ? data : [];
   if (items.length === 0) {
@@ -34,10 +43,11 @@ export function DataListView({ data }: { data: DataItem[] }) {
         const isSelected = selectedItem?.id === item.id
         
         return (
-          <div key={item.id} onClick={() => onItemSelect(item)} className="border-b cursor-pointer px-2">
+          <div key={item.id} className="border-b px-2">
             <div
+              onClick={() => onItemSelect(item)}
               className={cn(
-                "group flex items-center px-2 py-2 rounded-md transition-colors duration-200",
+                "group flex items-center px-2 py-2 rounded-md transition-colors duration-200 cursor-pointer",
                 "hover:bg-accent/80",
                 isSelected ? "bg-accent" : "bg-transparent"
               )}
@@ -49,16 +59,12 @@ export function DataListView({ data }: { data: DataItem[] }) {
               </div>
 
               {/* Right side: Metadata */}
-              <div className="flex items-center gap-4 ml-4 text-sm text-muted-foreground shrink-0">
-                <div className="hidden lg:flex items-center gap-4">
-                  <ItemStatusBadge status={item.status} />
-                  <ItemTags tags={item.tags} />
-                </div>
-                <div className="hidden md:flex items-center gap-4">
-                  <ItemDateInfo date={item.updatedAt} />
-                </div>
-                <AssigneeInfo assignee={item.assignee} avatarClassName="w-7 h-7" compact />
-                <ItemPriorityBadge priority={item.priority} className="hidden sm:inline-flex" />
+              <div className="flex shrink-0 items-center gap-2 sm:gap-4 md:gap-6 ml-4 text-sm text-muted-foreground">
+                {showStatus && <ItemStatusBadge status={item.status} />}
+                {showTags && <ItemTags tags={item.tags} />}
+                {showDate && <ItemDateInfo date={item.updatedAt} />}
+                <AssigneeInfo assignee={item.assignee} avatarClassName="w-7 h-7" compact={compactAssignee} />
+                {showPriority && <ItemPriorityBadge priority={item.priority} />}
               </div>
             </div>
           </div>

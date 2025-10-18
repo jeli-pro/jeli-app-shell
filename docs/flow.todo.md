@@ -30,15 +30,15 @@ data demo page: the data model should be based on message page,
 
 data demo page: calendar view : just like date property that user can select, also add calendar item background color feature that user can select based on what data
 
-===
+=== DONE
 
 replace all framer motion with gsap. then remove framer motion
 
-===
+=== DONE
 
 data demo page: calendar view : fix flickering calendar items animation on load within blocks
 
-===
+=== DONE
 
 data demo page: calendar view control: I want all the features real working, also make the UI styling and spacing consistent global style.
 
