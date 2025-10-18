@@ -1,7 +1,7 @@
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useLayoutEffect } from "react";
 import { format, addMonths, subMonths, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isToday, isSameDay, } from "date-fns";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { AnimatePresence, motion } from "framer-motion";
+import { gsap } from "gsap";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -97,14 +97,9 @@ function CalendarEvent({ item, isSelected, isDragging, onDragStart, displayProps
     }, [colorProp, item.priority, item.status, item.category]);
 
     return (
-        <motion.div
-            layout
+        <div
             draggable
             onDragStart={(e) => onDragStart(e, item.id)}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.2 }}
             onClick={() => onItemSelect(item)}
             className={cn(
                 "p-2 rounded-lg cursor-grab transition-all duration-200 border space-y-1",
@@ -146,7 +141,7 @@ function CalendarEvent({ item, isSelected, isDragging, onDragStart, displayProps
                     )}
                 </div>
             )}
-        </motion.div>
+        </div>
     );
 }
 
@@ -172,6 +167,9 @@ export function DataCalendarView({ data }: CalendarViewProps) {
   const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
   const [dropTargetDate, setDropTargetDate] = useState<Date | null>(null);
 
+  // GSAP animation state
+  const [direction, setDirection] = useState(0); // 0: initial, 1: next, -1: prev
+
   // Responsive Calendar State
   const calendarContainerRef = useRef<HTMLDivElement>(null);
   const { width } = useResizeObserver(calendarContainerRef);
@@ -182,6 +180,7 @@ export function DataCalendarView({ data }: CalendarViewProps) {
     return Math.max(3, Math.min(7, cols));
   }, [width]);
 
+  const gridRef = useRef<HTMLDivElement>(null);
   const itemsByDateProp = useMemo(() => data.filter(item => !!item[calendarDateProp]), [data, calendarDateProp]);
 
   const eventsByDate = useMemo(() => {
@@ -246,9 +245,26 @@ export function DataCalendarView({ data }: CalendarViewProps) {
     handleDragEnd(); // Reset state
   };
   
-  const handlePrevMonth = () => setCurrentDate(subMonths(currentDate, 1));
-  const handleNextMonth = () => setCurrentDate(addMonths(currentDate, 1));
-  const handleToday = () => setCurrentDate(new Date());
+  const handlePrevMonth = () => {
+    setDirection(-1);
+    setCurrentDate(subMonths(currentDate, 1));
+  };
+  const handleNextMonth = () => {
+    setDirection(1);
+    setCurrentDate(addMonths(currentDate, 1));
+  };
+  const handleToday = () => {
+    setDirection(0); // No animation for 'Today'
+    setCurrentDate(new Date());
+  };
+
+  useLayoutEffect(() => {
+    if (direction === 0 || !gridRef.current) return;
+    gsap.fromTo(gridRef.current, 
+      { opacity: 0, x: 30 * direction }, 
+      { opacity: 1, x: 0, duration: 0.3, ease: 'power2.out' }
+    );
+  }, [currentDate]);
 
   return (
     <div ref={calendarContainerRef} className="-mx-4 md:-mx-6">
@@ -271,13 +287,8 @@ export function DataCalendarView({ data }: CalendarViewProps) {
             </div>
           )}
 
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={format(currentDate, "yyyy-MM")}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.3 }}
+            <div
+              ref={gridRef}
               style={{
                 display: 'grid',
                 gridTemplateColumns: `repeat(${numColumns}, minmax(0, 1fr))`,
@@ -318,19 +329,17 @@ export function DataCalendarView({ data }: CalendarViewProps) {
                       )}
                     </div>
                     <div className="space-y-2 overflow-y-auto flex-grow custom-scrollbar">
-                      <AnimatePresence>
-                        {visibleEvents.map(item => (
-                          <CalendarEvent
-                            key={item.id} 
-                            item={item} 
-                            isSelected={selectedItem?.id === item.id}
-                            isDragging={draggedItemId === item.id}
-                            onDragStart={handleDragStart}
-                            displayProps={calendarDisplayProps}
-                            colorProp={calendarColorProp}
-                          />
-                        ))}
-                      </AnimatePresence>
+                      {visibleEvents.map(item => (
+                        <CalendarEvent
+                          key={item.id} 
+                          item={item} 
+                          isSelected={selectedItem?.id === item.id}
+                          isDragging={draggedItemId === item.id}
+                          onDragStart={handleDragStart}
+                          displayProps={calendarDisplayProps}
+                          colorProp={calendarColorProp}
+                        />
+                      ))}
                     </div>
                     {hiddenEventsCount > 0 && (
                       <div className="absolute bottom-1 right-2 text-xs font-bold text-muted-foreground">
@@ -340,8 +349,7 @@ export function DataCalendarView({ data }: CalendarViewProps) {
                   </div>
                 );
               })}
-            </motion.div>
-          </AnimatePresence>
+            </div>
         </div>
       )}
     </div>

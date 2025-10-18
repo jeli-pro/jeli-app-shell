@@ -1,113 +1,73 @@
-Fellas, we're diving into the `DataDemo` page to juice up the calendar controls. Right now, it's just a pretty face. We're going to wire it up, make it slick, and ensure it plays nice with the rest of the app's state management.
+Here's the master plan for refactoring the data list view to be responsive.
 
-The plan is simple: First, we'll fortify our `useAppViewManager` hook to be the single source of truth for all calendar settings, pulling state from the URL like a champ. Then, we'll overhaul the `DataCalendarViewControls` component, connecting its switches and knobs to the hook and polishing its UI until it shines. Finally, we'll make the `DataCalendarView` itself dance to the new tune, dynamically updating what it shows based on the user's choices.
+***
 
-This refactor will turn a static piece of UI into a fully interactive feature, giving users granular control over their calendar view. It's about making the thing *actually work* and look good while doing it. No more mockups, just pure, unadulterated functionality. Let's get it.
+Alright, listen up. The `DataListView` is static and breaks on smaller viewports. It's a bad look. We're going to fix it by making it "viewport aware." The game plan is to hook into the component's width and dynamically decide which metadata attributes to show. We'll be using a `useResizeObserver` hook we already have, so it's clean, performant, and pure React.
+
+The idea is simple: big screen, you get all the eye candy—tags, full assignee names, dates, the works. Squeeze the browser window, and we start shedding the less critical info, collapsing assignee names to just avatars, and hiding tags and dates. This keeps the core info scannable without ugly wrapping or horizontal scrolling. It's a classic progressive disclosure pattern, but driven by container queries, not just media queries. This makes the component truly portable and self-contained.
+
+This refactor will make the UI feel slick and professional on any device, from a wide desktop monitor to a tablet. No more jank, just a fluid user experience that adapts on the fly. Let's get this done.
 
 ```yaml
 plan:
-  uuid: '3a8d1e2f-b4c1-4f9e-a0d3-5b8c76a9f1b0'
+  uuid: 'f2a7b8e1-5d9c-4f8a-9a3b-1c0d4e5f6g7h'
   status: 'todo'
-  title: 'Refactor Data Demo Calendar Controls for Full Functionality and UI Consistency'
+  title: 'Pwn the viewport: making DataListView super responsive'
   introduction: |
-    This master plan details the refactoring of the calendar view controls within the `DataDemo` feature. Currently, the UI for these controls is present but not fully functional. The goal is to wire up the controls to a centralized state manager, make them actively control the calendar's display, and refine their styling to align with the application's global design system.
+    Right now, our DataListView is a bit of a fixed-width dinosaur. It looks great on a big screen, but squish the viewport and it's a mess. We're gonna inject some `useResizeObserver` goodness to make it adapt like a chameleon. The plan is to dynamically show/hide metadata fields based on the available real estate. No more horizontal scrollbars, just clean, responsive UI.
 
-    The approach involves three main phases. First, we will ensure the `useAppViewManager` hook is robust enough to manage all calendar-related state (date property, display options, item limits) via URL search parameters. Second, we will refactor the `DataCalendarViewControls` component to use this hook, making the UI fully interactive and improving its layout and styling for a better user experience. Finally, we will modify the `DataCalendarView` component to consume the state from the hook, dynamically altering its presentation based on user-configured settings.
-
-    This refactor will transform the static controls into a powerful, state-driven feature, enhancing user experience by providing meaningful customization of the calendar interface.
+    This refactor will make the component "self-aware" of its own dimensions, allowing it to gracefully degrade its complexity as space becomes limited. We'll start by showing everything and then progressively hide less critical information like tags and timestamps, while making other elements like assignee info more compact. The end result is a component that feels native and fluid across any screen size it's rendered in.
   parts:
-    - uuid: 'd9b0e5a1-c3f7-4a6b-8b2c-1f4a90e3d2a1'
+    - uuid: 'a1b2c3d4-e5f6-7g8h-9i0j-k1l2m3n4o5p6'
       status: 'todo'
-      name: 'Part 1: Solidify Calendar State Management in `useAppViewManager`'
+      name: 'Part 1: Implement Responsive Metadata Display in DataListView'
       reason: |
-        The `useAppViewManager` hook is the central authority for view-related state stored in the URL. We must first ensure it correctly parses, manages, and updates all calendar-specific parameters to provide a reliable foundation for the UI components.
+        To make the list view usable and aesthetically pleasing on a wide range of screen sizes, we need to adapt the amount of information displayed. This part will introduce the logic required to observe the component's width and render its contents accordingly.
       steps:
-        - uuid: 'e1f8c0a3-d4e1-4b7f-8c3c-2a0e1f9b8d0a'
+        - uuid: 'c7d8e9f0-1a2b-3c4d-5e6f-7g8h9i0j1k2l'
           status: 'todo'
-          name: '1. Verify and Enhance Calendar State Logic'
+          name: '1. Measure Container Width'
           reason: |
-            To ensure robustness, we need to confirm that the hook correctly reads calendar view parameters from the URL, provides sensible defaults for missing or invalid values, and exposes them to the application.
+            To make rendering decisions, we first need to know how much space we have. We'll use the existing `useResizeObserver` hook to get the real-time width of the list container.
           files:
-            - src/hooks/useAppViewManager.hook.ts
+            - 'src/pages/DataDemo/components/DataListView.tsx'
           operations:
-            - 'In `useAppViewManager`, locate the logic that derives `calendarDateProp`, `calendarDisplayProps`, and `calendarItemLimit` from `searchParams`.'
-            - 'Confirm the default values are sensible: `calendarDateProp` defaults to `dueDate`, `calendarDisplayProps` to `['priority', 'assignee']`, and `calendarItemLimit` to a number like `3`.'
-            - 'Ensure the parsing logic for `calendarDisplayProps` correctly handles a comma-separated string from the `calDisplay` URL param, converting it to an array.'
-            - 'Verify that the corresponding setter functions (`setCalendarDateProp`, `setCalendarDisplayProps`, `setCalendarItemLimit`) correctly update the URL search parameters.'
+            - "Import `useResizeObserver` from `'@/hooks/useResizeObserver.hook'`."
+            - "Import `ArrowUpRight` from `'lucide-react'` and `Button` from `'@/components/ui/button'`, as they are used in the list item but might be missing from the provided context."
+            - "Inside the `DataListView` component, get the `listContainerRef` which is already used by `useStaggeredAnimation`."
+            - "Call `useResizeObserver` with `listContainerRef` to get a `width` variable. `const { width } = useResizeObserver(listContainerRef);`."
 
-    - uuid: 'b6f2d1e8-a5c3-4d0f-9e1b-7c6d9a3b0f5e'
-      status: 'todo'
-      name: 'Part 2: Implement and Style Calendar View Controls'
-      reason: |
-        The `DataCalendarViewControls` component needs to be transformed from a static UI into a fully interactive panel. This involves connecting its inputs to the state management hook and refining its visual presentation for clarity and consistency with the application's design language.
-      steps:
-        - uuid: 'c5d3a0b1-e2f9-4c8a-9a0b-1f8d9c7a4b0c'
+        - uuid: 'b3c4d5e6-f7g8-h9i0-j1k2-l3m4n5o6p7q8'
           status: 'todo'
-          name: '1. Connect Controls to State Manager'
+          name: '2. Add Responsive Rendering Logic'
           reason: |
-            To make the controls functional, they must read their current state from `useAppViewManager` and use its mutator functions to update that state.
+            With the container width available, we can now implement the core logic to conditionally render metadata components, ensuring the UI remains clean and uncluttered on smaller viewports.
           files:
-            - src/pages/DataDemo/components/DataCalendarViewControls.tsx
+            - 'src/pages/DataDemo/components/DataListView.tsx'
           operations:
-            - 'Import and call `useAppViewManager` to get `calendarDateProp`, `calendarDisplayProps`, `calendarItemLimit`, and their respective setters.'
-            - 'Wire up the `RadioGroup` for "Date Property": set its `value` to `calendarDateProp` and its `onValueChange` to `setCalendarDateProp`.'
-            - 'Wire up the `Checkbox`es for "Display Properties": for each checkbox, set `checked` based on whether its corresponding property exists in the `calendarDisplayProps` array.'
-            - 'Update the `handleDisplayPropChange` function to correctly add/remove properties from the `calendarDisplayProps` array and call `setCalendarDisplayProps` with the new array.'
-            - 'Wire up the `Switch` for "Item Limit": set its `checked` state based on `calendarItemLimit === 'all'`. The `onCheckedChange` handler should call `setCalendarItemLimit`, toggling between `'all'` and a default number (e.g., `3`).'
-
-        - uuid: 'a9e0f3b2-d1c8-4e7b-8f1d-2c5e6a4b3d9c'
-          status: 'todo'
-          name: '2. Refine UI Layout and Styling'
-          reason: |
-            A clean, well-organized UI improves usability. We will restructure the popover content to be more scannable and visually consistent with other control panels in the app.
-          files:
-            - src/pages/DataDemo/components/DataCalendarViewControls.tsx
-          operations:
-            - 'Restructure the popover content using a main container with padding (e.g., `p-4`) and a standard width (e.g., `w-80`).'
-            - 'Organize controls into logical sections titled "Date Property", "Display Options", and "View Options" using `<h4>` tags or similar.'
-            - 'Add descriptive text under section titles using `text-sm text-muted-foreground` for better user guidance.'
-            - 'Insert `<Separator className="my-4" />` between sections for clear visual separation.'
-            - 'Improve the layout of each control. For each `RadioGroupItem` and `Checkbox`, wrap it and its `Label` in a `div` with `flex items-center gap-2` for proper alignment.'
-            - 'Ensure all `Label` components use the `htmlFor` attribute, pointing to the `id` of their corresponding input for accessibility.'
-
-    - uuid: 'f8e1d7a3-c2b9-4d6f-8a0e-9c1d2b0a3c4d'
-      status: 'todo'
-      name: 'Part 3: Apply Settings to the Calendar View'
-      reason: |
-        The calendar grid must dynamically update to reflect the user's selections in the control panel. This step involves reading the shared state and altering the rendering logic accordingly.
-      steps:
-        - uuid: '1b2a3d4c-e5f6-4a7b-8c9d-0e1f2a3b4c5d'
-          status: 'todo'
-          name: '1. Make Calendar Grid Dynamically Respond to Settings'
-          reason: |
-            To complete the feature, the `DataCalendarView` needs to consume the state from `useAppViewManager` and use it to control which data is shown and how it's presented.
-          files:
-            - src/pages/DataDemo/components/DataCalendarView.tsx
-          operations:
-            - 'In `DataCalendarView`, get `calendarDateProp`, `calendarDisplayProps`, and `calendarItemLimit` from the `useAppViewManager` hook.'
-            - 'Modify the logic that groups items by day to use the date field specified by `calendarDateProp` (e.g., `item[calendarDateProp]`) instead of a hardcoded value.'
-            - 'Inside the render logic for each calendar item, use `calendarDisplayProps` to conditionally render components like priority badges, assignee info, and tags.'
-            - 'Before rendering the items for a given day, check `calendarItemLimit`. If it is a number, use `.slice(0, calendarItemLimit)` on the items array.'
-            - 'If the number of items for a day exceeds `calendarItemLimit`, render a "+X more" indicator to inform the user that some items are hidden.'
+            - "Inside the `DataListView` component, define boolean constants based on the `width`."
+            - "Create a constant `showTags = width > 1100;`."
+            - "Create a constant `showDate = width > 800;`."
+            - "Create a constant `compactAssignee = width < 700;`."
+            - "Locate the `div` for the 'Right side: Metadata' inside the `data.map` loop."
+            - "Update the container's class to use a responsive gap: `className=\"flex shrink-0 items-center gap-2 sm:gap-4 md:gap-6\"`."
+            - "Wrap `<ItemTags>` in a conditional render: `{showTags && <ItemTags ... />}`."
+            - "Always render `<AssigneeInfo>`, but pass the `compact` prop: `<AssigneeInfo ... compact={compactAssignee} />`."
+            - "Keep `<ItemStatusBadge>` and `<ItemPriorityBadge>` always visible."
+            - "Wrap `<ItemDateInfo>` in a conditional render: `{showDate && <ItemDateInfo ... />}`."
+            - "Ensure the `ArrowUpRight` button remains visible at all sizes."
   conclusion: |
-    Upon completion of this plan, the `DataDemo` calendar view will be a fully functional and polished feature. The controls will be intuitively styled and will reliably manage the calendar's display state via URL parameters, making user preferences bookmarkable and shareable.
-
-    This refactor not only delivers a requested user-facing feature but also reinforces a clean architecture by centralizing view state in the `useAppViewManager` hook. This improves code maintainability and sets a clear pattern for implementing similar state-driven UI features in the future.
+    Once this plan is executed, the `DataListView` will be fully responsive. It will no longer be a liability on smaller screens but a prime example of adaptive design within our application. This change significantly improves the user experience for the Data Demo page and provides a solid pattern for other components going forward.
   context_files:
     compact:
-      - src/pages/DataDemo/components/DataCalendarViewControls.tsx
-      - src/pages/DataDemo/components/DataCalendarView.tsx
-      - src/hooks/useAppViewManager.hook.ts
+      - 'src/pages/DataDemo/components/DataListView.tsx'
     medium:
-      - src/pages/DataDemo/components/DataCalendarViewControls.tsx
-      - src/pages/DataDemo/components/DataCalendarView.tsx
-      - src/hooks/useAppViewManager.hook.ts
-      - src/pages/DataDemo/types.ts
+      - 'src/pages/DataDemo/components/DataListView.tsx'
+      - 'src/hooks/useResizeObserver.hook.ts'
+      - 'src/pages/DataDemo/components/shared/DataItemParts.tsx'
     extended:
-      - src/pages/DataDemo/components/DataCalendarViewControls.tsx
-      - src/pages/DataDemo/components/DataCalendarView.tsx
-      - src/hooks/useAppViewManager.hook.ts
-      - src/pages/DataDemo/types.ts
-      - src/pages/DataDemo/index.tsx
-      - src/pages/DataDemo/components/shared/DataItemParts.tsx
+      - 'src/pages/DataDemo/components/DataListView.tsx'
+      - 'src/hooks/useResizeObserver.hook.ts'
+      - 'src/pages/DataDemo/components/shared/DataItemParts.tsx'
+      - 'src/pages/DataDemo/index.tsx'
 ```

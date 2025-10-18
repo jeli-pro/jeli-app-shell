@@ -26,9 +26,13 @@ data demo page: list  view mode: remove line separator
 
 data demo page: the data model should be based on message page,
 
-===
+=== DONE
 
 data demo page: calendar view : just like date property that user can select, also add calendar item background color feature that user can select based on what data
+
+===
+
+replace all framer motion with gsap. then remove framer motion
 
 ===
 

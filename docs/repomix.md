@@ -2,16 +2,14 @@
 ```
 src/
   hooks/
-    useAppViewManager.hook.ts
+    useResizeObserver.hook.ts
   pages/
     DataDemo/
       components/
         shared/
           DataItemParts.tsx
-        DataCalendarView.tsx
-        DataCalendarViewControls.tsx
+        DataListView.tsx
       index.tsx
-      types.ts
   index.css
 index.html
 package.json
@@ -31,6 +29,45 @@ export default {
     tailwindcss: {},
     autoprefixer: {},
   },
+}
+```
+
+## File: src/hooks/useResizeObserver.hook.ts
+```typescript
+import { useState, useEffect } from 'react';
+
+interface Dimensions {
+  width: number;
+  height: number;
+}
+
+export function useResizeObserver<T extends HTMLElement>(
+  ref: React.RefObject<T>
+): Dimensions {
+  const [dimensions, setDimensions] = useState<Dimensions>({ width: 0, height: 0 });
+
+  useEffect(() => {
+    const element = ref.current;
+    if (!element) return;
+
+    const observer = new ResizeObserver(entries => {
+      if (entries[0]) {
+        const { width, height } = entries[0].contentRect;
+        setDimensions({ width, height });
+      }
+    });
+
+    observer.observe(element);
+
+    return () => {
+      if (element) {
+        observer.unobserve(element);
+      }
+      observer.disconnect();
+    };
+  }, [ref]);
+
+  return dimensions;
 }
 ```
 
@@ -151,92 +188,6 @@ export default {
     @apply rounded-[var(--radius)] border;
     border-color: var(--btn-border);
   }
-}
-```
-
-## File: src/pages/DataDemo/components/DataCalendarViewControls.tsx
-```typescript
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Button } from "@/components/ui/button";
-import { Settings } from "lucide-react";
-import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Switch } from "@/components/ui/switch";
-import { Separator } from "@/components/ui/separator";
-import { useAppViewManager } from "@/hooks/useAppViewManager.hook";
-import type { CalendarDateProp, CalendarDisplayProp } from "../types";
-
-export function CalendarViewControls() {
-    const { 
-        calendarDateProp, setCalendarDateProp,
-        calendarDisplayProps, setCalendarDisplayProps,
-        calendarItemLimit, setCalendarItemLimit
-    } = useAppViewManager();
-
-    const handleDisplayPropChange = (prop: CalendarDisplayProp, checked: boolean) => {
-        const newProps = checked 
-            ? [...calendarDisplayProps, prop] 
-            : calendarDisplayProps.filter(p => p !== prop);
-        setCalendarDisplayProps(newProps);
-    };
-
-    return (
-        <Popover>
-            <PopoverTrigger asChild>
-                <Button variant="outline" size="icon" className="h-9 w-9">
-                    <Settings className="h-4 w-4" />
-                </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-80 p-4" align="end">
-                <div className="space-y-4">
-                    <div className="space-y-1">
-                        <h4 className="font-medium leading-none">Calendar Settings</h4>
-                        <p className="text-sm text-muted-foreground">
-                            Customize the calendar view.
-                        </p>
-                    </div>
-                    <Separator />
-                    <div className="space-y-3">
-                        <Label className="font-semibold">Date Property</Label>
-                        <RadioGroup value={calendarDateProp} onValueChange={(v) => setCalendarDateProp(v as CalendarDateProp)} className="gap-2">
-                            <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="dueDate" id="dueDate" />
-                                <Label htmlFor="dueDate" className="font-normal">Due Date</Label>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="createdAt" id="createdAt" />
-                                <Label htmlFor="createdAt" className="font-normal">Created Date</Label>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="updatedAt" id="updatedAt" />
-                                <Label htmlFor="updatedAt" className="font-normal">Updated Date</Label>
-                            </div>
-                        </RadioGroup>
-                    </div>
-                    <div className="space-y-3">
-                        <Label className="font-semibold">Card Details</Label>
-                        <div className="space-y-2">
-                            {(['priority', 'assignee', 'tags'] as CalendarDisplayProp[]).map(prop => (
-                                <div key={prop} className="flex items-center space-x-2">
-                                    <Checkbox id={prop} checked={calendarDisplayProps.includes(prop)} onCheckedChange={(c) => handleDisplayPropChange(prop, !!c)} />
-                                    <Label htmlFor={prop} className="capitalize font-normal">{prop}</Label>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                    <Separator />
-                    <div className="flex items-center justify-between">
-                         <div className="space-y-0.5">
-                            <Label htmlFor="show-all" className="font-semibold">Show all items</Label>
-                            <p className="text-xs text-muted-foreground">Display all items on a given day.</p>
-                        </div>
-                        <Switch id="show-all" checked={calendarItemLimit === 'all'} onCheckedChange={(c) => setCalendarItemLimit(c ? 'all' : 3)} />
-                    </div>
-                </div>
-            </PopoverContent>
-        </Popover>
-    );
 }
 ```
 
@@ -604,712 +555,77 @@ export default defineConfig({
 })
 ```
 
-## File: src/pages/DataDemo/components/DataCalendarView.tsx
+## File: src/pages/DataDemo/components/DataListView.tsx
 ```typescript
-import { useState, useMemo, useRef } from "react";
-import { format, addMonths, subMonths, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isToday, isSameDay, } from "date-fns";
-import { ChevronLeft, ChevronRight } from "lucide-react";
-import { AnimatePresence, motion } from "framer-motion";
+import { useRef } from 'react'
+import { cn } from '@/lib/utils'
+import type { DataItem } from '../types'
+import { useStaggeredAnimation } from '@/hooks/useStaggeredAnimation.motion.hook'
+import { EmptyState } from './EmptyState'
+import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
+import { 
+  useSelectedItem,
+} from '../store/dataDemo.store'
+import {
+  AssigneeInfo,
+  ItemStatusBadge,
+  ItemPriorityBadge,
+  ItemDateInfo,
+  ItemTags,
+} from './shared/DataItemParts'
+import { AddDataItemCta } from './shared/AddDataItemCta'
 
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { cn, getPriorityColor } from "@/lib/utils";
-import type { DataItem, CalendarDisplayProp, CalendarDateProp } from "../types";
-import { useAppViewManager } from "@/hooks/useAppViewManager.hook";
-import { useResizeObserver } from "@/hooks/useResizeObserver.hook";
-import { useSelectedItem, useDataDemoStore } from "../store/dataDemo.store";
-import { CalendarViewControls } from "./DataCalendarViewControls";
-import { ItemTags } from "./shared/DataItemParts";
-
-interface CalendarViewProps {
-  data: DataItem[];
-}
-
-function CalendarHeader({ currentDate, onPrevMonth, onNextMonth, onToday }: {
-  currentDate: Date;
-  onPrevMonth: () => void;
-  onNextMonth: () => void;
-  onToday: () => void;
-}) {
-  return (
-    <div className="flex items-center justify-between gap-4 mb-6">
-      <h2 className="text-xl font-bold md:text-2xl tracking-tight">
-        {format(currentDate, "MMMM yyyy")}
-      </h2>
-      <div className="flex items-center gap-2">
-        <Button variant="outline" size="sm" onClick={onToday}>Today</Button>
-        <CalendarViewControls />
-        <div className="flex items-center">
-          <Button variant="outline" size="icon" className="h-9 w-9" onClick={onPrevMonth}>
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <Button variant="outline" size="icon" className="h-9 w-9" onClick={onNextMonth}>
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function CalendarEvent({ item, isSelected, isDragging, onDragStart, displayProps }: { 
-    item: DataItem; 
-    isSelected: boolean;
-    isDragging: boolean;
-    onDragStart: (e: React.DragEvent<HTMLDivElement>, itemId: string) => void;
-    displayProps: CalendarDisplayProp[];
-}) {
-  const { onItemSelect } = useAppViewManager();
-    const hasFooter = displayProps.includes('priority') || displayProps.includes('assignee');
-
-    return (
-        <motion.div
-            layout
-            draggable
-            onDragStart={(e) => onDragStart(e, item.id)}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.2 }}
-            onClick={() => onItemSelect(item)}
-            className={cn(
-                "p-2 rounded-lg cursor-grab transition-all duration-200 border bg-card/60 dark:bg-neutral-800/60 backdrop-blur-sm space-y-1",
-                "hover:bg-card/80 dark:hover:bg-neutral-700/70",
-                isSelected && "ring-2 ring-primary ring-offset-background ring-offset-2 bg-card/90",
-                isDragging && "opacity-50 ring-2 ring-primary cursor-grabbing"
-            )}
-        >
-            <h4 className="font-semibold text-sm leading-tight text-card-foreground/90 line-clamp-2">
-                {item.title}
-            </h4>
-
-            {displayProps.includes('tags') && item.tags.length > 0 && (
-                <ItemTags tags={item.tags} />
-            )}
-
-            {hasFooter && (
-                <div className="flex items-center justify-between pt-1 border-t border-border/30 dark:border-neutral-700/50">
-                    {displayProps.includes('priority') ? (
-                        <Badge className={cn("text-xs border capitalize", getPriorityColor(item.priority))}>
-                            {item.priority}
-                        </Badge>
-                    ) : <div />}
-                    {displayProps.includes('assignee') && (
-                        <Avatar className="w-5 h-5">
-                            <AvatarImage src={item.assignee.avatar} />
-                            <AvatarFallback className="text-[10px] bg-muted dark:bg-neutral-700 text-foreground dark:text-neutral-200 font-medium">
-                                {item.assignee.name.split(" ").map((n) => n[0]).join("")}
-                            </AvatarFallback>
-                        </Avatar>
-                    )}
-                </div>
-            )}
-        </motion.div>
-    );
-}
-
-const datePropLabels: Record<CalendarDateProp, string> = {
-  dueDate: 'due dates',
-  createdAt: 'creation dates',
-  updatedAt: 'update dates',
-};
-
-export function DataCalendarView({ data }: CalendarViewProps) {
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const { 
-    itemId, 
-    calendarDateProp, 
-    calendarDisplayProps, 
-    calendarItemLimit 
-  } = useAppViewManager();
+export function DataListView({ data }: { data: DataItem[] }) {
+  const { onItemSelect, itemId } = useAppViewManager();
   const selectedItem = useSelectedItem(itemId);
-  const updateItem = useDataDemoStore(s => s.updateItem);
-  
-  // Drag & Drop State
-  const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
-  const [dropTargetDate, setDropTargetDate] = useState<Date | null>(null);
 
-  // Responsive Calendar State
-  const calendarContainerRef = useRef<HTMLDivElement>(null);
-  const { width } = useResizeObserver(calendarContainerRef);
-  const MIN_DAY_WIDTH = 160; // px
-  const numColumns = useMemo(() => {
-    if (width === 0) return 7;
-    const cols = Math.floor(width / MIN_DAY_WIDTH);
-    return Math.max(3, Math.min(7, cols));
-  }, [width]);
+  const listRef = useRef<HTMLDivElement>(null)
+  useStaggeredAnimation(listRef, [data], { mode: 'incremental', scale: 1, y: 20, stagger: 0.05, duration: 0.4 });
 
-  const itemsByDateProp = useMemo(() => data.filter(item => !!item[calendarDateProp]), [data, calendarDateProp]);
-
-  const eventsByDate = useMemo(() => {
-    const eventsMap = new Map<string, DataItem[]>();
-    itemsByDateProp.forEach(item => {
-      const dateValue = item[calendarDateProp];
-      if (!dateValue) return;
-      const date = new Date(dateValue as string);
-      const dateKey = format(date, "yyyy-MM-dd");
-      if (!eventsMap.has(dateKey)) {
-        eventsMap.set(dateKey, []);
-      }
-      eventsMap.get(dateKey)?.push(item);
-    });
-    return eventsMap;
-  }, [itemsByDateProp, calendarDateProp]);
-
-  const monthStart = startOfMonth(currentDate);
-  const monthEnd = endOfMonth(monthStart);
-  const startDate = startOfWeek(monthStart, { weekStartsOn: 0 }); // Sunday
-  const endDate = endOfWeek(monthEnd, { weekStartsOn: 0 });
-
-  const days = eachDayOfInterval({ start: startDate, end: endDate });
-  const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-  
-  // D&D Handlers
-  const handleDragStart = (e: React.DragEvent, itemId: string) => {
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', itemId);
-    setDraggedItemId(itemId);
-  };
-  
-  const handleDragEnd = () => {
-    setDraggedItemId(null);
-    setDropTargetDate(null);
-  };
-
-  const handleDragOver = (e: React.DragEvent, day: Date) => {
-    e.preventDefault();
-    if (dropTargetDate === null || !isSameDay(day, dropTargetDate)) {
-        setDropTargetDate(day);
-    }
-  };
-
-  const handleDragLeave = () => {
-    setDropTargetDate(null);
-  };
-
-  const handleDrop = (e: React.DragEvent, day: Date) => {
-    e.preventDefault();
-    const itemIdToUpdate = e.dataTransfer.getData('text/plain');
-    if (itemIdToUpdate) {
-        const originalItem = itemsByDateProp.find(i => i.id === itemIdToUpdate);
-        if (originalItem && originalItem[calendarDateProp]) {
-            const originalDate = new Date(originalItem[calendarDateProp] as string);
-            // Preserve the time, only change the date part
-            const newDueDate = new Date(day);
-            newDueDate.setHours(originalDate.getHours(), originalDate.getMinutes(), originalDate.getSeconds(), originalDate.getMilliseconds());
-            updateItem(itemIdToUpdate, { [calendarDateProp]: newDueDate.toISOString() });
-        }
-    }
-    handleDragEnd(); // Reset state
-  };
-  
-  const handlePrevMonth = () => setCurrentDate(subMonths(currentDate, 1));
-  const handleNextMonth = () => setCurrentDate(addMonths(currentDate, 1));
-  const handleToday = () => setCurrentDate(new Date());
+  const items = Array.isArray(data) ? data : [];
+  if (items.length === 0) {
+    return <EmptyState />
+  }
 
   return (
-    <div ref={calendarContainerRef} className="-mx-4 md:-mx-6">
-      <div className="px-4 md:px-6 pb-2">
-        <CalendarHeader currentDate={currentDate} onPrevMonth={handlePrevMonth} onNextMonth={handleNextMonth} onToday={handleToday} />
-      </div>
-      {itemsByDateProp.length === 0 ? (
-        <div className="flex items-center justify-center h-96 text-muted-foreground rounded-lg border bg-card/30 mx-4 md:mx-6">
-          No items with {datePropLabels[calendarDateProp]} to display on the calendar.
-        </div>
-      ) : (
-        <div className="px-2" onDragEnd={handleDragEnd}>
-          {numColumns === 7 && (
-            <div className="grid grid-cols-7">
-              {weekdays.map(day => (
-                <div key={day} className="py-2 px-3 text-center text-xs font-semibold text-muted-foreground">
-                  {day}
-                </div>
-              ))}
-            </div>
-          )}
-
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={format(currentDate, "yyyy-MM")}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.3 }}
-              style={{
-                display: 'grid',
-                gridTemplateColumns: `repeat(${numColumns}, minmax(0, 1fr))`,
-                gap: '0.5rem',
-              }}
+    <div ref={listRef} className="border-t">
+      {items.map((item: DataItem) => {
+        const isSelected = selectedItem?.id === item.id
+        
+        return (
+          <div key={item.id} onClick={() => onItemSelect(item)} className="border-b cursor-pointer px-2">
+            <div
+              className={cn(
+                "group flex items-center px-2 py-2 rounded-md transition-colors duration-200",
+                "hover:bg-accent/80",
+                isSelected ? "bg-accent" : "bg-transparent"
+              )}
             >
-              {days.map(day => {
-                const dateKey = format(day, "yyyy-MM-dd");
-                const dayEvents = eventsByDate.get(dateKey) || [];
-                const visibleEvents = calendarItemLimit === 'all' 
-                    ? dayEvents 
-                    : dayEvents.slice(0, calendarItemLimit as number);
-                const hiddenEventsCount = dayEvents.length - visibleEvents.length;
-                const isCurrentMonthDay = isSameMonth(day, currentDate);
-                const isDropTarget = dropTargetDate && isSameDay(day, dropTargetDate);
-                return (
-                  <div
-                    key={day.toString()}
-                    onDragOver={(e) => handleDragOver(e, day)}
-                    onDragLeave={handleDragLeave}
-                    onDrop={(e) => handleDrop(e, day)}
-                    className={cn(
-                      "relative min-h-[150px] rounded-2xl p-2 flex flex-col gap-2 transition-all duration-300 border",
-                      isCurrentMonthDay ? "bg-card/40 dark:bg-neutral-900/40 border-transparent" : "bg-muted/30 dark:bg-neutral-800/20 border-transparent text-muted-foreground/60",
-                      isDropTarget ? "border-primary/50 bg-primary/10" : "hover:border-primary/20 hover:bg-card/60"
-                    )}
-                  >
-                    <div className="font-semibold text-sm">
-                      {isToday(day) ? (
-                        <div className="flex items-center justify-center w-7 h-7 rounded-full bg-primary text-primary-foreground">
-                          {format(day, 'd')}
-                        </div>
-                      ) : (
-                        <div className="flex items-baseline gap-1.5 px-1 py-0.5">
-                          {numColumns < 7 && <span className="text-xs opacity-70">{format(day, 'eee')}</span>}
-                          <span>{format(day, 'd')}</span>
-                        </div>
-                      )}
-                    </div>
-                    <div className="space-y-2 overflow-y-auto flex-grow custom-scrollbar">
-                      <AnimatePresence>
-                        {visibleEvents.map(item => (
-                          <CalendarEvent
-                            key={item.id} 
-                            item={item} 
-                            isSelected={selectedItem?.id === item.id}
-                            isDragging={draggedItemId === item.id}
-                            onDragStart={handleDragStart}
-                            displayProps={calendarDisplayProps}
-                          />
-                        ))}
-                      </AnimatePresence>
-                    </div>
-                    {hiddenEventsCount > 0 && (
-                      <div className="absolute bottom-1 right-2 text-xs font-bold text-muted-foreground">
-                        +{hiddenEventsCount} more
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </motion.div>
-          </AnimatePresence>
-        </div>
-      )}
+              {/* Left side: Icon and Title */}
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                <span className="text-xl flex-shrink-0 w-8 text-center">{item.thumbnail}</span>
+                <p className="font-medium truncate text-card-foreground group-hover:text-primary">{item.title}</p>
+              </div>
+
+              {/* Right side: Metadata */}
+              <div className="flex items-center gap-4 ml-4 text-sm text-muted-foreground shrink-0">
+                <div className="hidden lg:flex items-center gap-4">
+                  <ItemStatusBadge status={item.status} />
+                  <ItemTags tags={item.tags} />
+                </div>
+                <div className="hidden md:flex items-center gap-4">
+                  <ItemDateInfo date={item.updatedAt} />
+                </div>
+                <AssigneeInfo assignee={item.assignee} avatarClassName="w-7 h-7" compact />
+                <ItemPriorityBadge priority={item.priority} className="hidden sm:inline-flex" />
+              </div>
+            </div>
+          </div>
+        )
+      })}
+      <AddDataItemCta viewMode='list' />
     </div>
-  );
-}
-```
-
-## File: src/pages/DataDemo/types.ts
-```typescript
-export type ViewMode = 'list' | 'cards' | 'grid' | 'table' | 'kanban' | 'calendar'
-
-export type GroupableField = 'status' | 'priority' | 'category'
-
-export type CalendarDateProp = 'dueDate' | 'createdAt' | 'updatedAt';
-export type CalendarDisplayProp = 'priority' | 'assignee' | 'tags';
-
-export type SortableField = 'title' | 'status' | 'priority' | 'updatedAt' | 'assignee.name' | 'metrics.views' | 'metrics.completion' | 'createdAt'
-export type SortDirection = 'asc' | 'desc'
-export interface SortConfig {
-  key: SortableField
-  direction: SortDirection
-}
-
-export interface DataItem {
-  id: string
-  title: string
-  description: string
-  category: string
-  status: 'active' | 'pending' | 'completed' | 'archived'
-  priority: 'low' | 'medium' | 'high' | 'critical'
-  assignee: {
-    name: string
-    avatar: string
-    email: string
-  }
-  metrics: {
-    views: number
-    likes: number
-    shares: number
-    completion: number
-  }
-  tags: string[]
-  createdAt: string
-  updatedAt: string
-  dueDate?: string
-  thumbnail?: string
-  content?: {
-    summary: string
-    details: string
-    attachments?: Array<{
-      name: string
-      type: string
-      size: string
-      url: string
-    }>
-  }
-}
-
-export interface ViewProps {
-  data: DataItem[] | Record<string, DataItem[]>
-  onItemSelect: (item: DataItem) => void
-  selectedItem: DataItem | null
-  isGrid?: boolean
-
-  // Props for table view specifically
-  sortConfig?: SortConfig | null
-  onSort?: (field: SortableField) => void
-}
-
-export type Status = DataItem['status']
-export type Priority = DataItem['priority']
-```
-
-## File: src/hooks/useAppViewManager.hook.ts
-```typescript
-import { useMemo, useCallback, useEffect, useRef } from 'react';
-import { useSearchParams, useNavigate, useLocation, useParams } from 'react-router-dom';
-import { useAppShellStore, type AppShellState, type ActivePage } from '@/store/appShell.store';
-import type { DataItem, ViewMode, SortConfig, SortableField, GroupableField, Status, Priority, CalendarDateProp, CalendarDisplayProp } from '@/pages/DataDemo/types';
-import type { FilterConfig } from '@/pages/DataDemo/components/DataToolbar';
-import type { TaskView } from '@/pages/Messaging/types';
-import { BODY_STATES, SIDEBAR_STATES } from '@/lib/utils';
-
-const pageToPaneMap: Record<string, AppShellState['sidePaneContent']> = {
-  dashboard: 'main',
-  settings: 'settings',
-  toaster: 'toaster',
-  notifications: 'notifications',
-  'data-demo': 'dataDemo',
-  messaging: 'messaging',
-};
-
-function usePrevious<T>(value: T): T | undefined {
-  const ref = useRef<T>();
-  useEffect(() => {
-    ref.current = value;
-  });
-  return ref.current;
-}
-
-/**
- * A centralized hook to manage and synchronize all URL-based view states.
- * This is the single source of truth for view modes, side panes, split views,
- * and page-specific parameters.
- */
-export function useAppViewManager() {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const navigate = useNavigate();
-  const location = useLocation();
-  const params = useParams<{ itemId: string; conversationId: string }>();
-  const { itemId, conversationId } = params;
-  const { setSidebarState, sidebarState } = useAppShellStore();
-
-  // --- DERIVED STATE FROM URL ---
-
-  const view = searchParams.get('view');
-  const sidePane = searchParams.get('sidePane');
-  const right = searchParams.get('right');
-  const messagingView = searchParams.get('messagingView') as TaskView | null;
-  const q = searchParams.get('q');
-  const status = searchParams.get('status');
-  const priority = searchParams.get('priority');
-  const sort = searchParams.get('sort');
-  const calDate = searchParams.get('calDate');
-  const calDisplay = searchParams.get('calDisplay');
-  const calLimit = searchParams.get('calLimit');
-
-  const { bodyState, sidePaneContent } = useMemo(() => {
-    const validPanes: AppShellState['sidePaneContent'][] = ['details', 'settings', 'main', 'toaster', 'notifications', 'dataDemo', 'messaging'];
-    
-    // 1. Priority: Explicit side pane overlay via URL param
-    if (sidePane && validPanes.includes(sidePane as AppShellState['sidePaneContent'])) {
-      return { bodyState: BODY_STATES.SIDE_PANE, sidePaneContent: sidePane as AppShellState['sidePaneContent'] };
-    }
-
-    // 2. Data item detail view (can be overlay or split)
-    if (itemId) {
-      if (view === 'split') {
-        return { bodyState: BODY_STATES.SPLIT_VIEW, sidePaneContent: 'dataItem' as const };
-      }
-      return { bodyState: BODY_STATES.SIDE_PANE, sidePaneContent: 'dataItem' as const };
-    }
-
-    // 3. Messaging conversation view (always split)
-    if (conversationId) {
-      return { bodyState: BODY_STATES.SPLIT_VIEW, sidePaneContent: 'messaging' as const };
-    }
-
-    // 4. Generic split view via URL param
-    if (view === 'split' && right && validPanes.includes(right as AppShellState['sidePaneContent'])) {
-      return { bodyState: BODY_STATES.SPLIT_VIEW, sidePaneContent: right as AppShellState['sidePaneContent'] };
-    }
-
-    return { bodyState: BODY_STATES.NORMAL, sidePaneContent: 'details' as const };
-  }, [itemId, conversationId, view, sidePane, right]);
-  
-  const currentActivePage = useMemo(() => (location.pathname.split('/')[1] || 'dashboard') as ActivePage, [location.pathname]);
-  const prevActivePage = usePrevious(currentActivePage);
-
-  // --- SIDE EFFECTS ---
-  useEffect(() => {
-    // On navigating to messaging page, collapse sidebar if it's expanded.
-    // This ensures a good default view but allows the user to expand it again if they wish.
-    if (currentActivePage === 'messaging' && prevActivePage !== 'messaging' && sidebarState === SIDEBAR_STATES.EXPANDED) {
-      setSidebarState(SIDEBAR_STATES.COLLAPSED);
-    }
-  }, [currentActivePage, prevActivePage, sidebarState, setSidebarState]);
-
-  // DataDemo specific state
-  const viewMode = useMemo(() => (searchParams.get('dataView') as ViewMode) || 'list', [searchParams]);
-	const page = useMemo(() => parseInt(searchParams.get('page') || '1', 10), [searchParams]);
-	const groupBy = useMemo(() => (searchParams.get('groupBy') as GroupableField | 'none') || 'none', [searchParams]);
-	const activeGroupTab = useMemo(() => searchParams.get('tab') || 'all', [searchParams]);
-	const filters = useMemo<FilterConfig>(
-		() => ({
-			searchTerm: q || '',
-			status: (status?.split(',') || []).filter(Boolean) as Status[],
-			priority: (priority?.split(',') || []).filter(Boolean) as Priority[],
-		}),
-		[q, status, priority],
-	);
-	const sortConfig = useMemo<SortConfig | null>(() => {
-		const sortParam = sort;
-		if (!sortParam) return { key: 'updatedAt', direction: 'desc' }; // Default sort
-		if (sortParam === 'default') return null;
-
-		const [key, direction] = sortParam.split('-');
-		return { key: key as SortableField, direction: direction as 'asc' | 'desc' };
-	}, [sort]);
-  const calendarDateProp = useMemo(() => (calDate || 'dueDate') as CalendarDateProp, [calDate]);
-  const calendarDisplayProps = useMemo(
-    () => {
-      if (calDisplay === null) return []; // Default is now nothing
-      if (calDisplay === '') return []; // Explicitly empty is also nothing
-      return calDisplay.split(',') as CalendarDisplayProp[];
-    },
-    [calDisplay]
-  );
-  const calendarItemLimit = useMemo(() => {
-    const limit = parseInt(calLimit || '3', 10);
-    if (calLimit === 'all') return 'all';
-    return isNaN(limit) ? 3 : limit;
-  }, [calLimit]);
-
-  // --- MUTATOR ACTIONS ---
-
-  const handleParamsChange = useCallback(
-		(newParams: Record<string, string | string[] | null | undefined>, resetPage = false) => {
-			setSearchParams(
-				(prev) => {
-					const updated = new URLSearchParams(prev);
-					
-					for (const [key, value] of Object.entries(newParams)) {
-						if (value === null || value === undefined || (Array.isArray(value) && value.length === 0) || value === '') {
-							updated.delete(key);
-						} else if (Array.isArray(value)) {
-							updated.set(key, value.join(','));
-						} else {
-							updated.set(key, String(value));
-						}
-					}
-
-					if (resetPage) {
-						updated.delete('page');
-					}
-					if ('groupBy' in newParams) {
-						updated.delete('tab');
-					}
-
-					return updated;
-				},
-				{ replace: true },
-			);
-		},
-		[setSearchParams],
-	);
-
-  const navigateTo = useCallback((page: string, params?: Record<string, string | null>) => {
-    const targetPath = page.startsWith('/') ? page : `/${page}`;
-    const isSamePage = location.pathname === targetPath;
-    
-    const newSearchParams = new URLSearchParams(isSamePage ? searchParams : undefined);
-
-    if (params) {
-      for (const [key, value] of Object.entries(params)) {
-        if (value === null || value === undefined) {
-          newSearchParams.delete(key);
-        } else {
-          newSearchParams.set(key, value);
-        }
-      }
-    }
-
-    navigate({ pathname: targetPath, search: newSearchParams.toString() });
-  }, [navigate, location.pathname, searchParams]);
-
-  const openSidePane = useCallback((pane: AppShellState['sidePaneContent']) => {
-    if (location.pathname === `/${Object.keys(pageToPaneMap).find(key => pageToPaneMap[key] === pane)}`) {
-        navigate({ pathname: '/dashboard', search: `?sidePane=${pane}` }, { replace: true });
-    } else {
-        handleParamsChange({ sidePane: pane, view: null, right: null });
-    }
-  }, [handleParamsChange, navigate, location.pathname]);
-
-  const closeSidePane = useCallback(() => {
-    if (itemId) {
-      navigate('/data-demo');
-    } else {
-      handleParamsChange({ sidePane: null, view: null, right: null });
-    }
-  }, [itemId, navigate, handleParamsChange]);
-
-  const toggleSidePane = useCallback((pane: AppShellState['sidePaneContent']) => {
-    if (sidePane === pane) {
-      closeSidePane();
-    } else {
-      openSidePane(pane);
-    }
-  }, [sidePane, openSidePane, closeSidePane]);
-
-  const toggleSplitView = useCallback(() => {
-    if (bodyState === BODY_STATES.SIDE_PANE) {
-      handleParamsChange({ view: 'split', right: sidePane, sidePane: null });
-    } else if (bodyState === BODY_STATES.SPLIT_VIEW) {
-      handleParamsChange({ sidePane: right, view: null, right: null });
-    } else { // From normal
-      const paneContent = pageToPaneMap[currentActivePage] || 'details';
-      handleParamsChange({ view: 'split', right: paneContent, sidePane: null });
-    }
-  }, [bodyState, sidePane, right, currentActivePage, handleParamsChange]);
-  
-  const setNormalView = useCallback(() => {
-      handleParamsChange({ sidePane: null, view: null, right: null });
-  }, [handleParamsChange]);
-
-  const switchSplitPanes = useCallback(() => {
-    if (bodyState !== BODY_STATES.SPLIT_VIEW) return;
-    const newSidePaneContent = pageToPaneMap[currentActivePage];
-    const newActivePage = Object.entries(pageToPaneMap).find(
-      ([, value]) => value === sidePaneContent
-    )?.[0] as ActivePage | undefined;
-
-    if (newActivePage && newSidePaneContent) {
-      navigate(`/${newActivePage}?view=split&right=${newSidePaneContent}`, { replace: true });
-    }
-  }, [bodyState, currentActivePage, sidePaneContent, navigate]);
-  
-  const closeSplitPane = useCallback((paneToClose: 'main' | 'right') => {
-    if (bodyState !== BODY_STATES.SPLIT_VIEW) return;
-    if (paneToClose === 'right') {
-      navigate(`/${currentActivePage}`, { replace: true });
-    } else { // Closing main pane
-      const pageToBecomeActive = Object.entries(pageToPaneMap).find(
-        ([, value]) => value === sidePaneContent
-      )?.[0] as ActivePage | undefined;
-      
-      if (pageToBecomeActive) {
-        navigate(`/${pageToBecomeActive}`, { replace: true });
-      } else {
-        navigate(`/dashboard`, { replace: true });
-      }
-    }
-  }, [bodyState, currentActivePage, sidePaneContent, navigate]);
-  
-  // DataDemo actions
-  const setViewMode = (mode: ViewMode) => handleParamsChange({ dataView: mode === 'list' ? null : mode });
-  const setGroupBy = (val: string) => handleParamsChange({ groupBy: val === 'none' ? null : val }, true);
-  const setActiveGroupTab = (tab: string) => handleParamsChange({ tab: tab === 'all' ? null : tab });
-  const setFilters = (newFilters: FilterConfig) => {
-    handleParamsChange({ q: newFilters.searchTerm, status: newFilters.status, priority: newFilters.priority }, true);
-  }
-  const setSort = (config: SortConfig | null) => {
-    if (!config) {
-      handleParamsChange({ sort: null }, true);
-    } else {
-      handleParamsChange({ sort: `${config.key}-${config.direction}` }, true);
-    }
-  }
-  const setTableSort = (field: SortableField) => {
-    let newSort: string | null = `${field}-desc`;
-    if (sortConfig?.key === field) {
-      if (sortConfig.direction === 'desc') newSort = `${field}-asc`;
-      else if (sortConfig.direction === 'asc') newSort = null;
-    }
-    handleParamsChange({ sort: newSort }, true);
-  };
-  const setPage = (newPage: number) => handleParamsChange({ page: newPage.toString() });
-
-  // Calendar specific actions
-  const setCalendarDateProp = (prop: CalendarDateProp) => handleParamsChange({ calDate: prop === 'dueDate' ? null : prop });
-  const setCalendarDisplayProps = (props: CalendarDisplayProp[]) => {
-    // Check for default state to keep URL clean
-    const isDefault = props.length === 0;
-    handleParamsChange({ calDisplay: isDefault ? null : props.join(',') });
-  };
-  const setCalendarItemLimit = (limit: number | 'all') => handleParamsChange({ calLimit: limit === 3 ? null : String(limit) });
-
-  const onItemSelect = useCallback((item: DataItem) => {
-		navigate(`/data-demo/${item.id}${location.search}`);
-	}, [navigate, location.search]);
-
-  const setMessagingView = (view: TaskView) => handleParamsChange({ messagingView: view });
-
-
-  return useMemo(() => ({
-    // State
-    bodyState,
-    sidePaneContent,
-    currentActivePage,
-    itemId,
-    messagingView,
-    // DataDemo State
-    viewMode,
-    page,
-    groupBy,
-    activeGroupTab,
-    filters,
-    sortConfig,
-    calendarDateProp,
-    calendarDisplayProps,
-    calendarItemLimit,
-    // Actions
-    navigateTo,
-    openSidePane,
-    closeSidePane,
-    toggleSidePane,
-    toggleSplitView,
-    setNormalView,
-    switchSplitPanes,
-    setMessagingView,
-    closeSplitPane,
-    // DataDemo Actions
-    onItemSelect,
-    setViewMode,
-    setGroupBy,
-    setActiveGroupTab,
-    setFilters,
-    setSort,
-    setTableSort,
-    setPage,
-    setCalendarDateProp,
-    setCalendarDisplayProps,
-    setCalendarItemLimit,
-  }), [
-    bodyState, sidePaneContent, currentActivePage, itemId, messagingView, viewMode,
-    page, groupBy, activeGroupTab, filters, sortConfig, calendarDateProp,
-    calendarDisplayProps, calendarItemLimit,
-    navigateTo, openSidePane, closeSidePane, toggleSidePane, toggleSplitView, setNormalView, setMessagingView,
-    switchSplitPanes, closeSplitPane, onItemSelect, setViewMode, setGroupBy, setActiveGroupTab, setFilters,
-    setSort, setTableSort, setPage, setCalendarDateProp, setCalendarDisplayProps, setCalendarItemLimit
-  ]);
+  )
 }
 ```
 
