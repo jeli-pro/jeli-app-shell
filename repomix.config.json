@@ -34,22 +34,21 @@
     "src/index.css",
     // "src"
     //
-    // "src/pages/DataDemo/components/DataCalendarView.tsx",
-    // "src/pages/DataDemo/index.tsx"
-
-    // "src/hooks/useAppViewManager.hook.ts",
-    // "src/pages/DataDemo/components/DataCalendarView.tsx",
-    // "src/pages/DataDemo/components/DataCalendarViewControls.tsx",
-    // "src/pages/DataDemo/components/shared/DataItemParts.tsx",
-    // "src/pages/DataDemo/index.tsx",
-    // "src/hooks/useResizeObserver.hook.ts",
-    // "src/pages/DataDemo/types.ts"
+    //
     //
 
-    "src/hooks/useResizeObserver.hook.ts",
-    "src/pages/DataDemo/components/DataListView.tsx",
-    "src/pages/DataDemo/components/shared/DataItemParts.tsx",
-    "src/pages/DataDemo/index.tsx"
+    "src/components/layout/AppShell.tsx",
+    "src/components/layout/RightPane.tsx",
+    "src/hooks/useAppViewManager.hook.ts",
+    "src/hooks/useRightPaneContent.hook.tsx",
+    "src/pages/DataDemo/components/DataDetailPanel.tsx",
+    "src/store/appShell.store.ts"
+
+    //
+    // "src/components/shared/StatCard.tsx",
+    // "src/components/ui/card.tsx",
+    // "src/index.css",
+    // "src/pages/DataDemo/index.tsx"
   ],
   "ignore": {
     "useGitignore": true,

@@ -1,73 +1,65 @@
-Here's the master plan for refactoring the data list view to be responsive.
+Alright, let's architect this refactor. We're going to simplify the data detail overlay. Right now, it's got its own back button, but the shell already provides a close button. Two ways to do the same thing is one too many. We're ripping out the redundant one.
 
-***
+The plan is simple: dive into the `DataDetailPanel`, find the `ArrowLeft` button, and delete it. The parent `RightPane` component already handles closing, so we're just removing dead weight and cleaning up the header. Less chrome, more content.
 
-Alright, listen up. The `DataListView` is static and breaks on smaller viewports. It's a bad look. We're going to fix it by making it "viewport aware." The game plan is to hook into the component's width and dynamically decide which metadata attributes to show. We'll be using a `useResizeObserver` hook we already have, so it's clean, performant, and pure React.
-
-The idea is simple: big screen, you get all the eye candy—tags, full assignee names, dates, the works. Squeeze the browser window, and we start shedding the less critical info, collapsing assignee names to just avatars, and hiding tags and dates. This keeps the core info scannable without ugly wrapping or horizontal scrolling. It's a classic progressive disclosure pattern, but driven by container queries, not just media queries. This makes the component truly portable and self-contained.
-
-This refactor will make the UI feel slick and professional on any device, from a wide desktop monitor to a tablet. No more jank, just a fluid user experience that adapts on the fly. Let's get this done.
+Here's the blueprint.
 
 ```yaml
 plan:
-  uuid: 'f2a7b8e1-5d9c-4f8a-9a3b-1c0d4e5f6g7h'
+  uuid: 'f2d1e8c9-3a4b-4c5d-8b6a-7e9f0d1a2b3c'
   status: 'todo'
-  title: 'Pwn the viewport: making DataListView super responsive'
+  title: "Refactor Data Detail Pane: Axe Redundant 'Back' Button"
   introduction: |
-    Right now, our DataListView is a bit of a fixed-width dinosaur. It looks great on a big screen, but squish the viewport and it's a mess. We're gonna inject some `useResizeObserver` goodness to make it adapt like a chameleon. The plan is to dynamically show/hide metadata fields based on the available real estate. No more horizontal scrollbars, just clean, responsive UI.
+    Yo, we're cleaning up the UI. The data detail panel, when it slides out as an overlay, has this 'Back' arrow button. But the main `RightPane` component *already* slaps an 'X' button on there for overlays. It's redundant and adds noise.
 
-    This refactor will make the component "self-aware" of its own dimensions, allowing it to gracefully degrade its complexity as space becomes limited. We'll start by showing everything and then progressively hide less critical information like tags and timestamps, while making other elements like assignee info more compact. The end result is a component that feels native and fluid across any screen size it's rendered in.
+    This plan nukes the `ArrowLeft` button inside `DataDetailPanel` to streamline the header and rely on the single, consistent close mechanism provided by the app shell. Less code, cleaner look. Ship it.
   parts:
-    - uuid: 'a1b2c3d4-e5f6-7g8h-9i0j-k1l2m3n4o5p6'
+    - uuid: 'a1b2c3d4-e5f6-7890-1234-567890abcdef'
       status: 'todo'
-      name: 'Part 1: Implement Responsive Metadata Display in DataListView'
+      name: 'Nuke the Back Button'
       reason: |
-        To make the list view usable and aesthetically pleasing on a wide range of screen sizes, we need to adapt the amount of information displayed. This part will introduce the logic required to observe the component's width and render its contents accordingly.
+        The `DataDetailPanel` currently renders its own back/close button. This is redundant since the parent `RightPane` component provides a global 'X' to close the overlay. By removing the button from the detail panel, we create a cleaner, more consistent UI and delegate close functionality to the shell, where it belongs. One source of truth for closing panes.
       steps:
-        - uuid: 'c7d8e9f0-1a2b-3c4d-5e6f-7g8h9i0j1k2l'
+        - uuid: 'b9e8d7c6-5a4b-3c2d-1f0e-9876543210ab'
           status: 'todo'
-          name: '1. Measure Container Width'
+          name: '1. Remove ArrowLeft Button Component'
           reason: |
-            To make rendering decisions, we first need to know how much space we have. We'll use the existing `useResizeObserver` hook to get the real-time width of the list container.
+            This is the core of the change. We're ripping out the `Button` component responsible for showing the back arrow. This declutters the header of the detail panel, leaving only the title and actions.
           files:
-            - 'src/pages/DataDemo/components/DataListView.tsx'
+            - src/pages/DataDemo/components/DataDetailPanel.tsx
           operations:
-            - "Import `useResizeObserver` from `'@/hooks/useResizeObserver.hook'`."
-            - "Import `ArrowUpRight` from `'lucide-react'` and `Button` from `'@/components/ui/button'`, as they are used in the list item but might be missing from the provided context."
-            - "Inside the `DataListView` component, get the `listContainerRef` which is already used by `useStaggeredAnimation`."
-            - "Call `useResizeObserver` with `listContainerRef` to get a `width` variable. `const { width } = useResizeObserver(listContainerRef);`."
-
-        - uuid: 'b3c4d5e6-f7g8-h9i0-j1k2-l3m4n5o6p7q8'
-          status: 'todo'
-          name: '2. Add Responsive Rendering Logic'
-          reason: |
-            With the container width available, we can now implement the core logic to conditionally render metadata components, ensuring the UI remains clean and uncluttered on smaller viewports.
-          files:
-            - 'src/pages/DataDemo/components/DataListView.tsx'
-          operations:
-            - "Inside the `DataListView` component, define boolean constants based on the `width`."
-            - "Create a constant `showTags = width > 1100;`."
-            - "Create a constant `showDate = width > 800;`."
-            - "Create a constant `compactAssignee = width < 700;`."
-            - "Locate the `div` for the 'Right side: Metadata' inside the `data.map` loop."
-            - "Update the container's class to use a responsive gap: `className=\"flex shrink-0 items-center gap-2 sm:gap-4 md:gap-6\"`."
-            - "Wrap `<ItemTags>` in a conditional render: `{showTags && <ItemTags ... />}`."
-            - "Always render `<AssigneeInfo>`, but pass the `compact` prop: `<AssigneeInfo ... compact={compactAssignee} />`."
-            - "Keep `<ItemStatusBadge>` and `<ItemPriorityBadge>` always visible."
-            - "Wrap `<ItemDateInfo>` in a conditional render: `{showDate && <ItemDateInfo ... />}`."
-            - "Ensure the `ArrowUpRight` button remains visible at all sizes."
+            - "In `DataDetailPanel.tsx`, locate the header `div` with the `flex items-center` classes at the top of the returned JSX."
+            - "Target the `<Button variant=\"ghost\" size=\"icon\" onClick={onClose} ...>` component within that header."
+            - "Delete the entire `Button` component, which contains the `<ArrowLeft ... />` icon and the associated screen-reader `span`."
+      context_files:
+        compact:
+          - src/pages/DataDemo/components/DataDetailPanel.tsx
+        medium:
+          - src/pages/DataDemo/components/DataDetailPanel.tsx
+          - src/components/layout/RightPane.tsx
+          - src/hooks/useRightPaneContent.hook.tsx
+        extended:
+          - src/pages/DataDemo/components/DataDetailPanel.tsx
+          - src/components/layout/RightPane.tsx
+          - src/hooks/useRightPaneContent.hook.tsx
+          - src/hooks/useAppViewManager.hook.ts
+          - src/store/appShell.store.ts
   conclusion: |
-    Once this plan is executed, the `DataListView` will be fully responsive. It will no longer be a liability on smaller screens but a prime example of adaptive design within our application. This change significantly improves the user experience for the Data Demo page and provides a solid pattern for other components going forward.
+    Boom, done. The detail panel header is now cleaner, just showing the title and primary actions. The user experience for closing the panel is now unified through the app shell's 'X' button, which is the standard for overlays in this system.
+
+    This tightens up the design and removes a small piece of duplicated functionality. Solid win.
   context_files:
     compact:
-      - 'src/pages/DataDemo/components/DataListView.tsx'
+      - src/pages/DataDemo/components/DataDetailPanel.tsx
     medium:
-      - 'src/pages/DataDemo/components/DataListView.tsx'
-      - 'src/hooks/useResizeObserver.hook.ts'
-      - 'src/pages/DataDemo/components/shared/DataItemParts.tsx'
+      - src/pages/DataDemo/components/DataDetailPanel.tsx
+      - src/components/layout/RightPane.tsx
+      - src/hooks/useRightPaneContent.hook.tsx
     extended:
-      - 'src/pages/DataDemo/components/DataListView.tsx'
-      - 'src/hooks/useResizeObserver.hook.ts'
-      - 'src/pages/DataDemo/components/shared/DataItemParts.tsx'
-      - 'src/pages/DataDemo/index.tsx'
+      - src/pages/DataDemo/components/DataDetailPanel.tsx
+      - src/components/layout/RightPane.tsx
+      - src/hooks/useRightPaneContent.hook.tsx
+      - src/hooks/useAppViewManager.hook.ts
+      - src/store/appShell.store.ts
+      - src/components/layout/AppShell.tsx
 ```

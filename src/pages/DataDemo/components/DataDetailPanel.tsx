@@ -1,8 +1,7 @@
 import React, { useRef } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { 
-  ArrowLeft, 
+import {
   Clock, 
   Download,
   FileText,
@@ -28,10 +27,9 @@ import {
 import { DataDetailActions } from './DataDetailActions'
 interface DataDetailPanelProps {
   item: DataItem | null
-  onClose: () => void
 }
 
-export function DataDetailPanel({ item, onClose }: DataDetailPanelProps) {
+export function DataDetailPanel({ item }: DataDetailPanelProps) {
   const contentRef = useRef<HTMLDivElement>(null)
   useStaggeredAnimation(contentRef, [item]);
 
@@ -65,10 +63,6 @@ export function DataDetailPanel({ item, onClose }: DataDetailPanelProps) {
     <div ref={contentRef} className="h-full flex flex-col">
       {/* Header */}
       <div className="p-6 border-b border-border/50 bg-gradient-to-r from-card/50 to-card/30 backdrop-blur-sm">
-        <Button variant="ghost" onClick={onClose} className="mb-4 -ml-4">
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to list
-        </Button>
         <div className="flex items-start gap-4 mb-4">
           <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-primary/10 rounded-2xl flex items-center justify-center text-3xl flex-shrink-0">
             {item.thumbnail}

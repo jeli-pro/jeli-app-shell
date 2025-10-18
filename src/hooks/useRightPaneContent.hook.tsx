@@ -84,15 +84,11 @@ export function useRightPaneContent(sidePaneContent: AppShellState['sidePaneCont
     return mockDataItems.find(item => item.id === itemId) ?? null;
   }, [itemId]);
 
-  const handleDataItemClose = useCallback(() => {
-    navigate('/data-demo');
-  }, [navigate]);
-
   const { meta, content } = useMemo(() => {
     if (sidePaneContent === 'dataItem' && selectedItem) {
       return {
         meta: { title: "Item Details", icon: Database, page: `data-demo/${itemId}` },
-        content: <DataDetailPanel item={selectedItem} onClose={handleDataItemClose} />,
+        content: <DataDetailPanel item={selectedItem} />,
       };
     }
     const mappedContent = contentMap[sidePaneContent as keyof typeof contentMap] || contentMap.details;
@@ -100,7 +96,7 @@ export function useRightPaneContent(sidePaneContent: AppShellState['sidePaneCont
       meta: mappedContent,
       content: mappedContent.content,
     };
-  }, [sidePaneContent, selectedItem, contentMap, itemId, handleDataItemClose]);
+  }, [sidePaneContent, selectedItem, contentMap, itemId]);
 
   return { meta, content };
 }
