@@ -38,12 +38,12 @@ export function DataListView({ data }: { data: DataItem[] }) {
   }
 
   return (
-    <div ref={listRef} className="border-t">
+    <div ref={listRef}>
       {items.map((item: DataItem) => {
         const isSelected = selectedItem?.id === item.id
         
         return (
-          <div key={item.id} className="border-b px-2">
+          <div key={item.id} className="px-2">
             <div
               onClick={() => onItemSelect(item)}
               className={cn(

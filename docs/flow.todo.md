@@ -42,7 +42,7 @@ data demo page: calendar view : fix flickering calendar items animation on load 
 
 data demo page: calendar view control: I want all the features real working, also make the UI styling and spacing consistent global style.
 
-===
+=== DONE
 
 data demo page: list view should be super responsive, how many attributes to show is depending on the widht viewport size
 
@@ -98,7 +98,7 @@ split view mode : loosing view mode switcher hover on pane active left:right pan
 
 view mode switcher actions not working well from overlay side pane: especially fullscreen,and normal mode
 
-===
+=== DONE
 
 -message page : message list: time ago use short word like 3s ago, 3m ago, 3h ago etc
 -message thread : add message search feature
