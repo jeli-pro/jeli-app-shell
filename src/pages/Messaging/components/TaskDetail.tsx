@@ -36,6 +36,18 @@ export const TaskDetail: React.FC = () => {
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [isHoveringThread, setIsHoveringThread] = useState(false);
 
+  // Hooks and memoized values must be called unconditionally at the top level.
+  // Moved from below the early return to fix "rendered more hooks" error.
+  const journeyPoints = useMemo(
+    () => task?.messages.filter((m) => m.journeyPoint) ?? [],
+    [task?.messages],
+  );
+  const filteredMessages = useMemo(() => {
+    if (!task?.messages) return [];
+    if (!searchTerm) return task.messages;
+    return task.messages.filter(msg => msg.text.toLowerCase().includes(searchTerm.toLowerCase()));
+  }, [task?.messages, searchTerm]);
+
   useLayoutEffect(() => {
     // On conversation change, scroll to the bottom of the message list.
     // This ensures the user sees the latest message and that the scrollbar
@@ -120,15 +132,6 @@ export const TaskDetail: React.FC = () => {
         </div>
     );
   }
-
-  const journeyPoints = task.messages.filter(m => m.journeyPoint);
-
-  const filteredMessages = useMemo(() => {
-    if (!searchTerm) {
-      return task.messages;
-    }
-    return task.messages.filter(msg => msg.text.toLowerCase().includes(searchTerm.toLowerCase()));
-  }, [task.messages, searchTerm]);
 
   const handleDotClick = (messageId: string) => {
     const container = scrollContainerRef.current;

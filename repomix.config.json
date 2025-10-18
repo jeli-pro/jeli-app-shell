@@ -37,18 +37,11 @@
     //
     //
 
-    "src/components/layout/AppShell.tsx",
-    "src/components/layout/RightPane.tsx",
     "src/hooks/useAppViewManager.hook.ts",
-    "src/hooks/useRightPaneContent.hook.tsx",
-    "src/pages/DataDemo/components/DataDetailPanel.tsx",
-    "src/store/appShell.store.ts"
-
-    //
-    // "src/components/shared/StatCard.tsx",
-    // "src/components/ui/card.tsx",
-    // "src/index.css",
-    // "src/pages/DataDemo/index.tsx"
+    "src/pages/DataDemo/components/DataToolbar.tsx",
+    "src/pages/DataDemo/index.tsx",
+    "src/pages/DataDemo/store/dataDemo.store.tsx",
+    "src/pages/DataDemo/types.ts"
   ],
   "ignore": {
     "useGitignore": true,

@@ -1,0 +1,1195 @@
+uuid: c258c734-754d-45da-9828-5683226a0907
+projectId: jeli-app-shell
+createdAt: '2025-10-18T15:59:38.170Z'
+gitCommitMsg: >-
+  refactor(data-demo): centralize FilterConfig type and document control flow
+
+  This refactoring centralizes the `FilterConfig` type by moving it from the
+  `DataToolbar` component to the shared `types.ts` file. This establishes a
+  single source of truth and a clear data contract for filtering state across
+  the feature. All relevant imports in the component, hook, and store have been
+  updated.
+
+  Additionally, comments have been added to `DataToolbar.tsx` and
+  `DataDemo/index.tsx` to explicitly document the centralized control
+  architecture, where `useAppViewManager` manages URL-based state that drives
+  the UI, ensuring the design pattern is clear and maintainable.
+promptSummary: >-
+  The user wants to centralize control of search, filter, and sort functionality
+  for the Data Demo page to create a more cohesive user experience. This
+  involves refactoring shared types and documenting the existing architecture
+  for clarity.
+reasoning:
+  - >-
+    This refactoring centralizes the `FilterConfig` type and adds documentation
+    to clarify the control flow for the Data Demo page, making the architecture
+    more explicit and maintainable.
+  - >-
+    First, I will move the `FilterConfig` type from `DataToolbar.tsx` to the
+    shared `types.ts` file to establish a single source of truth for this data
+    structure.
+  - >-
+    Next, I'll update `DataToolbar.tsx` to import the relocated `FilterConfig`
+    type and add a module-level comment explaining its role as the centralized
+    UI for data controls.
+  - >-
+    Now, I'll update the `useAppViewManager` hook to import `FilterConfig` from
+    its new, correct location.
+  - >-
+    Similarly, the data store must also be updated to import `FilterConfig` from
+    the shared types file.
+  - >-
+    Finally, I will add a comment to the main `DataDemo` component to document
+    the centralized control flow, making the architecture clear to future
+    developers.
+operations:
+  - type: write
+    path: src/pages/DataDemo/types.ts
+    content: |
+      --- src/pages/DataDemo/types.ts
+      +++ src/pages/DataDemo/types.ts
+      @@ -52,3 +52,10 @@
+       
+       export type Status = DataItem['status']
+       export type Priority = DataItem['priority']
+      +
+      +/** Configuration for filtering data items. */
+      +export interface FilterConfig {
+      +  searchTerm: string
+      +  status: Status[]
+      +  priority: Priority[]
+      +}
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/DataDemo/components/DataToolbar.tsx
+    content: >+
+      --- src/pages/DataDemo/components/DataToolbar.tsx
+
+      +++ src/pages/DataDemo/components/DataToolbar.tsx
+
+      @@ -1,3 +1,11 @@
+
+      +/**
+
+      + * @file DataToolbar.tsx
+
+      + * @description This component provides a centralized toolbar for
+      searching, filtering, and sorting data.
+
+      + * It is designed to be the single source of user interaction for these
+      controls across all view modes.
+
+      + * The state for filters and sorting is managed by the
+      `useAppViewManager` hook, which synchronizes
+
+      + * the state with the URL search parameters, ensuring a consistent and
+      shareable view state.
+
+      + */
+
+      +
+       import * as React from 'react'
+       import { Check, ListFilter, Search, SortAsc } from 'lucide-react'
+       
+      @@ -24,14 +32,7 @@
+         CommandSeparator,
+       } from '@/components/ui/command'
+       
+      -import type { SortableField, Status, Priority } from '../types'
+
+      +import type { SortableField, Status, Priority, FilterConfig } from
+      '../types'
+       import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
+      -
+
+      -export interface FilterConfig {
+
+      -  searchTerm: string
+
+      -  status: Status[]
+
+      -  priority: Priority[]
+
+      -}
+       
+       const statusOptions: { value: Status; label: string }[] = [
+         { value: 'active', label: 'Active' },
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/hooks/useAppViewManager.hook.ts
+    content: >+
+      --- src/hooks/useAppViewManager.hook.ts
+
+      +++ src/hooks/useAppViewManager.hook.ts
+
+      @@ -2,8 +2,7 @@
+       import { useSearchParams, useNavigate, useLocation, useParams } from 'react-router-dom';
+       import { useAppShellStore, type AppShellState, type ActivePage } from '@/store/appShell.store';
+      -import type { DataItem, ViewMode, SortConfig, SortableField,
+      GroupableField, Status, Priority, CalendarDateProp, CalendarDisplayProp,
+      CalendarColorProp } from '@/pages/DataDemo/types';
+
+      -import type { FilterConfig } from
+      '@/pages/DataDemo/components/DataToolbar';
+
+      +import type { DataItem, ViewMode, SortConfig, SortableField,
+      GroupableField, Status, Priority, CalendarDateProp, CalendarDisplayProp,
+      CalendarColorProp, FilterConfig } from '@/pages/DataDemo/types';
+       import type { TaskView } from '@/pages/Messaging/types';
+       import { BODY_STATES, SIDEBAR_STATES } from '@/lib/utils';
+       
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/DataDemo/store/dataDemo.store.tsx
+    content: >+
+      --- src/pages/DataDemo/store/dataDemo.store.tsx
+
+      +++ src/pages/DataDemo/store/dataDemo.store.tsx
+
+      @@ -3,8 +3,7 @@
+       import { capitalize, cn } from '@/lib/utils';
+       import { Badge } from '@/components/ui/badge';
+       import { mockDataItems } from '../data/mockData';
+      -import type { DataItem, GroupableField, SortConfig } from '../types';
+
+      -import type { FilterConfig } from '../components/DataToolbar';
+
+      +import type { DataItem, GroupableField, SortConfig, FilterConfig } from
+      '../types';
+       
+       // --- State and Actions ---
+       interface DataDemoState {
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/DataDemo/index.tsx
+    content: >+
+      --- src/pages/DataDemo/index.tsx
+
+      +++ src/pages/DataDemo/index.tsx
+
+      @@ -71,6 +71,15 @@
+       type StatItem = Stat | ChartStat;
+       
+       function DataDemoContent() {
+      +  // --- Centralized View State Management ---
+
+      +  // The `useAppViewManager` hook is the single source of truth for all
+      view-related state.
+
+      +  // It derives its state from the URL search parameters (e.g.,
+      ?view=cards&sort=title-asc).
+
+      +  // Components like `DataToolbar` and `DataViewModeSelector` call
+      functions from this hook
+
+      +  // to update the URL, which in turn triggers a re-render with the new
+      state.
+
+      +  // This ensures that the UI state is always bookmarkable, shareable,
+      and synchronized.
+
+      +  // The data fetching logic in the `useEffect` below subscribes to
+      changes in these state
+
+      +  // variables to reload data as needed.
+
+      +
+         const {
+           viewMode,
+           groupBy,
+
+    patchStrategy: standard-diff
+snapshot:
+  src/pages/DataDemo/types.ts: >
+    export type ViewMode = 'list' | 'cards' | 'grid' | 'table' | 'kanban' |
+    'calendar'
+
+
+    export type GroupableField = 'status' | 'priority' | 'category'
+
+
+    export type CalendarDateProp = 'dueDate' | 'createdAt' | 'updatedAt';
+
+    export type CalendarDisplayProp = 'priority' | 'assignee' | 'tags';
+
+    export type CalendarColorProp = 'none' | 'priority' | 'status' | 'category';
+
+
+    export type SortableField = 'title' | 'status' | 'priority' | 'updatedAt' |
+    'assignee.name' | 'metrics.views' | 'metrics.completion' | 'createdAt'
+
+    export type SortDirection = 'asc' | 'desc'
+
+    export interface SortConfig {
+      key: SortableField
+      direction: SortDirection
+    }
+
+
+    export interface DataItem {
+      id: string
+      title: string
+      description: string
+      category: string
+      status: 'active' | 'pending' | 'completed' | 'archived'
+      priority: 'low' | 'medium' | 'high' | 'critical'
+      assignee: {
+        name: string
+        avatar: string
+        email: string
+      }
+      metrics: {
+        views: number
+        likes: number
+        shares: number
+        completion: number
+      }
+      tags: string[]
+      createdAt: string
+      updatedAt: string
+      dueDate?: string
+      thumbnail?: string
+      content?: {
+        summary: string
+        details: string
+        attachments?: Array<{
+          name: string
+          type: string
+          size: string
+          url: string
+        }>
+      }
+    }
+
+
+    export interface ViewProps {
+      data: DataItem[] | Record<string, DataItem[]>
+      onItemSelect: (item: DataItem) => void
+      selectedItem: DataItem | null
+      isGrid?: boolean
+
+      // Props for table view specifically
+      sortConfig?: SortConfig | null
+      onSort?: (field: SortableField) => void
+    }
+
+
+    export type Status = DataItem['status']
+
+    export type Priority = DataItem['priority']
+  src/pages/DataDemo/components/DataToolbar.tsx: >-
+    import * as React from 'react'
+
+    import { Check, ListFilter, Search, SortAsc } from 'lucide-react'
+
+
+    import { cn } from '@/lib/utils'
+
+    import { Button } from '@/components/ui/button'
+
+    import { Input } from '@/components/ui/input'
+
+    import { Badge } from '@/components/ui/badge'
+
+    import { Popover, PopoverContent, PopoverTrigger } from
+    '@/components/ui/popover'
+
+    import {
+      DropdownMenu,
+      DropdownMenuContent,
+      DropdownMenuRadioGroup,
+      DropdownMenuRadioItem,
+      DropdownMenuSeparator,
+      DropdownMenuLabel,
+      DropdownMenuTrigger,
+    } from '@/components/ui/dropdown-menu'
+
+    import {
+      Command,
+      CommandEmpty,
+      CommandGroup,
+      CommandInput,
+      CommandItem,
+      CommandList,
+      CommandSeparator,
+    } from '@/components/ui/command'
+
+
+    import type { SortableField, Status, Priority } from '../types'
+
+    import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
+
+
+    export interface FilterConfig {
+      searchTerm: string
+      status: Status[]
+      priority: Priority[]
+    }
+
+
+    const statusOptions: { value: Status; label: string }[] = [
+      { value: 'active', label: 'Active' },
+      { value: 'pending', label: 'Pending' },
+      { value: 'completed', label: 'Completed' },
+      { value: 'archived', label: 'Archived' },
+    ]
+
+
+    const priorityOptions: { value: Priority; label: string }[] = [
+      { value: 'critical', label: 'Critical' },
+      { value: 'high', label: 'High' },
+      { value: 'medium', label: 'Medium' },
+      { value: 'low', label: 'Low' },
+    ]
+
+
+    const sortOptions: { value: SortableField, label: string }[] = [
+      { value: 'updatedAt', label: 'Last Updated' },
+      { value: 'title', label: 'Title' },
+      { value: 'status', label: 'Status' },
+      { value: 'priority', label: 'Priority' },
+      { value: 'metrics.completion', label: 'Progress' },
+    ]
+
+
+
+    export function DataToolbar() {
+      const {
+        filters,
+        setFilters,
+        sortConfig,
+        setSort,
+      } = useAppViewManager();
+
+      const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        setFilters({ ...filters, searchTerm: event.target.value })
+      }
+      
+      const activeFilterCount = filters.status.length + filters.priority.length
+
+      return (
+        <div className="flex flex-col md:flex-row items-center justify-between gap-4 w-full">
+          {/* Left side: Search, Filters */}
+          <div className="flex flex-col sm:flex-row items-center gap-2 w-full md:w-auto">
+            <div className="relative w-full sm:w-auto">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search projects..."
+                className="pl-9 w-full sm:w-64"
+                value={filters.searchTerm}
+                onChange={handleSearchChange}
+              />
+            </div>
+
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="h-9 w-full sm:w-auto justify-start border-dashed">
+                  <ListFilter className="mr-2 h-4 w-4" />
+                  Filters
+                  {activeFilterCount > 0 && (
+                    <>
+                      <div className="mx-2 h-4 w-px bg-muted-foreground/50" />
+                      <Badge variant="secondary" className="rounded-sm px-1 font-normal">
+                        {activeFilterCount}
+                      </Badge>
+                    </>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[240px] p-0" align="start">
+                <CombinedFilter filters={filters} onFiltersChange={setFilters} />
+              </PopoverContent>
+            </Popover>
+
+            {activeFilterCount > 0 && (
+              <Button variant="ghost" onClick={() => setFilters({ searchTerm: filters.searchTerm, status: [], priority: [] })}>Reset</Button>
+            )}
+          </div>
+
+          {/* Right side: Sorter */}
+          <div className="flex items-center gap-2 w-full md:w-auto justify-start md:justify-end">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="w-full sm:w-auto justify-start">
+                  <SortAsc className="mr-2 h-4 w-4" />
+                  Sort by: {sortOptions.find(o => o.value === sortConfig?.key)?.label || 'Default'}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-[200px]">
+                <DropdownMenuLabel>Sort by</DropdownMenuLabel>
+                <DropdownMenuRadioGroup
+                  value={`${sortConfig?.key || 'default'}-${sortConfig?.direction || ''}`}
+                  onValueChange={(value) => {
+                    if (value.startsWith('default')) {
+                      setSort(null)
+                    } else {
+                      const [key, direction] = value.split('-')
+                      setSort({ key: key as SortableField, direction: direction as 'asc' | 'desc' })
+                    }
+                  }}
+                >
+                  <DropdownMenuRadioItem value="default-">Default</DropdownMenuRadioItem>
+                  <DropdownMenuSeparator />
+                  {sortOptions.map(option => (
+                    <React.Fragment key={option.value}>
+                      <DropdownMenuRadioItem value={`${option.value}-desc`}>{option.label} (Desc)</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value={`${option.value}-asc`}>{option.label} (Asc)</DropdownMenuRadioItem>
+                    </React.Fragment>
+                  ))}
+                </DropdownMenuRadioGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+      )
+    }
+
+
+    function CombinedFilter({
+      filters,
+      onFiltersChange,
+    }: {
+      filters: FilterConfig;
+      onFiltersChange: (filters: FilterConfig) => void;
+    }) {
+      const selectedStatus = new Set(filters.status);
+      const selectedPriority = new Set(filters.priority);
+
+      const handleStatusSelect = (status: Status) => {
+        selectedStatus.has(status) ? selectedStatus.delete(status) : selectedStatus.add(status);
+        onFiltersChange({ ...filters, status: Array.from(selectedStatus) });
+      };
+
+      const handlePrioritySelect = (priority: Priority) => {
+        selectedPriority.has(priority) ? selectedPriority.delete(priority) : selectedPriority.add(priority);
+        onFiltersChange({ ...filters, priority: Array.from(selectedPriority) });
+      };
+
+      const hasActiveFilters = filters.status.length > 0 || filters.priority.length > 0;
+
+      return (
+        <Command>
+          <CommandInput placeholder="Filter by..." />
+          <CommandList>
+            <CommandEmpty>No results found.</CommandEmpty>
+
+            <CommandGroup heading="Status">
+              {statusOptions.map((option) => {
+                const isSelected = selectedStatus.has(option.value);
+                return (
+                  <CommandItem
+                    key={option.value}
+                    onSelect={() => handleStatusSelect(option.value)}
+                  >
+                    <div
+                      className={cn(
+                        'mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary',
+                        isSelected ? 'bg-primary text-primary-foreground' : 'opacity-50 [&_svg]:invisible'
+                      )}
+                    >
+                      <Check className={cn('h-4 w-4')} />
+                    </div>
+                    <span>{option.label}</span>
+                  </CommandItem>
+                );
+              })}
+            </CommandGroup>
+
+            <CommandSeparator />
+
+            <CommandGroup heading="Priority">
+              {priorityOptions.map((option) => {
+                const isSelected = selectedPriority.has(option.value);
+                return (
+                  <CommandItem
+                    key={option.value}
+                    onSelect={() => handlePrioritySelect(option.value)}
+                  >
+                    <div
+                      className={cn(
+                        'mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary',
+                        isSelected ? 'bg-primary text-primary-foreground' : 'opacity-50 [&_svg]:invisible'
+                      )}
+                    >
+                      <Check className={cn('h-4 w-4')} />
+                    </div>
+                    <span>{option.label}</span>
+                  </CommandItem>
+                );
+              })}
+            </CommandGroup>
+
+            {hasActiveFilters && (
+              <>
+                <CommandSeparator />
+                <CommandGroup>
+                  <CommandItem
+                    onSelect={() => onFiltersChange({ ...filters, status: [], priority: [] })}
+                    className="justify-center text-center text-sm"
+                  >
+                    Clear filters
+                  </CommandItem>
+                </CommandGroup>
+              </>
+            )}
+          </CommandList>
+        </Command>
+      )
+    }
+  src/hooks/useAppViewManager.hook.ts: "import { useMemo, useCallback, useEffect, useRef } from 'react';\nimport { useSearchParams, useNavigate, useLocation, useParams } from 'react-router-dom';\nimport { useAppShellStore, type AppShellState, type ActivePage } from '@/store/appShell.store';\nimport type { DataItem, ViewMode, SortConfig, SortableField, GroupableField, Status, Priority, CalendarDateProp, CalendarDisplayProp, CalendarColorProp } from '@/pages/DataDemo/types';\nimport type { FilterConfig } from '@/pages/DataDemo/components/DataToolbar';\nimport type { TaskView } from '@/pages/Messaging/types';\nimport { BODY_STATES, SIDEBAR_STATES } from '@/lib/utils';\n\nconst pageToPaneMap: Record<string, AppShellState['sidePaneContent']> = {\n  dashboard: 'main',\n  settings: 'settings',\n  toaster: 'toaster',\n  notifications: 'notifications',\n  'data-demo': 'dataDemo',\n  messaging: 'messaging',\n};\n\nfunction usePrevious<T>(value: T): T | undefined {\n  const ref = useRef<T>();\n  useEffect(() => {\n    ref.current = value;\n  });\n  return ref.current;\n}\n\n/**\n * A centralized hook to manage and synchronize all URL-based view states.\n * This is the single source of truth for view modes, side panes, split views,\n * and page-specific parameters.\n */\nexport function useAppViewManager() {\n  const [searchParams, setSearchParams] = useSearchParams();\n  const navigate = useNavigate();\n  const location = useLocation();\n  const params = useParams<{ itemId: string; conversationId: string }>();\n  const { itemId, conversationId } = params;\n  const { setSidebarState, sidebarState } = useAppShellStore();\n\n  // --- DERIVED STATE FROM URL ---\n\n  const view = searchParams.get('view');\n  const sidePane = searchParams.get('sidePane');\n  const right = searchParams.get('right');\n  const messagingView = searchParams.get('messagingView') as TaskView | null;\n  const q = searchParams.get('q');\n  const status = searchParams.get('status');\n  const priority = searchParams.get('priority');\n  const sort = searchParams.get('sort');\n  const calDate = searchParams.get('calDate');\n  const calDisplay = searchParams.get('calDisplay');\n  const calLimit = searchParams.get('calLimit');\n  const calColor = searchParams.get('calColor');\n\n  const { bodyState, sidePaneContent } = useMemo(() => {\n    const validPanes: AppShellState['sidePaneContent'][] = ['details', 'settings', 'main', 'toaster', 'notifications', 'dataDemo', 'messaging'];\n    \n    // 1. Priority: Explicit side pane overlay via URL param\n    if (sidePane && validPanes.includes(sidePane as AppShellState['sidePaneContent'])) {\n      return { bodyState: BODY_STATES.SIDE_PANE, sidePaneContent: sidePane as AppShellState['sidePaneContent'] };\n    }\n\n    // 2. Data item detail view (can be overlay or split)\n    if (itemId) {\n      if (view === 'split') {\n        return { bodyState: BODY_STATES.SPLIT_VIEW, sidePaneContent: 'dataItem' as const };\n      }\n      return { bodyState: BODY_STATES.SIDE_PANE, sidePaneContent: 'dataItem' as const };\n    }\n\n    // 3. Messaging conversation view (always split)\n    if (conversationId) {\n      return { bodyState: BODY_STATES.SPLIT_VIEW, sidePaneContent: 'messaging' as const };\n    }\n\n    // 4. Generic split view via URL param\n    if (view === 'split' && right && validPanes.includes(right as AppShellState['sidePaneContent'])) {\n      return { bodyState: BODY_STATES.SPLIT_VIEW, sidePaneContent: right as AppShellState['sidePaneContent'] };\n    }\n\n    return { bodyState: BODY_STATES.NORMAL, sidePaneContent: 'details' as const };\n  }, [itemId, conversationId, view, sidePane, right]);\n  \n  const currentActivePage = useMemo(() => (location.pathname.split('/')[1] || 'dashboard') as ActivePage, [location.pathname]);\n  const prevActivePage = usePrevious(currentActivePage);\n\n  // --- SIDE EFFECTS ---\n  useEffect(() => {\n    // On navigating to messaging page, collapse sidebar if it's expanded.\n    // This ensures a good default view but allows the user to expand it again if they wish.\n    if (currentActivePage === 'messaging' && prevActivePage !== 'messaging' && sidebarState === SIDEBAR_STATES.EXPANDED) {\n      setSidebarState(SIDEBAR_STATES.COLLAPSED);\n    }\n  }, [currentActivePage, prevActivePage, sidebarState, setSidebarState]);\n\n  // DataDemo specific state\n  const viewMode = useMemo(() => (searchParams.get('dataView') as ViewMode) || 'list', [searchParams]);\n\tconst page = useMemo(() => parseInt(searchParams.get('page') || '1', 10), [searchParams]);\n\tconst groupBy = useMemo(() => (searchParams.get('groupBy') as GroupableField | 'none') || 'none', [searchParams]);\n\tconst activeGroupTab = useMemo(() => searchParams.get('tab') || 'all', [searchParams]);\n\tconst filters = useMemo<FilterConfig>(\n\t\t() => ({\n\t\t\tsearchTerm: q || '',\n\t\t\tstatus: (status?.split(',') || []).filter(Boolean) as Status[],\n\t\t\tpriority: (priority?.split(',') || []).filter(Boolean) as Priority[],\n\t\t}),\n\t\t[q, status, priority],\n\t);\n\tconst sortConfig = useMemo<SortConfig | null>(() => {\n\t\tconst sortParam = sort;\n\t\tif (!sortParam) return { key: 'updatedAt', direction: 'desc' }; // Default sort\n\t\tif (sortParam === 'default') return null;\n\n\t\tconst [key, direction] = sortParam.split('-');\n\t\treturn { key: key as SortableField, direction: direction as 'asc' | 'desc' };\n\t}, [sort]);\n  const calendarDateProp = useMemo(() => (calDate || 'dueDate') as CalendarDateProp, [calDate]);\n  const calendarDisplayProps = useMemo(\n    () => {\n      if (calDisplay === null) return []; // Default is now nothing\n      if (calDisplay === '') return []; // Explicitly empty is also nothing\n      return calDisplay.split(',') as CalendarDisplayProp[];\n    },\n    [calDisplay]\n  );\n  const calendarItemLimit = useMemo(() => {\n    const limit = parseInt(calLimit || '3', 10);\n    if (calLimit === 'all') return 'all';\n    return isNaN(limit) ? 3 : limit;\n  }, [calLimit]);\n  const calendarColorProp = useMemo(() => (calColor || 'none') as CalendarColorProp, [calColor]);\n\n  // --- MUTATOR ACTIONS ---\n\n  const handleParamsChange = useCallback(\n\t\t(newParams: Record<string, string | string[] | null | undefined>, resetPage = false) => {\n\t\t\tsetSearchParams(\n\t\t\t\t(prev) => {\n\t\t\t\t\tconst updated = new URLSearchParams(prev);\n\t\t\t\t\t\n\t\t\t\t\tfor (const [key, value] of Object.entries(newParams)) {\n\t\t\t\t\t\tif (value === null || value === undefined || (Array.isArray(value) && value.length === 0) || value === '') {\n\t\t\t\t\t\t\tupdated.delete(key);\n\t\t\t\t\t\t} else if (Array.isArray(value)) {\n\t\t\t\t\t\t\tupdated.set(key, value.join(','));\n\t\t\t\t\t\t} else {\n\t\t\t\t\t\t\tupdated.set(key, String(value));\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\n\t\t\t\t\tif (resetPage) {\n\t\t\t\t\t\tupdated.delete('page');\n\t\t\t\t\t}\n\t\t\t\t\tif ('groupBy' in newParams) {\n\t\t\t\t\t\tupdated.delete('tab');\n\t\t\t\t\t}\n\n\t\t\t\t\treturn updated;\n\t\t\t\t},\n\t\t\t\t{ replace: true },\n\t\t\t);\n\t\t},\n\t\t[setSearchParams],\n\t);\n\n  const navigateTo = useCallback((page: string, params?: Record<string, string | null>) => {\n    const targetPath = page.startsWith('/') ? page : `/${page}`;\n    const isSamePage = location.pathname === targetPath;\n    \n    const newSearchParams = new URLSearchParams(isSamePage ? searchParams : undefined);\n\n    if (params) {\n      for (const [key, value] of Object.entries(params)) {\n        if (value === null || value === undefined) {\n          newSearchParams.delete(key);\n        } else {\n          newSearchParams.set(key, value);\n        }\n      }\n    }\n\n    navigate({ pathname: targetPath, search: newSearchParams.toString() });\n  }, [navigate, location.pathname, searchParams]);\n\n  const openSidePane = useCallback((pane: AppShellState['sidePaneContent']) => {\n    if (location.pathname === `/${Object.keys(pageToPaneMap).find(key => pageToPaneMap[key] === pane)}`) {\n        navigate({ pathname: '/dashboard', search: `?sidePane=${pane}` }, { replace: true });\n    } else {\n        handleParamsChange({ sidePane: pane, view: null, right: null });\n    }\n  }, [handleParamsChange, navigate, location.pathname]);\n\n  const closeSidePane = useCallback(() => {\n    if (itemId) {\n      navigate('/data-demo');\n    } else {\n      handleParamsChange({ sidePane: null, view: null, right: null });\n    }\n  }, [itemId, navigate, handleParamsChange]);\n\n  const toggleSidePane = useCallback((pane: AppShellState['sidePaneContent']) => {\n    if (sidePane === pane) {\n      closeSidePane();\n    } else {\n      openSidePane(pane);\n    }\n  }, [sidePane, openSidePane, closeSidePane]);\n\n  const toggleSplitView = useCallback(() => {\n    if (bodyState === BODY_STATES.SIDE_PANE) {\n      handleParamsChange({ view: 'split', right: sidePane, sidePane: null });\n    } else if (bodyState === BODY_STATES.SPLIT_VIEW) {\n      handleParamsChange({ sidePane: right, view: null, right: null });\n    } else { // From normal\n      const paneContent = pageToPaneMap[currentActivePage] || 'details';\n      handleParamsChange({ view: 'split', right: paneContent, sidePane: null });\n    }\n  }, [bodyState, sidePane, right, currentActivePage, handleParamsChange]);\n  \n  const setNormalView = useCallback(() => {\n      handleParamsChange({ sidePane: null, view: null, right: null });\n  }, [handleParamsChange]);\n\n  const switchSplitPanes = useCallback(() => {\n    if (bodyState !== BODY_STATES.SPLIT_VIEW) return;\n    const newSidePaneContent = pageToPaneMap[currentActivePage];\n    const newActivePage = Object.entries(pageToPaneMap).find(\n      ([, value]) => value === sidePaneContent\n    )?.[0] as ActivePage | undefined;\n\n    if (newActivePage && newSidePaneContent) {\n      navigate(`/${newActivePage}?view=split&right=${newSidePaneContent}`, { replace: true });\n    }\n  }, [bodyState, currentActivePage, sidePaneContent, navigate]);\n  \n  const closeSplitPane = useCallback((paneToClose: 'main' | 'right') => {\n    if (bodyState !== BODY_STATES.SPLIT_VIEW) return;\n    if (paneToClose === 'right') {\n      navigate(`/${currentActivePage}`, { replace: true });\n    } else { // Closing main pane\n      const pageToBecomeActive = Object.entries(pageToPaneMap).find(\n        ([, value]) => value === sidePaneContent\n      )?.[0] as ActivePage | undefined;\n      \n      if (pageToBecomeActive) {\n        navigate(`/${pageToBecomeActive}`, { replace: true });\n      } else {\n        navigate(`/dashboard`, { replace: true });\n      }\n    }\n  }, [bodyState, currentActivePage, sidePaneContent, navigate]);\n  \n  // DataDemo actions\n  const setViewMode = (mode: ViewMode) => handleParamsChange({ dataView: mode === 'list' ? null : mode });\n  const setGroupBy = (val: string) => handleParamsChange({ groupBy: val === 'none' ? null : val }, true);\n  const setActiveGroupTab = (tab: string) => handleParamsChange({ tab: tab === 'all' ? null : tab });\n  const setFilters = (newFilters: FilterConfig) => {\n    handleParamsChange({ q: newFilters.searchTerm, status: newFilters.status, priority: newFilters.priority }, true);\n  }\n  const setSort = (config: SortConfig | null) => {\n    if (!config) {\n      handleParamsChange({ sort: null }, true);\n    } else {\n      handleParamsChange({ sort: `${config.key}-${config.direction}` }, true);\n    }\n  }\n  const setTableSort = (field: SortableField) => {\n    let newSort: string | null = `${field}-desc`;\n    if (sortConfig?.key === field) {\n      if (sortConfig.direction === 'desc') newSort = `${field}-asc`;\n      else if (sortConfig.direction === 'asc') newSort = null;\n    }\n    handleParamsChange({ sort: newSort }, true);\n  };\n  const setPage = (newPage: number) => handleParamsChange({ page: newPage.toString() });\n\n  // Calendar specific actions\n  const setCalendarDateProp = (prop: CalendarDateProp) => handleParamsChange({ calDate: prop === 'dueDate' ? null : prop });\n  const setCalendarDisplayProps = (props: CalendarDisplayProp[]) => {\n    // Check for default state to keep URL clean\n    const isDefault = props.length === 0;\n    handleParamsChange({ calDisplay: isDefault ? null : props.join(',') });\n  };\n  const setCalendarItemLimit = (limit: number | 'all') => handleParamsChange({ calLimit: limit === 3 ? null : String(limit) });\n  const setCalendarColorProp = (prop: CalendarColorProp) => handleParamsChange({ calColor: prop === 'none' ? null : prop });\n\n  const onItemSelect = useCallback((item: DataItem) => {\n\t\tnavigate(`/data-demo/${item.id}${location.search}`);\n\t}, [navigate, location.search]);\n\n  const setMessagingView = (view: TaskView) => handleParamsChange({ messagingView: view });\n\n\n  return useMemo(() => ({\n    // State\n    bodyState,\n    sidePaneContent,\n    currentActivePage,\n    itemId,\n    messagingView,\n    // DataDemo State\n    viewMode,\n    page,\n    groupBy,\n    activeGroupTab,\n    filters,\n    sortConfig,\n    calendarDateProp,\n    calendarDisplayProps,\n    calendarItemLimit,\n    calendarColorProp,\n    // Actions\n    navigateTo,\n    openSidePane,\n    closeSidePane,\n    toggleSidePane,\n    toggleSplitView,\n    setNormalView,\n    switchSplitPanes,\n    setMessagingView,\n    closeSplitPane,\n    // DataDemo Actions\n    onItemSelect,\n    setViewMode,\n    setGroupBy,\n    setActiveGroupTab,\n    setFilters,\n    setSort,\n    setTableSort,\n    setPage,\n    setCalendarDateProp,\n    setCalendarDisplayProps,\n    setCalendarItemLimit,\n    setCalendarColorProp,\n  }), [\n    bodyState, sidePaneContent, currentActivePage, itemId, messagingView, viewMode,\n    page, groupBy, activeGroupTab, filters, sortConfig, calendarDateProp,\n    calendarDisplayProps, calendarItemLimit, calendarColorProp,\n    navigateTo, openSidePane, closeSidePane, toggleSidePane, toggleSplitView, setNormalView, setMessagingView,\n    switchSplitPanes, closeSplitPane, onItemSelect, setViewMode, setGroupBy, setActiveGroupTab, setFilters,\n    setSort, setTableSort, setPage, setCalendarDateProp, setCalendarDisplayProps, setCalendarItemLimit, setCalendarColorProp\n  ]);\n}"
+  src/pages/DataDemo/store/dataDemo.store.tsx: >-
+    import { create } from 'zustand';
+
+    import { type ReactNode } from 'react';
+
+    import { capitalize, cn } from '@/lib/utils';
+
+    import { Badge } from '@/components/ui/badge';
+
+    import { mockDataItems } from '../data/mockData';
+
+    import type { DataItem, GroupableField, SortConfig } from '../types';
+
+    import type { FilterConfig } from '../components/DataToolbar';
+
+
+    // --- State and Actions ---
+
+    interface DataDemoState {
+        items: DataItem[];
+        hasMore: boolean;
+        isLoading: boolean;
+        isInitialLoading: boolean;
+        totalItemCount: number;
+    }
+
+
+    interface DataDemoActions {
+        loadData: (params: {
+            page: number;
+            groupBy: GroupableField | 'none';
+            filters: FilterConfig;
+            sortConfig: SortConfig | null;
+        isFullLoad?: boolean;
+        }) => void;
+        updateItem: (itemId: string, updates: Partial<DataItem>) => void;
+    }
+
+
+    const defaultState: DataDemoState = {
+        items: [],
+        hasMore: true,
+        isLoading: true,
+        isInitialLoading: true,
+        totalItemCount: 0,
+    };
+
+
+    // --- Store Implementation ---
+
+    export const useDataDemoStore = create<DataDemoState &
+    DataDemoActions>((set, get) => ({
+        ...defaultState,
+
+        loadData: ({ page, groupBy, filters, sortConfig, isFullLoad }) => {
+            set({ isLoading: true, ...(page === 1 && { isInitialLoading: true }) });
+            const isFirstPage = page === 1;
+
+            const filteredAndSortedData = (() => {
+                const filteredItems = mockDataItems.filter((item) => {
+                    const searchTermMatch =
+                        item.title.toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
+                        item.description.toLowerCase().includes(filters.searchTerm.toLowerCase());
+                    const statusMatch = filters.status.length === 0 || filters.status.includes(item.status);
+                    const priorityMatch = filters.priority.length === 0 || filters.priority.includes(item.priority);
+                    return searchTermMatch && statusMatch && priorityMatch;
+                });
+
+                if (sortConfig) {
+                    filteredItems.sort((a, b) => {
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        const getNestedValue = (obj: DataItem, path: string): any =>
+                            path.split('.').reduce((o: any, k) => (o || {})[k], obj);
+
+                        const aValue = getNestedValue(a, sortConfig.key);
+                        const bValue = getNestedValue(b, sortConfig.key);
+
+                        if (aValue === undefined || bValue === undefined) return 0;
+                        if (typeof aValue === 'string' && typeof bValue === 'string') {
+                            return sortConfig.direction === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
+                        }
+                        if (typeof aValue === 'number' && typeof bValue === 'number') {
+                            return sortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue;
+                        }
+                        if (sortConfig.key === 'updatedAt' || sortConfig.key === 'createdAt') {
+                            if (typeof aValue === 'string' && typeof bValue === 'string') {
+                                return sortConfig.direction === 'asc'
+                                    ? new Date(aValue).getTime() - new Date(bValue).getTime()
+                                    : new Date(bValue).getTime() - new Date(aValue).getTime();
+                            }
+                        }
+                        return 0;
+                    });
+                }
+                return filteredItems;
+            })();
+            
+            const totalItemCount = filteredAndSortedData.length;
+
+            setTimeout(() => {
+                if (groupBy !== 'none' || isFullLoad) {
+                    set({
+                        items: filteredAndSortedData,
+                        hasMore: false,
+                        isLoading: false,
+                        isInitialLoading: false,
+                        totalItemCount,
+                    });
+                    return;
+                }
+
+                const pageSize = 12;
+                const newItems = filteredAndSortedData.slice((page - 1) * pageSize, page * pageSize);
+                
+                set(state => ({
+                    items: isFirstPage ? newItems : [...state.items, ...newItems],
+                    hasMore: totalItemCount > page * pageSize,
+                    isLoading: false,
+                    isInitialLoading: false,
+                    totalItemCount,
+                }));
+
+            }, isFirstPage ? 1500 : 500);
+        },
+
+        updateItem: (itemId, updates) => {
+            // In a real app, this would be an API call. Here we update the mock source.
+            const itemIndex = mockDataItems.findIndex(i => i.id === itemId);
+            if (itemIndex > -1) {
+                mockDataItems[itemIndex] = { ...mockDataItems[itemIndex], ...updates };
+            }
+
+            // Also update the currently loaded items in the store's state for UI consistency
+            set(state => ({
+                items: state.items.map(item => 
+                    item.id === itemId ? { ...item, ...updates } : item
+                ),
+            }));
+        },
+    }));
+
+
+    // --- Selectors ---
+
+    export const useGroupTabs = (
+        groupBy: GroupableField | 'none',
+        activeGroupTab: string,
+    ) => useDataDemoStore(state => {
+        const items = state.items;
+        if (groupBy === 'none' || !items.length) return [];
+        
+        const groupCounts = items.reduce((acc, item) => {
+            const groupKey = String(item[groupBy as GroupableField]);
+            acc[groupKey] = (acc[groupKey] || 0) + 1;
+            return acc;
+        }, {} as Record<string, number>);
+
+        const sortedGroups = Object.keys(groupCounts).sort((a, b) => a.localeCompare(b));
+
+        const createLabel = (text: string, count: number, isActive: boolean): ReactNode => (
+            <>
+                {text}
+                <Badge variant={isActive ? 'default' : 'secondary'} className={cn('transition-colors duration-300 text-xs font-semibold', !isActive && 'group-hover:bg-accent group-hover:text-accent-foreground')}>
+                    {count}
+                </Badge>
+            </>
+        );
+        
+        const totalCount = items.length;
+
+        return [
+            { id: 'all', label: createLabel('All', totalCount, activeGroupTab === 'all') },
+            ...sortedGroups.map((g) => ({
+                id: g,
+                label: createLabel(capitalize(g), groupCounts[g], activeGroupTab === g),
+            })),
+        ];
+    });
+
+
+    export const useDataToRender = (
+        groupBy: GroupableField | 'none',
+        activeGroupTab: string,
+    ) => useDataDemoStore(state => {
+        const items = state.items;
+        if (groupBy === 'none') {
+            return items;
+        }
+        if (activeGroupTab === 'all') {
+            return items;
+        }
+        return items.filter((item) => String(item[groupBy as GroupableField]) === activeGroupTab);
+    });
+
+
+    export const useSelectedItem = (itemId?: string) => {
+        if (!itemId) return null;
+        return mockDataItems.find(item => item.id === itemId) ?? null;
+    };
+  src/pages/DataDemo/index.tsx: >
+    import { useRef, useEffect, useCallback, useMemo } from 'react'
+
+    import {
+      Layers, 
+      AlertTriangle, 
+      PlayCircle, 
+      Loader2,
+      ChevronsUpDown,
+      TrendingUp,
+      CheckCircle,
+      Clock,
+      Archive,
+      PlusCircle
+    } from 'lucide-react'
+
+    import { gsap } from 'gsap'
+
+    import { cn } from '@/lib/utils'
+
+    import { Button } from '@/components/ui/button'
+
+    import { 
+      DropdownMenu, 
+      DropdownMenuContent, 
+      DropdownMenuRadioGroup, 
+      DropdownMenuRadioItem, 
+      DropdownMenuTrigger 
+    } from '@/components/ui/dropdown-menu'
+
+    import { PageLayout } from '@/components/shared/PageLayout'
+
+    import { useScrollToBottom } from '@/hooks/useScrollToBottom.hook';
+
+    import { ScrollToBottomButton } from
+    '@/components/shared/ScrollToBottomButton';
+
+    import { DataListView } from './components/DataListView'
+
+    import { DataCardView } from './components/DataCardView'
+
+    import { DataTableView } from './components/DataTableView'
+
+    import { DataKanbanView } from './components/DataKanbanView'
+
+    import { DataCalendarView } from './components/DataCalendarView'
+
+    import { DataViewModeSelector } from './components/DataViewModeSelector'
+
+    import { AnimatedTabs } from '@/components/ui/animated-tabs'
+
+    import { StatCard } from '@/components/shared/StatCard'
+
+    import { AnimatedLoadingSkeleton } from
+    './components/AnimatedLoadingSkeleton'
+
+    import { DataToolbar } from './components/DataToolbar'
+
+    import { mockDataItems } from './data/mockData'
+
+    import type { GroupableField, DataItem } from './types'
+
+    import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
+
+    import { useAutoAnimateStats } from './hooks/useAutoAnimateStats.hook'
+
+    import { 
+      useDataDemoStore, 
+      useGroupTabs
+    } from './store/dataDemo.store'
+
+
+    type Stat = {
+      title: string;
+      value: string;
+      icon: React.ReactNode;
+      change: string;
+      trend: 'up' | 'down';
+      type?: 'card';
+    };
+
+
+    type ChartStat = {
+      title: string;
+      value: string;
+      icon: React.ReactNode;
+      change: string;
+      trend: 'up' | 'down';
+      type: 'chart';
+      chartData: number[];
+    };
+
+
+    type StatItem = Stat | ChartStat;
+
+
+    function DataDemoContent() {
+      const {
+        viewMode,
+        groupBy,
+        activeGroupTab,
+        setGroupBy,
+        setSort,
+        setActiveGroupTab,
+        page,
+        filters,
+        sortConfig,
+        setPage,
+      } = useAppViewManager();
+
+      const { hasMore, isLoading, isInitialLoading, totalItemCount, loadData } = useDataDemoStore(state => ({
+        hasMore: state.hasMore,
+        isLoading: state.isLoading,
+        isInitialLoading: state.isInitialLoading,
+        totalItemCount: state.totalItemCount,
+        loadData: state.loadData,
+      }));
+
+      const groupTabs = useGroupTabs(groupBy, activeGroupTab);
+      const allItems = useDataDemoStore(s => s.items);
+
+      const groupedData = useMemo(() => {
+        if (groupBy === 'none') {
+            return null;
+        }
+        return allItems.reduce((acc, item) => {
+            const groupKey = String(item[groupBy as GroupableField]);
+            if (!acc[groupKey]) {
+                acc[groupKey] = [];
+            }
+            acc[groupKey].push(item);
+            return acc;
+        }, {} as Record<string, DataItem[]>);
+      }, [allItems, groupBy]);
+
+      const dataToRender = useMemo(() => {
+        if (groupBy === 'none' || activeGroupTab === 'all' || !groupedData) {
+          return allItems;
+        }
+        return groupedData[activeGroupTab] || [];
+      }, [groupBy, activeGroupTab, allItems, groupedData]);
+
+      const groupOptions = useMemo(() => [
+        { id: 'none' as const, label: 'None' }, { id: 'status' as const, label: 'Status' }, { id: 'priority' as const, label: 'Priority' }, { id: 'category' as const, label: 'Category' }
+      ], []);
+
+      const statsRef = useRef<HTMLDivElement>(null)
+      const scrollRef = useRef<HTMLDivElement>(null);
+
+      // Auto-hide stats container on scroll down
+      useAutoAnimateStats(scrollRef, statsRef);
+
+      // Calculate stats from data
+      const totalItems = mockDataItems.length
+      const { showScrollToBottom, scrollToBottom, handleScroll } = useScrollToBottom(scrollRef);
+
+      const activeItems = mockDataItems.filter(item => item.status === 'active').length
+      const highPriorityItems = mockDataItems.filter(item => item.priority === 'high' || item.priority === 'critical').length
+      const avgCompletion = totalItems > 0 ? Math.round(
+        mockDataItems.reduce((acc, item) => acc + item.metrics.completion, 0) / totalItems
+      ) : 0
+
+      const stats: StatItem[] = [
+        {
+          title: "Total Projects",
+          value: totalItems.toString(),
+          icon: <Layers className="w-5 h-5" />,
+          change: "+5.2% this month",
+          trend: "up" as const,
+          type: 'chart',
+          chartData: [120, 125, 122, 130, 135, 138, 142]
+        },
+        {
+          title: "Active Projects",
+          value: activeItems.toString(),
+          icon: <PlayCircle className="w-5 h-5" />,
+          change: "+2 this week", 
+          trend: "up" as const,
+          type: 'chart',
+          chartData: [45, 50, 48, 55, 53, 60, 58]
+        },
+        {
+          title: "High Priority",
+          value: highPriorityItems.toString(),
+          icon: <AlertTriangle className="w-5 h-5" />,
+          change: "-1 from last week",
+          trend: "down" as const,
+          type: 'chart',
+          chartData: [25, 26, 28, 27, 26, 24, 23]
+        },
+        {
+          title: "Avg. Completion",
+          value: `${avgCompletion}%`,
+          icon: <TrendingUp className="w-5 h-5" />,
+          change: "+3.2%",
+          trend: "up" as const,
+          type: 'chart',
+          chartData: [65, 68, 70, 69, 72, 75, 78],
+        },
+        {
+          title: "Completion Rate",
+          value: "88%",
+          icon: <CheckCircle className="w-5 h-5" />,
+          change: "+1.5% this month",
+          trend: "up" as const,
+          type: 'chart',
+          chartData: [80, 82, 81, 84, 85, 87, 88],
+        },
+        {
+          title: "Overdue Items",
+          value: "8",
+          icon: <Clock className="w-5 h-5" />,
+          change: "-3 this week",
+          trend: "down" as const,
+        },
+        {
+          title: "New This Week",
+          value: "12",
+          icon: <PlusCircle className="w-5 h-5" />,
+          change: "+2 from last week",
+          trend: "up" as const,
+        },
+        {
+          title: "Archived Projects",
+          value: "153",
+          icon: <Archive className="w-5 h-5" />,
+          change: "+20 this month",
+          trend: "up" as const,
+        }
+      ]
+
+      useEffect(() => {
+        // Animate stats cards in
+        if (!isInitialLoading && statsRef.current) {
+          gsap.fromTo(statsRef.current.children,
+            { y: 30, opacity: 0 },
+            {
+              duration: 0.5,
+              y: 0,
+              opacity: 1,
+              stagger: 0.08,
+              ease: "power2.out"
+            }
+          )
+        }
+      }, [isInitialLoading]);
+
+      useEffect(() => {
+        loadData({
+          page,
+          groupBy,
+          filters,
+          sortConfig,
+          isFullLoad: viewMode === 'calendar',
+        });
+      }, [page, groupBy, filters, sortConfig, loadData, viewMode]);
+
+      const observer = useRef<IntersectionObserver>();
+      const loaderRef = useCallback(
+        (node: Element | null) => {
+          if (isLoading) return;
+          if (observer.current) observer.current.disconnect();
+
+          observer.current = new IntersectionObserver((entries) => {
+            if (entries[0].isIntersecting && hasMore) {
+              setPage(page + 1);
+            }
+          });
+          if (node) observer.current.observe(node);
+        },
+        [isLoading, hasMore, page, setPage],
+      );
+      
+      // Auto-group by status when switching to kanban view for the first time
+      useEffect(() => {
+        if (viewMode === 'kanban' && groupBy === 'none') {
+          setGroupBy('status');
+          setSort(null); // Kanban is manually sorted, so disable programmatic sort
+        }
+        // For calendar view, we don't want grouping.
+        if (viewMode === 'calendar') {
+          if (groupBy !== 'none') setGroupBy('none');
+        }
+      }, [viewMode, groupBy, setGroupBy]);
+
+      const renderViewForData = useCallback((data: DataItem[]) => {
+        switch (viewMode) {
+            case 'table': return <DataTableView data={data} />;
+            case 'cards': return <DataCardView data={data} />;
+            case 'calendar': return null; // Calendar has its own render path below
+            case 'kanban': return null; // Kanban has its own render path below
+            case 'grid': return <DataCardView data={data} isGrid />;
+            case 'list':
+            default:
+                return <DataListView data={data} />;
+        }
+      }, [viewMode]);
+
+      const GroupByDropdown = useCallback(() => (
+        <div className="flex items-center gap-2 shrink-0">
+          <span className="text-sm font-medium text-muted-foreground shrink-0">Group by:</span>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="w-[180px] justify-between">
+                {groupOptions.find(o => o.id === groupBy)?.label}
+                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="w-[180px]">
+              <DropdownMenuRadioGroup value={groupBy} onValueChange={setGroupBy}>
+                {groupOptions.map(option => (
+                  <DropdownMenuRadioItem key={option.id} value={option.id}>
+                    {option.label}
+                  </DropdownMenuRadioItem>
+                ))}
+              </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      ), [groupBy, setGroupBy, groupOptions]);
+
+      const isGroupedView = useMemo(() => 
+        groupBy !== 'none' && groupTabs.length > 1 && groupedData,
+      [groupBy, groupTabs.length, groupedData]);
+
+
+      return (
+        <PageLayout
+          scrollRef={scrollRef}
+          onScroll={handleScroll}
+          // Note: Search functionality is handled by a separate SearchBar in the TopBar
+        >
+          <div className="space-y-8">
+            {/* Header */}
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div className="flex-1">
+                <h1 className="text-2xl font-bold tracking-tight">Data Showcase</h1>
+                <p className="text-muted-foreground">
+                  {isInitialLoading 
+                    ? "Loading projects..." 
+                    : `Showing ${dataToRender.length} of ${totalItemCount} item(s)`}
+                </p>
+              </div>
+              <DataViewModeSelector />
+            </div>
+
+            {/* Stats Section */}
+            {!isInitialLoading && (
+              <div ref={statsRef} className="flex overflow-x-auto gap-6 pb-4 no-scrollbar">
+                {stats.map((stat) => (
+                  <StatCard
+                    className="w-64 md:w-72 flex-shrink-0"
+                    key={stat.title}
+                    title={stat.title}
+                    value={stat.value}
+                    change={stat.change}
+                    trend={stat.trend}
+                    icon={stat.icon}
+                    chartData={stat.type === 'chart' ? stat.chartData : undefined}
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* Controls Area */}
+            <div className="space-y-6">
+              <DataToolbar />
+            </div>
+
+            <div className="min-h-[500px]">
+              {isInitialLoading 
+                ? <AnimatedLoadingSkeleton viewMode={viewMode} /> 
+                : viewMode === 'calendar' ? (
+                  <DataCalendarView data={allItems} />
+                )
+                : viewMode === 'kanban' ? (
+                  <>
+                    <div className="flex items-center justify-end gap-4 h-[68px]">
+                      <GroupByDropdown />
+                    </div>
+                    {isGroupedView ? (
+                      <DataKanbanView data={groupedData} />
+                    ) : (
+                      <div className="flex items-center justify-center h-96 text-muted-foreground">
+                        Group data by a metric to use the Kanban view.
+                      </div>
+                    )}
+                  </>
+                )
+                : !isGroupedView ? (
+                  // Not grouped view
+                  <>
+                    <div className="flex items-center justify-between gap-4 h-[68px]">
+                      <div className="flex-grow border-b" /> {/* Mimic tab border */}
+                      <GroupByDropdown />
+                    </div>
+                    {renderViewForData(allItems)}
+                  </>
+                ) : (
+                  // Grouped view with AnimatedTabs
+                  <div className="relative">
+                    <AnimatedTabs
+                      tabs={groupTabs}
+                      activeTab={activeGroupTab}
+                      onTabChange={setActiveGroupTab}
+                      wrapperClassName="flex flex-col"
+                      className="border-b"
+                      contentClassName="pt-6 flex-grow"
+                    >
+                      {groupTabs.map(tab => (
+                        <div key={tab.id} className="min-h-[440px]">
+                          {renderViewForData(
+                            tab.id === 'all' ? allItems : groupedData?.[tab.id] || []
+                          )}
+                        </div>
+                      ))}
+                    </AnimatedTabs>
+                    <div className="absolute top-[14px] right-0">
+                        <GroupByDropdown />
+                    </div>
+                  </div>
+                )
+              }
+            </div>
+
+            {/* Loader for infinite scroll */}
+            <div ref={loaderRef} className="flex justify-center items-center py-6">
+              {isLoading && !isInitialLoading && groupBy === 'none' && viewMode !== 'calendar' && (
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span>Loading more...</span>
+                </div>
+              )}
+              {!isLoading && !hasMore && dataToRender.length > 0 && !isInitialLoading && groupBy === 'none' && viewMode !== 'calendar' && (
+                <p className="text-muted-foreground">You've reached the end.</p>
+              )}
+            </div>
+          </div>
+          <ScrollToBottomButton isVisible={showScrollToBottom} onClick={scrollToBottom} />
+        </PageLayout>
+      )
+    }
+
+
+    export default function DataDemoPage() {
+      return <DataDemoContent />;
+    }
+approved: false
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: undone
+id: 486

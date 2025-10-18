@@ -1,19 +1,16 @@
 # Directory Structure
 ```
 src/
-  components/
-    layout/
-      AppShell.tsx
-      RightPane.tsx
   hooks/
     useAppViewManager.hook.ts
-    useRightPaneContent.hook.tsx
   pages/
     DataDemo/
       components/
-        DataDetailPanel.tsx
-  store/
-    appShell.store.ts
+        DataToolbar.tsx
+      store/
+        dataDemo.store.tsx
+      index.tsx
+      types.ts
   index.css
 index.html
 package.json
@@ -269,43 +266,6 @@ export default {
 }
 ```
 
-## File: index.html
-```html
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Jeli App Shell</title>
-    <script>
-      (function() {
-        try {
-          const storageKey = 'app-shell-storage';
-          const storageValue = localStorage.getItem(storageKey);
-          let isDarkMode;
-
-          if (storageValue) {
-            isDarkMode = JSON.parse(storageValue)?.state?.isDarkMode;
-          }
-          
-          if (typeof isDarkMode !== 'boolean') {
-            isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
-          }
-          
-          document.documentElement.classList.toggle('dark', isDarkMode);
-        } catch (e) { /* Fails safely */ }
-      })();
-    </script>
-  </head>
-  <body>
-    <div id="root"></div>
-    <div id="toaster-container"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
-</html>
-```
-
 ## File: tsconfig.json
 ```json
 {
@@ -348,6 +308,43 @@ export default {
     "src/pages"
   ]
 }
+```
+
+## File: index.html
+```html
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Jeli App Shell</title>
+    <script>
+      (function() {
+        try {
+          const storageKey = 'app-shell-storage';
+          const storageValue = localStorage.getItem(storageKey);
+          let isDarkMode;
+
+          if (storageValue) {
+            isDarkMode = JSON.parse(storageValue)?.state?.isDarkMode;
+          }
+          
+          if (typeof isDarkMode !== 'boolean') {
+            isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          }
+          
+          document.documentElement.classList.toggle('dark', isDarkMode);
+        } catch (e) { /* Fails safely */ }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <div id="toaster-container"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
 ```
 
 ## File: tsconfig.node.json
@@ -410,596 +407,501 @@ export default defineConfig({
 })
 ```
 
-## File: src/hooks/useRightPaneContent.hook.tsx
+## File: src/pages/DataDemo/components/DataToolbar.tsx
 ```typescript
-import { useMemo, useCallback } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import {
-  LayoutDashboard,
-  Settings,
-  Component,
-  Bell,
-  SlidersHorizontal,
-  Database,
-  MessageSquare,
-} from 'lucide-react';
+import * as React from 'react'
+import { Check, ListFilter, Search, SortAsc } from 'lucide-react'
 
-import { DashboardContent } from "@/pages/Dashboard";
-import { SettingsContent } from "@/features/settings/SettingsContent";
-import { ToasterDemo } from "@/pages/ToasterDemo";
-import { NotificationsPage } from "@/pages/Notifications";
-import DataDemoPage from "@/pages/DataDemo";
-import { DataDetailPanel } from "@/pages/DataDemo/components/DataDetailPanel";
-import { mockDataItems } from "@/pages/DataDemo/data/mockData";
-import { MessagingContent } from "@/pages/Messaging/components/MessagingContent";
-import type { AppShellState } from '@/store/appShell.store';
-
-export function useRightPaneContent(sidePaneContent: AppShellState['sidePaneContent']) {
-  const navigate = useNavigate();
-  const { itemId, conversationId } = useParams<{ itemId: string; conversationId: string }>();
-
-  const staticContentMap = useMemo(() => ({
-    main: {
-      title: "Dashboard",
-      icon: LayoutDashboard,
-      page: "dashboard",
-      content: <DashboardContent />,
-    },
-    settings: {
-      title: "Settings",
-      icon: Settings,
-      page: "settings",
-      content: <div className="p-6"><SettingsContent /></div>,
-    },
-    toaster: {
-      title: "Toaster Demo",
-      icon: Component,
-      page: "toaster",
-      content: <ToasterDemo />,
-    },
-    notifications: {
-      title: "Notifications",
-      icon: Bell,
-      page: "notifications",
-      content: <NotificationsPage />,
-    },
-    dataDemo: {
-      title: "Data Showcase",
-      icon: Database,
-      page: "data-demo",
-      content: <DataDemoPage />,
-    },
-    details: {
-      title: "Details Panel",
-      icon: SlidersHorizontal,
-      content: (
-        <div className="p-6">
-          <p className="text-muted-foreground">
-            This is the side pane. It can be used to display contextual
-            information, forms, or actions related to the main content.
-          </p>
-        </div>
-      ),
-    },
-  }), []);
-
-  const contentMap = useMemo(() => ({
-    ...staticContentMap,
-    messaging: {
-      title: "Conversation",
-      icon: MessageSquare,
-      page: "messaging",
-      content: <MessagingContent conversationId={conversationId} />,
-    },
-  }), [conversationId, staticContentMap]);
-
-  const selectedItem = useMemo(() => {
-    if (!itemId) return null;
-    return mockDataItems.find(item => item.id === itemId) ?? null;
-  }, [itemId]);
-
-  const handleDataItemClose = useCallback(() => {
-    navigate('/data-demo');
-  }, [navigate]);
-
-  const { meta, content } = useMemo(() => {
-    if (sidePaneContent === 'dataItem' && selectedItem) {
-      return {
-        meta: { title: "Item Details", icon: Database, page: `data-demo/${itemId}` },
-        content: <DataDetailPanel item={selectedItem} onClose={handleDataItemClose} />,
-      };
-    }
-    const mappedContent = contentMap[sidePaneContent as keyof typeof contentMap] || contentMap.details;
-    return {
-      meta: mappedContent,
-      content: mappedContent.content,
-    };
-  }, [sidePaneContent, selectedItem, contentMap, itemId, handleDataItemClose]);
-
-  return { meta, content };
-}
-```
-
-## File: src/pages/DataDemo/components/DataDetailPanel.tsx
-```typescript
-import React, { useRef } from 'react'
-import { Badge } from '@/components/ui/badge'
+import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
-import { 
-  ArrowLeft, 
-  Clock, 
-  Download,
-  FileText,
-  Image,
-  Video,
-  File,
-  Tag,
-  User,
-  BarChart3,
-  TrendingUp,
-  CheckCircle,
-  AlertCircle,
-  Circle
-} from 'lucide-react'
-import type { DataItem } from '../types'
-import { useStaggeredAnimation } from '@/hooks/useStaggeredAnimation.motion.hook'
+import { Input } from '@/components/ui/input'
+import { Badge } from '@/components/ui/badge'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import {
-  AssigneeInfo,
-  ItemProgressBar,
-  ItemPriorityBadge,
-  ItemTags,
-} from './shared/DataItemParts'
-import { DataDetailActions } from './DataDetailActions'
-interface DataDetailPanelProps {
-  item: DataItem | null
-  onClose: () => void
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+  CommandSeparator,
+} from '@/components/ui/command'
+
+import type { SortableField, Status, Priority } from '../types'
+import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
+
+export interface FilterConfig {
+  searchTerm: string
+  status: Status[]
+  priority: Priority[]
 }
 
-export function DataDetailPanel({ item, onClose }: DataDetailPanelProps) {
-  const contentRef = useRef<HTMLDivElement>(null)
-  useStaggeredAnimation(contentRef, [item]);
+const statusOptions: { value: Status; label: string }[] = [
+  { value: 'active', label: 'Active' },
+  { value: 'pending', label: 'Pending' },
+  { value: 'completed', label: 'Completed' },
+  { value: 'archived', label: 'Archived' },
+]
 
-  if (!item) {
-    return null
-  }
+const priorityOptions: { value: Priority; label: string }[] = [
+  { value: 'critical', label: 'Critical' },
+  { value: 'high', label: 'High' },
+  { value: 'medium', label: 'Medium' },
+  { value: 'low', label: 'Low' },
+]
 
-  const getFileIcon = (type: string) => {
-    switch (type.toLowerCase()) {
-      case 'pdf': return FileText
-      case 'image':
-      case 'png':
-      case 'jpg':
-      case 'jpeg': return Image
-      case 'video':
-      case 'mp4': return Video
-      default: return File
-    }
-  }
+const sortOptions: { value: SortableField, label: string }[] = [
+  { value: 'updatedAt', label: 'Last Updated' },
+  { value: 'title', label: 'Title' },
+  { value: 'status', label: 'Status' },
+  { value: 'priority', label: 'Priority' },
+  { value: 'metrics.completion', label: 'Progress' },
+]
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'completed': return CheckCircle
-      case 'active': return Circle
-      case 'pending': return AlertCircle
-      default: return Circle
-    }
+
+export function DataToolbar() {
+  const {
+    filters,
+    setFilters,
+    sortConfig,
+    setSort,
+  } = useAppViewManager();
+
+  const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setFilters({ ...filters, searchTerm: event.target.value })
   }
+  
+  const activeFilterCount = filters.status.length + filters.priority.length
 
   return (
-    <div ref={contentRef} className="h-full flex flex-col">
-      {/* Header */}
-      <div className="p-6 border-b border-border/50 bg-gradient-to-r from-card/50 to-card/30 backdrop-blur-sm">
-        <Button variant="ghost" onClick={onClose} className="mb-4 -ml-4">
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to list
-        </Button>
-        <div className="flex items-start gap-4 mb-4">
-          <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-primary/10 rounded-2xl flex items-center justify-center text-3xl flex-shrink-0">
-            {item.thumbnail}
-          </div>
-          <div className="flex-1 min-w-0">
-            <h1 className="text-2xl font-bold mb-2 leading-tight">
-              {item.title}
-            </h1>
-            <p className="text-muted-foreground">
-              {item.description}
-            </p>
-          </div>
+    <div className="flex flex-col md:flex-row items-center justify-between gap-4 w-full">
+      {/* Left side: Search, Filters */}
+      <div className="flex flex-col sm:flex-row items-center gap-2 w-full md:w-auto">
+        <div className="relative w-full sm:w-auto">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search projects..."
+            className="pl-9 w-full sm:w-64"
+            value={filters.searchTerm}
+            onChange={handleSearchChange}
+          />
         </div>
 
-        {/* Status badges */}
-        <div className="flex items-center gap-2 mb-4">
-          <Badge variant="outline">
-            {React.createElement(getStatusIcon(item.status), { className: "w-3 h-3 mr-1" })}
-            {item.status}
-          </Badge>
-          <ItemPriorityBadge priority={item.priority} />
-          <Badge variant="outline" className="bg-accent/50">
-            {item.category}
-          </Badge>
-        </div>
-
-        {/* Progress */}
-        <ItemProgressBar completion={item.metrics.completion} />
-      </div>
-
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="p-6 space-y-6">
-          {/* Assignee Info */}
-          <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
-            <div className="flex items-center gap-1 mb-3">
-              <User className="w-4 h-4 text-muted-foreground" />
-              <h3 className="font-semibold text-sm">Assigned to</h3>
-            </div>
-            <AssigneeInfo assignee={item.assignee} avatarClassName="w-12 h-12" />
-          </div>
-
-          {/* Metrics */}
-          <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
-            <div className="flex items-center gap-1 mb-3">
-              <BarChart3 className="w-4 h-4 text-muted-foreground" />
-              <h3 className="font-semibold text-sm">Engagement Metrics</h3>
-            </div>
-            <div className="grid grid-cols-[repeat(auto-fit,minmax(80px,1fr))] gap-4">
-              <div className="text-center">
-                <p className="text-2xl font-bold">{item.metrics.views + item.metrics.likes + item.metrics.shares}</p>
-                <p className="text-xs text-muted-foreground">Shares</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Tags */}
-          <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
-            <div className="flex items-center gap-1 mb-3">
-              <Tag className="w-4 h-4 text-muted-foreground" />
-              <h3 className="font-semibold text-sm">Tags</h3>
-            </div>
-            <ItemTags tags={item.tags} />
-          </div>
-
-          {/* Content Details */}
-          {item.content && (
-            <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
-              <h3 className="font-semibold text-sm mb-3">Project Details</h3>
-              <div className="space-y-4">
-                <div>
-                  <h4 className="font-medium text-sm mb-2">Summary</h4>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    {item.content.summary}
-                  </p>
-                </div>
-                <div>
-                  <h4 className="font-medium text-sm mb-2">Description</h4>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    {item.content.details}
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Attachments */}
-          {item.content?.attachments && item.content.attachments.length > 0 && (
-            <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
-              <h3 className="font-semibold text-sm mb-3">Attachments</h3>
-              <div className="space-y-2">
-                {item.content.attachments.map((attachment, index) => {
-                  const IconComponent = getFileIcon(attachment.type)
-                  return (
-                    <div
-                      key={index}
-                      className="flex items-center gap-3 p-3 bg-muted/30 rounded-xl hover:bg-muted/50 transition-colors cursor-pointer group"
-                    >
-                      <IconComponent className="w-5 h-5 text-muted-foreground" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">
-                          {attachment.name}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {attachment.type} • {attachment.size}
-                        </p>
-                      </div>
-                      <Button size="sm" variant="ghost" className="opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Download className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Timeline */}
-          <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
-            <div className="flex items-center gap-1 mb-3">
-              <Clock className="w-4 h-4 text-muted-foreground" />
-              <h3 className="font-semibold text-sm">Timeline</h3>
-            </div>
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 text-sm">
-                <Clock className="w-3 h-3 text-muted-foreground" />
-                <span className="text-muted-foreground">Created:</span>
-                <span className="font-medium">
-                  {new Date(item.createdAt).toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                  })}
-                </span>
-              </div>
-              <div className="flex items-center gap-2 text-sm">
-                <TrendingUp className="w-3 h-3 text-muted-foreground" />
-                <span className="text-muted-foreground">Last updated:</span>
-                <span className="font-medium">
-                  {new Date(item.updatedAt).toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                  })}
-                </span>
-              </div>
-              {item.dueDate && (
-                <div className="flex items-center gap-2 text-sm">
-                  <AlertCircle className="w-3 h-3 text-orange-500" />
-                  <span className="text-muted-foreground">Due date:</span>
-                  <span className="font-medium text-orange-600">
-                    {new Date(item.dueDate).toLocaleDateString('en-US', {
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric'
-                    })}
-                  </span>
-                </div>
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" size="sm" className="h-9 w-full sm:w-auto justify-start border-dashed">
+              <ListFilter className="mr-2 h-4 w-4" />
+              Filters
+              {activeFilterCount > 0 && (
+                <>
+                  <div className="mx-2 h-4 w-px bg-muted-foreground/50" />
+                  <Badge variant="secondary" className="rounded-sm px-1 font-normal">
+                    {activeFilterCount}
+                  </Badge>
+                </>
               )}
-            </div>
-          </div>
-        </div>
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-[240px] p-0" align="start">
+            <CombinedFilter filters={filters} onFiltersChange={setFilters} />
+          </PopoverContent>
+        </Popover>
+
+        {activeFilterCount > 0 && (
+          <Button variant="ghost" onClick={() => setFilters({ searchTerm: filters.searchTerm, status: [], priority: [] })}>Reset</Button>
+        )}
       </div>
 
-      {/* Footer Actions */}
-      <div className="p-6 border-t border-border/50 bg-card/30">
-        <DataDetailActions />
+      {/* Right side: Sorter */}
+      <div className="flex items-center gap-2 w-full md:w-auto justify-start md:justify-end">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" className="w-full sm:w-auto justify-start">
+              <SortAsc className="mr-2 h-4 w-4" />
+              Sort by: {sortOptions.find(o => o.value === sortConfig?.key)?.label || 'Default'}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-[200px]">
+            <DropdownMenuLabel>Sort by</DropdownMenuLabel>
+            <DropdownMenuRadioGroup
+              value={`${sortConfig?.key || 'default'}-${sortConfig?.direction || ''}`}
+              onValueChange={(value) => {
+                if (value.startsWith('default')) {
+                  setSort(null)
+                } else {
+                  const [key, direction] = value.split('-')
+                  setSort({ key: key as SortableField, direction: direction as 'asc' | 'desc' })
+                }
+              }}
+            >
+              <DropdownMenuRadioItem value="default-">Default</DropdownMenuRadioItem>
+              <DropdownMenuSeparator />
+              {sortOptions.map(option => (
+                <React.Fragment key={option.value}>
+                  <DropdownMenuRadioItem value={`${option.value}-desc`}>{option.label} (Desc)</DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value={`${option.value}-asc`}>{option.label} (Asc)</DropdownMenuRadioItem>
+                </React.Fragment>
+              ))}
+            </DropdownMenuRadioGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </div>
   )
 }
+
+function CombinedFilter({
+  filters,
+  onFiltersChange,
+}: {
+  filters: FilterConfig;
+  onFiltersChange: (filters: FilterConfig) => void;
+}) {
+  const selectedStatus = new Set(filters.status);
+  const selectedPriority = new Set(filters.priority);
+
+  const handleStatusSelect = (status: Status) => {
+    selectedStatus.has(status) ? selectedStatus.delete(status) : selectedStatus.add(status);
+    onFiltersChange({ ...filters, status: Array.from(selectedStatus) });
+  };
+
+  const handlePrioritySelect = (priority: Priority) => {
+    selectedPriority.has(priority) ? selectedPriority.delete(priority) : selectedPriority.add(priority);
+    onFiltersChange({ ...filters, priority: Array.from(selectedPriority) });
+  };
+
+  const hasActiveFilters = filters.status.length > 0 || filters.priority.length > 0;
+
+  return (
+    <Command>
+      <CommandInput placeholder="Filter by..." />
+      <CommandList>
+        <CommandEmpty>No results found.</CommandEmpty>
+
+        <CommandGroup heading="Status">
+          {statusOptions.map((option) => {
+            const isSelected = selectedStatus.has(option.value);
+            return (
+              <CommandItem
+                key={option.value}
+                onSelect={() => handleStatusSelect(option.value)}
+              >
+                <div
+                  className={cn(
+                    'mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary',
+                    isSelected ? 'bg-primary text-primary-foreground' : 'opacity-50 [&_svg]:invisible'
+                  )}
+                >
+                  <Check className={cn('h-4 w-4')} />
+                </div>
+                <span>{option.label}</span>
+              </CommandItem>
+            );
+          })}
+        </CommandGroup>
+
+        <CommandSeparator />
+
+        <CommandGroup heading="Priority">
+          {priorityOptions.map((option) => {
+            const isSelected = selectedPriority.has(option.value);
+            return (
+              <CommandItem
+                key={option.value}
+                onSelect={() => handlePrioritySelect(option.value)}
+              >
+                <div
+                  className={cn(
+                    'mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary',
+                    isSelected ? 'bg-primary text-primary-foreground' : 'opacity-50 [&_svg]:invisible'
+                  )}
+                >
+                  <Check className={cn('h-4 w-4')} />
+                </div>
+                <span>{option.label}</span>
+              </CommandItem>
+            );
+          })}
+        </CommandGroup>
+
+        {hasActiveFilters && (
+          <>
+            <CommandSeparator />
+            <CommandGroup>
+              <CommandItem
+                onSelect={() => onFiltersChange({ ...filters, status: [], priority: [] })}
+                className="justify-center text-center text-sm"
+              >
+                Clear filters
+              </CommandItem>
+            </CommandGroup>
+          </>
+        )}
+      </CommandList>
+    </Command>
+  )
+}
 ```
 
-## File: src/store/appShell.store.ts
+## File: src/pages/DataDemo/store/dataDemo.store.tsx
 ```typescript
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
-import { type ReactElement } from 'react';
-import { SIDEBAR_STATES, BODY_STATES, type SidebarState, type BodyState } from '@/lib/utils';
+import { type ReactNode } from 'react';
+import { capitalize, cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
+import { mockDataItems } from '../data/mockData';
+import type { DataItem, GroupableField, SortConfig } from '../types';
+import type { FilterConfig } from '../components/DataToolbar';
 
-export type ActivePage = 'dashboard' | 'settings' | 'toaster' | 'notifications' | 'data-demo' | 'messaging';
-
-// --- State and Action Types ---
-
-export interface AppShellState {
-  sidebarState: SidebarState;
-  bodyState: BodyState;
-  sidePaneContent: 'details' | 'settings' | 'main' | 'toaster' | 'notifications' | 'dataDemo' | 'dataItem' | 'messaging';
-  sidebarWidth: number;
-  sidePaneWidth: number;
-  splitPaneWidth: number;
-  defaultSidePaneWidth: number;
-  defaultSplitPaneWidth: number;
-  defaultWidthsSet: boolean;
-  previousBodyState: BodyState;
-  fullscreenTarget: 'main' | 'right' | null;
-  isResizing: boolean;
-  isResizingRightPane: boolean;
-  isTopBarVisible: boolean;
-  isTopBarHovered: boolean;
-  autoExpandSidebar: boolean;
-  reducedMotion: boolean;
-  compactMode: boolean;
-  primaryColor: string;
-  isCommandPaletteOpen: boolean;
-  isDarkMode: boolean;
-  appName?: string;
-  appLogo?: ReactElement;
-  draggedPage: 'dashboard' | 'settings' | 'toaster' | 'notifications' | 'data-demo' | 'messaging' | null;
-  dragHoverTarget: 'left' | 'right' | null;
-  hoveredPane: 'left' | 'right' | null;
+// --- State and Actions ---
+interface DataDemoState {
+    items: DataItem[];
+    hasMore: boolean;
+    isLoading: boolean;
+    isInitialLoading: boolean;
+    totalItemCount: number;
 }
 
-export interface AppShellActions {
-    // Initialization
-    init: (config: { appName?: string; appLogo?: ReactElement; defaultSplitPaneWidth?: number }) => void;
-    
-    // Direct state setters
-    setSidebarState: (payload: SidebarState) => void;
-    setBodyState: (payload: BodyState) => void;
-    setSidePaneContent: (payload: AppShellState['sidePaneContent']) => void;
-    setSidebarWidth: (payload: number) => void;
-    setSidePaneWidth: (payload: number) => void;
-    setDefaultPaneWidths: () => void;
-    resetPaneWidths: () => void;
-    setSplitPaneWidth: (payload: number) => void;
-    setIsResizing: (payload: boolean) => void;
-    setFullscreenTarget: (payload: 'main' | 'right' | null) => void;
-    setIsResizingRightPane: (payload: boolean) => void;
-    setTopBarVisible: (payload: boolean) => void;
-    setAutoExpandSidebar: (payload: boolean) => void;
-    setReducedMotion: (payload: boolean) => void;
-    setCompactMode: (payload: boolean) => void;
-    setPrimaryColor: (payload: string) => void;
-    setDraggedPage: (payload: AppShellState['draggedPage']) => void;
-    setCommandPaletteOpen: (open: boolean) => void;
-    toggleDarkMode: () => void;
-    setDragHoverTarget: (payload: 'left' | 'right' | null) => void;
-    setTopBarHovered: (isHovered: boolean) => void;
-    setHoveredPane: (payload: 'left' | 'right' | null) => void;
-    
-    // Composite actions
-    toggleSidebar: () => void;
-    hideSidebar: () => void;
-    showSidebar: () => void;
-    peekSidebar: () => void;
-    toggleFullscreen: (target?: 'main' | 'right' | null) => void;
-    resetToDefaults: () => void;
+interface DataDemoActions {
+    loadData: (params: {
+        page: number;
+        groupBy: GroupableField | 'none';
+        filters: FilterConfig;
+        sortConfig: SortConfig | null;
+    isFullLoad?: boolean;
+    }) => void;
+    updateItem: (itemId: string, updates: Partial<DataItem>) => void;
 }
 
-const defaultState: AppShellState = {
-  sidebarState: SIDEBAR_STATES.EXPANDED,
-  bodyState: BODY_STATES.NORMAL,
-  sidePaneContent: 'details',
-  sidebarWidth: 280,
-  sidePaneWidth: typeof window !== 'undefined' ? Math.max(300, Math.round(window.innerWidth * 0.6)) : 400,
-  splitPaneWidth: typeof window !== 'undefined' ? Math.max(300, Math.round(window.innerWidth * 0.35)) : 400,
-  defaultSidePaneWidth: 400,
-  defaultSplitPaneWidth: 400,
-  defaultWidthsSet: false,
-  previousBodyState: BODY_STATES.NORMAL,
-  fullscreenTarget: null,
-  isResizing: false,
-  isResizingRightPane: false,
-  isTopBarVisible: true,
-  isTopBarHovered: false,
-  autoExpandSidebar: true,
-  reducedMotion: false,
-  compactMode: false,
-  primaryColor: '220 84% 60%',
-  isCommandPaletteOpen: false,
-  isDarkMode: false,
-  appName: 'Jeli App',
-  appLogo: undefined,
-  draggedPage: null,
-  dragHoverTarget: null,
-  hoveredPane: null,
+const defaultState: DataDemoState = {
+    items: [],
+    hasMore: true,
+    isLoading: true,
+    isInitialLoading: true,
+    totalItemCount: 0,
 };
 
+// --- Store Implementation ---
+export const useDataDemoStore = create<DataDemoState & DataDemoActions>((set, get) => ({
+    ...defaultState,
 
-export const useAppShellStore = create<AppShellState & AppShellActions>()(
-  persist(
-    (set, get) => ({
-      ...defaultState,
+    loadData: ({ page, groupBy, filters, sortConfig, isFullLoad }) => {
+        set({ isLoading: true, ...(page === 1 && { isInitialLoading: true }) });
+        const isFirstPage = page === 1;
 
-      init: ({ appName, appLogo, defaultSplitPaneWidth }) => set(state => ({
-        ...state,
-        ...(appName && { appName }),
-        ...(appLogo && { appLogo }),
-        ...(defaultSplitPaneWidth && { splitPaneWidth: defaultSplitPaneWidth }),
-      })),
-      
-      setSidebarState: (payload) => set({ sidebarState: payload }),
-      setBodyState: (payload) => {
-        // If we're leaving fullscreen, reset the target and previous state
-        if (get().bodyState === BODY_STATES.FULLSCREEN && payload !== BODY_STATES.FULLSCREEN) {
-          set({ bodyState: payload, fullscreenTarget: null, previousBodyState: BODY_STATES.NORMAL });
-        } else {
-          set({ bodyState: payload });
+        const filteredAndSortedData = (() => {
+            const filteredItems = mockDataItems.filter((item) => {
+                const searchTermMatch =
+                    item.title.toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
+                    item.description.toLowerCase().includes(filters.searchTerm.toLowerCase());
+                const statusMatch = filters.status.length === 0 || filters.status.includes(item.status);
+                const priorityMatch = filters.priority.length === 0 || filters.priority.includes(item.priority);
+                return searchTermMatch && statusMatch && priorityMatch;
+            });
+
+            if (sortConfig) {
+                filteredItems.sort((a, b) => {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const getNestedValue = (obj: DataItem, path: string): any =>
+                        path.split('.').reduce((o: any, k) => (o || {})[k], obj);
+
+                    const aValue = getNestedValue(a, sortConfig.key);
+                    const bValue = getNestedValue(b, sortConfig.key);
+
+                    if (aValue === undefined || bValue === undefined) return 0;
+                    if (typeof aValue === 'string' && typeof bValue === 'string') {
+                        return sortConfig.direction === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
+                    }
+                    if (typeof aValue === 'number' && typeof bValue === 'number') {
+                        return sortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue;
+                    }
+                    if (sortConfig.key === 'updatedAt' || sortConfig.key === 'createdAt') {
+                        if (typeof aValue === 'string' && typeof bValue === 'string') {
+                            return sortConfig.direction === 'asc'
+                                ? new Date(aValue).getTime() - new Date(bValue).getTime()
+                                : new Date(bValue).getTime() - new Date(aValue).getTime();
+                        }
+                    }
+                    return 0;
+                });
+            }
+            return filteredItems;
+        })();
+        
+        const totalItemCount = filteredAndSortedData.length;
+
+        setTimeout(() => {
+            if (groupBy !== 'none' || isFullLoad) {
+                set({
+                    items: filteredAndSortedData,
+                    hasMore: false,
+                    isLoading: false,
+                    isInitialLoading: false,
+                    totalItemCount,
+                });
+                return;
+            }
+
+            const pageSize = 12;
+            const newItems = filteredAndSortedData.slice((page - 1) * pageSize, page * pageSize);
+            
+            set(state => ({
+                items: isFirstPage ? newItems : [...state.items, ...newItems],
+                hasMore: totalItemCount > page * pageSize,
+                isLoading: false,
+                isInitialLoading: false,
+                totalItemCount,
+            }));
+
+        }, isFirstPage ? 1500 : 500);
+    },
+
+    updateItem: (itemId, updates) => {
+        // In a real app, this would be an API call. Here we update the mock source.
+        const itemIndex = mockDataItems.findIndex(i => i.id === itemId);
+        if (itemIndex > -1) {
+            mockDataItems[itemIndex] = { ...mockDataItems[itemIndex], ...updates };
         }
-      },
-      setSidePaneContent: (payload) => set({ sidePaneContent: payload }),
-      setSidebarWidth: (payload) => set({ sidebarWidth: Math.max(200, Math.min(500, payload)) }),
-      setSidePaneWidth: (payload) => set({ sidePaneWidth: Math.max(300, Math.min(window.innerWidth * 0.8, payload)) }),
-      setDefaultPaneWidths: () => {
-        if (get().defaultWidthsSet) return;
+
+        // Also update the currently loaded items in the store's state for UI consistency
         set(state => ({
-            defaultSidePaneWidth: state.sidePaneWidth,
-            defaultSplitPaneWidth: state.splitPaneWidth,
-            defaultWidthsSet: true,
+            items: state.items.map(item => 
+                item.id === itemId ? { ...item, ...updates } : item
+            ),
         }));
-      },
-      resetPaneWidths: () => set(state => ({
-        sidePaneWidth: state.defaultSidePaneWidth,
-        splitPaneWidth: state.defaultSplitPaneWidth,
-      })),
-      setSplitPaneWidth: (payload) => set({ splitPaneWidth: Math.max(300, Math.min(window.innerWidth * 0.8, payload)) }),
-      setIsResizing: (payload) => set({ isResizing: payload }),
-      setFullscreenTarget: (payload) => set({ fullscreenTarget: payload }),
-      setIsResizingRightPane: (payload) => set({ isResizingRightPane: payload }),
-      setTopBarVisible: (payload) => set({ isTopBarVisible: payload }),
-      setAutoExpandSidebar: (payload) => set({ autoExpandSidebar: payload }),
-      setReducedMotion: (payload) => set({ reducedMotion: payload }),
-      setCompactMode: (payload) => set({ compactMode: payload }),
-      setPrimaryColor: (payload) => {
-        if (typeof document !== 'undefined') {
-            document.documentElement.style.setProperty('--primary-hsl', payload);
-        }
-        set({ primaryColor: payload });
-      },
-      setDraggedPage: (payload) => set({ draggedPage: payload }),
-      setCommandPaletteOpen: (open) => set({ isCommandPaletteOpen: open }),
-      toggleDarkMode: () => set((state) => ({ isDarkMode: !state.isDarkMode })),
-      setDragHoverTarget: (payload) => set({ dragHoverTarget: payload }),
-      setTopBarHovered: (isHovered) => set({ isTopBarHovered: isHovered }),
-      setHoveredPane: (payload) => set({ hoveredPane: payload }),
-      
-      toggleSidebar: () => {
-        const current = get().sidebarState;
-        if (current === SIDEBAR_STATES.HIDDEN) set({ sidebarState: SIDEBAR_STATES.COLLAPSED });
-        else if (current === SIDEBAR_STATES.COLLAPSED) set({ sidebarState: SIDEBAR_STATES.EXPANDED });
-        else if (current === SIDEBAR_STATES.EXPANDED) set({ sidebarState: SIDEBAR_STATES.COLLAPSED });
-      },
-      hideSidebar: () => set({ sidebarState: SIDEBAR_STATES.HIDDEN }),
-      showSidebar: () => set({ sidebarState: SIDEBAR_STATES.EXPANDED }),
-      peekSidebar: () => set({ sidebarState: SIDEBAR_STATES.PEEK }),
-      
-      toggleFullscreen: (target = null) => {
-        const { bodyState, previousBodyState } = get();
-        if (bodyState === BODY_STATES.FULLSCREEN) {
-          set({ 
-            bodyState: previousBodyState || BODY_STATES.NORMAL,
-            fullscreenTarget: null,
-            previousBodyState: BODY_STATES.NORMAL,
-          });
-        } else {
-          set({ 
-            previousBodyState: bodyState, 
-            bodyState: BODY_STATES.FULLSCREEN, 
-            fullscreenTarget: target 
-          });
-        }
-      },
-      
-      resetToDefaults: () => {
-        // Preserve props passed to provider and session defaults
-        set(state => {
-          const currentPrimaryColor = defaultState.primaryColor;
-          if (typeof document !== 'undefined') {
-            document.documentElement.style.setProperty('--primary-hsl', currentPrimaryColor);
-          }
-          return {
-            ...defaultState,
-            primaryColor: currentPrimaryColor,
-            appName: state.appName,
-            appLogo: state.appLogo,
-            defaultSidePaneWidth: state.defaultSidePaneWidth,
-            defaultSplitPaneWidth: state.defaultSplitPaneWidth,
-            defaultWidthsSet: state.defaultWidthsSet,
-            // Also reset current widths to the defaults
-            sidePaneWidth: state.defaultSidePaneWidth,
-            splitPaneWidth: state.defaultSplitPaneWidth,
-          };
-        });
-      },
-    }),
-    {
-      name: 'app-shell-storage',
-      partialize: (state) => ({
-        isDarkMode: state.isDarkMode,
-        sidebarState: state.sidebarState,
-        sidebarWidth: state.sidebarWidth,
-        sidePaneWidth: state.sidePaneWidth,
-        splitPaneWidth: state.splitPaneWidth,
-        autoExpandSidebar: state.autoExpandSidebar,
-        reducedMotion: state.reducedMotion,
-        compactMode: state.compactMode,
-        primaryColor: state.primaryColor,
-      }),
-    }
-  )
-);
+    },
+}));
 
-// Add a selector for the derived rightPaneWidth
-export const useRightPaneWidth = () => useAppShellStore(state => 
-    state.bodyState === BODY_STATES.SPLIT_VIEW ? state.splitPaneWidth : state.sidePaneWidth
-);
+// --- Selectors ---
+export const useGroupTabs = (
+    groupBy: GroupableField | 'none',
+    activeGroupTab: string,
+) => useDataDemoStore(state => {
+    const items = state.items;
+    if (groupBy === 'none' || !items.length) return [];
+    
+    const groupCounts = items.reduce((acc, item) => {
+        const groupKey = String(item[groupBy as GroupableField]);
+        acc[groupKey] = (acc[groupKey] || 0) + 1;
+        return acc;
+    }, {} as Record<string, number>);
+
+    const sortedGroups = Object.keys(groupCounts).sort((a, b) => a.localeCompare(b));
+
+    const createLabel = (text: string, count: number, isActive: boolean): ReactNode => (
+        <>
+            {text}
+            <Badge variant={isActive ? 'default' : 'secondary'} className={cn('transition-colors duration-300 text-xs font-semibold', !isActive && 'group-hover:bg-accent group-hover:text-accent-foreground')}>
+                {count}
+            </Badge>
+        </>
+    );
+    
+    const totalCount = items.length;
+
+    return [
+        { id: 'all', label: createLabel('All', totalCount, activeGroupTab === 'all') },
+        ...sortedGroups.map((g) => ({
+            id: g,
+            label: createLabel(capitalize(g), groupCounts[g], activeGroupTab === g),
+        })),
+    ];
+});
+
+export const useDataToRender = (
+    groupBy: GroupableField | 'none',
+    activeGroupTab: string,
+) => useDataDemoStore(state => {
+    const items = state.items;
+    if (groupBy === 'none') {
+        return items;
+    }
+    if (activeGroupTab === 'all') {
+        return items;
+    }
+    return items.filter((item) => String(item[groupBy as GroupableField]) === activeGroupTab);
+});
+
+export const useSelectedItem = (itemId?: string) => {
+    if (!itemId) return null;
+    return mockDataItems.find(item => item.id === itemId) ?? null;
+};
+```
+
+## File: src/pages/DataDemo/types.ts
+```typescript
+export type ViewMode = 'list' | 'cards' | 'grid' | 'table' | 'kanban' | 'calendar'
+
+export type GroupableField = 'status' | 'priority' | 'category'
+
+export type CalendarDateProp = 'dueDate' | 'createdAt' | 'updatedAt';
+export type CalendarDisplayProp = 'priority' | 'assignee' | 'tags';
+export type CalendarColorProp = 'none' | 'priority' | 'status' | 'category';
+
+export type SortableField = 'title' | 'status' | 'priority' | 'updatedAt' | 'assignee.name' | 'metrics.views' | 'metrics.completion' | 'createdAt'
+export type SortDirection = 'asc' | 'desc'
+export interface SortConfig {
+  key: SortableField
+  direction: SortDirection
+}
+
+export interface DataItem {
+  id: string
+  title: string
+  description: string
+  category: string
+  status: 'active' | 'pending' | 'completed' | 'archived'
+  priority: 'low' | 'medium' | 'high' | 'critical'
+  assignee: {
+    name: string
+    avatar: string
+    email: string
+  }
+  metrics: {
+    views: number
+    likes: number
+    shares: number
+    completion: number
+  }
+  tags: string[]
+  createdAt: string
+  updatedAt: string
+  dueDate?: string
+  thumbnail?: string
+  content?: {
+    summary: string
+    details: string
+    attachments?: Array<{
+      name: string
+      type: string
+      size: string
+      url: string
+    }>
+  }
+}
+
+export interface ViewProps {
+  data: DataItem[] | Record<string, DataItem[]>
+  onItemSelect: (item: DataItem) => void
+  selectedItem: DataItem | null
+  isGrid?: boolean
+
+  // Props for table view specifically
+  sortConfig?: SortConfig | null
+  onSort?: (field: SortableField) => void
+}
+
+export type Status = DataItem['status']
+export type Priority = DataItem['priority']
 ```
 
 ## File: package.json
@@ -1081,101 +983,6 @@ export const useRightPaneWidth = () => useAppShellStore(state =>
     "@radix-ui/react-tooltip": "^1.2.8"
   }
 }
-```
-
-## File: src/components/layout/RightPane.tsx
-```typescript
-import { forwardRef, useMemo, createElement, memo } from 'react'
-import {
-  ChevronRight,
-  X,
-} from 'lucide-react'
-import { cn, BODY_STATES } from '@/lib/utils';
-import { useAppShellStore } from '@/store/appShell.store';
-import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
-import { useRightPaneContent } from '@/hooks/useRightPaneContent.hook'
-import { ViewModeSwitcher } from './ViewModeSwitcher';
-
-export const RightPane = memo(forwardRef<HTMLDivElement, { className?: string }>(({ className }, ref) => {
-  const fullscreenTarget = useAppShellStore(s => s.fullscreenTarget)
-  const bodyState = useAppShellStore(s => s.bodyState)
-  const { toggleFullscreen, setIsResizingRightPane } =
-    useAppShellStore.getState()
-
-  const viewManager = useAppViewManager()
-  const { sidePaneContent, closeSidePane } = viewManager
-  
-  const { meta, content: children } = useRightPaneContent(sidePaneContent)
-  
-  const isSplitView = bodyState === BODY_STATES.SPLIT_VIEW;
-  const isFullscreen = bodyState === BODY_STATES.FULLSCREEN;
-
-  const header = useMemo(() => (
-    <div className="flex items-center justify-between p-4 border-b border-border h-20 flex-shrink-0 pl-6">
-      {bodyState !== BODY_STATES.SPLIT_VIEW && 'icon' in meta ? (
-        <div className="flex items-center gap-2">
-          {meta.icon && createElement(meta.icon, { className: "w-5 h-5" })}
-          <h2 className="text-lg font-semibold whitespace-nowrap">{meta.title}</h2>
-        </div>
-      ) : <div />}
-      <div className="flex items-center">
-        {bodyState === BODY_STATES.SIDE_PANE && 'page' in meta && meta.page && <ViewModeSwitcher pane="right" targetPage={meta.page} />}
-      </div>
-    </div>
-  ), [bodyState, meta]);
-
-  if (isFullscreen && fullscreenTarget !== 'right') {
-    return null;
-  }
-
-  return (
-    <aside
-      ref={ref}
-      className={cn(
-        "border-l border-border flex flex-col h-full overflow-hidden",
-        isSplitView && "relative bg-background",
-        !isSplitView && !isFullscreen && "fixed top-0 right-0 z-[60] bg-card", // side pane overlay
-        isFullscreen && fullscreenTarget === 'right' && "fixed inset-0 z-[60] bg-card", // fullscreen
-        className,
-      )}
-    >
-      {isFullscreen && fullscreenTarget === 'right' && (
-        <button
-          onClick={() => toggleFullscreen()}
-          className="fixed top-6 right-6 lg:right-12 z-[100] h-12 w-12 flex items-center justify-center rounded-full bg-card/50 backdrop-blur-sm hover:bg-card/75 transition-colors group"
-          title="Exit Fullscreen"
-        >
-          <X className="w-6 h-6 group-hover:scale-110 group-hover:rotate-90 transition-all duration-300" />
-        </button>
-      )}
-      {bodyState !== BODY_STATES.SPLIT_VIEW && !isFullscreen && (
-        <button
-          onClick={closeSidePane}
-          className="absolute top-1/2 -left-px -translate-y-1/2 -translate-x-full w-8 h-16 bg-card border border-r-0 border-border rounded-l-lg flex items-center justify-center hover:bg-accent transition-colors group z-10"
-          title="Close pane"
-        >
-          <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-foreground transition-colors" />
-        </button>
-      )}
-      <div 
-        className={cn(
-          "absolute top-0 left-0 w-2 h-full bg-transparent hover:bg-primary/20 cursor-col-resize z-50 transition-colors duration-200 group -translate-x-1/2"
-        )}
-        onMouseDown={(e) => {
-          e.preventDefault()
-          setIsResizingRightPane(true);
-        }}
-      >
-        <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200 mx-auto" />
-      </div>
-      {!isSplitView && !isFullscreen && header}
-      <div className={cn("flex-1 overflow-y-auto")}>
-        {children}
-      </div>
-    </aside>
-  )
-}));
-RightPane.displayName = "RightPane"
 ```
 
 ## File: src/hooks/useAppViewManager.hook.ts
@@ -1524,306 +1331,422 @@ export function useAppViewManager() {
 }
 ```
 
-## File: src/components/layout/AppShell.tsx
+## File: src/pages/DataDemo/index.tsx
 ```typescript
-import React, { useRef, type ReactElement, useEffect, useLayoutEffect } from 'react'
-import { useLocation } from 'react-router-dom';
+import { useRef, useEffect, useCallback, useMemo } from 'react'
+import {
+  Layers, 
+  AlertTriangle, 
+  PlayCircle, 
+  Loader2,
+  ChevronsUpDown,
+  TrendingUp,
+  CheckCircle,
+  Clock,
+  Archive,
+  PlusCircle
+} from 'lucide-react'
+import { gsap } from 'gsap'
 import { cn } from '@/lib/utils'
-import { gsap } from 'gsap';
-import { CommandPalette } from '@/components/global/CommandPalette';
-import { useAppShellStore } from '@/store/appShell.store';
-import { SIDEBAR_STATES, BODY_STATES } from '@/lib/utils'
-import { useResizableSidebar, useResizableRightPane } from '@/hooks/useResizablePanes.hook'
-import { useSidebarAnimations, useBodyStateAnimations } from '@/hooks/useAppShellAnimations.hook'
-import { ViewModeSwitcher } from './ViewModeSwitcher';
-import { usePaneDnd } from '@/hooks/usePaneDnd.hook';
+import { Button } from '@/components/ui/button'
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuRadioGroup, 
+  DropdownMenuRadioItem, 
+  DropdownMenuTrigger 
+} from '@/components/ui/dropdown-menu'
+import { PageLayout } from '@/components/shared/PageLayout'
+import { useScrollToBottom } from '@/hooks/useScrollToBottom.hook';
+import { ScrollToBottomButton } from '@/components/shared/ScrollToBottomButton';
+import { DataListView } from './components/DataListView'
+import { DataCardView } from './components/DataCardView'
+import { DataTableView } from './components/DataTableView'
+import { DataKanbanView } from './components/DataKanbanView'
+import { DataCalendarView } from './components/DataCalendarView'
+import { DataViewModeSelector } from './components/DataViewModeSelector'
+import { AnimatedTabs } from '@/components/ui/animated-tabs'
+import { StatCard } from '@/components/shared/StatCard'
+import { AnimatedLoadingSkeleton } from './components/AnimatedLoadingSkeleton'
+import { DataToolbar } from './components/DataToolbar'
+import { mockDataItems } from './data/mockData'
+import type { GroupableField, DataItem } from './types'
+import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
+import { useAutoAnimateStats } from './hooks/useAutoAnimateStats.hook'
+import { 
+  useDataDemoStore, 
+  useGroupTabs
+} from './store/dataDemo.store'
 
-interface AppShellProps {
-  sidebar: ReactElement;
-  topBar: ReactElement;
-  mainContent: ReactElement;
-  rightPane: ReactElement;
-  commandPalette?: ReactElement;
-  onOverlayClick?: () => void;
-}
-
-const pageToPaneMap: Record<string, 'main' | 'settings' | 'toaster' | 'notifications' | 'dataDemo'> = {
-  dashboard: 'main',
-  settings: 'settings',
-  toaster: 'toaster',
-  notifications: 'notifications',
-  'data-demo': 'dataDemo',
+type Stat = {
+  title: string;
+  value: string;
+  icon: React.ReactNode;
+  change: string;
+  trend: 'up' | 'down';
+  type?: 'card';
 };
 
-// Helper hook to get the previous value of a prop or state
-function usePrevious<T>(value: T): T | undefined {
-  const ref = useRef<T>();
-  useEffect(() => {
-    ref.current = value;
-  }, [value]);
-  return ref.current;
-}
+type ChartStat = {
+  title: string;
+  value: string;
+  icon: React.ReactNode;
+  change: string;
+  trend: 'up' | 'down';
+  type: 'chart';
+  chartData: number[];
+};
 
+type StatItem = Stat | ChartStat;
 
-export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalette, onOverlayClick }: AppShellProps) {
-  const sidebarState = useAppShellStore(s => s.sidebarState);
-  const autoExpandSidebar = useAppShellStore(s => s.autoExpandSidebar);
-  const hoveredPane = useAppShellStore(s => s.hoveredPane);
-  const draggedPage = useAppShellStore(s => s.draggedPage);
-  const dragHoverTarget = useAppShellStore(s => s.dragHoverTarget);
-  const bodyState = useAppShellStore(s => s.bodyState);
-  const sidePaneContent = useAppShellStore(s => s.sidePaneContent);
-  const reducedMotion = useAppShellStore(s => s.reducedMotion);
-  const isTopBarVisible = useAppShellStore(s => s.isTopBarVisible);
-  const isDarkMode = useAppShellStore(s => s.isDarkMode);
-  const { setSidebarState, peekSidebar, setHoveredPane, setTopBarHovered } = useAppShellStore.getState();
-  
-  const isFullscreen = bodyState === BODY_STATES.FULLSCREEN;
-  const isSidePaneOpen = bodyState === BODY_STATES.SIDE_PANE;
-  const location = useLocation();
-  const activePage = location.pathname.split('/')[1] || 'dashboard';
-  const appRef = useRef<HTMLDivElement>(null)
-  const sidebarRef = useRef<HTMLDivElement>(null)
-  const mainContentRef = useRef<HTMLDivElement>(null)
-  const rightPaneRef = useRef<HTMLDivElement>(null)
-  const resizeHandleRef = useRef<HTMLDivElement>(null)
-  const topBarContainerRef = useRef<HTMLDivElement>(null)
-  const mainAreaRef = useRef<HTMLDivElement>(null)
+function DataDemoContent() {
+  const {
+    viewMode,
+    groupBy,
+    activeGroupTab,
+    setGroupBy,
+    setSort,
+    setActiveGroupTab,
+    page,
+    filters,
+    sortConfig,
+    setPage,
+  } = useAppViewManager();
 
-  const prevActivePage = usePrevious(activePage);
-  const prevSidePaneContent = usePrevious(sidePaneContent);
+  const { hasMore, isLoading, isInitialLoading, totalItemCount, loadData } = useDataDemoStore(state => ({
+    hasMore: state.hasMore,
+    isLoading: state.isLoading,
+    isInitialLoading: state.isInitialLoading,
+    totalItemCount: state.totalItemCount,
+    loadData: state.loadData,
+  }));
 
-  const isSplitView = bodyState === BODY_STATES.SPLIT_VIEW;
-  const dndHandlers = usePaneDnd();
+  const groupTabs = useGroupTabs(groupBy, activeGroupTab);
+  const allItems = useDataDemoStore(s => s.items);
 
-  // Custom hooks for logic
-  useResizableSidebar(sidebarRef, resizeHandleRef);
-  useResizableRightPane(rightPaneRef);
-  useSidebarAnimations(sidebarRef, resizeHandleRef);
-  useBodyStateAnimations(appRef, mainContentRef, rightPaneRef, topBarContainerRef, mainAreaRef);
-  
-  // Animation for pane swapping
-  useLayoutEffect(() => {
-    if (reducedMotion || bodyState !== BODY_STATES.SPLIT_VIEW || !prevActivePage || !prevSidePaneContent) {
-      return;
+  const groupedData = useMemo(() => {
+    if (groupBy === 'none') {
+        return null;
     }
+    return allItems.reduce((acc, item) => {
+        const groupKey = String(item[groupBy as GroupableField]);
+        if (!acc[groupKey]) {
+            acc[groupKey] = [];
+        }
+        acc[groupKey].push(item);
+        return acc;
+    }, {} as Record<string, DataItem[]>);
+  }, [allItems, groupBy]);
 
-    const pageForPrevSidePane = Object.keys(pageToPaneMap).find(
-      key => pageToPaneMap[key as keyof typeof pageToPaneMap] === prevSidePaneContent
-    );
-
-    // Check if a swap occurred by comparing current state with previous state
-    if (activePage === pageForPrevSidePane && sidePaneContent === pageToPaneMap[prevActivePage as keyof typeof pageToPaneMap]) {
-      const mainEl = mainAreaRef.current;
-      const rightEl = rightPaneRef.current;
-
-      if (mainEl && rightEl) {
-        const mainWidth = mainEl.offsetWidth;
-        const rightWidth = rightEl.offsetWidth;
-
-        const tl = gsap.timeline();
-        
-        // Animate main content FROM where right pane was TO its new place
-        tl.from(mainEl, {
-          x: rightWidth, duration: 0.4, ease: 'power3.inOut'
-        });
-
-        // Animate right pane FROM where main content was TO its new place
-        tl.from(rightEl, {
-          x: -mainWidth, duration: 0.4, ease: 'power3.inOut'
-        }, 0); // Start at the same time
-      }
+  const dataToRender = useMemo(() => {
+    if (groupBy === 'none' || activeGroupTab === 'all' || !groupedData) {
+      return allItems;
     }
-  }, [activePage, sidePaneContent, bodyState, prevActivePage, prevSidePaneContent, reducedMotion]);
-  
-  const sidebarWithProps = React.cloneElement(sidebar, { 
-    ref: sidebarRef,
-    onMouseEnter: () => {
-      if (autoExpandSidebar && sidebarState === SIDEBAR_STATES.COLLAPSED) {
-        peekSidebar()
-      }
+    return groupedData[activeGroupTab] || [];
+  }, [groupBy, activeGroupTab, allItems, groupedData]);
+
+  const groupOptions = useMemo(() => [
+    { id: 'none' as const, label: 'None' }, { id: 'status' as const, label: 'Status' }, { id: 'priority' as const, label: 'Priority' }, { id: 'category' as const, label: 'Category' }
+  ], []);
+
+  const statsRef = useRef<HTMLDivElement>(null)
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Auto-hide stats container on scroll down
+  useAutoAnimateStats(scrollRef, statsRef);
+
+  // Calculate stats from data
+  const totalItems = mockDataItems.length
+  const { showScrollToBottom, scrollToBottom, handleScroll } = useScrollToBottom(scrollRef);
+
+  const activeItems = mockDataItems.filter(item => item.status === 'active').length
+  const highPriorityItems = mockDataItems.filter(item => item.priority === 'high' || item.priority === 'critical').length
+  const avgCompletion = totalItems > 0 ? Math.round(
+    mockDataItems.reduce((acc, item) => acc + item.metrics.completion, 0) / totalItems
+  ) : 0
+
+  const stats: StatItem[] = [
+    {
+      title: "Total Projects",
+      value: totalItems.toString(),
+      icon: <Layers className="w-5 h-5" />,
+      change: "+5.2% this month",
+      trend: "up" as const,
+      type: 'chart',
+      chartData: [120, 125, 122, 130, 135, 138, 142]
     },
-    onMouseLeave: () => {
-      if (autoExpandSidebar && sidebarState === SIDEBAR_STATES.PEEK) {
-        setSidebarState(SIDEBAR_STATES.COLLAPSED);
-      }
+    {
+      title: "Active Projects",
+      value: activeItems.toString(),
+      icon: <PlayCircle className="w-5 h-5" />,
+      change: "+2 this week", 
+      trend: "up" as const,
+      type: 'chart',
+      chartData: [45, 50, 48, 55, 53, 60, 58]
+    },
+    {
+      title: "High Priority",
+      value: highPriorityItems.toString(),
+      icon: <AlertTriangle className="w-5 h-5" />,
+      change: "-1 from last week",
+      trend: "down" as const,
+      type: 'chart',
+      chartData: [25, 26, 28, 27, 26, 24, 23]
+    },
+    {
+      title: "Avg. Completion",
+      value: `${avgCompletion}%`,
+      icon: <TrendingUp className="w-5 h-5" />,
+      change: "+3.2%",
+      trend: "up" as const,
+      type: 'chart',
+      chartData: [65, 68, 70, 69, 72, 75, 78],
+    },
+    {
+      title: "Completion Rate",
+      value: "88%",
+      icon: <CheckCircle className="w-5 h-5" />,
+      change: "+1.5% this month",
+      trend: "up" as const,
+      type: 'chart',
+      chartData: [80, 82, 81, 84, 85, 87, 88],
+    },
+    {
+      title: "Overdue Items",
+      value: "8",
+      icon: <Clock className="w-5 h-5" />,
+      change: "-3 this week",
+      trend: "down" as const,
+    },
+    {
+      title: "New This Week",
+      value: "12",
+      icon: <PlusCircle className="w-5 h-5" />,
+      change: "+2 from last week",
+      trend: "up" as const,
+    },
+    {
+      title: "Archived Projects",
+      value: "153",
+      icon: <Archive className="w-5 h-5" />,
+      change: "+20 this month",
+      trend: "up" as const,
     }
-  });
+  ]
 
-  const mainContentWithProps = React.cloneElement(mainContent, {
-    ref: mainContentRef,
-  });
+  useEffect(() => {
+    // Animate stats cards in
+    if (!isInitialLoading && statsRef.current) {
+      gsap.fromTo(statsRef.current.children,
+        { y: 30, opacity: 0 },
+        {
+          duration: 0.5,
+          y: 0,
+          opacity: 1,
+          stagger: 0.08,
+          ease: "power2.out"
+        }
+      )
+    }
+  }, [isInitialLoading]);
 
-  const rightPaneWithProps = React.cloneElement(rightPane, { ref: rightPaneRef });
+  useEffect(() => {
+    loadData({
+      page,
+      groupBy,
+      filters,
+      sortConfig,
+      isFullLoad: viewMode === 'calendar',
+    });
+  }, [page, groupBy, filters, sortConfig, loadData, viewMode]);
+
+  const observer = useRef<IntersectionObserver>();
+  const loaderRef = useCallback(
+    (node: Element | null) => {
+      if (isLoading) return;
+      if (observer.current) observer.current.disconnect();
+
+      observer.current = new IntersectionObserver((entries) => {
+        if (entries[0].isIntersecting && hasMore) {
+          setPage(page + 1);
+        }
+      });
+      if (node) observer.current.observe(node);
+    },
+    [isLoading, hasMore, page, setPage],
+  );
+  
+  // Auto-group by status when switching to kanban view for the first time
+  useEffect(() => {
+    if (viewMode === 'kanban' && groupBy === 'none') {
+      setGroupBy('status');
+      setSort(null); // Kanban is manually sorted, so disable programmatic sort
+    }
+    // For calendar view, we don't want grouping.
+    if (viewMode === 'calendar') {
+      if (groupBy !== 'none') setGroupBy('none');
+    }
+  }, [viewMode, groupBy, setGroupBy]);
+
+  const renderViewForData = useCallback((data: DataItem[]) => {
+    switch (viewMode) {
+        case 'table': return <DataTableView data={data} />;
+        case 'cards': return <DataCardView data={data} />;
+        case 'calendar': return null; // Calendar has its own render path below
+        case 'kanban': return null; // Kanban has its own render path below
+        case 'grid': return <DataCardView data={data} isGrid />;
+        case 'list':
+        default:
+            return <DataListView data={data} />;
+    }
+  }, [viewMode]);
+
+  const GroupByDropdown = useCallback(() => (
+    <div className="flex items-center gap-2 shrink-0">
+      <span className="text-sm font-medium text-muted-foreground shrink-0">Group by:</span>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="outline" className="w-[180px] justify-between">
+            {groupOptions.find(o => o.id === groupBy)?.label}
+            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent className="w-[180px]">
+          <DropdownMenuRadioGroup value={groupBy} onValueChange={setGroupBy}>
+            {groupOptions.map(option => (
+              <DropdownMenuRadioItem key={option.id} value={option.id}>
+                {option.label}
+              </DropdownMenuRadioItem>
+            ))}
+          </DropdownMenuRadioGroup>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  ), [groupBy, setGroupBy, groupOptions]);
+
+  const isGroupedView = useMemo(() => 
+    groupBy !== 'none' && groupTabs.length > 1 && groupedData,
+  [groupBy, groupTabs.length, groupedData]);
+
 
   return (
-    <div 
-      ref={appRef}
-      className={cn(
-        "relative h-screen w-screen overflow-hidden bg-background transition-colors duration-300",
-        isDarkMode && "dark"
-      )}
+    <PageLayout
+      scrollRef={scrollRef}
+      onScroll={handleScroll}
+      // Note: Search functionality is handled by a separate SearchBar in the TopBar
     >
-      <div className="flex h-screen overflow-hidden">
-        {/* Enhanced Sidebar */}
-        {sidebarWithProps}
+      <div className="space-y-8">
+        {/* Header */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="flex-1">
+            <h1 className="text-2xl font-bold tracking-tight">Data Showcase</h1>
+            <p className="text-muted-foreground">
+              {isInitialLoading 
+                ? "Loading projects..." 
+                : `Showing ${dataToRender.length} of ${totalItemCount} item(s)`}
+            </p>
+          </div>
+          <DataViewModeSelector />
+        </div>
 
-        {/* Resize Handle */}
-        {sidebarState !== SIDEBAR_STATES.HIDDEN && (
-          <div
-            ref={resizeHandleRef}
-            className={cn(
-              "absolute top-0 w-2 h-full bg-transparent hover:bg-primary/20 cursor-col-resize z-50 transition-colors duration-200 group -translate-x-1/2"
-            )}
-            onMouseDown={(e) => {
-              e.preventDefault()
-              useAppShellStore.getState().setIsResizing(true);
-            }}
-          >
-            <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200 mx-auto" />
+        {/* Stats Section */}
+        {!isInitialLoading && (
+          <div ref={statsRef} className="flex overflow-x-auto gap-6 pb-4 no-scrollbar">
+            {stats.map((stat) => (
+              <StatCard
+                className="w-64 md:w-72 flex-shrink-0"
+                key={stat.title}
+                title={stat.title}
+                value={stat.value}
+                change={stat.change}
+                trend={stat.trend}
+                icon={stat.icon}
+                chartData={stat.type === 'chart' ? stat.chartData : undefined}
+              />
+            ))}
           </div>
         )}
 
-        {/* Main area wrapper */}
-        <div className="flex-1 flex flex-col overflow-hidden relative">
-          <div
-            ref={topBarContainerRef}
-            className={cn(
-              "absolute top-0 left-0 right-0 z-30",
-              isFullscreen && "z-0"
-            )}
-            onMouseEnter={() => {
-              if (isSplitView) {
-                setTopBarHovered(true);
-                setHoveredPane(null);
-              }
-            }}
-            onMouseLeave={() => {
-              if (isSplitView) {
-                setTopBarHovered(false);
-              }
-            }}
-          >
-            {topBar}
-          </div>
+        {/* Controls Area */}
+        <div className="space-y-6">
+          <DataToolbar />
+        </div>
 
-          {/* Invisible trigger area for top bar in split view */}
-          {isSplitView && (
-            <div
-              className="absolute top-0 left-0 right-0 h-4 z-20"
-              onMouseEnter={() => {
-                setTopBarHovered(true);
-                setHoveredPane(null);
-              }}
-            />
-          )}
-
-          <div className="flex flex-1 min-h-0">
-            <div
-              ref={mainAreaRef}
-              className="relative flex-1 overflow-hidden bg-background"
-              onMouseEnter={() => { if (isSplitView && !draggedPage) setHoveredPane('left'); }}
-              onMouseLeave={() => { if (isSplitView && !draggedPage) setHoveredPane(null); }}
-            >
-              {/* Side Pane Overlay */}
-              <div
-                role="button"
-                aria-label="Close side pane"
-                tabIndex={isSidePaneOpen ? 0 : -1}
-                className={cn(
-                  "absolute inset-0 bg-black/40 z-40 transition-opacity duration-300",
-                  isSidePaneOpen
-                    ? "opacity-100 pointer-events-auto"
-                    : "opacity-0 pointer-events-none"
-                )}
-                onClick={onOverlayClick}
-              />
-              {/* Left drop overlay */}
-              <div
-                className={cn(
-                  "absolute inset-y-0 left-0 z-40 border-2 border-transparent transition-all",
-                  draggedPage
-                    ? cn("pointer-events-auto", isSplitView ? 'w-full' : 'w-1/2')
-                    : "pointer-events-none w-0",
-                  dragHoverTarget === 'left' && "bg-primary/10 border-primary"
-                )}
-                onDragOver={dndHandlers.handleDragOverLeft}
-                onDrop={dndHandlers.handleDropLeft}
-                onDragLeave={dndHandlers.handleDragLeave}
-              >
-                {draggedPage && dragHoverTarget === 'left' && (
-                  <div className="absolute inset-0 flex items-center justify-center text-sm font-medium text-primary-foreground/80 pointer-events-none">
-                    <span className="px-3 py-1 rounded-md bg-primary/70">{isSplitView ? 'Drop to Replace' : 'Drop to Left'}</span>
+        <div className="min-h-[500px]">
+          {isInitialLoading 
+            ? <AnimatedLoadingSkeleton viewMode={viewMode} /> 
+            : viewMode === 'calendar' ? (
+              <DataCalendarView data={allItems} />
+            )
+            : viewMode === 'kanban' ? (
+              <>
+                <div className="flex items-center justify-end gap-4 h-[68px]">
+                  <GroupByDropdown />
+                </div>
+                {isGroupedView ? (
+                  <DataKanbanView data={groupedData} />
+                ) : (
+                  <div className="flex items-center justify-center h-96 text-muted-foreground">
+                    Group data by a metric to use the Kanban view.
                   </div>
                 )}
-              </div>
-              {mainContentWithProps}
-              {isSplitView && hoveredPane === 'left' && !draggedPage && (
-                <div className={cn("absolute right-4 z-50 transition-all", isTopBarVisible ? 'top-24' : 'top-4')}>
-                  <ViewModeSwitcher pane="main" />
+              </>
+            )
+            : !isGroupedView ? (
+              // Not grouped view
+              <>
+                <div className="flex items-center justify-between gap-4 h-[68px]">
+                  <div className="flex-grow border-b" /> {/* Mimic tab border */}
+                  <GroupByDropdown />
                 </div>
-              )}
-              {/* Right drop overlay (over main area, ONLY when NOT in split view) */}
-              {!isSplitView && (
-                <div
-                  className={cn(
-                    "absolute inset-y-0 right-0 z-40 border-2 border-transparent",
-                    draggedPage ? "pointer-events-auto w-1/2" : "pointer-events-none",
-                    dragHoverTarget === 'right' && "bg-primary/10 border-primary"
-                  )}
-                  onDragOver={dndHandlers.handleDragOverRight}
-                  onDrop={dndHandlers.handleDropRight}
-                  onDragLeave={dndHandlers.handleDragLeave}
+                {renderViewForData(allItems)}
+              </>
+            ) : (
+              // Grouped view with AnimatedTabs
+              <div className="relative">
+                <AnimatedTabs
+                  tabs={groupTabs}
+                  activeTab={activeGroupTab}
+                  onTabChange={setActiveGroupTab}
+                  wrapperClassName="flex flex-col"
+                  className="border-b"
+                  contentClassName="pt-6 flex-grow"
                 >
-                  {draggedPage && dragHoverTarget === 'right' && (
-                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                      <span className="px-3 py-1 rounded-md bg-primary/70 text-sm font-medium text-primary-foreground/80">Drop to Right</span>
+                  {groupTabs.map(tab => (
+                    <div key={tab.id} className="min-h-[440px]">
+                      {renderViewForData(
+                        tab.id === 'all' ? allItems : groupedData?.[tab.id] || []
+                      )}
                     </div>
-                  )}
+                  ))}
+                </AnimatedTabs>
+                <div className="absolute top-[14px] right-0">
+                    <GroupByDropdown />
                 </div>
-              )}
-            </div>
-            {isSplitView ? (
-              <div
-                className="relative"
-                onMouseEnter={() => { if (isSplitView && !draggedPage) setHoveredPane('right'); }}
-                onMouseLeave={() => { if (isSplitView && !draggedPage) setHoveredPane(null); }}
-                onDragOver={dndHandlers.handleDragOverRight}
-              >
-                {rightPaneWithProps}
-                {draggedPage && (
-                  <div
-                    className={cn(
-                      'absolute inset-0 z-50 transition-all',
-                      dragHoverTarget === 'right'
-                        ? 'bg-primary/10 border-2 border-primary'
-                        : 'pointer-events-none'
-                    )}
-                    onDragLeave={dndHandlers.handleDragLeave}
-                    onDrop={dndHandlers.handleDropRight}
-                    onDragOver={(e) => e.preventDefault()}
-                  >
-                    {dragHoverTarget === 'right' && (
-                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                        <span className="px-3 py-1 rounded-md bg-primary/70 text-sm font-medium text-primary-foreground/80">
-                          Drop to Replace
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                )}
-                {hoveredPane === 'right' && !draggedPage && (
-                  <div className={cn("absolute right-4 z-[70] transition-all", isTopBarVisible ? 'top-24' : 'top-4')}>
-                    <ViewModeSwitcher pane="right" />
-                  </div>
-                )}
               </div>
-            ) : rightPaneWithProps}
-          </div>
+            )
+          }
+        </div>
+
+        {/* Loader for infinite scroll */}
+        <div ref={loaderRef} className="flex justify-center items-center py-6">
+          {isLoading && !isInitialLoading && groupBy === 'none' && viewMode !== 'calendar' && (
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Loader2 className="w-5 h-5 animate-spin" />
+              <span>Loading more...</span>
+            </div>
+          )}
+          {!isLoading && !hasMore && dataToRender.length > 0 && !isInitialLoading && groupBy === 'none' && viewMode !== 'calendar' && (
+            <p className="text-muted-foreground">You've reached the end.</p>
+          )}
         </div>
       </div>
-      {commandPalette || <CommandPalette />}
-    </div>
+      <ScrollToBottomButton isVisible={showScrollToBottom} onClick={scrollToBottom} />
+    </PageLayout>
   )
+}
+
+export default function DataDemoPage() {
+  return <DataDemoContent />;
 }
 ```

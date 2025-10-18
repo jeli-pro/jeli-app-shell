@@ -4,9 +4,9 @@ I am obsessed with laravel filament... so make everything about data demo page i
 
 ===
 
-data demo page: we need centralized control of (search, filter, sort) for amazing UX . reusable for all view mode
+data demo page: we need centralized control of (search, filter, sort) for amazing cohesive UX . reusable for all view mode
 
-===
+=== DONE
 
 data demo page: stats card should only be horizontally scrollable, not vertically
 
@@ -14,7 +14,7 @@ data demo page: stats card should only be horizontally scrollable, not verticall
 
 fix: message page : opening message thread from list causing this error
 
-===
+=== DONE
 
 data demo page: data demo detail page: overlay side pane: remove back to list text button
 
@@ -90,13 +90,15 @@ data demo page:
 
 data demo page: create kanban board view mode with amazing UI... at least like below ex:
 
-===
+=== CANCEL
 
 split view mode : loosing view mode switcher hover on pane active left:right pane
 
 ===
 
 view mode switcher actions not working well from overlay side pane: especially fullscreen,and normal mode
+
+
 
 === DONE
 
