@@ -1,117 +1,240 @@
-uuid: d8225547-73d7-4638-96d2-28c0b719463c
+uuid: 44b025f3-529a-4c28-ab02-3c139c13e551
 projectId: jeli-app-shell
-createdAt: '2025-10-18T07:18:12.520Z'
+createdAt: '2025-10-18T07:41:18.120Z'
 gitCommitMsg: >-
-  feat(DataDemo): implement auto-hiding stats header on scroll
+  feat(DataDemo): add visual cue for pull-to-reveal stats
 
-  Introduces a sliver-style header for the stats cards section on the Data Demo
-  page. The stats container now gracefully animates out of view when scrolling
-  down and animates back in when scrolling up, improving content visibility.
+  Implements a visual indicator to improve the discoverability of the
+  pull-to-reveal functionality for the stats header.
 
-  - Created a new reusable hook, `useAutoAnimateStats`, to encapsulate the GSAP
-  animation and scroll-handling logic. - Integrated the hook into the `DataDemo`
-  page component to link the behavior to the scroll container and stats section.
-  - This provides a more dynamic and focused user experience, especially when
-  interacting with large datasets.
+  - A new `PullToRevealCue` component has been created to display an animated
+  message ("Pull to reveal stats") when appropriate. - The `useAutoAnimateStats`
+  hook now manages and returns the visibility state for this cue. - The
+  `PageLayout` component is updated with `position: relative` to correctly
+  contain the absolutely positioned cue. - The cue is now rendered on the
+  `DataDemo` page, appearing only when the stats are hidden and the user is at
+  the top of the content.
 promptSummary: >-
-  Implement a sliver-style auto-hiding header for the stats cards on the Data
-  Demo page. The cards should animate out of view on scroll down and back in on
-  scroll up.
+  Add a visual cue to let users know they can pull down to reveal the stats when
+  they are hidden and the page is scrolled to the top.
 reasoning:
   - >-
-    Of course. I will implement a sliver-style header for the stats cards on the
-    `DataDemo` page. When the user scrolls down, the stats container will
-    animate out of view, and when they scroll up, it will reappear. This will be
-    encapsulated in a new, reusable hook to keep the component logic clean.
+    Excellent idea. A visual cue will significantly improve the usability of
+    this feature, making it discoverable for users. I'll add a small, animated
+    "pull to reveal" indicator that appears only when the stats are hidden and
+    the user is at the top of the content.
   - >-
-    First, I'll create the new custom hook `useAutoAnimateStats.hook.ts`. This
-    hook will contain all the logic for tracking scroll position and using GSAP
-    to animate the stats container. It's designed to be efficient, firing
-    animations only when the scroll direction changes past a certain threshold,
-    and to be conflict-free by using GSAP's `overwrite` feature.
+    First, I'll create the new `PullToRevealCue` component. This will be a
+    self-contained, styled component responsible for the visual indicator. It
+    will have a gentle bounce animation to draw the eye.
   - >-
-    Next, I'll integrate this new hook into the `DataDemoContent` component.
-    I'll import `useAutoAnimateStats` and call it with the existing `scrollRef`
-    for the page layout and `statsRef` for the stats container. This will
-    connect the animation logic to the correct elements.
+    Next, I need to ensure the `PageLayout` component can properly contain this
+    absolutely positioned cue. I'll add `position: relative` to its class list.
+  - >-
+    Now, I'll update the `useAutoAnimateStats` hook to manage the visibility of
+    this new cue. It will return an `isCueVisible` state that the `DataDemo`
+    page can use.
+  - >-
+    Finally, I'll integrate the cue into the `DataDemo` page, using the
+    `isCueVisible` state from our updated hook.
+  - >-
+    Now, a subtle visual cue will guide users to the "pull-to-reveal"
+    functionality, making the interface more intuitive and polished.
 operations:
   - type: write
-    path: src/pages/DataDemo/hooks/useAutoAnimateStats.hook.ts
+    path: src/pages/DataDemo/components/PullToRevealCue.tsx
     content: |-
-      import { useEffect, useRef, useCallback } from 'react';
-      import { gsap } from 'gsap';
+      import { ChevronsDown } from 'lucide-react';
+      import { cn } from '@/lib/utils';
 
-      /**
-       * A hook that animates a stats container in and out of view based on scroll direction.
-       * It creates a "sliver app bar" effect for the stats section.
-       * @param scrollContainerRef Ref to the main scrolling element.
-       * @param statsContainerRef Ref to the stats container element to be animated.
-       */
-      export function useAutoAnimateStats(
-        scrollContainerRef: React.RefObject<HTMLElement>,
-        statsContainerRef: React.RefObject<HTMLElement>
-      ) {
-        const lastScrollY = useRef(0);
-        const isHidden = useRef(false);
-        const originalMarginTop = useRef<string | null>(null);
+      interface PullToRevealCueProps {
+        isVisible: boolean;
+      }
 
-        const handleScroll = useCallback(() => {
-          if (!scrollContainerRef.current || !statsContainerRef.current) return;
-
-          const scrollY = scrollContainerRef.current.scrollTop;
-          
-          // Initialize original margin on first scroll event if not set
-          if (originalMarginTop.current === null) {
-            const computedStyle = getComputedStyle(statsContainerRef.current);
-            originalMarginTop.current = computedStyle.getPropertyValue('margin-top');
-          }
-
-          // Scroll down past threshold, hide stats
-          if (scrollY > lastScrollY.current && scrollY > 150 && !isHidden.current) {
-            isHidden.current = true;
-            gsap.to(statsContainerRef.current, {
-              duration: 0.4,
-              height: 0,
-              autoAlpha: 0,
-              marginTop: 0,
-              ease: 'power2.inOut',
-              overwrite: true,
-            });
-          } 
-          // Scroll up or back to top, show stats
-          else if ((scrollY < lastScrollY.current || scrollY <= 150) && isHidden.current) {
-            isHidden.current = false;
-            gsap.to(statsContainerRef.current, {
-              duration: 0.4,
-              height: 'auto',
-              autoAlpha: 1,
-              marginTop: originalMarginTop.current || 0,
-              ease: 'power2.out',
-              overwrite: true,
-            });
-          }
-
-          lastScrollY.current = scrollY < 0 ? 0 : scrollY;
-        }, [scrollContainerRef, statsContainerRef]);
-
-        useEffect(() => {
-          const scrollContainer = scrollContainerRef.current;
-          if (scrollContainer) {
-            scrollContainer.addEventListener('scroll', handleScroll, { passive: true });
-          }
-
-          return () => {
-            if (scrollContainer) {
-              scrollContainer.removeEventListener('scroll', handleScroll);
-            }
-            // When component unmounts, kill any running animations on the stats ref
-            if (statsContainerRef.current) {
-              gsap.killTweensOf(statsContainerRef.current);
-            }
-          };
-        }, [scrollContainerRef, statsContainerRef, handleScroll]);
+      export function PullToRevealCue({ isVisible }: PullToRevealCueProps) {
+        return (
+          <div
+            className={cn(
+              'absolute top-0 left-1/2 -translate-x-1/2 z-10',
+              'flex items-center gap-2 px-3 py-1.5',
+              'text-xs font-medium text-muted-foreground',
+              'bg-card border rounded-full shadow-sm',
+              'transition-all duration-300 ease-in-out',
+              'pointer-events-none', // Don't block interactions with content below
+              isVisible ? 'opacity-100 translate-y-4' : 'opacity-0 -translate-y-full'
+            )}
+            aria-hidden={!isVisible}
+          >
+            <ChevronsDown className="w-4 h-4 animate-bounce" />
+            <span>Pull to reveal stats</span>
+          </div>
+        );
       }
     patchStrategy: replace
+  - type: write
+    path: src/components/shared/PageLayout.tsx
+    content: |+
+      --- src/components/shared/PageLayout.tsx
+      +++ src/components/shared/PageLayout.tsx
+      @@ -14,7 +14,7 @@
+           return (
+             <div
+               ref={scrollRef}
+      -        className={cn("h-full overflow-y-auto", className)}
+      +        className={cn("relative h-full overflow-y-auto", className)}
+               onScroll={onScroll}
+             >
+               <div ref={ref} className={cn(
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/DataDemo/hooks/useAutoAnimateStats.hook.ts
+    content: >+
+      --- src/pages/DataDemo/hooks/useAutoAnimateStats.hook.ts
+
+      +++ src/pages/DataDemo/hooks/useAutoAnimateStats.hook.ts
+
+      @@ -1,4 +1,4 @@
+
+      -import { useEffect, useRef, useCallback } from 'react';
+
+      +import { useEffect, useRef, useCallback, useState } from 'react';
+       import { gsap } from 'gsap';
+       
+       /**
+      @@ -12,12 +12,23 @@
+       ) {
+         const lastScrollY = useRef(0);
+         const isHidden = useRef(false);
+      +  const [isCueVisible, setIsCueVisible] = useState(false);
+         const originalMarginTop = useRef<string | null>(null);
+       
+         const handleScroll = useCallback(() => {
+           if (!scrollContainerRef.current || !statsContainerRef.current) return;
+       
+           const scrollY = scrollContainerRef.current.scrollTop;
+      +
+
+      +    // Initialize original margin on first scroll event if not set
+
+      +    if (originalMarginTop.current === null) {
+
+      +      const computedStyle = getComputedStyle(statsContainerRef.current);
+
+      +      originalMarginTop.current =
+      computedStyle.getPropertyValue('margin-top');
+
+      +    }
+
+      +
+
+      +    // On any significant scroll down, hide the stats.
+
+      +    // The small 10px threshold prevents firing on minor scroll-jiggles.
+
+      +    if (scrollY > lastScrollY.current && scrollY > 10 &&
+      !isHidden.current) {
+
+      +      isHidden.current = true;
+
+      +      gsap.to(statsContainerRef.current, {
+
+      +        duration: 0.4,
+
+      +        height: 0,
+
+      +        autoAlpha: 0,
+
+      +        marginTop: 0,
+
+      +        ease: 'power2.inOut',
+
+      +        overwrite: true,
+
+      +      });
+
+      +    }
+
+      +
+
+      +    lastScrollY.current = scrollY < 0 ? 0 : scrollY;
+       
+      -    // Initialize original margin on first scroll event if not set
+
+      -    if (originalMarginTop.current === null) {
+
+      -      const computedStyle = getComputedStyle(statsContainerRef.current);
+
+      -      originalMarginTop.current =
+      computedStyle.getPropertyValue('margin-top');
+
+      -    }
+
+      +    // After all scroll logic, determine if the cue should be visible.
+
+      +    // It should only appear when stats are hidden and user is at the
+      very top.
+
+      +    setIsCueVisible(scrollContainerRef.current.scrollTop === 0 &&
+      isHidden.current);
+
+      +  }, [scrollContainerRef, statsContainerRef]);
+       
+      -    // On any significant scroll down, hide the stats.
+
+      -    // The small 10px threshold prevents firing on minor scroll-jiggles.
+
+      -    if (scrollY > lastScrollY.current && scrollY > 10 &&
+      !isHidden.current) {
+
+      -      isHidden.current = true;
+
+      -      gsap.to(statsContainerRef.current, {
+
+      -        duration: 0.4,
+
+      -        height: 0,
+
+      -        autoAlpha: 0,
+
+      -        marginTop: 0,
+
+      -        ease: 'power2.inOut',
+
+      -        overwrite: true,
+
+      -      });
+
+      -    }
+
+      -
+
+      -    lastScrollY.current = scrollY < 0 ? 0 : scrollY;
+
+      -  }, [scrollContainerRef, statsContainerRef]);
+
+      -
+         const handleWheel = useCallback((event: WheelEvent) => {
+           if (!scrollContainerRef.current || !statsContainerRef.current) return;
+           
+      @@ -27,6 +38,7 @@
+           // Only reveal if we are at the top, scrolling up, and stats are hidden.
+           // This creates the "pull to reveal" effect.
+           if (isAtTop && isScrollingUp && isHidden.current) {
+      +        setIsCueVisible(false); // Hide cue immediately on reveal
+               isHidden.current = false;
+               gsap.to(statsContainerRef.current, {
+                 duration: 0.4,
+      @@ -53,5 +65,7 @@
+             }
+           };
+         }, [scrollContainerRef, statsContainerRef, handleScroll, handleWheel]);
+      +
+
+      +  return { isCueVisible };
+       }
+
+    patchStrategy: standard-diff
   - type: write
     path: src/pages/DataDemo/index.tsx
     content: |+
@@ -121,24 +244,158 @@ operations:
        import { mockDataItems } from './data/mockData'
        import type { GroupableField, DataItem } from './types'
        import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
-      +import { useAutoAnimateStats } from './hooks/useAutoAnimateStats.hook'
+      +import { PullToRevealCue } from './components/PullToRevealCue'
+       import { useAutoAnimateStats } from './hooks/useAutoAnimateStats.hook'
        import { 
          useDataDemoStore, 
-         useGroupTabs
-      @@ -109,6 +110,9 @@
+      @@ -109,7 +110,8 @@
          const statsRef = useRef<HTMLDivElement>(null)
          const scrollRef = useRef<HTMLDivElement>(null);
        
-      +  // Auto-hide stats container on scroll down
-      +  useAutoAnimateStats(scrollRef, statsRef);
-      +
+      -  // Auto-hide stats container on scroll down
+      -  useAutoAnimateStats(scrollRef, statsRef);
+      +  // Auto-hide stats container on scroll down, and get cue visibility
+      +  const { isCueVisible } = useAutoAnimateStats(scrollRef, statsRef);
+       
          // Calculate stats from data
          const totalItems = mockDataItems.length
-         const { showScrollToBottom, scrollToBottom, handleScroll } = useScrollToBottom(scrollRef);
+      @@ -298,6 +300,7 @@
+             onScroll={handleScroll}
+             // Note: Search functionality is handled by a separate SearchBar in the TopBar
+           >
+      +      <PullToRevealCue isVisible={isCueVisible} />
+             <div className="space-y-8">
+               {/* Header */}
+               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
 
     patchStrategy: standard-diff
 snapshot:
-  src/pages/DataDemo/hooks/useAutoAnimateStats.hook.ts: null
+  src/pages/DataDemo/components/PullToRevealCue.tsx: null
+  src/components/shared/PageLayout.tsx: |-
+    import React from 'react';
+    import { cn } from '@/lib/utils';
+    import { useAppShellStore } from '@/store/appShell.store';
+    import { BODY_STATES } from '@/lib/utils';
+
+    interface PageLayoutProps extends React.HTMLAttributes<HTMLDivElement> {
+      children: React.ReactNode;
+      scrollRef?: React.RefObject<HTMLDivElement>;
+    }
+
+    export const PageLayout = React.forwardRef<HTMLDivElement, PageLayoutProps>(
+      ({ children, onScroll, scrollRef, className, ...props }, ref) => {
+        const isTopBarVisible = useAppShellStore(s => s.isTopBarVisible);
+        const bodyState = useAppShellStore(s => s.bodyState);
+        const isFullscreen = bodyState === 'fullscreen';
+        const isInSidePane = bodyState === BODY_STATES.SIDE_PANE;
+
+        return (
+          <div
+            ref={scrollRef}
+            className={cn("h-full overflow-y-auto", className)}
+            onScroll={onScroll}
+          >
+            <div ref={ref} className={cn(
+              "space-y-8 transition-all duration-300",
+              !isInSidePane ? "px-6 lg:px-12 pb-6" : "px-6 pb-6",
+              isTopBarVisible && !isFullscreen ? "pt-24" : "pt-6"
+            )}
+            {...props}
+            >
+              {children}
+            </div>
+          </div>
+        );
+      }
+    );
+
+    PageLayout.displayName = 'PageLayout';
+  src/pages/DataDemo/hooks/useAutoAnimateStats.hook.ts: |-
+    import { useEffect, useRef, useCallback } from 'react';
+    import { gsap } from 'gsap';
+
+    /**
+     * A hook that animates a stats container in and out of view based on scroll direction.
+     * It creates a "sliver app bar" effect for the stats section.
+     * @param scrollContainerRef Ref to the main scrolling element.
+     * @param statsContainerRef Ref to the stats container element to be animated.
+     */
+    export function useAutoAnimateStats(
+      scrollContainerRef: React.RefObject<HTMLElement>,
+      statsContainerRef: React.RefObject<HTMLElement>
+    ) {
+      const lastScrollY = useRef(0);
+      const isHidden = useRef(false);
+      const originalMarginTop = useRef<string | null>(null);
+
+      const handleScroll = useCallback(() => {
+        if (!scrollContainerRef.current || !statsContainerRef.current) return;
+
+        const scrollY = scrollContainerRef.current.scrollTop;
+        
+        // Initialize original margin on first scroll event if not set
+        if (originalMarginTop.current === null) {
+          const computedStyle = getComputedStyle(statsContainerRef.current);
+          originalMarginTop.current = computedStyle.getPropertyValue('margin-top');
+        }
+
+        // On any significant scroll down, hide the stats.
+        // The small 10px threshold prevents firing on minor scroll-jiggles.
+        if (scrollY > lastScrollY.current && scrollY > 10 && !isHidden.current) {
+          isHidden.current = true;
+          gsap.to(statsContainerRef.current, {
+            duration: 0.4,
+            height: 0,
+            autoAlpha: 0,
+            marginTop: 0,
+            ease: 'power2.inOut',
+            overwrite: true,
+          });
+        } 
+
+        lastScrollY.current = scrollY < 0 ? 0 : scrollY;
+      }, [scrollContainerRef, statsContainerRef]);
+
+      const handleWheel = useCallback((event: WheelEvent) => {
+        if (!scrollContainerRef.current || !statsContainerRef.current) return;
+        
+        const isAtTop = scrollContainerRef.current.scrollTop === 0;
+        const isScrollingUp = event.deltaY < 0;
+
+        // Only reveal if we are at the top, scrolling up, and stats are hidden.
+        // This creates the "pull to reveal" effect.
+        if (isAtTop && isScrollingUp && isHidden.current) {
+            isHidden.current = false;
+            gsap.to(statsContainerRef.current, {
+              duration: 0.4,
+              height: 'auto',
+              autoAlpha: 1,
+              marginTop: originalMarginTop.current || 0,
+              ease: 'power2.out',
+              overwrite: true,
+            });
+        }
+      }, [scrollContainerRef, statsContainerRef]);
+
+      useEffect(() => {
+        const scrollContainer = scrollContainerRef.current;
+        if (scrollContainer) {
+          scrollContainer.addEventListener('scroll', handleScroll, { passive: true });
+          scrollContainer.addEventListener('wheel', handleWheel, { passive: true });
+        }
+
+        return () => {
+          if (scrollContainer) {
+            scrollContainer.removeEventListener('scroll', handleScroll);
+            scrollContainer.removeEventListener('wheel', handleWheel);
+          }
+          // When component unmounts, kill any running animations on the stats ref
+          if (statsContainerRef.current) {
+            gsap.killTweensOf(statsContainerRef.current);
+          }
+        };
+      }, [scrollContainerRef, statsContainerRef, handleScroll, handleWheel]);
+    }
   src/pages/DataDemo/index.tsx: >
     import { useRef, useEffect, useCallback, useMemo } from 'react'
 
@@ -198,6 +455,8 @@ snapshot:
     import type { GroupableField, DataItem } from './types'
 
     import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
+
+    import { useAutoAnimateStats } from './hooks/useAutoAnimateStats.hook'
 
     import { 
       useDataDemoStore, 
@@ -281,6 +540,9 @@ snapshot:
 
       const statsRef = useRef<HTMLDivElement>(null)
       const scrollRef = useRef<HTMLDivElement>(null);
+
+      // Auto-hide stats container on scroll down
+      useAutoAnimateStats(scrollRef, statsRef);
 
       // Calculate stats from data
       const totalItems = mockDataItems.length
@@ -546,10 +808,10 @@ snapshot:
     export default function DataDemoPage() {
       return <DataDemoContent />;
     }
-approved: true
+approved: false
 linesAdded: null
 linesRemoved: null
 linesDifference: null
-gitCommittedAt: '2025-10-18T07:20:03.965Z'
-status: committed
-id: 455
+gitCommittedAt: null
+status: undone
+id: 464

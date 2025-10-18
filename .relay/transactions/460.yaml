@@ -1,0 +1,134 @@
+uuid: 4de2c75a-0490-482a-a9a7-9653a948e7e1
+projectId: jeli-app-shell
+createdAt: '2025-10-18T07:30:51.959Z'
+gitCommitMsg: >-
+  feat(DataDemo): increase magnetic strength of stats header
+
+  Enhances the scroll behavior of the auto-hiding stats header by making its
+  "magnetism" significantly stronger. The threshold for revealing the stats on
+  an upward scroll has been reduced from 50px to 5px.
+
+  This change requires the user to scroll almost exactly to the top of the page
+  to make the stats reappear, preventing accidental reveals and keeping the
+  focus firmly on the content during navigation.
+promptSummary: >-
+  Make the magnetism for the stats header "super strong" so it's much harder to
+  reveal when scrolling up.
+reasoning:
+  - >-
+    Understood. You want to increase the "magnetic" strength, making it much
+    more difficult for the user to reveal the stats when scrolling up. They
+    should have to scroll definitively to the very top.
+  - >-
+    To achieve this, I will significantly reduce the scroll threshold for
+    revealing the stats. I'll change the condition from `scrollY <= 50` to
+    `scrollY <= 5`. This means the user must scroll to within 5 pixels of the
+    top for the stats to reappear, creating a very strong magnetic snap to the
+    content area and requiring a deliberate action to see the stats again.
+  - 'Here is the adjustment to the hook:'
+operations:
+  - type: write
+    path: src/pages/DataDemo/hooks/useAutoAnimateStats.hook.ts
+    content: >+
+      --- src/pages/DataDemo/hooks/useAutoAnimateStats.hook.ts
+
+      +++ src/pages/DataDemo/hooks/useAutoAnimateStats.hook.ts
+
+      @@ -36,7 +36,7 @@
+           // This creates a "magnetic" effect where the user must intentionally
+           // scroll all the way up to reveal the stats again.
+      -    else if (scrollY < lastScrollY.current && scrollY <= 50 &&
+      isHidden.current) {
+
+      +    else if (scrollY < lastScrollY.current && scrollY <= 5 &&
+      isHidden.current) {
+             isHidden.current = false;
+             gsap.to(statsContainerRef.current, {
+               duration: 0.4,
+
+    patchStrategy: standard-diff
+snapshot:
+  src/pages/DataDemo/hooks/useAutoAnimateStats.hook.ts: |-
+    import { useEffect, useRef, useCallback } from 'react';
+    import { gsap } from 'gsap';
+
+    /**
+     * A hook that animates a stats container in and out of view based on scroll direction.
+     * It creates a "sliver app bar" effect for the stats section.
+     * @param scrollContainerRef Ref to the main scrolling element.
+     * @param statsContainerRef Ref to the stats container element to be animated.
+     */
+    export function useAutoAnimateStats(
+      scrollContainerRef: React.RefObject<HTMLElement>,
+      statsContainerRef: React.RefObject<HTMLElement>
+    ) {
+      const lastScrollY = useRef(0);
+      const isHidden = useRef(false);
+      const originalMarginTop = useRef<string | null>(null);
+
+      const handleScroll = useCallback(() => {
+        if (!scrollContainerRef.current || !statsContainerRef.current) return;
+
+        const scrollY = scrollContainerRef.current.scrollTop;
+        
+        // Initialize original margin on first scroll event if not set
+        if (originalMarginTop.current === null) {
+          const computedStyle = getComputedStyle(statsContainerRef.current);
+          originalMarginTop.current = computedStyle.getPropertyValue('margin-top');
+        }
+
+        // On any significant scroll down, hide the stats.
+        // The small 10px threshold prevents firing on minor scroll-jiggles.
+        if (scrollY > lastScrollY.current && scrollY > 10 && !isHidden.current) {
+          isHidden.current = true;
+          gsap.to(statsContainerRef.current, {
+            duration: 0.4,
+            height: 0,
+            autoAlpha: 0,
+            marginTop: 0,
+            ease: 'power2.inOut',
+            overwrite: true,
+          });
+        } 
+        // Scroll up AND are very close to the top, show stats.
+        // This creates a "magnetic" effect where the user must intentionally
+        // scroll all the way up to reveal the stats again.
+        else if (scrollY < lastScrollY.current && scrollY <= 50 && isHidden.current) {
+          isHidden.current = false;
+          gsap.to(statsContainerRef.current, {
+            duration: 0.4,
+            height: 'auto',
+            autoAlpha: 1,
+            marginTop: originalMarginTop.current || 0,
+            ease: 'power2.out',
+            overwrite: true,
+          });
+        }
+
+        lastScrollY.current = scrollY < 0 ? 0 : scrollY;
+      }, [scrollContainerRef, statsContainerRef]);
+
+      useEffect(() => {
+        const scrollContainer = scrollContainerRef.current;
+        if (scrollContainer) {
+          scrollContainer.addEventListener('scroll', handleScroll, { passive: true });
+        }
+
+        return () => {
+          if (scrollContainer) {
+            scrollContainer.removeEventListener('scroll', handleScroll);
+          }
+          // When component unmounts, kill any running animations on the stats ref
+          if (statsContainerRef.current) {
+            gsap.killTweensOf(statsContainerRef.current);
+          }
+        };
+      }, [scrollContainerRef, statsContainerRef, handleScroll]);
+    }
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 460

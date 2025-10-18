@@ -1,0 +1,232 @@
+uuid: 4f686c1c-3b2d-42e3-85f2-957cd922f567
+projectId: jeli-app-shell
+createdAt: '2025-10-18T07:24:39.119Z'
+gitCommitMsg: >-
+  feat(DataDemo): add snap-to-content scroll behavior
+
+  Enhances the auto-hiding stats header with a magnetic scroll-snap effect. When
+  a user scrolls up and stops within the area where the stats would appear, the
+  scroll position now automatically animates to the top of the content area.
+
+  This creates a more refined and less disruptive user experience by preventing
+  the stats from partially appearing or reappearing unintentionally. The user
+  must now perform a deliberate scroll to the very top of the page to reveal the
+  stats header.
+promptSummary: >-
+  Implement a "magnetic" or "snap-to" scroll effect. When the user scrolls up
+  and releases the scroll in the stats card area, the view should automatically
+  scroll to the top of the content area, keeping the stats hidden.
+reasoning:
+  - >-
+    You've got a sharp eye for UX details. That's an excellent refinement. The
+    goal is to make the scroll feel "magnetic" to the content area when
+    scrolling up, preventing the stats from popping into view unless the user
+    makes a clear gesture to scroll to the absolute top.
+  - >-
+    To achieve this, I will implement a "scroll stop" detection mechanism. When
+    the user finishes a scroll gesture and lands in the "magnetic zone" (the
+    area where the stats cards would be), I'll use GSAP to gently animate the
+    scroll position down to snap to the top of the content area. This avoids
+    jarring the user while cleanly enforcing the magnetic boundary.
+  - I'll update the `useAutoAnimateStats` hook with this new logic.
+operations:
+  - type: write
+    path: src/pages/DataDemo/hooks/useAutoAnimateStats.hook.ts
+    content: |-
+      import { useEffect, useRef, useCallback } from 'react';
+      import { gsap } from 'gsap';
+
+      /**
+       * A hook that animates a stats container in and out of view based on scroll direction.
+       * It creates a "sliver app bar" effect for the stats section with magnetic scroll snapping.
+       * @param scrollContainerRef Ref to the main scrolling element.
+       * @param statsContainerRef Ref to the stats container element to be animated.
+       */
+      export function useAutoAnimateStats(
+        scrollContainerRef: React.RefObject<HTMLElement>,
+        statsContainerRef: React.RefObject<HTMLElement>
+      ) {
+        const lastScrollY = useRef(0);
+        const isHidden = useRef(false);
+        const originalMarginTop = useRef<string | null>(null);
+        const scrollStopTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+        const isSnapping = useRef(false); // Prevents scroll handler from running during snap animation
+
+        const handleScroll = useCallback(() => {
+          if (!scrollContainerRef.current || !statsContainerRef.current || isSnapping.current) {
+            return;
+          }
+          
+          // Clear the previous scroll stop timeout
+          if (scrollStopTimeout.current) {
+            clearTimeout(scrollStopTimeout.current);
+          }
+
+          const scrollY = scrollContainerRef.current.scrollTop;
+          
+          if (originalMarginTop.current === null && statsContainerRef.current) {
+            const computedStyle = getComputedStyle(statsContainerRef.current);
+            originalMarginTop.current = computedStyle.getPropertyValue('margin-top');
+          }
+
+          // Scroll down past threshold, hide stats
+          if (scrollY > lastScrollY.current && scrollY > 150 && !isHidden.current) {
+            isHidden.current = true;
+            gsap.to(statsContainerRef.current, {
+              duration: 0.4,
+              height: 0,
+              autoAlpha: 0,
+              marginTop: 0,
+              ease: 'power2.inOut',
+              overwrite: true,
+            });
+          } 
+          // Scroll up AND are very close to the top, show stats.
+          else if (scrollY < lastScrollY.current && scrollY <= 50 && isHidden.current) {
+            isHidden.current = false;
+            gsap.to(statsContainerRef.current, {
+              duration: 0.4,
+              height: 'auto',
+              autoAlpha: 1,
+              marginTop: originalMarginTop.current || 0,
+              ease: 'power2.out',
+              overwrite: true,
+            });
+          }
+
+          lastScrollY.current = scrollY < 0 ? 0 : scrollY;
+
+          // Set new timeout to detect scroll stop for magnetic snap
+          scrollStopTimeout.current = setTimeout(() => {
+            const currentScrollContainer = scrollContainerRef.current;
+            if (!currentScrollContainer) return;
+
+            const currentScrollY = currentScrollContainer.scrollTop;
+
+            // Magnetic snap logic:
+            // If stats are hidden and user stops scrolling up into the "magnetic zone"
+            if (isHidden.current && currentScrollY > 0 && currentScrollY <= 150) {
+              isSnapping.current = true;
+              gsap.to(currentScrollContainer, {
+                scrollTop: 151, // Snap just below the stats reveal threshold
+                duration: 0.3,
+                ease: 'power2.out',
+                onComplete: () => {
+                  isSnapping.current = false;
+                },
+                // Overwrite any user scroll that might interfere
+                overwrite: 'auto'
+              });
+            }
+          }, 150); // 150ms delay to detect scroll stop
+
+        }, [scrollContainerRef, statsContainerRef]);
+
+        useEffect(() => {
+          const scrollContainer = scrollContainerRef.current;
+          if (scrollContainer) {
+            scrollContainer.addEventListener('scroll', handleScroll, { passive: true });
+          }
+
+          return () => {
+            if (scrollContainer) {
+              scrollContainer.removeEventListener('scroll', handleScroll);
+            }
+            if (scrollStopTimeout.current) {
+              clearTimeout(scrollStopTimeout.current);
+            }
+            // Kill any running animations on unmount
+            if (statsContainerRef.current) {
+              gsap.killTweensOf(statsContainerRef.current);
+            }
+            if (scrollContainerRef.current) {
+              gsap.killTweensOf(scrollContainerRef.current);
+            }
+          };
+        }, [scrollContainerRef, statsContainerRef, handleScroll]);
+      }
+    patchStrategy: replace
+snapshot:
+  src/pages/DataDemo/hooks/useAutoAnimateStats.hook.ts: |-
+    import { useEffect, useRef, useCallback } from 'react';
+    import { gsap } from 'gsap';
+
+    /**
+     * A hook that animates a stats container in and out of view based on scroll direction.
+     * It creates a "sliver app bar" effect for the stats section.
+     * @param scrollContainerRef Ref to the main scrolling element.
+     * @param statsContainerRef Ref to the stats container element to be animated.
+     */
+    export function useAutoAnimateStats(
+      scrollContainerRef: React.RefObject<HTMLElement>,
+      statsContainerRef: React.RefObject<HTMLElement>
+    ) {
+      const lastScrollY = useRef(0);
+      const isHidden = useRef(false);
+      const originalMarginTop = useRef<string | null>(null);
+
+      const handleScroll = useCallback(() => {
+        if (!scrollContainerRef.current || !statsContainerRef.current) return;
+
+        const scrollY = scrollContainerRef.current.scrollTop;
+        
+        // Initialize original margin on first scroll event if not set
+        if (originalMarginTop.current === null) {
+          const computedStyle = getComputedStyle(statsContainerRef.current);
+          originalMarginTop.current = computedStyle.getPropertyValue('margin-top');
+        }
+
+        // Scroll down past threshold, hide stats
+        if (scrollY > lastScrollY.current && scrollY > 150 && !isHidden.current) {
+          isHidden.current = true;
+          gsap.to(statsContainerRef.current, {
+            duration: 0.4,
+            height: 0,
+            autoAlpha: 0,
+            marginTop: 0,
+            ease: 'power2.inOut',
+            overwrite: true,
+          });
+        } 
+        // Scroll up AND are very close to the top, show stats.
+        // This creates a "magnetic" effect where the user must intentionally
+        // scroll all the way up to reveal the stats again.
+        else if (scrollY < lastScrollY.current && scrollY <= 50 && isHidden.current) {
+          isHidden.current = false;
+          gsap.to(statsContainerRef.current, {
+            duration: 0.4,
+            height: 'auto',
+            autoAlpha: 1,
+            marginTop: originalMarginTop.current || 0,
+            ease: 'power2.out',
+            overwrite: true,
+          });
+        }
+
+        lastScrollY.current = scrollY < 0 ? 0 : scrollY;
+      }, [scrollContainerRef, statsContainerRef]);
+
+      useEffect(() => {
+        const scrollContainer = scrollContainerRef.current;
+        if (scrollContainer) {
+          scrollContainer.addEventListener('scroll', handleScroll, { passive: true });
+        }
+
+        return () => {
+          if (scrollContainer) {
+            scrollContainer.removeEventListener('scroll', handleScroll);
+          }
+          // When component unmounts, kill any running animations on the stats ref
+          if (statsContainerRef.current) {
+            gsap.killTweensOf(statsContainerRef.current);
+          }
+        };
+      }, [scrollContainerRef, statsContainerRef, handleScroll]);
+    }
+approved: false
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: undone
+id: 458

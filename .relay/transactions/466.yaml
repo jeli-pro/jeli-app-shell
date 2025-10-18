@@ -1,144 +1,199 @@
-uuid: d8225547-73d7-4638-96d2-28c0b719463c
+uuid: c2584ec6-3914-41d3-a5fe-001091a13470
 projectId: jeli-app-shell
-createdAt: '2025-10-18T07:18:12.520Z'
+createdAt: '2025-10-18T07:53:28.260Z'
 gitCommitMsg: >-
-  feat(DataDemo): implement auto-hiding stats header on scroll
+  perf: Tweak animation timings for stat cards
 
-  Introduces a sliver-style header for the stats cards section on the Data Demo
-  page. The stats container now gracefully animates out of view when scrolling
-  down and animates back in when scrolling up, improving content visibility.
-
-  - Created a new reusable hook, `useAutoAnimateStats`, to encapsulate the GSAP
-  animation and scroll-handling logic. - Integrated the hook into the `DataDemo`
-  page component to link the behavior to the scroll container and stats section.
-  - This provides a more dynamic and focused user experience, especially when
-  interacting with large datasets.
+  Adjusted the GSAP animation durations and staggers for the stat cards and
+  their internal charts. This makes the animations feel snappier and more
+  responsive, mitigating the perceived performance heaviness introduced by the
+  scroll-based container animation.
 promptSummary: >-
-  Implement a sliver-style auto-hiding header for the stats cards on the Data
-  Demo page. The cards should animate out of view on scroll down and back in on
-  scroll up.
+  The user wants to fix a perceived lag in the stats cards animations after
+  adding a "scroll magnetism" feature. The animations feel heavy.
 reasoning:
   - >-
-    Of course. I will implement a sliver-style header for the stats cards on the
-    `DataDemo` page. When the user scrolls down, the stats container will
-    animate out of view, and when they scroll up, it will reappear. This will be
-    encapsulated in a new, reusable hook to keep the component logic clean.
+    The "scroll magnetism" feature, which animates the stats card container on
+    scroll, can make other animations on the page feel heavy or laggy,
+    especially if they are long-running. To address this, I will adjust the
+    animation timings for both the initial reveal of the stat cards and the
+    chart animations within each card. By making these animations faster and
+    snappier, the overall user experience will feel lighter and more responsive,
+    mitigating the perceived lag.
   - >-
-    First, I'll create the new custom hook `useAutoAnimateStats.hook.ts`. This
-    hook will contain all the logic for tracking scroll position and using GSAP
-    to animate the stats container. It's designed to be efficient, firing
-    animations only when the scroll direction changes past a certain threshold,
-    and to be conflict-free by using GSAP's `overwrite` feature.
+    First, I will modify the `StatCard` component to shorten the duration of the
+    line-drawing and area-reveal animations for the mini-charts.
   - >-
-    Next, I'll integrate this new hook into the `DataDemoContent` component.
-    I'll import `useAutoAnimateStats` and call it with the existing `scrollRef`
-    for the page layout and `statsRef` for the stats container. This will
-    connect the animation logic to the correct elements.
+    Next, I will adjust the initial stagger animation for the group of stat
+    cards in the `DataDemo` page, making it complete more quickly.
+  - >-
+    These adjustments will make the animations crisper and should resolve the
+    feeling of sluggishness when interacting with the page.
 operations:
   - type: write
-    path: src/pages/DataDemo/hooks/useAutoAnimateStats.hook.ts
-    content: |-
-      import { useEffect, useRef, useCallback } from 'react';
-      import { gsap } from 'gsap';
+    path: src/components/shared/StatCard.tsx
+    content: >+
+      --- src/components/shared/StatCard.tsx
 
-      /**
-       * A hook that animates a stats container in and out of view based on scroll direction.
-       * It creates a "sliver app bar" effect for the stats section.
-       * @param scrollContainerRef Ref to the main scrolling element.
-       * @param statsContainerRef Ref to the stats container element to be animated.
-       */
-      export function useAutoAnimateStats(
-        scrollContainerRef: React.RefObject<HTMLElement>,
-        statsContainerRef: React.RefObject<HTMLElement>
-      ) {
-        const lastScrollY = useRef(0);
-        const isHidden = useRef(false);
-        const originalMarginTop = useRef<string | null>(null);
+      +++ src/components/shared/StatCard.tsx
 
-        const handleScroll = useCallback(() => {
-          if (!scrollContainerRef.current || !statsContainerRef.current) return;
+      @@ -19,8 +19,8 @@
+             if (line instanceof SVGPathElement && area) {
+               const length = line.getTotalLength();
+               gsap.set(line, { strokeDasharray: length, strokeDashoffset: length });
+      -        gsap.to(line, { strokeDashoffset: 0, duration: 1.5, ease:
+      'power2.inOut' });
 
-          const scrollY = scrollContainerRef.current.scrollTop;
-          
-          // Initialize original margin on first scroll event if not set
-          if (originalMarginTop.current === null) {
-            const computedStyle = getComputedStyle(statsContainerRef.current);
-            originalMarginTop.current = computedStyle.getPropertyValue('margin-top');
-          }
+      -        gsap.fromTo(area, { opacity: 0, y: 10 }, { opacity: 1, y: 0,
+      duration: 1, ease: 'power2.out', delay: 0.5 });
 
-          // Scroll down past threshold, hide stats
-          if (scrollY > lastScrollY.current && scrollY > 150 && !isHidden.current) {
-            isHidden.current = true;
-            gsap.to(statsContainerRef.current, {
-              duration: 0.4,
-              height: 0,
-              autoAlpha: 0,
-              marginTop: 0,
-              ease: 'power2.inOut',
-              overwrite: true,
-            });
-          } 
-          // Scroll up or back to top, show stats
-          else if ((scrollY < lastScrollY.current || scrollY <= 150) && isHidden.current) {
-            isHidden.current = false;
-            gsap.to(statsContainerRef.current, {
-              duration: 0.4,
-              height: 'auto',
-              autoAlpha: 1,
-              marginTop: originalMarginTop.current || 0,
-              ease: 'power2.out',
-              overwrite: true,
-            });
-          }
+      +        gsap.to(line, { strokeDashoffset: 0, duration: 1.2, ease:
+      'power2.inOut' });
 
-          lastScrollY.current = scrollY < 0 ? 0 : scrollY;
-        }, [scrollContainerRef, statsContainerRef]);
+      +        gsap.fromTo(area, { opacity: 0, y: 10 }, { opacity: 1, y: 0,
+      duration: 0.8, ease: 'power2.out', delay: 0.4 });
+             }
+           }
+         }, [chartData]);
 
-        useEffect(() => {
-          const scrollContainer = scrollContainerRef.current;
-          if (scrollContainer) {
-            scrollContainer.addEventListener('scroll', handleScroll, { passive: true });
-          }
-
-          return () => {
-            if (scrollContainer) {
-              scrollContainer.removeEventListener('scroll', handleScroll);
-            }
-            // When component unmounts, kill any running animations on the stats ref
-            if (statsContainerRef.current) {
-              gsap.killTweensOf(statsContainerRef.current);
-            }
-          };
-        }, [scrollContainerRef, statsContainerRef, handleScroll]);
-      }
-    patchStrategy: replace
+    patchStrategy: standard-diff
   - type: write
     path: src/pages/DataDemo/index.tsx
     content: |+
       --- src/pages/DataDemo/index.tsx
       +++ src/pages/DataDemo/index.tsx
-      @@ -21,6 +21,7 @@
-       import { mockDataItems } from './data/mockData'
-       import type { GroupableField, DataItem } from './types'
-       import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
-      +import { useAutoAnimateStats } from './hooks/useAutoAnimateStats.hook'
-       import { 
-         useDataDemoStore, 
-         useGroupTabs
-      @@ -109,6 +110,9 @@
-         const statsRef = useRef<HTMLDivElement>(null)
-         const scrollRef = useRef<HTMLDivElement>(null);
-       
-      +  // Auto-hide stats container on scroll down
-      +  useAutoAnimateStats(scrollRef, statsRef);
-      +
-         // Calculate stats from data
-         const totalItems = mockDataItems.length
-         const { showScrollToBottom, scrollToBottom, handleScroll } = useScrollToBottom(scrollRef);
+      @@ -176,10 +176,10 @@
+             gsap.fromTo(statsRef.current.children,
+               { y: 30, opacity: 0 },
+               {
+      -          duration: 0.6,
+      +          duration: 0.5,
+                 y: 0,
+                 opacity: 1,
+      -          stagger: 0.1,
+      +          stagger: 0.08,
+                 ease: "power2.out"
+               }
+             )
 
     patchStrategy: standard-diff
 snapshot:
-  src/pages/DataDemo/hooks/useAutoAnimateStats.hook.ts: null
+  src/components/shared/StatCard.tsx: >-
+    import React, { useLayoutEffect, useRef } from 'react';
+
+    import { gsap } from 'gsap';
+
+    import { cn } from '@/lib/utils';
+
+    import { Card } from '@/components/ui/card';
+
+
+    interface StatCardProps {
+      title: string;
+      value: string;
+      change: string;
+      trend: 'up' | 'down';
+      icon: React.ReactNode;
+      chartData?: number[];
+    }
+
+
+    export function StatCard({ title, value, change, trend, icon, chartData }:
+    StatCardProps) {
+      const chartRef = useRef<SVGSVGElement>(null);
+
+      useLayoutEffect(() => {
+        // Only run animation if chartData is present
+        if (chartRef.current && chartData) {
+          const line = chartRef.current.querySelector('.chart-line');
+          const area = chartRef.current.querySelector('.chart-area');
+          if (line instanceof SVGPathElement && area) {
+            const length = line.getTotalLength();
+            gsap.set(line, { strokeDasharray: length, strokeDashoffset: length });
+            gsap.to(line, { strokeDashoffset: 0, duration: 1.5, ease: 'power2.inOut' });
+            gsap.fromTo(area, { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 1, ease: 'power2.out', delay: 0.5 });
+          }
+        }
+      }, [chartData]);
+
+      // --- Chart rendering logic (only if chartData is provided) ---
+      const renderChart = () => {
+        if (!chartData || chartData.length < 2) return null;
+
+        // SVG dimensions
+        const width = 150;
+        const height = 60;
+
+        // Normalize data
+        const max = Math.max(...chartData);
+        const min = Math.min(...chartData);
+        const range = max - min === 0 ? 1 : max - min;
+
+        const points = chartData
+          .map((val, i) => {
+            const x = (i / (chartData.length - 1)) * width;
+            const y = height - ((val - min) / range) * (height - 10) + 5; // Add vertical padding
+            return `${x},${y}`;
+          });
+
+        const linePath = "M" + points.join(" L");
+        const areaPath = `${linePath} L${width},${height} L0,${height} Z`;
+
+        return (
+          <div className="mt-4 -mb-2 -mx-2">
+            <svg ref={chartRef} viewBox={`0 0 ${width} ${height}`} className="w-full h-auto" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" className="text-primary" stopColor="currentColor" stopOpacity={0.3} />
+                  <stop offset="100%" className="text-primary" stopColor="currentColor" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <path
+                className="chart-area"
+                d={areaPath}
+                fill="url(#chartGradient)"
+              />
+              <path
+                className="chart-line"
+                d={linePath}
+                fill="none"
+                stroke="hsl(var(--primary))"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </div>
+        );
+      };
+      // --- End of chart rendering logic ---
+
+      return (
+        <Card className={cn(
+            "p-6 border-border/50 hover:border-primary/30 transition-all duration-300 group cursor-pointer flex flex-col justify-between",
+            !chartData && "h-full" // Ensure cards without charts have consistent height if needed
+        )}>
+          <div>
+            <div className="flex items-center justify-between">
+              <div className="p-3 bg-primary/10 rounded-full group-hover:bg-primary/20 transition-colors">
+                {icon}
+              </div>
+              <div className={cn(
+                "text-sm font-medium",
+                trend === 'up' ? "text-green-600" : "text-red-600"
+              )}>
+                {change}
+              </div>
+            </div>
+            <div className="mt-4">
+              <h3 className="text-2xl font-bold">{value}</h3>
+              <p className="text-sm text-muted-foreground mt-1">{title}</p>
+            </div>
+          </div>
+          {renderChart()}
+        </Card>
+      );
+    }
   src/pages/DataDemo/index.tsx: >
     import { useRef, useEffect, useCallback, useMemo } from 'react'
 
@@ -198,6 +253,8 @@ snapshot:
     import type { GroupableField, DataItem } from './types'
 
     import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
+
+    import { useAutoAnimateStats } from './hooks/useAutoAnimateStats.hook'
 
     import { 
       useDataDemoStore, 
@@ -281,6 +338,9 @@ snapshot:
 
       const statsRef = useRef<HTMLDivElement>(null)
       const scrollRef = useRef<HTMLDivElement>(null);
+
+      // Auto-hide stats container on scroll down
+      useAutoAnimateStats(scrollRef, statsRef);
 
       // Calculate stats from data
       const totalItems = mockDataItems.length
@@ -550,6 +610,6 @@ approved: true
 linesAdded: null
 linesRemoved: null
 linesDifference: null
-gitCommittedAt: '2025-10-18T07:20:03.965Z'
+gitCommittedAt: null
 status: committed
-id: 455
+id: 466

@@ -1,0 +1,139 @@
+uuid: 4a259c6c-8e81-4b13-9f5e-18e388c69f8c
+projectId: jeli-app-shell
+createdAt: '2025-10-18T07:28:05.676Z'
+gitCommitMsg: >-
+  feat(DataDemo): trigger stats hide animation immediately on scroll
+
+  Adjusts the behavior of the auto-hiding stats header to be more responsive.
+  The hide animation now triggers on the first significant downward scroll
+  (after 10px) instead of waiting for a 150px threshold.
+
+  This makes the UI feel more immediate and reactive to user input while
+  preventing accidental triggers from minor scroll adjustments.
+promptSummary: >-
+  Make the sliver hide action for the stats cards trigger immediately on the
+  first downward scroll, instead of waiting for a 150px threshold.
+reasoning:
+  - >-
+    Got it. The hide animation for the stats cards should be more responsive and
+    trigger immediately on a downward scroll, rather than waiting for the user
+    to scroll 150px down the page.
+  - >-
+    I will adjust the `useAutoAnimateStats` hook to change this behavior. I'll
+    replace the `150px` threshold with a much smaller one (`10px`). This makes
+    the animation feel instantaneous while preventing it from firing on tiny,
+    accidental scroll events (like a single click of a mouse wheel), ensuring a
+    smooth user experience.
+  - 'Here is the updated hook:'
+operations:
+  - type: write
+    path: src/pages/DataDemo/hooks/useAutoAnimateStats.hook.ts
+    content: >+
+      --- src/pages/DataDemo/hooks/useAutoAnimateStats.hook.ts
+
+      +++ src/pages/DataDemo/hooks/useAutoAnimateStats.hook.ts
+
+      @@ -23,8 +23,9 @@
+             originalMarginTop.current = computedStyle.getPropertyValue('margin-top');
+           }
+       
+      -    // Scroll down past threshold, hide stats
+
+      -    if (scrollY > lastScrollY.current && scrollY > 150 &&
+      !isHidden.current) {
+
+      +    // On any significant scroll down, hide the stats.
+
+      +    // The small 10px threshold prevents firing on minor scroll-jiggles.
+
+      +    if (scrollY > lastScrollY.current && scrollY > 10 &&
+      !isHidden.current) {
+             isHidden.current = true;
+             gsap.to(statsContainerRef.current, {
+               duration: 0.4,
+
+    patchStrategy: standard-diff
+snapshot:
+  src/pages/DataDemo/hooks/useAutoAnimateStats.hook.ts: |-
+    import { useEffect, useRef, useCallback } from 'react';
+    import { gsap } from 'gsap';
+
+    /**
+     * A hook that animates a stats container in and out of view based on scroll direction.
+     * It creates a "sliver app bar" effect for the stats section.
+     * @param scrollContainerRef Ref to the main scrolling element.
+     * @param statsContainerRef Ref to the stats container element to be animated.
+     */
+    export function useAutoAnimateStats(
+      scrollContainerRef: React.RefObject<HTMLElement>,
+      statsContainerRef: React.RefObject<HTMLElement>
+    ) {
+      const lastScrollY = useRef(0);
+      const isHidden = useRef(false);
+      const originalMarginTop = useRef<string | null>(null);
+
+      const handleScroll = useCallback(() => {
+        if (!scrollContainerRef.current || !statsContainerRef.current) return;
+
+        const scrollY = scrollContainerRef.current.scrollTop;
+        
+        // Initialize original margin on first scroll event if not set
+        if (originalMarginTop.current === null) {
+          const computedStyle = getComputedStyle(statsContainerRef.current);
+          originalMarginTop.current = computedStyle.getPropertyValue('margin-top');
+        }
+
+        // Scroll down past threshold, hide stats
+        if (scrollY > lastScrollY.current && scrollY > 150 && !isHidden.current) {
+          isHidden.current = true;
+          gsap.to(statsContainerRef.current, {
+            duration: 0.4,
+            height: 0,
+            autoAlpha: 0,
+            marginTop: 0,
+            ease: 'power2.inOut',
+            overwrite: true,
+          });
+        } 
+        // Scroll up AND are very close to the top, show stats.
+        // This creates a "magnetic" effect where the user must intentionally
+        // scroll all the way up to reveal the stats again.
+        else if (scrollY < lastScrollY.current && scrollY <= 50 && isHidden.current) {
+          isHidden.current = false;
+          gsap.to(statsContainerRef.current, {
+            duration: 0.4,
+            height: 'auto',
+            autoAlpha: 1,
+            marginTop: originalMarginTop.current || 0,
+            ease: 'power2.out',
+            overwrite: true,
+          });
+        }
+
+        lastScrollY.current = scrollY < 0 ? 0 : scrollY;
+      }, [scrollContainerRef, statsContainerRef]);
+
+      useEffect(() => {
+        const scrollContainer = scrollContainerRef.current;
+        if (scrollContainer) {
+          scrollContainer.addEventListener('scroll', handleScroll, { passive: true });
+        }
+
+        return () => {
+          if (scrollContainer) {
+            scrollContainer.removeEventListener('scroll', handleScroll);
+          }
+          // When component unmounts, kill any running animations on the stats ref
+          if (statsContainerRef.current) {
+            gsap.killTweensOf(statsContainerRef.current);
+          }
+        };
+      }, [scrollContainerRef, statsContainerRef, handleScroll]);
+    }
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 459

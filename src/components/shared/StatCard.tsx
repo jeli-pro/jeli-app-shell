@@ -23,8 +23,8 @@ export function StatCard({ title, value, change, trend, icon, chartData }: StatC
       if (line instanceof SVGPathElement && area) {
         const length = line.getTotalLength();
         gsap.set(line, { strokeDasharray: length, strokeDashoffset: length });
-        gsap.to(line, { strokeDashoffset: 0, duration: 1.5, ease: 'power2.inOut' });
-        gsap.fromTo(area, { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 1, ease: 'power2.out', delay: 0.5 });
+        gsap.to(line, { strokeDashoffset: 0, duration: 1.2, ease: 'power2.inOut' });
+        gsap.fromTo(area, { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.8, ease: 'power2.out', delay: 0.4 });
       }
     }
   }, [chartData]);

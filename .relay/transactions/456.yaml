@@ -1,0 +1,177 @@
+uuid: b859b207-68b2-4d04-b9c4-c23f2b2b1a6c
+projectId: jeli-app-shell
+createdAt: '2025-10-18T07:20:44.834Z'
+gitCommitMsg: >-
+  refactor(DataDemo): improve stats header reveal behavior
+
+  Updates the `useAutoAnimateStats` hook to change when the hidden stats header
+  reappears. Previously, it would show on any upward scroll. Now, it only
+  becomes visible when the user scrolls to the very top of the page (scrollTop <
+  50px).
+
+  This creates a more intentional user experience, allowing users to scroll up
+  through content without the stats header reappearing until they explicitly
+  scroll all the way up.
+promptSummary: >-
+  Update the auto-hiding stats header to only reappear when the user scrolls to
+  the very top of the page, rather than on any upward scroll.
+reasoning:
+  - >-
+    Understood. You want to refine the behavior so that the stats cards don't
+    immediately reappear on any upward scroll. Instead, they should remain
+    hidden as the user scrolls up through the content, and only reveal
+    themselves when the user is at the very top of the page. This creates a more
+    intentional user action to see the stats again.
+  - >-
+    I will update the `useAutoAnimateStats` hook to implement this logic. The
+    change is surgical and only affects the condition for showing the stats
+    container.
+  - >-
+    I'll modify the `handleScroll` function within the
+    `useAutoAnimateStats.hook.ts` file. Instead of showing the stats on any
+    upward scroll, I'll change the condition to only show them when the scroll
+    position is very near the top (less than 50 pixels). This achieves the
+    desired "magnetic" feel where the user can scroll up freely within the
+    content without the stats reappearing until they've made a clear gesture to
+    return to the top.
+operations:
+  - type: write
+    path: src/pages/DataDemo/hooks/useAutoAnimateStats.hook.ts
+    content: |
+      <<<<<<< SEARCH
+          // Scroll down past threshold, hide stats
+          if (scrollY > lastScrollY.current && scrollY > 150 && !isHidden.current) {
+            isHidden.current = true;
+            gsap.to(statsContainerRef.current, {
+              duration: 0.4,
+              height: 0,
+              autoAlpha: 0,
+              marginTop: 0,
+              ease: 'power2.inOut',
+              overwrite: true,
+            });
+          } 
+          // Scroll up or back to top, show stats
+          else if ((scrollY < lastScrollY.current || scrollY <= 150) && isHidden.current) {
+            isHidden.current = false;
+            gsap.to(statsContainerRef.current, {
+              duration: 0.4,
+              height: 'auto',
+              autoAlpha: 1,
+              marginTop: originalMarginTop.current || 0,
+              ease: 'power2.out',
+              overwrite: true,
+            });
+          }
+      =======
+          const isScrollingDown = scrollY > lastScrollY.current;
+
+          // Scroll down past threshold, hide stats
+          if (isScrollingDown && scrollY > 150 && !isHidden.current) {
+            isHidden.current = true;
+            gsap.to(statsContainerRef.current, {
+              duration: 0.4,
+              height: 0,
+              autoAlpha: 0,
+              marginTop: 0,
+              ease: 'power2.inOut',
+              overwrite: true,
+            });
+          } 
+          // Show stats only when user scrolls near the top of the page.
+          // This prevents it from reappearing on any upward scroll.
+          else if (scrollY < 50 && isHidden.current) {
+            isHidden.current = false;
+            gsap.to(statsContainerRef.current, {
+              duration: 0.4,
+              height: 'auto',
+              autoAlpha: 1,
+              marginTop: originalMarginTop.current || 0,
+              ease: 'power2.out',
+              overwrite: true,
+            });
+          }
+      >>>>>>> REPLACE
+    patchStrategy: search-replace
+snapshot:
+  src/pages/DataDemo/hooks/useAutoAnimateStats.hook.ts: |-
+    import { useEffect, useRef, useCallback } from 'react';
+    import { gsap } from 'gsap';
+
+    /**
+     * A hook that animates a stats container in and out of view based on scroll direction.
+     * It creates a "sliver app bar" effect for the stats section.
+     * @param scrollContainerRef Ref to the main scrolling element.
+     * @param statsContainerRef Ref to the stats container element to be animated.
+     */
+    export function useAutoAnimateStats(
+      scrollContainerRef: React.RefObject<HTMLElement>,
+      statsContainerRef: React.RefObject<HTMLElement>
+    ) {
+      const lastScrollY = useRef(0);
+      const isHidden = useRef(false);
+      const originalMarginTop = useRef<string | null>(null);
+
+      const handleScroll = useCallback(() => {
+        if (!scrollContainerRef.current || !statsContainerRef.current) return;
+
+        const scrollY = scrollContainerRef.current.scrollTop;
+        
+        // Initialize original margin on first scroll event if not set
+        if (originalMarginTop.current === null) {
+          const computedStyle = getComputedStyle(statsContainerRef.current);
+          originalMarginTop.current = computedStyle.getPropertyValue('margin-top');
+        }
+
+        // Scroll down past threshold, hide stats
+        if (scrollY > lastScrollY.current && scrollY > 150 && !isHidden.current) {
+          isHidden.current = true;
+          gsap.to(statsContainerRef.current, {
+            duration: 0.4,
+            height: 0,
+            autoAlpha: 0,
+            marginTop: 0,
+            ease: 'power2.inOut',
+            overwrite: true,
+          });
+        } 
+        // Scroll up or back to top, show stats
+        else if ((scrollY < lastScrollY.current || scrollY <= 150) && isHidden.current) {
+          isHidden.current = false;
+          gsap.to(statsContainerRef.current, {
+            duration: 0.4,
+            height: 'auto',
+            autoAlpha: 1,
+            marginTop: originalMarginTop.current || 0,
+            ease: 'power2.out',
+            overwrite: true,
+          });
+        }
+
+        lastScrollY.current = scrollY < 0 ? 0 : scrollY;
+      }, [scrollContainerRef, statsContainerRef]);
+
+      useEffect(() => {
+        const scrollContainer = scrollContainerRef.current;
+        if (scrollContainer) {
+          scrollContainer.addEventListener('scroll', handleScroll, { passive: true });
+        }
+
+        return () => {
+          if (scrollContainer) {
+            scrollContainer.removeEventListener('scroll', handleScroll);
+          }
+          // When component unmounts, kill any running animations on the stats ref
+          if (statsContainerRef.current) {
+            gsap.killTweensOf(statsContainerRef.current);
+          }
+        };
+      }, [scrollContainerRef, statsContainerRef, handleScroll]);
+    }
+approved: false
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: undone
+id: 456

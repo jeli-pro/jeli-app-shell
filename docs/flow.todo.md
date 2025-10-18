@@ -4,6 +4,10 @@ I am obsessed with laravel filament... so make everything about data demo page i
 
 ===
 
+data demo page: lets turn stats card to become horizontally slideable, should only need one row even on small screen... for responsive design, just make the stats cards smaller
+
+=== DONE
+
 data demo page: should gsap animamte auto hide stats card on page scroll down for all view mode, just like SliverAppBar in flutter, so user can focus on the content.
 
 === DONE

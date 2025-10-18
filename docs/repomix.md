@@ -732,6 +732,7 @@ import { DataToolbar } from './components/DataToolbar'
 import { mockDataItems } from './data/mockData'
 import type { GroupableField, DataItem } from './types'
 import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
+import { useAutoAnimateStats } from './hooks/useAutoAnimateStats.hook'
 import { 
   useDataDemoStore, 
   useGroupTabs
@@ -810,6 +811,9 @@ function DataDemoContent() {
 
   const statsRef = useRef<HTMLDivElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Auto-hide stats container on scroll down
+  useAutoAnimateStats(scrollRef, statsRef);
 
   // Calculate stats from data
   const totalItems = mockDataItems.length

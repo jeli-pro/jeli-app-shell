@@ -1,0 +1,237 @@
+uuid: 442e9797-40ca-46e7-810a-3774b3e8c07e
+projectId: jeli-app-shell
+createdAt: '2025-10-18T07:36:50.805Z'
+gitCommitMsg: >-
+  feat(DataDemo): implement pull-to-reveal for stats header
+
+  Refines the auto-hiding stats header to use a "pull-to-reveal" mechanism. The
+  stats will now only reappear if the user is at the absolute top of the scroll
+  container and performs an additional upward scroll gesture (e.g., via mouse
+  wheel).
+
+  This is achieved by separating the hide and reveal logic: - The `scroll` event
+  now only handles hiding the header on scroll-down. - A new `wheel` event
+  listener handles the reveal logic, checking for an upward wheel delta while
+  scrollTop is 0.
+
+  This provides a more intentional and less intrusive user experience,
+  preventing the header from reappearing accidentally.
+promptSummary: >-
+  The stats should only reappear if the user is already at the top and performs
+  an additional scroll-up gesture.
+reasoning:
+  - >-
+    You've got it. This is a great refinement. The goal is to implement a
+    "pull-to-reveal" behavior. The stats header should only reappear when the
+    user is already at the very top of the content and makes an explicit upward
+    scroll gesture (like with a mouse wheel or trackpad). This prevents it from
+    reappearing just by scrolling back to the top.
+  - >-
+    To do this, I'll modify the `useAutoAnimateStats` hook to listen for the
+    `wheel` event in addition to the `scroll` event.
+  - >-
+    1.  The `scroll` event handler will now *only* be responsible for hiding the
+    stats when scrolling down.
+  - >-
+    2.  A new `wheel` event handler will be responsible for revealing the stats,
+    but *only* if the scroll position is already at `0` and the user is
+    scrolling up.
+  - >-
+    This cleanly separates the logic and creates the precise effect you're
+    looking for.
+  - 'Here is the updated hook:'
+operations:
+  - type: write
+    path: src/pages/DataDemo/hooks/useAutoAnimateStats.hook.ts
+    content: >
+      --- src/pages/DataDemo/hooks/useAutoAnimateStats.hook.ts
+
+      +++ src/pages/DataDemo/hooks/useAutoAnimateStats.hook.ts
+
+      @@ -35,28 +35,42 @@
+               overwrite: true,
+             });
+           } 
+      -    // Scroll up AND are very close to the top, show stats.
+
+      -    // This creates a "magnetic" effect where the user must intentionally
+
+      -    // scroll all the way up to reveal the stats again.
+
+      -    else if (scrollY < lastScrollY.current && scrollY <= 5 &&
+      isHidden.current) {
+
+      -      isHidden.current = false;
+
+      -      gsap.to(statsContainerRef.current, {
+
+      -        duration: 0.4,
+
+      -        height: 'auto',
+
+      -        autoAlpha: 1,
+
+      -        marginTop: originalMarginTop.current || 0,
+
+      -        ease: 'power2.out',
+
+      -        overwrite: true,
+
+      -      });
+
+      -    }
+       
+           lastScrollY.current = scrollY < 0 ? 0 : scrollY;
+         }, [scrollContainerRef, statsContainerRef]);
+       
+      +  const handleWheel = useCallback((event: WheelEvent) => {
+
+      +    if (!scrollContainerRef.current || !statsContainerRef.current)
+      return;
+
+      +    
+
+      +    const isAtTop = scrollContainerRef.current.scrollTop === 0;
+
+      +    const isScrollingUp = event.deltaY < 0;
+
+      +
+
+      +    // Only reveal if we are at the top, scrolling up, and stats are
+      hidden.
+
+      +    // This creates the "pull to reveal" effect.
+
+      +    if (isAtTop && isScrollingUp && isHidden.current) {
+
+      +        isHidden.current = false;
+
+      +        gsap.to(statsContainerRef.current, {
+
+      +          duration: 0.4,
+
+      +          height: 'auto',
+
+      +          autoAlpha: 1,
+
+      +          marginTop: originalMarginTop.current || 0,
+
+      +          ease: 'power2.out',
+
+      +          overwrite: true,
+
+      +        });
+
+      +    }
+
+      +  }, [scrollContainerRef, statsContainerRef]);
+
+      +
+         useEffect(() => {
+           const scrollContainer = scrollContainerRef.current;
+           if (scrollContainer) {
+             scrollContainer.addEventListener('scroll', handleScroll, { passive: true });
+      +      scrollContainer.addEventListener('wheel', handleWheel, { passive:
+      true });
+           }
+       
+           return () => {
+             if (scrollContainer) {
+               scrollContainer.removeEventListener('scroll', handleScroll);
+      +        scrollContainer.removeEventListener('wheel', handleWheel);
+             }
+             // When component unmounts, kill any running animations on the stats ref
+             if (statsContainerRef.current) {
+      @@ -64,5 +78,5 @@
+             }
+           };
+      -  }, [scrollContainerRef, statsContainerRef, handleScroll]);
+
+      +  }, [scrollContainerRef, statsContainerRef, handleScroll, handleWheel]);
+       }
+    patchStrategy: standard-diff
+snapshot:
+  src/pages/DataDemo/hooks/useAutoAnimateStats.hook.ts: |-
+    import { useEffect, useRef, useCallback } from 'react';
+    import { gsap } from 'gsap';
+
+    /**
+     * A hook that animates a stats container in and out of view based on scroll direction.
+     * It creates a "sliver app bar" effect for the stats section.
+     * @param scrollContainerRef Ref to the main scrolling element.
+     * @param statsContainerRef Ref to the stats container element to be animated.
+     */
+    export function useAutoAnimateStats(
+      scrollContainerRef: React.RefObject<HTMLElement>,
+      statsContainerRef: React.RefObject<HTMLElement>
+    ) {
+      const lastScrollY = useRef(0);
+      const isHidden = useRef(false);
+      const originalMarginTop = useRef<string | null>(null);
+
+      const handleScroll = useCallback(() => {
+        if (!scrollContainerRef.current || !statsContainerRef.current) return;
+
+        const scrollY = scrollContainerRef.current.scrollTop;
+        
+        // Initialize original margin on first scroll event if not set
+        if (originalMarginTop.current === null) {
+          const computedStyle = getComputedStyle(statsContainerRef.current);
+          originalMarginTop.current = computedStyle.getPropertyValue('margin-top');
+        }
+
+        // On any significant scroll down, hide the stats.
+        // The small 10px threshold prevents firing on minor scroll-jiggles.
+        if (scrollY > lastScrollY.current && scrollY > 10 && !isHidden.current) {
+          isHidden.current = true;
+          gsap.to(statsContainerRef.current, {
+            duration: 0.4,
+            height: 0,
+            autoAlpha: 0,
+            marginTop: 0,
+            ease: 'power2.inOut',
+            overwrite: true,
+          });
+        } 
+        // Scroll up AND are very close to the top, show stats.
+        // This creates a "magnetic" effect where the user must intentionally
+        // scroll all the way up to reveal the stats again.
+        else if (scrollY < lastScrollY.current && scrollY <= 5 && isHidden.current) {
+          isHidden.current = false;
+          gsap.to(statsContainerRef.current, {
+            duration: 0.4,
+            height: 'auto',
+            autoAlpha: 1,
+            marginTop: originalMarginTop.current || 0,
+            ease: 'power2.out',
+            overwrite: true,
+          });
+        }
+
+        lastScrollY.current = scrollY < 0 ? 0 : scrollY;
+      }, [scrollContainerRef, statsContainerRef]);
+
+      useEffect(() => {
+        const scrollContainer = scrollContainerRef.current;
+        if (scrollContainer) {
+          scrollContainer.addEventListener('scroll', handleScroll, { passive: true });
+        }
+
+        return () => {
+          if (scrollContainer) {
+            scrollContainer.removeEventListener('scroll', handleScroll);
+          }
+          // When component unmounts, kill any running animations on the stats ref
+          if (statsContainerRef.current) {
+            gsap.killTweensOf(statsContainerRef.current);
+          }
+        };
+      }, [scrollContainerRef, statsContainerRef, handleScroll]);
+    }
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 462

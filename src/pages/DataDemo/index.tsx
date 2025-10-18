@@ -171,10 +171,10 @@ function DataDemoContent() {
       gsap.fromTo(statsRef.current.children,
         { y: 30, opacity: 0 },
         {
-          duration: 0.6,
+          duration: 0.5,
           y: 0,
           opacity: 1,
-          stagger: 0.1,
+          stagger: 0.08,
           ease: "power2.out"
         }
       )

@@ -1,0 +1,923 @@
+uuid: c3273e51-c052-4752-95f0-61266ed13f1e
+projectId: jeli-app-shell
+createdAt: '2025-10-18T07:49:25.971Z'
+gitCommitMsg: >-
+  feat(DataDemo): add pull-to-reveal cue for stats section
+
+  Introduces a visual indicator that appears at the top of the content area when
+  the stats section is hidden. This cue guides users to scroll up to reveal the
+  stats, improving the feature's discoverability and overall user experience.
+
+  - Creates a new `PullToRevealCue` component with a bounce animation. - Adds a
+  `useAutoAnimateStats` hook to manage the animation logic for both the stats
+  section and the new cue. - Updates `PageLayout` to support absolutely
+  positioned child elements. - Integrates the new component and hook into the
+  DataDemo page.
+promptSummary: >-
+  Add a visual "pull to reveal" cue for the auto-hiding stats section on the
+  Data Demo page.
+reasoning:
+  - >-
+    Of course. Adding a visual cue for the revealable stats section is an
+    excellent way to improve user experience. Here is my plan to implement this
+    feature:
+  - >-
+    1.  **Create the `PullToRevealCue` component:** I'll start by creating a
+    new, self-contained React component that displays an animated indicator.
+    This component will be placed in `src/pages/DataDemo/components/`.
+  - >-
+    2.  **Add a bounce animation:** The cue will use a bouncing animation to
+    draw attention. I'll add the necessary keyframes and animation utility to
+    `tailwind.config.js`.
+  - >-
+    3.  **Create the `useAutoAnimateStats` hook:** This new custom hook will
+    contain all the logic for hiding and showing the stats container based on
+    scroll position. It will also manage the visibility of the new
+    `PullToRevealCue` and will be located in `src/pages/DataDemo/hooks/`.
+  - >-
+    4.  **Update `PageLayout`:** To properly contain the absolutely positioned
+    cue, I'll add `position: relative` to the main content wrapper inside the
+    `PageLayout` component.
+  - >-
+    5.  **Integrate into `DataDemo` page:** Finally, I'll update the `DataDemo`
+    page to use the new hook, get the visibility state for the cue, and render
+    the `PullToRevealCue` component in the correct position.
+  - Let's begin.
+  - >-
+    First, I'll create the new `PullToRevealCue` component. This will be a
+    simple, stateless component responsible for rendering the visual indicator.
+  - >-
+    Next, I'll add the `bounce` animation to the Tailwind configuration to make
+    the cue noticeable.
+  - >-
+    Now, I'll create the custom hook `useAutoAnimateStats`. This hook will
+    encapsulate the complex logic of animating the stats section and controlling
+    the visibility of the reveal cue.
+  - >-
+    To ensure the cue is positioned correctly within the page content, I'll
+    modify `PageLayout` to create a new positioning context.
+  - Finally, I'll integrate the new hook and component into the `DataDemo` page.
+  - >-
+    With these changes, a subtle, animated cue will now appear when the stats
+    section is hidden, guiding users to scroll up to reveal it. This
+    significantly improves the discoverability and usability of the feature.
+operations:
+  - type: write
+    path: src/pages/DataDemo/components/PullToRevealCue.tsx
+    content: |-
+      import { ChevronsDown } from 'lucide-react';
+      import { cn } from '@/lib/utils';
+
+      interface PullToRevealCueProps {
+        isVisible: boolean;
+      }
+
+      export function PullToRevealCue({ isVisible }: PullToRevealCueProps) {
+        return (
+          <div
+            className={cn(
+              "absolute top-0 left-1/2 -translate-x-1/2 transition-all duration-300 ease-in-out",
+              "flex items-center gap-2 text-muted-foreground/80 pointer-events-none z-10",
+              isVisible ? "opacity-100 translate-y-3" : "opacity-0 -translate-y-full"
+            )}
+            aria-hidden="true"
+          >
+            <span className="text-xs font-medium">Stats</span>
+            <ChevronsDown className="w-4 h-4 animate-bounce" />
+          </div>
+        );
+      }
+    patchStrategy: replace
+  - type: write
+    path: tailwind.config.js
+    content: |+
+      --- tailwind.config.js
+      +++ tailwind.config.js
+      @@ -48,6 +48,7 @@
+               "scale-in": "scaleIn 0.2s ease-out",
+               ripple: "ripple 2s ease calc(var(--i, 0) * 0.2s) infinite",
+               orbit: "orbit calc(var(--duration) * 1s) linear infinite",
+      +        bounce: "bounce 1s infinite",
+             },
+             keyframes: {
+               fadeIn: {
+      @@ -74,7 +75,16 @@
+                   transform:
+                     "rotate(360deg) translateY(calc(var(--radius) * 1px)) rotate(-360deg)",
+                 },
+      -        }
+      +        },
+      +        bounce: {
+      +          "0%, 100%": {
+      +            transform: "translateY(-25%)",
+      +            animationTimingFunction: "cubic-bezier(0.8, 0, 1, 1)",
+      +          },
+      +          "50%": {
+      +            transform: "translateY(0)",
+      +            animationTimingFunction: "cubic-bezier(0, 0, 0.2, 1)",
+      +          },
+      +        },
+             },
+           },
+         },
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/DataDemo/hooks/useAutoAnimateStats.hook.ts
+    content: |-
+      import { useRef, useCallback, useEffect, useState } from 'react';
+      import { gsap } from 'gsap';
+
+      export function useAutoAnimateStats(
+        scrollContainerRef: React.RefObject<HTMLDivElement>,
+        statsContainerRef: React.RefObject<HTMLDivElement>
+      ) {
+        const lastScrollTop = useRef(0);
+        const [isStatsVisible, setIsStatsVisible] = useState(true);
+        const animation = useRef<gsap.core.Tween | null>(null);
+        const [isCueVisible, setIsCueVisible] = useState(false);
+
+        const handleScroll = useCallback(() => {
+          if (!scrollContainerRef.current || !statsContainerRef.current) return;
+
+          const { scrollTop } = scrollContainerRef.current;
+          const statsEl = statsContainerRef.current;
+          const isScrolledToTop = scrollTop <= 5;
+
+          const shouldHide = scrollTop > lastScrollTop.current && scrollTop > 100 && isStatsVisible;
+          const shouldShow = (scrollTop < lastScrollTop.current || isScrolledToTop) && !isStatsVisible;
+
+          if (shouldHide) {
+            if (animation.current) animation.current.kill();
+            animation.current = gsap.to(statsEl, {
+              height: 0,
+              opacity: 0,
+              marginTop: 0,
+              duration: 0.4,
+              ease: 'power2.inOut',
+              onComplete: () => setIsStatsVisible(false),
+            });
+          } else if (shouldShow) {
+            if (animation.current) animation.current.kill();
+            
+            // Set isStatsVisible to true immediately to hide the cue.
+            setIsStatsVisible(true);
+            
+            animation.current = gsap.fromTo(
+              statsEl,
+              { height: 0, opacity: 0, marginTop: 0 },
+              {
+                height: 'auto',
+                opacity: 1,
+                clearProps: 'marginTop,height,opacity', // Let CSS handle final state
+                duration: 0.4,
+                ease: 'power2.inOut',
+              }
+            );
+          }
+          
+          // The cue is visible ONLY when stats are hidden and we're at the top.
+          setIsCueVisible(!isStatsVisible && isScrolledToTop);
+
+          lastScrollTop.current = scrollTop <= 0 ? 0 : scrollTop;
+        }, [isStatsVisible, scrollContainerRef, statsContainerRef]);
+
+        useEffect(() => {
+          const scrollContainer = scrollContainerRef.current;
+          const statsContainer = statsContainerRef.current;
+          
+          if (statsContainer) {
+            // Required for height animation to work correctly without squashing content
+            statsContainer.style.overflow = 'hidden';
+          }
+
+          if (scrollContainer) {
+            scrollContainer.addEventListener('scroll', handleScroll, { passive: true });
+          }
+
+          return () => {
+            if (scrollContainer) {
+              scrollContainer.removeEventListener('scroll', handleScroll);
+            }
+            if (animation.current) {
+              animation.current.kill();
+            }
+          };
+        }, [scrollContainerRef, statsContainerRef, handleScroll]);
+
+        return { isCueVisible };
+      }
+    patchStrategy: replace
+  - type: write
+    path: src/components/shared/PageLayout.tsx
+    content: |+
+      --- src/components/shared/PageLayout.tsx
+      +++ src/components/shared/PageLayout.tsx
+      @@ -20,7 +20,7 @@
+               onScroll={onScroll}
+             >
+               <div ref={ref} className={cn(
+      -          "space-y-8 transition-all duration-300",
+      +          "relative space-y-8 transition-all duration-300",
+                 !isInSidePane ? "px-6 lg:px-12 pb-6" : "px-6 pb-6",
+                 isTopBarVisible && !isFullscreen ? "pt-24" : "pt-6"
+               )}
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/DataDemo/index.tsx
+    content: >+
+      --- src/pages/DataDemo/index.tsx
+
+      +++ src/pages/DataDemo/index.tsx
+
+      @@ -24,9 +24,10 @@
+       import { StatCard } from '@/components/shared/StatCard'
+       import { AnimatedLoadingSkeleton } from './components/AnimatedLoadingSkeleton'
+       import { DataToolbar } from './components/DataToolbar'
+      +import { PullToRevealCue } from './components/PullToRevealCue'
+       import { mockDataItems } from './data/mockData'
+       import type { GroupableField, DataItem } from './types'
+      -import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
+
+      +import { useAppViewManager } from '@/hooks/useAppViewManager.hook' //
+      eslint-disable-line
+       import { useAutoAnimateStats } from './hooks/useAutoAnimateStats.hook'
+       import { 
+         useDataDemoStore, 
+      @@ -124,7 +125,7 @@
+         const scrollRef = useRef<HTMLDivElement>(null);
+       
+         // Auto-hide stats container on scroll down
+      -  useAutoAnimateStats(scrollRef, statsRef);
+
+      +  const { isCueVisible } = useAutoAnimateStats(scrollRef, statsRef);
+       
+         // Calculate stats from data
+         const totalItems = mockDataItems.length
+      @@ -310,6 +311,7 @@
+             onScroll={handleScroll}
+             // Note: Search functionality is handled by a separate SearchBar in the TopBar
+           >
+      +      <PullToRevealCue isVisible={isCueVisible} />
+             <div className="space-y-8">
+               {/* Header */}
+               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+
+    patchStrategy: standard-diff
+snapshot:
+  src/pages/DataDemo/components/PullToRevealCue.tsx: null
+  tailwind.config.js: |-
+    /** @type {import('tailwindcss').Config} */
+    export default {
+      content: [
+        "./index.html",
+        "./src/**/*.{js,ts,jsx,tsx}",
+      ],
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            border: "hsl(var(--border))",
+            input: "hsl(var(--input))",
+            ring: "hsl(var(--ring))",
+            background: "hsl(var(--background))",
+            foreground: "hsl(var(--foreground))",
+            primary: {
+              DEFAULT: "hsl(var(--primary))",
+              foreground: "hsl(var(--primary-foreground))",
+            },
+            secondary: {
+              DEFAULT: "hsl(var(--secondary))",
+              foreground: "hsl(var(--secondary-foreground))",
+            },
+            destructive: {
+              DEFAULT: "hsl(var(--destructive))",
+              foreground: "hsl(var(--destructive-foreground))",
+            },
+            muted: {
+              DEFAULT: "hsl(var(--muted))",
+              foreground: "hsl(var(--muted-foreground))",
+            },
+            accent: {
+              DEFAULT: "hsl(var(--accent))",
+              foreground: "hsl(var(--accent-foreground))",
+            },
+            popover: {
+              DEFAULT: "hsl(var(--popover))",
+              foreground: "hsl(var(--popover-foreground))",
+            },
+            card: {
+              DEFAULT: "hsl(var(--card))",
+              foreground: "hsl(var(--card-foreground))",
+            },
+          },
+          borderRadius: {
+            lg: "var(--radius)",
+            md: "calc(var(--radius) - 4px)",
+            sm: "calc(var(--radius) - 8px)",
+            DEFAULT: "0.5rem",
+          },
+          boxShadow: {
+            input: [
+              "0px 2px 3px -1px rgba(0, 0, 0, 0.1)",
+              "0px 1px 0px 0px rgba(25, 28, 33, 0.02)",
+              "0px 0px 0px 1px rgba(25, 28, 33, 0.08)",
+            ].join(", "),
+          },
+          animation: {
+            "fade-in": "fadeIn 0.5s ease-in-out",
+            "slide-in": "slideIn 0.3s ease-out",
+            "scale-in": "scaleIn 0.2s ease-out",
+            ripple: "ripple 2s ease calc(var(--i, 0) * 0.2s) infinite",
+            orbit: "orbit calc(var(--duration) * 1s) linear infinite",
+          },
+          keyframes: {
+            fadeIn: {
+              "0%": { opacity: "0" },
+              "100%": { opacity: "1" },
+            },
+            slideIn: {
+              "0%": { transform: "translateX(-100%)" },
+              "100%": { transform: "translateX(0)" },
+            },
+            scaleIn: {
+              "0%": { transform: "scale(0.95)", opacity: "0" },
+              "100%": { transform: "scale(1)", opacity: "1" },
+            },
+            ripple: {
+              "0%, 100%": { transform: "translate(-50%, -50%) scale(1)" },
+              "50%": { transform: "translate(-50%, -50%) scale(0.9)" },
+            },
+            orbit: {
+              "0%": {
+                transform:
+                  "rotate(0deg) translateY(calc(var(--radius) * 1px)) rotate(0deg)",
+              },
+              "100%": {
+                transform:
+                  "rotate(360deg) translateY(calc(var(--radius) * 1px)) rotate(-360deg)",
+              },
+            }
+          },
+        },
+      },
+      plugins: [
+        require("tailwindcss-animate"),
+        require("tailwindcss/plugin")(function ({ addUtilities }) {
+          addUtilities({
+            ".no-scrollbar::-webkit-scrollbar": {
+              display: "none",
+            },
+            ".no-scrollbar": {
+              "-ms-overflow-style": "none",
+              "scrollbar-width": "none",
+            },
+          });
+        }),
+      ],
+    }
+  src/pages/DataDemo/hooks/useAutoAnimateStats.hook.ts: |-
+    import { useEffect, useRef, useCallback } from 'react';
+    import { gsap } from 'gsap';
+
+    /**
+     * A hook that animates a stats container in and out of view based on scroll direction.
+     * It creates a "sliver app bar" effect for the stats section.
+     * @param scrollContainerRef Ref to the main scrolling element.
+     * @param statsContainerRef Ref to the stats container element to be animated.
+     */
+    export function useAutoAnimateStats(
+      scrollContainerRef: React.RefObject<HTMLElement>,
+      statsContainerRef: React.RefObject<HTMLElement>
+    ) {
+      const lastScrollY = useRef(0);
+      const isHidden = useRef(false);
+      const originalMarginTop = useRef<string | null>(null);
+
+      const handleScroll = useCallback(() => {
+        if (!scrollContainerRef.current || !statsContainerRef.current) return;
+
+        const scrollY = scrollContainerRef.current.scrollTop;
+        
+        // Initialize original margin on first scroll event if not set
+        if (originalMarginTop.current === null) {
+          const computedStyle = getComputedStyle(statsContainerRef.current);
+          originalMarginTop.current = computedStyle.getPropertyValue('margin-top');
+        }
+
+        // On any significant scroll down, hide the stats.
+        // The small 10px threshold prevents firing on minor scroll-jiggles.
+        if (scrollY > lastScrollY.current && scrollY > 10 && !isHidden.current) {
+          isHidden.current = true;
+          gsap.to(statsContainerRef.current, {
+            duration: 0.4,
+            height: 0,
+            autoAlpha: 0,
+            marginTop: 0,
+            ease: 'power2.inOut',
+            overwrite: true,
+          });
+        } 
+
+        lastScrollY.current = scrollY < 0 ? 0 : scrollY;
+      }, [scrollContainerRef, statsContainerRef]);
+
+      const handleWheel = useCallback((event: WheelEvent) => {
+        if (!scrollContainerRef.current || !statsContainerRef.current) return;
+        
+        const isAtTop = scrollContainerRef.current.scrollTop === 0;
+        const isScrollingUp = event.deltaY < 0;
+
+        // Only reveal if we are at the top, scrolling up, and stats are hidden.
+        // This creates the "pull to reveal" effect.
+        if (isAtTop && isScrollingUp && isHidden.current) {
+            isHidden.current = false;
+            gsap.to(statsContainerRef.current, {
+              duration: 0.4,
+              height: 'auto',
+              autoAlpha: 1,
+              marginTop: originalMarginTop.current || 0,
+              ease: 'power2.out',
+              overwrite: true,
+            });
+        }
+      }, [scrollContainerRef, statsContainerRef]);
+
+      useEffect(() => {
+        const scrollContainer = scrollContainerRef.current;
+        if (scrollContainer) {
+          scrollContainer.addEventListener('scroll', handleScroll, { passive: true });
+          scrollContainer.addEventListener('wheel', handleWheel, { passive: true });
+        }
+
+        return () => {
+          if (scrollContainer) {
+            scrollContainer.removeEventListener('scroll', handleScroll);
+            scrollContainer.removeEventListener('wheel', handleWheel);
+          }
+          // When component unmounts, kill any running animations on the stats ref
+          if (statsContainerRef.current) {
+            gsap.killTweensOf(statsContainerRef.current);
+          }
+        };
+      }, [scrollContainerRef, statsContainerRef, handleScroll, handleWheel]);
+    }
+  src/components/shared/PageLayout.tsx: |-
+    import React from 'react';
+    import { cn } from '@/lib/utils';
+    import { useAppShellStore } from '@/store/appShell.store';
+    import { BODY_STATES } from '@/lib/utils';
+
+    interface PageLayoutProps extends React.HTMLAttributes<HTMLDivElement> {
+      children: React.ReactNode;
+      scrollRef?: React.RefObject<HTMLDivElement>;
+    }
+
+    export const PageLayout = React.forwardRef<HTMLDivElement, PageLayoutProps>(
+      ({ children, onScroll, scrollRef, className, ...props }, ref) => {
+        const isTopBarVisible = useAppShellStore(s => s.isTopBarVisible);
+        const bodyState = useAppShellStore(s => s.bodyState);
+        const isFullscreen = bodyState === 'fullscreen';
+        const isInSidePane = bodyState === BODY_STATES.SIDE_PANE;
+
+        return (
+          <div
+            ref={scrollRef}
+            className={cn("h-full overflow-y-auto", className)}
+            onScroll={onScroll}
+          >
+            <div ref={ref} className={cn(
+              "space-y-8 transition-all duration-300",
+              !isInSidePane ? "px-6 lg:px-12 pb-6" : "px-6 pb-6",
+              isTopBarVisible && !isFullscreen ? "pt-24" : "pt-6"
+            )}
+            {...props}
+            >
+              {children}
+            </div>
+          </div>
+        );
+      }
+    );
+
+    PageLayout.displayName = 'PageLayout';
+  src/pages/DataDemo/index.tsx: >
+    import { useRef, useEffect, useCallback, useMemo } from 'react'
+
+    import {
+      Layers, 
+      AlertTriangle, 
+      PlayCircle, 
+      TrendingUp,
+      Loader2,
+      ChevronsUpDown
+    } from 'lucide-react'
+
+    import { gsap } from 'gsap'
+
+    import { cn } from '@/lib/utils'
+
+    import { Button } from '@/components/ui/button'
+
+    import { 
+      DropdownMenu, 
+      DropdownMenuContent, 
+      DropdownMenuRadioGroup, 
+      DropdownMenuRadioItem, 
+      DropdownMenuTrigger 
+    } from '@/components/ui/dropdown-menu'
+
+    import { PageLayout } from '@/components/shared/PageLayout'
+
+    import { useScrollToBottom } from '@/hooks/useScrollToBottom.hook';
+
+    import { ScrollToBottomButton } from
+    '@/components/shared/ScrollToBottomButton';
+
+    import { DataListView } from './components/DataListView'
+
+    import { DataCardView } from './components/DataCardView'
+
+    import { DataTableView } from './components/DataTableView'
+
+    import { DataKanbanView } from './components/DataKanbanView'
+
+    import { DataCalendarView } from './components/DataCalendarView'
+
+    import { DataViewModeSelector } from './components/DataViewModeSelector'
+
+    import { AnimatedTabs } from '@/components/ui/animated-tabs'
+
+    import { StatCard } from '@/components/shared/StatCard'
+
+    import { AnimatedLoadingSkeleton } from
+    './components/AnimatedLoadingSkeleton'
+
+    import { DataToolbar } from './components/DataToolbar'
+
+    import { mockDataItems } from './data/mockData'
+
+    import type { GroupableField, DataItem } from './types'
+
+    import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
+
+    import { useAutoAnimateStats } from './hooks/useAutoAnimateStats.hook'
+
+    import { 
+      useDataDemoStore, 
+      useGroupTabs
+    } from './store/dataDemo.store'
+
+
+    type Stat = {
+      title: string;
+      value: string;
+      icon: React.ReactNode;
+      change: string;
+      trend: 'up' | 'down';
+      type?: 'card';
+    };
+
+
+    type ChartStat = {
+      title: string;
+      value: string;
+      icon: React.ReactNode;
+      change: string;
+      trend: 'up' | 'down';
+      type: 'chart';
+      chartData: number[];
+    };
+
+
+    type StatItem = Stat | ChartStat;
+
+
+    function DataDemoContent() {
+      const {
+        viewMode,
+        groupBy,
+        activeGroupTab,
+        setGroupBy,
+        setSort,
+        setActiveGroupTab,
+        page,
+        filters,
+        sortConfig,
+        setPage,
+      } = useAppViewManager();
+
+      const { hasMore, isLoading, isInitialLoading, totalItemCount, loadData } = useDataDemoStore(state => ({
+        hasMore: state.hasMore,
+        isLoading: state.isLoading,
+        isInitialLoading: state.isInitialLoading,
+        totalItemCount: state.totalItemCount,
+        loadData: state.loadData,
+      }));
+
+      const groupTabs = useGroupTabs(groupBy, activeGroupTab);
+      const allItems = useDataDemoStore(s => s.items);
+
+      const groupedData = useMemo(() => {
+        if (groupBy === 'none') {
+            return null;
+        }
+        return allItems.reduce((acc, item) => {
+            const groupKey = String(item[groupBy as GroupableField]);
+            if (!acc[groupKey]) {
+                acc[groupKey] = [];
+            }
+            acc[groupKey].push(item);
+            return acc;
+        }, {} as Record<string, DataItem[]>);
+      }, [allItems, groupBy]);
+
+      const dataToRender = useMemo(() => {
+        if (groupBy === 'none' || activeGroupTab === 'all' || !groupedData) {
+          return allItems;
+        }
+        return groupedData[activeGroupTab] || [];
+      }, [groupBy, activeGroupTab, allItems, groupedData]);
+
+      const groupOptions = useMemo(() => [
+        { id: 'none' as const, label: 'None' }, { id: 'status' as const, label: 'Status' }, { id: 'priority' as const, label: 'Priority' }, { id: 'category' as const, label: 'Category' }
+      ], []);
+
+      const statsRef = useRef<HTMLDivElement>(null)
+      const scrollRef = useRef<HTMLDivElement>(null);
+
+      // Auto-hide stats container on scroll down
+      useAutoAnimateStats(scrollRef, statsRef);
+
+      // Calculate stats from data
+      const totalItems = mockDataItems.length
+      const { showScrollToBottom, scrollToBottom, handleScroll } = useScrollToBottom(scrollRef);
+
+      const activeItems = mockDataItems.filter(item => item.status === 'active').length
+      const highPriorityItems = mockDataItems.filter(item => item.priority === 'high' || item.priority === 'critical').length
+      const avgCompletion = totalItems > 0 ? Math.round(
+        mockDataItems.reduce((acc, item) => acc + item.metrics.completion, 0) / totalItems
+      ) : 0
+
+      const stats: StatItem[] = [
+        {
+          title: "Total Projects",
+          value: totalItems.toString(),
+          icon: <Layers className="w-5 h-5" />,
+          change: "+5.2% this month",
+          trend: "up" as const,
+          type: 'chart',
+          chartData: [120, 125, 122, 130, 135, 138, 142]
+        },
+        {
+          title: "Active Projects",
+          value: activeItems.toString(),
+          icon: <PlayCircle className="w-5 h-5" />,
+          change: "+2 this week", 
+          trend: "up" as const,
+          type: 'chart',
+          chartData: [45, 50, 48, 55, 53, 60, 58]
+        },
+        {
+          title: "High Priority",
+          value: highPriorityItems.toString(),
+          icon: <AlertTriangle className="w-5 h-5" />,
+          change: "-1 from last week",
+          trend: "down" as const,
+          type: 'chart',
+          chartData: [25, 26, 28, 27, 26, 24, 23]
+        },
+        {
+          title: "Avg. Completion",
+          value: `${avgCompletion}%`,
+          icon: <TrendingUp className="w-5 h-5" />,
+          change: "+3.2%",
+          trend: "up" as const,
+          type: 'chart',
+          chartData: [65, 68, 70, 69, 72, 75, 78]
+        }
+      ]
+
+      useEffect(() => {
+        // Animate stats cards in
+        if (!isInitialLoading && statsRef.current) {
+          gsap.fromTo(statsRef.current.children,
+            { y: 30, opacity: 0 },
+            {
+              duration: 0.6,
+              y: 0,
+              opacity: 1,
+              stagger: 0.1,
+              ease: "power2.out"
+            }
+          )
+        }
+      }, [isInitialLoading]);
+
+      useEffect(() => {
+        loadData({
+          page,
+          groupBy,
+          filters,
+          sortConfig,
+          isFullLoad: viewMode === 'calendar',
+        });
+      }, [page, groupBy, filters, sortConfig, loadData, viewMode]);
+
+      const observer = useRef<IntersectionObserver>();
+      const loaderRef = useCallback(
+        (node: Element | null) => {
+          if (isLoading) return;
+          if (observer.current) observer.current.disconnect();
+
+          observer.current = new IntersectionObserver((entries) => {
+            if (entries[0].isIntersecting && hasMore) {
+              setPage(page + 1);
+            }
+          });
+          if (node) observer.current.observe(node);
+        },
+        [isLoading, hasMore, page, setPage],
+      );
+      
+      // Auto-group by status when switching to kanban view for the first time
+      useEffect(() => {
+        if (viewMode === 'kanban' && groupBy === 'none') {
+          setGroupBy('status');
+          setSort(null); // Kanban is manually sorted, so disable programmatic sort
+        }
+        // For calendar view, we don't want grouping.
+        if (viewMode === 'calendar') {
+          if (groupBy !== 'none') setGroupBy('none');
+        }
+      }, [viewMode, groupBy, setGroupBy]);
+
+      const renderViewForData = useCallback((data: DataItem[]) => {
+        switch (viewMode) {
+            case 'table': return <DataTableView data={data} />;
+            case 'cards': return <DataCardView data={data} />;
+            case 'calendar': return null; // Calendar has its own render path below
+            case 'kanban': return null; // Kanban has its own render path below
+            case 'grid': return <DataCardView data={data} isGrid />;
+            case 'list':
+            default:
+                return <DataListView data={data} />;
+        }
+      }, [viewMode]);
+
+      const GroupByDropdown = useCallback(() => (
+        <div className="flex items-center gap-2 shrink-0">
+          <span className="text-sm font-medium text-muted-foreground shrink-0">Group by:</span>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="w-[180px] justify-between">
+                {groupOptions.find(o => o.id === groupBy)?.label}
+                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="w-[180px]">
+              <DropdownMenuRadioGroup value={groupBy} onValueChange={setGroupBy}>
+                {groupOptions.map(option => (
+                  <DropdownMenuRadioItem key={option.id} value={option.id}>
+                    {option.label}
+                  </DropdownMenuRadioItem>
+                ))}
+              </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      ), [groupBy, setGroupBy, groupOptions]);
+
+      const isGroupedView = useMemo(() => 
+        groupBy !== 'none' && groupTabs.length > 1 && groupedData,
+      [groupBy, groupTabs.length, groupedData]);
+
+
+      return (
+        <PageLayout
+          scrollRef={scrollRef}
+          onScroll={handleScroll}
+          // Note: Search functionality is handled by a separate SearchBar in the TopBar
+        >
+          <div className="space-y-8">
+            {/* Header */}
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div className="flex-1">
+                <h1 className="text-2xl font-bold tracking-tight">Data Showcase</h1>
+                <p className="text-muted-foreground">
+                  {isInitialLoading 
+                    ? "Loading projects..." 
+                    : `Showing ${dataToRender.length} of ${totalItemCount} item(s)`}
+                </p>
+              </div>
+              <DataViewModeSelector />
+            </div>
+
+            {/* Stats Section */}
+            {!isInitialLoading && (
+              <div ref={statsRef} className="grid grid-cols-[repeat(auto-fit,minmax(250px,1fr))] gap-6">
+                {stats.map((stat) => (
+                  <StatCard
+                    key={stat.title}
+                    title={stat.title}
+                    value={stat.value}
+                    change={stat.change}
+                    trend={stat.trend}
+                    icon={stat.icon}
+                    chartData={stat.type === 'chart' ? stat.chartData : undefined}
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* Controls Area */}
+            <div className="space-y-6">
+              <DataToolbar />
+            </div>
+
+            <div className="min-h-[500px]">
+              {isInitialLoading 
+                ? <AnimatedLoadingSkeleton viewMode={viewMode} /> 
+                : viewMode === 'calendar' ? (
+                  <DataCalendarView data={allItems} />
+                )
+                : viewMode === 'kanban' ? (
+                  <>
+                    <div className="flex items-center justify-end gap-4 h-[68px]">
+                      <GroupByDropdown />
+                    </div>
+                    {isGroupedView ? (
+                      <DataKanbanView data={groupedData} />
+                    ) : (
+                      <div className="flex items-center justify-center h-96 text-muted-foreground">
+                        Group data by a metric to use the Kanban view.
+                      </div>
+                    )}
+                  </>
+                )
+                : !isGroupedView ? (
+                  // Not grouped view
+                  <>
+                    <div className="flex items-center justify-between gap-4 h-[68px]">
+                      <div className="flex-grow border-b" /> {/* Mimic tab border */}
+                      <GroupByDropdown />
+                    </div>
+                    {renderViewForData(allItems)}
+                  </>
+                ) : (
+                  // Grouped view with AnimatedTabs
+                  <div className="relative">
+                    <AnimatedTabs
+                      tabs={groupTabs}
+                      activeTab={activeGroupTab}
+                      onTabChange={setActiveGroupTab}
+                      wrapperClassName="flex flex-col"
+                      className="border-b"
+                      contentClassName="pt-6 flex-grow"
+                    >
+                      {groupTabs.map(tab => (
+                        <div key={tab.id} className="min-h-[440px]">
+                          {renderViewForData(
+                            tab.id === 'all' ? allItems : groupedData?.[tab.id] || []
+                          )}
+                        </div>
+                      ))}
+                    </AnimatedTabs>
+                    <div className="absolute top-[14px] right-0">
+                        <GroupByDropdown />
+                    </div>
+                  </div>
+                )
+              }
+            </div>
+
+            {/* Loader for infinite scroll */}
+            <div ref={loaderRef} className="flex justify-center items-center py-6">
+              {isLoading && !isInitialLoading && groupBy === 'none' && viewMode !== 'calendar' && (
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span>Loading more...</span>
+                </div>
+              )}
+              {!isLoading && !hasMore && dataToRender.length > 0 && !isInitialLoading && groupBy === 'none' && viewMode !== 'calendar' && (
+                <p className="text-muted-foreground">You've reached the end.</p>
+              )}
+            </div>
+          </div>
+          <ScrollToBottomButton isVisible={showScrollToBottom} onClick={scrollToBottom} />
+        </PageLayout>
+      )
+    }
+
+
+    export default function DataDemoPage() {
+      return <DataDemoContent />;
+    }
+approved: false
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: undone
+id: 465
