@@ -9,17 +9,29 @@ src/
     DataDemo/
       components/
         DataCalendarView.tsx
-        DataKanbanView.tsx
-        DataToolbar.tsx
-        DataViewModeSelector.tsx
-      store/
-        dataDemo.store.tsx
       index.tsx
       types.ts
   index.css
+index.html
+package.json
+postcss.config.js
+tailwind.config.js
+tsconfig.json
+tsconfig.node.json
+vite.config.ts
 ```
 
 # Files
+
+## File: postcss.config.js
+```javascript
+export default {
+  plugins: {
+    tailwindcss: {},
+    autoprefixer: {},
+  },
+}
+```
 
 ## File: src/index.css
 ```css
@@ -141,95 +153,234 @@ src/
 }
 ```
 
+## File: index.html
+```html
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Jeli App Shell</title>
+    <script>
+      (function() {
+        try {
+          const storageKey = 'app-shell-storage';
+          const storageValue = localStorage.getItem(storageKey);
+          let isDarkMode;
+
+          if (storageValue) {
+            isDarkMode = JSON.parse(storageValue)?.state?.isDarkMode;
+          }
+          
+          if (typeof isDarkMode !== 'boolean') {
+            isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          }
+          
+          document.documentElement.classList.toggle('dark', isDarkMode);
+        } catch (e) { /* Fails safely */ }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <div id="toaster-container"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+```
+
+## File: tailwind.config.js
+```javascript
+/** @type {import('tailwindcss').Config} */
+export default {
+  content: [
+    "./index.html",
+    "./src/**/*.{js,ts,jsx,tsx}",
+  ],
+  darkMode: "class",
+  theme: {
+    extend: {
+      colors: {
+        border: "hsl(var(--border))",
+        input: "hsl(var(--input))",
+        ring: "hsl(var(--ring))",
+        background: "hsl(var(--background))",
+        foreground: "hsl(var(--foreground))",
+        primary: {
+          DEFAULT: "hsl(var(--primary))",
+          foreground: "hsl(var(--primary-foreground))",
+        },
+        secondary: {
+          DEFAULT: "hsl(var(--secondary))",
+          foreground: "hsl(var(--secondary-foreground))",
+        },
+        destructive: {
+          DEFAULT: "hsl(var(--destructive))",
+          foreground: "hsl(var(--destructive-foreground))",
+        },
+        muted: {
+          DEFAULT: "hsl(var(--muted))",
+          foreground: "hsl(var(--muted-foreground))",
+        },
+        accent: {
+          DEFAULT: "hsl(var(--accent))",
+          foreground: "hsl(var(--accent-foreground))",
+        },
+        popover: {
+          DEFAULT: "hsl(var(--popover))",
+          foreground: "hsl(var(--popover-foreground))",
+        },
+        card: {
+          DEFAULT: "hsl(var(--card))",
+          foreground: "hsl(var(--card-foreground))",
+        },
+      },
+      borderRadius: {
+        lg: "var(--radius)",
+        md: "calc(var(--radius) - 4px)",
+        sm: "calc(var(--radius) - 8px)",
+        DEFAULT: "0.5rem",
+      },
+      boxShadow: {
+        input: [
+          "0px 2px 3px -1px rgba(0, 0, 0, 0.1)",
+          "0px 1px 0px 0px rgba(25, 28, 33, 0.02)",
+          "0px 0px 0px 1px rgba(25, 28, 33, 0.08)",
+        ].join(", "),
+      },
+      animation: {
+        "fade-in": "fadeIn 0.5s ease-in-out",
+        "slide-in": "slideIn 0.3s ease-out",
+        "scale-in": "scaleIn 0.2s ease-out",
+        ripple: "ripple 2s ease calc(var(--i, 0) * 0.2s) infinite",
+        orbit: "orbit calc(var(--duration) * 1s) linear infinite",
+      },
+      keyframes: {
+        fadeIn: {
+          "0%": { opacity: "0" },
+          "100%": { opacity: "1" },
+        },
+        slideIn: {
+          "0%": { transform: "translateX(-100%)" },
+          "100%": { transform: "translateX(0)" },
+        },
+        scaleIn: {
+          "0%": { transform: "scale(0.95)", opacity: "0" },
+          "100%": { transform: "scale(1)", opacity: "1" },
+        },
+        ripple: {
+          "0%, 100%": { transform: "translate(-50%, -50%) scale(1)" },
+          "50%": { transform: "translate(-50%, -50%) scale(0.9)" },
+        },
+        orbit: {
+          "0%": {
+            transform:
+              "rotate(0deg) translateY(calc(var(--radius) * 1px)) rotate(0deg)",
+          },
+          "100%": {
+            transform:
+              "rotate(360deg) translateY(calc(var(--radius) * 1px)) rotate(-360deg)",
+          },
+        }
+      },
+    },
+  },
+  plugins: [
+    require("tailwindcss-animate"),
+    require("tailwindcss/plugin")(function ({ addUtilities }) {
+      addUtilities({
+        ".no-scrollbar::-webkit-scrollbar": {
+          display: "none",
+        },
+        ".no-scrollbar": {
+          "-ms-overflow-style": "none",
+          "scrollbar-width": "none",
+        },
+      });
+    }),
+  ],
+}
+```
+
+## File: tsconfig.json
+```json
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "useDefineForClassFields": true,
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+
+    /* Bundler mode */
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "react-jsx",
+
+    /* Linting */
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+
+    /* Library Build */
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "declarationDir": "dist",
+
+    /* Path mapping */
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": ["src"],
+  "exclude": [
+    "dist",
+    "src/App.tsx",
+    "src/main.tsx",
+    "src/pages"
+  ]
+}
+```
+
+## File: tsconfig.node.json
+```json
+{
+  "compilerOptions": {
+    "composite": true,
+    "skipLibCheck": true,
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "allowSyntheticDefaultImports": true,
+    "resolveJsonModule": true,
+    "noEmit": true
+  },
+  "include": ["vite.config.ts"]
+}
+```
+
 ## File: src/pages/DataDemo/components/DataCalendarView.tsx
 ```typescript
 import { useState, useMemo } from "react";
 import { format, addMonths, subMonths, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isToday, isSameDay, } from "date-fns";
-import { ChevronLeft, ChevronRight, Settings } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Switch } from "@/components/ui/switch";
-import { Separator } from "@/components/ui/separator";
 import { cn, getPriorityColor } from "@/lib/utils";
-import type { DataItem, CalendarDateProp, CalendarDisplayProp } from "../types";
+import type { DataItem } from "../types";
 import { useAppViewManager } from "@/hooks/useAppViewManager.hook";
 import { useSelectedItem, useDataDemoStore } from "../store/dataDemo.store";
+import { CalendarViewControls } from "./DataCalendarViewControls";
 
 interface CalendarViewProps {
   data: DataItem[];
-}
-
-function CalendarViewControls() {
-    const { 
-        calendarDateProp, setCalendarDateProp,
-        calendarDisplayProps, setCalendarDisplayProps,
-        calendarItemLimit, setCalendarItemLimit
-    } = useAppViewManager();
-
-    const handleDisplayPropChange = (prop: CalendarDisplayProp, checked: boolean) => {
-        const newProps = checked 
-            ? [...calendarDisplayProps, prop] 
-            : calendarDisplayProps.filter(p => p !== prop);
-        setCalendarDisplayProps(newProps);
-    };
-
-    return (
-        <Popover>
-            <PopoverTrigger asChild>
-                <Button variant="outline" size="icon" className="h-9 w-9">
-                    <Settings className="h-4 w-4" />
-                </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-80" align="end">
-                <div className="grid gap-4">
-                    <div className="space-y-2">
-                        <h4 className="font-medium leading-none">Calendar Settings</h4>
-                        <p className="text-sm text-muted-foreground">
-                            Customize the calendar view.
-                        </p>
-                    </div>
-                    <Separator />
-                    <div className="grid gap-2">
-                        <Label>Date Field</Label>
-                        <RadioGroup defaultValue={calendarDateProp} onValueChange={(v) => setCalendarDateProp(v as CalendarDateProp)}>
-                            <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="dueDate" id="dueDate" />
-                                <Label htmlFor="dueDate">Due Date</Label>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="createdAt" id="createdAt" />
-                                <Label htmlFor="createdAt">Created Date</Label>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="updatedAt" id="updatedAt" />
-                                <Label htmlFor="updatedAt">Updated Date</Label>
-                            </div>
-                        </RadioGroup>
-                    </div>
-                    <div className="grid gap-2">
-                        <Label>Card Details</Label>
-                        {(['priority', 'assignee', 'tags'] as CalendarDisplayProp[]).map(prop => (
-                            <div key={prop} className="flex items-center space-x-2">
-                                <Checkbox id={prop} checked={calendarDisplayProps.includes(prop)} onCheckedChange={(c) => handleDisplayPropChange(prop, !!c)} />
-                                <Label htmlFor={prop} className="capitalize">{prop}</Label>
-                            </div>
-                        ))}
-                    </div>
-                    <div className="flex items-center justify-between">
-                        <Label htmlFor="show-all">Show all items per day</Label>
-                        <Switch id="show-all" checked={calendarItemLimit === 'all'} onCheckedChange={(c) => setCalendarItemLimit(c ? 'all' : 3)} />
-                    </div>
-                </div>
-            </PopoverContent>
-        </Popover>
-    );
 }
 
 function CalendarHeader({ currentDate, onPrevMonth, onNextMonth, onToday }: {
@@ -458,688 +609,48 @@ export function DataCalendarView({ data }: CalendarViewProps) {
 }
 ```
 
-## File: src/pages/DataDemo/components/DataKanbanView.tsx
+## File: vite.config.ts
 ```typescript
-import { useState, useEffect, Fragment } from "react";
-import {
-  GripVertical,
-  Plus,
-  Calendar,
-  MessageSquare,
-  Paperclip,
-} from "lucide-react";
-import type { DataItem } from "../types";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { cn, getPriorityColor } from "@/lib/utils";
-import { EmptyState } from "./EmptyState";
-import { useAppViewManager } from "@/hooks/useAppViewManager.hook";
-import { useDataDemoStore } from "../store/dataDemo.store";
-
-interface KanbanCardProps {
-  item: DataItem;
-  isDragging: boolean;
-}
-
-function KanbanCard({ item, isDragging, ...props }: KanbanCardProps & React.HTMLAttributes<HTMLDivElement>) {
-  const { onItemSelect } = useAppViewManager();
-
-  // Mock comment and attachment counts for UI purposes
-  const comments = Math.floor(item.metrics.views / 10);
-  const attachments = Math.floor(item.metrics.shares / 5);
-
-  return (
-    <Card
-      {...props}
-      data-draggable-id={item.id}
-      onClick={() => onItemSelect(item)}
-      className={cn(
-        "cursor-pointer transition-all duration-300 border bg-card/60 dark:bg-neutral-800/60 backdrop-blur-sm hover:bg-card/70 dark:hover:bg-neutral-700/70 active:cursor-grabbing",
-        isDragging && "opacity-50 ring-2 ring-primary ring-offset-2 ring-offset-background"
-      )}
-    >
-      <CardContent className="p-5">
-        <div className="space-y-4">
-          <div className="flex items-start justify-between">
-            <h4 className="font-semibold text-card-foreground dark:text-neutral-100 leading-tight">
-              {item.title}
-            </h4>
-            <GripVertical className="w-5 h-5 text-muted-foreground/60 dark:text-neutral-400 cursor-grab flex-shrink-0" />
-          </div>
-
-          <p className="text-sm text-muted-foreground dark:text-neutral-300 leading-relaxed line-clamp-2">
-            {item.description}
-          </p>
-
-          <div className="flex flex-wrap gap-2">
-            <Badge className={cn("text-xs border", getPriorityColor(item.priority))}>
-              {item.priority}
-            </Badge>
-            {item.tags.slice(0, 2).map((tag) => (
-              <Badge key={tag} variant="secondary" className="text-xs backdrop-blur-sm">
-                {tag}
-              </Badge>
-            ))}
-          </div>
-
-          <div className="flex items-center justify-between pt-2 border-t border-border/30 dark:border-neutral-700/30">
-            <div className="flex items-center gap-4 text-muted-foreground/80 dark:text-neutral-400">
-              {item.dueDate && (
-                <div className="flex items-center gap-1">
-                  <Calendar className="w-4 h-4" />
-                  <span className="text-xs font-medium">
-                    {new Date(item.dueDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                  </span>
-                </div>
-              )}
-              <div className="flex items-center gap-1">
-                <MessageSquare className="w-4 h-4" />
-                <span className="text-xs font-medium">{comments}</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <Paperclip className="w-4 h-4" />
-                <span className="text-xs font-medium">{attachments}</span>
-              </div>
-            </div>
-
-            <Avatar className="w-8 h-8 ring-2 ring-white/50 dark:ring-neutral-700/50">
-              <AvatarImage src={item.assignee.avatar} />
-              <AvatarFallback className="bg-muted dark:bg-neutral-700 text-foreground dark:text-neutral-200 font-medium">
-                {item.assignee.name.split(" ").map((n) => n[0]).join("")}
-              </AvatarFallback>
-            </Avatar>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-interface DataKanbanViewProps {
-  data: Record<string, DataItem[]>;
-}
-
-export function DataKanbanView({ data }: DataKanbanViewProps) {
-  const [columns, setColumns] = useState(data);
-  const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
-  const [dropIndicator, setDropIndicator] = useState<{ columnId: string; index: number } | null>(null);
-  const { groupBy } = useAppViewManager();
-  const updateItem = useDataDemoStore(s => s.updateItem);
-
-  useEffect(() => {
-    setColumns(data);
-  }, [data]);
-
-  const handleDragStart = (e: React.DragEvent<HTMLDivElement>, item: DataItem, sourceColumnId: string) => {
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', JSON.stringify({ itemId: item.id, sourceColumnId }));
-    setDraggedItemId(item.id);
-  };
-
-  const getDropIndicatorIndex = (e: React.DragEvent, elements: HTMLElement[]) => {
-    const mouseY = e.clientY;
-    let closestIndex = elements.length;
-
-    elements.forEach((el, index) => {
-      const { top, height } = el.getBoundingClientRect();
-      const offset = mouseY - (top + height / 2);
-      if (offset < 0 && index < closestIndex) {
-        closestIndex = index;
-      }
-    });
-    return closestIndex;
-  };
-
-  const handleDragOverCardsContainer = (e: React.DragEvent<HTMLDivElement>, columnId: string) => {
-    e.preventDefault();
-    const container = e.currentTarget;
-    const draggableElements = Array.from(container.querySelectorAll('[data-draggable-id]')) as HTMLElement[];
-    const index = getDropIndicatorIndex(e, draggableElements);
-
-    if (dropIndicator?.columnId === columnId && dropIndicator.index === index) return;
-    setDropIndicator({ columnId, index });
-  };
-
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>, targetColumnId: string) => {
-    e.preventDefault();
-    setDropIndicator(null);
-    try {
-      const { itemId, sourceColumnId } = JSON.parse(e.dataTransfer.getData('text/plain'));
-
-      const droppedItem = columns[sourceColumnId]?.find(i => i.id === itemId);
-      if (!droppedItem) return;
-
-      // Update local state for immediate feedback
-      setColumns(prev => {
-        const newColumns = { ...prev };
-        const sourceCol = prev[sourceColumnId].filter(i => i.id !== itemId);
-
-        if (sourceColumnId === targetColumnId) {
-          const dropIndex = dropIndicator?.columnId === targetColumnId ? dropIndicator.index : sourceCol.length;
-          sourceCol.splice(dropIndex, 0, droppedItem);
-          newColumns[sourceColumnId] = sourceCol;
-        } else {
-          const targetCol = [...prev[targetColumnId]];
-          const dropIndex = dropIndicator?.columnId === targetColumnId ? dropIndicator.index : targetCol.length;
-          targetCol.splice(dropIndex, 0, droppedItem);
-          
-          newColumns[sourceColumnId] = sourceCol;
-          newColumns[targetColumnId] = targetCol;
-        }
-        return newColumns;
-      });
-      
-      // Persist change to global store. The groupBy value tells us which property to update.
-      if (groupBy !== 'none' && sourceColumnId !== targetColumnId) {
-        updateItem(itemId, { [groupBy]: targetColumnId } as Partial<DataItem>);
-      }
-
-    } catch (err) {
-      console.error("Failed to parse drag data", err)
-    } finally {
-      setDraggedItemId(null);
-    }
-  };
-
-  const handleDragEnd = () => {
-    setDraggedItemId(null);
-    setDropIndicator(null);
-  };
-
-  const initialColumns = Object.entries(data);
-
-  if (!initialColumns || initialColumns.length === 0) {
-    return <EmptyState />;
-  }
-
-  const statusColors: Record<string, string> = {
-    active: "bg-blue-500", pending: "bg-yellow-500", completed: "bg-green-500", archived: "bg-gray-500",
-    low: "bg-green-500", medium: "bg-blue-500", high: "bg-orange-500", critical: "bg-red-500",
-  };
-
-  const DropIndicator = () => <div className="h-1 my-2 rounded-full bg-primary/60" />;
-
-  return (
-    <div className="flex items-start gap-6 pb-4 overflow-x-auto -mx-6 px-6">
-      {Object.entries(columns).map(([columnId, items]) => (
-        <div
-          key={columnId}
-          className={cn(
-            "w-80 flex-shrink-0 bg-card/20 dark:bg-neutral-900/20 backdrop-blur-xl rounded-3xl p-5 border border-border dark:border-neutral-700/50 transition-all duration-300",
-            dropIndicator?.columnId === columnId && "bg-primary/10 border-primary/30"
-          )}
-        >
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-              <div className={cn("w-3.5 h-3.5 rounded-full", statusColors[columnId] || "bg-muted-foreground")} />
-              <h3 className="font-semibold text-card-foreground dark:text-neutral-100 capitalize">{columnId}</h3>
-              <Badge variant="secondary" className="backdrop-blur-sm">{items.length}</Badge>
-            </div>
-            <button className="p-1 rounded-full bg-card/30 dark:bg-neutral-800/30 hover:bg-card/50 dark:hover:bg-neutral-700/50 transition-colors">
-              <Plus className="w-4 h-4 text-muted-foreground dark:text-neutral-300" />
-            </button>
-          </div>
-
-          <div
-            onDragOver={(e) => handleDragOverCardsContainer(e, columnId)}
-            onDrop={(e) => handleDrop(e, columnId)}
-            onDragLeave={() => setDropIndicator(null)}
-            className="space-y-4 min-h-[100px]"
-          >
-            {items.map((item, index) => (
-              <Fragment key={item.id}>
-                {dropIndicator?.columnId === columnId && dropIndicator.index === index && (
-                  <DropIndicator />
-                )}
-                <KanbanCard
-                  item={item}
-                  isDragging={draggedItemId === item.id}
-                  draggable
-                  onDragStart={(e) => handleDragStart(e, item, columnId)}
-                  onDragEnd={handleDragEnd}
-                />
-              </Fragment>
-            ))}
-            {dropIndicator?.columnId === columnId && dropIndicator.index === items.length && (
-              <DropIndicator />
-            )}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-```
-
-## File: src/pages/DataDemo/components/DataToolbar.tsx
-```typescript
-import * as React from 'react'
-import { Check, ListFilter, Search, SortAsc } from 'lucide-react'
-
-import { cn } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Badge } from '@/components/ui/badge'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuSeparator,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-  CommandSeparator,
-} from '@/components/ui/command'
-
-import type { SortableField, Status, Priority } from '../types'
-import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
-
-export interface FilterConfig {
-  searchTerm: string
-  status: Status[]
-  priority: Priority[]
-}
-
-const statusOptions: { value: Status; label: string }[] = [
-  { value: 'active', label: 'Active' },
-  { value: 'pending', label: 'Pending' },
-  { value: 'completed', label: 'Completed' },
-  { value: 'archived', label: 'Archived' },
-]
-
-const priorityOptions: { value: Priority; label: string }[] = [
-  { value: 'critical', label: 'Critical' },
-  { value: 'high', label: 'High' },
-  { value: 'medium', label: 'Medium' },
-  { value: 'low', label: 'Low' },
-]
-
-const sortOptions: { value: SortableField, label: string }[] = [
-  { value: 'updatedAt', label: 'Last Updated' },
-  { value: 'title', label: 'Title' },
-  { value: 'status', label: 'Status' },
-  { value: 'priority', label: 'Priority' },
-  { value: 'metrics.completion', label: 'Progress' },
-]
-
-
-export function DataToolbar() {
-  const {
-    filters,
-    setFilters,
-    sortConfig,
-    setSort,
-  } = useAppViewManager();
-
-  const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setFilters({ ...filters, searchTerm: event.target.value })
-  }
-  
-  const activeFilterCount = filters.status.length + filters.priority.length
-
-  return (
-    <div className="flex flex-col md:flex-row items-center justify-between gap-4 w-full">
-      {/* Left side: Search, Filters */}
-      <div className="flex flex-col sm:flex-row items-center gap-2 w-full md:w-auto">
-        <div className="relative w-full sm:w-auto">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search projects..."
-            className="pl-9 w-full sm:w-64"
-            value={filters.searchTerm}
-            onChange={handleSearchChange}
-          />
-        </div>
-
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button variant="outline" size="sm" className="h-9 w-full sm:w-auto justify-start border-dashed">
-              <ListFilter className="mr-2 h-4 w-4" />
-              Filters
-              {activeFilterCount > 0 && (
-                <>
-                  <div className="mx-2 h-4 w-px bg-muted-foreground/50" />
-                  <Badge variant="secondary" className="rounded-sm px-1 font-normal">
-                    {activeFilterCount}
-                  </Badge>
-                </>
-              )}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-[240px] p-0" align="start">
-            <CombinedFilter filters={filters} onFiltersChange={setFilters} />
-          </PopoverContent>
-        </Popover>
-
-        {activeFilterCount > 0 && (
-          <Button variant="ghost" onClick={() => setFilters({ searchTerm: filters.searchTerm, status: [], priority: [] })}>Reset</Button>
-        )}
-      </div>
-
-      {/* Right side: Sorter */}
-      <div className="flex items-center gap-2 w-full md:w-auto justify-start md:justify-end">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="w-full sm:w-auto justify-start">
-              <SortAsc className="mr-2 h-4 w-4" />
-              Sort by: {sortOptions.find(o => o.value === sortConfig?.key)?.label || 'Default'}
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-[200px]">
-            <DropdownMenuLabel>Sort by</DropdownMenuLabel>
-            <DropdownMenuRadioGroup
-              value={`${sortConfig?.key || 'default'}-${sortConfig?.direction || ''}`}
-              onValueChange={(value) => {
-                if (value.startsWith('default')) {
-                  setSort(null)
-                } else {
-                  const [key, direction] = value.split('-')
-                  setSort({ key: key as SortableField, direction: direction as 'asc' | 'desc' })
-                }
-              }}
-            >
-              <DropdownMenuRadioItem value="default-">Default</DropdownMenuRadioItem>
-              <DropdownMenuSeparator />
-              {sortOptions.map(option => (
-                <React.Fragment key={option.value}>
-                  <DropdownMenuRadioItem value={`${option.value}-desc`}>{option.label} (Desc)</DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value={`${option.value}-asc`}>{option.label} (Asc)</DropdownMenuRadioItem>
-                </React.Fragment>
-              ))}
-            </DropdownMenuRadioGroup>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-    </div>
-  )
-}
-
-function CombinedFilter({
-  filters,
-  onFiltersChange,
-}: {
-  filters: FilterConfig;
-  onFiltersChange: (filters: FilterConfig) => void;
-}) {
-  const selectedStatus = new Set(filters.status);
-  const selectedPriority = new Set(filters.priority);
-
-  const handleStatusSelect = (status: Status) => {
-    selectedStatus.has(status) ? selectedStatus.delete(status) : selectedStatus.add(status);
-    onFiltersChange({ ...filters, status: Array.from(selectedStatus) });
-  };
-
-  const handlePrioritySelect = (priority: Priority) => {
-    selectedPriority.has(priority) ? selectedPriority.delete(priority) : selectedPriority.add(priority);
-    onFiltersChange({ ...filters, priority: Array.from(selectedPriority) });
-  };
-
-  const hasActiveFilters = filters.status.length > 0 || filters.priority.length > 0;
-
-  return (
-    <Command>
-      <CommandInput placeholder="Filter by..." />
-      <CommandList>
-        <CommandEmpty>No results found.</CommandEmpty>
-
-        <CommandGroup heading="Status">
-          {statusOptions.map((option) => {
-            const isSelected = selectedStatus.has(option.value);
-            return (
-              <CommandItem
-                key={option.value}
-                onSelect={() => handleStatusSelect(option.value)}
-              >
-                <div
-                  className={cn(
-                    'mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary',
-                    isSelected ? 'bg-primary text-primary-foreground' : 'opacity-50 [&_svg]:invisible'
-                  )}
-                >
-                  <Check className={cn('h-4 w-4')} />
-                </div>
-                <span>{option.label}</span>
-              </CommandItem>
-            );
-          })}
-        </CommandGroup>
-
-        <CommandSeparator />
-
-        <CommandGroup heading="Priority">
-          {priorityOptions.map((option) => {
-            const isSelected = selectedPriority.has(option.value);
-            return (
-              <CommandItem
-                key={option.value}
-                onSelect={() => handlePrioritySelect(option.value)}
-              >
-                <div
-                  className={cn(
-                    'mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary',
-                    isSelected ? 'bg-primary text-primary-foreground' : 'opacity-50 [&_svg]:invisible'
-                  )}
-                >
-                  <Check className={cn('h-4 w-4')} />
-                </div>
-                <span>{option.label}</span>
-              </CommandItem>
-            );
-          })}
-        </CommandGroup>
-
-        {hasActiveFilters && (
-          <>
-            <CommandSeparator />
-            <CommandGroup>
-              <CommandItem
-                onSelect={() => onFiltersChange({ ...filters, status: [], priority: [] })}
-                className="justify-center text-center text-sm"
-              >
-                Clear filters
-              </CommandItem>
-            </CommandGroup>
-          </>
-        )}
-      </CommandList>
-    </Command>
-  )
-}
-```
-
-## File: src/pages/DataDemo/store/dataDemo.store.tsx
-```typescript
-import { create } from 'zustand';
-import { type ReactNode } from 'react';
-import { capitalize, cn } from '@/lib/utils';
-import { Badge } from '@/components/ui/badge';
-import { mockDataItems } from '../data/mockData';
-import type { DataItem, GroupableField, SortConfig } from '../types';
-import type { FilterConfig } from '../components/DataToolbar';
-
-// --- State and Actions ---
-interface DataDemoState {
-    items: DataItem[];
-    hasMore: boolean;
-    isLoading: boolean;
-    isInitialLoading: boolean;
-    totalItemCount: number;
-}
-
-interface DataDemoActions {
-    loadData: (params: {
-        page: number;
-        groupBy: GroupableField | 'none';
-        filters: FilterConfig;
-        sortConfig: SortConfig | null;
-    isFullLoad?: boolean;
-    }) => void;
-    updateItem: (itemId: string, updates: Partial<DataItem>) => void;
-}
-
-const defaultState: DataDemoState = {
-    items: [],
-    hasMore: true,
-    isLoading: true,
-    isInitialLoading: true,
-    totalItemCount: 0,
-};
-
-// --- Store Implementation ---
-export const useDataDemoStore = create<DataDemoState & DataDemoActions>((set, get) => ({
-    ...defaultState,
-
-    loadData: ({ page, groupBy, filters, sortConfig, isFullLoad }) => {
-        set({ isLoading: true, ...(page === 1 && { isInitialLoading: true }) });
-        const isFirstPage = page === 1;
-
-        const filteredAndSortedData = (() => {
-            const filteredItems = mockDataItems.filter((item) => {
-                const searchTermMatch =
-                    item.title.toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
-                    item.description.toLowerCase().includes(filters.searchTerm.toLowerCase());
-                const statusMatch = filters.status.length === 0 || filters.status.includes(item.status);
-                const priorityMatch = filters.priority.length === 0 || filters.priority.includes(item.priority);
-                return searchTermMatch && statusMatch && priorityMatch;
-            });
-
-            if (sortConfig) {
-                filteredItems.sort((a, b) => {
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    const getNestedValue = (obj: DataItem, path: string): any =>
-                        path.split('.').reduce((o: any, k) => (o || {})[k], obj);
-
-                    const aValue = getNestedValue(a, sortConfig.key);
-                    const bValue = getNestedValue(b, sortConfig.key);
-
-                    if (aValue === undefined || bValue === undefined) return 0;
-                    if (typeof aValue === 'string' && typeof bValue === 'string') {
-                        return sortConfig.direction === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
-                    }
-                    if (typeof aValue === 'number' && typeof bValue === 'number') {
-                        return sortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue;
-                    }
-                    if (sortConfig.key === 'updatedAt' || sortConfig.key === 'createdAt') {
-                        if (typeof aValue === 'string' && typeof bValue === 'string') {
-                            return sortConfig.direction === 'asc'
-                                ? new Date(aValue).getTime() - new Date(bValue).getTime()
-                                : new Date(bValue).getTime() - new Date(aValue).getTime();
-                        }
-                    }
-                    return 0;
-                });
-            }
-            return filteredItems;
-        })();
-        
-        const totalItemCount = filteredAndSortedData.length;
-
-        setTimeout(() => {
-            if (groupBy !== 'none' || isFullLoad) {
-                set({
-                    items: filteredAndSortedData,
-                    hasMore: false,
-                    isLoading: false,
-                    isInitialLoading: false,
-                    totalItemCount,
-                });
-                return;
-            }
-
-            const pageSize = 12;
-            const newItems = filteredAndSortedData.slice((page - 1) * pageSize, page * pageSize);
-            
-            set(state => ({
-                items: isFirstPage ? newItems : [...state.items, ...newItems],
-                hasMore: totalItemCount > page * pageSize,
-                isLoading: false,
-                isInitialLoading: false,
-                totalItemCount,
-            }));
-
-        }, isFirstPage ? 1500 : 500);
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+import { fileURLToPath, URL } from 'url'
+import { resolve } from 'path'
+import pkg from './package.json' with { type: 'json' }
+
+// https://vitejs.dev/config/
+export default defineConfig({
+  plugins: [react()],
+  resolve: {
+    alias: {
+      "@": fileURLToPath(new URL('./src', import.meta.url)),
     },
-
-    updateItem: (itemId, updates) => {
-        // In a real app, this would be an API call. Here we update the mock source.
-        const itemIndex = mockDataItems.findIndex(i => i.id === itemId);
-        if (itemIndex > -1) {
-            mockDataItems[itemIndex] = { ...mockDataItems[itemIndex], ...updates };
-        }
-
-        // Also update the currently loaded items in the store's state for UI consistency
-        set(state => ({
-            items: state.items.map(item => 
-                item.id === itemId ? { ...item, ...updates } : item
-            ),
-        }));
+  },
+  build: {
+    lib: {
+      entry: resolve(__dirname, 'src/index.ts'),
+      name: 'JeliAppShell',
+      fileName: (format) => `jeli-app-shell.${format}.js`,
     },
-}));
-
-// --- Selectors ---
-export const useGroupTabs = (
-    groupBy: GroupableField | 'none',
-    activeGroupTab: string,
-) => useDataDemoStore(state => {
-    const items = state.items;
-    if (groupBy === 'none' || !items.length) return [];
-    
-    const groupCounts = items.reduce((acc, item) => {
-        const groupKey = String(item[groupBy as GroupableField]);
-        acc[groupKey] = (acc[groupKey] || 0) + 1;
-        return acc;
-    }, {} as Record<string, number>);
-
-    const sortedGroups = Object.keys(groupCounts).sort((a, b) => a.localeCompare(b));
-
-    const createLabel = (text: string, count: number, isActive: boolean): ReactNode => (
-        <>
-            {text}
-            <Badge variant={isActive ? 'default' : 'secondary'} className={cn('transition-colors duration-300 text-xs font-semibold', !isActive && 'group-hover:bg-accent group-hover:text-accent-foreground')}>
-                {count}
-            </Badge>
-        </>
-    );
-    
-    const totalCount = items.length;
-
-    return [
-        { id: 'all', label: createLabel('All', totalCount, activeGroupTab === 'all') },
-        ...sortedGroups.map((g) => ({
-            id: g,
-            label: createLabel(capitalize(g), groupCounts[g], activeGroupTab === g),
-        })),
-    ];
-});
-
-export const useDataToRender = (
-    groupBy: GroupableField | 'none',
-    activeGroupTab: string,
-) => useDataDemoStore(state => {
-    const items = state.items;
-    if (groupBy === 'none') {
-        return items;
-    }
-    if (activeGroupTab === 'all') {
-        return items;
-    }
-    return items.filter((item) => String(item[groupBy as GroupableField]) === activeGroupTab);
-});
-
-export const useSelectedItem = (itemId?: string) => {
-    if (!itemId) return null;
-    return mockDataItems.find(item => item.id === itemId) ?? null;
-};
+    rollupOptions: {
+      // make sure to externalize deps that shouldn't be bundled
+      // into your library
+      external: Object.keys(pkg.peerDependencies || {}),
+      output: {
+        // Provide global variables to use in the UMD build
+        // for externalized deps
+        globals: {
+          react: 'React',
+          'react-dom': 'ReactDOM',
+          tailwindcss: 'tailwindcss',
+          gsap: 'gsap',
+          'lucide-react': 'lucide-react',
+          zustand: 'zustand',
+          sonner: 'sonner'
+        },
+      },
+    },
+  },
+})
 ```
 
 ## File: src/lib/utils.ts
@@ -1287,161 +798,6 @@ export interface ViewProps {
 
 export type Status = DataItem['status']
 export type Priority = DataItem['priority']
-```
-
-## File: src/pages/DataDemo/components/DataViewModeSelector.tsx
-```typescript
-import { useEffect, useRef, useState, useCallback } from 'react'
-import { gsap } from 'gsap'
-import { cn } from '@/lib/utils'
-import { List, Grid3X3, LayoutGrid, Table, LayoutDashboard, CalendarDays } from 'lucide-react'
-import type { ViewMode } from '../types'
-import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
-
-const viewModes = [
-  { id: 'list' as ViewMode, label: 'List', icon: List, description: 'Compact list with details' },
-  { id: 'cards' as ViewMode, label: 'Cards', icon: LayoutGrid, description: 'Rich card layout' },
-  { id: 'kanban' as ViewMode, label: 'Kanban', icon: LayoutDashboard, description: 'Interactive Kanban board' },
-  { id: 'calendar' as ViewMode, label: 'Calendar', icon: CalendarDays, description: 'Interactive calendar view' },
-  { id: 'grid' as ViewMode, label: 'Grid', icon: Grid3X3, description: 'Masonry grid view' },
-  { id: 'table' as ViewMode, label: 'Table', icon: Table, description: 'Structured data table' }
-]
-
-export function DataViewModeSelector() {
-  const { viewMode, setViewMode } = useAppViewManager();
-  const indicatorRef = useRef<HTMLDivElement>(null)
-  const containerRef = useRef<HTMLDivElement>(null)
-  const [isExpanded, setIsExpanded] = useState(false)
-  const [isTransitioning, setIsTransitioning] = useState(false)
-
-  const updateIndicatorPosition = useCallback((immediate = false) => {
-    if (!indicatorRef.current || !containerRef.current || isTransitioning) return
-
-    const activeButton = containerRef.current.querySelector(`[data-mode="${viewMode}"]`) as HTMLElement
-    if (!activeButton) return
-
-    const containerRect = containerRef.current.getBoundingClientRect()
-    const buttonRect = activeButton.getBoundingClientRect()
-    
-    const left = buttonRect.left - containerRect.left
-    const width = buttonRect.width
-
-    if (immediate) {
-      // Set position immediately without animation for initial load
-      gsap.set(indicatorRef.current, {
-        x: left,
-        width: width
-      })
-    } else {
-      gsap.to(indicatorRef.current, {
-        duration: 0.3,
-        x: left,
-        width: width,
-        ease: "power2.out"
-      })
-    }
-  }, [viewMode, isTransitioning])
-
-  // Initial setup - set position immediately without animation
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      updateIndicatorPosition(true)
-    }, 0)
-    return () => clearTimeout(timer)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []) // Only run once on mount
-
-  useEffect(() => {
-    if (!isTransitioning) {
-      updateIndicatorPosition()
-    }
-  }, [viewMode, isTransitioning, updateIndicatorPosition])
-
-  const handleMouseEnter = () => {
-    setIsTransitioning(true)
-    setIsExpanded(true)
-    
-    // Wait for expand animation to complete
-    setTimeout(() => {
-      setIsTransitioning(false)
-    }, 500)
-  }
-
-  const handleMouseLeave = () => {
-    setIsTransitioning(true)
-    setIsExpanded(false)
-    
-    // Wait for collapse animation to complete
-    setTimeout(() => {
-      setIsTransitioning(false)
-    }, 500)
-  }
-
-  return (
-    <div 
-      ref={containerRef}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-      className={cn(
-        "relative flex items-center bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-1.5 shadow-lg transition-all duration-500 ease-out",
-        "hover:shadow-xl hover:bg-card/70",
-        isExpanded ? "gap-1" : "gap-0"
-      )}
-    >
-      {/* Animated indicator */}
-      <div
-        ref={indicatorRef}
-        className="absolute inset-y-1.5 bg-gradient-to-r from-primary/20 to-primary/10 border border-primary/20 rounded-xl transition-all duration-300"
-        style={{ left: 0, width: 0 }}
-      />
-      
-      {/* Mode buttons */}
-      {viewModes.map((mode, index) => {
-        const IconComponent = mode.icon
-        const isActive = viewMode === mode.id
-        
-        return (
-          <button
-            key={mode.id}
-            data-mode={mode.id}
-            onClick={() => setViewMode(mode.id)}
-            className={cn(
-              "relative flex items-center justify-center rounded-xl transition-all duration-500 ease-out group overflow-hidden",
-              "hover:bg-accent/20 active:scale-95",
-              isActive && "text-primary",
-              isExpanded ? "gap-3 px-4 py-2.5" : "gap-0 px-3 py-2.5"
-            )}
-            title={mode.description}
-            style={{
-              transitionDelay: isExpanded ? `${index * 50}ms` : `${(viewModes.length - index - 1) * 30}ms`
-            }}
-          >
-            <IconComponent className={cn(
-              "w-5 h-5 transition-all duration-300 flex-shrink-0",
-              isActive && "scale-110",
-              "group-hover:scale-105",
-              isExpanded ? "rotate-0" : "rotate-0"
-            )} />
-            
-            {/* Label with smooth expand/collapse */}
-            <div className={cn(
-              "overflow-hidden transition-all duration-500 ease-out",
-              isExpanded ? "max-w-[80px] opacity-100" : "max-w-0 opacity-0"
-            )}>
-              <span className={cn(
-                "font-medium whitespace-nowrap transition-all duration-300",
-                isActive ? "text-primary" : "text-muted-foreground",
-                "group-hover:text-foreground"
-              )}>
-                {mode.label}
-              </span>
-            </div>
-          </button>
-        )
-      })}
-    </div>
-  )
-}
 ```
 
 ## File: src/hooks/useAppViewManager.hook.ts
@@ -1774,6 +1130,87 @@ export function useAppViewManager() {
     switchSplitPanes, closeSplitPane, onItemSelect, setViewMode, setGroupBy, setActiveGroupTab, setFilters,
     setSort, setTableSort, setPage, setCalendarDateProp, setCalendarDisplayProps, setCalendarItemLimit
   ]);
+}
+```
+
+## File: package.json
+```json
+{
+  "name": "jeli-app-shell",
+  "private": false,
+  "version": "1.0.1",
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "main": "./dist/jeli-app-shell.umd.js",
+  "module": "./dist/jeli-app-shell.es.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/jeli-app-shell.es.js",
+      "require": "./dist/jeli-app-shell.umd.js"
+    },
+    "./dist/style.css": "./dist/style.css"
+  },
+  "sideEffects": [
+    "**/*.css"
+  ],
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "preview": "vite preview"
+  },
+  "peerDependencies": {
+    "@iconify/react": "^4.1.1",
+    "@radix-ui/react-avatar": "^1.0.4",
+    "@radix-ui/react-dialog": "^1.0.5",
+    "@radix-ui/react-dropdown-menu": "^2.0.6",
+    "@radix-ui/react-label": "^2.1.7",
+    "@radix-ui/react-popover": "^1.0.7",
+    "@radix-ui/react-scroll-area": "^1.2.10",
+    "@radix-ui/react-slot": "^1.0.2",
+    "@radix-ui/react-tabs": "^1.0.4",
+    "class-variance-authority": "^0.7.0",
+    "clsx": "^2.0.0",
+    "cmdk": "^0.2.0",
+    "date-fns": "^3.6.0",
+    "gsap": "^3.13.0",
+    "lucide-react": "^0.294.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.22.3",
+    "sonner": "^1.2.4",
+    "tailwind-merge": "^2.0.0",
+    "tailwindcss": "^3.3.5",
+    "zustand": "^4.5.7"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@types/react": "^18.2.37",
+    "@types/react-dom": "^18.2.15",
+    "@typescript-eslint/eslint-plugin": "^6.10.0",
+    "@typescript-eslint/parser": "^6.10.0",
+    "@vitejs/plugin-react": "^4.1.1",
+    "autoprefixer": "^10.4.16",
+    "eslint": "^8.53.0",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint-plugin-react-refresh": "^0.4.4",
+    "postcss": "^8.4.31",
+    "tailwindcss": "^3.3.5",
+    "tailwindcss-animate": "^1.0.7",
+    "typescript": "^5.2.2",
+    "vite": "^4.5.0"
+  },
+  "dependencies": {
+    "@faker-js/faker": "^10.1.0",
+    "@radix-ui/react-checkbox": "^1.3.3",
+    "@radix-ui/react-radio-group": "^1.3.8",
+    "@radix-ui/react-separator": "^1.1.7",
+    "@radix-ui/react-switch": "^1.2.6",
+    "@radix-ui/react-tooltip": "^1.2.8"
+  }
 }
 ```
 

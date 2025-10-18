@@ -1,207 +1,130 @@
-Yo, what's up HN. We're about to inject some serious calendar-view goodness into our `DataDemo` page. The current views are solid, but a calendar is a game-changer for visualizing time-based data. Think GitHub contribution graph, but for our data items.
+Alright, listen up. The current `DataCalendarView` is built like a brick shithouse - a static 7-column grid. That's fine for a wide open viewport, but our app shell is a dynamic beast. When panes slide in, that calendar gets squished into oblivion, making it useless.
 
-We're going to build this out component-first, keeping it clean and leveraging the existing UI primitives. The plan is to create a new `DataCalendarView.tsx` that's a self-contained beast, handling its own month/week/day views. It'll hook into the existing data store and view manager like a first-class citizen. No janky iframes or heavy libs, just pure React, zustand, and Tailwind artistry. We'll reuse everything we can to keep the footprint small and the UI consistent.
+The plan is to tear down that rigid structure and rebuild it with a responsive core. We'll make it aware of its own container size and let it intelligently reflow its columns from 7 down to a more mobile-friendly number. This means when a user opens a side pane, the calendar will gracefully adapt instead of becoming a cramped mess. We'll achieve this by first shipping a generic `useResizeObserver` hook, then putting it to work inside the calendar component to dynamically adjust the grid and headers for a slick, fluid user experience.
 
-The final result will be a slick, responsive calendar view that feels native to the app shell. Users will be able to visualize their data items based on due dates or creation dates, with color-coding for priority. It's gonna be a massive UX win. Let's get this diff ready to ship.
+This refactor will make the calendar truly "app shell aware," ensuring it looks and works great no matter how the user configures their layout. It's a key step in making our UI components as flexible as the shell itself.
 
 ```yaml
 plan:
-  uuid: '9e7b4c1a-5f0e-4d6c-8a2b-1f8d3e9c0a1b'
+  uuid: 'e8a1b2c3-d4e5-f6a7-b8c9-d0e1f2a3b4c5'
   status: 'todo'
-  title: 'Implement Advanced Calendar View for Data Demo Page'
+  title: 'Make DataCalendarView Grid Responsive to Container Width'
   introduction: |
-    This plan outlines the refactoring required to introduce a new 'Calendar' view mode to the Data Demo page. The goal is to provide a rich, interactive way for users to visualize data items based on their timestamps, such as due dates or creation dates.
+    Alright, listen up. The current `DataCalendarView` is built like a brick shithouse - a static 7-column grid. That's fine for a wide open viewport, but our app shell is a dynamic beast. When panes slide in, that calendar gets squished into oblivion, making it useless.
 
-    The approach involves creating a new, highly-reusable `DataCalendarView` component that encapsulates multiple sub-views (Month, Week, Day, List). We will integrate this new view mode into the existing application architecture, including the view mode selector, URL-based state management via `useAppViewManager`, and the main page layout. The new component will leverage existing UI primitives (`Card`, `Button`, `Badge`, etc.) and utility functions (`getPriorityColor`) to ensure a consistent look and feel with the rest of the application.
+    The plan is to tear down that rigid structure and rebuild it with a responsive core. We'll make it aware of its own container size and let it intelligently reflow its columns from 7 down to a more mobile-friendly number. This means when a user opens a side pane, the calendar will gracefully adapt instead of becoming a cramped mess. We'll achieve this by first shipping a generic `useResizeObserver` hook, then putting it to work inside the calendar component to dynamically adjust the grid and headers for a slick, fluid user experience.
 
-    This effort will significantly enhance the data visualization capabilities of the demo, making it more intuitive to track items over time. We will focus on a clean implementation that is both performant and maintainable, adapting patterns from the existing view components.
+    This refactor will make the calendar truly "app shell aware," ensuring it looks and works great no matter how the user configures their layout. It's a key step in making our UI components as flexible as the shell itself.
   parts:
-    - uuid: 'a1b2c3d4-e5f6-7890-1234-567890abcdef'
+    - uuid: 'f7b6a5e4-d3c2-b1a0-9f8e-7d6c5b4a3f2e'
       status: 'todo'
-      name: 'Part 1: Foundational Integration for Calendar View'
+      name: 'Part 1: Introduce a Generic `useResizeObserver` Hook'
       reason: |
-        Before building the main component, we need to update the existing application infrastructure to recognize and handle the new 'calendar' view mode. This involves updating type definitions, UI controls, and state management hooks to ensure the new view can be selected and rendered correctly.
+        Before we can make anything responsive, we need a way to measure it. Hardcoding media queries is for chumps. We need a component to be aware of its *own* dimensions, not the entire viewport's. We're building a reusable `useResizeObserver` hook to do just that. It's a standard tool for the modern web dev arsenal, letting us write components that react to their local environment. Shipping this as a separate utility means we can reuse it anywhere else we need this kind of fine-grained responsiveness.
       steps:
-        - uuid: 'b2c3d4e5-f6a7-8901-2345-67890abcdef1'
+        - uuid: 'a1b2c3d4-e5f6-a7b8-c9d0-e1f2a3b4c5d6'
           status: 'todo'
-          name: '1. Update Type Definitions'
+          name: '1. Create `useResizeObserver.hook.ts`'
           reason: |
-            To formally introduce the 'calendar' view, we must add it to the `ViewMode` union type. This provides type safety throughout the application when dealing with view modes.
+            First, we need the file. This hook is a new piece of infrastructure, so it gets its own file in the `hooks` directory. Clean, organized, and easy to find for the next person who needs it.
           files:
-            - src/pages/DataDemo/types.ts
+            - 'src/hooks/useResizeObserver.hook.ts'
           operations:
-            - "In `src/pages/DataDemo/types.ts`, find the `ViewMode` type definition."
-            - "Add `'calendar'` as one of the possible literal types. The new type should look like: `export type ViewMode = 'list' | 'cards' | 'grid' | 'table' | 'kanban' | 'calendar'`."
-        - uuid: 'c3d4e5f6-a7b8-9012-3456-7890abcdef12'
-          status: 'todo'
-          name: '2. Add Calendar to View Mode Selector'
-          reason: |
-            The user needs a way to switch to the new calendar view. This step adds the corresponding icon and button to the `DataViewModeSelector` component.
-          files:
-            - src/pages/DataDemo/components/DataViewModeSelector.tsx
-          operations:
-            - "In `src/pages/DataDemo/components/DataViewModeSelector.tsx`, import the `Calendar` icon from `lucide-react`."
-            - "Add a new entry to the `modes` array for the calendar view. It should have `id: 'calendar'`, `label: 'Calendar'`, and `icon: Calendar`."
-            - "Ensure the `onClick` handler for this new button correctly calls `setViewMode('calendar')`."
-        - uuid: 'd4e5f6a7-b8c9-0123-4567-890abcdef123'
-          status: 'todo'
-          name: '3. Update Page to Render Calendar View'
-          reason: |
-            The main `DataDemoPage` component needs to know how to render the new view. This step adds the conditional rendering logic for `DataCalendarView`.
-          files:
-            - src/pages/DataDemo/index.tsx
-          operations:
-            - "In `src/pages/DataDemo/index.tsx`, import the yet-to-be-created `DataCalendarView` component from `'./components/DataCalendarView'`."
-            - "In the `renderContent` function, add a new case for `'calendar'`. It should return `<DataCalendarView data={currentItems} onItemSelect={handleItemSelect} selectedItem={selectedItem} />`."
-            - "When `viewMode` is `'calendar'`, disable sorting by calling `setSort(null)` if it isn't already, similar to the kanban view logic. Also ensure the group by selector is hidden or disabled for calendar view."
-        - uuid: 'e5f6a7b8-c9d0-1234-5678-90abcdef1234'
-          status: 'todo'
-          name: '4. Register Calendar View in App View Manager'
-          reason: |
-            Our app state is driven by URL params. The `useAppViewManager` hook must be updated to correctly parse and set the `viewMode=calendar` param.
-          files:
-            - src/hooks/useAppViewManager.hook.ts
-          operations:
-            - "Review `src/hooks/useAppViewManager.hook.ts` to ensure that the `setViewMode` function can handle `'calendar'` as a valid value. No specific code change is likely needed if it's already generic, but it's important to verify."
+            - 'Create a new file at `src/hooks/useResizeObserver.hook.ts`.'
+            - 'Implement a `useResizeObserver` hook that takes a React ref as an argument.'
+            - 'The hook should use a `ResizeObserver` to watch the ref''s element.'
+            - 'It should store the element''s `width` and `height` in a state variable.'
+            - 'The hook will return the `dimensions` object `{ width, height }`.'
+            - 'Ensure proper cleanup by calling `disconnect()` on the observer when the component unmounts.'
       context_files:
         compact:
-          - src/pages/DataDemo/types.ts
-          - src/pages/DataDemo/components/DataViewModeSelector.tsx
-          - src/pages/DataDemo/index.tsx
+          - 'src/hooks/useResizeObserver.hook.ts'
         medium:
-          - src/pages/DataDemo/types.ts
-          - src/pages/DataDemo/components/DataViewModeSelector.tsx
-          - src/pages/DataDemo/index.tsx
-          - src/hooks/useAppViewManager.hook.ts
+          - 'src/hooks/useResizeObserver.hook.ts'
         extended:
-          - src/pages/DataDemo/types.ts
-          - src/pages/DataDemo/components/DataViewModeSelector.tsx
-          - src/pages/DataDemo/index.tsx
-          - src/hooks/useAppViewManager.hook.ts
-          - src/pages/DataDemo/components/DataKanbanView.tsx
-    - uuid: 'b2c3d4e5-f6a7-8901-2345-67890abcdef2'
+          - 'src/hooks/useResizeObserver.hook.ts'
+    - uuid: 'c5b4a3f2-e1d0-9c8b-7a6f-5e4d3c2b1a0f'
       status: 'todo'
-      name: 'Part 2: Build the DataCalendarView Component'
+      name: 'Part 2: Refactor `DataCalendarView` to be Responsive'
       reason: |
-        This is the core of the feature. We will create a new file, `DataCalendarView.tsx`, which will contain the entire logic and structure for displaying data items in a calendar format. This component will be feature-rich, with multiple internal views (Month, Week, Day, List) and will be styled to match the application's aesthetic.
+        With our new resize observer hook in hand, it's time for the main event: refactoring `DataCalendarView`. This is where we inject the responsive logic. We'll transform the static 7-day grid into a dynamic layout that calculates the optimal number of columns based on available space. We'll also cleverly adjust the UI to ensure it remains clear and usable, even with fewer columns, by conditionally showing weekday names within each day's cell. This avoids a confusing, misaligned header and keeps the calendar intuitive at any size.
       steps:
-        - uuid: 'f6a7b8c9-d0e1-2345-6789-0abcdef12345'
+        - uuid: 'd4e5f6a7-b8c9-d0e1-f2a3-b4c5d6e7'
           status: 'todo'
-          name: '1. Create `DataCalendarView.tsx` and Main Component'
+          name: '1. Integrate `useResizeObserver` into `DataCalendarView`'
           reason: |
-            Establish the file structure and the main component, which will manage the calendar's internal state and render its sub-components.
+            We need to measure the container, so we're wrapping the calendar in a new `div` and attaching a ref to it. This ref will be the eyes for our `useResizeObserver` hook, telling us exactly how much space we have to play with at all times.
           files:
-            - src/pages/DataDemo/components/DataCalendarView.tsx
+            - 'src/pages/DataDemo/components/DataCalendarView.tsx'
           operations:
-            - "Create a new file at `src/pages/DataDemo/components/DataCalendarView.tsx`."
-            - "Import React, `useState`, `useCallback`, `useMemo`, and necessary UI components (`Button`, `Card`, `Badge`, `Select`, etc.)."
-            - "Import `DataItem` and `ViewProps` types from `../types`."
-            - "Define the main `DataCalendarView: React.FC<ViewProps>` component. It will receive `data`, `onItemSelect`, and `selectedItem` as props."
-            - "Inside `DataCalendarView`, set up state for `currentDate` (defaulting to `new Date()`) and `calendarView` (a new state for `'month' | 'week' | 'day' | 'list'`, defaulting to `'month'`)."
-        - uuid: 'a7b8c9d0-e1f2-3456-7890-bcdef1234567'
+            - "Import the new `useResizeObserver` hook."
+            - "Create a new wrapper `div` that encloses the `CalendarHeader` and the main calendar grid."
+            - "Create a `useRef` for this new wrapper `div`, let's call it `calendarContainerRef`."
+            - "Call `useResizeObserver(calendarContainerRef)` to get the container's `width`."
+        - uuid: 'e5f6a7b8-c9d0-e1f2-a3b4-c5d6e7f8'
           status: 'todo'
-          name: '2. Implement Calendar Header and Controls'
+          name: '2. Calculate Dynamic Column Count'
           reason: |
-            The calendar needs a header for navigation (previous/next month) and for switching between the internal month, week, day, and list views. This makes the component self-contained and user-friendly.
+            This is the brain of the operation. We take the width from the observer and do some quick math to figure out the ideal column count. We'll establish a minimum width for each day cell to prevent them from becoming unreadably narrow, and clamp the result between a sensible min (e.g., 3 columns) and the max of 7. This logic is the key to the whole responsive transformation.
           files:
-            - src/pages/DataDemo/components/DataCalendarView.tsx
+            - 'src/pages/DataDemo/components/DataCalendarView.tsx'
           operations:
-            - "Inside `DataCalendarView`, create a header section."
-            - "Display the current date range (e.g., 'October 2024') which changes based on `currentDate` and `calendarView`."
-            - "Add a button group on the right for navigation: `< ChevronLeft />`, `Today`, `< ChevronRight />`. These buttons will update the `currentDate` state."
-            - "Add another button group to switch the `calendarView` state between 'Month', 'Week', 'Day', and 'List'. This should use existing `Button` components and style them as a segmented control, similar to `DataViewModeSelector`."
-        - uuid: 'b8c9d0e1-f2a3-4567-8901-cdef12345678'
+            - 'Inside the `DataCalendarView` component, define a constant `MIN_DAY_WIDTH`, e.g., `160`.'
+            - "Calculate the number of columns: `const numColumns = useMemo(() => { if (width === 0) return 7; const cols = Math.floor(width / MIN_DAY_WIDTH); return Math.max(3, Math.min(7, cols)); }, [width]);`."
+            - "Using `useMemo` prevents recalculation on every render."
+        - uuid: 'f6a7b8c9-d0e1-f2a3-b4c5-d6e7f8a9'
           status: 'todo'
-          name: '3. Implement Month View'
+          name: '3. Adapt Grid Layout and Weekday Header'
           reason: |
-            The month view is the most common calendar layout and will serve as the default. It needs to render a grid of days and place data items within them.
+            With our column count calculated, we need to apply it. We're ditching the static `grid-cols-7` Tailwind class in favor of dynamic inline styles on the grid containers. We'll also hide the main weekday header on smaller views where it would be misaligned and confusing. This step makes the layout physically adapt.
           files:
-            - src/pages/DataDemo/components/DataCalendarView.tsx
+            - 'src/pages/DataDemo/components/DataCalendarView.tsx'
           operations:
-            - "Create a `MonthView` sub-component inside `DataCalendarView.tsx`."
-            - "It should calculate and render a 6x7 grid of days for the given `currentDate`."
-            - "For each day in the grid, filter the `data` prop to find items where `dueDate` or `createdAt` matches that day."
-            - "Render a small, clickable representation of each `DataItem` within its corresponding day cell. Use the `EventItem` component (to be created next)."
-            - "Style non-current-month days with a muted background. Highlight the current day."
-        - uuid: 'c9d0e1f2-a3b4-5678-9012-def123456789'
+            - 'Find the `weekdays.map` section. Wrap it in a conditional render: `{numColumns === 7 && ...}`.'
+            - 'The parent `div` of the `days.map` loop (the one with `col-span-7 grid grid-cols-7`) needs to be modified.'
+            - 'Remove the Tailwind grid classes (`col-span-7`, `grid`, `grid-cols-7`).'
+            - 'Add an inline style to this `div`: `style={{ display: "grid", gridTemplateColumns: `repeat(${numColumns}, minmax(0, 1fr))` }}`.'
+        - uuid: 'a7b8c9d0-e1f2-a3b4-c5d6-e7f8a9b0'
           status: 'todo'
-          name: '4. Implement Week, Day, and List Views'
+          name: '4. Enhance Day Cells for Small Views'
           reason: |
-            To provide a comprehensive calendar experience, we need to add week, day, and list views, each offering a different level of granularity.
+            Hiding the main header on small views creates a context problem: which day of the week is which? To solve this, we'll enhance the individual day cells. When the main header is hidden, each cell will display a small weekday abbreviation (e.g., 'Mon', 'Tue') above the date number. This keeps the calendar perfectly readable and intuitive, regardless of how many columns are visible.
           files:
-            - src/pages/DataDemo/components/DataCalendarView.tsx
+            - 'src/pages/DataDemo/components/DataCalendarView.tsx'
           operations:
-            - "Create `WeekView`, `DayView`, and `ListView` sub-components."
-            - "`WeekView`: Render a grid with 7 days as columns and 24 hours as rows. Place items in the correct day column. Since items lack a specific time, they can be displayed as 'all-day' events at the top of each column."
-            - "`DayView`: Similar to Week view but for a single day, showing a list of items for that day."
-            - "`ListView`: Group items by date and render them in a chronological list, with date headings. This is the most accessible view."
-        - uuid: 'd0e1f2a3-b4c5-6789-0123-ef1234567890'
-          status: 'todo'
-          name: '5. Create Reusable EventItem Component'
-          reason: |
-            A dedicated component to represent a `DataItem` inside the calendar views will keep the code DRY and styling consistent. It will handle color-coding and click events.
-          files:
-            - src/pages/DataDemo/components/DataCalendarView.tsx
-          operations:
-            - "Create an `EventItem` sub-component inside `DataCalendarView.tsx`."
-            - "It should accept a `DataItem` as a prop."
-            - "The component should display the item's `title`."
-            - "Its background color should be determined by the item's `priority` using the existing `getPriorityColor` utility from `@/lib/utils`."
-            - "Make the component clickable, triggering the `onItemSelect(item)` callback on click."
-            - "Add a `Tooltip` on hover to show more details, like the full title or description."
+            - 'Inside the `days.map` loop, locate the `span` that renders the day number: `{format(day, "d")}`.'
+            - 'Wrap this `span` and add a new element to show the weekday name conditionally.'
+            - "Replace the existing `span` with a `div` structure like this: `<div className='flex items-center gap-1 text-sm'><span className={cn('font-semibold', isToday(day) && 'text-primary-foreground')}>{numColumns < 7 ? format(day, 'eee') : ''}</span><span className={cn('font-semibold', !isToday(day) && 'text-muted-foreground', numColumns < 7 && 'text-foreground')}>{format(day, 'd')}</span></div>`."
+            - 'Adjust the parent `div` of the day cell. Change `p-3` to `p-2`, add `flex-col`, and adjust alignment to `items-start` to accommodate the new text.'
+            - 'Modify the `isToday` logic. Instead of wrapping the number, apply styles to the parent div or change text color to ensure visibility.'
+            - 'The final structure for the day label should be something like: `<div className={cn("flex items-center justify-center font-semibold text-sm", isToday(day) && "w-7 h-7 rounded-full bg-primary text-primary-foreground")}>{numColumns < 7 && <span className="text-xs mr-1.5 opacity-70">{format(day, "eee")}</span>}{format(day, "d")}</div>`.'
       context_files:
         compact:
-          - src/pages/DataDemo/components/DataCalendarView.tsx
-          - src/pages/DataDemo/types.ts
-          - src/lib/utils.ts
+          - 'src/pages/DataDemo/components/DataCalendarView.tsx'
+          - 'src/hooks/useResizeObserver.hook.ts'
         medium:
-          - src/pages/DataDemo/components/DataCalendarView.tsx
-          - src/pages/DataDemo/types.ts
-          - src/lib/utils.ts
-          - src/pages/DataDemo/components/DataKanbanView.tsx
-          - src/components/ui/button.tsx
-          - src/components/ui/card.tsx
+          - 'src/pages/DataDemo/components/DataCalendarView.tsx'
+          - 'src/hooks/useResizeObserver.hook.ts'
+          - 'src/pages/DataDemo/index.tsx'
+          - 'src/pages/DataDemo/types.ts'
         extended:
-          - src/pages/DataDemo/components/DataCalendarView.tsx
-          - src/pages/DataDemo/types.ts
-          - src/lib/utils.ts
-          - src/pages/DataDemo/index.tsx
-          - src/pages/DataDemo/components/DataKanbanView.tsx
-          - src/pages/DataDemo/components/DataToolbar.tsx
-          - src/components/ui/button.tsx
-          - src/components/ui/card.tsx
-          - src/components/ui/badge.tsx
-          - src/components/ui/tooltip.tsx
+          - 'src/pages/DataDemo/components/DataCalendarView.tsx'
+          - 'src/hooks/useResizeObserver.hook.ts'
+          - 'src/pages/DataDemo/index.tsx'
+          - 'src/pages/DataDemo/types.ts'
+          - 'src/hooks/useAppViewManager.hook.ts'
+          - 'src/lib/utils.ts'
   conclusion: |
-    Upon completion, the Data Demo page will be equipped with a fully functional and visually appealing calendar view. This new feature will be seamlessly integrated into the existing application, enhancing user experience by offering a powerful new way to visualize and interact with time-sensitive data.
-
-    The modular design of the `DataCalendarView` component ensures it is maintainable and extensible for future enhancements, such as drag-and-drop event rescheduling. By adhering to the project's established coding patterns and design system, we will maintain a high level of code quality and UI consistency.
+    Once this refactor is deployed, the Data Calendar will be transformed from a static, fragile component into a robust, fluid part of our dynamic app shell. It will intelligently adapt to any container size, whether squeezed by a side pane or viewed on a smaller device. This not only fixes the immediate UI bug but also establishes a pattern for creating more resilient, container-aware components across the app. Users get a seamless experience, and we get a more flexible, future-proof codebase. Win-win.
   context_files:
     compact:
-      - src/pages/DataDemo/index.tsx
-      - src/pages/DataDemo/types.ts
-      - src/pages/DataDemo/components/DataViewModeSelector.tsx
-      - src/hooks/useAppViewManager.hook.ts
-      - src/pages/DataDemo/components/DataCalendarView.tsx
+      - 'src/pages/DataDemo/components/DataCalendarView.tsx'
     medium:
-      - src/pages/DataDemo/index.tsx
-      - src/pages/DataDemo/types.ts
-      - src/pages/DataDemo/components/DataViewModeSelector.tsx
-      - src/hooks/useAppViewManager.hook.ts
-      - src/lib/utils.ts
-      - src/pages/DataDemo/components/DataKanbanView.tsx
-      - src/pages/DataDemo/components/DataCalendarView.tsx
+      - 'src/pages/DataDemo/components/DataCalendarView.tsx'
+      - 'src/pages/DataDemo/index.tsx'
     extended:
-      - src/pages/DataDemo/index.tsx
-      - src/pages/DataDemo/types.ts
-      - src/pages/DataDemo/components/DataViewModeSelector.tsx
-      - src/hooks/useAppViewManager.hook.ts
-      - src/lib/utils.ts
-      - src/pages/DataDemo/components/DataKanbanView.tsx
-      - src/pages/DataDemo/components/DataToolbar.tsx
-      - src/pages/DataDemo/store/dataDemo.store.tsx
-      - src/components/ui/button.tsx
-      - src/components/ui/card.tsx
-      - src/components/ui/badge.tsx
-      - src/pages/DataDemo/components/DataCalendarView.tsx
+      - 'src/pages/DataDemo/components/DataCalendarView.tsx'
+      - 'src/pages/DataDemo/index.tsx'
+      - 'src/hooks/useAppViewManager.hook.ts'
+
 ```

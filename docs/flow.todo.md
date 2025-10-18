@@ -8,6 +8,10 @@ should gsap animamte auto hide stats card on page scroll down for all view mode,
 
 ===
 
+calendar view grid block should be aware of viewport so know how much columns to show for certain widht size
+
+=== DONE
+
 data demo page: calendar view
 
 - add calendar view control (make sure UX cohesive) so user can control:
@@ -15,8 +19,7 @@ data demo page: calendar view
   2. what data to show on calendar items within blocks
   3. user can select any timestamp type data to show on calendar view
 
-
-===
+=== DONE
 
 data demo page:
 

@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { format, addMonths, subMonths, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isToday, isSameDay, } from "date-fns";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
@@ -9,6 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn, getPriorityColor } from "@/lib/utils";
 import type { DataItem } from "../types";
 import { useAppViewManager } from "@/hooks/useAppViewManager.hook";
+import { useResizeObserver } from "@/hooks/useResizeObserver.hook";
 import { useSelectedItem, useDataDemoStore } from "../store/dataDemo.store";
 import { CalendarViewControls } from "./DataCalendarViewControls";
 
@@ -96,6 +97,16 @@ export function DataCalendarView({ data }: CalendarViewProps) {
   const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
   const [dropTargetDate, setDropTargetDate] = useState<Date | null>(null);
 
+  // Responsive Calendar State
+  const calendarContainerRef = useRef<HTMLDivElement>(null);
+  const { width } = useResizeObserver(calendarContainerRef);
+  const MIN_DAY_WIDTH = 160; // px
+  const numColumns = useMemo(() => {
+    if (width === 0) return 7;
+    const cols = Math.floor(width / MIN_DAY_WIDTH);
+    return Math.max(3, Math.min(7, cols));
+  }, [width]);
+
   const itemsWithDueDate = useMemo(() => data.filter(item => !!item.dueDate), [data]);
 
   const eventsByDate = useMemo(() => {
@@ -163,8 +174,8 @@ export function DataCalendarView({ data }: CalendarViewProps) {
   const handleToday = () => setCurrentDate(new Date());
 
   return (
-    <div className="-mx-4 md:-mx-6">
-      <div className="px-4 md:px-6">
+    <div ref={calendarContainerRef} className="-mx-4 md:-mx-6">
+      <div className="px-4 md:px-6 pb-2">
         <CalendarHeader currentDate={currentDate} onPrevMonth={handlePrevMonth} onNextMonth={handleNextMonth} onToday={handleToday} />
       </div>
       {itemsWithDueDate.length === 0 ? (
@@ -172,12 +183,16 @@ export function DataCalendarView({ data }: CalendarViewProps) {
           No items with due dates to display on the calendar.
         </div>
       ) : (
-        <div className="grid grid-cols-7 p-2 gap-2" onDragEnd={handleDragEnd}>
-          {weekdays.map(day => (
-            <div key={day} className="py-2 px-3 text-center text-xs font-semibold text-muted-foreground">
-              {day}
+        <div className="px-2" onDragEnd={handleDragEnd}>
+          {numColumns === 7 && (
+            <div className="grid grid-cols-7">
+              {weekdays.map(day => (
+                <div key={day} className="py-2 px-3 text-center text-xs font-semibold text-muted-foreground">
+                  {day}
+                </div>
+              ))}
             </div>
-          ))}
+          )}
 
           <AnimatePresence mode="wait">
             <motion.div
@@ -186,14 +201,17 @@ export function DataCalendarView({ data }: CalendarViewProps) {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.3 }}
-              className="col-span-7 grid grid-cols-7 gap-2"
+              style={{
+                display: 'grid',
+                gridTemplateColumns: `repeat(${numColumns}, minmax(0, 1fr))`,
+                gap: '0.5rem',
+              }}
             >
               {days.map(day => {
                 const dateKey = format(day, "yyyy-MM-dd");
                 const dayEvents = eventsByDate.get(dateKey) || [];
                 const isCurrentMonthDay = isSameMonth(day, currentDate);
                 const isDropTarget = dropTargetDate && isSameDay(day, dropTargetDate);
-
                 return (
                   <div
                     key={day.toString()}
@@ -201,17 +219,23 @@ export function DataCalendarView({ data }: CalendarViewProps) {
                     onDragLeave={handleDragLeave}
                     onDrop={(e) => handleDrop(e, day)}
                     className={cn(
-                      "relative min-h-[150px] rounded-2xl p-3 flex flex-col gap-2 transition-all duration-300 border",
+                      "relative min-h-[150px] rounded-2xl p-2 flex flex-col gap-2 transition-all duration-300 border",
                       isCurrentMonthDay ? "bg-card/40 dark:bg-neutral-900/40 border-transparent" : "bg-muted/30 dark:bg-neutral-800/20 border-transparent text-muted-foreground/60",
                       isDropTarget ? "border-primary/50 bg-primary/10" : "hover:border-primary/20 hover:bg-card/60"
                     )}
                   >
-                    <span className={cn(
-                      "font-semibold text-sm",
-                      isToday(day) && "flex items-center justify-center w-7 h-7 rounded-full bg-primary text-primary-foreground"
-                    )}>
-                      {format(day, "d")}
-                    </span>
+                    <div className="font-semibold text-sm">
+                      {isToday(day) ? (
+                        <div className="flex items-center justify-center w-7 h-7 rounded-full bg-primary text-primary-foreground">
+                          {format(day, 'd')}
+                        </div>
+                      ) : (
+                        <div className="flex items-baseline gap-1.5 px-1 py-0.5">
+                          {numColumns < 7 && <span className="text-xs opacity-70">{format(day, 'eee')}</span>}
+                          <span>{format(day, 'd')}</span>
+                        </div>
+                      )}
+                    </div>
                     <div className="space-y-2 overflow-y-auto flex-grow custom-scrollbar">
                       <AnimatePresence>
                         {dayEvents.slice(0, 4).map(item => (
