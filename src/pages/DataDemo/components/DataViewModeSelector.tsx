@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { gsap } from 'gsap'
 import { cn } from '@/lib/utils'
-import { List, Grid3X3, LayoutGrid, Table, LayoutDashboard } from 'lucide-react'
+import { List, Grid3X3, LayoutGrid, Table, LayoutDashboard, CalendarDays } from 'lucide-react'
 import type { ViewMode } from '../types'
 import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
 
@@ -9,6 +9,7 @@ const viewModes = [
   { id: 'list' as ViewMode, label: 'List', icon: List, description: 'Compact list with details' },
   { id: 'cards' as ViewMode, label: 'Cards', icon: LayoutGrid, description: 'Rich card layout' },
   { id: 'kanban' as ViewMode, label: 'Kanban', icon: LayoutDashboard, description: 'Interactive Kanban board' },
+  { id: 'calendar' as ViewMode, label: 'Calendar', icon: CalendarDays, description: 'Interactive calendar view' },
   { id: 'grid' as ViewMode, label: 'Grid', icon: Grid3X3, description: 'Masonry grid view' },
   { id: 'table' as ViewMode, label: 'Table', icon: Table, description: 'Structured data table' }
 ]

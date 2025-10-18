@@ -21,6 +21,7 @@ interface DataDemoActions {
         groupBy: GroupableField | 'none';
         filters: FilterConfig;
         sortConfig: SortConfig | null;
+    isFullLoad?: boolean;
     }) => void;
     updateItem: (itemId: string, updates: Partial<DataItem>) => void;
 }
@@ -37,7 +38,7 @@ const defaultState: DataDemoState = {
 export const useDataDemoStore = create<DataDemoState & DataDemoActions>((set, get) => ({
     ...defaultState,
 
-    loadData: ({ page, groupBy, filters, sortConfig }) => {
+    loadData: ({ page, groupBy, filters, sortConfig, isFullLoad }) => {
         set({ isLoading: true, ...(page === 1 && { isInitialLoading: true }) });
         const isFirstPage = page === 1;
 
@@ -83,7 +84,7 @@ export const useDataDemoStore = create<DataDemoState & DataDemoActions>((set, ge
         const totalItemCount = filteredAndSortedData.length;
 
         setTimeout(() => {
-            if (groupBy !== 'none') {
+            if (groupBy !== 'none' || isFullLoad) {
                 set({
                     items: filteredAndSortedData,
                     hasMore: false,

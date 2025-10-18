@@ -53,6 +53,16 @@ export const getStatusColor = (status: string) => {
   }
 }
 
+export const getPrioritySolidColor = (priority: string) => {
+  switch (priority) {
+    case 'critical': return 'bg-red-500'
+    case 'high': return 'bg-orange-500'
+    case 'medium': return 'bg-blue-500'
+    case 'low': return 'bg-green-500'
+    default: return 'bg-gray-500'
+  }
+}
+
 export const getPriorityColor = (priority: string) => {
   switch (priority) {
     case 'critical': return 'bg-red-500/20 text-red-700 border-red-500/30'

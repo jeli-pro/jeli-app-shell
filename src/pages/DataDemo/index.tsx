@@ -24,6 +24,7 @@ import { DataListView } from './components/DataListView'
 import { DataCardView } from './components/DataCardView'
 import { DataTableView } from './components/DataTableView'
 import { DataKanbanView } from './components/DataKanbanView'
+import { DataCalendarView } from './components/DataCalendarView'
 import { DataViewModeSelector } from './components/DataViewModeSelector'
 import { AnimatedTabs } from '@/components/ui/animated-tabs'
 import { StatCard } from '@/components/shared/StatCard'
@@ -177,8 +178,14 @@ function DataDemoContent() {
   }, [isInitialLoading]);
 
   useEffect(() => {
-    loadData({ page, groupBy, filters, sortConfig });
-  }, [page, groupBy, filters, sortConfig, loadData]);
+    loadData({
+      page,
+      groupBy,
+      filters,
+      sortConfig,
+      isFullLoad: viewMode === 'calendar',
+    });
+  }, [page, groupBy, filters, sortConfig, loadData, viewMode]);
 
   const observer = useRef<IntersectionObserver>();
   const loaderRef = useCallback(
@@ -202,12 +209,17 @@ function DataDemoContent() {
       setGroupBy('status');
       setSort(null); // Kanban is manually sorted, so disable programmatic sort
     }
-  }, [viewMode, groupBy, setGroupBy, setSort]);
+    // For calendar view, we don't want grouping.
+    if (viewMode === 'calendar') {
+      if (groupBy !== 'none') setGroupBy('none');
+    }
+  }, [viewMode, groupBy, setGroupBy]);
 
   const renderViewForData = useCallback((data: DataItem[]) => {
     switch (viewMode) {
         case 'table': return <DataTableView data={data} />;
         case 'cards': return <DataCardView data={data} />;
+        case 'calendar': return null; // Calendar has its own render path below
         case 'kanban': return null; // Kanban has its own render path below
         case 'grid': return <DataCardView data={data} isGrid />;
         case 'list':
@@ -289,6 +301,9 @@ function DataDemoContent() {
         <div className="min-h-[500px]">
           {isInitialLoading 
             ? <AnimatedLoadingSkeleton viewMode={viewMode} /> 
+            : viewMode === 'calendar' ? (
+              <DataCalendarView data={allItems} />
+            )
             : viewMode === 'kanban' ? (
               <>
                 <div className="flex items-center justify-end gap-4 h-[68px]">
@@ -341,13 +356,13 @@ function DataDemoContent() {
 
         {/* Loader for infinite scroll */}
         <div ref={loaderRef} className="flex justify-center items-center py-6">
-          {isLoading && !isInitialLoading && groupBy === 'none' && (
+          {isLoading && !isInitialLoading && groupBy === 'none' && viewMode !== 'calendar' && (
             <div className="flex items-center gap-2 text-muted-foreground">
               <Loader2 className="w-5 h-5 animate-spin" />
               <span>Loading more...</span>
             </div>
           )}
-          {!isLoading && !hasMore && dataToRender.length > 0 && !isInitialLoading && groupBy === 'none' && (
+          {!isLoading && !hasMore && dataToRender.length > 0 && !isInitialLoading && groupBy === 'none' && viewMode !== 'calendar' && (
             <p className="text-muted-foreground">You've reached the end.</p>
           )}
         </div>

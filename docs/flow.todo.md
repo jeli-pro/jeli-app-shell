@@ -4,7 +4,11 @@ I am obsessed with laravel filament... so make everything about data demo page i
 
 ===
 
-data demo page: create calendar view mode with amazing UI... at least like below ex:
+data demo page:
+
+- create calendar view mode with amazing UI... at least like below ex:
+- the styling should consistent with other view mode and global style.
+- should use existing components like @/components/ui/tabs etc
 
 === DONE
 

@@ -1,0 +1,1363 @@
+uuid: 4894396b-568b-426a-93be-e2c7a5f6430d
+projectId: jeli-app-shell
+createdAt: '2025-10-18T02:15:57.580Z'
+gitCommitMsg: >-
+  feat(DataDemo): add calendar view mode
+
+  Introduces a new "Calendar" view to the Data Demo page for visualizing items
+  with due dates.
+
+  - Adds 'calendar' to the `ViewMode` type. - Creates a new `DataCalendarView`
+  component with a month-based grid, navigation, and animated event display. -
+  Adds a helper function `getPrioritySolidColor` for calendar event indicators.
+  - Updates the `DataViewModeSelector` to include a button for the calendar
+  view. - Modifies the `dataDemo` store to allow fetching all data items, which
+  is necessary for the calendar. - Integrates the new view into the main
+  `DataDemoPage`, including logic to disable pagination and grouping.
+promptSummary: >-
+  The user wants to add a new "Calendar" view mode to the Data Demo page. This
+  involves creating a new calendar component, updating types and UI controls,
+  and modifying data loading logic to support the new view.
+reasoning:
+  - >-
+    Here are the changes to add a calendar view mode to your data demo
+    application.
+  - '### 1. Update Application Types'
+  - First, I'll update the `ViewMode` type to include `'calendar'`.
+  - '### 2. Add Helper for Priority Colors'
+  - >-
+    To display colored dots for event priorities on the calendar, I'll add a new
+    utility function in `src/lib/utils.ts` that returns a solid background color
+    class.
+  - '### 3. Update View Mode Selector'
+  - >-
+    Next, I'll add the "Calendar" option to the view mode selector component,
+    including a new icon.
+  - '### 4. Create the Calendar View Component'
+  - >-
+    This is the new component for rendering the calendar. It features month
+    navigation, smooth animations for month transitions, and tooltips for
+    viewing event details. It will display items based on their `dueDate`.
+  - '### 5. Update Data Store'
+  - >-
+    To ensure the calendar view can display all relevant items (not just a
+    paginated subset), I'll update the `loadData` action in the Zustand store to
+    accept an `isFullLoad` flag.
+  - '### 6. Integrate Calendar View into Page'
+  - >-
+    Finally, I'll integrate the new calendar view into the main `DataDemo` page
+    component. This involves:
+  - '- Importing the `DataCalendarView`.'
+  - '- Updating the data loading effect to fetch all items when in calendar mode.'
+  - '- Adding rendering logic for the calendar view.'
+  - >-
+    - Ensuring grouping is disabled and infinite scroll is hidden when the
+    calendar is active.
+  - >-
+    With these changes, your application will now have a beautiful and
+    functional calendar view for visualizing items with due dates.
+operations:
+  - type: write
+    path: src/pages/DataDemo/types.ts
+    content: >
+      <<<<<<< SEARCH
+
+      export type ViewMode = 'list' | 'cards' | 'grid' | 'table' | 'kanban'
+
+      =======
+
+      export type ViewMode = 'list' | 'cards' | 'grid' | 'table' | 'kanban' |
+      'calendar'
+
+      >>>>>>> REPLACE
+    patchStrategy: search-replace
+  - type: write
+    path: src/lib/utils.ts
+    content: |
+      --- src/lib/utils.ts
+      +++ src/lib/utils.ts
+      @@ -58,3 +58,13 @@
+           default: return 'bg-gray-500/20 text-gray-700 border-gray-500/30'
+         }
+       }
+      +
+      +export const getPrioritySolidColor = (priority: string) => {
+      +  switch (priority) {
+      +    case 'critical': return 'bg-red-500'
+      +    case 'high': return 'bg-orange-500'
+      +    case 'medium': return 'bg-blue-500'
+      +    case 'low': return 'bg-green-500'
+      +    default: return 'bg-gray-500'
+      +  }
+      +}
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/DataDemo/components/DataViewModeSelector.tsx
+    content: >+
+      --- src/pages/DataDemo/components/DataViewModeSelector.tsx
+
+      +++ src/pages/DataDemo/components/DataViewModeSelector.tsx
+
+      @@ -1,15 +1,16 @@
+       import { useEffect, useRef, useState, useCallback } from 'react'
+       import { gsap } from 'gsap'
+       import { cn } from '@/lib/utils'
+      -import { List, Grid3X3, LayoutGrid, Table, LayoutDashboard } from
+      'lucide-react'
+
+      +import { List, Grid3X3, LayoutGrid, Table, LayoutDashboard, CalendarDays
+      } from 'lucide-react'
+       import type { ViewMode } from '../types'
+       import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
+       
+       const viewModes = [
+         { id: 'list' as ViewMode, label: 'List', icon: List, description: 'Compact list with details' },
+         { id: 'cards' as ViewMode, label: 'Cards', icon: LayoutGrid, description: 'Rich card layout' },
+         { id: 'kanban' as ViewMode, label: 'Kanban', icon: LayoutDashboard, description: 'Interactive Kanban board' },
+      +  { id: 'calendar' as ViewMode, label: 'Calendar', icon: CalendarDays,
+      description: 'Interactive calendar view' },
+         { id: 'grid' as ViewMode, label: 'Grid', icon: Grid3X3, description: 'Masonry grid view' },
+         { id: 'table' as ViewMode, label: 'Table', icon: Table, description: 'Structured data table' }
+       ]
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/DataDemo/components/DataCalendarView.tsx
+    content: >-
+      import { useState, useMemo } from "react";
+
+      import { format, addMonths, subMonths, startOfMonth, endOfMonth,
+      startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isToday } from
+      "date-fns";
+
+      import { ChevronLeft, ChevronRight } from "lucide-react";
+
+      import { AnimatePresence, motion } from "framer-motion";
+
+
+      import { Button } from "@/components/ui/button";
+
+      import { Card } from "@/components/ui/card";
+
+      import { Badge } from "@/components/ui/badge";
+
+      import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from
+      "@/components/ui/tooltip";
+
+      import { cn, getPriorityColor, getPrioritySolidColor } from "@/lib/utils";
+
+      import type { DataItem } from "../types";
+
+      import { useAppViewManager } from "@/hooks/useAppViewManager.hook";
+
+      import { useSelectedItem } from "../store/dataDemo.store";
+
+
+      interface CalendarViewProps {
+        data: DataItem[];
+      }
+
+
+      function CalendarHeader({ currentDate, onPrevMonth, onNextMonth, onToday
+      }: {
+        currentDate: Date;
+        onPrevMonth: () => void;
+        onNextMonth: () => void;
+        onToday: () => void;
+      }) {
+        return (
+          <div className="flex items-center justify-between gap-4 mb-6">
+            <h2 className="text-xl font-bold md:text-2xl tracking-tight">
+              {format(currentDate, "MMMM yyyy")}
+            </h2>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={onToday}>Today</Button>
+              <div className="flex items-center">
+                <Button variant="outline" size="icon" className="h-9 w-9" onClick={onPrevMonth}>
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Button variant="outline" size="icon" className="h-9 w-9" onClick={onNextMonth}>
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+
+      function CalendarEvent({ item, isSelected }: { item: DataItem; isSelected:
+      boolean }) {
+        const { onItemSelect } = useAppViewManager();
+        const priorityColor = getPrioritySolidColor(item.priority);
+
+        return (
+          <TooltipProvider delayDuration={200}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <motion.div
+                  layout
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.2 }}
+                  onClick={() => onItemSelect(item)}
+                  className={cn(
+                    "flex items-center gap-2 p-1.5 rounded-lg cursor-pointer transition-colors duration-200",
+                    "hover:bg-accent",
+                    isSelected && "bg-primary/10 ring-1 ring-primary/50"
+                  )}
+                >
+                  <div className={cn("w-2 h-2 rounded-full flex-shrink-0", priorityColor)} />
+                  <span className="text-xs font-medium truncate text-foreground/80">{item.title}</span>
+                </motion.div>
+              </TooltipTrigger>
+              <TooltipContent side="top" align="start">
+                <div className="font-semibold">{item.title}</div>
+                <div className="text-sm text-muted-foreground">{item.category}</div>
+                <Badge className={cn("mt-2 text-xs", getPriorityColor(item.priority))}>{item.priority}</Badge>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        );
+      }
+
+
+      export function DataCalendarView({ data }: CalendarViewProps) {
+        const [currentDate, setCurrentDate] = useState(new Date());
+        const { itemId } = useAppViewManager();
+        const selectedItem = useSelectedItem(itemId);
+        
+        const itemsWithDueDate = useMemo(() => data.filter(item => !!item.dueDate), [data]);
+
+        const eventsByDate = useMemo(() => {
+          const eventsMap = new Map<string, DataItem[]>();
+          itemsWithDueDate.forEach(item => {
+            // item.dueDate is string, so we need to parse it
+            const dueDate = new Date(item.dueDate as string);
+            const dateKey = format(dueDate, "yyyy-MM-dd");
+            if (!eventsMap.has(dateKey)) {
+              eventsMap.set(dateKey, []);
+            }
+            eventsMap.get(dateKey)?.push(item);
+          });
+          return eventsMap;
+        }, [itemsWithDueDate]);
+
+        const monthStart = startOfMonth(currentDate);
+        const monthEnd = endOfMonth(monthStart);
+        const startDate = startOfWeek(monthStart, { weekStartsOn: 0 }); // Sunday
+        const endDate = endOfWeek(monthEnd, { weekStartsOn: 0 });
+
+        const days = eachDayOfInterval({ start: startDate, end: endDate });
+        const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+        const handlePrevMonth = () => setCurrentDate(subMonths(currentDate, 1));
+        const handleNextMonth = () => setCurrentDate(addMonths(currentDate, 1));
+        const handleToday = () => setCurrentDate(new Date());
+
+        return (
+          <Card className="p-4 md:p-6 border-none shadow-none bg-transparent">
+            <CalendarHeader currentDate={currentDate} onPrevMonth={handlePrevMonth} onNextMonth={handleNextMonth} onToday={handleToday} />
+            {itemsWithDueDate.length === 0 ? (
+              <div className="flex items-center justify-center h-96 text-muted-foreground rounded-lg border bg-card/30">
+                No items with due dates to display on the calendar.
+              </div>
+            ) : (
+              <div className="grid grid-cols-7 border-t border-l border-border rounded-lg overflow-hidden">
+                {weekdays.map(day => (
+                  <div key={day} className="p-2 text-center text-xs font-semibold text-muted-foreground bg-muted/30 border-b border-r">
+                    {day}
+                  </div>
+                ))}
+
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={format(currentDate, "yyyy-MM")}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.3 }}
+                    className="col-span-7 grid grid-cols-7"
+                  >
+                    {days.map(day => {
+                      const dateKey = format(day, "yyyy-MM-dd");
+                      const dayEvents = eventsByDate.get(dateKey) || [];
+                      const isCurrentMonthDay = isSameMonth(day, currentDate);
+
+                      return (
+                        <div
+                          key={day.toString()}
+                          className={cn(
+                            "relative min-h-[120px] border-b border-r p-2 flex flex-col transition-colors duration-200",
+                            isCurrentMonthDay ? "bg-card/50" : "bg-muted/20 text-muted-foreground",
+                            "hover:bg-accent/50"
+                          )}
+                        >
+                          <span className={cn(
+                            "font-semibold text-xs mb-2",
+                            isToday(day) && "flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground"
+                          )}>
+                            {format(day, "d")}
+                          </span>
+                          <div className="space-y-1 overflow-y-auto flex-grow">
+                            <AnimatePresence>
+                              {dayEvents.slice(0, 3).map(item => (
+                                <CalendarEvent key={item.id} item={item} isSelected={selectedItem?.id === item.id} />
+                              ))}
+                            </AnimatePresence>
+                          </div>
+                          {dayEvents.length > 3 && (
+                            <div className="absolute bottom-1 right-2 text-xs font-bold text-muted-foreground">
+                              +{dayEvents.length - 3} more
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </motion.div>
+                </AnimatePresence>
+              </div>
+            )}
+          </Card>
+        );
+      }
+    patchStrategy: replace
+  - type: write
+    path: src/pages/DataDemo/store/dataDemo.store.tsx
+    content: |+
+      --- src/pages/DataDemo/store/dataDemo.store.tsx
+      +++ src/pages/DataDemo/store/dataDemo.store.tsx
+      @@ -14,6 +14,7 @@
+               groupBy: GroupableField | 'none';
+               filters: FilterConfig;
+               sortConfig: SortConfig | null;
+      +    isFullLoad?: boolean;
+           }) => void;
+           updateItem: (itemId: string, updates: Partial<DataItem>) => void;
+       }
+      @@ -31,7 +32,7 @@
+       export const useDataDemoStore = create<DataDemoState & DataDemoActions>((set, get) => ({
+           ...defaultState,
+       
+      -    loadData: ({ page, groupBy, filters, sortConfig }) => {
+      +    loadData: ({ page, groupBy, filters, sortConfig, isFullLoad }) => {
+               set({ isLoading: true, ...(page === 1 && { isInitialLoading: true }) });
+               const isFirstPage = page === 1;
+       
+      @@ -83,7 +84,7 @@
+               const totalItemCount = filteredAndSortedData.length;
+       
+               setTimeout(() => {
+      -            if (groupBy !== 'none') {
+      +            if (groupBy !== 'none' || isFullLoad) {
+                       set({
+                           items: filteredAndSortedData,
+                           hasMore: false,
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/DataDemo/index.tsx
+    content: >+
+      --- src/pages/DataDemo/index.tsx
+
+      +++ src/pages/DataDemo/index.tsx
+
+      @@ -10,6 +10,7 @@
+       import { DataCardView } from './components/DataCardView'
+       import { DataTableView } from './components/DataTableView'
+       import { DataKanbanView } from './components/DataKanbanView'
+      +import { DataCalendarView } from './components/DataCalendarView'
+       import { DataViewModeSelector } from './components/DataViewModeSelector'
+       import { AnimatedTabs } from '@/components/ui/animated-tabs'
+       import { StatCard } from '@/components/shared/StatCard'
+      @@ -118,8 +119,14 @@
+         }, [isInitialLoading]);
+       
+         useEffect(() => {
+      -    loadData({ page, groupBy, filters, sortConfig });
+
+      -  }, [page, groupBy, filters, sortConfig, loadData]);
+
+      +    loadData({
+
+      +      page,
+
+      +      groupBy,
+
+      +      filters,
+
+      +      sortConfig,
+
+      +      isFullLoad: viewMode === 'calendar',
+
+      +    });
+
+      +  }, [page, groupBy, filters, sortConfig, loadData, viewMode]);
+       
+         const observer = useRef<IntersectionObserver>();
+         const loaderRef = useCallback(
+      @@ -139,15 +146,20 @@
+           if (viewMode === 'kanban' && groupBy === 'none') {
+             setGroupBy('status');
+             setSort(null); // Kanban is manually sorted, so disable programmatic sort
+           }
+      -  }, [viewMode, groupBy, setGroupBy, setSort]);
+
+      +    // For calendar view, we don't want grouping.
+
+      +    if (viewMode === 'calendar') {
+
+      +      if (groupBy !== 'none') setGroupBy('none');
+
+      +    }
+
+      +  }, [viewMode, groupBy, setGroupBy]);
+       
+         const renderViewForData = useCallback((data: DataItem[]) => {
+           switch (viewMode) {
+               case 'table': return <DataTableView data={data} />;
+               case 'cards': return <DataCardView data={data} />;
+      +        case 'calendar': return null; // Calendar has its own render path
+      below
+               case 'kanban': return null; // Kanban has its own render path below
+               case 'grid': return <DataДView data={data} isGrid />;
+               case 'list':
+      @@ -216,6 +228,9 @@
+               <div className="min-h-[500px]">
+                 {isInitialLoading 
+                   ? <AnimatedLoadingSkeleton viewMode={viewMode} /> 
+      +            : viewMode === 'calendar' ? (
+
+      +              <DataCalendarView data={allItems} />
+
+      +            )
+                   : viewMode === 'kanban' ? (
+                     <>
+                       <div className="flex items-center justify-end gap-4 h-[68px]">
+      @@ -254,13 +269,13 @@
+       
+               {/* Loader for infinite scroll */}
+               <div ref={loaderRef} className="flex justify-center items-center py-6">
+      -          {isLoading && !isInitialLoading && groupBy === 'none' && (
+
+      +          {isLoading && !isInitialLoading && groupBy === 'none' &&
+      viewMode !== 'calendar' && (
+                   <div className="flex items-center gap-2 text-muted-foreground">
+                     <Loader2 className="w-5 h-5 animate-spin" />
+                     <span>Loading more...</span>
+                   </div>
+                 )}
+      -          {!isLoading && !hasMore && dataToRender.length > 0 &&
+      !isInitialLoading && groupBy === 'none' && (
+
+      +          {!isLoading && !hasMore && dataToRender.length > 0 &&
+      !isInitialLoading && groupBy === 'none' && viewMode !== 'calendar' && (
+                   <p className="text-muted-foreground">You've reached the end.</p>
+                 )}
+               </div>
+
+    patchStrategy: standard-diff
+snapshot:
+  src/pages/DataDemo/components/DataCalendarView.tsx: null
+  src/pages/DataDemo/types.ts: >
+    export type ViewMode = 'list' | 'cards' | 'grid' | 'table' | 'kanban'
+
+
+    export type GroupableField = 'status' | 'priority' | 'category'
+
+
+    export type SortableField = 'title' | 'status' | 'priority' | 'updatedAt' |
+    'assignee.name' | 'metrics.views' | 'metrics.completion' | 'createdAt'
+
+    export type SortDirection = 'asc' | 'desc'
+
+    export interface SortConfig {
+      key: SortableField
+      direction: SortDirection
+    }
+
+
+    export interface DataItem {
+      id: string
+      title: string
+      description: string
+      category: string
+      status: 'active' | 'pending' | 'completed' | 'archived'
+      priority: 'low' | 'medium' | 'high' | 'critical'
+      assignee: {
+        name: string
+        avatar: string
+        email: string
+      }
+      metrics: {
+        views: number
+        likes: number
+        shares: number
+        completion: number
+      }
+      tags: string[]
+      createdAt: string
+      updatedAt: string
+      dueDate?: string
+      thumbnail?: string
+      content?: {
+        summary: string
+        details: string
+        attachments?: Array<{
+          name: string
+          type: string
+          size: string
+          url: string
+        }>
+      }
+    }
+
+
+    export interface ViewProps {
+      data: DataItem[] | Record<string, DataItem[]>
+      onItemSelect: (item: DataItem) => void
+      selectedItem: DataItem | null
+      isGrid?: boolean
+
+      // Props for table view specifically
+      sortConfig?: SortConfig | null
+      onSort?: (field: SortableField) => void
+    }
+
+
+    export type Status = DataItem['status']
+
+    export type Priority = DataItem['priority']
+  src/lib/utils.ts: >-
+    import { type ClassValue, clsx } from "clsx"
+
+    import { twMerge } from "tailwind-merge"
+
+    import { formatDistanceToNow } from "date-fns"
+
+
+    export function cn(...inputs: ClassValue[]) {
+      return twMerge(clsx(inputs))
+    }
+
+
+    export const SIDEBAR_STATES = {
+      HIDDEN: 'hidden',
+      COLLAPSED: 'collapsed', 
+      EXPANDED: 'expanded',
+      PEEK: 'peek'
+    } as const
+
+
+    export const BODY_STATES = {
+      NORMAL: 'normal',
+      FULLSCREEN: 'fullscreen',
+      SIDE_PANE: 'side_pane',
+      SPLIT_VIEW: 'split_view'
+    } as const
+
+
+    export type SidebarState = typeof SIDEBAR_STATES[keyof typeof
+    SIDEBAR_STATES]
+
+    export type BodyState = typeof BODY_STATES[keyof typeof BODY_STATES]
+
+
+    export function capitalize(str: string): string {
+      if (!str) return str
+      return str.charAt(0).toUpperCase() + str.slice(1)
+    }
+
+
+    export function formatDistanceToNowShort(date: Date | string): string {
+      const dateObj = typeof date === 'string' ? new Date(date) : date;
+      const result = formatDistanceToNow(dateObj, { addSuffix: true });
+
+      if (result === 'less than a minute ago') return 'now';
+
+      return result
+        .replace('about ', '')
+        .replace(' minutes', 'm')
+        .replace(' minute', 'm')
+        .replace(' hours', 'h')
+        .replace(' hour', 'h')
+        .replace(' days', 'd')
+    }
+
+
+    export const getStatusColor = (status: string) => {
+      switch (status) {
+        case 'active': return 'bg-green-500/20 text-green-700 border-green-500/30'
+        case 'pending': return 'bg-yellow-500/20 text-yellow-700 border-yellow-500/30'
+        case 'completed': return 'bg-blue-500/20 text-blue-700 border-blue-500/30'
+        case 'archived': return 'bg-gray-500/20 text-gray-700 border-gray-500/30'
+        default: return 'bg-gray-500/20 text-gray-700 border-gray-500/30'
+      }
+    }
+
+
+    export const getPriorityColor = (priority: string) => {
+      switch (priority) {
+        case 'critical': return 'bg-red-500/20 text-red-700 border-red-500/30'
+        case 'high': return 'bg-orange-500/20 text-orange-700 border-orange-500/30'
+        case 'medium': return 'bg-blue-500/20 text-blue-700 border-blue-500/30'
+        case 'low': return 'bg-green-500/20 text-green-700 border-green-500/30'
+        default: return 'bg-gray-500/20 text-gray-700 border-gray-500/30'
+      }
+    }
+  src/pages/DataDemo/components/DataViewModeSelector.tsx: >-
+    import { useEffect, useRef, useState, useCallback } from 'react'
+
+    import { gsap } from 'gsap'
+
+    import { cn } from '@/lib/utils'
+
+    import { List, Grid3X3, LayoutGrid, Table, LayoutDashboard } from
+    'lucide-react'
+
+    import type { ViewMode } from '../types'
+
+    import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
+
+
+    const viewModes = [
+      { id: 'list' as ViewMode, label: 'List', icon: List, description: 'Compact list with details' },
+      { id: 'cards' as ViewMode, label: 'Cards', icon: LayoutGrid, description: 'Rich card layout' },
+      { id: 'kanban' as ViewMode, label: 'Kanban', icon: LayoutDashboard, description: 'Interactive Kanban board' },
+      { id: 'grid' as ViewMode, label: 'Grid', icon: Grid3X3, description: 'Masonry grid view' },
+      { id: 'table' as ViewMode, label: 'Table', icon: Table, description: 'Structured data table' }
+    ]
+
+
+    export function DataViewModeSelector() {
+      const { viewMode, setViewMode } = useAppViewManager();
+      const indicatorRef = useRef<HTMLDivElement>(null)
+      const containerRef = useRef<HTMLDivElement>(null)
+      const [isExpanded, setIsExpanded] = useState(false)
+      const [isTransitioning, setIsTransitioning] = useState(false)
+
+      const updateIndicatorPosition = useCallback((immediate = false) => {
+        if (!indicatorRef.current || !containerRef.current || isTransitioning) return
+
+        const activeButton = containerRef.current.querySelector(`[data-mode="${viewMode}"]`) as HTMLElement
+        if (!activeButton) return
+
+        const containerRect = containerRef.current.getBoundingClientRect()
+        const buttonRect = activeButton.getBoundingClientRect()
+        
+        const left = buttonRect.left - containerRect.left
+        const width = buttonRect.width
+
+        if (immediate) {
+          // Set position immediately without animation for initial load
+          gsap.set(indicatorRef.current, {
+            x: left,
+            width: width
+          })
+        } else {
+          gsap.to(indicatorRef.current, {
+            duration: 0.3,
+            x: left,
+            width: width,
+            ease: "power2.out"
+          })
+        }
+      }, [viewMode, isTransitioning])
+
+      // Initial setup - set position immediately without animation
+      useEffect(() => {
+        const timer = setTimeout(() => {
+          updateIndicatorPosition(true)
+        }, 0)
+        return () => clearTimeout(timer)
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+      }, []) // Only run once on mount
+
+      useEffect(() => {
+        if (!isTransitioning) {
+          updateIndicatorPosition()
+        }
+      }, [viewMode, isTransitioning, updateIndicatorPosition])
+
+      const handleMouseEnter = () => {
+        setIsTransitioning(true)
+        setIsExpanded(true)
+        
+        // Wait for expand animation to complete
+        setTimeout(() => {
+          setIsTransitioning(false)
+        }, 500)
+      }
+
+      const handleMouseLeave = () => {
+        setIsTransitioning(true)
+        setIsExpanded(false)
+        
+        // Wait for collapse animation to complete
+        setTimeout(() => {
+          setIsTransitioning(false)
+        }, 500)
+      }
+
+      return (
+        <div 
+          ref={containerRef}
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
+          className={cn(
+            "relative flex items-center bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-1.5 shadow-lg transition-all duration-500 ease-out",
+            "hover:shadow-xl hover:bg-card/70",
+            isExpanded ? "gap-1" : "gap-0"
+          )}
+        >
+          {/* Animated indicator */}
+          <div
+            ref={indicatorRef}
+            className="absolute inset-y-1.5 bg-gradient-to-r from-primary/20 to-primary/10 border border-primary/20 rounded-xl transition-all duration-300"
+            style={{ left: 0, width: 0 }}
+          />
+          
+          {/* Mode buttons */}
+          {viewModes.map((mode, index) => {
+            const IconComponent = mode.icon
+            const isActive = viewMode === mode.id
+            
+            return (
+              <button
+                key={mode.id}
+                data-mode={mode.id}
+                onClick={() => setViewMode(mode.id)}
+                className={cn(
+                  "relative flex items-center justify-center rounded-xl transition-all duration-500 ease-out group overflow-hidden",
+                  "hover:bg-accent/20 active:scale-95",
+                  isActive && "text-primary",
+                  isExpanded ? "gap-3 px-4 py-2.5" : "gap-0 px-3 py-2.5"
+                )}
+                title={mode.description}
+                style={{
+                  transitionDelay: isExpanded ? `${index * 50}ms` : `${(viewModes.length - index - 1) * 30}ms`
+                }}
+              >
+                <IconComponent className={cn(
+                  "w-5 h-5 transition-all duration-300 flex-shrink-0",
+                  isActive && "scale-110",
+                  "group-hover:scale-105",
+                  isExpanded ? "rotate-0" : "rotate-0"
+                )} />
+                
+                {/* Label with smooth expand/collapse */}
+                <div className={cn(
+                  "overflow-hidden transition-all duration-500 ease-out",
+                  isExpanded ? "max-w-[80px] opacity-100" : "max-w-0 opacity-0"
+                )}>
+                  <span className={cn(
+                    "font-medium whitespace-nowrap transition-all duration-300",
+                    isActive ? "text-primary" : "text-muted-foreground",
+                    "group-hover:text-foreground"
+                  )}>
+                    {mode.label}
+                  </span>
+                </div>
+              </button>
+            )
+          })}
+        </div>
+      )
+    }
+  src/pages/DataDemo/index.tsx: >
+    import { useRef, useEffect, useCallback, useMemo } from 'react'
+
+    import {
+      Layers, 
+      AlertTriangle, 
+      PlayCircle, 
+      TrendingUp,
+      Loader2,
+      ChevronsUpDown
+    } from 'lucide-react'
+
+    import { gsap } from 'gsap'
+
+    import { cn } from '@/lib/utils'
+
+    import { Button } from '@/components/ui/button'
+
+    import { 
+      DropdownMenu, 
+      DropdownMenuContent, 
+      DropdownMenuRadioGroup, 
+      DropdownMenuRadioItem, 
+      DropdownMenuTrigger 
+    } from '@/components/ui/dropdown-menu'
+
+    import { PageLayout } from '@/components/shared/PageLayout'
+
+    import { useScrollToBottom } from '@/hooks/useScrollToBottom.hook';
+
+    import { ScrollToBottomButton } from
+    '@/components/shared/ScrollToBottomButton';
+
+    import { DataListView } from './components/DataListView'
+
+    import { DataCardView } from './components/DataCardView'
+
+    import { DataTableView } from './components/DataTableView'
+
+    import { DataKanbanView } from './components/DataKanbanView'
+
+    import { DataViewModeSelector } from './components/DataViewModeSelector'
+
+    import { AnimatedTabs } from '@/components/ui/animated-tabs'
+
+    import { StatCard } from '@/components/shared/StatCard'
+
+    import { AnimatedLoadingSkeleton } from
+    './components/AnimatedLoadingSkeleton'
+
+    import { DataToolbar } from './components/DataToolbar'
+
+    import { mockDataItems } from './data/mockData'
+
+    import type { GroupableField, DataItem } from './types'
+
+    import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
+
+    import { 
+      useDataDemoStore, 
+      useGroupTabs
+    } from './store/dataDemo.store'
+
+
+    type Stat = {
+      title: string;
+      value: string;
+      icon: React.ReactNode;
+      change: string;
+      trend: 'up' | 'down';
+      type?: 'card';
+    };
+
+
+    type ChartStat = {
+      title: string;
+      value: string;
+      icon: React.ReactNode;
+      change: string;
+      trend: 'up' | 'down';
+      type: 'chart';
+      chartData: number[];
+    };
+
+
+    type StatItem = Stat | ChartStat;
+
+
+    function DataDemoContent() {
+      const {
+        viewMode,
+        groupBy,
+        activeGroupTab,
+        setGroupBy,
+        setSort,
+        setActiveGroupTab,
+        page,
+        filters,
+        sortConfig,
+        setPage,
+      } = useAppViewManager();
+
+      const { hasMore, isLoading, isInitialLoading, totalItemCount, loadData } = useDataDemoStore(state => ({
+        hasMore: state.hasMore,
+        isLoading: state.isLoading,
+        isInitialLoading: state.isInitialLoading,
+        totalItemCount: state.totalItemCount,
+        loadData: state.loadData,
+      }));
+
+      const groupTabs = useGroupTabs(groupBy, activeGroupTab);
+      const allItems = useDataDemoStore(s => s.items);
+
+      const groupedData = useMemo(() => {
+        if (groupBy === 'none') {
+            return null;
+        }
+        return allItems.reduce((acc, item) => {
+            const groupKey = String(item[groupBy as GroupableField]);
+            if (!acc[groupKey]) {
+                acc[groupKey] = [];
+            }
+            acc[groupKey].push(item);
+            return acc;
+        }, {} as Record<string, DataItem[]>);
+      }, [allItems, groupBy]);
+
+      const dataToRender = useMemo(() => {
+        if (groupBy === 'none' || activeGroupTab === 'all' || !groupedData) {
+          return allItems;
+        }
+        return groupedData[activeGroupTab] || [];
+      }, [groupBy, activeGroupTab, allItems, groupedData]);
+
+      const groupOptions = useMemo(() => [
+        { id: 'none' as const, label: 'None' }, { id: 'status' as const, label: 'Status' }, { id: 'priority' as const, label: 'Priority' }, { id: 'category' as const, label: 'Category' }
+      ], []);
+
+      const statsRef = useRef<HTMLDivElement>(null)
+      const scrollRef = useRef<HTMLDivElement>(null);
+
+      // Calculate stats from data
+      const totalItems = mockDataItems.length
+      const { showScrollToBottom, scrollToBottom, handleScroll } = useScrollToBottom(scrollRef);
+
+      const activeItems = mockDataItems.filter(item => item.status === 'active').length
+      const highPriorityItems = mockDataItems.filter(item => item.priority === 'high' || item.priority === 'critical').length
+      const avgCompletion = totalItems > 0 ? Math.round(
+        mockDataItems.reduce((acc, item) => acc + item.metrics.completion, 0) / totalItems
+      ) : 0
+
+      const stats: StatItem[] = [
+        {
+          title: "Total Projects",
+          value: totalItems.toString(),
+          icon: <Layers className="w-5 h-5" />,
+          change: "+5.2% this month",
+          trend: "up" as const,
+          type: 'chart',
+          chartData: [120, 125, 122, 130, 135, 138, 142]
+        },
+        {
+          title: "Active Projects",
+          value: activeItems.toString(),
+          icon: <PlayCircle className="w-5 h-5" />,
+          change: "+2 this week", 
+          trend: "up" as const,
+          type: 'chart',
+          chartData: [45, 50, 48, 55, 53, 60, 58]
+        },
+        {
+          title: "High Priority",
+          value: highPriorityItems.toString(),
+          icon: <AlertTriangle className="w-5 h-5" />,
+          change: "-1 from last week",
+          trend: "down" as const,
+          type: 'chart',
+          chartData: [25, 26, 28, 27, 26, 24, 23]
+        },
+        {
+          title: "Avg. Completion",
+          value: `${avgCompletion}%`,
+          icon: <TrendingUp className="w-5 h-5" />,
+          change: "+3.2%",
+          trend: "up" as const,
+          type: 'chart',
+          chartData: [65, 68, 70, 69, 72, 75, 78]
+        }
+      ]
+
+      useEffect(() => {
+        // Animate stats cards in
+        if (!isInitialLoading && statsRef.current) {
+          gsap.fromTo(statsRef.current.children,
+            { y: 30, opacity: 0 },
+            {
+              duration: 0.6,
+              y: 0,
+              opacity: 1,
+              stagger: 0.1,
+              ease: "power2.out"
+            }
+          )
+        }
+      }, [isInitialLoading]);
+
+      useEffect(() => {
+        loadData({ page, groupBy, filters, sortConfig });
+      }, [page, groupBy, filters, sortConfig, loadData]);
+
+      const observer = useRef<IntersectionObserver>();
+      const loaderRef = useCallback(
+        (node: Element | null) => {
+          if (isLoading) return;
+          if (observer.current) observer.current.disconnect();
+
+          observer.current = new IntersectionObserver((entries) => {
+            if (entries[0].isIntersecting && hasMore) {
+              setPage(page + 1);
+            }
+          });
+          if (node) observer.current.observe(node);
+        },
+        [isLoading, hasMore, page, setPage],
+      );
+      
+      // Auto-group by status when switching to kanban view for the first time
+      useEffect(() => {
+        if (viewMode === 'kanban' && groupBy === 'none') {
+          setGroupBy('status');
+          setSort(null); // Kanban is manually sorted, so disable programmatic sort
+        }
+      }, [viewMode, groupBy, setGroupBy, setSort]);
+
+      const renderViewForData = useCallback((data: DataItem[]) => {
+        switch (viewMode) {
+            case 'table': return <DataTableView data={data} />;
+            case 'cards': return <DataCardView data={data} />;
+            case 'kanban': return null; // Kanban has its own render path below
+            case 'grid': return <DataCardView data={data} isGrid />;
+            case 'list':
+            default:
+                return <DataListView data={data} />;
+        }
+      }, [viewMode]);
+
+      const GroupByDropdown = useCallback(() => (
+        <div className="flex items-center gap-2 shrink-0">
+          <span className="text-sm font-medium text-muted-foreground shrink-0">Group by:</span>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="w-[180px] justify-between">
+                {groupOptions.find(o => o.id === groupBy)?.label}
+                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="w-[180px]">
+              <DropdownMenuRadioGroup value={groupBy} onValueChange={setGroupBy}>
+                {groupOptions.map(option => (
+                  <DropdownMenuRadioItem key={option.id} value={option.id}>
+                    {option.label}
+                  </DropdownMenuRadioItem>
+                ))}
+              </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      ), [groupBy, setGroupBy, groupOptions]);
+
+      const isGroupedView = useMemo(() => 
+        groupBy !== 'none' && groupTabs.length > 1 && groupedData,
+      [groupBy, groupTabs.length, groupedData]);
+
+
+      return (
+        <PageLayout
+          scrollRef={scrollRef}
+          onScroll={handleScroll}
+          // Note: Search functionality is handled by a separate SearchBar in the TopBar
+        >
+          <div className="space-y-8">
+            {/* Header */}
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div className="flex-1">
+                <h1 className="text-2xl font-bold tracking-tight">Data Showcase</h1>
+                <p className="text-muted-foreground">
+                  {isInitialLoading 
+                    ? "Loading projects..." 
+                    : `Showing ${dataToRender.length} of ${totalItemCount} item(s)`}
+                </p>
+              </div>
+              <DataViewModeSelector />
+            </div>
+
+            {/* Stats Section */}
+            {!isInitialLoading && (
+              <div ref={statsRef} className="grid grid-cols-[repeat(auto-fit,minmax(250px,1fr))] gap-6">
+                {stats.map((stat) => (
+                  <StatCard
+                    key={stat.title}
+                    title={stat.title}
+                    value={stat.value}
+                    change={stat.change}
+                    trend={stat.trend}
+                    icon={stat.icon}
+                    chartData={stat.type === 'chart' ? stat.chartData : undefined}
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* Controls Area */}
+            <div className="space-y-6">
+              <DataToolbar />
+            </div>
+
+            <div className="min-h-[500px]">
+              {isInitialLoading 
+                ? <AnimatedLoadingSkeleton viewMode={viewMode} /> 
+                : viewMode === 'kanban' ? (
+                  <>
+                    <div className="flex items-center justify-end gap-4 h-[68px]">
+                      <GroupByDropdown />
+                    </div>
+                    {isGroupedView ? (
+                      <DataKanbanView data={groupedData} />
+                    ) : (
+                      <div className="flex items-center justify-center h-96 text-muted-foreground">
+                        Group data by a metric to use the Kanban view.
+                      </div>
+                    )}
+                  </>
+                )
+                : !isGroupedView ? (
+                  // Not grouped view
+                  <>
+                    <div className="flex items-center justify-between gap-4 h-[68px]">
+                      <div className="flex-grow border-b" /> {/* Mimic tab border */}
+                      <GroupByDropdown />
+                    </div>
+                    {renderViewForData(allItems)}
+                  </>
+                ) : (
+                  // Grouped view with AnimatedTabs
+                  <div className="relative">
+                    <AnimatedTabs
+                      tabs={groupTabs}
+                      activeTab={activeGroupTab}
+                      onTabChange={setActiveGroupTab}
+                      wrapperClassName="flex flex-col"
+                      className="border-b"
+                      contentClassName="pt-6 flex-grow"
+                    >
+                      {groupTabs.map(tab => (
+                        <div key={tab.id} className="min-h-[440px]">
+                          {renderViewForData(
+                            tab.id === 'all' ? allItems : groupedData?.[tab.id] || []
+                          )}
+                        </div>
+                      ))}
+                    </AnimatedTabs>
+                    <div className="absolute top-[14px] right-0">
+                        <GroupByDropdown />
+                    </div>
+                  </div>
+                )
+              }
+            </div>
+
+            {/* Loader for infinite scroll */}
+            <div ref={loaderRef} className="flex justify-center items-center py-6">
+              {isLoading && !isInitialLoading && groupBy === 'none' && (
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span>Loading more...</span>
+                </div>
+              )}
+              {!isLoading && !hasMore && dataToRender.length > 0 && !isInitialLoading && groupBy === 'none' && (
+                <p className="text-muted-foreground">You've reached the end.</p>
+              )}
+            </div>
+          </div>
+          <ScrollToBottomButton isVisible={showScrollToBottom} onClick={scrollToBottom} />
+        </PageLayout>
+      )
+    }
+
+
+    export default function DataDemoPage() {
+      return <DataDemoContent />;
+    }
+  src/pages/DataDemo/store/dataDemo.store.tsx: >-
+    import { create } from 'zustand';
+
+    import { type ReactNode } from 'react';
+
+    import { capitalize, cn } from '@/lib/utils';
+
+    import { Badge } from '@/components/ui/badge';
+
+    import { mockDataItems } from '../data/mockData';
+
+    import type { DataItem, GroupableField, SortConfig } from '../types';
+
+    import type { FilterConfig } from '../components/DataToolbar';
+
+
+    // --- State and Actions ---
+
+    interface DataDemoState {
+        items: DataItem[];
+        hasMore: boolean;
+        isLoading: boolean;
+        isInitialLoading: boolean;
+        totalItemCount: number;
+    }
+
+
+    interface DataDemoActions {
+        loadData: (params: {
+            page: number;
+            groupBy: GroupableField | 'none';
+            filters: FilterConfig;
+            sortConfig: SortConfig | null;
+        }) => void;
+        updateItem: (itemId: string, updates: Partial<DataItem>) => void;
+    }
+
+
+    const defaultState: DataDemoState = {
+        items: [],
+        hasMore: true,
+        isLoading: true,
+        isInitialLoading: true,
+        totalItemCount: 0,
+    };
+
+
+    // --- Store Implementation ---
+
+    export const useDataDemoStore = create<DataDemoState &
+    DataDemoActions>((set, get) => ({
+        ...defaultState,
+
+        loadData: ({ page, groupBy, filters, sortConfig }) => {
+            set({ isLoading: true, ...(page === 1 && { isInitialLoading: true }) });
+            const isFirstPage = page === 1;
+
+            const filteredAndSortedData = (() => {
+                const filteredItems = mockDataItems.filter((item) => {
+                    const searchTermMatch =
+                        item.title.toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
+                        item.description.toLowerCase().includes(filters.searchTerm.toLowerCase());
+                    const statusMatch = filters.status.length === 0 || filters.status.includes(item.status);
+                    const priorityMatch = filters.priority.length === 0 || filters.priority.includes(item.priority);
+                    return searchTermMatch && statusMatch && priorityMatch;
+                });
+
+                if (sortConfig) {
+                    filteredItems.sort((a, b) => {
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        const getNestedValue = (obj: DataItem, path: string): any =>
+                            path.split('.').reduce((o: any, k) => (o || {})[k], obj);
+
+                        const aValue = getNestedValue(a, sortConfig.key);
+                        const bValue = getNestedValue(b, sortConfig.key);
+
+                        if (aValue === undefined || bValue === undefined) return 0;
+                        if (typeof aValue === 'string' && typeof bValue === 'string') {
+                            return sortConfig.direction === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
+                        }
+                        if (typeof aValue === 'number' && typeof bValue === 'number') {
+                            return sortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue;
+                        }
+                        if (sortConfig.key === 'updatedAt' || sortConfig.key === 'createdAt') {
+                            if (typeof aValue === 'string' && typeof bValue === 'string') {
+                                return sortConfig.direction === 'asc'
+                                    ? new Date(aValue).getTime() - new Date(bValue).getTime()
+                                    : new Date(bValue).getTime() - new Date(aValue).getTime();
+                            }
+                        }
+                        return 0;
+                    });
+                }
+                return filteredItems;
+            })();
+            
+            const totalItemCount = filteredAndSortedData.length;
+
+            setTimeout(() => {
+                if (groupBy !== 'none') {
+                    set({
+                        items: filteredAndSortedData,
+                        hasMore: false,
+                        isLoading: false,
+                        isInitialLoading: false,
+                        totalItemCount,
+                    });
+                    return;
+                }
+
+                const pageSize = 12;
+                const newItems = filteredAndSortedData.slice((page - 1) * pageSize, page * pageSize);
+                
+                set(state => ({
+                    items: isFirstPage ? newItems : [...state.items, ...newItems],
+                    hasMore: totalItemCount > page * pageSize,
+                    isLoading: false,
+                    isInitialLoading: false,
+                    totalItemCount,
+                }));
+
+            }, isFirstPage ? 1500 : 500);
+        },
+
+        updateItem: (itemId, updates) => {
+            // In a real app, this would be an API call. Here we update the mock source.
+            const itemIndex = mockDataItems.findIndex(i => i.id === itemId);
+            if (itemIndex > -1) {
+                mockDataItems[itemIndex] = { ...mockDataItems[itemIndex], ...updates };
+            }
+
+            // Also update the currently loaded items in the store's state for UI consistency
+            set(state => ({
+                items: state.items.map(item => 
+                    item.id === itemId ? { ...item, ...updates } : item
+                ),
+            }));
+        },
+    }));
+
+
+    // --- Selectors ---
+
+    export const useGroupTabs = (
+        groupBy: GroupableField | 'none',
+        activeGroupTab: string,
+    ) => useDataDemoStore(state => {
+        const items = state.items;
+        if (groupBy === 'none' || !items.length) return [];
+        
+        const groupCounts = items.reduce((acc, item) => {
+            const groupKey = String(item[groupBy as GroupableField]);
+            acc[groupKey] = (acc[groupKey] || 0) + 1;
+            return acc;
+        }, {} as Record<string, number>);
+
+        const sortedGroups = Object.keys(groupCounts).sort((a, b) => a.localeCompare(b));
+
+        const createLabel = (text: string, count: number, isActive: boolean): ReactNode => (
+            <>
+                {text}
+                <Badge variant={isActive ? 'default' : 'secondary'} className={cn('transition-colors duration-300 text-xs font-semibold', !isActive && 'group-hover:bg-accent group-hover:text-accent-foreground')}>
+                    {count}
+                </Badge>
+            </>
+        );
+        
+        const totalCount = items.length;
+
+        return [
+            { id: 'all', label: createLabel('All', totalCount, activeGroupTab === 'all') },
+            ...sortedGroups.map((g) => ({
+                id: g,
+                label: createLabel(capitalize(g), groupCounts[g], activeGroupTab === g),
+            })),
+        ];
+    });
+
+
+    export const useDataToRender = (
+        groupBy: GroupableField | 'none',
+        activeGroupTab: string,
+    ) => useDataDemoStore(state => {
+        const items = state.items;
+        if (groupBy === 'none') {
+            return items;
+        }
+        if (activeGroupTab === 'all') {
+            return items;
+        }
+        return items.filter((item) => String(item[groupBy as GroupableField]) === activeGroupTab);
+    });
+
+
+    export const useSelectedItem = (itemId?: string) => {
+        if (!itemId) return null;
+        return mockDataItems.find(item => item.id === itemId) ?? null;
+    };
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 436
