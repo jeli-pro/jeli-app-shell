@@ -1,5 +1,5 @@
-import { useMemo, useCallback } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useMemo } from 'react';
+import { useParams } from 'react-router-dom';
 import {
   LayoutDashboard,
   Settings,
@@ -14,14 +14,13 @@ import { DashboardContent } from "@/pages/Dashboard";
 import { SettingsContent } from "@/features/settings/SettingsContent";
 import { ToasterDemo } from "@/pages/ToasterDemo";
 import { NotificationsPage } from "@/pages/Notifications";
-import DataDemoPage from "@/pages/DataDemo";
+import DataDemoPage from "@/pages/DataDemo/index";
 import { DataDetailPanel } from "@/pages/DataDemo/components/DataDetailPanel";
 import { mockDataItems } from "@/pages/DataDemo/data/mockData";
 import { MessagingContent } from "@/pages/Messaging/components/MessagingContent";
 import type { AppShellState } from '@/store/appShell.store';
 
 export function useRightPaneContent(sidePaneContent: AppShellState['sidePaneContent']) {
-  const navigate = useNavigate();
   const { itemId, conversationId } = useParams<{ itemId: string; conversationId: string }>();
 
   const staticContentMap = useMemo(() => ({

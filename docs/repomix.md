@@ -1,6 +1,9 @@
 # Directory Structure
 ```
 src/
+  components/
+    ui/
+      timeline.tsx
   features/
     dynamic-view/
       components/
@@ -20,13 +23,25 @@ src/
       types.ts
   hooks/
     useAppViewManager.hook.ts
+    useRightPaneContent.hook.tsx
+    useScrollToBottom.hook.ts
   pages/
+    Dashboard/
+      index.tsx
     DataDemo/
+      components/
+        DataDetailPanel.tsx
       store/
         dataDemo.store.tsx
       DataDemo.config.ts
       index.tsx
     Messaging/
+      components/
+        TaskHeader.tsx
+      data/
+        mockData.ts
+      store/
+        messaging.store.ts
       types.ts
   index.css
 index.html
@@ -39,6 +54,862 @@ vite.config.ts
 ```
 
 # Files
+
+## File: src/index.css
+```css
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import 'tailwindcss/utilities';
+
+@layer base {
+  :root {
+    --primary-hsl: 220 84% 60%;
+    --background: 210 40% 96.1%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: var(--primary-hsl);
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222.2 84% 4.9%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96%;
+    --accent-foreground: 222.2 84% 4.9%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: var(--primary-hsl);
+    --radius: 1rem;
+  }
+
+  .dark {
+    --background: 240 6% 9%;
+    --foreground: 210 40% 98%;
+    --card: 240 6% 14%;
+    --card-foreground: 210 40% 98%;
+    --popover: 240 6% 12%;
+    --popover-foreground: 210 40% 98%;
+    --primary: var(--primary-hsl);
+    --primary-foreground: 210 40% 98%;
+    --secondary: 240 5% 20%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 240 5% 20%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 240 5% 20%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 240 5% 20%;
+    --input: 240 5% 20%;
+    --ring: var(--primary-hsl);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Custom scrollbar styles */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-border rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-muted-foreground/50;
+}
+
+/* For UserDropdown */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
+
+@layer base {
+  .login-page-theme {
+    --background: hsl(0 0% 100%);
+    --foreground: hsl(0 0% 0%);
+    --skeleton: hsl(0 0% 90%);
+    --border: hsl(220 20% 90%);
+    --btn-border: hsl(214.3 31.8% 91.4%);
+    --input: hsl(220 20% 90%);
+    --radius: 0.5rem;
+  }
+ 
+  .dark .login-page-theme {
+    --background: hsl(222 94% 5%);
+    --foreground: hsl(0 0% 100%);
+    --skeleton: hsl(218 36% 16%);
+    --border: hsl(220 20% 90%);
+    --btn-border: hsl(217 32.6% 17.5%);
+    --input: hsl(219 63% 16%);
+    --radius: 0.5rem;
+  }
+}
+
+@layer components {
+  .g-button {
+    @apply rounded-[var(--radius)] border;
+    border-color: var(--btn-border);
+  }
+}
+```
+
+## File: postcss.config.js
+```javascript
+export default {
+  plugins: {
+    tailwindcss: {},
+    autoprefixer: {},
+  },
+}
+```
+
+## File: vite.config.ts
+```typescript
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+import { fileURLToPath, URL } from 'url'
+import { resolve } from 'path'
+import pkg from './package.json' with { type: 'json' }
+
+// https://vitejs.dev/config/
+export default defineConfig({
+  plugins: [react()],
+  resolve: {
+    alias: {
+      "@": fileURLToPath(new URL('./src', import.meta.url)),
+    },
+  },
+  build: {
+    lib: {
+      entry: resolve(__dirname, 'src/index.ts'),
+      name: 'JeliAppShell',
+      fileName: (format) => `jeli-app-shell.${format}.js`,
+    },
+    rollupOptions: {
+      // make sure to externalize deps that shouldn't be bundled
+      // into your library
+      external: Object.keys(pkg.peerDependencies || {}),
+      output: {
+        // Provide global variables to use in the UMD build
+        // for externalized deps
+        globals: {
+          react: 'React',
+          'react-dom': 'ReactDOM',
+          tailwindcss: 'tailwindcss',
+          gsap: 'gsap',
+          'lucide-react': 'lucide-react',
+          zustand: 'zustand',
+          sonner: 'sonner'
+        },
+      },
+    },
+  },
+})
+```
+
+## File: src/components/ui/timeline.tsx
+```typescript
+"use client";
+
+import * as React from "react";
+import { cva, type VariantProps } from "class-variance-authority";
+import { cn } from "@/lib/utils";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Check,
+  Clock,
+  AlertCircle,
+  X,
+  Calendar,
+  User,
+  MapPin,
+  MessageSquare,
+  Award,
+  Briefcase,
+  GraduationCap,
+  Heart,
+} from "lucide-react";
+
+const timelineVariants = cva("relative flex flex-col", {
+  variants: {
+    variant: {
+      default: "gap-4",
+      compact: "gap-2",
+      spacious: "gap-8",
+    },
+    orientation: {
+      vertical: "flex-col",
+      horizontal: "flex-row",
+    },
+  },
+  defaultVariants: {
+    variant: "default",
+    orientation: "vertical",
+  },
+});
+
+const timelineItemVariants = cva("relative flex gap-3 pb-2", {
+  variants: {
+    orientation: {
+      vertical: "flex-row",
+      horizontal: "flex-col min-w-64 shrink-0",
+    },
+  },
+  defaultVariants: {
+    orientation: "vertical",
+  },
+});
+
+const timelineConnectorVariants = cva("bg-border", {
+  variants: {
+    orientation: {
+      vertical: "absolute left-3 top-9 h-full w-px",
+      horizontal: "absolute top-3 left-8 w-full h-px",
+    },
+    status: {
+      default: "bg-border",
+      completed: "bg-primary",
+      active: "bg-primary",
+      pending: "bg-muted-foreground/30",
+      error: "bg-destructive",
+    },
+  },
+  defaultVariants: {
+    orientation: "vertical",
+    status: "default",
+  },
+});
+
+const timelineIconVariants = cva(
+  "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 bg-background text-xs font-medium",
+  {
+    variants: {
+      status: {
+        default: "border-border text-muted-foreground",
+        completed: "border-primary bg-primary text-primary-foreground",
+        active: "border-primary bg-background text-primary animate-pulse",
+        pending: "border-muted-foreground/30 text-muted-foreground",
+        error: "border-destructive bg-destructive text-destructive-foreground",
+      },
+    },
+    defaultVariants: {
+      status: "default",
+    },
+  },
+);
+
+export interface TimelineItem {
+  id: string;
+  title: string;
+  description?: string;
+  timestamp?: string | Date;
+  status?: "default" | "completed" | "active" | "pending" | "error";
+  icon?: React.ReactNode;
+  content?: React.ReactNode;
+  metadata?: Record<string, any>;
+}
+
+export interface TimelineProps extends VariantProps<typeof timelineVariants> {
+  items: TimelineItem[];
+  className?: string;
+  showConnectors?: boolean;
+  showTimestamps?: boolean;
+  timestampPosition?: "top" | "bottom" | "inline";
+}
+
+function getStatusIcon(status: TimelineItem["status"]) {
+  switch (status) {
+    case "completed":
+      return <Check className="h-3 w-3" />;
+    case "active":
+      return <Clock className="h-3 w-3" />;
+    case "pending":
+      return <Clock className="h-3 w-3" />;
+    case "error":
+      return <X className="h-3 w-3" />;
+    default:
+      return <div className="h-2 w-2 rounded-full bg-current" />;
+  }
+}
+
+function formatTimestamp(timestamp: string | Date): string {
+  if (!timestamp) return "";
+  const date = typeof timestamp === "string" ? new Date(timestamp) : timestamp;
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+export function Timeline({
+  items,
+  className,
+  variant,
+  orientation = "vertical",
+  showConnectors = true,
+  showTimestamps = true,
+  timestampPosition = "top",
+  ...props
+}: TimelineProps) {
+  const timelineContent = (
+    <div
+      className={cn(
+        timelineVariants({ variant, orientation }),
+        orientation === "horizontal" ? "pb-4" : "",
+      )}
+    >
+      {items.map((item, index) => (
+        <div
+          key={item.id}
+          className={cn(timelineItemVariants({ orientation }))}
+        >
+          {/* Connector Line */}
+          {showConnectors && index < items.length - 1 && (
+            <div
+              className={cn(
+                timelineConnectorVariants({
+                  orientation,
+                  status: item.status,
+                }),
+              )}
+            />
+          )}
+
+          {/* Icon */}
+          <div className="relative z-10 flex shrink-0">
+            <div className={cn(timelineIconVariants({ status: item.status }))}>
+              {item.icon || getStatusIcon(item.status)}
+            </div>
+          </div>
+
+          {/* Content */}
+          <div className="flex min-w-0 flex-1 flex-col gap-2">
+            {/* Timestamp - Top */}
+            {showTimestamps &&
+              timestampPosition === "top" &&
+              item.timestamp && (
+                <time className="text-xs text-muted-foreground">
+                  {formatTimestamp(item.timestamp)}
+                </time>
+              )}
+
+            {/* Title and Inline Timestamp */}
+            <div className="flex items-start justify-between gap-2">
+              <h3 className="font-medium leading-tight">{item.title}</h3>
+              {showTimestamps &&
+                timestampPosition === "inline" &&
+                item.timestamp && (
+                  <time className="shrink-0 text-xs text-muted-foreground">
+                    {formatTimestamp(item.timestamp)}
+                  </time>
+                )}
+            </div>
+
+            {/* Description */}
+            {item.description && (
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                {item.description}
+              </p>
+            )}
+
+            {/* Custom Content */}
+            {item.content && <div className="mt-3">{item.content}</div>}
+
+            {/* Timestamp - Bottom */}
+            {showTimestamps &&
+              timestampPosition === "bottom" &&
+              item.timestamp && (
+                <time className="text-xs text-muted-foreground">
+                  {formatTimestamp(item.timestamp)}
+                </time>
+              )}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+
+  if (orientation === "horizontal") {
+    return (
+      <ScrollArea
+        className={cn("w-full", className)}
+        {...props}
+      >
+        {timelineContent}
+      </ScrollArea>
+    );
+  }
+
+  return (
+    <div className={className} {...props}>
+      {timelineContent}
+    </div>
+  );
+}
+
+// Example Components for Documentation
+export function BasicTimelineExample() {
+  const items: TimelineItem[] = [
+    {
+      id: "1",
+      title: "Project Started",
+      description: "Initial project setup and planning phase",
+      timestamp: new Date("2024-01-15T09:00:00"),
+      status: "completed",
+    },
+    {
+      id: "2",
+      title: "Development Phase",
+      description: "Core features implementation in progress",
+      timestamp: new Date("2024-02-01T10:30:00"),
+      status: "active",
+    },
+    {
+      id: "3",
+      title: "Testing & QA",
+      description: "Quality assurance and testing phase",
+      timestamp: new Date("2024-02-15T14:00:00"),
+      status: "pending",
+    },
+    {
+      id: "4",
+      title: "Launch",
+      description: "Production deployment and launch",
+      timestamp: new Date("2024-03-01T16:00:00"),
+      status: "pending",
+    },
+  ];
+
+  return <Timeline items={items} />;
+}
+
+export function TimelineVariantsExample() {
+  const items: TimelineItem[] = [
+    {
+      id: "1",
+      title: "Task Completed",
+      description: "Successfully finished the assigned task",
+      status: "completed",
+    },
+    {
+      id: "2",
+      title: "In Progress",
+      description: "Currently working on this item",
+      status: "active",
+    },
+    {
+      id: "3",
+      title: "Upcoming",
+      description: "Scheduled for later",
+      status: "pending",
+    },
+  ];
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <h3 className="mb-4 text-sm font-medium">Default</h3>
+        <Timeline items={items} variant="default" />
+      </div>
+      <div>
+        <h3 className="mb-4 text-sm font-medium">Compact</h3>
+        <Timeline items={items} variant="compact" />
+      </div>
+      <div>
+        <h3 className="mb-4 text-sm font-medium">Spacious</h3>
+        <Timeline items={items} variant="spacious" />
+      </div>
+    </div>
+  );
+}
+
+export function HorizontalTimelineExample() {
+  const items: TimelineItem[] = [
+    {
+      id: "1",
+      title: "Planning",
+      description: "Project planning and research",
+      status: "completed",
+    },
+    {
+      id: "2",
+      title: "Design",
+      description: "UI/UX design phase",
+      status: "completed",
+    },
+    {
+      id: "3",
+      title: "Development",
+      description: "Core development work",
+      status: "active",
+    },
+    {
+      id: "4",
+      title: "Testing",
+      description: "Quality assurance",
+      status: "pending",
+    },
+    {
+      id: "5",
+      title: "Launch",
+      description: "Production release",
+      status: "pending",
+    },
+  ];
+
+  return <Timeline items={items} orientation="horizontal" />;
+}
+
+export function TimelineWithCustomIconsExample() {
+  const items: TimelineItem[] = [
+    {
+      id: "1",
+      title: "Account Created",
+      description: "Welcome to our platform!",
+      timestamp: new Date("2024-01-01T08:00:00"),
+      status: "completed",
+      icon: <User className="h-3 w-3" />,
+    },
+    {
+      id: "2",
+      title: "Profile Updated",
+      description: "Personal information has been updated",
+      timestamp: new Date("2024-01-02T14:30:00"),
+      status: "completed",
+      icon: <User className="h-3 w-3" />,
+    },
+    {
+      id: "3",
+      title: "First Order Placed",
+      description: "Order #12345 has been placed successfully",
+      timestamp: new Date("2024-01-03T11:15:00"),
+      status: "completed",
+      icon: <Briefcase className="h-3 w-3" />,
+    },
+    {
+      id: "4",
+      title: "Delivery Scheduled",
+      description: "Your order is out for delivery",
+      timestamp: new Date("2024-01-04T09:45:00"),
+      status: "active",
+      icon: <MapPin className="h-3 w-3" />,
+    },
+  ];
+
+  return <Timeline items={items} />;
+}
+
+export function TimelineWithContentExample() {
+  const items: TimelineItem[] = [
+    {
+      id: "1",
+      title: "Code Review Completed",
+      description: "Pull request #123 has been reviewed",
+      timestamp: new Date("2024-01-01T10:00:00"),
+      status: "completed",
+      content: (
+        <div className="rounded-md bg-muted p-3 text-sm">
+          <p className="font-medium">Changes approved by John Doe</p>
+          <p className="text-muted-foreground">
+            3 files changed, +45 -12 lines
+          </p>
+        </div>
+      ),
+    },
+    {
+      id: "2",
+      title: "Build Failed",
+      description: "CI/CD pipeline encountered errors",
+      timestamp: new Date("2024-01-01T11:30:00"),
+      status: "error",
+      content: (
+        <div className="rounded-md bg-destructive/10 p-3 text-sm">
+          <p className="font-medium text-destructive">Build #456 failed</p>
+          <p className="text-muted-foreground">Syntax error in main.tsx:45</p>
+        </div>
+      ),
+    },
+    {
+      id: "3",
+      title: "Issue Assigned",
+      description: "Bug report assigned to development team",
+      timestamp: new Date("2024-01-01T15:20:00"),
+      status: "active",
+      content: (
+        <div className="rounded-md bg-primary/10 p-3 text-sm">
+          <p className="font-medium">Issue #789: Login form validation</p>
+          <p className="text-muted-foreground">
+            Priority: High | Assigned to: Jane Smith
+          </p>
+        </div>
+      ),
+    },
+  ];
+
+  return <Timeline items={items} />;
+}
+
+export function ProjectTimelineExample() {
+  const items: TimelineItem[] = [
+    {
+      id: "1",
+      title: "Project Kickoff",
+      description: "Initial meeting with stakeholders and team members",
+      timestamp: new Date("2024-01-15T09:00:00"),
+      status: "completed",
+      icon: <Briefcase className="h-3 w-3" />,
+      content: (
+        <div className="space-y-2">
+          <div className="flex gap-2 text-sm">
+            <span className="font-medium">Attendees:</span>
+            <span className="text-muted-foreground">5 team members</span>
+          </div>
+          <div className="flex gap-2 text-sm">
+            <span className="font-medium">Duration:</span>
+            <span className="text-muted-foreground">2 hours</span>
+          </div>
+        </div>
+      ),
+    },
+    {
+      id: "2",
+      title: "Requirements Gathering",
+      description:
+        "Detailed analysis of project requirements and specifications",
+      timestamp: new Date("2024-01-20T14:00:00"),
+      status: "completed",
+      icon: <MessageSquare className="h-3 w-3" />,
+    },
+    {
+      id: "3",
+      title: "Design Phase",
+      description: "UI/UX design and wireframe creation",
+      timestamp: new Date("2024-02-01T10:00:00"),
+      status: "active",
+      icon: <Award className="h-3 w-3" />,
+      content: (
+        <div className="rounded-md border border-primary/20 bg-primary/5 p-3 text-sm">
+          <p className="font-medium">Current Progress: 60%</p>
+          <p className="text-muted-foreground">
+            Expected completion: Feb 10, 2024
+          </p>
+        </div>
+      ),
+    },
+    {
+      id: "4",
+      title: "Development Sprint 1",
+      description: "Core functionality implementation",
+      timestamp: new Date("2024-02-15T09:00:00"),
+      status: "pending",
+      icon: <GraduationCap className="h-3 w-3" />,
+    },
+    {
+      id: "5",
+      title: "Testing & QA",
+      description: "Quality assurance and bug fixes",
+      timestamp: new Date("2024-03-01T09:00:00"),
+      status: "pending",
+      icon: <AlertCircle className="h-3 w-3" />,
+    },
+  ];
+
+  return <Timeline items={items} variant="spacious" />;
+}
+
+export function OrderTrackingTimelineExample() {
+  const items: TimelineItem[] = [
+    {
+      id: "1",
+      title: "Order Placed",
+      description: "Your order has been successfully placed",
+      timestamp: new Date("2024-01-01T10:30:00"),
+      status: "completed",
+      icon: <Check className="h-3 w-3" />,
+    },
+    {
+      id: "2",
+      title: "Payment Confirmed",
+      description: "Payment has been processed successfully",
+      timestamp: new Date("2024-01-01T10:35:00"),
+      status: "completed",
+      icon: <Check className="h-3 w-3" />,
+    },
+    {
+      id: "3",
+      title: "Order Processing",
+      description: "Your order is being prepared for shipment",
+      timestamp: new Date("2024-01-01T14:20:00"),
+      status: "active",
+      icon: <Clock className="h-3 w-3" />,
+    },
+    {
+      id: "4",
+      title: "Shipped",
+      description: "Your order has been shipped",
+      status: "pending",
+      icon: <MapPin className="h-3 w-3" />,
+    },
+    {
+      id: "5",
+      title: "Delivered",
+      description: "Package delivered to your address",
+      status: "pending",
+      icon: <Heart className="h-3 w-3" />,
+    },
+  ];
+
+  return <Timeline items={items} timestampPosition="inline" />;
+}
+
+export function CompactTimelineExample() {
+  const items: TimelineItem[] = [
+    {
+      id: "1",
+      title: "Login",
+      timestamp: new Date("2024-01-01T08:30:00"),
+      status: "completed",
+    },
+    {
+      id: "2",
+      title: "File uploaded",
+      timestamp: new Date("2024-01-01T08:35:00"),
+      status: "completed",
+    },
+    {
+      id: "3",
+      title: "Processing started",
+      timestamp: new Date("2024-01-01T08:40:00"),
+      status: "active",
+    },
+    {
+      id: "4",
+      title: "Processing complete",
+      status: "pending",
+    },
+  ];
+
+  return (
+    <Timeline
+      items={items}
+      variant="compact"
+      timestampPosition="inline"
+      showTimestamps={true}
+    />
+  );
+}
+
+export function ExtendedHorizontalTimelineExample() {
+  const items: TimelineItem[] = [
+    {
+      id: "1",
+      title: "Research",
+      description: "Market research and analysis",
+      timestamp: new Date("2024-01-01T09:00:00"),
+      status: "completed",
+      icon: <MessageSquare className="h-3 w-3" />,
+    },
+    {
+      id: "2",
+      title: "Planning",
+      description: "Project planning and roadmap",
+      timestamp: new Date("2024-01-05T10:00:00"),
+      status: "completed",
+      icon: <Calendar className="h-3 w-3" />,
+    },
+    {
+      id: "3",
+      title: "Design",
+      description: "UI/UX design and wireframes",
+      timestamp: new Date("2024-01-10T11:00:00"),
+      status: "completed",
+      icon: <Award className="h-3 w-3" />,
+    },
+    {
+      id: "4",
+      title: "Prototype",
+      description: "Interactive prototype development",
+      timestamp: new Date("2024-01-15T14:00:00"),
+      status: "completed",
+      icon: <Briefcase className="h-3 w-3" />,
+    },
+    {
+      id: "5",
+      title: "Development",
+      description: "Core feature implementation",
+      timestamp: new Date("2024-01-20T09:00:00"),
+      status: "active",
+      icon: <GraduationCap className="h-3 w-3" />,
+    },
+    {
+      id: "6",
+      title: "Testing",
+      description: "Quality assurance and testing",
+      timestamp: new Date("2024-02-01T10:00:00"),
+      status: "pending",
+      icon: <AlertCircle className="h-3 w-3" />,
+    },
+    {
+      id: "7",
+      title: "Review",
+      description: "Stakeholder review and feedback",
+      timestamp: new Date("2024-02-05T15:00:00"),
+      status: "pending",
+      icon: <User className="h-3 w-3" />,
+    },
+    {
+      id: "8",
+      title: "Deploy",
+      description: "Production deployment",
+      timestamp: new Date("2024-02-10T16:00:00"),
+      status: "pending",
+      icon: <MapPin className="h-3 w-3" />,
+    },
+    {
+      id: "9",
+      title: "Launch",
+      description: "Product launch and marketing",
+      timestamp: new Date("2024-02-15T09:00:00"),
+      status: "pending",
+      icon: <Heart className="h-3 w-3" />,
+    },
+  ];
+
+  return <Timeline items={items} orientation="horizontal" variant="spacious" />;
+}
+
+export {
+  timelineVariants,
+  timelineItemVariants,
+  timelineConnectorVariants,
+  timelineIconVariants,
+};
+```
 
 ## File: src/features/dynamic-view/components/controls/ViewControls.tsx
 ```typescript
@@ -70,7 +941,6 @@ import {
 } from '@/components/ui/command'
 
 import type { FilterConfig } from '../../types'
-import type { SortableField } from '../../pages/DataDemo/types'
 import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
 import { useDynamicView } from '../../DynamicViewContext'
 
@@ -78,7 +948,7 @@ export interface DataViewControlsProps {
   // groupOptions will now come from config
 }
 
-export function DataViewControls() {
+export function ViewControls() {
   const {
     filters,
     setFilters,
@@ -157,7 +1027,7 @@ export function DataViewControls() {
                 setSort(null)
               } else {
                 const [key, direction] = value.split('-')
-                setSort({ key: key as SortableField, direction: direction as 'asc' | 'desc' })
+                setSort({ key: key, direction: direction as 'asc' | 'desc' })
               }
             }}
           >
@@ -283,7 +1153,7 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import { gsap } from 'gsap'
 import { cn } from '@/lib/utils'
 import { List, Grid3X3, LayoutGrid, Table, LayoutDashboard, CalendarDays } from 'lucide-react'
-import type { ViewMode } from '../types'
+import type { ViewMode } from '../../types'
 import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
 
 const viewModes = [
@@ -295,7 +1165,7 @@ const viewModes = [
   { id: 'table' as ViewMode, label: 'Table', icon: Table, description: 'Structured data table' }
 ]
 
-export function DataViewModeSelector() {
+export function ViewModeSelector() {
   const { viewMode, setViewMode } = useAppViewManager();
   const indicatorRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -435,7 +1305,7 @@ export function DataViewModeSelector() {
 ## File: src/features/dynamic-view/components/shared/AnimatedLoadingSkeleton.tsx
 ```typescript
 import { type ViewMode } from '../../types'
-import { Card, CardHeader, CardContent } from '@/components/ui/card'
+import { Card, CardHeader, CardContent } from '../../../../components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 
 export function AnimatedLoadingSkeleton({ viewMode }: { viewMode: ViewMode }) {
@@ -671,10 +1541,10 @@ import { gsap } from "gsap";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { GenericItem } from '../../types';
-import type { CalendarDisplayProp, CalendarDateProp, CalendarColorProp, Status, Priority } from '../../pages/DataDemo/types';
+import type { CalendarDateProp, CalendarColorProp, Status, Priority } from '../../types';
 import { useAppViewManager } from "@/hooks/useAppViewManager.hook";
 import { useResizeObserver } from "@/hooks/useResizeObserver.hook";
-import { useSelectedItem, useDataDemoStore } from "../store/dataDemo.store";
+import { useSelectedItem, useDataDemoStore } from "../../../../pages/DataDemo/store/dataDemo.store";
 import { CalendarViewControls } from "./DataCalendarViewControls";
 import { useDynamicView } from '../../DynamicViewContext'
 import { FieldRenderer } from '../shared/FieldRenderer'
@@ -746,7 +1616,6 @@ function CalendarEvent({ item, isSelected, isDragging, onDragStart, displayProps
     isSelected: boolean;
     isDragging: boolean;
     onDragStart: (e: React.DragEvent<HTMLDivElement>, itemId: string) => void;
-    displayProps: CalendarDisplayProp[];
     colorProp: CalendarColorProp;
 }) {
   const { onItemSelect } = useAppViewManager();
@@ -803,7 +1672,7 @@ const datePropLabels: Record<CalendarDateProp, string> = {
   updatedAt: 'update dates',
 };
 
-export function DataCalendarView({ data }: CalendarViewProps) {
+export function CalendarView({ data }: CalendarViewProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const { 
     itemId,
@@ -813,7 +1682,7 @@ export function DataCalendarView({ data }: CalendarViewProps) {
     calendarColorProp,
   } = useAppViewManager();
   const selectedItem = useSelectedItem(itemId);
-  const updateItem = useDataDemoStore(s => s.updateItem);
+  const updateItem = useDataDemoStore((s: any) => s.updateItem);
   
   // Drag & Drop State
   const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
@@ -988,7 +1857,6 @@ export function DataCalendarView({ data }: CalendarViewProps) {
                           isSelected={selectedItem?.id === item.id}
                           isDragging={draggedItemId === item.id}
                           onDragStart={handleDragStart}
-                          displayProps={calendarDisplayProps}
                           colorProp={calendarColorProp}
                         />
                       ))}
@@ -1016,16 +1884,16 @@ import { cn } from '@/lib/utils'
 import { ArrowUpRight } from 'lucide-react'
 import type { GenericItem } from '../../types'
 import { useStaggeredAnimation } from '@/hooks/useStaggeredAnimation.motion.hook'
-import { EmptyState } from './EmptyState'
+import { EmptyState } from '../shared/EmptyState'
 import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
 import {
   useSelectedItem,
-} from '../store/dataDemo.store'
-import { AddDataItemCta } from './shared/AddDataItemCta'
+} from '../../../../pages/DataDemo/store/dataDemo.store'
+import { AddDataItemCta } from '../shared/AddDataItemCta'
 import { useDynamicView } from '../../DynamicViewContext'
 import { FieldRenderer } from '../shared/FieldRenderer'
 
-export function DataCardView({ data, isGrid = false }: { data: GenericItem[]; isGrid?: boolean }) {
+export function CardView({ data, isGrid = false }: { data: GenericItem[]; isGrid?: boolean }) {
   const { onItemSelect, itemId } = useAppViewManager();
   const selectedItem = useSelectedItem(itemId);
   const { config } = useDynamicView();
@@ -1127,9 +1995,9 @@ import {
 import type { GenericItem } from '../../types'
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { EmptyState } from "./EmptyState";
+import { EmptyState } from "../shared/EmptyState";
 import { useAppViewManager } from "@/hooks/useAppViewManager.hook";
-import { useDataDemoStore } from "../store/dataDemo.store";
+import { useDataDemoStore } from "../../../../pages/DataDemo/store/dataDemo.store";
 import { useDynamicView } from '../../DynamicViewContext'
 import { FieldRenderer } from '../shared/FieldRenderer'
 
@@ -1189,12 +2057,12 @@ interface DataKanbanViewProps {
   data: Record<string, GenericItem[]>;
 }
 
-export function DataKanbanView({ data }: DataKanbanViewProps) {
+export function KanbanView({ data }: DataKanbanViewProps) {
   const [columns, setColumns] = useState(data);
   const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
   const [dropIndicator, setDropIndicator] = useState<{ columnId: string; index: number } | null>(null);
   const { groupBy } = useAppViewManager();
-  const updateItem = useDataDemoStore(s => s.updateItem);
+  const updateItem = useDataDemoStore((s: any) => s.updateItem);
 
   useEffect(() => {
     setColumns(data);
@@ -1347,16 +2215,16 @@ import { useRef } from 'react'
 import { cn } from '@/lib/utils'
 import type { GenericItem } from '../../types'
 import { useStaggeredAnimation } from '@/hooks/useStaggeredAnimation.motion.hook'
-import { EmptyState } from './EmptyState'
+import { EmptyState } from '../shared/EmptyState'
 import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
 import { 
   useSelectedItem,
-} from '../store/dataDemo.store'
-import { AddDataItemCta } from './shared/AddDataItemCta'
+} from '../../../../pages/DataDemo/store/dataDemo.store'
+import { AddDataItemCta } from '../shared/AddDataItemCta'
 import { useDynamicView } from '../../DynamicViewContext'
 import { FieldRenderer } from '../shared/FieldRenderer'
 
-export function DataListView({ data }: { data: GenericItem[] }) {
+export function ListView({ data }: { data: GenericItem[] }) {
   const { onItemSelect, itemId } = useAppViewManager();
   const selectedItem = useSelectedItem(itemId);
   const { config } = useDynamicView();
@@ -1422,18 +2290,17 @@ import {
   ExternalLink
 } from 'lucide-react'
 import type { GenericItem } from '../../types'
-import type { SortableField } from '../../pages/DataDemo/types'
-import { EmptyState } from './EmptyState'
+import { EmptyState } from '../shared/EmptyState'
 import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
 import {
   useSelectedItem,
-} from '../store/dataDemo.store'
+} from '../../../../pages/DataDemo/store/dataDemo.store'
 import { capitalize } from '@/lib/utils'
-import { AddDataItemCta } from './shared/AddDataItemCta'
+import { AddDataItemCta } from '../shared/AddDataItemCta'
 import { useDynamicView } from '../../DynamicViewContext'
 import { FieldRenderer } from '../shared/FieldRenderer'
 
-export function DataTableView({ data }: { data: GenericItem[] }) {
+export function TableView({ data }: { data: GenericItem[] }) {
   const {
     sortConfig,
     setTableSort,
@@ -1483,7 +2350,7 @@ export function DataTableView({ data }: { data: GenericItem[] }) {
   }
 
   const handleSortClick = (field: string) => {
-    setTableSort(field as SortableField) // Cast for now
+    setTableSort(field)
   }
 
   const groupedData = useMemo(() => {
@@ -1743,12 +2610,72 @@ export interface ViewConfig {
   kanbanView: KanbanViewConfig;
   calendarView: CalendarViewConfig;
 }
+
+// --- GENERIC CONTROL & DATA TYPES ---
+
+export type Status = 'active' | 'pending' | 'completed' | 'archived';
+export type Priority = 'low' | 'medium' | 'high' | 'critical';
+
+export interface FilterConfig {
+  searchTerm: string;
+  [key: string]: any; // For dynamic filter keys like status, priority
+}
+
+export interface SortConfig {
+  key: string;
+  direction: 'asc' | 'desc';
+}
+
+export type GroupableField = 'status' | 'priority' | 'category';
+
+export type CalendarDateProp = 'dueDate' | 'createdAt' | 'updatedAt';
+export type CalendarDisplayProp = 'priority' | 'assignee' | 'status';
+export type CalendarColorProp = 'priority' | 'status' | 'category' | 'none';
+```
+
+## File: src/hooks/useScrollToBottom.hook.ts
+```typescript
+import { useState, useCallback } from 'react';
+
+export function useScrollToBottom(
+  contentRef: React.RefObject<HTMLDivElement>
+) {
+  const [showScrollToBottom, setShowScrollToBottom] = useState(false);
+
+  const handleScroll = useCallback(() => {
+    if (!contentRef.current) return;
+    const { scrollTop, scrollHeight, clientHeight } = contentRef.current;
+    // Show button if scrolled down more than 200px, and there's more than 200px left to scroll
+    setShowScrollToBottom(scrollTop > 200 && scrollTop < scrollHeight - clientHeight - 200);
+  }, [contentRef]);
+
+  const scrollToBottom = () => {
+    contentRef.current?.scrollTo({
+      top: contentRef.current.scrollHeight,
+      behavior: 'smooth'
+    });
+  };
+
+  return { showScrollToBottom, handleScroll, scrollToBottom };
+}
 ```
 
 ## File: src/pages/DataDemo/DataDemo.config.ts
 ```typescript
 import type { ViewConfig } from '@/features/dynamic-view/types';
-import { DATA_DEMO_PRIORITY_COLORS, DATA_DEMO_STATUS_COLORS } from './data/mockData';
+
+const DATA_DEMO_STATUS_COLORS = {
+  active: 'border-transparent bg-emerald-500/20 text-emerald-700 dark:text-emerald-400',
+  pending: 'border-transparent bg-amber-500/20 text-amber-700 dark:text-amber-400',
+  completed: 'border-transparent bg-sky-500/20 text-sky-700 dark:text-sky-400',
+  archived: 'border-transparent bg-zinc-500/20 text-zinc-700 dark:text-zinc-400',
+};
+const DATA_DEMO_PRIORITY_COLORS = {
+  low: 'border-transparent bg-blue-500/20 text-blue-700 dark:text-blue-400',
+  medium: 'border-transparent bg-yellow-500/20 text-yellow-700 dark:text-yellow-400',
+  high: 'border-transparent bg-orange-500/20 text-orange-700 dark:text-orange-400',
+  critical: 'border-transparent bg-red-600/20 text-red-700 dark:text-red-400',
+};
 
 export const dataDemoViewConfig: ViewConfig = {
   // Field definitions: The source of truth for all data properties
@@ -1856,180 +2783,6 @@ export const dataDemoViewConfig: ViewConfig = {
     colorByField: 'priority', // Default coloring
   },
 };
-```
-
-## File: src/index.css
-```css
-@import 'tailwindcss/base';
-@import 'tailwindcss/components';
-@import 'tailwindcss/utilities';
-
-@layer base {
-  :root {
-    --primary-hsl: 220 84% 60%;
-    --background: 210 40% 96.1%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: var(--primary-hsl);
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 222.2 84% 4.9%;
-    --muted: 210 40% 96%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96%;
-    --accent-foreground: 222.2 84% 4.9%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: var(--primary-hsl);
-    --radius: 1rem;
-  }
-
-  .dark {
-    --background: 240 6% 9%;
-    --foreground: 210 40% 98%;
-    --card: 240 6% 14%;
-    --card-foreground: 210 40% 98%;
-    --popover: 240 6% 12%;
-    --popover-foreground: 210 40% 98%;
-    --primary: var(--primary-hsl);
-    --primary-foreground: 210 40% 98%;
-    --secondary: 240 5% 20%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 240 5% 20%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 240 5% 20%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 240 5% 20%;
-    --input: 240 5% 20%;
-    --ring: var(--primary-hsl);
-  }
-}
-
-@layer base {
-  * {
-    @apply border-border;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
-}
-
-/* Custom scrollbar styles */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-
-::-webkit-scrollbar-track {
-  @apply bg-transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  @apply bg-border rounded-full;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  @apply bg-muted-foreground/50;
-}
-
-/* For UserDropdown */
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-.no-scrollbar {
-  -ms-overflow-style: none; /* IE and Edge */
-  scrollbar-width: none; /* Firefox */
-}
-
-@layer base {
-  .login-page-theme {
-    --background: hsl(0 0% 100%);
-    --foreground: hsl(0 0% 0%);
-    --skeleton: hsl(0 0% 90%);
-    --border: hsl(220 20% 90%);
-    --btn-border: hsl(214.3 31.8% 91.4%);
-    --input: hsl(220 20% 90%);
-    --radius: 0.5rem;
-  }
- 
-  .dark .login-page-theme {
-    --background: hsl(222 94% 5%);
-    --foreground: hsl(0 0% 100%);
-    --skeleton: hsl(218 36% 16%);
-    --border: hsl(220 20% 90%);
-    --btn-border: hsl(217 32.6% 17.5%);
-    --input: hsl(219 63% 16%);
-    --radius: 0.5rem;
-  }
-}
-
-@layer components {
-  .g-button {
-    @apply rounded-[var(--radius)] border;
-    border-color: var(--btn-border);
-  }
-}
-```
-
-## File: postcss.config.js
-```javascript
-export default {
-  plugins: {
-    tailwindcss: {},
-    autoprefixer: {},
-  },
-}
-```
-
-## File: vite.config.ts
-```typescript
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-import { fileURLToPath, URL } from 'url'
-import { resolve } from 'path'
-import pkg from './package.json' with { type: 'json' }
-
-// https://vitejs.dev/config/
-export default defineConfig({
-  plugins: [react()],
-  resolve: {
-    alias: {
-      "@": fileURLToPath(new URL('./src', import.meta.url)),
-    },
-  },
-  build: {
-    lib: {
-      entry: resolve(__dirname, 'src/index.ts'),
-      name: 'JeliAppShell',
-      fileName: (format) => `jeli-app-shell.${format}.js`,
-    },
-    rollupOptions: {
-      // make sure to externalize deps that shouldn't be bundled
-      // into your library
-      external: Object.keys(pkg.peerDependencies || {}),
-      output: {
-        // Provide global variables to use in the UMD build
-        // for externalized deps
-        globals: {
-          react: 'React',
-          'react-dom': 'ReactDOM',
-          tailwindcss: 'tailwindcss',
-          gsap: 'gsap',
-          'lucide-react': 'lucide-react',
-          zustand: 'zustand',
-          sonner: 'sonner'
-        },
-      },
-    },
-  },
-})
 ```
 
 ## File: index.html
@@ -2242,13 +2995,178 @@ export default {
 }
 ```
 
+## File: src/pages/Messaging/components/TaskHeader.tsx
+```typescript
+import React from 'react';
+import { useMessagingStore } from '../store/messaging.store';
+import type { Task, TaskStatus, TaskPriority, Assignee, Contact } from '../types';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator
+} from '@/components/ui/dropdown-menu';
+import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { ChevronDown, Inbox, Zap, Shield, Clock, Calendar, Plus, User, Eye } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { format } from 'date-fns';
+
+const statusOptions: { value: TaskStatus; label: string; icon: React.ReactNode }[] = [
+    { value: 'open', label: 'Open', icon: <Inbox className="w-4 h-4" /> },
+    { value: 'in-progress', label: 'In Progress', icon: <Zap className="w-4 h-4" /> },
+    { value: 'done', label: 'Done', icon: <Shield className="w-4 h-4" /> },
+    { value: 'snoozed', label: 'Snoozed', icon: <Clock className="w-4 h-4" /> },
+];
+
+const priorityOptions: { value: TaskPriority; label: string; icon: React.ReactNode }[] = [
+    { value: 'high', label: 'High', icon: <div className="w-2.5 h-2.5 rounded-full bg-red-500" /> },
+    { value: 'medium', label: 'Medium', icon: <div className="w-2.5 h-2.5 rounded-full bg-yellow-500" /> },
+    { value: 'low', label: 'Low', icon: <div className="w-2.5 h-2.5 rounded-full bg-green-500" /> },
+    { value: 'none', label: 'None', icon: <div className="w-2.5 h-2.5 rounded-full bg-gray-400" /> },
+];
+
+
+interface TaskHeaderProps {
+  task: (Task & { contact: Contact; assignee: Assignee | null; activeHandler: Assignee | null });
+}
+
+export const TaskHeader: React.FC<TaskHeaderProps> = ({ task }) => {
+  const { updateTask, assignees } = useMessagingStore();
+  const currentStatus = statusOptions.find(o => o.value === task.status);
+  const currentPriority = priorityOptions.find(o => o.value === task.priority);
+  const currentUserId = 'user-1'; // Mock current user
+  const isHandledByOther = task.activeHandler && task.activeHandlerId !== currentUserId;
+
+
+  return (
+    <div className="space-y-4">
+      {/* Task Title & Contact */}
+      <div className="overflow-hidden">
+        <h2 className="font-bold text-xl lg:text-2xl truncate" title={task.title}>
+          {task.title}
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          With <a href="#" className="hover:underline font-medium text-foreground/80">{task.contact.name}</a> from <strong className="font-medium text-foreground/80">{task.contact.company}</strong>
+          <span className="mx-1">&middot;</span>
+          via <span className="capitalize font-medium text-foreground/80">{task.channel}</span>
+        </p>
+      </div>
+
+      {/* Properties Bar */}
+      <div className="flex flex-wrap items-center gap-y-2 text-sm">
+        {/* Assignee Dropdown */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" className="gap-2 font-normal">
+              {task.assignee ? (
+                <Avatar className="h-5 w-5"><AvatarImage src={task.assignee.avatar} /><AvatarFallback>{task.assignee.name.charAt(0)}</AvatarFallback></Avatar>
+              ) : (
+                <User className="h-4 w-4 text-muted-foreground" />
+              )}
+              <span className="font-medium">{task.assignee?.name || 'Unassigned'}</span>
+              <ChevronDown className="w-3 h-3 text-muted-foreground" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            <DropdownMenuRadioGroup value={task.assigneeId || 'null'} onValueChange={val => updateTask(task.id, { assigneeId: val === 'null' ? null : val })}>
+              <DropdownMenuRadioItem value="null">
+                <User className="w-4 h-4 mr-2 text-muted-foreground" /> Unassigned
+              </DropdownMenuRadioItem>
+              <DropdownMenuSeparator />
+              {assignees.map(a => (
+                <DropdownMenuRadioItem key={a.id} value={a.id}>
+                  <Avatar className="h-5 w-5 mr-2"><AvatarImage src={a.avatar} /><AvatarFallback>{a.name.charAt(0)}</AvatarFallback></Avatar>
+                  {a.name}
+                </DropdownMenuRadioItem>
+              ))}
+            </DropdownMenuRadioGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        {isHandledByOther && (
+            <>
+                <div className="mx-2 h-4 w-px bg-border" />
+                <Badge variant="outline" className="gap-2 font-normal text-amber-600 border-amber-600/50">
+                    <Eye className="w-3.5 h-3.5" /> Viewing: {task.activeHandler?.name}
+                </Badge>
+            </>
+        )}
+        <div className="mx-2 h-4 w-px bg-border" />
+
+        {/* Status Dropdown */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground hover:text-foreground">
+              {currentStatus?.icon}
+              <span className="font-medium text-foreground">{currentStatus?.label}</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            {statusOptions.map(o => (
+              <DropdownMenuItem key={o.value} onClick={() => updateTask(task.id, { status: o.value })}>
+                <div className="flex items-center">
+                  <div className="w-4 h-4 mr-2">{o.icon}</div>
+                  <span>{o.label}</span>
+                </div>
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+        
+        <div className="mx-2 h-4 w-px bg-border" />
+        
+        {/* Priority Dropdown */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground hover:text-foreground">
+              {currentPriority?.icon}
+              <span className="font-medium text-foreground">{currentPriority?.label}</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            {priorityOptions.map(o => (
+              <DropdownMenuItem key={o.value} onClick={() => updateTask(task.id, { priority: o.value })}>
+                <div className="flex items-center">
+                  <div className="w-2.5 h-2.5 mr-2">{o.icon}</div>
+                  <span>{o.label}</span>
+                </div>
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        <div className="mx-2 h-4 w-px bg-border" />
+
+        {/* Due Date - for display, could be a popover trigger */}
+        <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground cursor-default" disabled>
+            <Calendar className="w-4 h-4" />
+            <span className="font-medium text-foreground">{task.dueDate ? format(new Date(task.dueDate), 'MMM d, yyyy') : 'No due date'}</span>
+        </Button>
+      </div>
+
+      {/* Tags */}
+      <div className="flex flex-wrap items-center gap-2">
+        {task.tags.map(t => <Badge variant="secondary" key={t}>{t}</Badge>)}
+        <Button variant="outline" size="sm" className="h-7 px-2 text-xs rounded-md border-dashed">
+          <Plus className="w-3 h-3 mr-1" /> Tag
+        </Button>
+      </div>
+    </div>
+  );
+};
+```
+
 ## File: src/pages/DataDemo/store/dataDemo.store.tsx
 ```typescript
 import { create } from 'zustand';
 import { type ReactNode } from 'react';
 import { capitalize, cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
-import { mockDataItems } from '../data/mockData';
+import { mockDataItems } from '@/pages/DataDemo/data/mockData';
 import type { GenericItem, GroupableField, SortConfig, FilterConfig } from '@/features/dynamic-view/types';
 
 // --- State and Actions ---
@@ -2280,7 +3198,7 @@ const defaultState: DataDemoState = {
 };
 
 // --- Store Implementation ---
-export const useDataDemoStore = create<DataDemoState & DataDemoActions>((set, get) => ({
+export const useDataDemoStore = create<DataDemoState & DataDemoActions>((set) => ({
     ...defaultState,
 
     loadData: ({ page, groupBy, filters, sortConfig, isFullLoad }) => {
@@ -2426,6 +3344,281 @@ export const useSelectedItem = (itemId?: string) => {
 };
 ```
 
+## File: src/hooks/useRightPaneContent.hook.tsx
+```typescript
+import { useMemo } from 'react';
+import { useParams } from 'react-router-dom';
+import {
+  LayoutDashboard,
+  Settings,
+  Component,
+  Bell,
+  SlidersHorizontal,
+  Database,
+  MessageSquare,
+} from 'lucide-react';
+
+import { DashboardContent } from "@/pages/Dashboard";
+import { SettingsContent } from "@/features/settings/SettingsContent";
+import { ToasterDemo } from "@/pages/ToasterDemo";
+import { NotificationsPage } from "@/pages/Notifications";
+import DataDemoPage from "@/pages/DataDemo/index";
+import { DataDetailPanel } from "@/pages/DataDemo/components/DataDetailPanel";
+import { mockDataItems } from "@/pages/DataDemo/data/mockData";
+import { MessagingContent } from "@/pages/Messaging/components/MessagingContent";
+import type { AppShellState } from '@/store/appShell.store';
+
+export function useRightPaneContent(sidePaneContent: AppShellState['sidePaneContent']) {
+  const { itemId, conversationId } = useParams<{ itemId: string; conversationId: string }>();
+
+  const staticContentMap = useMemo(() => ({
+    main: {
+      title: "Dashboard",
+      icon: LayoutDashboard,
+      page: "dashboard",
+      content: <DashboardContent />,
+    },
+    settings: {
+      title: "Settings",
+      icon: Settings,
+      page: "settings",
+      content: <div className="p-6"><SettingsContent /></div>,
+    },
+    toaster: {
+      title: "Toaster Demo",
+      icon: Component,
+      page: "toaster",
+      content: <ToasterDemo />,
+    },
+    notifications: {
+      title: "Notifications",
+      icon: Bell,
+      page: "notifications",
+      content: <NotificationsPage />,
+    },
+    dataDemo: {
+      title: "Data Showcase",
+      icon: Database,
+      page: "data-demo",
+      content: <DataDemoPage />,
+    },
+    details: {
+      title: "Details Panel",
+      icon: SlidersHorizontal,
+      content: (
+        <div className="p-6">
+          <p className="text-muted-foreground">
+            This is the side pane. It can be used to display contextual
+            information, forms, or actions related to the main content.
+          </p>
+        </div>
+      ),
+    },
+  }), []);
+
+  const contentMap = useMemo(() => ({
+    ...staticContentMap,
+    messaging: {
+      title: "Conversation",
+      icon: MessageSquare,
+      page: "messaging",
+      content: <MessagingContent conversationId={conversationId} />,
+    },
+  }), [conversationId, staticContentMap]);
+
+  const selectedItem = useMemo(() => {
+    if (!itemId) return null;
+    return mockDataItems.find(item => item.id === itemId) ?? null;
+  }, [itemId]);
+
+  const { meta, content } = useMemo(() => {
+    if (sidePaneContent === 'dataItem' && selectedItem) {
+      return {
+        meta: { title: "Item Details", icon: Database, page: `data-demo/${itemId}` },
+        content: <DataDetailPanel item={selectedItem} />,
+      };
+    }
+    const mappedContent = contentMap[sidePaneContent as keyof typeof contentMap] || contentMap.details;
+    return {
+      meta: mappedContent,
+      content: mappedContent.content,
+    };
+  }, [sidePaneContent, selectedItem, contentMap, itemId]);
+
+  return { meta, content };
+}
+```
+
+## File: src/pages/Messaging/data/mockData.ts
+```typescript
+import type { Contact, Task, Message, ActivityEvent, Note, Assignee, TaskStatus, TaskPriority, Channel, JourneyPointType } from '../types';
+import { faker } from '@faker-js/faker';
+
+// --- ASSIGNEES ---
+export const mockAssignees: Assignee[] = [
+  { id: 'user-1', name: 'You', avatar: `https://avatar.vercel.sh/you.png`, type: 'human' },
+  { id: 'user-2', name: 'Alex Johnson', avatar: `https://avatar.vercel.sh/alex.png`, type: 'human' },
+  { id: 'user-3', name: 'Samira Kumar', avatar: `https://avatar.vercel.sh/samira.png`, type: 'human' },
+  { id: 'user-4', name: 'Casey Lee', avatar: `https://avatar.vercel.sh/casey.png`, type: 'human' },
+  { id: 'user-5', name: 'Jordan Rivera', avatar: `https://avatar.vercel.sh/jordan.png`, type: 'human' },
+  { id: 'user-ai-1', name: 'AI Assistant', avatar: `https://avatar.vercel.sh/ai.png`, type: 'ai' },
+];
+
+// --- HELPERS ---
+const generateNotes = (contactName: string): Note[] => [
+  { id: `note-${faker.string.uuid()}`, content: `Initial discovery call with ${contactName}. Seemed very interested in our enterprise package.`, createdAt: faker.date.past().toISOString() },
+  { id: `note-${faker.string.uuid()}`, content: `Followed up via email with pricing details.`, createdAt: faker.date.recent().toISOString() },
+];
+
+const generateActivity = (contactName: string): ActivityEvent[] => [
+  { id: `act-${faker.string.uuid()}`, type: 'email', content: `Sent follow-up email regarding pricing.`, timestamp: faker.date.past().toISOString() },
+  { id: `act-${faker.string.uuid()}`, type: 'call', content: `Had a 30-minute discovery call with ${contactName}.`, timestamp: faker.date.recent().toISOString() },
+  { id: `act-${faker.string.uuid()}`, type: 'meeting', content: `Scheduled a demo for next week.`, timestamp: faker.date.soon().toISOString() },
+];
+
+// --- COMPANIES ---
+const mockCompanies = Array.from({ length: 25 }, () => faker.company.name());
+
+// --- CONTACTS ---
+export const mockContacts: Contact[] = Array.from({ length: 80 }, (_, i) => {
+    const firstName = faker.person.firstName();
+    const lastName = faker.person.lastName();
+    const name = `${firstName} ${lastName}`;
+    const company = faker.helpers.arrayElement(mockCompanies);
+    return {
+        id: `contact-${i + 1}`,
+        name,
+        avatar: `https://avatar.vercel.sh/${firstName.toLowerCase()}${lastName.toLowerCase()}.png`,
+        online: faker.datatype.boolean(),
+        tags: faker.helpers.arrayElements(['VIP', 'New Lead', 'Returning Customer', 'Support Request', 'High Value'], { min: 1, max: 3 }),
+        email: faker.internet.email({ firstName, lastName }),
+        phone: faker.phone.number(),
+        lastSeen: faker.datatype.boolean() ? 'online' : `${faker.number.int({ min: 2, max: 59 })} minutes ago`,
+        company,
+        role: faker.person.jobTitle(),
+        activity: generateActivity(name),
+        notes: generateNotes(name),
+    };
+});
+
+// --- MESSAGE GENERATOR ---
+const generateMessages = (messageCount: number, contactName: string, journeyPath: JourneyPointType[]): Message[] => {
+  const messages: Message[] = [];
+  const now = new Date();
+  
+  const journeyPointsWithIndices = journeyPath.map((point, index) => ({
+      point,
+      index: Math.floor((messageCount / journeyPath.length) * (index + Math.random() * 0.8))
+  }));
+
+  for (let i = 0; i < messageCount; i++) {
+    const random = Math.random();
+    let sender: Message['sender'] = 'contact';
+    let type: Message['type'] = 'comment';
+    let text = faker.lorem.sentence();
+    let userId: string | undefined = undefined;
+
+    if (random > 0.85) { // Internal Note
+      sender = 'user';
+      type = 'note';
+      const user = faker.helpers.arrayElement(mockAssignees.filter(u => u.type === 'human'));
+      userId = user.id;
+      text = `Internal note from ${user.name}: ${faker.lorem.sentence()}`;
+    } else if (random > 0.7) { // System message
+      sender = 'system';
+      type = 'system';
+      text = faker.helpers.arrayElement(['Task status changed to "in-progress"', 'Task assigned to Alex Johnson', 'User joined the conversation']);
+    } else if (random > 0.35) { // User comment
+      sender = 'user';
+      type = 'comment';
+      userId = 'user-1'; // "You"
+      text = faker.lorem.sentence();
+    }
+    
+    const journeyPointInfo = journeyPointsWithIndices.find(jp => jp.index === i);
+
+    messages.push({
+      id: `msg-${faker.string.uuid()}`,
+      text,
+      timestamp: new Date(now.getTime() - (messageCount - i) * 60 * 60 * 100).toISOString(),
+      sender,
+      type,
+      read: i < messageCount - faker.number.int({min: 0, max: 5}),
+      userId,
+      journeyPoint: journeyPointInfo?.point
+    });
+  }
+  
+  // Ensure the last message is from the contact for preview purposes
+  messages[messages.length - 1] = {
+    ...messages[messages.length-1],
+    sender: 'contact',
+    type: 'comment',
+    text: `Hey! This is the latest message from ${contactName}. ${faker.lorem.sentence()}`,
+    userId: undefined
+  };
+  return messages.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+};
+
+// --- TASK GENERATOR ---
+const generateTasks = (count: number): Task[] => {
+    const tasks: Task[] = [];
+    const statuses: TaskStatus[] = ['open', 'in-progress', 'done', 'snoozed'];
+    const priorities: TaskPriority[] = ['none', 'low', 'medium', 'high'];
+    const channels: Channel[] = ['whatsapp', 'instagram', 'facebook', 'email'];
+    const possibleJourneys: JourneyPointType[][] = [
+        ['Inquiry', 'Consult', 'Quote', 'Order', 'Payment', 'Shipped', 'Delivered', 'Review'],
+        ['Inquiry', 'Consult', 'Quote', 'Order', 'Payment', 'Shipped', 'Delivered', 'Follow-up'],
+        ['Inquiry', 'Consult', 'Follow-up'],
+        ['Inquiry', 'Consult', 'Quote', 'Order', 'Canceled'],
+        ['Consult', 'Order', 'Payment', 'Shipped', 'Delivered', 'Complain', 'Refund'],
+        ['Consult', 'Order', 'Payment', 'Shipped', 'Complain', 'Follow-up'],
+        ['Order', 'Delivered', 'Review', 'Reorder', 'Delivered'],
+        ['Complain', 'Follow-up', 'Refund'],
+        ['Quote', 'Follow-up', 'Order', 'Payment', 'Shipped', 'Delivered'],
+        ['Inquiry', 'Quote', 'Order', 'Payment', 'Shipped', 'Canceled', 'Refund'],
+        ['Consult', 'Follow-up'],
+        ['Complain'],
+        ['Order', 'Delivered'],
+    ];
+
+    for (let i = 0; i < count; i++) {
+        const contact = faker.helpers.arrayElement(mockContacts);
+        const status = faker.helpers.arrayElement(statuses);
+        const unreadCount = status === 'open' || status === 'in-progress' ? faker.number.int({ min: 0, max: 8 }) : 0;
+        const messageCount = faker.number.int({ min: 10, max: 150 });
+        const journey = faker.helpers.arrayElement(possibleJourneys);
+        const messages = generateMessages(messageCount, contact.name, journey);
+        const assignee = faker.datatype.boolean(0.8) ? faker.helpers.arrayElement(mockAssignees) : null;
+
+        const task: Task = {
+            id: `task-${i + 1}`,
+            title: faker.lorem.sentence({ min: 3, max: 7 }),
+            contactId: contact.id,
+            channel: faker.helpers.arrayElement(channels),
+            unreadCount,
+            messages,
+            get lastActivity() { return this.messages[this.messages.length - 1]; },
+            status,
+            assigneeId: assignee?.id || null,
+            dueDate: faker.datatype.boolean() ? faker.date.future().toISOString() : null,
+            priority: faker.helpers.arrayElement(priorities),
+            tags: faker.helpers.arrayElements(['onboarding', 'pricing', 'bug-report', 'urgent', 'tech-support'], faker.number.int({min: 0, max: 2})),
+            aiSummary: {
+                sentiment: faker.helpers.arrayElement(['positive', 'negative', 'neutral']),
+                summaryPoints: Array.from({ length: 3 }, () => faker.lorem.sentence()),
+                suggestedReplies: Array.from({ length: 2 }, () => faker.lorem.words({ min: 3, max: 6})),
+            },
+            activeHandlerId: faker.helpers.arrayElement([assignee?.id ?? null, null, 'user-ai-1']),
+        };
+        tasks.push(task);
+    }
+    return tasks;
+}
+
+export const mockTasks: Task[] = generateTasks(200);
+```
+
 ## File: package.json
 ```json
 {
@@ -2505,6 +3698,720 @@ export const useSelectedItem = (itemId?: string) => {
     "@radix-ui/react-tooltip": "^1.2.8"
   }
 }
+```
+
+## File: src/pages/Dashboard/index.tsx
+```typescript
+import { useRef, useCallback } from 'react'
+import {
+  BarChart3, 
+  TrendingUp, 
+  Users, 
+  DollarSign, 
+  Activity,
+  Calendar,
+  Clock,
+  MessageSquare,
+  FileText,
+  Star,
+  ChevronRight,
+  MoreVertical
+} from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { DemoContent } from './DemoContent';
+import { useDashboardAnimations } from './hooks/useDashboardAnimations.motion.hook'
+import { useAutoAnimateTopBar } from '@/hooks/useAutoAnimateTopBar';
+import { useScrollToBottom } from '@/hooks/useScrollToBottom.hook';
+import { useAppShellStore } from '@/store/appShell.store'
+import { BODY_STATES } from '@/lib/utils'
+import { PageHeader } from '@/components/shared/PageHeader';
+import { ScrollToBottomButton } from '@/components/shared/ScrollToBottomButton';
+import { StatCard } from '@/components/shared/StatCard';
+import { Card } from '@/components/ui/card';
+import { PageLayout } from '@/components/shared/PageLayout';
+
+interface StatsCard {
+  title: string
+  value: string
+  change: string
+  trend: 'up' | 'down'
+  icon: React.ReactNode
+}
+
+interface ActivityItem {
+  id: string
+  type: 'comment' | 'file' | 'meeting' | 'task'
+  title: string
+  description: string
+  time: string
+  user: string
+}
+
+const statsCards: StatsCard[] = [
+  {
+    title: "Total Revenue",
+    value: "$45,231.89",
+    change: "+20.1%",
+    trend: "up",
+    icon: <DollarSign className="w-5 h-5" />
+  },
+  {
+    title: "Active Users",
+    value: "2,350",
+    change: "+180.1%",
+    trend: "up",
+    icon: <Users className="w-5 h-5" />
+  },
+  {
+    title: "Conversion Rate",
+    value: "12.5%",
+    change: "+19%",
+    trend: "up",
+    icon: <TrendingUp className="w-5 h-5" />
+  },
+  {
+    title: "Performance",
+    value: "573ms",
+    change: "-5.3%",
+    trend: "down",
+    icon: <Activity className="w-5 h-5" />
+  }
+]
+
+const recentActivity: ActivityItem[] = [
+  {
+    id: "1",
+    type: "comment",
+    title: "New comment on Project Alpha",
+    description: "Sarah Johnson added a comment to the design review",
+    time: "2 minutes ago",
+    user: "SJ"
+  },
+  {
+    id: "2",
+    type: "file",
+    title: "Document uploaded",
+    description: "quarterly-report.pdf was uploaded to Documents",
+    time: "15 minutes ago",
+    user: "MD"
+  },
+  {
+    id: "3",
+    type: "meeting",
+    title: "Meeting scheduled",
+    description: "Weekly standup meeting scheduled for tomorrow 9 AM",
+    time: "1 hour ago",
+    user: "RW"
+  },
+  {
+    id: "4",
+    type: "task",
+    title: "Task completed",
+    description: "UI wireframes for mobile app completed",
+    time: "2 hours ago",
+    user: "AL"
+  }
+]
+
+export function DashboardContent() {
+    const scrollRef = useRef<HTMLDivElement>(null)
+    const contentRef = useRef<HTMLDivElement>(null);
+    const statsCardsContainerRef = useRef<HTMLDivElement>(null);
+    const featureCardsContainerRef = useRef<HTMLDivElement>(null);
+    const bodyState = useAppShellStore(s => s.bodyState);
+    const isInSidePane = bodyState === BODY_STATES.SIDE_PANE;
+    
+    const { onScroll: handleTopBarScroll } = useAutoAnimateTopBar(isInSidePane);
+    const { showScrollToBottom, scrollToBottom, handleScroll: handleScrollToBottom } = useScrollToBottom(scrollRef);
+
+    const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+        handleTopBarScroll(e);
+        handleScrollToBottom(e);
+    }, [handleTopBarScroll, handleScrollToBottom]);
+
+    useDashboardAnimations(contentRef, statsCardsContainerRef, featureCardsContainerRef);
+
+    const getTypeIcon = (type: ActivityItem['type']) => {
+      switch (type) {
+        case 'comment':
+          return <MessageSquare className="w-4 h-4" />
+        case 'file':
+          return <FileText className="w-4 h-4" />
+        case 'meeting':
+          return <Calendar className="w-4 h-4" />
+        case 'task':
+          return <Star className="w-4 h-4" />
+        default:
+          return <Activity className="w-4 h-4" />
+      }
+    }
+
+    return (
+      <PageLayout scrollRef={scrollRef} onScroll={handleScroll} ref={contentRef}>
+        {/* Header */}
+        {!isInSidePane && (
+          <PageHeader
+            title="Dashboard"
+            description="Welcome to the Jeli App Shell demo! Explore all the features and customization options."
+          />
+        )}
+          {/* Stats Cards */}
+        <div ref={statsCardsContainerRef} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {statsCards.map((stat) => (
+            <StatCard
+              key={stat.title}
+              title={stat.title}
+              value={stat.value}
+              change={stat.change}
+              trend={stat.trend}
+              icon={stat.icon}
+            />
+          ))}
+        </div>
+
+        {/* Demo Content */}
+        <DemoContent ref={featureCardsContainerRef} />
+
+        {/* Main Content Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Chart Area */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Analytics Chart */}
+          <Card className="p-6 border-border/50">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-semibold">Analytics Overview</h3>
+              <button className="h-8 w-8 flex items-center justify-center hover:bg-accent rounded-full transition-colors">
+                <MoreVertical className="w-5 h-5" />
+              </button>
+            </div>
+            
+            {/* Mock Chart */}
+            <div className="h-64 bg-gradient-to-br from-primary/10 to-transparent rounded-xl flex items-center justify-center border border-border/50">
+              <div className="text-center">
+                <BarChart3 className="w-12 h-12 text-primary mx-auto mb-2" />
+                <p className="text-muted-foreground">Chart visualization would go here</p>
+              </div>
+            </div>
+          </Card>
+
+          {/* Recent Projects */}
+          <Card className="p-6 border-border/50">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-semibold">Recent Projects</h3>
+              <button className="text-primary hover:text-primary/80 text-sm font-medium flex items-center gap-1">
+                View All
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              {[
+                { name: "E-commerce Platform", progress: 75, team: 5, deadline: "Dec 15" },
+                { name: "Mobile App Redesign", progress: 45, team: 3, deadline: "Jan 20" },
+                { name: "Marketing Website", progress: 90, team: 4, deadline: "Dec 5" }
+              ].map((project) => (
+                <div key={project.name} className="p-4 bg-accent/30 rounded-xl hover:bg-accent/50 transition-colors cursor-pointer">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="font-medium">{project.name}</h4>
+                    <span className="text-sm text-muted-foreground">{project.progress}%</span>
+                  </div>
+                  <div className="w-full bg-muted rounded-full h-2 mb-3">
+                    <div 
+                      className="bg-primary h-2 rounded-full transition-all duration-500"
+                      style={{ width: `${project.progress}%` }}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between text-sm text-muted-foreground">
+                    <span>{project.team} team members</span>
+                    <span>Due {project.deadline}</span>
+                    </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        </div>
+
+        {/* Sidebar Content */}
+        <div className="space-y-6">
+          {/* Quick Actions */}
+          <Card className="p-6 border-border/50">
+            <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
+            <div className="space-y-3">
+              {[
+                { icon: <FileText className="w-4 h-4" />, label: "Create Document", color: "bg-blue-500/10 text-blue-600" },
+                { icon: <Calendar className="w-4 h-4" />, label: "Schedule Meeting", color: "bg-green-500/10 text-green-600" },
+                { icon: <Users className="w-4 h-4" />, label: "Invite Team", color: "bg-purple-500/10 text-purple-600" },
+                { icon: <BarChart3 className="w-4 h-4" />, label: "View Reports", color: "bg-orange-500/10 text-orange-600" }
+              ].map((action) => (
+                <button
+                  key={action.label}
+                  className="w-full flex items-center gap-3 p-3 hover:bg-accent rounded-lg transition-colors text-left"
+                >
+                  <div className={cn("p-2 rounded-full", action.color)}>
+                    {action.icon}
+                  </div>
+                  <span className="font-medium">{action.label}</span>
+                </button>
+              ))}
+            </div>
+          </Card>
+
+          {/* Recent Activity */}
+          <Card className="p-6 border-border/50">
+            <h3 className="text-lg font-semibold mb-4">Recent Activity</h3>
+            <div className="space-y-4">
+              {recentActivity.map((activity) => (
+                <div key={activity.id} className="flex items-start gap-3 p-3 hover:bg-accent/30 rounded-xl transition-colors cursor-pointer">
+                  <div className="p-2 bg-primary/10 rounded-full flex-shrink-0">
+                    {getTypeIcon(activity.type)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-medium text-sm mb-1">{activity.title}</h4>
+                    <p className="text-xs text-muted-foreground mb-2">{activity.description}</p>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Clock className="w-3 h-3" />
+                      <span>{activity.time}</span>
+                      <div className="w-5 h-5 bg-primary rounded-full flex items-center justify-center text-primary-foreground text-xs font-medium">
+                        {activity.user}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        </div>
+      </div>
+      <ScrollToBottomButton isVisible={showScrollToBottom} onClick={scrollToBottom} />
+      </PageLayout>
+    )
+}
+```
+
+## File: src/pages/DataDemo/components/DataDetailPanel.tsx
+```typescript
+import React, { useRef } from 'react'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import {
+  Clock, 
+  Download,
+  FileText,
+  Image,
+  Video,
+  File,
+  Tag,
+  User,
+  BarChart3,
+  TrendingUp,
+  CheckCircle,
+  AlertCircle,
+  Circle
+} from 'lucide-react'
+import type { GenericItem } from '@/features/dynamic-view/types'
+import { useStaggeredAnimation } from '@/hooks/useStaggeredAnimation.motion.hook'
+import { DataDetailActions } from './DataDetailActions'
+import { FieldRenderer } from '@/features/dynamic-view/components/shared/FieldRenderer'
+interface DataDetailPanelProps {
+  item: GenericItem | null
+}
+
+export function DataDetailPanel({ item }: DataDetailPanelProps) {
+  const contentRef = useRef<HTMLDivElement>(null)
+  useStaggeredAnimation(contentRef, [item]);
+
+  if (!item) {
+    return null
+  }
+
+  const getFileIcon = (type: string) => {
+    switch (type.toLowerCase()) {
+      case 'pdf': return FileText
+      case 'image':
+      case 'png':
+      case 'jpg':
+      case 'jpeg': return Image
+      case 'video':
+      case 'mp4': return Video
+      default: return File
+    }
+  }
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'completed': return CheckCircle
+      case 'active': return Circle
+      case 'pending': return AlertCircle
+      default: return Circle
+    }
+  }
+
+  return (
+    <div ref={contentRef} className="h-full flex flex-col">
+      {/* Header */}
+      <div className="p-6 border-b border-border/50 bg-gradient-to-r from-card/50 to-card/30 backdrop-blur-sm">
+        <div className="flex items-start gap-4 mb-4">
+          <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-primary/10 rounded-2xl flex items-center justify-center text-3xl flex-shrink-0">
+            <FieldRenderer item={item} fieldId="thumbnailEmoji" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-2xl font-bold mb-2 leading-tight">
+              {item.title}
+            </h1>
+            <p className="text-muted-foreground">
+              {item.description}
+            </p>
+          </div>
+        </div>
+
+        {/* Status badges */}
+        <div className="flex items-center gap-2 mb-4">
+          <Badge variant="outline">
+            {React.createElement(getStatusIcon(item.status), { className: "w-3 h-3 mr-1" })}
+            {item.status}
+          </Badge>
+          <FieldRenderer item={item} fieldId="priority" />
+          <Badge variant="outline" className="bg-accent/50">
+            {item.category}
+          </Badge>
+        </div>
+
+        {/* Progress */}
+        <FieldRenderer item={item} fieldId="metrics.completion" options={{ showPercentage: true }} />
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="p-6 space-y-6">
+          {/* Assignee Info */}
+          <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
+            <div className="flex items-center gap-1 mb-3">
+              <User className="w-4 h-4 text-muted-foreground" />
+              <h3 className="font-semibold text-sm">Assigned to</h3>
+            </div>
+            <FieldRenderer item={item} fieldId="assignee" options={{ avatarClassName: "w-12 h-12" }} />
+          </div>
+
+          {/* Metrics */}
+          <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
+            <div className="flex items-center gap-1 mb-3">
+              <BarChart3 className="w-4 h-4 text-muted-foreground" />
+              <h3 className="font-semibold text-sm">Engagement Metrics</h3>
+            </div>
+            <FieldRenderer item={item} fieldId="metrics" />
+          </div>
+
+          {/* Tags */}
+          <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
+            <div className="flex items-center gap-1 mb-3">
+              <Tag className="w-4 h-4 text-muted-foreground" />
+              <h3 className="font-semibold text-sm">Tags</h3>
+            </div>
+            <FieldRenderer item={item} fieldId="tags" />
+          </div>
+
+          {/* Content Details */}
+          {item.content && (
+            <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
+              <h3 className="font-semibold text-sm mb-3">Project Details</h3>
+              <div className="space-y-4">
+                <div>
+                  <h4 className="font-medium text-sm mb-2">Summary</h4>
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    {item.content.summary}
+                  </p>
+                </div>
+                <div>
+                  <h4 className="font-medium text-sm mb-2">Description</h4>
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    {item.content.details}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Attachments */}
+          {item.content?.attachments && item.content.attachments.length > 0 && (
+            <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
+              <h3 className="font-semibold text-sm mb-3">Attachments</h3>
+              <div className="space-y-2">
+                {item.content.attachments.map((attachment: any, index: number) => {
+                  const IconComponent = getFileIcon(attachment.type)
+                  return (
+                    <div
+                      key={index}
+                      className="flex items-center gap-3 p-3 bg-muted/30 rounded-xl hover:bg-muted/50 transition-colors cursor-pointer group"
+                    >
+                      <IconComponent className="w-5 h-5 text-muted-foreground" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">
+                          {attachment.name}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {attachment.type} • {attachment.size}
+                        </p>
+                      </div>
+                      <Button size="sm" variant="ghost" className="opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Download className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Timeline */}
+          <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
+            <div className="flex items-center gap-1 mb-3">
+              <Clock className="w-4 h-4 text-muted-foreground" />
+              <h3 className="font-semibold text-sm">Timeline</h3>
+            </div>
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 text-sm">
+                <Clock className="w-3 h-3 text-muted-foreground" />
+                <span className="text-muted-foreground">Created:</span>
+                <span className="font-medium">
+                  {new Date(item.createdAt).toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                  })}
+                </span>
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                <TrendingUp className="w-3 h-3 text-muted-foreground" />
+                <span className="text-muted-foreground">Last updated:</span>
+                <span className="font-medium">
+                  {new Date(item.updatedAt).toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                  })}
+                </span>
+              </div>
+              {item.dueDate && (
+                <div className="flex items-center gap-2 text-sm">
+                  <AlertCircle className="w-3 h-3 text-orange-500" />
+                  <span className="text-muted-foreground">Due date:</span>
+                  <span className="font-medium text-orange-600">
+                    {new Date(item.dueDate).toLocaleDateString('en-US', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric'
+                    })}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Footer Actions */}
+      <div className="p-6 border-t border-border/50 bg-card/30">
+        <DataDetailActions />
+      </div>
+    </div>
+  )
+}
+```
+
+## File: src/pages/Messaging/store/messaging.store.ts
+```typescript
+import { useState, useEffect } from 'react';
+import { create } from 'zustand';
+import { mockTasks, mockContacts, mockAssignees } from '../data/mockData';
+import type { Task, Contact, Channel, Assignee, TaskStatus, TaskPriority, TaskView } from '../types';
+
+const currentUserId = 'user-1'; // Mock current user
+
+interface MessagingState {
+  tasks: Task[];
+  contacts: Contact[];
+  assignees: Assignee[];
+  searchTerm: string;
+  activeFilters: {
+    channels: Channel[];
+    tags: string[];
+    status: TaskStatus[];
+    priority: TaskPriority[];
+    assigneeId: string[];
+  };
+  activeTaskView: TaskView;
+}
+
+interface MessagingActions {
+  getTaskById: (id: string) => (Task & { contact: Contact, assignee: Assignee | null, activeHandler: Assignee | null }) | undefined;
+  getFilteredTasks: () => (Task & { contact: Contact, assignee: Assignee | null })[];
+  setSearchTerm: (term: string) => void;
+  setActiveTaskView: (view: TaskView) => void;
+  setFilters: (filters: Partial<MessagingState['activeFilters']>) => void;
+  updateTask: (taskId: string, updates: Partial<Omit<Task, 'id'>>) => void;
+  takeOverTask: (taskId: string, userId: string) => void;
+  requestAndSimulateTakeover: (taskId: string, requestedByUserId: string) => void;
+  getAssigneeById: (assigneeId: string) => Assignee | undefined;
+  getContactsByCompany: (companyName: string, currentContactId: string) => Contact[];
+  getAvailableTags: () => string[];
+}
+
+export const useMessagingStore = create<MessagingState & MessagingActions>((set, get) => ({
+  tasks: mockTasks,
+  contacts: mockContacts,
+  assignees: mockAssignees,
+  searchTerm: '',
+  activeFilters: {
+    channels: [],
+    tags: [],
+    status: [],
+    priority: [],
+    assigneeId: [],
+  },
+  activeTaskView: 'all_open',
+
+  getTaskById: (id) => {
+    const task = get().tasks.find(t => t.id === id);
+    if (!task) return undefined;
+
+    const contact = get().contacts.find(c => c.id === task.contactId);
+    if (!contact) return undefined;
+
+    const assignee = get().assignees.find(a => a.id === task.assigneeId) || null;
+    const activeHandler = get().assignees.find(a => a.id === task.activeHandlerId) || null;
+
+    return { ...task, contact, assignee, activeHandler };
+  },
+
+  getFilteredTasks: () => {
+    const { tasks, contacts, assignees, searchTerm, activeFilters, activeTaskView } = get();
+    const lowercasedSearch = searchTerm.toLowerCase();
+
+    const viewFilteredTasks = tasks.filter(task => {
+      switch (activeTaskView) {
+        case 'all_open':
+          return task.status === 'open' || task.status === 'in-progress';
+        case 'unassigned':
+          return !task.assigneeId && (task.status === 'open' || task.status === 'in-progress');
+        case 'me':
+          return task.assigneeId === currentUserId && (task.status === 'open' || task.status === 'in-progress');
+        case 'done':
+          return task.status === 'done';
+        default:
+          return true;
+      }
+    });
+    const mapped = viewFilteredTasks.map(task => {
+      const contact = contacts.find(c => c.id === task.contactId) as Contact;
+      const assignee = assignees.find(a => a.id === task.assigneeId) || null;
+      return { ...task, contact, assignee };
+    });
+
+    const filtered = mapped.filter(task => {
+      const searchMatch = task.title.toLowerCase().includes(lowercasedSearch) || task.contact.name.toLowerCase().includes(lowercasedSearch);
+      const channelMatch = activeFilters.channels.length === 0 || activeFilters.channels.includes(task.channel);
+      const tagMatch = activeFilters.tags.length === 0 || activeFilters.tags.some(tag => task.tags.includes(tag));
+      const statusMatch = activeFilters.status.length === 0 || activeFilters.status.includes(task.status);
+      const priorityMatch = activeFilters.priority.length === 0 || activeFilters.priority.includes(task.priority);
+      const assigneeMatch = activeFilters.assigneeId.length === 0 || (task.assigneeId && activeFilters.assigneeId.includes(task.assigneeId));
+      
+      return searchMatch && channelMatch && tagMatch && statusMatch && priorityMatch && assigneeMatch;
+    });
+
+    return filtered.sort((a, b) => new Date(b.lastActivity.timestamp).getTime() - new Date(a.lastActivity.timestamp).getTime());
+  },
+
+  setSearchTerm: (term) => set({ searchTerm: term }),
+  
+  setActiveTaskView: (view) => set({ activeTaskView: view }),
+
+  setFilters: (newFilters) => set(state => ({
+    activeFilters: { ...state.activeFilters, ...newFilters }
+  })),
+
+  updateTask: (taskId, updates) => set(state => ({
+    tasks: state.tasks.map(task => 
+      task.id === taskId 
+        ? { ...task, ...updates, lastActivity: { ...task.lastActivity, timestamp: new Date().toISOString() } } 
+        : task
+    )
+  })),
+
+  takeOverTask: (taskId, userId) => set(state => ({
+    tasks: state.tasks.map(task => 
+      task.id === taskId 
+        ? { ...task, activeHandlerId: userId, takeoverRequested: false } 
+        : task
+    )
+  })),
+
+  requestAndSimulateTakeover: (taskId, requestedByUserId) => {
+    set(state => ({
+      tasks: state.tasks.map(task => 
+        task.id === taskId ? { ...task, takeoverRequested: true } : task
+      )
+    }));
+    // Simulate a 2-second delay for the other user to "approve"
+    setTimeout(() => get().takeOverTask(taskId, requestedByUserId), 2000);
+  },
+
+  getAssigneeById: (assigneeId: string) => {
+    return get().assignees.find(a => a.id === assigneeId);
+  },
+
+  getContactsByCompany: (companyName, currentContactId) => {
+    return get().contacts.filter(
+      c => c.company === companyName && c.id !== currentContactId
+    );
+  },
+
+  getAvailableTags: () => {
+    const contactTags = get().contacts.flatMap(c => c.tags);
+    const taskTags = get().tasks.flatMap(t => t.tags);
+    const allTags = new Set([...contactTags, ...taskTags]);
+    return Array.from(allTags);
+  }
+}));
+
+export const useMessagingTaskCounts = () => {
+  const tasks = useMessagingStore(s => s.tasks);
+  const [counts, setCounts] = useState<Record<TaskView, number>>({
+    all_open: 0,
+    unassigned: 0,
+    me: 0,
+    done: 0,
+  });
+
+  useEffect(() => {
+    // Deferring the count calculation until after the first paint.
+    // This frees up the main thread for initial animations to run smoothly.
+    const animationFrameId = requestAnimationFrame(() => {
+        const newCounts: Record<TaskView, number> = {
+            all_open: 0,
+            unassigned: 0,
+            me: 0,
+            done: 0,
+        };
+
+        for (const task of tasks) {
+            const isOpenOrInProgress = task.status === 'open' || task.status === 'in-progress';
+
+            if (isOpenOrInProgress) {
+                newCounts.all_open++;
+                if (!task.assigneeId) newCounts.unassigned++;
+                if (task.assigneeId === currentUserId) newCounts.me++;
+            } else if (task.status === 'done') {
+                newCounts.done++;
+            }
+        }
+        setCounts(newCounts);
+    });
+
+    return () => cancelAnimationFrame(animationFrameId);
+  }, [tasks]);
+
+  return counts;
+};
 ```
 
 ## File: src/pages/Messaging/types.ts
@@ -2602,8 +4509,7 @@ export type TaskView = 'all_open' | 'unassigned' | 'me' | 'done';
 import { useMemo, useCallback, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate, useLocation, useParams } from 'react-router-dom';
 import { useAppShellStore, type AppShellState, type ActivePage } from '@/store/appShell.store';
-import type { DataItem, ViewMode, SortConfig, SortableField, GroupableField, Status, Priority, CalendarDateProp, CalendarDisplayProp, CalendarColorProp } from '@/pages/DataDemo/types';
-import type { FilterConfig } from '@/pages/DataDemo/types';
+import type { GenericItem, ViewMode, SortConfig, GroupableField, Status, Priority, CalendarDateProp, CalendarDisplayProp, CalendarColorProp, FilterConfig } from '@/features/dynamic-view/types';
 import type { TaskView } from '@/pages/Messaging/types';
 import { BODY_STATES, SIDEBAR_STATES } from '@/lib/utils';
 
@@ -2872,7 +4778,7 @@ export function useAppViewManager() {
     }
     handleParamsChange({ sort: newSort }, true);
   };
-  const setPage = (newPage: number) => handleParamsChange({ page: newPage.toString() });
+  const setPage = (newPage: number) => handleParamsChange({ page: newPage > 1 ? newPage.toString() : null });
 
   // Calendar specific actions
   const setCalendarDateProp = (prop: CalendarDateProp) => handleParamsChange({ calDate: prop === 'dueDate' ? null : prop });
@@ -2884,7 +4790,7 @@ export function useAppViewManager() {
   const setCalendarItemLimit = (limit: number | 'all') => handleParamsChange({ calLimit: limit === 3 ? null : String(limit) });
   const setCalendarColorProp = (prop: CalendarColorProp) => handleParamsChange({ calColor: prop === 'none' ? null : prop });
 
-  const onItemSelect = useCallback((item: DataItem) => {
+  const onItemSelect = useCallback((item: GenericItem) => {
 		navigate(`/data-demo/${item.id}${location.search}`);
 	}, [navigate, location.search]);
 
@@ -2958,7 +4864,6 @@ import {
   PlusCircle
 } from 'lucide-react'
 import { gsap } from 'gsap'
-import { cn } from '@/lib/utils'
 import { DynamicViewProvider } from '@/features/dynamic-view/DynamicViewContext'
 import { PageLayout } from '@/components/shared/PageLayout'
 import { useScrollToBottom } from '@/hooks/useScrollToBottom.hook';
@@ -3005,7 +4910,7 @@ type ChartStat = {
 
 type StatItem = Stat | ChartStat;
 
-function DataDemoContent() {
+export default function DataDemoPage() {
   const {
     viewMode,
     groupBy,
@@ -3037,11 +4942,11 @@ function DataDemoContent() {
     return allItems.reduce((acc, item) => {
         const groupKey = String(item[groupBy as GroupableField]);
         if (!acc[groupKey]) {
-            acc[groupKey] = [];
+            acc[groupKey] = [] as GenericItem[];
         }
-        acc[groupKey].push(item as any);
+        acc[groupKey].push(item);
         return acc;
-    }, {} as Record<string, DataItem[]>);
+    }, {} as Record<string, GenericItem[]>);
   }, [allItems, groupBy]);
 
   const dataToRender = useMemo(() => {
@@ -3252,46 +5157,47 @@ function DataDemoContent() {
             </div>
           )}
 
-          <div className="min-h-[500px]">
-            {isInitialLoading 
-              ? <AnimatedLoadingSkeleton viewMode={viewMode} /> 
-              : viewMode === 'calendar' ? (
-                <CalendarView data={genericItems} />
-              ) : (
-                <div className="flex items-center justify-center h-96 text-muted-foreground">
-                  Group data by a metric to use the Kanban view.
-                </div>
-              )
-              : viewMode === 'kanban' ? (
-                isGroupedView ? (
-                  <KanbanView data={groupedData as Record<string, GenericItem[]>} />
-                ) : (
-                  <div className="flex items-center justify-center h-96 text-muted-foreground">
-                    Group data by a metric to use the Kanban view.
+        <div className="min-h-[500px]">
+          {isInitialLoading ? (
+            <AnimatedLoadingSkeleton viewMode={viewMode} />
+          ) : viewMode === 'calendar' ? (
+            <CalendarView data={genericItems} />
+          ) : viewMode === 'kanban' ? (
+            isGroupedView ? (
+              <KanbanView data={groupedData as Record<string, GenericItem[]>} />
+            ) : (
+              <div className="flex items-center justify-center h-96 text-muted-foreground">
+                Group data by a metric to use the Kanban view.
+              </div>
+            )
+          ) : !isGroupedView ? (
+            renderViewForData(allItems)
+          ) : (
+            // Grouped view with AnimatedTabs
+            <div className="relative">
+              <AnimatedTabs
+                tabs={groupTabs}
+                activeTab={activeGroupTab}
+                onTabChange={setActiveGroupTab}
+                wrapperClassName="flex flex-col"
+                className="border-b"
+                contentClassName="pt-6 flex-grow"
+              >
+                {groupTabs.map(tab => (
+                  <div key={tab.id} className="min-h-[440px]">
+                    {renderViewForData(
+                      tab.id === 'all' ? allItems : groupedData?.[tab.id] || []
+                    )}
                   </div>
-                )
-              )
-              : !isGroupedView ? renderViewForData(allItems) : (
-                // Grouped view with AnimatedTabs
-                <div className="relative">
-                  <AnimatedTabs
-                    tabs={groupTabs}
-                    activeTab={activeGroupTab}
-                    onTabChange={setActiveGroupTab}
-                    wrapperClassName="flex flex-col"
-                    className="border-b"
-                    contentClassName="pt-6 flex-grow"
-                  >
-                    {groupTabs.map(tab => (
-                      <div key={tab.id} className="min-h-[440px]">
-                        {renderViewForData(
-                          tab.id === 'all' ? allItems : groupedData?.[tab.id] || []
-                        )}
-                      </div>
-                    ))}
-                  </AnimatedTabs>
-              <div className="relative">
-                <AnimatedTabs
+                ))}
+              </AnimatedTabs>
+            </div>
+          )}
+        </div>
+
+        {/* Loader for infinite scroll */}
+        <div ref={loaderRef} className="flex justify-center items-center py-6">
+          {isLoading && !isInitialLoading && groupBy === 'none' && viewMode !== 'calendar' && (
             <div className="flex items-center gap-2 text-muted-foreground">
               <Loader2 className="w-5 h-5 animate-spin" />
               <span>Loading more...</span>
@@ -3300,29 +5206,11 @@ function DataDemoContent() {
           {!isLoading && !hasMore && dataToRender.length > 0 && !isInitialLoading && groupBy === 'none' && viewMode !== 'calendar' && (
             <p className="text-muted-foreground">You've reached the end.</p>
           )}
-      </div>
-      <ScrollToBottomButton isVisible={showScrollToBottom} onClick={scrollToBottom} />
-    </PageLayout>
-  )
-}
-            }
-          </div>
-
-          {/* Loader for infinite scroll */}
-          <div ref={loaderRef} className="flex justify-center items-center py-6">
-            {isLoading && !isInitialLoading && groupBy === 'none' && viewMode !== 'calendar' && (
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Loader2 className="w-5 h-5 animate-spin" />
-                <span>Loading more...</span>
-              </div>
-            )}
-            {!isLoading && !hasMore && dataToRender.length > 0 && !isInitialLoading && groupBy === 'none' && viewMode !== 'calendar' && (
-              <p className="text-muted-foreground">You've reached the end.</p>
-            )}
-          </div>
         </div>
+      </div>
         <ScrollToBottomButton isVisible={showScrollToBottom} onClick={scrollToBottom} />
       </PageLayout>
     </DynamicViewProvider>
   );
+}
 ```

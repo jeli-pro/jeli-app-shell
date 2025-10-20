@@ -3,16 +3,16 @@ import { cn } from '@/lib/utils'
 import { ArrowUpRight } from 'lucide-react'
 import type { GenericItem } from '../../types'
 import { useStaggeredAnimation } from '@/hooks/useStaggeredAnimation.motion.hook'
-import { EmptyState } from './EmptyState'
+import { EmptyState } from '../shared/EmptyState'
 import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
 import {
   useSelectedItem,
-} from '../store/dataDemo.store'
-import { AddDataItemCta } from './shared/AddDataItemCta'
+} from '../../../../pages/DataDemo/store/dataDemo.store'
+import { AddDataItemCta } from '../shared/AddDataItemCta'
 import { useDynamicView } from '../../DynamicViewContext'
 import { FieldRenderer } from '../shared/FieldRenderer'
 
-export function DataCardView({ data, isGrid = false }: { data: GenericItem[]; isGrid?: boolean }) {
+export function CardView({ data, isGrid = false }: { data: GenericItem[]; isGrid?: boolean }) {
   const { onItemSelect, itemId } = useAppViewManager();
   const selectedItem = useSelectedItem(itemId);
   const { config } = useDynamicView();

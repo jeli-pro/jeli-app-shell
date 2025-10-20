@@ -6,10 +6,10 @@ import { gsap } from "gsap";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { GenericItem } from '../../types';
-import type { CalendarDisplayProp, CalendarDateProp, CalendarColorProp, Status, Priority } from '../../pages/DataDemo/types';
+import type { CalendarDateProp, CalendarColorProp, Status, Priority } from '../../types';
 import { useAppViewManager } from "@/hooks/useAppViewManager.hook";
 import { useResizeObserver } from "@/hooks/useResizeObserver.hook";
-import { useSelectedItem, useDataDemoStore } from "../store/dataDemo.store";
+import { useSelectedItem, useDataDemoStore } from "../../../../pages/DataDemo/store/dataDemo.store";
 import { CalendarViewControls } from "./DataCalendarViewControls";
 import { useDynamicView } from '../../DynamicViewContext'
 import { FieldRenderer } from '../shared/FieldRenderer'
@@ -76,12 +76,11 @@ function CalendarHeader({ currentDate, onPrevMonth, onNextMonth, onToday }: {
   );
 }
 
-function CalendarEvent({ item, isSelected, isDragging, onDragStart, displayProps, colorProp }: { 
+function CalendarEvent({ item, isSelected, isDragging, onDragStart, colorProp }: { 
     item: GenericItem; 
     isSelected: boolean;
     isDragging: boolean;
     onDragStart: (e: React.DragEvent<HTMLDivElement>, itemId: string) => void;
-    displayProps: CalendarDisplayProp[];
     colorProp: CalendarColorProp;
 }) {
   const { onItemSelect } = useAppViewManager();
@@ -138,17 +137,16 @@ const datePropLabels: Record<CalendarDateProp, string> = {
   updatedAt: 'update dates',
 };
 
-export function DataCalendarView({ data }: CalendarViewProps) {
+export function CalendarView({ data }: CalendarViewProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const { 
     itemId,
-    calendarDateProp, 
-    calendarDisplayProps, 
+    calendarDateProp,
     calendarItemLimit,
     calendarColorProp,
   } = useAppViewManager();
   const selectedItem = useSelectedItem(itemId);
-  const updateItem = useDataDemoStore(s => s.updateItem);
+  const updateItem = useDataDemoStore((s: any) => s.updateItem);
   
   // Drag & Drop State
   const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
@@ -323,7 +321,6 @@ export function DataCalendarView({ data }: CalendarViewProps) {
                           isSelected={selectedItem?.id === item.id}
                           isDragging={draggedItemId === item.id}
                           onDragStart={handleDragStart}
-                          displayProps={calendarDisplayProps}
                           colorProp={calendarColorProp}
                         />
                       ))}

@@ -1,5 +1,17 @@
 import type { ViewConfig } from '@/features/dynamic-view/types';
-import { DATA_DEMO_PRIORITY_COLORS, DATA_DEMO_STATUS_COLORS } from './data/mockData';
+
+const DATA_DEMO_STATUS_COLORS = {
+  active: 'border-transparent bg-emerald-500/20 text-emerald-700 dark:text-emerald-400',
+  pending: 'border-transparent bg-amber-500/20 text-amber-700 dark:text-amber-400',
+  completed: 'border-transparent bg-sky-500/20 text-sky-700 dark:text-sky-400',
+  archived: 'border-transparent bg-zinc-500/20 text-zinc-700 dark:text-zinc-400',
+};
+const DATA_DEMO_PRIORITY_COLORS = {
+  low: 'border-transparent bg-blue-500/20 text-blue-700 dark:text-blue-400',
+  medium: 'border-transparent bg-yellow-500/20 text-yellow-700 dark:text-yellow-400',
+  high: 'border-transparent bg-orange-500/20 text-orange-700 dark:text-orange-400',
+  critical: 'border-transparent bg-red-600/20 text-red-700 dark:text-red-400',
+};
 
 export const dataDemoViewConfig: ViewConfig = {
   // Field definitions: The source of truth for all data properties

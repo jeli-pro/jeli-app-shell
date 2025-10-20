@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { type ReactNode } from 'react';
 import { capitalize, cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
-import { mockDataItems } from '../data/mockData';
+import { mockDataItems } from '@/pages/DataDemo/data/mockData';
 import type { GenericItem, GroupableField, SortConfig, FilterConfig } from '@/features/dynamic-view/types';
 
 // --- State and Actions ---
@@ -34,7 +34,7 @@ const defaultState: DataDemoState = {
 };
 
 // --- Store Implementation ---
-export const useDataDemoStore = create<DataDemoState & DataDemoActions>((set, get) => ({
+export const useDataDemoStore = create<DataDemoState & DataDemoActions>((set) => ({
     ...defaultState,
 
     loadData: ({ page, groupBy, filters, sortConfig, isFullLoad }) => {

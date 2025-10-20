@@ -5,7 +5,7 @@ export function useScrollToBottom(
 ) {
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
 
-  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+  const handleScroll = useCallback(() => {
     if (!contentRef.current) return;
     const { scrollTop, scrollHeight, clientHeight } = contentRef.current;
     // Show button if scrolled down more than 200px, and there's more than 200px left to scroll

@@ -8,18 +8,17 @@ import {
   ExternalLink
 } from 'lucide-react'
 import type { GenericItem } from '../../types'
-import type { SortableField } from '../../pages/DataDemo/types'
-import { EmptyState } from './EmptyState'
+import { EmptyState } from '../shared/EmptyState'
 import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
 import {
   useSelectedItem,
-} from '../store/dataDemo.store'
+} from '../../../../pages/DataDemo/store/dataDemo.store'
 import { capitalize } from '@/lib/utils'
-import { AddDataItemCta } from './shared/AddDataItemCta'
+import { AddDataItemCta } from '../shared/AddDataItemCta'
 import { useDynamicView } from '../../DynamicViewContext'
 import { FieldRenderer } from '../shared/FieldRenderer'
 
-export function DataTableView({ data }: { data: GenericItem[] }) {
+export function TableView({ data }: { data: GenericItem[] }) {
   const {
     sortConfig,
     setTableSort,
@@ -69,7 +68,7 @@ export function DataTableView({ data }: { data: GenericItem[] }) {
   }
 
   const handleSortClick = (field: string) => {
-    setTableSort(field as SortableField) // Cast for now
+    setTableSort(field)
   }
 
   const groupedData = useMemo(() => {

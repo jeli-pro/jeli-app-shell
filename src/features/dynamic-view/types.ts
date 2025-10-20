@@ -106,3 +106,24 @@ export interface ViewConfig {
   kanbanView: KanbanViewConfig;
   calendarView: CalendarViewConfig;
 }
+
+// --- GENERIC CONTROL & DATA TYPES ---
+
+export type Status = 'active' | 'pending' | 'completed' | 'archived';
+export type Priority = 'low' | 'medium' | 'high' | 'critical';
+
+export interface FilterConfig {
+  searchTerm: string;
+  [key: string]: any; // For dynamic filter keys like status, priority
+}
+
+export interface SortConfig {
+  key: string;
+  direction: 'asc' | 'desc';
+}
+
+export type GroupableField = 'status' | 'priority' | 'category';
+
+export type CalendarDateProp = 'dueDate' | 'createdAt' | 'updatedAt';
+export type CalendarDisplayProp = 'priority' | 'assignee' | 'status';
+export type CalendarColorProp = 'priority' | 'status' | 'category' | 'none';

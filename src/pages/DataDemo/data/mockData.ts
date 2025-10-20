@@ -1,6 +1,7 @@
-import type { DataItem } from '../types'
 
-export const mockDataItems: DataItem[] = [
+import type { GenericItem } from '@/features/dynamic-view/types';
+
+export const mockDataItems: GenericItem[] = [
   {
     id: '1',
     title: 'Mobile App Redesign Project',

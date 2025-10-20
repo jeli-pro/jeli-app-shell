@@ -1,5 +1,5 @@
 import { type ViewMode } from '../../types'
-import { Card, CardHeader, CardContent } from '@/components/ui/card'
+import { Card, CardHeader, CardContent } from '../../../../components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 
 export function AnimatedLoadingSkeleton({ viewMode }: { viewMode: ViewMode }) {

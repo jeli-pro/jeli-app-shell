@@ -156,7 +156,7 @@ const generateTasks = (count: number): Task[] => {
                 summaryPoints: Array.from({ length: 3 }, () => faker.lorem.sentence()),
                 suggestedReplies: Array.from({ length: 2 }, () => faker.lorem.words({ min: 3, max: 6})),
             },
-            activeHandlerId: faker.helpers.arrayElement([assignee?.id, null, 'user-ai-1']),
+            activeHandlerId: faker.helpers.arrayElement([assignee?.id ?? null, null, 'user-ai-1']),
         };
         tasks.push(task);
     }

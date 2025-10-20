@@ -11,7 +11,6 @@ import {
   PlusCircle
 } from 'lucide-react'
 import { gsap } from 'gsap'
-import { cn } from '@/lib/utils'
 import { DynamicViewProvider } from '@/features/dynamic-view/DynamicViewContext'
 import { PageLayout } from '@/components/shared/PageLayout'
 import { useScrollToBottom } from '@/hooks/useScrollToBottom.hook';
@@ -58,7 +57,7 @@ type ChartStat = {
 
 type StatItem = Stat | ChartStat;
 
-function DataDemoContent() {
+export default function DataDemoPage() {
   const {
     viewMode,
     groupBy,
@@ -90,11 +89,11 @@ function DataDemoContent() {
     return allItems.reduce((acc, item) => {
         const groupKey = String(item[groupBy as GroupableField]);
         if (!acc[groupKey]) {
-            acc[groupKey] = [];
+            acc[groupKey] = [] as GenericItem[];
         }
-        acc[groupKey].push(item as any);
+        acc[groupKey].push(item);
         return acc;
-    }, {} as Record<string, DataItem[]>);
+    }, {} as Record<string, GenericItem[]>);
   }, [allItems, groupBy]);
 
   const dataToRender = useMemo(() => {

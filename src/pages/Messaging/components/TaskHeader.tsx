@@ -32,7 +32,7 @@ const priorityOptions: { value: TaskPriority; label: string; icon: React.ReactNo
 
 
 interface TaskHeaderProps {
-  task: (Task & { contact: Contact; assignee: Assignee | null });
+  task: (Task & { contact: Contact; assignee: Assignee | null; activeHandler: Assignee | null });
 }
 
 export const TaskHeader: React.FC<TaskHeaderProps> = ({ task }) => {

@@ -2,16 +2,16 @@ import { useRef } from 'react'
 import { cn } from '@/lib/utils'
 import type { GenericItem } from '../../types'
 import { useStaggeredAnimation } from '@/hooks/useStaggeredAnimation.motion.hook'
-import { EmptyState } from './EmptyState'
+import { EmptyState } from '../shared/EmptyState'
 import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
 import { 
   useSelectedItem,
-} from '../store/dataDemo.store'
-import { AddDataItemCta } from './shared/AddDataItemCta'
+} from '../../../../pages/DataDemo/store/dataDemo.store'
+import { AddDataItemCta } from '../shared/AddDataItemCta'
 import { useDynamicView } from '../../DynamicViewContext'
 import { FieldRenderer } from '../shared/FieldRenderer'
 
-export function DataListView({ data }: { data: GenericItem[] }) {
+export function ListView({ data }: { data: GenericItem[] }) {
   const { onItemSelect, itemId } = useAppViewManager();
   const selectedItem = useSelectedItem(itemId);
   const { config } = useDynamicView();

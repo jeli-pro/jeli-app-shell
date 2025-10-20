@@ -1,67 +1,49 @@
-src/pages/DataDemo/index.tsx:318:15 - error TS1005: '}' expected.
+src/features/dynamic-view/components/views/CalendarView.tsx:79:69 - error TS2339: Property 'displayProps' does not exist on type '{ item: GenericItem; isSelected: boolean; isDragging: boolean; onDragStart: (e: DragEvent<HTMLDivElement>, itemId: string) => void; colorProp: CalendarColorProp; }'.
 
-318               : viewMode === 'kanban' ? (
-                  ~
+79 function CalendarEvent({ item, isSelected, isDragging, onDragStart, displayProps, colorProp }: {
+                                                                       ~~~~~~~~~~~~
 
-src/pages/DataDemo/index.tsx:347:18 - error TS17008: JSX element 'AnimatedTabs' has no corresponding closing tag.
+src/features/dynamic-view/components/views/CalendarView.tsx:79:69 - error TS6133: 'displayProps' is declared but its value is never read.
 
-347                 <AnimatedTabs
-                     ~~~~~~~~~~~~
+79 function CalendarEvent({ item, isSelected, isDragging, onDragStart, displayProps, colorProp }: {
+                                                                       ~~~~~~~~~~~~
 
-src/pages/DataDemo/index.tsx:348:18 - error TS1005: '>' expected.
+src/features/dynamic-view/components/views/CalendarView.tsx:145:5 - error TS6133: 'calendarDisplayProps' is declared but its value is never read.
 
-348             <div className="flex items-center gap-2 text-muted-foreground">
-                     ~~~~~~~~~
+145     calendarDisplayProps,
+        ~~~~~~~~~~~~~~~~~~~~
 
-src/pages/DataDemo/index.tsx:352:12 - error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+src/hooks/useAppViewManager.hook.ts:113:24 - error TS2304: Cannot find name 'SortableField'.
 
-352           )}
-               ~
+113   return { key: key as SortableField, direction: direction as 'asc' | 'desc' };
+                           ~~~~~~~~~~~~~
 
-src/pages/DataDemo/index.tsx:358:7 - error TS17002: Expected corresponding JSX closing tag for 'div'.
+src/hooks/useAppViewManager.hook.ts:265:32 - error TS2304: Cannot find name 'SortableField'.
 
-358     </PageLayout>
-          ~~~~~~~~~~
+265   const setTableSort = (field: SortableField) => {
+                                   ~~~~~~~~~~~~~
 
-src/pages/DataDemo/index.tsx:360:1 - error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+src/hooks/useAppViewManager.hook.ts:268:11 - error TS18047: 'sortConfig' is possibly 'null'.
 
-360 }
-    ~
+268       if (sortConfig.direction === 'desc') newSort = `${field}-asc`;
+              ~~~~~~~~~~
 
-src/pages/DataDemo/index.tsx:361:13 - error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+src/hooks/useAppViewManager.hook.ts:269:16 - error TS18047: 'sortConfig' is possibly 'null'.
 
-361             }
-                ~
+269       else if (sortConfig.direction === 'asc') newSort = null;
+                   ~~~~~~~~~~
 
-src/pages/DataDemo/index.tsx:376:11 - error TS17002: Expected corresponding JSX closing tag for 'PageLayout'.
+src/pages/Dashboard/index.tsx:125:30 - error TS2554: Expected 0 arguments, but got 1.
 
-376         </div>
-              ~~~
+125         handleScrollToBottom(e);
+                                 ~
 
-src/pages/DataDemo/index.tsx:378:9 - error TS17002: Expected corresponding JSX closing tag for 'DynamicViewProvider'.
+src/pages/DataDemo/data/mockData.ts:1:31 - error TS2307: Cannot find module '../types' or its corresponding type declarations.
 
-378       </PageLayout>
-            ~~~~~~~~~~
-
-src/pages/DataDemo/index.tsx:379:5 - error TS1005: ')' expected.
-
-379     </DynamicViewProvider>
-        ~~
-
-src/pages/DataDemo/index.tsx:380:3 - error TS1109: Expression expected.
-
-380   );
-      ~
-
-src/pages/DataDemo/index.tsx:380:5 - error TS1005: '}' expected.
-
-380   );
+1 import type { DataItem } from '../types'
+                                ~~~~~~~~~~
 
 
-  src/pages/DataDemo/index.tsx:61:28
-    61 function DataDemoContent() {
-                                  ~
-    The parser expected to find a '}' to match the '{' token here.
+Found 9 errors.
 
-
-Found 12 errors.
+error: "tsc" exited with code 1

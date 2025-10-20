@@ -6,9 +6,9 @@ import {
 import type { GenericItem } from '../../types'
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { EmptyState } from "./EmptyState";
+import { EmptyState } from "../shared/EmptyState";
 import { useAppViewManager } from "@/hooks/useAppViewManager.hook";
-import { useDataDemoStore } from "../store/dataDemo.store";
+import { useDataDemoStore } from "../../../../pages/DataDemo/store/dataDemo.store";
 import { useDynamicView } from '../../DynamicViewContext'
 import { FieldRenderer } from '../shared/FieldRenderer'
 
@@ -68,12 +68,12 @@ interface DataKanbanViewProps {
   data: Record<string, GenericItem[]>;
 }
 
-export function DataKanbanView({ data }: DataKanbanViewProps) {
+export function KanbanView({ data }: DataKanbanViewProps) {
   const [columns, setColumns] = useState(data);
   const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
   const [dropIndicator, setDropIndicator] = useState<{ columnId: string; index: number } | null>(null);
   const { groupBy } = useAppViewManager();
-  const updateItem = useDataDemoStore(s => s.updateItem);
+  const updateItem = useDataDemoStore((s: any) => s.updateItem);
 
   useEffect(() => {
     setColumns(data);

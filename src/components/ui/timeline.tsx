@@ -224,7 +224,6 @@ export function Timeline({
   if (orientation === "horizontal") {
     return (
       <ScrollArea
-        orientation="horizontal"
         className={cn("w-full", className)}
         {...props}
       >

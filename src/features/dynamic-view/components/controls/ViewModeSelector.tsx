@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import { gsap } from 'gsap'
 import { cn } from '@/lib/utils'
 import { List, Grid3X3, LayoutGrid, Table, LayoutDashboard, CalendarDays } from 'lucide-react'
-import type { ViewMode } from '../types'
+import type { ViewMode } from '../../types'
 import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
 
 const viewModes = [
@@ -14,7 +14,7 @@ const viewModes = [
   { id: 'table' as ViewMode, label: 'Table', icon: Table, description: 'Structured data table' }
 ]
 
-export function DataViewModeSelector() {
+export function ViewModeSelector() {
   const { viewMode, setViewMode } = useAppViewManager();
   const indicatorRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)

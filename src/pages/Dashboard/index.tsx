@@ -122,7 +122,7 @@ export function DashboardContent() {
 
     const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
         handleTopBarScroll(e);
-        handleScrollToBottom(e);
+        handleScrollToBottom();
     }, [handleTopBarScroll, handleScrollToBottom]);
 
     useDashboardAnimations(contentRef, statsCardsContainerRef, featureCardsContainerRef);

@@ -16,17 +16,12 @@ import {
   AlertCircle,
   Circle
 } from 'lucide-react'
-import type { DataItem } from '../types'
+import type { GenericItem } from '@/features/dynamic-view/types'
 import { useStaggeredAnimation } from '@/hooks/useStaggeredAnimation.motion.hook'
-import {
-  AssigneeInfo,
-  ItemProgressBar,
-  ItemPriorityBadge,
-  ItemTags,
-} from './shared/DataItemParts'
 import { DataDetailActions } from './DataDetailActions'
+import { FieldRenderer } from '@/features/dynamic-view/components/shared/FieldRenderer'
 interface DataDetailPanelProps {
-  item: DataItem | null
+  item: GenericItem | null
 }
 
 export function DataDetailPanel({ item }: DataDetailPanelProps) {
@@ -65,7 +60,7 @@ export function DataDetailPanel({ item }: DataDetailPanelProps) {
       <div className="p-6 border-b border-border/50 bg-gradient-to-r from-card/50 to-card/30 backdrop-blur-sm">
         <div className="flex items-start gap-4 mb-4">
           <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-primary/10 rounded-2xl flex items-center justify-center text-3xl flex-shrink-0">
-            {item.thumbnail}
+            <FieldRenderer item={item} fieldId="thumbnailEmoji" />
           </div>
           <div className="flex-1 min-w-0">
             <h1 className="text-2xl font-bold mb-2 leading-tight">
@@ -83,14 +78,14 @@ export function DataDetailPanel({ item }: DataDetailPanelProps) {
             {React.createElement(getStatusIcon(item.status), { className: "w-3 h-3 mr-1" })}
             {item.status}
           </Badge>
-          <ItemPriorityBadge priority={item.priority} />
+          <FieldRenderer item={item} fieldId="priority" />
           <Badge variant="outline" className="bg-accent/50">
             {item.category}
           </Badge>
         </div>
 
         {/* Progress */}
-        <ItemProgressBar completion={item.metrics.completion} />
+        <FieldRenderer item={item} fieldId="metrics.completion" options={{ showPercentage: true }} />
       </div>
 
       {/* Content */}
@@ -102,7 +97,7 @@ export function DataDetailPanel({ item }: DataDetailPanelProps) {
               <User className="w-4 h-4 text-muted-foreground" />
               <h3 className="font-semibold text-sm">Assigned to</h3>
             </div>
-            <AssigneeInfo assignee={item.assignee} avatarClassName="w-12 h-12" />
+            <FieldRenderer item={item} fieldId="assignee" options={{ avatarClassName: "w-12 h-12" }} />
           </div>
 
           {/* Metrics */}
@@ -111,12 +106,7 @@ export function DataDetailPanel({ item }: DataDetailPanelProps) {
               <BarChart3 className="w-4 h-4 text-muted-foreground" />
               <h3 className="font-semibold text-sm">Engagement Metrics</h3>
             </div>
-            <div className="grid grid-cols-[repeat(auto-fit,minmax(80px,1fr))] gap-4">
-              <div className="text-center">
-                <p className="text-2xl font-bold">{item.metrics.views + item.metrics.likes + item.metrics.shares}</p>
-                <p className="text-xs text-muted-foreground">Shares</p>
-              </div>
-            </div>
+            <FieldRenderer item={item} fieldId="metrics" />
           </div>
 
           {/* Tags */}
@@ -125,7 +115,7 @@ export function DataDetailPanel({ item }: DataDetailPanelProps) {
               <Tag className="w-4 h-4 text-muted-foreground" />
               <h3 className="font-semibold text-sm">Tags</h3>
             </div>
-            <ItemTags tags={item.tags} />
+            <FieldRenderer item={item} fieldId="tags" />
           </div>
 
           {/* Content Details */}
@@ -154,7 +144,7 @@ export function DataDetailPanel({ item }: DataDetailPanelProps) {
             <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
               <h3 className="font-semibold text-sm mb-3">Attachments</h3>
               <div className="space-y-2">
-                {item.content.attachments.map((attachment, index) => {
+                {item.content.attachments.map((attachment: any, index: number) => {
                   const IconComponent = getFileIcon(attachment.type)
                   return (
                     <div

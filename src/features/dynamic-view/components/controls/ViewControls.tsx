@@ -26,7 +26,6 @@ import {
 } from '@/components/ui/command'
 
 import type { FilterConfig } from '../../types'
-import type { SortableField } from '../../pages/DataDemo/types'
 import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
 import { useDynamicView } from '../../DynamicViewContext'
 
@@ -34,7 +33,7 @@ export interface DataViewControlsProps {
   // groupOptions will now come from config
 }
 
-export function DataViewControls() {
+export function ViewControls() {
   const {
     filters,
     setFilters,
@@ -113,7 +112,7 @@ export function DataViewControls() {
                 setSort(null)
               } else {
                 const [key, direction] = value.split('-')
-                setSort({ key: key as SortableField, direction: direction as 'asc' | 'desc' })
+                setSort({ key: key, direction: direction as 'asc' | 'desc' })
               }
             }}
           >

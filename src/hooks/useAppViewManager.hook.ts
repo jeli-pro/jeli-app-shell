@@ -1,8 +1,7 @@
 import { useMemo, useCallback, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate, useLocation, useParams } from 'react-router-dom';
 import { useAppShellStore, type AppShellState, type ActivePage } from '@/store/appShell.store';
-import type { DataItem, ViewMode, SortConfig, SortableField, GroupableField, Status, Priority, CalendarDateProp, CalendarDisplayProp, CalendarColorProp } from '@/pages/DataDemo/types';
-import type { FilterConfig } from '@/pages/DataDemo/types';
+import type { GenericItem, ViewMode, SortConfig, GroupableField, Status, Priority, CalendarDateProp, CalendarDisplayProp, CalendarColorProp, FilterConfig } from '@/features/dynamic-view/types';
 import type { TaskView } from '@/pages/Messaging/types';
 import { BODY_STATES, SIDEBAR_STATES } from '@/lib/utils';
 
@@ -111,7 +110,7 @@ export function useAppViewManager() {
 		if (sortParam === 'default') return null;
 
 		const [key, direction] = sortParam.split('-');
-		return { key: key as SortableField, direction: direction as 'asc' | 'desc' };
+		return { key: key as string, direction: direction as 'asc' | 'desc' };
 	}, [sort]);
   const calendarDateProp = useMemo(() => (calDate || 'dueDate') as CalendarDateProp, [calDate]);
   const calendarDisplayProps = useMemo(
@@ -263,15 +262,15 @@ export function useAppViewManager() {
       handleParamsChange({ sort: `${config.key}-${config.direction}` }, true);
     }
   }
-  const setTableSort = (field: SortableField) => {
+  const setTableSort = (field: string) => {
     let newSort: string | null = `${field}-desc`;
-    if (sortConfig?.key === field) {
+    if (sortConfig && sortConfig.key === field) {
       if (sortConfig.direction === 'desc') newSort = `${field}-asc`;
       else if (sortConfig.direction === 'asc') newSort = null;
     }
     handleParamsChange({ sort: newSort }, true);
   };
-  const setPage = (newPage: number) => handleParamsChange({ page: newPage.toString() });
+  const setPage = (newPage: number) => handleParamsChange({ page: newPage > 1 ? newPage.toString() : null });
 
   // Calendar specific actions
   const setCalendarDateProp = (prop: CalendarDateProp) => handleParamsChange({ calDate: prop === 'dueDate' ? null : prop });
@@ -283,7 +282,7 @@ export function useAppViewManager() {
   const setCalendarItemLimit = (limit: number | 'all') => handleParamsChange({ calLimit: limit === 3 ? null : String(limit) });
   const setCalendarColorProp = (prop: CalendarColorProp) => handleParamsChange({ calColor: prop === 'none' ? null : prop });
 
-  const onItemSelect = useCallback((item: DataItem) => {
+  const onItemSelect = useCallback((item: GenericItem) => {
 		navigate(`/data-demo/${item.id}${location.search}`);
 	}, [navigate, location.search]);
 

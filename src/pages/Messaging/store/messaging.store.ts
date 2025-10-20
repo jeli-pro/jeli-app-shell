@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { create } from 'zustand';
 import { mockTasks, mockContacts, mockAssignees } from '../data/mockData';
-import type { Task, Contact, Channel, Assignee, TaskStatus, TaskPriority, TaskView, Message, JourneyPointType } from '../types';
+import type { Task, Contact, Channel, Assignee, TaskStatus, TaskPriority, TaskView } from '../types';
 
 const currentUserId = 'user-1'; // Mock current user
 
