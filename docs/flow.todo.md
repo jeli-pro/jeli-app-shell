@@ -2,7 +2,7 @@
 
 I am obsessed with laravel filament... so make everything about data demo page is highly available to customizable for consumer and developer while also make them so easy to use in the most less code and effort.
 
-===
+=== DONE
 
 data demo page: we need centralized control of (search, filter, sort) for amazing cohesive UX . reusable for all view mode
 
@@ -24,7 +24,74 @@ data demo page: list  view mode: remove line separator
 
 ===
 
-data demo page: the data model should be based on message page,
+data demo page: calendar view: dragging items to left or right edge should move to previous or next month so user can easily drop item to different month. of course with acceleration
+
+===
+
+data demo page: calendar view: we need amazing tooltip with amazing UI when user hover over item
+
+===
+
+data demo page: kanban view
+
+1. fix re render on first load. or maybe race condition happening. currenty at first load, group by status is none then suddenly change itself to certain group like late initialization happening
+
+2. also sliver stats cards magnetism is working well for list, cards, calendar, grid, table, but not for kanban view.
+
+===
+
+data demo page: kanban view
+
+we need uncategorized block to show data that are not in any group yet
+
+===
+
+message page: the UI UX of  {xxxxx} should be like notion, where every data points are editable
+
+===
+
+data demo page:
+
+1. calendar view: beside month , week and day view, we need list view using DataListView.tsx.
+
+2. but for list view should be open as split view mode in right pane, where main/left pane is the previous view (month/week)
+
+3. and in list view there is src animated-tabs.tsx to show `overdue` and `no date`
+
+4. so user can drag items from list view right pane to calendar view left pane
+
+===
+
+data demo page: calendar view: beside month view, add week and day view
+
+but for day view should be open as split view mode in right pane, where main/left pane is the previous view (month/week)
+
+===
+
+data demo page: when user open data demo page that automatically show as overlay side pane,the UI UX should be like notion, where every data points are editable and can be dragged drop reorder
+
+===
+
+data demo page: lets seed more data 20x using faker.js
+
+===
+
+super refactor;
+
+data demo page and message page: lets unified the data model to follow message page data model, up to the UI UX.
+
+but treat current data demo layout and UI as template like notion, so only the data shape that flows into, but you can adjust item components
+
+spread the model into another sub page in data demo sidebar. like contact, company, etc
+
+
+===
+
+jeli app shell project: I want the data demo page highly data flows dynamic to devs as lib so please turn data demo into something like dynamic-view project...
+
+so lib dev user can use the data demo to their project programmatically with e2e type safe config.
+
+also please do it without UI shift
 
 === DONE
 
@@ -219,7 +286,7 @@ message page:
 
 lets refactor the architecture of message:
 
-- we need to have mental model of message is basically to do list with its properties like (due date, status, relationship, description, labels)
+- we need to have mental model of message is basically a to do list with its properties like (due date, status, relationship, description, labels, custom props)
 
 - present the mental model to UI UX with amazing look and cohesive manner
 

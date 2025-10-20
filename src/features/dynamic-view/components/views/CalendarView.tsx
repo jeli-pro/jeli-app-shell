@@ -4,18 +4,18 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { gsap } from "gsap";
 
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { cn, getPriorityColor } from "@/lib/utils";
-import type { DataItem, CalendarDisplayProp, CalendarDateProp, CalendarColorProp, Status, Priority } from "../types";
+import { cn } from "@/lib/utils";
+import type { GenericItem } from '../../types';
+import type { CalendarDisplayProp, CalendarDateProp, CalendarColorProp, Status, Priority } from '../../pages/DataDemo/types';
 import { useAppViewManager } from "@/hooks/useAppViewManager.hook";
 import { useResizeObserver } from "@/hooks/useResizeObserver.hook";
 import { useSelectedItem, useDataDemoStore } from "../store/dataDemo.store";
 import { CalendarViewControls } from "./DataCalendarViewControls";
-import { ItemTags } from "./shared/DataItemParts";
+import { useDynamicView } from '../../DynamicViewContext'
+import { FieldRenderer } from '../shared/FieldRenderer'
 
 interface CalendarViewProps {
-  data: DataItem[];
+  data: GenericItem[];
 }
 
 const PRIORITY_BG_COLORS: Record<Priority, string> = {
@@ -77,7 +77,7 @@ function CalendarHeader({ currentDate, onPrevMonth, onNextMonth, onToday }: {
 }
 
 function CalendarEvent({ item, isSelected, isDragging, onDragStart, displayProps, colorProp }: { 
-    item: DataItem; 
+    item: GenericItem; 
     isSelected: boolean;
     isDragging: boolean;
     onDragStart: (e: React.DragEvent<HTMLDivElement>, itemId: string) => void;
@@ -85,16 +85,17 @@ function CalendarEvent({ item, isSelected, isDragging, onDragStart, displayProps
     colorProp: CalendarColorProp;
 }) {
   const { onItemSelect } = useAppViewManager();
-    const hasFooter = displayProps.includes('priority') || displayProps.includes('assignee');
+  const { config } = useDynamicView();
+  const { calendarView: viewConfig } = config;
 
     const colorClass = useMemo(() => {
       switch (colorProp) {
-        case 'priority': return PRIORITY_BG_COLORS[item.priority];
-        case 'status': return STATUS_BG_COLORS[item.status];
-        case 'category': return getCategoryBgColor(item.category);
+        case 'priority': return PRIORITY_BG_COLORS[item.priority as Priority];
+        case 'status': return STATUS_BG_COLORS[item.status as Status];
+        case 'category': return getCategoryBgColor(item.category as string);
         default: return null;
       }
-    }, [colorProp, item.priority, item.status, item.category]);
+    }, [colorProp, item]);
 
     return (
         <div
@@ -110,35 +111,21 @@ function CalendarEvent({ item, isSelected, isDragging, onDragStart, displayProps
                   : "bg-card/60 dark:bg-neutral-800/60 backdrop-blur-sm hover:bg-card/80 dark:hover:bg-neutral-700/70"
             )}
         >
-            <h4 className={cn(
+            <div className={cn(
               "font-semibold text-sm leading-tight line-clamp-2",
               colorClass ? "text-inherit" : "text-card-foreground/90"
             )}>
-                {item.title}
-            </h4>
+              <FieldRenderer item={item} fieldId={viewConfig.titleField} />
+            </div>
 
-            {displayProps.includes('tags') && item.tags.length > 0 && (
-                <ItemTags tags={item.tags} />
-            )}
-
-            {hasFooter && (
+            {viewConfig.displayFields.length > 0 && (
                 <div className={cn(
-                    "flex items-center justify-between pt-1 border-t",
+                    "flex items-center justify-between pt-1 border-t flex-wrap gap-2",
                     colorClass ? "border-black/10 dark:border-white/10" : "border-border/30 dark:border-neutral-700/50"
                 )}>
-                    {displayProps.includes('priority') ? (
-                        <Badge className={cn("text-xs border capitalize", getPriorityColor(item.priority))}>
-                            {item.priority}
-                        </Badge>
-                    ) : <div />}
-                    {displayProps.includes('assignee') && (
-                        <Avatar className="w-5 h-5">
-                            <AvatarImage src={item.assignee.avatar} />
-                            <AvatarFallback className="text-[10px] bg-muted dark:bg-neutral-700 text-foreground dark:text-neutral-200 font-medium">
-                                {item.assignee.name.split(" ").map((n) => n[0]).join("")}
-                            </AvatarFallback>
-                        </Avatar>
-                    )}
+                  {viewConfig.displayFields.map(fieldId => (
+                    <FieldRenderer key={fieldId} item={item} fieldId={fieldId} options={{ compact: true, avatarClassName: 'w-5 h-5' }}/>
+                  ))}
                 </div>
             )}
         </div>
@@ -184,7 +171,7 @@ export function DataCalendarView({ data }: CalendarViewProps) {
   const itemsByDateProp = useMemo(() => data.filter(item => !!item[calendarDateProp]), [data, calendarDateProp]);
 
   const eventsByDate = useMemo(() => {
-    const eventsMap = new Map<string, DataItem[]>();
+    const eventsMap = new Map<string, GenericItem[]>();
     itemsByDateProp.forEach(item => {
       const dateValue = item[calendarDateProp];
       if (!dateValue) return;

@@ -25,36 +25,16 @@ import {
   CommandSeparator,
 } from '@/components/ui/command'
 
-import type { SortableField, Status, Priority, FilterConfig, GroupableField } from '../types'
+import type { FilterConfig } from '../../types'
+import type { SortableField } from '../../pages/DataDemo/types'
 import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
-
-const statusOptions: { value: Status; label: string }[] = [
-  { value: 'active', label: 'Active' },
-  { value: 'pending', label: 'Pending' },
-  { value: 'completed', label: 'Completed' },
-  { value: 'archived', label: 'Archived' },
-]
-
-const priorityOptions: { value: Priority; label: string }[] = [
-  { value: 'critical', label: 'Critical' },
-  { value: 'high', label: 'High' },
-  { value: 'medium', label: 'Medium' },
-  { value: 'low', label: 'Low' },
-]
-
-const sortOptions: { value: SortableField, label: string }[] = [
-  { value: 'updatedAt', label: 'Last Updated' },
-  { value: 'title', label: 'Title' },
-  { value: 'status', label: 'Status' },
-  { value: 'priority', label: 'Priority' },
-  { value: 'metrics.completion', label: 'Progress' },
-]
+import { useDynamicView } from '../../DynamicViewContext'
 
 export interface DataViewControlsProps {
-  groupOptions: { id: GroupableField | 'none'; label: string }[];
+  // groupOptions will now come from config
 }
 
-export function DataViewControls({ groupOptions }: DataViewControlsProps) {
+export function DataViewControls() {
   const {
     filters,
     setFilters,
@@ -64,12 +44,16 @@ export function DataViewControls({ groupOptions }: DataViewControlsProps) {
     setGroupBy,
     viewMode,
   } = useAppViewManager();
+  const { config } = useDynamicView();
+  const sortOptions = config.sortableFields;
+  const groupOptions = config.groupableFields;
+  const filterableFields = config.filterableFields;
 
   const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setFilters({ ...filters, searchTerm: event.target.value })
   }
   
-  const activeFilterCount = filters.status.length + filters.priority.length
+  const activeFilterCount = filterableFields.reduce((acc, field) => acc + (filters[field.id]?.length || 0), 0)
 
   return (
     <div className="flex flex-col sm:flex-row items-center gap-2 w-full">
@@ -101,7 +85,7 @@ export function DataViewControls({ groupOptions }: DataViewControlsProps) {
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-[240px] p-0" align="start">
-          <CombinedFilter filters={filters} onFiltersChange={setFilters} />
+          <CombinedFilter filters={filters} onFiltersChange={setFilters} filterableFields={filterableFields} />
         </PopoverContent>
       </Popover>
 
@@ -117,7 +101,7 @@ export function DataViewControls({ groupOptions }: DataViewControlsProps) {
         <DropdownMenuTrigger asChild>
           <Button variant="outline" size="sm" className="h-9 w-full sm:w-auto justify-start">
             <SortAsc className="mr-2 h-4 w-4" />
-            Sort by: {sortOptions.find(o => o.value === sortConfig?.key)?.label || 'Default'}
+            Sort by: {sortOptions.find(o => o.id === sortConfig?.key)?.label || 'Default'}
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-[200px]">
@@ -136,9 +120,9 @@ export function DataViewControls({ groupOptions }: DataViewControlsProps) {
             <DropdownMenuRadioItem value="default-">Default</DropdownMenuRadioItem>
             <DropdownMenuSeparator />
             {sortOptions.map(option => (
-              <React.Fragment key={option.value}>
-                <DropdownMenuRadioItem value={`${option.value}-desc`}>{option.label} (Desc)</DropdownMenuRadioItem>
-                <DropdownMenuRadioItem value={`${option.value}-asc`}>{option.label} (Asc)</DropdownMenuRadioItem>
+              <React.Fragment key={option.id}>
+                <DropdownMenuRadioItem value={`${option.id}-desc`}>{option.label} (Desc)</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value={`${option.id}-asc`}>{option.label} (Asc)</DropdownMenuRadioItem>
               </React.Fragment>
             ))}
           </DropdownMenuRadioGroup>
@@ -174,38 +158,44 @@ export function DataViewControls({ groupOptions }: DataViewControlsProps) {
 function CombinedFilter({
   filters,
   onFiltersChange,
+  filterableFields,
 }: {
   filters: FilterConfig;
   onFiltersChange: (filters: FilterConfig) => void;
+  filterableFields: { id: string; label: string; options: { id: string; label: string }[] }[];
 }) {
-  const selectedStatus = new Set(filters.status);
-  const selectedPriority = new Set(filters.priority);
-
-  const handleStatusSelect = (status: Status) => {
-    selectedStatus.has(status) ? selectedStatus.delete(status) : selectedStatus.add(status);
-    onFiltersChange({ ...filters, status: Array.from(selectedStatus) });
+  const handleSelect = (fieldId: string, value: string) => {
+    const currentValues = new Set(filters[fieldId] || []);
+    currentValues.has(value) ? currentValues.delete(value) : currentValues.add(value);
+    
+    onFiltersChange({ ...filters, [fieldId]: Array.from(currentValues) });
   };
 
-  const handlePrioritySelect = (priority: Priority) => {
-    selectedPriority.has(priority) ? selectedPriority.delete(priority) : selectedPriority.add(priority);
-    onFiltersChange({ ...filters, priority: Array.from(selectedPriority) });
-  };
+  const hasActiveFilters = filterableFields.some(field => (filters[field.id] || []).length > 0);
 
-  const hasActiveFilters = filters.status.length > 0 || filters.priority.length > 0;
+  const clearFilters = () => {
+    const clearedFilters: Partial<FilterConfig> = {};
+    filterableFields.forEach(field => {
+      clearedFilters[field.id as keyof Omit<FilterConfig, 'searchTerm'>] = [];
+    });
+    onFiltersChange({ searchTerm: filters.searchTerm, ...clearedFilters });
+  }
 
   return (
     <Command>
       <CommandInput placeholder="Filter by..." />
       <CommandList>
         <CommandEmpty>No results found.</CommandEmpty>
-
-        <CommandGroup heading="Status">
-          {statusOptions.map((option) => {
-            const isSelected = selectedStatus.has(option.value);
+        
+        {filterableFields.map((field, index) => (
+          <React.Fragment key={field.id}>
+            <CommandGroup heading={field.label}>
+              {field.options.map((option) => {
+            const isSelected = (filters[field.id] || []).includes(option.id);
             return (
               <CommandItem
-                key={option.value}
-                onSelect={() => handleStatusSelect(option.value)}
+                key={option.id}
+                onSelect={() => handleSelect(field.id, option.id)}
               >
                 <div
                   className={cn(
@@ -219,38 +209,17 @@ function CombinedFilter({
               </CommandItem>
             );
           })}
-        </CommandGroup>
-
-        <CommandSeparator />
-
-        <CommandGroup heading="Priority">
-          {priorityOptions.map((option) => {
-            const isSelected = selectedPriority.has(option.value);
-            return (
-              <CommandItem
-                key={option.value}
-                onSelect={() => handlePrioritySelect(option.value)}
-              >
-                <div
-                  className={cn(
-                    'mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary',
-                    isSelected ? 'bg-primary text-primary-foreground' : 'opacity-50 [&_svg]:invisible'
-                  )}
-                >
-                  <Check className={cn('h-4 w-4')} />
-                </div>
-                <span>{option.label}</span>
-              </CommandItem>
-            );
-          })}
-        </CommandGroup>
+            </CommandGroup>
+            {index < filterableFields.length - 1 && <CommandSeparator />}
+          </React.Fragment>
+        ))}
 
         {hasActiveFilters && (
           <>
             <CommandSeparator />
             <CommandGroup>
               <CommandItem
-                onSelect={() => onFiltersChange({ ...filters, status: [], priority: [] })}
+                onSelect={clearFilters}
                 className="justify-center text-center text-sm"
               >
                 Clear filters

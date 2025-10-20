@@ -1,27 +1,22 @@
 import { useRef } from 'react'
 import { cn } from '@/lib/utils'
-import { Badge } from '@/components/ui/badge'
 import { ArrowUpRight } from 'lucide-react'
-import type { DataItem } from '../types'
+import type { GenericItem } from '../../types'
 import { useStaggeredAnimation } from '@/hooks/useStaggeredAnimation.motion.hook'
 import { EmptyState } from './EmptyState'
 import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
 import {
   useSelectedItem,
 } from '../store/dataDemo.store'
-import {
-  AssigneeInfo,
-  ItemMetrics,
-  ItemProgressBar,
-  ItemStatusBadge,
-  ItemTags,
-  ItemDateInfo,
-} from './shared/DataItemParts'
 import { AddDataItemCta } from './shared/AddDataItemCta'
+import { useDynamicView } from '../../DynamicViewContext'
+import { FieldRenderer } from '../shared/FieldRenderer'
 
-export function DataCardView({ data, isGrid = false }: { data: DataItem[]; isGrid?: boolean }) {
+export function DataCardView({ data, isGrid = false }: { data: GenericItem[]; isGrid?: boolean }) {
   const { onItemSelect, itemId } = useAppViewManager();
   const selectedItem = useSelectedItem(itemId);
+  const { config } = useDynamicView();
+  const { cardView: viewConfig } = config;
 
   const containerRef = useRef<HTMLDivElement>(null)
   useStaggeredAnimation(containerRef, [data], { mode: 'incremental', y: 40 });
@@ -42,7 +37,7 @@ export function DataCardView({ data, isGrid = false }: { data: DataItem[]; isGri
         "pb-4"
       )}
     >
-      {items.map((item: DataItem) => {
+      {items.map((item: GenericItem) => {
         const isSelected = selectedItem?.id === item.id
         
         return (
@@ -60,54 +55,36 @@ export function DataCardView({ data, isGrid = false }: { data: DataItem[]; isGri
             <div className="relative p-6 pb-4">
               <div className="flex items-start justify-between mb-4">
                 <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-primary/10 rounded-2xl flex items-center justify-center text-3xl group-hover:scale-110 transition-transform duration-300">
-                  {item.thumbnail}
+                  <FieldRenderer item={item} fieldId={viewConfig.thumbnailField} />
                 </div>
                 <ArrowUpRight className="w-5 h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 group-hover:-translate-y-1 transition-all duration-300" />
               </div>
 
-              {/* Priority indicator */}
-              <div className="absolute top-4 right-4">
-                <div className={cn(
-                  "w-3 h-3 rounded-full",
-                  item.priority === 'critical' && "bg-red-500",
-                  item.priority === 'high' && "bg-orange-500",
-                  item.priority === 'medium' && "bg-blue-500",
-                  item.priority === 'low' && "bg-green-500"
-                )} />
+              {/* Header Fields (e.g., priority indicator) */}
+              <div className="absolute top-4 right-4 flex items-center gap-2">
+                {viewConfig.headerFields.map(fieldId => (
+                  <FieldRenderer key={fieldId} item={item} fieldId={fieldId} />
+                ))}
               </div>
             </div>
 
             {/* Card Content */}
-            <div className="px-6 pb-6">
-              {/* Title and Description */}
-              <h3 className="font-semibold text-lg mb-2 group-hover:text-primary transition-colors line-clamp-2">
-                {item.title}
-              </h3>
-              <p className="text-muted-foreground text-sm mb-4 line-clamp-3">
-                {item.description}
-              </p>
-
-              {/* Status and Category */}
-              <div className="flex items-center gap-2 mb-4">
-                <ItemStatusBadge status={item.status} />
-                <Badge variant="outline" className="bg-accent/50 text-xs">
-                  {item.category}
-                </Badge>
+            <div className="px-6 pb-6 space-y-4">
+              <div className="font-semibold text-lg group-hover:text-primary transition-colors line-clamp-2">
+                <FieldRenderer item={item} fieldId={viewConfig.titleField} />
               </div>
-
-              {/* Tags */}
-              <div className="mb-4"><ItemTags tags={item.tags} /></div>
-
-              {/* Progress */}
-              <div className="mb-4"><ItemProgressBar completion={item.metrics.completion} /></div>
-
-              {/* Assignee */}
-              <div className="mb-4"><AssigneeInfo assignee={item.assignee} /></div>
-
-              {/* Metrics */}
+              <div className="text-muted-foreground text-sm line-clamp-3">
+                <FieldRenderer item={item} fieldId={viewConfig.descriptionField} />
+              </div>
+              
+              {viewConfig.contentFields.map(fieldId => (
+                <FieldRenderer key={fieldId} item={item} fieldId={fieldId} options={{ showPercentage: true }} />
+              ))}
+              
               <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <ItemMetrics metrics={item.metrics} />
-                <ItemDateInfo date={item.updatedAt} />
+                {viewConfig.footerFields.map(fieldId => (
+                  <FieldRenderer key={fieldId} item={item} fieldId={fieldId} />
+                ))}
               </div>
             </div>
 

@@ -3,11 +3,11 @@ import { type ReactNode } from 'react';
 import { capitalize, cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { mockDataItems } from '../data/mockData';
-import type { DataItem, GroupableField, SortConfig, FilterConfig } from '../types';
+import type { GenericItem, GroupableField, SortConfig, FilterConfig } from '@/features/dynamic-view/types';
 
 // --- State and Actions ---
 interface DataDemoState {
-    items: DataItem[];
+    items: GenericItem[];
     hasMore: boolean;
     isLoading: boolean;
     isInitialLoading: boolean;
@@ -22,7 +22,7 @@ interface DataDemoActions {
         sortConfig: SortConfig | null;
     isFullLoad?: boolean;
     }) => void;
-    updateItem: (itemId: string, updates: Partial<DataItem>) => void;
+    updateItem: (itemId: string, updates: Partial<GenericItem>) => void;
 }
 
 const defaultState: DataDemoState = {
@@ -54,7 +54,7 @@ export const useDataDemoStore = create<DataDemoState & DataDemoActions>((set, ge
             if (sortConfig) {
                 filteredItems.sort((a, b) => {
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    const getNestedValue = (obj: DataItem, path: string): any =>
+                    const getNestedValue = (obj: GenericItem, path: string): any =>
                         path.split('.').reduce((o: any, k) => (o || {})[k], obj);
 
                     const aValue = getNestedValue(a, sortConfig.key);
@@ -176,5 +176,5 @@ export const useDataToRender = (
 
 export const useSelectedItem = (itemId?: string) => {
     if (!itemId) return null;
-    return mockDataItems.find(item => item.id === itemId) ?? null;
+    return (mockDataItems.find(item => item.id === itemId) as GenericItem) ?? null;
 };

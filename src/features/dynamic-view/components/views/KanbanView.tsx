@@ -2,30 +2,25 @@ import { useState, useEffect, Fragment } from "react";
 import {
   GripVertical,
   Plus,
-  Calendar,
-  MessageSquare,
-  Paperclip,
 } from "lucide-react";
-import type { DataItem } from "../types";
+import type { GenericItem } from '../../types'
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { cn, getPriorityColor } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { EmptyState } from "./EmptyState";
 import { useAppViewManager } from "@/hooks/useAppViewManager.hook";
 import { useDataDemoStore } from "../store/dataDemo.store";
+import { useDynamicView } from '../../DynamicViewContext'
+import { FieldRenderer } from '../shared/FieldRenderer'
 
 interface KanbanCardProps {
-  item: DataItem;
+  item: GenericItem;
   isDragging: boolean;
 }
 
 function KanbanCard({ item, isDragging, ...props }: KanbanCardProps & React.HTMLAttributes<HTMLDivElement>) {
   const { onItemSelect } = useAppViewManager();
-
-  // Mock comment and attachment counts for UI purposes
-  const comments = Math.floor(item.metrics.views / 10);
-  const attachments = Math.floor(item.metrics.shares / 5);
+  const { config } = useDynamicView();
+  const { kanbanView: viewConfig } = config;
 
   return (
     <Card
@@ -40,53 +35,28 @@ function KanbanCard({ item, isDragging, ...props }: KanbanCardProps & React.HTML
       <CardContent className="p-5">
         <div className="space-y-4">
           <div className="flex items-start justify-between">
-            <h4 className="font-semibold text-card-foreground dark:text-neutral-100 leading-tight">
-              {item.title}
-            </h4>
+            <div className="font-semibold text-card-foreground dark:text-neutral-100 leading-tight flex-1 min-w-0">
+              <FieldRenderer item={item} fieldId={viewConfig.cardFields.titleField} />
+            </div>
             <GripVertical className="w-5 h-5 text-muted-foreground/60 dark:text-neutral-400 cursor-grab flex-shrink-0" />
           </div>
 
-          <p className="text-sm text-muted-foreground dark:text-neutral-300 leading-relaxed line-clamp-2">
-            {item.description}
-          </p>
-
-          <div className="flex flex-wrap gap-2">
-            <Badge className={cn("text-xs border", getPriorityColor(item.priority))}>
-              {item.priority}
-            </Badge>
-            {item.tags.slice(0, 2).map((tag) => (
-              <Badge key={tag} variant="secondary" className="text-xs backdrop-blur-sm">
-                {tag}
-              </Badge>
-            ))}
+          <div className="text-sm text-muted-foreground dark:text-neutral-300 leading-relaxed line-clamp-2">
+            <FieldRenderer item={item} fieldId={viewConfig.cardFields.descriptionField} />
           </div>
 
           <div className="flex items-center justify-between pt-2 border-t border-border/30 dark:border-neutral-700/30">
-            <div className="flex items-center gap-4 text-muted-foreground/80 dark:text-neutral-400">
-              {item.dueDate && (
-                <div className="flex items-center gap-1">
-                  <Calendar className="w-4 h-4" />
-                  <span className="text-xs font-medium">
-                    {new Date(item.dueDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                  </span>
-                </div>
-              )}
-              <div className="flex items-center gap-1">
-                <MessageSquare className="w-4 h-4" />
-                <span className="text-xs font-medium">{comments}</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <Paperclip className="w-4 h-4" />
-                <span className="text-xs font-medium">{attachments}</span>
-              </div>
+            {/* 
+              The footer is a bit tricky. The original has a left and right side.
+              For a generic component, let's just render them in a row.
+              A more advanced config could specify 'left' and 'right' arrays.
+              For now, this is a good simplification.
+            */}
+            <div className="flex items-center justify-between w-full text-muted-foreground/80 dark:text-neutral-400">
+              {viewConfig.cardFields.footerFields.map(fieldId => (
+                <FieldRenderer key={fieldId} item={item} fieldId={fieldId} options={{ compact: true, avatarClassName: 'w-8 h-8' }} />
+              ))}
             </div>
-
-            <Avatar className="w-8 h-8 ring-2 ring-white/50 dark:ring-neutral-700/50">
-              <AvatarImage src={item.assignee.avatar} />
-              <AvatarFallback className="bg-muted dark:bg-neutral-700 text-foreground dark:text-neutral-200 font-medium">
-                {item.assignee.name.split(" ").map((n) => n[0]).join("")}
-              </AvatarFallback>
-            </Avatar>
           </div>
         </div>
       </CardContent>
@@ -95,7 +65,7 @@ function KanbanCard({ item, isDragging, ...props }: KanbanCardProps & React.HTML
 }
 
 interface DataKanbanViewProps {
-  data: Record<string, DataItem[]>;
+  data: Record<string, GenericItem[]>;
 }
 
 export function DataKanbanView({ data }: DataKanbanViewProps) {
@@ -109,7 +79,7 @@ export function DataKanbanView({ data }: DataKanbanViewProps) {
     setColumns(data);
   }, [data]);
 
-  const handleDragStart = (e: React.DragEvent<HTMLDivElement>, item: DataItem, sourceColumnId: string) => {
+  const handleDragStart = (e: React.DragEvent<HTMLDivElement>, item: GenericItem, sourceColumnId: string) => {
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', JSON.stringify({ itemId: item.id, sourceColumnId }));
     setDraggedItemId(item.id);
@@ -170,7 +140,7 @@ export function DataKanbanView({ data }: DataKanbanViewProps) {
       
       // Persist change to global store. The groupBy value tells us which property to update.
       if (groupBy !== 'none' && sourceColumnId !== targetColumnId) {
-        updateItem(itemId, { [groupBy]: targetColumnId } as Partial<DataItem>);
+        updateItem(itemId, { [groupBy]: targetColumnId } as Partial<GenericItem>);
       }
 
     } catch (err) {
@@ -209,10 +179,10 @@ export function DataKanbanView({ data }: DataKanbanViewProps) {
           )}
         >
           <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 min-w-0">
               <div className={cn("w-3.5 h-3.5 rounded-full", statusColors[columnId] || "bg-muted-foreground")} />
-              <h3 className="font-semibold text-card-foreground dark:text-neutral-100 capitalize">{columnId}</h3>
-              <Badge variant="secondary" className="backdrop-blur-sm">{items.length}</Badge>
+              <h3 className="font-semibold text-card-foreground dark:text-neutral-100 capitalize truncate">{columnId}</h3>
+              <span className="text-sm font-medium text-muted-foreground bg-background/50 rounded-full px-2 py-0.5">{items.length}</span>
             </div>
             <button className="p-1 rounded-full bg-card/30 dark:bg-neutral-800/30 hover:bg-card/50 dark:hover:bg-neutral-700/50 transition-colors">
               <Plus className="w-4 h-4 text-muted-foreground dark:text-neutral-300" />

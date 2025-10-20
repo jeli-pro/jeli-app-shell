@@ -1,15 +1,32 @@
 # Directory Structure
 ```
 src/
+  features/
+    dynamic-view/
+      components/
+        controls/
+          ViewControls.tsx
+          ViewModeSelector.tsx
+        shared/
+          AnimatedLoadingSkeleton.tsx
+          FieldRenderer.tsx
+        views/
+          CalendarView.tsx
+          CardView.tsx
+          KanbanView.tsx
+          ListView.tsx
+          TableView.tsx
+      DynamicViewContext.tsx
+      types.ts
   hooks/
     useAppViewManager.hook.ts
   pages/
     DataDemo/
-      components/
-        DataToolbar.tsx
       store/
         dataDemo.store.tsx
+      DataDemo.config.ts
       index.tsx
+    Messaging/
       types.ts
   index.css
 index.html
@@ -22,6 +39,1824 @@ vite.config.ts
 ```
 
 # Files
+
+## File: src/features/dynamic-view/components/controls/ViewControls.tsx
+```typescript
+import * as React from 'react'
+import { Check, ListFilter, Search, SortAsc, ChevronsUpDown } from 'lucide-react'
+
+import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Badge } from '@/components/ui/badge'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+  CommandSeparator,
+} from '@/components/ui/command'
+
+import type { FilterConfig } from '../../types'
+import type { SortableField } from '../../pages/DataDemo/types'
+import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
+import { useDynamicView } from '../../DynamicViewContext'
+
+export interface DataViewControlsProps {
+  // groupOptions will now come from config
+}
+
+export function DataViewControls() {
+  const {
+    filters,
+    setFilters,
+    sortConfig,
+    setSort,
+    groupBy,
+    setGroupBy,
+    viewMode,
+  } = useAppViewManager();
+  const { config } = useDynamicView();
+  const sortOptions = config.sortableFields;
+  const groupOptions = config.groupableFields;
+  const filterableFields = config.filterableFields;
+
+  const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setFilters({ ...filters, searchTerm: event.target.value })
+  }
+  
+  const activeFilterCount = filterableFields.reduce((acc, field) => acc + (filters[field.id]?.length || 0), 0)
+
+  return (
+    <div className="flex flex-col sm:flex-row items-center gap-2 w-full">
+      {/* Search */}
+      <div className="relative w-full sm:w-auto">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder="Search projects..."
+          className="pl-9 w-full sm:w-64"
+          value={filters.searchTerm}
+          onChange={handleSearchChange}
+        />
+      </div>
+
+      {/* Filters */}
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button variant="outline" size="sm" className="h-9 w-full sm:w-auto justify-start border-dashed">
+            <ListFilter className="mr-2 h-4 w-4" />
+            Filters
+            {activeFilterCount > 0 && (
+              <>
+                <div className="mx-2 h-4 w-px bg-muted-foreground/50" />
+                <Badge variant="secondary" className="rounded-sm px-1 font-normal">
+                  {activeFilterCount}
+                </Badge>
+              </>
+            )}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-[240px] p-0" align="start">
+          <CombinedFilter filters={filters} onFiltersChange={setFilters} filterableFields={filterableFields} />
+        </PopoverContent>
+      </Popover>
+
+      {activeFilterCount > 0 && (
+        <Button variant="ghost" size="sm" onClick={() => setFilters({ searchTerm: filters.searchTerm, status: [], priority: [] })}>Reset</Button>
+      )}
+
+      {/* Spacer */}
+      <div className="hidden md:block flex-grow" />
+
+      {/* Sorter */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="outline" size="sm" className="h-9 w-full sm:w-auto justify-start">
+            <SortAsc className="mr-2 h-4 w-4" />
+            Sort by: {sortOptions.find(o => o.id === sortConfig?.key)?.label || 'Default'}
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-[200px]">
+          <DropdownMenuLabel>Sort by</DropdownMenuLabel>
+          <DropdownMenuRadioGroup
+            value={`${sortConfig?.key || 'default'}-${sortConfig?.direction || ''}`}
+            onValueChange={(value) => {
+              if (value.startsWith('default')) {
+                setSort(null)
+              } else {
+                const [key, direction] = value.split('-')
+                setSort({ key: key as SortableField, direction: direction as 'asc' | 'desc' })
+              }
+            }}
+          >
+            <DropdownMenuRadioItem value="default-">Default</DropdownMenuRadioItem>
+            <DropdownMenuSeparator />
+            {sortOptions.map(option => (
+              <React.Fragment key={option.id}>
+                <DropdownMenuRadioItem value={`${option.id}-desc`}>{option.label} (Desc)</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value={`${option.id}-asc`}>{option.label} (Asc)</DropdownMenuRadioItem>
+              </React.Fragment>
+            ))}
+          </DropdownMenuRadioGroup>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      {/* Group By Dropdown */}
+      {viewMode !== 'calendar' && (
+        <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="h-9 w-full justify-between">
+                Group by: {groupOptions.find(o => o.id === groupBy)?.label}
+                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="w-[180px]">
+              <DropdownMenuRadioGroup value={groupBy} onValueChange={setGroupBy}>
+                {groupOptions.map(option => (
+                  <DropdownMenuRadioItem key={option.id} value={option.id}>
+                    {option.label}
+                  </DropdownMenuRadioItem>
+                ))}
+              </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function CombinedFilter({
+  filters,
+  onFiltersChange,
+  filterableFields,
+}: {
+  filters: FilterConfig;
+  onFiltersChange: (filters: FilterConfig) => void;
+  filterableFields: { id: string; label: string; options: { id: string; label: string }[] }[];
+}) {
+  const handleSelect = (fieldId: string, value: string) => {
+    const currentValues = new Set(filters[fieldId] || []);
+    currentValues.has(value) ? currentValues.delete(value) : currentValues.add(value);
+    
+    onFiltersChange({ ...filters, [fieldId]: Array.from(currentValues) });
+  };
+
+  const hasActiveFilters = filterableFields.some(field => (filters[field.id] || []).length > 0);
+
+  const clearFilters = () => {
+    const clearedFilters: Partial<FilterConfig> = {};
+    filterableFields.forEach(field => {
+      clearedFilters[field.id as keyof Omit<FilterConfig, 'searchTerm'>] = [];
+    });
+    onFiltersChange({ searchTerm: filters.searchTerm, ...clearedFilters });
+  }
+
+  return (
+    <Command>
+      <CommandInput placeholder="Filter by..." />
+      <CommandList>
+        <CommandEmpty>No results found.</CommandEmpty>
+        
+        {filterableFields.map((field, index) => (
+          <React.Fragment key={field.id}>
+            <CommandGroup heading={field.label}>
+              {field.options.map((option) => {
+            const isSelected = (filters[field.id] || []).includes(option.id);
+            return (
+              <CommandItem
+                key={option.id}
+                onSelect={() => handleSelect(field.id, option.id)}
+              >
+                <div
+                  className={cn(
+                    'mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary',
+                    isSelected ? 'bg-primary text-primary-foreground' : 'opacity-50 [&_svg]:invisible'
+                  )}
+                >
+                  <Check className={cn('h-4 w-4')} />
+                </div>
+                <span>{option.label}</span>
+              </CommandItem>
+            );
+          })}
+            </CommandGroup>
+            {index < filterableFields.length - 1 && <CommandSeparator />}
+          </React.Fragment>
+        ))}
+
+        {hasActiveFilters && (
+          <>
+            <CommandSeparator />
+            <CommandGroup>
+              <CommandItem
+                onSelect={clearFilters}
+                className="justify-center text-center text-sm"
+              >
+                Clear filters
+              </CommandItem>
+            </CommandGroup>
+          </>
+        )}
+      </CommandList>
+    </Command>
+  )
+}
+```
+
+## File: src/features/dynamic-view/components/controls/ViewModeSelector.tsx
+```typescript
+import { useEffect, useRef, useState, useCallback } from 'react'
+import { gsap } from 'gsap'
+import { cn } from '@/lib/utils'
+import { List, Grid3X3, LayoutGrid, Table, LayoutDashboard, CalendarDays } from 'lucide-react'
+import type { ViewMode } from '../types'
+import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
+
+const viewModes = [
+  { id: 'list' as ViewMode, label: 'List', icon: List, description: 'Compact list with details' },
+  { id: 'cards' as ViewMode, label: 'Cards', icon: LayoutGrid, description: 'Rich card layout' },
+  { id: 'kanban' as ViewMode, label: 'Kanban', icon: LayoutDashboard, description: 'Interactive Kanban board' },
+  { id: 'calendar' as ViewMode, label: 'Calendar', icon: CalendarDays, description: 'Interactive calendar view' },
+  { id: 'grid' as ViewMode, label: 'Grid', icon: Grid3X3, description: 'Masonry grid view' },
+  { id: 'table' as ViewMode, label: 'Table', icon: Table, description: 'Structured data table' }
+]
+
+export function DataViewModeSelector() {
+  const { viewMode, setViewMode } = useAppViewManager();
+  const indicatorRef = useRef<HTMLDivElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [isExpanded, setIsExpanded] = useState(false)
+  const [isTransitioning, setIsTransitioning] = useState(false)
+
+  const updateIndicatorPosition = useCallback((immediate = false) => {
+    if (!indicatorRef.current || !containerRef.current || isTransitioning) return
+
+    const activeButton = containerRef.current.querySelector(`[data-mode="${viewMode}"]`) as HTMLElement
+    if (!activeButton) return
+
+    const containerRect = containerRef.current.getBoundingClientRect()
+    const buttonRect = activeButton.getBoundingClientRect()
+    
+    const left = buttonRect.left - containerRect.left
+    const width = buttonRect.width
+
+    if (immediate) {
+      // Set position immediately without animation for initial load
+      gsap.set(indicatorRef.current, {
+        x: left,
+        width: width
+      })
+    } else {
+      gsap.to(indicatorRef.current, {
+        duration: 0.3,
+        x: left,
+        width: width,
+        ease: "power2.out"
+      })
+    }
+  }, [viewMode, isTransitioning])
+
+  // Initial setup - set position immediately without animation
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      updateIndicatorPosition(true)
+    }, 0)
+    return () => clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // Only run once on mount
+
+  useEffect(() => {
+    if (!isTransitioning) {
+      updateIndicatorPosition()
+    }
+  }, [viewMode, isTransitioning, updateIndicatorPosition])
+
+  const handleMouseEnter = () => {
+    setIsTransitioning(true)
+    setIsExpanded(true)
+    
+    // Wait for expand animation to complete
+    setTimeout(() => {
+      setIsTransitioning(false)
+    }, 500)
+  }
+
+  const handleMouseLeave = () => {
+    setIsTransitioning(true)
+    setIsExpanded(false)
+    
+    // Wait for collapse animation to complete
+    setTimeout(() => {
+      setIsTransitioning(false)
+    }, 500)
+  }
+
+  return (
+    <div 
+      ref={containerRef}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+      className={cn(
+        "relative flex items-center bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-1.5 shadow-lg transition-all duration-500 ease-out",
+        "hover:shadow-xl hover:bg-card/70",
+        isExpanded ? "gap-1" : "gap-0"
+      )}
+    >
+      {/* Animated indicator */}
+      <div
+        ref={indicatorRef}
+        className="absolute inset-y-1.5 bg-gradient-to-r from-primary/20 to-primary/10 border border-primary/20 rounded-xl transition-all duration-300"
+        style={{ left: 0, width: 0 }}
+      />
+      
+      {/* Mode buttons */}
+      {viewModes.map((mode, index) => {
+        const IconComponent = mode.icon
+        const isActive = viewMode === mode.id
+        
+        return (
+          <button
+            key={mode.id}
+            data-mode={mode.id}
+            onClick={() => setViewMode(mode.id)}
+            className={cn(
+              "relative flex items-center justify-center rounded-xl transition-all duration-500 ease-out group overflow-hidden",
+              "hover:bg-accent/20 active:scale-95",
+              isActive && "text-primary",
+              isExpanded ? "gap-3 px-4 py-2.5" : "gap-0 px-3 py-2.5"
+            )}
+            title={mode.description}
+            style={{
+              transitionDelay: isExpanded ? `${index * 50}ms` : `${(viewModes.length - index - 1) * 30}ms`
+            }}
+          >
+            <IconComponent className={cn(
+              "w-5 h-5 transition-all duration-300 flex-shrink-0",
+              isActive && "scale-110",
+              "group-hover:scale-105",
+              isExpanded ? "rotate-0" : "rotate-0"
+            )} />
+            
+            {/* Label with smooth expand/collapse */}
+            <div className={cn(
+              "overflow-hidden transition-all duration-500 ease-out",
+              isExpanded ? "max-w-[80px] opacity-100" : "max-w-0 opacity-0"
+            )}>
+              <span className={cn(
+                "font-medium whitespace-nowrap transition-all duration-300",
+                isActive ? "text-primary" : "text-muted-foreground",
+                "group-hover:text-foreground"
+              )}>
+                {mode.label}
+              </span>
+            </div>
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+```
+
+## File: src/features/dynamic-view/components/shared/AnimatedLoadingSkeleton.tsx
+```typescript
+import { type ViewMode } from '../../types'
+import { Card, CardHeader, CardContent } from '@/components/ui/card'
+import { Skeleton } from '@/components/ui/skeleton'
+
+export function AnimatedLoadingSkeleton({ viewMode }: { viewMode: ViewMode }) {
+  const renderSkeleton = () => {
+    switch (viewMode) {
+      case 'table':
+        return (
+          <div className="space-y-2">
+            <Skeleton className="h-12 w-full" />
+            {[...Array(5)].map((_, i) => (
+              <Skeleton key={i} className="h-10 w-full" />
+            ))}
+          </div>
+        )
+      case 'list':
+        return (
+          <div className="space-y-4">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="flex items-center space-x-4">
+                <Skeleton className="h-10 w-10 rounded-full" />
+                <div className="space-y-2 flex-1">
+                  <Skeleton className="h-4 w-3/4" />
+                </div>
+                <Skeleton className="h-4 w-1/4" />
+              </div>
+            ))}
+          </div>
+        )
+      case 'grid':
+      case 'cards':
+        return (
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))] gap-6">
+            {[...Array(6)].map((_, i) => (
+              <Card key={i}>
+                <CardHeader>
+                  <Skeleton className="h-12 w-12 rounded-lg" />
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <Skeleton className="h-5 w-4/5" />
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-2/3" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )
+        case 'kanban':
+            return (
+              <div className="flex items-start gap-6">
+                {[...Array(3)].map((_, i) => (
+                  <div key={i} className="w-80 flex-shrink-0 space-y-4">
+                    <Skeleton className="h-6 w-1/2" />
+                    <Skeleton className="h-32 w-full" />
+                    <Skeleton className="h-32 w-full" />
+                  </div>
+                ))}
+              </div>
+            )
+        case 'calendar':
+            return (
+              <div className="space-y-4">
+                  <div className="flex justify-between">
+                      <Skeleton className="h-8 w-48" />
+                      <Skeleton className="h-8 w-32" />
+                  </div>
+                <Skeleton className="h-[600px] w-full" />
+              </div>
+            )
+      default:
+        return <div>Loading...</div>
+    }
+  }
+
+  return <div>{renderSkeleton()}</div>
+}
+```
+
+## File: src/features/dynamic-view/components/shared/FieldRenderer.tsx
+```typescript
+import { useDynamicView } from '../../DynamicViewContext';
+import type { GenericItem, BadgeFieldDefinition } from '../../types';
+import { cn } from '@/lib/utils';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { Clock, Eye, Heart, Share } from 'lucide-react';
+
+// A helper to get nested properties from an object, e.g., 'metrics.views'
+function getNestedValue(obj: Record<string, any>, path: string): any {
+  return path.split('.').reduce((o, k) => (o && o[k] !== 'undefined' ? o[k] : undefined), obj);
+}
+
+interface FieldRendererProps {
+  item: GenericItem;
+  fieldId: string;
+  className?: string;
+  options?: Record<string, any>; // For extra props like 'compact' for avatar
+}
+
+export function FieldRenderer({ item, fieldId, className, options }: FieldRendererProps) {
+  const { getFieldDef } = useDynamicView();
+  const fieldDef = getFieldDef(fieldId);
+  const value = getNestedValue(item, fieldId);
+
+  if (!fieldDef) {
+    console.warn(`[FieldRenderer] No field definition found for ID: ${fieldId}`);
+    return <span className="text-red-500">?</span>;
+  }
+  
+  // Custom render function takes precedence
+  if (fieldDef.render) {
+    return <>{fieldDef.render(item)}</>;
+  }
+
+  if (value === null || typeof value === 'undefined') {
+    return null; // Or some placeholder like 'N/A'
+  }
+  
+  switch (fieldDef.type) {
+    case 'string':
+    case 'longtext':
+      return <span className={cn("truncate", className)}>{String(value)}</span>;
+    
+    case 'thumbnail':
+      return <span className={cn("text-xl", className)}>{String(value)}</span>;
+
+    case 'badge': {
+      const { colorMap } = fieldDef as BadgeFieldDefinition;
+      const colorClass = colorMap?.[String(value)] || '';
+      return (
+        <Badge variant="outline" className={cn("font-medium capitalize", colorClass, className)}>
+          {String(value)}
+        </Badge>
+      );
+    }
+    
+    case 'avatar': {
+      const { compact = false, avatarClassName = "w-8 h-8" } = options || {};
+      const avatarUrl = getNestedValue(value, 'avatar');
+      const name = getNestedValue(value, 'name');
+      const email = getNestedValue(value, 'email');
+      const fallback = name?.split(' ').map((n: string) => n[0]).join('') || '?';
+
+      const avatarEl = (
+        <Avatar className={cn("border-2 border-transparent group-hover:border-primary/50 transition-colors", avatarClassName)}>
+          <AvatarImage src={avatarUrl} alt={name} />
+          <AvatarFallback>{fallback}</AvatarFallback>
+        </Avatar>
+      );
+      if (compact) return avatarEl;
+
+      return (
+        <div className={cn("flex items-center gap-2 group", className)}>
+          {avatarEl}
+          <div className="min-w-0">
+            <p className="font-medium text-sm truncate">{name}</p>
+            <p className="text-xs text-muted-foreground truncate">{email}</p>
+          </div>
+        </div>
+      );
+    }
+    
+    case 'progress': {
+      const { showPercentage = false } = options || {};
+      const bar = (
+        <div className="w-full bg-muted rounded-full h-2.5">
+          <div
+            className="bg-gradient-to-r from-primary to-primary/80 h-2.5 rounded-full transition-all duration-500"
+            style={{ width: `${value}%` }}
+          />
+        </div>
+      );
+      if (!showPercentage) return bar;
+      
+      return (
+        <div className="flex items-center gap-3">
+          <div className="flex-1 min-w-0">{bar}</div>
+          <span className="text-sm font-medium text-muted-foreground">{value}%</span>
+        </div>
+      );
+    }
+
+    case 'date':
+      return (
+        <div className={cn("flex items-center gap-1.5 text-sm", className)}>
+          <Clock className="w-4 h-4" />
+          <span>{new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+        </div>
+      );
+
+    case 'tags': {
+      const MAX_TAGS = 2;
+      const tags = Array.isArray(value) ? value : [];
+      const remainingTags = tags.length - MAX_TAGS;
+      return (
+        <div className={cn("flex items-center gap-1.5 flex-wrap", className)}>
+          {tags.slice(0, MAX_TAGS).map(tag => (
+            <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
+          ))}
+          {remainingTags > 0 && (
+            <Badge variant="outline" className="text-xs">+{remainingTags}</Badge>
+          )}
+        </div>
+      );
+    }
+
+    case 'metrics': {
+      const views = getNestedValue(value, 'views') || 0;
+      const likes = getNestedValue(value, 'likes') || 0;
+      const shares = getNestedValue(value, 'shares') || 0;
+      return (
+        <div className={cn("flex items-center gap-3 text-sm", className)}>
+          <div className="flex items-center gap-1"><Eye className="w-4 h-4" /> {views}</div>
+          <div className="flex items-center gap-1"><Heart className="w-4 h-4" /> {likes}</div>
+          <div className="flex items-center gap-1"><Share className="w-4 h-4" /> {shares}</div>
+        </div>
+      );
+    }
+      
+    default:
+      return <>{String(value)}</>;
+  }
+}
+```
+
+## File: src/features/dynamic-view/components/views/CalendarView.tsx
+```typescript
+import { useState, useMemo, useRef, useLayoutEffect } from "react";
+import { format, addMonths, subMonths, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isToday, isSameDay, } from "date-fns";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { gsap } from "gsap";
+
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import type { GenericItem } from '../../types';
+import type { CalendarDisplayProp, CalendarDateProp, CalendarColorProp, Status, Priority } from '../../pages/DataDemo/types';
+import { useAppViewManager } from "@/hooks/useAppViewManager.hook";
+import { useResizeObserver } from "@/hooks/useResizeObserver.hook";
+import { useSelectedItem, useDataDemoStore } from "../store/dataDemo.store";
+import { CalendarViewControls } from "./DataCalendarViewControls";
+import { useDynamicView } from '../../DynamicViewContext'
+import { FieldRenderer } from '../shared/FieldRenderer'
+
+interface CalendarViewProps {
+  data: GenericItem[];
+}
+
+const PRIORITY_BG_COLORS: Record<Priority, string> = {
+  low: 'bg-blue-500/80 border-blue-600/80 text-white',
+  medium: 'bg-yellow-500/80 border-yellow-600/80 text-yellow-950',
+  high: 'bg-orange-500/80 border-orange-600/80 text-white',
+  critical: 'bg-red-600/80 border-red-700/80 text-white',
+};
+
+const STATUS_BG_COLORS: Record<Status, string> = {
+  active: 'bg-sky-500/80 border-sky-600/80 text-white',
+  pending: 'bg-amber-500/80 border-amber-600/80 text-amber-950',
+  completed: 'bg-emerald-600/80 border-emerald-700/80 text-white',
+  archived: 'bg-zinc-500/80 border-zinc-600/80 text-white',
+};
+
+const CATEGORY_BG_COLORS = [
+  'bg-rose-500/80 border-rose-600/80 text-white',
+  'bg-fuchsia-500/80 border-fuchsia-600/80 text-white',
+  'bg-indigo-500/80 border-indigo-600/80 text-white',
+  'bg-teal-500/80 border-teal-600/80 text-white',
+  'bg-lime-500/80 border-lime-600/80 text-lime-950',
+];
+
+const getCategoryBgColor = (category: string) => {
+  let hash = 0;
+  for (let i = 0; i < category.length; i++) {
+    hash = category.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const index = Math.abs(hash % CATEGORY_BG_COLORS.length);
+  return CATEGORY_BG_COLORS[index];
+};
+
+function CalendarHeader({ currentDate, onPrevMonth, onNextMonth, onToday }: {
+  currentDate: Date;
+  onPrevMonth: () => void;
+  onNextMonth: () => void;
+  onToday: () => void;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-4 mb-6">
+      <h2 className="text-xl font-bold md:text-2xl tracking-tight">
+        {format(currentDate, "MMMM yyyy")}
+      </h2>
+      <div className="flex items-center gap-2">
+        <Button variant="outline" size="sm" onClick={onToday}>Today</Button>
+        <CalendarViewControls />
+        <div className="flex items-center">
+          <Button variant="outline" size="icon" className="h-9 w-9" onClick={onPrevMonth}>
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <Button variant="outline" size="icon" className="h-9 w-9" onClick={onNextMonth}>
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CalendarEvent({ item, isSelected, isDragging, onDragStart, displayProps, colorProp }: { 
+    item: GenericItem; 
+    isSelected: boolean;
+    isDragging: boolean;
+    onDragStart: (e: React.DragEvent<HTMLDivElement>, itemId: string) => void;
+    displayProps: CalendarDisplayProp[];
+    colorProp: CalendarColorProp;
+}) {
+  const { onItemSelect } = useAppViewManager();
+  const { config } = useDynamicView();
+  const { calendarView: viewConfig } = config;
+
+    const colorClass = useMemo(() => {
+      switch (colorProp) {
+        case 'priority': return PRIORITY_BG_COLORS[item.priority as Priority];
+        case 'status': return STATUS_BG_COLORS[item.status as Status];
+        case 'category': return getCategoryBgColor(item.category as string);
+        default: return null;
+      }
+    }, [colorProp, item]);
+
+    return (
+        <div
+            draggable
+            onDragStart={(e) => onDragStart(e, item.id)}
+            onClick={() => onItemSelect(item)}
+            className={cn(
+                "p-2 rounded-lg cursor-grab transition-all duration-200 border space-y-1",
+                isSelected && "ring-2 ring-primary ring-offset-background ring-offset-2",
+                isDragging && "opacity-50 ring-2 ring-primary cursor-grabbing",
+                colorClass 
+                  ? `${colorClass} hover:brightness-95 dark:hover:brightness-110`
+                  : "bg-card/60 dark:bg-neutral-800/60 backdrop-blur-sm hover:bg-card/80 dark:hover:bg-neutral-700/70"
+            )}
+        >
+            <div className={cn(
+              "font-semibold text-sm leading-tight line-clamp-2",
+              colorClass ? "text-inherit" : "text-card-foreground/90"
+            )}>
+              <FieldRenderer item={item} fieldId={viewConfig.titleField} />
+            </div>
+
+            {viewConfig.displayFields.length > 0 && (
+                <div className={cn(
+                    "flex items-center justify-between pt-1 border-t flex-wrap gap-2",
+                    colorClass ? "border-black/10 dark:border-white/10" : "border-border/30 dark:border-neutral-700/50"
+                )}>
+                  {viewConfig.displayFields.map(fieldId => (
+                    <FieldRenderer key={fieldId} item={item} fieldId={fieldId} options={{ compact: true, avatarClassName: 'w-5 h-5' }}/>
+                  ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
+const datePropLabels: Record<CalendarDateProp, string> = {
+  dueDate: 'due dates',
+  createdAt: 'creation dates',
+  updatedAt: 'update dates',
+};
+
+export function DataCalendarView({ data }: CalendarViewProps) {
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const { 
+    itemId,
+    calendarDateProp, 
+    calendarDisplayProps, 
+    calendarItemLimit,
+    calendarColorProp,
+  } = useAppViewManager();
+  const selectedItem = useSelectedItem(itemId);
+  const updateItem = useDataDemoStore(s => s.updateItem);
+  
+  // Drag & Drop State
+  const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
+  const [dropTargetDate, setDropTargetDate] = useState<Date | null>(null);
+
+  // GSAP animation state
+  const [direction, setDirection] = useState(0); // 0: initial, 1: next, -1: prev
+
+  // Responsive Calendar State
+  const calendarContainerRef = useRef<HTMLDivElement>(null);
+  const { width } = useResizeObserver(calendarContainerRef);
+  const MIN_DAY_WIDTH = 160; // px
+  const numColumns = useMemo(() => {
+    if (width === 0) return 7;
+    const cols = Math.floor(width / MIN_DAY_WIDTH);
+    return Math.max(3, Math.min(7, cols));
+  }, [width]);
+
+  const gridRef = useRef<HTMLDivElement>(null);
+  const itemsByDateProp = useMemo(() => data.filter(item => !!item[calendarDateProp]), [data, calendarDateProp]);
+
+  const eventsByDate = useMemo(() => {
+    const eventsMap = new Map<string, GenericItem[]>();
+    itemsByDateProp.forEach(item => {
+      const dateValue = item[calendarDateProp];
+      if (!dateValue) return;
+      const date = new Date(dateValue as string);
+      const dateKey = format(date, "yyyy-MM-dd");
+      if (!eventsMap.has(dateKey)) {
+        eventsMap.set(dateKey, []);
+      }
+      eventsMap.get(dateKey)?.push(item);
+    });
+    return eventsMap;
+  }, [itemsByDateProp, calendarDateProp]);
+
+  const monthStart = startOfMonth(currentDate);
+  const monthEnd = endOfMonth(monthStart);
+  const startDate = startOfWeek(monthStart, { weekStartsOn: 0 }); // Sunday
+  const endDate = endOfWeek(monthEnd, { weekStartsOn: 0 });
+
+  const days = eachDayOfInterval({ start: startDate, end: endDate });
+  const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  
+  // D&D Handlers
+  const handleDragStart = (e: React.DragEvent, itemId: string) => {
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', itemId);
+    setDraggedItemId(itemId);
+  };
+  
+  const handleDragEnd = () => {
+    setDraggedItemId(null);
+    setDropTargetDate(null);
+  };
+
+  const handleDragOver = (e: React.DragEvent, day: Date) => {
+    e.preventDefault();
+    if (dropTargetDate === null || !isSameDay(day, dropTargetDate)) {
+        setDropTargetDate(day);
+    }
+  };
+
+  const handleDragLeave = () => {
+    setDropTargetDate(null);
+  };
+
+  const handleDrop = (e: React.DragEvent, day: Date) => {
+    e.preventDefault();
+    const itemIdToUpdate = e.dataTransfer.getData('text/plain');
+    if (itemIdToUpdate) {
+        const originalItem = itemsByDateProp.find(i => i.id === itemIdToUpdate);
+        if (originalItem && originalItem[calendarDateProp]) {
+            const originalDate = new Date(originalItem[calendarDateProp] as string);
+            // Preserve the time, only change the date part
+            const newDueDate = new Date(day);
+            newDueDate.setHours(originalDate.getHours(), originalDate.getMinutes(), originalDate.getSeconds(), originalDate.getMilliseconds());
+            updateItem(itemIdToUpdate, { [calendarDateProp]: newDueDate.toISOString() });
+        }
+    }
+    handleDragEnd(); // Reset state
+  };
+  
+  const handlePrevMonth = () => {
+    setDirection(-1);
+    setCurrentDate(subMonths(currentDate, 1));
+  };
+  const handleNextMonth = () => {
+    setDirection(1);
+    setCurrentDate(addMonths(currentDate, 1));
+  };
+  const handleToday = () => {
+    setDirection(0); // No animation for 'Today'
+    setCurrentDate(new Date());
+  };
+
+  useLayoutEffect(() => {
+    if (direction === 0 || !gridRef.current) return;
+    gsap.fromTo(gridRef.current, 
+      { opacity: 0, x: 30 * direction }, 
+      { opacity: 1, x: 0, duration: 0.3, ease: 'power2.out' }
+    );
+  }, [currentDate]);
+
+  return (
+    <div ref={calendarContainerRef} className="-mx-4 md:-mx-6">
+      <div className="px-4 md:px-6 pb-2">
+        <CalendarHeader currentDate={currentDate} onPrevMonth={handlePrevMonth} onNextMonth={handleNextMonth} onToday={handleToday} />
+      </div>
+      {itemsByDateProp.length === 0 ? (
+        <div className="flex items-center justify-center h-96 text-muted-foreground rounded-lg border bg-card/30 mx-4 md:mx-6">
+          No items with {datePropLabels[calendarDateProp]} to display on the calendar.
+        </div>
+      ) : (
+        <div className="px-2" onDragEnd={handleDragEnd}>
+          {numColumns === 7 && (
+            <div className="grid grid-cols-7">
+              {weekdays.map(day => (
+                <div key={day} className="py-2 px-3 text-center text-xs font-semibold text-muted-foreground">
+                  {day}
+                </div>
+              ))}
+            </div>
+          )}
+
+            <div
+              ref={gridRef}
+              style={{
+                display: 'grid',
+                gridTemplateColumns: `repeat(${numColumns}, minmax(0, 1fr))`,
+                gap: '0.5rem',
+              }}
+            >
+              {days.map(day => {
+                const dateKey = format(day, "yyyy-MM-dd");
+                const dayEvents = eventsByDate.get(dateKey) || [];
+                const visibleEvents = calendarItemLimit === 'all' 
+                    ? dayEvents 
+                    : dayEvents.slice(0, calendarItemLimit as number);
+                const hiddenEventsCount = dayEvents.length - visibleEvents.length;
+                const isCurrentMonthDay = isSameMonth(day, currentDate);
+                const isDropTarget = dropTargetDate && isSameDay(day, dropTargetDate);
+                return (
+                  <div
+                    key={day.toString()}
+                    onDragOver={(e) => handleDragOver(e, day)}
+                    onDragLeave={handleDragLeave}
+                    onDrop={(e) => handleDrop(e, day)}
+                    className={cn(
+                      "relative min-h-[150px] rounded-2xl p-2 flex flex-col gap-2 transition-all duration-300 border",
+                      isCurrentMonthDay ? "bg-card/40 dark:bg-neutral-900/40 border-transparent" : "bg-muted/30 dark:bg-neutral-800/20 border-transparent text-muted-foreground/60",
+                      isDropTarget ? "border-primary/50 bg-primary/10" : "hover:border-primary/20 hover:bg-card/60"
+                    )}
+                  >
+                    <div className="font-semibold text-sm">
+                      {isToday(day) ? (
+                        <div className="flex items-center justify-center w-7 h-7 rounded-full bg-primary text-primary-foreground">
+                          {format(day, 'd')}
+                        </div>
+                      ) : (
+                        <div className="flex items-baseline gap-1.5 px-1 py-0.5">
+                          {numColumns < 7 && <span className="text-xs opacity-70">{format(day, 'eee')}</span>}
+                          <span>{format(day, 'd')}</span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="space-y-2 overflow-y-auto flex-grow custom-scrollbar">
+                      {visibleEvents.map(item => (
+                        <CalendarEvent
+                          key={item.id} 
+                          item={item} 
+                          isSelected={selectedItem?.id === item.id}
+                          isDragging={draggedItemId === item.id}
+                          onDragStart={handleDragStart}
+                          displayProps={calendarDisplayProps}
+                          colorProp={calendarColorProp}
+                        />
+                      ))}
+                    </div>
+                    {hiddenEventsCount > 0 && (
+                      <div className="absolute bottom-1 right-2 text-xs font-bold text-muted-foreground">
+                        +{hiddenEventsCount} more
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+        </div>
+      )}
+    </div>
+  );
+}
+```
+
+## File: src/features/dynamic-view/components/views/CardView.tsx
+```typescript
+import { useRef } from 'react'
+import { cn } from '@/lib/utils'
+import { ArrowUpRight } from 'lucide-react'
+import type { GenericItem } from '../../types'
+import { useStaggeredAnimation } from '@/hooks/useStaggeredAnimation.motion.hook'
+import { EmptyState } from './EmptyState'
+import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
+import {
+  useSelectedItem,
+} from '../store/dataDemo.store'
+import { AddDataItemCta } from './shared/AddDataItemCta'
+import { useDynamicView } from '../../DynamicViewContext'
+import { FieldRenderer } from '../shared/FieldRenderer'
+
+export function DataCardView({ data, isGrid = false }: { data: GenericItem[]; isGrid?: boolean }) {
+  const { onItemSelect, itemId } = useAppViewManager();
+  const selectedItem = useSelectedItem(itemId);
+  const { config } = useDynamicView();
+  const { cardView: viewConfig } = config;
+
+  const containerRef = useRef<HTMLDivElement>(null)
+  useStaggeredAnimation(containerRef, [data], { mode: 'incremental', y: 40 });
+
+  const items = Array.isArray(data) ? data : [];
+  if (items.length === 0) {
+    return <EmptyState />
+  }
+
+  return (
+    <div 
+      ref={containerRef}
+      className={cn(
+        "gap-6",
+        isGrid
+          ? "grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))]"
+          : "grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))]",
+        "pb-4"
+      )}
+    >
+      {items.map((item: GenericItem) => {
+        const isSelected = selectedItem?.id === item.id
+        
+        return (
+          <div
+            key={item.id}
+            onClick={() => onItemSelect(item)}
+            className={cn(
+              "group relative overflow-hidden rounded-3xl border bg-card/50 backdrop-blur-sm transition-all duration-500 cursor-pointer",
+              "hover:bg-card/80 hover:shadow-xl hover:shadow-primary/10 hover:border-primary/30 hover:-translate-y-2",
+              "active:scale-[0.98]",
+              isSelected && "ring-2 ring-primary/30 border-primary/40 bg-card/90 shadow-lg shadow-primary/20",
+            )}
+          >
+            {/* Card Header with Thumbnail */}
+            <div className="relative p-6 pb-4">
+              <div className="flex items-start justify-between mb-4">
+                <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-primary/10 rounded-2xl flex items-center justify-center text-3xl group-hover:scale-110 transition-transform duration-300">
+                  <FieldRenderer item={item} fieldId={viewConfig.thumbnailField} />
+                </div>
+                <ArrowUpRight className="w-5 h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 group-hover:-translate-y-1 transition-all duration-300" />
+              </div>
+
+              {/* Header Fields (e.g., priority indicator) */}
+              <div className="absolute top-4 right-4 flex items-center gap-2">
+                {viewConfig.headerFields.map(fieldId => (
+                  <FieldRenderer key={fieldId} item={item} fieldId={fieldId} />
+                ))}
+              </div>
+            </div>
+
+            {/* Card Content */}
+            <div className="px-6 pb-6 space-y-4">
+              <div className="font-semibold text-lg group-hover:text-primary transition-colors line-clamp-2">
+                <FieldRenderer item={item} fieldId={viewConfig.titleField} />
+              </div>
+              <div className="text-muted-foreground text-sm line-clamp-3">
+                <FieldRenderer item={item} fieldId={viewConfig.descriptionField} />
+              </div>
+              
+              {viewConfig.contentFields.map(fieldId => (
+                <FieldRenderer key={fieldId} item={item} fieldId={fieldId} options={{ showPercentage: true }} />
+              ))}
+              
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                {viewConfig.footerFields.map(fieldId => (
+                  <FieldRenderer key={fieldId} item={item} fieldId={fieldId} />
+                ))}
+              </div>
+            </div>
+
+            {/* Hover gradient overlay */}
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+            
+            {/* Selection indicator */}
+            {isSelected && (
+              <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-primary/5 pointer-events-none" />
+            )}
+          </div>
+        )
+      })}
+      <AddDataItemCta viewMode={isGrid ? 'grid' : 'cards'} />
+    </div>
+  )
+}
+```
+
+## File: src/features/dynamic-view/components/views/KanbanView.tsx
+```typescript
+import { useState, useEffect, Fragment } from "react";
+import {
+  GripVertical,
+  Plus,
+} from "lucide-react";
+import type { GenericItem } from '../../types'
+import { Card, CardContent } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
+import { EmptyState } from "./EmptyState";
+import { useAppViewManager } from "@/hooks/useAppViewManager.hook";
+import { useDataDemoStore } from "../store/dataDemo.store";
+import { useDynamicView } from '../../DynamicViewContext'
+import { FieldRenderer } from '../shared/FieldRenderer'
+
+interface KanbanCardProps {
+  item: GenericItem;
+  isDragging: boolean;
+}
+
+function KanbanCard({ item, isDragging, ...props }: KanbanCardProps & React.HTMLAttributes<HTMLDivElement>) {
+  const { onItemSelect } = useAppViewManager();
+  const { config } = useDynamicView();
+  const { kanbanView: viewConfig } = config;
+
+  return (
+    <Card
+      {...props}
+      data-draggable-id={item.id}
+      onClick={() => onItemSelect(item)}
+      className={cn(
+        "cursor-pointer transition-all duration-300 border bg-card/60 dark:bg-neutral-800/60 backdrop-blur-sm hover:bg-card/70 dark:hover:bg-neutral-700/70 active:cursor-grabbing",
+        isDragging && "opacity-50 ring-2 ring-primary ring-offset-2 ring-offset-background"
+      )}
+    >
+      <CardContent className="p-5">
+        <div className="space-y-4">
+          <div className="flex items-start justify-between">
+            <div className="font-semibold text-card-foreground dark:text-neutral-100 leading-tight flex-1 min-w-0">
+              <FieldRenderer item={item} fieldId={viewConfig.cardFields.titleField} />
+            </div>
+            <GripVertical className="w-5 h-5 text-muted-foreground/60 dark:text-neutral-400 cursor-grab flex-shrink-0" />
+          </div>
+
+          <div className="text-sm text-muted-foreground dark:text-neutral-300 leading-relaxed line-clamp-2">
+            <FieldRenderer item={item} fieldId={viewConfig.cardFields.descriptionField} />
+          </div>
+
+          <div className="flex items-center justify-between pt-2 border-t border-border/30 dark:border-neutral-700/30">
+            {/* 
+              The footer is a bit tricky. The original has a left and right side.
+              For a generic component, let's just render them in a row.
+              A more advanced config could specify 'left' and 'right' arrays.
+              For now, this is a good simplification.
+            */}
+            <div className="flex items-center justify-between w-full text-muted-foreground/80 dark:text-neutral-400">
+              {viewConfig.cardFields.footerFields.map(fieldId => (
+                <FieldRenderer key={fieldId} item={item} fieldId={fieldId} options={{ compact: true, avatarClassName: 'w-8 h-8' }} />
+              ))}
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+interface DataKanbanViewProps {
+  data: Record<string, GenericItem[]>;
+}
+
+export function DataKanbanView({ data }: DataKanbanViewProps) {
+  const [columns, setColumns] = useState(data);
+  const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
+  const [dropIndicator, setDropIndicator] = useState<{ columnId: string; index: number } | null>(null);
+  const { groupBy } = useAppViewManager();
+  const updateItem = useDataDemoStore(s => s.updateItem);
+
+  useEffect(() => {
+    setColumns(data);
+  }, [data]);
+
+  const handleDragStart = (e: React.DragEvent<HTMLDivElement>, item: GenericItem, sourceColumnId: string) => {
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', JSON.stringify({ itemId: item.id, sourceColumnId }));
+    setDraggedItemId(item.id);
+  };
+
+  const getDropIndicatorIndex = (e: React.DragEvent, elements: HTMLElement[]) => {
+    const mouseY = e.clientY;
+    let closestIndex = elements.length;
+
+    elements.forEach((el, index) => {
+      const { top, height } = el.getBoundingClientRect();
+      const offset = mouseY - (top + height / 2);
+      if (offset < 0 && index < closestIndex) {
+        closestIndex = index;
+      }
+    });
+    return closestIndex;
+  };
+
+  const handleDragOverCardsContainer = (e: React.DragEvent<HTMLDivElement>, columnId: string) => {
+    e.preventDefault();
+    const container = e.currentTarget;
+    const draggableElements = Array.from(container.querySelectorAll('[data-draggable-id]')) as HTMLElement[];
+    const index = getDropIndicatorIndex(e, draggableElements);
+
+    if (dropIndicator?.columnId === columnId && dropIndicator.index === index) return;
+    setDropIndicator({ columnId, index });
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>, targetColumnId: string) => {
+    e.preventDefault();
+    setDropIndicator(null);
+    try {
+      const { itemId, sourceColumnId } = JSON.parse(e.dataTransfer.getData('text/plain'));
+
+      const droppedItem = columns[sourceColumnId]?.find(i => i.id === itemId);
+      if (!droppedItem) return;
+
+      // Update local state for immediate feedback
+      setColumns(prev => {
+        const newColumns = { ...prev };
+        const sourceCol = prev[sourceColumnId].filter(i => i.id !== itemId);
+
+        if (sourceColumnId === targetColumnId) {
+          const dropIndex = dropIndicator?.columnId === targetColumnId ? dropIndicator.index : sourceCol.length;
+          sourceCol.splice(dropIndex, 0, droppedItem);
+          newColumns[sourceColumnId] = sourceCol;
+        } else {
+          const targetCol = [...prev[targetColumnId]];
+          const dropIndex = dropIndicator?.columnId === targetColumnId ? dropIndicator.index : targetCol.length;
+          targetCol.splice(dropIndex, 0, droppedItem);
+          
+          newColumns[sourceColumnId] = sourceCol;
+          newColumns[targetColumnId] = targetCol;
+        }
+        return newColumns;
+      });
+      
+      // Persist change to global store. The groupBy value tells us which property to update.
+      if (groupBy !== 'none' && sourceColumnId !== targetColumnId) {
+        updateItem(itemId, { [groupBy]: targetColumnId } as Partial<GenericItem>);
+      }
+
+    } catch (err) {
+      console.error("Failed to parse drag data", err)
+    } finally {
+      setDraggedItemId(null);
+    }
+  };
+
+  const handleDragEnd = () => {
+    setDraggedItemId(null);
+    setDropIndicator(null);
+  };
+
+  const initialColumns = Object.entries(data);
+
+  if (!initialColumns || initialColumns.length === 0) {
+    return <EmptyState />;
+  }
+
+  const statusColors: Record<string, string> = {
+    active: "bg-blue-500", pending: "bg-yellow-500", completed: "bg-green-500", archived: "bg-gray-500",
+    low: "bg-green-500", medium: "bg-blue-500", high: "bg-orange-500", critical: "bg-red-500",
+  };
+
+  const DropIndicator = () => <div className="h-1 my-2 rounded-full bg-primary/60" />;
+
+  return (
+    <div className="flex items-start gap-6 pb-4 overflow-x-auto -mx-6 px-6">
+      {Object.entries(columns).map(([columnId, items]) => (
+        <div
+          key={columnId}
+          className={cn(
+            "w-80 flex-shrink-0 bg-card/20 dark:bg-neutral-900/20 backdrop-blur-xl rounded-3xl p-5 border border-border dark:border-neutral-700/50 transition-all duration-300",
+            dropIndicator?.columnId === columnId && "bg-primary/10 border-primary/30"
+          )}
+        >
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className={cn("w-3.5 h-3.5 rounded-full", statusColors[columnId] || "bg-muted-foreground")} />
+              <h3 className="font-semibold text-card-foreground dark:text-neutral-100 capitalize truncate">{columnId}</h3>
+              <span className="text-sm font-medium text-muted-foreground bg-background/50 rounded-full px-2 py-0.5">{items.length}</span>
+            </div>
+            <button className="p-1 rounded-full bg-card/30 dark:bg-neutral-800/30 hover:bg-card/50 dark:hover:bg-neutral-700/50 transition-colors">
+              <Plus className="w-4 h-4 text-muted-foreground dark:text-neutral-300" />
+            </button>
+          </div>
+
+          <div
+            onDragOver={(e) => handleDragOverCardsContainer(e, columnId)}
+            onDrop={(e) => handleDrop(e, columnId)}
+            onDragLeave={() => setDropIndicator(null)}
+            className="space-y-4 min-h-[100px]"
+          >
+            {items.map((item, index) => (
+              <Fragment key={item.id}>
+                {dropIndicator?.columnId === columnId && dropIndicator.index === index && (
+                  <DropIndicator />
+                )}
+                <KanbanCard
+                  item={item}
+                  isDragging={draggedItemId === item.id}
+                  draggable
+                  onDragStart={(e) => handleDragStart(e, item, columnId)}
+                  onDragEnd={handleDragEnd}
+                />
+              </Fragment>
+            ))}
+            {dropIndicator?.columnId === columnId && dropIndicator.index === items.length && (
+              <DropIndicator />
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+```
+
+## File: src/features/dynamic-view/components/views/ListView.tsx
+```typescript
+import { useRef } from 'react'
+import { cn } from '@/lib/utils'
+import type { GenericItem } from '../../types'
+import { useStaggeredAnimation } from '@/hooks/useStaggeredAnimation.motion.hook'
+import { EmptyState } from './EmptyState'
+import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
+import { 
+  useSelectedItem,
+} from '../store/dataDemo.store'
+import { AddDataItemCta } from './shared/AddDataItemCta'
+import { useDynamicView } from '../../DynamicViewContext'
+import { FieldRenderer } from '../shared/FieldRenderer'
+
+export function DataListView({ data }: { data: GenericItem[] }) {
+  const { onItemSelect, itemId } = useAppViewManager();
+  const selectedItem = useSelectedItem(itemId);
+  const { config } = useDynamicView();
+
+  const listRef = useRef<HTMLDivElement>(null)
+  useStaggeredAnimation(listRef, [data], { mode: 'incremental', scale: 1, y: 20, stagger: 0.05, duration: 0.4 });
+
+  const items = Array.isArray(data) ? data : [];
+  if (items.length === 0) {
+    return <EmptyState />
+  }
+
+  return (
+    <div ref={listRef}>
+      {items.map((item: GenericItem) => {
+        const isSelected = selectedItem?.id === item.id
+        
+        return (
+          <div key={item.id} className="px-2">
+            <div
+              onClick={() => onItemSelect(item)}
+              className={cn(
+                "group flex items-center px-2 py-2 rounded-md transition-colors duration-200 cursor-pointer",
+                "hover:bg-accent/80",
+                isSelected ? "bg-accent" : "bg-transparent"
+              )}
+            >
+              {/* Left side: Icon and Title */}
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                <div className="flex-shrink-0 w-8 text-center">
+                  <FieldRenderer item={item} fieldId={config.listView.iconField} className="text-xl" />
+                </div>
+                <div className="font-medium truncate text-card-foreground group-hover:text-primary">
+                  <FieldRenderer item={item} fieldId={config.listView.titleField} />
+                </div>
+              </div>
+
+              {/* Right side: Metadata */}
+              <div className="flex shrink-0 items-center gap-2 sm:gap-4 md:gap-6 ml-4 text-sm text-muted-foreground">
+                {config.listView.metaFields.map(fieldId => (
+                  <FieldRenderer key={fieldId} item={item} fieldId={fieldId} options={{ compact: true, avatarClassName: 'w-7 h-7' }} />
+                ))}
+              </div>
+            </div>
+          </div>
+        )
+      })}
+      <AddDataItemCta viewMode='list' />
+    </div>
+  )
+}
+```
+
+## File: src/features/dynamic-view/components/views/TableView.tsx
+```typescript
+import { useRef, useLayoutEffect, useMemo } from 'react'
+import { gsap } from 'gsap'
+import { cn } from '@/lib/utils'
+import { 
+  ArrowUpDown, 
+  ArrowUp, 
+  ArrowDown,
+  ExternalLink
+} from 'lucide-react'
+import type { GenericItem } from '../../types'
+import type { SortableField } from '../../pages/DataDemo/types'
+import { EmptyState } from './EmptyState'
+import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
+import {
+  useSelectedItem,
+} from '../store/dataDemo.store'
+import { capitalize } from '@/lib/utils'
+import { AddDataItemCta } from './shared/AddDataItemCta'
+import { useDynamicView } from '../../DynamicViewContext'
+import { FieldRenderer } from '../shared/FieldRenderer'
+
+export function DataTableView({ data }: { data: GenericItem[] }) {
+  const {
+    sortConfig,
+    setTableSort,
+    groupBy,
+    onItemSelect,
+    itemId,
+  } = useAppViewManager();
+  const { config } = useDynamicView();
+  const { tableView: viewConfig } = config;
+  const selectedItem = useSelectedItem(itemId);
+
+  const tableRef = useRef<HTMLTableElement>(null)
+  const animatedItemsCount = useRef(0)
+
+  useLayoutEffect(() => {
+    if (tableRef.current) {
+      // Only select item rows for animation, not group headers
+      const newItems = Array.from( 
+        tableRef.current.querySelectorAll('tbody tr')
+      ).filter(tr => !(tr as HTMLElement).dataset.groupHeader)
+       .slice(animatedItemsCount.current);
+      gsap.fromTo(newItems,
+        { y: 20, opacity: 0 },
+        {
+          duration: 0.5,
+          y: 0,
+          opacity: 1,
+          stagger: 0.05,
+          ease: "power2.out",
+        },
+      );
+      animatedItemsCount.current = data.length;
+    }
+  }, [data]);
+
+  const SortIcon = ({ field }: { field: string }) => {
+    if (sortConfig?.key !== field) {
+      return <ArrowUpDown className="w-4 h-4 opacity-50" />
+    }
+    if (sortConfig.direction === 'asc') {
+      return <ArrowUp className="w-4 h-4 text-primary" />
+    }
+    if (sortConfig.direction === 'desc') {
+      return <ArrowDown className="w-4 h-4 text-primary" />
+    }
+    return <ArrowUpDown className="w-4 h-4 opacity-50" />
+  }
+
+  const handleSortClick = (field: string) => {
+    setTableSort(field as SortableField) // Cast for now
+  }
+
+  const groupedData = useMemo(() => {
+    if (groupBy === 'none') return null;
+    return (data as GenericItem[]).reduce((acc, item) => {
+      const groupKey = item[groupBy as 'status' | 'priority' | 'category'] || 'N/A';
+      if (!acc[groupKey]) {
+        acc[groupKey] = [];
+      }
+      acc[groupKey].push(item);
+      return acc;
+    }, {} as Record<string, GenericItem[]>);
+  }, [data, groupBy]);
+
+  if (data.length === 0) {
+    return <EmptyState />
+  }
+
+  return (
+    <div className="relative overflow-hidden rounded-2xl border bg-card/50 backdrop-blur-sm">
+      <div className="overflow-x-auto">
+        <table ref={tableRef} className="w-full">
+          <thead>
+            <tr className="border-b border-border/50 bg-muted/20">
+              {viewConfig.columns.map(col => (
+                <th key={col.fieldId} className="text-left p-4 font-semibold text-sm">
+                  {col.isSortable ? (
+                    <button
+                      onClick={() => handleSortClick(col.fieldId)}
+                      className="flex items-center gap-2 hover:text-primary transition-colors"
+                    >
+                      {col.label}
+                      <SortIcon field={col.fieldId} />
+                    </button>
+                  ) : (
+                    <span>{col.label}</span>
+                  )}
+                </th>
+              ))}
+              <th className="text-center p-4 font-semibold text-sm w-16">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {groupedData
+              ? Object.entries(groupedData).flatMap(([groupName, items]) => [
+                  <tr key={groupName} data-group-header="true" className="sticky top-0 z-10">
+                    <td colSpan={viewConfig.columns.length + 1} className="p-2 bg-muted/50 backdrop-blur-sm">
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-semibold text-sm">{capitalize(groupName)}</h3>
+                        <span className="text-xs px-2 py-0.5 bg-background rounded-full font-medium">{items.length}</span>
+                      </div>
+                    </td>
+                  </tr>,
+                  ...items.map(item => <TableRow key={item.id} item={item} isSelected={selectedItem?.id === item.id} onItemSelect={onItemSelect} />)
+                ])
+              : data.map(item => <TableRow key={item.id} item={item} isSelected={selectedItem?.id === item.id} onItemSelect={onItemSelect} />)
+            }
+            <AddDataItemCta viewMode='table' colSpan={viewConfig.columns.length + 1} />
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
+function TableRow({ item, isSelected, onItemSelect }: { item: GenericItem; isSelected: boolean; onItemSelect: (item: GenericItem) => void }) {
+  const { config } = useDynamicView();
+  return (
+    <tr
+      onClick={() => onItemSelect(item)}
+      className={cn(
+        "group border-b border-border/30 transition-all duration-200 cursor-pointer",
+        "hover:bg-accent/20 hover:border-primary/20",
+        isSelected && "bg-primary/5 border-primary/30"
+      )}
+    >
+      {config.tableView.columns.map(col => (
+        <td key={col.fieldId} className="p-4">
+          <FieldRenderer item={item} fieldId={col.fieldId} options={{ showPercentage: true }} />
+        </td>
+      ))}
+      {/* Actions Column */}
+      <td className="p-4">
+        <button 
+          onClick={(e) => {
+            e.stopPropagation()
+            onItemSelect(item)
+          }}
+          className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-accent transition-colors"
+          title="View details"
+        >
+          <ExternalLink className="w-4 h-4" />
+        </button>
+      </td>
+    </tr>
+  )
+}
+```
+
+## File: src/features/dynamic-view/DynamicViewContext.tsx
+```typescript
+import { createContext, useContext, useMemo, type ReactNode } from 'react';
+import type { ViewConfig, GenericItem } from './types';
+
+interface DynamicViewContextProps {
+  config: ViewConfig;
+  data: GenericItem[];
+  getFieldDef: (fieldId: string) => ViewConfig['fields'][number] | undefined;
+}
+
+const DynamicViewContext = createContext<DynamicViewContextProps | null>(null);
+
+interface DynamicViewProviderProps {
+  viewConfig: ViewConfig;
+  data: GenericItem[];
+  children: ReactNode;
+}
+
+export function DynamicViewProvider({ viewConfig, data, children }: DynamicViewProviderProps) {
+  const fieldDefsById = useMemo(() => {
+    return new Map(viewConfig.fields.map(field => [field.id, field]));
+  }, [viewConfig.fields]);
+
+  const getFieldDef = (fieldId: string) => {
+    return fieldDefsById.get(fieldId);
+  };
+
+  const value = useMemo(() => ({
+    config: viewConfig,
+    data,
+    getFieldDef,
+  }), [viewConfig, data, getFieldDef]);
+
+  return (
+    <DynamicViewContext.Provider value={value}>
+      {children}
+    </DynamicViewContext.Provider>
+  );
+}
+
+export function useDynamicView() {
+  const context = useContext(DynamicViewContext);
+  if (!context) {
+    throw new Error('useDynamicView must be used within a DynamicViewProvider');
+  }
+  return context;
+}
+```
+
+## File: src/features/dynamic-view/types.ts
+```typescript
+import type { ReactNode } from 'react';
+
+// --- GENERIC DATA & ITEM ---
+export type GenericItem = Record<string, any> & { id: string };
+
+// --- FIELD DEFINITIONS ---
+// Describes a single piece of data within a GenericItem.
+export type FieldType = 
+  | 'string'
+  | 'longtext'
+  | 'badge'
+  | 'avatar'
+  | 'progress'
+  | 'date'
+  | 'tags'
+  | 'metrics'
+  | 'thumbnail'
+  | 'custom';
+
+export interface BaseFieldDefinition {
+  id: string; // Corresponds to a key in GenericItem
+  label: string;
+  type: FieldType;
+  // Optional custom render function for ultimate flexibility
+  render?: (item: GenericItem) => ReactNode;
+}
+
+export interface BadgeFieldDefinition extends BaseFieldDefinition {
+  type: 'badge';
+  colorMap?: Record<string, string>; // e.g., { 'active': 'bg-green-500', 'pending': 'bg-yellow-500' }
+}
+
+// Add other specific field types if they need unique properties
+// For now, most can be handled by the base definition.
+
+export type FieldDefinition = BaseFieldDefinition | BadgeFieldDefinition;
+
+
+// --- VIEW CONFIGURATION ---
+// The master configuration object that defines the entire view.
+
+export type ViewMode = 'list' | 'cards' | 'grid' | 'table' | 'kanban' | 'calendar';
+
+export interface ListViewConfig {
+  iconField: string;
+  titleField: string;
+  metaFields: string[]; // IDs of fields to show on the right
+}
+
+export interface CardViewConfig {
+  thumbnailField: string;
+  titleField: string;
+  descriptionField: string;
+  headerFields: string[];
+  contentFields: string[];
+  footerFields: string[];
+}
+
+export interface TableColumnConfig {
+  fieldId: string;
+  label: string;
+  isSortable: boolean;
+}
+
+export interface TableViewConfig {
+  columns: TableColumnConfig[];
+}
+
+export interface KanbanViewConfig {
+  groupByField: string; // Field ID to group by (e.g., 'status')
+  cardFields: {
+    titleField: string;
+    descriptionField: string;
+    footerFields: string[];
+  };
+}
+
+export interface CalendarViewConfig {
+  dateField: string;
+  titleField: string;
+  displayFields: string[];
+  colorByField?: string; // Field ID to color events by (e.g., 'priority', 'status')
+}
+
+export interface ControlOption {
+  id: string;
+  label: string;
+}
+
+export interface FilterableFieldConfig {
+  id: string; // fieldId
+  label: string;
+  options: ControlOption[];
+}
+
+export interface ViewConfig {
+  fields: FieldDefinition[];
+  sortableFields: ControlOption[];
+  groupableFields: ControlOption[];
+  filterableFields: FilterableFieldConfig[];
+  
+  // Layouts for each view mode
+  listView: ListViewConfig;
+  cardView: CardViewConfig;
+  tableView: TableViewConfig;
+  kanbanView: KanbanViewConfig;
+  calendarView: CalendarViewConfig;
+}
+```
+
+## File: src/pages/DataDemo/DataDemo.config.ts
+```typescript
+import type { ViewConfig } from '@/features/dynamic-view/types';
+import { DATA_DEMO_PRIORITY_COLORS, DATA_DEMO_STATUS_COLORS } from './data/mockData';
+
+export const dataDemoViewConfig: ViewConfig = {
+  // Field definitions: The source of truth for all data properties
+  fields: [
+    { id: 'title', label: 'Title', type: 'string' },
+    { id: 'description', label: 'Description', type: 'longtext' },
+    { id: 'thumbnailEmoji', label: 'Thumbnail', type: 'thumbnail' },
+    {
+      id: 'status',
+      label: 'Status',
+      type: 'badge',
+      colorMap: DATA_DEMO_STATUS_COLORS,
+    },
+    {
+      id: 'priority',
+      label: 'Priority',
+      type: 'badge',
+      colorMap: DATA_DEMO_PRIORITY_COLORS,
+    },
+    { id: 'assignee', label: 'Assignee', type: 'avatar' },
+    { id: 'metrics.completion', label: 'Completion', type: 'progress' },
+    { id: 'updatedAt', label: 'Last Updated', type: 'date' },
+    { id: 'createdAt', label: 'Created', type: 'date' },
+    { id: 'dueDate', label: 'Due Date', type: 'date' },
+    { id: 'tags', label: 'Tags', type: 'tags' },
+    { id: 'metrics', label: 'Metrics', type: 'metrics' },
+  ],
+
+  // Control options: What users can sort, filter, and group by
+  sortableFields: [
+    { id: 'title', label: 'Title' },
+    { id: 'status', label: 'Status' },
+    { id: 'priority', label: 'Priority' },
+    { id: 'updatedAt', label: 'Last Updated' },
+    { id: 'createdAt', label: 'Created' },
+    { id: 'assignee.name', label: 'Assignee' },
+    { id: 'metrics.views', label: 'Views' },
+    { id: 'metrics.completion', label: 'Completion' },
+  ],
+  groupableFields: [
+    { id: 'none', label: 'None' },
+    { id: 'status', label: 'Status' },
+    { id: 'priority', label: 'Priority' },
+    { id: 'category', label: 'Category' },
+  ],
+  filterableFields: [
+    {
+      id: 'status',
+      label: 'Status',
+      options: [
+        { id: 'active', label: 'Active' },
+        { id: 'pending', label: 'Pending' },
+        { id: 'completed', label: 'Completed' },
+        { id: 'archived', label: 'Archived' },
+      ],
+    },
+    {
+      id: 'priority',
+      label: 'Priority',
+      options: [
+        { id: 'low', label: 'Low' },
+        { id: 'medium', label: 'Medium' },
+        { id: 'high', label: 'High' },
+        { id: 'critical', label: 'Critical' },
+      ],
+    },
+  ],
+  
+  // View layouts: How each view mode should render the data
+  listView: {
+    iconField: 'thumbnailEmoji',
+    titleField: 'title',
+    metaFields: ['status', 'priority', 'assignee', 'updatedAt'],
+  },
+  cardView: {
+    thumbnailField: 'thumbnailEmoji',
+    titleField: 'title',
+    descriptionField: 'description',
+    headerFields: ['priority'],
+    contentFields: ['metrics.completion'],
+    footerFields: ['tags', 'assignee'],
+  },
+  tableView: {
+    columns: [
+      { fieldId: 'title', label: 'Title', isSortable: true },
+      { fieldId: 'status', label: 'Status', isSortable: true },
+      { fieldId: 'priority', label: 'Priority', isSortable: true },
+      { fieldId: 'assignee', label: 'Assignee', isSortable: true },
+      { fieldId: 'metrics.completion', label: 'Completion', isSortable: true },
+      { fieldId: 'updatedAt', label: 'Last Update', isSortable: true },
+    ],
+  },
+  kanbanView: {
+    groupByField: 'status', // This is a suggestion; the user can change it.
+    cardFields: {
+      titleField: 'title',
+      descriptionField: 'description',
+      footerFields: ['tags', 'assignee'],
+    },
+  },
+  calendarView: {
+    dateField: 'dueDate', // Default date field
+    titleField: 'title',
+    displayFields: ['priority', 'assignee'],
+    colorByField: 'priority', // Default coloring
+  },
+};
+```
 
 ## File: src/index.css
 ```css
@@ -151,6 +1986,87 @@ export default {
     autoprefixer: {},
   },
 }
+```
+
+## File: vite.config.ts
+```typescript
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+import { fileURLToPath, URL } from 'url'
+import { resolve } from 'path'
+import pkg from './package.json' with { type: 'json' }
+
+// https://vitejs.dev/config/
+export default defineConfig({
+  plugins: [react()],
+  resolve: {
+    alias: {
+      "@": fileURLToPath(new URL('./src', import.meta.url)),
+    },
+  },
+  build: {
+    lib: {
+      entry: resolve(__dirname, 'src/index.ts'),
+      name: 'JeliAppShell',
+      fileName: (format) => `jeli-app-shell.${format}.js`,
+    },
+    rollupOptions: {
+      // make sure to externalize deps that shouldn't be bundled
+      // into your library
+      external: Object.keys(pkg.peerDependencies || {}),
+      output: {
+        // Provide global variables to use in the UMD build
+        // for externalized deps
+        globals: {
+          react: 'React',
+          'react-dom': 'ReactDOM',
+          tailwindcss: 'tailwindcss',
+          gsap: 'gsap',
+          'lucide-react': 'lucide-react',
+          zustand: 'zustand',
+          sonner: 'sonner'
+        },
+      },
+    },
+  },
+})
+```
+
+## File: index.html
+```html
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Jeli App Shell</title>
+    <script>
+      (function() {
+        try {
+          const storageKey = 'app-shell-storage';
+          const storageValue = localStorage.getItem(storageKey);
+          let isDarkMode;
+
+          if (storageValue) {
+            isDarkMode = JSON.parse(storageValue)?.state?.isDarkMode;
+          }
+          
+          if (typeof isDarkMode !== 'boolean') {
+            isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          }
+          
+          document.documentElement.classList.toggle('dark', isDarkMode);
+        } catch (e) { /* Fails safely */ }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <div id="toaster-container"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
 ```
 
 ## File: tailwind.config.js
@@ -310,43 +2226,6 @@ export default {
 }
 ```
 
-## File: index.html
-```html
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Jeli App Shell</title>
-    <script>
-      (function() {
-        try {
-          const storageKey = 'app-shell-storage';
-          const storageValue = localStorage.getItem(storageKey);
-          let isDarkMode;
-
-          if (storageValue) {
-            isDarkMode = JSON.parse(storageValue)?.state?.isDarkMode;
-          }
-          
-          if (typeof isDarkMode !== 'boolean') {
-            isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
-          }
-          
-          document.documentElement.classList.toggle('dark', isDarkMode);
-        } catch (e) { /* Fails safely */ }
-      })();
-    </script>
-  </head>
-  <body>
-    <div id="root"></div>
-    <div id="toaster-container"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
-</html>
-```
-
 ## File: tsconfig.node.json
 ```json
 {
@@ -363,295 +2242,6 @@ export default {
 }
 ```
 
-## File: vite.config.ts
-```typescript
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-import { fileURLToPath, URL } from 'url'
-import { resolve } from 'path'
-import pkg from './package.json' with { type: 'json' }
-
-// https://vitejs.dev/config/
-export default defineConfig({
-  plugins: [react()],
-  resolve: {
-    alias: {
-      "@": fileURLToPath(new URL('./src', import.meta.url)),
-    },
-  },
-  build: {
-    lib: {
-      entry: resolve(__dirname, 'src/index.ts'),
-      name: 'JeliAppShell',
-      fileName: (format) => `jeli-app-shell.${format}.js`,
-    },
-    rollupOptions: {
-      // make sure to externalize deps that shouldn't be bundled
-      // into your library
-      external: Object.keys(pkg.peerDependencies || {}),
-      output: {
-        // Provide global variables to use in the UMD build
-        // for externalized deps
-        globals: {
-          react: 'React',
-          'react-dom': 'ReactDOM',
-          tailwindcss: 'tailwindcss',
-          gsap: 'gsap',
-          'lucide-react': 'lucide-react',
-          zustand: 'zustand',
-          sonner: 'sonner'
-        },
-      },
-    },
-  },
-})
-```
-
-## File: src/pages/DataDemo/components/DataToolbar.tsx
-```typescript
-import * as React from 'react'
-import { Check, ListFilter, Search, SortAsc } from 'lucide-react'
-
-import { cn } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Badge } from '@/components/ui/badge'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuSeparator,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-  CommandSeparator,
-} from '@/components/ui/command'
-
-import type { SortableField, Status, Priority } from '../types'
-import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
-
-export interface FilterConfig {
-  searchTerm: string
-  status: Status[]
-  priority: Priority[]
-}
-
-const statusOptions: { value: Status; label: string }[] = [
-  { value: 'active', label: 'Active' },
-  { value: 'pending', label: 'Pending' },
-  { value: 'completed', label: 'Completed' },
-  { value: 'archived', label: 'Archived' },
-]
-
-const priorityOptions: { value: Priority; label: string }[] = [
-  { value: 'critical', label: 'Critical' },
-  { value: 'high', label: 'High' },
-  { value: 'medium', label: 'Medium' },
-  { value: 'low', label: 'Low' },
-]
-
-const sortOptions: { value: SortableField, label: string }[] = [
-  { value: 'updatedAt', label: 'Last Updated' },
-  { value: 'title', label: 'Title' },
-  { value: 'status', label: 'Status' },
-  { value: 'priority', label: 'Priority' },
-  { value: 'metrics.completion', label: 'Progress' },
-]
-
-
-export function DataToolbar() {
-  const {
-    filters,
-    setFilters,
-    sortConfig,
-    setSort,
-  } = useAppViewManager();
-
-  const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setFilters({ ...filters, searchTerm: event.target.value })
-  }
-  
-  const activeFilterCount = filters.status.length + filters.priority.length
-
-  return (
-    <div className="flex flex-col md:flex-row items-center justify-between gap-4 w-full">
-      {/* Left side: Search, Filters */}
-      <div className="flex flex-col sm:flex-row items-center gap-2 w-full md:w-auto">
-        <div className="relative w-full sm:w-auto">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search projects..."
-            className="pl-9 w-full sm:w-64"
-            value={filters.searchTerm}
-            onChange={handleSearchChange}
-          />
-        </div>
-
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button variant="outline" size="sm" className="h-9 w-full sm:w-auto justify-start border-dashed">
-              <ListFilter className="mr-2 h-4 w-4" />
-              Filters
-              {activeFilterCount > 0 && (
-                <>
-                  <div className="mx-2 h-4 w-px bg-muted-foreground/50" />
-                  <Badge variant="secondary" className="rounded-sm px-1 font-normal">
-                    {activeFilterCount}
-                  </Badge>
-                </>
-              )}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-[240px] p-0" align="start">
-            <CombinedFilter filters={filters} onFiltersChange={setFilters} />
-          </PopoverContent>
-        </Popover>
-
-        {activeFilterCount > 0 && (
-          <Button variant="ghost" onClick={() => setFilters({ searchTerm: filters.searchTerm, status: [], priority: [] })}>Reset</Button>
-        )}
-      </div>
-
-      {/* Right side: Sorter */}
-      <div className="flex items-center gap-2 w-full md:w-auto justify-start md:justify-end">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="w-full sm:w-auto justify-start">
-              <SortAsc className="mr-2 h-4 w-4" />
-              Sort by: {sortOptions.find(o => o.value === sortConfig?.key)?.label || 'Default'}
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-[200px]">
-            <DropdownMenuLabel>Sort by</DropdownMenuLabel>
-            <DropdownMenuRadioGroup
-              value={`${sortConfig?.key || 'default'}-${sortConfig?.direction || ''}`}
-              onValueChange={(value) => {
-                if (value.startsWith('default')) {
-                  setSort(null)
-                } else {
-                  const [key, direction] = value.split('-')
-                  setSort({ key: key as SortableField, direction: direction as 'asc' | 'desc' })
-                }
-              }}
-            >
-              <DropdownMenuRadioItem value="default-">Default</DropdownMenuRadioItem>
-              <DropdownMenuSeparator />
-              {sortOptions.map(option => (
-                <React.Fragment key={option.value}>
-                  <DropdownMenuRadioItem value={`${option.value}-desc`}>{option.label} (Desc)</DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value={`${option.value}-asc`}>{option.label} (Asc)</DropdownMenuRadioItem>
-                </React.Fragment>
-              ))}
-            </DropdownMenuRadioGroup>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-    </div>
-  )
-}
-
-function CombinedFilter({
-  filters,
-  onFiltersChange,
-}: {
-  filters: FilterConfig;
-  onFiltersChange: (filters: FilterConfig) => void;
-}) {
-  const selectedStatus = new Set(filters.status);
-  const selectedPriority = new Set(filters.priority);
-
-  const handleStatusSelect = (status: Status) => {
-    selectedStatus.has(status) ? selectedStatus.delete(status) : selectedStatus.add(status);
-    onFiltersChange({ ...filters, status: Array.from(selectedStatus) });
-  };
-
-  const handlePrioritySelect = (priority: Priority) => {
-    selectedPriority.has(priority) ? selectedPriority.delete(priority) : selectedPriority.add(priority);
-    onFiltersChange({ ...filters, priority: Array.from(selectedPriority) });
-  };
-
-  const hasActiveFilters = filters.status.length > 0 || filters.priority.length > 0;
-
-  return (
-    <Command>
-      <CommandInput placeholder="Filter by..." />
-      <CommandList>
-        <CommandEmpty>No results found.</CommandEmpty>
-
-        <CommandGroup heading="Status">
-          {statusOptions.map((option) => {
-            const isSelected = selectedStatus.has(option.value);
-            return (
-              <CommandItem
-                key={option.value}
-                onSelect={() => handleStatusSelect(option.value)}
-              >
-                <div
-                  className={cn(
-                    'mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary',
-                    isSelected ? 'bg-primary text-primary-foreground' : 'opacity-50 [&_svg]:invisible'
-                  )}
-                >
-                  <Check className={cn('h-4 w-4')} />
-                </div>
-                <span>{option.label}</span>
-              </CommandItem>
-            );
-          })}
-        </CommandGroup>
-
-        <CommandSeparator />
-
-        <CommandGroup heading="Priority">
-          {priorityOptions.map((option) => {
-            const isSelected = selectedPriority.has(option.value);
-            return (
-              <CommandItem
-                key={option.value}
-                onSelect={() => handlePrioritySelect(option.value)}
-              >
-                <div
-                  className={cn(
-                    'mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary',
-                    isSelected ? 'bg-primary text-primary-foreground' : 'opacity-50 [&_svg]:invisible'
-                  )}
-                >
-                  <Check className={cn('h-4 w-4')} />
-                </div>
-                <span>{option.label}</span>
-              </CommandItem>
-            );
-          })}
-        </CommandGroup>
-
-        {hasActiveFilters && (
-          <>
-            <CommandSeparator />
-            <CommandGroup>
-              <CommandItem
-                onSelect={() => onFiltersChange({ ...filters, status: [], priority: [] })}
-                className="justify-center text-center text-sm"
-              >
-                Clear filters
-              </CommandItem>
-            </CommandGroup>
-          </>
-        )}
-      </CommandList>
-    </Command>
-  )
-}
-```
-
 ## File: src/pages/DataDemo/store/dataDemo.store.tsx
 ```typescript
 import { create } from 'zustand';
@@ -659,12 +2249,11 @@ import { type ReactNode } from 'react';
 import { capitalize, cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { mockDataItems } from '../data/mockData';
-import type { DataItem, GroupableField, SortConfig } from '../types';
-import type { FilterConfig } from '../components/DataToolbar';
+import type { GenericItem, GroupableField, SortConfig, FilterConfig } from '@/features/dynamic-view/types';
 
 // --- State and Actions ---
 interface DataDemoState {
-    items: DataItem[];
+    items: GenericItem[];
     hasMore: boolean;
     isLoading: boolean;
     isInitialLoading: boolean;
@@ -679,7 +2268,7 @@ interface DataDemoActions {
         sortConfig: SortConfig | null;
     isFullLoad?: boolean;
     }) => void;
-    updateItem: (itemId: string, updates: Partial<DataItem>) => void;
+    updateItem: (itemId: string, updates: Partial<GenericItem>) => void;
 }
 
 const defaultState: DataDemoState = {
@@ -711,7 +2300,7 @@ export const useDataDemoStore = create<DataDemoState & DataDemoActions>((set, ge
             if (sortConfig) {
                 filteredItems.sort((a, b) => {
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    const getNestedValue = (obj: DataItem, path: string): any =>
+                    const getNestedValue = (obj: GenericItem, path: string): any =>
                         path.split('.').reduce((o: any, k) => (o || {})[k], obj);
 
                     const aValue = getNestedValue(a, sortConfig.key);
@@ -833,75 +2422,8 @@ export const useDataToRender = (
 
 export const useSelectedItem = (itemId?: string) => {
     if (!itemId) return null;
-    return mockDataItems.find(item => item.id === itemId) ?? null;
+    return (mockDataItems.find(item => item.id === itemId) as GenericItem) ?? null;
 };
-```
-
-## File: src/pages/DataDemo/types.ts
-```typescript
-export type ViewMode = 'list' | 'cards' | 'grid' | 'table' | 'kanban' | 'calendar'
-
-export type GroupableField = 'status' | 'priority' | 'category'
-
-export type CalendarDateProp = 'dueDate' | 'createdAt' | 'updatedAt';
-export type CalendarDisplayProp = 'priority' | 'assignee' | 'tags';
-export type CalendarColorProp = 'none' | 'priority' | 'status' | 'category';
-
-export type SortableField = 'title' | 'status' | 'priority' | 'updatedAt' | 'assignee.name' | 'metrics.views' | 'metrics.completion' | 'createdAt'
-export type SortDirection = 'asc' | 'desc'
-export interface SortConfig {
-  key: SortableField
-  direction: SortDirection
-}
-
-export interface DataItem {
-  id: string
-  title: string
-  description: string
-  category: string
-  status: 'active' | 'pending' | 'completed' | 'archived'
-  priority: 'low' | 'medium' | 'high' | 'critical'
-  assignee: {
-    name: string
-    avatar: string
-    email: string
-  }
-  metrics: {
-    views: number
-    likes: number
-    shares: number
-    completion: number
-  }
-  tags: string[]
-  createdAt: string
-  updatedAt: string
-  dueDate?: string
-  thumbnail?: string
-  content?: {
-    summary: string
-    details: string
-    attachments?: Array<{
-      name: string
-      type: string
-      size: string
-      url: string
-    }>
-  }
-}
-
-export interface ViewProps {
-  data: DataItem[] | Record<string, DataItem[]>
-  onItemSelect: (item: DataItem) => void
-  selectedItem: DataItem | null
-  isGrid?: boolean
-
-  // Props for table view specifically
-  sortConfig?: SortConfig | null
-  onSort?: (field: SortableField) => void
-}
-
-export type Status = DataItem['status']
-export type Priority = DataItem['priority']
 ```
 
 ## File: package.json
@@ -985,13 +2507,103 @@ export type Priority = DataItem['priority']
 }
 ```
 
+## File: src/pages/Messaging/types.ts
+```typescript
+import type { LucideIcon } from "lucide-react";
+
+export type Channel = 'whatsapp' | 'instagram' | 'facebook' | 'email';
+
+export interface ChannelIcon {
+  Icon: LucideIcon;
+  color: string;
+}
+
+export interface Contact {
+  id: string;
+  name:string;
+  avatar: string;
+  online: boolean;
+  tags: string[];
+  email: string;
+  phone: string;
+  lastSeen: string;
+  company: string;
+  role: string;
+  activity: ActivityEvent[];
+  notes: Note[];
+}
+
+export interface Assignee {
+  id: string;
+  name: string;
+  avatar: string;
+  type: 'human' | 'ai';
+}
+
+export type ActivityEventType = 'note' | 'call' | 'email' | 'meeting';
+
+export interface ActivityEvent {
+  id: string;
+  type: ActivityEventType;
+  content: string;
+  timestamp: string;
+}
+export interface Note {
+  id: string;
+  content: string;
+  createdAt: string;
+}
+
+export type JourneyPointType = 'Inquiry' | 'Consult' | 'Quote' | 'Order' | 'Payment' | 'Shipped' | 'Delivered' | 'Canceled' | 'Refund' | 'Complain' | 'Reorder' | 'Follow-up' | 'Review';
+
+export interface Message {
+  id: string;
+  text: string;
+  timestamp: string;
+  sender: 'user' | 'contact' | 'system';
+  type: 'comment' | 'note' | 'system';
+  read: boolean;
+  userId?: string; // for notes or system messages from users
+  journeyPoint?: JourneyPointType;
+}
+
+export interface AISummary {
+  sentiment: 'positive' | 'negative' | 'neutral';
+  summaryPoints: string[];
+  suggestedReplies: string[];
+}
+
+export type TaskStatus = 'open' | 'in-progress' | 'done' | 'snoozed';
+export type TaskPriority = 'none' | 'low' | 'medium' | 'high';
+
+export interface Task {
+  id: string;
+  title: string;
+  contactId: string;
+  channel: Channel;
+  unreadCount: number;
+  lastActivity: Message;
+  messages: Message[];
+  status: TaskStatus;
+  assigneeId: string | null;
+  dueDate: string | null;
+  priority: TaskPriority;
+  tags: string[];
+  aiSummary: AISummary;
+  activeHandlerId: string | null;
+  takeoverRequested?: boolean;
+}
+
+export type TaskView = 'all_open' | 'unassigned' | 'me' | 'done';
+```
+
 ## File: src/hooks/useAppViewManager.hook.ts
 ```typescript
 import { useMemo, useCallback, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate, useLocation, useParams } from 'react-router-dom';
 import { useAppShellStore, type AppShellState, type ActivePage } from '@/store/appShell.store';
 import type { DataItem, ViewMode, SortConfig, SortableField, GroupableField, Status, Priority, CalendarDateProp, CalendarDisplayProp, CalendarColorProp } from '@/pages/DataDemo/types';
-import type { FilterConfig } from '@/pages/DataDemo/components/DataToolbar';
+import type { FilterConfig } from '@/pages/DataDemo/types';
 import type { TaskView } from '@/pages/Messaging/types';
 import { BODY_STATES, SIDEBAR_STATES } from '@/lib/utils';
 
@@ -1339,7 +2951,6 @@ import {
   AlertTriangle, 
   PlayCircle, 
   Loader2,
-  ChevronsUpDown,
   TrendingUp,
   CheckCircle,
   Clock,
@@ -1348,35 +2959,30 @@ import {
 } from 'lucide-react'
 import { gsap } from 'gsap'
 import { cn } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuRadioGroup, 
-  DropdownMenuRadioItem, 
-  DropdownMenuTrigger 
-} from '@/components/ui/dropdown-menu'
+import { DynamicViewProvider } from '@/features/dynamic-view/DynamicViewContext'
 import { PageLayout } from '@/components/shared/PageLayout'
 import { useScrollToBottom } from '@/hooks/useScrollToBottom.hook';
 import { ScrollToBottomButton } from '@/components/shared/ScrollToBottomButton';
-import { DataListView } from './components/DataListView'
-import { DataCardView } from './components/DataCardView'
-import { DataTableView } from './components/DataTableView'
-import { DataKanbanView } from './components/DataKanbanView'
-import { DataCalendarView } from './components/DataCalendarView'
-import { DataViewModeSelector } from './components/DataViewModeSelector'
+import { ListView } from '@/features/dynamic-view/components/views/ListView'
+import { CardView } from '@/features/dynamic-view/components/views/CardView'
+import { TableView } from '@/features/dynamic-view/components/views/TableView'
+import { KanbanView } from '@/features/dynamic-view/components/views/KanbanView'
+import { CalendarView } from '@/features/dynamic-view/components/views/CalendarView'
+import { ViewModeSelector } from '@/features/dynamic-view/components/controls/ViewModeSelector'
 import { AnimatedTabs } from '@/components/ui/animated-tabs'
 import { StatCard } from '@/components/shared/StatCard'
-import { AnimatedLoadingSkeleton } from './components/AnimatedLoadingSkeleton'
-import { DataToolbar } from './components/DataToolbar'
+import { AnimatedLoadingSkeleton } from '@/features/dynamic-view/components/shared/AnimatedLoadingSkeleton'
+import { ViewControls } from '@/features/dynamic-view/components/controls/ViewControls'
 import { mockDataItems } from './data/mockData'
-import type { GroupableField, DataItem } from './types'
+import type { GroupableField, GenericItem } from '@/features/dynamic-view/types'
 import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
 import { useAutoAnimateStats } from './hooks/useAutoAnimateStats.hook'
 import { 
   useDataDemoStore, 
   useGroupTabs
 } from './store/dataDemo.store'
+
+import { dataDemoViewConfig } from './DataDemo.config'
 
 type Stat = {
   title: string;
@@ -1433,7 +3039,7 @@ function DataDemoContent() {
         if (!acc[groupKey]) {
             acc[groupKey] = [];
         }
-        acc[groupKey].push(item);
+        acc[groupKey].push(item as any);
         return acc;
     }, {} as Record<string, DataItem[]>);
   }, [allItems, groupBy]);
@@ -1445,12 +3051,12 @@ function DataDemoContent() {
     return groupedData[activeGroupTab] || [];
   }, [groupBy, activeGroupTab, allItems, groupedData]);
 
-  const groupOptions = useMemo(() => [
-    { id: 'none' as const, label: 'None' }, { id: 'status' as const, label: 'Status' }, { id: 'priority' as const, label: 'Priority' }, { id: 'category' as const, label: 'Category' }
-  ], []);
-
   const statsRef = useRef<HTMLDivElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Note: The `DynamicViewProvider` needs `GenericItem[]`. 
+  // Our store uses `GenericItem` so no cast is needed.
+  const genericItems: GenericItem[] = allItems;
 
   // Auto-hide stats container on scroll down
   useAutoAnimateStats(scrollRef, statsRef);
@@ -1583,46 +3189,22 @@ function DataDemoContent() {
       setSort(null); // Kanban is manually sorted, so disable programmatic sort
     }
     // For calendar view, we don't want grouping.
-    if (viewMode === 'calendar') {
-      if (groupBy !== 'none') setGroupBy('none');
+    if (viewMode === 'calendar' && groupBy !== 'none') {
+      setGroupBy('none');
     }
-  }, [viewMode, groupBy, setGroupBy]);
+  }, [viewMode, groupBy, setGroupBy, setSort]);
 
-  const renderViewForData = useCallback((data: DataItem[]) => {
+  const renderViewForData = useCallback((data: GenericItem[]) => {
+    const items = data as GenericItem[];
     switch (viewMode) {
-        case 'table': return <DataTableView data={data} />;
-        case 'cards': return <DataCardView data={data} />;
+        case 'table': return <TableView data={items} />;
+        case 'cards': return <CardView data={items} />;
         case 'calendar': return null; // Calendar has its own render path below
         case 'kanban': return null; // Kanban has its own render path below
-        case 'grid': return <DataCardView data={data} isGrid />;
-        case 'list':
-        default:
-            return <DataListView data={data} />;
+        case 'grid': return <CardView data={items} isGrid />;
+        case 'list': default: return <ListView data={items} />;
     }
   }, [viewMode]);
-
-  const GroupByDropdown = useCallback(() => (
-    <div className="flex items-center gap-2 shrink-0">
-      <span className="text-sm font-medium text-muted-foreground shrink-0">Group by:</span>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="outline" className="w-[180px] justify-between">
-            {groupOptions.find(o => o.id === groupBy)?.label}
-            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent className="w-[180px]">
-          <DropdownMenuRadioGroup value={groupBy} onValueChange={setGroupBy}>
-            {groupOptions.map(option => (
-              <DropdownMenuRadioItem key={option.id} value={option.id}>
-                {option.label}
-              </DropdownMenuRadioItem>
-            ))}
-          </DropdownMenuRadioGroup>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </div>
-  ), [groupBy, setGroupBy, groupOptions]);
 
   const isGroupedView = useMemo(() => 
     groupBy !== 'none' && groupTabs.length > 1 && groupedData,
@@ -1630,107 +3212,86 @@ function DataDemoContent() {
 
 
   return (
-    <PageLayout
-      scrollRef={scrollRef}
-      onScroll={handleScroll}
-      // Note: Search functionality is handled by a separate SearchBar in the TopBar
-    >
-      <div className="space-y-8">
-        {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div className="flex-1">
-            <h1 className="text-2xl font-bold tracking-tight">Data Showcase</h1>
-            <p className="text-muted-foreground">
-              {isInitialLoading 
-                ? "Loading projects..." 
-                : `Showing ${dataToRender.length} of ${totalItemCount} item(s)`}
-            </p>
-          </div>
-          <DataViewModeSelector />
-        </div>
-
-        {/* Stats Section */}
-        {!isInitialLoading && (
-          <div ref={statsRef} className="flex overflow-x-auto gap-6 pb-4 no-scrollbar">
-            {stats.map((stat) => (
-              <StatCard
-                className="w-64 md:w-72 flex-shrink-0"
-                key={stat.title}
-                title={stat.title}
-                value={stat.value}
-                change={stat.change}
-                trend={stat.trend}
-                icon={stat.icon}
-                chartData={stat.type === 'chart' ? stat.chartData : undefined}
-              />
-            ))}
-          </div>
-        )}
-
-        {/* Controls Area */}
+    <DynamicViewProvider viewConfig={dataDemoViewConfig} data={genericItems}>
+      <PageLayout
+        scrollRef={scrollRef}
+        onScroll={handleScroll}
+      >
         <div className="space-y-6">
-          <DataToolbar />
-        </div>
+          {/* Header */}
+          <div className="space-y-4">
+            <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+              <div className="flex-1">
+                <h1 className="text-2xl font-bold tracking-tight">Data Showcase</h1>
+                <p className="text-muted-foreground">
+                  {isInitialLoading 
+                    ? "Loading projects..." 
+                    : `Showing ${dataToRender.length} of ${totalItemCount} item(s)`}
+                </p>
+              </div>
+              <ViewModeSelector />
+            </div>
+            <ViewControls />
+          </div>
 
-        <div className="min-h-[500px]">
-          {isInitialLoading 
-            ? <AnimatedLoadingSkeleton viewMode={viewMode} /> 
-            : viewMode === 'calendar' ? (
-              <DataCalendarView data={allItems} />
-            )
-            : viewMode === 'kanban' ? (
-              <>
-                <div className="flex items-center justify-end gap-4 h-[68px]">
-                  <GroupByDropdown />
+          {/* Stats Section */}
+          {!isInitialLoading && (
+            <div ref={statsRef} className="flex overflow-x-auto gap-6 pb-4 no-scrollbar">
+              {stats.map((stat) => (
+                <StatCard
+                  className="w-64 md:w-72 flex-shrink-0"
+                  key={stat.title}
+                  title={stat.title}
+                  value={stat.value}
+                  change={stat.change}
+                  trend={stat.trend}
+                  icon={stat.icon}
+                  chartData={stat.type === 'chart' ? stat.chartData : undefined}
+                />
+              ))}
+            </div>
+          )}
+
+          <div className="min-h-[500px]">
+            {isInitialLoading 
+              ? <AnimatedLoadingSkeleton viewMode={viewMode} /> 
+              : viewMode === 'calendar' ? (
+                <CalendarView data={genericItems} />
+              ) : (
+                <div className="flex items-center justify-center h-96 text-muted-foreground">
+                  Group data by a metric to use the Kanban view.
                 </div>
-                {isGroupedView ? (
-                  <DataKanbanView data={groupedData} />
+              )
+              : viewMode === 'kanban' ? (
+                isGroupedView ? (
+                  <KanbanView data={groupedData as Record<string, GenericItem[]>} />
                 ) : (
                   <div className="flex items-center justify-center h-96 text-muted-foreground">
                     Group data by a metric to use the Kanban view.
                   </div>
-                )}
-              </>
-            )
-            : !isGroupedView ? (
-              // Not grouped view
-              <>
-                <div className="flex items-center justify-between gap-4 h-[68px]">
-                  <div className="flex-grow border-b" /> {/* Mimic tab border */}
-                  <GroupByDropdown />
-                </div>
-                {renderViewForData(allItems)}
-              </>
-            ) : (
-              // Grouped view with AnimatedTabs
+                )
+              )
+              : !isGroupedView ? renderViewForData(allItems) : (
+                // Grouped view with AnimatedTabs
+                <div className="relative">
+                  <AnimatedTabs
+                    tabs={groupTabs}
+                    activeTab={activeGroupTab}
+                    onTabChange={setActiveGroupTab}
+                    wrapperClassName="flex flex-col"
+                    className="border-b"
+                    contentClassName="pt-6 flex-grow"
+                  >
+                    {groupTabs.map(tab => (
+                      <div key={tab.id} className="min-h-[440px]">
+                        {renderViewForData(
+                          tab.id === 'all' ? allItems : groupedData?.[tab.id] || []
+                        )}
+                      </div>
+                    ))}
+                  </AnimatedTabs>
               <div className="relative">
                 <AnimatedTabs
-                  tabs={groupTabs}
-                  activeTab={activeGroupTab}
-                  onTabChange={setActiveGroupTab}
-                  wrapperClassName="flex flex-col"
-                  className="border-b"
-                  contentClassName="pt-6 flex-grow"
-                >
-                  {groupTabs.map(tab => (
-                    <div key={tab.id} className="min-h-[440px]">
-                      {renderViewForData(
-                        tab.id === 'all' ? allItems : groupedData?.[tab.id] || []
-                      )}
-                    </div>
-                  ))}
-                </AnimatedTabs>
-                <div className="absolute top-[14px] right-0">
-                    <GroupByDropdown />
-                </div>
-              </div>
-            )
-          }
-        </div>
-
-        {/* Loader for infinite scroll */}
-        <div ref={loaderRef} className="flex justify-center items-center py-6">
-          {isLoading && !isInitialLoading && groupBy === 'none' && viewMode !== 'calendar' && (
             <div className="flex items-center gap-2 text-muted-foreground">
               <Loader2 className="w-5 h-5 animate-spin" />
               <span>Loading more...</span>
@@ -1739,14 +3300,29 @@ function DataDemoContent() {
           {!isLoading && !hasMore && dataToRender.length > 0 && !isInitialLoading && groupBy === 'none' && viewMode !== 'calendar' && (
             <p className="text-muted-foreground">You've reached the end.</p>
           )}
-        </div>
       </div>
       <ScrollToBottomButton isVisible={showScrollToBottom} onClick={scrollToBottom} />
     </PageLayout>
   )
 }
+            }
+          </div>
 
-export default function DataDemoPage() {
-  return <DataDemoContent />;
-}
+          {/* Loader for infinite scroll */}
+          <div ref={loaderRef} className="flex justify-center items-center py-6">
+            {isLoading && !isInitialLoading && groupBy === 'none' && viewMode !== 'calendar' && (
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Loader2 className="w-5 h-5 animate-spin" />
+                <span>Loading more...</span>
+              </div>
+            )}
+            {!isLoading && !hasMore && dataToRender.length > 0 && !isInitialLoading && groupBy === 'none' && viewMode !== 'calendar' && (
+              <p className="text-muted-foreground">You've reached the end.</p>
+            )}
+          </div>
+        </div>
+        <ScrollToBottomButton isVisible={showScrollToBottom} onClick={scrollToBottom} />
+      </PageLayout>
+    </DynamicViewProvider>
+  );
 ```
