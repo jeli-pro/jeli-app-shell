@@ -1,0 +1,253 @@
+uuid: 44026601-e23a-4467-b52e-5f9392e21334
+projectId: jeli-app-shell
+createdAt: '2025-10-21T11:22:05.029Z'
+gitCommitMsg: >-
+  fix(types): Align data types in useRightPaneContent hook
+
+  The recent type-safety refactor for the DynamicView system correctly flagged a
+  type mismatch in `useRightPaneContent.hook.tsx`. The `DynamicViewProvider` now
+  expects a strongly-typed `items` array based on its `viewConfig`.
+
+  This commit resolves the issue by: - Importing the `DataDemoItem` type. -
+  Casting `mockDataItems` to `DataDemoItem[]` when passing it to the
+    provider.
+  - Casting the result of `find()` to ensure `selectedItem` has the
+    correct type of `DataDemoItem | null`.
+promptSummary: >-
+  I received a TypeScript error after the type-safety refactor. The error is in
+  `useRightPaneContent.hook.tsx` where `mockDataItems` is being passed to the
+  now strongly-typed `DynamicViewProvider`.
+reasoning:
+  - >-
+    Of course. It looks like the type-safety refactor was successful, but it
+    revealed a place where the data types weren't correctly aligned. The
+    `DynamicViewProvider` is now strictly enforcing the item type based on the
+    provided configuration, and `useRightPaneContent.hook.tsx` was passing a
+    loosely-typed array.
+  - >-
+    Here is the fix. I'll apply the correct type casting to `mockDataItems` and
+    `selectedItem` within `useRightPaneContent.hook.tsx` to resolve the
+    TypeScript error.
+  - >-
+    I will add the necessary type import for `DataDemoItem` and then apply casts
+    in two places:
+  - >-
+    1.  When finding the `selectedItem` to ensure its type is `DataDemoItem |
+    null`.
+  - >-
+    2.  When passing the `mockDataItems` array to the `DynamicViewProvider`,
+    ensuring it's seen as `DataDemoItem[]`.
+operations:
+  - type: write
+    path: src/hooks/useRightPaneContent.hook.tsx
+    content: >+
+      --- src/hooks/useRightPaneContent.hook.tsx
+
+      +++ src/hooks/useRightPaneContent.hook.tsx
+
+      @@ -21,6 +21,7 @@
+       import { DetailPanel } from '@/features/dynamic-view/components/shared/DetailPanel';
+       import { dataDemoViewConfig } from '@/pages/DataDemo/DataDemo.config';
+       import { mockDataItems } from "@/pages/DataDemo/data/mockData";
+      +import type { DataDemoItem } from '@/pages/DataDemo/data/DataDemoItem';
+       import { MessagingContent } from "@/pages/Messaging/components/MessagingContent";
+       import type { AppShellState } from '@/store/appShell.store';
+       
+      @@ -82,7 +83,7 @@
+       
+         const selectedItem = useMemo(() => {
+           if (!itemId) return null;
+      -    return mockDataItems.find(item => item.id === itemId) ?? null;
+
+      +    return (mockDataItems.find(item => item.id === itemId) as
+      DataDemoItem) ?? null;
+         }, [itemId]);
+       
+         const { meta, content } = useMemo(() => {
+      @@ -92,7 +93,7 @@
+               content: (
+                 <DynamicViewProvider
+                   viewConfig={dataDemoViewConfig}
+      -            items={mockDataItems}
+
+      +            items={mockDataItems as DataDemoItem[]}
+                   isLoading={false}
+                   isInitialLoading={false}
+                   totalItemCount={0}
+
+    patchStrategy: standard-diff
+snapshot:
+  src/hooks/useRightPaneContent.hook.tsx: >-
+    import { useMemo } from 'react';
+
+    import { useParams } from 'react-router-dom';
+
+    import {
+      LayoutDashboard,
+      Settings,
+      Component,
+      Bell,
+      SlidersHorizontal,
+      Database,
+      MessageSquare,
+      ExternalLink,
+      Share,
+    } from 'lucide-react';
+
+
+    import { DynamicViewProvider } from
+    '@/features/dynamic-view/DynamicViewContext';
+
+    import { Button } from '@/components/ui/button';
+
+    import { DashboardContent } from "@/pages/Dashboard";
+
+    import { SettingsContent } from "@/features/settings/SettingsContent";
+
+    import { ToasterDemo } from "@/pages/ToasterDemo";
+
+    import { NotificationsPage } from "@/pages/Notifications";
+
+    import DataDemoPage from "@/pages/DataDemo/index";
+
+    import { DetailPanel } from
+    '@/features/dynamic-view/components/shared/DetailPanel';
+
+    import { dataDemoViewConfig } from '@/pages/DataDemo/DataDemo.config';
+
+    import { mockDataItems } from "@/pages/DataDemo/data/mockData";
+
+    import { MessagingContent } from
+    "@/pages/Messaging/components/MessagingContent";
+
+    import type { AppShellState } from '@/store/appShell.store';
+
+
+    export function useRightPaneContent(sidePaneContent:
+    AppShellState['sidePaneContent']) {
+      const { itemId, conversationId } = useParams<{ itemId: string; conversationId: string }>();
+
+      const staticContentMap = useMemo(() => ({
+        main: {
+          title: "Dashboard",
+          icon: LayoutDashboard,
+          page: "dashboard",
+          content: <DashboardContent />,
+        },
+        settings: {
+          title: "Settings",
+          icon: Settings,
+          page: "settings",
+          content: <div className="p-6"><SettingsContent /></div>,
+        },
+        toaster: {
+          title: "Toaster Demo",
+          icon: Component,
+          page: "toaster",
+          content: <ToasterDemo />,
+        },
+        notifications: {
+          title: "Notifications",
+          icon: Bell,
+          page: "notifications",
+          content: <NotificationsPage />,
+        },
+        dataDemo: {
+          title: "Data Showcase",
+          icon: Database,
+          page: "data-demo",
+          content: <DataDemoPage />,
+        },
+        details: {
+          title: "Details Panel",
+          icon: SlidersHorizontal,
+          content: (
+            <div className="p-6">
+              <p className="text-muted-foreground">
+                This is the side pane. It can be used to display contextual
+                information, forms, or actions related to the main content.
+              </p>
+            </div>
+          ),
+        },
+      }), []);
+
+      const contentMap = useMemo(() => ({
+        ...staticContentMap,
+        messaging: {
+          title: "Conversation",
+          icon: MessageSquare,
+          page: "messaging",
+          content: <MessagingContent conversationId={conversationId} />,
+        },
+      }), [conversationId, staticContentMap]);
+
+      const selectedItem = useMemo(() => {
+        if (!itemId) return null;
+        return mockDataItems.find(item => item.id === itemId) ?? null;
+      }, [itemId]);
+
+      const { meta, content } = useMemo(() => {
+        if (sidePaneContent === 'dataItem' && selectedItem) {
+          return {
+            meta: { title: "Item Details", icon: Database, page: `data-demo/${itemId}` },
+            content: (
+              <DynamicViewProvider
+                viewConfig={dataDemoViewConfig}
+                items={mockDataItems}
+                isLoading={false}
+                isInitialLoading={false}
+                totalItemCount={0}
+                hasMore={false}
+                viewMode="list"
+                filters={{ searchTerm: "" }}
+                sortConfig={null}
+                groupBy="none"
+                activeGroupTab=""
+                page={1}
+                onViewModeChange={() => {}}
+                onFiltersChange={() => {}}
+                onSortChange={() => {}}
+                onGroupByChange={() => {}}
+                onActiveGroupTabChange={() => {}}
+                onPageChange={() => {}}
+                onItemSelect={() => {}}
+              >
+                <div className="h-full flex flex-col">
+                  <div className="flex-1 overflow-y-auto">
+                    <DetailPanel item={selectedItem} config={dataDemoViewConfig.detailView} />
+                  </div>
+                  {/* Application-specific actions can be composed here */}
+                  <div className="p-6 border-t border-border/50 bg-card/30">
+                    <div className="flex gap-3">
+                      <Button className="flex-1" size="sm">
+                        <ExternalLink className="w-4 h-4 mr-2" />
+                        Open Project
+                      </Button>
+                      <Button variant="outline" size="sm">
+                        <Share className="w-4 h-4 mr-2" />
+                        Share
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </DynamicViewProvider>
+            ),
+          };
+        }
+        const mappedContent = contentMap[sidePaneContent as keyof typeof contentMap] || contentMap.details;
+        return {
+          meta: mappedContent,
+          content: mappedContent.content,
+        };
+      }, [sidePaneContent, selectedItem, contentMap, itemId]);
+
+      return { meta, content };
+    }
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 546

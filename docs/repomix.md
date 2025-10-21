@@ -24,6 +24,7 @@ src/
       types.ts
   hooks/
     useAppViewManager.hook.ts
+    useRightPaneContent.hook.tsx
   pages/
     DataDemo/
       store/
@@ -426,105 +427,6 @@ export default {
 }
 ```
 
-## File: src/features/dynamic-view/components/shared/DetailPanel.tsx
-```typescript
-import React, { useRef } from 'react'
-import {
-  Clock, 
-  Tag,
-  User,
-  BarChart3,
-} from 'lucide-react'
-import type { GenericItem, DetailViewConfig } from '../../types'
-import { useStaggeredAnimation } from '@/hooks/useStaggeredAnimation.motion.hook';
-import { FieldRenderer } from '@/features/dynamic-view/components/shared/FieldRenderer'
-import { getNestedValue } from '@/lib/utils'
-
-interface DetailPanelProps<TFieldId extends string, TItem extends GenericItem> {
-  item: TItem;
-  config: DetailViewConfig<TFieldId>;
-}
-
-const SECTION_ICONS: Record<string, React.ElementType> = {
-  "Assigned to": User,
-  "Engagement Metrics": BarChart3,
-  "Tags": Tag,
-  "Timeline": Clock,
-};
-
-export function DetailPanel<TFieldId extends string, TItem extends GenericItem>({ item, config }: DetailPanelProps<TFieldId, TItem>) {
-  const contentRef = useRef<HTMLDivElement>(null)
-  useStaggeredAnimation(contentRef, [item]);
-
-  if (!item) {
-    return null
-  }
-  
-  const { header, body } = config;
-
-  return (
-    <div ref={contentRef} className="h-full flex flex-col">
-      {/* Header */}
-      <div className="p-6 border-b border-border/50 bg-gradient-to-r from-card/50 to-card/30 backdrop-blur-sm">
-        <div className="flex items-start gap-4 mb-4">
-          <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-primary/10 rounded-2xl flex items-center justify-center text-3xl flex-shrink-0">
-            <FieldRenderer item={item} fieldId={header.thumbnailField} />
-          </div>
-          <div className="flex-1 min-w-0">
-            <h1 className="text-2xl font-bold mb-2 leading-tight">
-              <FieldRenderer item={item} fieldId={header.titleField} />
-            </h1>
-            <p className="text-muted-foreground">
-              <FieldRenderer item={item} fieldId={header.descriptionField} />
-            </p>
-          </div>
-        </div>
-
-        {/* Status badges */}
-        <div className="flex items-center gap-2 flex-wrap mb-4">
-          {header.badgeFields.map((fieldId: TFieldId) => (
-            <FieldRenderer key={fieldId} item={item} fieldId={fieldId} />
-          ))}
-        </div>
-
-        {/* Progress */}
-        <FieldRenderer item={item} fieldId={header.progressField} options={{ showPercentage: true }} />
-      </div>
-
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="p-6 space-y-6">
-          {body.sections.map((section) => {
-            const IconComponent = SECTION_ICONS[section.title];
-            // Render section only if at least one of its fields has a value
-            const hasContent = section.fields.some((fieldId: TFieldId) => {
-              const value = getNestedValue(item, fieldId as string);
-              return value !== null && typeof value !== 'undefined';
-            });
-
-            if (!hasContent) return null;
-
-            return (
-              <div key={section.title} className="bg-card/30 rounded-2xl p-4 border border-border/30">
-                <div className="flex items-center gap-1 mb-3">
-                  {IconComponent && <IconComponent className="w-4 h-4 text-muted-foreground" />}
-                  <h3 className="font-semibold text-sm">{section.title}</h3>
-                </div>
-                <div className="space-y-3">
-                  {section.fields.map((fieldId: TFieldId) => (
-                    <FieldRenderer key={fieldId} item={item} fieldId={fieldId} options={{ avatarClassName: "w-12 h-12" }} />
-                  ))}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    </div>
-  )
-}
-```
-
 ## File: src/features/dynamic-view/components/shared/EmptyState.tsx
 ```typescript
 import { Eye } from 'lucide-react'
@@ -539,92 +441,6 @@ export function EmptyState() {
       <p className="text-muted-foreground">Try adjusting your search criteria</p>
     </div>
   )
-}
-```
-
-## File: src/features/dynamic-view/DynamicViewContext.tsx
-```typescript
-import { createContext, useContext, useMemo, type ReactNode } from 'react';
-import type { ViewConfig, GenericItem, ViewMode, FilterConfig, SortConfig, CalendarDateProp, CalendarDisplayProp, CalendarColorProp, GroupableField } from './types';
-
-export interface DynamicViewContextProps<TFieldId extends string, TItem extends GenericItem> {
-  config: ViewConfig<TFieldId, TItem>;
-  data: TItem[];
-  getFieldDef: (fieldId: TFieldId) => ViewConfig<TFieldId, TItem>['fields'][number] | undefined;
-
-  // Data & State from parent
-  items: TItem[];
-  isLoading: boolean;
-  isInitialLoading: boolean;
-  totalItemCount: number;
-  hasMore: boolean;
-
-  // Controlled State Props from parent
-  viewMode: ViewMode;
-  filters: FilterConfig;
-  sortConfig: SortConfig<TFieldId> | null;
-  groupBy: GroupableField<TFieldId>;
-  activeGroupTab: string;
-  page: number;
-  selectedItemId?: string;
-  // Calendar-specific state
-  calendarDateProp?: CalendarDateProp<TFieldId>;
-  calendarDisplayProps?: CalendarDisplayProp<TFieldId>[];
-  calendarItemLimit?: 'all' | number;
-  calendarColorProp?: CalendarColorProp<TFieldId>;
-
-  // Callbacks to parent
-  onViewModeChange: (mode: ViewMode) => void;
-  onFiltersChange: (filters: FilterConfig) => void;
-  onSortChange: (sort: SortConfig<TFieldId> | null) => void;
-  onGroupByChange: (group: GroupableField<TFieldId>) => void;
-  onActiveGroupTabChange: (tab: string) => void;
-  onPageChange: (page: number) => void;
-  onItemSelect: (item: TItem) => void;
-  onItemUpdate?: (itemId: string, updates: Partial<TItem>) => void;
-  // Calendar-specific callbacks
-  onCalendarDatePropChange?: (prop: CalendarDateProp<TFieldId>) => void;
-  onCalendarDisplayPropsChange?: (props: CalendarDisplayProp<TFieldId>[]) => void;
-  onCalendarItemLimitChange?: (limit: 'all' | number) => void;
-  onCalendarColorPropChange?: (prop: CalendarColorProp<TFieldId>) => void;
-}
-
-const DynamicViewContext = createContext<DynamicViewContextProps<any, any> | null>(null);
-
-interface DynamicViewProviderProps<TFieldId extends string, TItem extends GenericItem> extends Omit<DynamicViewContextProps<TFieldId, TItem>, 'getFieldDef' | 'config' | 'data'> {
-  viewConfig: ViewConfig<TFieldId, TItem>,
-  children: ReactNode;
-}
-
-export function DynamicViewProvider<TFieldId extends string, TItem extends GenericItem>({ viewConfig, children, ...rest }: DynamicViewProviderProps<TFieldId, TItem>) {
-  const fieldDefsById = useMemo(() => {
-    return new Map(viewConfig.fields.map(field => [field.id, field]));
-  }, [viewConfig.fields]);
-
-  const getFieldDef = (fieldId: TFieldId) => {
-    return fieldDefsById.get(fieldId);
-  };
-
-  const value = useMemo(() => ({
-    ...rest,
-    config: viewConfig,
-    data: rest.items, // alias for convenience
-    getFieldDef,
-  }), [viewConfig, getFieldDef, rest]);
-
-  return (
-    <DynamicViewContext.Provider value={value}>
-      {children}
-    </DynamicViewContext.Provider>
-  );
-}
-
-export function useDynamicView<TFieldId extends string, TItem extends GenericItem>() {
-  const context = useContext(DynamicViewContext);
-  if (!context) {
-    throw new Error('useDynamicView must be used within a DynamicViewProvider');
-  }
-  return context as DynamicViewContextProps<TFieldId, TItem>;
 }
 ```
 
@@ -1029,6 +845,191 @@ export const AnimatedLoadingSkeleton = ({ viewMode }: { viewMode: ViewMode }) =>
       </div>
     </div>
   )
+}
+```
+
+## File: src/features/dynamic-view/components/shared/DetailPanel.tsx
+```typescript
+import React, { useRef } from 'react'
+import {
+  Clock, 
+  Tag,
+  User,
+  BarChart3,
+} from 'lucide-react'
+import type { GenericItem, DetailViewConfig } from '../../types'
+import { useStaggeredAnimation } from '@/hooks/useStaggeredAnimation.motion.hook';
+import { FieldRenderer } from '@/features/dynamic-view/components/shared/FieldRenderer'
+import { getNestedValue } from '@/lib/utils'
+
+interface DetailPanelProps<TFieldId extends string, TItem extends GenericItem> {
+  item: TItem;
+  config: DetailViewConfig<TFieldId>;
+}
+
+const SECTION_ICONS: Record<string, React.ElementType> = {
+  "Assigned to": User,
+  "Engagement Metrics": BarChart3,
+  "Tags": Tag,
+  "Timeline": Clock,
+};
+
+export function DetailPanel<TFieldId extends string, TItem extends GenericItem>({ item, config }: DetailPanelProps<TFieldId, TItem>) {
+  const contentRef = useRef<HTMLDivElement>(null)
+  useStaggeredAnimation(contentRef, [item]);
+
+  if (!item) {
+    return null
+  }
+  
+  const { header, body } = config;
+
+  return (
+    <div ref={contentRef} className="h-full flex flex-col">
+      {/* Header */}
+      <div className="p-6 border-b border-border/50 bg-gradient-to-r from-card/50 to-card/30 backdrop-blur-sm">
+        <div className="flex items-start gap-4 mb-4">
+          <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-primary/10 rounded-2xl flex items-center justify-center text-3xl flex-shrink-0">
+            <FieldRenderer item={item} fieldId={header.thumbnailField} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-2xl font-bold mb-2 leading-tight">
+              <FieldRenderer item={item} fieldId={header.titleField} />
+            </h1>
+            <p className="text-muted-foreground">
+              <FieldRenderer item={item} fieldId={header.descriptionField} />
+            </p>
+          </div>
+        </div>
+
+        {/* Status badges */}
+        <div className="flex items-center gap-2 flex-wrap mb-4">
+          {header.badgeFields.map((fieldId: TFieldId) => (
+            <FieldRenderer key={fieldId} item={item} fieldId={fieldId} />
+          ))}
+        </div>
+
+        {/* Progress */}
+        <FieldRenderer item={item} fieldId={header.progressField} options={{ showPercentage: true }} />
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="p-6 space-y-6">
+          {body.sections.map((section) => {
+            const IconComponent = SECTION_ICONS[section.title];
+            // Render section only if at least one of its fields has a value
+            const hasContent = section.fields.some((fieldId: TFieldId) => {
+              const value = getNestedValue(item, fieldId as string);
+              return value !== null && typeof value !== 'undefined';
+            });
+
+            if (!hasContent) return null;
+
+            return (
+              <div key={section.title} className="bg-card/30 rounded-2xl p-4 border border-border/30">
+                <div className="flex items-center gap-1 mb-3">
+                  {IconComponent && <IconComponent className="w-4 h-4 text-muted-foreground" />}
+                  <h3 className="font-semibold text-sm">{section.title}</h3>
+                </div>
+                <div className="space-y-3">
+                  {section.fields.map((fieldId: TFieldId) => (
+                    <FieldRenderer key={fieldId} item={item} fieldId={fieldId} options={{ avatarClassName: "w-12 h-12" }} />
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  )
+}
+```
+
+## File: src/features/dynamic-view/DynamicViewContext.tsx
+```typescript
+import { createContext, useContext, useMemo, type ReactNode } from 'react';
+import type { ViewConfig, GenericItem, ViewMode, FilterConfig, SortConfig, CalendarDateProp, CalendarDisplayProp, CalendarColorProp, GroupableField } from './types';
+
+export interface DynamicViewContextProps<TFieldId extends string, TItem extends GenericItem> {
+  config: ViewConfig<TFieldId, TItem>;
+  data: TItem[];
+  getFieldDef: (fieldId: TFieldId) => ViewConfig<TFieldId, TItem>['fields'][number] | undefined;
+
+  // Data & State from parent
+  items: TItem[];
+  isLoading: boolean;
+  isInitialLoading: boolean;
+  totalItemCount: number;
+  hasMore: boolean;
+
+  // Controlled State Props from parent
+  viewMode: ViewMode;
+  filters: FilterConfig;
+  sortConfig: SortConfig<TFieldId> | null;
+  groupBy: GroupableField<TFieldId>;
+  activeGroupTab: string;
+  page: number;
+  selectedItemId?: string;
+  // Calendar-specific state
+  calendarDateProp?: CalendarDateProp<TFieldId>;
+  calendarDisplayProps?: CalendarDisplayProp<TFieldId>[];
+  calendarItemLimit?: 'all' | number;
+  calendarColorProp?: CalendarColorProp<TFieldId>;
+
+  // Callbacks to parent
+  onViewModeChange: (mode: ViewMode) => void;
+  onFiltersChange: (filters: FilterConfig) => void;
+  onSortChange: (sort: SortConfig<TFieldId> | null) => void;
+  onGroupByChange: (group: GroupableField<TFieldId>) => void;
+  onActiveGroupTabChange: (tab: string) => void;
+  onPageChange: (page: number) => void;
+  onItemSelect: (item: TItem) => void;
+  onItemUpdate?: (itemId: string, updates: Partial<TItem>) => void;
+  // Calendar-specific callbacks
+  onCalendarDatePropChange?: (prop: CalendarDateProp<TFieldId>) => void;
+  onCalendarDisplayPropsChange?: (props: CalendarDisplayProp<TFieldId>[]) => void;
+  onCalendarItemLimitChange?: (limit: 'all' | number) => void;
+  onCalendarColorPropChange?: (prop: CalendarColorProp<TFieldId>) => void;
+}
+
+const DynamicViewContext = createContext<DynamicViewContextProps<any, any> | null>(null);
+
+interface DynamicViewProviderProps<TFieldId extends string, TItem extends GenericItem> extends Omit<DynamicViewContextProps<TFieldId, TItem>, 'getFieldDef' | 'config' | 'data'> {
+  viewConfig: ViewConfig<TFieldId, TItem>,
+  children: ReactNode;
+}
+
+export function DynamicViewProvider<TFieldId extends string, TItem extends GenericItem>({ viewConfig, children, ...rest }: DynamicViewProviderProps<TFieldId, TItem>) {
+  const fieldDefsById = useMemo(() => {
+    return new Map(viewConfig.fields.map(field => [field.id, field]));
+  }, [viewConfig.fields]);
+
+  const getFieldDef = (fieldId: TFieldId) => {
+    return fieldDefsById.get(fieldId);
+  };
+
+  const value = useMemo(() => ({
+    ...rest,
+    config: viewConfig,
+    data: rest.items, // alias for convenience
+    getFieldDef,
+  }), [viewConfig, getFieldDef, rest]);
+
+  return (
+    <DynamicViewContext.Provider value={value}>
+      {children}
+    </DynamicViewContext.Provider>
+  );
+}
+
+export function useDynamicView<TFieldId extends string, TItem extends GenericItem>() {
+  const context = useContext(DynamicViewContext);
+  if (!context) {
+    throw new Error('useDynamicView must be used within a DynamicViewProvider');
+  }
+  return context as DynamicViewContextProps<TFieldId, TItem>;
 }
 ```
 
@@ -1776,7 +1777,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 
-import type { FilterConfig, CalendarDateProp, CalendarDisplayProp, CalendarColorProp, GenericItem } from '../../types'
+import type { FilterConfig, CalendarDateProp, CalendarDisplayProp, CalendarColorProp, GenericItem, FilterableFieldConfig } from '../../types'
 import { useDynamicView } from '../../DynamicViewContext';
 
 export interface DataViewControlsProps {
@@ -2010,7 +2011,7 @@ function CombinedFilter({
 }: {
   filters: FilterConfig;
   onFiltersChange: (filters: FilterConfig) => void;
-  filterableFields: { id: string; label: string; options: { id: string; label: string }[] }[];
+  filterableFields: readonly FilterableFieldConfig<string>[];
 }) {
   const handleSelect = (fieldId: string, value: string) => {
     const currentValues = new Set(filters[fieldId] || []);
@@ -2869,17 +2870,17 @@ export type ViewMode = 'list' | 'cards' | 'grid' | 'table' | 'kanban' | 'calenda
 export interface ListViewConfig<TFieldId extends string> {
   iconField: TFieldId;
   titleField: TFieldId;
-  metaFields: Array<{
+  metaFields: readonly {
     fieldId: TFieldId;
     className?: string;
-  }>;
+  }[];
 }
 
 export interface CardViewConfig<TFieldId extends string> {
   thumbnailField: TFieldId;
   titleField: TFieldId;
   descriptionField: TFieldId;
-  headerFields: TFieldId[];
+  headerFields: readonly TFieldId[];
   // Specific fields to recreate the original layout
   statusField: TFieldId;
   categoryField: TFieldId;
@@ -2897,7 +2898,7 @@ export interface TableColumnConfig<TFieldId extends string> {
 }
 
 export interface TableViewConfig<TFieldId extends string> {
-  columns: TableColumnConfig<TFieldId>[];
+  columns: readonly TableColumnConfig<TFieldId>[];
 }
 
 export interface KanbanViewConfig<TFieldId extends string> {
@@ -2917,7 +2918,7 @@ export interface KanbanViewConfig<TFieldId extends string> {
 export interface CalendarViewConfig<TFieldId extends string> {
   dateField: TFieldId;
   titleField: TFieldId;
-  displayFields: TFieldId[];
+  displayFields: readonly TFieldId[];
   colorByField?: TFieldId; // Field ID to color events by (e.g., 'priority', 'status')
 }
 
@@ -2929,7 +2930,7 @@ export interface ControlOption<TId extends string> {
 export interface FilterableFieldConfig<TFieldId extends string> {
   id: TFieldId; // fieldId
   label: string;
-  options: ControlOption<string>[];
+  options: readonly ControlOption<string>[];
 }
 
 export interface ViewConfig<
@@ -2953,7 +2954,7 @@ export interface ViewConfig<
 // --- DETAIL VIEW ---
 export interface DetailViewSection<TFieldId extends string> {
   title: string;
-  fields: TFieldId[];
+  fields: readonly TFieldId[];
 }
 
 export interface DetailViewConfig<TFieldId extends string> {
@@ -2961,11 +2962,11 @@ export interface DetailViewConfig<TFieldId extends string> {
     thumbnailField: TFieldId;
     titleField: TFieldId;
     descriptionField: TFieldId;
-    badgeFields: TFieldId[];
+    badgeFields: readonly TFieldId[];
     progressField: TFieldId;
   };
   body: {
-    sections: DetailViewSection<TFieldId>[];
+    sections: readonly DetailViewSection<TFieldId>[];
   };
 }
 
@@ -3241,6 +3242,157 @@ export const useSelectedItem = (itemId?: string) => {
     (typedMockData.find((item) => item.id === itemId) as DataDemoItem) ?? null
   );
 };
+```
+
+## File: src/hooks/useRightPaneContent.hook.tsx
+```typescript
+import { useMemo } from 'react';
+import { useParams } from 'react-router-dom';
+import {
+  LayoutDashboard,
+  Settings,
+  Component,
+  Bell,
+  SlidersHorizontal,
+  Database,
+  MessageSquare,
+  ExternalLink,
+  Share,
+} from 'lucide-react';
+
+import { DynamicViewProvider } from '@/features/dynamic-view/DynamicViewContext';
+import { Button } from '@/components/ui/button';
+import { DashboardContent } from "@/pages/Dashboard";
+import { SettingsContent } from "@/features/settings/SettingsContent";
+import { ToasterDemo } from "@/pages/ToasterDemo";
+import { NotificationsPage } from "@/pages/Notifications";
+import DataDemoPage from "@/pages/DataDemo/index";
+import { DetailPanel } from '@/features/dynamic-view/components/shared/DetailPanel';
+import { dataDemoViewConfig } from '@/pages/DataDemo/DataDemo.config';
+import { mockDataItems } from "@/pages/DataDemo/data/mockData";
+import { MessagingContent } from "@/pages/Messaging/components/MessagingContent";
+import type { AppShellState } from '@/store/appShell.store';
+
+export function useRightPaneContent(sidePaneContent: AppShellState['sidePaneContent']) {
+  const { itemId, conversationId } = useParams<{ itemId: string; conversationId: string }>();
+
+  const staticContentMap = useMemo(() => ({
+    main: {
+      title: "Dashboard",
+      icon: LayoutDashboard,
+      page: "dashboard",
+      content: <DashboardContent />,
+    },
+    settings: {
+      title: "Settings",
+      icon: Settings,
+      page: "settings",
+      content: <div className="p-6"><SettingsContent /></div>,
+    },
+    toaster: {
+      title: "Toaster Demo",
+      icon: Component,
+      page: "toaster",
+      content: <ToasterDemo />,
+    },
+    notifications: {
+      title: "Notifications",
+      icon: Bell,
+      page: "notifications",
+      content: <NotificationsPage />,
+    },
+    dataDemo: {
+      title: "Data Showcase",
+      icon: Database,
+      page: "data-demo",
+      content: <DataDemoPage />,
+    },
+    details: {
+      title: "Details Panel",
+      icon: SlidersHorizontal,
+      content: (
+        <div className="p-6">
+          <p className="text-muted-foreground">
+            This is the side pane. It can be used to display contextual
+            information, forms, or actions related to the main content.
+          </p>
+        </div>
+      ),
+    },
+  }), []);
+
+  const contentMap = useMemo(() => ({
+    ...staticContentMap,
+    messaging: {
+      title: "Conversation",
+      icon: MessageSquare,
+      page: "messaging",
+      content: <MessagingContent conversationId={conversationId} />,
+    },
+  }), [conversationId, staticContentMap]);
+
+  const selectedItem = useMemo(() => {
+    if (!itemId) return null;
+    return mockDataItems.find(item => item.id === itemId) ?? null;
+  }, [itemId]);
+
+  const { meta, content } = useMemo(() => {
+    if (sidePaneContent === 'dataItem' && selectedItem) {
+      return {
+        meta: { title: "Item Details", icon: Database, page: `data-demo/${itemId}` },
+        content: (
+          <DynamicViewProvider
+            viewConfig={dataDemoViewConfig}
+            items={mockDataItems}
+            isLoading={false}
+            isInitialLoading={false}
+            totalItemCount={0}
+            hasMore={false}
+            viewMode="list"
+            filters={{ searchTerm: "" }}
+            sortConfig={null}
+            groupBy="none"
+            activeGroupTab=""
+            page={1}
+            onViewModeChange={() => {}}
+            onFiltersChange={() => {}}
+            onSortChange={() => {}}
+            onGroupByChange={() => {}}
+            onActiveGroupTabChange={() => {}}
+            onPageChange={() => {}}
+            onItemSelect={() => {}}
+          >
+            <div className="h-full flex flex-col">
+              <div className="flex-1 overflow-y-auto">
+                <DetailPanel item={selectedItem} config={dataDemoViewConfig.detailView} />
+              </div>
+              {/* Application-specific actions can be composed here */}
+              <div className="p-6 border-t border-border/50 bg-card/30">
+                <div className="flex gap-3">
+                  <Button className="flex-1" size="sm">
+                    <ExternalLink className="w-4 h-4 mr-2" />
+                    Open Project
+                  </Button>
+                  <Button variant="outline" size="sm">
+                    <Share className="w-4 h-4 mr-2" />
+                    Share
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </DynamicViewProvider>
+        ),
+      };
+    }
+    const mappedContent = contentMap[sidePaneContent as keyof typeof contentMap] || contentMap.details;
+    return {
+      meta: mappedContent,
+      content: mappedContent.content,
+    };
+  }, [sidePaneContent, selectedItem, contentMap, itemId]);
+
+  return { meta, content };
+}
 ```
 
 ## File: src/hooks/useAppViewManager.hook.ts

@@ -1,0 +1,690 @@
+uuid: c2950550-2f9f-4318-ab93-b82b9a7c8585
+projectId: jeli-app-shell
+createdAt: '2025-10-21T11:13:54.259Z'
+gitCommitMsg: >-
+  fix(types): Align component props with readonly config types
+
+  Corrected TypeScript errors that arose from using an `as const` configuration
+  object. The `FilterableFieldConfig` type and the `CombinedFilter` component's
+  props were updated to accept `readonly` arrays, ensuring type compatibility
+  with the inferred readonly config. This resolves build errors and improves
+  type safety by enforcing immutability.
+promptSummary: >-
+  The user provided TypeScript errors after a large refactoring. The errors were
+  primarily due to readonly vs. mutable type mismatches.
+reasoning:
+  - >-
+    I've analyzed the TypeScript errors, and it appears there are two distinct
+    issues.
+  - >-
+    1.  **Readonly vs. Mutable Types**: The `as const` assertion you've
+    correctly added to your `dataDemoViewConfig` causes TypeScript to infer its
+    properties as `readonly`. However, some components were still expecting
+    mutable arrays for their props. This caused type conflicts, specifically for
+    `filterableFields` and their `options`.
+  - >-
+    2.  **Untyped Data Usage**: The third error points to a file,
+    `src/hooks/useRightPaneContent.hook.tsx`, that was not included in the
+    context. This error suggests that the raw, untyped `mockDataItems` array is
+    being passed to a strongly-typed `DynamicView` instance that expects
+    `DataDemoItem[]`.
+  - >-
+    I will resolve the first issue by updating the component props to correctly
+    accept `readonly` arrays. This is good practice as it enforces immutability.
+  - >-
+    For the second issue, since I don't have the file
+    `src/hooks/useRightPaneContent.hook.tsx`, I cannot patch it directly. The
+    error indicates the fix would be to ensure `mockDataItems` is correctly
+    typed as `DataDemoItem[]` at the point of use, similar to how it's handled
+    in the `dataDemo.store.tsx`.
+  - 'Here are the patches to resolve the errors I can address:'
+  - '### Step 1: Fix Readonly Type Mismatch in Core Types'
+  - >-
+    First, I'll update the `FilterableFieldConfig` interface in `types.ts`. The
+    `options` array needs to be marked as `readonly` to match the type inferred
+    from the `as const` configuration object. This single change will fix the
+    error in `DataDemo.config.tsx`.
+  - '### Step 2: Fix Readonly Type Mismatch in `ViewControls`'
+  - >-
+    Next, I'll update the `CombinedFilter` component inside `ViewControls.tsx`.
+    Its `filterableFields` prop was expecting a mutable array. I will change it
+    to accept a `readonly` array of `FilterableFieldConfig`, which aligns it
+    with our updated types and the `readonly` config object.
+  - These changes should resolve two of the three TypeScript errors.
+  - '### Final Step: YAML'
+operations:
+  - type: write
+    path: src/features/dynamic-view/types.ts
+    content: |+
+      --- src/features/dynamic-view/types.ts
+      +++ src/features/dynamic-view/types.ts
+      @@ -107,7 +107,7 @@
+       export interface FilterableFieldConfig<TFieldId extends string> {
+         id: TFieldId; // fieldId
+         label: string;
+      -  options: ControlOption<string>[];
+      +  options: readonly ControlOption<string>[];
+       }
+       
+       export interface ViewConfig<
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/features/dynamic-view/components/controls/ViewControls.tsx
+    content: >+
+      --- src/features/dynamic-view/components/controls/ViewControls.tsx
+
+      +++ src/features/dynamic-view/components/controls/ViewControls.tsx
+
+      @@ -20,7 +20,7 @@
+       import { Switch } from "@/components/ui/switch";
+       import { Separator } from "@/components/ui/separator";
+       
+      -import type { FilterConfig, CalendarDateProp, CalendarDisplayProp,
+      CalendarColorProp, GenericItem } from '../../types'
+
+      +import type { FilterConfig, CalendarDateProp, CalendarDisplayProp,
+      CalendarColorProp, GenericItem, FilterableFieldConfig } from '../../types'
+       import { useDynamicView } from '../../DynamicViewContext';
+       
+       export interface DataViewControlsProps {
+      @@ -259,10 +259,10 @@
+         filters,
+         onFiltersChange,
+         filterableFields,
+       }: {
+         filters: FilterConfig;
+         onFiltersChange: (filters: FilterConfig) => void;
+      -  filterableFields: { id: string; label: string; options: { id: string;
+      label: string }[] }[];
+
+      +  filterableFields: readonly FilterableFieldConfig<string>[];
+       }) {
+         const handleSelect = (fieldId: string, value: string) => {
+           const currentValues = new Set(filters[fieldId] || []);
+
+    patchStrategy: standard-diff
+snapshot:
+  src/features/dynamic-view/types.ts: >-
+    import type { ReactNode } from 'react';
+
+
+    // --- GENERIC DATA & ITEM ---
+
+    export type GenericItem = Record<string, any> & { id: string };
+
+
+    // --- FIELD DEFINITIONS ---
+
+    // Describes a single piece of data within a GenericItem.
+
+    export type FieldType =
+      | 'string'
+      | 'longtext'
+      | 'badge'
+      | 'avatar'
+      | 'progress'
+      | 'date'
+      | 'tags'
+      | 'metrics'
+      | 'thumbnail'
+      | 'custom';
+
+    export interface BaseFieldDefinition<TFieldId extends string, TItem extends
+    GenericItem> {
+      id: TFieldId; // Corresponds to a key in GenericItem
+      label: string;
+      type: FieldType;
+      // Optional custom render function for ultimate flexibility.
+      render?: (item: TItem, options?: Record<string, any>) => ReactNode;
+    }
+
+
+    export interface BadgeFieldDefinition<TFieldId extends string, TItem extends
+    GenericItem>
+      extends BaseFieldDefinition<TFieldId, TItem> {
+      type: 'badge';
+      colorMap?: Record<string, string>; // e.g., { 'active': 'bg-green-500', 'pending': 'bg-yellow-500' }
+      indicatorColorMap?: Record<string, string>; // e.g., { 'critical': 'bg-red-500' }
+    }
+
+
+    // Add other specific field types if they need unique properties
+
+    // For now, most can be handled by the base definition.
+
+
+    export type FieldDefinition<TFieldId extends string, TItem extends
+    GenericItem> =
+      | BaseFieldDefinition<TFieldId, TItem>
+      | BadgeFieldDefinition<TFieldId, TItem>;
+
+    // --- VIEW CONFIGURATION ---
+
+    // The master configuration object that defines the entire view.
+
+
+    export type ViewMode = 'list' | 'cards' | 'grid' | 'table' | 'kanban' |
+    'calendar';
+
+
+    export interface ListViewConfig<TFieldId extends string> {
+      iconField: TFieldId;
+      titleField: TFieldId;
+      metaFields: Array<{
+        fieldId: TFieldId;
+        className?: string;
+      }>;
+    }
+
+
+    export interface CardViewConfig<TFieldId extends string> {
+      thumbnailField: TFieldId;
+      titleField: TFieldId;
+      descriptionField: TFieldId;
+      headerFields: TFieldId[];
+      // Specific fields to recreate the original layout
+      statusField: TFieldId;
+      categoryField: TFieldId;
+      tagsField: TFieldId;
+      progressField: TFieldId;
+      assigneeField: TFieldId;
+      metricsField: TFieldId;
+      dateField: TFieldId;
+    }
+
+
+    export interface TableColumnConfig<TFieldId extends string> {
+      fieldId: TFieldId;
+      label: string;
+      isSortable: boolean;
+    }
+
+
+    export interface TableViewConfig<TFieldId extends string> {
+      columns: TableColumnConfig<TFieldId>[];
+    }
+
+
+    export interface KanbanViewConfig<TFieldId extends string> {
+      groupByField: TFieldId; // Field ID to group by (e.g., 'status')
+      cardFields: {
+        titleField: TFieldId;
+        descriptionField: TFieldId;
+        priorityField: TFieldId;
+        tagsField: TFieldId;
+        // footer fields
+        dateField: TFieldId;
+        metricsField: TFieldId; // for comments/attachments
+        assigneeField: TFieldId;
+      };
+    }
+
+
+    export interface CalendarViewConfig<TFieldId extends string> {
+      dateField: TFieldId;
+      titleField: TFieldId;
+      displayFields: TFieldId[];
+      colorByField?: TFieldId; // Field ID to color events by (e.g., 'priority', 'status')
+    }
+
+
+    export interface ControlOption<TId extends string> {
+      id: TId;
+      label: string;
+    }
+
+
+    export interface FilterableFieldConfig<TFieldId extends string> {
+      id: TFieldId; // fieldId
+      label: string;
+      options: ControlOption<string>[];
+    }
+
+
+    export interface ViewConfig<
+      TFieldId extends string,
+      TItem extends GenericItem,
+    > {
+      fields: readonly FieldDefinition<TFieldId, TItem>[];
+      sortableFields: readonly ControlOption<TFieldId>[];
+      groupableFields: readonly ControlOption<TFieldId | 'none'>[];
+      filterableFields: readonly FilterableFieldConfig<TFieldId>[];
+
+      // Layouts for each view mode
+      listView: ListViewConfig<TFieldId>;
+      cardView: CardViewConfig<TFieldId>;
+      tableView: TableViewConfig<TFieldId>;
+      kanbanView: KanbanViewConfig<TFieldId>;
+      calendarView: CalendarViewConfig<TFieldId>;
+      detailView: DetailViewConfig<TFieldId>;
+    }
+
+
+    // --- DETAIL VIEW ---
+
+    export interface DetailViewSection<TFieldId extends string> {
+      title: string;
+      fields: TFieldId[];
+    }
+
+
+    export interface DetailViewConfig<TFieldId extends string> {
+      header: {
+        thumbnailField: TFieldId;
+        titleField: TFieldId;
+        descriptionField: TFieldId;
+        badgeFields: TFieldId[];
+        progressField: TFieldId;
+      };
+      body: {
+        sections: DetailViewSection<TFieldId>[];
+      };
+    }
+
+
+    // --- GENERIC CONTROL & DATA TYPES ---
+
+
+    export type Status = 'active' | 'pending' | 'completed' | 'archived';
+
+    export type Priority = 'low' | 'medium' | 'high' | 'critical';
+
+
+    export interface FilterConfig {
+      searchTerm: string;
+      [key: string]: any; // For dynamic filter keys like status, priority
+    }
+
+
+    export interface SortConfig<TFieldId extends string> {
+      key: TFieldId;
+      direction: 'asc' | 'desc';
+    }
+
+
+    export type GroupableField<TFieldId extends string> = TFieldId | 'none';
+
+
+    export type CalendarDateProp<TFieldId extends string> = TFieldId;
+
+    export type CalendarDisplayProp<TFieldId extends string> = TFieldId;
+
+    export type CalendarColorProp<TFieldId extends string> = TFieldId | 'none';
+
+
+    // --- STATS ---
+
+    export type StatItem = {
+      title: string;
+      value: string;
+      icon: ReactNode;
+      change: string;
+      trend: 'up' | 'down';
+      chartData?: number[];
+    };
+  src/features/dynamic-view/components/controls/ViewControls.tsx: >-
+    import * as React from 'react'
+
+    import { Check, ListFilter, Search, SortAsc, ChevronsUpDown, Settings } from
+    'lucide-react'
+
+
+    import { cn } from '@/lib/utils'
+
+    import { Button } from '@/components/ui/button'
+
+    import { Input } from '@/components/ui/input'
+
+    import { Badge } from '@/components/ui/badge'
+
+    import { Popover, PopoverContent, PopoverTrigger } from
+    '@/components/ui/popover'
+
+    import {
+      DropdownMenu,
+      DropdownMenuContent,
+      DropdownMenuRadioGroup,
+      DropdownMenuRadioItem,
+      DropdownMenuSeparator,
+      DropdownMenuLabel,
+      DropdownMenuTrigger,
+    } from '@/components/ui/dropdown-menu'
+
+    import {
+      Command,
+      CommandEmpty,
+      CommandGroup,
+      CommandInput,
+      CommandItem,
+      CommandList,
+      CommandSeparator,
+    } from '@/components/ui/command'
+
+    import { Label } from "@/components/ui/label";
+
+    import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+
+    import { Checkbox } from "@/components/ui/checkbox";
+
+    import { Switch } from "@/components/ui/switch";
+
+    import { Separator } from "@/components/ui/separator";
+
+
+    import type { FilterConfig, CalendarDateProp, CalendarDisplayProp,
+    CalendarColorProp, GenericItem } from '../../types'
+
+    import { useDynamicView } from '../../DynamicViewContext';
+
+
+    export interface DataViewControlsProps {
+      // groupOptions will now come from config
+    }
+
+
+    export function ViewControls() {
+      const {
+        config,
+        filters,
+        onFiltersChange,
+        sortConfig,
+        onSortChange,
+        groupBy,
+        onGroupByChange,
+        viewMode,
+      } = useDynamicView<string, GenericItem>();
+      const sortOptions = config.sortableFields;
+      const groupOptions = config.groupableFields;
+      const filterableFields = config.filterableFields;
+
+      const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        onFiltersChange({ ...filters, searchTerm: event.target.value });
+      }
+      
+      const activeFilterCount = filterableFields.reduce((acc, field) => acc + (filters[field.id]?.length || 0), 0)
+
+      return (
+        <div className="flex flex-col sm:flex-row items-center gap-2 w-full">
+          {/* Search */}
+          <div className="relative w-full sm:w-auto">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search projects..."
+              className="pl-9 w-full sm:w-64"
+              value={filters.searchTerm}
+              onChange={handleSearchChange}
+            />
+          </div>
+
+          {/* Filters */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="h-9 w-full sm:w-auto justify-start border-dashed">
+                <ListFilter className="mr-2 h-4 w-4" />
+                Filters
+                {activeFilterCount > 0 && (
+                  <>
+                    <div className="mx-2 h-4 w-px bg-muted-foreground/50" />
+                    <Badge variant="secondary" className="rounded-sm px-1 font-normal">
+                      {activeFilterCount}
+                    </Badge>
+                  </>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[240px] p-0" align="start">
+              <CombinedFilter filters={filters} onFiltersChange={onFiltersChange} filterableFields={filterableFields} />
+            </PopoverContent>
+          </Popover>
+
+          {activeFilterCount > 0 && (
+            <Button variant="ghost" size="sm" onClick={() => onFiltersChange({ searchTerm: filters.searchTerm, status: [], priority: [] })}>Reset</Button>
+          )}
+
+          {/* Spacer */}
+          <div className="hidden md:block flex-grow" />
+
+          {viewMode === 'calendar' ? (
+            <CalendarSpecificControls />
+          ) : (
+            <>
+              {/* Sorter */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-9 w-full sm:w-auto justify-start">
+                    <SortAsc className="mr-2 h-4 w-4" />
+                    Sort by: {sortOptions.find(o => o.id === sortConfig?.key)?.label || 'Default'}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-[200px]">
+                  <DropdownMenuLabel>Sort by</DropdownMenuLabel>
+                  <DropdownMenuRadioGroup
+                    value={`${sortConfig?.key || 'default'}-${sortConfig?.direction || ''}`}
+                    onValueChange={(value) => {
+                      if (value.startsWith('default')) {
+                        onSortChange(null);
+                      } else {
+                        const [key, direction] = value.split('-')
+                        onSortChange({ key: key, direction: direction as 'asc' | 'desc' });
+                      }
+                    }}
+                  >
+                    <DropdownMenuRadioItem value="default-">Default</DropdownMenuRadioItem>
+                    <DropdownMenuSeparator />
+                    {sortOptions.map(option => (
+                      <React.Fragment key={option.id}>
+                        <DropdownMenuRadioItem value={`${option.id}-desc`}>{option.label} (Desc)</DropdownMenuRadioItem>
+                        <DropdownMenuRadioItem value={`${option.id}-asc`}>{option.label} (Asc)</DropdownMenuRadioItem>
+                      </React.Fragment>
+                    ))}
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              {/* Group By Dropdown */}
+              <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="h-9 w-full justify-between">
+                      Group by: {groupOptions.find(o => o.id === groupBy)?.label}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-[180px]">
+                    <DropdownMenuRadioGroup value={groupBy} onValueChange={onGroupByChange}>
+                      {groupOptions.map(option => (
+                        <DropdownMenuRadioItem key={option.id} value={option.id}>
+                          {option.label}
+                        </DropdownMenuRadioItem>
+                      ))}
+                    </DropdownMenuRadioGroup>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </>
+          )}
+        </div>
+      )
+    }
+
+
+    function CalendarSpecificControls() {
+        const {
+            calendarDateProp, onCalendarDatePropChange,
+            calendarDisplayProps, onCalendarDisplayPropsChange,
+            calendarItemLimit, onCalendarItemLimitChange,
+            calendarColorProp, onCalendarColorPropChange,
+        } = useDynamicView<string, GenericItem>();
+
+        const handleDisplayPropChange = (prop: CalendarDisplayProp<string>, checked: boolean) => {
+            const newProps = checked 
+                ? [...(calendarDisplayProps || []), prop] 
+                : (calendarDisplayProps || []).filter((p) => p !== prop);
+            onCalendarDisplayPropsChange?.(newProps);
+        };
+
+        return (
+            <Popover>
+                <PopoverTrigger asChild>
+                    <Button variant="outline" size="icon" className="h-9 w-9">
+                        <Settings className="h-4 w-4" />
+                    </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-80 p-4" align="end">
+                    <div className="space-y-4">
+                        <div className="space-y-1">
+                            <h4 className="font-medium leading-none">Calendar Settings</h4>
+                            <p className="text-sm text-muted-foreground">
+                                Customize the calendar view.
+                            </p>
+                        </div>
+                        <Separator />
+                        <div className="space-y-3">
+                            <Label className="font-semibold">Item Background Color</Label>
+                            <RadioGroup value={calendarColorProp} onValueChange={(v) => onCalendarColorPropChange?.(v as CalendarColorProp<string>)} className="gap-2">
+                                <div className="flex items-center space-x-2">
+                                    <RadioGroupItem value="none" id="color-none" />
+                                    <Label htmlFor="color-none" className="font-normal">None</Label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <RadioGroupItem value="priority" id="color-priority" />
+                                    <Label htmlFor="color-priority" className="font-normal">By Priority</Label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <RadioGroupItem value="status" id="color-status" />
+                                    <Label htmlFor="color-status" className="font-normal">By Status</Label>
+                                </div>
+                                 <div className="flex items-center space-x-2">
+                                    <RadioGroupItem value="category" id="color-category" />
+                                    <Label htmlFor="color-category" className="font-normal">By Category</Label>
+                                </div>
+                            </RadioGroup>
+                        </div>
+                        <Separator />
+                        <div className="space-y-3">
+                            <Label className="font-semibold">Date Property</Label>
+                            <RadioGroup value={calendarDateProp} onValueChange={(v) => onCalendarDatePropChange?.(v as CalendarDateProp<string>)} className="gap-2">
+                                <div className="flex items-center space-x-2">
+                                    <RadioGroupItem value="dueDate" id="dueDate" />
+                                    <Label htmlFor="dueDate" className="font-normal">Due Date</Label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <RadioGroupItem value="createdAt" id="createdAt" />
+                                    <Label htmlFor="createdAt" className="font-normal">Created Date</Label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <RadioGroupItem value="updatedAt" id="updatedAt" />
+                                    <Label htmlFor="updatedAt" className="font-normal">Updated Date</Label>
+                                </div>
+                            </RadioGroup>
+                        </div>
+                        <div className="space-y-3">
+                            <Label className="font-semibold">Card Details</Label>
+                            <div className="space-y-2">
+                                {(['priority', 'assignee', 'tags'] as CalendarDisplayProp<string>[]).map(prop => (
+                                    <div key={prop} className="flex items-center space-x-2">
+                                        <Checkbox id={prop} checked={(calendarDisplayProps || []).includes(prop)} onCheckedChange={(c) => handleDisplayPropChange(prop, !!c)} />
+                                        <Label htmlFor={prop} className="capitalize font-normal">{prop}</Label>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                        <Separator />
+                        <div className="flex items-center justify-between">
+                             <div className="space-y-0.5">
+                                <Label htmlFor="show-all" className="font-semibold">Show all items</Label>
+                                <p className="text-xs text-muted-foreground">Display all items on a given day.</p>
+                            </div>
+                            <Switch id="show-all" checked={calendarItemLimit === 'all'} onCheckedChange={(c) => onCalendarItemLimitChange?.(c ? 'all' : 3)} />
+                        </div>
+                    </div>
+                </PopoverContent>
+            </Popover>
+        );
+    }
+
+
+    function CombinedFilter({
+      filters,
+      onFiltersChange,
+      filterableFields,
+    }: {
+      filters: FilterConfig;
+      onFiltersChange: (filters: FilterConfig) => void;
+      filterableFields: { id: string; label: string; options: { id: string; label: string }[] }[];
+    }) {
+      const handleSelect = (fieldId: string, value: string) => {
+        const currentValues = new Set(filters[fieldId] || []);
+        currentValues.has(value) ? currentValues.delete(value) : currentValues.add(value);
+        
+        onFiltersChange({ ...filters, [fieldId]: Array.from(currentValues) });
+      };
+
+      const hasActiveFilters = filterableFields.some(field => (filters[field.id] || []).length > 0);
+
+      const clearFilters = () => {
+        const clearedFilters: Partial<FilterConfig> = {};
+        filterableFields.forEach(field => {
+          clearedFilters[field.id as keyof Omit<FilterConfig, 'searchTerm'>] = [];
+        });
+        onFiltersChange({ searchTerm: filters.searchTerm, ...clearedFilters });
+      }
+
+      return (
+        <Command>
+          <CommandInput placeholder="Filter by..." />
+          <CommandList>
+            <CommandEmpty>No results found.</CommandEmpty>
+            
+            {filterableFields.map((field, index) => (
+              <React.Fragment key={field.id}>
+                <CommandGroup heading={field.label}>
+                  {field.options.map((option) => {
+                const isSelected = (filters[field.id] || []).includes(option.id);
+                return (
+                  <CommandItem
+                    key={option.id}
+                    onSelect={() => handleSelect(field.id, option.id)}
+                  >
+                    <div
+                      className={cn(
+                        'mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary',
+                        isSelected ? 'bg-primary text-primary-foreground' : 'opacity-50 [&_svg]:invisible'
+                      )}
+                    >
+                      <Check className={cn('h-4 w-4')} />
+                    </div>
+                    <span>{option.label}</span>
+                  </CommandItem>
+                );
+              })}
+                </CommandGroup>
+                {index < filterableFields.length - 1 && <CommandSeparator />}
+              </React.Fragment>
+            ))}
+
+            {hasActiveFilters && (
+              <>
+                <CommandSeparator />
+                <CommandGroup>
+                  <CommandItem
+                    onSelect={clearFilters}
+                    className="justify-center text-center text-sm"
+                  >
+                    Clear filters
+                  </CommandItem>
+                </CommandGroup>
+              </>
+            )}
+          </CommandList>
+        </Command>
+      )
+    }
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 543

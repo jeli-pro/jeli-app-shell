@@ -30,7 +30,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 
-import type { FilterConfig, CalendarDateProp, CalendarDisplayProp, CalendarColorProp, GenericItem } from '../../types'
+import type { FilterConfig, CalendarDateProp, CalendarDisplayProp, CalendarColorProp, GenericItem, FilterableFieldConfig } from '../../types'
 import { useDynamicView } from '../../DynamicViewContext';
 
 export interface DataViewControlsProps {
@@ -264,7 +264,7 @@ function CombinedFilter({
 }: {
   filters: FilterConfig;
   onFiltersChange: (filters: FilterConfig) => void;
-  filterableFields: { id: string; label: string; options: { id: string; label: string }[] }[];
+  filterableFields: readonly FilterableFieldConfig<string>[];
 }) {
   const handleSelect = (fieldId: string, value: string) => {
     const currentValues = new Set(filters[fieldId] || []);

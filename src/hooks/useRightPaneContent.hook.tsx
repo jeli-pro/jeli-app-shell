@@ -22,6 +22,7 @@ import DataDemoPage from "@/pages/DataDemo/index";
 import { DetailPanel } from '@/features/dynamic-view/components/shared/DetailPanel';
 import { dataDemoViewConfig } from '@/pages/DataDemo/DataDemo.config';
 import { mockDataItems } from "@/pages/DataDemo/data/mockData";
+import type { DataDemoItem } from '@/pages/DataDemo/data/DataDemoItem';
 import { MessagingContent } from "@/pages/Messaging/components/MessagingContent";
 import type { AppShellState } from '@/store/appShell.store';
 
@@ -85,7 +86,7 @@ export function useRightPaneContent(sidePaneContent: AppShellState['sidePaneCont
 
   const selectedItem = useMemo(() => {
     if (!itemId) return null;
-    return mockDataItems.find(item => item.id === itemId) ?? null;
+    return (mockDataItems.find(item => item.id === itemId) as DataDemoItem) ?? null;
   }, [itemId]);
 
   const { meta, content } = useMemo(() => {
@@ -95,7 +96,7 @@ export function useRightPaneContent(sidePaneContent: AppShellState['sidePaneCont
         content: (
           <DynamicViewProvider
             viewConfig={dataDemoViewConfig}
-            items={mockDataItems}
+            items={mockDataItems as DataDemoItem[]}
             isLoading={false}
             isInitialLoading={false}
             totalItemCount={0}

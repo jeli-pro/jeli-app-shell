@@ -49,8 +49,8 @@
     "src/pages/DataDemo/hooks/useAutoAnimateStats.hook.ts",
     "src/pages/DataDemo/index.tsx",
 
-    "src/hooks/useAppViewManager.hook.ts"
-    // "src/hooks/useRightPaneContent.hook.tsx",
+    "src/hooks/useAppViewManager.hook.ts",
+    "src/hooks/useRightPaneContent.hook.tsx"
 
     // "src/lib/utils.ts"
   ],

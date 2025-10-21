@@ -47,17 +47,17 @@ export type ViewMode = 'list' | 'cards' | 'grid' | 'table' | 'kanban' | 'calenda
 export interface ListViewConfig<TFieldId extends string> {
   iconField: TFieldId;
   titleField: TFieldId;
-  metaFields: Array<{
+  metaFields: readonly {
     fieldId: TFieldId;
     className?: string;
-  }>;
+  }[];
 }
 
 export interface CardViewConfig<TFieldId extends string> {
   thumbnailField: TFieldId;
   titleField: TFieldId;
   descriptionField: TFieldId;
-  headerFields: TFieldId[];
+  headerFields: readonly TFieldId[];
   // Specific fields to recreate the original layout
   statusField: TFieldId;
   categoryField: TFieldId;
@@ -75,7 +75,7 @@ export interface TableColumnConfig<TFieldId extends string> {
 }
 
 export interface TableViewConfig<TFieldId extends string> {
-  columns: TableColumnConfig<TFieldId>[];
+  columns: readonly TableColumnConfig<TFieldId>[];
 }
 
 export interface KanbanViewConfig<TFieldId extends string> {
@@ -95,7 +95,7 @@ export interface KanbanViewConfig<TFieldId extends string> {
 export interface CalendarViewConfig<TFieldId extends string> {
   dateField: TFieldId;
   titleField: TFieldId;
-  displayFields: TFieldId[];
+  displayFields: readonly TFieldId[];
   colorByField?: TFieldId; // Field ID to color events by (e.g., 'priority', 'status')
 }
 
@@ -107,7 +107,7 @@ export interface ControlOption<TId extends string> {
 export interface FilterableFieldConfig<TFieldId extends string> {
   id: TFieldId; // fieldId
   label: string;
-  options: ControlOption<string>[];
+  options: readonly ControlOption<string>[];
 }
 
 export interface ViewConfig<
@@ -131,7 +131,7 @@ export interface ViewConfig<
 // --- DETAIL VIEW ---
 export interface DetailViewSection<TFieldId extends string> {
   title: string;
-  fields: TFieldId[];
+  fields: readonly TFieldId[];
 }
 
 export interface DetailViewConfig<TFieldId extends string> {
@@ -139,11 +139,11 @@ export interface DetailViewConfig<TFieldId extends string> {
     thumbnailField: TFieldId;
     titleField: TFieldId;
     descriptionField: TFieldId;
-    badgeFields: TFieldId[];
+    badgeFields: readonly TFieldId[];
     progressField: TFieldId;
   };
   body: {
-    sections: DetailViewSection<TFieldId>[];
+    sections: readonly DetailViewSection<TFieldId>[];
   };
 }
 

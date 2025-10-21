@@ -1,0 +1,270 @@
+uuid: b859663d-ca29-4d6d-88b6-96a84d2f094b
+projectId: jeli-app-shell
+createdAt: '2025-10-21T11:17:54.568Z'
+gitCommitMsg: >-
+  fix(types): Correct syntax for readonly array in ListViewConfig
+
+  The previous refactor introduced a syntax error in
+  `src/features/dynamic-view/types.ts`. The type for `metaFields` in
+  `ListViewConfig` was incorrectly written as `readonly { ... }>`, which is
+  invalid TypeScript syntax.
+
+  This commit corrects the syntax to `readonly { ... }[]`, which properly
+  defines a readonly array of objects and resolves the compilation errors.
+promptSummary: The user is reporting a TypeScript build error after the previous refactoring.
+reasoning:
+  - >-
+    Of course. It looks like a classic syntax error slipped through during the
+    refactoring. A misplaced `>` is causing the TypeScript compiler to stumble.
+    I'll correct that now.
+  - 'Here is the fix for `src/features/dynamic-view/types.ts`:'
+  - '---'
+  - >-
+    That was a small but critical syntax error in the type definition for
+    `ListViewConfig`. The type `readonly { ... }>` is invalid for defining a
+    readonly array of objects; it should be `readonly { ... }[]`. This
+    correction should resolve all three TypeScript errors and allow the build to
+    complete successfully.
+operations:
+  - type: write
+    path: src/features/dynamic-view/types.ts
+    content: |+
+      --- src/features/dynamic-view/types.ts
+      +++ src/features/dynamic-view/types.ts
+      @@ -50,7 +50,7 @@
+         metaFields: readonly {
+           fieldId: TFieldId;
+           className?: string;
+      -  }>;
+      +  }[];
+       }
+       
+       export interface CardViewConfig<TFieldId extends string> {
+
+    patchStrategy: standard-diff
+snapshot:
+  src/features/dynamic-view/types.ts: >-
+    import type { ReactNode } from 'react';
+
+
+    // --- GENERIC DATA & ITEM ---
+
+    export type GenericItem = Record<string, any> & { id: string };
+
+
+    // --- FIELD DEFINITIONS ---
+
+    // Describes a single piece of data within a GenericItem.
+
+    export type FieldType =
+      | 'string'
+      | 'longtext'
+      | 'badge'
+      | 'avatar'
+      | 'progress'
+      | 'date'
+      | 'tags'
+      | 'metrics'
+      | 'thumbnail'
+      | 'custom';
+
+    export interface BaseFieldDefinition<TFieldId extends string, TItem extends
+    GenericItem> {
+      id: TFieldId; // Corresponds to a key in GenericItem
+      label: string;
+      type: FieldType;
+      // Optional custom render function for ultimate flexibility.
+      render?: (item: TItem, options?: Record<string, any>) => ReactNode;
+    }
+
+
+    export interface BadgeFieldDefinition<TFieldId extends string, TItem extends
+    GenericItem>
+      extends BaseFieldDefinition<TFieldId, TItem> {
+      type: 'badge';
+      colorMap?: Record<string, string>; // e.g., { 'active': 'bg-green-500', 'pending': 'bg-yellow-500' }
+      indicatorColorMap?: Record<string, string>; // e.g., { 'critical': 'bg-red-500' }
+    }
+
+
+    // Add other specific field types if they need unique properties
+
+    // For now, most can be handled by the base definition.
+
+
+    export type FieldDefinition<TFieldId extends string, TItem extends
+    GenericItem> =
+      | BaseFieldDefinition<TFieldId, TItem>
+      | BadgeFieldDefinition<TFieldId, TItem>;
+
+    // --- VIEW CONFIGURATION ---
+
+    // The master configuration object that defines the entire view.
+
+
+    export type ViewMode = 'list' | 'cards' | 'grid' | 'table' | 'kanban' |
+    'calendar';
+
+
+    export interface ListViewConfig<TFieldId extends string> {
+      iconField: TFieldId;
+      titleField: TFieldId;
+      metaFields: readonly {
+        fieldId: TFieldId;
+        className?: string;
+      }>;
+    }
+
+
+    export interface CardViewConfig<TFieldId extends string> {
+      thumbnailField: TFieldId;
+      titleField: TFieldId;
+      descriptionField: TFieldId;
+      headerFields: readonly TFieldId[];
+      // Specific fields to recreate the original layout
+      statusField: TFieldId;
+      categoryField: TFieldId;
+      tagsField: TFieldId;
+      progressField: TFieldId;
+      assigneeField: TFieldId;
+      metricsField: TFieldId;
+      dateField: TFieldId;
+    }
+
+
+    export interface TableColumnConfig<TFieldId extends string> {
+      fieldId: TFieldId;
+      label: string;
+      isSortable: boolean;
+    }
+
+
+    export interface TableViewConfig<TFieldId extends string> {
+      columns: readonly TableColumnConfig<TFieldId>[];
+    }
+
+
+    export interface KanbanViewConfig<TFieldId extends string> {
+      groupByField: TFieldId; // Field ID to group by (e.g., 'status')
+      cardFields: {
+        titleField: TFieldId;
+        descriptionField: TFieldId;
+        priorityField: TFieldId;
+        tagsField: TFieldId;
+        // footer fields
+        dateField: TFieldId;
+        metricsField: TFieldId; // for comments/attachments
+        assigneeField: TFieldId;
+      };
+    }
+
+
+    export interface CalendarViewConfig<TFieldId extends string> {
+      dateField: TFieldId;
+      titleField: TFieldId;
+      displayFields: readonly TFieldId[];
+      colorByField?: TFieldId; // Field ID to color events by (e.g., 'priority', 'status')
+    }
+
+
+    export interface ControlOption<TId extends string> {
+      id: TId;
+      label: string;
+    }
+
+
+    export interface FilterableFieldConfig<TFieldId extends string> {
+      id: TFieldId; // fieldId
+      label: string;
+      options: readonly ControlOption<string>[];
+    }
+
+
+    export interface ViewConfig<
+      TFieldId extends string,
+      TItem extends GenericItem,
+    > {
+      fields: readonly FieldDefinition<TFieldId, TItem>[];
+      sortableFields: readonly ControlOption<TFieldId>[];
+      groupableFields: readonly ControlOption<TFieldId | 'none'>[];
+      filterableFields: readonly FilterableFieldConfig<TFieldId>[];
+
+      // Layouts for each view mode
+      listView: ListViewConfig<TFieldId>;
+      cardView: CardViewConfig<TFieldId>;
+      tableView: TableViewConfig<TFieldId>;
+      kanbanView: KanbanViewConfig<TFieldId>;
+      calendarView: CalendarViewConfig<TFieldId>;
+      detailView: DetailViewConfig<TFieldId>;
+    }
+
+
+    // --- DETAIL VIEW ---
+
+    export interface DetailViewSection<TFieldId extends string> {
+      title: string;
+      fields: readonly TFieldId[];
+    }
+
+
+    export interface DetailViewConfig<TFieldId extends string> {
+      header: {
+        thumbnailField: TFieldId;
+        titleField: TFieldId;
+        descriptionField: TFieldId;
+        badgeFields: readonly TFieldId[];
+        progressField: TFieldId;
+      };
+      body: {
+        sections: readonly DetailViewSection<TFieldId>[];
+      };
+    }
+
+
+    // --- GENERIC CONTROL & DATA TYPES ---
+
+
+    export type Status = 'active' | 'pending' | 'completed' | 'archived';
+
+    export type Priority = 'low' | 'medium' | 'high' | 'critical';
+
+
+    export interface FilterConfig {
+      searchTerm: string;
+      [key: string]: any; // For dynamic filter keys like status, priority
+    }
+
+
+    export interface SortConfig<TFieldId extends string> {
+      key: TFieldId;
+      direction: 'asc' | 'desc';
+    }
+
+
+    export type GroupableField<TFieldId extends string> = TFieldId | 'none';
+
+
+    export type CalendarDateProp<TFieldId extends string> = TFieldId;
+
+    export type CalendarDisplayProp<TFieldId extends string> = TFieldId;
+
+    export type CalendarColorProp<TFieldId extends string> = TFieldId | 'none';
+
+
+    // --- STATS ---
+
+    export type StatItem = {
+      title: string;
+      value: string;
+      icon: ReactNode;
+      change: string;
+      trend: 'up' | 'down';
+      chartData?: number[];
+    };
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 545
