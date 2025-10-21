@@ -172,18 +172,6 @@ export default function DataDemoPage() {
     [isLoading, hasMore, page, setPage],
   );
 
-  useEffect(() => {
-    // Auto-group by status when switching to kanban view for the first time
-    if (viewMode === "kanban" && groupBy === "none") {
-      setGroupBy("status");
-      setSort(null); // Kanban is manually sorted, so disable programmatic sort
-    }
-    // For calendar view, we don't want grouping.
-    else if (viewMode === "calendar" && groupBy !== "none") {
-      setGroupBy("none");
-    }
-  }, [viewMode, groupBy, setGroupBy, setSort]);
-
   return (
     <PageLayout scrollRef={scrollRef} onScroll={handleScroll}>
       <DynamicView

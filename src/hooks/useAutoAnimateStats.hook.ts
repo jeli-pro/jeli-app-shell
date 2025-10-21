@@ -15,54 +15,68 @@ export function useAutoAnimateStats(
   const isHidden = useRef(false);
   const originalMarginTop = useRef<string | null>(null);
 
+  const hideStats = useCallback(() => {
+    if (isHidden.current || !statsContainerRef.current) return;
+    isHidden.current = true;
+    gsap.to(statsContainerRef.current, {
+      duration: 0.4,
+      height: 0,
+      autoAlpha: 0,
+      marginTop: 0,
+      ease: 'power2.inOut',
+      overwrite: true,
+    });
+  }, [statsContainerRef]);
+
+  const showStats = useCallback(() => {
+    if (!isHidden.current || !statsContainerRef.current) return;
+    isHidden.current = false;
+    gsap.to(statsContainerRef.current, {
+      duration: 0.4,
+      height: 'auto',
+      autoAlpha: 1,
+      marginTop: originalMarginTop.current || 0,
+      ease: 'power2.out',
+      overwrite: true,
+    });
+  }, [statsContainerRef]);
+
   const handleScroll = useCallback(() => {
     if (!scrollContainerRef.current || !statsContainerRef.current) return;
 
     const scrollY = scrollContainerRef.current.scrollTop;
     
-    // Initialize original margin on first scroll event if not set
     if (originalMarginTop.current === null) {
       const computedStyle = getComputedStyle(statsContainerRef.current);
       originalMarginTop.current = computedStyle.getPropertyValue('margin-top');
     }
 
-    // On any significant scroll down, hide the stats.
-    // The small 10px threshold prevents firing on minor scroll-jiggles.
-    if (scrollY > lastScrollY.current && scrollY > 10 && !isHidden.current) {
-      isHidden.current = true;
-      gsap.to(statsContainerRef.current, {
-        duration: 0.4,
-        height: 0,
-        autoAlpha: 0,
-        marginTop: 0,
-        ease: 'power2.inOut',
-        overwrite: true,
-      });
+    if (scrollY > lastScrollY.current && scrollY > 10) {
+      hideStats();
     } 
 
     lastScrollY.current = scrollY < 0 ? 0 : scrollY;
-  }, [scrollContainerRef, statsContainerRef]);
+  }, [scrollContainerRef, statsContainerRef, hideStats]);
 
   const handleWheel = useCallback((event: WheelEvent) => {
     if (!scrollContainerRef.current || !statsContainerRef.current) return;
     
-    const isAtTop = scrollContainerRef.current.scrollTop === 0;
+    const container = scrollContainerRef.current;
+    const isAtTop = container.scrollTop === 0;
     const isScrollingUp = event.deltaY < 0;
+    const isScrollingDown = event.deltaY > 0;
+    const isVerticallyScrollable = container.scrollHeight > container.clientHeight;
 
-    // Only reveal if we are at the top, scrolling up, and stats are hidden.
-    // This creates the "pull to reveal" effect.
-    if (isAtTop && isScrollingUp && isHidden.current) {
-        isHidden.current = false;
-        gsap.to(statsContainerRef.current, {
-          duration: 0.4,
-          height: 'auto',
-          autoAlpha: 1,
-          marginTop: originalMarginTop.current || 0,
-          ease: 'power2.out',
-          overwrite: true,
-        });
+    // Reveal on "pull to reveal" at the top
+    if (isAtTop && isScrollingUp) {
+      showStats();
     }
-  }, [scrollContainerRef, statsContainerRef]);
+
+    // For non-scrollable containers (like Kanban), hide on any downward scroll
+    if (!isVerticallyScrollable && isScrollingDown) {
+      hideStats();
+    }
+  }, [scrollContainerRef, statsContainerRef, showStats, hideStats]);
 
   useEffect(() => {
     const scrollContainer = scrollContainerRef.current;

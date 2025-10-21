@@ -93,10 +93,17 @@ export function useAppViewManager() {
 
   // DataDemo specific state
   const viewMode = useMemo(() => (searchParams.get('dataView') as ViewMode) || 'list', [searchParams]);
-	const page = useMemo(() => parseInt(searchParams.get('page') || '1', 10), [searchParams]);
-	const groupBy = useMemo(() => (searchParams.get('groupBy') as GroupableField<string> | 'none') || 'none', [searchParams]);
-	const activeGroupTab = useMemo(() => searchParams.get('tab') || 'all', [searchParams]);
-	const filters = useMemo<FilterConfig>(
+  const page = useMemo(() => parseInt(searchParams.get('page') || '1', 10), [searchParams]);
+  const groupBy = useMemo(() => {
+    const groupByParam = (searchParams.get('groupBy') as GroupableField<string> | 'none') || 'none';
+    // Kanban view should default to grouping by status if no group is specified
+    if (viewMode === 'kanban' && groupByParam === 'none') {
+      return 'status';
+    }
+    return groupByParam;
+  }, [searchParams, viewMode]);
+  const activeGroupTab = useMemo(() => searchParams.get('tab') || 'all', [searchParams]);
+  const filters = useMemo<FilterConfig>(
 		() => ({
 			searchTerm: q || '',
 			status: (status?.split(',') || []).filter(Boolean),
@@ -104,14 +111,15 @@ export function useAppViewManager() {
 		}),
 		[q, status, priority],
 	);
-	const sortConfig = useMemo<SortConfig<string> | null>(() => {
+  const sortConfig = useMemo<SortConfig<string> | null>(() => {
+    if (viewMode === 'kanban') return null; // Kanban is manually sorted
 		const sortParam = sort;
 		if (!sortParam) return { key: 'updatedAt', direction: 'desc' }; // Default sort
 		if (sortParam === 'default') return null;
 
 		const [key, direction] = sortParam.split('-');
 		return { key, direction: direction as 'asc' | 'desc' };
-	}, [sort]);
+  }, [sort, viewMode]);
   const calendarDateProp = useMemo(() => (calDate || 'dueDate') as CalendarDateProp<string>, [calDate]);
   const calendarDisplayProps = useMemo(
     () => {

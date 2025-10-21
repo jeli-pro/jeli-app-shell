@@ -62,17 +62,40 @@ data demo page:
 
 ===
 
-data demo page: calendar view: beside month view, add week and day view
+data demo page: calendar view: dynamic-view:
+
+1. week view UI so ugly. styling should consistent with month view
+2. month view: clicking calendar block should open day view, currently should clicking the date
+
+===
+
+data demo page: calendar view: dynamic-view:
+
+day view should be proper app shell split view mode. current implementation is like not valid split view because:
+
+- unresizable pane
+- top bar not hidden
+
+===
+
+data demo page: calendar view: dynamic-view: beside month view, add week and day view
 
 but for day view should be open as split view mode in right pane, where main/left pane is the previous view (month/week)
+
 
 ===
 
 data demo page: calendar view: dynamic-view make the item drag drop works between days in month. currently it can be drag but cannot drop
 
-=== DOING
+===
 
 data demo page: dynamic-view: when user open data demo detail page that automatically show as overlay side pane,the UI UX should be like notion, where every data points are editable and can be dragged drop reorder
+
+===
+
+data demo page: dynamic-view:
+
+- make data detail page comply with app shell architecture. because current implementation is not working for normal view mode and broken full screen mode. also unnecessary vertical scrollable in overlay side pane mode
 
 ===
 
