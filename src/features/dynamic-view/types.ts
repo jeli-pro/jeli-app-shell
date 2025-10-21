@@ -28,6 +28,7 @@ export interface BaseFieldDefinition {
 export interface BadgeFieldDefinition extends BaseFieldDefinition {
   type: 'badge';
   colorMap?: Record<string, string>; // e.g., { 'active': 'bg-green-500', 'pending': 'bg-yellow-500' }
+  indicatorColorMap?: Record<string, string>; // e.g., { 'critical': 'bg-red-500' }
 }
 
 // Add other specific field types if they need unique properties

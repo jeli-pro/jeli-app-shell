@@ -53,6 +53,11 @@ export const getStatusColor = (status: string) => {
   }
 }
 
+// A helper to get nested properties from an object, e.g., 'metrics.views'
+export function getNestedValue(obj: Record<string, any>, path: string): any {
+  return path.split('.').reduce((o, k) => (o && o[k] !== undefined ? o[k] : undefined), obj);
+}
+
 export const getPrioritySolidColor = (priority: string) => {
   switch (priority) {
     case 'critical': return 'bg-red-500'

@@ -107,19 +107,12 @@
     //
     //
     //
-    "src/features/dynamic-view/components/shared/FieldRenderer.tsx",
-    "src/features/dynamic-view/components/views/CalendarView.tsx",
-    "src/features/dynamic-view/components/views/CardView.tsx",
-    "src/features/dynamic-view/components/views/KanbanView.tsx",
-    "src/features/dynamic-view/components/views/ListView.tsx",
-    "src/features/dynamic-view/components/views/TableView.tsx",
-    "src/features/dynamic-view/types.ts",
-    "src/pages/DataDemo/DataDemo.config.ts",
-    "src/pages/DataDemo/components/DataDetailActions.tsx",
-    "src/pages/DataDemo/components/DataDetailPanel.tsx",
-    "src/pages/DataDemo/index.tsx",
+    "src/features/dynamic-view",
+    "src/pages/DataDemo",
 
-    "src/hooks/useRightPaneContent.hook.tsx"
+    "src/hooks/useRightPaneContent.hook.tsx",
+
+    "src/lib/utils.ts"
   ],
   "ignore": {
     "useGitignore": true,

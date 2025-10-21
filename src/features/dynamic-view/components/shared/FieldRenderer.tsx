@@ -1,14 +1,9 @@
 import { useDynamicView } from '../../DynamicViewContext';
 import type { GenericItem, BadgeFieldDefinition } from '../../types';
-import { cn } from '@/lib/utils';
+import { cn, getNestedValue } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Clock, Eye, Heart, Share } from 'lucide-react';
-
-// A helper to get nested properties from an object, e.g., 'metrics.views'
-function getNestedValue(obj: Record<string, any>, path: string): any {
-  return path.split('.').reduce((o, k) => (o && o[k] !== 'undefined' ? o[k] : undefined), obj);
-}
 
 interface FieldRendererProps {
   item: GenericItem;
@@ -45,7 +40,15 @@ export function FieldRenderer({ item, fieldId, className, options }: FieldRender
       return <span className={cn("text-xl", className)}>{String(value)}</span>;
 
     case 'badge': {
-      const { colorMap } = fieldDef as BadgeFieldDefinition;
+      const { colorMap, indicatorColorMap } = fieldDef as BadgeFieldDefinition;
+      
+      if (options?.displayAs === 'indicator' && indicatorColorMap) {
+        const indicatorColorClass = indicatorColorMap[String(value)] || 'bg-muted-foreground';
+        return (
+          <div className={cn("w-3 h-3 rounded-full", indicatorColorClass, className)} />
+        );
+      }
+
       const colorClass = colorMap?.[String(value)] || '';
       return (
         <Badge variant="outline" className={cn("font-medium capitalize", colorClass, className)}>
@@ -72,7 +75,7 @@ export function FieldRenderer({ item, fieldId, className, options }: FieldRender
       return (
         <div className={cn("flex items-center gap-2 group", className)}>
           {avatarEl}
-          <div className="min-w-0">
+          <div className="min-w-0 hidden sm:block">
             <p className="font-medium text-sm truncate">{name}</p>
             <p className="text-xs text-muted-foreground truncate">{email}</p>
           </div>

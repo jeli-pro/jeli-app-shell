@@ -4,7 +4,14 @@ src/
   features/
     dynamic-view/
       components/
+        controls/
+          ViewControls.tsx
+          ViewModeSelector.tsx
         shared/
+          AddDataItemCta.tsx
+          AnimatedLoadingSkeleton.tsx
+          DetailPanel.tsx
+          EmptyState.tsx
           FieldRenderer.tsx
         views/
           CalendarView.tsx
@@ -12,12 +19,19 @@ src/
           KanbanView.tsx
           ListView.tsx
           TableView.tsx
+      DynamicViewContext.tsx
       types.ts
   hooks/
     useRightPaneContent.hook.tsx
+  lib/
+    utils.ts
   pages/
     DataDemo/
-      DataDemo.config.ts
+      hooks/
+        useAutoAnimateStats.hook.ts
+      store/
+        dataDemo.store.tsx
+      DataDemo.config.tsx
       index.tsx
   index.css
 index.html
@@ -205,151 +219,418 @@ export default defineConfig({
 })
 ```
 
-## File: src/features/dynamic-view/components/shared/FieldRenderer.tsx
+## File: src/features/dynamic-view/components/shared/AddDataItemCta.tsx
 ```typescript
-import { useDynamicView } from '../../DynamicViewContext';
-import type { GenericItem, BadgeFieldDefinition } from '../../types';
-import { cn } from '@/lib/utils';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
-import { Clock, Eye, Heart, Share } from 'lucide-react';
+import { Plus } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
-// A helper to get nested properties from an object, e.g., 'metrics.views'
-function getNestedValue(obj: Record<string, any>, path: string): any {
-  return path.split('.').reduce((o, k) => (o && o[k] !== 'undefined' ? o[k] : undefined), obj);
+interface AddDataItemCtaProps {
+  viewMode: 'list' | 'cards' | 'grid' | 'table'
+  colSpan?: number
 }
 
-interface FieldRendererProps {
-  item: GenericItem;
-  fieldId: string;
-  className?: string;
-  options?: Record<string, any>; // For extra props like 'compact' for avatar
+export function AddDataItemCta({ viewMode, colSpan }: AddDataItemCtaProps) {
+  const isTable = viewMode === 'table'
+  const isList = viewMode === 'list'
+  const isCard = viewMode === 'cards' || viewMode === 'grid'
+
+  const content = (
+    <div
+      className={cn(
+        "flex items-center justify-center text-center w-full h-full p-6 gap-6",
+        isCard && "flex-col min-h-[300px]",
+        isList && "flex-row",
+        isTable && "flex-row py-8",
+      )}
+    >
+      <div className="flex-shrink-0">
+        <div className="w-16 h-16 bg-primary/10 border-2 border-dashed border-primary/30 rounded-full flex items-center justify-center text-primary">
+          <Plus className="w-8 h-8" />
+        </div>
+      </div>
+      <div className={cn("flex-1", isCard && "text-center", isList && "text-left", isTable && "text-left")}>
+        <h3 className="font-semibold text-lg mb-1 text-primary">
+          Showcase Your Own Data
+        </h3>
+        <p className="text-muted-foreground text-sm">
+          Click here to add a new item and see how it looks across all views in the demo.
+        </p>
+      </div>
+    </div>
+  )
+
+  if (isTable) {
+    return (
+      <tr className="group transition-colors duration-200 hover:bg-accent/20 cursor-pointer">
+        <td colSpan={colSpan}>
+          {content}
+        </td>
+      </tr>
+    )
+  }
+
+  return (
+    <div
+      className={cn(
+        "group relative overflow-hidden rounded-3xl border-2 border-dashed border-border bg-transparent transition-all duration-300 cursor-pointer",
+        "hover:bg-accent/50 hover:border-primary/30",
+        isList && "rounded-2xl"
+      )}
+    >
+      {content}
+    </div>
+  )
+}
+```
+
+## File: src/features/dynamic-view/components/shared/DetailPanel.tsx
+```typescript
+import React, { useRef } from 'react'
+import {
+  Clock, 
+  Tag,
+  User,
+  BarChart3,
+} from 'lucide-react'
+import type { GenericItem, DetailViewConfig } from '../../types'
+import { useStaggeredAnimation } from '@/hooks/useStaggeredAnimation.motion.hook'
+import { FieldRenderer } from '@/features/dynamic-view/components/shared/FieldRenderer'
+import { getNestedValue } from '@/lib/utils'
+
+interface DetailPanelProps {
+  item: GenericItem
+  config: DetailViewConfig
 }
 
-export function FieldRenderer({ item, fieldId, className, options }: FieldRendererProps) {
-  const { getFieldDef } = useDynamicView();
-  const fieldDef = getFieldDef(fieldId);
-  const value = getNestedValue(item, fieldId);
+const SECTION_ICONS: Record<string, React.ElementType> = {
+  "Assigned to": User,
+  "Engagement Metrics": BarChart3,
+  "Tags": Tag,
+  "Timeline": Clock,
+};
 
-  // Custom render function takes precedence
-  if (fieldDef?.render) {
-    return <>{fieldDef.render(item, options)}</>;
-  }
+export function DetailPanel({ item, config }: DetailPanelProps) {
+  const contentRef = useRef<HTMLDivElement>(null)
+  useStaggeredAnimation(contentRef, [item]);
 
-  if (!fieldDef) {
-    console.warn(`[FieldRenderer] No field definition found for ID: ${fieldId}`);
-    return <span className="text-red-500">?</span>;
-  }
-
-  if (value === null || typeof value === 'undefined') {
-    return null; // Or some placeholder like 'N/A'
+  if (!item) {
+    return null
   }
   
-  switch (fieldDef.type) {
-    case 'string':
-    case 'longtext':
-      return <span className={cn("truncate", className)}>{String(value)}</span>;
-    
-    case 'thumbnail':
-      return <span className={cn("text-xl", className)}>{String(value)}</span>;
+  const { header, body } = config;
 
-    case 'badge': {
-      const { colorMap } = fieldDef as BadgeFieldDefinition;
-      const colorClass = colorMap?.[String(value)] || '';
-      return (
-        <Badge variant="outline" className={cn("font-medium capitalize", colorClass, className)}>
-          {String(value)}
-        </Badge>
-      );
-    }
-    
-    case 'avatar': {
-      const { compact = false, avatarClassName = "w-8 h-8" } = options || {};
-      const avatarUrl = getNestedValue(value, 'avatar');
-      const name = getNestedValue(value, 'name');
-      const email = getNestedValue(value, 'email');
-      const fallback = name?.split(' ').map((n: string) => n[0]).join('') || '?';
-
-      const avatarEl = (
-        <Avatar className={cn("border-2 border-transparent group-hover:border-primary/50 transition-colors", avatarClassName)}>
-          <AvatarImage src={avatarUrl} alt={name} />
-          <AvatarFallback>{fallback}</AvatarFallback>
-        </Avatar>
-      );
-      if (compact) return avatarEl;
-
-      return (
-        <div className={cn("flex items-center gap-2 group", className)}>
-          {avatarEl}
-          <div className="min-w-0">
-            <p className="font-medium text-sm truncate">{name}</p>
-            <p className="text-xs text-muted-foreground truncate">{email}</p>
+  return (
+    <div ref={contentRef} className="h-full flex flex-col">
+      {/* Header */}
+      <div className="p-6 border-b border-border/50 bg-gradient-to-r from-card/50 to-card/30 backdrop-blur-sm">
+        <div className="flex items-start gap-4 mb-4">
+          <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-primary/10 rounded-2xl flex items-center justify-center text-3xl flex-shrink-0">
+            <FieldRenderer item={item} fieldId={header.thumbnailField} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-2xl font-bold mb-2 leading-tight">
+              <FieldRenderer item={item} fieldId={header.titleField} />
+            </h1>
+            <p className="text-muted-foreground">
+              <FieldRenderer item={item} fieldId={header.descriptionField} />
+            </p>
           </div>
         </div>
-      );
-    }
-    
-    case 'progress': {
-      const { showPercentage = false } = options || {};
-      const bar = (
-        <div className="w-full bg-muted rounded-full h-2.5">
-          <div
-            className="bg-gradient-to-r from-primary to-primary/80 h-2.5 rounded-full transition-all duration-500"
-            style={{ width: `${value}%` }}
-          />
-        </div>
-      );
-      if (!showPercentage) return bar;
-      
-      return (
-        <div className="flex items-center gap-3">
-          <div className="flex-1 min-w-0">{bar}</div>
-          <span className="text-sm font-medium text-muted-foreground">{value}%</span>
-        </div>
-      );
-    }
 
-    case 'date':
-      return (
-        <div className={cn("flex items-center gap-1.5 text-sm", className)}>
-          <Clock className="w-4 h-4" />
-          <span>{new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
-        </div>
-      );
-
-    case 'tags': {
-      const MAX_TAGS = 2;
-      const tags = Array.isArray(value) ? value : [];
-      const remainingTags = tags.length - MAX_TAGS;
-      return (
-        <div className={cn("flex items-center gap-1.5 flex-wrap", className)}>
-          {tags.slice(0, MAX_TAGS).map(tag => (
-            <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
+        {/* Status badges */}
+        <div className="flex items-center gap-2 flex-wrap mb-4">
+          {header.badgeFields.map(fieldId => (
+            <FieldRenderer key={fieldId} item={item} fieldId={fieldId} />
           ))}
-          {remainingTags > 0 && (
-            <Badge variant="outline" className="text-xs">+{remainingTags}</Badge>
-          )}
         </div>
-      );
-    }
 
-    case 'metrics': {
-      const views = getNestedValue(value, 'views') || 0;
-      const likes = getNestedValue(value, 'likes') || 0;
-      const shares = getNestedValue(value, 'shares') || 0;
-      return (
-        <div className={cn("flex items-center gap-3 text-sm", className)}>
-          <div className="flex items-center gap-1"><Eye className="w-4 h-4" /> {views}</div>
-          <div className="flex items-center gap-1"><Heart className="w-4 h-4" /> {likes}</div>
-          <div className="flex items-center gap-1"><Share className="w-4 h-4" /> {shares}</div>
+        {/* Progress */}
+        <FieldRenderer item={item} fieldId={header.progressField} options={{ showPercentage: true }} />
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="p-6 space-y-6">
+          {body.sections.map(section => {
+            const IconComponent = SECTION_ICONS[section.title];
+            // Render section only if at least one of its fields has a value
+            const hasContent = section.fields.some(fieldId => {
+              const value = getNestedValue(item, fieldId);
+              return value !== null && typeof value !== 'undefined';
+            });
+
+            if (!hasContent) return null;
+
+            return (
+              <div key={section.title} className="bg-card/30 rounded-2xl p-4 border border-border/30">
+                <div className="flex items-center gap-1 mb-3">
+                  {IconComponent && <IconComponent className="w-4 h-4 text-muted-foreground" />}
+                  <h3 className="font-semibold text-sm">{section.title}</h3>
+                </div>
+                <div className="space-y-3">
+                  {section.fields.map(fieldId => (
+                    <FieldRenderer key={fieldId} item={item} fieldId={fieldId} options={{ avatarClassName: "w-12 h-12" }} />
+                  ))}
+                </div>
+              </div>
+            )
+          })}
         </div>
-      );
-    }
-      
-    default:
-      return <>{String(value)}</>;
-  }
+      </div>
+    </div>
+  )
 }
+```
+
+## File: src/features/dynamic-view/components/shared/EmptyState.tsx
+```typescript
+import { Eye } from 'lucide-react'
+
+export function EmptyState() {
+  return (
+    <div className="flex flex-col items-center justify-center py-20 text-center">
+      <div className="w-24 h-24 bg-muted rounded-full flex items-center justify-center mb-6">
+        <Eye className="w-10 h-10 text-muted-foreground" />
+      </div>
+      <h3 className="text-lg font-semibold mb-2">No items found</h3>
+      <p className="text-muted-foreground">Try adjusting your search criteria</p>
+    </div>
+  )
+}
+```
+
+## File: src/features/dynamic-view/DynamicViewContext.tsx
+```typescript
+import { createContext, useContext, useMemo, type ReactNode } from 'react';
+import type { ViewConfig, GenericItem } from './types';
+
+interface DynamicViewContextProps {
+  config: ViewConfig;
+  data: GenericItem[];
+  getFieldDef: (fieldId: string) => ViewConfig['fields'][number] | undefined;
+}
+
+const DynamicViewContext = createContext<DynamicViewContextProps | null>(null);
+
+interface DynamicViewProviderProps {
+  viewConfig: ViewConfig;
+  data: GenericItem[];
+  children: ReactNode;
+}
+
+export function DynamicViewProvider({ viewConfig, data, children }: DynamicViewProviderProps) {
+  const fieldDefsById = useMemo(() => {
+    return new Map(viewConfig.fields.map(field => [field.id, field]));
+  }, [viewConfig.fields]);
+
+  const getFieldDef = (fieldId: string) => {
+    return fieldDefsById.get(fieldId);
+  };
+
+  const value = useMemo(() => ({
+    config: viewConfig,
+    data,
+    getFieldDef,
+  }), [viewConfig, data, getFieldDef]);
+
+  return (
+    <DynamicViewContext.Provider value={value}>
+      {children}
+    </DynamicViewContext.Provider>
+  );
+}
+
+export function useDynamicView() {
+  const context = useContext(DynamicViewContext);
+  if (!context) {
+    throw new Error('useDynamicView must be used within a DynamicViewProvider');
+  }
+  return context;
+}
+```
+
+## File: src/pages/DataDemo/DataDemo.config.tsx
+```typescript
+import { capitalize } from "@/lib/utils";
+import { FieldRenderer } from "@/features/dynamic-view/components/shared/FieldRenderer";
+import type { ViewConfig, GenericItem } from "@/features/dynamic-view/types";
+
+export const dataDemoViewConfig: ViewConfig = {
+  // 1. Field Definitions
+  fields: [
+    { id: "id", label: "ID", type: "string" },
+    { id: "title", label: "Title", type: "string" },
+    { id: "description", label: "Description", type: "longtext" },
+    { id: "thumbnail", label: "Thumbnail", type: "thumbnail" },
+    { id: "category", label: "Category", type: "badge" },
+    {
+      id: "status",
+      label: "Status",
+      type: "badge",
+      colorMap: {
+        active: "bg-sky-500/10 text-sky-600 border-sky-500/20",
+        pending: "bg-amber-500/10 text-amber-600 border-amber-500/20",
+        completed: "bg-emerald-600/10 text-emerald-700 border-emerald-600/20",
+        archived: "bg-zinc-500/10 text-zinc-600 border-zinc-500/20",
+      },
+    },
+    {
+      id: "priority",
+      label: "Priority",
+      type: "badge",
+      colorMap: {
+        critical: "bg-red-600/10 text-red-700 border-red-600/20",
+        high: "bg-orange-500/10 text-orange-600 border-orange-500/20",
+        medium: "bg-blue-500/10 text-blue-600 border-blue-500/20",
+        low: "bg-green-500/10 text-green-600 border-green-500/20",
+      },
+      indicatorColorMap: {
+        critical: "bg-red-500",
+        high: "bg-orange-500",
+        medium: "bg-blue-500",
+        low: "bg-green-500",
+      }
+    },
+    { id: "assignee", label: "Assignee", type: "avatar" },
+    { id: "tags", label: "Tags", type: "tags" },
+    { id: "metrics", label: "Engagement", type: "metrics" },
+    { id: "metrics.completion", label: "Progress", type: "progress" },
+    { id: "dueDate", label: "Due Date", type: "date" },
+    { id: "createdAt", label: "Created At", type: "date" },
+    { id: "updatedAt", label: "Last Updated", type: "date" },
+    // A custom field to replicate the composite "Project" column in the table view
+    {
+      id: "project_details",
+      label: "Project",
+      type: "custom",
+      render: (item: GenericItem) => (
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-gradient-to-br from-primary/20 to-primary/10 rounded-lg flex items-center justify-center text-lg flex-shrink-0">
+            <FieldRenderer item={item} fieldId="thumbnail" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h4 className="font-medium group-hover:text-primary transition-colors truncate">
+              <FieldRenderer item={item} fieldId="title" />
+            </h4>
+            <p className="text-sm text-muted-foreground truncate">
+              <FieldRenderer item={item} fieldId="category" />
+            </p>
+          </div>
+        </div>
+      ),
+    },
+  ],
+  // 2. Control Definitions
+  sortableFields: [
+    { id: "updatedAt", label: "Last Updated" },
+    { id: "title", label: "Title" },
+    { id: "status", label: "Status" },
+    { id: "priority", label: "Priority" },
+    { id: "metrics.completion", label: "Progress" },
+  ],
+  groupableFields: [
+    { id: "none", label: "None" },
+    { id: "status", label: "Status" },
+    { id: "priority", label: "Priority" },
+    { id: "category", label: "Category" },
+  ],
+  filterableFields: [
+    {
+      id: "status",
+      label: "Status",
+      options: [
+        { id: "active", label: "Active" },
+        { id: "pending", label: "Pending" },
+        { id: "completed", label: "Completed" },
+        { id: "archived", label: "Archived" },
+      ],
+    },
+    {
+      id: "priority",
+      label: "Priority",
+      options: [
+        { id: "critical", label: "Critical" },
+        { id: "high", label: "High" },
+        { id: "medium", label: "Medium" },
+        { id: "low", label: "Low" },
+      ],
+    },
+  ],
+  // 3. View Layouts
+  listView: {
+    iconField: "thumbnail",
+    titleField: "title",
+    metaFields: [
+      { fieldId: "status", className: "hidden sm:flex" },
+      { fieldId: "tags", className: "hidden lg:flex" },
+      { fieldId: "updatedAt", className: "hidden md:flex" },
+      { fieldId: "assignee" },
+      { fieldId: "priority", className: "hidden xs:flex" },
+    ],
+  },
+  cardView: {
+    thumbnailField: "thumbnail",
+    titleField: "title",
+    descriptionField: "description",
+    headerFields: ["priority"],
+    statusField: "status",
+    categoryField: "category",
+    tagsField: "tags",
+    progressField: "metrics.completion",
+    assigneeField: "assignee",
+    metricsField: "metrics",
+    dateField: "updatedAt",
+  },
+  tableView: {
+    columns: [
+      { fieldId: "project_details", label: "Project", isSortable: true },
+      { fieldId: "status", label: "Status", isSortable: true },
+      { fieldId: "priority", label: "Priority", isSortable: true },
+      { fieldId: "assignee", label: "Assignee", isSortable: true },
+      { fieldId: "metrics.completion", label: "Progress", isSortable: true },
+      { fieldId: "metrics", label: "Engagement", isSortable: true },
+      { fieldId: "updatedAt", label: "Last Updated", isSortable: true },
+    ],
+  },
+  kanbanView: {
+    groupByField: "status",
+    cardFields: {
+      titleField: "title",
+      descriptionField: "description",
+      priorityField: "priority",
+      tagsField: "tags",
+      dateField: "dueDate",
+      metricsField: "metrics",
+      assigneeField: "assignee",
+    },
+  },
+  calendarView: {
+    dateField: "dueDate",
+    titleField: "title",
+    displayFields: ["tags", "priority", "assignee"],
+    colorByField: "priority",
+  },
+  detailView: {
+    header: {
+      thumbnailField: "thumbnail",
+      titleField: "title",
+      descriptionField: "description",
+      badgeFields: ["status", "priority", "category"],
+      progressField: "metrics.completion",
+    },
+    body: {
+      sections: [
+        { title: "Assigned to", fields: ["assignee"] },
+        { title: "Engagement Metrics", fields: ["metrics"] },
+        { title: "Tags", fields: ["tags"] },
+        {
+          title: "Timeline",
+          fields: ["createdAt", "updatedAt", "dueDate"],
+        },
+      ],
+    },
+  },
+};
 ```
 
 ## File: index.html
@@ -562,6 +843,1100 @@ export default {
 }
 ```
 
+## File: src/features/dynamic-view/components/controls/ViewControls.tsx
+```typescript
+import * as React from 'react'
+import { Check, ListFilter, Search, SortAsc, ChevronsUpDown, Settings } from 'lucide-react'
+
+import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Badge } from '@/components/ui/badge'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+  CommandSeparator,
+} from '@/components/ui/command'
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
+import { Separator } from "@/components/ui/separator";
+
+import type { FilterConfig, CalendarDateProp, CalendarDisplayProp, CalendarColorProp } from '../../types'
+import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
+import { useDynamicView } from '../../DynamicViewContext'
+
+export interface DataViewControlsProps {
+  // groupOptions will now come from config
+}
+
+export function ViewControls() {
+  const {
+    filters,
+    setFilters,
+    sortConfig,
+    setSort,
+    groupBy,
+    setGroupBy,
+    viewMode,
+  } = useAppViewManager();
+  const { config } = useDynamicView();
+  const sortOptions = config.sortableFields;
+  const groupOptions = config.groupableFields;
+  const filterableFields = config.filterableFields;
+
+  const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setFilters({ ...filters, searchTerm: event.target.value })
+  }
+  
+  const activeFilterCount = filterableFields.reduce((acc, field) => acc + (filters[field.id]?.length || 0), 0)
+
+  return (
+    <div className="flex flex-col sm:flex-row items-center gap-2 w-full">
+      {/* Search */}
+      <div className="relative w-full sm:w-auto">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder="Search projects..."
+          className="pl-9 w-full sm:w-64"
+          value={filters.searchTerm}
+          onChange={handleSearchChange}
+        />
+      </div>
+
+      {/* Filters */}
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button variant="outline" size="sm" className="h-9 w-full sm:w-auto justify-start border-dashed">
+            <ListFilter className="mr-2 h-4 w-4" />
+            Filters
+            {activeFilterCount > 0 && (
+              <>
+                <div className="mx-2 h-4 w-px bg-muted-foreground/50" />
+                <Badge variant="secondary" className="rounded-sm px-1 font-normal">
+                  {activeFilterCount}
+                </Badge>
+              </>
+            )}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-[240px] p-0" align="start">
+          <CombinedFilter filters={filters} onFiltersChange={setFilters} filterableFields={filterableFields} />
+        </PopoverContent>
+      </Popover>
+
+      {activeFilterCount > 0 && (
+        <Button variant="ghost" size="sm" onClick={() => setFilters({ searchTerm: filters.searchTerm, status: [], priority: [] })}>Reset</Button>
+      )}
+
+      {/* Spacer */}
+      <div className="hidden md:block flex-grow" />
+
+      {viewMode === 'calendar' ? (
+        <CalendarSpecificControls />
+      ) : (
+        <>
+          {/* Sorter */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="h-9 w-full sm:w-auto justify-start">
+                <SortAsc className="mr-2 h-4 w-4" />
+                Sort by: {sortOptions.find(o => o.id === sortConfig?.key)?.label || 'Default'}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-[200px]">
+              <DropdownMenuLabel>Sort by</DropdownMenuLabel>
+              <DropdownMenuRadioGroup
+                value={`${sortConfig?.key || 'default'}-${sortConfig?.direction || ''}`}
+                onValueChange={(value) => {
+                  if (value.startsWith('default')) {
+                    setSort(null)
+                  } else {
+                    const [key, direction] = value.split('-')
+                    setSort({ key: key, direction: direction as 'asc' | 'desc' })
+                  }
+                }}
+              >
+                <DropdownMenuRadioItem value="default-">Default</DropdownMenuRadioItem>
+                <DropdownMenuSeparator />
+                {sortOptions.map(option => (
+                  <React.Fragment key={option.id}>
+                    <DropdownMenuRadioItem value={`${option.id}-desc`}>{option.label} (Desc)</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value={`${option.id}-asc`}>{option.label} (Asc)</DropdownMenuRadioItem>
+                  </React.Fragment>
+                ))}
+              </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* Group By Dropdown */}
+          <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="h-9 w-full justify-between">
+                  Group by: {groupOptions.find(o => o.id === groupBy)?.label}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-[180px]">
+                <DropdownMenuRadioGroup value={groupBy} onValueChange={setGroupBy}>
+                  {groupOptions.map(option => (
+                    <DropdownMenuRadioItem key={option.id} value={option.id}>
+                      {option.label}
+                    </DropdownMenuRadioItem>
+                  ))}
+                </DropdownMenuRadioGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+function CalendarSpecificControls() {
+    const { 
+        calendarDateProp, setCalendarDateProp,
+        calendarDisplayProps, setCalendarDisplayProps,
+        calendarItemLimit, setCalendarItemLimit,
+        calendarColorProp, setCalendarColorProp,
+    } = useAppViewManager();
+
+    const handleDisplayPropChange = (prop: CalendarDisplayProp, checked: boolean) => {
+        const newProps = checked 
+            ? [...calendarDisplayProps, prop] 
+            : calendarDisplayProps.filter(p => p !== prop);
+        setCalendarDisplayProps(newProps);
+    };
+
+    return (
+        <Popover>
+            <PopoverTrigger asChild>
+                <Button variant="outline" size="icon" className="h-9 w-9">
+                    <Settings className="h-4 w-4" />
+                </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-80 p-4" align="end">
+                <div className="space-y-4">
+                    <div className="space-y-1">
+                        <h4 className="font-medium leading-none">Calendar Settings</h4>
+                        <p className="text-sm text-muted-foreground">
+                            Customize the calendar view.
+                        </p>
+                    </div>
+                    <Separator />
+                    <div className="space-y-3">
+                        <Label className="font-semibold">Item Background Color</Label>
+                        <RadioGroup value={calendarColorProp} onValueChange={(v) => setCalendarColorProp(v as CalendarColorProp)} className="gap-2">
+                            <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="none" id="color-none" />
+                                <Label htmlFor="color-none" className="font-normal">None</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="priority" id="color-priority" />
+                                <Label htmlFor="color-priority" className="font-normal">By Priority</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="status" id="color-status" />
+                                <Label htmlFor="color-status" className="font-normal">By Status</Label>
+                            </div>
+                             <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="category" id="color-category" />
+                                <Label htmlFor="color-category" className="font-normal">By Category</Label>
+                            </div>
+                        </RadioGroup>
+                    </div>
+                    <Separator />
+                    <div className="space-y-3">
+                        <Label className="font-semibold">Date Property</Label>
+                        <RadioGroup value={calendarDateProp} onValueChange={(v) => setCalendarDateProp(v as CalendarDateProp)} className="gap-2">
+                            <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="dueDate" id="dueDate" />
+                                <Label htmlFor="dueDate" className="font-normal">Due Date</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="createdAt" id="createdAt" />
+                                <Label htmlFor="createdAt" className="font-normal">Created Date</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="updatedAt" id="updatedAt" />
+                                <Label htmlFor="updatedAt" className="font-normal">Updated Date</Label>
+                            </div>
+                        </RadioGroup>
+                    </div>
+                    <div className="space-y-3">
+                        <Label className="font-semibold">Card Details</Label>
+                        <div className="space-y-2">
+                            {(['priority', 'assignee', 'tags'] as CalendarDisplayProp[]).map(prop => (
+                                <div key={prop} className="flex items-center space-x-2">
+                                    <Checkbox id={prop} checked={calendarDisplayProps.includes(prop)} onCheckedChange={(c) => handleDisplayPropChange(prop, !!c)} />
+                                    <Label htmlFor={prop} className="capitalize font-normal">{prop}</Label>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                    <Separator />
+                    <div className="flex items-center justify-between">
+                         <div className="space-y-0.5">
+                            <Label htmlFor="show-all" className="font-semibold">Show all items</Label>
+                            <p className="text-xs text-muted-foreground">Display all items on a given day.</p>
+                        </div>
+                        <Switch id="show-all" checked={calendarItemLimit === 'all'} onCheckedChange={(c) => setCalendarItemLimit(c ? 'all' : 3)} />
+                    </div>
+                </div>
+            </PopoverContent>
+        </Popover>
+    );
+}
+
+function CombinedFilter({
+  filters,
+  onFiltersChange,
+  filterableFields,
+}: {
+  filters: FilterConfig;
+  onFiltersChange: (filters: FilterConfig) => void;
+  filterableFields: { id: string; label: string; options: { id: string; label: string }[] }[];
+}) {
+  const handleSelect = (fieldId: string, value: string) => {
+    const currentValues = new Set(filters[fieldId] || []);
+    currentValues.has(value) ? currentValues.delete(value) : currentValues.add(value);
+    
+    onFiltersChange({ ...filters, [fieldId]: Array.from(currentValues) });
+  };
+
+  const hasActiveFilters = filterableFields.some(field => (filters[field.id] || []).length > 0);
+
+  const clearFilters = () => {
+    const clearedFilters: Partial<FilterConfig> = {};
+    filterableFields.forEach(field => {
+      clearedFilters[field.id as keyof Omit<FilterConfig, 'searchTerm'>] = [];
+    });
+    onFiltersChange({ searchTerm: filters.searchTerm, ...clearedFilters });
+  }
+
+  return (
+    <Command>
+      <CommandInput placeholder="Filter by..." />
+      <CommandList>
+        <CommandEmpty>No results found.</CommandEmpty>
+        
+        {filterableFields.map((field, index) => (
+          <React.Fragment key={field.id}>
+            <CommandGroup heading={field.label}>
+              {field.options.map((option) => {
+            const isSelected = (filters[field.id] || []).includes(option.id);
+            return (
+              <CommandItem
+                key={option.id}
+                onSelect={() => handleSelect(field.id, option.id)}
+              >
+                <div
+                  className={cn(
+                    'mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary',
+                    isSelected ? 'bg-primary text-primary-foreground' : 'opacity-50 [&_svg]:invisible'
+                  )}
+                >
+                  <Check className={cn('h-4 w-4')} />
+                </div>
+                <span>{option.label}</span>
+              </CommandItem>
+            );
+          })}
+            </CommandGroup>
+            {index < filterableFields.length - 1 && <CommandSeparator />}
+          </React.Fragment>
+        ))}
+
+        {hasActiveFilters && (
+          <>
+            <CommandSeparator />
+            <CommandGroup>
+              <CommandItem
+                onSelect={clearFilters}
+                className="justify-center text-center text-sm"
+              >
+                Clear filters
+              </CommandItem>
+            </CommandGroup>
+          </>
+        )}
+      </CommandList>
+    </Command>
+  )
+}
+```
+
+## File: src/features/dynamic-view/components/controls/ViewModeSelector.tsx
+```typescript
+import { useEffect, useRef, useState, useCallback } from 'react'
+import { gsap } from 'gsap'
+import { cn } from '@/lib/utils'
+import { List, Grid3X3, LayoutGrid, Table, LayoutDashboard, CalendarDays } from 'lucide-react'
+import type { ViewMode } from '../../types'
+import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
+
+const viewModes = [
+  { id: 'list' as ViewMode, label: 'List', icon: List, description: 'Compact list with details' },
+  { id: 'cards' as ViewMode, label: 'Cards', icon: LayoutGrid, description: 'Rich card layout' },
+  { id: 'kanban' as ViewMode, label: 'Kanban', icon: LayoutDashboard, description: 'Interactive Kanban board' },
+  { id: 'calendar' as ViewMode, label: 'Calendar', icon: CalendarDays, description: 'Interactive calendar view' },
+  { id: 'grid' as ViewMode, label: 'Grid', icon: Grid3X3, description: 'Masonry grid view' },
+  { id: 'table' as ViewMode, label: 'Table', icon: Table, description: 'Structured data table' }
+]
+
+export function ViewModeSelector() {
+  const { viewMode, setViewMode } = useAppViewManager();
+  const indicatorRef = useRef<HTMLDivElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [isExpanded, setIsExpanded] = useState(false)
+  const [isTransitioning, setIsTransitioning] = useState(false)
+
+  const updateIndicatorPosition = useCallback((immediate = false) => {
+    if (!indicatorRef.current || !containerRef.current || isTransitioning) return
+
+    const activeButton = containerRef.current.querySelector(`[data-mode="${viewMode}"]`) as HTMLElement
+    if (!activeButton) return
+
+    const containerRect = containerRef.current.getBoundingClientRect()
+    const buttonRect = activeButton.getBoundingClientRect()
+    
+    const left = buttonRect.left - containerRect.left
+    const width = buttonRect.width
+
+    if (immediate) {
+      // Set position immediately without animation for initial load
+      gsap.set(indicatorRef.current, {
+        x: left,
+        width: width
+      })
+    } else {
+      gsap.to(indicatorRef.current, {
+        duration: 0.3,
+        x: left,
+        width: width,
+        ease: "power2.out"
+      })
+    }
+  }, [viewMode, isTransitioning])
+
+  // Initial setup - set position immediately without animation
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      updateIndicatorPosition(true)
+    }, 0)
+    return () => clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // Only run once on mount
+
+  useEffect(() => {
+    if (!isTransitioning) {
+      updateIndicatorPosition()
+    }
+  }, [viewMode, isTransitioning, updateIndicatorPosition])
+
+  const handleMouseEnter = () => {
+    setIsTransitioning(true)
+    setIsExpanded(true)
+    
+    // Wait for expand animation to complete
+    setTimeout(() => {
+      setIsTransitioning(false)
+    }, 500)
+  }
+
+  const handleMouseLeave = () => {
+    setIsTransitioning(true)
+    setIsExpanded(false)
+    
+    // Wait for collapse animation to complete
+    setTimeout(() => {
+      setIsTransitioning(false)
+    }, 500)
+  }
+
+  return (
+    <div 
+      ref={containerRef}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+      className={cn(
+        "relative flex items-center bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-1.5 shadow-lg transition-all duration-500 ease-out",
+        "hover:shadow-xl hover:bg-card/70",
+        isExpanded ? "gap-1" : "gap-0"
+      )}
+    >
+      {/* Animated indicator */}
+      <div
+        ref={indicatorRef}
+        className="absolute inset-y-1.5 bg-gradient-to-r from-primary/20 to-primary/10 border border-primary/20 rounded-xl transition-all duration-300"
+        style={{ left: 0, width: 0 }}
+      />
+      
+      {/* Mode buttons */}
+      {viewModes.map((mode, index) => {
+        const IconComponent = mode.icon
+        const isActive = viewMode === mode.id
+        
+        return (
+          <button
+            key={mode.id}
+            data-mode={mode.id}
+            onClick={() => setViewMode(mode.id)}
+            className={cn(
+              "relative flex items-center justify-center rounded-xl transition-all duration-500 ease-out group overflow-hidden",
+              "hover:bg-accent/20 active:scale-95",
+              isActive && "text-primary",
+              isExpanded ? "gap-3 px-4 py-2.5" : "gap-0 px-3 py-2.5"
+            )}
+            title={mode.description}
+            style={{
+              transitionDelay: isExpanded ? `${index * 50}ms` : `${(viewModes.length - index - 1) * 30}ms`
+            }}
+          >
+            <IconComponent className={cn(
+              "w-5 h-5 transition-all duration-300 flex-shrink-0",
+              isActive && "scale-110",
+              "group-hover:scale-105",
+              isExpanded ? "rotate-0" : "rotate-0"
+            )} />
+            
+            {/* Label with smooth expand/collapse */}
+            <div className={cn(
+              "overflow-hidden transition-all duration-500 ease-out",
+              isExpanded ? "max-w-[80px] opacity-100" : "max-w-0 opacity-0"
+            )}>
+              <span className={cn(
+                "font-medium whitespace-nowrap transition-all duration-300",
+                isActive ? "text-primary" : "text-muted-foreground",
+                "group-hover:text-foreground"
+              )}>
+                {mode.label}
+              </span>
+            </div>
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+```
+
+## File: src/features/dynamic-view/components/shared/AnimatedLoadingSkeleton.tsx
+```typescript
+import { useEffect, useRef, useState } from 'react'
+import { gsap } from 'gsap'
+import { Search } from 'lucide-react'
+import { cn } from '@/lib/utils'
+import type { ViewMode } from '../../types'
+
+interface GridConfig {
+  numCards: number
+  cols: number
+}
+
+export const AnimatedLoadingSkeleton = ({ viewMode }: { viewMode: ViewMode }) => {
+  const [containerWidth, setContainerWidth] = useState(0)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const iconRef = useRef<HTMLDivElement>(null)
+  const timelineRef = useRef<gsap.core.Timeline | null>(null)
+
+  const getGridConfig = (width: number): GridConfig => {
+    if (width === 0) return { numCards: 8, cols: 2 }; // Default before measurement
+    if (viewMode === 'list' || viewMode === 'table') {
+      return { numCards: 5, cols: 1 }
+    }
+    // For card view
+    if (viewMode === 'cards') {
+      const cols = Math.max(1, Math.floor(width / 344)); // 320px card + 24px gap
+      return { numCards: Math.max(8, cols * 2), cols }
+    }
+    // For grid view
+    const cols = Math.max(1, Math.floor(width / 304)); // 280px card + 24px gap
+    return { numCards: Math.max(8, cols * 2), cols }
+  }
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const resizeObserver = new ResizeObserver(entries => {
+      if (entries[0]) {
+        setContainerWidth(entries[0].contentRect.width);
+      }
+    });
+
+    resizeObserver.observe(container);
+    return () => resizeObserver.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (timelineRef.current) {
+      timelineRef.current.kill()
+    }
+    if (!iconRef.current || !containerRef.current || containerWidth === 0) return
+
+    // Allow DOM to update with new skeleton cards
+    const timeoutId = setTimeout(() => {
+      const cards = Array.from(containerRef.current!.children)
+      if (cards.length === 0) return
+
+      const shuffledCards = gsap.utils.shuffle(cards)
+
+      const getCardPosition = (card: Element) => {
+        const rect = card.getBoundingClientRect()
+        const containerRect = containerRef.current!.getBoundingClientRect()
+        const iconRect = iconRef.current!.getBoundingClientRect()
+
+        return {
+          x: rect.left - containerRect.left + rect.width / 2 - iconRect.width / 2,
+          y: rect.top - containerRect.top + rect.height / 2 - iconRect.height / 2,
+        }
+      }
+      
+      const tl = gsap.timeline({
+        repeat: -1,
+        repeatDelay: 0.5,
+        defaults: { duration: 1, ease: 'power2.inOut' }
+      });
+      timelineRef.current = tl
+
+      // Animate to a few random cards
+      shuffledCards.slice(0, 5).forEach(card => {
+        const pos = getCardPosition(card)
+        tl.to(iconRef.current, { 
+          x: pos.x,
+          y: pos.y,
+          scale: 1.2,
+          duration: 0.8
+        }).to(iconRef.current, {
+          scale: 1,
+          duration: 0.2
+        })
+      });
+
+      // Loop back to the start
+      const firstPos = getCardPosition(shuffledCards[0]);
+      tl.to(iconRef.current, { x: firstPos.x, y: firstPos.y, duration: 0.8 });
+    }, 100) // Small delay to ensure layout is calculated
+
+    return () => {
+      clearTimeout(timeoutId)
+      if (timelineRef.current) {
+        timelineRef.current.kill()
+      }
+    }
+
+  }, [containerWidth, viewMode])
+
+  const config = getGridConfig(containerWidth)
+
+  const renderSkeletonCard = (key: number) => {
+    if (viewMode === 'list' || viewMode === 'table') {
+      return (
+        <div key={key} className="bg-card/30 border border-border/30 rounded-2xl p-6 flex items-start gap-4 animate-pulse">
+          <div className="w-14 h-14 bg-muted rounded-xl flex-shrink-0"></div>
+          <div className="flex-1 space-y-3">
+            <div className="h-4 bg-muted rounded w-3/4"></div>
+            <div className="h-3 bg-muted rounded w-full"></div>
+            <div className="h-3 bg-muted rounded w-5/6"></div>
+            <div className="flex gap-2 pt-2">
+              <div className="h-6 bg-muted rounded-full w-20"></div>
+              <div className="h-6 bg-muted rounded-full w-20"></div>
+            </div>
+          </div>
+        </div>
+      )
+    }
+
+    return (
+      <div 
+        key={key} 
+        className={cn(
+          "bg-card/30 border border-border/30 rounded-3xl p-6 space-y-4 animate-pulse",
+        )}
+      >
+        <div className="flex items-start justify-between">
+          <div className="w-16 h-16 bg-muted rounded-2xl"></div>
+          <div className="w-4 h-4 bg-muted rounded-full"></div>
+        </div>
+        <div className="h-4 bg-muted rounded w-3/4"></div>
+        <div className="h-3 bg-muted rounded w-full"></div>
+        <div className="h-3 bg-muted rounded w-5/6"></div>
+        <div className="h-2 w-full bg-muted rounded-full my-4"></div>
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 bg-muted rounded-full"></div>
+          <div className="flex-1 space-y-2">
+            <div className="h-3 bg-muted rounded w-1/2"></div>
+            <div className="h-2 bg-muted rounded w-1/3"></div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  const gridClasses = {
+    list: "space-y-4",
+    table: "space-y-4",
+    cards: "grid grid-cols-[repeat(auto-fit,minmax(320px,1fr))] gap-6",
+    grid: "grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-6",
+    kanban: "", // Kanban has its own skeleton
+    calendar: "" // Calendar has its own skeleton
+  }
+
+  return (
+    <div className="relative overflow-hidden rounded-lg min-h-[500px]">
+      <div 
+        ref={iconRef}
+        className="absolute z-10 p-3 bg-primary/20 rounded-full backdrop-blur-sm"
+        style={{ willChange: 'transform' }}
+      >
+        <Search className="w-6 h-6 text-primary" />
+      </div>
+
+      <div 
+        ref={containerRef}
+        className={cn(gridClasses[viewMode])}
+      >
+        {[...Array(config.numCards)].map((_, i) => renderSkeletonCard(i))}
+      </div>
+    </div>
+  )
+}
+```
+
+## File: src/features/dynamic-view/components/shared/FieldRenderer.tsx
+```typescript
+import { useDynamicView } from '../../DynamicViewContext';
+import type { GenericItem, BadgeFieldDefinition } from '../../types';
+import { cn } from '@/lib/utils';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { Clock, Eye, Heart, Share } from 'lucide-react';
+
+// A helper to get nested properties from an object, e.g., 'metrics.views'
+function getNestedValue(obj: Record<string, any>, path: string): any {
+  return path.split('.').reduce((o, k) => (o && o[k] !== 'undefined' ? o[k] : undefined), obj);
+}
+
+interface FieldRendererProps {
+  item: GenericItem;
+  fieldId: string;
+  className?: string;
+  options?: Record<string, any>; // For extra props like 'compact' for avatar
+}
+
+export function FieldRenderer({ item, fieldId, className, options }: FieldRendererProps) {
+  const { getFieldDef } = useDynamicView();
+  const fieldDef = getFieldDef(fieldId);
+  const value = getNestedValue(item, fieldId);
+
+  // Custom render function takes precedence
+  if (fieldDef?.render) {
+    return <>{fieldDef.render(item, options)}</>;
+  }
+
+  if (!fieldDef) {
+    console.warn(`[FieldRenderer] No field definition found for ID: ${fieldId}`);
+    return <span className="text-red-500">?</span>;
+  }
+
+  if (value === null || typeof value === 'undefined') {
+    return null; // Or some placeholder like 'N/A'
+  }
+  
+  switch (fieldDef.type) {
+    case 'string':
+    case 'longtext':
+      return <span className={cn("truncate", className)}>{String(value)}</span>;
+    
+    case 'thumbnail':
+      return <span className={cn("text-xl", className)}>{String(value)}</span>;
+
+    case 'badge': {
+      const { colorMap, indicatorColorMap } = fieldDef as BadgeFieldDefinition;
+      
+      if (options?.displayAs === 'indicator' && indicatorColorMap) {
+        const indicatorColorClass = indicatorColorMap[String(value)] || 'bg-muted-foreground';
+        return (
+          <div className={cn("w-3 h-3 rounded-full", indicatorColorClass, className)} />
+        );
+      }
+
+      const colorClass = colorMap?.[String(value)] || '';
+      return (
+        <Badge variant="outline" className={cn("font-medium capitalize", colorClass, className)}>
+          {String(value)}
+        </Badge>
+      );
+    }
+    
+    case 'avatar': {
+      const { compact = false, avatarClassName = "w-8 h-8" } = options || {};
+      const avatarUrl = getNestedValue(value, 'avatar');
+      const name = getNestedValue(value, 'name');
+      const email = getNestedValue(value, 'email');
+      const fallback = name?.split(' ').map((n: string) => n[0]).join('') || '?';
+
+      const avatarEl = (
+        <Avatar className={cn("border-2 border-transparent group-hover:border-primary/50 transition-colors", avatarClassName)}>
+          <AvatarImage src={avatarUrl} alt={name} />
+          <AvatarFallback>{fallback}</AvatarFallback>
+        </Avatar>
+      );
+      if (compact) return avatarEl;
+
+      return (
+        <div className={cn("flex items-center gap-2 group", className)}>
+          {avatarEl}
+          <div className="min-w-0 hidden sm:block">
+            <p className="font-medium text-sm truncate">{name}</p>
+            <p className="text-xs text-muted-foreground truncate">{email}</p>
+          </div>
+        </div>
+      );
+    }
+    
+    case 'progress': {
+      const { showPercentage = false } = options || {};
+      const bar = (
+        <div className="w-full bg-muted rounded-full h-2.5">
+          <div
+            className="bg-gradient-to-r from-primary to-primary/80 h-2.5 rounded-full transition-all duration-500"
+            style={{ width: `${value}%` }}
+          />
+        </div>
+      );
+      if (!showPercentage) return bar;
+      
+      return (
+        <div className="flex items-center gap-3">
+          <div className="flex-1 min-w-0">{bar}</div>
+          <span className="text-sm font-medium text-muted-foreground">{value}%</span>
+        </div>
+      );
+    }
+
+    case 'date':
+      return (
+        <div className={cn("flex items-center gap-1.5 text-sm", className)}>
+          <Clock className="w-4 h-4" />
+          <span>{new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+        </div>
+      );
+
+    case 'tags': {
+      const MAX_TAGS = 2;
+      const tags = Array.isArray(value) ? value : [];
+      const remainingTags = tags.length - MAX_TAGS;
+      return (
+        <div className={cn("flex items-center gap-1.5 flex-wrap", className)}>
+          {tags.slice(0, MAX_TAGS).map(tag => (
+            <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
+          ))}
+          {remainingTags > 0 && (
+            <Badge variant="outline" className="text-xs">+{remainingTags}</Badge>
+          )}
+        </div>
+      );
+    }
+
+    case 'metrics': {
+      const views = getNestedValue(value, 'views') || 0;
+      const likes = getNestedValue(value, 'likes') || 0;
+      const shares = getNestedValue(value, 'shares') || 0;
+      return (
+        <div className={cn("flex items-center gap-3 text-sm", className)}>
+          <div className="flex items-center gap-1"><Eye className="w-4 h-4" /> {views}</div>
+          <div className="flex items-center gap-1"><Heart className="w-4 h-4" /> {likes}</div>
+          <div className="flex items-center gap-1"><Share className="w-4 h-4" /> {shares}</div>
+        </div>
+      );
+    }
+      
+    default:
+      return <>{String(value)}</>;
+  }
+}
+```
+
+## File: src/features/dynamic-view/components/views/TableView.tsx
+```typescript
+import { useRef, useLayoutEffect, useMemo } from 'react'
+import { gsap } from 'gsap'
+import { cn } from '@/lib/utils'
+import { 
+  ArrowUpDown, 
+  ArrowUp, 
+  ArrowDown,
+  ExternalLink
+} from 'lucide-react'
+import type { GenericItem } from '../../types'
+import { EmptyState } from '../shared/EmptyState'
+import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
+import {
+  useSelectedItem,
+} from '../../../../pages/DataDemo/store/dataDemo.store'
+import { capitalize } from '@/lib/utils'
+import { AddDataItemCta } from '../shared/AddDataItemCta'
+import { useDynamicView } from '../../DynamicViewContext'
+import { FieldRenderer } from '../shared/FieldRenderer'
+
+export function TableView({ data }: { data: GenericItem[] }) {
+  const {
+    sortConfig,
+    setTableSort,
+    groupBy,
+    onItemSelect,
+    itemId,
+  } = useAppViewManager();
+  const { config } = useDynamicView();
+  const { tableView: viewConfig } = config;
+  const selectedItem = useSelectedItem(itemId);
+
+  const tableRef = useRef<HTMLTableElement>(null)
+  const animatedItemsCount = useRef(0)
+
+  useLayoutEffect(() => {
+    if (tableRef.current) {
+      // Only select item rows for animation, not group headers
+      const newItems = Array.from( 
+        tableRef.current.querySelectorAll('tbody tr')
+      ).filter(tr => !(tr as HTMLElement).dataset.groupHeader)
+       .slice(animatedItemsCount.current);
+      gsap.fromTo(newItems,
+        { y: 20, opacity: 0 },
+        {
+          duration: 0.5,
+          y: 0,
+          opacity: 1,
+          stagger: 0.05,
+          ease: "power2.out",
+        },
+      );
+      animatedItemsCount.current = data.length;
+    }
+  }, [data]);
+
+  const SortIcon = ({ field }: { field: string }) => {
+    if (sortConfig?.key !== field) {
+      return <ArrowUpDown className="w-4 h-4 opacity-50" />
+    }
+    if (sortConfig.direction === 'asc') {
+      return <ArrowUp className="w-4 h-4 text-primary" />
+    }
+    if (sortConfig.direction === 'desc') {
+      return <ArrowDown className="w-4 h-4 text-primary" />
+    }
+    return <ArrowUpDown className="w-4 h-4 opacity-50" />
+  }
+
+  const handleSortClick = (field: string) => {
+    setTableSort(field)
+  }
+
+  const groupedData = useMemo(() => {
+    if (groupBy === 'none') return null;
+    return (data as GenericItem[]).reduce((acc, item) => {
+      const groupKey = item[groupBy as 'status' | 'priority' | 'category'] || 'N/A';
+      if (!acc[groupKey]) {
+        acc[groupKey] = [];
+      }
+      acc[groupKey].push(item);
+      return acc;
+    }, {} as Record<string, GenericItem[]>);
+  }, [data, groupBy]);
+
+  if (data.length === 0) {
+    return <EmptyState />
+  }
+
+  return (
+    <div className="relative overflow-hidden rounded-2xl border bg-card/50 backdrop-blur-sm">
+      <div className="overflow-x-auto">
+        <table ref={tableRef} className="w-full">
+          <thead>
+            <tr className="border-b border-border/50 bg-muted/20">
+              {viewConfig.columns.map(col => (
+                <th key={col.fieldId} className="text-left p-4 font-semibold text-sm">
+                  {col.isSortable ? (
+                    <button
+                      onClick={() => handleSortClick(col.fieldId)}
+                      className="flex items-center gap-2 hover:text-primary transition-colors"
+                    >
+                      {col.label}
+                      <SortIcon field={col.fieldId} />
+                    </button>
+                  ) : (
+                    <span>{col.label}</span>
+                  )}
+                </th>
+              ))}
+              <th className="text-center p-4 font-semibold text-sm w-16">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {groupedData
+              ? Object.entries(groupedData).flatMap(([groupName, items]) => [
+                  <tr key={groupName} data-group-header="true" className="sticky top-0 z-10">
+                    <td colSpan={viewConfig.columns.length + 1} className="p-2 bg-muted/50 backdrop-blur-sm">
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-semibold text-sm">{capitalize(groupName)}</h3>
+                        <span className="text-xs px-2 py-0.5 bg-background rounded-full font-medium">{items.length}</span>
+                      </div>
+                    </td>
+                  </tr>,
+                  ...items.map(item => <TableRow key={item.id} item={item} isSelected={selectedItem?.id === item.id} onItemSelect={onItemSelect} />)
+                ])
+              : data.map(item => <TableRow key={item.id} item={item} isSelected={selectedItem?.id === item.id} onItemSelect={onItemSelect} />)
+            }
+            <AddDataItemCta viewMode='table' colSpan={viewConfig.columns.length + 1} />
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
+function TableRow({ item, isSelected, onItemSelect }: { item: GenericItem; isSelected: boolean; onItemSelect: (item: GenericItem) => void }) {
+  const { config } = useDynamicView();
+  return (
+    <tr
+      onClick={() => onItemSelect(item)}
+      className={cn(
+        "group border-b border-border/30 transition-all duration-200 cursor-pointer",
+        "hover:bg-accent/20 hover:border-primary/20",
+        isSelected && "bg-primary/5 border-primary/30"
+      )}
+    >
+      {config.tableView.columns.map(col => (
+        <td key={col.fieldId} className="p-4">
+          <FieldRenderer item={item} fieldId={col.fieldId} options={{ showPercentage: true }} />
+        </td>
+      ))}
+      {/* Actions Column */}
+      <td className="p-4">
+        <button 
+          onClick={(e) => {
+            e.stopPropagation()
+            onItemSelect(item)
+          }}
+          className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-accent transition-colors"
+          title="View details"
+        >
+          <ExternalLink className="w-4 h-4" />
+        </button>
+      </td>
+    </tr>
+  )
+}
+```
+
+## File: src/pages/DataDemo/hooks/useAutoAnimateStats.hook.ts
+```typescript
+import { useEffect, useRef, useCallback } from 'react';
+import { gsap } from 'gsap';
+
+/**
+ * A hook that animates a stats container in and out of view based on scroll direction.
+ * It creates a "sliver app bar" effect for the stats section.
+ * @param scrollContainerRef Ref to the main scrolling element.
+ * @param statsContainerRef Ref to the stats container element to be animated.
+ */
+export function useAutoAnimateStats(
+  scrollContainerRef: React.RefObject<HTMLElement>,
+  statsContainerRef: React.RefObject<HTMLElement>
+) {
+  const lastScrollY = useRef(0);
+  const isHidden = useRef(false);
+  const originalMarginTop = useRef<string | null>(null);
+
+  const handleScroll = useCallback(() => {
+    if (!scrollContainerRef.current || !statsContainerRef.current) return;
+
+    const scrollY = scrollContainerRef.current.scrollTop;
+    
+    // Initialize original margin on first scroll event if not set
+    if (originalMarginTop.current === null) {
+      const computedStyle = getComputedStyle(statsContainerRef.current);
+      originalMarginTop.current = computedStyle.getPropertyValue('margin-top');
+    }
+
+    // On any significant scroll down, hide the stats.
+    // The small 10px threshold prevents firing on minor scroll-jiggles.
+    if (scrollY > lastScrollY.current && scrollY > 10 && !isHidden.current) {
+      isHidden.current = true;
+      gsap.to(statsContainerRef.current, {
+        duration: 0.4,
+        height: 0,
+        autoAlpha: 0,
+        marginTop: 0,
+        ease: 'power2.inOut',
+        overwrite: true,
+      });
+    } 
+
+    lastScrollY.current = scrollY < 0 ? 0 : scrollY;
+  }, [scrollContainerRef, statsContainerRef]);
+
+  const handleWheel = useCallback((event: WheelEvent) => {
+    if (!scrollContainerRef.current || !statsContainerRef.current) return;
+    
+    const isAtTop = scrollContainerRef.current.scrollTop === 0;
+    const isScrollingUp = event.deltaY < 0;
+
+    // Only reveal if we are at the top, scrolling up, and stats are hidden.
+    // This creates the "pull to reveal" effect.
+    if (isAtTop && isScrollingUp && isHidden.current) {
+        isHidden.current = false;
+        gsap.to(statsContainerRef.current, {
+          duration: 0.4,
+          height: 'auto',
+          autoAlpha: 1,
+          marginTop: originalMarginTop.current || 0,
+          ease: 'power2.out',
+          overwrite: true,
+        });
+    }
+  }, [scrollContainerRef, statsContainerRef]);
+
+  useEffect(() => {
+    const scrollContainer = scrollContainerRef.current;
+    if (scrollContainer) {
+      scrollContainer.addEventListener('scroll', handleScroll, { passive: true });
+      scrollContainer.addEventListener('wheel', handleWheel, { passive: true });
+    }
+
+    return () => {
+      if (scrollContainer) {
+        scrollContainer.removeEventListener('scroll', handleScroll);
+        scrollContainer.removeEventListener('wheel', handleWheel);
+      }
+      // When component unmounts, kill any running animations on the stats ref
+      if (statsContainerRef.current) {
+        gsap.killTweensOf(statsContainerRef.current);
+      }
+    };
+  }, [scrollContainerRef, statsContainerRef, handleScroll, handleWheel]);
+}
+```
+
 ## File: src/features/dynamic-view/components/views/CalendarView.tsx
 ```typescript
 import { useState, useMemo, useRef, useLayoutEffect } from "react";
@@ -576,7 +1951,6 @@ import type { CalendarDateProp, CalendarColorProp, Status, Priority } from '../.
 import { useAppViewManager } from "@/hooks/useAppViewManager.hook";
 import { useResizeObserver } from "@/hooks/useResizeObserver.hook";
 import { useSelectedItem, useDataDemoStore } from "../../../../pages/DataDemo/store/dataDemo.store";
-import { CalendarViewControls } from "./DataCalendarViewControls";
 import { useDynamicView } from '../../DynamicViewContext'
 import { FieldRenderer } from '../shared/FieldRenderer'
 
@@ -628,7 +2002,6 @@ function CalendarHeader({ currentDate, onPrevMonth, onNextMonth, onToday }: {
       </h2>
       <div className="flex items-center gap-2">
         <Button variant="outline" size="sm" onClick={onToday}>Today</Button>
-        <CalendarViewControls />
         <div className="flex items-center">
           <Button variant="outline" size="icon" className="h-9 w-9" onClick={onPrevMonth}>
             <ChevronLeft className="h-4 w-4" />
@@ -979,7 +2352,7 @@ export function CardView({ data, isGrid = false }: { data: GenericItem[]; isGrid
               {/* Header Fields (e.g., priority indicator) */}
               <div className="absolute top-4 right-4 flex items-center gap-2">
                 {viewConfig.headerFields.map(fieldId => (
-                  <FieldRenderer key={fieldId} item={item} fieldId={fieldId} />
+                  <FieldRenderer key={fieldId} item={item} fieldId={fieldId} options={{ displayAs: 'indicator' }} />
                 ))}
               </div>
             </div>
@@ -1309,7 +2682,7 @@ export function ListView({ data }: { data: GenericItem[] }) {
               <div className="flex shrink-0 items-center gap-2 sm:gap-4 md:gap-6 ml-4 text-sm text-muted-foreground">
                 {config.listView.metaFields.map(fieldConfig => (
                   <div key={fieldConfig.fieldId} className={fieldConfig.className}>
-                    <FieldRenderer item={item} fieldId={fieldConfig.fieldId} options={{ compact: true, avatarClassName: 'w-7 h-7' }} />
+                    <FieldRenderer item={item} fieldId={fieldConfig.fieldId} options={{ avatarClassName: 'w-7 h-7' }} />
                   </div>
                 ))}
               </div>
@@ -1319,178 +2692,6 @@ export function ListView({ data }: { data: GenericItem[] }) {
       })}
       <AddDataItemCta viewMode='list' />
     </div>
-  )
-}
-```
-
-## File: src/features/dynamic-view/components/views/TableView.tsx
-```typescript
-import { useRef, useLayoutEffect, useMemo } from 'react'
-import { gsap } from 'gsap'
-import { cn } from '@/lib/utils'
-import { 
-  ArrowUpDown, 
-  ArrowUp, 
-  ArrowDown,
-  ExternalLink
-} from 'lucide-react'
-import type { GenericItem } from '../../types'
-import { EmptyState } from '../shared/EmptyState'
-import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
-import {
-  useSelectedItem,
-} from '../../../../pages/DataDemo/store/dataDemo.store'
-import { capitalize } from '@/lib/utils'
-import { AddDataItemCta } from '../shared/AddDataItemCta'
-import { useDynamicView } from '../../DynamicViewContext'
-import { FieldRenderer } from '../shared/FieldRenderer'
-
-export function TableView({ data }: { data: GenericItem[] }) {
-  const {
-    sortConfig,
-    setTableSort,
-    groupBy,
-    onItemSelect,
-    itemId,
-  } = useAppViewManager();
-  const { config } = useDynamicView();
-  const { tableView: viewConfig } = config;
-  const selectedItem = useSelectedItem(itemId);
-
-  const tableRef = useRef<HTMLTableElement>(null)
-  const animatedItemsCount = useRef(0)
-
-  useLayoutEffect(() => {
-    if (tableRef.current) {
-      // Only select item rows for animation, not group headers
-      const newItems = Array.from( 
-        tableRef.current.querySelectorAll('tbody tr')
-      ).filter(tr => !(tr as HTMLElement).dataset.groupHeader)
-       .slice(animatedItemsCount.current);
-      gsap.fromTo(newItems,
-        { y: 20, opacity: 0 },
-        {
-          duration: 0.5,
-          y: 0,
-          opacity: 1,
-          stagger: 0.05,
-          ease: "power2.out",
-        },
-      );
-      animatedItemsCount.current = data.length;
-    }
-  }, [data]);
-
-  const SortIcon = ({ field }: { field: string }) => {
-    if (sortConfig?.key !== field) {
-      return <ArrowUpDown className="w-4 h-4 opacity-50" />
-    }
-    if (sortConfig.direction === 'asc') {
-      return <ArrowUp className="w-4 h-4 text-primary" />
-    }
-    if (sortConfig.direction === 'desc') {
-      return <ArrowDown className="w-4 h-4 text-primary" />
-    }
-    return <ArrowUpDown className="w-4 h-4 opacity-50" />
-  }
-
-  const handleSortClick = (field: string) => {
-    setTableSort(field)
-  }
-
-  const groupedData = useMemo(() => {
-    if (groupBy === 'none') return null;
-    return (data as GenericItem[]).reduce((acc, item) => {
-      const groupKey = item[groupBy as 'status' | 'priority' | 'category'] || 'N/A';
-      if (!acc[groupKey]) {
-        acc[groupKey] = [];
-      }
-      acc[groupKey].push(item);
-      return acc;
-    }, {} as Record<string, GenericItem[]>);
-  }, [data, groupBy]);
-
-  if (data.length === 0) {
-    return <EmptyState />
-  }
-
-  return (
-    <div className="relative overflow-hidden rounded-2xl border bg-card/50 backdrop-blur-sm">
-      <div className="overflow-x-auto">
-        <table ref={tableRef} className="w-full">
-          <thead>
-            <tr className="border-b border-border/50 bg-muted/20">
-              {viewConfig.columns.map(col => (
-                <th key={col.fieldId} className="text-left p-4 font-semibold text-sm">
-                  {col.isSortable ? (
-                    <button
-                      onClick={() => handleSortClick(col.fieldId)}
-                      className="flex items-center gap-2 hover:text-primary transition-colors"
-                    >
-                      {col.label}
-                      <SortIcon field={col.fieldId} />
-                    </button>
-                  ) : (
-                    <span>{col.label}</span>
-                  )}
-                </th>
-              ))}
-              <th className="text-center p-4 font-semibold text-sm w-16">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {groupedData
-              ? Object.entries(groupedData).flatMap(([groupName, items]) => [
-                  <tr key={groupName} data-group-header="true" className="sticky top-0 z-10">
-                    <td colSpan={viewConfig.columns.length + 1} className="p-2 bg-muted/50 backdrop-blur-sm">
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-semibold text-sm">{capitalize(groupName)}</h3>
-                        <span className="text-xs px-2 py-0.5 bg-background rounded-full font-medium">{items.length}</span>
-                      </div>
-                    </td>
-                  </tr>,
-                  ...items.map(item => <TableRow key={item.id} item={item} isSelected={selectedItem?.id === item.id} onItemSelect={onItemSelect} />)
-                ])
-              : data.map(item => <TableRow key={item.id} item={item} isSelected={selectedItem?.id === item.id} onItemSelect={onItemSelect} />)
-            }
-            <AddDataItemCta viewMode='table' colSpan={viewConfig.columns.length + 1} />
-          </tbody>
-        </table>
-      </div>
-    </div>
-  )
-}
-
-function TableRow({ item, isSelected, onItemSelect }: { item: GenericItem; isSelected: boolean; onItemSelect: (item: GenericItem) => void }) {
-  const { config } = useDynamicView();
-  return (
-    <tr
-      onClick={() => onItemSelect(item)}
-      className={cn(
-        "group border-b border-border/30 transition-all duration-200 cursor-pointer",
-        "hover:bg-accent/20 hover:border-primary/20",
-        isSelected && "bg-primary/5 border-primary/30"
-      )}
-    >
-      {config.tableView.columns.map(col => (
-        <td key={col.fieldId} className="p-4">
-          <FieldRenderer item={item} fieldId={col.fieldId} options={{ showPercentage: true }} />
-        </td>
-      ))}
-      {/* Actions Column */}
-      <td className="p-4">
-        <button 
-          onClick={(e) => {
-            e.stopPropagation()
-            onItemSelect(item)
-          }}
-          className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-accent transition-colors"
-          title="View details"
-        >
-          <ExternalLink className="w-4 h-4" />
-        </button>
-      </td>
-    </tr>
   )
 }
 ```
@@ -1527,6 +2728,7 @@ export interface BaseFieldDefinition {
 export interface BadgeFieldDefinition extends BaseFieldDefinition {
   type: 'badge';
   colorMap?: Record<string, string>; // e.g., { 'active': 'bg-green-500', 'pending': 'bg-yellow-500' }
+  indicatorColorMap?: Record<string, string>; // e.g., { 'critical': 'bg-red-500' }
 }
 
 // Add other specific field types if they need unique properties
@@ -1662,175 +2864,265 @@ export type CalendarDisplayProp = 'priority' | 'assignee' | 'status';
 export type CalendarColorProp = 'priority' | 'status' | 'category' | 'none';
 ```
 
-## File: src/pages/DataDemo/DataDemo.config.ts
+## File: src/lib/utils.ts
 ```typescript
-import { capitalize } from '@/lib/utils';
-import { FieldRenderer } from '@/features/dynamic-view/components/shared/FieldRenderer';
-import type { ViewConfig } from '@/features/dynamic-view/types';
+import { type ClassValue, clsx } from "clsx"
+import { twMerge } from "tailwind-merge"
+import { formatDistanceToNow } from "date-fns"
 
-export const dataDemoViewConfig: ViewConfig = {
-  // 1. Field Definitions
-  fields: [
-    { id: 'id', label: 'ID', type: 'string' },
-    { id: 'title', label: 'Title', type: 'string' },
-    { id: 'description', label: 'Description', type: 'longtext' },
-    { id: 'thumbnail', label: 'Thumbnail', type: 'thumbnail' },
-    { id: 'category', label: 'Category', type: 'badge' },
-    {
-      id: 'status', label: 'Status', type: 'badge',
-      colorMap: {
-        active: 'bg-sky-500/10 text-sky-600 border-sky-500/20',
-        pending: 'bg-amber-500/10 text-amber-600 border-amber-500/20',
-        completed: 'bg-emerald-600/10 text-emerald-700 border-emerald-600/20',
-        archived: 'bg-zinc-500/10 text-zinc-600 border-zinc-500/20',
-      }
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs))
+}
+
+export const SIDEBAR_STATES = {
+  HIDDEN: 'hidden',
+  COLLAPSED: 'collapsed', 
+  EXPANDED: 'expanded',
+  PEEK: 'peek'
+} as const
+
+export const BODY_STATES = {
+  NORMAL: 'normal',
+  FULLSCREEN: 'fullscreen',
+  SIDE_PANE: 'side_pane',
+  SPLIT_VIEW: 'split_view'
+} as const
+
+export type SidebarState = typeof SIDEBAR_STATES[keyof typeof SIDEBAR_STATES]
+export type BodyState = typeof BODY_STATES[keyof typeof BODY_STATES]
+
+export function capitalize(str: string): string {
+  if (!str) return str
+  return str.charAt(0).toUpperCase() + str.slice(1)
+}
+
+export function formatDistanceToNowShort(date: Date | string): string {
+  const dateObj = typeof date === 'string' ? new Date(date) : date;
+  const result = formatDistanceToNow(dateObj, { addSuffix: true });
+
+  if (result === 'less than a minute ago') return 'now';
+
+  return result
+    .replace('about ', '')
+    .replace(' minutes', 'm')
+    .replace(' minute', 'm')
+    .replace(' hours', 'h')
+    .replace(' hour', 'h')
+    .replace(' days', 'd')
+}
+
+export const getStatusColor = (status: string) => {
+  switch (status) {
+    case 'active': return 'bg-green-500/20 text-green-700 border-green-500/30'
+    case 'pending': return 'bg-yellow-500/20 text-yellow-700 border-yellow-500/30'
+    case 'completed': return 'bg-blue-500/20 text-blue-700 border-blue-500/30'
+    case 'archived': return 'bg-gray-500/20 text-gray-700 border-gray-500/30'
+    default: return 'bg-gray-500/20 text-gray-700 border-gray-500/30'
+  }
+}
+
+export const getPrioritySolidColor = (priority: string) => {
+  switch (priority) {
+    case 'critical': return 'bg-red-500'
+    case 'high': return 'bg-orange-500'
+    case 'medium': return 'bg-blue-500'
+    case 'low': return 'bg-green-500'
+    default: return 'bg-gray-500'
+  }
+}
+
+export const getPriorityColor = (priority: string) => {
+  switch (priority) {
+    case 'critical': return 'bg-red-500/20 text-red-700 border-red-500/30'
+    case 'high': return 'bg-orange-500/20 text-orange-700 border-orange-500/30'
+    case 'medium': return 'bg-blue-500/20 text-blue-700 border-blue-500/30'
+    case 'low': return 'bg-green-500/20 text-green-700 border-green-500/30'
+    default: return 'bg-gray-500/20 text-gray-700 border-gray-500/30'
+  }
+}
+```
+
+## File: src/pages/DataDemo/store/dataDemo.store.tsx
+```typescript
+import { create } from 'zustand';
+import { type ReactNode } from 'react';
+import { capitalize, cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
+import { mockDataItems } from '@/pages/DataDemo/data/mockData';
+import type { GenericItem, GroupableField, SortConfig, FilterConfig } from '@/features/dynamic-view/types';
+
+// --- State and Actions ---
+interface DataDemoState {
+    items: GenericItem[];
+    hasMore: boolean;
+    isLoading: boolean;
+    isInitialLoading: boolean;
+    totalItemCount: number;
+}
+
+interface DataDemoActions {
+    loadData: (params: {
+        page: number;
+        groupBy: GroupableField | 'none';
+        filters: FilterConfig;
+        sortConfig: SortConfig | null;
+    isFullLoad?: boolean;
+    }) => void;
+    updateItem: (itemId: string, updates: Partial<GenericItem>) => void;
+}
+
+const defaultState: DataDemoState = {
+    items: [],
+    hasMore: true,
+    isLoading: true,
+    isInitialLoading: true,
+    totalItemCount: 0,
+};
+
+// --- Store Implementation ---
+export const useDataDemoStore = create<DataDemoState & DataDemoActions>((set) => ({
+    ...defaultState,
+
+    loadData: ({ page, groupBy, filters, sortConfig, isFullLoad }) => {
+        set({ isLoading: true, ...(page === 1 && { isInitialLoading: true }) });
+        const isFirstPage = page === 1;
+
+        const filteredAndSortedData = (() => {
+            const filteredItems = mockDataItems.filter((item) => {
+                const searchTermMatch =
+                    item.title.toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
+                    item.description.toLowerCase().includes(filters.searchTerm.toLowerCase());
+                const statusMatch = filters.status.length === 0 || filters.status.includes(item.status);
+                const priorityMatch = filters.priority.length === 0 || filters.priority.includes(item.priority);
+                return searchTermMatch && statusMatch && priorityMatch;
+            });
+
+            if (sortConfig) {
+                filteredItems.sort((a, b) => {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const getNestedValue = (obj: GenericItem, path: string): any =>
+                        path.split('.').reduce((o: any, k) => (o || {})[k], obj);
+
+                    const aValue = getNestedValue(a, sortConfig.key);
+                    const bValue = getNestedValue(b, sortConfig.key);
+
+                    if (aValue === undefined || bValue === undefined) return 0;
+                    if (typeof aValue === 'string' && typeof bValue === 'string') {
+                        return sortConfig.direction === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
+                    }
+                    if (typeof aValue === 'number' && typeof bValue === 'number') {
+                        return sortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue;
+                    }
+                    if (sortConfig.key === 'updatedAt' || sortConfig.key === 'createdAt') {
+                        if (typeof aValue === 'string' && typeof bValue === 'string') {
+                            return sortConfig.direction === 'asc'
+                                ? new Date(aValue).getTime() - new Date(bValue).getTime()
+                                : new Date(bValue).getTime() - new Date(aValue).getTime();
+                        }
+                    }
+                    return 0;
+                });
+            }
+            return filteredItems;
+        })();
+        
+        const totalItemCount = filteredAndSortedData.length;
+
+        setTimeout(() => {
+            if (groupBy !== 'none' || isFullLoad) {
+                set({
+                    items: filteredAndSortedData,
+                    hasMore: false,
+                    isLoading: false,
+                    isInitialLoading: false,
+                    totalItemCount,
+                });
+                return;
+            }
+
+            const pageSize = 12;
+            const newItems = filteredAndSortedData.slice((page - 1) * pageSize, page * pageSize);
+            
+            set(state => ({
+                items: isFirstPage ? newItems : [...state.items, ...newItems],
+                hasMore: totalItemCount > page * pageSize,
+                isLoading: false,
+                isInitialLoading: false,
+                totalItemCount,
+            }));
+
+        }, isFirstPage ? 1500 : 500);
     },
-    {
-      id: 'priority', label: 'Priority', type: 'badge',
-      colorMap: {
-        critical: 'bg-red-600/10 text-red-700 border-red-600/20',
-        high: 'bg-orange-500/10 text-orange-600 border-orange-500/20',
-        medium: 'bg-blue-500/10 text-blue-600 border-blue-500/20',
-        low: 'bg-green-500/10 text-green-600 border-green-500/20',
-      }
+
+    updateItem: (itemId, updates) => {
+        // In a real app, this would be an API call. Here we update the mock source.
+        const itemIndex = mockDataItems.findIndex(i => i.id === itemId);
+        if (itemIndex > -1) {
+            mockDataItems[itemIndex] = { ...mockDataItems[itemIndex], ...updates };
+        }
+
+        // Also update the currently loaded items in the store's state for UI consistency
+        set(state => ({
+            items: state.items.map(item => 
+                item.id === itemId ? { ...item, ...updates } : item
+            ),
+        }));
     },
-    { id: 'assignee', label: 'Assignee', type: 'avatar' },
-    { id: 'tags', label: 'Tags', type: 'tags' },
-    { id: 'metrics', label: 'Engagement', type: 'metrics' },
-    { id: 'metrics.completion', label: 'Progress', type: 'progress' },
-    { id: 'dueDate', label: 'Due Date', type: 'date' },
-    { id: 'createdAt', label: 'Created At', type: 'date' },
-    { id: 'updatedAt', label: 'Last Updated', type: 'date' },
-    // A custom field to replicate the composite "Project" column in the table view
-    {
-      id: 'project_details',
-      label: 'Project',
-      type: 'custom',
-      render: (item) => (
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-gradient-to-br from-primary/20 to-primary/10 rounded-lg flex items-center justify-center text-lg flex-shrink-0">
-            <FieldRenderer item={item} fieldId="thumbnail" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <h4 className="font-medium group-hover:text-primary transition-colors truncate">
-              <FieldRenderer item={item} fieldId="title" />
-            </h4>
-            <p className="text-sm text-muted-foreground truncate">
-              <FieldRenderer item={item} fieldId="category" />
-            </p>
-          </div>
-        </div>
-      ),
-    },
-  ],
-  // 2. Control Definitions
-  sortableFields: [
-    { id: 'updatedAt', label: 'Last Updated' },
-    { id: 'title', label: 'Title' },
-    { id: 'status', label: 'Status' },
-    { id: 'priority', label: 'Priority' },
-    { id: 'metrics.completion', label: 'Progress' },
-  ],
-  groupableFields: [
-    { id: 'none', label: 'None' },
-    { id: 'status', label: 'Status' },
-    { id: 'priority', label: 'Priority' },
-    { id: 'category', label: 'Category' },
-  ],
-  filterableFields: [
-    {
-      id: 'status', label: 'Status',
-      options: [
-        { id: 'active', label: 'Active' },
-        { id: 'pending', label: 'Pending' },
-        { id: 'completed', label: 'Completed' },
-        { id: 'archived', label: 'Archived' },
-      ]
-    },
-    {
-      id: 'priority', label: 'Priority',
-      options: [
-        { id: 'critical', label: 'Critical' },
-        { id: 'high', label: 'High' },
-        { id: 'medium', label: 'Medium' },
-        { id: 'low', label: 'Low' },
-      ]
+}));
+
+// --- Selectors ---
+export const useGroupTabs = (
+    groupBy: GroupableField | 'none',
+    activeGroupTab: string,
+) => useDataDemoStore(state => {
+    const items = state.items;
+    if (groupBy === 'none' || !items.length) return [];
+    
+    const groupCounts = items.reduce((acc, item) => {
+        const groupKey = String(item[groupBy as GroupableField]);
+        acc[groupKey] = (acc[groupKey] || 0) + 1;
+        return acc;
+    }, {} as Record<string, number>);
+
+    const sortedGroups = Object.keys(groupCounts).sort((a, b) => a.localeCompare(b));
+
+    const createLabel = (text: string, count: number, isActive: boolean): ReactNode => (
+        <>
+            {text}
+            <Badge variant={isActive ? 'default' : 'secondary'} className={cn('transition-colors duration-300 text-xs font-semibold', !isActive && 'group-hover:bg-accent group-hover:text-accent-foreground')}>
+                {count}
+            </Badge>
+        </>
+    );
+    
+    const totalCount = items.length;
+
+    return [
+        { id: 'all', label: createLabel('All', totalCount, activeGroupTab === 'all') },
+        ...sortedGroups.map((g) => ({
+            id: g,
+            label: createLabel(capitalize(g), groupCounts[g], activeGroupTab === g),
+        })),
+    ];
+});
+
+export const useDataToRender = (
+    groupBy: GroupableField | 'none',
+    activeGroupTab: string,
+) => useDataDemoStore(state => {
+    const items = state.items;
+    if (groupBy === 'none') {
+        return items;
     }
-  ],
-  // 3. View Layouts
-  listView: {
-    iconField: 'thumbnail',
-    titleField: 'title',
-    metaFields: [
-      { fieldId: 'status', className: 'hidden sm:flex' },
-      { fieldId: 'tags', className: 'hidden lg:flex' },
-      { fieldId: 'updatedAt', className: 'hidden md:flex' },
-      { fieldId: 'assignee' },
-      { fieldId: 'priority', className: 'hidden xs:flex' },
-    ],
-  },
-  cardView: {
-    thumbnailField: 'thumbnail',
-    titleField: 'title',
-    descriptionField: 'description',
-    headerFields: ['priority'],
-    statusField: 'status',
-    categoryField: 'category',
-    tagsField: 'tags',
-    progressField: 'metrics.completion',
-    assigneeField: 'assignee',
-    metricsField: 'metrics',
-    dateField: 'updatedAt',
-  },
-  tableView: {
-    columns: [
-      { fieldId: 'project_details', label: 'Project', isSortable: true },
-      { fieldId: 'status', label: 'Status', isSortable: true },
-      { fieldId: 'priority', label: 'Priority', isSortable: true },
-      { fieldId: 'assignee', label: 'Assignee', isSortable: true },
-      { fieldId: 'metrics.completion', label: 'Progress', isSortable: true },
-      { fieldId: 'metrics', label: 'Engagement', isSortable: true },
-      { fieldId: 'updatedAt', label: 'Last Updated', isSortable: true },
-    ],
-  },
-  kanbanView: {
-    groupByField: 'status',
-    cardFields: {
-      titleField: 'title',
-      descriptionField: 'description',
-      priorityField: 'priority',
-      tagsField: 'tags',
-      dateField: 'dueDate',
-      metricsField: 'metrics',
-      assigneeField: 'assignee',
-    },
-  },
-  calendarView: {
-    dateField: 'dueDate',
-    titleField: 'title',
-    displayFields: ['tags', 'priority', 'assignee'],
-    colorByField: 'priority',
-  },
-  detailView: {
-    header: {
-      thumbnailField: 'thumbnail',
-      titleField: 'title',
-      descriptionField: 'description',
-      badgeFields: ['status', 'priority', 'category'],
-      progressField: 'metrics.completion',
-    },
-    body: {
-      sections: [
-        { title: 'Assigned to', fields: ['assignee'] },
-        { title: 'Engagement Metrics', fields: ['metrics'] },
-        { title: 'Tags', fields: ['tags'] },
-        {
-          title: 'Timeline',
-          fields: ['createdAt', 'updatedAt', 'dueDate'],
-        },
-      ],
-    },
-  },
+    if (activeGroupTab === 'all') {
+        return items;
+    }
+    return items.filter((item) => String(item[groupBy as GroupableField]) === activeGroupTab);
+});
+
+export const useSelectedItem = (itemId?: string) => {
+    if (!itemId) return null;
+    return (mockDataItems.find(item => item.id === itemId) as GenericItem) ?? null;
 };
 ```
 
@@ -1931,6 +3223,7 @@ import {
   Share,
 } from 'lucide-react';
 
+import { DynamicViewProvider } from '@/features/dynamic-view/DynamicViewContext';
 import { Button } from '@/components/ui/button';
 import { DashboardContent } from "@/pages/Dashboard";
 import { SettingsContent } from "@/features/settings/SettingsContent";
@@ -2011,24 +3304,26 @@ export function useRightPaneContent(sidePaneContent: AppShellState['sidePaneCont
       return {
         meta: { title: "Item Details", icon: Database, page: `data-demo/${itemId}` },
         content: (
-          <div className="h-full flex flex-col">
-            <div className="flex-1 overflow-y-auto custom-scrollbar">
-              <DetailPanel item={selectedItem} config={dataDemoViewConfig} />
-            </div>
-            {/* Application-specific actions can be composed here */}
-            <div className="p-6 border-t border-border/50 bg-card/30">
-              <div className="flex gap-3">
-                <Button className="flex-1" size="sm">
-                  <ExternalLink className="w-4 h-4 mr-2" />
-                  Open Project
-                </Button>
-                <Button variant="outline" size="sm">
-                  <Share className="w-4 h-4 mr-2" />
-                  Share
-                </Button>
+          <DynamicViewProvider viewConfig={dataDemoViewConfig} data={mockDataItems}>
+            <div className="h-full flex flex-col">
+              <div className="flex-1 overflow-y-auto custom-scrollbar">
+                <DetailPanel item={selectedItem} config={dataDemoViewConfig.detailView} />
+              </div>
+              {/* Application-specific actions can be composed here */}
+              <div className="p-6 border-t border-border/50 bg-card/30">
+                <div className="flex gap-3">
+                  <Button className="flex-1" size="sm">
+                    <ExternalLink className="w-4 h-4 mr-2" />
+                    Open Project
+                  </Button>
+                  <Button variant="outline" size="sm">
+                    <Share className="w-4 h-4 mr-2" />
+                    Share
+                  </Button>
+                </div>
               </div>
             </div>
-          </div>
+          </DynamicViewProvider>
         ),
       };
     }

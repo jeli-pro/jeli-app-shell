@@ -10,7 +10,6 @@ import type { CalendarDateProp, CalendarColorProp, Status, Priority } from '../.
 import { useAppViewManager } from "@/hooks/useAppViewManager.hook";
 import { useResizeObserver } from "@/hooks/useResizeObserver.hook";
 import { useSelectedItem, useDataDemoStore } from "../../../../pages/DataDemo/store/dataDemo.store";
-import { CalendarViewControls } from "./DataCalendarViewControls";
 import { useDynamicView } from '../../DynamicViewContext'
 import { FieldRenderer } from '../shared/FieldRenderer'
 
@@ -62,7 +61,6 @@ function CalendarHeader({ currentDate, onPrevMonth, onNextMonth, onToday }: {
       </h2>
       <div className="flex items-center gap-2">
         <Button variant="outline" size="sm" onClick={onToday}>Today</Button>
-        <CalendarViewControls />
         <div className="flex items-center">
           <Button variant="outline" size="icon" className="h-9 w-9" onClick={onPrevMonth}>
             <ChevronLeft className="h-4 w-4" />

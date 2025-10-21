@@ -96,7 +96,7 @@ export function useRightPaneContent(sidePaneContent: AppShellState['sidePaneCont
           <DynamicViewProvider viewConfig={dataDemoViewConfig} data={mockDataItems}>
             <div className="h-full flex flex-col">
               <div className="flex-1 overflow-y-auto custom-scrollbar">
-                <DetailPanel item={selectedItem} config={dataDemoViewConfig} />
+                <DetailPanel item={selectedItem} config={dataDemoViewConfig.detailView} />
               </div>
               {/* Application-specific actions can be composed here */}
               <div className="p-6 border-t border-border/50 bg-card/30">

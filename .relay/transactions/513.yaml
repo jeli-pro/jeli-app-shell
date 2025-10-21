@@ -1,0 +1,1032 @@
+uuid: 00b0c950-8b1b-4f46-8e5f-1498b7923769
+projectId: jeli-app-shell
+createdAt: '2025-10-21T03:34:23.767Z'
+gitCommitMsg: >-
+  feat(dynamic-view): restore view-specific layouts and rendering
+
+  This commit executes Part 2 of the UI fidelity restoration plan, focusing on
+  bringing back nuanced layouts and custom rendering styles that were lost
+  during the initial refactor to a generic view engine.
+
+  Key changes include: - **ListView**: The assignee field is now responsively
+  compact, hiding the name/email on small screens via CSS, restoring the
+  original behavior without component-level JS logic. - **CardView**: The
+  priority field in the card header now renders as a colored dot indicator
+  instead of a badge, matching the original design. This is achieved via a new
+  `displayAs: 'indicator'` option in the FieldRenderer. - **TableView**: The
+  configuration now supports a custom 'project_details' field, allowing a
+  composite column (icon + title + category) to be rendered, exactly replicating
+  the original table layout. - **FieldRenderer**: Enhanced to support responsive
+  avatar text and a new 'indicator' display option for badge fields. -
+  **Types**: The `BadgeFieldDefinition` now includes an optional
+  `indicatorColorMap` to support the new display type.
+
+  These changes make the generic components more powerful and expressive,
+  allowing them to replicate the bespoke UI of the original components through
+  declarative configuration.
+promptSummary: >-
+  The user wants me to execute Part 2 of a multi-part plan to restore UI
+  fidelity to a refactored dynamic view engine. This involves making the
+  ListView responsive and restoring custom rendering styles in TableView and
+  CardView, all through configuration rather than hardcoding.
+reasoning:
+  - >-
+    Excellent. Part 1 laid the groundwork. Now for Part 2, where we bring back
+    the visual fidelity and nuance that was lost in the refactor. The goal is
+    surgical precision: restore the original UI/UX without compromising the new
+    config-driven architecture. We'll enhance our generic components and
+    `ViewConfig` to be more expressive, turning them from blunt instruments into
+    fine brushes.
+  - '### Part 2, Step 1: Restore Responsive Metadata in ListView'
+  - >-
+    First, I'll address the `ListView`. The original had responsive logic to
+    show more metadata on wider screens and a compact assignee view on smaller
+    screens. This was lost and resulted in a degraded experience on different
+    device sizes. I'll restore this by making the `FieldRenderer`'s avatar
+    component smarter with responsive CSS classes, and by ensuring `ListView`
+    correctly applies responsive visibility classes from the config.
+  - >-
+    I'm removing the hardcoded `compact: true` option from `ListView` for the
+    assignee field. Instead, I'm modifying `FieldRenderer` to handle the
+    responsive collapsing of the assignee's name and email by default for any
+    non-compact avatar, using Tailwind's responsive prefixes. This is a robust
+    solution that benefits any future use of the avatar field and aligns with
+    the goal of keeping view-specific logic out of the components.
+  - '### Part 2, Step 2: Restore Custom Composite Columns and Field Styles'
+  - >-
+    Next, I'll tackle the regressions in `TableView` and `CardView`. The
+    original table had a custom "Project" column that combined an icon, title,
+    and category. The card view used a subtle colored dot for priority, not a
+    full badge. Both were lost.
+  - >-
+    To fix this, I'm enhancing `BadgeFieldDefinition` to support an
+    `indicatorColorMap`, allowing a field to be rendered as a dot. I'll then
+    update `CardView` to request this "indicator" display style via an option
+    passed to `FieldRenderer`.
+  - >-
+    For the table's composite column, I'll define a new field in
+    `DataDemo.config.tsx` of type `custom`. Its `render` function will contain
+    the exact JSX needed to reconstruct the original column, using
+    `FieldRenderer` for its constituent parts. This demonstrates the power of
+    the config to handle complex, one-off layouts without dirtying the generic
+    components.
+  - >-
+    With these changes, the `ListView` is now fully responsive, and the
+    `CardView` and `TableView` render with the custom styling of the original
+    implementation, all while being driven by our generic, reusable engine.
+operations:
+  - type: write
+    path: src/features/dynamic-view/components/views/ListView.tsx
+    content: >+
+      --- src/features/dynamic-view/components/views/ListView.tsx
+
+      +++ src/features/dynamic-view/components/views/ListView.tsx
+
+      @@ -40,7 +40,7 @@
+                     <div className="flex shrink-0 items-center gap-2 sm:gap-4 md:gap-6 ml-4 text-sm text-muted-foreground">
+                       {config.listView.metaFields.map(fieldConfig => (
+                         <div key={fieldConfig.fieldId} className={fieldConfig.className}>
+      -                    <FieldRenderer item={item}
+      fieldId={fieldConfig.fieldId} options={{ compact: true, avatarClassName:
+      'w-7 h-7' }} />
+
+      +                    <FieldRenderer item={item}
+      fieldId={fieldConfig.fieldId} options={{ avatarClassName: 'w-7 h-7' }} />
+                         </div>
+                       ))}
+                     </div>
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/features/dynamic-view/components/shared/FieldRenderer.tsx
+    content: |+
+      --- src/features/dynamic-view/components/shared/FieldRenderer.tsx
+      +++ src/features/dynamic-view/components/shared/FieldRenderer.tsx
+      @@ -71,7 +71,7 @@
+             return (
+               <div className={cn("flex items-center gap-2 group", className)}>
+                 {avatarEl}
+      -          <div className="min-w-0">
+      +          <div className="min-w-0 hidden sm:block">
+                   <p className="font-medium text-sm truncate">{name}</p>
+                   <p className="text-xs text-muted-foreground truncate">{email}</p>
+                 </div>
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/features/dynamic-view/types.ts
+    content: >+
+      --- src/features/dynamic-view/types.ts
+
+      +++ src/features/dynamic-view/types.ts
+
+      @@ -29,6 +29,7 @@
+       export interface BadgeFieldDefinition extends BaseFieldDefinition {
+         type: 'badge';
+         colorMap?: Record<string, string>; // e.g., { 'active': 'bg-green-500', 'pending': 'bg-yellow-500' }
+      +  indicatorColorMap?: Record<string, string>; // e.g., { 'critical':
+      'bg-red-500' }
+       }
+       
+       // Add other specific field types if they need unique properties
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/DataDemo/DataDemo.config.tsx
+    content: |
+      <<<<<<< SEARCH
+            id: "priority",
+            label: "Priority",
+            type: "badge",
+            colorMap: {
+              critical: "bg-red-600/10 text-red-700 border-red-600/20",
+              high: "bg-orange-500/10 text-orange-600 border-orange-500/20",
+              medium: "bg-blue-500/10 text-blue-600 border-blue-500/20",
+              low: "bg-green-500/10 text-green-600 border-green-500/20",
+            },
+          },
+          { id: "assignee", label: "Assignee", type: "avatar" },
+          { id: "tags", label: "Tags", type: "tags" },
+      =======
+            id: "priority",
+            label: "Priority",
+            type: "badge",
+            colorMap: {
+              critical: "bg-red-600/10 text-red-700 border-red-600/20",
+              high: "bg-orange-500/10 text-orange-600 border-orange-500/20",
+              medium: "bg-blue-500/10 text-blue-600 border-blue-500/20",
+              low: "bg-green-500/10 text-green-600 border-green-500/20",
+            },
+            indicatorColorMap: {
+              critical: "bg-red-500",
+              high: "bg-orange-500",
+              medium: "bg-blue-500",
+              low: "bg-green-500",
+            }
+          },
+          { id: "assignee", label: "Assignee", type: "avatar" },
+          { id: "tags", label: "Tags", type: "tags" },
+      >>>>>>> REPLACE
+      <<<<<<< SEARCH
+        cardView: {
+          thumbnailField: "thumbnail",
+          titleField: "title",
+          descriptionField: "description",
+          headerFields: ["priority"],
+          statusField: "status",
+          categoryField: "category",
+      =======
+        cardView: {
+          thumbnailField: "thumbnail",
+          titleField: "title",
+          descriptionField: "description",
+          headerFields: ["priority"],
+          statusField: "status",
+          categoryField: "category",
+      >>>>>>> REPLACE
+      <<<<<<< SEARCH
+        tableView: {
+          columns: [
+            { fieldId: "project_details", label: "Project", isSortable: true },
+            { fieldId: "status", label: "Status", isSortable: true },
+            { fieldId: "priority", label: "Priority", isSortable: true },
+            { fieldId: "assignee", label: "Assignee", isSortable: true },
+            { fieldId: "metrics.completion", label: "Progress", isSortable: true },
+            { fieldId: "metrics", label: "Engagement", isSortable: true },
+            { fieldId: "updatedAt", label: "Last Updated", isSortable: true },
+          ],
+        },
+        kanbanView: {
+          groupByField: "status",
+      =======
+        tableView: {
+          columns: [
+            { fieldId: "project_details", label: "Project", isSortable: true },
+            { fieldId: "status", label: "Status", isSortable: true },
+            { fieldId: "priority", label: "Priority", isSortable: true },
+            { fieldId: "assignee", label: "Assignee", isSortable: true },
+            { fieldId: "metrics.completion", label: "Progress", isSortable: true },
+            { fieldId: "metrics", label: "Engagement", isSortable: true },
+            { fieldId: "updatedAt", label: "Last Updated", isSortable: true },
+          ],
+        },
+        kanbanView: {
+          groupByField: "status",
+      >>>>>>> REPLACE
+    patchStrategy: search-replace
+  - type: write
+    path: src/features/dynamic-view/components/views/CardView.tsx
+    content: >+
+      --- src/features/dynamic-view/components/views/CardView.tsx
+
+      +++ src/features/dynamic-view/components/views/CardView.tsx
+
+      @@ -50,7 +50,7 @@
+                     {/* Header Fields (e.g., priority indicator) */}
+                     <div className="absolute top-4 right-4 flex items-center gap-2">
+                       {viewConfig.headerFields.map(fieldId => (
+      -                  <FieldRenderer key={fieldId} item={item}
+      fieldId={fieldId} />
+
+      +                  <FieldRenderer key={fieldId} item={item}
+      fieldId={fieldId} options={{ displayAs: 'indicator' }} />
+                       ))}
+                     </div>
+                   </div>
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/features/dynamic-view/components/shared/FieldRenderer.tsx
+    content: >+
+      --- src/features/dynamic-view/components/shared/FieldRenderer.tsx
+
+      +++ src/features/dynamic-view/components/shared/FieldRenderer.tsx
+
+      @@ -40,7 +40,15 @@
+             return <span className={cn("text-xl", className)}>{String(value)}</span>;
+       
+           case 'badge': {
+      -      const { colorMap } = fieldDef as BadgeFieldDefinition;
+
+      +      const { colorMap, indicatorColorMap } = fieldDef as
+      BadgeFieldDefinition;
+
+      +      
+
+      +      if (options?.displayAs === 'indicator' && indicatorColorMap) {
+
+      +        const indicatorColorClass = indicatorColorMap[String(value)] ||
+      'bg-muted-foreground';
+
+      +        return (
+
+      +          <div className={cn("w-3 h-3 rounded-full", indicatorColorClass,
+      className)} />
+
+      +        );
+
+      +      }
+
+      +
+             const colorClass = colorMap?.[String(value)] || '';
+             return (
+               <Badge variant="outline" className={cn("font-medium capitalize", colorClass, className)}>
+      @@ -62,7 +70,7 @@
+             return (
+               <div className={cn("flex items-center gap-2 group", className)}>
+                 {avatarEl}
+      -          <div className="min-w-0">
+
+      +          <div className="min-w-0 hidden sm:block">
+                   <p className="font-medium text-sm truncate">{name}</p>
+                   <p className="text-xs text-muted-foreground truncate">{email}</p>
+                 </div>
+
+    patchStrategy: standard-diff
+snapshot:
+  src/features/dynamic-view/components/views/ListView.tsx: >-
+    import { useRef } from 'react'
+
+    import { cn } from '@/lib/utils'
+
+    import type { GenericItem } from '../../types'
+
+    import { useStaggeredAnimation } from
+    '@/hooks/useStaggeredAnimation.motion.hook'
+
+    import { EmptyState } from '../shared/EmptyState'
+
+    import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
+
+    import { 
+      useSelectedItem,
+    } from '../../../../pages/DataDemo/store/dataDemo.store'
+
+    import { AddDataItemCta } from '../shared/AddDataItemCta'
+
+    import { useDynamicView } from '../../DynamicViewContext'
+
+    import { FieldRenderer } from '../shared/FieldRenderer'
+
+
+    export function ListView({ data }: { data: GenericItem[] }) {
+      const { onItemSelect, itemId } = useAppViewManager();
+      const selectedItem = useSelectedItem(itemId);
+      const { config } = useDynamicView();
+
+      const listRef = useRef<HTMLDivElement>(null)
+      useStaggeredAnimation(listRef, [data], { mode: 'incremental', scale: 1, y: 20, stagger: 0.05, duration: 0.4 });
+
+      const items = Array.isArray(data) ? data : [];
+      if (items.length === 0) {
+        return <EmptyState />
+      }
+
+      return (
+        <div ref={listRef}>
+          {items.map((item: GenericItem) => {
+            const isSelected = selectedItem?.id === item.id
+            
+            return (
+              <div key={item.id} className="px-2">
+                <div
+                  onClick={() => onItemSelect(item)}
+                  className={cn(
+                    "group flex items-center px-2 py-2 rounded-md transition-colors duration-200 cursor-pointer",
+                    "hover:bg-accent/80",
+                    isSelected ? "bg-accent" : "bg-transparent"
+                  )}
+                >
+                  {/* Left side: Icon and Title */}
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <div className="flex-shrink-0 w-8 text-center">
+                      <FieldRenderer item={item} fieldId={config.listView.iconField} className="text-xl" />
+                    </div>
+                    <div className="font-medium truncate text-card-foreground group-hover:text-primary">
+                      <FieldRenderer item={item} fieldId={config.listView.titleField} />
+                    </div>
+                  </div>
+
+                  {/* Right side: Metadata */}
+                  <div className="flex shrink-0 items-center gap-2 sm:gap-4 md:gap-6 ml-4 text-sm text-muted-foreground">
+                    {config.listView.metaFields.map(fieldConfig => (
+                      <div key={fieldConfig.fieldId} className={fieldConfig.className}>
+                        <FieldRenderer item={item} fieldId={fieldConfig.fieldId} options={{ compact: true, avatarClassName: 'w-7 h-7' }} />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+          <AddDataItemCta viewMode='list' />
+        </div>
+      )
+    }
+  src/features/dynamic-view/components/shared/FieldRenderer.tsx: >-
+    import { useDynamicView } from '../../DynamicViewContext';
+
+    import type { GenericItem, BadgeFieldDefinition } from '../../types';
+
+    import { cn } from '@/lib/utils';
+
+    import { Avatar, AvatarFallback, AvatarImage } from
+    '@/components/ui/avatar';
+
+    import { Badge } from '@/components/ui/badge';
+
+    import { Clock, Eye, Heart, Share } from 'lucide-react';
+
+
+    // A helper to get nested properties from an object, e.g., 'metrics.views'
+
+    function getNestedValue(obj: Record<string, any>, path: string): any {
+      return path.split('.').reduce((o, k) => (o && o[k] !== 'undefined' ? o[k] : undefined), obj);
+    }
+
+
+    interface FieldRendererProps {
+      item: GenericItem;
+      fieldId: string;
+      className?: string;
+      options?: Record<string, any>; // For extra props like 'compact' for avatar
+    }
+
+
+    export function FieldRenderer({ item, fieldId, className, options }:
+    FieldRendererProps) {
+      const { getFieldDef } = useDynamicView();
+      const fieldDef = getFieldDef(fieldId);
+      const value = getNestedValue(item, fieldId);
+
+      // Custom render function takes precedence
+      if (fieldDef?.render) {
+        return <>{fieldDef.render(item, options)}</>;
+      }
+
+      if (!fieldDef) {
+        console.warn(`[FieldRenderer] No field definition found for ID: ${fieldId}`);
+        return <span className="text-red-500">?</span>;
+      }
+
+      if (value === null || typeof value === 'undefined') {
+        return null; // Or some placeholder like 'N/A'
+      }
+      
+      switch (fieldDef.type) {
+        case 'string':
+        case 'longtext':
+          return <span className={cn("truncate", className)}>{String(value)}</span>;
+        
+        case 'thumbnail':
+          return <span className={cn("text-xl", className)}>{String(value)}</span>;
+
+        case 'badge': {
+          const { colorMap } = fieldDef as BadgeFieldDefinition;
+          const colorClass = colorMap?.[String(value)] || '';
+          return (
+            <Badge variant="outline" className={cn("font-medium capitalize", colorClass, className)}>
+              {String(value)}
+            </Badge>
+          );
+        }
+        
+        case 'avatar': {
+          const { compact = false, avatarClassName = "w-8 h-8" } = options || {};
+          const avatarUrl = getNestedValue(value, 'avatar');
+          const name = getNestedValue(value, 'name');
+          const email = getNestedValue(value, 'email');
+          const fallback = name?.split(' ').map((n: string) => n[0]).join('') || '?';
+
+          const avatarEl = (
+            <Avatar className={cn("border-2 border-transparent group-hover:border-primary/50 transition-colors", avatarClassName)}>
+              <AvatarImage src={avatarUrl} alt={name} />
+              <AvatarFallback>{fallback}</AvatarFallback>
+            </Avatar>
+          );
+          if (compact) return avatarEl;
+
+          return (
+            <div className={cn("flex items-center gap-2 group", className)}>
+              {avatarEl}
+              <div className="min-w-0">
+                <p className="font-medium text-sm truncate">{name}</p>
+                <p className="text-xs text-muted-foreground truncate">{email}</p>
+              </div>
+            </div>
+          );
+        }
+        
+        case 'progress': {
+          const { showPercentage = false } = options || {};
+          const bar = (
+            <div className="w-full bg-muted rounded-full h-2.5">
+              <div
+                className="bg-gradient-to-r from-primary to-primary/80 h-2.5 rounded-full transition-all duration-500"
+                style={{ width: `${value}%` }}
+              />
+            </div>
+          );
+          if (!showPercentage) return bar;
+          
+          return (
+            <div className="flex items-center gap-3">
+              <div className="flex-1 min-w-0">{bar}</div>
+              <span className="text-sm font-medium text-muted-foreground">{value}%</span>
+            </div>
+          );
+        }
+
+        case 'date':
+          return (
+            <div className={cn("flex items-center gap-1.5 text-sm", className)}>
+              <Clock className="w-4 h-4" />
+              <span>{new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+            </div>
+          );
+
+        case 'tags': {
+          const MAX_TAGS = 2;
+          const tags = Array.isArray(value) ? value : [];
+          const remainingTags = tags.length - MAX_TAGS;
+          return (
+            <div className={cn("flex items-center gap-1.5 flex-wrap", className)}>
+              {tags.slice(0, MAX_TAGS).map(tag => (
+                <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
+              ))}
+              {remainingTags > 0 && (
+                <Badge variant="outline" className="text-xs">+{remainingTags}</Badge>
+              )}
+            </div>
+          );
+        }
+
+        case 'metrics': {
+          const views = getNestedValue(value, 'views') || 0;
+          const likes = getNestedValue(value, 'likes') || 0;
+          const shares = getNestedValue(value, 'shares') || 0;
+          return (
+            <div className={cn("flex items-center gap-3 text-sm", className)}>
+              <div className="flex items-center gap-1"><Eye className="w-4 h-4" /> {views}</div>
+              <div className="flex items-center gap-1"><Heart className="w-4 h-4" /> {likes}</div>
+              <div className="flex items-center gap-1"><Share className="w-4 h-4" /> {shares}</div>
+            </div>
+          );
+        }
+          
+        default:
+          return <>{String(value)}</>;
+      }
+    }
+  src/features/dynamic-view/types.ts: >-
+    import type { ReactNode } from 'react';
+
+
+    // --- GENERIC DATA & ITEM ---
+
+    export type GenericItem = Record<string, any> & { id: string };
+
+
+    // --- FIELD DEFINITIONS ---
+
+    // Describes a single piece of data within a GenericItem.
+
+    export type FieldType = 
+      | 'string'
+      | 'longtext'
+      | 'badge'
+      | 'avatar'
+      | 'progress'
+      | 'date'
+      | 'tags'
+      | 'metrics'
+      | 'thumbnail'
+      | 'custom';
+
+    export interface BaseFieldDefinition {
+      id: string; // Corresponds to a key in GenericItem
+      label: string;
+      type: FieldType;
+      // Optional custom render function for ultimate flexibility.
+      render?: (item: GenericItem, options?: Record<string, any>) => ReactNode;
+    }
+
+
+    export interface BadgeFieldDefinition extends BaseFieldDefinition {
+      type: 'badge';
+      colorMap?: Record<string, string>; // e.g., { 'active': 'bg-green-500', 'pending': 'bg-yellow-500' }
+    }
+
+
+    // Add other specific field types if they need unique properties
+
+    // For now, most can be handled by the base definition.
+
+
+    export type FieldDefinition = BaseFieldDefinition | BadgeFieldDefinition;
+
+
+
+    // --- VIEW CONFIGURATION ---
+
+    // The master configuration object that defines the entire view.
+
+
+    export type ViewMode = 'list' | 'cards' | 'grid' | 'table' | 'kanban' |
+    'calendar';
+
+
+    export interface ListViewConfig {
+      iconField: string;
+      titleField: string;
+      metaFields: Array<{
+        fieldId: string;
+        className?: string;
+      }>;
+    }
+
+
+    export interface CardViewConfig {
+      thumbnailField: string;
+      titleField: string;
+      descriptionField: string;
+      headerFields: string[];
+      // Specific fields to recreate the original layout
+      statusField: string;
+      categoryField: string;
+      tagsField: string;
+      progressField: string;
+      assigneeField: string;
+      metricsField: string;
+      dateField: string;
+    }
+
+
+    export interface TableColumnConfig {
+      fieldId: string;
+      label: string;
+      isSortable: boolean;
+    }
+
+
+    export interface TableViewConfig {
+      columns: TableColumnConfig[];
+    }
+
+
+    export interface KanbanViewConfig {
+      groupByField: string; // Field ID to group by (e.g., 'status')
+      cardFields: {
+        titleField: string;
+        descriptionField: string;
+        priorityField: string;
+        tagsField: string;
+        // footer fields
+        dateField: string;
+        metricsField: string; // for comments/attachments
+        assigneeField: string;
+      };
+    }
+
+
+    export interface CalendarViewConfig {
+      dateField: string;
+      titleField: string;
+      displayFields: string[];
+      colorByField?: string; // Field ID to color events by (e.g., 'priority', 'status')
+    }
+
+
+    export interface ControlOption {
+      id: string;
+      label: string;
+    }
+
+
+    export interface FilterableFieldConfig {
+      id: string; // fieldId
+      label: string;
+      options: ControlOption[];
+    }
+
+
+    export interface ViewConfig {
+      fields: FieldDefinition[];
+      sortableFields: ControlOption[];
+      groupableFields: ControlOption[];
+      filterableFields: FilterableFieldConfig[];
+      
+      // Layouts for each view mode
+      listView: ListViewConfig;
+      cardView: CardViewConfig;
+      tableView: TableViewConfig;
+      kanbanView: KanbanViewConfig;
+      calendarView: CalendarViewConfig;
+      detailView: DetailViewConfig;
+    }
+
+
+    // --- DETAIL VIEW ---
+
+    export interface DetailViewSection {
+      title: string;
+      fields: string[];
+    }
+
+
+    export interface DetailViewConfig {
+      header: {
+        thumbnailField: string;
+        titleField: string;
+        descriptionField: string;
+        badgeFields: string[];
+        progressField: string;
+      };
+      body: {
+        sections: DetailViewSection[];
+      };
+    }
+
+
+    // --- GENERIC CONTROL & DATA TYPES ---
+
+
+    export type Status = 'active' | 'pending' | 'completed' | 'archived';
+
+    export type Priority = 'low' | 'medium' | 'high' | 'critical';
+
+
+    export interface FilterConfig {
+      searchTerm: string;
+      [key: string]: any; // For dynamic filter keys like status, priority
+    }
+
+
+    export interface SortConfig {
+      key: string;
+      direction: 'asc' | 'desc';
+    }
+
+
+    export type GroupableField = 'status' | 'priority' | 'category';
+
+
+    export type CalendarDateProp = 'dueDate' | 'createdAt' | 'updatedAt';
+
+    export type CalendarDisplayProp = 'priority' | 'assignee' | 'status';
+
+    export type CalendarColorProp = 'priority' | 'status' | 'category' | 'none';
+  src/pages/DataDemo/DataDemo.config.tsx: >
+    import { capitalize } from "@/lib/utils";
+
+    import { FieldRenderer } from
+    "@/features/dynamic-view/components/shared/FieldRenderer";
+
+    import type { ViewConfig, GenericItem } from
+    "@/features/dynamic-view/types";
+
+
+    export const dataDemoViewConfig: ViewConfig = {
+      // 1. Field Definitions
+      fields: [
+        { id: "id", label: "ID", type: "string" },
+        { id: "title", label: "Title", type: "string" },
+        { id: "description", label: "Description", type: "longtext" },
+        { id: "thumbnail", label: "Thumbnail", type: "thumbnail" },
+        { id: "category", label: "Category", type: "badge" },
+        {
+          id: "status",
+          label: "Status",
+          type: "badge",
+          colorMap: {
+            active: "bg-sky-500/10 text-sky-600 border-sky-500/20",
+            pending: "bg-amber-500/10 text-amber-600 border-amber-500/20",
+            completed: "bg-emerald-600/10 text-emerald-700 border-emerald-600/20",
+            archived: "bg-zinc-500/10 text-zinc-600 border-zinc-500/20",
+          },
+        },
+        {
+          id: "priority",
+          label: "Priority",
+          type: "badge",
+          colorMap: {
+            critical: "bg-red-600/10 text-red-700 border-red-600/20",
+            high: "bg-orange-500/10 text-orange-600 border-orange-500/20",
+            medium: "bg-blue-500/10 text-blue-600 border-blue-500/20",
+            low: "bg-green-500/10 text-green-600 border-green-500/20",
+          },
+        },
+        { id: "assignee", label: "Assignee", type: "avatar" },
+        { id: "tags", label: "Tags", type: "tags" },
+        { id: "metrics", label: "Engagement", type: "metrics" },
+        { id: "metrics.completion", label: "Progress", type: "progress" },
+        { id: "dueDate", label: "Due Date", type: "date" },
+        { id: "createdAt", label: "Created At", type: "date" },
+        { id: "updatedAt", label: "Last Updated", type: "date" },
+        // A custom field to replicate the composite "Project" column in the table view
+        {
+          id: "project_details",
+          label: "Project",
+          type: "custom",
+          render: (item: GenericItem) => (
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-primary/20 to-primary/10 rounded-lg flex items-center justify-center text-lg flex-shrink-0">
+                <FieldRenderer item={item} fieldId="thumbnail" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h4 className="font-medium group-hover:text-primary transition-colors truncate">
+                  <FieldRenderer item={item} fieldId="title" />
+                </h4>
+                <p className="text-sm text-muted-foreground truncate">
+                  <FieldRenderer item={item} fieldId="category" />
+                </p>
+              </div>
+            </div>
+          ),
+        },
+      ],
+      // 2. Control Definitions
+      sortableFields: [
+        { id: "updatedAt", label: "Last Updated" },
+        { id: "title", label: "Title" },
+        { id: "status", label: "Status" },
+        { id: "priority", label: "Priority" },
+        { id: "metrics.completion", label: "Progress" },
+      ],
+      groupableFields: [
+        { id: "none", label: "None" },
+        { id: "status", label: "Status" },
+        { id: "priority", label: "Priority" },
+        { id: "category", label: "Category" },
+      ],
+      filterableFields: [
+        {
+          id: "status",
+          label: "Status",
+          options: [
+            { id: "active", label: "Active" },
+            { id: "pending", label: "Pending" },
+            { id: "completed", label: "Completed" },
+            { id: "archived", label: "Archived" },
+          ],
+        },
+        {
+          id: "priority",
+          label: "Priority",
+          options: [
+            { id: "critical", label: "Critical" },
+            { id: "high", label: "High" },
+            { id: "medium", label: "Medium" },
+            { id: "low", label: "Low" },
+          ],
+        },
+      ],
+      // 3. View Layouts
+      listView: {
+        iconField: "thumbnail",
+        titleField: "title",
+        metaFields: [
+          { fieldId: "status", className: "hidden sm:flex" },
+          { fieldId: "tags", className: "hidden lg:flex" },
+          { fieldId: "updatedAt", className: "hidden md:flex" },
+          { fieldId: "assignee" },
+          { fieldId: "priority", className: "hidden xs:flex" },
+        ],
+      },
+      cardView: {
+        thumbnailField: "thumbnail",
+        titleField: "title",
+        descriptionField: "description",
+        headerFields: ["priority"],
+        statusField: "status",
+        categoryField: "category",
+        tagsField: "tags",
+        progressField: "metrics.completion",
+        assigneeField: "assignee",
+        metricsField: "metrics",
+        dateField: "updatedAt",
+      },
+      tableView: {
+        columns: [
+          { fieldId: "project_details", label: "Project", isSortable: true },
+          { fieldId: "status", label: "Status", isSortable: true },
+          { fieldId: "priority", label: "Priority", isSortable: true },
+          { fieldId: "assignee", label: "Assignee", isSortable: true },
+          { fieldId: "metrics.completion", label: "Progress", isSortable: true },
+          { fieldId: "metrics", label: "Engagement", isSortable: true },
+          { fieldId: "updatedAt", label: "Last Updated", isSortable: true },
+        ],
+      },
+      kanbanView: {
+        groupByField: "status",
+        cardFields: {
+          titleField: "title",
+          descriptionField: "description",
+          priorityField: "priority",
+          tagsField: "tags",
+          dateField: "dueDate",
+          metricsField: "metrics",
+          assigneeField: "assignee",
+        },
+      },
+      calendarView: {
+        dateField: "dueDate",
+        titleField: "title",
+        displayFields: ["tags", "priority", "assignee"],
+        colorByField: "priority",
+      },
+      detailView: {
+        header: {
+          thumbnailField: "thumbnail",
+          titleField: "title",
+          descriptionField: "description",
+          badgeFields: ["status", "priority", "category"],
+          progressField: "metrics.completion",
+        },
+        body: {
+          sections: [
+            { title: "Assigned to", fields: ["assignee"] },
+            { title: "Engagement Metrics", fields: ["metrics"] },
+            { title: "Tags", fields: ["tags"] },
+            {
+              title: "Timeline",
+              fields: ["createdAt", "updatedAt", "dueDate"],
+            },
+          ],
+        },
+      },
+    };
+  src/features/dynamic-view/components/views/CardView.tsx: >-
+    import { useRef } from 'react'
+
+    import { cn } from '@/lib/utils'
+
+    import { ArrowUpRight } from 'lucide-react'
+
+    import type { GenericItem } from '../../types'
+
+    import { useStaggeredAnimation } from
+    '@/hooks/useStaggeredAnimation.motion.hook'
+
+    import { EmptyState } from '../shared/EmptyState'
+
+    import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
+
+    import {
+      useSelectedItem,
+    } from '../../../../pages/DataDemo/store/dataDemo.store'
+
+    import { AddDataItemCta } from '../shared/AddDataItemCta'
+
+    import { useDynamicView } from '../../DynamicViewContext'
+
+    import { FieldRenderer } from '../shared/FieldRenderer'
+
+
+    export function CardView({ data, isGrid = false }: { data: GenericItem[];
+    isGrid?: boolean }) {
+      const { onItemSelect, itemId } = useAppViewManager();
+      const selectedItem = useSelectedItem(itemId);
+      const { config } = useDynamicView();
+      const { cardView: viewConfig } = config;
+
+      const containerRef = useRef<HTMLDivElement>(null)
+      useStaggeredAnimation(containerRef, [data], { mode: 'incremental', y: 40 });
+
+      const items = Array.isArray(data) ? data : [];
+      if (items.length === 0) {
+        return <EmptyState />
+      }
+
+      return (
+        <div 
+          ref={containerRef}
+          className={cn(
+            "gap-6",
+            isGrid
+              ? "grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))]"
+              : "grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))]",
+            "pb-4"
+          )}
+        >
+          {items.map((item: GenericItem) => {
+            const isSelected = selectedItem?.id === item.id
+            
+            return (
+              <div
+                key={item.id}
+                onClick={() => onItemSelect(item)}
+                className={cn(
+                  "group relative overflow-hidden rounded-3xl border bg-card/50 backdrop-blur-sm transition-all duration-500 cursor-pointer",
+                  "hover:bg-card/80 hover:shadow-xl hover:shadow-primary/10 hover:border-primary/30 hover:-translate-y-2",
+                  "active:scale-[0.98]",
+                  isSelected && "ring-2 ring-primary/30 border-primary/40 bg-card/90 shadow-lg shadow-primary/20",
+                )}
+              >
+                {/* Card Header with Thumbnail */}
+                <div className="relative p-6 pb-4">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-primary/10 rounded-2xl flex items-center justify-center text-3xl group-hover:scale-110 transition-transform duration-300">
+                      <FieldRenderer item={item} fieldId={viewConfig.thumbnailField} />
+                    </div>
+                    <ArrowUpRight className="w-5 h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 group-hover:-translate-y-1 transition-all duration-300" />
+                  </div>
+
+                  {/* Header Fields (e.g., priority indicator) */}
+                  <div className="absolute top-4 right-4 flex items-center gap-2">
+                    {viewConfig.headerFields.map(fieldId => (
+                      <FieldRenderer key={fieldId} item={item} fieldId={fieldId} />
+                    ))}
+                  </div>
+                </div>
+
+                {/* Card Content */}
+                <div className="px-6 pb-6">
+                  <h3 className="font-semibold text-lg mb-2 group-hover:text-primary transition-colors line-clamp-2">
+                    <FieldRenderer item={item} fieldId={viewConfig.titleField} />
+                  </h3>
+                  <p className="text-muted-foreground text-sm mb-4 line-clamp-3">
+                    <FieldRenderer item={item} fieldId={viewConfig.descriptionField} />
+                  </p>
+
+                  {/* Status and Category */}
+                  <div className="flex items-center gap-2 mb-4">
+                    <FieldRenderer item={item} fieldId={viewConfig.statusField} />
+                    <FieldRenderer item={item} fieldId={viewConfig.categoryField} />
+                  </div>
+
+                  {/* Tags, Progress, Assignee */}
+                  <div className="space-y-4 mb-4">
+                    <FieldRenderer item={item} fieldId={viewConfig.tagsField} />
+                    <FieldRenderer item={item} fieldId={viewConfig.progressField} />
+                    <FieldRenderer item={item} fieldId={viewConfig.assigneeField} />
+                  </div>
+
+                  {/* Metrics and Date */}
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <FieldRenderer item={item} fieldId={viewConfig.metricsField} />
+                    <FieldRenderer item={item} fieldId={viewConfig.dateField} />
+                  </div>
+                </div>
+
+                {/* Hover gradient overlay */}
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+                
+                {/* Selection indicator */}
+                {isSelected && (
+                  <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-primary/5 pointer-events-none" />
+                )}
+              </div>
+            )
+          })}
+          <AddDataItemCta viewMode={isGrid ? 'grid' : 'cards'} />
+        </div>
+      )
+    }
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 513

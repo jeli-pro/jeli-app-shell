@@ -86,11 +86,14 @@ spread the model into another sub page in data demo sidebar. like contact, compa
 
 === DOING
 
-after executed above plan, now there is too many UI shift and borken and UI features lost... I want the perceived UI stay like old snapshot even in this new dynamic manner of the components...
+after executed above plan, now there is too many UI shift and borken and UI states , animations and features lost... I want the perceived UI stay like old snapshot even in this new dynamic manner of the components...
 
 again;
 
  The recent refactor to a generic, config-driven view engine was a success architecturally but resulted in unintended UI/UX regressions. The new dynamic components, while more flexible, do not perfectly replicate the nuanced layouts and behaviors of the original, hardcoded `DataDemo` components.
+
+avoid re-introducing hardcoded logic into the view components
+even the loading animations , empty state , state managements should managed by dynamic view
 
 === DONE
 

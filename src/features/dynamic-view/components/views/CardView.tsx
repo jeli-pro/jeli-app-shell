@@ -63,7 +63,7 @@ export function CardView({ data, isGrid = false }: { data: GenericItem[]; isGrid
               {/* Header Fields (e.g., priority indicator) */}
               <div className="absolute top-4 right-4 flex items-center gap-2">
                 {viewConfig.headerFields.map(fieldId => (
-                  <FieldRenderer key={fieldId} item={item} fieldId={fieldId} />
+                  <FieldRenderer key={fieldId} item={item} fieldId={fieldId} options={{ displayAs: 'indicator' }} />
                 ))}
               </div>
             </div>

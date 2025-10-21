@@ -53,7 +53,7 @@ export function ListView({ data }: { data: GenericItem[] }) {
               <div className="flex shrink-0 items-center gap-2 sm:gap-4 md:gap-6 ml-4 text-sm text-muted-foreground">
                 {config.listView.metaFields.map(fieldConfig => (
                   <div key={fieldConfig.fieldId} className={fieldConfig.className}>
-                    <FieldRenderer item={item} fieldId={fieldConfig.fieldId} options={{ compact: true, avatarClassName: 'w-7 h-7' }} />
+                    <FieldRenderer item={item} fieldId={fieldConfig.fieldId} options={{ avatarClassName: 'w-7 h-7' }} />
                   </div>
                 ))}
               </div>
