@@ -19,7 +19,11 @@ src/
           KanbanView.tsx
           ListView.tsx
           TableView.tsx
+      hooks/
+        useDynamicViewState.hook.ts
+      DynamicView.tsx
       DynamicViewContext.tsx
+      index.ts
       types.ts
   hooks/
     useRightPaneContent.hook.tsx
@@ -44,6 +48,197 @@ vite.config.ts
 ```
 
 # Files
+
+## File: src/features/dynamic-view/hooks/useDynamicViewState.hook.ts
+```typescript
+import { useState, useMemo } from 'react';
+import type {
+  ViewMode,
+  FilterConfig,
+  SortConfig,
+  CalendarDateProp,
+  CalendarDisplayProp,
+  CalendarColorProp,
+  GenericItem,
+} from '../types';
+
+const defaultFilters: FilterConfig = {
+  searchTerm: '',
+  status: [],
+  priority: [],
+};
+
+export function useDynamicViewState() {
+  // Core State
+  const [viewMode, setViewMode] = useState<ViewMode>('cards');
+  const [filters, setFilters] = useState<FilterConfig>(defaultFilters);
+  const [sortConfig, setSortConfig] = useState<SortConfig | null>({ key: 'updatedAt', direction: 'desc' });
+  const [groupBy, setGroupBy] = useState<string>('none');
+  const [activeGroupTab, setActiveGroupTab] = useState('all');
+  const [page, setPage] = useState(1);
+  const [itemId, setItemId] = useState<string | undefined>();
+
+  // Calendar-specific state
+  const [calendarDateProp, setCalendarDateProp] = useState<CalendarDateProp>('dueDate');
+  const [calendarDisplayProps, setCalendarDisplayProps] = useState<CalendarDisplayProp[]>(['priority', 'assignee', 'tags']);
+  const [calendarItemLimit, setCalendarItemLimit] = useState<number | 'all'>(3);
+  const [calendarColorProp, setCalendarColorProp] = useState<CalendarColorProp>('priority');
+
+  const setSort = (config: SortConfig | null) => {
+    setSortConfig(config);
+  };
+
+  const setTableSort = (key: string) => {
+    setSortConfig(prev => {
+      if (prev?.key === key) {
+        return { key, direction: prev.direction === 'asc' ? 'desc' : 'asc' };
+      }
+      return { key, direction: 'desc' };
+    });
+  };
+
+  const onItemSelect = (item: GenericItem) => {
+    setItemId(item.id);
+  };
+  
+  const clearItemId = () => {
+    setItemId(undefined);
+  };
+
+  const value = useMemo(() => ({
+    // State
+    viewMode,
+    filters,
+    sortConfig,
+    groupBy,
+    activeGroupTab,
+    page,
+    itemId,
+    calendarDateProp,
+    calendarDisplayProps,
+    calendarItemLimit,
+    calendarColorProp,
+    // Setters
+    setViewMode,
+    setFilters,
+    setSort,
+    setTableSort,
+    setGroupBy,
+    setActiveGroupTab,
+    setPage,
+    setItemId,
+    onItemSelect,
+    clearItemId,
+    setCalendarDateProp,
+    setCalendarDisplayProps,
+    setCalendarItemLimit,
+    setCalendarColorProp,
+  }), [
+    viewMode, filters, sortConfig, groupBy, activeGroupTab, page, itemId,
+    calendarDateProp, calendarDisplayProps, calendarItemLimit, calendarColorProp,
+  ]);
+
+  return value;
+}
+```
+
+## File: src/features/dynamic-view/DynamicView.tsx
+```typescript
+import { useEffect, useMemo } from 'react';
+import type { ViewConfig, GenericItem, FilterConfig, SortConfig } from './types';
+import { useDynamicViewState } from './hooks/useDynamicViewState.hook';
+import { DynamicViewProvider } from './DynamicViewContext';
+
+import { ViewModeSelector } from './components/controls/ViewModeSelector';
+import { ViewControls } from './components/controls/ViewControls';
+
+export interface DynamicViewProps {
+    viewConfig: ViewConfig;
+    items: GenericItem[];
+    isLoading: boolean;
+    isInitialLoading: boolean;
+    totalItemCount: number;
+    hasMore: boolean;
+    onLoadData: (params: {
+        page: number;
+        groupBy: string;
+        filters: FilterConfig;
+        sortConfig: SortConfig | null;
+        isFullLoad?: boolean;
+    }) => void;
+    // Consumer handles navigation or side pane logic
+    onItemSelected: (item: GenericItem) => void; 
+    header: React.ReactNode;
+}
+
+export function DynamicView({
+    viewConfig,
+    items,
+    isInitialLoading,
+    totalItemCount,
+    onLoadData,
+    onItemSelected,
+    header,
+}: DynamicViewProps) {
+    const viewState = useDynamicViewState();
+    const { page, groupBy, filters, sortConfig, viewMode, onItemSelect } = viewState;
+
+    useEffect(() => {
+        onLoadData({
+          page,
+          groupBy,
+          filters,
+          sortConfig,
+          isFullLoad: viewMode === 'calendar' || viewMode === 'kanban',
+        });
+    }, [page, groupBy, filters, sortConfig, viewMode, onLoadData]);
+
+    const selectedItem = useMemo(() => {
+        if (!viewState.itemId) return null;
+        return items.find(item => item.id === viewState.itemId) ?? null;
+    }, [viewState.itemId, items]);
+
+    useEffect(() => {
+        if (selectedItem) {
+            onItemSelected(selectedItem);
+        }
+    }, [selectedItem, onItemSelected]);
+
+    return (
+        <DynamicViewProvider 
+            viewConfig={viewConfig} 
+            data={items} 
+            {...viewState}
+            onItemSelect={onItemSelect}
+        >
+            <div className="space-y-6">
+                {/* Header and Controls */}
+                <div className="space-y-4">
+                    <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                        <div className="flex-1">
+                            {header}
+                        </div>
+                        <ViewModeSelector />
+                    </div>
+                    <ViewControls />
+                </div>
+
+                {/* Content Area */}
+                <div className="min-h-[500px]">
+                   {/* This is where rendering logic will go in Part 2 */}
+                   <p>View content will be rendered here.</p>
+                </div>
+            </div>
+        </DynamicViewProvider>
+    )
+}
+```
+
+## File: src/features/dynamic-view/index.ts
+```typescript
+export { DynamicView } from './DynamicView';
+export type { DynamicViewProps } from './DynamicView';
+```
 
 ## File: src/index.css
 ```css
@@ -222,23 +417,91 @@ export default defineConfig({
 ## File: src/features/dynamic-view/DynamicViewContext.tsx
 ```typescript
 import { createContext, useContext, useMemo, type ReactNode } from 'react';
-import type { ViewConfig, GenericItem } from './types';
+import type { 
+  ViewConfig, 
+  GenericItem,
+  ViewMode,
+  FilterConfig,
+  SortConfig,
+  CalendarDateProp,
+  CalendarDisplayProp,
+  CalendarColorProp,
+} from './types';
 
-interface DynamicViewContextProps {
+// The full shape of the context, including state and setters
+export interface DynamicViewContextProps {
   config: ViewConfig;
   data: GenericItem[];
   getFieldDef: (fieldId: string) => ViewConfig['fields'][number] | undefined;
+  
+  // State from useDynamicViewState
+  viewMode: ViewMode;
+  filters: FilterConfig;
+  sortConfig: SortConfig | null;
+  groupBy: string;
+  activeGroupTab: string;
+  page: number;
+  itemId?: string;
+  calendarDateProp: CalendarDateProp;
+  calendarDisplayProps: CalendarDisplayProp[];
+  calendarItemLimit: number | 'all';
+  calendarColorProp: CalendarColorProp;
+
+  // Setters from useDynamicViewState
+  setViewMode: (mode: ViewMode) => void;
+  setFilters: (filters: FilterConfig) => void;
+  setSort: (config: SortConfig | null) => void;
+  setTableSort: (key: string) => void;
+  setGroupBy: (field: string) => void;
+  setActiveGroupTab: (tab: string) => void;
+  setPage: (page: number) => void;
+  setItemId: (id: string | undefined) => void;
+  onItemSelect: (item: GenericItem) => void;
+  clearItemId: () => void;
+  setCalendarDateProp: (prop: CalendarDateProp) => void;
+  setCalendarDisplayProps: (props: CalendarDisplayProp[]) => void;
+  setCalendarItemLimit: (limit: number | 'all') => void;
+  setCalendarColorProp: (prop: CalendarColorProp) => void;
 }
 
 const DynamicViewContext = createContext<DynamicViewContextProps | null>(null);
 
 interface DynamicViewProviderProps {
+  children: ReactNode;
   viewConfig: ViewConfig;
   data: GenericItem[];
-  children: ReactNode;
+  
+  // Pass all state and setters down
+  viewMode: ViewMode;
+  filters: FilterConfig;
+  sortConfig: SortConfig | null;
+  groupBy: string;
+  activeGroupTab: string;
+  page: number;
+  itemId?: string;
+  calendarDateProp: CalendarDateProp;
+  calendarDisplayProps: CalendarDisplayProp[];
+  calendarItemLimit: number | 'all';
+  calendarColorProp: CalendarColorProp;
+  setViewMode: (mode: ViewMode) => void;
+  setFilters: (filters: FilterConfig) => void;
+  setSort: (config: SortConfig | null) => void;
+  setTableSort: (key: string) => void;
+  setGroupBy: (field: string) => void;
+  setActiveGroupTab: (tab: string) => void;
+  setPage: (page: number) => void;
+  setItemId: (id: string | undefined) => void;
+  onItemSelect: (item: GenericItem) => void;
+  clearItemId: () => void;
+  setCalendarDateProp: (prop: CalendarDateProp) => void;
+  setCalendarDisplayProps: (props: CalendarDisplayProp[]) => void;
+  setCalendarItemLimit: (limit: number | 'all') => void;
+  setCalendarColorProp: (prop: CalendarColorProp) => void;
 }
 
-export function DynamicViewProvider({ viewConfig, data, children }: DynamicViewProviderProps) {
+export function DynamicViewProvider(props: DynamicViewProviderProps) {
+  const { children, viewConfig, data, ...viewState } = props;
+
   const fieldDefsById = useMemo(() => {
     return new Map(viewConfig.fields.map(field => [field.id, field]));
   }, [viewConfig.fields]);
@@ -246,12 +509,13 @@ export function DynamicViewProvider({ viewConfig, data, children }: DynamicViewP
   const getFieldDef = (fieldId: string) => {
     return fieldDefsById.get(fieldId);
   };
-
+  
   const value = useMemo(() => ({
     config: viewConfig,
     data,
     getFieldDef,
-  }), [viewConfig, data, getFieldDef]);
+    ...viewState,
+  }), [viewConfig, data, getFieldDef, viewState]);
 
   return (
     <DynamicViewContext.Provider value={value}>
@@ -2854,7 +3118,7 @@ export interface SortConfig {
 export type GroupableField = 'status' | 'priority' | 'category';
 
 export type CalendarDateProp = 'dueDate' | 'createdAt' | 'updatedAt';
-export type CalendarDisplayProp = 'priority' | 'assignee' | 'status';
+export type CalendarDisplayProp = 'priority' | 'assignee' | 'tags';
 export type CalendarColorProp = 'priority' | 'status' | 'category' | 'none';
 ```
 
@@ -2943,185 +3207,160 @@ export const getPriorityColor = (priority: string) => {
 
 ## File: src/pages/DataDemo/store/dataDemo.store.tsx
 ```typescript
-import { create } from 'zustand';
-import { type ReactNode } from 'react';
-import { capitalize, cn } from '@/lib/utils';
-import { Badge } from '@/components/ui/badge';
-import { mockDataItems } from '@/pages/DataDemo/data/mockData';
-import type { GenericItem, GroupableField, SortConfig, FilterConfig } from '@/features/dynamic-view/types';
+import { create } from "zustand";
+import { mockDataItems } from "@/pages/DataDemo/data/mockData";
+import type {
+  GenericItem,
+  GroupableField,
+  SortConfig,
+  FilterConfig,
+} from "@/features/dynamic-view/types";
 
 // --- State and Actions ---
 interface DataDemoState {
-    items: GenericItem[];
-    hasMore: boolean;
-    isLoading: boolean;
-    isInitialLoading: boolean;
-    totalItemCount: number;
+  items: GenericItem[];
+  hasMore: boolean;
+  isLoading: boolean;
+  isInitialLoading: boolean;
+  totalItemCount: number;
 }
 
 interface DataDemoActions {
-    loadData: (params: {
-        page: number;
-        groupBy: GroupableField | 'none';
-        filters: FilterConfig;
-        sortConfig: SortConfig | null;
+  loadData: (params: {
+    page: number;
+    groupBy: GroupableField | "none";
+    filters: FilterConfig;
+    sortConfig: SortConfig | null;
     isFullLoad?: boolean;
-    }) => void;
-    updateItem: (itemId: string, updates: Partial<GenericItem>) => void;
+  }) => void;
+  updateItem: (itemId: string, updates: Partial<GenericItem>) => void;
 }
 
 const defaultState: DataDemoState = {
-    items: [],
-    hasMore: true,
-    isLoading: true,
-    isInitialLoading: true,
-    totalItemCount: 0,
+  items: [],
+  hasMore: true,
+  isLoading: true,
+  isInitialLoading: true,
+  totalItemCount: 0,
 };
 
 // --- Store Implementation ---
-export const useDataDemoStore = create<DataDemoState & DataDemoActions>((set) => ({
+export const useDataDemoStore = create<DataDemoState & DataDemoActions>(
+  (set) => ({
     ...defaultState,
 
     loadData: ({ page, groupBy, filters, sortConfig, isFullLoad }) => {
-        set({ isLoading: true, ...(page === 1 && { isInitialLoading: true }) });
-        const isFirstPage = page === 1;
+      set({ isLoading: true, ...(page === 1 && { isInitialLoading: true }) });
+      const isFirstPage = page === 1;
 
-        const filteredAndSortedData = (() => {
-            const filteredItems = mockDataItems.filter((item) => {
-                const searchTermMatch =
-                    item.title.toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
-                    item.description.toLowerCase().includes(filters.searchTerm.toLowerCase());
-                const statusMatch = filters.status.length === 0 || filters.status.includes(item.status);
-                const priorityMatch = filters.priority.length === 0 || filters.priority.includes(item.priority);
-                return searchTermMatch && statusMatch && priorityMatch;
+      const filteredAndSortedData = (() => {
+        const filteredItems = mockDataItems.filter((item) => {
+          const searchTermMatch =
+            item.title
+              .toLowerCase()
+              .includes(filters.searchTerm.toLowerCase()) ||
+            item.description
+              .toLowerCase()
+              .includes(filters.searchTerm.toLowerCase());
+          const statusMatch =
+            filters.status.length === 0 || filters.status.includes(item.status);
+          const priorityMatch =
+            filters.priority.length === 0 ||
+            filters.priority.includes(item.priority);
+          return searchTermMatch && statusMatch && priorityMatch;
+        });
+
+        if (sortConfig) {
+          filteredItems.sort((a, b) => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const getNestedValue = (obj: GenericItem, path: string): any =>
+              path.split(".").reduce((o: any, k) => (o || {})[k], obj);
+
+            const aValue = getNestedValue(a, sortConfig.key);
+            const bValue = getNestedValue(b, sortConfig.key);
+
+            if (aValue === undefined || bValue === undefined) return 0;
+            if (typeof aValue === "string" && typeof bValue === "string") {
+              return sortConfig.direction === "asc"
+                ? aValue.localeCompare(bValue)
+                : bValue.localeCompare(aValue);
+            }
+            if (typeof aValue === "number" && typeof bValue === "number") {
+              return sortConfig.direction === "asc"
+                ? aValue - bValue
+                : bValue - aValue;
+            }
+            if (
+              sortConfig.key === "updatedAt" ||
+              sortConfig.key === "createdAt"
+            ) {
+              if (typeof aValue === "string" && typeof bValue === "string") {
+                return sortConfig.direction === "asc"
+                  ? new Date(aValue).getTime() - new Date(bValue).getTime()
+                  : new Date(bValue).getTime() - new Date(aValue).getTime();
+              }
+            }
+            return 0;
+          });
+        }
+        return filteredItems;
+      })();
+
+      const totalItemCount = filteredAndSortedData.length;
+
+      setTimeout(
+        () => {
+          if (groupBy !== "none" || isFullLoad) {
+            set({
+              items: filteredAndSortedData,
+              hasMore: false,
+              isLoading: false,
+              isInitialLoading: false,
+              totalItemCount,
             });
+            return;
+          }
 
-            if (sortConfig) {
-                filteredItems.sort((a, b) => {
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    const getNestedValue = (obj: GenericItem, path: string): any =>
-                        path.split('.').reduce((o: any, k) => (o || {})[k], obj);
+          const pageSize = 12;
+          const newItems = filteredAndSortedData.slice(
+            (page - 1) * pageSize,
+            page * pageSize,
+          );
 
-                    const aValue = getNestedValue(a, sortConfig.key);
-                    const bValue = getNestedValue(b, sortConfig.key);
-
-                    if (aValue === undefined || bValue === undefined) return 0;
-                    if (typeof aValue === 'string' && typeof bValue === 'string') {
-                        return sortConfig.direction === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
-                    }
-                    if (typeof aValue === 'number' && typeof bValue === 'number') {
-                        return sortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue;
-                    }
-                    if (sortConfig.key === 'updatedAt' || sortConfig.key === 'createdAt') {
-                        if (typeof aValue === 'string' && typeof bValue === 'string') {
-                            return sortConfig.direction === 'asc'
-                                ? new Date(aValue).getTime() - new Date(bValue).getTime()
-                                : new Date(bValue).getTime() - new Date(aValue).getTime();
-                        }
-                    }
-                    return 0;
-                });
-            }
-            return filteredItems;
-        })();
-        
-        const totalItemCount = filteredAndSortedData.length;
-
-        setTimeout(() => {
-            if (groupBy !== 'none' || isFullLoad) {
-                set({
-                    items: filteredAndSortedData,
-                    hasMore: false,
-                    isLoading: false,
-                    isInitialLoading: false,
-                    totalItemCount,
-                });
-                return;
-            }
-
-            const pageSize = 12;
-            const newItems = filteredAndSortedData.slice((page - 1) * pageSize, page * pageSize);
-            
-            set(state => ({
-                items: isFirstPage ? newItems : [...state.items, ...newItems],
-                hasMore: totalItemCount > page * pageSize,
-                isLoading: false,
-                isInitialLoading: false,
-                totalItemCount,
-            }));
-
-        }, isFirstPage ? 1500 : 500);
+          set((state) => ({
+            items: isFirstPage ? newItems : [...state.items, ...newItems],
+            hasMore: totalItemCount > page * pageSize,
+            isLoading: false,
+            isInitialLoading: false,
+            totalItemCount,
+          }));
+        },
+        isFirstPage ? 1500 : 500,
+      );
     },
 
     updateItem: (itemId, updates) => {
-        // In a real app, this would be an API call. Here we update the mock source.
-        const itemIndex = mockDataItems.findIndex(i => i.id === itemId);
-        if (itemIndex > -1) {
-            mockDataItems[itemIndex] = { ...mockDataItems[itemIndex], ...updates };
-        }
+      // In a real app, this would be an API call. Here we update the mock source.
+      const itemIndex = mockDataItems.findIndex((i) => i.id === itemId);
+      if (itemIndex > -1) {
+        mockDataItems[itemIndex] = { ...mockDataItems[itemIndex], ...updates };
+      }
 
-        // Also update the currently loaded items in the store's state for UI consistency
-        set(state => ({
-            items: state.items.map(item => 
-                item.id === itemId ? { ...item, ...updates } : item
-            ),
-        }));
+      // Also update the currently loaded items in the store's state for UI consistency
+      set((state) => ({
+        items: state.items.map((item) =>
+          item.id === itemId ? { ...item, ...updates } : item,
+        ),
+      }));
     },
-}));
-
-// --- Selectors ---
-export const useGroupTabs = (
-    groupBy: GroupableField | 'none',
-    activeGroupTab: string,
-) => useDataDemoStore(state => {
-    const items = state.items;
-    if (groupBy === 'none' || !items.length) return [];
-    
-    const groupCounts = items.reduce((acc, item) => {
-        const groupKey = String(item[groupBy as GroupableField]);
-        acc[groupKey] = (acc[groupKey] || 0) + 1;
-        return acc;
-    }, {} as Record<string, number>);
-
-    const sortedGroups = Object.keys(groupCounts).sort((a, b) => a.localeCompare(b));
-
-    const createLabel = (text: string, count: number, isActive: boolean): ReactNode => (
-        <>
-            {text}
-            <Badge variant={isActive ? 'default' : 'secondary'} className={cn('transition-colors duration-300 text-xs font-semibold', !isActive && 'group-hover:bg-accent group-hover:text-accent-foreground')}>
-                {count}
-            </Badge>
-        </>
-    );
-    
-    const totalCount = items.length;
-
-    return [
-        { id: 'all', label: createLabel('All', totalCount, activeGroupTab === 'all') },
-        ...sortedGroups.map((g) => ({
-            id: g,
-            label: createLabel(capitalize(g), groupCounts[g], activeGroupTab === g),
-        })),
-    ];
-});
-
-export const useDataToRender = (
-    groupBy: GroupableField | 'none',
-    activeGroupTab: string,
-) => useDataDemoStore(state => {
-    const items = state.items;
-    if (groupBy === 'none') {
-        return items;
-    }
-    if (activeGroupTab === 'all') {
-        return items;
-    }
-    return items.filter((item) => String(item[groupBy as GroupableField]) === activeGroupTab);
-});
+  }),
+);
 
 export const useSelectedItem = (itemId?: string) => {
-    if (!itemId) return null;
-    return (mockDataItems.find(item => item.id === itemId) as GenericItem) ?? null;
+  if (!itemId) return null;
+  return (
+    (mockDataItems.find((item) => item.id === itemId) as GenericItem) ?? null
+  );
 };
 ```
 
@@ -3305,7 +3544,7 @@ export function useRightPaneContent(sidePaneContent: AppShellState['sidePaneCont
         content: (
           <DynamicViewProvider viewConfig={dataDemoViewConfig} data={mockDataItems}>
             <div className="h-full flex flex-col">
-              <div className="flex-1 overflow-y-auto custom-scrollbar">
+              <div className="flex-1 overflow-y-auto">
                 <DetailPanel item={selectedItem} config={dataDemoViewConfig.detailView} />
               </div>
               {/* Application-specific actions can be composed here */}
@@ -3339,7 +3578,7 @@ export function useRightPaneContent(sidePaneContent: AppShellState['sidePaneCont
 
 ## File: src/pages/DataDemo/index.tsx
 ```typescript
-import { useRef, useEffect, useCallback, useMemo } from 'react'
+import { useRef, useEffect, useCallback, useMemo, type ReactNode } from 'react'
 import {
   Layers, 
   AlertTriangle, 
@@ -3370,9 +3609,10 @@ import { mockDataItems } from './data/mockData'
 import type { GroupableField, GenericItem } from '@/features/dynamic-view/types'
 import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
 import { useAutoAnimateStats } from './hooks/useAutoAnimateStats.hook'
+import { useDataDemoStore } from './store/dataDemo.store'
+import { capitalize, cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
 import { 
-  useDataDemoStore, 
-  useGroupTabs
 } from './store/dataDemo.store'
 
 import { dataDemoViewConfig } from './DataDemo.config';
@@ -3412,7 +3652,8 @@ export default function DataDemoPage() {
     setPage,
   } = useAppViewManager();
 
-  const { hasMore, isLoading, isInitialLoading, totalItemCount, loadData } = useDataDemoStore(state => ({
+  const { items: allItems, hasMore, isLoading, isInitialLoading, totalItemCount, loadData } = useDataDemoStore(state => ({
+    items: state.items,
     hasMore: state.hasMore,
     isLoading: state.isLoading,
     isInitialLoading: state.isInitialLoading,
@@ -3420,15 +3661,44 @@ export default function DataDemoPage() {
     loadData: state.loadData,
   }));
 
-  const groupTabs = useGroupTabs(groupBy, activeGroupTab);
-  const allItems = useDataDemoStore(s => s.items);
+  // --- Start of logic moved from store selectors ---
+  const groupTabs = useMemo(() => {
+    if (groupBy === 'none' || !allItems.length) return [];
+    
+    const groupCounts = allItems.reduce((acc, item) => {
+        const groupKey = String(item[groupBy as GroupableField]);
+        acc[groupKey] = (acc[groupKey] || 0) + 1;
+        return acc;
+    }, {} as Record<string, number>);
+
+    const sortedGroups = Object.keys(groupCounts).sort((a, b) => a.localeCompare(b));
+
+    const createLabel = (text: string, count: number, isActive: boolean): ReactNode => (
+        <>
+            {text}
+            <Badge variant={isActive ? 'default' : 'secondary'} className={cn('transition-colors duration-300 text-xs font-semibold', !isActive && 'group-hover:bg-accent group-hover:text-accent-foreground')}>
+                {count}
+            </Badge>
+        </>
+    );
+    
+    const totalCount = allItems.length;
+
+    return [
+        { id: 'all', label: createLabel('All', totalCount, activeGroupTab === 'all') },
+        ...sortedGroups.map((g) => ({
+            id: g,
+            label: createLabel(capitalize(g), groupCounts[g], activeGroupTab === g),
+        })),
+    ];
+  }, [allItems, groupBy, activeGroupTab]);
 
   const groupedData = useMemo(() => {
     if (groupBy === 'none') {
         return null;
     }
     return allItems.reduce((acc, item) => {
-        const groupKey = String(item[groupBy as GroupableField]);
+        const groupKey = String(item[groupBy as GroupableField]) || 'N/A';
         if (!acc[groupKey]) {
             acc[groupKey] = [] as GenericItem[];
         }
@@ -3436,13 +3706,14 @@ export default function DataDemoPage() {
         return acc;
     }, {} as Record<string, GenericItem[]>);
   }, [allItems, groupBy]);
-
   const dataToRender = useMemo(() => {
     if (groupBy === 'none' || activeGroupTab === 'all' || !groupedData) {
       return allItems;
     }
     return groupedData[activeGroupTab] || [];
   }, [groupBy, activeGroupTab, allItems, groupedData]);
+  // --- End of logic moved from store selectors ---
+
 
   const statsRef = useRef<HTMLDivElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -3450,7 +3721,6 @@ export default function DataDemoPage() {
   // Note: The `DynamicViewProvider` needs `GenericItem[]`. 
   // Our store uses `GenericItem` so no cast is needed.
   const genericItems: GenericItem[] = allItems;
-
   // Auto-hide stats container on scroll down
   useAutoAnimateStats(scrollRef, statsRef);
 
@@ -3555,7 +3825,7 @@ export default function DataDemoPage() {
       groupBy,
       filters,
       sortConfig,
-      isFullLoad: viewMode === 'calendar',
+      isFullLoad: viewMode === 'calendar' || viewMode === 'kanban',
     });
   }, [page, groupBy, filters, sortConfig, loadData, viewMode]);
 
@@ -3685,13 +3955,13 @@ export default function DataDemoPage() {
 
         {/* Loader for infinite scroll */}
         <div ref={loaderRef} className="flex justify-center items-center py-6">
-          {isLoading && !isInitialLoading && groupBy === 'none' && viewMode !== 'calendar' && (
+          {isLoading && !isInitialLoading && groupBy === 'none' && viewMode !== 'calendar' && viewMode !== 'kanban' && (
             <div className="flex items-center gap-2 text-muted-foreground">
               <Loader2 className="w-5 h-5 animate-spin" />
               <span>Loading more...</span>
             </div>
           )}
-          {!isLoading && !hasMore && dataToRender.length > 0 && !isInitialLoading && groupBy === 'none' && viewMode !== 'calendar' && (
+          {!isLoading && !hasMore && dataToRender.length > 0 && !isInitialLoading && groupBy === 'none' && viewMode !== 'calendar' && viewMode !== 'kanban' && (
             <p className="text-muted-foreground">You've reached the end.</p>
           )}
         </div>

@@ -1,0 +1,978 @@
+uuid: 05968566-be36-4727-a2c0-8744513f8b88
+projectId: jeli-app-shell
+createdAt: '2025-10-21T07:20:31.959Z'
+gitCommitMsg: null
+promptSummary: null
+reasoning:
+  - Reverting transaction b900a390-ac92-491a-9828-569b3628e833.
+  - >-
+    Reasoning from original transaction: Executing Part 1 of the refactor plan.
+    ### Part 1: Establish the `DynamicView` Foundation I am creating the core
+    foundation for the new, encapsulated `DynamicView` feature. This involves
+    three key steps: 1.  **Create `useDynamicViewState.hook.ts`**: A new,
+    self-contained hook to manage all view-related state (view mode, filters,
+    sorting, etc.), completely decoupled from application-specific logic like
+    URL routing. This is the new state management brain for the feature. 2. 
+    **Create `DynamicView.tsx`**: A new top-level component that will serve as
+    the public API for the feature. It uses the new hook, orchestrates data
+    loading via callbacks, and sets up the context provider for its children.
+    This will become the single entry point for using the dynamic view system.
+    3.  **Refactor `DynamicViewContext.tsx`**: The existing context is being
+    upgraded to provide the comprehensive state and actions from our new hook.
+    This makes the entire view state accessible to any child component within
+    the dynamic view, enabling the subsequent decoupling of controls and views.
+    These foundational changes prepare the ground for migrating all presentation
+    and state logic into the `dynamic-view` feature, cleanly separating it from
+    the `DataDemo` page. First, I'll create the new state management hook. Next,
+    I'll create the shell for the new `<DynamicView />` component. This will be
+    the main entry point for the feature. Finally, I'll update the
+    `DynamicViewContext` to provide the full range of state and actions from the
+    new hook. I am also updating the `types.ts` file to ensure the
+    `CalendarDisplayProp` has all possible values. Now, I will add an `index.ts`
+    to the `dynamic-view` feature folder to export the new `DynamicView`
+    component as the main entry point. And update the project's main `index.ts`
+    if it exists. Looking at `vite.config.ts`, the entry point is
+    `src/index.ts`. I don't have that file, but it's likely it should export the
+    new `DynamicView` component. I will assume it should be created or modified.
+    I'll create a new file `src/index.ts` for the library's entry point. This
+    completes Part 1.
+operations:
+  - type: delete
+    path: src/features/dynamic-view/index.ts
+  - type: delete
+    path: src/features/dynamic-view/hooks/useDynamicViewState.hook.ts
+  - type: delete
+    path: src/features/dynamic-view/DynamicView.tsx
+  - type: write
+    path: src/index.ts
+    content: >-
+      // Context
+
+      export { AppShellProvider } from './providers/AppShellProvider';
+
+      export { useAppShellStore } from './store/appShell.store';
+
+
+      // Layout Components
+
+      export { AppShell } from './components/layout/AppShell';
+
+      export { MainContent } from './components/layout/MainContent';
+
+      export { ViewModeSwitcher } from './components/layout/ViewModeSwitcher';
+
+      export { RightPane } from './components/layout/RightPane';
+
+      export { TopBar } from './components/layout/TopBar';
+
+      export { UserDropdown } from './components/layout/UserDropdown';
+
+      export { Workspaces as WorkspaceProvider, WorkspaceTrigger,
+      WorkspaceContent } from './components/layout/WorkspaceSwitcher';
+
+
+      // Sidebar Primitives
+
+      export {
+        Sidebar,
+        SidebarBody,
+        SidebarContent,
+        SidebarFooter,
+        SidebarHeader,
+        SidebarSection,
+        SidebarTitle,
+        SidebarMenuItem,
+        SidebarMenuButton,
+        SidebarMenuAction,
+        SidebarLabel,
+        SidebarBadge,
+        SidebarTooltip,
+        SidebarIcon,
+        useSidebar,
+      } from './components/layout/Sidebar';
+
+
+      // Shared Components
+
+      export { ContentInSidePanePlaceholder } from
+      './components/shared/ContentInSidePanePlaceholder';
+
+      export { PageHeader } from './components/shared/PageHeader';
+
+      export { PageLayout } from './components/shared/PageLayout';
+
+
+      // Feature Components
+
+      export { SettingsContent } from './features/settings/SettingsContent';
+
+      export { SettingsSection } from './features/settings/SettingsSection';
+
+      export { SettingsToggle } from './features/settings/SettingsToggle';
+
+      export { LoginPage } from './components/auth/LoginPage';
+
+
+      // UI Components
+
+      export * from './components/ui/avatar';
+
+      export * from './components/ui/badge';
+
+      export * from './components/ui/button';
+
+      export * from './components/ui/card';
+
+      export * from './components/ui/command';
+
+      export * from './components/ui/dialog';
+
+      export * from './components/ui/dropdown-menu';
+
+      export * from './components/ui/input';
+
+      export * from './components/ui/label';
+
+      export * from './components/ui/popover';
+
+      export * from './components/ui/tabs';
+
+      export * from './components/ui/toast';
+
+      export * from './components/ui/tooltip';
+
+      export { AnimatedTabs } from './components/ui/animated-tabs';
+
+
+      // Effects Components
+
+      export { AnimatedInput } from './components/effects/AnimatedInput';
+
+      export { BottomGradient } from './components/effects/BottomGradient';
+
+      export { BoxReveal } from './components/effects/BoxReveal';
+
+      export { OrbitingCircles, TechOrbitDisplay } from
+      './components/effects/OrbitingCircles';
+
+      export { Ripple } from './components/effects/Ripple';
+
+
+
+      // Global Components
+
+      export { CommandPalette } from './components/global/CommandPalette';
+
+
+      // Hooks
+
+      export { useAutoAnimateTopBar } from './hooks/useAutoAnimateTopBar';
+
+      export { useCommandPaletteToggle } from
+      './hooks/useCommandPaletteToggle.hook';
+
+
+      // Lib
+
+      export * from './lib/utils';
+
+
+      // Store
+
+      export type { ActivePage } from './store/appShell.store';
+
+      export { useAuthStore } from './store/authStore';
+    patchStrategy: replace
+  - type: write
+    path: src/features/dynamic-view/types.ts
+    content: >-
+      import type { ReactNode } from 'react';
+
+
+      // --- GENERIC DATA & ITEM ---
+
+      export type GenericItem = Record<string, any> & { id: string };
+
+
+      // --- FIELD DEFINITIONS ---
+
+      // Describes a single piece of data within a GenericItem.
+
+      export type FieldType = 
+        | 'string'
+        | 'longtext'
+        | 'badge'
+        | 'avatar'
+        | 'progress'
+        | 'date'
+        | 'tags'
+        | 'metrics'
+        | 'thumbnail'
+        | 'custom';
+
+      export interface BaseFieldDefinition {
+        id: string; // Corresponds to a key in GenericItem
+        label: string;
+        type: FieldType;
+        // Optional custom render function for ultimate flexibility.
+        render?: (item: GenericItem, options?: Record<string, any>) => ReactNode;
+      }
+
+
+      export interface BadgeFieldDefinition extends BaseFieldDefinition {
+        type: 'badge';
+        colorMap?: Record<string, string>; // e.g., { 'active': 'bg-green-500', 'pending': 'bg-yellow-500' }
+        indicatorColorMap?: Record<string, string>; // e.g., { 'critical': 'bg-red-500' }
+      }
+
+
+      // Add other specific field types if they need unique properties
+
+      // For now, most can be handled by the base definition.
+
+
+      export type FieldDefinition = BaseFieldDefinition | BadgeFieldDefinition;
+
+
+
+      // --- VIEW CONFIGURATION ---
+
+      // The master configuration object that defines the entire view.
+
+
+      export type ViewMode = 'list' | 'cards' | 'grid' | 'table' | 'kanban' |
+      'calendar';
+
+
+      export interface ListViewConfig {
+        iconField: string;
+        titleField: string;
+        metaFields: Array<{
+          fieldId: string;
+          className?: string;
+        }>;
+      }
+
+
+      export interface CardViewConfig {
+        thumbnailField: string;
+        titleField: string;
+        descriptionField: string;
+        headerFields: string[];
+        // Specific fields to recreate the original layout
+        statusField: string;
+        categoryField: string;
+        tagsField: string;
+        progressField: string;
+        assigneeField: string;
+        metricsField: string;
+        dateField: string;
+      }
+
+
+      export interface TableColumnConfig {
+        fieldId: string;
+        label: string;
+        isSortable: boolean;
+      }
+
+
+      export interface TableViewConfig {
+        columns: TableColumnConfig[];
+      }
+
+
+      export interface KanbanViewConfig {
+        groupByField: string; // Field ID to group by (e.g., 'status')
+        cardFields: {
+          titleField: string;
+          descriptionField: string;
+          priorityField: string;
+          tagsField: string;
+          // footer fields
+          dateField: string;
+          metricsField: string; // for comments/attachments
+          assigneeField: string;
+        };
+      }
+
+
+      export interface CalendarViewConfig {
+        dateField: string;
+        titleField: string;
+        displayFields: string[];
+        colorByField?: string; // Field ID to color events by (e.g., 'priority', 'status')
+      }
+
+
+      export interface ControlOption {
+        id: string;
+        label: string;
+      }
+
+
+      export interface FilterableFieldConfig {
+        id: string; // fieldId
+        label: string;
+        options: ControlOption[];
+      }
+
+
+      export interface ViewConfig {
+        fields: FieldDefinition[];
+        sortableFields: ControlOption[];
+        groupableFields: ControlOption[];
+        filterableFields: FilterableFieldConfig[];
+        
+        // Layouts for each view mode
+        listView: ListViewConfig;
+        cardView: CardViewConfig;
+        tableView: TableViewConfig;
+        kanbanView: KanbanViewConfig;
+        calendarView: CalendarViewConfig;
+        detailView: DetailViewConfig;
+      }
+
+
+      // --- DETAIL VIEW ---
+
+      export interface DetailViewSection {
+        title: string;
+        fields: string[];
+      }
+
+
+      export interface DetailViewConfig {
+        header: {
+          thumbnailField: string;
+          titleField: string;
+          descriptionField: string;
+          badgeFields: string[];
+          progressField: string;
+        };
+        body: {
+          sections: DetailViewSection[];
+        };
+      }
+
+
+      // --- GENERIC CONTROL & DATA TYPES ---
+
+
+      export type Status = 'active' | 'pending' | 'completed' | 'archived';
+
+      export type Priority = 'low' | 'medium' | 'high' | 'critical';
+
+
+      export interface FilterConfig {
+        searchTerm: string;
+        [key: string]: any; // For dynamic filter keys like status, priority
+      }
+
+
+      export interface SortConfig {
+        key: string;
+        direction: 'asc' | 'desc';
+      }
+
+
+      export type GroupableField = 'status' | 'priority' | 'category';
+
+
+      export type CalendarDateProp = 'dueDate' | 'createdAt' | 'updatedAt';
+
+      export type CalendarDisplayProp = 'priority' | 'assignee' | 'status';
+
+      export type CalendarColorProp = 'priority' | 'status' | 'category' |
+      'none';
+    patchStrategy: replace
+  - type: write
+    path: src/features/dynamic-view/DynamicViewContext.tsx
+    content: >-
+      import { createContext, useContext, useMemo, type ReactNode } from
+      'react';
+
+      import type { ViewConfig, GenericItem } from './types';
+
+
+      interface DynamicViewContextProps {
+        config: ViewConfig;
+        data: GenericItem[];
+        getFieldDef: (fieldId: string) => ViewConfig['fields'][number] | undefined;
+      }
+
+
+      const DynamicViewContext = createContext<DynamicViewContextProps |
+      null>(null);
+
+
+      interface DynamicViewProviderProps {
+        viewConfig: ViewConfig;
+        data: GenericItem[];
+        children: ReactNode;
+      }
+
+
+      export function DynamicViewProvider({ viewConfig, data, children }:
+      DynamicViewProviderProps) {
+        const fieldDefsById = useMemo(() => {
+          return new Map(viewConfig.fields.map(field => [field.id, field]));
+        }, [viewConfig.fields]);
+
+        const getFieldDef = (fieldId: string) => {
+          return fieldDefsById.get(fieldId);
+        };
+
+        const value = useMemo(() => ({
+          config: viewConfig,
+          data,
+          getFieldDef,
+        }), [viewConfig, data, getFieldDef]);
+
+        return (
+          <DynamicViewContext.Provider value={value}>
+            {children}
+          </DynamicViewContext.Provider>
+        );
+      }
+
+
+      export function useDynamicView() {
+        const context = useContext(DynamicViewContext);
+        if (!context) {
+          throw new Error('useDynamicView must be used within a DynamicViewProvider');
+        }
+        return context;
+      }
+    patchStrategy: replace
+snapshot:
+  src/features/dynamic-view/hooks/useDynamicViewState.hook.ts: |-
+    import { useState, useMemo } from 'react';
+    import type {
+      ViewMode,
+      FilterConfig,
+      SortConfig,
+      CalendarDateProp,
+      CalendarDisplayProp,
+      CalendarColorProp,
+      GenericItem,
+    } from '../types';
+
+    const defaultFilters: FilterConfig = {
+      searchTerm: '',
+      status: [],
+      priority: [],
+    };
+
+    export function useDynamicViewState() {
+      // Core State
+      const [viewMode, setViewMode] = useState<ViewMode>('cards');
+      const [filters, setFilters] = useState<FilterConfig>(defaultFilters);
+      const [sortConfig, setSortConfig] = useState<SortConfig | null>({ key: 'updatedAt', direction: 'desc' });
+      const [groupBy, setGroupBy] = useState<string>('none');
+      const [activeGroupTab, setActiveGroupTab] = useState('all');
+      const [page, setPage] = useState(1);
+      const [itemId, setItemId] = useState<string | undefined>();
+
+      // Calendar-specific state
+      const [calendarDateProp, setCalendarDateProp] = useState<CalendarDateProp>('dueDate');
+      const [calendarDisplayProps, setCalendarDisplayProps] = useState<CalendarDisplayProp[]>(['priority', 'assignee', 'tags']);
+      const [calendarItemLimit, setCalendarItemLimit] = useState<number | 'all'>(3);
+      const [calendarColorProp, setCalendarColorProp] = useState<CalendarColorProp>('priority');
+
+      const setSort = (config: SortConfig | null) => {
+        setSortConfig(config);
+      };
+
+      const setTableSort = (key: string) => {
+        setSortConfig(prev => {
+          if (prev?.key === key) {
+            return { key, direction: prev.direction === 'asc' ? 'desc' : 'asc' };
+          }
+          return { key, direction: 'desc' };
+        });
+      };
+
+      const onItemSelect = (item: GenericItem) => {
+        setItemId(item.id);
+      };
+      
+      const clearItemId = () => {
+        setItemId(undefined);
+      };
+
+      const value = useMemo(() => ({
+        // State
+        viewMode,
+        filters,
+        sortConfig,
+        groupBy,
+        activeGroupTab,
+        page,
+        itemId,
+        calendarDateProp,
+        calendarDisplayProps,
+        calendarItemLimit,
+        calendarColorProp,
+        // Setters
+        setViewMode,
+        setFilters,
+        setSort,
+        setTableSort,
+        setGroupBy,
+        setActiveGroupTab,
+        setPage,
+        setItemId,
+        onItemSelect,
+        clearItemId,
+        setCalendarDateProp,
+        setCalendarDisplayProps,
+        setCalendarItemLimit,
+        setCalendarColorProp,
+      }), [
+        viewMode, filters, sortConfig, groupBy, activeGroupTab, page, itemId,
+        calendarDateProp, calendarDisplayProps, calendarItemLimit, calendarColorProp,
+      ]);
+
+      return value;
+    }
+  src/features/dynamic-view/index.ts: |-
+    export { DynamicView } from './DynamicView';
+    export type { DynamicViewProps } from './DynamicView';
+  src/features/dynamic-view/DynamicView.tsx: >-
+    import { useEffect, useMemo } from 'react';
+
+    import type { ViewConfig, GenericItem, FilterConfig, SortConfig } from
+    './types';
+
+    import { useDynamicViewState } from './hooks/useDynamicViewState.hook';
+
+    import { DynamicViewProvider } from './DynamicViewContext';
+
+
+    import { ViewModeSelector } from './components/controls/ViewModeSelector';
+
+    import { ViewControls } from './components/controls/ViewControls';
+
+
+    export interface DynamicViewProps {
+        viewConfig: ViewConfig;
+        items: GenericItem[];
+        isLoading: boolean;
+        isInitialLoading: boolean;
+        totalItemCount: number;
+        hasMore: boolean;
+        onLoadData: (params: {
+            page: number;
+            groupBy: string;
+            filters: FilterConfig;
+            sortConfig: SortConfig | null;
+            isFullLoad?: boolean;
+        }) => void;
+        // Consumer handles navigation or side pane logic
+        onItemSelected: (item: GenericItem) => void; 
+        header: React.ReactNode;
+    }
+
+
+    export function DynamicView({
+        viewConfig,
+        items,
+        isInitialLoading,
+        totalItemCount,
+        onLoadData,
+        onItemSelected,
+        header,
+    }: DynamicViewProps) {
+        const viewState = useDynamicViewState();
+        const { page, groupBy, filters, sortConfig, viewMode, onItemSelect } = viewState;
+
+        useEffect(() => {
+            onLoadData({
+              page,
+              groupBy,
+              filters,
+              sortConfig,
+              isFullLoad: viewMode === 'calendar' || viewMode === 'kanban',
+            });
+        }, [page, groupBy, filters, sortConfig, viewMode, onLoadData]);
+
+        const selectedItem = useMemo(() => {
+            if (!viewState.itemId) return null;
+            return items.find(item => item.id === viewState.itemId) ?? null;
+        }, [viewState.itemId, items]);
+
+        useEffect(() => {
+            if (selectedItem) {
+                onItemSelected(selectedItem);
+            }
+        }, [selectedItem, onItemSelected]);
+
+        return (
+            <DynamicViewProvider 
+                viewConfig={viewConfig} 
+                data={items} 
+                {...viewState}
+                onItemSelect={onItemSelect}
+            >
+                <div className="space-y-6">
+                    {/* Header and Controls */}
+                    <div className="space-y-4">
+                        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                            <div className="flex-1">
+                                {header}
+                            </div>
+                            <ViewModeSelector />
+                        </div>
+                        <ViewControls />
+                    </div>
+
+                    {/* Content Area */}
+                    <div className="min-h-[500px]">
+                       {/* This is where rendering logic will go in Part 2 */}
+                       <p>View content will be rendered here.</p>
+                    </div>
+                </div>
+            </DynamicViewProvider>
+        )
+    }
+  src/features/dynamic-view/DynamicViewContext.tsx: >-
+    import { createContext, useContext, useMemo, type ReactNode } from 'react';
+
+    import type { 
+      ViewConfig, 
+      GenericItem,
+      ViewMode,
+      FilterConfig,
+      SortConfig,
+      CalendarDateProp,
+      CalendarDisplayProp,
+      CalendarColorProp,
+    } from './types';
+
+
+    // The full shape of the context, including state and setters
+
+    export interface DynamicViewContextProps {
+      config: ViewConfig;
+      data: GenericItem[];
+      getFieldDef: (fieldId: string) => ViewConfig['fields'][number] | undefined;
+      
+      // State from useDynamicViewState
+      viewMode: ViewMode;
+      filters: FilterConfig;
+      sortConfig: SortConfig | null;
+      groupBy: string;
+      activeGroupTab: string;
+      page: number;
+      itemId?: string;
+      calendarDateProp: CalendarDateProp;
+      calendarDisplayProps: CalendarDisplayProp[];
+      calendarItemLimit: number | 'all';
+      calendarColorProp: CalendarColorProp;
+
+      // Setters from useDynamicViewState
+      setViewMode: (mode: ViewMode) => void;
+      setFilters: (filters: FilterConfig) => void;
+      setSort: (config: SortConfig | null) => void;
+      setTableSort: (key: string) => void;
+      setGroupBy: (field: string) => void;
+      setActiveGroupTab: (tab: string) => void;
+      setPage: (page: number) => void;
+      setItemId: (id: string | undefined) => void;
+      onItemSelect: (item: GenericItem) => void;
+      clearItemId: () => void;
+      setCalendarDateProp: (prop: CalendarDateProp) => void;
+      setCalendarDisplayProps: (props: CalendarDisplayProp[]) => void;
+      setCalendarItemLimit: (limit: number | 'all') => void;
+      setCalendarColorProp: (prop: CalendarColorProp) => void;
+    }
+
+
+    const DynamicViewContext = createContext<DynamicViewContextProps |
+    null>(null);
+
+
+    interface DynamicViewProviderProps {
+      children: ReactNode;
+      viewConfig: ViewConfig;
+      data: GenericItem[];
+      
+      // Pass all state and setters down
+      viewMode: ViewMode;
+      filters: FilterConfig;
+      sortConfig: SortConfig | null;
+      groupBy: string;
+      activeGroupTab: string;
+      page: number;
+      itemId?: string;
+      calendarDateProp: CalendarDateProp;
+      calendarDisplayProps: CalendarDisplayProp[];
+      calendarItemLimit: number | 'all';
+      calendarColorProp: CalendarColorProp;
+      setViewMode: (mode: ViewMode) => void;
+      setFilters: (filters: FilterConfig) => void;
+      setSort: (config: SortConfig | null) => void;
+      setTableSort: (key: string) => void;
+      setGroupBy: (field: string) => void;
+      setActiveGroupTab: (tab: string) => void;
+      setPage: (page: number) => void;
+      setItemId: (id: string | undefined) => void;
+      onItemSelect: (item: GenericItem) => void;
+      clearItemId: () => void;
+      setCalendarDateProp: (prop: CalendarDateProp) => void;
+      setCalendarDisplayProps: (props: CalendarDisplayProp[]) => void;
+      setCalendarItemLimit: (limit: number | 'all') => void;
+      setCalendarColorProp: (prop: CalendarColorProp) => void;
+    }
+
+
+    export function DynamicViewProvider(props: DynamicViewProviderProps) {
+      const { children, viewConfig, data, ...viewState } = props;
+
+      const fieldDefsById = useMemo(() => {
+        return new Map(viewConfig.fields.map(field => [field.id, field]));
+      }, [viewConfig.fields]);
+
+      const getFieldDef = (fieldId: string) => {
+        return fieldDefsById.get(fieldId);
+      };
+      
+      const value = useMemo(() => ({
+        config: viewConfig,
+        data,
+        getFieldDef,
+        ...viewState,
+      }), [viewConfig, data, getFieldDef, viewState]);
+
+      return (
+        <DynamicViewContext.Provider value={value}>
+          {children}
+        </DynamicViewContext.Provider>
+      );
+    }
+
+
+    export function useDynamicView() {
+      const context = useContext(DynamicViewContext);
+      if (!context) {
+        throw new Error('useDynamicView must be used within a DynamicViewProvider');
+      }
+      return context;
+    }
+  src/index.ts: |-
+    // This is the main entry point for the library.
+    // It should export all the components that are meant to be public.
+
+    export { DynamicView } from './features/dynamic-view';
+    export type { DynamicViewProps } from './features/dynamic-view';
+
+    // Export other public components here, e.g.:
+    // export * from './components/ui/button';
+    // etc.
+  src/features/dynamic-view/types.ts: >-
+    import type { ReactNode } from 'react';
+
+
+    // --- GENERIC DATA & ITEM ---
+
+    export type GenericItem = Record<string, any> & { id: string };
+
+
+    // --- FIELD DEFINITIONS ---
+
+    // Describes a single piece of data within a GenericItem.
+
+    export type FieldType = 
+      | 'string'
+      | 'longtext'
+      | 'badge'
+      | 'avatar'
+      | 'progress'
+      | 'date'
+      | 'tags'
+      | 'metrics'
+      | 'thumbnail'
+      | 'custom';
+
+    export interface BaseFieldDefinition {
+      id: string; // Corresponds to a key in GenericItem
+      label: string;
+      type: FieldType;
+      // Optional custom render function for ultimate flexibility.
+      render?: (item: GenericItem, options?: Record<string, any>) => ReactNode;
+    }
+
+
+    export interface BadgeFieldDefinition extends BaseFieldDefinition {
+      type: 'badge';
+      colorMap?: Record<string, string>; // e.g., { 'active': 'bg-green-500', 'pending': 'bg-yellow-500' }
+      indicatorColorMap?: Record<string, string>; // e.g., { 'critical': 'bg-red-500' }
+    }
+
+
+    // Add other specific field types if they need unique properties
+
+    // For now, most can be handled by the base definition.
+
+
+    export type FieldDefinition = BaseFieldDefinition | BadgeFieldDefinition;
+
+
+
+    // --- VIEW CONFIGURATION ---
+
+    // The master configuration object that defines the entire view.
+
+
+    export type ViewMode = 'list' | 'cards' | 'grid' | 'table' | 'kanban' |
+    'calendar';
+
+
+    export interface ListViewConfig {
+      iconField: string;
+      titleField: string;
+      metaFields: Array<{
+        fieldId: string;
+        className?: string;
+      }>;
+    }
+
+
+    export interface CardViewConfig {
+      thumbnailField: string;
+      titleField: string;
+      descriptionField: string;
+      headerFields: string[];
+      // Specific fields to recreate the original layout
+      statusField: string;
+      categoryField: string;
+      tagsField: string;
+      progressField: string;
+      assigneeField: string;
+      metricsField: string;
+      dateField: string;
+    }
+
+
+    export interface TableColumnConfig {
+      fieldId: string;
+      label: string;
+      isSortable: boolean;
+    }
+
+
+    export interface TableViewConfig {
+      columns: TableColumnConfig[];
+    }
+
+
+    export interface KanbanViewConfig {
+      groupByField: string; // Field ID to group by (e.g., 'status')
+      cardFields: {
+        titleField: string;
+        descriptionField: string;
+        priorityField: string;
+        tagsField: string;
+        // footer fields
+        dateField: string;
+        metricsField: string; // for comments/attachments
+        assigneeField: string;
+      };
+    }
+
+
+    export interface CalendarViewConfig {
+      dateField: string;
+      titleField: string;
+      displayFields: string[];
+      colorByField?: string; // Field ID to color events by (e.g., 'priority', 'status')
+    }
+
+
+    export interface ControlOption {
+      id: string;
+      label: string;
+    }
+
+
+    export interface FilterableFieldConfig {
+      id: string; // fieldId
+      label: string;
+      options: ControlOption[];
+    }
+
+
+    export interface ViewConfig {
+      fields: FieldDefinition[];
+      sortableFields: ControlOption[];
+      groupableFields: ControlOption[];
+      filterableFields: FilterableFieldConfig[];
+      
+      // Layouts for each view mode
+      listView: ListViewConfig;
+      cardView: CardViewConfig;
+      tableView: TableViewConfig;
+      kanbanView: KanbanViewConfig;
+      calendarView: CalendarViewConfig;
+      detailView: DetailViewConfig;
+    }
+
+
+    // --- DETAIL VIEW ---
+
+    export interface DetailViewSection {
+      title: string;
+      fields: string[];
+    }
+
+
+    export interface DetailViewConfig {
+      header: {
+        thumbnailField: string;
+        titleField: string;
+        descriptionField: string;
+        badgeFields: string[];
+        progressField: string;
+      };
+      body: {
+        sections: DetailViewSection[];
+      };
+    }
+
+
+    // --- GENERIC CONTROL & DATA TYPES ---
+
+
+    export type Status = 'active' | 'pending' | 'completed' | 'archived';
+
+    export type Priority = 'low' | 'medium' | 'high' | 'critical';
+
+
+    export interface FilterConfig {
+      searchTerm: string;
+      [key: string]: any; // For dynamic filter keys like status, priority
+    }
+
+
+    export interface SortConfig {
+      key: string;
+      direction: 'asc' | 'desc';
+    }
+
+
+    export type GroupableField = 'status' | 'priority' | 'category';
+
+
+    export type CalendarDateProp = 'dueDate' | 'createdAt' | 'updatedAt';
+
+    export type CalendarDisplayProp = 'priority' | 'assignee' | 'tags';
+
+    export type CalendarColorProp = 'priority' | 'status' | 'category' | 'none';
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 524

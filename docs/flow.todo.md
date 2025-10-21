@@ -84,7 +84,16 @@ but treat current data demo layout and UI as template like notion, so only the d
 
 spread the model into another sub page in data demo sidebar. like contact, company, etc
 
-=== DOING
+===
+
+dynamic-view and data demo page:
+
+ The recent refactor to a generic, config-driven view engine was a success architecturally but incomplete. like the state management. the goal is making the data demo page as consumer of dynamic-view with
+
+avoid re-introducing hardcoded logic into the view components
+even the loading animations , empty state , state managements should managed by dynamic view
+
+=== DONE
 
 after executed above plan, now there is too many UI shift and borken and UI states , animations and features lost... I want the perceived UI stay like old snapshot even in this new dynamic manner of the components...
 
