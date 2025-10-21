@@ -21,8 +21,8 @@ export interface BaseFieldDefinition {
   id: string; // Corresponds to a key in GenericItem
   label: string;
   type: FieldType;
-  // Optional custom render function for ultimate flexibility
-  render?: (item: GenericItem) => ReactNode;
+  // Optional custom render function for ultimate flexibility.
+  render?: (item: GenericItem, options?: Record<string, any>) => ReactNode;
 }
 
 export interface BadgeFieldDefinition extends BaseFieldDefinition {
@@ -44,7 +44,10 @@ export type ViewMode = 'list' | 'cards' | 'grid' | 'table' | 'kanban' | 'calenda
 export interface ListViewConfig {
   iconField: string;
   titleField: string;
-  metaFields: string[]; // IDs of fields to show on the right
+  metaFields: Array<{
+    fieldId: string;
+    className?: string;
+  }>;
 }
 
 export interface CardViewConfig {
@@ -52,8 +55,14 @@ export interface CardViewConfig {
   titleField: string;
   descriptionField: string;
   headerFields: string[];
-  contentFields: string[];
-  footerFields: string[];
+  // Specific fields to recreate the original layout
+  statusField: string;
+  categoryField: string;
+  tagsField: string;
+  progressField: string;
+  assigneeField: string;
+  metricsField: string;
+  dateField: string;
 }
 
 export interface TableColumnConfig {
@@ -71,7 +80,12 @@ export interface KanbanViewConfig {
   cardFields: {
     titleField: string;
     descriptionField: string;
-    footerFields: string[];
+    priorityField: string;
+    tagsField: string;
+    // footer fields
+    dateField: string;
+    metricsField: string; // for comments/attachments
+    assigneeField: string;
   };
 }
 
@@ -105,6 +119,26 @@ export interface ViewConfig {
   tableView: TableViewConfig;
   kanbanView: KanbanViewConfig;
   calendarView: CalendarViewConfig;
+  detailView: DetailViewConfig;
+}
+
+// --- DETAIL VIEW ---
+export interface DetailViewSection {
+  title: string;
+  fields: string[];
+}
+
+export interface DetailViewConfig {
+  header: {
+    thumbnailField: string;
+    titleField: string;
+    descriptionField: string;
+    badgeFields: string[];
+    progressField: string;
+  };
+  body: {
+    sections: DetailViewSection[];
+  };
 }
 
 // --- GENERIC CONTROL & DATA TYPES ---

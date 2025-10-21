@@ -35,28 +35,27 @@ function KanbanCard({ item, isDragging, ...props }: KanbanCardProps & React.HTML
       <CardContent className="p-5">
         <div className="space-y-4">
           <div className="flex items-start justify-between">
-            <div className="font-semibold text-card-foreground dark:text-neutral-100 leading-tight flex-1 min-w-0">
+            <h4 className="font-semibold text-card-foreground dark:text-neutral-100 leading-tight">
               <FieldRenderer item={item} fieldId={viewConfig.cardFields.titleField} />
-            </div>
+            </h4>
             <GripVertical className="w-5 h-5 text-muted-foreground/60 dark:text-neutral-400 cursor-grab flex-shrink-0" />
           </div>
 
-          <div className="text-sm text-muted-foreground dark:text-neutral-300 leading-relaxed line-clamp-2">
+          <p className="text-sm text-muted-foreground dark:text-neutral-300 leading-relaxed line-clamp-2">
             <FieldRenderer item={item} fieldId={viewConfig.cardFields.descriptionField} />
+          </p>
+
+          <div className="flex flex-wrap gap-2">
+            <FieldRenderer item={item} fieldId={viewConfig.cardFields.priorityField} />
+            <FieldRenderer item={item} fieldId={viewConfig.cardFields.tagsField} />
           </div>
 
           <div className="flex items-center justify-between pt-2 border-t border-border/30 dark:border-neutral-700/30">
-            {/* 
-              The footer is a bit tricky. The original has a left and right side.
-              For a generic component, let's just render them in a row.
-              A more advanced config could specify 'left' and 'right' arrays.
-              For now, this is a good simplification.
-            */}
-            <div className="flex items-center justify-between w-full text-muted-foreground/80 dark:text-neutral-400">
-              {viewConfig.cardFields.footerFields.map(fieldId => (
-                <FieldRenderer key={fieldId} item={item} fieldId={fieldId} options={{ compact: true, avatarClassName: 'w-8 h-8' }} />
-              ))}
+            <div className="flex items-center gap-4 text-muted-foreground/80 dark:text-neutral-400">
+              <FieldRenderer item={item} fieldId={viewConfig.cardFields.dateField} />
+              <FieldRenderer item={item} fieldId={viewConfig.cardFields.metricsField} />
             </div>
+            <FieldRenderer item={item} fieldId={viewConfig.cardFields.assigneeField} options={{ compact: true, avatarClassName: 'w-8 h-8 ring-2 ring-white/50 dark:ring-neutral-700/50' }} />
           </div>
         </div>
       </CardContent>

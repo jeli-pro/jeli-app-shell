@@ -8,14 +8,19 @@ import {
   SlidersHorizontal,
   Database,
   MessageSquare,
+  ExternalLink,
+  Share,
 } from 'lucide-react';
 
+import { DynamicViewProvider } from '@/features/dynamic-view/DynamicViewContext';
+import { Button } from '@/components/ui/button';
 import { DashboardContent } from "@/pages/Dashboard";
 import { SettingsContent } from "@/features/settings/SettingsContent";
 import { ToasterDemo } from "@/pages/ToasterDemo";
 import { NotificationsPage } from "@/pages/Notifications";
 import DataDemoPage from "@/pages/DataDemo/index";
-import { DataDetailPanel } from "@/pages/DataDemo/components/DataDetailPanel";
+import { DetailPanel } from '@/features/dynamic-view/components/shared/DetailPanel';
+import { dataDemoViewConfig } from '@/pages/DataDemo/DataDemo.config';
 import { mockDataItems } from "@/pages/DataDemo/data/mockData";
 import { MessagingContent } from "@/pages/Messaging/components/MessagingContent";
 import type { AppShellState } from '@/store/appShell.store';
@@ -87,7 +92,28 @@ export function useRightPaneContent(sidePaneContent: AppShellState['sidePaneCont
     if (sidePaneContent === 'dataItem' && selectedItem) {
       return {
         meta: { title: "Item Details", icon: Database, page: `data-demo/${itemId}` },
-        content: <DataDetailPanel item={selectedItem} />,
+        content: (
+          <DynamicViewProvider viewConfig={dataDemoViewConfig} data={mockDataItems}>
+            <div className="h-full flex flex-col">
+              <div className="flex-1 overflow-y-auto custom-scrollbar">
+                <DetailPanel item={selectedItem} config={dataDemoViewConfig} />
+              </div>
+              {/* Application-specific actions can be composed here */}
+              <div className="p-6 border-t border-border/50 bg-card/30">
+                <div className="flex gap-3">
+                  <Button className="flex-1" size="sm">
+                    <ExternalLink className="w-4 h-4 mr-2" />
+                    Open Project
+                  </Button>
+                  <Button variant="outline" size="sm">
+                    <Share className="w-4 h-4 mr-2" />
+                    Share
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </DynamicViewProvider>
+        ),
       };
     }
     const mappedContent = contentMap[sidePaneContent as keyof typeof contentMap] || contentMap.details;

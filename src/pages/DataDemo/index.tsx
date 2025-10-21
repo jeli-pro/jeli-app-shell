@@ -34,7 +34,7 @@ import {
   useGroupTabs
 } from './store/dataDemo.store'
 
-import { dataDemoViewConfig } from './DataDemo.config'
+import { dataDemoViewConfig } from './DataDemo.config';
 
 type Stat = {
   title: string;

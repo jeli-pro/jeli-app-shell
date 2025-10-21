@@ -1,0 +1,248 @@
+uuid: 18b76082-dd32-4740-b5ac-eb86d91bb328
+projectId: jeli-app-shell
+createdAt: '2025-10-21T02:35:43.940Z'
+gitCommitMsg: >-
+  refactor(dynamic-view): Enhance view config types for UI fidelity
+
+  This commit executes the first part of the UI fidelity restoration plan. The
+  core type definitions in `src/features/dynamic-view/types.ts` have been
+  updated to support more descriptive and complex layouts.
+
+  - Replaced generic `contentFields` and `footerFields` in `CardViewConfig`
+    with specific, named fields (e.g., `statusField`, `progressField`,
+    `metricsField`) to allow for precise layout reconstruction.
+  - Updated `KanbanViewConfig`'s `cardFields` to include specific fields
+    like `priorityField` and `dateField`, enabling richer Kanban card content.
+
+  These changes are foundational and will allow the generic view components to
+  render with the same nuanced layout as the original hardcoded components.
+promptSummary: >-
+  I need to execute Part 1 of plan a8d3f5c1-7b1e-4f09-9a6d-5e8c2a9f4b31 to
+  restore UI fidelity to dynamic view components. This involves updating core
+  types.
+reasoning:
+  - >-
+    Executing Part 1 of the plan to restore UI fidelity to our new dynamic view
+    engine.
+  - >-
+    This initial step is foundational. I'm enhancing our core type definitions
+    in `src/features/dynamic-view/types.ts` to be more descriptive. This will
+    allow us to specify the nuanced layouts of the original `DataDemo` UI within
+    our generic `ViewConfig`. By enriching the configuration schema, we give our
+    components the information they need to render with the pixel-perfect
+    precision we're aiming for.
+  - >-
+    Specifically, I'm updating `CardViewConfig` and `KanbanViewConfig` to
+    replace generic field arrays with more specific, named properties. This
+    enables the declarative definition of more complex component layouts, paving
+    the way for the component-level fixes in the next parts of the plan.
+operations:
+  - type: write
+    path: src/features/dynamic-view/types.ts
+    content: |+
+      --- src/features/dynamic-view/types.ts
+      +++ src/features/dynamic-view/types.ts
+      @@ -62,9 +62,15 @@
+         thumbnailField: string;
+         titleField: string;
+         descriptionField: string;
+         headerFields: string[];
+      -  contentFields: string[];
+      -  footerFields: string[];
+      +  // Specific fields to recreate the original layout
+      +  statusField: string;
+      +  categoryField: string;
+      +  tagsField: string;
+      +  progressField: string;
+      +  assigneeField: string;
+      +  metricsField: string;
+      +  dateField: string;
+       }
+       
+       export interface TableColumnConfig {
+      @@ -82,7 +88,13 @@
+         cardFields: {
+           titleField: string;
+           descriptionField: string;
+      -    footerFields: string[];
+      +    priorityField: string;
+      +    tagsField: string;
+      +    // footer fields
+      +    dateField: string;
+      +    metricsField: string; // for comments/attachments
+      +    assigneeField: string;
+         };
+       }
+       
+       export interface CalendarViewConfig {
+
+    patchStrategy: standard-diff
+snapshot:
+  src/features/dynamic-view/types.ts: >-
+    import type { ReactNode } from 'react';
+
+
+    // --- GENERIC DATA & ITEM ---
+
+    export type GenericItem = Record<string, any> & { id: string };
+
+
+    // --- FIELD DEFINITIONS ---
+
+    // Describes a single piece of data within a GenericItem.
+
+    export type FieldType = 
+      | 'string'
+      | 'longtext'
+      | 'badge'
+      | 'avatar'
+      | 'progress'
+      | 'date'
+      | 'tags'
+      | 'metrics'
+      | 'thumbnail'
+      | 'custom';
+
+    export interface BaseFieldDefinition {
+      id: string; // Corresponds to a key in GenericItem
+      label: string;
+      type: FieldType;
+      // Optional custom render function for ultimate flexibility
+      render?: (item: GenericItem) => ReactNode;
+    }
+
+
+    export interface BadgeFieldDefinition extends BaseFieldDefinition {
+      type: 'badge';
+      colorMap?: Record<string, string>; // e.g., { 'active': 'bg-green-500', 'pending': 'bg-yellow-500' }
+    }
+
+
+    // Add other specific field types if they need unique properties
+
+    // For now, most can be handled by the base definition.
+
+
+    export type FieldDefinition = BaseFieldDefinition | BadgeFieldDefinition;
+
+
+
+    // --- VIEW CONFIGURATION ---
+
+    // The master configuration object that defines the entire view.
+
+
+    export type ViewMode = 'list' | 'cards' | 'grid' | 'table' | 'kanban' |
+    'calendar';
+
+
+    export interface ListViewConfig {
+      iconField: string;
+      titleField: string;
+      metaFields: string[]; // IDs of fields to show on the right
+    }
+
+
+    export interface CardViewConfig {
+      thumbnailField: string;
+      titleField: string;
+      descriptionField: string;
+      headerFields: string[];
+      contentFields: string[];
+      footerFields: string[];
+    }
+
+
+    export interface TableColumnConfig {
+      fieldId: string;
+      label: string;
+      isSortable: boolean;
+    }
+
+
+    export interface TableViewConfig {
+      columns: TableColumnConfig[];
+    }
+
+
+    export interface KanbanViewConfig {
+      groupByField: string; // Field ID to group by (e.g., 'status')
+      cardFields: {
+        titleField: string;
+        descriptionField: string;
+        footerFields: string[];
+      };
+    }
+
+
+    export interface CalendarViewConfig {
+      dateField: string;
+      titleField: string;
+      displayFields: string[];
+      colorByField?: string; // Field ID to color events by (e.g., 'priority', 'status')
+    }
+
+
+    export interface ControlOption {
+      id: string;
+      label: string;
+    }
+
+
+    export interface FilterableFieldConfig {
+      id: string; // fieldId
+      label: string;
+      options: ControlOption[];
+    }
+
+
+    export interface ViewConfig {
+      fields: FieldDefinition[];
+      sortableFields: ControlOption[];
+      groupableFields: ControlOption[];
+      filterableFields: FilterableFieldConfig[];
+      
+      // Layouts for each view mode
+      listView: ListViewConfig;
+      cardView: CardViewConfig;
+      tableView: TableViewConfig;
+      kanbanView: KanbanViewConfig;
+      calendarView: CalendarViewConfig;
+    }
+
+
+    // --- GENERIC CONTROL & DATA TYPES ---
+
+
+    export type Status = 'active' | 'pending' | 'completed' | 'archived';
+
+    export type Priority = 'low' | 'medium' | 'high' | 'critical';
+
+
+    export interface FilterConfig {
+      searchTerm: string;
+      [key: string]: any; // For dynamic filter keys like status, priority
+    }
+
+
+    export interface SortConfig {
+      key: string;
+      direction: 'asc' | 'desc';
+    }
+
+
+    export type GroupableField = 'status' | 'priority' | 'category';
+
+
+    export type CalendarDateProp = 'dueDate' | 'createdAt' | 'updatedAt';
+
+    export type CalendarDisplayProp = 'priority' | 'assignee' | 'status';
+
+    export type CalendarColorProp = 'priority' | 'status' | 'category' | 'none';
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 503

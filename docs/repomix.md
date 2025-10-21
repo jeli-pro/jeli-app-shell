@@ -1,17 +1,10 @@
 # Directory Structure
 ```
 src/
-  components/
-    ui/
-      timeline.tsx
   features/
     dynamic-view/
       components/
-        controls/
-          ViewControls.tsx
-          ViewModeSelector.tsx
         shared/
-          AnimatedLoadingSkeleton.tsx
           FieldRenderer.tsx
         views/
           CalendarView.tsx
@@ -19,30 +12,13 @@ src/
           KanbanView.tsx
           ListView.tsx
           TableView.tsx
-      DynamicViewContext.tsx
       types.ts
   hooks/
-    useAppViewManager.hook.ts
     useRightPaneContent.hook.tsx
-    useScrollToBottom.hook.ts
   pages/
-    Dashboard/
-      index.tsx
     DataDemo/
-      components/
-        DataDetailPanel.tsx
-      store/
-        dataDemo.store.tsx
       DataDemo.config.ts
       index.tsx
-    Messaging/
-      components/
-        TaskHeader.tsx
-      data/
-        mockData.ts
-      store/
-        messaging.store.ts
-      types.ts
   index.css
 index.html
 package.json
@@ -229,1161 +205,6 @@ export default defineConfig({
 })
 ```
 
-## File: src/components/ui/timeline.tsx
-```typescript
-"use client";
-
-import * as React from "react";
-import { cva, type VariantProps } from "class-variance-authority";
-import { cn } from "@/lib/utils";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-  Check,
-  Clock,
-  AlertCircle,
-  X,
-  Calendar,
-  User,
-  MapPin,
-  MessageSquare,
-  Award,
-  Briefcase,
-  GraduationCap,
-  Heart,
-} from "lucide-react";
-
-const timelineVariants = cva("relative flex flex-col", {
-  variants: {
-    variant: {
-      default: "gap-4",
-      compact: "gap-2",
-      spacious: "gap-8",
-    },
-    orientation: {
-      vertical: "flex-col",
-      horizontal: "flex-row",
-    },
-  },
-  defaultVariants: {
-    variant: "default",
-    orientation: "vertical",
-  },
-});
-
-const timelineItemVariants = cva("relative flex gap-3 pb-2", {
-  variants: {
-    orientation: {
-      vertical: "flex-row",
-      horizontal: "flex-col min-w-64 shrink-0",
-    },
-  },
-  defaultVariants: {
-    orientation: "vertical",
-  },
-});
-
-const timelineConnectorVariants = cva("bg-border", {
-  variants: {
-    orientation: {
-      vertical: "absolute left-3 top-9 h-full w-px",
-      horizontal: "absolute top-3 left-8 w-full h-px",
-    },
-    status: {
-      default: "bg-border",
-      completed: "bg-primary",
-      active: "bg-primary",
-      pending: "bg-muted-foreground/30",
-      error: "bg-destructive",
-    },
-  },
-  defaultVariants: {
-    orientation: "vertical",
-    status: "default",
-  },
-});
-
-const timelineIconVariants = cva(
-  "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 bg-background text-xs font-medium",
-  {
-    variants: {
-      status: {
-        default: "border-border text-muted-foreground",
-        completed: "border-primary bg-primary text-primary-foreground",
-        active: "border-primary bg-background text-primary animate-pulse",
-        pending: "border-muted-foreground/30 text-muted-foreground",
-        error: "border-destructive bg-destructive text-destructive-foreground",
-      },
-    },
-    defaultVariants: {
-      status: "default",
-    },
-  },
-);
-
-export interface TimelineItem {
-  id: string;
-  title: string;
-  description?: string;
-  timestamp?: string | Date;
-  status?: "default" | "completed" | "active" | "pending" | "error";
-  icon?: React.ReactNode;
-  content?: React.ReactNode;
-  metadata?: Record<string, any>;
-}
-
-export interface TimelineProps extends VariantProps<typeof timelineVariants> {
-  items: TimelineItem[];
-  className?: string;
-  showConnectors?: boolean;
-  showTimestamps?: boolean;
-  timestampPosition?: "top" | "bottom" | "inline";
-}
-
-function getStatusIcon(status: TimelineItem["status"]) {
-  switch (status) {
-    case "completed":
-      return <Check className="h-3 w-3" />;
-    case "active":
-      return <Clock className="h-3 w-3" />;
-    case "pending":
-      return <Clock className="h-3 w-3" />;
-    case "error":
-      return <X className="h-3 w-3" />;
-    default:
-      return <div className="h-2 w-2 rounded-full bg-current" />;
-  }
-}
-
-function formatTimestamp(timestamp: string | Date): string {
-  if (!timestamp) return "";
-  const date = typeof timestamp === "string" ? new Date(timestamp) : timestamp;
-  return date.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
-export function Timeline({
-  items,
-  className,
-  variant,
-  orientation = "vertical",
-  showConnectors = true,
-  showTimestamps = true,
-  timestampPosition = "top",
-  ...props
-}: TimelineProps) {
-  const timelineContent = (
-    <div
-      className={cn(
-        timelineVariants({ variant, orientation }),
-        orientation === "horizontal" ? "pb-4" : "",
-      )}
-    >
-      {items.map((item, index) => (
-        <div
-          key={item.id}
-          className={cn(timelineItemVariants({ orientation }))}
-        >
-          {/* Connector Line */}
-          {showConnectors && index < items.length - 1 && (
-            <div
-              className={cn(
-                timelineConnectorVariants({
-                  orientation,
-                  status: item.status,
-                }),
-              )}
-            />
-          )}
-
-          {/* Icon */}
-          <div className="relative z-10 flex shrink-0">
-            <div className={cn(timelineIconVariants({ status: item.status }))}>
-              {item.icon || getStatusIcon(item.status)}
-            </div>
-          </div>
-
-          {/* Content */}
-          <div className="flex min-w-0 flex-1 flex-col gap-2">
-            {/* Timestamp - Top */}
-            {showTimestamps &&
-              timestampPosition === "top" &&
-              item.timestamp && (
-                <time className="text-xs text-muted-foreground">
-                  {formatTimestamp(item.timestamp)}
-                </time>
-              )}
-
-            {/* Title and Inline Timestamp */}
-            <div className="flex items-start justify-between gap-2">
-              <h3 className="font-medium leading-tight">{item.title}</h3>
-              {showTimestamps &&
-                timestampPosition === "inline" &&
-                item.timestamp && (
-                  <time className="shrink-0 text-xs text-muted-foreground">
-                    {formatTimestamp(item.timestamp)}
-                  </time>
-                )}
-            </div>
-
-            {/* Description */}
-            {item.description && (
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                {item.description}
-              </p>
-            )}
-
-            {/* Custom Content */}
-            {item.content && <div className="mt-3">{item.content}</div>}
-
-            {/* Timestamp - Bottom */}
-            {showTimestamps &&
-              timestampPosition === "bottom" &&
-              item.timestamp && (
-                <time className="text-xs text-muted-foreground">
-                  {formatTimestamp(item.timestamp)}
-                </time>
-              )}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-
-  if (orientation === "horizontal") {
-    return (
-      <ScrollArea
-        className={cn("w-full", className)}
-        {...props}
-      >
-        {timelineContent}
-      </ScrollArea>
-    );
-  }
-
-  return (
-    <div className={className} {...props}>
-      {timelineContent}
-    </div>
-  );
-}
-
-// Example Components for Documentation
-export function BasicTimelineExample() {
-  const items: TimelineItem[] = [
-    {
-      id: "1",
-      title: "Project Started",
-      description: "Initial project setup and planning phase",
-      timestamp: new Date("2024-01-15T09:00:00"),
-      status: "completed",
-    },
-    {
-      id: "2",
-      title: "Development Phase",
-      description: "Core features implementation in progress",
-      timestamp: new Date("2024-02-01T10:30:00"),
-      status: "active",
-    },
-    {
-      id: "3",
-      title: "Testing & QA",
-      description: "Quality assurance and testing phase",
-      timestamp: new Date("2024-02-15T14:00:00"),
-      status: "pending",
-    },
-    {
-      id: "4",
-      title: "Launch",
-      description: "Production deployment and launch",
-      timestamp: new Date("2024-03-01T16:00:00"),
-      status: "pending",
-    },
-  ];
-
-  return <Timeline items={items} />;
-}
-
-export function TimelineVariantsExample() {
-  const items: TimelineItem[] = [
-    {
-      id: "1",
-      title: "Task Completed",
-      description: "Successfully finished the assigned task",
-      status: "completed",
-    },
-    {
-      id: "2",
-      title: "In Progress",
-      description: "Currently working on this item",
-      status: "active",
-    },
-    {
-      id: "3",
-      title: "Upcoming",
-      description: "Scheduled for later",
-      status: "pending",
-    },
-  ];
-
-  return (
-    <div className="space-y-8">
-      <div>
-        <h3 className="mb-4 text-sm font-medium">Default</h3>
-        <Timeline items={items} variant="default" />
-      </div>
-      <div>
-        <h3 className="mb-4 text-sm font-medium">Compact</h3>
-        <Timeline items={items} variant="compact" />
-      </div>
-      <div>
-        <h3 className="mb-4 text-sm font-medium">Spacious</h3>
-        <Timeline items={items} variant="spacious" />
-      </div>
-    </div>
-  );
-}
-
-export function HorizontalTimelineExample() {
-  const items: TimelineItem[] = [
-    {
-      id: "1",
-      title: "Planning",
-      description: "Project planning and research",
-      status: "completed",
-    },
-    {
-      id: "2",
-      title: "Design",
-      description: "UI/UX design phase",
-      status: "completed",
-    },
-    {
-      id: "3",
-      title: "Development",
-      description: "Core development work",
-      status: "active",
-    },
-    {
-      id: "4",
-      title: "Testing",
-      description: "Quality assurance",
-      status: "pending",
-    },
-    {
-      id: "5",
-      title: "Launch",
-      description: "Production release",
-      status: "pending",
-    },
-  ];
-
-  return <Timeline items={items} orientation="horizontal" />;
-}
-
-export function TimelineWithCustomIconsExample() {
-  const items: TimelineItem[] = [
-    {
-      id: "1",
-      title: "Account Created",
-      description: "Welcome to our platform!",
-      timestamp: new Date("2024-01-01T08:00:00"),
-      status: "completed",
-      icon: <User className="h-3 w-3" />,
-    },
-    {
-      id: "2",
-      title: "Profile Updated",
-      description: "Personal information has been updated",
-      timestamp: new Date("2024-01-02T14:30:00"),
-      status: "completed",
-      icon: <User className="h-3 w-3" />,
-    },
-    {
-      id: "3",
-      title: "First Order Placed",
-      description: "Order #12345 has been placed successfully",
-      timestamp: new Date("2024-01-03T11:15:00"),
-      status: "completed",
-      icon: <Briefcase className="h-3 w-3" />,
-    },
-    {
-      id: "4",
-      title: "Delivery Scheduled",
-      description: "Your order is out for delivery",
-      timestamp: new Date("2024-01-04T09:45:00"),
-      status: "active",
-      icon: <MapPin className="h-3 w-3" />,
-    },
-  ];
-
-  return <Timeline items={items} />;
-}
-
-export function TimelineWithContentExample() {
-  const items: TimelineItem[] = [
-    {
-      id: "1",
-      title: "Code Review Completed",
-      description: "Pull request #123 has been reviewed",
-      timestamp: new Date("2024-01-01T10:00:00"),
-      status: "completed",
-      content: (
-        <div className="rounded-md bg-muted p-3 text-sm">
-          <p className="font-medium">Changes approved by John Doe</p>
-          <p className="text-muted-foreground">
-            3 files changed, +45 -12 lines
-          </p>
-        </div>
-      ),
-    },
-    {
-      id: "2",
-      title: "Build Failed",
-      description: "CI/CD pipeline encountered errors",
-      timestamp: new Date("2024-01-01T11:30:00"),
-      status: "error",
-      content: (
-        <div className="rounded-md bg-destructive/10 p-3 text-sm">
-          <p className="font-medium text-destructive">Build #456 failed</p>
-          <p className="text-muted-foreground">Syntax error in main.tsx:45</p>
-        </div>
-      ),
-    },
-    {
-      id: "3",
-      title: "Issue Assigned",
-      description: "Bug report assigned to development team",
-      timestamp: new Date("2024-01-01T15:20:00"),
-      status: "active",
-      content: (
-        <div className="rounded-md bg-primary/10 p-3 text-sm">
-          <p className="font-medium">Issue #789: Login form validation</p>
-          <p className="text-muted-foreground">
-            Priority: High | Assigned to: Jane Smith
-          </p>
-        </div>
-      ),
-    },
-  ];
-
-  return <Timeline items={items} />;
-}
-
-export function ProjectTimelineExample() {
-  const items: TimelineItem[] = [
-    {
-      id: "1",
-      title: "Project Kickoff",
-      description: "Initial meeting with stakeholders and team members",
-      timestamp: new Date("2024-01-15T09:00:00"),
-      status: "completed",
-      icon: <Briefcase className="h-3 w-3" />,
-      content: (
-        <div className="space-y-2">
-          <div className="flex gap-2 text-sm">
-            <span className="font-medium">Attendees:</span>
-            <span className="text-muted-foreground">5 team members</span>
-          </div>
-          <div className="flex gap-2 text-sm">
-            <span className="font-medium">Duration:</span>
-            <span className="text-muted-foreground">2 hours</span>
-          </div>
-        </div>
-      ),
-    },
-    {
-      id: "2",
-      title: "Requirements Gathering",
-      description:
-        "Detailed analysis of project requirements and specifications",
-      timestamp: new Date("2024-01-20T14:00:00"),
-      status: "completed",
-      icon: <MessageSquare className="h-3 w-3" />,
-    },
-    {
-      id: "3",
-      title: "Design Phase",
-      description: "UI/UX design and wireframe creation",
-      timestamp: new Date("2024-02-01T10:00:00"),
-      status: "active",
-      icon: <Award className="h-3 w-3" />,
-      content: (
-        <div className="rounded-md border border-primary/20 bg-primary/5 p-3 text-sm">
-          <p className="font-medium">Current Progress: 60%</p>
-          <p className="text-muted-foreground">
-            Expected completion: Feb 10, 2024
-          </p>
-        </div>
-      ),
-    },
-    {
-      id: "4",
-      title: "Development Sprint 1",
-      description: "Core functionality implementation",
-      timestamp: new Date("2024-02-15T09:00:00"),
-      status: "pending",
-      icon: <GraduationCap className="h-3 w-3" />,
-    },
-    {
-      id: "5",
-      title: "Testing & QA",
-      description: "Quality assurance and bug fixes",
-      timestamp: new Date("2024-03-01T09:00:00"),
-      status: "pending",
-      icon: <AlertCircle className="h-3 w-3" />,
-    },
-  ];
-
-  return <Timeline items={items} variant="spacious" />;
-}
-
-export function OrderTrackingTimelineExample() {
-  const items: TimelineItem[] = [
-    {
-      id: "1",
-      title: "Order Placed",
-      description: "Your order has been successfully placed",
-      timestamp: new Date("2024-01-01T10:30:00"),
-      status: "completed",
-      icon: <Check className="h-3 w-3" />,
-    },
-    {
-      id: "2",
-      title: "Payment Confirmed",
-      description: "Payment has been processed successfully",
-      timestamp: new Date("2024-01-01T10:35:00"),
-      status: "completed",
-      icon: <Check className="h-3 w-3" />,
-    },
-    {
-      id: "3",
-      title: "Order Processing",
-      description: "Your order is being prepared for shipment",
-      timestamp: new Date("2024-01-01T14:20:00"),
-      status: "active",
-      icon: <Clock className="h-3 w-3" />,
-    },
-    {
-      id: "4",
-      title: "Shipped",
-      description: "Your order has been shipped",
-      status: "pending",
-      icon: <MapPin className="h-3 w-3" />,
-    },
-    {
-      id: "5",
-      title: "Delivered",
-      description: "Package delivered to your address",
-      status: "pending",
-      icon: <Heart className="h-3 w-3" />,
-    },
-  ];
-
-  return <Timeline items={items} timestampPosition="inline" />;
-}
-
-export function CompactTimelineExample() {
-  const items: TimelineItem[] = [
-    {
-      id: "1",
-      title: "Login",
-      timestamp: new Date("2024-01-01T08:30:00"),
-      status: "completed",
-    },
-    {
-      id: "2",
-      title: "File uploaded",
-      timestamp: new Date("2024-01-01T08:35:00"),
-      status: "completed",
-    },
-    {
-      id: "3",
-      title: "Processing started",
-      timestamp: new Date("2024-01-01T08:40:00"),
-      status: "active",
-    },
-    {
-      id: "4",
-      title: "Processing complete",
-      status: "pending",
-    },
-  ];
-
-  return (
-    <Timeline
-      items={items}
-      variant="compact"
-      timestampPosition="inline"
-      showTimestamps={true}
-    />
-  );
-}
-
-export function ExtendedHorizontalTimelineExample() {
-  const items: TimelineItem[] = [
-    {
-      id: "1",
-      title: "Research",
-      description: "Market research and analysis",
-      timestamp: new Date("2024-01-01T09:00:00"),
-      status: "completed",
-      icon: <MessageSquare className="h-3 w-3" />,
-    },
-    {
-      id: "2",
-      title: "Planning",
-      description: "Project planning and roadmap",
-      timestamp: new Date("2024-01-05T10:00:00"),
-      status: "completed",
-      icon: <Calendar className="h-3 w-3" />,
-    },
-    {
-      id: "3",
-      title: "Design",
-      description: "UI/UX design and wireframes",
-      timestamp: new Date("2024-01-10T11:00:00"),
-      status: "completed",
-      icon: <Award className="h-3 w-3" />,
-    },
-    {
-      id: "4",
-      title: "Prototype",
-      description: "Interactive prototype development",
-      timestamp: new Date("2024-01-15T14:00:00"),
-      status: "completed",
-      icon: <Briefcase className="h-3 w-3" />,
-    },
-    {
-      id: "5",
-      title: "Development",
-      description: "Core feature implementation",
-      timestamp: new Date("2024-01-20T09:00:00"),
-      status: "active",
-      icon: <GraduationCap className="h-3 w-3" />,
-    },
-    {
-      id: "6",
-      title: "Testing",
-      description: "Quality assurance and testing",
-      timestamp: new Date("2024-02-01T10:00:00"),
-      status: "pending",
-      icon: <AlertCircle className="h-3 w-3" />,
-    },
-    {
-      id: "7",
-      title: "Review",
-      description: "Stakeholder review and feedback",
-      timestamp: new Date("2024-02-05T15:00:00"),
-      status: "pending",
-      icon: <User className="h-3 w-3" />,
-    },
-    {
-      id: "8",
-      title: "Deploy",
-      description: "Production deployment",
-      timestamp: new Date("2024-02-10T16:00:00"),
-      status: "pending",
-      icon: <MapPin className="h-3 w-3" />,
-    },
-    {
-      id: "9",
-      title: "Launch",
-      description: "Product launch and marketing",
-      timestamp: new Date("2024-02-15T09:00:00"),
-      status: "pending",
-      icon: <Heart className="h-3 w-3" />,
-    },
-  ];
-
-  return <Timeline items={items} orientation="horizontal" variant="spacious" />;
-}
-
-export {
-  timelineVariants,
-  timelineItemVariants,
-  timelineConnectorVariants,
-  timelineIconVariants,
-};
-```
-
-## File: src/features/dynamic-view/components/controls/ViewControls.tsx
-```typescript
-import * as React from 'react'
-import { Check, ListFilter, Search, SortAsc, ChevronsUpDown } from 'lucide-react'
-
-import { cn } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Badge } from '@/components/ui/badge'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuSeparator,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-  CommandSeparator,
-} from '@/components/ui/command'
-
-import type { FilterConfig } from '../../types'
-import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
-import { useDynamicView } from '../../DynamicViewContext'
-
-export interface DataViewControlsProps {
-  // groupOptions will now come from config
-}
-
-export function ViewControls() {
-  const {
-    filters,
-    setFilters,
-    sortConfig,
-    setSort,
-    groupBy,
-    setGroupBy,
-    viewMode,
-  } = useAppViewManager();
-  const { config } = useDynamicView();
-  const sortOptions = config.sortableFields;
-  const groupOptions = config.groupableFields;
-  const filterableFields = config.filterableFields;
-
-  const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setFilters({ ...filters, searchTerm: event.target.value })
-  }
-  
-  const activeFilterCount = filterableFields.reduce((acc, field) => acc + (filters[field.id]?.length || 0), 0)
-
-  return (
-    <div className="flex flex-col sm:flex-row items-center gap-2 w-full">
-      {/* Search */}
-      <div className="relative w-full sm:w-auto">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Search projects..."
-          className="pl-9 w-full sm:w-64"
-          value={filters.searchTerm}
-          onChange={handleSearchChange}
-        />
-      </div>
-
-      {/* Filters */}
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button variant="outline" size="sm" className="h-9 w-full sm:w-auto justify-start border-dashed">
-            <ListFilter className="mr-2 h-4 w-4" />
-            Filters
-            {activeFilterCount > 0 && (
-              <>
-                <div className="mx-2 h-4 w-px bg-muted-foreground/50" />
-                <Badge variant="secondary" className="rounded-sm px-1 font-normal">
-                  {activeFilterCount}
-                </Badge>
-              </>
-            )}
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-[240px] p-0" align="start">
-          <CombinedFilter filters={filters} onFiltersChange={setFilters} filterableFields={filterableFields} />
-        </PopoverContent>
-      </Popover>
-
-      {activeFilterCount > 0 && (
-        <Button variant="ghost" size="sm" onClick={() => setFilters({ searchTerm: filters.searchTerm, status: [], priority: [] })}>Reset</Button>
-      )}
-
-      {/* Spacer */}
-      <div className="hidden md:block flex-grow" />
-
-      {/* Sorter */}
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="outline" size="sm" className="h-9 w-full sm:w-auto justify-start">
-            <SortAsc className="mr-2 h-4 w-4" />
-            Sort by: {sortOptions.find(o => o.id === sortConfig?.key)?.label || 'Default'}
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-[200px]">
-          <DropdownMenuLabel>Sort by</DropdownMenuLabel>
-          <DropdownMenuRadioGroup
-            value={`${sortConfig?.key || 'default'}-${sortConfig?.direction || ''}`}
-            onValueChange={(value) => {
-              if (value.startsWith('default')) {
-                setSort(null)
-              } else {
-                const [key, direction] = value.split('-')
-                setSort({ key: key, direction: direction as 'asc' | 'desc' })
-              }
-            }}
-          >
-            <DropdownMenuRadioItem value="default-">Default</DropdownMenuRadioItem>
-            <DropdownMenuSeparator />
-            {sortOptions.map(option => (
-              <React.Fragment key={option.id}>
-                <DropdownMenuRadioItem value={`${option.id}-desc`}>{option.label} (Desc)</DropdownMenuRadioItem>
-                <DropdownMenuRadioItem value={`${option.id}-asc`}>{option.label} (Asc)</DropdownMenuRadioItem>
-              </React.Fragment>
-            ))}
-          </DropdownMenuRadioGroup>
-        </DropdownMenuContent>
-      </DropdownMenu>
-
-      {/* Group By Dropdown */}
-      {viewMode !== 'calendar' && (
-        <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="h-9 w-full justify-between">
-                Group by: {groupOptions.find(o => o.id === groupBy)?.label}
-                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-[180px]">
-              <DropdownMenuRadioGroup value={groupBy} onValueChange={setGroupBy}>
-                {groupOptions.map(option => (
-                  <DropdownMenuRadioItem key={option.id} value={option.id}>
-                    {option.label}
-                  </DropdownMenuRadioItem>
-                ))}
-              </DropdownMenuRadioGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      )}
-    </div>
-  )
-}
-
-function CombinedFilter({
-  filters,
-  onFiltersChange,
-  filterableFields,
-}: {
-  filters: FilterConfig;
-  onFiltersChange: (filters: FilterConfig) => void;
-  filterableFields: { id: string; label: string; options: { id: string; label: string }[] }[];
-}) {
-  const handleSelect = (fieldId: string, value: string) => {
-    const currentValues = new Set(filters[fieldId] || []);
-    currentValues.has(value) ? currentValues.delete(value) : currentValues.add(value);
-    
-    onFiltersChange({ ...filters, [fieldId]: Array.from(currentValues) });
-  };
-
-  const hasActiveFilters = filterableFields.some(field => (filters[field.id] || []).length > 0);
-
-  const clearFilters = () => {
-    const clearedFilters: Partial<FilterConfig> = {};
-    filterableFields.forEach(field => {
-      clearedFilters[field.id as keyof Omit<FilterConfig, 'searchTerm'>] = [];
-    });
-    onFiltersChange({ searchTerm: filters.searchTerm, ...clearedFilters });
-  }
-
-  return (
-    <Command>
-      <CommandInput placeholder="Filter by..." />
-      <CommandList>
-        <CommandEmpty>No results found.</CommandEmpty>
-        
-        {filterableFields.map((field, index) => (
-          <React.Fragment key={field.id}>
-            <CommandGroup heading={field.label}>
-              {field.options.map((option) => {
-            const isSelected = (filters[field.id] || []).includes(option.id);
-            return (
-              <CommandItem
-                key={option.id}
-                onSelect={() => handleSelect(field.id, option.id)}
-              >
-                <div
-                  className={cn(
-                    'mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary',
-                    isSelected ? 'bg-primary text-primary-foreground' : 'opacity-50 [&_svg]:invisible'
-                  )}
-                >
-                  <Check className={cn('h-4 w-4')} />
-                </div>
-                <span>{option.label}</span>
-              </CommandItem>
-            );
-          })}
-            </CommandGroup>
-            {index < filterableFields.length - 1 && <CommandSeparator />}
-          </React.Fragment>
-        ))}
-
-        {hasActiveFilters && (
-          <>
-            <CommandSeparator />
-            <CommandGroup>
-              <CommandItem
-                onSelect={clearFilters}
-                className="justify-center text-center text-sm"
-              >
-                Clear filters
-              </CommandItem>
-            </CommandGroup>
-          </>
-        )}
-      </CommandList>
-    </Command>
-  )
-}
-```
-
-## File: src/features/dynamic-view/components/controls/ViewModeSelector.tsx
-```typescript
-import { useEffect, useRef, useState, useCallback } from 'react'
-import { gsap } from 'gsap'
-import { cn } from '@/lib/utils'
-import { List, Grid3X3, LayoutGrid, Table, LayoutDashboard, CalendarDays } from 'lucide-react'
-import type { ViewMode } from '../../types'
-import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
-
-const viewModes = [
-  { id: 'list' as ViewMode, label: 'List', icon: List, description: 'Compact list with details' },
-  { id: 'cards' as ViewMode, label: 'Cards', icon: LayoutGrid, description: 'Rich card layout' },
-  { id: 'kanban' as ViewMode, label: 'Kanban', icon: LayoutDashboard, description: 'Interactive Kanban board' },
-  { id: 'calendar' as ViewMode, label: 'Calendar', icon: CalendarDays, description: 'Interactive calendar view' },
-  { id: 'grid' as ViewMode, label: 'Grid', icon: Grid3X3, description: 'Masonry grid view' },
-  { id: 'table' as ViewMode, label: 'Table', icon: Table, description: 'Structured data table' }
-]
-
-export function ViewModeSelector() {
-  const { viewMode, setViewMode } = useAppViewManager();
-  const indicatorRef = useRef<HTMLDivElement>(null)
-  const containerRef = useRef<HTMLDivElement>(null)
-  const [isExpanded, setIsExpanded] = useState(false)
-  const [isTransitioning, setIsTransitioning] = useState(false)
-
-  const updateIndicatorPosition = useCallback((immediate = false) => {
-    if (!indicatorRef.current || !containerRef.current || isTransitioning) return
-
-    const activeButton = containerRef.current.querySelector(`[data-mode="${viewMode}"]`) as HTMLElement
-    if (!activeButton) return
-
-    const containerRect = containerRef.current.getBoundingClientRect()
-    const buttonRect = activeButton.getBoundingClientRect()
-    
-    const left = buttonRect.left - containerRect.left
-    const width = buttonRect.width
-
-    if (immediate) {
-      // Set position immediately without animation for initial load
-      gsap.set(indicatorRef.current, {
-        x: left,
-        width: width
-      })
-    } else {
-      gsap.to(indicatorRef.current, {
-        duration: 0.3,
-        x: left,
-        width: width,
-        ease: "power2.out"
-      })
-    }
-  }, [viewMode, isTransitioning])
-
-  // Initial setup - set position immediately without animation
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      updateIndicatorPosition(true)
-    }, 0)
-    return () => clearTimeout(timer)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []) // Only run once on mount
-
-  useEffect(() => {
-    if (!isTransitioning) {
-      updateIndicatorPosition()
-    }
-  }, [viewMode, isTransitioning, updateIndicatorPosition])
-
-  const handleMouseEnter = () => {
-    setIsTransitioning(true)
-    setIsExpanded(true)
-    
-    // Wait for expand animation to complete
-    setTimeout(() => {
-      setIsTransitioning(false)
-    }, 500)
-  }
-
-  const handleMouseLeave = () => {
-    setIsTransitioning(true)
-    setIsExpanded(false)
-    
-    // Wait for collapse animation to complete
-    setTimeout(() => {
-      setIsTransitioning(false)
-    }, 500)
-  }
-
-  return (
-    <div 
-      ref={containerRef}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-      className={cn(
-        "relative flex items-center bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-1.5 shadow-lg transition-all duration-500 ease-out",
-        "hover:shadow-xl hover:bg-card/70",
-        isExpanded ? "gap-1" : "gap-0"
-      )}
-    >
-      {/* Animated indicator */}
-      <div
-        ref={indicatorRef}
-        className="absolute inset-y-1.5 bg-gradient-to-r from-primary/20 to-primary/10 border border-primary/20 rounded-xl transition-all duration-300"
-        style={{ left: 0, width: 0 }}
-      />
-      
-      {/* Mode buttons */}
-      {viewModes.map((mode, index) => {
-        const IconComponent = mode.icon
-        const isActive = viewMode === mode.id
-        
-        return (
-          <button
-            key={mode.id}
-            data-mode={mode.id}
-            onClick={() => setViewMode(mode.id)}
-            className={cn(
-              "relative flex items-center justify-center rounded-xl transition-all duration-500 ease-out group overflow-hidden",
-              "hover:bg-accent/20 active:scale-95",
-              isActive && "text-primary",
-              isExpanded ? "gap-3 px-4 py-2.5" : "gap-0 px-3 py-2.5"
-            )}
-            title={mode.description}
-            style={{
-              transitionDelay: isExpanded ? `${index * 50}ms` : `${(viewModes.length - index - 1) * 30}ms`
-            }}
-          >
-            <IconComponent className={cn(
-              "w-5 h-5 transition-all duration-300 flex-shrink-0",
-              isActive && "scale-110",
-              "group-hover:scale-105",
-              isExpanded ? "rotate-0" : "rotate-0"
-            )} />
-            
-            {/* Label with smooth expand/collapse */}
-            <div className={cn(
-              "overflow-hidden transition-all duration-500 ease-out",
-              isExpanded ? "max-w-[80px] opacity-100" : "max-w-0 opacity-0"
-            )}>
-              <span className={cn(
-                "font-medium whitespace-nowrap transition-all duration-300",
-                isActive ? "text-primary" : "text-muted-foreground",
-                "group-hover:text-foreground"
-              )}>
-                {mode.label}
-              </span>
-            </div>
-          </button>
-        )
-      })}
-    </div>
-  )
-}
-```
-
-## File: src/features/dynamic-view/components/shared/AnimatedLoadingSkeleton.tsx
-```typescript
-import { type ViewMode } from '../../types'
-import { Card, CardHeader, CardContent } from '../../../../components/ui/card'
-import { Skeleton } from '@/components/ui/skeleton'
-
-export function AnimatedLoadingSkeleton({ viewMode }: { viewMode: ViewMode }) {
-  const renderSkeleton = () => {
-    switch (viewMode) {
-      case 'table':
-        return (
-          <div className="space-y-2">
-            <Skeleton className="h-12 w-full" />
-            {[...Array(5)].map((_, i) => (
-              <Skeleton key={i} className="h-10 w-full" />
-            ))}
-          </div>
-        )
-      case 'list':
-        return (
-          <div className="space-y-4">
-            {[...Array(5)].map((_, i) => (
-              <div key={i} className="flex items-center space-x-4">
-                <Skeleton className="h-10 w-10 rounded-full" />
-                <div className="space-y-2 flex-1">
-                  <Skeleton className="h-4 w-3/4" />
-                </div>
-                <Skeleton className="h-4 w-1/4" />
-              </div>
-            ))}
-          </div>
-        )
-      case 'grid':
-      case 'cards':
-        return (
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))] gap-6">
-            {[...Array(6)].map((_, i) => (
-              <Card key={i}>
-                <CardHeader>
-                  <Skeleton className="h-12 w-12 rounded-lg" />
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <Skeleton className="h-5 w-4/5" />
-                  <Skeleton className="h-4 w-full" />
-                  <Skeleton className="h-4 w-full" />
-                  <Skeleton className="h-4 w-2/3" />
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )
-        case 'kanban':
-            return (
-              <div className="flex items-start gap-6">
-                {[...Array(3)].map((_, i) => (
-                  <div key={i} className="w-80 flex-shrink-0 space-y-4">
-                    <Skeleton className="h-6 w-1/2" />
-                    <Skeleton className="h-32 w-full" />
-                    <Skeleton className="h-32 w-full" />
-                  </div>
-                ))}
-              </div>
-            )
-        case 'calendar':
-            return (
-              <div className="space-y-4">
-                  <div className="flex justify-between">
-                      <Skeleton className="h-8 w-48" />
-                      <Skeleton className="h-8 w-32" />
-                  </div>
-                <Skeleton className="h-[600px] w-full" />
-              </div>
-            )
-      default:
-        return <div>Loading...</div>
-    }
-  }
-
-  return <div>{renderSkeleton()}</div>
-}
-```
-
 ## File: src/features/dynamic-view/components/shared/FieldRenderer.tsx
 ```typescript
 import { useDynamicView } from '../../DynamicViewContext';
@@ -1410,14 +231,14 @@ export function FieldRenderer({ item, fieldId, className, options }: FieldRender
   const fieldDef = getFieldDef(fieldId);
   const value = getNestedValue(item, fieldId);
 
+  // Custom render function takes precedence
+  if (fieldDef?.render) {
+    return <>{fieldDef.render(item, options)}</>;
+  }
+
   if (!fieldDef) {
     console.warn(`[FieldRenderer] No field definition found for ID: ${fieldId}`);
     return <span className="text-red-500">?</span>;
-  }
-  
-  // Custom render function takes precedence
-  if (fieldDef.render) {
-    return <>{fieldDef.render(item)}</>;
   }
 
   if (value === null || typeof value === 'undefined') {
@@ -1531,6 +352,216 @@ export function FieldRenderer({ item, fieldId, className, options }: FieldRender
 }
 ```
 
+## File: index.html
+```html
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Jeli App Shell</title>
+    <script>
+      (function() {
+        try {
+          const storageKey = 'app-shell-storage';
+          const storageValue = localStorage.getItem(storageKey);
+          let isDarkMode;
+
+          if (storageValue) {
+            isDarkMode = JSON.parse(storageValue)?.state?.isDarkMode;
+          }
+          
+          if (typeof isDarkMode !== 'boolean') {
+            isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          }
+          
+          document.documentElement.classList.toggle('dark', isDarkMode);
+        } catch (e) { /* Fails safely */ }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <div id="toaster-container"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+```
+
+## File: tailwind.config.js
+```javascript
+/** @type {import('tailwindcss').Config} */
+export default {
+  content: [
+    "./index.html",
+    "./src/**/*.{js,ts,jsx,tsx}",
+  ],
+  darkMode: "class",
+  theme: {
+    extend: {
+      colors: {
+        border: "hsl(var(--border))",
+        input: "hsl(var(--input))",
+        ring: "hsl(var(--ring))",
+        background: "hsl(var(--background))",
+        foreground: "hsl(var(--foreground))",
+        primary: {
+          DEFAULT: "hsl(var(--primary))",
+          foreground: "hsl(var(--primary-foreground))",
+        },
+        secondary: {
+          DEFAULT: "hsl(var(--secondary))",
+          foreground: "hsl(var(--secondary-foreground))",
+        },
+        destructive: {
+          DEFAULT: "hsl(var(--destructive))",
+          foreground: "hsl(var(--destructive-foreground))",
+        },
+        muted: {
+          DEFAULT: "hsl(var(--muted))",
+          foreground: "hsl(var(--muted-foreground))",
+        },
+        accent: {
+          DEFAULT: "hsl(var(--accent))",
+          foreground: "hsl(var(--accent-foreground))",
+        },
+        popover: {
+          DEFAULT: "hsl(var(--popover))",
+          foreground: "hsl(var(--popover-foreground))",
+        },
+        card: {
+          DEFAULT: "hsl(var(--card))",
+          foreground: "hsl(var(--card-foreground))",
+        },
+      },
+      borderRadius: {
+        lg: "var(--radius)",
+        md: "calc(var(--radius) - 4px)",
+        sm: "calc(var(--radius) - 8px)",
+        DEFAULT: "0.5rem",
+      },
+      boxShadow: {
+        input: [
+          "0px 2px 3px -1px rgba(0, 0, 0, 0.1)",
+          "0px 1px 0px 0px rgba(25, 28, 33, 0.02)",
+          "0px 0px 0px 1px rgba(25, 28, 33, 0.08)",
+        ].join(", "),
+      },
+      animation: {
+        "fade-in": "fadeIn 0.5s ease-in-out",
+        "slide-in": "slideIn 0.3s ease-out",
+        "scale-in": "scaleIn 0.2s ease-out",
+        ripple: "ripple 2s ease calc(var(--i, 0) * 0.2s) infinite",
+        orbit: "orbit calc(var(--duration) * 1s) linear infinite",
+      },
+      keyframes: {
+        fadeIn: {
+          "0%": { opacity: "0" },
+          "100%": { opacity: "1" },
+        },
+        slideIn: {
+          "0%": { transform: "translateX(-100%)" },
+          "100%": { transform: "translateX(0)" },
+        },
+        scaleIn: {
+          "0%": { transform: "scale(0.95)", opacity: "0" },
+          "100%": { transform: "scale(1)", opacity: "1" },
+        },
+        ripple: {
+          "0%, 100%": { transform: "translate(-50%, -50%) scale(1)" },
+          "50%": { transform: "translate(-50%, -50%) scale(0.9)" },
+        },
+        orbit: {
+          "0%": {
+            transform:
+              "rotate(0deg) translateY(calc(var(--radius) * 1px)) rotate(0deg)",
+          },
+          "100%": {
+            transform:
+              "rotate(360deg) translateY(calc(var(--radius) * 1px)) rotate(-360deg)",
+          },
+        }
+      },
+    },
+  },
+  plugins: [
+    require("tailwindcss-animate"),
+    require("tailwindcss/plugin")(function ({ addUtilities }) {
+      addUtilities({
+        ".no-scrollbar::-webkit-scrollbar": {
+          display: "none",
+        },
+        ".no-scrollbar": {
+          "-ms-overflow-style": "none",
+          "scrollbar-width": "none",
+        },
+      });
+    }),
+  ],
+}
+```
+
+## File: tsconfig.json
+```json
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "useDefineForClassFields": true,
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+
+    /* Bundler mode */
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "react-jsx",
+
+    /* Linting */
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+
+    /* Library Build */
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "declarationDir": "dist",
+
+    /* Path mapping */
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": ["src"],
+  "exclude": [
+    "dist",
+    "src/App.tsx",
+    "src/main.tsx",
+    "src/pages"
+  ]
+}
+```
+
+## File: tsconfig.node.json
+```json
+{
+  "compilerOptions": {
+    "composite": true,
+    "skipLibCheck": true,
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "allowSyntheticDefaultImports": true,
+    "resolveJsonModule": true,
+    "noEmit": true
+  },
+  "include": ["vite.config.ts"]
+}
+```
+
 ## File: src/features/dynamic-view/components/views/CalendarView.tsx
 ```typescript
 import { useState, useMemo, useRef, useLayoutEffect } from "react";
@@ -1611,7 +642,7 @@ function CalendarHeader({ currentDate, onPrevMonth, onNextMonth, onToday }: {
   );
 }
 
-function CalendarEvent({ item, isSelected, isDragging, onDragStart, displayProps, colorProp }: { 
+function CalendarEvent({ item, isSelected, isDragging, onDragStart, colorProp }: { 
     item: GenericItem; 
     isSelected: boolean;
     isDragging: boolean;
@@ -1652,14 +683,19 @@ function CalendarEvent({ item, isSelected, isDragging, onDragStart, displayProps
               <FieldRenderer item={item} fieldId={viewConfig.titleField} />
             </div>
 
-            {viewConfig.displayFields.length > 0 && (
+            {viewConfig.displayFields.includes('tags') && <FieldRenderer item={item} fieldId="tags" />}
+
+            {(viewConfig.displayFields.includes('priority') || viewConfig.displayFields.includes('assignee')) && (
                 <div className={cn(
-                    "flex items-center justify-between pt-1 border-t flex-wrap gap-2",
+                    "flex items-center justify-between pt-1 border-t",
                     colorClass ? "border-black/10 dark:border-white/10" : "border-border/30 dark:border-neutral-700/50"
                 )}>
-                  {viewConfig.displayFields.map(fieldId => (
-                    <FieldRenderer key={fieldId} item={item} fieldId={fieldId} options={{ compact: true, avatarClassName: 'w-5 h-5' }}/>
-                  ))}
+                    <div>
+                      {viewConfig.displayFields.includes('priority') && <FieldRenderer item={item} fieldId="priority" />}
+                    </div>
+                    <div>
+                      {viewConfig.displayFields.includes('assignee') && <FieldRenderer item={item} fieldId="assignee" options={{ compact: true, avatarClassName: 'w-5 h-5' }}/>}
+                    </div>
                 </div>
             )}
         </div>
@@ -1676,8 +712,7 @@ export function CalendarView({ data }: CalendarViewProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const { 
     itemId,
-    calendarDateProp, 
-    calendarDisplayProps, 
+    calendarDateProp,
     calendarItemLimit,
     calendarColorProp,
   } = useAppViewManager();
@@ -1950,22 +985,31 @@ export function CardView({ data, isGrid = false }: { data: GenericItem[]; isGrid
             </div>
 
             {/* Card Content */}
-            <div className="px-6 pb-6 space-y-4">
-              <div className="font-semibold text-lg group-hover:text-primary transition-colors line-clamp-2">
+            <div className="px-6 pb-6">
+              <h3 className="font-semibold text-lg mb-2 group-hover:text-primary transition-colors line-clamp-2">
                 <FieldRenderer item={item} fieldId={viewConfig.titleField} />
-              </div>
-              <div className="text-muted-foreground text-sm line-clamp-3">
+              </h3>
+              <p className="text-muted-foreground text-sm mb-4 line-clamp-3">
                 <FieldRenderer item={item} fieldId={viewConfig.descriptionField} />
+              </p>
+
+              {/* Status and Category */}
+              <div className="flex items-center gap-2 mb-4">
+                <FieldRenderer item={item} fieldId={viewConfig.statusField} />
+                <FieldRenderer item={item} fieldId={viewConfig.categoryField} />
               </div>
-              
-              {viewConfig.contentFields.map(fieldId => (
-                <FieldRenderer key={fieldId} item={item} fieldId={fieldId} options={{ showPercentage: true }} />
-              ))}
-              
+
+              {/* Tags, Progress, Assignee */}
+              <div className="space-y-4 mb-4">
+                <FieldRenderer item={item} fieldId={viewConfig.tagsField} />
+                <FieldRenderer item={item} fieldId={viewConfig.progressField} />
+                <FieldRenderer item={item} fieldId={viewConfig.assigneeField} />
+              </div>
+
+              {/* Metrics and Date */}
               <div className="flex items-center justify-between text-xs text-muted-foreground">
-                {viewConfig.footerFields.map(fieldId => (
-                  <FieldRenderer key={fieldId} item={item} fieldId={fieldId} />
-                ))}
+                <FieldRenderer item={item} fieldId={viewConfig.metricsField} />
+                <FieldRenderer item={item} fieldId={viewConfig.dateField} />
               </div>
             </div>
 
@@ -2024,28 +1068,27 @@ function KanbanCard({ item, isDragging, ...props }: KanbanCardProps & React.HTML
       <CardContent className="p-5">
         <div className="space-y-4">
           <div className="flex items-start justify-between">
-            <div className="font-semibold text-card-foreground dark:text-neutral-100 leading-tight flex-1 min-w-0">
+            <h4 className="font-semibold text-card-foreground dark:text-neutral-100 leading-tight">
               <FieldRenderer item={item} fieldId={viewConfig.cardFields.titleField} />
-            </div>
+            </h4>
             <GripVertical className="w-5 h-5 text-muted-foreground/60 dark:text-neutral-400 cursor-grab flex-shrink-0" />
           </div>
 
-          <div className="text-sm text-muted-foreground dark:text-neutral-300 leading-relaxed line-clamp-2">
+          <p className="text-sm text-muted-foreground dark:text-neutral-300 leading-relaxed line-clamp-2">
             <FieldRenderer item={item} fieldId={viewConfig.cardFields.descriptionField} />
+          </p>
+
+          <div className="flex flex-wrap gap-2">
+            <FieldRenderer item={item} fieldId={viewConfig.cardFields.priorityField} />
+            <FieldRenderer item={item} fieldId={viewConfig.cardFields.tagsField} />
           </div>
 
           <div className="flex items-center justify-between pt-2 border-t border-border/30 dark:border-neutral-700/30">
-            {/* 
-              The footer is a bit tricky. The original has a left and right side.
-              For a generic component, let's just render them in a row.
-              A more advanced config could specify 'left' and 'right' arrays.
-              For now, this is a good simplification.
-            */}
-            <div className="flex items-center justify-between w-full text-muted-foreground/80 dark:text-neutral-400">
-              {viewConfig.cardFields.footerFields.map(fieldId => (
-                <FieldRenderer key={fieldId} item={item} fieldId={fieldId} options={{ compact: true, avatarClassName: 'w-8 h-8' }} />
-              ))}
+            <div className="flex items-center gap-4 text-muted-foreground/80 dark:text-neutral-400">
+              <FieldRenderer item={item} fieldId={viewConfig.cardFields.dateField} />
+              <FieldRenderer item={item} fieldId={viewConfig.cardFields.metricsField} />
             </div>
+            <FieldRenderer item={item} fieldId={viewConfig.cardFields.assigneeField} options={{ compact: true, avatarClassName: 'w-8 h-8 ring-2 ring-white/50 dark:ring-neutral-700/50' }} />
           </div>
         </div>
       </CardContent>
@@ -2264,8 +1307,10 @@ export function ListView({ data }: { data: GenericItem[] }) {
 
               {/* Right side: Metadata */}
               <div className="flex shrink-0 items-center gap-2 sm:gap-4 md:gap-6 ml-4 text-sm text-muted-foreground">
-                {config.listView.metaFields.map(fieldId => (
-                  <FieldRenderer key={fieldId} item={item} fieldId={fieldId} options={{ compact: true, avatarClassName: 'w-7 h-7' }} />
+                {config.listView.metaFields.map(fieldConfig => (
+                  <div key={fieldConfig.fieldId} className={fieldConfig.className}>
+                    <FieldRenderer item={item} fieldId={fieldConfig.fieldId} options={{ compact: true, avatarClassName: 'w-7 h-7' }} />
+                  </div>
                 ))}
               </div>
             </div>
@@ -2450,56 +1495,6 @@ function TableRow({ item, isSelected, onItemSelect }: { item: GenericItem; isSel
 }
 ```
 
-## File: src/features/dynamic-view/DynamicViewContext.tsx
-```typescript
-import { createContext, useContext, useMemo, type ReactNode } from 'react';
-import type { ViewConfig, GenericItem } from './types';
-
-interface DynamicViewContextProps {
-  config: ViewConfig;
-  data: GenericItem[];
-  getFieldDef: (fieldId: string) => ViewConfig['fields'][number] | undefined;
-}
-
-const DynamicViewContext = createContext<DynamicViewContextProps | null>(null);
-
-interface DynamicViewProviderProps {
-  viewConfig: ViewConfig;
-  data: GenericItem[];
-  children: ReactNode;
-}
-
-export function DynamicViewProvider({ viewConfig, data, children }: DynamicViewProviderProps) {
-  const fieldDefsById = useMemo(() => {
-    return new Map(viewConfig.fields.map(field => [field.id, field]));
-  }, [viewConfig.fields]);
-
-  const getFieldDef = (fieldId: string) => {
-    return fieldDefsById.get(fieldId);
-  };
-
-  const value = useMemo(() => ({
-    config: viewConfig,
-    data,
-    getFieldDef,
-  }), [viewConfig, data, getFieldDef]);
-
-  return (
-    <DynamicViewContext.Provider value={value}>
-      {children}
-    </DynamicViewContext.Provider>
-  );
-}
-
-export function useDynamicView() {
-  const context = useContext(DynamicViewContext);
-  if (!context) {
-    throw new Error('useDynamicView must be used within a DynamicViewProvider');
-  }
-  return context;
-}
-```
-
 ## File: src/features/dynamic-view/types.ts
 ```typescript
 import type { ReactNode } from 'react';
@@ -2525,8 +1520,8 @@ export interface BaseFieldDefinition {
   id: string; // Corresponds to a key in GenericItem
   label: string;
   type: FieldType;
-  // Optional custom render function for ultimate flexibility
-  render?: (item: GenericItem) => ReactNode;
+  // Optional custom render function for ultimate flexibility.
+  render?: (item: GenericItem, options?: Record<string, any>) => ReactNode;
 }
 
 export interface BadgeFieldDefinition extends BaseFieldDefinition {
@@ -2548,7 +1543,10 @@ export type ViewMode = 'list' | 'cards' | 'grid' | 'table' | 'kanban' | 'calenda
 export interface ListViewConfig {
   iconField: string;
   titleField: string;
-  metaFields: string[]; // IDs of fields to show on the right
+  metaFields: Array<{
+    fieldId: string;
+    className?: string;
+  }>;
 }
 
 export interface CardViewConfig {
@@ -2556,8 +1554,14 @@ export interface CardViewConfig {
   titleField: string;
   descriptionField: string;
   headerFields: string[];
-  contentFields: string[];
-  footerFields: string[];
+  // Specific fields to recreate the original layout
+  statusField: string;
+  categoryField: string;
+  tagsField: string;
+  progressField: string;
+  assigneeField: string;
+  metricsField: string;
+  dateField: string;
 }
 
 export interface TableColumnConfig {
@@ -2575,7 +1579,12 @@ export interface KanbanViewConfig {
   cardFields: {
     titleField: string;
     descriptionField: string;
-    footerFields: string[];
+    priorityField: string;
+    tagsField: string;
+    // footer fields
+    dateField: string;
+    metricsField: string; // for comments/attachments
+    assigneeField: string;
   };
 }
 
@@ -2609,6 +1618,26 @@ export interface ViewConfig {
   tableView: TableViewConfig;
   kanbanView: KanbanViewConfig;
   calendarView: CalendarViewConfig;
+  detailView: DetailViewConfig;
+}
+
+// --- DETAIL VIEW ---
+export interface DetailViewSection {
+  title: string;
+  fields: string[];
+}
+
+export interface DetailViewConfig {
+  header: {
+    thumbnailField: string;
+    titleField: string;
+    descriptionField: string;
+    badgeFields: string[];
+    progressField: string;
+  };
+  body: {
+    sections: DetailViewSection[];
+  };
 }
 
 // --- GENERIC CONTROL & DATA TYPES ---
@@ -2633,87 +1662,74 @@ export type CalendarDisplayProp = 'priority' | 'assignee' | 'status';
 export type CalendarColorProp = 'priority' | 'status' | 'category' | 'none';
 ```
 
-## File: src/hooks/useScrollToBottom.hook.ts
-```typescript
-import { useState, useCallback } from 'react';
-
-export function useScrollToBottom(
-  contentRef: React.RefObject<HTMLDivElement>
-) {
-  const [showScrollToBottom, setShowScrollToBottom] = useState(false);
-
-  const handleScroll = useCallback(() => {
-    if (!contentRef.current) return;
-    const { scrollTop, scrollHeight, clientHeight } = contentRef.current;
-    // Show button if scrolled down more than 200px, and there's more than 200px left to scroll
-    setShowScrollToBottom(scrollTop > 200 && scrollTop < scrollHeight - clientHeight - 200);
-  }, [contentRef]);
-
-  const scrollToBottom = () => {
-    contentRef.current?.scrollTo({
-      top: contentRef.current.scrollHeight,
-      behavior: 'smooth'
-    });
-  };
-
-  return { showScrollToBottom, handleScroll, scrollToBottom };
-}
-```
-
 ## File: src/pages/DataDemo/DataDemo.config.ts
 ```typescript
+import { capitalize } from '@/lib/utils';
+import { FieldRenderer } from '@/features/dynamic-view/components/shared/FieldRenderer';
 import type { ViewConfig } from '@/features/dynamic-view/types';
 
-const DATA_DEMO_STATUS_COLORS = {
-  active: 'border-transparent bg-emerald-500/20 text-emerald-700 dark:text-emerald-400',
-  pending: 'border-transparent bg-amber-500/20 text-amber-700 dark:text-amber-400',
-  completed: 'border-transparent bg-sky-500/20 text-sky-700 dark:text-sky-400',
-  archived: 'border-transparent bg-zinc-500/20 text-zinc-700 dark:text-zinc-400',
-};
-const DATA_DEMO_PRIORITY_COLORS = {
-  low: 'border-transparent bg-blue-500/20 text-blue-700 dark:text-blue-400',
-  medium: 'border-transparent bg-yellow-500/20 text-yellow-700 dark:text-yellow-400',
-  high: 'border-transparent bg-orange-500/20 text-orange-700 dark:text-orange-400',
-  critical: 'border-transparent bg-red-600/20 text-red-700 dark:text-red-400',
-};
-
 export const dataDemoViewConfig: ViewConfig = {
-  // Field definitions: The source of truth for all data properties
+  // 1. Field Definitions
   fields: [
+    { id: 'id', label: 'ID', type: 'string' },
     { id: 'title', label: 'Title', type: 'string' },
     { id: 'description', label: 'Description', type: 'longtext' },
-    { id: 'thumbnailEmoji', label: 'Thumbnail', type: 'thumbnail' },
+    { id: 'thumbnail', label: 'Thumbnail', type: 'thumbnail' },
+    { id: 'category', label: 'Category', type: 'badge' },
     {
-      id: 'status',
-      label: 'Status',
-      type: 'badge',
-      colorMap: DATA_DEMO_STATUS_COLORS,
+      id: 'status', label: 'Status', type: 'badge',
+      colorMap: {
+        active: 'bg-sky-500/10 text-sky-600 border-sky-500/20',
+        pending: 'bg-amber-500/10 text-amber-600 border-amber-500/20',
+        completed: 'bg-emerald-600/10 text-emerald-700 border-emerald-600/20',
+        archived: 'bg-zinc-500/10 text-zinc-600 border-zinc-500/20',
+      }
     },
     {
-      id: 'priority',
-      label: 'Priority',
-      type: 'badge',
-      colorMap: DATA_DEMO_PRIORITY_COLORS,
+      id: 'priority', label: 'Priority', type: 'badge',
+      colorMap: {
+        critical: 'bg-red-600/10 text-red-700 border-red-600/20',
+        high: 'bg-orange-500/10 text-orange-600 border-orange-500/20',
+        medium: 'bg-blue-500/10 text-blue-600 border-blue-500/20',
+        low: 'bg-green-500/10 text-green-600 border-green-500/20',
+      }
     },
     { id: 'assignee', label: 'Assignee', type: 'avatar' },
-    { id: 'metrics.completion', label: 'Completion', type: 'progress' },
-    { id: 'updatedAt', label: 'Last Updated', type: 'date' },
-    { id: 'createdAt', label: 'Created', type: 'date' },
-    { id: 'dueDate', label: 'Due Date', type: 'date' },
     { id: 'tags', label: 'Tags', type: 'tags' },
-    { id: 'metrics', label: 'Metrics', type: 'metrics' },
+    { id: 'metrics', label: 'Engagement', type: 'metrics' },
+    { id: 'metrics.completion', label: 'Progress', type: 'progress' },
+    { id: 'dueDate', label: 'Due Date', type: 'date' },
+    { id: 'createdAt', label: 'Created At', type: 'date' },
+    { id: 'updatedAt', label: 'Last Updated', type: 'date' },
+    // A custom field to replicate the composite "Project" column in the table view
+    {
+      id: 'project_details',
+      label: 'Project',
+      type: 'custom',
+      render: (item) => (
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-gradient-to-br from-primary/20 to-primary/10 rounded-lg flex items-center justify-center text-lg flex-shrink-0">
+            <FieldRenderer item={item} fieldId="thumbnail" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h4 className="font-medium group-hover:text-primary transition-colors truncate">
+              <FieldRenderer item={item} fieldId="title" />
+            </h4>
+            <p className="text-sm text-muted-foreground truncate">
+              <FieldRenderer item={item} fieldId="category" />
+            </p>
+          </div>
+        </div>
+      ),
+    },
   ],
-
-  // Control options: What users can sort, filter, and group by
+  // 2. Control Definitions
   sortableFields: [
+    { id: 'updatedAt', label: 'Last Updated' },
     { id: 'title', label: 'Title' },
     { id: 'status', label: 'Status' },
     { id: 'priority', label: 'Priority' },
-    { id: 'updatedAt', label: 'Last Updated' },
-    { id: 'createdAt', label: 'Created' },
-    { id: 'assignee.name', label: 'Assignee' },
-    { id: 'metrics.views', label: 'Views' },
-    { id: 'metrics.completion', label: 'Completion' },
+    { id: 'metrics.completion', label: 'Progress' },
   ],
   groupableFields: [
     { id: 'none', label: 'None' },
@@ -2723,900 +1739,99 @@ export const dataDemoViewConfig: ViewConfig = {
   ],
   filterableFields: [
     {
-      id: 'status',
-      label: 'Status',
+      id: 'status', label: 'Status',
       options: [
         { id: 'active', label: 'Active' },
         { id: 'pending', label: 'Pending' },
         { id: 'completed', label: 'Completed' },
         { id: 'archived', label: 'Archived' },
-      ],
+      ]
     },
     {
-      id: 'priority',
-      label: 'Priority',
+      id: 'priority', label: 'Priority',
       options: [
-        { id: 'low', label: 'Low' },
-        { id: 'medium', label: 'Medium' },
-        { id: 'high', label: 'High' },
         { id: 'critical', label: 'Critical' },
-      ],
-    },
+        { id: 'high', label: 'High' },
+        { id: 'medium', label: 'Medium' },
+        { id: 'low', label: 'Low' },
+      ]
+    }
   ],
-  
-  // View layouts: How each view mode should render the data
+  // 3. View Layouts
   listView: {
-    iconField: 'thumbnailEmoji',
+    iconField: 'thumbnail',
     titleField: 'title',
-    metaFields: ['status', 'priority', 'assignee', 'updatedAt'],
+    metaFields: [
+      { fieldId: 'status', className: 'hidden sm:flex' },
+      { fieldId: 'tags', className: 'hidden lg:flex' },
+      { fieldId: 'updatedAt', className: 'hidden md:flex' },
+      { fieldId: 'assignee' },
+      { fieldId: 'priority', className: 'hidden xs:flex' },
+    ],
   },
   cardView: {
-    thumbnailField: 'thumbnailEmoji',
+    thumbnailField: 'thumbnail',
     titleField: 'title',
     descriptionField: 'description',
     headerFields: ['priority'],
-    contentFields: ['metrics.completion'],
-    footerFields: ['tags', 'assignee'],
+    statusField: 'status',
+    categoryField: 'category',
+    tagsField: 'tags',
+    progressField: 'metrics.completion',
+    assigneeField: 'assignee',
+    metricsField: 'metrics',
+    dateField: 'updatedAt',
   },
   tableView: {
     columns: [
-      { fieldId: 'title', label: 'Title', isSortable: true },
+      { fieldId: 'project_details', label: 'Project', isSortable: true },
       { fieldId: 'status', label: 'Status', isSortable: true },
       { fieldId: 'priority', label: 'Priority', isSortable: true },
       { fieldId: 'assignee', label: 'Assignee', isSortable: true },
-      { fieldId: 'metrics.completion', label: 'Completion', isSortable: true },
-      { fieldId: 'updatedAt', label: 'Last Update', isSortable: true },
+      { fieldId: 'metrics.completion', label: 'Progress', isSortable: true },
+      { fieldId: 'metrics', label: 'Engagement', isSortable: true },
+      { fieldId: 'updatedAt', label: 'Last Updated', isSortable: true },
     ],
   },
   kanbanView: {
-    groupByField: 'status', // This is a suggestion; the user can change it.
+    groupByField: 'status',
     cardFields: {
       titleField: 'title',
       descriptionField: 'description',
-      footerFields: ['tags', 'assignee'],
+      priorityField: 'priority',
+      tagsField: 'tags',
+      dateField: 'dueDate',
+      metricsField: 'metrics',
+      assigneeField: 'assignee',
     },
   },
   calendarView: {
-    dateField: 'dueDate', // Default date field
+    dateField: 'dueDate',
     titleField: 'title',
-    displayFields: ['priority', 'assignee'],
-    colorByField: 'priority', // Default coloring
+    displayFields: ['tags', 'priority', 'assignee'],
+    colorByField: 'priority',
+  },
+  detailView: {
+    header: {
+      thumbnailField: 'thumbnail',
+      titleField: 'title',
+      descriptionField: 'description',
+      badgeFields: ['status', 'priority', 'category'],
+      progressField: 'metrics.completion',
+    },
+    body: {
+      sections: [
+        { title: 'Assigned to', fields: ['assignee'] },
+        { title: 'Engagement Metrics', fields: ['metrics'] },
+        { title: 'Tags', fields: ['tags'] },
+        {
+          title: 'Timeline',
+          fields: ['createdAt', 'updatedAt', 'dueDate'],
+        },
+      ],
+    },
   },
 };
-```
-
-## File: index.html
-```html
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Jeli App Shell</title>
-    <script>
-      (function() {
-        try {
-          const storageKey = 'app-shell-storage';
-          const storageValue = localStorage.getItem(storageKey);
-          let isDarkMode;
-
-          if (storageValue) {
-            isDarkMode = JSON.parse(storageValue)?.state?.isDarkMode;
-          }
-          
-          if (typeof isDarkMode !== 'boolean') {
-            isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
-          }
-          
-          document.documentElement.classList.toggle('dark', isDarkMode);
-        } catch (e) { /* Fails safely */ }
-      })();
-    </script>
-  </head>
-  <body>
-    <div id="root"></div>
-    <div id="toaster-container"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
-</html>
-```
-
-## File: tailwind.config.js
-```javascript
-/** @type {import('tailwindcss').Config} */
-export default {
-  content: [
-    "./index.html",
-    "./src/**/*.{js,ts,jsx,tsx}",
-  ],
-  darkMode: "class",
-  theme: {
-    extend: {
-      colors: {
-        border: "hsl(var(--border))",
-        input: "hsl(var(--input))",
-        ring: "hsl(var(--ring))",
-        background: "hsl(var(--background))",
-        foreground: "hsl(var(--foreground))",
-        primary: {
-          DEFAULT: "hsl(var(--primary))",
-          foreground: "hsl(var(--primary-foreground))",
-        },
-        secondary: {
-          DEFAULT: "hsl(var(--secondary))",
-          foreground: "hsl(var(--secondary-foreground))",
-        },
-        destructive: {
-          DEFAULT: "hsl(var(--destructive))",
-          foreground: "hsl(var(--destructive-foreground))",
-        },
-        muted: {
-          DEFAULT: "hsl(var(--muted))",
-          foreground: "hsl(var(--muted-foreground))",
-        },
-        accent: {
-          DEFAULT: "hsl(var(--accent))",
-          foreground: "hsl(var(--accent-foreground))",
-        },
-        popover: {
-          DEFAULT: "hsl(var(--popover))",
-          foreground: "hsl(var(--popover-foreground))",
-        },
-        card: {
-          DEFAULT: "hsl(var(--card))",
-          foreground: "hsl(var(--card-foreground))",
-        },
-      },
-      borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 4px)",
-        sm: "calc(var(--radius) - 8px)",
-        DEFAULT: "0.5rem",
-      },
-      boxShadow: {
-        input: [
-          "0px 2px 3px -1px rgba(0, 0, 0, 0.1)",
-          "0px 1px 0px 0px rgba(25, 28, 33, 0.02)",
-          "0px 0px 0px 1px rgba(25, 28, 33, 0.08)",
-        ].join(", "),
-      },
-      animation: {
-        "fade-in": "fadeIn 0.5s ease-in-out",
-        "slide-in": "slideIn 0.3s ease-out",
-        "scale-in": "scaleIn 0.2s ease-out",
-        ripple: "ripple 2s ease calc(var(--i, 0) * 0.2s) infinite",
-        orbit: "orbit calc(var(--duration) * 1s) linear infinite",
-      },
-      keyframes: {
-        fadeIn: {
-          "0%": { opacity: "0" },
-          "100%": { opacity: "1" },
-        },
-        slideIn: {
-          "0%": { transform: "translateX(-100%)" },
-          "100%": { transform: "translateX(0)" },
-        },
-        scaleIn: {
-          "0%": { transform: "scale(0.95)", opacity: "0" },
-          "100%": { transform: "scale(1)", opacity: "1" },
-        },
-        ripple: {
-          "0%, 100%": { transform: "translate(-50%, -50%) scale(1)" },
-          "50%": { transform: "translate(-50%, -50%) scale(0.9)" },
-        },
-        orbit: {
-          "0%": {
-            transform:
-              "rotate(0deg) translateY(calc(var(--radius) * 1px)) rotate(0deg)",
-          },
-          "100%": {
-            transform:
-              "rotate(360deg) translateY(calc(var(--radius) * 1px)) rotate(-360deg)",
-          },
-        }
-      },
-    },
-  },
-  plugins: [
-    require("tailwindcss-animate"),
-    require("tailwindcss/plugin")(function ({ addUtilities }) {
-      addUtilities({
-        ".no-scrollbar::-webkit-scrollbar": {
-          display: "none",
-        },
-        ".no-scrollbar": {
-          "-ms-overflow-style": "none",
-          "scrollbar-width": "none",
-        },
-      });
-    }),
-  ],
-}
-```
-
-## File: tsconfig.json
-```json
-{
-  "compilerOptions": {
-    "target": "ES2020",
-    "useDefineForClassFields": true,
-    "lib": ["ES2020", "DOM", "DOM.Iterable"],
-    "module": "ESNext",
-    "skipLibCheck": true,
-
-    /* Bundler mode */
-    "moduleResolution": "bundler",
-    "allowImportingTsExtensions": true,
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "jsx": "react-jsx",
-
-    /* Linting */
-    "strict": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noFallthroughCasesInSwitch": true,
-
-    /* Library Build */
-    "declaration": true,
-    "emitDeclarationOnly": true,
-    "declarationDir": "dist",
-
-    /* Path mapping */
-    "baseUrl": ".",
-    "paths": {
-      "@/*": ["./src/*"]
-    }
-  },
-  "include": ["src"],
-  "exclude": [
-    "dist",
-    "src/App.tsx",
-    "src/main.tsx",
-    "src/pages"
-  ]
-}
-```
-
-## File: tsconfig.node.json
-```json
-{
-  "compilerOptions": {
-    "composite": true,
-    "skipLibCheck": true,
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
-    "allowSyntheticDefaultImports": true,
-    "resolveJsonModule": true,
-    "noEmit": true
-  },
-  "include": ["vite.config.ts"]
-}
-```
-
-## File: src/pages/Messaging/components/TaskHeader.tsx
-```typescript
-import React from 'react';
-import { useMessagingStore } from '../store/messaging.store';
-import type { Task, TaskStatus, TaskPriority, Assignee, Contact } from '../types';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator
-} from '@/components/ui/dropdown-menu';
-import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ChevronDown, Inbox, Zap, Shield, Clock, Calendar, Plus, User, Eye } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
-import { format } from 'date-fns';
-
-const statusOptions: { value: TaskStatus; label: string; icon: React.ReactNode }[] = [
-    { value: 'open', label: 'Open', icon: <Inbox className="w-4 h-4" /> },
-    { value: 'in-progress', label: 'In Progress', icon: <Zap className="w-4 h-4" /> },
-    { value: 'done', label: 'Done', icon: <Shield className="w-4 h-4" /> },
-    { value: 'snoozed', label: 'Snoozed', icon: <Clock className="w-4 h-4" /> },
-];
-
-const priorityOptions: { value: TaskPriority; label: string; icon: React.ReactNode }[] = [
-    { value: 'high', label: 'High', icon: <div className="w-2.5 h-2.5 rounded-full bg-red-500" /> },
-    { value: 'medium', label: 'Medium', icon: <div className="w-2.5 h-2.5 rounded-full bg-yellow-500" /> },
-    { value: 'low', label: 'Low', icon: <div className="w-2.5 h-2.5 rounded-full bg-green-500" /> },
-    { value: 'none', label: 'None', icon: <div className="w-2.5 h-2.5 rounded-full bg-gray-400" /> },
-];
-
-
-interface TaskHeaderProps {
-  task: (Task & { contact: Contact; assignee: Assignee | null; activeHandler: Assignee | null });
-}
-
-export const TaskHeader: React.FC<TaskHeaderProps> = ({ task }) => {
-  const { updateTask, assignees } = useMessagingStore();
-  const currentStatus = statusOptions.find(o => o.value === task.status);
-  const currentPriority = priorityOptions.find(o => o.value === task.priority);
-  const currentUserId = 'user-1'; // Mock current user
-  const isHandledByOther = task.activeHandler && task.activeHandlerId !== currentUserId;
-
-
-  return (
-    <div className="space-y-4">
-      {/* Task Title & Contact */}
-      <div className="overflow-hidden">
-        <h2 className="font-bold text-xl lg:text-2xl truncate" title={task.title}>
-          {task.title}
-        </h2>
-        <p className="text-sm text-muted-foreground">
-          With <a href="#" className="hover:underline font-medium text-foreground/80">{task.contact.name}</a> from <strong className="font-medium text-foreground/80">{task.contact.company}</strong>
-          <span className="mx-1">&middot;</span>
-          via <span className="capitalize font-medium text-foreground/80">{task.channel}</span>
-        </p>
-      </div>
-
-      {/* Properties Bar */}
-      <div className="flex flex-wrap items-center gap-y-2 text-sm">
-        {/* Assignee Dropdown */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" className="gap-2 font-normal">
-              {task.assignee ? (
-                <Avatar className="h-5 w-5"><AvatarImage src={task.assignee.avatar} /><AvatarFallback>{task.assignee.name.charAt(0)}</AvatarFallback></Avatar>
-              ) : (
-                <User className="h-4 w-4 text-muted-foreground" />
-              )}
-              <span className="font-medium">{task.assignee?.name || 'Unassigned'}</span>
-              <ChevronDown className="w-3 h-3 text-muted-foreground" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start">
-            <DropdownMenuRadioGroup value={task.assigneeId || 'null'} onValueChange={val => updateTask(task.id, { assigneeId: val === 'null' ? null : val })}>
-              <DropdownMenuRadioItem value="null">
-                <User className="w-4 h-4 mr-2 text-muted-foreground" /> Unassigned
-              </DropdownMenuRadioItem>
-              <DropdownMenuSeparator />
-              {assignees.map(a => (
-                <DropdownMenuRadioItem key={a.id} value={a.id}>
-                  <Avatar className="h-5 w-5 mr-2"><AvatarImage src={a.avatar} /><AvatarFallback>{a.name.charAt(0)}</AvatarFallback></Avatar>
-                  {a.name}
-                </DropdownMenuRadioItem>
-              ))}
-            </DropdownMenuRadioGroup>
-          </DropdownMenuContent>
-        </DropdownMenu>
-
-        {isHandledByOther && (
-            <>
-                <div className="mx-2 h-4 w-px bg-border" />
-                <Badge variant="outline" className="gap-2 font-normal text-amber-600 border-amber-600/50">
-                    <Eye className="w-3.5 h-3.5" /> Viewing: {task.activeHandler?.name}
-                </Badge>
-            </>
-        )}
-        <div className="mx-2 h-4 w-px bg-border" />
-
-        {/* Status Dropdown */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground hover:text-foreground">
-              {currentStatus?.icon}
-              <span className="font-medium text-foreground">{currentStatus?.label}</span>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start">
-            {statusOptions.map(o => (
-              <DropdownMenuItem key={o.value} onClick={() => updateTask(task.id, { status: o.value })}>
-                <div className="flex items-center">
-                  <div className="w-4 h-4 mr-2">{o.icon}</div>
-                  <span>{o.label}</span>
-                </div>
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-        
-        <div className="mx-2 h-4 w-px bg-border" />
-        
-        {/* Priority Dropdown */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground hover:text-foreground">
-              {currentPriority?.icon}
-              <span className="font-medium text-foreground">{currentPriority?.label}</span>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start">
-            {priorityOptions.map(o => (
-              <DropdownMenuItem key={o.value} onClick={() => updateTask(task.id, { priority: o.value })}>
-                <div className="flex items-center">
-                  <div className="w-2.5 h-2.5 mr-2">{o.icon}</div>
-                  <span>{o.label}</span>
-                </div>
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-
-        <div className="mx-2 h-4 w-px bg-border" />
-
-        {/* Due Date - for display, could be a popover trigger */}
-        <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground cursor-default" disabled>
-            <Calendar className="w-4 h-4" />
-            <span className="font-medium text-foreground">{task.dueDate ? format(new Date(task.dueDate), 'MMM d, yyyy') : 'No due date'}</span>
-        </Button>
-      </div>
-
-      {/* Tags */}
-      <div className="flex flex-wrap items-center gap-2">
-        {task.tags.map(t => <Badge variant="secondary" key={t}>{t}</Badge>)}
-        <Button variant="outline" size="sm" className="h-7 px-2 text-xs rounded-md border-dashed">
-          <Plus className="w-3 h-3 mr-1" /> Tag
-        </Button>
-      </div>
-    </div>
-  );
-};
-```
-
-## File: src/pages/DataDemo/store/dataDemo.store.tsx
-```typescript
-import { create } from 'zustand';
-import { type ReactNode } from 'react';
-import { capitalize, cn } from '@/lib/utils';
-import { Badge } from '@/components/ui/badge';
-import { mockDataItems } from '@/pages/DataDemo/data/mockData';
-import type { GenericItem, GroupableField, SortConfig, FilterConfig } from '@/features/dynamic-view/types';
-
-// --- State and Actions ---
-interface DataDemoState {
-    items: GenericItem[];
-    hasMore: boolean;
-    isLoading: boolean;
-    isInitialLoading: boolean;
-    totalItemCount: number;
-}
-
-interface DataDemoActions {
-    loadData: (params: {
-        page: number;
-        groupBy: GroupableField | 'none';
-        filters: FilterConfig;
-        sortConfig: SortConfig | null;
-    isFullLoad?: boolean;
-    }) => void;
-    updateItem: (itemId: string, updates: Partial<GenericItem>) => void;
-}
-
-const defaultState: DataDemoState = {
-    items: [],
-    hasMore: true,
-    isLoading: true,
-    isInitialLoading: true,
-    totalItemCount: 0,
-};
-
-// --- Store Implementation ---
-export const useDataDemoStore = create<DataDemoState & DataDemoActions>((set) => ({
-    ...defaultState,
-
-    loadData: ({ page, groupBy, filters, sortConfig, isFullLoad }) => {
-        set({ isLoading: true, ...(page === 1 && { isInitialLoading: true }) });
-        const isFirstPage = page === 1;
-
-        const filteredAndSortedData = (() => {
-            const filteredItems = mockDataItems.filter((item) => {
-                const searchTermMatch =
-                    item.title.toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
-                    item.description.toLowerCase().includes(filters.searchTerm.toLowerCase());
-                const statusMatch = filters.status.length === 0 || filters.status.includes(item.status);
-                const priorityMatch = filters.priority.length === 0 || filters.priority.includes(item.priority);
-                return searchTermMatch && statusMatch && priorityMatch;
-            });
-
-            if (sortConfig) {
-                filteredItems.sort((a, b) => {
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    const getNestedValue = (obj: GenericItem, path: string): any =>
-                        path.split('.').reduce((o: any, k) => (o || {})[k], obj);
-
-                    const aValue = getNestedValue(a, sortConfig.key);
-                    const bValue = getNestedValue(b, sortConfig.key);
-
-                    if (aValue === undefined || bValue === undefined) return 0;
-                    if (typeof aValue === 'string' && typeof bValue === 'string') {
-                        return sortConfig.direction === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
-                    }
-                    if (typeof aValue === 'number' && typeof bValue === 'number') {
-                        return sortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue;
-                    }
-                    if (sortConfig.key === 'updatedAt' || sortConfig.key === 'createdAt') {
-                        if (typeof aValue === 'string' && typeof bValue === 'string') {
-                            return sortConfig.direction === 'asc'
-                                ? new Date(aValue).getTime() - new Date(bValue).getTime()
-                                : new Date(bValue).getTime() - new Date(aValue).getTime();
-                        }
-                    }
-                    return 0;
-                });
-            }
-            return filteredItems;
-        })();
-        
-        const totalItemCount = filteredAndSortedData.length;
-
-        setTimeout(() => {
-            if (groupBy !== 'none' || isFullLoad) {
-                set({
-                    items: filteredAndSortedData,
-                    hasMore: false,
-                    isLoading: false,
-                    isInitialLoading: false,
-                    totalItemCount,
-                });
-                return;
-            }
-
-            const pageSize = 12;
-            const newItems = filteredAndSortedData.slice((page - 1) * pageSize, page * pageSize);
-            
-            set(state => ({
-                items: isFirstPage ? newItems : [...state.items, ...newItems],
-                hasMore: totalItemCount > page * pageSize,
-                isLoading: false,
-                isInitialLoading: false,
-                totalItemCount,
-            }));
-
-        }, isFirstPage ? 1500 : 500);
-    },
-
-    updateItem: (itemId, updates) => {
-        // In a real app, this would be an API call. Here we update the mock source.
-        const itemIndex = mockDataItems.findIndex(i => i.id === itemId);
-        if (itemIndex > -1) {
-            mockDataItems[itemIndex] = { ...mockDataItems[itemIndex], ...updates };
-        }
-
-        // Also update the currently loaded items in the store's state for UI consistency
-        set(state => ({
-            items: state.items.map(item => 
-                item.id === itemId ? { ...item, ...updates } : item
-            ),
-        }));
-    },
-}));
-
-// --- Selectors ---
-export const useGroupTabs = (
-    groupBy: GroupableField | 'none',
-    activeGroupTab: string,
-) => useDataDemoStore(state => {
-    const items = state.items;
-    if (groupBy === 'none' || !items.length) return [];
-    
-    const groupCounts = items.reduce((acc, item) => {
-        const groupKey = String(item[groupBy as GroupableField]);
-        acc[groupKey] = (acc[groupKey] || 0) + 1;
-        return acc;
-    }, {} as Record<string, number>);
-
-    const sortedGroups = Object.keys(groupCounts).sort((a, b) => a.localeCompare(b));
-
-    const createLabel = (text: string, count: number, isActive: boolean): ReactNode => (
-        <>
-            {text}
-            <Badge variant={isActive ? 'default' : 'secondary'} className={cn('transition-colors duration-300 text-xs font-semibold', !isActive && 'group-hover:bg-accent group-hover:text-accent-foreground')}>
-                {count}
-            </Badge>
-        </>
-    );
-    
-    const totalCount = items.length;
-
-    return [
-        { id: 'all', label: createLabel('All', totalCount, activeGroupTab === 'all') },
-        ...sortedGroups.map((g) => ({
-            id: g,
-            label: createLabel(capitalize(g), groupCounts[g], activeGroupTab === g),
-        })),
-    ];
-});
-
-export const useDataToRender = (
-    groupBy: GroupableField | 'none',
-    activeGroupTab: string,
-) => useDataDemoStore(state => {
-    const items = state.items;
-    if (groupBy === 'none') {
-        return items;
-    }
-    if (activeGroupTab === 'all') {
-        return items;
-    }
-    return items.filter((item) => String(item[groupBy as GroupableField]) === activeGroupTab);
-});
-
-export const useSelectedItem = (itemId?: string) => {
-    if (!itemId) return null;
-    return (mockDataItems.find(item => item.id === itemId) as GenericItem) ?? null;
-};
-```
-
-## File: src/hooks/useRightPaneContent.hook.tsx
-```typescript
-import { useMemo } from 'react';
-import { useParams } from 'react-router-dom';
-import {
-  LayoutDashboard,
-  Settings,
-  Component,
-  Bell,
-  SlidersHorizontal,
-  Database,
-  MessageSquare,
-} from 'lucide-react';
-
-import { DashboardContent } from "@/pages/Dashboard";
-import { SettingsContent } from "@/features/settings/SettingsContent";
-import { ToasterDemo } from "@/pages/ToasterDemo";
-import { NotificationsPage } from "@/pages/Notifications";
-import DataDemoPage from "@/pages/DataDemo/index";
-import { DataDetailPanel } from "@/pages/DataDemo/components/DataDetailPanel";
-import { mockDataItems } from "@/pages/DataDemo/data/mockData";
-import { MessagingContent } from "@/pages/Messaging/components/MessagingContent";
-import type { AppShellState } from '@/store/appShell.store';
-
-export function useRightPaneContent(sidePaneContent: AppShellState['sidePaneContent']) {
-  const { itemId, conversationId } = useParams<{ itemId: string; conversationId: string }>();
-
-  const staticContentMap = useMemo(() => ({
-    main: {
-      title: "Dashboard",
-      icon: LayoutDashboard,
-      page: "dashboard",
-      content: <DashboardContent />,
-    },
-    settings: {
-      title: "Settings",
-      icon: Settings,
-      page: "settings",
-      content: <div className="p-6"><SettingsContent /></div>,
-    },
-    toaster: {
-      title: "Toaster Demo",
-      icon: Component,
-      page: "toaster",
-      content: <ToasterDemo />,
-    },
-    notifications: {
-      title: "Notifications",
-      icon: Bell,
-      page: "notifications",
-      content: <NotificationsPage />,
-    },
-    dataDemo: {
-      title: "Data Showcase",
-      icon: Database,
-      page: "data-demo",
-      content: <DataDemoPage />,
-    },
-    details: {
-      title: "Details Panel",
-      icon: SlidersHorizontal,
-      content: (
-        <div className="p-6">
-          <p className="text-muted-foreground">
-            This is the side pane. It can be used to display contextual
-            information, forms, or actions related to the main content.
-          </p>
-        </div>
-      ),
-    },
-  }), []);
-
-  const contentMap = useMemo(() => ({
-    ...staticContentMap,
-    messaging: {
-      title: "Conversation",
-      icon: MessageSquare,
-      page: "messaging",
-      content: <MessagingContent conversationId={conversationId} />,
-    },
-  }), [conversationId, staticContentMap]);
-
-  const selectedItem = useMemo(() => {
-    if (!itemId) return null;
-    return mockDataItems.find(item => item.id === itemId) ?? null;
-  }, [itemId]);
-
-  const { meta, content } = useMemo(() => {
-    if (sidePaneContent === 'dataItem' && selectedItem) {
-      return {
-        meta: { title: "Item Details", icon: Database, page: `data-demo/${itemId}` },
-        content: <DataDetailPanel item={selectedItem} />,
-      };
-    }
-    const mappedContent = contentMap[sidePaneContent as keyof typeof contentMap] || contentMap.details;
-    return {
-      meta: mappedContent,
-      content: mappedContent.content,
-    };
-  }, [sidePaneContent, selectedItem, contentMap, itemId]);
-
-  return { meta, content };
-}
-```
-
-## File: src/pages/Messaging/data/mockData.ts
-```typescript
-import type { Contact, Task, Message, ActivityEvent, Note, Assignee, TaskStatus, TaskPriority, Channel, JourneyPointType } from '../types';
-import { faker } from '@faker-js/faker';
-
-// --- ASSIGNEES ---
-export const mockAssignees: Assignee[] = [
-  { id: 'user-1', name: 'You', avatar: `https://avatar.vercel.sh/you.png`, type: 'human' },
-  { id: 'user-2', name: 'Alex Johnson', avatar: `https://avatar.vercel.sh/alex.png`, type: 'human' },
-  { id: 'user-3', name: 'Samira Kumar', avatar: `https://avatar.vercel.sh/samira.png`, type: 'human' },
-  { id: 'user-4', name: 'Casey Lee', avatar: `https://avatar.vercel.sh/casey.png`, type: 'human' },
-  { id: 'user-5', name: 'Jordan Rivera', avatar: `https://avatar.vercel.sh/jordan.png`, type: 'human' },
-  { id: 'user-ai-1', name: 'AI Assistant', avatar: `https://avatar.vercel.sh/ai.png`, type: 'ai' },
-];
-
-// --- HELPERS ---
-const generateNotes = (contactName: string): Note[] => [
-  { id: `note-${faker.string.uuid()}`, content: `Initial discovery call with ${contactName}. Seemed very interested in our enterprise package.`, createdAt: faker.date.past().toISOString() },
-  { id: `note-${faker.string.uuid()}`, content: `Followed up via email with pricing details.`, createdAt: faker.date.recent().toISOString() },
-];
-
-const generateActivity = (contactName: string): ActivityEvent[] => [
-  { id: `act-${faker.string.uuid()}`, type: 'email', content: `Sent follow-up email regarding pricing.`, timestamp: faker.date.past().toISOString() },
-  { id: `act-${faker.string.uuid()}`, type: 'call', content: `Had a 30-minute discovery call with ${contactName}.`, timestamp: faker.date.recent().toISOString() },
-  { id: `act-${faker.string.uuid()}`, type: 'meeting', content: `Scheduled a demo for next week.`, timestamp: faker.date.soon().toISOString() },
-];
-
-// --- COMPANIES ---
-const mockCompanies = Array.from({ length: 25 }, () => faker.company.name());
-
-// --- CONTACTS ---
-export const mockContacts: Contact[] = Array.from({ length: 80 }, (_, i) => {
-    const firstName = faker.person.firstName();
-    const lastName = faker.person.lastName();
-    const name = `${firstName} ${lastName}`;
-    const company = faker.helpers.arrayElement(mockCompanies);
-    return {
-        id: `contact-${i + 1}`,
-        name,
-        avatar: `https://avatar.vercel.sh/${firstName.toLowerCase()}${lastName.toLowerCase()}.png`,
-        online: faker.datatype.boolean(),
-        tags: faker.helpers.arrayElements(['VIP', 'New Lead', 'Returning Customer', 'Support Request', 'High Value'], { min: 1, max: 3 }),
-        email: faker.internet.email({ firstName, lastName }),
-        phone: faker.phone.number(),
-        lastSeen: faker.datatype.boolean() ? 'online' : `${faker.number.int({ min: 2, max: 59 })} minutes ago`,
-        company,
-        role: faker.person.jobTitle(),
-        activity: generateActivity(name),
-        notes: generateNotes(name),
-    };
-});
-
-// --- MESSAGE GENERATOR ---
-const generateMessages = (messageCount: number, contactName: string, journeyPath: JourneyPointType[]): Message[] => {
-  const messages: Message[] = [];
-  const now = new Date();
-  
-  const journeyPointsWithIndices = journeyPath.map((point, index) => ({
-      point,
-      index: Math.floor((messageCount / journeyPath.length) * (index + Math.random() * 0.8))
-  }));
-
-  for (let i = 0; i < messageCount; i++) {
-    const random = Math.random();
-    let sender: Message['sender'] = 'contact';
-    let type: Message['type'] = 'comment';
-    let text = faker.lorem.sentence();
-    let userId: string | undefined = undefined;
-
-    if (random > 0.85) { // Internal Note
-      sender = 'user';
-      type = 'note';
-      const user = faker.helpers.arrayElement(mockAssignees.filter(u => u.type === 'human'));
-      userId = user.id;
-      text = `Internal note from ${user.name}: ${faker.lorem.sentence()}`;
-    } else if (random > 0.7) { // System message
-      sender = 'system';
-      type = 'system';
-      text = faker.helpers.arrayElement(['Task status changed to "in-progress"', 'Task assigned to Alex Johnson', 'User joined the conversation']);
-    } else if (random > 0.35) { // User comment
-      sender = 'user';
-      type = 'comment';
-      userId = 'user-1'; // "You"
-      text = faker.lorem.sentence();
-    }
-    
-    const journeyPointInfo = journeyPointsWithIndices.find(jp => jp.index === i);
-
-    messages.push({
-      id: `msg-${faker.string.uuid()}`,
-      text,
-      timestamp: new Date(now.getTime() - (messageCount - i) * 60 * 60 * 100).toISOString(),
-      sender,
-      type,
-      read: i < messageCount - faker.number.int({min: 0, max: 5}),
-      userId,
-      journeyPoint: journeyPointInfo?.point
-    });
-  }
-  
-  // Ensure the last message is from the contact for preview purposes
-  messages[messages.length - 1] = {
-    ...messages[messages.length-1],
-    sender: 'contact',
-    type: 'comment',
-    text: `Hey! This is the latest message from ${contactName}. ${faker.lorem.sentence()}`,
-    userId: undefined
-  };
-  return messages.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-};
-
-// --- TASK GENERATOR ---
-const generateTasks = (count: number): Task[] => {
-    const tasks: Task[] = [];
-    const statuses: TaskStatus[] = ['open', 'in-progress', 'done', 'snoozed'];
-    const priorities: TaskPriority[] = ['none', 'low', 'medium', 'high'];
-    const channels: Channel[] = ['whatsapp', 'instagram', 'facebook', 'email'];
-    const possibleJourneys: JourneyPointType[][] = [
-        ['Inquiry', 'Consult', 'Quote', 'Order', 'Payment', 'Shipped', 'Delivered', 'Review'],
-        ['Inquiry', 'Consult', 'Quote', 'Order', 'Payment', 'Shipped', 'Delivered', 'Follow-up'],
-        ['Inquiry', 'Consult', 'Follow-up'],
-        ['Inquiry', 'Consult', 'Quote', 'Order', 'Canceled'],
-        ['Consult', 'Order', 'Payment', 'Shipped', 'Delivered', 'Complain', 'Refund'],
-        ['Consult', 'Order', 'Payment', 'Shipped', 'Complain', 'Follow-up'],
-        ['Order', 'Delivered', 'Review', 'Reorder', 'Delivered'],
-        ['Complain', 'Follow-up', 'Refund'],
-        ['Quote', 'Follow-up', 'Order', 'Payment', 'Shipped', 'Delivered'],
-        ['Inquiry', 'Quote', 'Order', 'Payment', 'Shipped', 'Canceled', 'Refund'],
-        ['Consult', 'Follow-up'],
-        ['Complain'],
-        ['Order', 'Delivered'],
-    ];
-
-    for (let i = 0; i < count; i++) {
-        const contact = faker.helpers.arrayElement(mockContacts);
-        const status = faker.helpers.arrayElement(statuses);
-        const unreadCount = status === 'open' || status === 'in-progress' ? faker.number.int({ min: 0, max: 8 }) : 0;
-        const messageCount = faker.number.int({ min: 10, max: 150 });
-        const journey = faker.helpers.arrayElement(possibleJourneys);
-        const messages = generateMessages(messageCount, contact.name, journey);
-        const assignee = faker.datatype.boolean(0.8) ? faker.helpers.arrayElement(mockAssignees) : null;
-
-        const task: Task = {
-            id: `task-${i + 1}`,
-            title: faker.lorem.sentence({ min: 3, max: 7 }),
-            contactId: contact.id,
-            channel: faker.helpers.arrayElement(channels),
-            unreadCount,
-            messages,
-            get lastActivity() { return this.messages[this.messages.length - 1]; },
-            status,
-            assigneeId: assignee?.id || null,
-            dueDate: faker.datatype.boolean() ? faker.date.future().toISOString() : null,
-            priority: faker.helpers.arrayElement(priorities),
-            tags: faker.helpers.arrayElements(['onboarding', 'pricing', 'bug-report', 'urgent', 'tech-support'], faker.number.int({min: 0, max: 2})),
-            aiSummary: {
-                sentiment: faker.helpers.arrayElement(['positive', 'negative', 'neutral']),
-                summaryPoints: Array.from({ length: 3 }, () => faker.lorem.sentence()),
-                suggestedReplies: Array.from({ length: 2 }, () => faker.lorem.words({ min: 3, max: 6})),
-            },
-            activeHandlerId: faker.helpers.arrayElement([assignee?.id ?? null, null, 'user-ai-1']),
-        };
-        tasks.push(task);
-    }
-    return tasks;
-}
-
-export const mockTasks: Task[] = generateTasks(200);
 ```
 
 ## File: package.json
@@ -3700,1152 +1915,131 @@ export const mockTasks: Task[] = generateTasks(200);
 }
 ```
 
-## File: src/pages/Dashboard/index.tsx
+## File: src/hooks/useRightPaneContent.hook.tsx
 ```typescript
-import { useRef, useCallback } from 'react'
+import { useMemo } from 'react';
+import { useParams } from 'react-router-dom';
 import {
-  BarChart3, 
-  TrendingUp, 
-  Users, 
-  DollarSign, 
-  Activity,
-  Calendar,
-  Clock,
+  LayoutDashboard,
+  Settings,
+  Component,
+  Bell,
+  SlidersHorizontal,
+  Database,
   MessageSquare,
-  FileText,
-  Star,
-  ChevronRight,
-  MoreVertical
-} from 'lucide-react'
-import { cn } from '@/lib/utils'
-import { DemoContent } from './DemoContent';
-import { useDashboardAnimations } from './hooks/useDashboardAnimations.motion.hook'
-import { useAutoAnimateTopBar } from '@/hooks/useAutoAnimateTopBar';
-import { useScrollToBottom } from '@/hooks/useScrollToBottom.hook';
-import { useAppShellStore } from '@/store/appShell.store'
-import { BODY_STATES } from '@/lib/utils'
-import { PageHeader } from '@/components/shared/PageHeader';
-import { ScrollToBottomButton } from '@/components/shared/ScrollToBottomButton';
-import { StatCard } from '@/components/shared/StatCard';
-import { Card } from '@/components/ui/card';
-import { PageLayout } from '@/components/shared/PageLayout';
-
-interface StatsCard {
-  title: string
-  value: string
-  change: string
-  trend: 'up' | 'down'
-  icon: React.ReactNode
-}
-
-interface ActivityItem {
-  id: string
-  type: 'comment' | 'file' | 'meeting' | 'task'
-  title: string
-  description: string
-  time: string
-  user: string
-}
-
-const statsCards: StatsCard[] = [
-  {
-    title: "Total Revenue",
-    value: "$45,231.89",
-    change: "+20.1%",
-    trend: "up",
-    icon: <DollarSign className="w-5 h-5" />
-  },
-  {
-    title: "Active Users",
-    value: "2,350",
-    change: "+180.1%",
-    trend: "up",
-    icon: <Users className="w-5 h-5" />
-  },
-  {
-    title: "Conversion Rate",
-    value: "12.5%",
-    change: "+19%",
-    trend: "up",
-    icon: <TrendingUp className="w-5 h-5" />
-  },
-  {
-    title: "Performance",
-    value: "573ms",
-    change: "-5.3%",
-    trend: "down",
-    icon: <Activity className="w-5 h-5" />
-  }
-]
-
-const recentActivity: ActivityItem[] = [
-  {
-    id: "1",
-    type: "comment",
-    title: "New comment on Project Alpha",
-    description: "Sarah Johnson added a comment to the design review",
-    time: "2 minutes ago",
-    user: "SJ"
-  },
-  {
-    id: "2",
-    type: "file",
-    title: "Document uploaded",
-    description: "quarterly-report.pdf was uploaded to Documents",
-    time: "15 minutes ago",
-    user: "MD"
-  },
-  {
-    id: "3",
-    type: "meeting",
-    title: "Meeting scheduled",
-    description: "Weekly standup meeting scheduled for tomorrow 9 AM",
-    time: "1 hour ago",
-    user: "RW"
-  },
-  {
-    id: "4",
-    type: "task",
-    title: "Task completed",
-    description: "UI wireframes for mobile app completed",
-    time: "2 hours ago",
-    user: "AL"
-  }
-]
-
-export function DashboardContent() {
-    const scrollRef = useRef<HTMLDivElement>(null)
-    const contentRef = useRef<HTMLDivElement>(null);
-    const statsCardsContainerRef = useRef<HTMLDivElement>(null);
-    const featureCardsContainerRef = useRef<HTMLDivElement>(null);
-    const bodyState = useAppShellStore(s => s.bodyState);
-    const isInSidePane = bodyState === BODY_STATES.SIDE_PANE;
-    
-    const { onScroll: handleTopBarScroll } = useAutoAnimateTopBar(isInSidePane);
-    const { showScrollToBottom, scrollToBottom, handleScroll: handleScrollToBottom } = useScrollToBottom(scrollRef);
-
-    const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
-        handleTopBarScroll(e);
-        handleScrollToBottom(e);
-    }, [handleTopBarScroll, handleScrollToBottom]);
-
-    useDashboardAnimations(contentRef, statsCardsContainerRef, featureCardsContainerRef);
-
-    const getTypeIcon = (type: ActivityItem['type']) => {
-      switch (type) {
-        case 'comment':
-          return <MessageSquare className="w-4 h-4" />
-        case 'file':
-          return <FileText className="w-4 h-4" />
-        case 'meeting':
-          return <Calendar className="w-4 h-4" />
-        case 'task':
-          return <Star className="w-4 h-4" />
-        default:
-          return <Activity className="w-4 h-4" />
-      }
-    }
-
-    return (
-      <PageLayout scrollRef={scrollRef} onScroll={handleScroll} ref={contentRef}>
-        {/* Header */}
-        {!isInSidePane && (
-          <PageHeader
-            title="Dashboard"
-            description="Welcome to the Jeli App Shell demo! Explore all the features and customization options."
-          />
-        )}
-          {/* Stats Cards */}
-        <div ref={statsCardsContainerRef} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {statsCards.map((stat) => (
-            <StatCard
-              key={stat.title}
-              title={stat.title}
-              value={stat.value}
-              change={stat.change}
-              trend={stat.trend}
-              icon={stat.icon}
-            />
-          ))}
-        </div>
-
-        {/* Demo Content */}
-        <DemoContent ref={featureCardsContainerRef} />
-
-        {/* Main Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Chart Area */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Analytics Chart */}
-          <Card className="p-6 border-border/50">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-semibold">Analytics Overview</h3>
-              <button className="h-8 w-8 flex items-center justify-center hover:bg-accent rounded-full transition-colors">
-                <MoreVertical className="w-5 h-5" />
-              </button>
-            </div>
-            
-            {/* Mock Chart */}
-            <div className="h-64 bg-gradient-to-br from-primary/10 to-transparent rounded-xl flex items-center justify-center border border-border/50">
-              <div className="text-center">
-                <BarChart3 className="w-12 h-12 text-primary mx-auto mb-2" />
-                <p className="text-muted-foreground">Chart visualization would go here</p>
-              </div>
-            </div>
-          </Card>
-
-          {/* Recent Projects */}
-          <Card className="p-6 border-border/50">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-semibold">Recent Projects</h3>
-              <button className="text-primary hover:text-primary/80 text-sm font-medium flex items-center gap-1">
-                View All
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-            
-            <div className="space-y-4">
-              {[
-                { name: "E-commerce Platform", progress: 75, team: 5, deadline: "Dec 15" },
-                { name: "Mobile App Redesign", progress: 45, team: 3, deadline: "Jan 20" },
-                { name: "Marketing Website", progress: 90, team: 4, deadline: "Dec 5" }
-              ].map((project) => (
-                <div key={project.name} className="p-4 bg-accent/30 rounded-xl hover:bg-accent/50 transition-colors cursor-pointer">
-                  <div className="flex items-center justify-between mb-2">
-                    <h4 className="font-medium">{project.name}</h4>
-                    <span className="text-sm text-muted-foreground">{project.progress}%</span>
-                  </div>
-                  <div className="w-full bg-muted rounded-full h-2 mb-3">
-                    <div 
-                      className="bg-primary h-2 rounded-full transition-all duration-500"
-                      style={{ width: `${project.progress}%` }}
-                    />
-                  </div>
-                  <div className="flex items-center justify-between text-sm text-muted-foreground">
-                    <span>{project.team} team members</span>
-                    <span>Due {project.deadline}</span>
-                    </div>
-                </div>
-              ))}
-            </div>
-          </Card>
-        </div>
-
-        {/* Sidebar Content */}
-        <div className="space-y-6">
-          {/* Quick Actions */}
-          <Card className="p-6 border-border/50">
-            <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
-            <div className="space-y-3">
-              {[
-                { icon: <FileText className="w-4 h-4" />, label: "Create Document", color: "bg-blue-500/10 text-blue-600" },
-                { icon: <Calendar className="w-4 h-4" />, label: "Schedule Meeting", color: "bg-green-500/10 text-green-600" },
-                { icon: <Users className="w-4 h-4" />, label: "Invite Team", color: "bg-purple-500/10 text-purple-600" },
-                { icon: <BarChart3 className="w-4 h-4" />, label: "View Reports", color: "bg-orange-500/10 text-orange-600" }
-              ].map((action) => (
-                <button
-                  key={action.label}
-                  className="w-full flex items-center gap-3 p-3 hover:bg-accent rounded-lg transition-colors text-left"
-                >
-                  <div className={cn("p-2 rounded-full", action.color)}>
-                    {action.icon}
-                  </div>
-                  <span className="font-medium">{action.label}</span>
-                </button>
-              ))}
-            </div>
-          </Card>
-
-          {/* Recent Activity */}
-          <Card className="p-6 border-border/50">
-            <h3 className="text-lg font-semibold mb-4">Recent Activity</h3>
-            <div className="space-y-4">
-              {recentActivity.map((activity) => (
-                <div key={activity.id} className="flex items-start gap-3 p-3 hover:bg-accent/30 rounded-xl transition-colors cursor-pointer">
-                  <div className="p-2 bg-primary/10 rounded-full flex-shrink-0">
-                    {getTypeIcon(activity.type)}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h4 className="font-medium text-sm mb-1">{activity.title}</h4>
-                    <p className="text-xs text-muted-foreground mb-2">{activity.description}</p>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <Clock className="w-3 h-3" />
-                      <span>{activity.time}</span>
-                      <div className="w-5 h-5 bg-primary rounded-full flex items-center justify-center text-primary-foreground text-xs font-medium">
-                        {activity.user}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Card>
-        </div>
-      </div>
-      <ScrollToBottomButton isVisible={showScrollToBottom} onClick={scrollToBottom} />
-      </PageLayout>
-    )
-}
-```
-
-## File: src/pages/DataDemo/components/DataDetailPanel.tsx
-```typescript
-import React, { useRef } from 'react'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import {
-  Clock, 
-  Download,
-  FileText,
-  Image,
-  Video,
-  File,
-  Tag,
-  User,
-  BarChart3,
-  TrendingUp,
-  CheckCircle,
-  AlertCircle,
-  Circle
-} from 'lucide-react'
-import type { GenericItem } from '@/features/dynamic-view/types'
-import { useStaggeredAnimation } from '@/hooks/useStaggeredAnimation.motion.hook'
-import { DataDetailActions } from './DataDetailActions'
-import { FieldRenderer } from '@/features/dynamic-view/components/shared/FieldRenderer'
-interface DataDetailPanelProps {
-  item: GenericItem | null
-}
-
-export function DataDetailPanel({ item }: DataDetailPanelProps) {
-  const contentRef = useRef<HTMLDivElement>(null)
-  useStaggeredAnimation(contentRef, [item]);
-
-  if (!item) {
-    return null
-  }
-
-  const getFileIcon = (type: string) => {
-    switch (type.toLowerCase()) {
-      case 'pdf': return FileText
-      case 'image':
-      case 'png':
-      case 'jpg':
-      case 'jpeg': return Image
-      case 'video':
-      case 'mp4': return Video
-      default: return File
-    }
-  }
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'completed': return CheckCircle
-      case 'active': return Circle
-      case 'pending': return AlertCircle
-      default: return Circle
-    }
-  }
-
-  return (
-    <div ref={contentRef} className="h-full flex flex-col">
-      {/* Header */}
-      <div className="p-6 border-b border-border/50 bg-gradient-to-r from-card/50 to-card/30 backdrop-blur-sm">
-        <div className="flex items-start gap-4 mb-4">
-          <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-primary/10 rounded-2xl flex items-center justify-center text-3xl flex-shrink-0">
-            <FieldRenderer item={item} fieldId="thumbnailEmoji" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <h1 className="text-2xl font-bold mb-2 leading-tight">
-              {item.title}
-            </h1>
-            <p className="text-muted-foreground">
-              {item.description}
-            </p>
-          </div>
-        </div>
-
-        {/* Status badges */}
-        <div className="flex items-center gap-2 mb-4">
-          <Badge variant="outline">
-            {React.createElement(getStatusIcon(item.status), { className: "w-3 h-3 mr-1" })}
-            {item.status}
-          </Badge>
-          <FieldRenderer item={item} fieldId="priority" />
-          <Badge variant="outline" className="bg-accent/50">
-            {item.category}
-          </Badge>
-        </div>
-
-        {/* Progress */}
-        <FieldRenderer item={item} fieldId="metrics.completion" options={{ showPercentage: true }} />
-      </div>
-
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="p-6 space-y-6">
-          {/* Assignee Info */}
-          <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
-            <div className="flex items-center gap-1 mb-3">
-              <User className="w-4 h-4 text-muted-foreground" />
-              <h3 className="font-semibold text-sm">Assigned to</h3>
-            </div>
-            <FieldRenderer item={item} fieldId="assignee" options={{ avatarClassName: "w-12 h-12" }} />
-          </div>
-
-          {/* Metrics */}
-          <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
-            <div className="flex items-center gap-1 mb-3">
-              <BarChart3 className="w-4 h-4 text-muted-foreground" />
-              <h3 className="font-semibold text-sm">Engagement Metrics</h3>
-            </div>
-            <FieldRenderer item={item} fieldId="metrics" />
-          </div>
-
-          {/* Tags */}
-          <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
-            <div className="flex items-center gap-1 mb-3">
-              <Tag className="w-4 h-4 text-muted-foreground" />
-              <h3 className="font-semibold text-sm">Tags</h3>
-            </div>
-            <FieldRenderer item={item} fieldId="tags" />
-          </div>
-
-          {/* Content Details */}
-          {item.content && (
-            <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
-              <h3 className="font-semibold text-sm mb-3">Project Details</h3>
-              <div className="space-y-4">
-                <div>
-                  <h4 className="font-medium text-sm mb-2">Summary</h4>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    {item.content.summary}
-                  </p>
-                </div>
-                <div>
-                  <h4 className="font-medium text-sm mb-2">Description</h4>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    {item.content.details}
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Attachments */}
-          {item.content?.attachments && item.content.attachments.length > 0 && (
-            <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
-              <h3 className="font-semibold text-sm mb-3">Attachments</h3>
-              <div className="space-y-2">
-                {item.content.attachments.map((attachment: any, index: number) => {
-                  const IconComponent = getFileIcon(attachment.type)
-                  return (
-                    <div
-                      key={index}
-                      className="flex items-center gap-3 p-3 bg-muted/30 rounded-xl hover:bg-muted/50 transition-colors cursor-pointer group"
-                    >
-                      <IconComponent className="w-5 h-5 text-muted-foreground" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">
-                          {attachment.name}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {attachment.type} • {attachment.size}
-                        </p>
-                      </div>
-                      <Button size="sm" variant="ghost" className="opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Download className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Timeline */}
-          <div className="bg-card/30 rounded-2xl p-4 border border-border/30">
-            <div className="flex items-center gap-1 mb-3">
-              <Clock className="w-4 h-4 text-muted-foreground" />
-              <h3 className="font-semibold text-sm">Timeline</h3>
-            </div>
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 text-sm">
-                <Clock className="w-3 h-3 text-muted-foreground" />
-                <span className="text-muted-foreground">Created:</span>
-                <span className="font-medium">
-                  {new Date(item.createdAt).toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                  })}
-                </span>
-              </div>
-              <div className="flex items-center gap-2 text-sm">
-                <TrendingUp className="w-3 h-3 text-muted-foreground" />
-                <span className="text-muted-foreground">Last updated:</span>
-                <span className="font-medium">
-                  {new Date(item.updatedAt).toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                  })}
-                </span>
-              </div>
-              {item.dueDate && (
-                <div className="flex items-center gap-2 text-sm">
-                  <AlertCircle className="w-3 h-3 text-orange-500" />
-                  <span className="text-muted-foreground">Due date:</span>
-                  <span className="font-medium text-orange-600">
-                    {new Date(item.dueDate).toLocaleDateString('en-US', {
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric'
-                    })}
-                  </span>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Footer Actions */}
-      <div className="p-6 border-t border-border/50 bg-card/30">
-        <DataDetailActions />
-      </div>
-    </div>
-  )
-}
-```
-
-## File: src/pages/Messaging/store/messaging.store.ts
-```typescript
-import { useState, useEffect } from 'react';
-import { create } from 'zustand';
-import { mockTasks, mockContacts, mockAssignees } from '../data/mockData';
-import type { Task, Contact, Channel, Assignee, TaskStatus, TaskPriority, TaskView } from '../types';
-
-const currentUserId = 'user-1'; // Mock current user
-
-interface MessagingState {
-  tasks: Task[];
-  contacts: Contact[];
-  assignees: Assignee[];
-  searchTerm: string;
-  activeFilters: {
-    channels: Channel[];
-    tags: string[];
-    status: TaskStatus[];
-    priority: TaskPriority[];
-    assigneeId: string[];
-  };
-  activeTaskView: TaskView;
-}
-
-interface MessagingActions {
-  getTaskById: (id: string) => (Task & { contact: Contact, assignee: Assignee | null, activeHandler: Assignee | null }) | undefined;
-  getFilteredTasks: () => (Task & { contact: Contact, assignee: Assignee | null })[];
-  setSearchTerm: (term: string) => void;
-  setActiveTaskView: (view: TaskView) => void;
-  setFilters: (filters: Partial<MessagingState['activeFilters']>) => void;
-  updateTask: (taskId: string, updates: Partial<Omit<Task, 'id'>>) => void;
-  takeOverTask: (taskId: string, userId: string) => void;
-  requestAndSimulateTakeover: (taskId: string, requestedByUserId: string) => void;
-  getAssigneeById: (assigneeId: string) => Assignee | undefined;
-  getContactsByCompany: (companyName: string, currentContactId: string) => Contact[];
-  getAvailableTags: () => string[];
-}
-
-export const useMessagingStore = create<MessagingState & MessagingActions>((set, get) => ({
-  tasks: mockTasks,
-  contacts: mockContacts,
-  assignees: mockAssignees,
-  searchTerm: '',
-  activeFilters: {
-    channels: [],
-    tags: [],
-    status: [],
-    priority: [],
-    assigneeId: [],
-  },
-  activeTaskView: 'all_open',
-
-  getTaskById: (id) => {
-    const task = get().tasks.find(t => t.id === id);
-    if (!task) return undefined;
-
-    const contact = get().contacts.find(c => c.id === task.contactId);
-    if (!contact) return undefined;
-
-    const assignee = get().assignees.find(a => a.id === task.assigneeId) || null;
-    const activeHandler = get().assignees.find(a => a.id === task.activeHandlerId) || null;
-
-    return { ...task, contact, assignee, activeHandler };
-  },
-
-  getFilteredTasks: () => {
-    const { tasks, contacts, assignees, searchTerm, activeFilters, activeTaskView } = get();
-    const lowercasedSearch = searchTerm.toLowerCase();
-
-    const viewFilteredTasks = tasks.filter(task => {
-      switch (activeTaskView) {
-        case 'all_open':
-          return task.status === 'open' || task.status === 'in-progress';
-        case 'unassigned':
-          return !task.assigneeId && (task.status === 'open' || task.status === 'in-progress');
-        case 'me':
-          return task.assigneeId === currentUserId && (task.status === 'open' || task.status === 'in-progress');
-        case 'done':
-          return task.status === 'done';
-        default:
-          return true;
-      }
-    });
-    const mapped = viewFilteredTasks.map(task => {
-      const contact = contacts.find(c => c.id === task.contactId) as Contact;
-      const assignee = assignees.find(a => a.id === task.assigneeId) || null;
-      return { ...task, contact, assignee };
-    });
-
-    const filtered = mapped.filter(task => {
-      const searchMatch = task.title.toLowerCase().includes(lowercasedSearch) || task.contact.name.toLowerCase().includes(lowercasedSearch);
-      const channelMatch = activeFilters.channels.length === 0 || activeFilters.channels.includes(task.channel);
-      const tagMatch = activeFilters.tags.length === 0 || activeFilters.tags.some(tag => task.tags.includes(tag));
-      const statusMatch = activeFilters.status.length === 0 || activeFilters.status.includes(task.status);
-      const priorityMatch = activeFilters.priority.length === 0 || activeFilters.priority.includes(task.priority);
-      const assigneeMatch = activeFilters.assigneeId.length === 0 || (task.assigneeId && activeFilters.assigneeId.includes(task.assigneeId));
-      
-      return searchMatch && channelMatch && tagMatch && statusMatch && priorityMatch && assigneeMatch;
-    });
-
-    return filtered.sort((a, b) => new Date(b.lastActivity.timestamp).getTime() - new Date(a.lastActivity.timestamp).getTime());
-  },
-
-  setSearchTerm: (term) => set({ searchTerm: term }),
-  
-  setActiveTaskView: (view) => set({ activeTaskView: view }),
-
-  setFilters: (newFilters) => set(state => ({
-    activeFilters: { ...state.activeFilters, ...newFilters }
-  })),
-
-  updateTask: (taskId, updates) => set(state => ({
-    tasks: state.tasks.map(task => 
-      task.id === taskId 
-        ? { ...task, ...updates, lastActivity: { ...task.lastActivity, timestamp: new Date().toISOString() } } 
-        : task
-    )
-  })),
-
-  takeOverTask: (taskId, userId) => set(state => ({
-    tasks: state.tasks.map(task => 
-      task.id === taskId 
-        ? { ...task, activeHandlerId: userId, takeoverRequested: false } 
-        : task
-    )
-  })),
-
-  requestAndSimulateTakeover: (taskId, requestedByUserId) => {
-    set(state => ({
-      tasks: state.tasks.map(task => 
-        task.id === taskId ? { ...task, takeoverRequested: true } : task
-      )
-    }));
-    // Simulate a 2-second delay for the other user to "approve"
-    setTimeout(() => get().takeOverTask(taskId, requestedByUserId), 2000);
-  },
-
-  getAssigneeById: (assigneeId: string) => {
-    return get().assignees.find(a => a.id === assigneeId);
-  },
-
-  getContactsByCompany: (companyName, currentContactId) => {
-    return get().contacts.filter(
-      c => c.company === companyName && c.id !== currentContactId
-    );
-  },
-
-  getAvailableTags: () => {
-    const contactTags = get().contacts.flatMap(c => c.tags);
-    const taskTags = get().tasks.flatMap(t => t.tags);
-    const allTags = new Set([...contactTags, ...taskTags]);
-    return Array.from(allTags);
-  }
-}));
-
-export const useMessagingTaskCounts = () => {
-  const tasks = useMessagingStore(s => s.tasks);
-  const [counts, setCounts] = useState<Record<TaskView, number>>({
-    all_open: 0,
-    unassigned: 0,
-    me: 0,
-    done: 0,
-  });
-
-  useEffect(() => {
-    // Deferring the count calculation until after the first paint.
-    // This frees up the main thread for initial animations to run smoothly.
-    const animationFrameId = requestAnimationFrame(() => {
-        const newCounts: Record<TaskView, number> = {
-            all_open: 0,
-            unassigned: 0,
-            me: 0,
-            done: 0,
-        };
-
-        for (const task of tasks) {
-            const isOpenOrInProgress = task.status === 'open' || task.status === 'in-progress';
-
-            if (isOpenOrInProgress) {
-                newCounts.all_open++;
-                if (!task.assigneeId) newCounts.unassigned++;
-                if (task.assigneeId === currentUserId) newCounts.me++;
-            } else if (task.status === 'done') {
-                newCounts.done++;
-            }
-        }
-        setCounts(newCounts);
-    });
-
-    return () => cancelAnimationFrame(animationFrameId);
-  }, [tasks]);
-
-  return counts;
-};
-```
-
-## File: src/pages/Messaging/types.ts
-```typescript
-import type { LucideIcon } from "lucide-react";
-
-export type Channel = 'whatsapp' | 'instagram' | 'facebook' | 'email';
-
-export interface ChannelIcon {
-  Icon: LucideIcon;
-  color: string;
-}
-
-export interface Contact {
-  id: string;
-  name:string;
-  avatar: string;
-  online: boolean;
-  tags: string[];
-  email: string;
-  phone: string;
-  lastSeen: string;
-  company: string;
-  role: string;
-  activity: ActivityEvent[];
-  notes: Note[];
-}
-
-export interface Assignee {
-  id: string;
-  name: string;
-  avatar: string;
-  type: 'human' | 'ai';
-}
-
-export type ActivityEventType = 'note' | 'call' | 'email' | 'meeting';
-
-export interface ActivityEvent {
-  id: string;
-  type: ActivityEventType;
-  content: string;
-  timestamp: string;
-}
-export interface Note {
-  id: string;
-  content: string;
-  createdAt: string;
-}
-
-export type JourneyPointType = 'Inquiry' | 'Consult' | 'Quote' | 'Order' | 'Payment' | 'Shipped' | 'Delivered' | 'Canceled' | 'Refund' | 'Complain' | 'Reorder' | 'Follow-up' | 'Review';
-
-export interface Message {
-  id: string;
-  text: string;
-  timestamp: string;
-  sender: 'user' | 'contact' | 'system';
-  type: 'comment' | 'note' | 'system';
-  read: boolean;
-  userId?: string; // for notes or system messages from users
-  journeyPoint?: JourneyPointType;
-}
-
-export interface AISummary {
-  sentiment: 'positive' | 'negative' | 'neutral';
-  summaryPoints: string[];
-  suggestedReplies: string[];
-}
-
-export type TaskStatus = 'open' | 'in-progress' | 'done' | 'snoozed';
-export type TaskPriority = 'none' | 'low' | 'medium' | 'high';
-
-export interface Task {
-  id: string;
-  title: string;
-  contactId: string;
-  channel: Channel;
-  unreadCount: number;
-  lastActivity: Message;
-  messages: Message[];
-  status: TaskStatus;
-  assigneeId: string | null;
-  dueDate: string | null;
-  priority: TaskPriority;
-  tags: string[];
-  aiSummary: AISummary;
-  activeHandlerId: string | null;
-  takeoverRequested?: boolean;
-}
-
-export type TaskView = 'all_open' | 'unassigned' | 'me' | 'done';
-```
-
-## File: src/hooks/useAppViewManager.hook.ts
-```typescript
-import { useMemo, useCallback, useEffect, useRef } from 'react';
-import { useSearchParams, useNavigate, useLocation, useParams } from 'react-router-dom';
-import { useAppShellStore, type AppShellState, type ActivePage } from '@/store/appShell.store';
-import type { GenericItem, ViewMode, SortConfig, GroupableField, Status, Priority, CalendarDateProp, CalendarDisplayProp, CalendarColorProp, FilterConfig } from '@/features/dynamic-view/types';
-import type { TaskView } from '@/pages/Messaging/types';
-import { BODY_STATES, SIDEBAR_STATES } from '@/lib/utils';
-
-const pageToPaneMap: Record<string, AppShellState['sidePaneContent']> = {
-  dashboard: 'main',
-  settings: 'settings',
-  toaster: 'toaster',
-  notifications: 'notifications',
-  'data-demo': 'dataDemo',
-  messaging: 'messaging',
-};
-
-function usePrevious<T>(value: T): T | undefined {
-  const ref = useRef<T>();
-  useEffect(() => {
-    ref.current = value;
-  });
-  return ref.current;
-}
-
-/**
- * A centralized hook to manage and synchronize all URL-based view states.
- * This is the single source of truth for view modes, side panes, split views,
- * and page-specific parameters.
- */
-export function useAppViewManager() {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const navigate = useNavigate();
-  const location = useLocation();
-  const params = useParams<{ itemId: string; conversationId: string }>();
-  const { itemId, conversationId } = params;
-  const { setSidebarState, sidebarState } = useAppShellStore();
-
-  // --- DERIVED STATE FROM URL ---
-
-  const view = searchParams.get('view');
-  const sidePane = searchParams.get('sidePane');
-  const right = searchParams.get('right');
-  const messagingView = searchParams.get('messagingView') as TaskView | null;
-  const q = searchParams.get('q');
-  const status = searchParams.get('status');
-  const priority = searchParams.get('priority');
-  const sort = searchParams.get('sort');
-  const calDate = searchParams.get('calDate');
-  const calDisplay = searchParams.get('calDisplay');
-  const calLimit = searchParams.get('calLimit');
-  const calColor = searchParams.get('calColor');
-
-  const { bodyState, sidePaneContent } = useMemo(() => {
-    const validPanes: AppShellState['sidePaneContent'][] = ['details', 'settings', 'main', 'toaster', 'notifications', 'dataDemo', 'messaging'];
-    
-    // 1. Priority: Explicit side pane overlay via URL param
-    if (sidePane && validPanes.includes(sidePane as AppShellState['sidePaneContent'])) {
-      return { bodyState: BODY_STATES.SIDE_PANE, sidePaneContent: sidePane as AppShellState['sidePaneContent'] };
-    }
-
-    // 2. Data item detail view (can be overlay or split)
-    if (itemId) {
-      if (view === 'split') {
-        return { bodyState: BODY_STATES.SPLIT_VIEW, sidePaneContent: 'dataItem' as const };
-      }
-      return { bodyState: BODY_STATES.SIDE_PANE, sidePaneContent: 'dataItem' as const };
-    }
-
-    // 3. Messaging conversation view (always split)
-    if (conversationId) {
-      return { bodyState: BODY_STATES.SPLIT_VIEW, sidePaneContent: 'messaging' as const };
-    }
-
-    // 4. Generic split view via URL param
-    if (view === 'split' && right && validPanes.includes(right as AppShellState['sidePaneContent'])) {
-      return { bodyState: BODY_STATES.SPLIT_VIEW, sidePaneContent: right as AppShellState['sidePaneContent'] };
-    }
-
-    return { bodyState: BODY_STATES.NORMAL, sidePaneContent: 'details' as const };
-  }, [itemId, conversationId, view, sidePane, right]);
-  
-  const currentActivePage = useMemo(() => (location.pathname.split('/')[1] || 'dashboard') as ActivePage, [location.pathname]);
-  const prevActivePage = usePrevious(currentActivePage);
-
-  // --- SIDE EFFECTS ---
-  useEffect(() => {
-    // On navigating to messaging page, collapse sidebar if it's expanded.
-    // This ensures a good default view but allows the user to expand it again if they wish.
-    if (currentActivePage === 'messaging' && prevActivePage !== 'messaging' && sidebarState === SIDEBAR_STATES.EXPANDED) {
-      setSidebarState(SIDEBAR_STATES.COLLAPSED);
-    }
-  }, [currentActivePage, prevActivePage, sidebarState, setSidebarState]);
-
-  // DataDemo specific state
-  const viewMode = useMemo(() => (searchParams.get('dataView') as ViewMode) || 'list', [searchParams]);
-	const page = useMemo(() => parseInt(searchParams.get('page') || '1', 10), [searchParams]);
-	const groupBy = useMemo(() => (searchParams.get('groupBy') as GroupableField | 'none') || 'none', [searchParams]);
-	const activeGroupTab = useMemo(() => searchParams.get('tab') || 'all', [searchParams]);
-	const filters = useMemo<FilterConfig>(
-		() => ({
-			searchTerm: q || '',
-			status: (status?.split(',') || []).filter(Boolean) as Status[],
-			priority: (priority?.split(',') || []).filter(Boolean) as Priority[],
-		}),
-		[q, status, priority],
-	);
-	const sortConfig = useMemo<SortConfig | null>(() => {
-		const sortParam = sort;
-		if (!sortParam) return { key: 'updatedAt', direction: 'desc' }; // Default sort
-		if (sortParam === 'default') return null;
-
-		const [key, direction] = sortParam.split('-');
-		return { key: key as SortableField, direction: direction as 'asc' | 'desc' };
-	}, [sort]);
-  const calendarDateProp = useMemo(() => (calDate || 'dueDate') as CalendarDateProp, [calDate]);
-  const calendarDisplayProps = useMemo(
-    () => {
-      if (calDisplay === null) return []; // Default is now nothing
-      if (calDisplay === '') return []; // Explicitly empty is also nothing
-      return calDisplay.split(',') as CalendarDisplayProp[];
+  ExternalLink,
+  Share,
+} from 'lucide-react';
+
+import { Button } from '@/components/ui/button';
+import { DashboardContent } from "@/pages/Dashboard";
+import { SettingsContent } from "@/features/settings/SettingsContent";
+import { ToasterDemo } from "@/pages/ToasterDemo";
+import { NotificationsPage } from "@/pages/Notifications";
+import DataDemoPage from "@/pages/DataDemo/index";
+import { DetailPanel } from '@/features/dynamic-view/components/shared/DetailPanel';
+import { dataDemoViewConfig } from '@/pages/DataDemo/DataDemo.config';
+import { mockDataItems } from "@/pages/DataDemo/data/mockData";
+import { MessagingContent } from "@/pages/Messaging/components/MessagingContent";
+import type { AppShellState } from '@/store/appShell.store';
+
+export function useRightPaneContent(sidePaneContent: AppShellState['sidePaneContent']) {
+  const { itemId, conversationId } = useParams<{ itemId: string; conversationId: string }>();
+
+  const staticContentMap = useMemo(() => ({
+    main: {
+      title: "Dashboard",
+      icon: LayoutDashboard,
+      page: "dashboard",
+      content: <DashboardContent />,
     },
-    [calDisplay]
-  );
-  const calendarItemLimit = useMemo(() => {
-    const limit = parseInt(calLimit || '3', 10);
-    if (calLimit === 'all') return 'all';
-    return isNaN(limit) ? 3 : limit;
-  }, [calLimit]);
-  const calendarColorProp = useMemo(() => (calColor || 'none') as CalendarColorProp, [calColor]);
+    settings: {
+      title: "Settings",
+      icon: Settings,
+      page: "settings",
+      content: <div className="p-6"><SettingsContent /></div>,
+    },
+    toaster: {
+      title: "Toaster Demo",
+      icon: Component,
+      page: "toaster",
+      content: <ToasterDemo />,
+    },
+    notifications: {
+      title: "Notifications",
+      icon: Bell,
+      page: "notifications",
+      content: <NotificationsPage />,
+    },
+    dataDemo: {
+      title: "Data Showcase",
+      icon: Database,
+      page: "data-demo",
+      content: <DataDemoPage />,
+    },
+    details: {
+      title: "Details Panel",
+      icon: SlidersHorizontal,
+      content: (
+        <div className="p-6">
+          <p className="text-muted-foreground">
+            This is the side pane. It can be used to display contextual
+            information, forms, or actions related to the main content.
+          </p>
+        </div>
+      ),
+    },
+  }), []);
 
-  // --- MUTATOR ACTIONS ---
+  const contentMap = useMemo(() => ({
+    ...staticContentMap,
+    messaging: {
+      title: "Conversation",
+      icon: MessageSquare,
+      page: "messaging",
+      content: <MessagingContent conversationId={conversationId} />,
+    },
+  }), [conversationId, staticContentMap]);
 
-  const handleParamsChange = useCallback(
-		(newParams: Record<string, string | string[] | null | undefined>, resetPage = false) => {
-			setSearchParams(
-				(prev) => {
-					const updated = new URLSearchParams(prev);
-					
-					for (const [key, value] of Object.entries(newParams)) {
-						if (value === null || value === undefined || (Array.isArray(value) && value.length === 0) || value === '') {
-							updated.delete(key);
-						} else if (Array.isArray(value)) {
-							updated.set(key, value.join(','));
-						} else {
-							updated.set(key, String(value));
-						}
-					}
+  const selectedItem = useMemo(() => {
+    if (!itemId) return null;
+    return mockDataItems.find(item => item.id === itemId) ?? null;
+  }, [itemId]);
 
-					if (resetPage) {
-						updated.delete('page');
-					}
-					if ('groupBy' in newParams) {
-						updated.delete('tab');
-					}
-
-					return updated;
-				},
-				{ replace: true },
-			);
-		},
-		[setSearchParams],
-	);
-
-  const navigateTo = useCallback((page: string, params?: Record<string, string | null>) => {
-    const targetPath = page.startsWith('/') ? page : `/${page}`;
-    const isSamePage = location.pathname === targetPath;
-    
-    const newSearchParams = new URLSearchParams(isSamePage ? searchParams : undefined);
-
-    if (params) {
-      for (const [key, value] of Object.entries(params)) {
-        if (value === null || value === undefined) {
-          newSearchParams.delete(key);
-        } else {
-          newSearchParams.set(key, value);
-        }
-      }
+  const { meta, content } = useMemo(() => {
+    if (sidePaneContent === 'dataItem' && selectedItem) {
+      return {
+        meta: { title: "Item Details", icon: Database, page: `data-demo/${itemId}` },
+        content: (
+          <div className="h-full flex flex-col">
+            <div className="flex-1 overflow-y-auto custom-scrollbar">
+              <DetailPanel item={selectedItem} config={dataDemoViewConfig} />
+            </div>
+            {/* Application-specific actions can be composed here */}
+            <div className="p-6 border-t border-border/50 bg-card/30">
+              <div className="flex gap-3">
+                <Button className="flex-1" size="sm">
+                  <ExternalLink className="w-4 h-4 mr-2" />
+                  Open Project
+                </Button>
+                <Button variant="outline" size="sm">
+                  <Share className="w-4 h-4 mr-2" />
+                  Share
+                </Button>
+              </div>
+            </div>
+          </div>
+        ),
+      };
     }
+    const mappedContent = contentMap[sidePaneContent as keyof typeof contentMap] || contentMap.details;
+    return {
+      meta: mappedContent,
+      content: mappedContent.content,
+    };
+  }, [sidePaneContent, selectedItem, contentMap, itemId]);
 
-    navigate({ pathname: targetPath, search: newSearchParams.toString() });
-  }, [navigate, location.pathname, searchParams]);
-
-  const openSidePane = useCallback((pane: AppShellState['sidePaneContent']) => {
-    if (location.pathname === `/${Object.keys(pageToPaneMap).find(key => pageToPaneMap[key] === pane)}`) {
-        navigate({ pathname: '/dashboard', search: `?sidePane=${pane}` }, { replace: true });
-    } else {
-        handleParamsChange({ sidePane: pane, view: null, right: null });
-    }
-  }, [handleParamsChange, navigate, location.pathname]);
-
-  const closeSidePane = useCallback(() => {
-    if (itemId) {
-      navigate('/data-demo');
-    } else {
-      handleParamsChange({ sidePane: null, view: null, right: null });
-    }
-  }, [itemId, navigate, handleParamsChange]);
-
-  const toggleSidePane = useCallback((pane: AppShellState['sidePaneContent']) => {
-    if (sidePane === pane) {
-      closeSidePane();
-    } else {
-      openSidePane(pane);
-    }
-  }, [sidePane, openSidePane, closeSidePane]);
-
-  const toggleSplitView = useCallback(() => {
-    if (bodyState === BODY_STATES.SIDE_PANE) {
-      handleParamsChange({ view: 'split', right: sidePane, sidePane: null });
-    } else if (bodyState === BODY_STATES.SPLIT_VIEW) {
-      handleParamsChange({ sidePane: right, view: null, right: null });
-    } else { // From normal
-      const paneContent = pageToPaneMap[currentActivePage] || 'details';
-      handleParamsChange({ view: 'split', right: paneContent, sidePane: null });
-    }
-  }, [bodyState, sidePane, right, currentActivePage, handleParamsChange]);
-  
-  const setNormalView = useCallback(() => {
-      handleParamsChange({ sidePane: null, view: null, right: null });
-  }, [handleParamsChange]);
-
-  const switchSplitPanes = useCallback(() => {
-    if (bodyState !== BODY_STATES.SPLIT_VIEW) return;
-    const newSidePaneContent = pageToPaneMap[currentActivePage];
-    const newActivePage = Object.entries(pageToPaneMap).find(
-      ([, value]) => value === sidePaneContent
-    )?.[0] as ActivePage | undefined;
-
-    if (newActivePage && newSidePaneContent) {
-      navigate(`/${newActivePage}?view=split&right=${newSidePaneContent}`, { replace: true });
-    }
-  }, [bodyState, currentActivePage, sidePaneContent, navigate]);
-  
-  const closeSplitPane = useCallback((paneToClose: 'main' | 'right') => {
-    if (bodyState !== BODY_STATES.SPLIT_VIEW) return;
-    if (paneToClose === 'right') {
-      navigate(`/${currentActivePage}`, { replace: true });
-    } else { // Closing main pane
-      const pageToBecomeActive = Object.entries(pageToPaneMap).find(
-        ([, value]) => value === sidePaneContent
-      )?.[0] as ActivePage | undefined;
-      
-      if (pageToBecomeActive) {
-        navigate(`/${pageToBecomeActive}`, { replace: true });
-      } else {
-        navigate(`/dashboard`, { replace: true });
-      }
-    }
-  }, [bodyState, currentActivePage, sidePaneContent, navigate]);
-  
-  // DataDemo actions
-  const setViewMode = (mode: ViewMode) => handleParamsChange({ dataView: mode === 'list' ? null : mode });
-  const setGroupBy = (val: string) => handleParamsChange({ groupBy: val === 'none' ? null : val }, true);
-  const setActiveGroupTab = (tab: string) => handleParamsChange({ tab: tab === 'all' ? null : tab });
-  const setFilters = (newFilters: FilterConfig) => {
-    handleParamsChange({ q: newFilters.searchTerm, status: newFilters.status, priority: newFilters.priority }, true);
-  }
-  const setSort = (config: SortConfig | null) => {
-    if (!config) {
-      handleParamsChange({ sort: null }, true);
-    } else {
-      handleParamsChange({ sort: `${config.key}-${config.direction}` }, true);
-    }
-  }
-  const setTableSort = (field: SortableField) => {
-    let newSort: string | null = `${field}-desc`;
-    if (sortConfig?.key === field) {
-      if (sortConfig.direction === 'desc') newSort = `${field}-asc`;
-      else if (sortConfig.direction === 'asc') newSort = null;
-    }
-    handleParamsChange({ sort: newSort }, true);
-  };
-  const setPage = (newPage: number) => handleParamsChange({ page: newPage > 1 ? newPage.toString() : null });
-
-  // Calendar specific actions
-  const setCalendarDateProp = (prop: CalendarDateProp) => handleParamsChange({ calDate: prop === 'dueDate' ? null : prop });
-  const setCalendarDisplayProps = (props: CalendarDisplayProp[]) => {
-    // Check for default state to keep URL clean
-    const isDefault = props.length === 0;
-    handleParamsChange({ calDisplay: isDefault ? null : props.join(',') });
-  };
-  const setCalendarItemLimit = (limit: number | 'all') => handleParamsChange({ calLimit: limit === 3 ? null : String(limit) });
-  const setCalendarColorProp = (prop: CalendarColorProp) => handleParamsChange({ calColor: prop === 'none' ? null : prop });
-
-  const onItemSelect = useCallback((item: GenericItem) => {
-		navigate(`/data-demo/${item.id}${location.search}`);
-	}, [navigate, location.search]);
-
-  const setMessagingView = (view: TaskView) => handleParamsChange({ messagingView: view });
-
-
-  return useMemo(() => ({
-    // State
-    bodyState,
-    sidePaneContent,
-    currentActivePage,
-    itemId,
-    messagingView,
-    // DataDemo State
-    viewMode,
-    page,
-    groupBy,
-    activeGroupTab,
-    filters,
-    sortConfig,
-    calendarDateProp,
-    calendarDisplayProps,
-    calendarItemLimit,
-    calendarColorProp,
-    // Actions
-    navigateTo,
-    openSidePane,
-    closeSidePane,
-    toggleSidePane,
-    toggleSplitView,
-    setNormalView,
-    switchSplitPanes,
-    setMessagingView,
-    closeSplitPane,
-    // DataDemo Actions
-    onItemSelect,
-    setViewMode,
-    setGroupBy,
-    setActiveGroupTab,
-    setFilters,
-    setSort,
-    setTableSort,
-    setPage,
-    setCalendarDateProp,
-    setCalendarDisplayProps,
-    setCalendarItemLimit,
-    setCalendarColorProp,
-  }), [
-    bodyState, sidePaneContent, currentActivePage, itemId, messagingView, viewMode,
-    page, groupBy, activeGroupTab, filters, sortConfig, calendarDateProp,
-    calendarDisplayProps, calendarItemLimit, calendarColorProp,
-    navigateTo, openSidePane, closeSidePane, toggleSidePane, toggleSplitView, setNormalView, setMessagingView,
-    switchSplitPanes, closeSplitPane, onItemSelect, setViewMode, setGroupBy, setActiveGroupTab, setFilters,
-    setSort, setTableSort, setPage, setCalendarDateProp, setCalendarDisplayProps, setCalendarItemLimit, setCalendarColorProp
-  ]);
+  return { meta, content };
 }
 ```
 
@@ -4887,7 +2081,7 @@ import {
   useGroupTabs
 } from './store/dataDemo.store'
 
-import { dataDemoViewConfig } from './DataDemo.config'
+import { dataDemoViewConfig } from './DataDemo.config';
 
 type Stat = {
   title: string;

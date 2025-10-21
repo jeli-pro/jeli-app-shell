@@ -1,0 +1,208 @@
+uuid: c2b8d9e0-f1a2-4c3d-8e5f-a6b7c8d9e0f1
+projectId: jeli-app-shell
+createdAt: '2025-10-21T02:50:51.664Z'
+gitCommitMsg: >-
+  fix(build): Rename DataDemo.config.ts to .tsx to allow JSX
+
+  The TypeScript compiler was failing because the `DataDemo.config.ts` file
+  contained a custom `render` function that returned JSX. The compiler only
+  processes JSX syntax in files with a `.tsx` extension.
+
+  This commit renames the file to `DataDemo.config.tsx`, which resolves all 101
+  compilation errors and allows the project to build correctly.
+promptSummary: >-
+  The user is experiencing over 100 TypeScript errors after a refactor. The
+  errors all point to JSX syntax being used in a `.ts` file.
+reasoning:
+  - >-
+    Of course. That's a classic and frustrating error when refactoring. The
+    TypeScript compiler is very strict about JSX syntax, and it's easy to
+    overlook a file extension during a big change.
+  - >-
+    The root cause of the 101 errors is that the file
+    `src/pages/DataDemo/DataDemo.config.ts` contains JSX for the custom `render`
+    function but has a `.ts` extension. The compiler only parses JSX in files
+    with a `.tsx` extension. Without it, it misinterprets the `<div...>` syntax
+    as a "less than" operator, which leads to the cascade of syntax errors
+    you're seeing.
+  - >-
+    The fix is simple: we just need to rename the file to `DataDemo.config.tsx`.
+    Your bundler's module resolution will handle the change automatically, so no
+    import statements need to be updated.
+  - 'Here is the operation to rename the file:'
+  - This single change will resolve all the compilation errors.
+  - '---'
+operations:
+  - type: rename
+    from: src/pages/DataDemo/DataDemo.config.ts
+    to: src/pages/DataDemo/DataDemo.config.tsx
+snapshot:
+  src/pages/DataDemo/DataDemo.config.tsx: null
+  src/pages/DataDemo/DataDemo.config.ts: >-
+    import React from 'react';
+
+    import type { ViewConfig, GenericItem } from
+    '@/features/dynamic-view/types';
+
+
+    const DATA_DEMO_STATUS_COLORS = {
+      active: 'border-transparent bg-emerald-500/20 text-emerald-700 dark:text-emerald-400',
+      pending: 'border-transparent bg-amber-500/20 text-amber-700 dark:text-amber-400',
+      completed: 'border-transparent bg-sky-500/20 text-sky-700 dark:text-sky-400',
+      archived: 'border-transparent bg-zinc-500/20 text-zinc-700 dark:text-zinc-400',
+    };
+
+    const DATA_DEMO_PRIORITY_COLORS = {
+      low: 'border-transparent bg-blue-500/20 text-blue-700 dark:text-blue-400',
+      medium: 'border-transparent bg-yellow-500/20 text-yellow-700 dark:text-yellow-400',
+      high: 'border-transparent bg-orange-500/20 text-orange-700 dark:text-orange-400',
+      critical: 'border-transparent bg-red-600/20 text-red-700 dark:text-red-400',
+    };
+
+
+    export const dataDemoViewConfig: ViewConfig = {
+      // Field definitions: The source of truth for all data properties
+      fields: [
+        {
+          id: 'title',
+          label: 'Title',
+          type: 'string',
+          // Custom render function for the table view to create a composite cell
+          render: (item: GenericItem) => (
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-primary/20 to-primary/10 rounded-lg flex items-center justify-center text-lg flex-shrink-0">
+                {item.thumbnail}
+              </div>
+              <div className="min-w-0 flex-1">
+                <h4 className="font-medium group-hover:text-primary transition-colors truncate">{item.title}</h4>
+                <p className="text-sm text-muted-foreground truncate">{item.category}</p>
+              </div>
+            </div>
+          ),
+        },
+        { id: 'description', label: 'Description', type: 'longtext' },
+        { id: 'thumbnail', label: 'Thumbnail', type: 'thumbnail' },
+        {
+          id: 'status',
+          label: 'Status',
+          type: 'badge',
+          colorMap: DATA_DEMO_STATUS_COLORS,
+        },
+        {
+          id: 'priority',
+          label: 'Priority',
+          type: 'badge',
+          colorMap: DATA_DEMO_PRIORITY_COLORS,
+        },
+        { id: 'assignee', label: 'Assignee', type: 'avatar' },
+        { id: 'metrics.completion', label: 'Completion', type: 'progress' },
+        { id: 'updatedAt', label: 'Last Updated', type: 'date' },
+        { id: 'createdAt', label: 'Created', type: 'date' },
+        { id: 'dueDate', label: 'Due Date', type: 'date' },
+        { id: 'tags', label: 'Tags', type: 'tags' },
+        { id: 'metrics', label: 'Metrics', type: 'metrics' },
+        { id: 'category', label: 'Category', type: 'string' }, // For card view and table cell
+      ],
+
+      // Control options: What users can sort, filter, and group by
+      sortableFields: [
+        { id: 'title', label: 'Title' },
+        { id: 'status', label: 'Status' },
+        { id: 'priority', label: 'Priority' },
+        { id: 'updatedAt', label: 'Last Updated' },
+        { id: 'createdAt', label: 'Created' },
+        { id: 'assignee.name', label: 'Assignee' },
+        { id: 'metrics.views', label: 'Views' },
+        { id: 'metrics.completion', label: 'Completion' },
+      ],
+      groupableFields: [
+        { id: 'none', label: 'None' },
+        { id: 'status', label: 'Status' },
+        { id: 'priority', label: 'Priority' },
+        { id: 'category', label: 'Category' },
+      ],
+      filterableFields: [
+        {
+          id: 'status',
+          label: 'Status',
+          options: [
+            { id: 'active', label: 'Active' },
+            { id: 'pending', label: 'Pending' },
+            { id: 'completed', label: 'Completed' },
+            { id: 'archived', label: 'Archived' },
+          ],
+        },
+        {
+          id: 'priority',
+          label: 'Priority',
+          options: [
+            { id: 'low', label: 'Low' },
+            { id: 'medium', label: 'Medium' },
+            { id: 'high', label: 'High' },
+            { id: 'critical', label: 'Critical' },
+          ],
+        },
+      ],
+      
+      // View layouts: How each view mode should render the data
+      listView: {
+        iconField: 'thumbnail',
+        titleField: 'title',
+        metaFields: [
+          { fieldId: 'status', className: 'hidden md:flex' },
+          { fieldId: 'tags', className: 'hidden xl:flex' },
+          { fieldId: 'updatedAt', className: 'hidden lg:flex' },
+          { fieldId: 'assignee' },
+          { fieldId: 'priority', className: 'hidden sm:flex' },
+        ],
+      },
+      cardView: {
+        thumbnailField: 'thumbnail',
+        titleField: 'title',
+        descriptionField: 'description',
+        headerFields: ['priority'],
+        // Specific fields to recreate the original layout
+        statusField: 'status',
+        categoryField: 'category',
+        tagsField: 'tags',
+        progressField: 'metrics.completion',
+        assigneeField: 'assignee',
+        metricsField: 'metrics',
+        dateField: 'updatedAt',
+      },
+      tableView: {
+        columns: [
+          { fieldId: 'title', label: 'Project', isSortable: true },
+          { fieldId: 'status', label: 'Status', isSortable: true },
+          { fieldId: 'priority', label: 'Priority', isSortable: true },
+          { fieldId: 'assignee', label: 'Assignee', isSortable: true },
+          { fieldId: 'metrics.completion', label: 'Completion', isSortable: true },
+          { fieldId: 'updatedAt', label: 'Last Update', isSortable: true },
+        ],
+      },
+      kanbanView: {
+        groupByField: 'status', // This is a suggestion; the user can change it.
+        cardFields: {
+          titleField: 'title',
+          descriptionField: 'description',
+          priorityField: 'priority',
+          tagsField: 'tags',
+          dateField: 'dueDate',
+          metricsField: 'metrics',
+          assigneeField: 'assignee',
+        },
+      },
+      calendarView: {
+        dateField: 'dueDate', // Default date field
+        titleField: 'title',
+        displayFields: ['priority', 'assignee'],
+        colorByField: 'priority', // Default coloring
+      },
+    };
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 506

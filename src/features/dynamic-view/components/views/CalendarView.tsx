@@ -117,14 +117,19 @@ function CalendarEvent({ item, isSelected, isDragging, onDragStart, colorProp }:
               <FieldRenderer item={item} fieldId={viewConfig.titleField} />
             </div>
 
-            {viewConfig.displayFields.length > 0 && (
+            {viewConfig.displayFields.includes('tags') && <FieldRenderer item={item} fieldId="tags" />}
+
+            {(viewConfig.displayFields.includes('priority') || viewConfig.displayFields.includes('assignee')) && (
                 <div className={cn(
-                    "flex items-center justify-between pt-1 border-t flex-wrap gap-2",
+                    "flex items-center justify-between pt-1 border-t",
                     colorClass ? "border-black/10 dark:border-white/10" : "border-border/30 dark:border-neutral-700/50"
                 )}>
-                  {viewConfig.displayFields.map(fieldId => (
-                    <FieldRenderer key={fieldId} item={item} fieldId={fieldId} options={{ compact: true, avatarClassName: 'w-5 h-5' }}/>
-                  ))}
+                    <div>
+                      {viewConfig.displayFields.includes('priority') && <FieldRenderer item={item} fieldId="priority" />}
+                    </div>
+                    <div>
+                      {viewConfig.displayFields.includes('assignee') && <FieldRenderer item={item} fieldId="assignee" options={{ compact: true, avatarClassName: 'w-5 h-5' }}/>}
+                    </div>
                 </div>
             )}
         </div>

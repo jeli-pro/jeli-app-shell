@@ -22,14 +22,14 @@ export function FieldRenderer({ item, fieldId, className, options }: FieldRender
   const fieldDef = getFieldDef(fieldId);
   const value = getNestedValue(item, fieldId);
 
+  // Custom render function takes precedence
+  if (fieldDef?.render) {
+    return <>{fieldDef.render(item, options)}</>;
+  }
+
   if (!fieldDef) {
     console.warn(`[FieldRenderer] No field definition found for ID: ${fieldId}`);
     return <span className="text-red-500">?</span>;
-  }
-  
-  // Custom render function takes precedence
-  if (fieldDef.render) {
-    return <>{fieldDef.render(item)}</>;
   }
 
   if (value === null || typeof value === 'undefined') {

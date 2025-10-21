@@ -1,0 +1,1339 @@
+uuid: c32c66c3-1c39-4458-86d4-8d96b9d62d29
+projectId: jeli-app-shell
+createdAt: '2025-10-21T02:43:02.416Z'
+gitCommitMsg: >-
+  refactor(dynamic-view): restore UI fidelity to generic view components
+
+  This commit implements the second phase of the dynamic view refactor, focusing
+  on restoring the UI/UX fidelity lost during the initial architectural changes.
+  The generic view components have been enhanced to support more complex,
+  configurable layouts that match the original hardcoded `DataDemo` components.
+
+  - `CardView`: Re-implemented the specific, multi-section layout for
+    card content, replacing the generic `contentFields` loop.
+  - `KanbanView`: The `KanbanCard` sub-component now renders a richer
+    set of fields (priority, tags, footer details) to match the original.
+  - `ListView`: Restored responsive behavior by allowing `className` to be
+    passed via the view config, enabling CSS-driven visibility for metadata.
+  - `CalendarView`: The `CalendarEvent` footer now has a structured
+    layout, correctly placing priority and assignee on opposite sides.
+  - `types.ts`: Updated `ListViewConfig` to support responsive class names.
+
+  These changes ensure that the powerful, reusable `dynamic-view` engine can
+  produce polished, specific UIs without user-facing regressions.
+promptSummary: >-
+  I need to execute Part 2 of a refactoring plan to restore UI fidelity to a set
+  of generic, dynamic view components. This involves updating the components
+  (CardView, KanbanView, ListView, CalendarView) and their corresponding type
+  definitions to support more complex, configurable layouts that match a
+  previous hardcoded implementation. The goal is to make the generic components
+  capable of rendering a pixel-perfect recreation of the original UI.
+reasoning:
+  - >-
+    Of course. I've analyzed the plan and the provided files. The previous
+    refactor laid the groundwork, but left the UI in a generic, simplified
+    state. Now, I will execute Part 2 of the plan to restore the original UI's
+    nuance and fidelity by enhancing our new dynamic components and their
+    configurations.
+  - '### Part 2.1: Refactor CardView'
+  - >-
+    First, I'll update `CardView.tsx`. The current version uses generic
+    `contentFields` and `footerFields` arrays, resulting in a simple layout. I
+    will replace this with a more structured layout that uses the specific
+    fields defined in `CardViewConfig` (`statusField`, `tagsField`,
+    `progressField`, etc.) to perfectly replicate the richer, more organized
+    layout of the original component.
+  - '### Part 2.2: Refactor KanbanView Card'
+  - >-
+    Next, I'll enhance the `KanbanCard` sub-component within `KanbanView.tsx`.
+    It currently only shows a title, description, and generic footer. I will
+    modify it to render the richer content from the original design—including
+    priority, tags, and a structured footer with date, metrics, and assignee
+    info—by reading the new, more descriptive fields from
+    `config.kanbanView.cardFields`.
+  - '### Part 2.3: Re-introduce Responsiveness to ListView'
+  - >-
+    The original `ListView` cleverly hid metadata on smaller screens. I'll
+    restore this behavior using a declarative, CSS-driven approach. First, I'll
+    update `types.ts` to allow a `className` to be passed with each `metaField`
+    in the configuration.
+  - >-
+    Now, I'll update `ListView.tsx` to read this new structure, applying the
+    provided class names to each metadata field. This allows the configuration
+    to control the responsive behavior of the component.
+  - '### Part 2.4: Restore Calendar Event Layout'
+  - >-
+    Finally, I'll fix the layout inside calendar events. The original design
+    placed priority on the left and the assignee's avatar on the right. The
+    generic version just lists them in a row. I will update the `CalendarEvent`
+    sub-component to restore this specific, more readable footer layout, while
+    still respecting the `displayFields` from the configuration.
+  - >-
+    These changes restore the specific layouts and responsive behaviors of the
+    original `DataDemo` views by making our new generic components smarter and
+    more configurable. The UI will now match the polished look of the original
+    implementation.
+operations:
+  - type: write
+    path: src/features/dynamic-view/components/views/CardView.tsx
+    content: >+
+      --- src/features/dynamic-view/components/views/CardView.tsx
+
+      +++ src/features/dynamic-view/components/views/CardView.tsx
+
+      @@ -62,21 +62,29 @@
+                   </div>
+       
+                   {/* Card Content */}
+      -            <div className="px-6 pb-6 space-y-4">
+
+      -              <div className="font-semibold text-lg
+      group-hover:text-primary transition-colors line-clamp-2">
+
+      +            <div className="px-6 pb-6">
+
+      +              <div className="font-semibold text-lg mb-2
+      group-hover:text-primary transition-colors line-clamp-2">
+                       <FieldRenderer item={item} fieldId={viewConfig.titleField} />
+                     </div>
+      -              <div className="text-muted-foreground text-sm
+      line-clamp-3">
+
+      +              <div className="text-muted-foreground text-sm mb-4
+      line-clamp-3">
+                       <FieldRenderer item={item} fieldId={viewConfig.descriptionField} />
+                     </div>
+      -              
+
+      -              {viewConfig.contentFields.map(fieldId => (
+
+      -                <FieldRenderer key={fieldId} item={item}
+      fieldId={fieldId} options={{ showPercentage: true }} />
+
+      -              ))}
+
+      -              
+
+      -              <div className="flex items-center justify-between text-xs
+      text-muted-foreground">
+
+      -                {viewConfig.footerFields.map(fieldId => (
+
+      -                  <FieldRenderer key={fieldId} item={item}
+      fieldId={fieldId} />
+
+      -                ))}
+
+      +
+
+      +              {/* Status and Category */}
+
+      +              <div className="flex items-center gap-2 mb-4">
+
+      +                <FieldRenderer item={item}
+      fieldId={viewConfig.statusField} />
+
+      +                <FieldRenderer item={item}
+      fieldId={viewConfig.categoryField} />
+
+      +              </div>
+
+      +
+
+      +              {/* Tags */}
+
+      +              <div className="mb-4"><FieldRenderer item={item}
+      fieldId={viewConfig.tagsField} /></div>
+
+      +
+
+      +              {/* Progress */}
+
+      +              <div className="mb-4"><FieldRenderer item={item}
+      fieldId={viewConfig.progressField} /></div>
+
+      +
+
+      +              {/* Assignee */}
+
+      +              <div className="mb-4"><FieldRenderer item={item}
+      fieldId={viewConfig.assigneeField} /></div>
+
+      +
+
+      +              <div className="flex items-center justify-between text-xs
+      text-muted-foreground">
+
+      +                <FieldRenderer item={item}
+      fieldId={viewConfig.metricsField} />
+
+      +                <FieldRenderer item={item} fieldId={viewConfig.dateField}
+      />
+                     </div>
+                   </div>
+       
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/features/dynamic-view/components/views/KanbanView.tsx
+    content: >+
+      --- src/features/dynamic-view/components/views/KanbanView.tsx
+
+      +++ src/features/dynamic-view/components/views/KanbanView.tsx
+
+      @@ -34,26 +34,21 @@
+             )}
+           >
+             <CardContent className="p-5">
+      -        <div className="space-y-4">
+
+      +        <div className="space-y-3">
+                 <div className="flex items-start justify-between">
+                   <div className="font-semibold text-card-foreground dark:text-neutral-100 leading-tight flex-1 min-w-0">
+                     <FieldRenderer item={item} fieldId={viewConfig.cardFields.titleField} />
+                   </div>
+                   <GripVertical className="w-5 h-5 text-muted-foreground/60 dark:text-neutral-400 cursor-grab flex-shrink-0" />
+                 </div>
+       
+      -          <div className="text-sm text-muted-foreground
+      dark:text-neutral-300 leading-relaxed line-clamp-2">
+
+      +          <div className="text-sm text-muted-foreground
+      dark:text-neutral-300 leading-relaxed line-clamp-2 !mt-2">
+                   <FieldRenderer item={item} fieldId={viewConfig.cardFields.descriptionField} />
+                 </div>
+       
+      -          <div className="flex items-center justify-between pt-2 border-t
+      border-border/30 dark:border-neutral-700/30">
+
+      -            {/* 
+
+      -              The footer is a bit tricky. The original has a left and
+      right side.
+
+      -              For a generic component, let's just render them in a row.
+
+      -              A more advanced config could specify 'left' and 'right'
+      arrays.
+
+      -              For now, this is a good simplification.
+
+      -            */}
+
+      -            <div className="flex items-center justify-between w-full
+      text-muted-foreground/80 dark:text-neutral-400">
+
+      -              {viewConfig.cardFields.footerFields.map(fieldId => (
+
+      -                <FieldRenderer key={fieldId} item={item}
+      fieldId={fieldId} options={{ compact: true, avatarClassName: 'w-8 h-8' }}
+      />
+
+      -              ))}
+
+      -            </div>
+
+      +          <div className="flex flex-wrap gap-2"><FieldRenderer
+      item={item} fieldId={viewConfig.cardFields.priorityField} /><FieldRenderer
+      item={item} fieldId={viewConfig.cardFields.tagsField} /></div>
+
+      +
+
+      +          <div className="flex items-center justify-between pt-3 border-t
+      border-border/30 dark:border-neutral-700/30 !mt-3">
+
+      +            <div className="flex items-center gap-4
+      text-muted-foreground/80 dark:text-neutral-400"><FieldRenderer item={item}
+      fieldId={viewConfig.cardFields.dateField} /><FieldRenderer item={item}
+      fieldId={viewConfig.cardFields.metricsField} /></div>
+
+      +            <FieldRenderer item={item}
+      fieldId={viewConfig.cardFields.assigneeField} options={{ compact: true,
+      avatarClassName: 'w-8 h-8' }} />
+                 </div>
+               </div>
+             </CardContent>
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/features/dynamic-view/types.ts
+    content: |+
+      --- src/features/dynamic-view/types.ts
+      +++ src/features/dynamic-view/types.ts
+      @@ -53,7 +53,10 @@
+       export interface ListViewConfig {
+         iconField: string;
+         titleField: string;
+      -  metaFields: string[]; // IDs of fields to show on the right
+      +  metaFields: Array<{
+      +    fieldId: string;
+      +    className?: string;
+      +  }>;
+       }
+       
+       export interface CardViewConfig {
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/features/dynamic-view/components/views/ListView.tsx
+    content: >+
+      --- src/features/dynamic-view/components/views/ListView.tsx
+
+      +++ src/features/dynamic-view/components/views/ListView.tsx
+
+      @@ -43,8 +43,8 @@
+       
+                     {/* Right side: Metadata */}
+                     <div className="flex shrink-0 items-center gap-2 sm:gap-4 md:gap-6 ml-4 text-sm text-muted-foreground">
+      -                {config.listView.metaFields.map(fieldId => (
+
+      -                  <FieldRenderer key={fieldId} item={item}
+      fieldId={fieldId} options={{ compact: true, avatarClassName: 'w-7 h-7' }}
+      />
+
+      +                {config.listView.metaFields.map(field => (
+
+      +                  <FieldRenderer key={field.fieldId} item={item}
+      fieldId={field.fieldId} className={field.className} options={{ compact:
+      true, avatarClassName: 'w-7 h-7' }} />
+                       ))}
+                     </div>
+                   </div>
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/features/dynamic-view/components/views/CalendarView.tsx
+    content: >+
+      --- src/features/dynamic-view/components/views/CalendarView.tsx
+
+      +++ src/features/dynamic-view/components/views/CalendarView.tsx
+
+      @@ -107,17 +107,32 @@
+                     <FieldRenderer item={item} fieldId={viewConfig.titleField} />
+                   </div>
+       
+      -            {viewConfig.displayFields.length > 0 && (
+
+      +            {viewConfig.displayFields.includes('tags') && (
+
+      +              <FieldRenderer item={item} fieldId="tags" />
+
+      +            )}
+
+      +
+
+      +            {(viewConfig.displayFields.includes('priority') ||
+      viewConfig.displayFields.includes('assignee')) && (
+                       <div className={cn(
+      -                    "flex items-center justify-between pt-1 border-t
+      flex-wrap gap-2",
+
+      +                    "flex items-center justify-between pt-1 border-t",
+                           colorClass ? "border-black/10 dark:border-white/10" : "border-border/30 dark:border-neutral-700/50"
+                       )}>
+      -                  {viewConfig.displayFields.map(fieldId => (
+
+      -                    <FieldRenderer key={fieldId} item={item}
+      fieldId={fieldId} options={{ compact: true, avatarClassName: 'w-5 h-5'
+      }}/>
+
+      -                  ))}
+
+      +                  {viewConfig.displayFields.includes('priority') ? (
+
+      +                    <FieldRenderer item={item} fieldId="priority" />
+
+      +                  ) : <div />}
+
+      +                  {viewConfig.displayFields.includes('assignee') && (
+
+      +                    <FieldRenderer item={item} fieldId="assignee"
+      options={{ compact: true, avatarClassName: 'w-5 h-5' }}/>
+
+      +                  )}
+                       </div>
+                   )}
+               </div>
+
+    patchStrategy: standard-diff
+snapshot:
+  src/features/dynamic-view/types.ts: >-
+    import type { ReactNode } from 'react';
+
+
+    // --- GENERIC DATA & ITEM ---
+
+    export type GenericItem = Record<string, any> & { id: string };
+
+
+    // --- FIELD DEFINITIONS ---
+
+    // Describes a single piece of data within a GenericItem.
+
+    export type FieldType = 
+      | 'string'
+      | 'longtext'
+      | 'badge'
+      | 'avatar'
+      | 'progress'
+      | 'date'
+      | 'tags'
+      | 'metrics'
+      | 'thumbnail'
+      | 'custom';
+
+    export interface BaseFieldDefinition {
+      id: string; // Corresponds to a key in GenericItem
+      label: string;
+      type: FieldType;
+      // Optional custom render function for ultimate flexibility
+      render?: (item: GenericItem) => ReactNode;
+    }
+
+
+    export interface BadgeFieldDefinition extends BaseFieldDefinition {
+      type: 'badge';
+      colorMap?: Record<string, string>; // e.g., { 'active': 'bg-green-500', 'pending': 'bg-yellow-500' }
+    }
+
+
+    // Add other specific field types if they need unique properties
+
+    // For now, most can be handled by the base definition.
+
+
+    export type FieldDefinition = BaseFieldDefinition | BadgeFieldDefinition;
+
+
+
+    // --- VIEW CONFIGURATION ---
+
+    // The master configuration object that defines the entire view.
+
+
+    export type ViewMode = 'list' | 'cards' | 'grid' | 'table' | 'kanban' |
+    'calendar';
+
+
+    export interface ListViewConfig {
+      iconField: string;
+      titleField: string;
+      metaFields: string[]; // IDs of fields to show on the right
+    }
+
+
+    export interface CardViewConfig {
+      thumbnailField: string;
+      titleField: string;
+      descriptionField: string;
+      headerFields: string[];
+      // Specific fields to recreate the original layout
+      statusField: string;
+      categoryField: string;
+      tagsField: string;
+      progressField: string;
+      assigneeField: string;
+      metricsField: string;
+      dateField: string;
+    }
+
+
+    export interface TableColumnConfig {
+      fieldId: string;
+      label: string;
+      isSortable: boolean;
+    }
+
+
+    export interface TableViewConfig {
+      columns: TableColumnConfig[];
+    }
+
+
+    export interface KanbanViewConfig {
+      groupByField: string; // Field ID to group by (e.g., 'status')
+      cardFields: {
+        titleField: string;
+        descriptionField: string;
+        priorityField: string;
+        tagsField: string;
+        // footer fields
+        dateField: string;
+        metricsField: string; // for comments/attachments
+        assigneeField: string;
+      };
+    }
+
+
+    export interface CalendarViewConfig {
+      dateField: string;
+      titleField: string;
+      displayFields: string[];
+      colorByField?: string; // Field ID to color events by (e.g., 'priority', 'status')
+    }
+
+
+    export interface ControlOption {
+      id: string;
+      label: string;
+    }
+
+
+    export interface FilterableFieldConfig {
+      id: string; // fieldId
+      label: string;
+      options: ControlOption[];
+    }
+
+
+    export interface ViewConfig {
+      fields: FieldDefinition[];
+      sortableFields: ControlOption[];
+      groupableFields: ControlOption[];
+      filterableFields: FilterableFieldConfig[];
+      
+      // Layouts for each view mode
+      listView: ListViewConfig;
+      cardView: CardViewConfig;
+      tableView: TableViewConfig;
+      kanbanView: KanbanViewConfig;
+      calendarView: CalendarViewConfig;
+    }
+
+
+    // --- GENERIC CONTROL & DATA TYPES ---
+
+
+    export type Status = 'active' | 'pending' | 'completed' | 'archived';
+
+    export type Priority = 'low' | 'medium' | 'high' | 'critical';
+
+
+    export interface FilterConfig {
+      searchTerm: string;
+      [key: string]: any; // For dynamic filter keys like status, priority
+    }
+
+
+    export interface SortConfig {
+      key: string;
+      direction: 'asc' | 'desc';
+    }
+
+
+    export type GroupableField = 'status' | 'priority' | 'category';
+
+
+    export type CalendarDateProp = 'dueDate' | 'createdAt' | 'updatedAt';
+
+    export type CalendarDisplayProp = 'priority' | 'assignee' | 'status';
+
+    export type CalendarColorProp = 'priority' | 'status' | 'category' | 'none';
+  src/features/dynamic-view/components/views/ListView.tsx: >-
+    import { useRef } from 'react'
+
+    import { cn } from '@/lib/utils'
+
+    import type { GenericItem } from '../../types'
+
+    import { useStaggeredAnimation } from
+    '@/hooks/useStaggeredAnimation.motion.hook'
+
+    import { EmptyState } from '../shared/EmptyState'
+
+    import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
+
+    import { 
+      useSelectedItem,
+    } from '../../../../pages/DataDemo/store/dataDemo.store'
+
+    import { AddDataItemCta } from '../shared/AddDataItemCta'
+
+    import { useDynamicView } from '../../DynamicViewContext'
+
+    import { FieldRenderer } from '../shared/FieldRenderer'
+
+
+    export function ListView({ data }: { data: GenericItem[] }) {
+      const { onItemSelect, itemId } = useAppViewManager();
+      const selectedItem = useSelectedItem(itemId);
+      const { config } = useDynamicView();
+
+      const listRef = useRef<HTMLDivElement>(null)
+      useStaggeredAnimation(listRef, [data], { mode: 'incremental', scale: 1, y: 20, stagger: 0.05, duration: 0.4 });
+
+      const items = Array.isArray(data) ? data : [];
+      if (items.length === 0) {
+        return <EmptyState />
+      }
+
+      return (
+        <div ref={listRef}>
+          {items.map((item: GenericItem) => {
+            const isSelected = selectedItem?.id === item.id
+            
+            return (
+              <div key={item.id} className="px-2">
+                <div
+                  onClick={() => onItemSelect(item)}
+                  className={cn(
+                    "group flex items-center px-2 py-2 rounded-md transition-colors duration-200 cursor-pointer",
+                    "hover:bg-accent/80",
+                    isSelected ? "bg-accent" : "bg-transparent"
+                  )}
+                >
+                  {/* Left side: Icon and Title */}
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <div className="flex-shrink-0 w-8 text-center">
+                      <FieldRenderer item={item} fieldId={config.listView.iconField} className="text-xl" />
+                    </div>
+                    <div className="font-medium truncate text-card-foreground group-hover:text-primary">
+                      <FieldRenderer item={item} fieldId={config.listView.titleField} />
+                    </div>
+                  </div>
+
+                  {/* Right side: Metadata */}
+                  <div className="flex shrink-0 items-center gap-2 sm:gap-4 md:gap-6 ml-4 text-sm text-muted-foreground">
+                    {config.listView.metaFields.map(fieldId => (
+                      <FieldRenderer key={fieldId} item={item} fieldId={fieldId} options={{ compact: true, avatarClassName: 'w-7 h-7' }} />
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+          <AddDataItemCta viewMode='list' />
+        </div>
+      )
+    }
+  src/features/dynamic-view/components/views/CardView.tsx: >-
+    import { useRef } from 'react'
+
+    import { cn } from '@/lib/utils'
+
+    import { ArrowUpRight } from 'lucide-react'
+
+    import type { GenericItem } from '../../types'
+
+    import { useStaggeredAnimation } from
+    '@/hooks/useStaggeredAnimation.motion.hook'
+
+    import { EmptyState } from '../shared/EmptyState'
+
+    import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
+
+    import {
+      useSelectedItem,
+    } from '../../../../pages/DataDemo/store/dataDemo.store'
+
+    import { AddDataItemCta } from '../shared/AddDataItemCta'
+
+    import { useDynamicView } from '../../DynamicViewContext'
+
+    import { FieldRenderer } from '../shared/FieldRenderer'
+
+
+    export function CardView({ data, isGrid = false }: { data: GenericItem[];
+    isGrid?: boolean }) {
+      const { onItemSelect, itemId } = useAppViewManager();
+      const selectedItem = useSelectedItem(itemId);
+      const { config } = useDynamicView();
+      const { cardView: viewConfig } = config;
+
+      const containerRef = useRef<HTMLDivElement>(null)
+      useStaggeredAnimation(containerRef, [data], { mode: 'incremental', y: 40 });
+
+      const items = Array.isArray(data) ? data : [];
+      if (items.length === 0) {
+        return <EmptyState />
+      }
+
+      return (
+        <div 
+          ref={containerRef}
+          className={cn(
+            "gap-6",
+            isGrid
+              ? "grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))]"
+              : "grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))]",
+            "pb-4"
+          )}
+        >
+          {items.map((item: GenericItem) => {
+            const isSelected = selectedItem?.id === item.id
+            
+            return (
+              <div
+                key={item.id}
+                onClick={() => onItemSelect(item)}
+                className={cn(
+                  "group relative overflow-hidden rounded-3xl border bg-card/50 backdrop-blur-sm transition-all duration-500 cursor-pointer",
+                  "hover:bg-card/80 hover:shadow-xl hover:shadow-primary/10 hover:border-primary/30 hover:-translate-y-2",
+                  "active:scale-[0.98]",
+                  isSelected && "ring-2 ring-primary/30 border-primary/40 bg-card/90 shadow-lg shadow-primary/20",
+                )}
+              >
+                {/* Card Header with Thumbnail */}
+                <div className="relative p-6 pb-4">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-primary/10 rounded-2xl flex items-center justify-center text-3xl group-hover:scale-110 transition-transform duration-300">
+                      <FieldRenderer item={item} fieldId={viewConfig.thumbnailField} />
+                    </div>
+                    <ArrowUpRight className="w-5 h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 group-hover:-translate-y-1 transition-all duration-300" />
+                  </div>
+
+                  {/* Header Fields (e.g., priority indicator) */}
+                  <div className="absolute top-4 right-4 flex items-center gap-2">
+                    {viewConfig.headerFields.map(fieldId => (
+                      <FieldRenderer key={fieldId} item={item} fieldId={fieldId} />
+                    ))}
+                  </div>
+                </div>
+
+                {/* Card Content */}
+                <div className="px-6 pb-6 space-y-4">
+                  <div className="font-semibold text-lg group-hover:text-primary transition-colors line-clamp-2">
+                    <FieldRenderer item={item} fieldId={viewConfig.titleField} />
+                  </div>
+                  <div className="text-muted-foreground text-sm line-clamp-3">
+                    <FieldRenderer item={item} fieldId={viewConfig.descriptionField} />
+                  </div>
+                  
+                  {viewConfig.contentFields.map(fieldId => (
+                    <FieldRenderer key={fieldId} item={item} fieldId={fieldId} options={{ showPercentage: true }} />
+                  ))}
+                  
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    {viewConfig.footerFields.map(fieldId => (
+                      <FieldRenderer key={fieldId} item={item} fieldId={fieldId} />
+                    ))}
+                  </div>
+                </div>
+
+                {/* Hover gradient overlay */}
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+                
+                {/* Selection indicator */}
+                {isSelected && (
+                  <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-primary/5 pointer-events-none" />
+                )}
+              </div>
+            )
+          })}
+          <AddDataItemCta viewMode={isGrid ? 'grid' : 'cards'} />
+        </div>
+      )
+    }
+  src/features/dynamic-view/components/views/KanbanView.tsx: >-
+    import { useState, useEffect, Fragment } from "react";
+
+    import {
+      GripVertical,
+      Plus,
+    } from "lucide-react";
+
+    import type { GenericItem } from '../../types'
+
+    import { Card, CardContent } from "@/components/ui/card";
+
+    import { cn } from "@/lib/utils";
+
+    import { EmptyState } from "../shared/EmptyState";
+
+    import { useAppViewManager } from "@/hooks/useAppViewManager.hook";
+
+    import { useDataDemoStore } from
+    "../../../../pages/DataDemo/store/dataDemo.store";
+
+    import { useDynamicView } from '../../DynamicViewContext'
+
+    import { FieldRenderer } from '../shared/FieldRenderer'
+
+
+    interface KanbanCardProps {
+      item: GenericItem;
+      isDragging: boolean;
+    }
+
+
+    function KanbanCard({ item, isDragging, ...props }: KanbanCardProps &
+    React.HTMLAttributes<HTMLDivElement>) {
+      const { onItemSelect } = useAppViewManager();
+      const { config } = useDynamicView();
+      const { kanbanView: viewConfig } = config;
+
+      return (
+        <Card
+          {...props}
+          data-draggable-id={item.id}
+          onClick={() => onItemSelect(item)}
+          className={cn(
+            "cursor-pointer transition-all duration-300 border bg-card/60 dark:bg-neutral-800/60 backdrop-blur-sm hover:bg-card/70 dark:hover:bg-neutral-700/70 active:cursor-grabbing",
+            isDragging && "opacity-50 ring-2 ring-primary ring-offset-2 ring-offset-background"
+          )}
+        >
+          <CardContent className="p-5">
+            <div className="space-y-4">
+              <div className="flex items-start justify-between">
+                <div className="font-semibold text-card-foreground dark:text-neutral-100 leading-tight flex-1 min-w-0">
+                  <FieldRenderer item={item} fieldId={viewConfig.cardFields.titleField} />
+                </div>
+                <GripVertical className="w-5 h-5 text-muted-foreground/60 dark:text-neutral-400 cursor-grab flex-shrink-0" />
+              </div>
+
+              <div className="text-sm text-muted-foreground dark:text-neutral-300 leading-relaxed line-clamp-2">
+                <FieldRenderer item={item} fieldId={viewConfig.cardFields.descriptionField} />
+              </div>
+
+              <div className="flex items-center justify-between pt-2 border-t border-border/30 dark:border-neutral-700/30">
+                {/* 
+                  The footer is a bit tricky. The original has a left and right side.
+                  For a generic component, let's just render them in a row.
+                  A more advanced config could specify 'left' and 'right' arrays.
+                  For now, this is a good simplification.
+                */}
+                <div className="flex items-center justify-between w-full text-muted-foreground/80 dark:text-neutral-400">
+                  {viewConfig.cardFields.footerFields.map(fieldId => (
+                    <FieldRenderer key={fieldId} item={item} fieldId={fieldId} options={{ compact: true, avatarClassName: 'w-8 h-8' }} />
+                  ))}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      );
+    }
+
+
+    interface DataKanbanViewProps {
+      data: Record<string, GenericItem[]>;
+    }
+
+
+    export function KanbanView({ data }: DataKanbanViewProps) {
+      const [columns, setColumns] = useState(data);
+      const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
+      const [dropIndicator, setDropIndicator] = useState<{ columnId: string; index: number } | null>(null);
+      const { groupBy } = useAppViewManager();
+      const updateItem = useDataDemoStore((s: any) => s.updateItem);
+
+      useEffect(() => {
+        setColumns(data);
+      }, [data]);
+
+      const handleDragStart = (e: React.DragEvent<HTMLDivElement>, item: GenericItem, sourceColumnId: string) => {
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', JSON.stringify({ itemId: item.id, sourceColumnId }));
+        setDraggedItemId(item.id);
+      };
+
+      const getDropIndicatorIndex = (e: React.DragEvent, elements: HTMLElement[]) => {
+        const mouseY = e.clientY;
+        let closestIndex = elements.length;
+
+        elements.forEach((el, index) => {
+          const { top, height } = el.getBoundingClientRect();
+          const offset = mouseY - (top + height / 2);
+          if (offset < 0 && index < closestIndex) {
+            closestIndex = index;
+          }
+        });
+        return closestIndex;
+      };
+
+      const handleDragOverCardsContainer = (e: React.DragEvent<HTMLDivElement>, columnId: string) => {
+        e.preventDefault();
+        const container = e.currentTarget;
+        const draggableElements = Array.from(container.querySelectorAll('[data-draggable-id]')) as HTMLElement[];
+        const index = getDropIndicatorIndex(e, draggableElements);
+
+        if (dropIndicator?.columnId === columnId && dropIndicator.index === index) return;
+        setDropIndicator({ columnId, index });
+      };
+
+      const handleDrop = (e: React.DragEvent<HTMLDivElement>, targetColumnId: string) => {
+        e.preventDefault();
+        setDropIndicator(null);
+        try {
+          const { itemId, sourceColumnId } = JSON.parse(e.dataTransfer.getData('text/plain'));
+
+          const droppedItem = columns[sourceColumnId]?.find(i => i.id === itemId);
+          if (!droppedItem) return;
+
+          // Update local state for immediate feedback
+          setColumns(prev => {
+            const newColumns = { ...prev };
+            const sourceCol = prev[sourceColumnId].filter(i => i.id !== itemId);
+
+            if (sourceColumnId === targetColumnId) {
+              const dropIndex = dropIndicator?.columnId === targetColumnId ? dropIndicator.index : sourceCol.length;
+              sourceCol.splice(dropIndex, 0, droppedItem);
+              newColumns[sourceColumnId] = sourceCol;
+            } else {
+              const targetCol = [...prev[targetColumnId]];
+              const dropIndex = dropIndicator?.columnId === targetColumnId ? dropIndicator.index : targetCol.length;
+              targetCol.splice(dropIndex, 0, droppedItem);
+              
+              newColumns[sourceColumnId] = sourceCol;
+              newColumns[targetColumnId] = targetCol;
+            }
+            return newColumns;
+          });
+          
+          // Persist change to global store. The groupBy value tells us which property to update.
+          if (groupBy !== 'none' && sourceColumnId !== targetColumnId) {
+            updateItem(itemId, { [groupBy]: targetColumnId } as Partial<GenericItem>);
+          }
+
+        } catch (err) {
+          console.error("Failed to parse drag data", err)
+        } finally {
+          setDraggedItemId(null);
+        }
+      };
+
+      const handleDragEnd = () => {
+        setDraggedItemId(null);
+        setDropIndicator(null);
+      };
+
+      const initialColumns = Object.entries(data);
+
+      if (!initialColumns || initialColumns.length === 0) {
+        return <EmptyState />;
+      }
+
+      const statusColors: Record<string, string> = {
+        active: "bg-blue-500", pending: "bg-yellow-500", completed: "bg-green-500", archived: "bg-gray-500",
+        low: "bg-green-500", medium: "bg-blue-500", high: "bg-orange-500", critical: "bg-red-500",
+      };
+
+      const DropIndicator = () => <div className="h-1 my-2 rounded-full bg-primary/60" />;
+
+      return (
+        <div className="flex items-start gap-6 pb-4 overflow-x-auto -mx-6 px-6">
+          {Object.entries(columns).map(([columnId, items]) => (
+            <div
+              key={columnId}
+              className={cn(
+                "w-80 flex-shrink-0 bg-card/20 dark:bg-neutral-900/20 backdrop-blur-xl rounded-3xl p-5 border border-border dark:border-neutral-700/50 transition-all duration-300",
+                dropIndicator?.columnId === columnId && "bg-primary/10 border-primary/30"
+              )}
+            >
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className={cn("w-3.5 h-3.5 rounded-full", statusColors[columnId] || "bg-muted-foreground")} />
+                  <h3 className="font-semibold text-card-foreground dark:text-neutral-100 capitalize truncate">{columnId}</h3>
+                  <span className="text-sm font-medium text-muted-foreground bg-background/50 rounded-full px-2 py-0.5">{items.length}</span>
+                </div>
+                <button className="p-1 rounded-full bg-card/30 dark:bg-neutral-800/30 hover:bg-card/50 dark:hover:bg-neutral-700/50 transition-colors">
+                  <Plus className="w-4 h-4 text-muted-foreground dark:text-neutral-300" />
+                </button>
+              </div>
+
+              <div
+                onDragOver={(e) => handleDragOverCardsContainer(e, columnId)}
+                onDrop={(e) => handleDrop(e, columnId)}
+                onDragLeave={() => setDropIndicator(null)}
+                className="space-y-4 min-h-[100px]"
+              >
+                {items.map((item, index) => (
+                  <Fragment key={item.id}>
+                    {dropIndicator?.columnId === columnId && dropIndicator.index === index && (
+                      <DropIndicator />
+                    )}
+                    <KanbanCard
+                      item={item}
+                      isDragging={draggedItemId === item.id}
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, item, columnId)}
+                      onDragEnd={handleDragEnd}
+                    />
+                  </Fragment>
+                ))}
+                {dropIndicator?.columnId === columnId && dropIndicator.index === items.length && (
+                  <DropIndicator />
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      );
+    }
+  src/features/dynamic-view/components/views/CalendarView.tsx: >-
+    import { useState, useMemo, useRef, useLayoutEffect } from "react";
+
+    import { format, addMonths, subMonths, startOfMonth, endOfMonth,
+    startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isToday, isSameDay,
+    } from "date-fns";
+
+    import { ChevronLeft, ChevronRight } from "lucide-react";
+
+    import { gsap } from "gsap";
+
+
+    import { Button } from "@/components/ui/button";
+
+    import { cn } from "@/lib/utils";
+
+    import type { GenericItem } from '../../types';
+
+    import type { CalendarDateProp, CalendarColorProp, Status, Priority } from
+    '../../types';
+
+    import { useAppViewManager } from "@/hooks/useAppViewManager.hook";
+
+    import { useResizeObserver } from "@/hooks/useResizeObserver.hook";
+
+    import { useSelectedItem, useDataDemoStore } from
+    "../../../../pages/DataDemo/store/dataDemo.store";
+
+    import { CalendarViewControls } from "./DataCalendarViewControls";
+
+    import { useDynamicView } from '../../DynamicViewContext'
+
+    import { FieldRenderer } from '../shared/FieldRenderer'
+
+
+    interface CalendarViewProps {
+      data: GenericItem[];
+    }
+
+
+    const PRIORITY_BG_COLORS: Record<Priority, string> = {
+      low: 'bg-blue-500/80 border-blue-600/80 text-white',
+      medium: 'bg-yellow-500/80 border-yellow-600/80 text-yellow-950',
+      high: 'bg-orange-500/80 border-orange-600/80 text-white',
+      critical: 'bg-red-600/80 border-red-700/80 text-white',
+    };
+
+
+    const STATUS_BG_COLORS: Record<Status, string> = {
+      active: 'bg-sky-500/80 border-sky-600/80 text-white',
+      pending: 'bg-amber-500/80 border-amber-600/80 text-amber-950',
+      completed: 'bg-emerald-600/80 border-emerald-700/80 text-white',
+      archived: 'bg-zinc-500/80 border-zinc-600/80 text-white',
+    };
+
+
+    const CATEGORY_BG_COLORS = [
+      'bg-rose-500/80 border-rose-600/80 text-white',
+      'bg-fuchsia-500/80 border-fuchsia-600/80 text-white',
+      'bg-indigo-500/80 border-indigo-600/80 text-white',
+      'bg-teal-500/80 border-teal-600/80 text-white',
+      'bg-lime-500/80 border-lime-600/80 text-lime-950',
+    ];
+
+
+    const getCategoryBgColor = (category: string) => {
+      let hash = 0;
+      for (let i = 0; i < category.length; i++) {
+        hash = category.charCodeAt(i) + ((hash << 5) - hash);
+      }
+      const index = Math.abs(hash % CATEGORY_BG_COLORS.length);
+      return CATEGORY_BG_COLORS[index];
+    };
+
+
+    function CalendarHeader({ currentDate, onPrevMonth, onNextMonth, onToday }:
+    {
+      currentDate: Date;
+      onPrevMonth: () => void;
+      onNextMonth: () => void;
+      onToday: () => void;
+    }) {
+      return (
+        <div className="flex items-center justify-between gap-4 mb-6">
+          <h2 className="text-xl font-bold md:text-2xl tracking-tight">
+            {format(currentDate, "MMMM yyyy")}
+          </h2>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={onToday}>Today</Button>
+            <CalendarViewControls />
+            <div className="flex items-center">
+              <Button variant="outline" size="icon" className="h-9 w-9" onClick={onPrevMonth}>
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Button variant="outline" size="icon" className="h-9 w-9" onClick={onNextMonth}>
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+
+    function CalendarEvent({ item, isSelected, isDragging, onDragStart,
+    colorProp }: { 
+        item: GenericItem; 
+        isSelected: boolean;
+        isDragging: boolean;
+        onDragStart: (e: React.DragEvent<HTMLDivElement>, itemId: string) => void;
+        colorProp: CalendarColorProp;
+    }) {
+      const { onItemSelect } = useAppViewManager();
+      const { config } = useDynamicView();
+      const { calendarView: viewConfig } = config;
+
+        const colorClass = useMemo(() => {
+          switch (colorProp) {
+            case 'priority': return PRIORITY_BG_COLORS[item.priority as Priority];
+            case 'status': return STATUS_BG_COLORS[item.status as Status];
+            case 'category': return getCategoryBgColor(item.category as string);
+            default: return null;
+          }
+        }, [colorProp, item]);
+
+        return (
+            <div
+                draggable
+                onDragStart={(e) => onDragStart(e, item.id)}
+                onClick={() => onItemSelect(item)}
+                className={cn(
+                    "p-2 rounded-lg cursor-grab transition-all duration-200 border space-y-1",
+                    isSelected && "ring-2 ring-primary ring-offset-background ring-offset-2",
+                    isDragging && "opacity-50 ring-2 ring-primary cursor-grabbing",
+                    colorClass 
+                      ? `${colorClass} hover:brightness-95 dark:hover:brightness-110`
+                      : "bg-card/60 dark:bg-neutral-800/60 backdrop-blur-sm hover:bg-card/80 dark:hover:bg-neutral-700/70"
+                )}
+            >
+                <div className={cn(
+                  "font-semibold text-sm leading-tight line-clamp-2",
+                  colorClass ? "text-inherit" : "text-card-foreground/90"
+                )}>
+                  <FieldRenderer item={item} fieldId={viewConfig.titleField} />
+                </div>
+
+                {viewConfig.displayFields.length > 0 && (
+                    <div className={cn(
+                        "flex items-center justify-between pt-1 border-t flex-wrap gap-2",
+                        colorClass ? "border-black/10 dark:border-white/10" : "border-border/30 dark:border-neutral-700/50"
+                    )}>
+                      {viewConfig.displayFields.map(fieldId => (
+                        <FieldRenderer key={fieldId} item={item} fieldId={fieldId} options={{ compact: true, avatarClassName: 'w-5 h-5' }}/>
+                      ))}
+                    </div>
+                )}
+            </div>
+        );
+    }
+
+
+    const datePropLabels: Record<CalendarDateProp, string> = {
+      dueDate: 'due dates',
+      createdAt: 'creation dates',
+      updatedAt: 'update dates',
+    };
+
+
+    export function CalendarView({ data }: CalendarViewProps) {
+      const [currentDate, setCurrentDate] = useState(new Date());
+      const { 
+        itemId,
+        calendarDateProp,
+        calendarItemLimit,
+        calendarColorProp,
+      } = useAppViewManager();
+      const selectedItem = useSelectedItem(itemId);
+      const updateItem = useDataDemoStore((s: any) => s.updateItem);
+      
+      // Drag & Drop State
+      const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
+      const [dropTargetDate, setDropTargetDate] = useState<Date | null>(null);
+
+      // GSAP animation state
+      const [direction, setDirection] = useState(0); // 0: initial, 1: next, -1: prev
+
+      // Responsive Calendar State
+      const calendarContainerRef = useRef<HTMLDivElement>(null);
+      const { width } = useResizeObserver(calendarContainerRef);
+      const MIN_DAY_WIDTH = 160; // px
+      const numColumns = useMemo(() => {
+        if (width === 0) return 7;
+        const cols = Math.floor(width / MIN_DAY_WIDTH);
+        return Math.max(3, Math.min(7, cols));
+      }, [width]);
+
+      const gridRef = useRef<HTMLDivElement>(null);
+      const itemsByDateProp = useMemo(() => data.filter(item => !!item[calendarDateProp]), [data, calendarDateProp]);
+
+      const eventsByDate = useMemo(() => {
+        const eventsMap = new Map<string, GenericItem[]>();
+        itemsByDateProp.forEach(item => {
+          const dateValue = item[calendarDateProp];
+          if (!dateValue) return;
+          const date = new Date(dateValue as string);
+          const dateKey = format(date, "yyyy-MM-dd");
+          if (!eventsMap.has(dateKey)) {
+            eventsMap.set(dateKey, []);
+          }
+          eventsMap.get(dateKey)?.push(item);
+        });
+        return eventsMap;
+      }, [itemsByDateProp, calendarDateProp]);
+
+      const monthStart = startOfMonth(currentDate);
+      const monthEnd = endOfMonth(monthStart);
+      const startDate = startOfWeek(monthStart, { weekStartsOn: 0 }); // Sunday
+      const endDate = endOfWeek(monthEnd, { weekStartsOn: 0 });
+
+      const days = eachDayOfInterval({ start: startDate, end: endDate });
+      const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+      
+      // D&D Handlers
+      const handleDragStart = (e: React.DragEvent, itemId: string) => {
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', itemId);
+        setDraggedItemId(itemId);
+      };
+      
+      const handleDragEnd = () => {
+        setDraggedItemId(null);
+        setDropTargetDate(null);
+      };
+
+      const handleDragOver = (e: React.DragEvent, day: Date) => {
+        e.preventDefault();
+        if (dropTargetDate === null || !isSameDay(day, dropTargetDate)) {
+            setDropTargetDate(day);
+        }
+      };
+
+      const handleDragLeave = () => {
+        setDropTargetDate(null);
+      };
+
+      const handleDrop = (e: React.DragEvent, day: Date) => {
+        e.preventDefault();
+        const itemIdToUpdate = e.dataTransfer.getData('text/plain');
+        if (itemIdToUpdate) {
+            const originalItem = itemsByDateProp.find(i => i.id === itemIdToUpdate);
+            if (originalItem && originalItem[calendarDateProp]) {
+                const originalDate = new Date(originalItem[calendarDateProp] as string);
+                // Preserve the time, only change the date part
+                const newDueDate = new Date(day);
+                newDueDate.setHours(originalDate.getHours(), originalDate.getMinutes(), originalDate.getSeconds(), originalDate.getMilliseconds());
+                updateItem(itemIdToUpdate, { [calendarDateProp]: newDueDate.toISOString() });
+            }
+        }
+        handleDragEnd(); // Reset state
+      };
+      
+      const handlePrevMonth = () => {
+        setDirection(-1);
+        setCurrentDate(subMonths(currentDate, 1));
+      };
+      const handleNextMonth = () => {
+        setDirection(1);
+        setCurrentDate(addMonths(currentDate, 1));
+      };
+      const handleToday = () => {
+        setDirection(0); // No animation for 'Today'
+        setCurrentDate(new Date());
+      };
+
+      useLayoutEffect(() => {
+        if (direction === 0 || !gridRef.current) return;
+        gsap.fromTo(gridRef.current, 
+          { opacity: 0, x: 30 * direction }, 
+          { opacity: 1, x: 0, duration: 0.3, ease: 'power2.out' }
+        );
+      }, [currentDate]);
+
+      return (
+        <div ref={calendarContainerRef} className="-mx-4 md:-mx-6">
+          <div className="px-4 md:px-6 pb-2">
+            <CalendarHeader currentDate={currentDate} onPrevMonth={handlePrevMonth} onNextMonth={handleNextMonth} onToday={handleToday} />
+          </div>
+          {itemsByDateProp.length === 0 ? (
+            <div className="flex items-center justify-center h-96 text-muted-foreground rounded-lg border bg-card/30 mx-4 md:mx-6">
+              No items with {datePropLabels[calendarDateProp]} to display on the calendar.
+            </div>
+          ) : (
+            <div className="px-2" onDragEnd={handleDragEnd}>
+              {numColumns === 7 && (
+                <div className="grid grid-cols-7">
+                  {weekdays.map(day => (
+                    <div key={day} className="py-2 px-3 text-center text-xs font-semibold text-muted-foreground">
+                      {day}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+                <div
+                  ref={gridRef}
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: `repeat(${numColumns}, minmax(0, 1fr))`,
+                    gap: '0.5rem',
+                  }}
+                >
+                  {days.map(day => {
+                    const dateKey = format(day, "yyyy-MM-dd");
+                    const dayEvents = eventsByDate.get(dateKey) || [];
+                    const visibleEvents = calendarItemLimit === 'all' 
+                        ? dayEvents 
+                        : dayEvents.slice(0, calendarItemLimit as number);
+                    const hiddenEventsCount = dayEvents.length - visibleEvents.length;
+                    const isCurrentMonthDay = isSameMonth(day, currentDate);
+                    const isDropTarget = dropTargetDate && isSameDay(day, dropTargetDate);
+                    return (
+                      <div
+                        key={day.toString()}
+                        onDragOver={(e) => handleDragOver(e, day)}
+                        onDragLeave={handleDragLeave}
+                        onDrop={(e) => handleDrop(e, day)}
+                        className={cn(
+                          "relative min-h-[150px] rounded-2xl p-2 flex flex-col gap-2 transition-all duration-300 border",
+                          isCurrentMonthDay ? "bg-card/40 dark:bg-neutral-900/40 border-transparent" : "bg-muted/30 dark:bg-neutral-800/20 border-transparent text-muted-foreground/60",
+                          isDropTarget ? "border-primary/50 bg-primary/10" : "hover:border-primary/20 hover:bg-card/60"
+                        )}
+                      >
+                        <div className="font-semibold text-sm">
+                          {isToday(day) ? (
+                            <div className="flex items-center justify-center w-7 h-7 rounded-full bg-primary text-primary-foreground">
+                              {format(day, 'd')}
+                            </div>
+                          ) : (
+                            <div className="flex items-baseline gap-1.5 px-1 py-0.5">
+                              {numColumns < 7 && <span className="text-xs opacity-70">{format(day, 'eee')}</span>}
+                              <span>{format(day, 'd')}</span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="space-y-2 overflow-y-auto flex-grow custom-scrollbar">
+                          {visibleEvents.map(item => (
+                            <CalendarEvent
+                              key={item.id} 
+                              item={item} 
+                              isSelected={selectedItem?.id === item.id}
+                              isDragging={draggedItemId === item.id}
+                              onDragStart={handleDragStart}
+                              colorProp={calendarColorProp}
+                            />
+                          ))}
+                        </div>
+                        {hiddenEventsCount > 0 && (
+                          <div className="absolute bottom-1 right-2 text-xs font-bold text-muted-foreground">
+                            +{hiddenEventsCount} more
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 504

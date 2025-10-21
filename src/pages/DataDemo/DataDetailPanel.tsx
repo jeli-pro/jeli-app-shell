@@ -1,6 +1,5 @@
 import React, { useRef } from 'react'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import {
   Clock, 
   Download,
@@ -18,7 +17,8 @@ import {
 } from 'lucide-react'
 import type { GenericItem } from '@/features/dynamic-view/types'
 import { useStaggeredAnimation } from '@/hooks/useStaggeredAnimation.motion.hook'
-import { DataDetailActions } from './DataDetailActions'
+import { Button } from '@/components/ui/button'
+import { ExternalLink, Share } from 'lucide-react';
 import { FieldRenderer } from '@/features/dynamic-view/components/shared/FieldRenderer'
 interface DataDetailPanelProps {
   item: GenericItem | null
@@ -60,7 +60,7 @@ export function DataDetailPanel({ item }: DataDetailPanelProps) {
       <div className="p-6 border-b border-border/50 bg-gradient-to-r from-card/50 to-card/30 backdrop-blur-sm">
         <div className="flex items-start gap-4 mb-4">
           <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-primary/10 rounded-2xl flex items-center justify-center text-3xl flex-shrink-0">
-            <FieldRenderer item={item} fieldId="thumbnailEmoji" />
+            <FieldRenderer item={item} fieldId="thumbnail" />
           </div>
           <div className="flex-1 min-w-0">
             <h1 className="text-2xl font-bold mb-2 leading-tight">
@@ -219,7 +219,16 @@ export function DataDetailPanel({ item }: DataDetailPanelProps) {
 
       {/* Footer Actions */}
       <div className="p-6 border-t border-border/50 bg-card/30">
-        <DataDetailActions />
+        <div className="flex gap-3">
+          <Button className="flex-1" size="sm">
+            <ExternalLink className="w-4 h-4 mr-2" />
+            Open Project
+          </Button>
+          <Button variant="outline" size="sm">
+            <Share className="w-4 h-4 mr-2" />
+            Share
+          </Button>
+        </div>
       </div>
     </div>
   )

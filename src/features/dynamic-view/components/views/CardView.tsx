@@ -69,22 +69,31 @@ export function CardView({ data, isGrid = false }: { data: GenericItem[]; isGrid
             </div>
 
             {/* Card Content */}
-            <div className="px-6 pb-6 space-y-4">
-              <div className="font-semibold text-lg group-hover:text-primary transition-colors line-clamp-2">
+            <div className="px-6 pb-6">
+              <h3 className="font-semibold text-lg mb-2 group-hover:text-primary transition-colors line-clamp-2">
                 <FieldRenderer item={item} fieldId={viewConfig.titleField} />
-              </div>
-              <div className="text-muted-foreground text-sm line-clamp-3">
+              </h3>
+              <p className="text-muted-foreground text-sm mb-4 line-clamp-3">
                 <FieldRenderer item={item} fieldId={viewConfig.descriptionField} />
+              </p>
+
+              {/* Status and Category */}
+              <div className="flex items-center gap-2 mb-4">
+                <FieldRenderer item={item} fieldId={viewConfig.statusField} />
+                <FieldRenderer item={item} fieldId={viewConfig.categoryField} />
               </div>
-              
-              {viewConfig.contentFields.map(fieldId => (
-                <FieldRenderer key={fieldId} item={item} fieldId={fieldId} options={{ showPercentage: true }} />
-              ))}
-              
+
+              {/* Tags, Progress, Assignee */}
+              <div className="space-y-4 mb-4">
+                <FieldRenderer item={item} fieldId={viewConfig.tagsField} />
+                <FieldRenderer item={item} fieldId={viewConfig.progressField} />
+                <FieldRenderer item={item} fieldId={viewConfig.assigneeField} />
+              </div>
+
+              {/* Metrics and Date */}
               <div className="flex items-center justify-between text-xs text-muted-foreground">
-                {viewConfig.footerFields.map(fieldId => (
-                  <FieldRenderer key={fieldId} item={item} fieldId={fieldId} />
-                ))}
+                <FieldRenderer item={item} fieldId={viewConfig.metricsField} />
+                <FieldRenderer item={item} fieldId={viewConfig.dateField} />
               </div>
             </div>
 
