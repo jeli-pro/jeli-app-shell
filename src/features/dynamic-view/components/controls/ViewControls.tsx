@@ -30,7 +30,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 
-import type { FilterConfig, CalendarDateProp, CalendarDisplayProp, CalendarColorProp } from '../../types'
+import type { FilterConfig, CalendarDateProp, CalendarDisplayProp, CalendarColorProp, GenericItem } from '../../types'
 import { useDynamicView } from '../../DynamicViewContext';
 
 export interface DataViewControlsProps {
@@ -47,7 +47,7 @@ export function ViewControls() {
     groupBy,
     onGroupByChange,
     viewMode,
-  } = useDynamicView();
+  } = useDynamicView<string, GenericItem>();
   const sortOptions = config.sortableFields;
   const groupOptions = config.groupableFields;
   const filterableFields = config.filterableFields;
@@ -168,12 +168,12 @@ function CalendarSpecificControls() {
         calendarDisplayProps, onCalendarDisplayPropsChange,
         calendarItemLimit, onCalendarItemLimitChange,
         calendarColorProp, onCalendarColorPropChange,
-    } = useDynamicView();
+    } = useDynamicView<string, GenericItem>();
 
-    const handleDisplayPropChange = (prop: CalendarDisplayProp, checked: boolean) => {
+    const handleDisplayPropChange = (prop: CalendarDisplayProp<string>, checked: boolean) => {
         const newProps = checked 
             ? [...(calendarDisplayProps || []), prop] 
-            : (calendarDisplayProps || []).filter(p => p !== prop);
+            : (calendarDisplayProps || []).filter((p) => p !== prop);
         onCalendarDisplayPropsChange?.(newProps);
     };
 
@@ -195,7 +195,7 @@ function CalendarSpecificControls() {
                     <Separator />
                     <div className="space-y-3">
                         <Label className="font-semibold">Item Background Color</Label>
-                        <RadioGroup value={calendarColorProp} onValueChange={(v) => onCalendarColorPropChange?.(v as CalendarColorProp)} className="gap-2">
+                        <RadioGroup value={calendarColorProp} onValueChange={(v) => onCalendarColorPropChange?.(v as CalendarColorProp<string>)} className="gap-2">
                             <div className="flex items-center space-x-2">
                                 <RadioGroupItem value="none" id="color-none" />
                                 <Label htmlFor="color-none" className="font-normal">None</Label>
@@ -217,7 +217,7 @@ function CalendarSpecificControls() {
                     <Separator />
                     <div className="space-y-3">
                         <Label className="font-semibold">Date Property</Label>
-                        <RadioGroup value={calendarDateProp} onValueChange={(v) => onCalendarDatePropChange?.(v as CalendarDateProp)} className="gap-2">
+                        <RadioGroup value={calendarDateProp} onValueChange={(v) => onCalendarDatePropChange?.(v as CalendarDateProp<string>)} className="gap-2">
                             <div className="flex items-center space-x-2">
                                 <RadioGroupItem value="dueDate" id="dueDate" />
                                 <Label htmlFor="dueDate" className="font-normal">Due Date</Label>
@@ -235,7 +235,7 @@ function CalendarSpecificControls() {
                     <div className="space-y-3">
                         <Label className="font-semibold">Card Details</Label>
                         <div className="space-y-2">
-                            {(['priority', 'assignee', 'tags'] as CalendarDisplayProp[]).map(prop => (
+                            {(['priority', 'assignee', 'tags'] as CalendarDisplayProp<string>[]).map(prop => (
                                 <div key={prop} className="flex items-center space-x-2">
                                     <Checkbox id={prop} checked={(calendarDisplayProps || []).includes(prop)} onCheckedChange={(c) => handleDisplayPropChange(prop, !!c)} />
                                     <Label htmlFor={prop} className="capitalize font-normal">{prop}</Label>

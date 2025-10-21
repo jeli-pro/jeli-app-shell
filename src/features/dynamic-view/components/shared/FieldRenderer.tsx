@@ -1,25 +1,25 @@
 import { useDynamicView } from '../../DynamicViewContext';
-import type { GenericItem, BadgeFieldDefinition } from '../../types';
+import type { GenericItem, BadgeFieldDefinition, FieldDefinition } from '../../types';
 import { cn, getNestedValue } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Clock, Eye, Heart, Share } from 'lucide-react';
 
-interface FieldRendererProps {
-  item: GenericItem;
-  fieldId: string;
+interface FieldRendererProps<TFieldId extends string, TItem extends GenericItem> {
+  item: TItem;
+  fieldId: TFieldId;
   className?: string;
   options?: Record<string, any>; // For extra props like 'compact' for avatar
 }
 
-export function FieldRenderer({ item, fieldId, className, options }: FieldRendererProps) {
-  const { getFieldDef } = useDynamicView();
+export function FieldRenderer<TFieldId extends string, TItem extends GenericItem>({ item, fieldId, className, options }: FieldRendererProps<TFieldId, TItem>) {
+  const { getFieldDef } = useDynamicView<TFieldId, TItem>();
   const fieldDef = getFieldDef(fieldId);
   const value = getNestedValue(item, fieldId);
 
   // Custom render function takes precedence
   if (fieldDef?.render) {
-    return <>{fieldDef.render(item, options)}</>;
+    return <>{(fieldDef as FieldDefinition<TFieldId, TItem>).render?.(item, options)}</>;
   }
 
   if (!fieldDef) {
@@ -40,7 +40,7 @@ export function FieldRenderer({ item, fieldId, className, options }: FieldRender
       return <span className={cn("text-xl", className)}>{String(value)}</span>;
 
     case 'badge': {
-      const { colorMap, indicatorColorMap } = fieldDef as BadgeFieldDefinition;
+      const { colorMap, indicatorColorMap } = fieldDef as BadgeFieldDefinition<TFieldId, TItem>;
       
       if (options?.displayAs === 'indicator' && indicatorColorMap) {
         const indicatorColorClass = indicatorColorMap[String(value)] || 'bg-muted-foreground';

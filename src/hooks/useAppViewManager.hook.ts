@@ -1,7 +1,7 @@
 import { useMemo, useCallback, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate, useLocation, useParams } from 'react-router-dom';
 import { useAppShellStore, type AppShellState, type ActivePage } from '@/store/appShell.store';
-import type { GenericItem, ViewMode, SortConfig, GroupableField, Status, Priority, CalendarDateProp, CalendarDisplayProp, CalendarColorProp, FilterConfig } from '@/features/dynamic-view/types';
+import type { GenericItem, ViewMode, SortConfig, GroupableField, CalendarDateProp, CalendarDisplayProp, CalendarColorProp, FilterConfig } from '@/features/dynamic-view/types';
 import type { TaskView } from '@/pages/Messaging/types';
 import { BODY_STATES, SIDEBAR_STATES } from '@/lib/utils';
 
@@ -94,30 +94,30 @@ export function useAppViewManager() {
   // DataDemo specific state
   const viewMode = useMemo(() => (searchParams.get('dataView') as ViewMode) || 'list', [searchParams]);
 	const page = useMemo(() => parseInt(searchParams.get('page') || '1', 10), [searchParams]);
-	const groupBy = useMemo(() => (searchParams.get('groupBy') as GroupableField | 'none') || 'none', [searchParams]);
+	const groupBy = useMemo(() => (searchParams.get('groupBy') as GroupableField<string> | 'none') || 'none', [searchParams]);
 	const activeGroupTab = useMemo(() => searchParams.get('tab') || 'all', [searchParams]);
 	const filters = useMemo<FilterConfig>(
 		() => ({
 			searchTerm: q || '',
-			status: (status?.split(',') || []).filter(Boolean) as Status[],
-			priority: (priority?.split(',') || []).filter(Boolean) as Priority[],
+			status: (status?.split(',') || []).filter(Boolean),
+			priority: (priority?.split(',') || []).filter(Boolean),
 		}),
 		[q, status, priority],
 	);
-	const sortConfig = useMemo<SortConfig | null>(() => {
+	const sortConfig = useMemo<SortConfig<string> | null>(() => {
 		const sortParam = sort;
 		if (!sortParam) return { key: 'updatedAt', direction: 'desc' }; // Default sort
 		if (sortParam === 'default') return null;
 
 		const [key, direction] = sortParam.split('-');
-		return { key: key as string, direction: direction as 'asc' | 'desc' };
+		return { key, direction: direction as 'asc' | 'desc' };
 	}, [sort]);
-  const calendarDateProp = useMemo(() => (calDate || 'dueDate') as CalendarDateProp, [calDate]);
+  const calendarDateProp = useMemo(() => (calDate || 'dueDate') as CalendarDateProp<string>, [calDate]);
   const calendarDisplayProps = useMemo(
     () => {
       if (calDisplay === null) return []; // Default is now nothing
       if (calDisplay === '') return []; // Explicitly empty is also nothing
-      return calDisplay.split(',') as CalendarDisplayProp[];
+      return calDisplay.split(',') as CalendarDisplayProp<string>[];
     },
     [calDisplay]
   );
@@ -126,12 +126,12 @@ export function useAppViewManager() {
     if (calLimit === 'all') return 'all';
     return isNaN(limit) ? 3 : limit;
   }, [calLimit]);
-  const calendarColorProp = useMemo(() => (calColor || 'none') as CalendarColorProp, [calColor]);
+  const calendarColorProp = useMemo(() => (calColor || 'none') as CalendarColorProp<string>, [calColor]);
 
   // --- MUTATOR ACTIONS ---
 
   const handleParamsChange = useCallback(
-		(newParams: Record<string, string | string[] | null | undefined>, resetPage = false) => {
+		(newParams: Record<string, string | number | string[] | null | undefined>, resetPage = false) => {
 			setSearchParams(
 				(prev) => {
 					const updated = new URLSearchParams(prev);
@@ -255,7 +255,7 @@ export function useAppViewManager() {
   const setFilters = (newFilters: FilterConfig) => {
     handleParamsChange({ q: newFilters.searchTerm, status: newFilters.status, priority: newFilters.priority }, true);
   }
-  const setSort = (config: SortConfig | null) => {
+  const setSort = (config: SortConfig<string> | null) => {
     if (!config) {
       handleParamsChange({ sort: null }, true);
     } else {
@@ -273,14 +273,14 @@ export function useAppViewManager() {
   const setPage = (newPage: number) => handleParamsChange({ page: newPage > 1 ? newPage.toString() : null });
 
   // Calendar specific actions
-  const setCalendarDateProp = (prop: CalendarDateProp) => handleParamsChange({ calDate: prop === 'dueDate' ? null : prop });
-  const setCalendarDisplayProps = (props: CalendarDisplayProp[]) => {
+  const setCalendarDateProp = (prop: CalendarDateProp<string>) => handleParamsChange({ calDate: prop === 'dueDate' ? null : prop });
+  const setCalendarDisplayProps = (props: CalendarDisplayProp<string>[]) => {
     // Check for default state to keep URL clean
     const isDefault = props.length === 0;
     handleParamsChange({ calDisplay: isDefault ? null : props.join(',') });
   };
   const setCalendarItemLimit = (limit: number | 'all') => handleParamsChange({ calLimit: limit === 3 ? null : String(limit) });
-  const setCalendarColorProp = (prop: CalendarColorProp) => handleParamsChange({ calColor: prop === 'none' ? null : prop });
+  const setCalendarColorProp = (prop: CalendarColorProp<string>) => handleParamsChange({ calColor: prop === 'none' ? null : prop });
 
   const onItemSelect = useCallback((item: GenericItem) => {
 		navigate(`/data-demo/${item.id}${location.search}`);

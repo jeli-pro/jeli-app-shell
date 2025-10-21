@@ -14,7 +14,7 @@ import { useDynamicView } from '../../DynamicViewContext'
 import { FieldRenderer } from '../shared/FieldRenderer'
 
 export function TableView({ data, ctaElement }: { data: GenericItem[], ctaElement?: ReactNode }) {
-  const { config, sortConfig, onSortChange, groupBy, onItemSelect, selectedItemId } = useDynamicView();
+  const { config, sortConfig, onSortChange, groupBy, onItemSelect, selectedItemId } = useDynamicView<string, GenericItem>();
   const { tableView: viewConfig } = config;
 
   const tableRef = useRef<HTMLTableElement>(null)
@@ -123,7 +123,7 @@ export function TableView({ data, ctaElement }: { data: GenericItem[], ctaElemen
 }
 
 function TableRow({ item, isSelected, onItemSelect }: { item: GenericItem; isSelected: boolean; onItemSelect: (item: GenericItem) => void }) {
-  const { config } = useDynamicView();
+  const { config } = useDynamicView<string, GenericItem>();
   return (
     <tr
       onClick={() => onItemSelect(item)}

@@ -8,7 +8,7 @@ import { useDynamicView } from '../../DynamicViewContext'
 import { FieldRenderer } from '../shared/FieldRenderer'
 
 export function CardView({ data, isGrid = false, ctaElement }: { data: GenericItem[]; isGrid?: boolean, ctaElement?: ReactNode }) {
-  const { config, onItemSelect, selectedItemId } = useDynamicView();
+  const { config, onItemSelect, selectedItemId } = useDynamicView<string, GenericItem>();
   const { cardView: viewConfig } = config;
 
   const containerRef = useRef<HTMLDivElement>(null)

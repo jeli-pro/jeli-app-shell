@@ -7,7 +7,7 @@ import { useDynamicView } from '../../DynamicViewContext'
 import { FieldRenderer } from '../shared/FieldRenderer'
 
 export function ListView({ data, ctaElement }: { data: GenericItem[], ctaElement?: ReactNode }) {
-  const { config, onItemSelect, selectedItemId } = useDynamicView();
+  const { config, onItemSelect, selectedItemId } = useDynamicView<string, GenericItem>();
 
   const listRef = useRef<HTMLDivElement>(null)
   useStaggeredAnimation(listRef, [data], { mode: 'incremental', scale: 1, y: 20, stagger: 0.05, duration: 0.4 });

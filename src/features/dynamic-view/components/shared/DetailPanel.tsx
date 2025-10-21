@@ -6,13 +6,13 @@ import {
   BarChart3,
 } from 'lucide-react'
 import type { GenericItem, DetailViewConfig } from '../../types'
-import { useStaggeredAnimation } from '@/hooks/useStaggeredAnimation.motion.hook'
+import { useStaggeredAnimation } from '@/hooks/useStaggeredAnimation.motion.hook';
 import { FieldRenderer } from '@/features/dynamic-view/components/shared/FieldRenderer'
 import { getNestedValue } from '@/lib/utils'
 
-interface DetailPanelProps {
-  item: GenericItem
-  config: DetailViewConfig
+interface DetailPanelProps<TFieldId extends string, TItem extends GenericItem> {
+  item: TItem;
+  config: DetailViewConfig<TFieldId>;
 }
 
 const SECTION_ICONS: Record<string, React.ElementType> = {
@@ -22,7 +22,7 @@ const SECTION_ICONS: Record<string, React.ElementType> = {
   "Timeline": Clock,
 };
 
-export function DetailPanel({ item, config }: DetailPanelProps) {
+export function DetailPanel<TFieldId extends string, TItem extends GenericItem>({ item, config }: DetailPanelProps<TFieldId, TItem>) {
   const contentRef = useRef<HTMLDivElement>(null)
   useStaggeredAnimation(contentRef, [item]);
 
@@ -52,7 +52,7 @@ export function DetailPanel({ item, config }: DetailPanelProps) {
 
         {/* Status badges */}
         <div className="flex items-center gap-2 flex-wrap mb-4">
-          {header.badgeFields.map(fieldId => (
+          {header.badgeFields.map((fieldId: TFieldId) => (
             <FieldRenderer key={fieldId} item={item} fieldId={fieldId} />
           ))}
         </div>
@@ -64,11 +64,11 @@ export function DetailPanel({ item, config }: DetailPanelProps) {
       {/* Content */}
       <div className="flex-1 overflow-y-auto">
         <div className="p-6 space-y-6">
-          {body.sections.map(section => {
+          {body.sections.map((section) => {
             const IconComponent = SECTION_ICONS[section.title];
             // Render section only if at least one of its fields has a value
-            const hasContent = section.fields.some(fieldId => {
-              const value = getNestedValue(item, fieldId);
+            const hasContent = section.fields.some((fieldId: TFieldId) => {
+              const value = getNestedValue(item, fieldId as string);
               return value !== null && typeof value !== 'undefined';
             });
 
@@ -81,12 +81,12 @@ export function DetailPanel({ item, config }: DetailPanelProps) {
                   <h3 className="font-semibold text-sm">{section.title}</h3>
                 </div>
                 <div className="space-y-3">
-                  {section.fields.map(fieldId => (
+                  {section.fields.map((fieldId: TFieldId) => (
                     <FieldRenderer key={fieldId} item={item} fieldId={fieldId} options={{ avatarClassName: "w-12 h-12" }} />
                   ))}
                 </div>
               </div>
-            )
+            );
           })}
         </div>
       </div>

@@ -1,13 +1,13 @@
 import { createContext, useContext, useMemo, type ReactNode } from 'react';
-import type { ViewConfig, GenericItem, ViewMode, FilterConfig, SortConfig, CalendarDateProp, CalendarDisplayProp, CalendarColorProp } from './types';
+import type { ViewConfig, GenericItem, ViewMode, FilterConfig, SortConfig, CalendarDateProp, CalendarDisplayProp, CalendarColorProp, GroupableField } from './types';
 
-export interface DynamicViewContextProps {
-  config: ViewConfig;
-  data: GenericItem[];
-  getFieldDef: (fieldId: string) => ViewConfig['fields'][number] | undefined;
+export interface DynamicViewContextProps<TFieldId extends string, TItem extends GenericItem> {
+  config: ViewConfig<TFieldId, TItem>;
+  data: TItem[];
+  getFieldDef: (fieldId: TFieldId) => ViewConfig<TFieldId, TItem>['fields'][number] | undefined;
 
   // Data & State from parent
-  items: GenericItem[];
+  items: TItem[];
   isLoading: boolean;
   isInitialLoading: boolean;
   totalItemCount: number;
@@ -16,46 +16,46 @@ export interface DynamicViewContextProps {
   // Controlled State Props from parent
   viewMode: ViewMode;
   filters: FilterConfig;
-  sortConfig: SortConfig | null;
-  groupBy: string;
+  sortConfig: SortConfig<TFieldId> | null;
+  groupBy: GroupableField<TFieldId>;
   activeGroupTab: string;
   page: number;
   selectedItemId?: string;
   // Calendar-specific state
-  calendarDateProp?: CalendarDateProp;
-  calendarDisplayProps?: CalendarDisplayProp[];
+  calendarDateProp?: CalendarDateProp<TFieldId>;
+  calendarDisplayProps?: CalendarDisplayProp<TFieldId>[];
   calendarItemLimit?: 'all' | number;
-  calendarColorProp?: CalendarColorProp;
+  calendarColorProp?: CalendarColorProp<TFieldId>;
 
   // Callbacks to parent
   onViewModeChange: (mode: ViewMode) => void;
   onFiltersChange: (filters: FilterConfig) => void;
-  onSortChange: (sort: SortConfig | null) => void;
-  onGroupByChange: (group: string) => void;
+  onSortChange: (sort: SortConfig<TFieldId> | null) => void;
+  onGroupByChange: (group: GroupableField<TFieldId>) => void;
   onActiveGroupTabChange: (tab: string) => void;
   onPageChange: (page: number) => void;
-  onItemSelect: (item: GenericItem) => void;
-  onItemUpdate?: (itemId: string, updates: Partial<GenericItem>) => void;
+  onItemSelect: (item: TItem) => void;
+  onItemUpdate?: (itemId: string, updates: Partial<TItem>) => void;
   // Calendar-specific callbacks
-  onCalendarDatePropChange?: (prop: CalendarDateProp) => void;
-  onCalendarDisplayPropsChange?: (props: CalendarDisplayProp[]) => void;
+  onCalendarDatePropChange?: (prop: CalendarDateProp<TFieldId>) => void;
+  onCalendarDisplayPropsChange?: (props: CalendarDisplayProp<TFieldId>[]) => void;
   onCalendarItemLimitChange?: (limit: 'all' | number) => void;
-  onCalendarColorPropChange?: (prop: CalendarColorProp) => void;
+  onCalendarColorPropChange?: (prop: CalendarColorProp<TFieldId>) => void;
 }
 
-const DynamicViewContext = createContext<DynamicViewContextProps | null>(null);
+const DynamicViewContext = createContext<DynamicViewContextProps<any, any> | null>(null);
 
-interface DynamicViewProviderProps extends Omit<DynamicViewContextProps, 'getFieldDef' | 'config' | 'data'> {
-  viewConfig: ViewConfig,
+interface DynamicViewProviderProps<TFieldId extends string, TItem extends GenericItem> extends Omit<DynamicViewContextProps<TFieldId, TItem>, 'getFieldDef' | 'config' | 'data'> {
+  viewConfig: ViewConfig<TFieldId, TItem>,
   children: ReactNode;
 }
 
-export function DynamicViewProvider({ viewConfig, children, ...rest }: DynamicViewProviderProps) {
+export function DynamicViewProvider<TFieldId extends string, TItem extends GenericItem>({ viewConfig, children, ...rest }: DynamicViewProviderProps<TFieldId, TItem>) {
   const fieldDefsById = useMemo(() => {
     return new Map(viewConfig.fields.map(field => [field.id, field]));
   }, [viewConfig.fields]);
 
-  const getFieldDef = (fieldId: string) => {
+  const getFieldDef = (fieldId: TFieldId) => {
     return fieldDefsById.get(fieldId);
   };
 
@@ -73,10 +73,10 @@ export function DynamicViewProvider({ viewConfig, children, ...rest }: DynamicVi
   );
 }
 
-export function useDynamicView() {
+export function useDynamicView<TFieldId extends string, TItem extends GenericItem>() {
   const context = useContext(DynamicViewContext);
   if (!context) {
     throw new Error('useDynamicView must be used within a DynamicViewProvider');
   }
-  return context;
+  return context as DynamicViewContextProps<TFieldId, TItem>;
 }

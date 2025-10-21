@@ -2,7 +2,7 @@ import { useMemo, useCallback, type ReactNode, useRef, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 import { gsap } from 'gsap';
 import { DynamicViewProvider } from '@/features/dynamic-view/DynamicViewContext';
-import type { ViewConfig, GenericItem, ViewMode, FilterConfig, SortConfig, CalendarDateProp, CalendarDisplayProp, CalendarColorProp, StatItem } from './types';
+import type { ViewConfig, GenericItem, ViewMode, FilterConfig, SortConfig, CalendarDateProp, CalendarDisplayProp, CalendarColorProp, StatItem, GroupableField } from './types';
 import { ViewControls } from './components/controls/ViewControls';
 import { ViewModeSelector } from './components/controls/ViewModeSelector';
 import { AnimatedLoadingSkeleton } from './components/shared/AnimatedLoadingSkeleton';
@@ -16,12 +16,12 @@ import { useAutoAnimateStats } from '@/hooks/useAutoAnimateStats.hook';
 import { StatCard } from '@/components/shared/StatCard';
 
 // Define the props for the controlled DynamicView component
-export interface DynamicViewProps {
+export interface DynamicViewProps<TFieldId extends string, TItem extends GenericItem> {
   // Config
-  viewConfig: ViewConfig;
+  viewConfig: ViewConfig<TFieldId, TItem>;
   
   // Data & State
-  items: GenericItem[];
+  items: TItem[];
   isLoading: boolean;
   isInitialLoading: boolean;
   totalItemCount: number;
@@ -30,32 +30,32 @@ export interface DynamicViewProps {
   // Controlled State Props
   viewMode: ViewMode;
   filters: FilterConfig;
-  sortConfig: SortConfig | null;
-  groupBy: string;
+  sortConfig: SortConfig<TFieldId> | null;
+  groupBy: GroupableField<TFieldId>;
   activeGroupTab: string;
   page: number;
   selectedItemId?: string;
   // Calendar-specific state
-  calendarDateProp?: CalendarDateProp;
-  calendarDisplayProps?: CalendarDisplayProp[];
+  calendarDateProp?: CalendarDateProp<TFieldId>;
+  calendarDisplayProps?: CalendarDisplayProp<TFieldId>[];
   calendarItemLimit?: 'all' | number;
-  calendarColorProp?: CalendarColorProp;
+  calendarColorProp?: CalendarColorProp<TFieldId>;
   statsData?: StatItem[];
 
   // State Change Callbacks
   onViewModeChange: (mode: ViewMode) => void;
   onFiltersChange: (filters: FilterConfig) => void;
-  onSortChange: (sort: SortConfig | null) => void;
-  onGroupByChange: (group: string) => void;
+  onSortChange: (sort: SortConfig<TFieldId> | null) => void;
+  onGroupByChange: (group: GroupableField<TFieldId>) => void;
   onActiveGroupTabChange: (tab: string) => void;
   onPageChange: (page: number) => void;
-  onItemSelect: (item: GenericItem) => void;
-  onItemUpdate?: (itemId: string, updates: Partial<GenericItem>) => void;
+  onItemSelect: (item: TItem) => void;
+  onItemUpdate?: (itemId: string, updates: Partial<TItem>) => void;
   // Calendar-specific callbacks
-  onCalendarDatePropChange?: (prop: CalendarDateProp) => void;
-  onCalendarDisplayPropsChange?: (props: CalendarDisplayProp[]) => void;
+  onCalendarDatePropChange?: (prop: CalendarDateProp<TFieldId>) => void;
+  onCalendarDisplayPropsChange?: (props: CalendarDisplayProp<TFieldId>[]) => void;
   onCalendarItemLimitChange?: (limit: 'all' | number) => void;
-  onCalendarColorPropChange?: (prop: CalendarColorProp) => void;
+  onCalendarColorPropChange?: (prop: CalendarColorProp<TFieldId>) => void;
   
   // Custom Renderers
   renderHeaderControls?: () => ReactNode;
@@ -64,7 +64,7 @@ export interface DynamicViewProps {
   scrollContainerRef?: React.RefObject<HTMLElement>;
 }
 
-export function DynamicView({ viewConfig, ...rest }: DynamicViewProps) {
+export function DynamicView<TFieldId extends string, TItem extends GenericItem>({ viewConfig, ...rest }: DynamicViewProps<TFieldId, TItem>) {
   
   const { viewMode, isInitialLoading, isLoading, hasMore, items, groupBy, statsData, scrollContainerRef } = rest;
   const statsRef = useRef<HTMLDivElement>(null);
@@ -92,17 +92,17 @@ export function DynamicView({ viewConfig, ...rest }: DynamicViewProps) {
     if (groupBy === 'none' || viewMode !== 'kanban') {
         return null;
     }
-    return items.reduce((acc, item) => {
-        const groupKey = String(item[groupBy as keyof GenericItem]) || 'N/A';
+    return (items as TItem[]).reduce((acc, item) => {
+        const groupKey = String(item[groupBy as keyof TItem]) || 'N/A';
         if (!acc[groupKey]) {
-            acc[groupKey] = [] as GenericItem[];
+            acc[groupKey] = [] as TItem[];
         }
         acc[groupKey].push(item);
         return acc;
-    }, {} as Record<string, GenericItem[]>);
+    }, {} as Record<string, TItem[]>);
   }, [items, groupBy, viewMode]);
 
-  const renderViewForData = useCallback((data: GenericItem[], cta: ReactNode) => {
+  const renderViewForData = useCallback((data: TItem[], cta: ReactNode) => {
     switch (viewMode) {
         case 'table': return <TableView data={data} ctaElement={cta} />;
         case 'cards': return <CardView data={data} ctaElement={cta} />;
@@ -146,7 +146,7 @@ export function DynamicView({ viewConfig, ...rest }: DynamicViewProps) {
   };
 
   return (
-    <DynamicViewProvider viewConfig={viewConfig} {...rest}>
+    <DynamicViewProvider<TFieldId, TItem> viewConfig={viewConfig} {...rest}>
       <div className="space-y-6">
           <div className="space-y-4">
               <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">

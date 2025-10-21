@@ -1,7 +1,8 @@
 import { FieldRenderer } from "@/features/dynamic-view/components/shared/FieldRenderer";
-import type { ViewConfig, GenericItem } from "@/features/dynamic-view/types";
+import type { ViewConfig } from "@/features/dynamic-view/types";
+import type { DataDemoItem } from "./data/DataDemoItem";
 
-export const dataDemoViewConfig: ViewConfig = {
+const config = {
   // 1. Field Definitions
   fields: [
     { id: "id", label: "ID", type: "string" },
@@ -49,7 +50,7 @@ export const dataDemoViewConfig: ViewConfig = {
       id: "project_details",
       label: "Project",
       type: "custom",
-      render: (item: GenericItem) => (
+      render: (item: DataDemoItem) => (
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-gradient-to-br from-primary/20 to-primary/10 rounded-lg flex items-center justify-center text-lg flex-shrink-0">
             <FieldRenderer item={item} fieldId="thumbnail" />
@@ -65,7 +66,7 @@ export const dataDemoViewConfig: ViewConfig = {
         </div>
       ),
     },
-  ],
+  ] as const,
   // 2. Control Definitions
   sortableFields: [
     { id: "updatedAt", label: "Last Updated" },
@@ -176,4 +177,10 @@ export const dataDemoViewConfig: ViewConfig = {
       ],
     },
   },
-};
+} as const;
+
+// Infer the field IDs from the const-asserted array.
+type DataDemoFieldId = (typeof config.fields)[number]["id"];
+
+// This line validates the entire config object against the generic ViewConfig type.
+export const dataDemoViewConfig: ViewConfig<DataDemoFieldId, DataDemoItem> = config;

@@ -5,7 +5,7 @@ export type GenericItem = Record<string, any> & { id: string };
 
 // --- FIELD DEFINITIONS ---
 // Describes a single piece of data within a GenericItem.
-export type FieldType = 
+export type FieldType =
   | 'string'
   | 'longtext'
   | 'badge'
@@ -17,15 +17,16 @@ export type FieldType =
   | 'thumbnail'
   | 'custom';
 
-export interface BaseFieldDefinition {
-  id: string; // Corresponds to a key in GenericItem
+export interface BaseFieldDefinition<TFieldId extends string, TItem extends GenericItem> {
+  id: TFieldId; // Corresponds to a key in GenericItem
   label: string;
   type: FieldType;
   // Optional custom render function for ultimate flexibility.
-  render?: (item: GenericItem, options?: Record<string, any>) => ReactNode;
+  render?: (item: TItem, options?: Record<string, any>) => ReactNode;
 }
 
-export interface BadgeFieldDefinition extends BaseFieldDefinition {
+export interface BadgeFieldDefinition<TFieldId extends string, TItem extends GenericItem>
+  extends BaseFieldDefinition<TFieldId, TItem> {
   type: 'badge';
   colorMap?: Record<string, string>; // e.g., { 'active': 'bg-green-500', 'pending': 'bg-yellow-500' }
   indicatorColorMap?: Record<string, string>; // e.g., { 'critical': 'bg-red-500' }
@@ -34,111 +35,115 @@ export interface BadgeFieldDefinition extends BaseFieldDefinition {
 // Add other specific field types if they need unique properties
 // For now, most can be handled by the base definition.
 
-export type FieldDefinition = BaseFieldDefinition | BadgeFieldDefinition;
-
+export type FieldDefinition<TFieldId extends string, TItem extends GenericItem> =
+  | BaseFieldDefinition<TFieldId, TItem>
+  | BadgeFieldDefinition<TFieldId, TItem>;
 
 // --- VIEW CONFIGURATION ---
 // The master configuration object that defines the entire view.
 
 export type ViewMode = 'list' | 'cards' | 'grid' | 'table' | 'kanban' | 'calendar';
 
-export interface ListViewConfig {
-  iconField: string;
-  titleField: string;
+export interface ListViewConfig<TFieldId extends string> {
+  iconField: TFieldId;
+  titleField: TFieldId;
   metaFields: Array<{
-    fieldId: string;
+    fieldId: TFieldId;
     className?: string;
   }>;
 }
 
-export interface CardViewConfig {
-  thumbnailField: string;
-  titleField: string;
-  descriptionField: string;
-  headerFields: string[];
+export interface CardViewConfig<TFieldId extends string> {
+  thumbnailField: TFieldId;
+  titleField: TFieldId;
+  descriptionField: TFieldId;
+  headerFields: TFieldId[];
   // Specific fields to recreate the original layout
-  statusField: string;
-  categoryField: string;
-  tagsField: string;
-  progressField: string;
-  assigneeField: string;
-  metricsField: string;
-  dateField: string;
+  statusField: TFieldId;
+  categoryField: TFieldId;
+  tagsField: TFieldId;
+  progressField: TFieldId;
+  assigneeField: TFieldId;
+  metricsField: TFieldId;
+  dateField: TFieldId;
 }
 
-export interface TableColumnConfig {
-  fieldId: string;
+export interface TableColumnConfig<TFieldId extends string> {
+  fieldId: TFieldId;
   label: string;
   isSortable: boolean;
 }
 
-export interface TableViewConfig {
-  columns: TableColumnConfig[];
+export interface TableViewConfig<TFieldId extends string> {
+  columns: TableColumnConfig<TFieldId>[];
 }
 
-export interface KanbanViewConfig {
-  groupByField: string; // Field ID to group by (e.g., 'status')
+export interface KanbanViewConfig<TFieldId extends string> {
+  groupByField: TFieldId; // Field ID to group by (e.g., 'status')
   cardFields: {
-    titleField: string;
-    descriptionField: string;
-    priorityField: string;
-    tagsField: string;
+    titleField: TFieldId;
+    descriptionField: TFieldId;
+    priorityField: TFieldId;
+    tagsField: TFieldId;
     // footer fields
-    dateField: string;
-    metricsField: string; // for comments/attachments
-    assigneeField: string;
+    dateField: TFieldId;
+    metricsField: TFieldId; // for comments/attachments
+    assigneeField: TFieldId;
   };
 }
 
-export interface CalendarViewConfig {
-  dateField: string;
-  titleField: string;
-  displayFields: string[];
-  colorByField?: string; // Field ID to color events by (e.g., 'priority', 'status')
+export interface CalendarViewConfig<TFieldId extends string> {
+  dateField: TFieldId;
+  titleField: TFieldId;
+  displayFields: TFieldId[];
+  colorByField?: TFieldId; // Field ID to color events by (e.g., 'priority', 'status')
 }
 
-export interface ControlOption {
-  id: string;
+export interface ControlOption<TId extends string> {
+  id: TId;
   label: string;
 }
 
-export interface FilterableFieldConfig {
-  id: string; // fieldId
+export interface FilterableFieldConfig<TFieldId extends string> {
+  id: TFieldId; // fieldId
   label: string;
-  options: ControlOption[];
+  options: ControlOption<string>[];
 }
 
-export interface ViewConfig {
-  fields: FieldDefinition[];
-  sortableFields: ControlOption[];
-  groupableFields: ControlOption[];
-  filterableFields: FilterableFieldConfig[];
-  
+export interface ViewConfig<
+  TFieldId extends string,
+  TItem extends GenericItem,
+> {
+  fields: readonly FieldDefinition<TFieldId, TItem>[];
+  sortableFields: readonly ControlOption<TFieldId>[];
+  groupableFields: readonly ControlOption<TFieldId | 'none'>[];
+  filterableFields: readonly FilterableFieldConfig<TFieldId>[];
+
   // Layouts for each view mode
-  listView: ListViewConfig;
-  cardView: CardViewConfig;
-  tableView: TableViewConfig;
-  kanbanView: KanbanViewConfig;
-  calendarView: CalendarViewConfig;
-  detailView: DetailViewConfig;
+  listView: ListViewConfig<TFieldId>;
+  cardView: CardViewConfig<TFieldId>;
+  tableView: TableViewConfig<TFieldId>;
+  kanbanView: KanbanViewConfig<TFieldId>;
+  calendarView: CalendarViewConfig<TFieldId>;
+  detailView: DetailViewConfig<TFieldId>;
 }
 
 // --- DETAIL VIEW ---
-export interface DetailViewSection {
+export interface DetailViewSection<TFieldId extends string> {
   title: string;
-  fields: string[];
+  fields: TFieldId[];
 }
 
-export interface DetailViewConfig {
+export interface DetailViewConfig<TFieldId extends string> {
   header: {
-    thumbnailField: string;
-    titleField: string;
-    descriptionField: string;
-    badgeFields: string[];
-    progressField: string;
+    thumbnailField: TFieldId;
+    titleField: TFieldId;
+    descriptionField: TFieldId;
+    badgeFields: TFieldId[];
+    progressField: TFieldId;
   };
   body: {
-    sections: DetailViewSection[];
+    sections: DetailViewSection<TFieldId>[];
   };
 }
 
@@ -152,16 +157,16 @@ export interface FilterConfig {
   [key: string]: any; // For dynamic filter keys like status, priority
 }
 
-export interface SortConfig {
-  key: string;
+export interface SortConfig<TFieldId extends string> {
+  key: TFieldId;
   direction: 'asc' | 'desc';
 }
 
-export type GroupableField = 'status' | 'priority' | 'category';
+export type GroupableField<TFieldId extends string> = TFieldId | 'none';
 
-export type CalendarDateProp = 'dueDate' | 'createdAt' | 'updatedAt';
-export type CalendarDisplayProp = 'priority' | 'assignee' | 'tags' | 'status';
-export type CalendarColorProp = 'priority' | 'status' | 'category' | 'none';
+export type CalendarDateProp<TFieldId extends string> = TFieldId;
+export type CalendarDisplayProp<TFieldId extends string> = TFieldId;
+export type CalendarColorProp<TFieldId extends string> = TFieldId | 'none';
 
 // --- STATS ---
 export type StatItem = {

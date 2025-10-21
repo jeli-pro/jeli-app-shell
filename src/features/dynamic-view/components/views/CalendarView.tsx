@@ -76,10 +76,10 @@ function CalendarEvent({ item, isSelected, isDragging, onDragStart, colorProp }:
     item: GenericItem; 
     isSelected: boolean;
     isDragging: boolean;
-    onDragStart: (e: React.DragEvent<HTMLDivElement>, itemId: string) => void;
-    colorProp: CalendarColorProp;
-}) {
-  const { config, onItemSelect } = useDynamicView();
+    onDragStart: (e: React.DragEvent<HTMLDivElement>, itemId: string) => void
+    colorProp: CalendarColorProp<string>;
+  }) {
+  const { config, onItemSelect } = useDynamicView<string, GenericItem>();
   const { calendarView: viewConfig } = config;
 
     const colorClass = useMemo(() => {
@@ -131,7 +131,7 @@ function CalendarEvent({ item, isSelected, isDragging, onDragStart, colorProp }:
     );
 }
 
-const datePropLabels: Record<CalendarDateProp, string> = {
+const datePropLabels: Record<CalendarDateProp<string>, string> = {
   dueDate: 'due dates',
   createdAt: 'creation dates',
   updatedAt: 'update dates',
@@ -145,7 +145,7 @@ export function CalendarView({ data }: CalendarViewProps) {
     calendarDateProp = 'dueDate', // Provide default
     calendarItemLimit = 3, // Provide default
     calendarColorProp = 'none', // Provide default
-  } = useDynamicView();
+  } = useDynamicView<string, GenericItem>();
   
   // Drag & Drop State
   const [draggedItemId, setDraggedItemId] = useState<string | null>(null);

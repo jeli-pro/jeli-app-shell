@@ -1,0 +1,2338 @@
+uuid: 4894eb5f-f308-41fa-8664-d368e59ec648
+projectId: jeli-app-shell
+createdAt: '2025-10-21T11:09:35.592Z'
+gitCommitMsg: >-
+  fix(types): complete end-to-end type safety refactor
+
+  This commit resolves a series of TypeScript errors that arose from an
+  incomplete refactoring to a generic, type-safe DynamicView system.
+
+  Key changes include: - Made all view components (ListView, CardView,
+  TableView, etc.) and
+    the FieldRenderer component fully generic.
+  - Removed explicit `<string, GenericItem>` type arguments from
+  `useDynamicView`
+    calls, allowing types to be correctly inferred from the context provider.
+  - Corrected type definitions and data handling in `dataDemo.store.tsx`
+    to use the specific `DataDemoItem` type instead of `GenericItem`.
+  - Applied `as const` to the `dataDemoViewConfig` object to ensure
+    literal type inference for field IDs, satisfying the generic constraints.
+  - Cleaned up unused type imports.
+promptSummary: >-
+  The user's type-safety refactoring was incomplete, resulting in 11 TypeScript
+  errors. I need to fix them by making components generic, correcting types in
+  the data store and config, and cleaning up imports.
+reasoning:
+  - >-
+    It appears the previous refactoring for type safety was incomplete, leading
+    to a series of TypeScript errors. I will now apply the necessary corrections
+    across the affected components to complete the transition to an end-to-end
+    type-safe system. The core of this fix involves making the view components
+    and `FieldRenderer` generic, allowing them to correctly infer types from the
+    `DynamicViewProvider` context, and ensuring the data store and
+    configurations adhere to the new strict types.
+  - '### 1. Fix `FieldRenderer` to be Generic'
+  - >-
+    First, I'll update `FieldRenderer` and its props to be generic. This will
+    allow it to correctly infer the types for `item` and `fieldId` and use the
+    strongly-typed context, which resolves the `BadgeFieldDefinition` error.
+  - '### 2. Clean Up `useAppViewManager` Imports'
+  - >-
+    Next, I'll remove the unused `Status` and `Priority` type imports from
+    `useAppViewManager.hook.ts` to clear up the warnings.
+  - '### 3. Ensure Type-Safe Configuration'
+  - >-
+    The `DataDemo.config.tsx` file needs a `as const` assertion on the main
+    `config` object. This allows TypeScript to infer the precise literal types
+    for all field IDs, which is crucial for validating the configuration against
+    the `ViewConfig` type and fixing the `sortableFields` error.
+  - '### 4. Correct Types in Data Store'
+  - >-
+    The data store has several type mismatches. I will remove the unused
+    `GenericItem` import, correctly type `SortConfig`, and cast the
+    `mockDataItems` array to `DataDemoItem[]`. This ensures the data flowing
+    from the store is correctly typed, resolving multiple downstream errors.
+  - '### 5. Update View Components to be Generic'
+  - >-
+    The view components (`TableView`, `CardView`, `ListView`, `KanbanView`,
+    `CalendarView`) and `ViewControls` were using explicit, incorrect types for
+    the `useDynamicView` hook. I will update all of them to be generic and infer
+    their types directly from the context, which is the correct pattern after
+    the refactor.
+  - >-
+    These changes should resolve all the reported TypeScript errors and complete
+    the type-safety refactoring.
+operations:
+  - type: write
+    path: src/features/dynamic-view/components/shared/FieldRenderer.tsx
+    content: >+
+      --- src/features/dynamic-view/components/shared/FieldRenderer.tsx
+
+      +++ src/features/dynamic-view/components/shared/FieldRenderer.tsx
+
+      @@ -4,20 +4,20 @@
+       import { Badge } from '@/components/ui/badge';
+       import { Clock, Eye, Heart, Share } from 'lucide-react';
+       
+      -interface FieldRendererProps {
+
+      -  item: GenericItem;
+
+      -  fieldId: string;
+
+      +interface FieldRendererProps<TFieldId extends string, TItem extends
+      GenericItem> {
+
+      +  item: TItem;
+
+      +  fieldId: TFieldId;
+         className?: string;
+         options?: Record<string, any>; // For extra props like 'compact' for avatar
+       }
+       
+      -export function FieldRenderer({ item, fieldId, className, options }:
+      FieldRendererProps) {
+
+      -  const { getFieldDef } = useDynamicView<string, GenericItem>();
+
+      +export function FieldRenderer<TFieldId extends string, TItem extends
+      GenericItem>({ item, fieldId, className, options }:
+      FieldRendererProps<TFieldId, TItem>) {
+
+      +  const { getFieldDef } = useDynamicView<TFieldId, TItem>();
+         const fieldDef = getFieldDef(fieldId);
+         const value = getNestedValue(item, fieldId);
+       
+         // Custom render function takes precedence
+         if (fieldDef?.render) {
+           return <>{fieldDef.render(item, options)}</>;
+         }
+      @@ -35,7 +35,7 @@
+             return <span className={cn("text-xl", className)}>{String(value)}</span>;
+       
+           case 'badge': {
+      -      const { colorMap, indicatorColorMap } = fieldDef as
+      BadgeFieldDefinition<string>;
+
+      +      const { colorMap, indicatorColorMap } = fieldDef as
+      BadgeFieldDefinition<TFieldId, TItem>;
+             
+             if (options?.displayAs === 'indicator' && indicatorColorMap) {
+               const indicatorColorClass = indicatorColorMap[String(value)] || 'bg-muted-foreground';
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/hooks/useAppViewManager.hook.ts
+    content: >
+      <<<<<<< SEARCH
+
+      import type { GenericItem, ViewMode, SortConfig, GroupableField, Status,
+      Priority, CalendarDateProp, CalendarDisplayProp, CalendarColorProp,
+      FilterConfig } from '@/features/dynamic-view/types';
+
+      =======
+
+      import type { GenericItem, ViewMode, SortConfig, GroupableField,
+      CalendarDateProp, CalendarDisplayProp, CalendarColorProp, FilterConfig }
+      from '@/features/dynamic-view/types';
+
+      >>>>>>> REPLACE
+    patchStrategy: search-replace
+  - type: write
+    path: src/pages/DataDemo/DataDemo.config.tsx
+    content: |
+      <<<<<<< SEARCH
+      const config = {
+        // 1. Field Definitions
+        fields: [
+      =======
+      const config = {
+        // 1. Field Definitions
+        fields: [
+      >>>>>>> REPLACE
+      <<<<<<< SEARCH
+        ] as const,
+        // 2. Control Definitions
+      =======
+        ],
+        // 2. Control Definitions
+      >>>>>>> REPLACE
+      <<<<<<< SEARCH
+        },
+      };
+      =======
+        },
+      } as const;
+      >>>>>>> REPLACE
+    patchStrategy: search-replace
+  - type: write
+    path: src/pages/DataDemo/store/dataDemo.store.tsx
+    content: >+
+      --- src/pages/DataDemo/store/dataDemo.store.tsx
+
+      +++ src/pages/DataDemo/store/dataDemo.store.tsx
+
+      @@ -1,7 +1,6 @@
+       import { create } from "zustand";
+       import { mockDataItems } from "@/pages/DataDemo/data/mockData";
+       import type {
+      -  GenericItem,
+         GroupableField,
+         FilterConfig,
+         SortConfig,
+      @@ -21,7 +20,7 @@
+           page: number;
+           groupBy: GroupableField<string> | "none";
+           filters: FilterConfig;
+      -    sortConfig: SortConfig | null;
+
+      +    sortConfig: SortConfig<string> | null;
+           isFullLoad?: boolean;
+         }) => void;
+         updateItem: (itemId: string, updates: Partial<DataDemoItem>) => void;
+      @@ -43,7 +42,7 @@
+             const isFirstPage = page === 1;
+       
+             const filteredAndSortedData = (() => {
+      -        const filteredItems = mockDataItems.filter((item) => {
+
+      +        const filteredItems = (mockDataItems as
+      DataDemoItem[]).filter((item) => {
+                 const searchTermMatch =
+                   item.title
+                     .toLowerCase()
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/features/dynamic-view/components/views/TableView.tsx
+    content: >+
+      --- src/features/dynamic-view/components/views/TableView.tsx
+
+      +++ src/features/dynamic-view/components/views/TableView.tsx
+
+      @@ -10,8 +10,8 @@
+       import { capitalize } from '@/lib/utils'
+       import { useDynamicView } from '../../DynamicViewContext'
+       import { FieldRenderer } from '../shared/FieldRenderer'
+      -
+
+      -export function TableView({ data, ctaElement }: { data: GenericItem[],
+      ctaElement?: ReactNode }) {
+
+      -  const { config, sortConfig, onSortChange, groupBy, onItemSelect,
+      selectedItemId } = useDynamicView<string, GenericItem>();
+
+      +export function TableView<TFieldId extends string, TItem extends
+      GenericItem>({ data, ctaElement }: { data: TItem[], ctaElement?: ReactNode
+      }) {
+
+      +  const { config, sortConfig, onSortChange, groupBy, onItemSelect,
+      selectedItemId } = useDynamicView<TFieldId, TItem>();
+         const { tableView: viewConfig } = config;
+       
+         const tableRef = useRef<HTMLTableElement>(null)
+      @@ -95,11 +95,11 @@
+                         </tr>,
+                         ...items.map(item => <TableRow key={item.id} item={item} isSelected={selectedItemId === item.id} onItemSelect={onItemSelect} />)
+                       ])
+      -              : data.map(item => <TableRow key={item.id} item={item}
+      isSelected={selectedItemId === item.id} onItemSelect={onItemSelect} />)
+
+      +              : data.map((item: TItem) => <TableRow key={item.id}
+      item={item} isSelected={selectedItemId === item.id}
+      onItemSelect={onItemSelect} />)
+                   }
+                   {ctaElement}
+                 </tbody>
+      @@ -110,8 +110,8 @@
+         )
+       }
+       
+      -function TableRow({ item, isSelected, onItemSelect }: { item:
+      GenericItem; isSelected: boolean; onItemSelect: (item: GenericItem) =>
+      void }) {
+
+      -  const { config } = useDynamicView<string, GenericItem>();
+
+      +function TableRow<TFieldId extends string, TItem extends GenericItem>({
+      item, isSelected, onItemSelect }: { item: TItem; isSelected: boolean;
+      onItemSelect: (item: TItem) => void }) {
+
+      +  const { config } = useDynamicView<TFieldId, TItem>();
+         return (
+           <tr
+             onClick={() => onItemSelect(item)}
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/features/dynamic-view/components/views/CardView.tsx
+    content: >+
+      --- src/features/dynamic-view/components/views/CardView.tsx
+
+      +++ src/features/dynamic-view/components/views/CardView.tsx
+
+      @@ -7,8 +7,8 @@
+       import { useDynamicView } from '../../DynamicViewContext'
+       import { FieldRenderer } from '../shared/FieldRenderer'
+       
+      -export function CardView({ data, isGrid = false, ctaElement }: { data:
+      GenericItem[]; isGrid?: boolean, ctaElement?: ReactNode }) {
+
+      -  const { config, onItemSelect, selectedItemId } = useDynamicView<string,
+      GenericItem>();
+
+      +export function CardView<TFieldId extends string, TItem extends
+      GenericItem>({ data, isGrid = false, ctaElement }: { data: TItem[];
+      isGrid?: boolean, ctaElement?: ReactNode }) {
+
+      +  const { config, onItemSelect, selectedItemId } =
+      useDynamicView<TFieldId, TItem>();
+         const { cardView: viewConfig } = config;
+       
+         const containerRef = useRef<HTMLDivElement>(null)
+      @@ -28,7 +28,7 @@
+               "pb-4"
+             )}
+           >
+      -      {items.map((item: GenericItem) => {
+
+      +      {items.map((item) => {
+               const isSelected = selectedItemId === item.id
+               
+               return (
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/features/dynamic-view/components/views/ListView.tsx
+    content: >+
+      --- src/features/dynamic-view/components/views/ListView.tsx
+
+      +++ src/features/dynamic-view/components/views/ListView.tsx
+
+      @@ -6,8 +6,8 @@
+       import { useDynamicView } from '../../DynamicViewContext'
+       import { FieldRenderer } from '../shared/FieldRenderer'
+       
+      -export function ListView({ data, ctaElement }: { data: GenericItem[],
+      ctaElement?: ReactNode }) {
+
+      -  const { config, onItemSelect, selectedItemId } = useDynamicView<string,
+      GenericItem>();
+
+      +export function ListView<TFieldId extends string, TItem extends
+      GenericItem>({ data, ctaElement }: { data: TItem[], ctaElement?: ReactNode
+      }) {
+
+      +  const { config, onItemSelect, selectedItemId } =
+      useDynamicView<TFieldId, TItem>();
+       
+         const listRef = useRef<HTMLDivElement>(null)
+         useStaggeredAnimation(listRef, [data], { mode: 'incremental', scale: 1, y: 20, stagger: 0.05, duration: 0.4 });
+      @@ -19,7 +19,7 @@
+       
+         return (
+           <div ref={listRef}>
+      -      {items.map((item: GenericItem) => {
+
+      +      {items.map((item) => {
+               const isSelected = selectedItemId === item.id
+               
+               return (
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/features/dynamic-view/components/views/KanbanView.tsx
+    content: >+
+      --- src/features/dynamic-view/components/views/KanbanView.tsx
+
+      +++ src/features/dynamic-view/components/views/KanbanView.tsx
+
+      @@ -9,12 +9,12 @@
+       import { FieldRenderer } from '../shared/FieldRenderer'
+       
+       interface KanbanCardProps<TItem extends GenericItem> {
+      -  item: GenericItem;
+
+      +  item: TItem;
+         isDragging: boolean;
+       }
+       
+      -function KanbanCard({ item, isDragging, ...props }: KanbanCardProps &
+      React.HTMLAttributes<HTMLDivElement>) {
+
+      -  const { config, onItemSelect } = useDynamicView<string, GenericItem>();
+
+      +function KanbanCard<TFieldId extends string, TItem extends GenericItem>({
+      item, isDragging, ...props }: KanbanCardProps<TItem> &
+      React.HTMLAttributes<HTMLDivElement>) {
+
+      +  const { config, onItemSelect } = useDynamicView<TFieldId, TItem>();
+         const { kanbanView: viewConfig } = config;
+       
+         return (
+      @@ -51,14 +51,14 @@
+         );
+       }
+       
+      -interface DataKanbanViewProps {
+
+      -  data: Record<string, GenericItem[]>;
+
+      +interface DataKanbanViewProps<TItem extends GenericItem> {
+
+      +  data: Record<string, TItem[]>;
+       }
+       
+      -export function KanbanView({ data }: DataKanbanViewProps) {
+
+      +export function KanbanView<TFieldId extends string, TItem extends
+      GenericItem>({ data }: DataKanbanViewProps<TItem>) {
+         const [columns, setColumns] = useState(data);
+         const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
+         const [dropIndicator, setDropIndicator] = useState<{ columnId: string; index: number } | null>(null);
+      -  const { groupBy, onItemUpdate } = useDynamicView<string,
+      GenericItem>();
+
+      +  const { groupBy, onItemUpdate } = useDynamicView<TFieldId, TItem>();
+       
+         useEffect(() => {
+           setColumns(data);
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/features/dynamic-view/components/views/CalendarView.tsx
+    content: >+
+      --- src/features/dynamic-view/components/views/CalendarView.tsx
+
+      +++ src/features/dynamic-view/components/views/CalendarView.tsx
+
+      @@ -10,8 +10,8 @@
+       import { useDynamicView } from '../../DynamicViewContext'
+       import { FieldRenderer } from '../shared/FieldRenderer'
+       
+      -interface CalendarViewProps {
+
+      -  data: GenericItem[];
+
+      +interface CalendarViewProps<TItem extends GenericItem> {
+
+      +  data: TItem[];
+       }
+       
+       const PRIORITY_BG_COLORS: Record<Priority, string> = {
+      @@ -74,15 +74,15 @@
+         );
+       }
+       
+      -function CalendarEvent({ item, isSelected, isDragging, onDragStart,
+      colorProp }: { 
+
+      -    item: GenericItem; 
+
+      +function CalendarEvent<TFieldId extends string, TItem extends
+      GenericItem>({ item, isSelected, isDragging, onDragStart, colorProp }: {
+
+      +    item: TItem;
+           isSelected: boolean;
+           isDragging: boolean;
+           onDragStart: (e: React.DragEvent<HTMLDivElement>, itemId: string) => void
+      -    colorProp: CalendarColorProp<string>;
+
+      +    colorProp: CalendarColorProp<TFieldId>;
+         }) {
+      -  const { config, onItemSelect } = useDynamicView<string, GenericItem>();
+
+      +  const { config, onItemSelect } = useDynamicView<TFieldId, TItem>();
+         const { calendarView: viewConfig } = config;
+       
+           const colorClass = useMemo(() => {
+      @@ -134,14 +134,14 @@
+         updatedAt: 'update dates',
+       };
+       
+      -export function CalendarView({ data }: CalendarViewProps) {
+
+      +export function CalendarView<TFieldId extends string, TItem extends
+      GenericItem>({ data }: CalendarViewProps<TItem>) {
+         const [currentDate, setCurrentDate] = useState(new Date());
+         const {
+           selectedItemId,
+           onItemUpdate,
+           calendarDateProp = 'dueDate', // Provide default
+           calendarItemLimit = 3, // Provide default
+           calendarColorProp = 'none', // Provide default
+      -  } = useDynamicView<string, GenericItem>();
+
+      +  } = useDynamicView<TFieldId, TItem>();
+         
+         // Drag & Drop State
+         const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
+      @@ -160,7 +160,7 @@
+         const itemsByDateProp = useMemo(() => data.filter(item => !!item[calendarDateProp]), [data, calendarDateProp]);
+       
+         const eventsByDate = useMemo(() => {
+      -    const eventsMap = new Map<string, GenericItem[]>();
+
+      +    const eventsMap = new Map<string, TItem[]>();
+           itemsByDateProp.forEach(item => {
+             const dateValue = item[calendarDateProp];
+             if (!dateValue) return;
+      @@ -282,7 +282,7 @@
+                             )}
+                           </div>
+                           <div className="space-y-2 overflow-y-auto flex-grow custom-scrollbar">
+      -                      {visibleEvents.map(item => (
+
+      +                      {visibleEvents.map((item: TItem) => (
+                               <CalendarEvent
+                                 key={item.id} 
+                                 item={item} 
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/features/dynamic-view/components/controls/ViewControls.tsx
+    content: |
+      <<<<<<< SEARCH
+          groupBy,
+          onGroupByChange,
+          viewMode,
+        } = useDynamicView<string, GenericItem>();
+      =======
+          groupBy,
+          onGroupByChange,
+          viewMode,
+        } = useDynamicView();
+      >>>>>>> REPLACE
+      <<<<<<< SEARCH
+              calendarColorProp, onCalendarColorPropChange,
+          } = useDynamicView<string, GenericItem>();
+      =======
+              calendarColorProp, onCalendarColorPropChange,
+          } = useDynamicView();
+      >>>>>>> REPLACE
+    patchStrategy: search-replace
+snapshot:
+  src/features/dynamic-view/components/shared/FieldRenderer.tsx: >-
+    import { useDynamicView } from '../../DynamicViewContext';
+
+    import type { GenericItem, BadgeFieldDefinition } from '../../types';
+
+    import { cn, getNestedValue } from '@/lib/utils';
+
+    import { Avatar, AvatarFallback, AvatarImage } from
+    '@/components/ui/avatar';
+
+    import { Badge } from '@/components/ui/badge';
+
+    import { Clock, Eye, Heart, Share } from 'lucide-react';
+
+
+    interface FieldRendererProps {
+      item: GenericItem;
+      fieldId: string;
+      className?: string;
+      options?: Record<string, any>; // For extra props like 'compact' for avatar
+    }
+
+
+    export function FieldRenderer({ item, fieldId, className, options }:
+    FieldRendererProps) {
+      const { getFieldDef } = useDynamicView<string, GenericItem>();
+      const fieldDef = getFieldDef(fieldId);
+      const value = getNestedValue(item, fieldId);
+
+      // Custom render function takes precedence
+      if (fieldDef?.render) {
+        return <>{fieldDef.render(item, options)}</>;
+      }
+
+      if (!fieldDef) {
+        console.warn(`[FieldRenderer] No field definition found for ID: ${fieldId}`);
+        return <span className="text-red-500">?</span>;
+      }
+
+      if (value === null || typeof value === 'undefined') {
+        return null; // Or some placeholder like 'N/A'
+      }
+      
+      switch (fieldDef.type) {
+        case 'string':
+        case 'longtext':
+          return <span className={cn("truncate", className)}>{String(value)}</span>;
+        
+        case 'thumbnail':
+          return <span className={cn("text-xl", className)}>{String(value)}</span>;
+
+        case 'badge': {
+          const { colorMap, indicatorColorMap } = fieldDef as BadgeFieldDefinition<string>;
+          
+          if (options?.displayAs === 'indicator' && indicatorColorMap) {
+            const indicatorColorClass = indicatorColorMap[String(value)] || 'bg-muted-foreground';
+            return (
+              <div className={cn("w-3 h-3 rounded-full", indicatorColorClass, className)} />
+            );
+          }
+
+          const colorClass = colorMap?.[String(value)] || '';
+          return (
+            <Badge variant="outline" className={cn("font-medium capitalize", colorClass, className)}>
+              {String(value)}
+            </Badge>
+          );
+        }
+        
+        case 'avatar': {
+          const { compact = false, avatarClassName = "w-8 h-8" } = options || {};
+          const avatarUrl = getNestedValue(value, 'avatar');
+          const name = getNestedValue(value, 'name');
+          const email = getNestedValue(value, 'email');
+          const fallback = name?.split(' ').map((n: string) => n[0]).join('') || '?';
+
+          const avatarEl = (
+            <Avatar className={cn("border-2 border-transparent group-hover:border-primary/50 transition-colors", avatarClassName)}>
+              <AvatarImage src={avatarUrl} alt={name} />
+              <AvatarFallback>{fallback}</AvatarFallback>
+            </Avatar>
+          );
+          if (compact) return avatarEl;
+
+          return (
+            <div className={cn("flex items-center gap-2 group", className)}>
+              {avatarEl}
+              <div className="min-w-0 hidden sm:block">
+                <p className="font-medium text-sm truncate">{name}</p>
+                <p className="text-xs text-muted-foreground truncate">{email}</p>
+              </div>
+            </div>
+          );
+        }
+        
+        case 'progress': {
+          const { showPercentage = false } = options || {};
+          const bar = (
+            <div className="w-full bg-muted rounded-full h-2.5">
+              <div
+                className="bg-gradient-to-r from-primary to-primary/80 h-2.5 rounded-full transition-all duration-500"
+                style={{ width: `${value}%` }}
+              />
+            </div>
+          );
+          if (!showPercentage) return bar;
+          
+          return (
+            <div className="flex items-center gap-3">
+              <div className="flex-1 min-w-0">{bar}</div>
+              <span className="text-sm font-medium text-muted-foreground">{value}%</span>
+            </div>
+          );
+        }
+
+        case 'date':
+          return (
+            <div className={cn("flex items-center gap-1.5 text-sm", className)}>
+              <Clock className="w-4 h-4" />
+              <span>{new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+            </div>
+          );
+
+        case 'tags': {
+          const MAX_TAGS = 2;
+          const tags = Array.isArray(value) ? value : [];
+          const remainingTags = tags.length - MAX_TAGS;
+          return (
+            <div className={cn("flex items-center gap-1.5 flex-wrap", className)}>
+              {tags.slice(0, MAX_TAGS).map(tag => (
+                <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
+              ))}
+              {remainingTags > 0 && (
+                <Badge variant="outline" className="text-xs">+{remainingTags}</Badge>
+              )}
+            </div>
+          );
+        }
+
+        case 'metrics': {
+          const views = getNestedValue(value, 'views') || 0;
+          const likes = getNestedValue(value, 'likes') || 0;
+          const shares = getNestedValue(value, 'shares') || 0;
+          return (
+            <div className={cn("flex items-center gap-3 text-sm", className)}>
+              <div className="flex items-center gap-1"><Eye className="w-4 h-4" /> {views}</div>
+              <div className="flex items-center gap-1"><Heart className="w-4 h-4" /> {likes}</div>
+              <div className="flex items-center gap-1"><Share className="w-4 h-4" /> {shares}</div>
+            </div>
+          );
+        }
+          
+        default:
+          return <>{String(value)}</>;
+      }
+    }
+  src/pages/DataDemo/DataDemo.config.tsx: >
+    import { FieldRenderer } from
+    "@/features/dynamic-view/components/shared/FieldRenderer";
+
+    import type { ViewConfig } from "@/features/dynamic-view/types";
+
+    import type { DataDemoItem } from "./data/DataDemoItem";
+
+
+    const config = {
+      // 1. Field Definitions
+      fields: [
+        { id: "id", label: "ID", type: "string" },
+        { id: "title", label: "Title", type: "string" },
+        { id: "description", label: "Description", type: "longtext" },
+        { id: "thumbnail", label: "Thumbnail", type: "thumbnail" },
+        { id: "category", label: "Category", type: "badge" },
+        {
+          id: "status",
+          label: "Status",
+          type: "badge",
+          colorMap: {
+            active: "bg-sky-500/10 text-sky-600 border-sky-500/20",
+            pending: "bg-amber-500/10 text-amber-600 border-amber-500/20",
+            completed: "bg-emerald-600/10 text-emerald-700 border-emerald-600/20",
+            archived: "bg-zinc-500/10 text-zinc-600 border-zinc-500/20",
+          },
+        },
+        {
+          id: "priority",
+          label: "Priority",
+          type: "badge",
+          colorMap: {
+            critical: "bg-red-600/10 text-red-700 border-red-600/20",
+            high: "bg-orange-500/10 text-orange-600 border-orange-500/20",
+            medium: "bg-blue-500/10 text-blue-600 border-blue-500/20",
+            low: "bg-green-500/10 text-green-600 border-green-500/20",
+          },
+          indicatorColorMap: {
+            critical: "bg-red-500",
+            high: "bg-orange-500",
+            medium: "bg-blue-500",
+            low: "bg-green-500",
+          },
+        },
+        { id: "assignee", label: "Assignee", type: "avatar" },
+        { id: "tags", label: "Tags", type: "tags" },
+        { id: "metrics", label: "Engagement", type: "metrics" },
+        { id: "metrics.completion", label: "Progress", type: "progress" },
+        { id: "dueDate", label: "Due Date", type: "date" },
+        { id: "createdAt", label: "Created At", type: "date" },
+        { id: "updatedAt", label: "Last Updated", type: "date" },
+        // A custom field to replicate the composite "Project" column in the table view
+        {
+          id: "project_details",
+          label: "Project",
+          type: "custom",
+          render: (item: DataDemoItem) => (
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-primary/20 to-primary/10 rounded-lg flex items-center justify-center text-lg flex-shrink-0">
+                <FieldRenderer item={item} fieldId="thumbnail" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h4 className="font-medium group-hover:text-primary transition-colors truncate">
+                  <FieldRenderer item={item} fieldId="title" />
+                </h4>
+                <p className="text-sm text-muted-foreground truncate">
+                  <FieldRenderer item={item} fieldId="category" />
+                </p>
+              </div>
+            </div>
+          ),
+        },
+      ] as const,
+      // 2. Control Definitions
+      sortableFields: [
+        { id: "updatedAt", label: "Last Updated" },
+        { id: "title", label: "Title" },
+        { id: "status", label: "Status" },
+        { id: "priority", label: "Priority" },
+        { id: "metrics.completion", label: "Progress" },
+      ],
+      groupableFields: [
+        { id: "none", label: "None" },
+        { id: "status", label: "Status" },
+        { id: "priority", label: "Priority" },
+        { id: "category", label: "Category" },
+      ],
+      filterableFields: [
+        {
+          id: "status",
+          label: "Status",
+          options: [
+            { id: "active", label: "Active" },
+            { id: "pending", label: "Pending" },
+            { id: "completed", label: "Completed" },
+            { id: "archived", label: "Archived" },
+          ],
+        },
+        {
+          id: "priority",
+          label: "Priority",
+          options: [
+            { id: "critical", label: "Critical" },
+            { id: "high", label: "High" },
+            { id: "medium", label: "Medium" },
+            { id: "low", label: "Low" },
+          ],
+        },
+      ],
+      // 3. View Layouts
+      listView: {
+        iconField: "thumbnail",
+        titleField: "title",
+        metaFields: [
+          { fieldId: "status", className: "hidden sm:flex" },
+          { fieldId: "tags", className: "hidden lg:flex" },
+          { fieldId: "updatedAt", className: "hidden md:flex" },
+          { fieldId: "assignee" },
+          { fieldId: "priority", className: "hidden xs:flex" },
+        ],
+      },
+      cardView: {
+        thumbnailField: "thumbnail",
+        titleField: "title",
+        descriptionField: "description",
+        headerFields: ["priority"],
+        statusField: "status",
+        categoryField: "category",
+        tagsField: "tags",
+        progressField: "metrics.completion",
+        assigneeField: "assignee",
+        metricsField: "metrics",
+        dateField: "updatedAt",
+      },
+      tableView: {
+        columns: [
+          { fieldId: "project_details", label: "Project", isSortable: true },
+          { fieldId: "status", label: "Status", isSortable: true },
+          { fieldId: "priority", label: "Priority", isSortable: true },
+          { fieldId: "assignee", label: "Assignee", isSortable: true },
+          { fieldId: "metrics.completion", label: "Progress", isSortable: true },
+          { fieldId: "metrics", label: "Engagement", isSortable: true },
+          { fieldId: "updatedAt", label: "Last Updated", isSortable: true },
+        ],
+      },
+      kanbanView: {
+        groupByField: "status",
+        cardFields: {
+          titleField: "title",
+          descriptionField: "description",
+          priorityField: "priority",
+          tagsField: "tags",
+          dateField: "dueDate",
+          metricsField: "metrics",
+          assigneeField: "assignee",
+        },
+      },
+      calendarView: {
+        dateField: "dueDate",
+        titleField: "title",
+        displayFields: ["tags", "priority", "assignee"],
+        colorByField: "priority",
+      },
+      detailView: {
+        header: {
+          thumbnailField: "thumbnail",
+          titleField: "title",
+          descriptionField: "description",
+          badgeFields: ["status", "priority", "category"],
+          progressField: "metrics.completion",
+        },
+        body: {
+          sections: [
+            { title: "Assigned to", fields: ["assignee"] },
+            { title: "Engagement Metrics", fields: ["metrics"] },
+            { title: "Tags", fields: ["tags"] },
+            {
+              title: "Timeline",
+              fields: ["createdAt", "updatedAt", "dueDate"],
+            },
+          ],
+        },
+      },
+    };
+
+
+    // Infer the field IDs from the const-asserted array.
+
+    type DataDemoFieldId = (typeof config.fields)[number]["id"];
+
+
+    // This line validates the entire config object against the generic
+    ViewConfig type.
+
+    export const dataDemoViewConfig: ViewConfig<DataDemoFieldId, DataDemoItem> =
+    config;
+  src/hooks/useAppViewManager.hook.ts: "import { useMemo, useCallback, useEffect, useRef } from 'react';\nimport { useSearchParams, useNavigate, useLocation, useParams } from 'react-router-dom';\nimport { useAppShellStore, type AppShellState, type ActivePage } from '@/store/appShell.store';\nimport type { GenericItem, ViewMode, SortConfig, GroupableField, Status, Priority, CalendarDateProp, CalendarDisplayProp, CalendarColorProp, FilterConfig } from '@/features/dynamic-view/types';\nimport type { TaskView } from '@/pages/Messaging/types';\nimport { BODY_STATES, SIDEBAR_STATES } from '@/lib/utils';\n\nconst pageToPaneMap: Record<string, AppShellState['sidePaneContent']> = {\n  dashboard: 'main',\n  settings: 'settings',\n  toaster: 'toaster',\n  notifications: 'notifications',\n  'data-demo': 'dataDemo',\n  messaging: 'messaging',\n};\n\nfunction usePrevious<T>(value: T): T | undefined {\n  const ref = useRef<T>();\n  useEffect(() => {\n    ref.current = value;\n  });\n  return ref.current;\n}\n\n/**\n * A centralized hook to manage and synchronize all URL-based view states.\n * This is the single source of truth for view modes, side panes, split views,\n * and page-specific parameters.\n */\nexport function useAppViewManager() {\n  const [searchParams, setSearchParams] = useSearchParams();\n  const navigate = useNavigate();\n  const location = useLocation();\n  const params = useParams<{ itemId: string; conversationId: string }>();\n  const { itemId, conversationId } = params;\n  const { setSidebarState, sidebarState } = useAppShellStore();\n\n  // --- DERIVED STATE FROM URL ---\n\n  const view = searchParams.get('view');\n  const sidePane = searchParams.get('sidePane');\n  const right = searchParams.get('right');\n  const messagingView = searchParams.get('messagingView') as TaskView | null;\n  const q = searchParams.get('q');\n  const status = searchParams.get('status');\n  const priority = searchParams.get('priority');\n  const sort = searchParams.get('sort');\n  const calDate = searchParams.get('calDate');\n  const calDisplay = searchParams.get('calDisplay');\n  const calLimit = searchParams.get('calLimit');\n  const calColor = searchParams.get('calColor');\n\n  const { bodyState, sidePaneContent } = useMemo(() => {\n    const validPanes: AppShellState['sidePaneContent'][] = ['details', 'settings', 'main', 'toaster', 'notifications', 'dataDemo', 'messaging'];\n    \n    // 1. Priority: Explicit side pane overlay via URL param\n    if (sidePane && validPanes.includes(sidePane as AppShellState['sidePaneContent'])) {\n      return { bodyState: BODY_STATES.SIDE_PANE, sidePaneContent: sidePane as AppShellState['sidePaneContent'] };\n    }\n\n    // 2. Data item detail view (can be overlay or split)\n    if (itemId) {\n      if (view === 'split') {\n        return { bodyState: BODY_STATES.SPLIT_VIEW, sidePaneContent: 'dataItem' as const };\n      }\n      return { bodyState: BODY_STATES.SIDE_PANE, sidePaneContent: 'dataItem' as const };\n    }\n\n    // 3. Messaging conversation view (always split)\n    if (conversationId) {\n      return { bodyState: BODY_STATES.SPLIT_VIEW, sidePaneContent: 'messaging' as const };\n    }\n\n    // 4. Generic split view via URL param\n    if (view === 'split' && right && validPanes.includes(right as AppShellState['sidePaneContent'])) {\n      return { bodyState: BODY_STATES.SPLIT_VIEW, sidePaneContent: right as AppShellState['sidePaneContent'] };\n    }\n\n    return { bodyState: BODY_STATES.NORMAL, sidePaneContent: 'details' as const };\n  }, [itemId, conversationId, view, sidePane, right]);\n  \n  const currentActivePage = useMemo(() => (location.pathname.split('/')[1] || 'dashboard') as ActivePage, [location.pathname]);\n  const prevActivePage = usePrevious(currentActivePage);\n\n  // --- SIDE EFFECTS ---\n  useEffect(() => {\n    // On navigating to messaging page, collapse sidebar if it's expanded.\n    // This ensures a good default view but allows the user to expand it again if they wish.\n    if (currentActivePage === 'messaging' && prevActivePage !== 'messaging' && sidebarState === SIDEBAR_STATES.EXPANDED) {\n      setSidebarState(SIDEBAR_STATES.COLLAPSED);\n    }\n  }, [currentActivePage, prevActivePage, sidebarState, setSidebarState]);\n\n  // DataDemo specific state\n  const viewMode = useMemo(() => (searchParams.get('dataView') as ViewMode) || 'list', [searchParams]);\n\tconst page = useMemo(() => parseInt(searchParams.get('page') || '1', 10), [searchParams]);\n\tconst groupBy = useMemo(() => (searchParams.get('groupBy') as GroupableField<string> | 'none') || 'none', [searchParams]);\n\tconst activeGroupTab = useMemo(() => searchParams.get('tab') || 'all', [searchParams]);\n\tconst filters = useMemo<FilterConfig>(\n\t\t() => ({\n\t\t\tsearchTerm: q || '',\n\t\t\tstatus: (status?.split(',') || []).filter(Boolean),\n\t\t\tpriority: (priority?.split(',') || []).filter(Boolean),\n\t\t}),\n\t\t[q, status, priority],\n\t);\n\tconst sortConfig = useMemo<SortConfig<string> | null>(() => {\n\t\tconst sortParam = sort;\n\t\tif (!sortParam) return { key: 'updatedAt', direction: 'desc' }; // Default sort\n\t\tif (sortParam === 'default') return null;\n\n\t\tconst [key, direction] = sortParam.split('-');\n\t\treturn { key, direction: direction as 'asc' | 'desc' };\n\t}, [sort]);\n  const calendarDateProp = useMemo(() => (calDate || 'dueDate') as CalendarDateProp<string>, [calDate]);\n  const calendarDisplayProps = useMemo(\n    () => {\n      if (calDisplay === null) return []; // Default is now nothing\n      if (calDisplay === '') return []; // Explicitly empty is also nothing\n      return calDisplay.split(',') as CalendarDisplayProp<string>[];\n    },\n    [calDisplay]\n  );\n  const calendarItemLimit = useMemo(() => {\n    const limit = parseInt(calLimit || '3', 10);\n    if (calLimit === 'all') return 'all';\n    return isNaN(limit) ? 3 : limit;\n  }, [calLimit]);\n  const calendarColorProp = useMemo(() => (calColor || 'none') as CalendarColorProp<string>, [calColor]);\n\n  // --- MUTATOR ACTIONS ---\n\n  const handleParamsChange = useCallback(\n\t\t(newParams: Record<string, string | number | string[] | null | undefined>, resetPage = false) => {\n\t\t\tsetSearchParams(\n\t\t\t\t(prev) => {\n\t\t\t\t\tconst updated = new URLSearchParams(prev);\n\t\t\t\t\t\n\t\t\t\t\tfor (const [key, value] of Object.entries(newParams)) {\n\t\t\t\t\t\tif (value === null || value === undefined || (Array.isArray(value) && value.length === 0) || value === '') {\n\t\t\t\t\t\t\tupdated.delete(key);\n\t\t\t\t\t\t} else if (Array.isArray(value)) {\n\t\t\t\t\t\t\tupdated.set(key, value.join(','));\n\t\t\t\t\t\t} else {\n\t\t\t\t\t\t\tupdated.set(key, String(value));\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\n\t\t\t\t\tif (resetPage) {\n\t\t\t\t\t\tupdated.delete('page');\n\t\t\t\t\t}\n\t\t\t\t\tif ('groupBy' in newParams) {\n\t\t\t\t\t\tupdated.delete('tab');\n\t\t\t\t\t}\n\n\t\t\t\t\treturn updated;\n\t\t\t\t},\n\t\t\t\t{ replace: true },\n\t\t\t);\n\t\t},\n\t\t[setSearchParams],\n\t);\n\n  const navigateTo = useCallback((page: string, params?: Record<string, string | null>) => {\n    const targetPath = page.startsWith('/') ? page : `/${page}`;\n    const isSamePage = location.pathname === targetPath;\n    \n    const newSearchParams = new URLSearchParams(isSamePage ? searchParams : undefined);\n\n    if (params) {\n      for (const [key, value] of Object.entries(params)) {\n        if (value === null || value === undefined) {\n          newSearchParams.delete(key);\n        } else {\n          newSearchParams.set(key, value);\n        }\n      }\n    }\n\n    navigate({ pathname: targetPath, search: newSearchParams.toString() });\n  }, [navigate, location.pathname, searchParams]);\n\n  const openSidePane = useCallback((pane: AppShellState['sidePaneContent']) => {\n    if (location.pathname === `/${Object.keys(pageToPaneMap).find(key => pageToPaneMap[key] === pane)}`) {\n        navigate({ pathname: '/dashboard', search: `?sidePane=${pane}` }, { replace: true });\n    } else {\n        handleParamsChange({ sidePane: pane, view: null, right: null });\n    }\n  }, [handleParamsChange, navigate, location.pathname]);\n\n  const closeSidePane = useCallback(() => {\n    if (itemId) {\n      navigate('/data-demo');\n    } else {\n      handleParamsChange({ sidePane: null, view: null, right: null });\n    }\n  }, [itemId, navigate, handleParamsChange]);\n\n  const toggleSidePane = useCallback((pane: AppShellState['sidePaneContent']) => {\n    if (sidePane === pane) {\n      closeSidePane();\n    } else {\n      openSidePane(pane);\n    }\n  }, [sidePane, openSidePane, closeSidePane]);\n\n  const toggleSplitView = useCallback(() => {\n    if (bodyState === BODY_STATES.SIDE_PANE) {\n      handleParamsChange({ view: 'split', right: sidePane, sidePane: null });\n    } else if (bodyState === BODY_STATES.SPLIT_VIEW) {\n      handleParamsChange({ sidePane: right, view: null, right: null });\n    } else { // From normal\n      const paneContent = pageToPaneMap[currentActivePage] || 'details';\n      handleParamsChange({ view: 'split', right: paneContent, sidePane: null });\n    }\n  }, [bodyState, sidePane, right, currentActivePage, handleParamsChange]);\n  \n  const setNormalView = useCallback(() => {\n      handleParamsChange({ sidePane: null, view: null, right: null });\n  }, [handleParamsChange]);\n\n  const switchSplitPanes = useCallback(() => {\n    if (bodyState !== BODY_STATES.SPLIT_VIEW) return;\n    const newSidePaneContent = pageToPaneMap[currentActivePage];\n    const newActivePage = Object.entries(pageToPaneMap).find(\n      ([, value]) => value === sidePaneContent\n    )?.[0] as ActivePage | undefined;\n\n    if (newActivePage && newSidePaneContent) {\n      navigate(`/${newActivePage}?view=split&right=${newSidePaneContent}`, { replace: true });\n    }\n  }, [bodyState, currentActivePage, sidePaneContent, navigate]);\n  \n  const closeSplitPane = useCallback((paneToClose: 'main' | 'right') => {\n    if (bodyState !== BODY_STATES.SPLIT_VIEW) return;\n    if (paneToClose === 'right') {\n      navigate(`/${currentActivePage}`, { replace: true });\n    } else { // Closing main pane\n      const pageToBecomeActive = Object.entries(pageToPaneMap).find(\n        ([, value]) => value === sidePaneContent\n      )?.[0] as ActivePage | undefined;\n      \n      if (pageToBecomeActive) {\n        navigate(`/${pageToBecomeActive}`, { replace: true });\n      } else {\n        navigate(`/dashboard`, { replace: true });\n      }\n    }\n  }, [bodyState, currentActivePage, sidePaneContent, navigate]);\n  \n  // DataDemo actions\n  const setViewMode = (mode: ViewMode) => handleParamsChange({ dataView: mode === 'list' ? null : mode });\n  const setGroupBy = (val: string) => handleParamsChange({ groupBy: val === 'none' ? null : val }, true);\n  const setActiveGroupTab = (tab: string) => handleParamsChange({ tab: tab === 'all' ? null : tab });\n  const setFilters = (newFilters: FilterConfig) => {\n    handleParamsChange({ q: newFilters.searchTerm, status: newFilters.status, priority: newFilters.priority }, true);\n  }\n  const setSort = (config: SortConfig<string> | null) => {\n    if (!config) {\n      handleParamsChange({ sort: null }, true);\n    } else {\n      handleParamsChange({ sort: `${config.key}-${config.direction}` }, true);\n    }\n  }\n  const setTableSort = (field: string) => {\n    let newSort: string | null = `${field}-desc`;\n    if (sortConfig && sortConfig.key === field) {\n      if (sortConfig.direction === 'desc') newSort = `${field}-asc`;\n      else if (sortConfig.direction === 'asc') newSort = null;\n    }\n    handleParamsChange({ sort: newSort }, true);\n  };\n  const setPage = (newPage: number) => handleParamsChange({ page: newPage > 1 ? newPage.toString() : null });\n\n  // Calendar specific actions\n  const setCalendarDateProp = (prop: CalendarDateProp<string>) => handleParamsChange({ calDate: prop === 'dueDate' ? null : prop });\n  const setCalendarDisplayProps = (props: CalendarDisplayProp<string>[]) => {\n    // Check for default state to keep URL clean\n    const isDefault = props.length === 0;\n    handleParamsChange({ calDisplay: isDefault ? null : props.join(',') });\n  };\n  const setCalendarItemLimit = (limit: number | 'all') => handleParamsChange({ calLimit: limit === 3 ? null : String(limit) });\n  const setCalendarColorProp = (prop: CalendarColorProp<string>) => handleParamsChange({ calColor: prop === 'none' ? null : prop });\n\n  const onItemSelect = useCallback((item: GenericItem) => {\n\t\tnavigate(`/data-demo/${item.id}${location.search}`);\n\t}, [navigate, location.search]);\n\n  const setMessagingView = (view: TaskView) => handleParamsChange({ messagingView: view });\n\n\n  return useMemo(() => ({\n    // State\n    bodyState,\n    sidePaneContent,\n    currentActivePage,\n    itemId,\n    messagingView,\n    // DataDemo State\n    viewMode,\n    page,\n    groupBy,\n    activeGroupTab,\n    filters,\n    sortConfig,\n    calendarDateProp,\n    calendarDisplayProps,\n    calendarItemLimit,\n    calendarColorProp,\n    // Actions\n    navigateTo,\n    openSidePane,\n    closeSidePane,\n    toggleSidePane,\n    toggleSplitView,\n    setNormalView,\n    switchSplitPanes,\n    setMessagingView,\n    closeSplitPane,\n    // DataDemo Actions\n    onItemSelect,\n    setViewMode,\n    setGroupBy,\n    setActiveGroupTab,\n    setFilters,\n    setSort,\n    setTableSort,\n    setPage,\n    setCalendarDateProp,\n    setCalendarDisplayProps,\n    setCalendarItemLimit,\n    setCalendarColorProp,\n  }), [\n    bodyState, sidePaneContent, currentActivePage, itemId, messagingView, viewMode,\n    page, groupBy, activeGroupTab, filters, sortConfig, calendarDateProp,\n    calendarDisplayProps, calendarItemLimit, calendarColorProp,\n    navigateTo, openSidePane, closeSidePane, toggleSidePane, toggleSplitView, setNormalView, setMessagingView,\n    switchSplitPanes, closeSplitPane, onItemSelect, setViewMode, setGroupBy, setActiveGroupTab, setFilters,\n    setSort, setTableSort, setPage, setCalendarDateProp, setCalendarDisplayProps, setCalendarItemLimit, setCalendarColorProp\n  ]);\n}"
+  src/pages/DataDemo/store/dataDemo.store.tsx: |
+    import { create } from "zustand";
+    import { mockDataItems } from "@/pages/DataDemo/data/mockData";
+    import type {
+      GenericItem,
+      GroupableField,
+      FilterConfig,
+      SortConfig,
+    } from "@/features/dynamic-view/types";
+
+    import type { DataDemoItem } from "../data/DataDemoItem";
+    // --- State and Actions ---
+    interface DataDemoState {
+      items: DataDemoItem[];
+      hasMore: boolean;
+      isLoading: boolean;
+      isInitialLoading: boolean;
+      totalItemCount: number;
+    }
+
+    interface DataDemoActions {
+      loadData: (params: {
+        page: number;
+        groupBy: GroupableField<string> | "none";
+        filters: FilterConfig;
+        sortConfig: SortConfig | null;
+        isFullLoad?: boolean;
+      }) => void;
+      updateItem: (itemId: string, updates: Partial<DataDemoItem>) => void;
+    }
+
+    const defaultState: DataDemoState = {
+      items: [],
+      hasMore: true,
+      isLoading: true,
+      isInitialLoading: true,
+      totalItemCount: 0,
+    };
+
+    // --- Store Implementation ---
+    export const useDataDemoStore = create<DataDemoState & DataDemoActions>(
+      (set) => ({
+        ...defaultState,
+
+        loadData: ({ page, groupBy, filters, sortConfig, isFullLoad }) => {
+          set({ isLoading: true, ...(page === 1 && { isInitialLoading: true }) });
+          const isFirstPage = page === 1;
+
+          const filteredAndSortedData = (() => {
+            const filteredItems = mockDataItems.filter((item) => {
+              const searchTermMatch =
+                item.title
+                  .toLowerCase()
+                  .includes(filters.searchTerm.toLowerCase()) ||
+                item.description
+                  .toLowerCase()
+                  .includes(filters.searchTerm.toLowerCase());
+              const statusMatch =
+                filters.status.length === 0 || filters.status.includes(item.status);
+              const priorityMatch =
+                filters.priority.length === 0 ||
+                filters.priority.includes(item.priority);
+              return searchTermMatch && statusMatch && priorityMatch;
+            });
+
+            if (sortConfig) {
+              filteredItems.sort((a, b) => {
+                const getNestedValue = (obj: DataDemoItem, path: string): unknown =>
+                  path.split(".").reduce((o: any, k) => (o || {})[k], obj);
+
+                const aValue = getNestedValue(a, sortConfig.key);
+                const bValue = getNestedValue(b, sortConfig.key);
+
+                if (aValue === undefined || bValue === undefined) return 0;
+                if (typeof aValue === "string" && typeof bValue === "string") {
+                  return sortConfig.direction === "asc"
+                    ? aValue.localeCompare(bValue)
+                    : bValue.localeCompare(aValue);
+                }
+                if (typeof aValue === "number" && typeof bValue === "number") {
+                  return sortConfig.direction === "asc"
+                    ? aValue - bValue
+                    : bValue - aValue;
+                }
+                if (
+                  sortConfig.key === "updatedAt" ||
+                  sortConfig.key === "createdAt"
+                ) {
+                  if (typeof aValue === "string" && typeof bValue === "string") {
+                    return sortConfig.direction === "asc"
+                      ? new Date(aValue).getTime() - new Date(bValue).getTime()
+                      : new Date(bValue).getTime() - new Date(aValue).getTime();
+                  }
+                }
+                return 0;
+              });
+            }
+            return filteredItems;
+          })();
+
+          const totalItemCount = filteredAndSortedData.length;
+
+          setTimeout(
+            () => {
+              if (groupBy !== "none" || isFullLoad) {
+                set({
+                  items: filteredAndSortedData,
+                  hasMore: false,
+                  isLoading: false,
+                  isInitialLoading: false,
+                  totalItemCount,
+                });
+                return;
+              }
+
+              const pageSize = 12;
+              const newItems = filteredAndSortedData.slice(
+                (page - 1) * pageSize,
+                page * pageSize,
+              );
+
+              set((state) => ({
+                items: isFirstPage ? newItems : [...state.items, ...newItems],
+                hasMore: totalItemCount > page * pageSize,
+                isLoading: false,
+                isInitialLoading: false,
+                totalItemCount,
+              }));
+            },
+            isFirstPage ? 1500 : 500,
+          );
+        },
+
+        updateItem: (itemId, updates) => {
+          // In a real app, this would be an API call. Here we update the mock source.
+          const itemIndex = mockDataItems.findIndex((i) => i.id === itemId);
+          if (itemIndex > -1) {
+            mockDataItems[itemIndex] = { ...mockDataItems[itemIndex], ...updates };
+          }
+
+          // Also update the currently loaded items in the store's state for UI consistency
+          set((state) => ({
+            items: state.items.map((item) =>
+              item.id === itemId ? { ...item, ...updates } : item,
+            ),
+          }));
+        },
+      }),
+    );
+
+    export const useSelectedItem = (itemId?: string) => {
+      if (!itemId) return null;
+      return (
+        (mockDataItems.find((item) => item.id === itemId) as DataDemoItem) ?? null
+      );
+    };
+  src/features/dynamic-view/components/views/CardView.tsx: >-
+    import { useRef, type ReactNode } from 'react'
+
+    import { cn } from '@/lib/utils'
+
+    import { ArrowUpRight } from 'lucide-react'
+
+    import type { GenericItem } from '../../types'
+
+    import { useStaggeredAnimation } from
+    '@/hooks/useStaggeredAnimation.motion.hook'
+
+    import { EmptyState } from '../shared/EmptyState'
+
+    import { useDynamicView } from '../../DynamicViewContext'
+
+    import { FieldRenderer } from '../shared/FieldRenderer'
+
+
+    export function CardView({ data, isGrid = false, ctaElement }: { data:
+    GenericItem[]; isGrid?: boolean, ctaElement?: ReactNode }) {
+      const { config, onItemSelect, selectedItemId } = useDynamicView<string, GenericItem>();
+      const { cardView: viewConfig } = config;
+
+      const containerRef = useRef<HTMLDivElement>(null)
+      useStaggeredAnimation(containerRef, [data], { mode: 'incremental', y: 40 });
+
+      const items = Array.isArray(data) ? data : [];
+      if (items.length === 0) {
+        return <EmptyState />
+      }
+
+      return (
+        <div 
+          ref={containerRef}
+          className={cn(
+            "gap-6",
+            isGrid
+              ? "grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))]"
+              : "grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))]",
+            "pb-4"
+          )}
+        >
+          {items.map((item: GenericItem) => {
+            const isSelected = selectedItemId === item.id
+            
+            return (
+              <div
+                key={item.id}
+                onClick={() => onItemSelect(item)}
+                className={cn(
+                  "group relative overflow-hidden rounded-3xl border bg-card/50 backdrop-blur-sm transition-all duration-500 cursor-pointer",
+                  "hover:bg-card/80 hover:shadow-xl hover:shadow-primary/10 hover:border-primary/30 hover:-translate-y-2",
+                  "active:scale-[0.98]",
+                  isSelected && "ring-2 ring-primary/30 border-primary/40 bg-card/90 shadow-lg shadow-primary/20",
+                )}
+              >
+                {/* Card Header with Thumbnail */}
+                <div className="relative p-6 pb-4">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-primary/10 rounded-2xl flex items-center justify-center text-3xl group-hover:scale-110 transition-transform duration-300">
+                      <FieldRenderer item={item} fieldId={viewConfig.thumbnailField} />
+                    </div>
+                    <ArrowUpRight className="w-5 h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 group-hover:-translate-y-1 transition-all duration-300" />
+                  </div>
+
+                  {/* Header Fields (e.g., priority indicator) */}
+                  <div className="absolute top-4 right-4 flex items-center gap-2">
+                    {viewConfig.headerFields.map(fieldId => (
+                      <FieldRenderer key={fieldId} item={item} fieldId={fieldId} options={{ displayAs: 'indicator' }} />
+                    ))}
+                  </div>
+                </div>
+
+                {/* Card Content */}
+                <div className="px-6 pb-6">
+                  <h3 className="font-semibold text-lg mb-2 group-hover:text-primary transition-colors line-clamp-2">
+                    <FieldRenderer item={item} fieldId={viewConfig.titleField} />
+                  </h3>
+                  <p className="text-muted-foreground text-sm mb-4 line-clamp-3">
+                    <FieldRenderer item={item} fieldId={viewConfig.descriptionField} />
+                  </p>
+
+                  {/* Status and Category */}
+                  <div className="flex items-center gap-2 mb-4">
+                    <FieldRenderer item={item} fieldId={viewConfig.statusField} />
+                    <FieldRenderer item={item} fieldId={viewConfig.categoryField} />
+                  </div>
+
+                  {/* Tags, Progress, Assignee */}
+                  <div className="space-y-4 mb-4">
+                    <FieldRenderer item={item} fieldId={viewConfig.tagsField} />
+                    <FieldRenderer item={item} fieldId={viewConfig.progressField} />
+                    <FieldRenderer item={item} fieldId={viewConfig.assigneeField} />
+                  </div>
+
+                  {/* Metrics and Date */}
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <FieldRenderer item={item} fieldId={viewConfig.metricsField} />
+                    <FieldRenderer item={item} fieldId={viewConfig.dateField} />
+                  </div>
+                </div>
+
+                {/* Hover gradient overlay */}
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+                
+                {/* Selection indicator */}
+                {isSelected && (
+                  <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-primary/5 pointer-events-none" />
+                )}
+              </div>
+            )
+          })}
+          {ctaElement}
+        </div>
+      )
+    }
+  src/features/dynamic-view/components/views/TableView.tsx: >-
+    import { useRef, useLayoutEffect, useMemo, type ReactNode } from 'react'
+
+    import { gsap } from 'gsap'
+
+    import { cn } from '@/lib/utils'
+
+    import { 
+      ArrowUpDown, 
+      ArrowUp, 
+      ArrowDown,
+      ExternalLink
+    } from 'lucide-react'
+
+    import type { GenericItem } from '../../types'
+
+    import { EmptyState } from '../shared/EmptyState'
+
+    import { capitalize } from '@/lib/utils'
+
+    import { useDynamicView } from '../../DynamicViewContext'
+
+    import { FieldRenderer } from '../shared/FieldRenderer'
+
+
+    export function TableView({ data, ctaElement }: { data: GenericItem[],
+    ctaElement?: ReactNode }) {
+      const { config, sortConfig, onSortChange, groupBy, onItemSelect, selectedItemId } = useDynamicView<string, GenericItem>();
+      const { tableView: viewConfig } = config;
+
+      const tableRef = useRef<HTMLTableElement>(null)
+      const animatedItemsCount = useRef(0)
+
+      useLayoutEffect(() => {
+        if (tableRef.current) {
+          // Only select item rows for animation, not group headers
+          const newItems = Array.from( 
+            tableRef.current.querySelectorAll('tbody tr')
+          ).filter(tr => !(tr as HTMLElement).dataset.groupHeader)
+           .slice(animatedItemsCount.current);
+          gsap.fromTo(newItems,
+            { y: 20, opacity: 0 },
+            {
+              duration: 0.5,
+              y: 0,
+              opacity: 1,
+              stagger: 0.05,
+              ease: "power2.out",
+            },
+          );
+          animatedItemsCount.current = data.length;
+        }
+      }, [data]);
+
+      const SortIcon = ({ field }: { field: string }) => {
+        if (sortConfig?.key !== field) {
+          return <ArrowUpDown className="w-4 h-4 opacity-50" />
+        }
+        if (sortConfig.direction === 'asc') {
+          return <ArrowUp className="w-4 h-4 text-primary" />
+        }
+        if (sortConfig.direction === 'desc') {
+          return <ArrowDown className="w-4 h-4 text-primary" />
+        }
+        return <ArrowUpDown className="w-4 h-4 opacity-50" />
+      }
+
+      const handleSortClick = (field: string) => {
+        const newDirection = (sortConfig?.key === field && sortConfig.direction === 'desc') ? 'asc' : 'desc';
+        onSortChange({ key: field, direction: newDirection });
+      }
+
+      const groupedData = useMemo(() => {
+        if (groupBy === 'none') return null;
+        return (data as GenericItem[]).reduce((acc, item) => {
+          const groupKey = item[groupBy as 'status' | 'priority' | 'category'] || 'N/A';
+          if (!acc[groupKey]) {
+            acc[groupKey] = [];
+          }
+          acc[groupKey].push(item);
+          return acc;
+        }, {} as Record<string, GenericItem[]>);
+      }, [data, groupBy]);
+
+      if (data.length === 0) {
+        return <EmptyState />
+      }
+
+      return (
+        <div className="relative overflow-hidden rounded-2xl border bg-card/50 backdrop-blur-sm">
+          <div className="overflow-x-auto">
+            <table ref={tableRef} className="w-full">
+              <thead>
+                <tr className="border-b border-border/50 bg-muted/20">
+                  {viewConfig.columns.map(col => (
+                    <th key={col.fieldId} className="text-left p-4 font-semibold text-sm">
+                      {col.isSortable ? (
+                        <button
+                          onClick={() => handleSortClick(col.fieldId)}
+                          className="flex items-center gap-2 hover:text-primary transition-colors"
+                        >
+                          {col.label}
+                          <SortIcon field={col.fieldId} />
+                        </button>
+                      ) : (
+                        <span>{col.label}</span>
+                      )}
+                    </th>
+                  ))}
+                  <th className="text-center p-4 font-semibold text-sm w-16">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {groupedData
+                  ? Object.entries(groupedData).flatMap(([groupName, items]) => [
+                      <tr key={groupName} data-group-header="true" className="sticky top-0 z-10">
+                        <td colSpan={viewConfig.columns.length + 1} className="p-2 bg-muted/50 backdrop-blur-sm">
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-semibold text-sm">{capitalize(groupName)}</h3>
+                            <span className="text-xs px-2 py-0.5 bg-background rounded-full font-medium">{items.length}</span>
+                          </div>
+                        </td>
+                      </tr>,
+                      ...items.map(item => <TableRow key={item.id} item={item} isSelected={selectedItemId === item.id} onItemSelect={onItemSelect} />)
+                    ])
+                  : data.map(item => <TableRow key={item.id} item={item} isSelected={selectedItemId === item.id} onItemSelect={onItemSelect} />)
+                }
+                {ctaElement}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )
+    }
+
+
+    function TableRow({ item, isSelected, onItemSelect }: { item: GenericItem;
+    isSelected: boolean; onItemSelect: (item: GenericItem) => void }) {
+      const { config } = useDynamicView<string, GenericItem>();
+      return (
+        <tr
+          onClick={() => onItemSelect(item)}
+          className={cn(
+            "group border-b border-border/30 transition-all duration-200 cursor-pointer",
+            "hover:bg-accent/20 hover:border-primary/20",
+            isSelected && "bg-primary/5 border-primary/30"
+          )}
+        >
+          {config.tableView.columns.map(col => (
+            <td key={col.fieldId} className="p-4">
+              <FieldRenderer item={item} fieldId={col.fieldId} options={{ showPercentage: true }} />
+            </td>
+          ))}
+          {/* Actions Column */}
+          <td className="p-4">
+            <button 
+              onClick={(e) => {
+                e.stopPropagation()
+                onItemSelect(item)
+              }}
+              className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-accent transition-colors"
+              title="View details"
+            >
+              <ExternalLink className="w-4 h-4" />
+            </button>
+          </td>
+        </tr>
+      )
+    }
+  src/features/dynamic-view/components/views/ListView.tsx: >-
+    import { useRef, type ReactNode } from 'react'
+
+    import { cn } from '@/lib/utils'
+
+    import type { GenericItem } from '../../types'
+
+    import { useStaggeredAnimation } from
+    '@/hooks/useStaggeredAnimation.motion.hook'
+
+    import { EmptyState } from '../shared/EmptyState'
+
+    import { useDynamicView } from '../../DynamicViewContext'
+
+    import { FieldRenderer } from '../shared/FieldRenderer'
+
+
+    export function ListView({ data, ctaElement }: { data: GenericItem[],
+    ctaElement?: ReactNode }) {
+      const { config, onItemSelect, selectedItemId } = useDynamicView<string, GenericItem>();
+
+      const listRef = useRef<HTMLDivElement>(null)
+      useStaggeredAnimation(listRef, [data], { mode: 'incremental', scale: 1, y: 20, stagger: 0.05, duration: 0.4 });
+
+      const items = Array.isArray(data) ? data : [];
+      if (items.length === 0) {
+        return <EmptyState />
+      }
+
+      return (
+        <div ref={listRef}>
+          {items.map((item: GenericItem) => {
+            const isSelected = selectedItemId === item.id
+            
+            return (
+              <div key={item.id} className="px-2">
+                <div
+                  onClick={() => onItemSelect(item)}
+                  className={cn(
+                    "group flex items-center px-2 py-2 rounded-md transition-colors duration-200 cursor-pointer",
+                    "hover:bg-accent/80",
+                    isSelected ? "bg-accent" : "bg-transparent"
+                  )}
+                >
+                  {/* Left side: Icon and Title */}
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <div className="flex-shrink-0 w-8 text-center">
+                      <FieldRenderer item={item} fieldId={config.listView.iconField} className="text-xl" />
+                    </div>
+                    <div className="font-medium truncate text-card-foreground group-hover:text-primary">
+                      <FieldRenderer item={item} fieldId={config.listView.titleField} />
+                    </div>
+                  </div>
+
+                  {/* Right side: Metadata */}
+                  <div className="flex shrink-0 items-center gap-2 sm:gap-4 md:gap-6 ml-4 text-sm text-muted-foreground">
+                    {config.listView.metaFields.map(fieldConfig => (
+                      <div key={fieldConfig.fieldId} className={fieldConfig.className}>
+                        <FieldRenderer item={item} fieldId={fieldConfig.fieldId} options={{ avatarClassName: 'w-7 h-7' }} />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+          {ctaElement}
+        </div>
+      )
+    }
+  src/features/dynamic-view/components/views/KanbanView.tsx: >-
+    import { useState, useEffect, Fragment } from "react";
+
+    import {
+      GripVertical,
+      Plus,
+    } from "lucide-react";
+
+    import type { GenericItem } from '../../types'
+
+    import { Card, CardContent } from "@/components/ui/card";
+
+    import { cn } from "@/lib/utils";
+
+    import { EmptyState } from "../shared/EmptyState";
+
+    import { useDynamicView } from '../../DynamicViewContext'
+
+    import { FieldRenderer } from '../shared/FieldRenderer'
+
+
+    interface KanbanCardProps {
+      item: GenericItem;
+      isDragging: boolean;
+    }
+
+
+    function KanbanCard({ item, isDragging, ...props }: KanbanCardProps &
+    React.HTMLAttributes<HTMLDivElement>) {
+      const { config, onItemSelect } = useDynamicView<string, GenericItem>();
+      const { kanbanView: viewConfig } = config;
+
+      return (
+        <Card
+          {...props}
+          data-draggable-id={item.id}
+          onClick={() => onItemSelect(item)}
+          className={cn(
+            "cursor-pointer transition-all duration-300 border bg-card/60 dark:bg-neutral-800/60 backdrop-blur-sm hover:bg-card/70 dark:hover:bg-neutral-700/70 active:cursor-grabbing",
+            isDragging && "opacity-50 ring-2 ring-primary ring-offset-2 ring-offset-background"
+          )}
+        >
+          <CardContent className="p-5">
+            <div className="space-y-4">
+              <div className="flex items-start justify-between">
+                <h4 className="font-semibold text-card-foreground dark:text-neutral-100 leading-tight">
+                  <FieldRenderer item={item} fieldId={viewConfig.cardFields.titleField} />
+                </h4>
+                <GripVertical className="w-5 h-5 text-muted-foreground/60 dark:text-neutral-400 cursor-grab flex-shrink-0" />
+              </div>
+
+              <p className="text-sm text-muted-foreground dark:text-neutral-300 leading-relaxed line-clamp-2">
+                <FieldRenderer item={item} fieldId={viewConfig.cardFields.descriptionField} />
+              </p>
+
+              <div className="flex flex-wrap gap-2">
+                <FieldRenderer item={item} fieldId={viewConfig.cardFields.priorityField} />
+                <FieldRenderer item={item} fieldId={viewConfig.cardFields.tagsField} />
+              </div>
+
+              <div className="flex items-center justify-between pt-2 border-t border-border/30 dark:border-neutral-700/30">
+                <div className="flex items-center gap-4 text-muted-foreground/80 dark:text-neutral-400">
+                  <FieldRenderer item={item} fieldId={viewConfig.cardFields.dateField} />
+                  <FieldRenderer item={item} fieldId={viewConfig.cardFields.metricsField} />
+                </div>
+                <FieldRenderer item={item} fieldId={viewConfig.cardFields.assigneeField} options={{ compact: true, avatarClassName: 'w-8 h-8 ring-2 ring-white/50 dark:ring-neutral-700/50' }} />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      );
+    }
+
+
+    interface DataKanbanViewProps {
+      data: Record<string, GenericItem[]>;
+    }
+
+
+    export function KanbanView({ data }: DataKanbanViewProps) {
+      const [columns, setColumns] = useState(data);
+      const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
+      const [dropIndicator, setDropIndicator] = useState<{ columnId: string; index: number } | null>(null);
+      const { groupBy, onItemUpdate } = useDynamicView<string, GenericItem>();
+
+      useEffect(() => {
+        setColumns(data);
+      }, [data]);
+
+      const handleDragStart = (e: React.DragEvent<HTMLDivElement>, item: GenericItem, sourceColumnId: string) => {
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', JSON.stringify({ itemId: item.id, sourceColumnId }));
+        setDraggedItemId(item.id);
+      };
+
+      const getDropIndicatorIndex = (e: React.DragEvent, elements: HTMLElement[]) => {
+        const mouseY = e.clientY;
+        let closestIndex = elements.length;
+
+        elements.forEach((el, index) => {
+          const { top, height } = el.getBoundingClientRect();
+          const offset = mouseY - (top + height / 2);
+          if (offset < 0 && index < closestIndex) {
+            closestIndex = index;
+          }
+        });
+        return closestIndex;
+      };
+
+      const handleDragOverCardsContainer = (e: React.DragEvent<HTMLDivElement>, columnId: string) => {
+        e.preventDefault();
+        const container = e.currentTarget;
+        const draggableElements = Array.from(container.querySelectorAll('[data-draggable-id]')) as HTMLElement[];
+        const index = getDropIndicatorIndex(e, draggableElements);
+
+        if (dropIndicator?.columnId === columnId && dropIndicator.index === index) return;
+        setDropIndicator({ columnId, index });
+      };
+
+      const handleDrop = (e: React.DragEvent<HTMLDivElement>, targetColumnId: string) => {
+        e.preventDefault();
+        setDropIndicator(null);
+        try {
+          const { itemId, sourceColumnId } = JSON.parse(e.dataTransfer.getData('text/plain'));
+
+          const droppedItem = columns[sourceColumnId]?.find(i => i.id === itemId);
+          if (!droppedItem) return;
+
+          // Update local state for immediate feedback
+          setColumns(prev => {
+            const newColumns = { ...prev };
+            const sourceCol = prev[sourceColumnId].filter(i => i.id !== itemId);
+
+            if (sourceColumnId === targetColumnId) {
+              const dropIndex = dropIndicator?.columnId === targetColumnId ? dropIndicator.index : sourceCol.length;
+              sourceCol.splice(dropIndex, 0, droppedItem);
+              newColumns[sourceColumnId] = sourceCol;
+            } else {
+              const targetCol = [...prev[targetColumnId]];
+              const dropIndex = dropIndicator?.columnId === targetColumnId ? dropIndicator.index : targetCol.length;
+              targetCol.splice(dropIndex, 0, droppedItem);
+              
+              newColumns[sourceColumnId] = sourceCol;
+              newColumns[targetColumnId] = targetCol;
+            }
+            return newColumns;
+          });
+          
+          // Persist change to global store. The groupBy value tells us which property to update.
+          if (groupBy !== 'none' && sourceColumnId !== targetColumnId) {
+            onItemUpdate?.(itemId, { [groupBy]: targetColumnId } as Partial<GenericItem>);
+          }
+
+        } catch (err) {
+          console.error("Failed to parse drag data", err)
+        } finally {
+          setDraggedItemId(null);
+        }
+      };
+
+      const handleDragEnd = () => {
+        setDraggedItemId(null);
+        setDropIndicator(null);
+      };
+
+      const initialColumns = Object.entries(data);
+
+      if (!initialColumns || initialColumns.length === 0) {
+        return <EmptyState />;
+      }
+
+      const statusColors: Record<string, string> = {
+        active: "bg-blue-500", pending: "bg-yellow-500", completed: "bg-green-500", archived: "bg-gray-500",
+        low: "bg-green-500", medium: "bg-blue-500", high: "bg-orange-500", critical: "bg-red-500",
+      };
+
+      const DropIndicator = () => <div className="h-1 my-2 rounded-full bg-primary/60" />;
+
+      return (
+        <div className="flex items-start gap-6 pb-4 overflow-x-auto -mx-6 px-6">
+          {Object.entries(columns).map(([columnId, items]) => (
+            <div
+              key={columnId}
+              className={cn(
+                "w-80 flex-shrink-0 bg-card/20 dark:bg-neutral-900/20 backdrop-blur-xl rounded-3xl p-5 border border-border dark:border-neutral-700/50 transition-all duration-300",
+                dropIndicator?.columnId === columnId && "bg-primary/10 border-primary/30"
+              )}
+            >
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className={cn("w-3.5 h-3.5 rounded-full", statusColors[columnId] || "bg-muted-foreground")} />
+                  <h3 className="font-semibold text-card-foreground dark:text-neutral-100 capitalize truncate">{columnId}</h3>
+                  <span className="text-sm font-medium text-muted-foreground bg-background/50 rounded-full px-2 py-0.5">{items.length}</span>
+                </div>
+                <button className="p-1 rounded-full bg-card/30 dark:bg-neutral-800/30 hover:bg-card/50 dark:hover:bg-neutral-700/50 transition-colors">
+                  <Plus className="w-4 h-4 text-muted-foreground dark:text-neutral-300" />
+                </button>
+              </div>
+
+              <div
+                onDragOver={(e) => handleDragOverCardsContainer(e, columnId)}
+                onDrop={(e) => handleDrop(e, columnId)}
+                onDragLeave={() => setDropIndicator(null)}
+                className="space-y-4 min-h-[100px]"
+              >
+                {items.map((item, index) => (
+                  <Fragment key={item.id}>
+                    {dropIndicator?.columnId === columnId && dropIndicator.index === index && (
+                      <DropIndicator />
+                    )}
+                    <KanbanCard
+                      item={item}
+                      isDragging={draggedItemId === item.id}
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, item, columnId)}
+                      onDragEnd={handleDragEnd}
+                    />
+                  </Fragment>
+                ))}
+                {dropIndicator?.columnId === columnId && dropIndicator.index === items.length && (
+                  <DropIndicator />
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      );
+    }
+  src/features/dynamic-view/components/controls/ViewControls.tsx: >-
+    import * as React from 'react'
+
+    import { Check, ListFilter, Search, SortAsc, ChevronsUpDown, Settings } from
+    'lucide-react'
+
+
+    import { cn } from '@/lib/utils'
+
+    import { Button } from '@/components/ui/button'
+
+    import { Input } from '@/components/ui/input'
+
+    import { Badge } from '@/components/ui/badge'
+
+    import { Popover, PopoverContent, PopoverTrigger } from
+    '@/components/ui/popover'
+
+    import {
+      DropdownMenu,
+      DropdownMenuContent,
+      DropdownMenuRadioGroup,
+      DropdownMenuRadioItem,
+      DropdownMenuSeparator,
+      DropdownMenuLabel,
+      DropdownMenuTrigger,
+    } from '@/components/ui/dropdown-menu'
+
+    import {
+      Command,
+      CommandEmpty,
+      CommandGroup,
+      CommandInput,
+      CommandItem,
+      CommandList,
+      CommandSeparator,
+    } from '@/components/ui/command'
+
+    import { Label } from "@/components/ui/label";
+
+    import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+
+    import { Checkbox } from "@/components/ui/checkbox";
+
+    import { Switch } from "@/components/ui/switch";
+
+    import { Separator } from "@/components/ui/separator";
+
+
+    import type { FilterConfig, CalendarDateProp, CalendarDisplayProp,
+    CalendarColorProp, GenericItem } from '../../types'
+
+    import { useDynamicView } from '../../DynamicViewContext';
+
+
+    export interface DataViewControlsProps {
+      // groupOptions will now come from config
+    }
+
+
+    export function ViewControls() {
+      const {
+        config,
+        filters,
+        onFiltersChange,
+        sortConfig,
+        onSortChange,
+        groupBy,
+        onGroupByChange,
+        viewMode,
+      } = useDynamicView<string, GenericItem>();
+      const sortOptions = config.sortableFields;
+      const groupOptions = config.groupableFields;
+      const filterableFields = config.filterableFields;
+
+      const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        onFiltersChange({ ...filters, searchTerm: event.target.value });
+      }
+      
+      const activeFilterCount = filterableFields.reduce((acc, field) => acc + (filters[field.id]?.length || 0), 0)
+
+      return (
+        <div className="flex flex-col sm:flex-row items-center gap-2 w-full">
+          {/* Search */}
+          <div className="relative w-full sm:w-auto">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search projects..."
+              className="pl-9 w-full sm:w-64"
+              value={filters.searchTerm}
+              onChange={handleSearchChange}
+            />
+          </div>
+
+          {/* Filters */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="h-9 w-full sm:w-auto justify-start border-dashed">
+                <ListFilter className="mr-2 h-4 w-4" />
+                Filters
+                {activeFilterCount > 0 && (
+                  <>
+                    <div className="mx-2 h-4 w-px bg-muted-foreground/50" />
+                    <Badge variant="secondary" className="rounded-sm px-1 font-normal">
+                      {activeFilterCount}
+                    </Badge>
+                  </>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[240px] p-0" align="start">
+              <CombinedFilter filters={filters} onFiltersChange={onFiltersChange} filterableFields={filterableFields} />
+            </PopoverContent>
+          </Popover>
+
+          {activeFilterCount > 0 && (
+            <Button variant="ghost" size="sm" onClick={() => onFiltersChange({ searchTerm: filters.searchTerm, status: [], priority: [] })}>Reset</Button>
+          )}
+
+          {/* Spacer */}
+          <div className="hidden md:block flex-grow" />
+
+          {viewMode === 'calendar' ? (
+            <CalendarSpecificControls />
+          ) : (
+            <>
+              {/* Sorter */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-9 w-full sm:w-auto justify-start">
+                    <SortAsc className="mr-2 h-4 w-4" />
+                    Sort by: {sortOptions.find(o => o.id === sortConfig?.key)?.label || 'Default'}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-[200px]">
+                  <DropdownMenuLabel>Sort by</DropdownMenuLabel>
+                  <DropdownMenuRadioGroup
+                    value={`${sortConfig?.key || 'default'}-${sortConfig?.direction || ''}`}
+                    onValueChange={(value) => {
+                      if (value.startsWith('default')) {
+                        onSortChange(null);
+                      } else {
+                        const [key, direction] = value.split('-')
+                        onSortChange({ key: key, direction: direction as 'asc' | 'desc' });
+                      }
+                    }}
+                  >
+                    <DropdownMenuRadioItem value="default-">Default</DropdownMenuRadioItem>
+                    <DropdownMenuSeparator />
+                    {sortOptions.map(option => (
+                      <React.Fragment key={option.id}>
+                        <DropdownMenuRadioItem value={`${option.id}-desc`}>{option.label} (Desc)</DropdownMenuRadioItem>
+                        <DropdownMenuRadioItem value={`${option.id}-asc`}>{option.label} (Asc)</DropdownMenuRadioItem>
+                      </React.Fragment>
+                    ))}
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              {/* Group By Dropdown */}
+              <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="h-9 w-full justify-between">
+                      Group by: {groupOptions.find(o => o.id === groupBy)?.label}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-[180px]">
+                    <DropdownMenuRadioGroup value={groupBy} onValueChange={onGroupByChange}>
+                      {groupOptions.map(option => (
+                        <DropdownMenuRadioItem key={option.id} value={option.id}>
+                          {option.label}
+                        </DropdownMenuRadioItem>
+                      ))}
+                    </DropdownMenuRadioGroup>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </>
+          )}
+        </div>
+      )
+    }
+
+
+    function CalendarSpecificControls() {
+        const {
+            calendarDateProp, onCalendarDatePropChange,
+            calendarDisplayProps, onCalendarDisplayPropsChange,
+            calendarItemLimit, onCalendarItemLimitChange,
+            calendarColorProp, onCalendarColorPropChange,
+        } = useDynamicView<string, GenericItem>();
+
+        const handleDisplayPropChange = (prop: CalendarDisplayProp<string>, checked: boolean) => {
+            const newProps = checked 
+                ? [...(calendarDisplayProps || []), prop] 
+                : (calendarDisplayProps || []).filter((p) => p !== prop);
+            onCalendarDisplayPropsChange?.(newProps);
+        };
+
+        return (
+            <Popover>
+                <PopoverTrigger asChild>
+                    <Button variant="outline" size="icon" className="h-9 w-9">
+                        <Settings className="h-4 w-4" />
+                    </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-80 p-4" align="end">
+                    <div className="space-y-4">
+                        <div className="space-y-1">
+                            <h4 className="font-medium leading-none">Calendar Settings</h4>
+                            <p className="text-sm text-muted-foreground">
+                                Customize the calendar view.
+                            </p>
+                        </div>
+                        <Separator />
+                        <div className="space-y-3">
+                            <Label className="font-semibold">Item Background Color</Label>
+                            <RadioGroup value={calendarColorProp} onValueChange={(v) => onCalendarColorPropChange?.(v as CalendarColorProp<string>)} className="gap-2">
+                                <div className="flex items-center space-x-2">
+                                    <RadioGroupItem value="none" id="color-none" />
+                                    <Label htmlFor="color-none" className="font-normal">None</Label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <RadioGroupItem value="priority" id="color-priority" />
+                                    <Label htmlFor="color-priority" className="font-normal">By Priority</Label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <RadioGroupItem value="status" id="color-status" />
+                                    <Label htmlFor="color-status" className="font-normal">By Status</Label>
+                                </div>
+                                 <div className="flex items-center space-x-2">
+                                    <RadioGroupItem value="category" id="color-category" />
+                                    <Label htmlFor="color-category" className="font-normal">By Category</Label>
+                                </div>
+                            </RadioGroup>
+                        </div>
+                        <Separator />
+                        <div className="space-y-3">
+                            <Label className="font-semibold">Date Property</Label>
+                            <RadioGroup value={calendarDateProp} onValueChange={(v) => onCalendarDatePropChange?.(v as CalendarDateProp<string>)} className="gap-2">
+                                <div className="flex items-center space-x-2">
+                                    <RadioGroupItem value="dueDate" id="dueDate" />
+                                    <Label htmlFor="dueDate" className="font-normal">Due Date</Label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <RadioGroupItem value="createdAt" id="createdAt" />
+                                    <Label htmlFor="createdAt" className="font-normal">Created Date</Label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <RadioGroupItem value="updatedAt" id="updatedAt" />
+                                    <Label htmlFor="updatedAt" className="font-normal">Updated Date</Label>
+                                </div>
+                            </RadioGroup>
+                        </div>
+                        <div className="space-y-3">
+                            <Label className="font-semibold">Card Details</Label>
+                            <div className="space-y-2">
+                                {(['priority', 'assignee', 'tags'] as CalendarDisplayProp<string>[]).map(prop => (
+                                    <div key={prop} className="flex items-center space-x-2">
+                                        <Checkbox id={prop} checked={(calendarDisplayProps || []).includes(prop)} onCheckedChange={(c) => handleDisplayPropChange(prop, !!c)} />
+                                        <Label htmlFor={prop} className="capitalize font-normal">{prop}</Label>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                        <Separator />
+                        <div className="flex items-center justify-between">
+                             <div className="space-y-0.5">
+                                <Label htmlFor="show-all" className="font-semibold">Show all items</Label>
+                                <p className="text-xs text-muted-foreground">Display all items on a given day.</p>
+                            </div>
+                            <Switch id="show-all" checked={calendarItemLimit === 'all'} onCheckedChange={(c) => onCalendarItemLimitChange?.(c ? 'all' : 3)} />
+                        </div>
+                    </div>
+                </PopoverContent>
+            </Popover>
+        );
+    }
+
+
+    function CombinedFilter({
+      filters,
+      onFiltersChange,
+      filterableFields,
+    }: {
+      filters: FilterConfig;
+      onFiltersChange: (filters: FilterConfig) => void;
+      filterableFields: { id: string; label: string; options: { id: string; label: string }[] }[];
+    }) {
+      const handleSelect = (fieldId: string, value: string) => {
+        const currentValues = new Set(filters[fieldId] || []);
+        currentValues.has(value) ? currentValues.delete(value) : currentValues.add(value);
+        
+        onFiltersChange({ ...filters, [fieldId]: Array.from(currentValues) });
+      };
+
+      const hasActiveFilters = filterableFields.some(field => (filters[field.id] || []).length > 0);
+
+      const clearFilters = () => {
+        const clearedFilters: Partial<FilterConfig> = {};
+        filterableFields.forEach(field => {
+          clearedFilters[field.id as keyof Omit<FilterConfig, 'searchTerm'>] = [];
+        });
+        onFiltersChange({ searchTerm: filters.searchTerm, ...clearedFilters });
+      }
+
+      return (
+        <Command>
+          <CommandInput placeholder="Filter by..." />
+          <CommandList>
+            <CommandEmpty>No results found.</CommandEmpty>
+            
+            {filterableFields.map((field, index) => (
+              <React.Fragment key={field.id}>
+                <CommandGroup heading={field.label}>
+                  {field.options.map((option) => {
+                const isSelected = (filters[field.id] || []).includes(option.id);
+                return (
+                  <CommandItem
+                    key={option.id}
+                    onSelect={() => handleSelect(field.id, option.id)}
+                  >
+                    <div
+                      className={cn(
+                        'mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary',
+                        isSelected ? 'bg-primary text-primary-foreground' : 'opacity-50 [&_svg]:invisible'
+                      )}
+                    >
+                      <Check className={cn('h-4 w-4')} />
+                    </div>
+                    <span>{option.label}</span>
+                  </CommandItem>
+                );
+              })}
+                </CommandGroup>
+                {index < filterableFields.length - 1 && <CommandSeparator />}
+              </React.Fragment>
+            ))}
+
+            {hasActiveFilters && (
+              <>
+                <CommandSeparator />
+                <CommandGroup>
+                  <CommandItem
+                    onSelect={clearFilters}
+                    className="justify-center text-center text-sm"
+                  >
+                    Clear filters
+                  </CommandItem>
+                </CommandGroup>
+              </>
+            )}
+          </CommandList>
+        </Command>
+      )
+    }
+  src/features/dynamic-view/components/views/CalendarView.tsx: >-
+    import { useState, useMemo, useRef, useLayoutEffect } from "react";
+
+    import { format, addMonths, subMonths, startOfMonth, endOfMonth,
+    startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isToday, isSameDay,
+    } from "date-fns";
+
+    import { ChevronLeft, ChevronRight } from "lucide-react";
+
+    import { gsap } from "gsap";
+
+
+    import { Button } from "@/components/ui/button";
+
+    import { cn } from "@/lib/utils";
+
+    import type { GenericItem } from '../../types';
+
+    import type { CalendarDateProp, CalendarColorProp, Status, Priority } from
+    '../../types';
+
+    import { useResizeObserver } from "@/hooks/useResizeObserver.hook";
+
+    import { useDynamicView } from '../../DynamicViewContext'
+
+    import { FieldRenderer } from '../shared/FieldRenderer'
+
+
+    interface CalendarViewProps {
+      data: GenericItem[];
+    }
+
+
+    const PRIORITY_BG_COLORS: Record<Priority, string> = {
+      low: 'bg-blue-500/80 border-blue-600/80 text-white',
+      medium: 'bg-yellow-500/80 border-yellow-600/80 text-yellow-950',
+      high: 'bg-orange-500/80 border-orange-600/80 text-white',
+      critical: 'bg-red-600/80 border-red-700/80 text-white',
+    };
+
+
+    const STATUS_BG_COLORS: Record<Status, string> = {
+      active: 'bg-sky-500/80 border-sky-600/80 text-white',
+      pending: 'bg-amber-500/80 border-amber-600/80 text-amber-950',
+      completed: 'bg-emerald-600/80 border-emerald-700/80 text-white',
+      archived: 'bg-zinc-500/80 border-zinc-600/80 text-white',
+    };
+
+
+    const CATEGORY_BG_COLORS = [
+      'bg-rose-500/80 border-rose-600/80 text-white',
+      'bg-fuchsia-500/80 border-fuchsia-600/80 text-white',
+      'bg-indigo-500/80 border-indigo-600/80 text-white',
+      'bg-teal-500/80 border-teal-600/80 text-white',
+      'bg-lime-500/80 border-lime-600/80 text-lime-950',
+    ];
+
+
+    const getCategoryBgColor = (category: string) => {
+      let hash = 0;
+      for (let i = 0; i < category.length; i++) {
+        hash = category.charCodeAt(i) + ((hash << 5) - hash);
+      }
+      const index = Math.abs(hash % CATEGORY_BG_COLORS.length);
+      return CATEGORY_BG_COLORS[index];
+    };
+
+
+    function CalendarHeader({ currentDate, onPrevMonth, onNextMonth, onToday }:
+    {
+      currentDate: Date;
+      onPrevMonth: () => void;
+      onNextMonth: () => void;
+      onToday: () => void;
+    }) {
+      return (
+        <div className="flex items-center justify-between gap-4 mb-6">
+          <h2 className="text-xl font-bold md:text-2xl tracking-tight">
+            {format(currentDate, "MMMM yyyy")}
+          </h2>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={onToday}>Today</Button>
+            <div className="flex items-center">
+              <Button variant="outline" size="icon" className="h-9 w-9" onClick={onPrevMonth}>
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Button variant="outline" size="icon" className="h-9 w-9" onClick={onNextMonth}>
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+
+    function CalendarEvent({ item, isSelected, isDragging, onDragStart,
+    colorProp }: { 
+        item: GenericItem; 
+        isSelected: boolean;
+        isDragging: boolean;
+        onDragStart: (e: React.DragEvent<HTMLDivElement>, itemId: string) => void
+        colorProp: CalendarColorProp<string>;
+      }) {
+      const { config, onItemSelect } = useDynamicView<string, GenericItem>();
+      const { calendarView: viewConfig } = config;
+
+        const colorClass = useMemo(() => {
+          switch (colorProp) {
+            case 'priority': return PRIORITY_BG_COLORS[item.priority as Priority];
+            case 'status': return STATUS_BG_COLORS[item.status as Status];
+            case 'category': return getCategoryBgColor(item.category as string);
+            default: return null;
+          }
+        }, [colorProp, item]);
+
+        return (
+            <div
+                draggable
+                onDragStart={(e) => onDragStart(e, item.id)}
+                onClick={() => onItemSelect(item)}
+                className={cn(
+                    "p-2 rounded-lg cursor-grab transition-all duration-200 border space-y-1",
+                    isSelected && "ring-2 ring-primary ring-offset-background ring-offset-2",
+                    isDragging && "opacity-50 ring-2 ring-primary cursor-grabbing",
+                    colorClass 
+                      ? `${colorClass} hover:brightness-95 dark:hover:brightness-110`
+                      : "bg-card/60 dark:bg-neutral-800/60 backdrop-blur-sm hover:bg-card/80 dark:hover:bg-neutral-700/70"
+                )}
+            >
+                <div className={cn(
+                  "font-semibold text-sm leading-tight line-clamp-2",
+                  colorClass ? "text-inherit" : "text-card-foreground/90"
+                )}>
+                  <FieldRenderer item={item} fieldId={viewConfig.titleField} />
+                </div>
+
+                {viewConfig.displayFields.includes('tags') && <FieldRenderer item={item} fieldId="tags" />}
+
+                {(viewConfig.displayFields.includes('priority') || viewConfig.displayFields.includes('assignee')) && (
+                    <div className={cn(
+                        "flex items-center justify-between pt-1 border-t",
+                        colorClass ? "border-black/10 dark:border-white/10" : "border-border/30 dark:border-neutral-700/50"
+                    )}>
+                        <div>
+                          {viewConfig.displayFields.includes('priority') && <FieldRenderer item={item} fieldId="priority" />}
+                        </div>
+                        <div>
+                          {viewConfig.displayFields.includes('assignee') && <FieldRenderer item={item} fieldId="assignee" options={{ compact: true, avatarClassName: 'w-5 h-5' }}/>}
+                        </div>
+                    </div>
+                )}
+            </div>
+        );
+    }
+
+
+    const datePropLabels: Record<CalendarDateProp<string>, string> = {
+      dueDate: 'due dates',
+      createdAt: 'creation dates',
+      updatedAt: 'update dates',
+    };
+
+
+    export function CalendarView({ data }: CalendarViewProps) {
+      const [currentDate, setCurrentDate] = useState(new Date());
+      const {
+        selectedItemId,
+        onItemUpdate,
+        calendarDateProp = 'dueDate', // Provide default
+        calendarItemLimit = 3, // Provide default
+        calendarColorProp = 'none', // Provide default
+      } = useDynamicView<string, GenericItem>();
+      
+      // Drag & Drop State
+      const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
+      const [dropTargetDate, setDropTargetDate] = useState<Date | null>(null);
+
+      // GSAP animation state
+      const [direction, setDirection] = useState(0); // 0: initial, 1: next, -1: prev
+
+      // Responsive Calendar State
+      const calendarContainerRef = useRef<HTMLDivElement>(null);
+      const { width } = useResizeObserver(calendarContainerRef);
+      const MIN_DAY_WIDTH = 160; // px
+      const numColumns = useMemo(() => {
+        if (width === 0) return 7;
+        const cols = Math.floor(width / MIN_DAY_WIDTH);
+        return Math.max(3, Math.min(7, cols));
+      }, [width]);
+
+      const gridRef = useRef<HTMLDivElement>(null);
+      const itemsByDateProp = useMemo(() => data.filter(item => !!item[calendarDateProp]), [data, calendarDateProp]);
+
+      const eventsByDate = useMemo(() => {
+        const eventsMap = new Map<string, GenericItem[]>();
+        itemsByDateProp.forEach(item => {
+          const dateValue = item[calendarDateProp];
+          if (!dateValue) return;
+          const date = new Date(dateValue as string);
+          const dateKey = format(date, "yyyy-MM-dd");
+          if (!eventsMap.has(dateKey)) {
+            eventsMap.set(dateKey, []);
+          }
+          eventsMap.get(dateKey)?.push(item);
+        });
+        return eventsMap;
+      }, [itemsByDateProp, calendarDateProp]);
+
+      const monthStart = startOfMonth(currentDate);
+      const monthEnd = endOfMonth(monthStart);
+      const startDate = startOfWeek(monthStart, { weekStartsOn: 0 }); // Sunday
+      const endDate = endOfWeek(monthEnd, { weekStartsOn: 0 });
+
+      const days = eachDayOfInterval({ start: startDate, end: endDate });
+      const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+      
+      // D&D Handlers
+      const handleDragStart = (e: React.DragEvent, itemId: string) => {
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', itemId);
+        setDraggedItemId(itemId);
+      };
+      
+      const handleDragEnd = () => {
+        setDraggedItemId(null);
+        setDropTargetDate(null);
+      };
+
+      const handleDragOver = (e: React.DragEvent, day: Date) => {
+        e.preventDefault();
+        if (dropTargetDate === null || !isSameDay(day, dropTargetDate)) {
+            setDropTargetDate(day);
+        }
+      };
+
+      const handleDragLeave = () => {
+        setDropTargetDate(null);
+      };
+
+      const handleDrop = (e: React.DragEvent, day: Date) => {
+        e.preventDefault();
+        const itemIdToUpdate = e.dataTransfer.getData('text/plain');
+        if (itemIdToUpdate) {
+            const originalItem = itemsByDateProp.find(i => i.id === itemIdToUpdate);
+            if (originalItem && originalItem[calendarDateProp]) {
+                const originalDate = new Date(originalItem[calendarDateProp] as string);
+                // Preserve the time, only change the date part
+                const newDueDate = new Date(day);
+                newDueDate.setHours(originalDate.getHours(), originalDate.getMinutes(), originalDate.getSeconds(), originalDate.getMilliseconds());
+                onItemUpdate?.(itemIdToUpdate, { [calendarDateProp]: newDueDate.toISOString() });
+            }
+        }
+        handleDragEnd(); // Reset state
+      };
+      
+      const handlePrevMonth = () => {
+        setDirection(-1);
+        setCurrentDate(subMonths(currentDate, 1));
+      };
+      const handleNextMonth = () => {
+        setDirection(1);
+        setCurrentDate(addMonths(currentDate, 1));
+      };
+      const handleToday = () => {
+        setDirection(0); // No animation for 'Today'
+        setCurrentDate(new Date());
+      };
+
+      useLayoutEffect(() => {
+        if (direction === 0 || !gridRef.current) return;
+        gsap.fromTo(gridRef.current, 
+          { opacity: 0, x: 30 * direction }, 
+          { opacity: 1, x: 0, duration: 0.3, ease: 'power2.out' }
+        );
+      }, [currentDate]);
+
+      return (
+        <div ref={calendarContainerRef} className="-mx-4 md:-mx-6">
+          <div className="px-4 md:px-6 pb-2">
+            <CalendarHeader currentDate={currentDate} onPrevMonth={handlePrevMonth} onNextMonth={handleNextMonth} onToday={handleToday} />
+          </div>
+          {itemsByDateProp.length === 0 ? (
+            <div className="flex items-center justify-center h-96 text-muted-foreground rounded-lg border bg-card/30 mx-4 md:mx-6">
+              No items with {datePropLabels[calendarDateProp]} to display on the calendar.
+            </div>
+          ) : (
+            <div className="px-2" onDragEnd={handleDragEnd}>
+              {numColumns === 7 && (
+                <div className="grid grid-cols-7">
+                  {weekdays.map(day => (
+                    <div key={day} className="py-2 px-3 text-center text-xs font-semibold text-muted-foreground">
+                      {day}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+                <div
+                  ref={gridRef}
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: `repeat(${numColumns}, minmax(0, 1fr))`,
+                    gap: '0.5rem',
+                  }}
+                >
+                  {days.map(day => {
+                    const dateKey = format(day, "yyyy-MM-dd");
+                    const dayEvents = eventsByDate.get(dateKey) || [];
+                    const visibleEvents = calendarItemLimit === 'all' 
+                        ? dayEvents 
+                        : dayEvents.slice(0, calendarItemLimit as number);
+                    const hiddenEventsCount = dayEvents.length - visibleEvents.length;
+                    const isCurrentMonthDay = isSameMonth(day, currentDate);
+                    const isDropTarget = dropTargetDate && isSameDay(day, dropTargetDate);
+                    return (
+                      <div
+                        key={day.toString()}
+                        onDragOver={(e) => handleDragOver(e, day)}
+                        onDragLeave={handleDragLeave}
+                        onDrop={(e) => handleDrop(e, day)}
+                        className={cn(
+                          "relative min-h-[150px] rounded-2xl p-2 flex flex-col gap-2 transition-all duration-300 border",
+                          isCurrentMonthDay ? "bg-card/40 dark:bg-neutral-900/40 border-transparent" : "bg-muted/30 dark:bg-neutral-800/20 border-transparent text-muted-foreground/60",
+                          isDropTarget ? "border-primary/50 bg-primary/10" : "hover:border-primary/20 hover:bg-card/60"
+                        )}
+                      >
+                        <div className="font-semibold text-sm">
+                          {isToday(day) ? (
+                            <div className="flex items-center justify-center w-7 h-7 rounded-full bg-primary text-primary-foreground">
+                              {format(day, 'd')}
+                            </div>
+                          ) : (
+                            <div className="flex items-baseline gap-1.5 px-1 py-0.5">
+                              {numColumns < 7 && <span className="text-xs opacity-70">{format(day, 'eee')}</span>}
+                              <span>{format(day, 'd')}</span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="space-y-2 overflow-y-auto flex-grow custom-scrollbar">
+                          {visibleEvents.map(item => (
+                            <CalendarEvent
+                              key={item.id} 
+                              item={item} 
+                              isSelected={selectedItemId === item.id}
+                              isDragging={draggedItemId === item.id}
+                              onDragStart={handleDragStart}
+                              colorProp={calendarColorProp}
+                            />
+                          ))}
+                        </div>
+                        {hiddenEventsCount > 0 && (
+                          <div className="absolute bottom-1 right-2 text-xs font-bold text-muted-foreground">
+                            +{hiddenEventsCount} more
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+approved: false
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: undone
+id: 541

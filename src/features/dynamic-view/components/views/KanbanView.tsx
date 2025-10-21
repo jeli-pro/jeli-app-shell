@@ -16,7 +16,7 @@ interface KanbanCardProps {
 }
 
 function KanbanCard({ item, isDragging, ...props }: KanbanCardProps & React.HTMLAttributes<HTMLDivElement>) {
-  const { config, onItemSelect } = useDynamicView();
+  const { config, onItemSelect } = useDynamicView<string, GenericItem>();
   const { kanbanView: viewConfig } = config;
 
   return (
@@ -68,7 +68,7 @@ export function KanbanView({ data }: DataKanbanViewProps) {
   const [columns, setColumns] = useState(data);
   const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
   const [dropIndicator, setDropIndicator] = useState<{ columnId: string; index: number } | null>(null);
-  const { groupBy, onItemUpdate } = useDynamicView();
+  const { groupBy, onItemUpdate } = useDynamicView<string, GenericItem>();
 
   useEffect(() => {
     setColumns(data);

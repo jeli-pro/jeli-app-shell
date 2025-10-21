@@ -1,29 +1,26 @@
-import { useRef, useEffect, useCallback } from 'react'
+import { useRef, useEffect, useCallback } from "react";
 import {
-  Layers, 
-  AlertTriangle, 
-  PlayCircle, 
-  Loader2,
+  Layers,
+  AlertTriangle,
+  PlayCircle,
   TrendingUp,
   CheckCircle,
   Clock,
   Archive,
   PlusCircle,
-} from 'lucide-react'
-import { DynamicView } from '@/features/dynamic-view/DynamicView'
-import { PageLayout } from '@/components/shared/PageLayout'
-import { useScrollToBottom } from '@/hooks/useScrollToBottom.hook';
-import { ScrollToBottomButton } from '@/components/shared/ScrollToBottomButton';
-import { StatCard } from '@/components/shared/StatCard'
-import { mockDataItems } from './data/mockData'
-import type { GenericItem, StatItem } from '@/features/dynamic-view/types'
-import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
-import { useDataDemoStore } from './store/dataDemo.store'
-import { 
-} from './store/dataDemo.store'
-import { AddDataItemCta } from '@/features/dynamic-view/components/shared/AddDataItemCta'
+} from "lucide-react";
+import { DynamicView } from "@/features/dynamic-view/DynamicView";
+import { PageLayout } from "@/components/shared/PageLayout";
+import { useScrollToBottom } from "@/hooks/useScrollToBottom.hook";
+import { ScrollToBottomButton } from "@/components/shared/ScrollToBottomButton";
+import { mockDataItems } from "./data/mockData";
+import { useAppViewManager } from "@/hooks/useAppViewManager.hook";
+import { useDataDemoStore } from "./store/dataDemo.store";
+import {} from "./store/dataDemo.store";
+import { AddDataItemCta } from "@/features/dynamic-view/components/shared/AddDataItemCta";
 
-import { dataDemoViewConfig } from './DataDemo.config';
+import { dataDemoViewConfig } from "./DataDemo.config";
+import type { StatItem } from "@/features/dynamic-view/types";
 
 export default function DataDemoPage() {
   const {
@@ -42,7 +39,14 @@ export default function DataDemoPage() {
     onItemSelect,
   } = useAppViewManager();
 
-  const { items: allItems, hasMore, isLoading, isInitialLoading, totalItemCount, loadData } = useDataDemoStore(state => ({
+  const {
+    items: allItems,
+    hasMore,
+    isLoading,
+    isInitialLoading,
+    totalItemCount,
+    loadData,
+  } = useDataDemoStore((state) => ({
     items: state.items,
     hasMore: state.hasMore,
     isLoading: state.isLoading,
@@ -53,18 +57,29 @@ export default function DataDemoPage() {
 
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Note: The `DynamicViewProvider` needs `GenericItem[]`. 
+  // Note: The `DynamicViewProvider` needs `GenericItem[]`.
   // Our store uses `GenericItem` so no cast is needed.
 
   // Calculate stats from data
-  const totalItems = mockDataItems.length
-  const { showScrollToBottom, scrollToBottom, handleScroll } = useScrollToBottom(scrollRef);
+  const totalItems = mockDataItems.length;
+  const { showScrollToBottom, scrollToBottom, handleScroll } =
+    useScrollToBottom(scrollRef);
 
-  const activeItems = mockDataItems.filter(item => item.status === 'active').length
-  const highPriorityItems = mockDataItems.filter(item => item.priority === 'high' || item.priority === 'critical').length
-  const avgCompletion = totalItems > 0 ? Math.round(
-    mockDataItems.reduce((acc, item) => acc + item.metrics.completion, 0) / totalItems
-  ) : 0
+  const activeItems = mockDataItems.filter(
+    (item) => item.status === "active",
+  ).length;
+  const highPriorityItems = mockDataItems.filter(
+    (item) => item.priority === "high" || item.priority === "critical",
+  ).length;
+  const avgCompletion =
+    totalItems > 0
+      ? Math.round(
+          mockDataItems.reduce(
+            (acc, item) => acc + item.metrics.completion,
+            0,
+          ) / totalItems,
+        )
+      : 0;
 
   const stats: StatItem[] = [
     {
@@ -73,15 +88,15 @@ export default function DataDemoPage() {
       icon: <Layers className="w-5 h-5" />,
       change: "+5.2% this month",
       trend: "up" as const,
-      chartData: [120, 125, 122, 130, 135, 138, 142]
+      chartData: [120, 125, 122, 130, 135, 138, 142],
     },
     {
       title: "Active Projects",
       value: activeItems.toString(),
       icon: <PlayCircle className="w-5 h-5" />,
-      change: "+2 this week", 
+      change: "+2 this week",
       trend: "up" as const,
-      chartData: [45, 50, 48, 55, 53, 60, 58]
+      chartData: [45, 50, 48, 55, 53, 60, 58],
     },
     {
       title: "High Priority",
@@ -89,7 +104,7 @@ export default function DataDemoPage() {
       icon: <AlertTriangle className="w-5 h-5" />,
       change: "-1 from last week",
       trend: "down" as const,
-      chartData: [25, 26, 28, 27, 26, 24, 23]
+      chartData: [25, 26, 28, 27, 26, 24, 23],
     },
     {
       title: "Avg. Completion",
@@ -127,8 +142,8 @@ export default function DataDemoPage() {
       icon: <Archive className="w-5 h-5" />,
       change: "+20 this month",
       trend: "up" as const,
-    }
-  ]
+    },
+  ];
 
   useEffect(() => {
     loadData({
@@ -136,7 +151,7 @@ export default function DataDemoPage() {
       groupBy,
       filters,
       sortConfig,
-      isFullLoad: viewMode === 'calendar' || viewMode === 'kanban',
+      isFullLoad: viewMode === "calendar" || viewMode === "kanban",
     });
   }, [page, groupBy, filters, sortConfig, loadData, viewMode]);
 
@@ -155,27 +170,24 @@ export default function DataDemoPage() {
     },
     [isLoading, hasMore, page, setPage],
   );
-  
+
   useEffect(() => {
     // Auto-group by status when switching to kanban view for the first time
-    if (viewMode === 'kanban' && groupBy === 'none') {
-      setGroupBy('status');
+    if (viewMode === "kanban" && groupBy === "none") {
+      setGroupBy("status");
       setSort(null); // Kanban is manually sorted, so disable programmatic sort
     }
     // For calendar view, we don't want grouping.
-    else if (viewMode === 'calendar' && groupBy !== 'none') {
-      setGroupBy('none');
+    else if (viewMode === "calendar" && groupBy !== "none") {
+      setGroupBy("none");
     }
   }, [viewMode, groupBy, setGroupBy, setSort]);
 
   return (
-    <PageLayout
-      scrollRef={scrollRef}
-      onScroll={handleScroll}
-    >
+    <PageLayout scrollRef={scrollRef} onScroll={handleScroll}>
       <DynamicView
         viewConfig={dataDemoViewConfig}
-        items={allItems as GenericItem[]}
+        items={allItems}
         isLoading={isLoading}
         isInitialLoading={isInitialLoading}
         totalItemCount={totalItemCount}
@@ -204,7 +216,10 @@ export default function DataDemoPage() {
         )}
       />
 
-      <ScrollToBottomButton isVisible={showScrollToBottom} onClick={scrollToBottom} />
+      <ScrollToBottomButton
+        isVisible={showScrollToBottom}
+        onClick={scrollToBottom}
+      />
     </PageLayout>
   );
 }
