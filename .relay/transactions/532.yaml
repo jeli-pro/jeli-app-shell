@@ -1,0 +1,1075 @@
+uuid: c25cfb8c-5264-4ed8-a73a-f4efb5ef6022
+projectId: jeli-app-shell
+createdAt: '2025-10-21T08:25:07.356Z'
+gitCommitMsg: >-
+  refactor(dynamic-view): Encapsulate stats rendering and animation
+
+  Moves the stats section rendering and its associated "sliver app bar" scroll
+  animation into the `DynamicView` component, making it a fully self-contained
+  feature.
+
+  - `DynamicView` now accepts a `renderStats` prop to allow consumers to inject
+  stats content. - The scroll-based hide/show animation logic from
+  `useAutoAnimateStats` is now an internal effect within `DynamicView`,
+  triggered by a `scrollContainerRef` prop. - The `DataDemo` page is simplified
+  to be a pure controller, providing the stats JSX and scroll ref without
+  managing presentation logic. - The now-redundant `useAutoAnimateStats.hook.ts`
+  files have been deleted.
+promptSummary: >-
+  The user requested to fully encapsulate the stats rendering and animation
+  within the DynamicView component, removing the logic from the DataDemo page.
+reasoning:
+  - >-
+    This is the final piece of the puzzle. The `DynamicView` component is almost
+    fully self-contained, but the stats section is still being managed by the
+    parent page. That's a leaky abstraction, and it's time to seal it for good.
+  - >-
+    My strategy is to make `DynamicView` the sole authority on how and when the
+    stats are displayed, including the "sliver app bar" animation. I'll achieve
+    this by:
+  - >-
+    1.  **Adding a `renderStats` Prop**: `DynamicView` will accept a render
+    prop, allowing the consumer (`DataDemo`) to define *what* stats to show.
+  - >-
+    2.  **Internalizing the Animation**: The logic from
+    `useAutoAnimateStats.hook.ts` will be moved directly into the `DynamicView`
+    component. It will use a ref to the main scroll container (passed in from
+    the page) and an internal ref on the stats container it now controls.
+  - >-
+    3.  **Simplifying the Consumer**: The `DataDemo` page will be stripped of
+    its animation logic and refs for the stats section. Its only job will be to
+    compute the stats and pass the JSX to `DynamicView`.
+  - >-
+    4.  **Deleting the Old Hooks**: With the logic now co-located, the redundant
+    hook files will be removed.
+  - >-
+    This completes the refactoring, resulting in a `DynamicView` component that
+    is a true black box—powerful, reusable, and fully in control of its own
+    presentation.
+  - '***'
+  - >-
+    First, I'll modify `DynamicView` to accept the `renderStats` prop and
+    internalize the scroll animation logic. It will now require a ref to the
+    main scroll container to work its magic.
+  - >-
+    Next, I'll update the `DataDemo` page. It will no longer manage the
+    animation logic but will instead pass its stats content and the scroll
+    container ref down to `DynamicView`. I'm also creating a small
+    `StatsContainer` component here to keep the initial card animation logic
+    cleanly coupled with the cards themselves.
+  - >-
+    Finally, with the animation logic now living inside `DynamicView`, the old,
+    redundant hook files can be safely deleted.
+operations:
+  - type: write
+    path: src/features/dynamic-view/DynamicView.tsx
+    content: >+
+      --- src/features/dynamic-view/DynamicView.tsx
+
+      +++ src/features/dynamic-view/DynamicView.tsx
+
+      @@ -1,5 +1,6 @@
+
+      -import { useMemo, useCallback, type ReactNode } from 'react';
+
+      +import { useMemo, useCallback, type ReactNode, useRef, useEffect } from
+      'react';
+       import { Loader2 } from 'lucide-react';
+      +import { gsap } from 'gsap';
+       import { DynamicViewProvider } from '@/features/dynamic-view/DynamicViewContext';
+       import type { ViewConfig, GenericItem, ViewMode, FilterConfig, SortConfig, CalendarDateProp, CalendarDisplayProp, CalendarColorProp } from './types';
+       import { ViewControls } from './components/controls/ViewControls';
+      @@ -51,12 +52,65 @@
+         renderHeaderControls?: () => ReactNode;
+         renderStats?: () => ReactNode;
+         renderCta?: (viewMode: ViewMode, ctaProps: { colSpan?: number }) => ReactNode;
+      -  loaderRef?: React.Ref<HTMLDivElement>;
+
+      +  loaderRef?: React.Ref<HTMLDivElement>; // For infinite scroll trigger
+
+      +  scrollContainerRef?: React.RefObject<HTMLElement>; // For scroll
+      animations
+       }
+       
+       export function DynamicView({ viewConfig, ...rest }: DynamicViewProps) {
+         
+      -  const { viewMode, isInitialLoading, isLoading, hasMore, items, groupBy
+      } = rest;
+
+      +  const { viewMode, isInitialLoading, isLoading, hasMore, items, groupBy,
+      scrollContainerRef, renderStats } = rest;
+
+      +
+
+      +  const statsContainerRef = useRef<HTMLDivElement>(null);
+
+      +
+
+      +  // Auto-animate stats container (Sliver App Bar effect)
+
+      +  useEffect(() => {
+
+      +    const scrollEl = scrollContainerRef?.current;
+
+      +    const statsEl = statsContainerRef.current;
+
+      +
+
+      +    if (!scrollEl || !statsEl || !renderStats) return;
+
+      +
+
+      +    let lastScrollY = 0;
+
+      +    let isHidden = false;
+
+      +    let animation: gsap.core.Tween | null = null;
+
+      +    const originalDisplay = window.getComputedStyle(statsEl).display;
+
+      +
+
+      +    const handleScroll = () => {
+
+      +      const scrollY = scrollEl.scrollTop;
+
+      +
+
+      +      if (animation && animation.isActive()) {
+
+      +        return;
+
+      +      }
+
+      +
+
+      +      // Scroll down past threshold
+
+      +      if (scrollY > lastScrollY && scrollY > 150 && !isHidden) {
+
+      +        isHidden = true;
+
+      +        animation = gsap.to(statsEl, {
+
+      +          height: 0,
+
+      +          autoAlpha: 0,
+
+      +          duration: 0.3,
+
+      +          ease: 'power2.inOut',
+
+      +          overwrite: true,
+
+      +          onComplete: () => { statsEl.style.display = 'none'; }
+
+      +        });
+
+      +      } 
+
+      +      // Scroll up
+
+      +      else if (scrollY < lastScrollY && isHidden) {
+
+      +        isHidden = false;
+
+      +        statsEl.style.display = originalDisplay;
+
+      +        animation = gsap.from(statsEl, {
+
+      +          height: 0,
+
+      +          autoAlpha: 0,
+
+      +          duration: 0.3,
+
+      +          ease: 'power2.out',
+
+      +          overwrite: true,
+
+      +          clearProps: 'all'
+
+      +        });
+
+      +      }
+
+      +
+
+      +      lastScrollY = scrollY < 0 ? 0 : scrollY;
+
+      +    };
+
+      +
+
+      +    scrollEl.addEventListener('scroll', handleScroll, { passive: true });
+
+      +    return () => {
+
+      +      scrollEl.removeEventListener('scroll', handleScroll);
+
+      +      if (animation) animation.kill();
+
+      +    };
+
+      +  }, [scrollContainerRef, renderStats]);
+       
+         const groupedData = useMemo(() => {
+           if (groupBy === 'none' || viewMode !== 'kanban') {
+      @@ -137,7 +191,11 @@
+                     <ViewControls />
+                 </div>
+       
+      -          {rest.renderStats && !isInitialLoading && rest.renderStats()}
+
+      +          {renderStats && !isInitialLoading && (
+
+      +            <div ref={statsContainerRef}>
+
+      +              {renderStats()}
+
+      +            </div>
+
+      +          )}
+                 
+                 <div className="min-h-[500px]">
+                     {renderContent()}
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/DataDemo/index.tsx
+    content: >
+      --- src/pages/DataDemo/index.tsx
+
+      +++ src/pages/DataDemo/index.tsx
+
+      @@ -14,7 +14,6 @@
+       import type { GenericItem } from '@/features/dynamic-view/types'
+       import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
+      -import { useAutoAnimateStats } from './hooks/useAutoAnimateStats.hook'
+       import { useDataDemoStore } from './store/dataDemo.store'
+       import { 
+       } from './store/dataDemo.store'
+      @@ -66,14 +65,7 @@
+           loadData: state.loadData,
+         }));
+       
+      -  const statsRef = useRef<HTMLDivElement>(null)
+         const scrollRef = useRef<HTMLDivElement>(null);
+      -
+
+      -  // Note: The `DynamicViewProvider` needs `GenericItem[]`. 
+
+      -  // Our store uses `GenericItem` so no cast is needed.
+
+      -  // Auto-hide stats container on scroll down
+
+      -  useAutoAnimateStats(scrollRef, statsRef);
+       
+         // Calculate stats from data
+         const totalItems = mockDataItems.length
+      @@ -143,21 +135,6 @@
+           }
+         ]
+       
+      -  useEffect(() => {
+
+      -    // Animate stats cards in
+
+      -    if (!isInitialLoading && statsRef.current) {
+
+      -      gsap.fromTo(statsRef.current.children,
+
+      -        { y: 30, opacity: 0 },
+
+      -        {
+
+      -          duration: 0.5,
+
+      -          y: 0,
+
+      -          opacity: 1,
+
+      -          stagger: 0.08,
+
+      -          ease: "power2.out"
+
+      -        }
+
+      -      )
+
+      -    }
+
+      -  }, [isInitialLoading]);
+       
+         useEffect(() => {
+           loadData({
+      @@ -218,10 +195,25 @@
+               onGroupByChange={setGroupBy}
+               onActiveGroupTabChange={setActiveGroupTab}
+               onPageChange={setPage}
+               onItemSelect={onItemSelect}
+               loaderRef={loaderRef}
+      +        scrollContainerRef={scrollRef}
+               // Custom Renderers
+               renderCta={(viewMode, ctaProps) => (
+                 <AddDataItemCta viewMode={viewMode} colSpan={ctaProps.colSpan} />
+               )}
+               renderStats={() => (
+      -          <div ref={statsRef} className="flex overflow-x-auto gap-6 pb-4
+      no-scrollbar">
+
+      +          <StatsContainer stats={stats}
+      isInitialLoading={isInitialLoading} />
+
+      +        )}
+
+      +      />
+
+      +
+
+      +      <ScrollToBottomButton isVisible={showScrollToBottom}
+      onClick={scrollToBottom} />
+
+      +    </PageLayout>
+
+      +  );
+
+      +}
+
+      +
+
+      +const StatsContainer = ({ stats, isInitialLoading }: { stats: StatItem[],
+      isInitialLoading: boolean }) => {
+
+      +  const statsRef = useRef<HTMLDivElement>(null)
+
+      +  useEffect(() => {
+
+      +    // Animate stats cards in
+
+      +    if (!isInitialLoading && statsRef.current) {
+
+      +      gsap.fromTo(statsRef.current.children,
+
+      +        { y: 30, opacity: 0 },
+
+      +        {
+
+      +          duration: 0.5,
+
+      +          y: 0,
+
+      +          opacity: 1,
+
+      +          stagger: 0.08,
+
+      +          ease: "power2.out"
+
+      +        }
+
+      +      )
+
+      +    }
+
+      +  }, [isInitialLoading]);
+
+      +
+
+      +  return (
+
+      +    <div ref={statsRef} className="flex overflow-x-auto gap-6 pb-4
+      no-scrollbar">
+                   {stats.map((stat) => (
+                     <StatCard
+                       className="w-64 md:w-72 flex-shrink-0"
+      @@ -235,10 +227,6 @@
+                     />
+                   ))}
+                 </div>
+      -        )}
+
+      -      />
+
+      -
+
+      -      <ScrollToBottomButton isVisible={showScrollToBottom}
+      onClick={scrollToBottom} />
+
+      -    </PageLayout>
+
+      -  );
+
+      -}
+
+      +  )
+
+      +}
+    patchStrategy: standard-diff
+  - type: delete
+    path: src/hooks/useAutoAnimateStats.hook.ts
+  - type: delete
+    path: src/pages/DataDemo/hooks/useAutoAnimateStats.hook.ts
+snapshot:
+  src/pages/DataDemo/index.tsx: >-
+    import { useRef, useEffect, useCallback } from 'react'
+
+    import {
+      Layers, 
+      AlertTriangle, 
+      PlayCircle, 
+      Loader2,
+      TrendingUp,
+      CheckCircle,
+      Clock,
+      Archive,
+      PlusCircle,
+    } from 'lucide-react'
+
+    import { gsap } from 'gsap'
+
+    import { DynamicView } from '@/features/dynamic-view/DynamicView'
+
+    import { PageLayout } from '@/components/shared/PageLayout'
+
+    import { useScrollToBottom } from '@/hooks/useScrollToBottom.hook';
+
+    import { ScrollToBottomButton } from
+    '@/components/shared/ScrollToBottomButton';
+
+    import { StatCard } from '@/components/shared/StatCard'
+
+    import { mockDataItems } from './data/mockData'
+
+    import type { GenericItem } from '@/features/dynamic-view/types'
+
+    import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
+
+    import { useAutoAnimateStats } from './hooks/useAutoAnimateStats.hook'
+
+    import { useDataDemoStore } from './store/dataDemo.store'
+
+    import { 
+
+    } from './store/dataDemo.store'
+
+    import { AddDataItemCta } from
+    '@/features/dynamic-view/components/shared/AddDataItemCta'
+
+
+    import { dataDemoViewConfig } from './DataDemo.config';
+
+
+    type Stat = {
+      title: string;
+      value: string;
+      icon: React.ReactNode;
+      change: string;
+      trend: 'up' | 'down';
+      type?: 'card';
+    };
+
+
+    type ChartStat = {
+      title: string;
+      value: string;
+      icon: React.ReactNode;
+      change: string;
+      trend: 'up' | 'down';
+      type: 'chart';
+      chartData: number[];
+    };
+
+
+    type StatItem = Stat | ChartStat;
+
+
+    export default function DataDemoPage() {
+      const {
+        viewMode,
+        groupBy,
+        activeGroupTab,
+        setGroupBy,
+        setSort,
+        setActiveGroupTab,
+        page,
+        filters,
+        sortConfig,
+        setPage,
+        setFilters,
+        setViewMode,
+        onItemSelect,
+      } = useAppViewManager();
+
+      const { items: allItems, hasMore, isLoading, isInitialLoading, totalItemCount, loadData } = useDataDemoStore(state => ({
+        items: state.items,
+        hasMore: state.hasMore,
+        isLoading: state.isLoading,
+        isInitialLoading: state.isInitialLoading,
+        totalItemCount: state.totalItemCount,
+        loadData: state.loadData,
+      }));
+
+      const statsRef = useRef<HTMLDivElement>(null)
+      const scrollRef = useRef<HTMLDivElement>(null);
+
+      // Note: The `DynamicViewProvider` needs `GenericItem[]`. 
+      // Our store uses `GenericItem` so no cast is needed.
+      // Auto-hide stats container on scroll down
+      useAutoAnimateStats(scrollRef, statsRef);
+
+      // Calculate stats from data
+      const totalItems = mockDataItems.length
+      const { showScrollToBottom, scrollToBottom, handleScroll } = useScrollToBottom(scrollRef);
+
+      const activeItems = mockDataItems.filter(item => item.status === 'active').length
+      const highPriorityItems = mockDataItems.filter(item => item.priority === 'high' || item.priority === 'critical').length
+      const avgCompletion = totalItems > 0 ? Math.round(
+        mockDataItems.reduce((acc, item) => acc + item.metrics.completion, 0) / totalItems
+      ) : 0
+
+      const stats: StatItem[] = [
+        {
+          title: "Total Projects",
+          value: totalItems.toString(),
+          icon: <Layers className="w-5 h-5" />,
+          change: "+5.2% this month",
+          trend: "up" as const,
+          type: 'chart',
+          chartData: [120, 125, 122, 130, 135, 138, 142]
+        },
+        {
+          title: "Active Projects",
+          value: activeItems.toString(),
+          icon: <PlayCircle className="w-5 h-5" />,
+          change: "+2 this week", 
+          trend: "up" as const,
+          type: 'chart',
+          chartData: [45, 50, 48, 55, 53, 60, 58]
+        },
+        {
+          title: "High Priority",
+          value: highPriorityItems.toString(),
+          icon: <AlertTriangle className="w-5 h-5" />,
+          change: "-1 from last week",
+          trend: "down" as const,
+          type: 'chart',
+          chartData: [25, 26, 28, 27, 26, 24, 23]
+        },
+        {
+          title: "Avg. Completion",
+          value: `${avgCompletion}%`,
+          icon: <TrendingUp className="w-5 h-5" />,
+          change: "+3.2%",
+          trend: "up" as const,
+          type: 'chart',
+          chartData: [65, 68, 70, 69, 72, 75, 78],
+        },
+        {
+          title: "Completion Rate",
+          value: "88%",
+          icon: <CheckCircle className="w-5 h-5" />,
+          change: "+1.5% this month",
+          trend: "up" as const,
+          type: 'chart',
+          chartData: [80, 82, 81, 84, 85, 87, 88],
+        },
+        {
+          title: "Overdue Items",
+          value: "8",
+          icon: <Clock className="w-5 h-5" />,
+          change: "-3 this week",
+          trend: "down" as const,
+        },
+        {
+          title: "New This Week",
+          value: "12",
+          icon: <PlusCircle className="w-5 h-5" />,
+          change: "+2 from last week",
+          trend: "up" as const,
+        },
+        {
+          title: "Archived Projects",
+          value: "153",
+          icon: <Archive className="w-5 h-5" />,
+          change: "+20 this month",
+          trend: "up" as const,
+        }
+      ]
+
+      useEffect(() => {
+        // Animate stats cards in
+        if (!isInitialLoading && statsRef.current) {
+          gsap.fromTo(statsRef.current.children,
+            { y: 30, opacity: 0 },
+            {
+              duration: 0.5,
+              y: 0,
+              opacity: 1,
+              stagger: 0.08,
+              ease: "power2.out"
+            }
+          )
+        }
+      }, [isInitialLoading]);
+
+      useEffect(() => {
+        loadData({
+          page,
+          groupBy,
+          filters,
+          sortConfig,
+          isFullLoad: viewMode === 'calendar' || viewMode === 'kanban',
+        });
+      }, [page, groupBy, filters, sortConfig, loadData, viewMode]);
+
+      const observer = useRef<IntersectionObserver>();
+      const loaderRef = useCallback(
+        (node: Element | null) => {
+          if (isLoading) return;
+          if (observer.current) observer.current.disconnect();
+
+          observer.current = new IntersectionObserver((entries) => {
+            if (entries[0].isIntersecting && hasMore) {
+              setPage(page + 1);
+            }
+          });
+          if (node) observer.current.observe(node);
+        },
+        [isLoading, hasMore, page, setPage],
+      );
+      
+      useEffect(() => {
+        // Auto-group by status when switching to kanban view for the first time
+        if (viewMode === 'kanban' && groupBy === 'none') {
+          setGroupBy('status');
+          setSort(null); // Kanban is manually sorted, so disable programmatic sort
+        }
+        // For calendar view, we don't want grouping.
+        else if (viewMode === 'calendar' && groupBy !== 'none') {
+          setGroupBy('none');
+        }
+      }, [viewMode, groupBy, setGroupBy, setSort]);
+
+      return (
+        <PageLayout
+          scrollRef={scrollRef}
+          onScroll={handleScroll}
+        >
+          <DynamicView
+            viewConfig={dataDemoViewConfig}
+            items={allItems as GenericItem[]}
+            isLoading={isLoading}
+            isInitialLoading={isInitialLoading}
+            totalItemCount={totalItemCount}
+            hasMore={hasMore}
+            // Controlled state
+            viewMode={viewMode}
+            filters={filters}
+            sortConfig={sortConfig}
+            groupBy={groupBy}
+            activeGroupTab={activeGroupTab}
+            page={page}
+            // Callbacks
+            onViewModeChange={setViewMode}
+            onFiltersChange={setFilters}
+            onSortChange={setSort}
+            onGroupByChange={setGroupBy}
+            onActiveGroupTabChange={setActiveGroupTab}
+            onPageChange={setPage}
+            onItemSelect={onItemSelect}
+            loaderRef={loaderRef}
+            // Custom Renderers
+            renderCta={(viewMode, ctaProps) => (
+              <AddDataItemCta viewMode={viewMode} colSpan={ctaProps.colSpan} />
+            )}
+            renderStats={() => (
+              <div ref={statsRef} className="flex overflow-x-auto gap-6 pb-4 no-scrollbar">
+                {stats.map((stat) => (
+                  <StatCard
+                    className="w-64 md:w-72 flex-shrink-0"
+                    key={stat.title}
+                    title={stat.title}
+                    value={stat.value}
+                    change={stat.change}
+                    trend={stat.trend}
+                    icon={stat.icon}
+                    chartData={stat.type === 'chart' ? stat.chartData : undefined}
+                  />
+                ))}
+              </div>
+            )}
+          />
+
+          <ScrollToBottomButton isVisible={showScrollToBottom} onClick={scrollToBottom} />
+        </PageLayout>
+      );
+    }
+  src/features/dynamic-view/DynamicView.tsx: >-
+    import { useMemo, useCallback, type ReactNode } from 'react';
+
+    import { Loader2 } from 'lucide-react';
+
+    import { DynamicViewProvider } from
+    '@/features/dynamic-view/DynamicViewContext';
+
+    import type { ViewConfig, GenericItem, ViewMode, FilterConfig, SortConfig,
+    CalendarDateProp, CalendarDisplayProp, CalendarColorProp } from './types';
+
+    import { ViewControls } from './components/controls/ViewControls';
+
+    import { ViewModeSelector } from './components/controls/ViewModeSelector';
+
+    import { AnimatedLoadingSkeleton } from
+    './components/shared/AnimatedLoadingSkeleton';
+
+    import { ListView } from './components/views/ListView';
+
+    import { CardView } from './components/views/CardView';
+
+    import { TableView } from './components/views/TableView';
+
+    import { KanbanView } from './components/views/KanbanView';
+
+    import { CalendarView } from './components/views/CalendarView';
+
+    import { EmptyState } from './components/shared/EmptyState';
+
+
+    // Define the props for the controlled DynamicView component
+
+    export interface DynamicViewProps {
+      // Config
+      viewConfig: ViewConfig;
+      
+      // Data & State
+      items: GenericItem[];
+      isLoading: boolean;
+      isInitialLoading: boolean;
+      totalItemCount: number;
+      hasMore: boolean;
+      
+      // Controlled State Props
+      viewMode: ViewMode;
+      filters: FilterConfig;
+      sortConfig: SortConfig | null;
+      groupBy: string;
+      activeGroupTab: string;
+      page: number;
+      selectedItemId?: string;
+      // Calendar-specific state
+      calendarDateProp?: CalendarDateProp;
+      calendarDisplayProps?: CalendarDisplayProp[];
+      calendarItemLimit?: 'all' | number;
+      calendarColorProp?: CalendarColorProp;
+
+      // State Change Callbacks
+      onViewModeChange: (mode: ViewMode) => void;
+      onFiltersChange: (filters: FilterConfig) => void;
+      onSortChange: (sort: SortConfig | null) => void;
+      onGroupByChange: (group: string) => void;
+      onActiveGroupTabChange: (tab: string) => void;
+      onPageChange: (page: number) => void;
+      onItemSelect: (item: GenericItem) => void;
+      onItemUpdate?: (itemId: string, updates: Partial<GenericItem>) => void;
+      // Calendar-specific callbacks
+      onCalendarDatePropChange?: (prop: CalendarDateProp) => void;
+      onCalendarDisplayPropsChange?: (props: CalendarDisplayProp[]) => void;
+      onCalendarItemLimitChange?: (limit: 'all' | number) => void;
+      onCalendarColorPropChange?: (prop: CalendarColorProp) => void;
+      
+      // Custom Renderers
+      renderHeaderControls?: () => ReactNode;
+      renderStats?: () => ReactNode;
+      renderCta?: (viewMode: ViewMode, ctaProps: { colSpan?: number }) => ReactNode;
+      loaderRef?: React.Ref<HTMLDivElement>;
+    }
+
+
+    export function DynamicView({ viewConfig, ...rest }: DynamicViewProps) {
+      
+      const { viewMode, isInitialLoading, isLoading, hasMore, items, groupBy } = rest;
+
+      const groupedData = useMemo(() => {
+        if (groupBy === 'none' || viewMode !== 'kanban') {
+            return null;
+        }
+        return items.reduce((acc, item) => {
+            const groupKey = String(item[groupBy as keyof GenericItem]) || 'N/A';
+            if (!acc[groupKey]) {
+                acc[groupKey] = [] as GenericItem[];
+            }
+            acc[groupKey].push(item);
+            return acc;
+        }, {} as Record<string, GenericItem[]>);
+      }, [items, groupBy, viewMode]);
+
+      const renderViewForData = useCallback((data: GenericItem[], cta: ReactNode) => {
+        switch (viewMode) {
+            case 'table': return <TableView data={data} ctaElement={cta} />;
+            case 'cards': return <CardView data={data} ctaElement={cta} />;
+            case 'grid': return <CardView data={data} isGrid ctaElement={cta} />;
+            case 'list': default: return <ListView data={data} ctaElement={cta} />;
+        }
+      }, [viewMode]);
+
+      const renderContent = () => {
+        if (isInitialLoading) {
+          return <AnimatedLoadingSkeleton viewMode={viewMode} />;
+        }
+
+        if (viewMode === 'calendar') {
+            return <CalendarView data={items} />;
+        }
+
+        if (viewMode === 'kanban') {
+            return groupedData ? (
+              <KanbanView data={groupedData} />
+            ) : (
+              <div className="flex items-center justify-center h-96 text-muted-foreground">
+                Group data by a metric to use the Kanban view.
+              </div>
+            );
+        }
+        
+        if (items.length === 0 && !isInitialLoading) {
+            return <EmptyState />;
+        }
+        
+        const ctaProps = {
+            colSpan: viewMode === 'table' ? viewConfig.tableView.columns.length + 1 : undefined,
+        };
+        const ctaElement = rest.renderCta
+            ? rest.renderCta(viewMode, ctaProps)
+            : null;
+        
+        // This will be expanded later to handle group tabs
+        return renderViewForData(items, ctaElement);
+      };
+
+      return (
+        <DynamicViewProvider viewConfig={viewConfig} {...rest}>
+          <div className="space-y-6">
+              <div className="space-y-4">
+                  <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                      <div className="flex-1">
+                          {rest.renderHeaderControls ? rest.renderHeaderControls() : (
+                              <>
+                                  <h1 className="text-2xl font-bold tracking-tight">Data Showcase</h1>
+                                  <p className="text-muted-foreground">
+                                      {isInitialLoading 
+                                          ? "Loading projects..." 
+                                          : `Showing ${items.length} of ${rest.totalItemCount} item(s)`}
+                                  </p>
+                              </>
+                          )}
+                      </div>
+                      <ViewModeSelector />
+                  </div>
+                  <ViewControls />
+              </div>
+
+              {rest.renderStats && !isInitialLoading && rest.renderStats()}
+              
+              <div className="min-h-[500px]">
+                  {renderContent()}
+              </div>
+
+              {/* Loader for infinite scroll */}
+              <div ref={rest.loaderRef} className="flex justify-center items-center py-6">
+                {isLoading && !isInitialLoading && groupBy === 'none' && viewMode !== 'calendar' && viewMode !== 'kanban' && (
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <span>Loading more...</span>
+                  </div>
+                )}
+                {!isLoading && !hasMore && items.length > 0 && !isInitialLoading && groupBy === 'none' && viewMode !== 'calendar' && viewMode !== 'kanban' && (
+                  <p className="text-muted-foreground">You've reached the end.</p>
+                )}
+              </div>
+          </div>
+        </DynamicViewProvider>
+      );
+    }
+  src/pages/DataDemo/hooks/useAutoAnimateStats.hook.ts: |-
+    import { useEffect, useRef, useCallback } from 'react';
+    import { gsap } from 'gsap';
+
+    /**
+     * A hook that animates a stats container in and out of view based on scroll direction.
+     * It creates a "sliver app bar" effect for the stats section.
+     * @param scrollContainerRef Ref to the main scrolling element.
+     * @param statsContainerRef Ref to the stats container element to be animated.
+     */
+    export function useAutoAnimateStats(
+      scrollContainerRef: React.RefObject<HTMLElement>,
+      statsContainerRef: React.RefObject<HTMLElement>
+    ) {
+      const lastScrollY = useRef(0);
+      const isHidden = useRef(false);
+      const originalMarginTop = useRef<string | null>(null);
+
+      const handleScroll = useCallback(() => {
+        if (!scrollContainerRef.current || !statsContainerRef.current) return;
+
+        const scrollY = scrollContainerRef.current.scrollTop;
+        
+        // Initialize original margin on first scroll event if not set
+        if (originalMarginTop.current === null) {
+          const computedStyle = getComputedStyle(statsContainerRef.current);
+          originalMarginTop.current = computedStyle.getPropertyValue('margin-top');
+        }
+
+        // On any significant scroll down, hide the stats.
+        // The small 10px threshold prevents firing on minor scroll-jiggles.
+        if (scrollY > lastScrollY.current && scrollY > 10 && !isHidden.current) {
+          isHidden.current = true;
+          gsap.to(statsContainerRef.current, {
+            duration: 0.4,
+            height: 0,
+            autoAlpha: 0,
+            marginTop: 0,
+            ease: 'power2.inOut',
+            overwrite: true,
+          });
+        } 
+
+        lastScrollY.current = scrollY < 0 ? 0 : scrollY;
+      }, [scrollContainerRef, statsContainerRef]);
+
+      const handleWheel = useCallback((event: WheelEvent) => {
+        if (!scrollContainerRef.current || !statsContainerRef.current) return;
+        
+        const isAtTop = scrollContainerRef.current.scrollTop === 0;
+        const isScrollingUp = event.deltaY < 0;
+
+        // Only reveal if we are at the top, scrolling up, and stats are hidden.
+        // This creates the "pull to reveal" effect.
+        if (isAtTop && isScrollingUp && isHidden.current) {
+            isHidden.current = false;
+            gsap.to(statsContainerRef.current, {
+              duration: 0.4,
+              height: 'auto',
+              autoAlpha: 1,
+              marginTop: originalMarginTop.current || 0,
+              ease: 'power2.out',
+              overwrite: true,
+            });
+        }
+      }, [scrollContainerRef, statsContainerRef]);
+
+      useEffect(() => {
+        const scrollContainer = scrollContainerRef.current;
+        if (scrollContainer) {
+          scrollContainer.addEventListener('scroll', handleScroll, { passive: true });
+          scrollContainer.addEventListener('wheel', handleWheel, { passive: true });
+        }
+
+        return () => {
+          if (scrollContainer) {
+            scrollContainer.removeEventListener('scroll', handleScroll);
+            scrollContainer.removeEventListener('wheel', handleWheel);
+          }
+          // When component unmounts, kill any running animations on the stats ref
+          if (statsContainerRef.current) {
+            gsap.killTweensOf(statsContainerRef.current);
+          }
+        };
+      }, [scrollContainerRef, statsContainerRef, handleScroll, handleWheel]);
+    }
+  src/hooks/useAutoAnimateStats.hook.ts: |-
+    import { useEffect, useRef, useCallback } from 'react';
+    import { gsap } from 'gsap';
+
+    export function useAutoAnimateStats(
+      scrollContainerRef: React.RefObject<HTMLElement>,
+      statsContainerRef: React.RefObject<HTMLElement>
+    ) {
+      const lastScrollY = useRef(0);
+      const isHidden = useRef(false);
+      const animation = useRef<gsap.core.Tween | null>(null);
+      const originalDisplay = useRef<string>('');
+
+      useEffect(() => {
+        // On mount, store the original display property if the ref is available
+        if (statsContainerRef.current) {
+            originalDisplay.current = window.getComputedStyle(statsContainerRef.current).display;
+        }
+      }, [statsContainerRef]);
+
+      const handleScroll = useCallback(() => {
+        if (!scrollContainerRef.current || !statsContainerRef.current) return;
+
+        // Ensure we have originalDisplay. It might not be available on first scroll if ref isn't ready.
+        if (!originalDisplay.current && statsContainerRef.current) {
+            originalDisplay.current = window.getComputedStyle(statsContainerRef.current).display;
+            if (!originalDisplay.current || originalDisplay.current === 'none') {
+              // Fallback if it's still none (e.g. initially hidden)
+              originalDisplay.current = 'grid';
+            }
+        }
+        
+        const scrollY = scrollContainerRef.current.scrollTop;
+
+        if (animation.current && animation.current.isActive()) {
+          return;
+        }
+
+        // Scroll down past threshold
+        if (scrollY > lastScrollY.current && scrollY > 150 && !isHidden.current) {
+          isHidden.current = true;
+          animation.current = gsap.to(statsContainerRef.current, {
+            height: 0,
+            autoAlpha: 0,
+            duration: 0.3,
+            ease: 'power2.inOut',
+            overwrite: true,
+            onComplete: () => {
+                if (statsContainerRef.current) {
+                    statsContainerRef.current.style.display = 'none';
+                }
+            }
+          });
+        } 
+        // Scroll up
+        else if (scrollY < lastScrollY.current && isHidden.current) {
+          isHidden.current = false;
+          
+          if (statsContainerRef.current) {
+            statsContainerRef.current.style.display = originalDisplay.current;
+            
+            animation.current = gsap.from(statsContainerRef.current, {
+              height: 0,
+              autoAlpha: 0,
+              duration: 0.3,
+              ease: 'power2.out',
+              overwrite: true,
+              clearProps: 'all' // Clean up inline styles after animation
+            });
+          }
+        }
+
+        lastScrollY.current = scrollY < 0 ? 0 : scrollY;
+      }, [scrollContainerRef, statsContainerRef]);
+
+      useEffect(() => {
+        const scrollEl = scrollContainerRef.current;
+        if (scrollEl) {
+          scrollEl.addEventListener('scroll', handleScroll, { passive: true });
+        }
+        return () => {
+          if (scrollEl) {
+            scrollEl.removeEventListener('scroll', handleScroll);
+          }
+          if (animation.current) {
+            animation.current.kill();
+          }
+        };
+      }, [handleScroll, scrollContainerRef]);
+    }
+approved: false
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: undone
+id: 532

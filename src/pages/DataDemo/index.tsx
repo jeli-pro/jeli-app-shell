@@ -10,43 +10,20 @@ import {
   Archive,
   PlusCircle,
 } from 'lucide-react'
-import { gsap } from 'gsap'
 import { DynamicView } from '@/features/dynamic-view/DynamicView'
 import { PageLayout } from '@/components/shared/PageLayout'
 import { useScrollToBottom } from '@/hooks/useScrollToBottom.hook';
 import { ScrollToBottomButton } from '@/components/shared/ScrollToBottomButton';
 import { StatCard } from '@/components/shared/StatCard'
 import { mockDataItems } from './data/mockData'
-import type { GenericItem } from '@/features/dynamic-view/types'
+import type { GenericItem, StatItem } from '@/features/dynamic-view/types'
 import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
-import { useAutoAnimateStats } from './hooks/useAutoAnimateStats.hook'
 import { useDataDemoStore } from './store/dataDemo.store'
 import { 
 } from './store/dataDemo.store'
 import { AddDataItemCta } from '@/features/dynamic-view/components/shared/AddDataItemCta'
 
 import { dataDemoViewConfig } from './DataDemo.config';
-
-type Stat = {
-  title: string;
-  value: string;
-  icon: React.ReactNode;
-  change: string;
-  trend: 'up' | 'down';
-  type?: 'card';
-};
-
-type ChartStat = {
-  title: string;
-  value: string;
-  icon: React.ReactNode;
-  change: string;
-  trend: 'up' | 'down';
-  type: 'chart';
-  chartData: number[];
-};
-
-type StatItem = Stat | ChartStat;
 
 export default function DataDemoPage() {
   const {
@@ -74,13 +51,10 @@ export default function DataDemoPage() {
     loadData: state.loadData,
   }));
 
-  const statsRef = useRef<HTMLDivElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Note: The `DynamicViewProvider` needs `GenericItem[]`. 
   // Our store uses `GenericItem` so no cast is needed.
-  // Auto-hide stats container on scroll down
-  useAutoAnimateStats(scrollRef, statsRef);
 
   // Calculate stats from data
   const totalItems = mockDataItems.length
@@ -99,7 +73,6 @@ export default function DataDemoPage() {
       icon: <Layers className="w-5 h-5" />,
       change: "+5.2% this month",
       trend: "up" as const,
-      type: 'chart',
       chartData: [120, 125, 122, 130, 135, 138, 142]
     },
     {
@@ -108,7 +81,6 @@ export default function DataDemoPage() {
       icon: <PlayCircle className="w-5 h-5" />,
       change: "+2 this week", 
       trend: "up" as const,
-      type: 'chart',
       chartData: [45, 50, 48, 55, 53, 60, 58]
     },
     {
@@ -117,7 +89,6 @@ export default function DataDemoPage() {
       icon: <AlertTriangle className="w-5 h-5" />,
       change: "-1 from last week",
       trend: "down" as const,
-      type: 'chart',
       chartData: [25, 26, 28, 27, 26, 24, 23]
     },
     {
@@ -126,7 +97,6 @@ export default function DataDemoPage() {
       icon: <TrendingUp className="w-5 h-5" />,
       change: "+3.2%",
       trend: "up" as const,
-      type: 'chart',
       chartData: [65, 68, 70, 69, 72, 75, 78],
     },
     {
@@ -135,7 +105,6 @@ export default function DataDemoPage() {
       icon: <CheckCircle className="w-5 h-5" />,
       change: "+1.5% this month",
       trend: "up" as const,
-      type: 'chart',
       chartData: [80, 82, 81, 84, 85, 87, 88],
     },
     {
@@ -160,22 +129,6 @@ export default function DataDemoPage() {
       trend: "up" as const,
     }
   ]
-
-  useEffect(() => {
-    // Animate stats cards in
-    if (!isInitialLoading && statsRef.current) {
-      gsap.fromTo(statsRef.current.children,
-        { y: 30, opacity: 0 },
-        {
-          duration: 0.5,
-          y: 0,
-          opacity: 1,
-          stagger: 0.08,
-          ease: "power2.out"
-        }
-      )
-    }
-  }, [isInitialLoading]);
 
   useEffect(() => {
     loadData({
@@ -243,25 +196,11 @@ export default function DataDemoPage() {
         onPageChange={setPage}
         onItemSelect={onItemSelect}
         loaderRef={loaderRef}
+        scrollContainerRef={scrollRef}
+        statsData={stats}
         // Custom Renderers
         renderCta={(viewMode, ctaProps) => (
           <AddDataItemCta viewMode={viewMode} colSpan={ctaProps.colSpan} />
-        )}
-        renderStats={() => (
-          <div ref={statsRef} className="flex overflow-x-auto gap-6 pb-4 no-scrollbar">
-            {stats.map((stat) => (
-              <StatCard
-                className="w-64 md:w-72 flex-shrink-0"
-                key={stat.title}
-                title={stat.title}
-                value={stat.value}
-                change={stat.change}
-                trend={stat.trend}
-                icon={stat.icon}
-                chartData={stat.type === 'chart' ? stat.chartData : undefined}
-              />
-            ))}
-          </div>
         )}
       />
 

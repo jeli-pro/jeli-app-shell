@@ -1,89 +1,85 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { gsap } from 'gsap';
 
+/**
+ * A hook that animates a stats container in and out of view based on scroll direction.
+ * It creates a "sliver app bar" effect for the stats section.
+ * @param scrollContainerRef Ref to the main scrolling element.
+ * @param statsContainerRef Ref to the stats container element to be animated.
+ */
 export function useAutoAnimateStats(
   scrollContainerRef: React.RefObject<HTMLElement>,
   statsContainerRef: React.RefObject<HTMLElement>
 ) {
   const lastScrollY = useRef(0);
   const isHidden = useRef(false);
-  const animation = useRef<gsap.core.Tween | null>(null);
-  const originalDisplay = useRef<string>('');
-
-  useEffect(() => {
-    // On mount, store the original display property if the ref is available
-    if (statsContainerRef.current) {
-        originalDisplay.current = window.getComputedStyle(statsContainerRef.current).display;
-    }
-  }, [statsContainerRef]);
+  const originalMarginTop = useRef<string | null>(null);
 
   const handleScroll = useCallback(() => {
     if (!scrollContainerRef.current || !statsContainerRef.current) return;
 
-    // Ensure we have originalDisplay. It might not be available on first scroll if ref isn't ready.
-    if (!originalDisplay.current && statsContainerRef.current) {
-        originalDisplay.current = window.getComputedStyle(statsContainerRef.current).display;
-        if (!originalDisplay.current || originalDisplay.current === 'none') {
-          // Fallback if it's still none (e.g. initially hidden)
-          originalDisplay.current = 'grid';
-        }
-    }
-    
     const scrollY = scrollContainerRef.current.scrollTop;
-
-    if (animation.current && animation.current.isActive()) {
-      return;
+    
+    // Initialize original margin on first scroll event if not set
+    if (originalMarginTop.current === null) {
+      const computedStyle = getComputedStyle(statsContainerRef.current);
+      originalMarginTop.current = computedStyle.getPropertyValue('margin-top');
     }
 
-    // Scroll down past threshold
-    if (scrollY > lastScrollY.current && scrollY > 150 && !isHidden.current) {
+    // On any significant scroll down, hide the stats.
+    // The small 10px threshold prevents firing on minor scroll-jiggles.
+    if (scrollY > lastScrollY.current && scrollY > 10 && !isHidden.current) {
       isHidden.current = true;
-      animation.current = gsap.to(statsContainerRef.current, {
+      gsap.to(statsContainerRef.current, {
+        duration: 0.4,
         height: 0,
         autoAlpha: 0,
-        duration: 0.3,
+        marginTop: 0,
         ease: 'power2.inOut',
         overwrite: true,
-        onComplete: () => {
-            if (statsContainerRef.current) {
-                statsContainerRef.current.style.display = 'none';
-            }
-        }
       });
     } 
-    // Scroll up
-    else if (scrollY < lastScrollY.current && isHidden.current) {
-      isHidden.current = false;
-      
-      if (statsContainerRef.current) {
-        statsContainerRef.current.style.display = originalDisplay.current;
-        
-        animation.current = gsap.from(statsContainerRef.current, {
-          height: 0,
-          autoAlpha: 0,
-          duration: 0.3,
-          ease: 'power2.out',
-          overwrite: true,
-          clearProps: 'all' // Clean up inline styles after animation
-        });
-      }
-    }
 
     lastScrollY.current = scrollY < 0 ? 0 : scrollY;
   }, [scrollContainerRef, statsContainerRef]);
 
-  useEffect(() => {
-    const scrollEl = scrollContainerRef.current;
-    if (scrollEl) {
-      scrollEl.addEventListener('scroll', handleScroll, { passive: true });
+  const handleWheel = useCallback((event: WheelEvent) => {
+    if (!scrollContainerRef.current || !statsContainerRef.current) return;
+    
+    const isAtTop = scrollContainerRef.current.scrollTop === 0;
+    const isScrollingUp = event.deltaY < 0;
+
+    // Only reveal if we are at the top, scrolling up, and stats are hidden.
+    // This creates the "pull to reveal" effect.
+    if (isAtTop && isScrollingUp && isHidden.current) {
+        isHidden.current = false;
+        gsap.to(statsContainerRef.current, {
+          duration: 0.4,
+          height: 'auto',
+          autoAlpha: 1,
+          marginTop: originalMarginTop.current || 0,
+          ease: 'power2.out',
+          overwrite: true,
+        });
     }
+  }, [scrollContainerRef, statsContainerRef]);
+
+  useEffect(() => {
+    const scrollContainer = scrollContainerRef.current;
+    if (scrollContainer) {
+      scrollContainer.addEventListener('scroll', handleScroll, { passive: true });
+      scrollContainer.addEventListener('wheel', handleWheel, { passive: true });
+    }
+
     return () => {
-      if (scrollEl) {
-        scrollEl.removeEventListener('scroll', handleScroll);
+      if (scrollContainer) {
+        scrollContainer.removeEventListener('scroll', handleScroll);
+        scrollContainer.removeEventListener('wheel', handleWheel);
       }
-      if (animation.current) {
-        animation.current.kill();
+      // When component unmounts, kill any running animations on the stats ref
+      if (statsContainerRef.current) {
+        gsap.killTweensOf(statsContainerRef.current);
       }
     };
-  }, [handleScroll, scrollContainerRef]);
+  }, [scrollContainerRef, statsContainerRef, handleScroll, handleWheel]);
 }

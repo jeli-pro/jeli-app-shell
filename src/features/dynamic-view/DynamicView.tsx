@@ -1,7 +1,8 @@
-import { useMemo, useCallback, type ReactNode } from 'react';
+import { useMemo, useCallback, type ReactNode, useRef, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
+import { gsap } from 'gsap';
 import { DynamicViewProvider } from '@/features/dynamic-view/DynamicViewContext';
-import type { ViewConfig, GenericItem, ViewMode, FilterConfig, SortConfig, CalendarDateProp, CalendarDisplayProp, CalendarColorProp } from './types';
+import type { ViewConfig, GenericItem, ViewMode, FilterConfig, SortConfig, CalendarDateProp, CalendarDisplayProp, CalendarColorProp, StatItem } from './types';
 import { ViewControls } from './components/controls/ViewControls';
 import { ViewModeSelector } from './components/controls/ViewModeSelector';
 import { AnimatedLoadingSkeleton } from './components/shared/AnimatedLoadingSkeleton';
@@ -11,6 +12,8 @@ import { TableView } from './components/views/TableView';
 import { KanbanView } from './components/views/KanbanView';
 import { CalendarView } from './components/views/CalendarView';
 import { EmptyState } from './components/shared/EmptyState';
+import { useAutoAnimateStats } from '@/hooks/useAutoAnimateStats.hook';
+import { StatCard } from '@/components/shared/StatCard';
 
 // Define the props for the controlled DynamicView component
 export interface DynamicViewProps {
@@ -37,6 +40,7 @@ export interface DynamicViewProps {
   calendarDisplayProps?: CalendarDisplayProp[];
   calendarItemLimit?: 'all' | number;
   calendarColorProp?: CalendarColorProp;
+  statsData?: StatItem[];
 
   // State Change Callbacks
   onViewModeChange: (mode: ViewMode) => void;
@@ -55,14 +59,34 @@ export interface DynamicViewProps {
   
   // Custom Renderers
   renderHeaderControls?: () => ReactNode;
-  renderStats?: () => ReactNode;
   renderCta?: (viewMode: ViewMode, ctaProps: { colSpan?: number }) => ReactNode;
   loaderRef?: React.Ref<HTMLDivElement>;
+  scrollContainerRef?: React.RefObject<HTMLElement>;
 }
 
 export function DynamicView({ viewConfig, ...rest }: DynamicViewProps) {
   
-  const { viewMode, isInitialLoading, isLoading, hasMore, items, groupBy } = rest;
+  const { viewMode, isInitialLoading, isLoading, hasMore, items, groupBy, statsData, scrollContainerRef } = rest;
+  const statsRef = useRef<HTMLDivElement>(null);
+
+  // Auto-hide stats container on scroll down
+  useAutoAnimateStats(scrollContainerRef!, statsRef);
+
+  useEffect(() => {
+    // Animate stats cards in
+    if (!isInitialLoading && statsRef.current) {
+      gsap.fromTo(statsRef.current.children,
+        { y: 30, opacity: 0 },
+        {
+          duration: 0.5,
+          y: 0,
+          opacity: 1,
+          stagger: 0.08,
+          ease: "power2.out"
+        }
+      )
+    }
+  }, [isInitialLoading]);
 
   const groupedData = useMemo(() => {
     if (groupBy === 'none' || viewMode !== 'kanban') {
@@ -143,7 +167,22 @@ export function DynamicView({ viewConfig, ...rest }: DynamicViewProps) {
               <ViewControls />
           </div>
 
-          {rest.renderStats && !isInitialLoading && rest.renderStats()}
+          {!isInitialLoading && statsData && statsData.length > 0 && (
+            <div ref={statsRef} className="flex overflow-x-auto gap-6 pb-4 no-scrollbar">
+              {statsData.map((stat) => (
+                <StatCard
+                  className="w-64 md:w-72 flex-shrink-0"
+                  key={stat.title}
+                  title={stat.title}
+                  value={stat.value}
+                  change={stat.change}
+                  trend={stat.trend}
+                  icon={stat.icon}
+                  chartData={stat.chartData}
+                />
+              ))}
+            </div>
+          )}
           
           <div className="min-h-[500px]">
               {renderContent()}

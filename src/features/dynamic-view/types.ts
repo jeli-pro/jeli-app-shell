@@ -162,3 +162,13 @@ export type GroupableField = 'status' | 'priority' | 'category';
 export type CalendarDateProp = 'dueDate' | 'createdAt' | 'updatedAt';
 export type CalendarDisplayProp = 'priority' | 'assignee' | 'tags' | 'status';
 export type CalendarColorProp = 'priority' | 'status' | 'category' | 'none';
+
+// --- STATS ---
+export type StatItem = {
+  title: string;
+  value: string;
+  icon: ReactNode;
+  change: string;
+  trend: 'up' | 'down';
+  chartData?: number[];
+};

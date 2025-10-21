@@ -41,9 +41,17 @@
     "src/features/dynamic-view",
     "src/pages/DataDemo",
 
-    "src/hooks/useRightPaneContent.hook.tsx",
+    "src/components/shared/PageLayout.tsx",
+    "src/components/shared/StatCard.tsx",
+    "src/features/dynamic-view/DynamicView.tsx",
+    "src/features/dynamic-view/types.ts",
+    "src/hooks/useAutoAnimateStats.hook.ts",
+    "src/pages/DataDemo/hooks/useAutoAnimateStats.hook.ts",
+    "src/pages/DataDemo/index.tsx"
 
-    "src/lib/utils.ts"
+    // "src/hooks/useRightPaneContent.hook.tsx",
+
+    // "src/lib/utils.ts"
   ],
   "ignore": {
     "useGitignore": true,
