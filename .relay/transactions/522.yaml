@@ -1,0 +1,1140 @@
+uuid: 44265cc8-1c4b-48d6-9466-4c4f98145e54
+projectId: jeli-app-shell
+createdAt: '2025-10-21T04:33:22.229Z'
+gitCommitMsg: >-
+  refactor(DataDemo): Finalize implementation as dynamic-view consumer
+
+  This commit completes the refactor of the DataDemo page by fully integrating
+  it with the new generic `dynamic-view` engine.
+
+  - The `dataDemo.store` is simplified by removing UI-specific selectors, which
+  are now co-located with the `DataDemoPage` component. - `DataDemoPage` now
+  derives its grouped tab state locally via `useMemo` and correctly requests a
+  full data load for Kanban and Calendar views. - The right-side pane hook is
+  cleaned up for style consistency.
+
+  This final step solidifies the architecture, making the DataDemo page a clean
+  and declarative example of the dynamic-view engine's capabilities while
+  ensuring full UI/UX parity with the original hardcoded version.
+promptSummary: >-
+  I executed Part 3 of the refactoring plan to finalize the DataDemo
+  implementation as a consumer of the new dynamic view engine.
+reasoning:
+  - >-
+    This is the final implementation step. With the generic view engine and its
+    components now perfected, we can refactor the `DataDemo` page itself. This
+    will validate the entire effort by transforming the page into a clean,
+    simple consumer of our powerful new abstraction. We'll also finalize the
+    data store and update the side panel hook to use the now-generic
+    `DetailPanel`.
+  - '### Step 1: Simplify the Data Store'
+  - >-
+    First, I'll remove the UI-specific selectors from `dataDemo.store.tsx`.
+    Their logic is more appropriately co-located with the `DataDemoPage`
+    component, as it's specific to how that page chooses to render tabs for
+    grouped data. The store's core responsibility should be fetching and holding
+    state.
+  - '### Step 2: Finalize the `DataDemoPage` Implementation'
+  - >-
+    Now, I will refactor `DataDemoPage`. I'll move the tab-generation logic from
+    the old store selectors directly into the component using `useMemo`. I'll
+    also update the data-loading effect to fetch all items when switching to
+    Kanban view, which is necessary for correct grouping. Finally, I'll adjust
+    the infinite scroll loader to hide for Kanban and Calendar views. This makes
+    the page self-contained and correctly utilizes the new dynamic view engine.
+  - '### Step 3: Update Right Pane Hook'
+  - >-
+    Finally, a minor but important cleanup in `useRightPaneContent.hook.tsx`.
+    I'll remove an unnecessary `custom-scrollbar` class, relying on global
+    styles for consistency.
+  - >-
+    With these changes, the refactor is complete. The `DataDemo` is now a lean
+    consumer of the powerful `dynamic-view` engine, proving out the architecture
+    while looking and feeling exactly like the polished original.
+operations:
+  - type: write
+    path: src/pages/DataDemo/store/dataDemo.store.tsx
+    content: >+
+      --- src/pages/DataDemo/store/dataDemo.store.tsx
+
+      +++ src/pages/DataDemo/store/dataDemo.store.tsx
+
+      @@ -107,37 +107,6 @@
+           },
+       }));
+       
+      -// --- Selectors ---
+
+      -export const useGroupTabs = (
+
+      -    groupBy: GroupableField | 'none',
+
+      -    activeGroupTab: string,
+
+      -) => useDataDemoStore(state => {
+
+      -    const items = state.items;
+
+      -    if (groupBy === 'none' || !items.length) return [];
+
+      -    
+
+      -    const groupCounts = items.reduce((acc, item) => {
+
+      -        const groupKey = String(item[groupBy as GroupableField]);
+
+      -        acc[groupKey] = (acc[groupKey] || 0) + 1;
+
+      -        return acc;
+
+      -    }, {} as Record<string, number>);
+
+      -
+
+      -    const sortedGroups = Object.keys(groupCounts).sort((a, b) =>
+      a.localeCompare(b));
+
+      -
+
+      -    const createLabel = (text: string, count: number, isActive: boolean):
+      ReactNode => (
+
+      -        <>
+
+      -            {text}
+
+      -            <Badge variant={isActive ? 'default' : 'secondary'}
+      className={cn('transition-colors duration-300 text-xs font-semibold',
+      !isActive && 'group-hover:bg-accent group-hover:text-accent-foreground')}>
+
+      -                {count}
+
+      -            </Badge>
+
+      -        </>
+
+      -    );
+
+      -    
+
+      -    const totalCount = items.length;
+
+      -
+
+      -    return [
+
+      -        { id: 'all', label: createLabel('All', totalCount, activeGroupTab
+      === 'all') },
+
+      -        ...sortedGroups.map((g) => ({
+
+      -            id: g,
+
+      -            label: createLabel(capitalize(g), groupCounts[g],
+      activeGroupTab === g),
+
+      -        })),
+
+      -    ];
+
+      -});
+
+      -
+
+      -export const useDataToRender = (
+
+      -    groupBy: GroupableField | 'none',
+
+      -    activeGroupTab: string,
+
+      -) => useDataDemoStore(state => {
+
+      -    const items = state.items;
+
+      -    if (groupBy === 'none') {
+
+      -        return items;
+
+      -    }
+
+      -    if (activeGroupTab === 'all') {
+
+      -        return items;
+
+      -    }
+
+      -    return items.filter((item) => String(item[groupBy as GroupableField])
+      === activeGroupTab);
+
+      -});
+
+      -
+       export const useSelectedItem = (itemId?: string) => {
+           if (!itemId) return null;
+           return (mockDataItems.find(item => item.id === itemId) as GenericItem) ?? null;
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/DataDemo/index.tsx
+    content: >+
+      --- src/pages/DataDemo/index.tsx
+
+      +++ src/pages/DataDemo/index.tsx
+
+      @@ -1,4 +1,4 @@
+
+      -import { useRef, useEffect, useCallback, useMemo } from 'react'
+
+      +import { useRef, useEffect, useCallback, useMemo, type ReactNode } from
+      'react'
+       import {
+         Layers, 
+         AlertTriangle, 
+      @@ -25,11 +25,12 @@
+       import type { GroupableField, GenericItem } from '@/features/dynamic-view/types'
+       import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
+       import { useAutoAnimateStats } from './hooks/useAutoAnimateStats.hook'
+      +import { useDataDemoStore } from './store/dataDemo.store'
+
+      +import { capitalize, cn } from '@/lib/utils';
+
+      +import { Badge } from '@/components/ui/badge';
+       import { 
+      -  useDataDemoStore, 
+
+      -  useGroupTabs
+       } from './store/dataDemo.store'
+       
+       import { dataDemoViewConfig } from './DataDemo.config';
+      @@ -74,27 +75,59 @@
+           setPage,
+         } = useAppViewManager();
+       
+      -  const { hasMore, isLoading, isInitialLoading, totalItemCount, loadData
+      } = useDataDemoStore(state => ({
+
+      +  const { items: allItems, hasMore, isLoading, isInitialLoading,
+      totalItemCount, loadData } = useDataDemoStore(state => ({
+
+      +    items: state.items,
+           hasMore: state.hasMore,
+           isLoading: state.isLoading,
+           isInitialLoading: state.isInitialLoading,
+           totalItemCount: state.totalItemCount,
+           loadData: state.loadData,
+         }));
+      -
+
+      -  const groupTabs = useGroupTabs(groupBy, activeGroupTab);
+
+      -  const allItems = useDataDemoStore(s => s.items);
+
+      +
+
+      +  // --- Start of logic moved from store selectors ---
+
+      +  const groupTabs = useMemo(() => {
+
+      +    if (groupBy === 'none' || !allItems.length) return [];
+
+      +    
+
+      +    const groupCounts = allItems.reduce((acc, item) => {
+
+      +        const groupKey = String(item[groupBy as GroupableField]);
+
+      +        acc[groupKey] = (acc[groupKey] || 0) + 1;
+
+      +        return acc;
+
+      +    }, {} as Record<string, number>);
+
+      +
+
+      +    const sortedGroups = Object.keys(groupCounts).sort((a, b) =>
+      a.localeCompare(b));
+
+      +
+
+      +    const createLabel = (text: string, count: number, isActive: boolean):
+      ReactNode => (
+
+      +        <>
+
+      +            {text}
+
+      +            <Badge variant={isActive ? 'default' : 'secondary'}
+      className={cn('transition-colors duration-300 text-xs font-semibold',
+      !isActive && 'group-hover:bg-accent group-hover:text-accent-foreground')}>
+
+      +                {count}
+
+      +            </Badge>
+
+      +        </>
+
+      +    );
+
+      +    
+
+      +    const totalCount = allItems.length;
+
+      +
+
+      +    return [
+
+      +        { id: 'all', label: createLabel('All', totalCount, activeGroupTab
+      === 'all') },
+
+      +        ...sortedGroups.map((g) => ({
+
+      +            id: g,
+
+      +            label: createLabel(capitalize(g), groupCounts[g],
+      activeGroupTab === g),
+
+      +        })),
+
+      +    ];
+
+      +  }, [allItems, groupBy, activeGroupTab]);
+       
+         const groupedData = useMemo(() => {
+           if (groupBy === 'none') {
+               return null;
+           }
+           return allItems.reduce((acc, item) => {
+      -        const groupKey = String(item[groupBy as GroupableField]);
+
+      +        const groupKey = String(item[groupBy as GroupableField]) ||
+      'N/A';
+               if (!acc[groupKey]) {
+                   acc[groupKey] = [] as GenericItem[];
+               }
+               acc[groupKey].push(item);
+               return acc;
+           }, {} as Record<string, GenericItem[]>);
+         }, [allItems, groupBy]);
+      -
+         const dataToRender = useMemo(() => {
+           if (groupBy === 'none' || activeGroupTab === 'all' || !groupedData) {
+             return allItems;
+           }
+           return groupedData[activeGroupTab] || [];
+         }, [groupBy, activeGroupTab, allItems, groupedData]);
+      +  // --- End of logic moved from store selectors ---
+
+      +
+       
+         const statsRef = useRef<HTMLDivElement>(null)
+         const scrollRef = useRef<HTMLDivElement>(null);
+      @@ -102,9 +135,7 @@
+         // Note: The `DynamicViewProvider` needs `GenericItem[]`. 
+         // Our store uses `GenericItem` so no cast is needed.
+         const genericItems: GenericItem[] = allItems;
+      -
+         // Auto-hide stats container on scroll down
+         useAutoAnimateStats(scrollRef, statsRef);
+       
+      @@ -213,7 +214,7 @@
+             groupBy,
+             filters,
+             sortConfig,
+      -      isFullLoad: viewMode === 'calendar',
+
+      +      isFullLoad: viewMode === 'calendar' || viewMode === 'kanban',
+           });
+         }, [page, groupBy, filters, sortConfig, loadData, viewMode]);
+       
+      @@ -324,12 +325,12 @@
+       
+               {/* Loader for infinite scroll */}
+               <div ref={loaderRef} className="flex justify-center items-center py-6">
+      -          {isLoading && !isInitialLoading && groupBy === 'none' &&
+      viewMode !== 'calendar' && (
+
+      +          {isLoading && !isInitialLoading && groupBy === 'none' &&
+      viewMode !== 'calendar' && viewMode !== 'kanban' && (
+                   <div className="flex items-center gap-2 text-muted-foreground">
+                     <Loader2 className="w-5 h-5 animate-spin" />
+                     <span>Loading more...</span>
+                   </div>
+                 )}
+      -          {!isLoading && !hasMore && dataToRender.length > 0 &&
+      !isInitialLoading && groupBy === 'none' && viewMode !== 'calendar' && (
+
+      +          {!isLoading && !hasMore && dataToRender.length > 0 &&
+      !isInitialLoading && groupBy === 'none' && viewMode !== 'calendar' &&
+      viewMode !== 'kanban' && (
+                   <p className="text-muted-foreground">You've reached the end.</p>
+                 )}
+               </div>
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/hooks/useRightPaneContent.hook.tsx
+    content: |+
+      --- src/hooks/useRightPaneContent.hook.tsx
+      +++ src/hooks/useRightPaneContent.hook.tsx
+      @@ -73,7 +73,7 @@
+               content: (
+                 <DynamicViewProvider viewConfig={dataDemoViewConfig} data={mockDataItems}>
+                   <div className="h-full flex flex-col">
+      -              <div className="flex-1 overflow-y-auto custom-scrollbar">
+      +              <div className="flex-1 overflow-y-auto">
+                       <DetailPanel item={selectedItem} config={dataDemoViewConfig.detailView} />
+                     </div>
+                     {/* Application-specific actions can be composed here */}
+
+    patchStrategy: standard-diff
+snapshot:
+  src/hooks/useRightPaneContent.hook.tsx: >-
+    import { useMemo } from 'react';
+
+    import { useParams } from 'react-router-dom';
+
+    import {
+      LayoutDashboard,
+      Settings,
+      Component,
+      Bell,
+      SlidersHorizontal,
+      Database,
+      MessageSquare,
+      ExternalLink,
+      Share,
+    } from 'lucide-react';
+
+
+    import { DynamicViewProvider } from
+    '@/features/dynamic-view/DynamicViewContext';
+
+    import { Button } from '@/components/ui/button';
+
+    import { DashboardContent } from "@/pages/Dashboard";
+
+    import { SettingsContent } from "@/features/settings/SettingsContent";
+
+    import { ToasterDemo } from "@/pages/ToasterDemo";
+
+    import { NotificationsPage } from "@/pages/Notifications";
+
+    import DataDemoPage from "@/pages/DataDemo/index";
+
+    import { DetailPanel } from
+    '@/features/dynamic-view/components/shared/DetailPanel';
+
+    import { dataDemoViewConfig } from '@/pages/DataDemo/DataDemo.config';
+
+    import { mockDataItems } from "@/pages/DataDemo/data/mockData";
+
+    import { MessagingContent } from
+    "@/pages/Messaging/components/MessagingContent";
+
+    import type { AppShellState } from '@/store/appShell.store';
+
+
+    export function useRightPaneContent(sidePaneContent:
+    AppShellState['sidePaneContent']) {
+      const { itemId, conversationId } = useParams<{ itemId: string; conversationId: string }>();
+
+      const staticContentMap = useMemo(() => ({
+        main: {
+          title: "Dashboard",
+          icon: LayoutDashboard,
+          page: "dashboard",
+          content: <DashboardContent />,
+        },
+        settings: {
+          title: "Settings",
+          icon: Settings,
+          page: "settings",
+          content: <div className="p-6"><SettingsContent /></div>,
+        },
+        toaster: {
+          title: "Toaster Demo",
+          icon: Component,
+          page: "toaster",
+          content: <ToasterDemo />,
+        },
+        notifications: {
+          title: "Notifications",
+          icon: Bell,
+          page: "notifications",
+          content: <NotificationsPage />,
+        },
+        dataDemo: {
+          title: "Data Showcase",
+          icon: Database,
+          page: "data-demo",
+          content: <DataDemoPage />,
+        },
+        details: {
+          title: "Details Panel",
+          icon: SlidersHorizontal,
+          content: (
+            <div className="p-6">
+              <p className="text-muted-foreground">
+                This is the side pane. It can be used to display contextual
+                information, forms, or actions related to the main content.
+              </p>
+            </div>
+          ),
+        },
+      }), []);
+
+      const contentMap = useMemo(() => ({
+        ...staticContentMap,
+        messaging: {
+          title: "Conversation",
+          icon: MessageSquare,
+          page: "messaging",
+          content: <MessagingContent conversationId={conversationId} />,
+        },
+      }), [conversationId, staticContentMap]);
+
+      const selectedItem = useMemo(() => {
+        if (!itemId) return null;
+        return mockDataItems.find(item => item.id === itemId) ?? null;
+      }, [itemId]);
+
+      const { meta, content } = useMemo(() => {
+        if (sidePaneContent === 'dataItem' && selectedItem) {
+          return {
+            meta: { title: "Item Details", icon: Database, page: `data-demo/${itemId}` },
+            content: (
+              <DynamicViewProvider viewConfig={dataDemoViewConfig} data={mockDataItems}>
+                <div className="h-full flex flex-col">
+                  <div className="flex-1 overflow-y-auto custom-scrollbar">
+                    <DetailPanel item={selectedItem} config={dataDemoViewConfig.detailView} />
+                  </div>
+                  {/* Application-specific actions can be composed here */}
+                  <div className="p-6 border-t border-border/50 bg-card/30">
+                    <div className="flex gap-3">
+                      <Button className="flex-1" size="sm">
+                        <ExternalLink className="w-4 h-4 mr-2" />
+                        Open Project
+                      </Button>
+                      <Button variant="outline" size="sm">
+                        <Share className="w-4 h-4 mr-2" />
+                        Share
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </DynamicViewProvider>
+            ),
+          };
+        }
+        const mappedContent = contentMap[sidePaneContent as keyof typeof contentMap] || contentMap.details;
+        return {
+          meta: mappedContent,
+          content: mappedContent.content,
+        };
+      }, [sidePaneContent, selectedItem, contentMap, itemId]);
+
+      return { meta, content };
+    }
+  src/pages/DataDemo/index.tsx: >-
+    import { useRef, useEffect, useCallback, useMemo } from 'react'
+
+    import {
+      Layers, 
+      AlertTriangle, 
+      PlayCircle, 
+      Loader2,
+      TrendingUp,
+      CheckCircle,
+      Clock,
+      Archive,
+      PlusCircle
+    } from 'lucide-react'
+
+    import { gsap } from 'gsap'
+
+    import { DynamicViewProvider } from
+    '@/features/dynamic-view/DynamicViewContext'
+
+    import { PageLayout } from '@/components/shared/PageLayout'
+
+    import { useScrollToBottom } from '@/hooks/useScrollToBottom.hook';
+
+    import { ScrollToBottomButton } from
+    '@/components/shared/ScrollToBottomButton';
+
+    import { ListView } from '@/features/dynamic-view/components/views/ListView'
+
+    import { CardView } from '@/features/dynamic-view/components/views/CardView'
+
+    import { TableView } from
+    '@/features/dynamic-view/components/views/TableView'
+
+    import { KanbanView } from
+    '@/features/dynamic-view/components/views/KanbanView'
+
+    import { CalendarView } from
+    '@/features/dynamic-view/components/views/CalendarView'
+
+    import { ViewModeSelector } from
+    '@/features/dynamic-view/components/controls/ViewModeSelector'
+
+    import { AnimatedTabs } from '@/components/ui/animated-tabs'
+
+    import { StatCard } from '@/components/shared/StatCard'
+
+    import { AnimatedLoadingSkeleton } from
+    '@/features/dynamic-view/components/shared/AnimatedLoadingSkeleton'
+
+    import { ViewControls } from
+    '@/features/dynamic-view/components/controls/ViewControls'
+
+    import { mockDataItems } from './data/mockData'
+
+    import type { GroupableField, GenericItem } from
+    '@/features/dynamic-view/types'
+
+    import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
+
+    import { useAutoAnimateStats } from './hooks/useAutoAnimateStats.hook'
+
+    import { 
+      useDataDemoStore, 
+      useGroupTabs
+    } from './store/dataDemo.store'
+
+
+    import { dataDemoViewConfig } from './DataDemo.config';
+
+
+    type Stat = {
+      title: string;
+      value: string;
+      icon: React.ReactNode;
+      change: string;
+      trend: 'up' | 'down';
+      type?: 'card';
+    };
+
+
+    type ChartStat = {
+      title: string;
+      value: string;
+      icon: React.ReactNode;
+      change: string;
+      trend: 'up' | 'down';
+      type: 'chart';
+      chartData: number[];
+    };
+
+
+    type StatItem = Stat | ChartStat;
+
+
+    export default function DataDemoPage() {
+      const {
+        viewMode,
+        groupBy,
+        activeGroupTab,
+        setGroupBy,
+        setSort,
+        setActiveGroupTab,
+        page,
+        filters,
+        sortConfig,
+        setPage,
+      } = useAppViewManager();
+
+      const { hasMore, isLoading, isInitialLoading, totalItemCount, loadData } = useDataDemoStore(state => ({
+        hasMore: state.hasMore,
+        isLoading: state.isLoading,
+        isInitialLoading: state.isInitialLoading,
+        totalItemCount: state.totalItemCount,
+        loadData: state.loadData,
+      }));
+
+      const groupTabs = useGroupTabs(groupBy, activeGroupTab);
+      const allItems = useDataDemoStore(s => s.items);
+
+      const groupedData = useMemo(() => {
+        if (groupBy === 'none') {
+            return null;
+        }
+        return allItems.reduce((acc, item) => {
+            const groupKey = String(item[groupBy as GroupableField]);
+            if (!acc[groupKey]) {
+                acc[groupKey] = [] as GenericItem[];
+            }
+            acc[groupKey].push(item);
+            return acc;
+        }, {} as Record<string, GenericItem[]>);
+      }, [allItems, groupBy]);
+
+      const dataToRender = useMemo(() => {
+        if (groupBy === 'none' || activeGroupTab === 'all' || !groupedData) {
+          return allItems;
+        }
+        return groupedData[activeGroupTab] || [];
+      }, [groupBy, activeGroupTab, allItems, groupedData]);
+
+      const statsRef = useRef<HTMLDivElement>(null)
+      const scrollRef = useRef<HTMLDivElement>(null);
+
+      // Note: The `DynamicViewProvider` needs `GenericItem[]`. 
+      // Our store uses `GenericItem` so no cast is needed.
+      const genericItems: GenericItem[] = allItems;
+
+      // Auto-hide stats container on scroll down
+      useAutoAnimateStats(scrollRef, statsRef);
+
+      // Calculate stats from data
+      const totalItems = mockDataItems.length
+      const { showScrollToBottom, scrollToBottom, handleScroll } = useScrollToBottom(scrollRef);
+
+      const activeItems = mockDataItems.filter(item => item.status === 'active').length
+      const highPriorityItems = mockDataItems.filter(item => item.priority === 'high' || item.priority === 'critical').length
+      const avgCompletion = totalItems > 0 ? Math.round(
+        mockDataItems.reduce((acc, item) => acc + item.metrics.completion, 0) / totalItems
+      ) : 0
+
+      const stats: StatItem[] = [
+        {
+          title: "Total Projects",
+          value: totalItems.toString(),
+          icon: <Layers className="w-5 h-5" />,
+          change: "+5.2% this month",
+          trend: "up" as const,
+          type: 'chart',
+          chartData: [120, 125, 122, 130, 135, 138, 142]
+        },
+        {
+          title: "Active Projects",
+          value: activeItems.toString(),
+          icon: <PlayCircle className="w-5 h-5" />,
+          change: "+2 this week", 
+          trend: "up" as const,
+          type: 'chart',
+          chartData: [45, 50, 48, 55, 53, 60, 58]
+        },
+        {
+          title: "High Priority",
+          value: highPriorityItems.toString(),
+          icon: <AlertTriangle className="w-5 h-5" />,
+          change: "-1 from last week",
+          trend: "down" as const,
+          type: 'chart',
+          chartData: [25, 26, 28, 27, 26, 24, 23]
+        },
+        {
+          title: "Avg. Completion",
+          value: `${avgCompletion}%`,
+          icon: <TrendingUp className="w-5 h-5" />,
+          change: "+3.2%",
+          trend: "up" as const,
+          type: 'chart',
+          chartData: [65, 68, 70, 69, 72, 75, 78],
+        },
+        {
+          title: "Completion Rate",
+          value: "88%",
+          icon: <CheckCircle className="w-5 h-5" />,
+          change: "+1.5% this month",
+          trend: "up" as const,
+          type: 'chart',
+          chartData: [80, 82, 81, 84, 85, 87, 88],
+        },
+        {
+          title: "Overdue Items",
+          value: "8",
+          icon: <Clock className="w-5 h-5" />,
+          change: "-3 this week",
+          trend: "down" as const,
+        },
+        {
+          title: "New This Week",
+          value: "12",
+          icon: <PlusCircle className="w-5 h-5" />,
+          change: "+2 from last week",
+          trend: "up" as const,
+        },
+        {
+          title: "Archived Projects",
+          value: "153",
+          icon: <Archive className="w-5 h-5" />,
+          change: "+20 this month",
+          trend: "up" as const,
+        }
+      ]
+
+      useEffect(() => {
+        // Animate stats cards in
+        if (!isInitialLoading && statsRef.current) {
+          gsap.fromTo(statsRef.current.children,
+            { y: 30, opacity: 0 },
+            {
+              duration: 0.5,
+              y: 0,
+              opacity: 1,
+              stagger: 0.08,
+              ease: "power2.out"
+            }
+          )
+        }
+      }, [isInitialLoading]);
+
+      useEffect(() => {
+        loadData({
+          page,
+          groupBy,
+          filters,
+          sortConfig,
+          isFullLoad: viewMode === 'calendar',
+        });
+      }, [page, groupBy, filters, sortConfig, loadData, viewMode]);
+
+      const observer = useRef<IntersectionObserver>();
+      const loaderRef = useCallback(
+        (node: Element | null) => {
+          if (isLoading) return;
+          if (observer.current) observer.current.disconnect();
+
+          observer.current = new IntersectionObserver((entries) => {
+            if (entries[0].isIntersecting && hasMore) {
+              setPage(page + 1);
+            }
+          });
+          if (node) observer.current.observe(node);
+        },
+        [isLoading, hasMore, page, setPage],
+      );
+      
+      // Auto-group by status when switching to kanban view for the first time
+      useEffect(() => {
+        if (viewMode === 'kanban' && groupBy === 'none') {
+          setGroupBy('status');
+          setSort(null); // Kanban is manually sorted, so disable programmatic sort
+        }
+        // For calendar view, we don't want grouping.
+        if (viewMode === 'calendar' && groupBy !== 'none') {
+          setGroupBy('none');
+        }
+      }, [viewMode, groupBy, setGroupBy, setSort]);
+
+      const renderViewForData = useCallback((data: GenericItem[]) => {
+        const items = data as GenericItem[];
+        switch (viewMode) {
+            case 'table': return <TableView data={items} />;
+            case 'cards': return <CardView data={items} />;
+            case 'calendar': return null; // Calendar has its own render path below
+            case 'kanban': return null; // Kanban has its own render path below
+            case 'grid': return <CardView data={items} isGrid />;
+            case 'list': default: return <ListView data={items} />;
+        }
+      }, [viewMode]);
+
+      const isGroupedView = useMemo(() => 
+        groupBy !== 'none' && groupTabs.length > 1 && groupedData,
+      [groupBy, groupTabs.length, groupedData]);
+
+
+      return (
+        <DynamicViewProvider viewConfig={dataDemoViewConfig} data={genericItems}>
+          <PageLayout
+            scrollRef={scrollRef}
+            onScroll={handleScroll}
+          >
+            <div className="space-y-6">
+              {/* Header */}
+              <div className="space-y-4">
+                <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                  <div className="flex-1">
+                    <h1 className="text-2xl font-bold tracking-tight">Data Showcase</h1>
+                    <p className="text-muted-foreground">
+                      {isInitialLoading 
+                        ? "Loading projects..." 
+                        : `Showing ${dataToRender.length} of ${totalItemCount} item(s)`}
+                    </p>
+                  </div>
+                  <ViewModeSelector />
+                </div>
+                <ViewControls />
+              </div>
+
+              {/* Stats Section */}
+              {!isInitialLoading && (
+                <div ref={statsRef} className="flex overflow-x-auto gap-6 pb-4 no-scrollbar">
+                  {stats.map((stat) => (
+                    <StatCard
+                      className="w-64 md:w-72 flex-shrink-0"
+                      key={stat.title}
+                      title={stat.title}
+                      value={stat.value}
+                      change={stat.change}
+                      trend={stat.trend}
+                      icon={stat.icon}
+                      chartData={stat.type === 'chart' ? stat.chartData : undefined}
+                    />
+                  ))}
+                </div>
+              )}
+
+            <div className="min-h-[500px]">
+              {isInitialLoading ? (
+                <AnimatedLoadingSkeleton viewMode={viewMode} />
+              ) : viewMode === 'calendar' ? (
+                <CalendarView data={genericItems} />
+              ) : viewMode === 'kanban' ? (
+                isGroupedView ? (
+                  <KanbanView data={groupedData as Record<string, GenericItem[]>} />
+                ) : (
+                  <div className="flex items-center justify-center h-96 text-muted-foreground">
+                    Group data by a metric to use the Kanban view.
+                  </div>
+                )
+              ) : !isGroupedView ? (
+                renderViewForData(allItems)
+              ) : (
+                // Grouped view with AnimatedTabs
+                <div className="relative">
+                  <AnimatedTabs
+                    tabs={groupTabs}
+                    activeTab={activeGroupTab}
+                    onTabChange={setActiveGroupTab}
+                    wrapperClassName="flex flex-col"
+                    className="border-b"
+                    contentClassName="pt-6 flex-grow"
+                  >
+                    {groupTabs.map(tab => (
+                      <div key={tab.id} className="min-h-[440px]">
+                        {renderViewForData(
+                          tab.id === 'all' ? allItems : groupedData?.[tab.id] || []
+                        )}
+                      </div>
+                    ))}
+                  </AnimatedTabs>
+                </div>
+              )}
+            </div>
+
+            {/* Loader for infinite scroll */}
+            <div ref={loaderRef} className="flex justify-center items-center py-6">
+              {isLoading && !isInitialLoading && groupBy === 'none' && viewMode !== 'calendar' && (
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span>Loading more...</span>
+                </div>
+              )}
+              {!isLoading && !hasMore && dataToRender.length > 0 && !isInitialLoading && groupBy === 'none' && viewMode !== 'calendar' && (
+                <p className="text-muted-foreground">You've reached the end.</p>
+              )}
+            </div>
+          </div>
+            <ScrollToBottomButton isVisible={showScrollToBottom} onClick={scrollToBottom} />
+          </PageLayout>
+        </DynamicViewProvider>
+      );
+    }
+  src/pages/DataDemo/store/dataDemo.store.tsx: >-
+    import { create } from 'zustand';
+
+    import { type ReactNode } from 'react';
+
+    import { capitalize, cn } from '@/lib/utils';
+
+    import { Badge } from '@/components/ui/badge';
+
+    import { mockDataItems } from '@/pages/DataDemo/data/mockData';
+
+    import type { GenericItem, GroupableField, SortConfig, FilterConfig } from
+    '@/features/dynamic-view/types';
+
+
+    // --- State and Actions ---
+
+    interface DataDemoState {
+        items: GenericItem[];
+        hasMore: boolean;
+        isLoading: boolean;
+        isInitialLoading: boolean;
+        totalItemCount: number;
+    }
+
+
+    interface DataDemoActions {
+        loadData: (params: {
+            page: number;
+            groupBy: GroupableField | 'none';
+            filters: FilterConfig;
+            sortConfig: SortConfig | null;
+        isFullLoad?: boolean;
+        }) => void;
+        updateItem: (itemId: string, updates: Partial<GenericItem>) => void;
+    }
+
+
+    const defaultState: DataDemoState = {
+        items: [],
+        hasMore: true,
+        isLoading: true,
+        isInitialLoading: true,
+        totalItemCount: 0,
+    };
+
+
+    // --- Store Implementation ---
+
+    export const useDataDemoStore = create<DataDemoState &
+    DataDemoActions>((set) => ({
+        ...defaultState,
+
+        loadData: ({ page, groupBy, filters, sortConfig, isFullLoad }) => {
+            set({ isLoading: true, ...(page === 1 && { isInitialLoading: true }) });
+            const isFirstPage = page === 1;
+
+            const filteredAndSortedData = (() => {
+                const filteredItems = mockDataItems.filter((item) => {
+                    const searchTermMatch =
+                        item.title.toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
+                        item.description.toLowerCase().includes(filters.searchTerm.toLowerCase());
+                    const statusMatch = filters.status.length === 0 || filters.status.includes(item.status);
+                    const priorityMatch = filters.priority.length === 0 || filters.priority.includes(item.priority);
+                    return searchTermMatch && statusMatch && priorityMatch;
+                });
+
+                if (sortConfig) {
+                    filteredItems.sort((a, b) => {
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        const getNestedValue = (obj: GenericItem, path: string): any =>
+                            path.split('.').reduce((o: any, k) => (o || {})[k], obj);
+
+                        const aValue = getNestedValue(a, sortConfig.key);
+                        const bValue = getNestedValue(b, sortConfig.key);
+
+                        if (aValue === undefined || bValue === undefined) return 0;
+                        if (typeof aValue === 'string' && typeof bValue === 'string') {
+                            return sortConfig.direction === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
+                        }
+                        if (typeof aValue === 'number' && typeof bValue === 'number') {
+                            return sortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue;
+                        }
+                        if (sortConfig.key === 'updatedAt' || sortConfig.key === 'createdAt') {
+                            if (typeof aValue === 'string' && typeof bValue === 'string') {
+                                return sortConfig.direction === 'asc'
+                                    ? new Date(aValue).getTime() - new Date(bValue).getTime()
+                                    : new Date(bValue).getTime() - new Date(aValue).getTime();
+                            }
+                        }
+                        return 0;
+                    });
+                }
+                return filteredItems;
+            })();
+            
+            const totalItemCount = filteredAndSortedData.length;
+
+            setTimeout(() => {
+                if (groupBy !== 'none' || isFullLoad) {
+                    set({
+                        items: filteredAndSortedData,
+                        hasMore: false,
+                        isLoading: false,
+                        isInitialLoading: false,
+                        totalItemCount,
+                    });
+                    return;
+                }
+
+                const pageSize = 12;
+                const newItems = filteredAndSortedData.slice((page - 1) * pageSize, page * pageSize);
+                
+                set(state => ({
+                    items: isFirstPage ? newItems : [...state.items, ...newItems],
+                    hasMore: totalItemCount > page * pageSize,
+                    isLoading: false,
+                    isInitialLoading: false,
+                    totalItemCount,
+                }));
+
+            }, isFirstPage ? 1500 : 500);
+        },
+
+        updateItem: (itemId, updates) => {
+            // In a real app, this would be an API call. Here we update the mock source.
+            const itemIndex = mockDataItems.findIndex(i => i.id === itemId);
+            if (itemIndex > -1) {
+                mockDataItems[itemIndex] = { ...mockDataItems[itemIndex], ...updates };
+            }
+
+            // Also update the currently loaded items in the store's state for UI consistency
+            set(state => ({
+                items: state.items.map(item => 
+                    item.id === itemId ? { ...item, ...updates } : item
+                ),
+            }));
+        },
+    }));
+
+
+    // --- Selectors ---
+
+    export const useGroupTabs = (
+        groupBy: GroupableField | 'none',
+        activeGroupTab: string,
+    ) => useDataDemoStore(state => {
+        const items = state.items;
+        if (groupBy === 'none' || !items.length) return [];
+        
+        const groupCounts = items.reduce((acc, item) => {
+            const groupKey = String(item[groupBy as GroupableField]);
+            acc[groupKey] = (acc[groupKey] || 0) + 1;
+            return acc;
+        }, {} as Record<string, number>);
+
+        const sortedGroups = Object.keys(groupCounts).sort((a, b) => a.localeCompare(b));
+
+        const createLabel = (text: string, count: number, isActive: boolean): ReactNode => (
+            <>
+                {text}
+                <Badge variant={isActive ? 'default' : 'secondary'} className={cn('transition-colors duration-300 text-xs font-semibold', !isActive && 'group-hover:bg-accent group-hover:text-accent-foreground')}>
+                    {count}
+                </Badge>
+            </>
+        );
+        
+        const totalCount = items.length;
+
+        return [
+            { id: 'all', label: createLabel('All', totalCount, activeGroupTab === 'all') },
+            ...sortedGroups.map((g) => ({
+                id: g,
+                label: createLabel(capitalize(g), groupCounts[g], activeGroupTab === g),
+            })),
+        ];
+    });
+
+
+    export const useDataToRender = (
+        groupBy: GroupableField | 'none',
+        activeGroupTab: string,
+    ) => useDataDemoStore(state => {
+        const items = state.items;
+        if (groupBy === 'none') {
+            return items;
+        }
+        if (activeGroupTab === 'all') {
+            return items;
+        }
+        return items.filter((item) => String(item[groupBy as GroupableField]) === activeGroupTab);
+    });
+
+
+    export const useSelectedItem = (itemId?: string) => {
+        if (!itemId) return null;
+        return (mockDataItems.find(item => item.id === itemId) as GenericItem) ?? null;
+    };
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 522

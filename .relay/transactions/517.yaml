@@ -1,0 +1,787 @@
+uuid: 4f141443-3e11-46bb-896f-c93d98be7e57
+projectId: jeli-app-shell
+createdAt: '2025-10-21T04:00:41.676Z'
+gitCommitMsg: >-
+  feat(dynamic-view): enhance config schema and field renderer
+
+  This commit implements Part 1 of the dynamic view refactor. The core
+  configuration schema in `types.ts` has been significantly enhanced to support
+  more descriptive and flexible UI definitions. This includes: - Granular layout
+  definitions for `CardViewConfig`. - Responsive class support in
+  `ListViewConfig`. - `indicatorColorMap` in `BadgeFieldDefinition` for
+  rendering style variants. - A `render` function property on
+  `BaseFieldDefinition` for fully custom components.
+
+  A new, powerful `FieldRenderer` component is introduced. It centralizes all
+  data rendering logic, replacing the old `DataItemParts` component. It
+  leverages the enhanced config to correctly display various field types,
+  including avatars, badges (and indicators), progress bars, dates, tags, and
+  metrics, with support for options like `compact` mode and custom classes. This
+  lays the foundational groundwork for refactoring all view components to be
+  dynamically driven while restoring UI fidelity.
+promptSummary: >-
+  The user requested to execute Part 1 of a multi-part plan to refactor a data
+  demonstration feature into a generic, config-driven view engine. This involved
+  enhancing the core type definitions and implementing a flexible
+  `FieldRenderer` component.
+reasoning:
+  - >-
+    Of course. It appears the initial refactor established the new architecture
+    but missed some of the crucial details that made the original UI feel
+    polished. Let's execute Part 1 of the plan with precision to build a solid
+    foundation.
+  - >-
+    The goal of this part is to enhance our core configuration schema
+    (`types.ts`) and create a powerful, centralized `FieldRenderer` component.
+    This will give us the tools we need to restore the UI's fidelity in the
+    subsequent steps.
+  - >-
+    Based on your provided files, it looks like a version of this step was
+    already attempted. I will now verify and apply the correct, enhanced
+    implementation for these core files to ensure we have a stable base to build
+    upon.
+  - '### Part 1, Step 1: Evolve the ViewConfig Schema'
+  - >-
+    First, I'll update `types.ts`. This change makes our configuration schema
+    more expressive. It allows us to define responsive classes for list items,
+    specify different display styles for badges (like the small priority dots),
+    and describe the card layout with much greater precision.
+  - '### Part 1, Step 2: Supercharge the FieldRenderer'
+  - >-
+    Next, I'll implement the new `FieldRenderer`. This component is the heart of
+    the dynamic system. It reads the field definitions from our configuration
+    and intelligently renders the correct UI for any piece of data. This version
+    is significantly more powerful, handling custom render functions, display
+    variations (e.g., badge vs. indicator dot), and different avatar styles,
+    effectively replacing all the logic from the old, hardcoded
+    `DataItemParts.tsx` component.
+  - >-
+    With these foundational pieces correctly in place, we are now set up to
+    tackle the view components themselves in Part 2 and restore the UI to its
+    former glory.
+operations:
+  - type: write
+    path: src/features/dynamic-view/types.ts
+    content: >-
+      import type { ReactNode } from 'react';
+
+
+      // --- GENERIC DATA & ITEM ---
+
+      export type GenericItem = Record<string, any> & { id: string };
+
+
+      // --- FIELD DEFINITIONS ---
+
+      // Describes a single piece of data within a GenericItem.
+
+      export type FieldType = 
+        | 'string'
+        | 'longtext'
+        | 'badge'
+        | 'avatar'
+        | 'progress'
+        | 'date'
+        | 'tags'
+        | 'metrics'
+        | 'thumbnail'
+        | 'custom';
+
+      export interface BaseFieldDefinition {
+        id: string; // Corresponds to a key in GenericItem
+        label: string;
+        type: FieldType;
+        // Optional custom render function for ultimate flexibility.
+        render?: (item: GenericItem, options?: Record<string, any>) => ReactNode;
+      }
+
+
+      export interface BadgeFieldDefinition extends BaseFieldDefinition {
+        type: 'badge';
+        colorMap?: Record<string, string>; // e.g., { 'active': 'bg-green-500', 'pending': 'bg-yellow-500' }
+        indicatorColorMap?: Record<string, string>; // e.g., { 'critical': 'bg-red-500' }
+      }
+
+
+      // Add other specific field types if they need unique properties
+
+      // For now, most can be handled by the base definition.
+
+
+      export type FieldDefinition = BaseFieldDefinition | BadgeFieldDefinition;
+
+
+
+      // --- VIEW CONFIGURATION ---
+
+      // The master configuration object that defines the entire view.
+
+
+      export type ViewMode = 'list' | 'cards' | 'grid' | 'table' | 'kanban' |
+      'calendar';
+
+
+      export interface ListViewConfig {
+        iconField: string;
+        titleField: string;
+        metaFields: Array<{
+          fieldId: string;
+          className?: string;
+        }>;
+      }
+
+
+      export interface CardViewConfig {
+        thumbnailField: string;
+        titleField: string;
+        descriptionField: string;
+        headerFields: string[];
+        // Specific fields to recreate the original layout
+        statusField: string;
+        categoryField: string;
+        tagsField: string;
+        progressField: string;
+        assigneeField: string;
+        metricsField: string;
+        dateField: string;
+      }
+
+
+      export interface TableColumnConfig {
+        fieldId: string;
+        label: string;
+        isSortable: boolean;
+      }
+
+
+      export interface TableViewConfig {
+        columns: TableColumnConfig[];
+      }
+
+
+      export interface KanbanViewConfig {
+        groupByField: string; // Field ID to group by (e.g., 'status')
+        cardFields: {
+          titleField: string;
+          descriptionField: string;
+          priorityField: string;
+          tagsField: string;
+          // footer fields
+          dateField: string;
+          metricsField: string; // for comments/attachments
+          assigneeField: string;
+        };
+      }
+
+
+      export interface CalendarViewConfig {
+        dateField: string;
+        titleField: string;
+        displayFields: string[];
+        colorByField?: string; // Field ID to color events by (e.g., 'priority', 'status')
+      }
+
+
+      export interface ControlOption {
+        id: string;
+        label: string;
+      }
+
+
+      export interface FilterableFieldConfig {
+        id: string; // fieldId
+        label: string;
+        options: ControlOption[];
+      }
+
+
+      export interface ViewConfig {
+        fields: FieldDefinition[];
+        sortableFields: ControlOption[];
+        groupableFields: ControlOption[];
+        filterableFields: FilterableFieldConfig[];
+        
+        // Layouts for each view mode
+        listView: ListViewConfig;
+        cardView: CardViewConfig;
+        tableView: TableViewConfig;
+        kanbanView: KanbanViewConfig;
+        calendarView: CalendarViewConfig;
+        detailView: DetailViewConfig;
+      }
+
+
+      // --- DETAIL VIEW ---
+
+      export interface DetailViewSection {
+        title: string;
+        fields: string[];
+      }
+
+
+      export interface DetailViewConfig {
+        header: {
+          thumbnailField: string;
+          titleField: string;
+          descriptionField: string;
+          badgeFields: string[];
+          progressField: string;
+        };
+        body: {
+          sections: DetailViewSection[];
+        };
+      }
+
+
+      // --- GENERIC CONTROL & DATA TYPES ---
+
+
+      export type Status = 'active' | 'pending' | 'completed' | 'archived';
+
+      export type Priority = 'low' | 'medium' | 'high' | 'critical';
+
+
+      export interface FilterConfig {
+        searchTerm: string;
+        [key: string]: any; // For dynamic filter keys like status, priority
+      }
+
+
+      export interface SortConfig {
+        key: string;
+        direction: 'asc' | 'desc';
+      }
+
+
+      export type GroupableField = 'status' | 'priority' | 'category';
+
+
+      export type CalendarDateProp = 'dueDate' | 'createdAt' | 'updatedAt';
+
+      export type CalendarDisplayProp = 'priority' | 'assignee' | 'status';
+
+      export type CalendarColorProp = 'priority' | 'status' | 'category' |
+      'none';
+    patchStrategy: replace
+  - type: write
+    path: src/features/dynamic-view/components/shared/FieldRenderer.tsx
+    content: >-
+      import { useDynamicView } from '../../DynamicViewContext';
+
+      import type { GenericItem, BadgeFieldDefinition } from '../../types';
+
+      import { cn, getNestedValue } from '@/lib/utils';
+
+      import { Avatar, AvatarFallback, AvatarImage } from
+      '@/components/ui/avatar';
+
+      import { Badge } from '@/components/ui/badge';
+
+      import { Clock, Eye, Heart, Share } from 'lucide-react';
+
+
+      interface FieldRendererProps {
+        item: GenericItem;
+        fieldId: string;
+        className?: string;
+        options?: Record<string, any>; // For extra props like 'compact' for avatar
+      }
+
+
+      export function FieldRenderer({ item, fieldId, className, options }:
+      FieldRendererProps) {
+        const { getFieldDef } = useDynamicView();
+        const fieldDef = getFieldDef(fieldId);
+        const value = getNestedValue(item, fieldId);
+
+        // Custom render function takes precedence
+        if (fieldDef?.render) {
+          return <>{fieldDef.render(item, options)}</>;
+        }
+
+        if (!fieldDef) {
+          console.warn(`[FieldRenderer] No field definition found for ID: ${fieldId}`);
+          return <span className="text-red-500">?</span>;
+        }
+
+        if (value === null || typeof value === 'undefined') {
+          return null; // Or some placeholder like 'N/A'
+        }
+        
+        switch (fieldDef.type) {
+          case 'string':
+          case 'longtext':
+            return <span className={cn("truncate", className)}>{String(value)}</span>;
+          
+          case 'thumbnail':
+            return <span className={cn("text-xl", className)}>{String(value)}</span>;
+
+          case 'badge': {
+            const { colorMap, indicatorColorMap } = fieldDef as BadgeFieldDefinition;
+            
+            if (options?.displayAs === 'indicator' && indicatorColorMap) {
+              const indicatorColorClass = indicatorColorMap[String(value)] || 'bg-muted-foreground';
+              return (
+                <div className={cn("w-3 h-3 rounded-full", indicatorColorClass, className)} />
+              );
+            }
+
+            const colorClass = colorMap?.[String(value)] || '';
+            return (
+              <Badge variant="outline" className={cn("font-medium capitalize", colorClass, className)}>
+                {String(value)}
+              </Badge>
+            );
+          }
+          
+          case 'avatar': {
+            const { compact = false, avatarClassName = "w-8 h-8" } = options || {};
+            const avatarUrl = getNestedValue(value, 'avatar');
+            const name = getNestedValue(value, 'name');
+            const email = getNestedValue(value, 'email');
+            const fallback = name?.split(' ').map((n: string) => n[0]).join('') || '?';
+
+            const avatarEl = (
+              <Avatar className={cn("border-2 border-transparent group-hover:border-primary/50 transition-colors", avatarClassName)}>
+                <AvatarImage src={avatarUrl} alt={name} />
+                <AvatarFallback>{fallback}</AvatarFallback>
+              </Avatar>
+            );
+            if (compact) return avatarEl;
+
+            return (
+              <div className={cn("flex items-center gap-2 group", className)}>
+                {avatarEl}
+                <div className="min-w-0 hidden sm:block">
+                  <p className="font-medium text-sm truncate">{name}</p>
+                  <p className="text-xs text-muted-foreground truncate">{email}</p>
+                </div>
+              </div>
+            );
+          }
+          
+          case 'progress': {
+            const { showPercentage = false } = options || {};
+            const bar = (
+              <div className="w-full bg-muted rounded-full h-2.5">
+                <div
+                  className="bg-gradient-to-r from-primary to-primary/80 h-2.5 rounded-full transition-all duration-500"
+                  style={{ width: `${value}%` }}
+                />
+              </div>
+            );
+            if (!showPercentage) return bar;
+            
+            return (
+              <div className="flex items-center gap-3">
+                <div className="flex-1 min-w-0">{bar}</div>
+                <span className="text-sm font-medium text-muted-foreground">{value}%</span>
+              </div>
+            );
+          }
+
+          case 'date':
+            return (
+              <div className={cn("flex items-center gap-1.5 text-sm", className)}>
+                <Clock className="w-4 h-4" />
+                <span>{new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+              </div>
+            );
+
+          case 'tags': {
+            const MAX_TAGS = 2;
+            const tags = Array.isArray(value) ? value : [];
+            const remainingTags = tags.length - MAX_TAGS;
+            return (
+              <div className={cn("flex items-center gap-1.5 flex-wrap", className)}>
+                {tags.slice(0, MAX_TAGS).map(tag => (
+                  <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
+                ))}
+                {remainingTags > 0 && (
+                  <Badge variant="outline" className="text-xs">+{remainingTags}</Badge>
+                )}
+              </div>
+            );
+          }
+
+          case 'metrics': {
+            const views = getNestedValue(value, 'views') || 0;
+            const likes = getNestedValue(value, 'likes') || 0;
+            const shares = getNestedValue(value, 'shares') || 0;
+            return (
+              <div className={cn("flex items-center gap-3 text-sm", className)}>
+                <div className="flex items-center gap-1"><Eye className="w-4 h-4" /> {views}</div>
+                <div className="flex items-center gap-1"><Heart className="w-4 h-4" /> {likes}</div>
+                <div className="flex items-center gap-1"><Share className="w-4 h-4" /> {shares}</div>
+              </div>
+            );
+          }
+            
+          default:
+            return <>{String(value)}</>;
+        }
+      }
+    patchStrategy: replace
+snapshot:
+  src/features/dynamic-view/types.ts: >-
+    import type { ReactNode } from 'react';
+
+
+    // --- GENERIC DATA & ITEM ---
+
+    export type GenericItem = Record<string, any> & { id: string };
+
+
+    // --- FIELD DEFINITIONS ---
+
+    // Describes a single piece of data within a GenericItem.
+
+    export type FieldType = 
+      | 'string'
+      | 'longtext'
+      | 'badge'
+      | 'avatar'
+      | 'progress'
+      | 'date'
+      | 'tags'
+      | 'metrics'
+      | 'thumbnail'
+      | 'custom';
+
+    export interface BaseFieldDefinition {
+      id: string; // Corresponds to a key in GenericItem
+      label: string;
+      type: FieldType;
+      // Optional custom render function for ultimate flexibility.
+      render?: (item: GenericItem, options?: Record<string, any>) => ReactNode;
+    }
+
+
+    export interface BadgeFieldDefinition extends BaseFieldDefinition {
+      type: 'badge';
+      colorMap?: Record<string, string>; // e.g., { 'active': 'bg-green-500', 'pending': 'bg-yellow-500' }
+      indicatorColorMap?: Record<string, string>; // e.g., { 'critical': 'bg-red-500' }
+    }
+
+
+    // Add other specific field types if they need unique properties
+
+    // For now, most can be handled by the base definition.
+
+
+    export type FieldDefinition = BaseFieldDefinition | BadgeFieldDefinition;
+
+
+
+    // --- VIEW CONFIGURATION ---
+
+    // The master configuration object that defines the entire view.
+
+
+    export type ViewMode = 'list' | 'cards' | 'grid' | 'table' | 'kanban' |
+    'calendar';
+
+
+    export interface ListViewConfig {
+      iconField: string;
+      titleField: string;
+      metaFields: Array<{
+        fieldId: string;
+        className?: string;
+      }>;
+    }
+
+
+    export interface CardViewConfig {
+      thumbnailField: string;
+      titleField: string;
+      descriptionField: string;
+      headerFields: string[];
+      // Specific fields to recreate the original layout
+      statusField: string;
+      categoryField: string;
+      tagsField: string;
+      progressField: string;
+      assigneeField: string;
+      metricsField: string;
+      dateField: string;
+    }
+
+
+    export interface TableColumnConfig {
+      fieldId: string;
+      label: string;
+      isSortable: boolean;
+    }
+
+
+    export interface TableViewConfig {
+      columns: TableColumnConfig[];
+    }
+
+
+    export interface KanbanViewConfig {
+      groupByField: string; // Field ID to group by (e.g., 'status')
+      cardFields: {
+        titleField: string;
+        descriptionField: string;
+        priorityField: string;
+        tagsField: string;
+        // footer fields
+        dateField: string;
+        metricsField: string; // for comments/attachments
+        assigneeField: string;
+      };
+    }
+
+
+    export interface CalendarViewConfig {
+      dateField: string;
+      titleField: string;
+      displayFields: string[];
+      colorByField?: string; // Field ID to color events by (e.g., 'priority', 'status')
+    }
+
+
+    export interface ControlOption {
+      id: string;
+      label: string;
+    }
+
+
+    export interface FilterableFieldConfig {
+      id: string; // fieldId
+      label: string;
+      options: ControlOption[];
+    }
+
+
+    export interface ViewConfig {
+      fields: FieldDefinition[];
+      sortableFields: ControlOption[];
+      groupableFields: ControlOption[];
+      filterableFields: FilterableFieldConfig[];
+      
+      // Layouts for each view mode
+      listView: ListViewConfig;
+      cardView: CardViewConfig;
+      tableView: TableViewConfig;
+      kanbanView: KanbanViewConfig;
+      calendarView: CalendarViewConfig;
+      detailView: DetailViewConfig;
+    }
+
+
+    // --- DETAIL VIEW ---
+
+    export interface DetailViewSection {
+      title: string;
+      fields: string[];
+    }
+
+
+    export interface DetailViewConfig {
+      header: {
+        thumbnailField: string;
+        titleField: string;
+        descriptionField: string;
+        badgeFields: string[];
+        progressField: string;
+      };
+      body: {
+        sections: DetailViewSection[];
+      };
+    }
+
+
+    // --- GENERIC CONTROL & DATA TYPES ---
+
+
+    export type Status = 'active' | 'pending' | 'completed' | 'archived';
+
+    export type Priority = 'low' | 'medium' | 'high' | 'critical';
+
+
+    export interface FilterConfig {
+      searchTerm: string;
+      [key: string]: any; // For dynamic filter keys like status, priority
+    }
+
+
+    export interface SortConfig {
+      key: string;
+      direction: 'asc' | 'desc';
+    }
+
+
+    export type GroupableField = 'status' | 'priority' | 'category';
+
+
+    export type CalendarDateProp = 'dueDate' | 'createdAt' | 'updatedAt';
+
+    export type CalendarDisplayProp = 'priority' | 'assignee' | 'status';
+
+    export type CalendarColorProp = 'priority' | 'status' | 'category' | 'none';
+  src/features/dynamic-view/components/shared/FieldRenderer.tsx: >-
+    import { useDynamicView } from '../../DynamicViewContext';
+
+    import type { GenericItem, BadgeFieldDefinition } from '../../types';
+
+    import { cn, getNestedValue } from '@/lib/utils';
+
+    import { Avatar, AvatarFallback, AvatarImage } from
+    '@/components/ui/avatar';
+
+    import { Badge } from '@/components/ui/badge';
+
+    import { Clock, Eye, Heart, Share } from 'lucide-react';
+
+
+    interface FieldRendererProps {
+      item: GenericItem;
+      fieldId: string;
+      className?: string;
+      options?: Record<string, any>; // For extra props like 'compact' for avatar
+    }
+
+
+    export function FieldRenderer({ item, fieldId, className, options }:
+    FieldRendererProps) {
+      const { getFieldDef } = useDynamicView();
+      const fieldDef = getFieldDef(fieldId);
+      const value = getNestedValue(item, fieldId);
+
+      // Custom render function takes precedence
+      if (fieldDef?.render) {
+        return <>{fieldDef.render(item, options)}</>;
+      }
+
+      if (!fieldDef) {
+        console.warn(`[FieldRenderer] No field definition found for ID: ${fieldId}`);
+        return <span className="text-red-500">?</span>;
+      }
+
+      if (value === null || typeof value === 'undefined') {
+        return null; // Or some placeholder like 'N/A'
+      }
+      
+      switch (fieldDef.type) {
+        case 'string':
+        case 'longtext':
+          return <span className={cn("truncate", className)}>{String(value)}</span>;
+        
+        case 'thumbnail':
+          return <span className={cn("text-xl", className)}>{String(value)}</span>;
+
+        case 'badge': {
+          const { colorMap, indicatorColorMap } = fieldDef as BadgeFieldDefinition;
+          
+          if (options?.displayAs === 'indicator' && indicatorColorMap) {
+            const indicatorColorClass = indicatorColorMap[String(value)] || 'bg-muted-foreground';
+            return (
+              <div className={cn("w-3 h-3 rounded-full", indicatorColorClass, className)} />
+            );
+          }
+
+          const colorClass = colorMap?.[String(value)] || '';
+          return (
+            <Badge variant="outline" className={cn("font-medium capitalize", colorClass, className)}>
+              {String(value)}
+            </Badge>
+          );
+        }
+        
+        case 'avatar': {
+          const { compact = false, avatarClassName = "w-8 h-8" } = options || {};
+          const avatarUrl = getNestedValue(value, 'avatar');
+          const name = getNestedValue(value, 'name');
+          const email = getNestedValue(value, 'email');
+          const fallback = name?.split(' ').map((n: string) => n[0]).join('') || '?';
+
+          const avatarEl = (
+            <Avatar className={cn("border-2 border-transparent group-hover:border-primary/50 transition-colors", avatarClassName)}>
+              <AvatarImage src={avatarUrl} alt={name} />
+              <AvatarFallback>{fallback}</AvatarFallback>
+            </Avatar>
+          );
+          if (compact) return avatarEl;
+
+          return (
+            <div className={cn("flex items-center gap-2 group", className)}>
+              {avatarEl}
+              <div className="min-w-0 hidden sm:block">
+                <p className="font-medium text-sm truncate">{name}</p>
+                <p className="text-xs text-muted-foreground truncate">{email}</p>
+              </div>
+            </div>
+          );
+        }
+        
+        case 'progress': {
+          const { showPercentage = false } = options || {};
+          const bar = (
+            <div className="w-full bg-muted rounded-full h-2.5">
+              <div
+                className="bg-gradient-to-r from-primary to-primary/80 h-2.5 rounded-full transition-all duration-500"
+                style={{ width: `${value}%` }}
+              />
+            </div>
+          );
+          if (!showPercentage) return bar;
+          
+          return (
+            <div className="flex items-center gap-3">
+              <div className="flex-1 min-w-0">{bar}</div>
+              <span className="text-sm font-medium text-muted-foreground">{value}%</span>
+            </div>
+          );
+        }
+
+        case 'date':
+          return (
+            <div className={cn("flex items-center gap-1.5 text-sm", className)}>
+              <Clock className="w-4 h-4" />
+              <span>{new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+            </div>
+          );
+
+        case 'tags': {
+          const MAX_TAGS = 2;
+          const tags = Array.isArray(value) ? value : [];
+          const remainingTags = tags.length - MAX_TAGS;
+          return (
+            <div className={cn("flex items-center gap-1.5 flex-wrap", className)}>
+              {tags.slice(0, MAX_TAGS).map(tag => (
+                <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
+              ))}
+              {remainingTags > 0 && (
+                <Badge variant="outline" className="text-xs">+{remainingTags}</Badge>
+              )}
+            </div>
+          );
+        }
+
+        case 'metrics': {
+          const views = getNestedValue(value, 'views') || 0;
+          const likes = getNestedValue(value, 'likes') || 0;
+          const shares = getNestedValue(value, 'shares') || 0;
+          return (
+            <div className={cn("flex items-center gap-3 text-sm", className)}>
+              <div className="flex items-center gap-1"><Eye className="w-4 h-4" /> {views}</div>
+              <div className="flex items-center gap-1"><Heart className="w-4 h-4" /> {likes}</div>
+              <div className="flex items-center gap-1"><Share className="w-4 h-4" /> {shares}</div>
+            </div>
+          );
+        }
+          
+        default:
+          return <>{String(value)}</>;
+      }
+    }
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 517

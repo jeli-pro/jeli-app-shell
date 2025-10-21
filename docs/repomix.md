@@ -219,186 +219,6 @@ export default defineConfig({
 })
 ```
 
-## File: src/features/dynamic-view/components/shared/AddDataItemCta.tsx
-```typescript
-import { Plus } from 'lucide-react'
-import { cn } from '@/lib/utils'
-
-interface AddDataItemCtaProps {
-  viewMode: 'list' | 'cards' | 'grid' | 'table'
-  colSpan?: number
-}
-
-export function AddDataItemCta({ viewMode, colSpan }: AddDataItemCtaProps) {
-  const isTable = viewMode === 'table'
-  const isList = viewMode === 'list'
-  const isCard = viewMode === 'cards' || viewMode === 'grid'
-
-  const content = (
-    <div
-      className={cn(
-        "flex items-center justify-center text-center w-full h-full p-6 gap-6",
-        isCard && "flex-col min-h-[300px]",
-        isList && "flex-row",
-        isTable && "flex-row py-8",
-      )}
-    >
-      <div className="flex-shrink-0">
-        <div className="w-16 h-16 bg-primary/10 border-2 border-dashed border-primary/30 rounded-full flex items-center justify-center text-primary">
-          <Plus className="w-8 h-8" />
-        </div>
-      </div>
-      <div className={cn("flex-1", isCard && "text-center", isList && "text-left", isTable && "text-left")}>
-        <h3 className="font-semibold text-lg mb-1 text-primary">
-          Showcase Your Own Data
-        </h3>
-        <p className="text-muted-foreground text-sm">
-          Click here to add a new item and see how it looks across all views in the demo.
-        </p>
-      </div>
-    </div>
-  )
-
-  if (isTable) {
-    return (
-      <tr className="group transition-colors duration-200 hover:bg-accent/20 cursor-pointer">
-        <td colSpan={colSpan}>
-          {content}
-        </td>
-      </tr>
-    )
-  }
-
-  return (
-    <div
-      className={cn(
-        "group relative overflow-hidden rounded-3xl border-2 border-dashed border-border bg-transparent transition-all duration-300 cursor-pointer",
-        "hover:bg-accent/50 hover:border-primary/30",
-        isList && "rounded-2xl"
-      )}
-    >
-      {content}
-    </div>
-  )
-}
-```
-
-## File: src/features/dynamic-view/components/shared/DetailPanel.tsx
-```typescript
-import React, { useRef } from 'react'
-import {
-  Clock, 
-  Tag,
-  User,
-  BarChart3,
-} from 'lucide-react'
-import type { GenericItem, DetailViewConfig } from '../../types'
-import { useStaggeredAnimation } from '@/hooks/useStaggeredAnimation.motion.hook'
-import { FieldRenderer } from '@/features/dynamic-view/components/shared/FieldRenderer'
-import { getNestedValue } from '@/lib/utils'
-
-interface DetailPanelProps {
-  item: GenericItem
-  config: DetailViewConfig
-}
-
-const SECTION_ICONS: Record<string, React.ElementType> = {
-  "Assigned to": User,
-  "Engagement Metrics": BarChart3,
-  "Tags": Tag,
-  "Timeline": Clock,
-};
-
-export function DetailPanel({ item, config }: DetailPanelProps) {
-  const contentRef = useRef<HTMLDivElement>(null)
-  useStaggeredAnimation(contentRef, [item]);
-
-  if (!item) {
-    return null
-  }
-  
-  const { header, body } = config;
-
-  return (
-    <div ref={contentRef} className="h-full flex flex-col">
-      {/* Header */}
-      <div className="p-6 border-b border-border/50 bg-gradient-to-r from-card/50 to-card/30 backdrop-blur-sm">
-        <div className="flex items-start gap-4 mb-4">
-          <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-primary/10 rounded-2xl flex items-center justify-center text-3xl flex-shrink-0">
-            <FieldRenderer item={item} fieldId={header.thumbnailField} />
-          </div>
-          <div className="flex-1 min-w-0">
-            <h1 className="text-2xl font-bold mb-2 leading-tight">
-              <FieldRenderer item={item} fieldId={header.titleField} />
-            </h1>
-            <p className="text-muted-foreground">
-              <FieldRenderer item={item} fieldId={header.descriptionField} />
-            </p>
-          </div>
-        </div>
-
-        {/* Status badges */}
-        <div className="flex items-center gap-2 flex-wrap mb-4">
-          {header.badgeFields.map(fieldId => (
-            <FieldRenderer key={fieldId} item={item} fieldId={fieldId} />
-          ))}
-        </div>
-
-        {/* Progress */}
-        <FieldRenderer item={item} fieldId={header.progressField} options={{ showPercentage: true }} />
-      </div>
-
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="p-6 space-y-6">
-          {body.sections.map(section => {
-            const IconComponent = SECTION_ICONS[section.title];
-            // Render section only if at least one of its fields has a value
-            const hasContent = section.fields.some(fieldId => {
-              const value = getNestedValue(item, fieldId);
-              return value !== null && typeof value !== 'undefined';
-            });
-
-            if (!hasContent) return null;
-
-            return (
-              <div key={section.title} className="bg-card/30 rounded-2xl p-4 border border-border/30">
-                <div className="flex items-center gap-1 mb-3">
-                  {IconComponent && <IconComponent className="w-4 h-4 text-muted-foreground" />}
-                  <h3 className="font-semibold text-sm">{section.title}</h3>
-                </div>
-                <div className="space-y-3">
-                  {section.fields.map(fieldId => (
-                    <FieldRenderer key={fieldId} item={item} fieldId={fieldId} options={{ avatarClassName: "w-12 h-12" }} />
-                  ))}
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      </div>
-    </div>
-  )
-}
-```
-
-## File: src/features/dynamic-view/components/shared/EmptyState.tsx
-```typescript
-import { Eye } from 'lucide-react'
-
-export function EmptyState() {
-  return (
-    <div className="flex flex-col items-center justify-center py-20 text-center">
-      <div className="w-24 h-24 bg-muted rounded-full flex items-center justify-center mb-6">
-        <Eye className="w-10 h-10 text-muted-foreground" />
-      </div>
-      <h3 className="text-lg font-semibold mb-2">No items found</h3>
-      <p className="text-muted-foreground">Try adjusting your search criteria</p>
-    </div>
-  )
-}
-```
-
 ## File: src/features/dynamic-view/DynamicViewContext.tsx
 ```typescript
 import { createContext, useContext, useMemo, type ReactNode } from 'react';
@@ -447,190 +267,6 @@ export function useDynamicView() {
   }
   return context;
 }
-```
-
-## File: src/pages/DataDemo/DataDemo.config.tsx
-```typescript
-import { capitalize } from "@/lib/utils";
-import { FieldRenderer } from "@/features/dynamic-view/components/shared/FieldRenderer";
-import type { ViewConfig, GenericItem } from "@/features/dynamic-view/types";
-
-export const dataDemoViewConfig: ViewConfig = {
-  // 1. Field Definitions
-  fields: [
-    { id: "id", label: "ID", type: "string" },
-    { id: "title", label: "Title", type: "string" },
-    { id: "description", label: "Description", type: "longtext" },
-    { id: "thumbnail", label: "Thumbnail", type: "thumbnail" },
-    { id: "category", label: "Category", type: "badge" },
-    {
-      id: "status",
-      label: "Status",
-      type: "badge",
-      colorMap: {
-        active: "bg-sky-500/10 text-sky-600 border-sky-500/20",
-        pending: "bg-amber-500/10 text-amber-600 border-amber-500/20",
-        completed: "bg-emerald-600/10 text-emerald-700 border-emerald-600/20",
-        archived: "bg-zinc-500/10 text-zinc-600 border-zinc-500/20",
-      },
-    },
-    {
-      id: "priority",
-      label: "Priority",
-      type: "badge",
-      colorMap: {
-        critical: "bg-red-600/10 text-red-700 border-red-600/20",
-        high: "bg-orange-500/10 text-orange-600 border-orange-500/20",
-        medium: "bg-blue-500/10 text-blue-600 border-blue-500/20",
-        low: "bg-green-500/10 text-green-600 border-green-500/20",
-      },
-      indicatorColorMap: {
-        critical: "bg-red-500",
-        high: "bg-orange-500",
-        medium: "bg-blue-500",
-        low: "bg-green-500",
-      }
-    },
-    { id: "assignee", label: "Assignee", type: "avatar" },
-    { id: "tags", label: "Tags", type: "tags" },
-    { id: "metrics", label: "Engagement", type: "metrics" },
-    { id: "metrics.completion", label: "Progress", type: "progress" },
-    { id: "dueDate", label: "Due Date", type: "date" },
-    { id: "createdAt", label: "Created At", type: "date" },
-    { id: "updatedAt", label: "Last Updated", type: "date" },
-    // A custom field to replicate the composite "Project" column in the table view
-    {
-      id: "project_details",
-      label: "Project",
-      type: "custom",
-      render: (item: GenericItem) => (
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-gradient-to-br from-primary/20 to-primary/10 rounded-lg flex items-center justify-center text-lg flex-shrink-0">
-            <FieldRenderer item={item} fieldId="thumbnail" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <h4 className="font-medium group-hover:text-primary transition-colors truncate">
-              <FieldRenderer item={item} fieldId="title" />
-            </h4>
-            <p className="text-sm text-muted-foreground truncate">
-              <FieldRenderer item={item} fieldId="category" />
-            </p>
-          </div>
-        </div>
-      ),
-    },
-  ],
-  // 2. Control Definitions
-  sortableFields: [
-    { id: "updatedAt", label: "Last Updated" },
-    { id: "title", label: "Title" },
-    { id: "status", label: "Status" },
-    { id: "priority", label: "Priority" },
-    { id: "metrics.completion", label: "Progress" },
-  ],
-  groupableFields: [
-    { id: "none", label: "None" },
-    { id: "status", label: "Status" },
-    { id: "priority", label: "Priority" },
-    { id: "category", label: "Category" },
-  ],
-  filterableFields: [
-    {
-      id: "status",
-      label: "Status",
-      options: [
-        { id: "active", label: "Active" },
-        { id: "pending", label: "Pending" },
-        { id: "completed", label: "Completed" },
-        { id: "archived", label: "Archived" },
-      ],
-    },
-    {
-      id: "priority",
-      label: "Priority",
-      options: [
-        { id: "critical", label: "Critical" },
-        { id: "high", label: "High" },
-        { id: "medium", label: "Medium" },
-        { id: "low", label: "Low" },
-      ],
-    },
-  ],
-  // 3. View Layouts
-  listView: {
-    iconField: "thumbnail",
-    titleField: "title",
-    metaFields: [
-      { fieldId: "status", className: "hidden sm:flex" },
-      { fieldId: "tags", className: "hidden lg:flex" },
-      { fieldId: "updatedAt", className: "hidden md:flex" },
-      { fieldId: "assignee" },
-      { fieldId: "priority", className: "hidden xs:flex" },
-    ],
-  },
-  cardView: {
-    thumbnailField: "thumbnail",
-    titleField: "title",
-    descriptionField: "description",
-    headerFields: ["priority"],
-    statusField: "status",
-    categoryField: "category",
-    tagsField: "tags",
-    progressField: "metrics.completion",
-    assigneeField: "assignee",
-    metricsField: "metrics",
-    dateField: "updatedAt",
-  },
-  tableView: {
-    columns: [
-      { fieldId: "project_details", label: "Project", isSortable: true },
-      { fieldId: "status", label: "Status", isSortable: true },
-      { fieldId: "priority", label: "Priority", isSortable: true },
-      { fieldId: "assignee", label: "Assignee", isSortable: true },
-      { fieldId: "metrics.completion", label: "Progress", isSortable: true },
-      { fieldId: "metrics", label: "Engagement", isSortable: true },
-      { fieldId: "updatedAt", label: "Last Updated", isSortable: true },
-    ],
-  },
-  kanbanView: {
-    groupByField: "status",
-    cardFields: {
-      titleField: "title",
-      descriptionField: "description",
-      priorityField: "priority",
-      tagsField: "tags",
-      dateField: "dueDate",
-      metricsField: "metrics",
-      assigneeField: "assignee",
-    },
-  },
-  calendarView: {
-    dateField: "dueDate",
-    titleField: "title",
-    displayFields: ["tags", "priority", "assignee"],
-    colorByField: "priority",
-  },
-  detailView: {
-    header: {
-      thumbnailField: "thumbnail",
-      titleField: "title",
-      descriptionField: "description",
-      badgeFields: ["status", "priority", "category"],
-      progressField: "metrics.completion",
-    },
-    body: {
-      sections: [
-        { title: "Assigned to", fields: ["assignee"] },
-        { title: "Engagement Metrics", fields: ["metrics"] },
-        { title: "Tags", fields: ["tags"] },
-        {
-          title: "Timeline",
-          fields: ["createdAt", "updatedAt", "dueDate"],
-        },
-      ],
-    },
-  },
-};
 ```
 
 ## File: index.html
@@ -841,6 +477,785 @@ export default {
   },
   "include": ["vite.config.ts"]
 }
+```
+
+## File: src/features/dynamic-view/components/controls/ViewModeSelector.tsx
+```typescript
+import { useEffect, useRef, useState, useCallback } from 'react'
+import { gsap } from 'gsap'
+import { cn } from '@/lib/utils'
+import { List, Grid3X3, LayoutGrid, Table, LayoutDashboard, CalendarDays } from 'lucide-react'
+import type { ViewMode } from '../../types'
+import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
+
+const viewModes = [
+  { id: 'list' as ViewMode, label: 'List', icon: List, description: 'Compact list with details' },
+  { id: 'cards' as ViewMode, label: 'Cards', icon: LayoutGrid, description: 'Rich card layout' },
+  { id: 'kanban' as ViewMode, label: 'Kanban', icon: LayoutDashboard, description: 'Interactive Kanban board' },
+  { id: 'calendar' as ViewMode, label: 'Calendar', icon: CalendarDays, description: 'Interactive calendar view' },
+  { id: 'grid' as ViewMode, label: 'Grid', icon: Grid3X3, description: 'Masonry grid view' },
+  { id: 'table' as ViewMode, label: 'Table', icon: Table, description: 'Structured data table' }
+]
+
+export function ViewModeSelector() {
+  const { viewMode, setViewMode } = useAppViewManager();
+  const indicatorRef = useRef<HTMLDivElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [isExpanded, setIsExpanded] = useState(false)
+  const [isTransitioning, setIsTransitioning] = useState(false)
+
+  const updateIndicatorPosition = useCallback((immediate = false) => {
+    if (!indicatorRef.current || !containerRef.current || isTransitioning) return
+
+    const activeButton = containerRef.current.querySelector(`[data-mode="${viewMode}"]`) as HTMLElement
+    if (!activeButton) return
+
+    const containerRect = containerRef.current.getBoundingClientRect()
+    const buttonRect = activeButton.getBoundingClientRect()
+    
+    const left = buttonRect.left - containerRect.left
+    const width = buttonRect.width
+
+    if (immediate) {
+      // Set position immediately without animation for initial load
+      gsap.set(indicatorRef.current, {
+        x: left,
+        width: width
+      })
+    } else {
+      gsap.to(indicatorRef.current, {
+        duration: 0.3,
+        x: left,
+        width: width,
+        ease: "power2.out"
+      })
+    }
+  }, [viewMode, isTransitioning])
+
+  // Initial setup - set position immediately without animation
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      updateIndicatorPosition(true)
+    }, 0)
+    return () => clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // Only run once on mount
+
+  useEffect(() => {
+    if (!isTransitioning) {
+      updateIndicatorPosition()
+    }
+  }, [viewMode, isTransitioning, updateIndicatorPosition])
+
+  const handleMouseEnter = () => {
+    setIsTransitioning(true)
+    setIsExpanded(true)
+    
+    // Wait for expand animation to complete
+    setTimeout(() => {
+      setIsTransitioning(false)
+    }, 500)
+  }
+
+  const handleMouseLeave = () => {
+    setIsTransitioning(true)
+    setIsExpanded(false)
+    
+    // Wait for collapse animation to complete
+    setTimeout(() => {
+      setIsTransitioning(false)
+    }, 500)
+  }
+
+  return (
+    <div 
+      ref={containerRef}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+      className={cn(
+        "relative flex items-center bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-1.5 shadow-lg transition-all duration-500 ease-out",
+        "hover:shadow-xl hover:bg-card/70",
+        isExpanded ? "gap-1" : "gap-0"
+      )}
+    >
+      {/* Animated indicator */}
+      <div
+        ref={indicatorRef}
+        className="absolute inset-y-1.5 bg-gradient-to-r from-primary/20 to-primary/10 border border-primary/20 rounded-xl transition-all duration-300"
+        style={{ left: 0, width: 0 }}
+      />
+      
+      {/* Mode buttons */}
+      {viewModes.map((mode, index) => {
+        const IconComponent = mode.icon
+        const isActive = viewMode === mode.id
+        
+        return (
+          <button
+            key={mode.id}
+            data-mode={mode.id}
+            onClick={() => setViewMode(mode.id)}
+            className={cn(
+              "relative flex items-center justify-center rounded-xl transition-all duration-500 ease-out group overflow-hidden",
+              "hover:bg-accent/20 active:scale-95",
+              isActive && "text-primary",
+              isExpanded ? "gap-3 px-4 py-2.5" : "gap-0 px-3 py-2.5"
+            )}
+            title={mode.description}
+            style={{
+              transitionDelay: isExpanded ? `${index * 50}ms` : `${(viewModes.length - index - 1) * 30}ms`
+            }}
+          >
+            <IconComponent className={cn(
+              "w-5 h-5 transition-all duration-300 flex-shrink-0",
+              isActive && "scale-110",
+              "group-hover:scale-105",
+              isExpanded ? "rotate-0" : "rotate-0"
+            )} />
+            
+            {/* Label with smooth expand/collapse */}
+            <div className={cn(
+              "overflow-hidden transition-all duration-500 ease-out",
+              isExpanded ? "max-w-[80px] opacity-100" : "max-w-0 opacity-0"
+            )}>
+              <span className={cn(
+                "font-medium whitespace-nowrap transition-all duration-300",
+                isActive ? "text-primary" : "text-muted-foreground",
+                "group-hover:text-foreground"
+              )}>
+                {mode.label}
+              </span>
+            </div>
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+```
+
+## File: src/features/dynamic-view/components/shared/AddDataItemCta.tsx
+```typescript
+import { Plus } from 'lucide-react'
+import { cn } from '@/lib/utils'
+
+interface AddDataItemCtaProps {
+  viewMode: 'list' | 'cards' | 'grid' | 'table'
+  colSpan?: number
+}
+
+export function AddDataItemCta({ viewMode, colSpan }: AddDataItemCtaProps) {
+  const isTable = viewMode === 'table'
+  const isList = viewMode === 'list'
+  const isCard = viewMode === 'cards' || viewMode === 'grid'
+
+  const content = (
+    <div
+      className={cn(
+        "flex items-center justify-center text-center w-full h-full p-6 gap-6",
+        isCard && "flex-col min-h-[300px]",
+        isList && "flex-row",
+        isTable && "flex-row py-8",
+      )}
+    >
+      <div className="flex-shrink-0">
+        <div className="w-16 h-16 bg-primary/10 border-2 border-dashed border-primary/30 rounded-full flex items-center justify-center text-primary">
+          <Plus className="w-8 h-8" />
+        </div>
+      </div>
+      <div className={cn("flex-1", isCard && "text-center", isList && "text-left", isTable && "text-left")}>
+        <h3 className="font-semibold text-lg mb-1 text-primary">
+          Showcase Your Own Data
+        </h3>
+        <p className="text-muted-foreground text-sm">
+          Click here to add a new item and see how it looks across all views in the demo.
+        </p>
+      </div>
+    </div>
+  )
+
+  if (isTable) {
+    return (
+      <tr className="group transition-colors duration-200 hover:bg-accent/20 cursor-pointer">
+        <td colSpan={colSpan}>
+          {content}
+        </td>
+      </tr>
+    )
+  }
+
+  return (
+    <div
+      className={cn(
+        "group relative overflow-hidden rounded-3xl border-2 border-dashed border-border bg-transparent transition-all duration-300 cursor-pointer",
+        "hover:bg-accent/50 hover:border-primary/30",
+        isList && "rounded-2xl"
+      )}
+    >
+      {content}
+    </div>
+  )
+}
+```
+
+## File: src/features/dynamic-view/components/shared/DetailPanel.tsx
+```typescript
+import React, { useRef } from 'react'
+import {
+  Clock, 
+  Tag,
+  User,
+  BarChart3,
+} from 'lucide-react'
+import type { GenericItem, DetailViewConfig } from '../../types'
+import { useStaggeredAnimation } from '@/hooks/useStaggeredAnimation.motion.hook'
+import { FieldRenderer } from '@/features/dynamic-view/components/shared/FieldRenderer'
+import { getNestedValue } from '@/lib/utils'
+
+interface DetailPanelProps {
+  item: GenericItem
+  config: DetailViewConfig
+}
+
+const SECTION_ICONS: Record<string, React.ElementType> = {
+  "Assigned to": User,
+  "Engagement Metrics": BarChart3,
+  "Tags": Tag,
+  "Timeline": Clock,
+};
+
+export function DetailPanel({ item, config }: DetailPanelProps) {
+  const contentRef = useRef<HTMLDivElement>(null)
+  useStaggeredAnimation(contentRef, [item]);
+
+  if (!item) {
+    return null
+  }
+  
+  const { header, body } = config;
+
+  return (
+    <div ref={contentRef} className="h-full flex flex-col">
+      {/* Header */}
+      <div className="p-6 border-b border-border/50 bg-gradient-to-r from-card/50 to-card/30 backdrop-blur-sm">
+        <div className="flex items-start gap-4 mb-4">
+          <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-primary/10 rounded-2xl flex items-center justify-center text-3xl flex-shrink-0">
+            <FieldRenderer item={item} fieldId={header.thumbnailField} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-2xl font-bold mb-2 leading-tight">
+              <FieldRenderer item={item} fieldId={header.titleField} />
+            </h1>
+            <p className="text-muted-foreground">
+              <FieldRenderer item={item} fieldId={header.descriptionField} />
+            </p>
+          </div>
+        </div>
+
+        {/* Status badges */}
+        <div className="flex items-center gap-2 flex-wrap mb-4">
+          {header.badgeFields.map(fieldId => (
+            <FieldRenderer key={fieldId} item={item} fieldId={fieldId} />
+          ))}
+        </div>
+
+        {/* Progress */}
+        <FieldRenderer item={item} fieldId={header.progressField} options={{ showPercentage: true }} />
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="p-6 space-y-6">
+          {body.sections.map(section => {
+            const IconComponent = SECTION_ICONS[section.title];
+            // Render section only if at least one of its fields has a value
+            const hasContent = section.fields.some(fieldId => {
+              const value = getNestedValue(item, fieldId);
+              return value !== null && typeof value !== 'undefined';
+            });
+
+            if (!hasContent) return null;
+
+            return (
+              <div key={section.title} className="bg-card/30 rounded-2xl p-4 border border-border/30">
+                <div className="flex items-center gap-1 mb-3">
+                  {IconComponent && <IconComponent className="w-4 h-4 text-muted-foreground" />}
+                  <h3 className="font-semibold text-sm">{section.title}</h3>
+                </div>
+                <div className="space-y-3">
+                  {section.fields.map(fieldId => (
+                    <FieldRenderer key={fieldId} item={item} fieldId={fieldId} options={{ avatarClassName: "w-12 h-12" }} />
+                  ))}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    </div>
+  )
+}
+```
+
+## File: src/features/dynamic-view/components/shared/EmptyState.tsx
+```typescript
+import { Eye } from 'lucide-react'
+
+export function EmptyState() {
+  return (
+    <div className="flex flex-col items-center justify-center py-20 text-center">
+      <div className="w-24 h-24 bg-muted rounded-full flex items-center justify-center mb-6">
+        <Eye className="w-10 h-10 text-muted-foreground" />
+      </div>
+      <h3 className="text-lg font-semibold mb-2">No items found</h3>
+      <p className="text-muted-foreground">Try adjusting your search criteria</p>
+    </div>
+  )
+}
+```
+
+## File: src/features/dynamic-view/components/views/TableView.tsx
+```typescript
+import { useRef, useLayoutEffect, useMemo } from 'react'
+import { gsap } from 'gsap'
+import { cn } from '@/lib/utils'
+import { 
+  ArrowUpDown, 
+  ArrowUp, 
+  ArrowDown,
+  ExternalLink
+} from 'lucide-react'
+import type { GenericItem } from '../../types'
+import { EmptyState } from '../shared/EmptyState'
+import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
+import {
+  useSelectedItem,
+} from '../../../../pages/DataDemo/store/dataDemo.store'
+import { capitalize } from '@/lib/utils'
+import { AddDataItemCta } from '../shared/AddDataItemCta'
+import { useDynamicView } from '../../DynamicViewContext'
+import { FieldRenderer } from '../shared/FieldRenderer'
+
+export function TableView({ data }: { data: GenericItem[] }) {
+  const {
+    sortConfig,
+    setTableSort,
+    groupBy,
+    onItemSelect,
+    itemId,
+  } = useAppViewManager();
+  const { config } = useDynamicView();
+  const { tableView: viewConfig } = config;
+  const selectedItem = useSelectedItem(itemId);
+
+  const tableRef = useRef<HTMLTableElement>(null)
+  const animatedItemsCount = useRef(0)
+
+  useLayoutEffect(() => {
+    if (tableRef.current) {
+      // Only select item rows for animation, not group headers
+      const newItems = Array.from( 
+        tableRef.current.querySelectorAll('tbody tr')
+      ).filter(tr => !(tr as HTMLElement).dataset.groupHeader)
+       .slice(animatedItemsCount.current);
+      gsap.fromTo(newItems,
+        { y: 20, opacity: 0 },
+        {
+          duration: 0.5,
+          y: 0,
+          opacity: 1,
+          stagger: 0.05,
+          ease: "power2.out",
+        },
+      );
+      animatedItemsCount.current = data.length;
+    }
+  }, [data]);
+
+  const SortIcon = ({ field }: { field: string }) => {
+    if (sortConfig?.key !== field) {
+      return <ArrowUpDown className="w-4 h-4 opacity-50" />
+    }
+    if (sortConfig.direction === 'asc') {
+      return <ArrowUp className="w-4 h-4 text-primary" />
+    }
+    if (sortConfig.direction === 'desc') {
+      return <ArrowDown className="w-4 h-4 text-primary" />
+    }
+    return <ArrowUpDown className="w-4 h-4 opacity-50" />
+  }
+
+  const handleSortClick = (field: string) => {
+    setTableSort(field)
+  }
+
+  const groupedData = useMemo(() => {
+    if (groupBy === 'none') return null;
+    return (data as GenericItem[]).reduce((acc, item) => {
+      const groupKey = item[groupBy as 'status' | 'priority' | 'category'] || 'N/A';
+      if (!acc[groupKey]) {
+        acc[groupKey] = [];
+      }
+      acc[groupKey].push(item);
+      return acc;
+    }, {} as Record<string, GenericItem[]>);
+  }, [data, groupBy]);
+
+  if (data.length === 0) {
+    return <EmptyState />
+  }
+
+  return (
+    <div className="relative overflow-hidden rounded-2xl border bg-card/50 backdrop-blur-sm">
+      <div className="overflow-x-auto">
+        <table ref={tableRef} className="w-full">
+          <thead>
+            <tr className="border-b border-border/50 bg-muted/20">
+              {viewConfig.columns.map(col => (
+                <th key={col.fieldId} className="text-left p-4 font-semibold text-sm">
+                  {col.isSortable ? (
+                    <button
+                      onClick={() => handleSortClick(col.fieldId)}
+                      className="flex items-center gap-2 hover:text-primary transition-colors"
+                    >
+                      {col.label}
+                      <SortIcon field={col.fieldId} />
+                    </button>
+                  ) : (
+                    <span>{col.label}</span>
+                  )}
+                </th>
+              ))}
+              <th className="text-center p-4 font-semibold text-sm w-16">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {groupedData
+              ? Object.entries(groupedData).flatMap(([groupName, items]) => [
+                  <tr key={groupName} data-group-header="true" className="sticky top-0 z-10">
+                    <td colSpan={viewConfig.columns.length + 1} className="p-2 bg-muted/50 backdrop-blur-sm">
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-semibold text-sm">{capitalize(groupName)}</h3>
+                        <span className="text-xs px-2 py-0.5 bg-background rounded-full font-medium">{items.length}</span>
+                      </div>
+                    </td>
+                  </tr>,
+                  ...items.map(item => <TableRow key={item.id} item={item} isSelected={selectedItem?.id === item.id} onItemSelect={onItemSelect} />)
+                ])
+              : data.map(item => <TableRow key={item.id} item={item} isSelected={selectedItem?.id === item.id} onItemSelect={onItemSelect} />)
+            }
+            <AddDataItemCta viewMode='table' colSpan={viewConfig.columns.length + 1} />
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
+function TableRow({ item, isSelected, onItemSelect }: { item: GenericItem; isSelected: boolean; onItemSelect: (item: GenericItem) => void }) {
+  const { config } = useDynamicView();
+  return (
+    <tr
+      onClick={() => onItemSelect(item)}
+      className={cn(
+        "group border-b border-border/30 transition-all duration-200 cursor-pointer",
+        "hover:bg-accent/20 hover:border-primary/20",
+        isSelected && "bg-primary/5 border-primary/30"
+      )}
+    >
+      {config.tableView.columns.map(col => (
+        <td key={col.fieldId} className="p-4">
+          <FieldRenderer item={item} fieldId={col.fieldId} options={{ showPercentage: true }} />
+        </td>
+      ))}
+      {/* Actions Column */}
+      <td className="p-4">
+        <button 
+          onClick={(e) => {
+            e.stopPropagation()
+            onItemSelect(item)
+          }}
+          className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-accent transition-colors"
+          title="View details"
+        >
+          <ExternalLink className="w-4 h-4" />
+        </button>
+      </td>
+    </tr>
+  )
+}
+```
+
+## File: src/pages/DataDemo/hooks/useAutoAnimateStats.hook.ts
+```typescript
+import { useEffect, useRef, useCallback } from 'react';
+import { gsap } from 'gsap';
+
+/**
+ * A hook that animates a stats container in and out of view based on scroll direction.
+ * It creates a "sliver app bar" effect for the stats section.
+ * @param scrollContainerRef Ref to the main scrolling element.
+ * @param statsContainerRef Ref to the stats container element to be animated.
+ */
+export function useAutoAnimateStats(
+  scrollContainerRef: React.RefObject<HTMLElement>,
+  statsContainerRef: React.RefObject<HTMLElement>
+) {
+  const lastScrollY = useRef(0);
+  const isHidden = useRef(false);
+  const originalMarginTop = useRef<string | null>(null);
+
+  const handleScroll = useCallback(() => {
+    if (!scrollContainerRef.current || !statsContainerRef.current) return;
+
+    const scrollY = scrollContainerRef.current.scrollTop;
+    
+    // Initialize original margin on first scroll event if not set
+    if (originalMarginTop.current === null) {
+      const computedStyle = getComputedStyle(statsContainerRef.current);
+      originalMarginTop.current = computedStyle.getPropertyValue('margin-top');
+    }
+
+    // On any significant scroll down, hide the stats.
+    // The small 10px threshold prevents firing on minor scroll-jiggles.
+    if (scrollY > lastScrollY.current && scrollY > 10 && !isHidden.current) {
+      isHidden.current = true;
+      gsap.to(statsContainerRef.current, {
+        duration: 0.4,
+        height: 0,
+        autoAlpha: 0,
+        marginTop: 0,
+        ease: 'power2.inOut',
+        overwrite: true,
+      });
+    } 
+
+    lastScrollY.current = scrollY < 0 ? 0 : scrollY;
+  }, [scrollContainerRef, statsContainerRef]);
+
+  const handleWheel = useCallback((event: WheelEvent) => {
+    if (!scrollContainerRef.current || !statsContainerRef.current) return;
+    
+    const isAtTop = scrollContainerRef.current.scrollTop === 0;
+    const isScrollingUp = event.deltaY < 0;
+
+    // Only reveal if we are at the top, scrolling up, and stats are hidden.
+    // This creates the "pull to reveal" effect.
+    if (isAtTop && isScrollingUp && isHidden.current) {
+        isHidden.current = false;
+        gsap.to(statsContainerRef.current, {
+          duration: 0.4,
+          height: 'auto',
+          autoAlpha: 1,
+          marginTop: originalMarginTop.current || 0,
+          ease: 'power2.out',
+          overwrite: true,
+        });
+    }
+  }, [scrollContainerRef, statsContainerRef]);
+
+  useEffect(() => {
+    const scrollContainer = scrollContainerRef.current;
+    if (scrollContainer) {
+      scrollContainer.addEventListener('scroll', handleScroll, { passive: true });
+      scrollContainer.addEventListener('wheel', handleWheel, { passive: true });
+    }
+
+    return () => {
+      if (scrollContainer) {
+        scrollContainer.removeEventListener('scroll', handleScroll);
+        scrollContainer.removeEventListener('wheel', handleWheel);
+      }
+      // When component unmounts, kill any running animations on the stats ref
+      if (statsContainerRef.current) {
+        gsap.killTweensOf(statsContainerRef.current);
+      }
+    };
+  }, [scrollContainerRef, statsContainerRef, handleScroll, handleWheel]);
+}
+```
+
+## File: src/pages/DataDemo/DataDemo.config.tsx
+```typescript
+import { FieldRenderer } from "@/features/dynamic-view/components/shared/FieldRenderer";
+import type { ViewConfig, GenericItem } from "@/features/dynamic-view/types";
+
+export const dataDemoViewConfig: ViewConfig = {
+  // 1. Field Definitions
+  fields: [
+    { id: "id", label: "ID", type: "string" },
+    { id: "title", label: "Title", type: "string" },
+    { id: "description", label: "Description", type: "longtext" },
+    { id: "thumbnail", label: "Thumbnail", type: "thumbnail" },
+    { id: "category", label: "Category", type: "badge" },
+    {
+      id: "status",
+      label: "Status",
+      type: "badge",
+      colorMap: {
+        active: "bg-sky-500/10 text-sky-600 border-sky-500/20",
+        pending: "bg-amber-500/10 text-amber-600 border-amber-500/20",
+        completed: "bg-emerald-600/10 text-emerald-700 border-emerald-600/20",
+        archived: "bg-zinc-500/10 text-zinc-600 border-zinc-500/20",
+      },
+    },
+    {
+      id: "priority",
+      label: "Priority",
+      type: "badge",
+      colorMap: {
+        critical: "bg-red-600/10 text-red-700 border-red-600/20",
+        high: "bg-orange-500/10 text-orange-600 border-orange-500/20",
+        medium: "bg-blue-500/10 text-blue-600 border-blue-500/20",
+        low: "bg-green-500/10 text-green-600 border-green-500/20",
+      },
+      indicatorColorMap: {
+        critical: "bg-red-500",
+        high: "bg-orange-500",
+        medium: "bg-blue-500",
+        low: "bg-green-500",
+      }
+    },
+    { id: "assignee", label: "Assignee", type: "avatar" },
+    { id: "tags", label: "Tags", type: "tags" },
+    { id: "metrics", label: "Engagement", type: "metrics" },
+    { id: "metrics.completion", label: "Progress", type: "progress" },
+    { id: "dueDate", label: "Due Date", type: "date" },
+    { id: "createdAt", label: "Created At", type: "date" },
+    { id: "updatedAt", label: "Last Updated", type: "date" },
+    // A custom field to replicate the composite "Project" column in the table view
+    {
+      id: "project_details",
+      label: "Project",
+      type: "custom",
+      render: (item: GenericItem) => (
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-gradient-to-br from-primary/20 to-primary/10 rounded-lg flex items-center justify-center text-lg flex-shrink-0">
+            <FieldRenderer item={item} fieldId="thumbnail" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h4 className="font-medium group-hover:text-primary transition-colors truncate">
+              <FieldRenderer item={item} fieldId="title" />
+            </h4>
+            <p className="text-sm text-muted-foreground truncate">
+              <FieldRenderer item={item} fieldId="category" />
+            </p>
+          </div>
+        </div>
+      ),
+    },
+  ],
+  // 2. Control Definitions
+  sortableFields: [
+    { id: "updatedAt", label: "Last Updated" },
+    { id: "title", label: "Title" },
+    { id: "status", label: "Status" },
+    { id: "priority", label: "Priority" },
+    { id: "metrics.completion", label: "Progress" },
+  ],
+  groupableFields: [
+    { id: "none", label: "None" },
+    { id: "status", label: "Status" },
+    { id: "priority", label: "Priority" },
+    { id: "category", label: "Category" },
+  ],
+  filterableFields: [
+    {
+      id: "status",
+      label: "Status",
+      options: [
+        { id: "active", label: "Active" },
+        { id: "pending", label: "Pending" },
+        { id: "completed", label: "Completed" },
+        { id: "archived", label: "Archived" },
+      ],
+    },
+    {
+      id: "priority",
+      label: "Priority",
+      options: [
+        { id: "critical", label: "Critical" },
+        { id: "high", label: "High" },
+        { id: "medium", label: "Medium" },
+        { id: "low", label: "Low" },
+      ],
+    },
+  ],
+  // 3. View Layouts
+  listView: {
+    iconField: "thumbnail",
+    titleField: "title",
+    metaFields: [
+      { fieldId: "status", className: "hidden sm:flex" },
+      { fieldId: "tags", className: "hidden lg:flex" },
+      { fieldId: "updatedAt", className: "hidden md:flex" },
+      { fieldId: "assignee" },
+      { fieldId: "priority", className: "hidden xs:flex" },
+    ],
+  },
+  cardView: {
+    thumbnailField: "thumbnail",
+    titleField: "title",
+    descriptionField: "description",
+    headerFields: ["priority"],
+    statusField: "status",
+    categoryField: "category",
+    tagsField: "tags",
+    progressField: "metrics.completion",
+    assigneeField: "assignee",
+    metricsField: "metrics",
+    dateField: "updatedAt",
+  },
+  tableView: {
+    columns: [
+      { fieldId: "project_details", label: "Project", isSortable: true },
+      { fieldId: "status", label: "Status", isSortable: true },
+      { fieldId: "priority", label: "Priority", isSortable: true },
+      { fieldId: "assignee", label: "Assignee", isSortable: true },
+      { fieldId: "metrics.completion", label: "Progress", isSortable: true },
+      { fieldId: "metrics", label: "Engagement", isSortable: true },
+      { fieldId: "updatedAt", label: "Last Updated", isSortable: true },
+    ],
+  },
+  kanbanView: {
+    groupByField: "status",
+    cardFields: {
+      titleField: "title",
+      descriptionField: "description",
+      priorityField: "priority",
+      tagsField: "tags",
+      dateField: "dueDate",
+      metricsField: "metrics",
+      assigneeField: "assignee",
+    },
+  },
+  calendarView: {
+    dateField: "dueDate",
+    titleField: "title",
+    displayFields: ["tags", "priority", "assignee"],
+    colorByField: "priority",
+  },
+  detailView: {
+    header: {
+      thumbnailField: "thumbnail",
+      titleField: "title",
+      descriptionField: "description",
+      badgeFields: ["status", "priority", "category"],
+      progressField: "metrics.completion",
+    },
+    body: {
+      sections: [
+        { title: "Assigned to", fields: ["assignee"] },
+        { title: "Engagement Metrics", fields: ["metrics"] },
+        { title: "Tags", fields: ["tags"] },
+        {
+          title: "Timeline",
+          fields: ["createdAt", "updatedAt", "dueDate"],
+        },
+      ],
+    },
+  },
+};
 ```
 
 ## File: src/features/dynamic-view/components/controls/ViewControls.tsx
@@ -1183,161 +1598,6 @@ function CombinedFilter({
 }
 ```
 
-## File: src/features/dynamic-view/components/controls/ViewModeSelector.tsx
-```typescript
-import { useEffect, useRef, useState, useCallback } from 'react'
-import { gsap } from 'gsap'
-import { cn } from '@/lib/utils'
-import { List, Grid3X3, LayoutGrid, Table, LayoutDashboard, CalendarDays } from 'lucide-react'
-import type { ViewMode } from '../../types'
-import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
-
-const viewModes = [
-  { id: 'list' as ViewMode, label: 'List', icon: List, description: 'Compact list with details' },
-  { id: 'cards' as ViewMode, label: 'Cards', icon: LayoutGrid, description: 'Rich card layout' },
-  { id: 'kanban' as ViewMode, label: 'Kanban', icon: LayoutDashboard, description: 'Interactive Kanban board' },
-  { id: 'calendar' as ViewMode, label: 'Calendar', icon: CalendarDays, description: 'Interactive calendar view' },
-  { id: 'grid' as ViewMode, label: 'Grid', icon: Grid3X3, description: 'Masonry grid view' },
-  { id: 'table' as ViewMode, label: 'Table', icon: Table, description: 'Structured data table' }
-]
-
-export function ViewModeSelector() {
-  const { viewMode, setViewMode } = useAppViewManager();
-  const indicatorRef = useRef<HTMLDivElement>(null)
-  const containerRef = useRef<HTMLDivElement>(null)
-  const [isExpanded, setIsExpanded] = useState(false)
-  const [isTransitioning, setIsTransitioning] = useState(false)
-
-  const updateIndicatorPosition = useCallback((immediate = false) => {
-    if (!indicatorRef.current || !containerRef.current || isTransitioning) return
-
-    const activeButton = containerRef.current.querySelector(`[data-mode="${viewMode}"]`) as HTMLElement
-    if (!activeButton) return
-
-    const containerRect = containerRef.current.getBoundingClientRect()
-    const buttonRect = activeButton.getBoundingClientRect()
-    
-    const left = buttonRect.left - containerRect.left
-    const width = buttonRect.width
-
-    if (immediate) {
-      // Set position immediately without animation for initial load
-      gsap.set(indicatorRef.current, {
-        x: left,
-        width: width
-      })
-    } else {
-      gsap.to(indicatorRef.current, {
-        duration: 0.3,
-        x: left,
-        width: width,
-        ease: "power2.out"
-      })
-    }
-  }, [viewMode, isTransitioning])
-
-  // Initial setup - set position immediately without animation
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      updateIndicatorPosition(true)
-    }, 0)
-    return () => clearTimeout(timer)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []) // Only run once on mount
-
-  useEffect(() => {
-    if (!isTransitioning) {
-      updateIndicatorPosition()
-    }
-  }, [viewMode, isTransitioning, updateIndicatorPosition])
-
-  const handleMouseEnter = () => {
-    setIsTransitioning(true)
-    setIsExpanded(true)
-    
-    // Wait for expand animation to complete
-    setTimeout(() => {
-      setIsTransitioning(false)
-    }, 500)
-  }
-
-  const handleMouseLeave = () => {
-    setIsTransitioning(true)
-    setIsExpanded(false)
-    
-    // Wait for collapse animation to complete
-    setTimeout(() => {
-      setIsTransitioning(false)
-    }, 500)
-  }
-
-  return (
-    <div 
-      ref={containerRef}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-      className={cn(
-        "relative flex items-center bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-1.5 shadow-lg transition-all duration-500 ease-out",
-        "hover:shadow-xl hover:bg-card/70",
-        isExpanded ? "gap-1" : "gap-0"
-      )}
-    >
-      {/* Animated indicator */}
-      <div
-        ref={indicatorRef}
-        className="absolute inset-y-1.5 bg-gradient-to-r from-primary/20 to-primary/10 border border-primary/20 rounded-xl transition-all duration-300"
-        style={{ left: 0, width: 0 }}
-      />
-      
-      {/* Mode buttons */}
-      {viewModes.map((mode, index) => {
-        const IconComponent = mode.icon
-        const isActive = viewMode === mode.id
-        
-        return (
-          <button
-            key={mode.id}
-            data-mode={mode.id}
-            onClick={() => setViewMode(mode.id)}
-            className={cn(
-              "relative flex items-center justify-center rounded-xl transition-all duration-500 ease-out group overflow-hidden",
-              "hover:bg-accent/20 active:scale-95",
-              isActive && "text-primary",
-              isExpanded ? "gap-3 px-4 py-2.5" : "gap-0 px-3 py-2.5"
-            )}
-            title={mode.description}
-            style={{
-              transitionDelay: isExpanded ? `${index * 50}ms` : `${(viewModes.length - index - 1) * 30}ms`
-            }}
-          >
-            <IconComponent className={cn(
-              "w-5 h-5 transition-all duration-300 flex-shrink-0",
-              isActive && "scale-110",
-              "group-hover:scale-105",
-              isExpanded ? "rotate-0" : "rotate-0"
-            )} />
-            
-            {/* Label with smooth expand/collapse */}
-            <div className={cn(
-              "overflow-hidden transition-all duration-500 ease-out",
-              isExpanded ? "max-w-[80px] opacity-100" : "max-w-0 opacity-0"
-            )}>
-              <span className={cn(
-                "font-medium whitespace-nowrap transition-all duration-300",
-                isActive ? "text-primary" : "text-muted-foreground",
-                "group-hover:text-foreground"
-              )}>
-                {mode.label}
-              </span>
-            </div>
-          </button>
-        )
-      })}
-    </div>
-  )
-}
-```
-
 ## File: src/features/dynamic-view/components/shared/AnimatedLoadingSkeleton.tsx
 ```typescript
 import { useEffect, useRef, useState } from 'react'
@@ -1525,15 +1785,10 @@ export const AnimatedLoadingSkeleton = ({ viewMode }: { viewMode: ViewMode }) =>
 ```typescript
 import { useDynamicView } from '../../DynamicViewContext';
 import type { GenericItem, BadgeFieldDefinition } from '../../types';
-import { cn } from '@/lib/utils';
+import { cn, getNestedValue } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Clock, Eye, Heart, Share } from 'lucide-react';
-
-// A helper to get nested properties from an object, e.g., 'metrics.views'
-function getNestedValue(obj: Record<string, any>, path: string): any {
-  return path.split('.').reduce((o, k) => (o && o[k] !== 'undefined' ? o[k] : undefined), obj);
-}
 
 interface FieldRendererProps {
   item: GenericItem;
@@ -1676,264 +1931,226 @@ export function FieldRenderer({ item, fieldId, className, options }: FieldRender
 }
 ```
 
-## File: src/features/dynamic-view/components/views/TableView.tsx
+## File: src/features/dynamic-view/components/views/KanbanView.tsx
 ```typescript
-import { useRef, useLayoutEffect, useMemo } from 'react'
-import { gsap } from 'gsap'
-import { cn } from '@/lib/utils'
-import { 
-  ArrowUpDown, 
-  ArrowUp, 
-  ArrowDown,
-  ExternalLink
-} from 'lucide-react'
-import type { GenericItem } from '../../types'
-import { EmptyState } from '../shared/EmptyState'
-import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
+import { useState, useEffect, Fragment } from "react";
 import {
-  useSelectedItem,
-} from '../../../../pages/DataDemo/store/dataDemo.store'
-import { capitalize } from '@/lib/utils'
-import { AddDataItemCta } from '../shared/AddDataItemCta'
+  GripVertical,
+  Plus,
+} from "lucide-react";
+import type { GenericItem } from '../../types'
+import { Card, CardContent } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
+import { EmptyState } from "../shared/EmptyState";
+import { useAppViewManager } from "@/hooks/useAppViewManager.hook";
+import { useDataDemoStore } from "../../../../pages/DataDemo/store/dataDemo.store";
 import { useDynamicView } from '../../DynamicViewContext'
 import { FieldRenderer } from '../shared/FieldRenderer'
 
-export function TableView({ data }: { data: GenericItem[] }) {
-  const {
-    sortConfig,
-    setTableSort,
-    groupBy,
-    onItemSelect,
-    itemId,
-  } = useAppViewManager();
-  const { config } = useDynamicView();
-  const { tableView: viewConfig } = config;
-  const selectedItem = useSelectedItem(itemId);
-
-  const tableRef = useRef<HTMLTableElement>(null)
-  const animatedItemsCount = useRef(0)
-
-  useLayoutEffect(() => {
-    if (tableRef.current) {
-      // Only select item rows for animation, not group headers
-      const newItems = Array.from( 
-        tableRef.current.querySelectorAll('tbody tr')
-      ).filter(tr => !(tr as HTMLElement).dataset.groupHeader)
-       .slice(animatedItemsCount.current);
-      gsap.fromTo(newItems,
-        { y: 20, opacity: 0 },
-        {
-          duration: 0.5,
-          y: 0,
-          opacity: 1,
-          stagger: 0.05,
-          ease: "power2.out",
-        },
-      );
-      animatedItemsCount.current = data.length;
-    }
-  }, [data]);
-
-  const SortIcon = ({ field }: { field: string }) => {
-    if (sortConfig?.key !== field) {
-      return <ArrowUpDown className="w-4 h-4 opacity-50" />
-    }
-    if (sortConfig.direction === 'asc') {
-      return <ArrowUp className="w-4 h-4 text-primary" />
-    }
-    if (sortConfig.direction === 'desc') {
-      return <ArrowDown className="w-4 h-4 text-primary" />
-    }
-    return <ArrowUpDown className="w-4 h-4 opacity-50" />
-  }
-
-  const handleSortClick = (field: string) => {
-    setTableSort(field)
-  }
-
-  const groupedData = useMemo(() => {
-    if (groupBy === 'none') return null;
-    return (data as GenericItem[]).reduce((acc, item) => {
-      const groupKey = item[groupBy as 'status' | 'priority' | 'category'] || 'N/A';
-      if (!acc[groupKey]) {
-        acc[groupKey] = [];
-      }
-      acc[groupKey].push(item);
-      return acc;
-    }, {} as Record<string, GenericItem[]>);
-  }, [data, groupBy]);
-
-  if (data.length === 0) {
-    return <EmptyState />
-  }
-
-  return (
-    <div className="relative overflow-hidden rounded-2xl border bg-card/50 backdrop-blur-sm">
-      <div className="overflow-x-auto">
-        <table ref={tableRef} className="w-full">
-          <thead>
-            <tr className="border-b border-border/50 bg-muted/20">
-              {viewConfig.columns.map(col => (
-                <th key={col.fieldId} className="text-left p-4 font-semibold text-sm">
-                  {col.isSortable ? (
-                    <button
-                      onClick={() => handleSortClick(col.fieldId)}
-                      className="flex items-center gap-2 hover:text-primary transition-colors"
-                    >
-                      {col.label}
-                      <SortIcon field={col.fieldId} />
-                    </button>
-                  ) : (
-                    <span>{col.label}</span>
-                  )}
-                </th>
-              ))}
-              <th className="text-center p-4 font-semibold text-sm w-16">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {groupedData
-              ? Object.entries(groupedData).flatMap(([groupName, items]) => [
-                  <tr key={groupName} data-group-header="true" className="sticky top-0 z-10">
-                    <td colSpan={viewConfig.columns.length + 1} className="p-2 bg-muted/50 backdrop-blur-sm">
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-semibold text-sm">{capitalize(groupName)}</h3>
-                        <span className="text-xs px-2 py-0.5 bg-background rounded-full font-medium">{items.length}</span>
-                      </div>
-                    </td>
-                  </tr>,
-                  ...items.map(item => <TableRow key={item.id} item={item} isSelected={selectedItem?.id === item.id} onItemSelect={onItemSelect} />)
-                ])
-              : data.map(item => <TableRow key={item.id} item={item} isSelected={selectedItem?.id === item.id} onItemSelect={onItemSelect} />)
-            }
-            <AddDataItemCta viewMode='table' colSpan={viewConfig.columns.length + 1} />
-          </tbody>
-        </table>
-      </div>
-    </div>
-  )
+interface KanbanCardProps {
+  item: GenericItem;
+  isDragging: boolean;
 }
 
-function TableRow({ item, isSelected, onItemSelect }: { item: GenericItem; isSelected: boolean; onItemSelect: (item: GenericItem) => void }) {
+function KanbanCard({ item, isDragging, ...props }: KanbanCardProps & React.HTMLAttributes<HTMLDivElement>) {
+  const { onItemSelect } = useAppViewManager();
   const { config } = useDynamicView();
+  const { kanbanView: viewConfig } = config;
+
   return (
-    <tr
+    <Card
+      {...props}
+      data-draggable-id={item.id}
       onClick={() => onItemSelect(item)}
       className={cn(
-        "group border-b border-border/30 transition-all duration-200 cursor-pointer",
-        "hover:bg-accent/20 hover:border-primary/20",
-        isSelected && "bg-primary/5 border-primary/30"
+        "cursor-pointer transition-all duration-300 border bg-card/60 dark:bg-neutral-800/60 backdrop-blur-sm hover:bg-card/70 dark:hover:bg-neutral-700/70 active:cursor-grabbing",
+        isDragging && "opacity-50 ring-2 ring-primary ring-offset-2 ring-offset-background"
       )}
     >
-      {config.tableView.columns.map(col => (
-        <td key={col.fieldId} className="p-4">
-          <FieldRenderer item={item} fieldId={col.fieldId} options={{ showPercentage: true }} />
-        </td>
-      ))}
-      {/* Actions Column */}
-      <td className="p-4">
-        <button 
-          onClick={(e) => {
-            e.stopPropagation()
-            onItemSelect(item)
-          }}
-          className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-accent transition-colors"
-          title="View details"
-        >
-          <ExternalLink className="w-4 h-4" />
-        </button>
-      </td>
-    </tr>
-  )
+      <CardContent className="p-5">
+        <div className="space-y-4">
+          <div className="flex items-start justify-between">
+            <h4 className="font-semibold text-card-foreground dark:text-neutral-100 leading-tight">
+              <FieldRenderer item={item} fieldId={viewConfig.cardFields.titleField} />
+            </h4>
+            <GripVertical className="w-5 h-5 text-muted-foreground/60 dark:text-neutral-400 cursor-grab flex-shrink-0" />
+          </div>
+
+          <p className="text-sm text-muted-foreground dark:text-neutral-300 leading-relaxed line-clamp-2">
+            <FieldRenderer item={item} fieldId={viewConfig.cardFields.descriptionField} />
+          </p>
+
+          <div className="flex flex-wrap gap-2">
+            <FieldRenderer item={item} fieldId={viewConfig.cardFields.priorityField} />
+            <FieldRenderer item={item} fieldId={viewConfig.cardFields.tagsField} />
+          </div>
+
+          <div className="flex items-center justify-between pt-2 border-t border-border/30 dark:border-neutral-700/30">
+            <div className="flex items-center gap-4 text-muted-foreground/80 dark:text-neutral-400">
+              <FieldRenderer item={item} fieldId={viewConfig.cardFields.dateField} />
+              <FieldRenderer item={item} fieldId={viewConfig.cardFields.metricsField} />
+            </div>
+            <FieldRenderer item={item} fieldId={viewConfig.cardFields.assigneeField} options={{ compact: true, avatarClassName: 'w-8 h-8 ring-2 ring-white/50 dark:ring-neutral-700/50' }} />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
 }
-```
 
-## File: src/pages/DataDemo/hooks/useAutoAnimateStats.hook.ts
-```typescript
-import { useEffect, useRef, useCallback } from 'react';
-import { gsap } from 'gsap';
+interface DataKanbanViewProps {
+  data: Record<string, GenericItem[]>;
+}
 
-/**
- * A hook that animates a stats container in and out of view based on scroll direction.
- * It creates a "sliver app bar" effect for the stats section.
- * @param scrollContainerRef Ref to the main scrolling element.
- * @param statsContainerRef Ref to the stats container element to be animated.
- */
-export function useAutoAnimateStats(
-  scrollContainerRef: React.RefObject<HTMLElement>,
-  statsContainerRef: React.RefObject<HTMLElement>
-) {
-  const lastScrollY = useRef(0);
-  const isHidden = useRef(false);
-  const originalMarginTop = useRef<string | null>(null);
-
-  const handleScroll = useCallback(() => {
-    if (!scrollContainerRef.current || !statsContainerRef.current) return;
-
-    const scrollY = scrollContainerRef.current.scrollTop;
-    
-    // Initialize original margin on first scroll event if not set
-    if (originalMarginTop.current === null) {
-      const computedStyle = getComputedStyle(statsContainerRef.current);
-      originalMarginTop.current = computedStyle.getPropertyValue('margin-top');
-    }
-
-    // On any significant scroll down, hide the stats.
-    // The small 10px threshold prevents firing on minor scroll-jiggles.
-    if (scrollY > lastScrollY.current && scrollY > 10 && !isHidden.current) {
-      isHidden.current = true;
-      gsap.to(statsContainerRef.current, {
-        duration: 0.4,
-        height: 0,
-        autoAlpha: 0,
-        marginTop: 0,
-        ease: 'power2.inOut',
-        overwrite: true,
-      });
-    } 
-
-    lastScrollY.current = scrollY < 0 ? 0 : scrollY;
-  }, [scrollContainerRef, statsContainerRef]);
-
-  const handleWheel = useCallback((event: WheelEvent) => {
-    if (!scrollContainerRef.current || !statsContainerRef.current) return;
-    
-    const isAtTop = scrollContainerRef.current.scrollTop === 0;
-    const isScrollingUp = event.deltaY < 0;
-
-    // Only reveal if we are at the top, scrolling up, and stats are hidden.
-    // This creates the "pull to reveal" effect.
-    if (isAtTop && isScrollingUp && isHidden.current) {
-        isHidden.current = false;
-        gsap.to(statsContainerRef.current, {
-          duration: 0.4,
-          height: 'auto',
-          autoAlpha: 1,
-          marginTop: originalMarginTop.current || 0,
-          ease: 'power2.out',
-          overwrite: true,
-        });
-    }
-  }, [scrollContainerRef, statsContainerRef]);
+export function KanbanView({ data }: DataKanbanViewProps) {
+  const [columns, setColumns] = useState(data);
+  const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
+  const [dropIndicator, setDropIndicator] = useState<{ columnId: string; index: number } | null>(null);
+  const { groupBy } = useAppViewManager();
+  const updateItem = useDataDemoStore((s: any) => s.updateItem);
 
   useEffect(() => {
-    const scrollContainer = scrollContainerRef.current;
-    if (scrollContainer) {
-      scrollContainer.addEventListener('scroll', handleScroll, { passive: true });
-      scrollContainer.addEventListener('wheel', handleWheel, { passive: true });
-    }
+    setColumns(data);
+  }, [data]);
 
-    return () => {
-      if (scrollContainer) {
-        scrollContainer.removeEventListener('scroll', handleScroll);
-        scrollContainer.removeEventListener('wheel', handleWheel);
+  const handleDragStart = (e: React.DragEvent<HTMLDivElement>, item: GenericItem, sourceColumnId: string) => {
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', JSON.stringify({ itemId: item.id, sourceColumnId }));
+    setDraggedItemId(item.id);
+  };
+
+  const getDropIndicatorIndex = (e: React.DragEvent, elements: HTMLElement[]) => {
+    const mouseY = e.clientY;
+    let closestIndex = elements.length;
+
+    elements.forEach((el, index) => {
+      const { top, height } = el.getBoundingClientRect();
+      const offset = mouseY - (top + height / 2);
+      if (offset < 0 && index < closestIndex) {
+        closestIndex = index;
       }
-      // When component unmounts, kill any running animations on the stats ref
-      if (statsContainerRef.current) {
-        gsap.killTweensOf(statsContainerRef.current);
+    });
+    return closestIndex;
+  };
+
+  const handleDragOverCardsContainer = (e: React.DragEvent<HTMLDivElement>, columnId: string) => {
+    e.preventDefault();
+    const container = e.currentTarget;
+    const draggableElements = Array.from(container.querySelectorAll('[data-draggable-id]')) as HTMLElement[];
+    const index = getDropIndicatorIndex(e, draggableElements);
+
+    if (dropIndicator?.columnId === columnId && dropIndicator.index === index) return;
+    setDropIndicator({ columnId, index });
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>, targetColumnId: string) => {
+    e.preventDefault();
+    setDropIndicator(null);
+    try {
+      const { itemId, sourceColumnId } = JSON.parse(e.dataTransfer.getData('text/plain'));
+
+      const droppedItem = columns[sourceColumnId]?.find(i => i.id === itemId);
+      if (!droppedItem) return;
+
+      // Update local state for immediate feedback
+      setColumns(prev => {
+        const newColumns = { ...prev };
+        const sourceCol = prev[sourceColumnId].filter(i => i.id !== itemId);
+
+        if (sourceColumnId === targetColumnId) {
+          const dropIndex = dropIndicator?.columnId === targetColumnId ? dropIndicator.index : sourceCol.length;
+          sourceCol.splice(dropIndex, 0, droppedItem);
+          newColumns[sourceColumnId] = sourceCol;
+        } else {
+          const targetCol = [...prev[targetColumnId]];
+          const dropIndex = dropIndicator?.columnId === targetColumnId ? dropIndicator.index : targetCol.length;
+          targetCol.splice(dropIndex, 0, droppedItem);
+          
+          newColumns[sourceColumnId] = sourceCol;
+          newColumns[targetColumnId] = targetCol;
+        }
+        return newColumns;
+      });
+      
+      // Persist change to global store. The groupBy value tells us which property to update.
+      if (groupBy !== 'none' && sourceColumnId !== targetColumnId) {
+        updateItem(itemId, { [groupBy]: targetColumnId } as Partial<GenericItem>);
       }
-    };
-  }, [scrollContainerRef, statsContainerRef, handleScroll, handleWheel]);
+
+    } catch (err) {
+      console.error("Failed to parse drag data", err)
+    } finally {
+      setDraggedItemId(null);
+    }
+  };
+
+  const handleDragEnd = () => {
+    setDraggedItemId(null);
+    setDropIndicator(null);
+  };
+
+  const initialColumns = Object.entries(data);
+
+  if (!initialColumns || initialColumns.length === 0) {
+    return <EmptyState />;
+  }
+
+  const statusColors: Record<string, string> = {
+    active: "bg-blue-500", pending: "bg-yellow-500", completed: "bg-green-500", archived: "bg-gray-500",
+    low: "bg-green-500", medium: "bg-blue-500", high: "bg-orange-500", critical: "bg-red-500",
+  };
+
+  const DropIndicator = () => <div className="h-1 my-2 rounded-full bg-primary/60" />;
+
+  return (
+    <div className="flex items-start gap-6 pb-4 overflow-x-auto -mx-6 px-6">
+      {Object.entries(columns).map(([columnId, items]) => (
+        <div
+          key={columnId}
+          className={cn(
+            "w-80 flex-shrink-0 bg-card/20 dark:bg-neutral-900/20 backdrop-blur-xl rounded-3xl p-5 border border-border dark:border-neutral-700/50 transition-all duration-300",
+            dropIndicator?.columnId === columnId && "bg-primary/10 border-primary/30"
+          )}
+        >
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className={cn("w-3.5 h-3.5 rounded-full", statusColors[columnId] || "bg-muted-foreground")} />
+              <h3 className="font-semibold text-card-foreground dark:text-neutral-100 capitalize truncate">{columnId}</h3>
+              <span className="text-sm font-medium text-muted-foreground bg-background/50 rounded-full px-2 py-0.5">{items.length}</span>
+            </div>
+            <button className="p-1 rounded-full bg-card/30 dark:bg-neutral-800/30 hover:bg-card/50 dark:hover:bg-neutral-700/50 transition-colors">
+              <Plus className="w-4 h-4 text-muted-foreground dark:text-neutral-300" />
+            </button>
+          </div>
+
+          <div
+            onDragOver={(e) => handleDragOverCardsContainer(e, columnId)}
+            onDrop={(e) => handleDrop(e, columnId)}
+            onDragLeave={() => setDropIndicator(null)}
+            className="space-y-4 min-h-[100px]"
+          >
+            {items.map((item, index) => (
+              <Fragment key={item.id}>
+                {dropIndicator?.columnId === columnId && dropIndicator.index === index && (
+                  <DropIndicator />
+                )}
+                <KanbanCard
+                  item={item}
+                  isDragging={draggedItemId === item.id}
+                  draggable
+                  onDragStart={(e) => handleDragStart(e, item, columnId)}
+                  onDragEnd={handleDragEnd}
+                />
+              </Fragment>
+            ))}
+            {dropIndicator?.columnId === columnId && dropIndicator.index === items.length && (
+              <DropIndicator />
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
 }
 ```
 
@@ -2402,229 +2619,6 @@ export function CardView({ data, isGrid = false }: { data: GenericItem[]; isGrid
 }
 ```
 
-## File: src/features/dynamic-view/components/views/KanbanView.tsx
-```typescript
-import { useState, useEffect, Fragment } from "react";
-import {
-  GripVertical,
-  Plus,
-} from "lucide-react";
-import type { GenericItem } from '../../types'
-import { Card, CardContent } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
-import { EmptyState } from "../shared/EmptyState";
-import { useAppViewManager } from "@/hooks/useAppViewManager.hook";
-import { useDataDemoStore } from "../../../../pages/DataDemo/store/dataDemo.store";
-import { useDynamicView } from '../../DynamicViewContext'
-import { FieldRenderer } from '../shared/FieldRenderer'
-
-interface KanbanCardProps {
-  item: GenericItem;
-  isDragging: boolean;
-}
-
-function KanbanCard({ item, isDragging, ...props }: KanbanCardProps & React.HTMLAttributes<HTMLDivElement>) {
-  const { onItemSelect } = useAppViewManager();
-  const { config } = useDynamicView();
-  const { kanbanView: viewConfig } = config;
-
-  return (
-    <Card
-      {...props}
-      data-draggable-id={item.id}
-      onClick={() => onItemSelect(item)}
-      className={cn(
-        "cursor-pointer transition-all duration-300 border bg-card/60 dark:bg-neutral-800/60 backdrop-blur-sm hover:bg-card/70 dark:hover:bg-neutral-700/70 active:cursor-grabbing",
-        isDragging && "opacity-50 ring-2 ring-primary ring-offset-2 ring-offset-background"
-      )}
-    >
-      <CardContent className="p-5">
-        <div className="space-y-4">
-          <div className="flex items-start justify-between">
-            <h4 className="font-semibold text-card-foreground dark:text-neutral-100 leading-tight">
-              <FieldRenderer item={item} fieldId={viewConfig.cardFields.titleField} />
-            </h4>
-            <GripVertical className="w-5 h-5 text-muted-foreground/60 dark:text-neutral-400 cursor-grab flex-shrink-0" />
-          </div>
-
-          <p className="text-sm text-muted-foreground dark:text-neutral-300 leading-relaxed line-clamp-2">
-            <FieldRenderer item={item} fieldId={viewConfig.cardFields.descriptionField} />
-          </p>
-
-          <div className="flex flex-wrap gap-2">
-            <FieldRenderer item={item} fieldId={viewConfig.cardFields.priorityField} />
-            <FieldRenderer item={item} fieldId={viewConfig.cardFields.tagsField} />
-          </div>
-
-          <div className="flex items-center justify-between pt-2 border-t border-border/30 dark:border-neutral-700/30">
-            <div className="flex items-center gap-4 text-muted-foreground/80 dark:text-neutral-400">
-              <FieldRenderer item={item} fieldId={viewConfig.cardFields.dateField} />
-              <FieldRenderer item={item} fieldId={viewConfig.cardFields.metricsField} />
-            </div>
-            <FieldRenderer item={item} fieldId={viewConfig.cardFields.assigneeField} options={{ compact: true, avatarClassName: 'w-8 h-8 ring-2 ring-white/50 dark:ring-neutral-700/50' }} />
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-interface DataKanbanViewProps {
-  data: Record<string, GenericItem[]>;
-}
-
-export function KanbanView({ data }: DataKanbanViewProps) {
-  const [columns, setColumns] = useState(data);
-  const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
-  const [dropIndicator, setDropIndicator] = useState<{ columnId: string; index: number } | null>(null);
-  const { groupBy } = useAppViewManager();
-  const updateItem = useDataDemoStore((s: any) => s.updateItem);
-
-  useEffect(() => {
-    setColumns(data);
-  }, [data]);
-
-  const handleDragStart = (e: React.DragEvent<HTMLDivElement>, item: GenericItem, sourceColumnId: string) => {
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', JSON.stringify({ itemId: item.id, sourceColumnId }));
-    setDraggedItemId(item.id);
-  };
-
-  const getDropIndicatorIndex = (e: React.DragEvent, elements: HTMLElement[]) => {
-    const mouseY = e.clientY;
-    let closestIndex = elements.length;
-
-    elements.forEach((el, index) => {
-      const { top, height } = el.getBoundingClientRect();
-      const offset = mouseY - (top + height / 2);
-      if (offset < 0 && index < closestIndex) {
-        closestIndex = index;
-      }
-    });
-    return closestIndex;
-  };
-
-  const handleDragOverCardsContainer = (e: React.DragEvent<HTMLDivElement>, columnId: string) => {
-    e.preventDefault();
-    const container = e.currentTarget;
-    const draggableElements = Array.from(container.querySelectorAll('[data-draggable-id]')) as HTMLElement[];
-    const index = getDropIndicatorIndex(e, draggableElements);
-
-    if (dropIndicator?.columnId === columnId && dropIndicator.index === index) return;
-    setDropIndicator({ columnId, index });
-  };
-
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>, targetColumnId: string) => {
-    e.preventDefault();
-    setDropIndicator(null);
-    try {
-      const { itemId, sourceColumnId } = JSON.parse(e.dataTransfer.getData('text/plain'));
-
-      const droppedItem = columns[sourceColumnId]?.find(i => i.id === itemId);
-      if (!droppedItem) return;
-
-      // Update local state for immediate feedback
-      setColumns(prev => {
-        const newColumns = { ...prev };
-        const sourceCol = prev[sourceColumnId].filter(i => i.id !== itemId);
-
-        if (sourceColumnId === targetColumnId) {
-          const dropIndex = dropIndicator?.columnId === targetColumnId ? dropIndicator.index : sourceCol.length;
-          sourceCol.splice(dropIndex, 0, droppedItem);
-          newColumns[sourceColumnId] = sourceCol;
-        } else {
-          const targetCol = [...prev[targetColumnId]];
-          const dropIndex = dropIndicator?.columnId === targetColumnId ? dropIndicator.index : targetCol.length;
-          targetCol.splice(dropIndex, 0, droppedItem);
-          
-          newColumns[sourceColumnId] = sourceCol;
-          newColumns[targetColumnId] = targetCol;
-        }
-        return newColumns;
-      });
-      
-      // Persist change to global store. The groupBy value tells us which property to update.
-      if (groupBy !== 'none' && sourceColumnId !== targetColumnId) {
-        updateItem(itemId, { [groupBy]: targetColumnId } as Partial<GenericItem>);
-      }
-
-    } catch (err) {
-      console.error("Failed to parse drag data", err)
-    } finally {
-      setDraggedItemId(null);
-    }
-  };
-
-  const handleDragEnd = () => {
-    setDraggedItemId(null);
-    setDropIndicator(null);
-  };
-
-  const initialColumns = Object.entries(data);
-
-  if (!initialColumns || initialColumns.length === 0) {
-    return <EmptyState />;
-  }
-
-  const statusColors: Record<string, string> = {
-    active: "bg-blue-500", pending: "bg-yellow-500", completed: "bg-green-500", archived: "bg-gray-500",
-    low: "bg-green-500", medium: "bg-blue-500", high: "bg-orange-500", critical: "bg-red-500",
-  };
-
-  const DropIndicator = () => <div className="h-1 my-2 rounded-full bg-primary/60" />;
-
-  return (
-    <div className="flex items-start gap-6 pb-4 overflow-x-auto -mx-6 px-6">
-      {Object.entries(columns).map(([columnId, items]) => (
-        <div
-          key={columnId}
-          className={cn(
-            "w-80 flex-shrink-0 bg-card/20 dark:bg-neutral-900/20 backdrop-blur-xl rounded-3xl p-5 border border-border dark:border-neutral-700/50 transition-all duration-300",
-            dropIndicator?.columnId === columnId && "bg-primary/10 border-primary/30"
-          )}
-        >
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className={cn("w-3.5 h-3.5 rounded-full", statusColors[columnId] || "bg-muted-foreground")} />
-              <h3 className="font-semibold text-card-foreground dark:text-neutral-100 capitalize truncate">{columnId}</h3>
-              <span className="text-sm font-medium text-muted-foreground bg-background/50 rounded-full px-2 py-0.5">{items.length}</span>
-            </div>
-            <button className="p-1 rounded-full bg-card/30 dark:bg-neutral-800/30 hover:bg-card/50 dark:hover:bg-neutral-700/50 transition-colors">
-              <Plus className="w-4 h-4 text-muted-foreground dark:text-neutral-300" />
-            </button>
-          </div>
-
-          <div
-            onDragOver={(e) => handleDragOverCardsContainer(e, columnId)}
-            onDrop={(e) => handleDrop(e, columnId)}
-            onDragLeave={() => setDropIndicator(null)}
-            className="space-y-4 min-h-[100px]"
-          >
-            {items.map((item, index) => (
-              <Fragment key={item.id}>
-                {dropIndicator?.columnId === columnId && dropIndicator.index === index && (
-                  <DropIndicator />
-                )}
-                <KanbanCard
-                  item={item}
-                  isDragging={draggedItemId === item.id}
-                  draggable
-                  onDragStart={(e) => handleDragStart(e, item, columnId)}
-                  onDragEnd={handleDragEnd}
-                />
-              </Fragment>
-            ))}
-            {dropIndicator?.columnId === columnId && dropIndicator.index === items.length && (
-              <DropIndicator />
-            )}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-```
-
 ## File: src/features/dynamic-view/components/views/ListView.tsx
 ```typescript
 import { useRef } from 'react'
@@ -2919,6 +2913,11 @@ export const getStatusColor = (status: string) => {
     case 'archived': return 'bg-gray-500/20 text-gray-700 border-gray-500/30'
     default: return 'bg-gray-500/20 text-gray-700 border-gray-500/30'
   }
+}
+
+// A helper to get nested properties from an object, e.g., 'metrics.views'
+export function getNestedValue(obj: Record<string, any>, path: string): any {
+  return path.split('.').reduce((o, k) => (o && o[k] !== undefined ? o[k] : undefined), obj);
 }
 
 export const getPrioritySolidColor = (priority: string) => {

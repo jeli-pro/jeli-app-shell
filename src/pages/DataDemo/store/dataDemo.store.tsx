@@ -124,56 +124,6 @@ export const useDataDemoStore = create<DataDemoState & DataDemoActions>((set) =>
     },
 }));
 
-// --- Selectors ---
-export const useGroupTabs = (
-    groupBy: GroupableField | 'none',
-    activeGroupTab: string,
-) => useDataDemoStore(state => {
-    const items = state.items;
-    if (groupBy === 'none' || !items.length) return [];
-    
-    const groupCounts = items.reduce((acc, item) => {
-        const groupKey = String(item[groupBy as GroupableField]);
-        acc[groupKey] = (acc[groupKey] || 0) + 1;
-        return acc;
-    }, {} as Record<string, number>);
-
-    const sortedGroups = Object.keys(groupCounts).sort((a, b) => a.localeCompare(b));
-
-    const createLabel = (text: string, count: number, isActive: boolean): ReactNode => (
-        <>
-            {text}
-            <Badge variant={isActive ? 'default' : 'secondary'} className={cn('transition-colors duration-300 text-xs font-semibold', !isActive && 'group-hover:bg-accent group-hover:text-accent-foreground')}>
-                {count}
-            </Badge>
-        </>
-    );
-    
-    const totalCount = items.length;
-
-    return [
-        { id: 'all', label: createLabel('All', totalCount, activeGroupTab === 'all') },
-        ...sortedGroups.map((g) => ({
-            id: g,
-            label: createLabel(capitalize(g), groupCounts[g], activeGroupTab === g),
-        })),
-    ];
-});
-
-export const useDataToRender = (
-    groupBy: GroupableField | 'none',
-    activeGroupTab: string,
-) => useDataDemoStore(state => {
-    const items = state.items;
-    if (groupBy === 'none') {
-        return items;
-    }
-    if (activeGroupTab === 'all') {
-        return items;
-    }
-    return items.filter((item) => String(item[groupBy as GroupableField]) === activeGroupTab);
-});
-
 export const useSelectedItem = (itemId?: string) => {
     if (!itemId) return null;
     return (mockDataItems.find(item => item.id === itemId) as GenericItem) ?? null;

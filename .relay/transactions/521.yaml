@@ -1,0 +1,2183 @@
+uuid: c258b3a0-f203-4f9e-8c33-d857143c7b21
+projectId: jeli-app-shell
+createdAt: '2025-10-21T04:25:31.609Z'
+gitCommitMsg: >-
+  refactor(dynamic-view): finalize DataDemo as a consumer of the view engine
+
+  This commit completes the major refactoring of the DataDemo page into a
+  declarative, config-driven UI powered by the new generic `dynamic-view`
+  engine.
+
+  - A new `DataDemo.config.tsx` file now serves as the single source of truth
+  for the page's entire layout, fields, and controls. - The main
+  `DataDemo/index.tsx` component has been simplified to wrap content in the
+  `DynamicViewProvider` and render the appropriate generic view component. - The
+  `DetailPanel` has been generalized and moved into the `dynamic-view` feature,
+  driven by the `detailView` configuration. - Remaining shared components
+  (`EmptyState`, `AddDataItemCta`, `AnimatedLoadingSkeleton`) have been
+  relocated to the `dynamic-view` feature. - All old, hardcoded components
+  within `src/pages/DataDemo/components` and the local `types.ts` have been
+  deleted, finalizing the transition to the new architecture.
+promptSummary: >-
+  I executed Part 3 of the refactoring plan to finalize the dynamic view engine.
+  This involved creating the master ViewConfig for the DataDemo, refactoring the
+  DataDemo page to be a clean consumer of the engine, relocating the remaining
+  shared components, and deleting all old, now-redundant files.
+reasoning:
+  - >-
+    This is a significant step where we'll finalize the refactor. The plan is to
+    create the master configuration for the `DataDemo` page, refactor the page
+    itself to be a simple consumer of our new generic `dynamic-view` engine,
+    move the last few shared components to their new home, and then delete all
+    the old, now-redundant files.
+  - '### Step 1: Create the Master View Configuration'
+  - >-
+    First, I'll create the new configuration file. This is the heart of the new
+    implementation, declaratively defining the entire UI and behavior of the
+    `DataDemo` page. It translates all the previous hardcoded logic into a
+    single, comprehensive `ViewConfig` object.
+  - '### Step 2: Generalize and Relocate the Detail Panel'
+  - >-
+    Next, I'll move the `DataDetailPanel` to the generic `dynamic-view` feature,
+    rename it, and refactor it to be fully config-driven, using the `detailView`
+    configuration we just defined.
+  - '### Step 3: Update Hooks and Main Page'
+  - >-
+    Now I'll update `useRightPaneContent` to use this new generic `DetailPanel`
+    and wrap it in the required context provider. Then I'll refactor the main
+    `DataDemoPage` to use the provider and all the new generic view components.
+  - '### Step 4: Relocate and Clean Up'
+  - >-
+    Finally, I'll move the remaining shared components and then delete the
+    entire old `components` directory and the local `types.ts` file, completing
+    the refactor.
+  - Now for the deletions.
+operations:
+  - type: write
+    path: src/pages/DataDemo/DataDemo.config.tsx
+    content: >-
+      import { FieldRenderer } from
+      "@/features/dynamic-view/components/shared/FieldRenderer";
+
+      import type { ViewConfig, GenericItem } from
+      "@/features/dynamic-view/types";
+
+
+      export const dataDemoViewConfig: ViewConfig = {
+        // 1. Field Definitions
+        fields: [
+          { id: "id", label: "ID", type: "string" },
+          { id: "title", label: "Title", type: "string" },
+          { id: "description", label: "Description", type: "longtext" },
+          { id: "thumbnail", label: "Thumbnail", type: "thumbnail" },
+          { id: "category", label: "Category", type: "badge" },
+          {
+            id: "status",
+            label: "Status",
+            type: "badge",
+            colorMap: {
+              active: "bg-sky-500/10 text-sky-600 border-sky-500/20",
+              pending: "bg-amber-500/10 text-amber-600 border-amber-500/20",
+              completed: "bg-emerald-600/10 text-emerald-700 border-emerald-600/20",
+              archived: "bg-zinc-500/10 text-zinc-600 border-zinc-500/20",
+            },
+          },
+          {
+            id: "priority",
+            label: "Priority",
+            type: "badge",
+            colorMap: {
+              critical: "bg-red-600/10 text-red-700 border-red-600/20",
+              high: "bg-orange-500/10 text-orange-600 border-orange-500/20",
+              medium: "bg-blue-500/10 text-blue-600 border-blue-500/20",
+              low: "bg-green-500/10 text-green-600 border-green-500/20",
+            },
+            indicatorColorMap: {
+              critical: "bg-red-500",
+              high: "bg-orange-500",
+              medium: "bg-blue-500",
+              low: "bg-green-500",
+            }
+          },
+          { id: "assignee", label: "Assignee", type: "avatar" },
+          { id: "tags", label: "Tags", type: "tags" },
+          { id: "metrics", label: "Engagement", type: "metrics" },
+          { id: "metrics.completion", label: "Progress", type: "progress" },
+          { id: "dueDate", label: "Due Date", type: "date" },
+          { id: "createdAt", label: "Created At", type: "date" },
+          { id: "updatedAt", label: "Last Updated", type: "date" },
+          // A custom field to replicate the composite "Project" column in the table view
+          {
+            id: "project_details",
+            label: "Project",
+            type: "custom",
+            render: (item: GenericItem) => (
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-gradient-to-br from-primary/20 to-primary/10 rounded-lg flex items-center justify-center text-lg flex-shrink-0">
+                  <FieldRenderer item={item} fieldId="thumbnail" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h4 className="font-medium group-hover:text-primary transition-colors truncate">
+                    <FieldRenderer item={item} fieldId="title" />
+                  </h4>
+                  <p className="text-sm text-muted-foreground truncate">
+                    <FieldRenderer item={item} fieldId="category" />
+                  </p>
+                </div>
+              </div>
+            ),
+          },
+        ],
+        // 2. Control Definitions
+        sortableFields: [
+          { id: "updatedAt", label: "Last Updated" },
+          { id: "title", label: "Title" },
+          { id: "status", label: "Status" },
+          { id: "priority", label: "Priority" },
+          { id: "metrics.completion", label: "Progress" },
+        ],
+        groupableFields: [
+          { id: "none", label: "None" },
+          { id: "status", label: "Status" },
+          { id: "priority", label: "Priority" },
+          { id: "category", label: "Category" },
+        ],
+        filterableFields: [
+          {
+            id: "status",
+            label: "Status",
+            options: [
+              { id: "active", label: "Active" },
+              { id: "pending", label: "Pending" },
+              { id: "completed", label: "Completed" },
+              { id: "archived", label: "Archived" },
+            ],
+          },
+          {
+            id: "priority",
+            label: "Priority",
+            options: [
+              { id: "critical", label: "Critical" },
+              { id: "high", label: "High" },
+              { id: "medium", label: "Medium" },
+              { id: "low", label: "Low" },
+            ],
+          },
+        ],
+        // 3. View Layouts
+        listView: {
+          iconField: "thumbnail",
+          titleField: "title",
+          metaFields: [
+            { fieldId: "status", className: "hidden sm:flex" },
+            { fieldId: "tags", className: "hidden lg:flex" },
+            { fieldId: "updatedAt", className: "hidden md:flex" },
+            { fieldId: "assignee" },
+            { fieldId: "priority", className: "hidden xs:flex" },
+          ],
+        },
+        cardView: {
+          thumbnailField: "thumbnail",
+          titleField: "title",
+          descriptionField: "description",
+          headerFields: ["priority"],
+          statusField: "status",
+          categoryField: "category",
+          tagsField: "tags",
+          progressField: "metrics.completion",
+          assigneeField: "assignee",
+          metricsField: "metrics",
+          dateField: "updatedAt",
+        },
+        tableView: {
+          columns: [
+            { fieldId: "project_details", label: "Project", isSortable: true },
+            { fieldId: "status", label: "Status", isSortable: true },
+            { fieldId: "priority", label: "Priority", isSortable: true },
+            { fieldId: "assignee", label: "Assignee", isSortable: true },
+            { fieldId: "metrics.completion", label: "Progress", isSortable: true },
+            { fieldId: "metrics", label: "Engagement", isSortable: true },
+            { fieldId: "updatedAt", label: "Last Updated", isSortable: true },
+          ],
+        },
+        kanbanView: {
+          groupByField: "status",
+          cardFields: {
+            titleField: "title",
+            descriptionField: "description",
+            priorityField: "priority",
+            tagsField: "tags",
+            dateField: "dueDate",
+            metricsField: "metrics",
+            assigneeField: "assignee",
+          },
+        },
+        calendarView: {
+          dateField: "dueDate",
+          titleField: "title",
+          displayFields: ["tags", "priority", "assignee"],
+          colorByField: "priority",
+        },
+        detailView: {
+          header: {
+            thumbnailField: "thumbnail",
+            titleField: "title",
+            descriptionField: "description",
+            badgeFields: ["status", "priority", "category"],
+            progressField: "metrics.completion",
+          },
+          body: {
+            sections: [
+              { title: "Assigned to", fields: ["assignee"] },
+              { title: "Engagement Metrics", fields: ["metrics"] },
+              { title: "Tags", fields: ["tags"] },
+              {
+                title: "Timeline",
+                fields: ["createdAt", "updatedAt", "dueDate"],
+              },
+            ],
+          },
+        },
+      };
+    patchStrategy: replace
+  - type: rename
+    from: src/pages/DataDemo/components/DataDetailPanel.tsx
+    to: src/features/dynamic-view/components/shared/DetailPanel.tsx
+  - type: write
+    path: src/features/dynamic-view/components/shared/DetailPanel.tsx
+    content: >-
+      import React, { useRef } from 'react'
+
+      import {
+        Clock, 
+        Tag,
+        User,
+        BarChart3,
+      } from 'lucide-react'
+
+      import type { GenericItem, DetailViewConfig } from '../../types'
+
+      import { useStaggeredAnimation } from
+      '@/hooks/useStaggeredAnimation.motion.hook'
+
+      import { FieldRenderer } from
+      '@/features/dynamic-view/components/shared/FieldRenderer'
+
+      import { getNestedValue } from '@/lib/utils'
+
+
+      interface DetailPanelProps {
+        item: GenericItem
+        config: DetailViewConfig
+      }
+
+
+      const SECTION_ICONS: Record<string, React.ElementType> = {
+        "Assigned to": User,
+        "Engagement Metrics": BarChart3,
+        "Tags": Tag,
+        "Timeline": Clock,
+      };
+
+
+      export function DetailPanel({ item, config }: DetailPanelProps) {
+        const contentRef = useRef<HTMLDivElement>(null)
+        useStaggeredAnimation(contentRef, [item]);
+
+        if (!item) {
+          return null
+        }
+        
+        const { header, body } = config;
+
+        return (
+          <div ref={contentRef} className="h-full flex flex-col">
+            {/* Header */}
+            <div className="p-6 border-b border-border/50 bg-gradient-to-r from-card/50 to-card/30 backdrop-blur-sm">
+              <div className="flex items-start gap-4 mb-4">
+                <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-primary/10 rounded-2xl flex items-center justify-center text-3xl flex-shrink-0">
+                  <FieldRenderer item={item} fieldId={header.thumbnailField} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h1 className="text-2xl font-bold mb-2 leading-tight">
+                    <FieldRenderer item={item} fieldId={header.titleField} />
+                  </h1>
+                  <p className="text-muted-foreground">
+                    <FieldRenderer item={item} fieldId={header.descriptionField} />
+                  </p>
+                </div>
+              </div>
+
+              {/* Status badges */}
+              <div className="flex items-center gap-2 flex-wrap mb-4">
+                {header.badgeFields.map(fieldId => (
+                  <FieldRenderer key={fieldId} item={item} fieldId={fieldId} />
+                ))}
+              </div>
+
+              {/* Progress */}
+              <FieldRenderer item={item} fieldId={header.progressField} options={{ showPercentage: true }} />
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto">
+              <div className="p-6 space-y-6">
+                {body.sections.map(section => {
+                  const IconComponent = SECTION_ICONS[section.title];
+                  // Render section only if at least one of its fields has a value
+                  const hasContent = section.fields.some(fieldId => {
+                    const value = getNestedValue(item, fieldId);
+                    return value !== null && typeof value !== 'undefined';
+                  });
+
+                  if (!hasContent) return null;
+
+                  return (
+                    <div key={section.title} className="bg-card/30 rounded-2xl p-4 border border-border/30">
+                      <div className="flex items-center gap-1 mb-3">
+                        {IconComponent && <IconComponent className="w-4 h-4 text-muted-foreground" />}
+                        <h3 className="font-semibold text-sm">{section.title}</h3>
+                      </div>
+                      <div className="space-y-3">
+                        {section.fields.map(fieldId => (
+                          <FieldRenderer key={fieldId} item={item} fieldId={fieldId} options={{ avatarClassName: "w-12 h-12" }} />
+                        ))}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
+        )
+      }
+    patchStrategy: replace
+  - type: write
+    path: src/hooks/useRightPaneContent.hook.tsx
+    content: >
+      --- src/hooks/useRightPaneContent.hook.tsx
+
+      +++ src/hooks/useRightPaneContent.hook.tsx
+
+      @@ -9,12 +9,12 @@
+         Share,
+       } from 'lucide-react';
+       
+      -import { DynamicViewProvider } from
+      '@/features/dynamic-view/DynamicViewContext';
+       import { Button } from '@/components/ui/button';
+       import { DashboardContent } from "@/pages/Dashboard";
+       import { SettingsContent } from "@/features/settings/SettingsContent";
+       import { ToasterDemo } from "@/pages/ToasterDemo";
+       import { NotificationsPage } from "@/pages/Notifications";
+       import DataDemoPage from "@/pages/DataDemo/index";
+      -import { DetailPanel } from
+      '@/features/dynamic-view/components/shared/DetailPanel';
+
+      -import { dataDemoViewConfig } from '@/pages/DataDemo/DataDemo.config';
+
+      +import { DynamicViewProvider } from
+      '@/features/dynamic-view/DynamicViewContext';
+
+      +import { DetailPanel } from
+      '@/features/dynamic-view/components/shared/DetailPanel';
+
+      +import { dataDemoViewConfig } from '@/pages/DataDemo/DataDemo.config';
+       import { mockDataItems } from "@/pages/DataDemo/data/mockData";
+       import { MessagingContent } from "@/pages/Messaging/components/MessagingContent";
+       import type { AppShellState } from '@/store/appShell.store';
+      @@ -74,22 +74,22 @@
+           if (sidePaneContent === 'dataItem' && selectedItem) {
+             return {
+               meta: { title: "Item Details", icon: Database, page: `data-demo/${itemId}` },
+               content: (
+                 <DynamicViewProvider viewConfig={dataDemoViewConfig} data={mockDataItems}>
+                   <div className="h-full flex flex-col">
+                     <div className="flex-1 overflow-y-auto custom-scrollbar">
+                       <DetailPanel item={selectedItem} config={dataDemoViewConfig.detailView} />
+                     </div>
+                     {/* Application-specific actions can be composed here */}
+                     <div className="p-6 border-t border-border/50 bg-card/30">
+                       <div className="flex gap-3">
+                         <Button className="flex-1" size="sm">
+                           <ExternalLink className="w-4 h-4 mr-2" />
+                           Open Project
+                         </Button>
+                         <Button variant="outline" size="sm">
+                           <Share className="w-4 h-4 mr-2" />
+                           Share
+                         </Button>
+                       </div>
+                     </div>
+                   </div>
+                 </DynamicViewProvider>
+               ),
+             };
+           }
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/DataDemo/index.tsx
+    content: >
+      --- src/pages/DataDemo/index.tsx
+
+      +++ src/pages/DataDemo/index.tsx
+
+      @@ -7,25 +7,25 @@
+         Archive,
+         PlusCircle
+       } from 'lucide-react'
+      -import { gsap } from 'gsap'
+
+      -import { cn } from '@/lib/utils'
+
+      +import { gsap } from 'gsap'
+
+      +import { DynamicViewProvider } from
+      '@/features/dynamic-view/DynamicViewContext'
+       import { PageLayout } from '@/components/shared/PageLayout'
+       import { useScrollToBottom } from '@/hooks/useScrollToBottom.hook';
+       import { ScrollToBottomButton } from '@/components/shared/ScrollToBottomButton';
+      -import { DataListView } from './components/DataListView'
+
+      -import { DataCardView } from './components/DataCardView'
+
+      -import { DataTableView } from './components/DataTableView'
+
+      -import { DataKanbanView } from './components/DataKanbanView'
+
+      -import { DataCalendarView } from './components/DataCalendarView'
+
+      -import { DataViewModeSelector } from './components/DataViewModeSelector'
+
+      +import { ListView } from
+      '@/features/dynamic-view/components/views/ListView'
+
+      +import { CardView } from
+      '@/features/dynamic-view/components/views/CardView'
+
+      +import { TableView } from
+      '@/features/dynamic-view/components/views/TableView'
+
+      +import { KanbanView } from
+      '@/features/dynamic-view/components/views/KanbanView'
+
+      +import { CalendarView } from
+      '@/features/dynamic-view/components/views/CalendarView'
+
+      +import { ViewModeSelector } from
+      '@/features/dynamic-view/components/controls/ViewModeSelector'
+       import { AnimatedTabs } from '@/components/ui/animated-tabs'
+       import { StatCard } from '@/components/shared/StatCard'
+      -import { AnimatedLoadingSkeleton } from
+      './components/AnimatedLoadingSkeleton'
+
+      -import { DataViewControls } from './components/DataViewControls'
+
+      +import { AnimatedLoadingSkeleton } from
+      '@/features/dynamic-view/components/shared/AnimatedLoadingSkeleton'
+
+      +import { ViewControls } from
+      '@/features/dynamic-view/components/controls/ViewControls'
+       import { mockDataItems } from './data/mockData'
+      -import type { GroupableField, DataItem } from './types'
+
+      +import type { GroupableField, GenericItem } from
+      '@/features/dynamic-view/types'
+       import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
+       import { useAutoAnimateStats } from './hooks/useAutoAnimateStats.hook'
+       import { 
+      @@ -33,6 +33,8 @@
+         useGroupTabs
+       } from './store/dataDemo.store'
+       
+      +import { dataDemoViewConfig } from './DataDemo.config';
+
+      +
+       type Stat = {
+         title: string;
+         value: string;
+      @@ -51,7 +53,7 @@
+       
+       type StatItem = Stat | ChartStat;
+       
+      -function DataDemoContent() {
+
+      +export default function DataDemoPage() {
+         const {
+           viewMode,
+           groupBy,
+      @@ -82,27 +84,26 @@
+           if (groupBy === 'none') {
+               return null;
+           }
+      -    return allItems.reduce((acc, item) => {
+
+      +    return allItems.reduce((acc, item) => {
+               const groupKey = String(item[groupBy as GroupableField]);
+               if (!acc[groupKey]) {
+      -            acc[groupKey] = [];
+
+      +            acc[groupKey] = [] as GenericItem[];
+               }
+               acc[groupKey].push(item);
+               return acc;
+      -    }, {} as Record<string, DataItem[]>);
+
+      +    }, {} as Record<string, GenericItem[]>);
+         }, [allItems, groupBy]);
+       
+         const dataToRender = useMemo(() => {
+           if (groupBy === 'none' || activeGroupTab === 'all' || !groupedData) {
+             return allItems;
+           }
+      -    return groupedData[activeGroupTab] || [];
+
+      +    return groupedData[activeGroupTab] || [];
+         }, [groupBy, activeGroupTab, allItems, groupedData]);
+       
+      -  const groupOptions = useMemo(() => ([
+
+      -    { id: 'none' as const, label: 'None' }, 
+
+      -    { id: 'status' as const, label: 'Status' }, 
+
+      -    { id: 'priority' as const, label: 'Priority' }, 
+
+      -    { id: 'category' as const, label: 'Category' }
+
+      -  ]), []);
+
+      -
+         const statsRef = useRef<HTMLDivElement>(null)
+         const scrollRef = useRef<HTMLDivElement>(null);
+       
+      +  // Note: The `DynamicViewProvider` needs `GenericItem[]`. 
+
+      +  // Our store uses `GenericItem` so no cast is needed.
+
+      +  const genericItems: GenericItem[] = allItems;
+
+      +
+         // Auto-hide stats container on scroll down
+         useAutoAnimateStats(scrollRef, statsRef);
+       
+      @@ -233,26 +234,31 @@
+           }
+         }, [viewMode, groupBy, setGroupBy, setSort]);
+       
+      -  const renderViewForData = useCallback((data: DataItem[]) => {
+
+      +  const renderViewForData = useCallback((data: GenericItem[]) => {
+
+      +    const items = data as GenericItem[];
+           switch (viewMode) {
+      -        case 'table': return <DataTableView data={data} />;
+
+      -        case 'cards': return <DataCardView data={data} />;
+
+      +        case 'table': return <TableView data={items} />;
+
+      +        case 'cards': return <CardView data={items} />;
+               case 'calendar': return null; // Calendar has its own render path below
+               case 'kanban': return null; // Kanban has its own render path below
+      -        case 'grid': return <DataCardView data={data} isGrid />;
+
+      -        case 'list':
+
+      -        default:
+
+      -            return <DataListView data={data} />;
+
+      +        case 'grid': return <CardView data={items} isGrid />;
+
+      +        case 'list': default: return <ListView data={items} />;
+           }
+         }, [viewMode]);
+       
+         const isGroupedView = useMemo(() => 
+           groupBy !== 'none' && groupTabs.length > 1 && groupedData,
+         [groupBy, groupTabs.length, groupedData]);
+       
+      -
+         return (
+      -    <PageLayout
+
+      -      scrollRef={scrollRef}
+
+      -      onScroll={handleScroll}
+
+      -      // Note: Search functionality is handled by a separate SearchBar in
+      the TopBar
+
+      -    >
+
+      -      <div className="space-y-6">
+
+      -        {/* Header */}
+
+      -        <div className="space-y-4">
+
+      -          <div className="flex flex-col md:flex-row md:items-start
+      md:justify-between gap-4">
+
+      -            <div className="flex-1">
+
+      -              <h1 className="text-2xl font-bold tracking-tight">Data
+      Showcase</h1>
+
+      -              <p className="text-muted-foreground">
+
+      -                {isInitialLoading 
+
+      -                  ? "Loading projects..." 
+
+      -                  : `Showing ${dataToRender.length} of ${totalItemCount}
+      item(s)`}
+
+      -              </p>
+
+      -            </div>
+
+      -            <DataViewModeSelector />
+
+      -          </div>
+
+      -          <DataViewControls groupOptions={groupOptions} />
+
+      -        </div>
+
+      -
+
+      -        {/* Stats Section */}
+
+      -        {!isInitialLoading && (
+
+      -          <div ref={statsRef} className="flex overflow-x-auto gap-6 pb-4
+      no-scrollbar">
+
+      -            {stats.map((stat) => (
+
+      -              <StatCard
+
+      -                className="w-64 md:w-72 flex-shrink-0"
+
+      -                key={stat.title}
+
+      -                title={stat.title}
+
+      -                value={stat.value}
+
+      -                change={stat.change}
+
+      -                trend={stat.trend}
+
+      -                icon={stat.icon}
+
+      -                chartData={stat.type === 'chart' ? stat.chartData :
+      undefined}
+
+      -              />
+
+      -            ))}
+
+      -          </div>
+
+      -        )}
+
+      -
+
+      -        <div className="min-h-[500px]">
+
+      -          {isInitialLoading 
+
+      -            ? <AnimatedLoadingSkeleton viewMode={viewMode} /> 
+
+      -            : viewMode === 'calendar' ? (
+
+      -              <DataCalendarView data={allItems} />
+
+      -            )
+
+      -            : viewMode === 'kanban' ? (
+
+      -              isGroupedView ? (
+
+      -                <DataKanbanView data={groupedData} />
+
+      -              ) : (
+
+      -                <div className="flex items-center justify-center h-96
+      text-muted-foreground">
+
+      -                  Group data by a metric to use the Kanban view.
+
+      -                </div>
+
+      -              )
+
+      -            )
+
+      -            : !isGroupedView ? renderViewForData(allItems) : (
+
+      -              // Grouped view with AnimatedTabs
+
+      -              <div className="relative">
+
+      -                <AnimatedTabs
+
+      -                  tabs={groupTabs}
+
+      -                  activeTab={activeGroupTab}
+
+      -                  onTabChange={setActiveGroupTab}
+
+      -                  wrapperClassName="flex flex-col"
+
+      -                  className="border-b"
+
+      -                  contentClassName="pt-6 flex-grow"
+
+      -                >
+
+      -                  {groupTabs.map(tab => (
+
+      -                    <div key={tab.id} className="min-h-[440px]">
+
+      -                      {renderViewForData(
+
+      -                        tab.id === 'all' ? allItems :
+      groupedData?.[tab.id] || []
+
+      -                      )}
+
+      -                    </div>
+
+      -                  ))}
+
+      -                </AnimatedTabs>
+
+      -              </div>
+
+      -            )
+
+      -          }
+
+      -        </div>
+
+      -
+
+      -        {/* Loader for infinite scroll */}
+
+      -        <div ref={loaderRef} className="flex justify-center items-center
+      py-6">
+
+      -          {isLoading && !isInitialLoading && groupBy === 'none' &&
+      viewMode !== 'calendar' && (
+
+      -            <div className="flex items-center gap-2
+      text-muted-foreground">
+
+      -              <Loader2 className="w-5 h-5 animate-spin" />
+
+      -              <span>Loading more...</span>
+
+      -            </div>
+
+      -          )}
+
+      -          {!isLoading && !hasMore && dataToRender.length > 0 &&
+      !isInitialLoading && groupBy === 'none' && viewMode !== 'calendar' && (
+
+      -            <p className="text-muted-foreground">You've reached the
+      end.</p>
+
+      -          )}
+
+      -        </div>
+
+      -      </div>
+
+      -      <ScrollToBottomButton isVisible={showScrollToBottom}
+      onClick={scrollToBottom} />
+
+      -    </PageLayout>
+
+      -  )
+
+      -}
+
+      -
+
+      -export default function DataDemoPage() {
+
+      -  return <DataDemoContent />;
+
+      -}
+
+      +    <DynamicViewProvider viewConfig={dataDemoViewConfig}
+      data={genericItems}>
+
+      +      <PageLayout
+
+      +        scrollRef={scrollRef}
+
+      +        onScroll={handleScroll}
+
+      +      >
+
+      +        <div className="space-y-6">
+
+      +          {/* Header */}
+
+      +          <div className="space-y-4">
+
+      +            <div className="flex flex-col md:flex-row md:items-start
+      md:justify-between gap-4">
+
+      +              <div className="flex-1">
+
+      +                <h1 className="text-2xl font-bold tracking-tight">Data
+      Showcase</h1>
+
+      +                <p className="text-muted-foreground">
+
+      +                  {isInitialLoading 
+
+      +                    ? "Loading projects..." 
+
+      +                    : `Showing ${dataToRender.length} of
+      ${totalItemCount} item(s)`}
+
+      +                </p>
+
+      +              </div>
+
+      +              <ViewModeSelector />
+
+      +            </div>
+
+      +            <ViewControls />
+
+      +          </div>
+
+      +
+
+      +          {/* Stats Section */}
+
+      +          {!isInitialLoading && (
+
+      +            <div ref={statsRef} className="flex overflow-x-auto gap-6
+      pb-4 no-scrollbar">
+
+      +              {stats.map((stat) => (
+
+      +                <StatCard
+
+      +                  className="w-64 md:w-72 flex-shrink-0"
+
+      +                  key={stat.title}
+
+      +                  title={stat.title}
+
+      +                  value={stat.value}
+
+      +                  change={stat.change}
+
+      +                  trend={stat.trend}
+
+      +                  icon={stat.icon}
+
+      +                  chartData={stat.type === 'chart' ? stat.chartData :
+      undefined}
+
+      +                />
+
+      +              ))}
+
+      +            </div>
+
+      +          )}
+
+      +
+
+      +        <div className="min-h-[500px]">
+
+      +          {isInitialLoading ? (
+
+      +            <AnimatedLoadingSkeleton viewMode={viewMode} />
+
+      +          ) : viewMode === 'calendar' ? (
+
+      +            <CalendarView data={genericItems} />
+
+      +          ) : viewMode === 'kanban' ? (
+
+      +            isGroupedView ? (
+
+      +              <KanbanView data={groupedData as Record<string,
+      GenericItem[]>} />
+
+      +            ) : (
+
+      +              <div className="flex items-center justify-center h-96
+      text-muted-foreground">
+
+      +                Group data by a metric to use the Kanban view.
+
+      +              </div>
+
+      +            )
+
+      +          ) : !isGroupedView ? (
+
+      +            renderViewForData(allItems)
+
+      +          ) : (
+
+      +            // Grouped view with AnimatedTabs
+
+      +            <div className="relative">
+
+      +              <AnimatedTabs
+
+      +                tabs={groupTabs}
+
+      +                activeTab={activeGroupTab}
+
+      +                onTabChange={setActiveGroupTab}
+
+      +                wrapperClassName="flex flex-col"
+
+      +                className="border-b"
+
+      +                contentClassName="pt-6 flex-grow"
+
+      +              >
+
+      +                {groupTabs.map(tab => (
+
+      +                  <div key={tab.id} className="min-h-[440px]">
+
+      +                    {renderViewForData(
+
+      +                      tab.id === 'all' ? allItems : groupedData?.[tab.id]
+      || []
+
+      +                    )}
+
+      +                  </div>
+
+      +                ))}
+
+      +              </AnimatedTabs>
+
+      +            </div>
+
+      +          )}
+
+      +        </div>
+
+      +
+
+      +        {/* Loader for infinite scroll */}
+
+      +        <div ref={loaderRef} className="flex justify-center items-center
+      py-6">
+
+      +          {isLoading && !isInitialLoading && groupBy === 'none' &&
+      viewMode !== 'calendar' && (
+
+      +            <div className="flex items-center gap-2
+      text-muted-foreground">
+
+      +              <Loader2 className="w-5 h-5 animate-spin" />
+
+      +              <span>Loading more...</span>
+
+      +            </div>
+
+      +          )}
+
+      +          {!isLoading && !hasMore && dataToRender.length > 0 &&
+      !isInitialLoading && groupBy === 'none' && viewMode !== 'calendar' && (
+
+      +            <p className="text-muted-foreground">You've reached the
+      end.</p>
+
+      +          )}
+
+      +        </div>
+
+      +      </div>
+
+      +        <ScrollToBottomButton isVisible={showScrollToBottom}
+      onClick={scrollToBottom} />
+
+      +      </PageLayout>
+
+      +    </DynamicViewProvider>
+
+      +  );
+
+      +}
+    patchStrategy: standard-diff
+  - type: rename
+    from: src/pages/DataDemo/components/shared/AddDataItemCta.tsx
+    to: src/features/dynamic-view/components/shared/AddDataItemCta.tsx
+  - type: rename
+    from: src/pages/DataDemo/components/EmptyState.tsx
+    to: src/features/dynamic-view/components/shared/EmptyState.tsx
+  - type: rename
+    from: src/pages/DataDemo/components/AnimatedLoadingSkeleton.tsx
+    to: src/features/dynamic-view/components/shared/AnimatedLoadingSkeleton.tsx
+  - type: write
+    path: src/features/dynamic-view/components/shared/AnimatedLoadingSkeleton.tsx
+    content: |
+      <<<<<<< SEARCH
+      import type { ViewMode } from '../types'
+      =======
+      import type { ViewMode } from '../../types'
+      >>>>>>> REPLACE
+    patchStrategy: search-replace
+  - type: delete
+    path: src/pages/DataDemo/components/DataCalendarView.tsx
+  - type: delete
+    path: src/pages/DataDemo/components/DataCalendarViewControls.tsx
+  - type: delete
+    path: src/pages/DataDemo/components/DataCardView.tsx
+  - type: delete
+    path: src/pages/DataDemo/components/DataDetailActions.tsx
+  - type: delete
+    path: src/pages/DataDemo/components/DataKanbanView.tsx
+  - type: delete
+    path: src/pages/DataDemo/components/DataListView.tsx
+  - type: delete
+    path: src/pages/DataDemo/components/DataTableView.tsx
+  - type: delete
+    path: src/pages/DataDemo/components/DataViewControls.tsx
+  - type: delete
+    path: src/pages/DataDemo/components/DataViewModeSelector.tsx
+  - type: delete
+    path: src/pages/DataDemo/components/shared/DataItemParts.tsx
+  - type: delete
+    path: src/pages/DataDemo/types.ts
+snapshot:
+  src/pages/DataDemo/components/DataDetailPanel.tsx: null
+  src/pages/DataDemo/components/shared/AddDataItemCta.tsx: null
+  src/pages/DataDemo/components/EmptyState.tsx: null
+  src/pages/DataDemo/components/AnimatedLoadingSkeleton.tsx: null
+  src/pages/DataDemo/components/DataCalendarView.tsx: null
+  src/pages/DataDemo/components/DataCalendarViewControls.tsx: null
+  src/pages/DataDemo/components/DataCardView.tsx: null
+  src/pages/DataDemo/components/DataDetailActions.tsx: null
+  src/pages/DataDemo/components/DataKanbanView.tsx: null
+  src/pages/DataDemo/components/DataListView.tsx: null
+  src/pages/DataDemo/components/DataTableView.tsx: null
+  src/pages/DataDemo/components/DataViewControls.tsx: null
+  src/pages/DataDemo/components/DataViewModeSelector.tsx: null
+  src/pages/DataDemo/components/shared/DataItemParts.tsx: null
+  src/pages/DataDemo/types.ts: null
+  src/features/dynamic-view/components/shared/DetailPanel.tsx: >-
+    import React, { useRef } from 'react'
+
+    import {
+      Clock, 
+      Tag,
+      User,
+      BarChart3,
+    } from 'lucide-react'
+
+    import type { GenericItem, DetailViewConfig } from '../../types'
+
+    import { useStaggeredAnimation } from
+    '@/hooks/useStaggeredAnimation.motion.hook'
+
+    import { FieldRenderer } from
+    '@/features/dynamic-view/components/shared/FieldRenderer'
+
+    import { getNestedValue } from '@/lib/utils'
+
+
+    interface DetailPanelProps {
+      item: GenericItem
+      config: DetailViewConfig
+    }
+
+
+    const SECTION_ICONS: Record<string, React.ElementType> = {
+      "Assigned to": User,
+      "Engagement Metrics": BarChart3,
+      "Tags": Tag,
+      "Timeline": Clock,
+    };
+
+
+    export function DetailPanel({ item, config }: DetailPanelProps) {
+      const contentRef = useRef<HTMLDivElement>(null)
+      useStaggeredAnimation(contentRef, [item]);
+
+      if (!item) {
+        return null
+      }
+      
+      const { header, body } = config;
+
+      return (
+        <div ref={contentRef} className="h-full flex flex-col">
+          {/* Header */}
+          <div className="p-6 border-b border-border/50 bg-gradient-to-r from-card/50 to-card/30 backdrop-blur-sm">
+            <div className="flex items-start gap-4 mb-4">
+              <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-primary/10 rounded-2xl flex items-center justify-center text-3xl flex-shrink-0">
+                <FieldRenderer item={item} fieldId={header.thumbnailField} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h1 className="text-2xl font-bold mb-2 leading-tight">
+                  <FieldRenderer item={item} fieldId={header.titleField} />
+                </h1>
+                <p className="text-muted-foreground">
+                  <FieldRenderer item={item} fieldId={header.descriptionField} />
+                </p>
+              </div>
+            </div>
+
+            {/* Status badges */}
+            <div className="flex items-center gap-2 flex-wrap mb-4">
+              {header.badgeFields.map(fieldId => (
+                <FieldRenderer key={fieldId} item={item} fieldId={fieldId} />
+              ))}
+            </div>
+
+            {/* Progress */}
+            <FieldRenderer item={item} fieldId={header.progressField} options={{ showPercentage: true }} />
+          </div>
+
+          {/* Content */}
+          <div className="flex-1 overflow-y-auto">
+            <div className="p-6 space-y-6">
+              {body.sections.map(section => {
+                const IconComponent = SECTION_ICONS[section.title];
+                // Render section only if at least one of its fields has a value
+                const hasContent = section.fields.some(fieldId => {
+                  const value = getNestedValue(item, fieldId);
+                  return value !== null && typeof value !== 'undefined';
+                });
+
+                if (!hasContent) return null;
+
+                return (
+                  <div key={section.title} className="bg-card/30 rounded-2xl p-4 border border-border/30">
+                    <div className="flex items-center gap-1 mb-3">
+                      {IconComponent && <IconComponent className="w-4 h-4 text-muted-foreground" />}
+                      <h3 className="font-semibold text-sm">{section.title}</h3>
+                    </div>
+                    <div className="space-y-3">
+                      {section.fields.map(fieldId => (
+                        <FieldRenderer key={fieldId} item={item} fieldId={fieldId} options={{ avatarClassName: "w-12 h-12" }} />
+                      ))}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+      )
+    }
+  src/pages/DataDemo/DataDemo.config.tsx: >
+    import { FieldRenderer } from
+    "@/features/dynamic-view/components/shared/FieldRenderer";
+
+    import type { ViewConfig, GenericItem } from
+    "@/features/dynamic-view/types";
+
+
+    export const dataDemoViewConfig: ViewConfig = {
+      // 1. Field Definitions
+      fields: [
+        { id: "id", label: "ID", type: "string" },
+        { id: "title", label: "Title", type: "string" },
+        { id: "description", label: "Description", type: "longtext" },
+        { id: "thumbnail", label: "Thumbnail", type: "thumbnail" },
+        { id: "category", label: "Category", type: "badge" },
+        {
+          id: "status",
+          label: "Status",
+          type: "badge",
+          colorMap: {
+            active: "bg-sky-500/10 text-sky-600 border-sky-500/20",
+            pending: "bg-amber-500/10 text-amber-600 border-amber-500/20",
+            completed: "bg-emerald-600/10 text-emerald-700 border-emerald-600/20",
+            archived: "bg-zinc-500/10 text-zinc-600 border-zinc-500/20",
+          },
+        },
+        {
+          id: "priority",
+          label: "Priority",
+          type: "badge",
+          colorMap: {
+            critical: "bg-red-600/10 text-red-700 border-red-600/20",
+            high: "bg-orange-500/10 text-orange-600 border-orange-500/20",
+            medium: "bg-blue-500/10 text-blue-600 border-blue-500/20",
+            low: "bg-green-500/10 text-green-600 border-green-500/20",
+          },
+          indicatorColorMap: {
+            critical: "bg-red-500",
+            high: "bg-orange-500",
+            medium: "bg-blue-500",
+            low: "bg-green-500",
+          }
+        },
+        { id: "assignee", label: "Assignee", type: "avatar" },
+        { id: "tags", label: "Tags", type: "tags" },
+        { id: "metrics", label: "Engagement", type: "metrics" },
+        { id: "metrics.completion", label: "Progress", type: "progress" },
+        { id: "dueDate", label: "Due Date", type: "date" },
+        { id: "createdAt", label: "Created At", type: "date" },
+        { id: "updatedAt", label: "Last Updated", type: "date" },
+        // A custom field to replicate the composite "Project" column in the table view
+        {
+          id: "project_details",
+          label: "Project",
+          type: "custom",
+          render: (item: GenericItem) => (
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-primary/20 to-primary/10 rounded-lg flex items-center justify-center text-lg flex-shrink-0">
+                <FieldRenderer item={item} fieldId="thumbnail" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h4 className="font-medium group-hover:text-primary transition-colors truncate">
+                  <FieldRenderer item={item} fieldId="title" />
+                </h4>
+                <p className="text-sm text-muted-foreground truncate">
+                  <FieldRenderer item={item} fieldId="category" />
+                </p>
+              </div>
+            </div>
+          ),
+        },
+      ],
+      // 2. Control Definitions
+      sortableFields: [
+        { id: "updatedAt", label: "Last Updated" },
+        { id: "title", label: "Title" },
+        { id: "status", label: "Status" },
+        { id: "priority", label: "Priority" },
+        { id: "metrics.completion", label: "Progress" },
+      ],
+      groupableFields: [
+        { id: "none", label: "None" },
+        { id: "status", label: "Status" },
+        { id: "priority", label: "Priority" },
+        { id: "category", label: "Category" },
+      ],
+      filterableFields: [
+        {
+          id: "status",
+          label: "Status",
+          options: [
+            { id: "active", label: "Active" },
+            { id: "pending", label: "Pending" },
+            { id: "completed", label: "Completed" },
+            { id: "archived", label: "Archived" },
+          ],
+        },
+        {
+          id: "priority",
+          label: "Priority",
+          options: [
+            { id: "critical", label: "Critical" },
+            { id: "high", label: "High" },
+            { id: "medium", label: "Medium" },
+            { id: "low", label: "Low" },
+          ],
+        },
+      ],
+      // 3. View Layouts
+      listView: {
+        iconField: "thumbnail",
+        titleField: "title",
+        metaFields: [
+          { fieldId: "status", className: "hidden sm:flex" },
+          { fieldId: "tags", className: "hidden lg:flex" },
+          { fieldId: "updatedAt", className: "hidden md:flex" },
+          { fieldId: "assignee" },
+          { fieldId: "priority", className: "hidden xs:flex" },
+        ],
+      },
+      cardView: {
+        thumbnailField: "thumbnail",
+        titleField: "title",
+        descriptionField: "description",
+        headerFields: ["priority"],
+        statusField: "status",
+        categoryField: "category",
+        tagsField: "tags",
+        progressField: "metrics.completion",
+        assigneeField: "assignee",
+        metricsField: "metrics",
+        dateField: "updatedAt",
+      },
+      tableView: {
+        columns: [
+          { fieldId: "project_details", label: "Project", isSortable: true },
+          { fieldId: "status", label: "Status", isSortable: true },
+          { fieldId: "priority", label: "Priority", isSortable: true },
+          { fieldId: "assignee", label: "Assignee", isSortable: true },
+          { fieldId: "metrics.completion", label: "Progress", isSortable: true },
+          { fieldId: "metrics", label: "Engagement", isSortable: true },
+          { fieldId: "updatedAt", label: "Last Updated", isSortable: true },
+        ],
+      },
+      kanbanView: {
+        groupByField: "status",
+        cardFields: {
+          titleField: "title",
+          descriptionField: "description",
+          priorityField: "priority",
+          tagsField: "tags",
+          dateField: "dueDate",
+          metricsField: "metrics",
+          assigneeField: "assignee",
+        },
+      },
+      calendarView: {
+        dateField: "dueDate",
+        titleField: "title",
+        displayFields: ["tags", "priority", "assignee"],
+        colorByField: "priority",
+      },
+      detailView: {
+        header: {
+          thumbnailField: "thumbnail",
+          titleField: "title",
+          descriptionField: "description",
+          badgeFields: ["status", "priority", "category"],
+          progressField: "metrics.completion",
+        },
+        body: {
+          sections: [
+            { title: "Assigned to", fields: ["assignee"] },
+            { title: "Engagement Metrics", fields: ["metrics"] },
+            { title: "Tags", fields: ["tags"] },
+            {
+              title: "Timeline",
+              fields: ["createdAt", "updatedAt", "dueDate"],
+            },
+          ],
+        },
+      },
+    };
+  src/hooks/useRightPaneContent.hook.tsx: >-
+    import { useMemo } from 'react';
+
+    import { useParams } from 'react-router-dom';
+
+    import {
+      LayoutDashboard,
+      Settings,
+      Component,
+      Bell,
+      SlidersHorizontal,
+      Database,
+      MessageSquare,
+      ExternalLink,
+      Share,
+    } from 'lucide-react';
+
+
+    import { DynamicViewProvider } from
+    '@/features/dynamic-view/DynamicViewContext';
+
+    import { Button } from '@/components/ui/button';
+
+    import { DashboardContent } from "@/pages/Dashboard";
+
+    import { SettingsContent } from "@/features/settings/SettingsContent";
+
+    import { ToasterDemo } from "@/pages/ToasterDemo";
+
+    import { NotificationsPage } from "@/pages/Notifications";
+
+    import DataDemoPage from "@/pages/DataDemo/index";
+
+    import { DetailPanel } from
+    '@/features/dynamic-view/components/shared/DetailPanel';
+
+    import { dataDemoViewConfig } from '@/pages/DataDemo/DataDemo.config';
+
+    import { mockDataItems } from "@/pages/DataDemo/data/mockData";
+
+    import { MessagingContent } from
+    "@/pages/Messaging/components/MessagingContent";
+
+    import type { AppShellState } from '@/store/appShell.store';
+
+
+    export function useRightPaneContent(sidePaneContent:
+    AppShellState['sidePaneContent']) {
+      const { itemId, conversationId } = useParams<{ itemId: string; conversationId: string }>();
+
+      const staticContentMap = useMemo(() => ({
+        main: {
+          title: "Dashboard",
+          icon: LayoutDashboard,
+          page: "dashboard",
+          content: <DashboardContent />,
+        },
+        settings: {
+          title: "Settings",
+          icon: Settings,
+          page: "settings",
+          content: <div className="p-6"><SettingsContent /></div>,
+        },
+        toaster: {
+          title: "Toaster Demo",
+          icon: Component,
+          page: "toaster",
+          content: <ToasterDemo />,
+        },
+        notifications: {
+          title: "Notifications",
+          icon: Bell,
+          page: "notifications",
+          content: <NotificationsPage />,
+        },
+        dataDemo: {
+          title: "Data Showcase",
+          icon: Database,
+          page: "data-demo",
+          content: <DataDemoPage />,
+        },
+        details: {
+          title: "Details Panel",
+          icon: SlidersHorizontal,
+          content: (
+            <div className="p-6">
+              <p className="text-muted-foreground">
+                This is the side pane. It can be used to display contextual
+                information, forms, or actions related to the main content.
+              </p>
+            </div>
+          ),
+        },
+      }), []);
+
+      const contentMap = useMemo(() => ({
+        ...staticContentMap,
+        messaging: {
+          title: "Conversation",
+          icon: MessageSquare,
+          page: "messaging",
+          content: <MessagingContent conversationId={conversationId} />,
+        },
+      }), [conversationId, staticContentMap]);
+
+      const selectedItem = useMemo(() => {
+        if (!itemId) return null;
+        return mockDataItems.find(item => item.id === itemId) ?? null;
+      }, [itemId]);
+
+      const { meta, content } = useMemo(() => {
+        if (sidePaneContent === 'dataItem' && selectedItem) {
+          return {
+            meta: { title: "Item Details", icon: Database, page: `data-demo/${itemId}` },
+            content: (
+              <DynamicViewProvider viewConfig={dataDemoViewConfig} data={mockDataItems}>
+                <div className="h-full flex flex-col">
+                  <div className="flex-1 overflow-y-auto custom-scrollbar">
+                    <DetailPanel item={selectedItem} config={dataDemoViewConfig.detailView} />
+                  </div>
+                  {/* Application-specific actions can be composed here */}
+                  <div className="p-6 border-t border-border/50 bg-card/30">
+                    <div className="flex gap-3">
+                      <Button className="flex-1" size="sm">
+                        <ExternalLink className="w-4 h-4 mr-2" />
+                        Open Project
+                      </Button>
+                      <Button variant="outline" size="sm">
+                        <Share className="w-4 h-4 mr-2" />
+                        Share
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </DynamicViewProvider>
+            ),
+          };
+        }
+        const mappedContent = contentMap[sidePaneContent as keyof typeof contentMap] || contentMap.details;
+        return {
+          meta: mappedContent,
+          content: mappedContent.content,
+        };
+      }, [sidePaneContent, selectedItem, contentMap, itemId]);
+
+      return { meta, content };
+    }
+  src/features/dynamic-view/components/shared/AddDataItemCta.tsx: |-
+    import { Plus } from 'lucide-react'
+    import { cn } from '@/lib/utils'
+
+    interface AddDataItemCtaProps {
+      viewMode: 'list' | 'cards' | 'grid' | 'table'
+      colSpan?: number
+    }
+
+    export function AddDataItemCta({ viewMode, colSpan }: AddDataItemCtaProps) {
+      const isTable = viewMode === 'table'
+      const isList = viewMode === 'list'
+      const isCard = viewMode === 'cards' || viewMode === 'grid'
+
+      const content = (
+        <div
+          className={cn(
+            "flex items-center justify-center text-center w-full h-full p-6 gap-6",
+            isCard && "flex-col min-h-[300px]",
+            isList && "flex-row",
+            isTable && "flex-row py-8",
+          )}
+        >
+          <div className="flex-shrink-0">
+            <div className="w-16 h-16 bg-primary/10 border-2 border-dashed border-primary/30 rounded-full flex items-center justify-center text-primary">
+              <Plus className="w-8 h-8" />
+            </div>
+          </div>
+          <div className={cn("flex-1", isCard && "text-center", isList && "text-left", isTable && "text-left")}>
+            <h3 className="font-semibold text-lg mb-1 text-primary">
+              Showcase Your Own Data
+            </h3>
+            <p className="text-muted-foreground text-sm">
+              Click here to add a new item and see how it looks across all views in the demo.
+            </p>
+          </div>
+        </div>
+      )
+
+      if (isTable) {
+        return (
+          <tr className="group transition-colors duration-200 hover:bg-accent/20 cursor-pointer">
+            <td colSpan={colSpan}>
+              {content}
+            </td>
+          </tr>
+        )
+      }
+
+      return (
+        <div
+          className={cn(
+            "group relative overflow-hidden rounded-3xl border-2 border-dashed border-border bg-transparent transition-all duration-300 cursor-pointer",
+            "hover:bg-accent/50 hover:border-primary/30",
+            isList && "rounded-2xl"
+          )}
+        >
+          {content}
+        </div>
+      )
+    }
+  src/features/dynamic-view/components/shared/EmptyState.tsx: |-
+    import { Eye } from 'lucide-react'
+
+    export function EmptyState() {
+      return (
+        <div className="flex flex-col items-center justify-center py-20 text-center">
+          <div className="w-24 h-24 bg-muted rounded-full flex items-center justify-center mb-6">
+            <Eye className="w-10 h-10 text-muted-foreground" />
+          </div>
+          <h3 className="text-lg font-semibold mb-2">No items found</h3>
+          <p className="text-muted-foreground">Try adjusting your search criteria</p>
+        </div>
+      )
+    }
+  src/pages/DataDemo/index.tsx: >-
+    import { useRef, useEffect, useCallback, useMemo } from 'react'
+
+    import {
+      Layers, 
+      AlertTriangle, 
+      PlayCircle, 
+      Loader2,
+      TrendingUp,
+      CheckCircle,
+      Clock,
+      Archive,
+      PlusCircle
+    } from 'lucide-react'
+
+    import { gsap } from 'gsap'
+
+    import { DynamicViewProvider } from
+    '@/features/dynamic-view/DynamicViewContext'
+
+    import { PageLayout } from '@/components/shared/PageLayout'
+
+    import { useScrollToBottom } from '@/hooks/useScrollToBottom.hook';
+
+    import { ScrollToBottomButton } from
+    '@/components/shared/ScrollToBottomButton';
+
+    import { ListView } from '@/features/dynamic-view/components/views/ListView'
+
+    import { CardView } from '@/features/dynamic-view/components/views/CardView'
+
+    import { TableView } from
+    '@/features/dynamic-view/components/views/TableView'
+
+    import { KanbanView } from
+    '@/features/dynamic-view/components/views/KanbanView'
+
+    import { CalendarView } from
+    '@/features/dynamic-view/components/views/CalendarView'
+
+    import { ViewModeSelector } from
+    '@/features/dynamic-view/components/controls/ViewModeSelector'
+
+    import { AnimatedTabs } from '@/components/ui/animated-tabs'
+
+    import { StatCard } from '@/components/shared/StatCard'
+
+    import { AnimatedLoadingSkeleton } from
+    '@/features/dynamic-view/components/shared/AnimatedLoadingSkeleton'
+
+    import { ViewControls } from
+    '@/features/dynamic-view/components/controls/ViewControls'
+
+    import { mockDataItems } from './data/mockData'
+
+    import type { GroupableField, GenericItem } from
+    '@/features/dynamic-view/types'
+
+    import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
+
+    import { useAutoAnimateStats } from './hooks/useAutoAnimateStats.hook'
+
+    import { 
+      useDataDemoStore, 
+      useGroupTabs
+    } from './store/dataDemo.store'
+
+
+    import { dataDemoViewConfig } from './DataDemo.config';
+
+
+    type Stat = {
+      title: string;
+      value: string;
+      icon: React.ReactNode;
+      change: string;
+      trend: 'up' | 'down';
+      type?: 'card';
+    };
+
+
+    type ChartStat = {
+      title: string;
+      value: string;
+      icon: React.ReactNode;
+      change: string;
+      trend: 'up' | 'down';
+      type: 'chart';
+      chartData: number[];
+    };
+
+
+    type StatItem = Stat | ChartStat;
+
+
+    export default function DataDemoPage() {
+      const {
+        viewMode,
+        groupBy,
+        activeGroupTab,
+        setGroupBy,
+        setSort,
+        setActiveGroupTab,
+        page,
+        filters,
+        sortConfig,
+        setPage,
+      } = useAppViewManager();
+
+      const { hasMore, isLoading, isInitialLoading, totalItemCount, loadData } = useDataDemoStore(state => ({
+        hasMore: state.hasMore,
+        isLoading: state.isLoading,
+        isInitialLoading: state.isInitialLoading,
+        totalItemCount: state.totalItemCount,
+        loadData: state.loadData,
+      }));
+
+      const groupTabs = useGroupTabs(groupBy, activeGroupTab);
+      const allItems = useDataDemoStore(s => s.items);
+
+      const groupedData = useMemo(() => {
+        if (groupBy === 'none') {
+            return null;
+        }
+        return allItems.reduce((acc, item) => {
+            const groupKey = String(item[groupBy as GroupableField]);
+            if (!acc[groupKey]) {
+                acc[groupKey] = [] as GenericItem[];
+            }
+            acc[groupKey].push(item);
+            return acc;
+        }, {} as Record<string, GenericItem[]>);
+      }, [allItems, groupBy]);
+
+      const dataToRender = useMemo(() => {
+        if (groupBy === 'none' || activeGroupTab === 'all' || !groupedData) {
+          return allItems;
+        }
+        return groupedData[activeGroupTab] || [];
+      }, [groupBy, activeGroupTab, allItems, groupedData]);
+
+      const statsRef = useRef<HTMLDivElement>(null)
+      const scrollRef = useRef<HTMLDivElement>(null);
+
+      // Note: The `DynamicViewProvider` needs `GenericItem[]`. 
+      // Our store uses `GenericItem` so no cast is needed.
+      const genericItems: GenericItem[] = allItems;
+
+      // Auto-hide stats container on scroll down
+      useAutoAnimateStats(scrollRef, statsRef);
+
+      // Calculate stats from data
+      const totalItems = mockDataItems.length
+      const { showScrollToBottom, scrollToBottom, handleScroll } = useScrollToBottom(scrollRef);
+
+      const activeItems = mockDataItems.filter(item => item.status === 'active').length
+      const highPriorityItems = mockDataItems.filter(item => item.priority === 'high' || item.priority === 'critical').length
+      const avgCompletion = totalItems > 0 ? Math.round(
+        mockDataItems.reduce((acc, item) => acc + item.metrics.completion, 0) / totalItems
+      ) : 0
+
+      const stats: StatItem[] = [
+        {
+          title: "Total Projects",
+          value: totalItems.toString(),
+          icon: <Layers className="w-5 h-5" />,
+          change: "+5.2% this month",
+          trend: "up" as const,
+          type: 'chart',
+          chartData: [120, 125, 122, 130, 135, 138, 142]
+        },
+        {
+          title: "Active Projects",
+          value: activeItems.toString(),
+          icon: <PlayCircle className="w-5 h-5" />,
+          change: "+2 this week", 
+          trend: "up" as const,
+          type: 'chart',
+          chartData: [45, 50, 48, 55, 53, 60, 58]
+        },
+        {
+          title: "High Priority",
+          value: highPriorityItems.toString(),
+          icon: <AlertTriangle className="w-5 h-5" />,
+          change: "-1 from last week",
+          trend: "down" as const,
+          type: 'chart',
+          chartData: [25, 26, 28, 27, 26, 24, 23]
+        },
+        {
+          title: "Avg. Completion",
+          value: `${avgCompletion}%`,
+          icon: <TrendingUp className="w-5 h-5" />,
+          change: "+3.2%",
+          trend: "up" as const,
+          type: 'chart',
+          chartData: [65, 68, 70, 69, 72, 75, 78],
+        },
+        {
+          title: "Completion Rate",
+          value: "88%",
+          icon: <CheckCircle className="w-5 h-5" />,
+          change: "+1.5% this month",
+          trend: "up" as const,
+          type: 'chart',
+          chartData: [80, 82, 81, 84, 85, 87, 88],
+        },
+        {
+          title: "Overdue Items",
+          value: "8",
+          icon: <Clock className="w-5 h-5" />,
+          change: "-3 this week",
+          trend: "down" as const,
+        },
+        {
+          title: "New This Week",
+          value: "12",
+          icon: <PlusCircle className="w-5 h-5" />,
+          change: "+2 from last week",
+          trend: "up" as const,
+        },
+        {
+          title: "Archived Projects",
+          value: "153",
+          icon: <Archive className="w-5 h-5" />,
+          change: "+20 this month",
+          trend: "up" as const,
+        }
+      ]
+
+      useEffect(() => {
+        // Animate stats cards in
+        if (!isInitialLoading && statsRef.current) {
+          gsap.fromTo(statsRef.current.children,
+            { y: 30, opacity: 0 },
+            {
+              duration: 0.5,
+              y: 0,
+              opacity: 1,
+              stagger: 0.08,
+              ease: "power2.out"
+            }
+          )
+        }
+      }, [isInitialLoading]);
+
+      useEffect(() => {
+        loadData({
+          page,
+          groupBy,
+          filters,
+          sortConfig,
+          isFullLoad: viewMode === 'calendar',
+        });
+      }, [page, groupBy, filters, sortConfig, loadData, viewMode]);
+
+      const observer = useRef<IntersectionObserver>();
+      const loaderRef = useCallback(
+        (node: Element | null) => {
+          if (isLoading) return;
+          if (observer.current) observer.current.disconnect();
+
+          observer.current = new IntersectionObserver((entries) => {
+            if (entries[0].isIntersecting && hasMore) {
+              setPage(page + 1);
+            }
+          });
+          if (node) observer.current.observe(node);
+        },
+        [isLoading, hasMore, page, setPage],
+      );
+      
+      // Auto-group by status when switching to kanban view for the first time
+      useEffect(() => {
+        if (viewMode === 'kanban' && groupBy === 'none') {
+          setGroupBy('status');
+          setSort(null); // Kanban is manually sorted, so disable programmatic sort
+        }
+        // For calendar view, we don't want grouping.
+        if (viewMode === 'calendar' && groupBy !== 'none') {
+          setGroupBy('none');
+        }
+      }, [viewMode, groupBy, setGroupBy, setSort]);
+
+      const renderViewForData = useCallback((data: GenericItem[]) => {
+        const items = data as GenericItem[];
+        switch (viewMode) {
+            case 'table': return <TableView data={items} />;
+            case 'cards': return <CardView data={items} />;
+            case 'calendar': return null; // Calendar has its own render path below
+            case 'kanban': return null; // Kanban has its own render path below
+            case 'grid': return <CardView data={items} isGrid />;
+            case 'list': default: return <ListView data={items} />;
+        }
+      }, [viewMode]);
+
+      const isGroupedView = useMemo(() => 
+        groupBy !== 'none' && groupTabs.length > 1 && groupedData,
+      [groupBy, groupTabs.length, groupedData]);
+
+
+      return (
+        <DynamicViewProvider viewConfig={dataDemoViewConfig} data={genericItems}>
+          <PageLayout
+            scrollRef={scrollRef}
+            onScroll={handleScroll}
+          >
+            <div className="space-y-6">
+              {/* Header */}
+              <div className="space-y-4">
+                <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                  <div className="flex-1">
+                    <h1 className="text-2xl font-bold tracking-tight">Data Showcase</h1>
+                    <p className="text-muted-foreground">
+                      {isInitialLoading 
+                        ? "Loading projects..." 
+                        : `Showing ${dataToRender.length} of ${totalItemCount} item(s)`}
+                    </p>
+                  </div>
+                  <ViewModeSelector />
+                </div>
+                <ViewControls />
+              </div>
+
+              {/* Stats Section */}
+              {!isInitialLoading && (
+                <div ref={statsRef} className="flex overflow-x-auto gap-6 pb-4 no-scrollbar">
+                  {stats.map((stat) => (
+                    <StatCard
+                      className="w-64 md:w-72 flex-shrink-0"
+                      key={stat.title}
+                      title={stat.title}
+                      value={stat.value}
+                      change={stat.change}
+                      trend={stat.trend}
+                      icon={stat.icon}
+                      chartData={stat.type === 'chart' ? stat.chartData : undefined}
+                    />
+                  ))}
+                </div>
+              )}
+
+            <div className="min-h-[500px]">
+              {isInitialLoading ? (
+                <AnimatedLoadingSkeleton viewMode={viewMode} />
+              ) : viewMode === 'calendar' ? (
+                <CalendarView data={genericItems} />
+              ) : viewMode === 'kanban' ? (
+                isGroupedView ? (
+                  <KanbanView data={groupedData as Record<string, GenericItem[]>} />
+                ) : (
+                  <div className="flex items-center justify-center h-96 text-muted-foreground">
+                    Group data by a metric to use the Kanban view.
+                  </div>
+                )
+              ) : !isGroupedView ? (
+                renderViewForData(allItems)
+              ) : (
+                // Grouped view with AnimatedTabs
+                <div className="relative">
+                  <AnimatedTabs
+                    tabs={groupTabs}
+                    activeTab={activeGroupTab}
+                    onTabChange={setActiveGroupTab}
+                    wrapperClassName="flex flex-col"
+                    className="border-b"
+                    contentClassName="pt-6 flex-grow"
+                  >
+                    {groupTabs.map(tab => (
+                      <div key={tab.id} className="min-h-[440px]">
+                        {renderViewForData(
+                          tab.id === 'all' ? allItems : groupedData?.[tab.id] || []
+                        )}
+                      </div>
+                    ))}
+                  </AnimatedTabs>
+                </div>
+              )}
+            </div>
+
+            {/* Loader for infinite scroll */}
+            <div ref={loaderRef} className="flex justify-center items-center py-6">
+              {isLoading && !isInitialLoading && groupBy === 'none' && viewMode !== 'calendar' && (
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span>Loading more...</span>
+                </div>
+              )}
+              {!isLoading && !hasMore && dataToRender.length > 0 && !isInitialLoading && groupBy === 'none' && viewMode !== 'calendar' && (
+                <p className="text-muted-foreground">You've reached the end.</p>
+              )}
+            </div>
+          </div>
+            <ScrollToBottomButton isVisible={showScrollToBottom} onClick={scrollToBottom} />
+          </PageLayout>
+        </DynamicViewProvider>
+      );
+    }
+  src/features/dynamic-view/components/shared/AnimatedLoadingSkeleton.tsx: >-
+    import { useEffect, useRef, useState } from 'react'
+
+    import { gsap } from 'gsap'
+
+    import { Search } from 'lucide-react'
+
+    import { cn } from '@/lib/utils'
+
+    import type { ViewMode } from '../../types'
+
+
+    interface GridConfig {
+      numCards: number
+      cols: number
+    }
+
+
+    export const AnimatedLoadingSkeleton = ({ viewMode }: { viewMode: ViewMode
+    }) => {
+      const [containerWidth, setContainerWidth] = useState(0)
+      const containerRef = useRef<HTMLDivElement>(null)
+      const iconRef = useRef<HTMLDivElement>(null)
+      const timelineRef = useRef<gsap.core.Timeline | null>(null)
+
+      const getGridConfig = (width: number): GridConfig => {
+        if (width === 0) return { numCards: 8, cols: 2 }; // Default before measurement
+        if (viewMode === 'list' || viewMode === 'table') {
+          return { numCards: 5, cols: 1 }
+        }
+        // For card view
+        if (viewMode === 'cards') {
+          const cols = Math.max(1, Math.floor(width / 344)); // 320px card + 24px gap
+          return { numCards: Math.max(8, cols * 2), cols }
+        }
+        // For grid view
+        const cols = Math.max(1, Math.floor(width / 304)); // 280px card + 24px gap
+        return { numCards: Math.max(8, cols * 2), cols }
+      }
+
+      useEffect(() => {
+        const container = containerRef.current;
+        if (!container) return;
+
+        const resizeObserver = new ResizeObserver(entries => {
+          if (entries[0]) {
+            setContainerWidth(entries[0].contentRect.width);
+          }
+        });
+
+        resizeObserver.observe(container);
+        return () => resizeObserver.disconnect();
+      }, []);
+
+      useEffect(() => {
+        if (timelineRef.current) {
+          timelineRef.current.kill()
+        }
+        if (!iconRef.current || !containerRef.current || containerWidth === 0) return
+
+        // Allow DOM to update with new skeleton cards
+        const timeoutId = setTimeout(() => {
+          const cards = Array.from(containerRef.current!.children)
+          if (cards.length === 0) return
+
+          const shuffledCards = gsap.utils.shuffle(cards)
+
+          const getCardPosition = (card: Element) => {
+            const rect = card.getBoundingClientRect()
+            const containerRect = containerRef.current!.getBoundingClientRect()
+            const iconRect = iconRef.current!.getBoundingClientRect()
+
+            return {
+              x: rect.left - containerRect.left + rect.width / 2 - iconRect.width / 2,
+              y: rect.top - containerRect.top + rect.height / 2 - iconRect.height / 2,
+            }
+          }
+          
+          const tl = gsap.timeline({
+            repeat: -1,
+            repeatDelay: 0.5,
+            defaults: { duration: 1, ease: 'power2.inOut' }
+          });
+          timelineRef.current = tl
+
+          // Animate to a few random cards
+          shuffledCards.slice(0, 5).forEach(card => {
+            const pos = getCardPosition(card)
+            tl.to(iconRef.current, { 
+              x: pos.x,
+              y: pos.y,
+              scale: 1.2,
+              duration: 0.8
+            }).to(iconRef.current, {
+              scale: 1,
+              duration: 0.2
+            })
+          });
+
+          // Loop back to the start
+          const firstPos = getCardPosition(shuffledCards[0]);
+          tl.to(iconRef.current, { x: firstPos.x, y: firstPos.y, duration: 0.8 });
+        }, 100) // Small delay to ensure layout is calculated
+
+        return () => {
+          clearTimeout(timeoutId)
+          if (timelineRef.current) {
+            timelineRef.current.kill()
+          }
+        }
+
+      }, [containerWidth, viewMode])
+
+      const config = getGridConfig(containerWidth)
+
+      const renderSkeletonCard = (key: number) => {
+        if (viewMode === 'list' || viewMode === 'table') {
+          return (
+            <div key={key} className="bg-card/30 border border-border/30 rounded-2xl p-6 flex items-start gap-4 animate-pulse">
+              <div className="w-14 h-14 bg-muted rounded-xl flex-shrink-0"></div>
+              <div className="flex-1 space-y-3">
+                <div className="h-4 bg-muted rounded w-3/4"></div>
+                <div className="h-3 bg-muted rounded w-full"></div>
+                <div className="h-3 bg-muted rounded w-5/6"></div>
+                <div className="flex gap-2 pt-2">
+                  <div className="h-6 bg-muted rounded-full w-20"></div>
+                  <div className="h-6 bg-muted rounded-full w-20"></div>
+                </div>
+              </div>
+            </div>
+          )
+        }
+
+        return (
+          <div 
+            key={key} 
+            className={cn(
+              "bg-card/30 border border-border/30 rounded-3xl p-6 space-y-4 animate-pulse",
+            )}
+          >
+            <div className="flex items-start justify-between">
+              <div className="w-16 h-16 bg-muted rounded-2xl"></div>
+              <div className="w-4 h-4 bg-muted rounded-full"></div>
+            </div>
+            <div className="h-4 bg-muted rounded w-3/4"></div>
+            <div className="h-3 bg-muted rounded w-full"></div>
+            <div className="h-3 bg-muted rounded w-5/6"></div>
+            <div className="h-2 w-full bg-muted rounded-full my-4"></div>
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-muted rounded-full"></div>
+              <div className="flex-1 space-y-2">
+                <div className="h-3 bg-muted rounded w-1/2"></div>
+                <div className="h-2 bg-muted rounded w-1/3"></div>
+              </div>
+            </div>
+          </div>
+        )
+      }
+
+      const gridClasses = {
+        list: "space-y-4",
+        table: "space-y-4",
+        cards: "grid grid-cols-[repeat(auto-fit,minmax(320px,1fr))] gap-6",
+        grid: "grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-6",
+        kanban: "", // Kanban has its own skeleton
+        calendar: "" // Calendar has its own skeleton
+      }
+
+      return (
+        <div className="relative overflow-hidden rounded-lg min-h-[500px]">
+          <div 
+            ref={iconRef}
+            className="absolute z-10 p-3 bg-primary/20 rounded-full backdrop-blur-sm"
+            style={{ willChange: 'transform' }}
+          >
+            <Search className="w-6 h-6 text-primary" />
+          </div>
+
+          <div 
+            ref={containerRef}
+            className={cn(gridClasses[viewMode])}
+          >
+            {[...Array(config.numCards)].map((_, i) => renderSkeletonCard(i))}
+          </div>
+        </div>
+      )
+    }
+approved: false
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: undone
+id: 521
