@@ -1,4 +1,5 @@
 import { useMemo, useCallback, type ReactNode } from 'react';
+import { Loader2 } from 'lucide-react';
 import { DynamicViewProvider } from '@/features/dynamic-view/DynamicViewContext';
 import type { ViewConfig, GenericItem, ViewMode, FilterConfig, SortConfig, CalendarDateProp, CalendarDisplayProp, CalendarColorProp } from './types';
 import { ViewControls } from './components/controls/ViewControls';
@@ -56,11 +57,12 @@ export interface DynamicViewProps {
   renderHeaderControls?: () => ReactNode;
   renderStats?: () => ReactNode;
   renderCta?: (viewMode: ViewMode, ctaProps: { colSpan?: number }) => ReactNode;
+  loaderRef?: React.Ref<HTMLDivElement>;
 }
 
 export function DynamicView({ viewConfig, ...rest }: DynamicViewProps) {
   
-  const { viewMode, isInitialLoading, items, groupBy } = rest;
+  const { viewMode, isInitialLoading, isLoading, hasMore, items, groupBy } = rest;
 
   const groupedData = useMemo(() => {
     if (groupBy === 'none' || viewMode !== 'kanban') {
@@ -145,6 +147,19 @@ export function DynamicView({ viewConfig, ...rest }: DynamicViewProps) {
           
           <div className="min-h-[500px]">
               {renderContent()}
+          </div>
+
+          {/* Loader for infinite scroll */}
+          <div ref={rest.loaderRef} className="flex justify-center items-center py-6">
+            {isLoading && !isInitialLoading && groupBy === 'none' && viewMode !== 'calendar' && viewMode !== 'kanban' && (
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Loader2 className="w-5 h-5 animate-spin" />
+                <span>Loading more...</span>
+              </div>
+            )}
+            {!isLoading && !hasMore && items.length > 0 && !isInitialLoading && groupBy === 'none' && viewMode !== 'calendar' && viewMode !== 'kanban' && (
+              <p className="text-muted-foreground">You've reached the end.</p>
+            )}
           </div>
       </div>
     </DynamicViewProvider>

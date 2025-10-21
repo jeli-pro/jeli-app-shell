@@ -242,6 +242,7 @@ export default function DataDemoPage() {
         onActiveGroupTabChange={setActiveGroupTab}
         onPageChange={setPage}
         onItemSelect={onItemSelect}
+        loaderRef={loaderRef}
         // Custom Renderers
         renderCta={(viewMode, ctaProps) => (
           <AddDataItemCta viewMode={viewMode} colSpan={ctaProps.colSpan} />
@@ -264,18 +265,6 @@ export default function DataDemoPage() {
         )}
       />
 
-        {/* Loader for infinite scroll */}
-        <div ref={loaderRef} className="flex justify-center items-center py-6">
-          {isLoading && !isInitialLoading && groupBy === 'none' && viewMode !== 'calendar' && viewMode !== 'kanban' && (
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <Loader2 className="w-5 h-5 animate-spin" />
-              <span>Loading more...</span>
-            </div>
-          )}
-          {!isLoading && !hasMore && allItems.length > 0 && !isInitialLoading && groupBy === 'none' && viewMode !== 'calendar' && viewMode !== 'kanban' && (
-            <p className="text-muted-foreground">You've reached the end.</p>
-          )}
-        </div>
       <ScrollToBottomButton isVisible={showScrollToBottom} onClick={scrollToBottom} />
     </PageLayout>
   );
