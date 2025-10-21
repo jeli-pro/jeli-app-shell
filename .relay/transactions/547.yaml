@@ -1,0 +1,554 @@
+uuid: d6d42571-0a67-4f67-854e-51da4d5c0d12
+projectId: jeli-app-shell
+createdAt: '2025-10-21T11:30:35.783Z'
+gitCommitMsg: >-
+  feat(dx): Introduce defineViewConfig helper for live intellisense
+
+
+  Introduces a generic `defineViewConfig` helper function to provide real-time
+  editor autocompletion and type-checking for view configurations.
+
+
+  This addresses a developer experience issue where the configuration object was
+  only validated after being fully defined, offering no guidance during the
+  authoring process.
+
+
+  The `DataDemo.config.tsx` has been refactored to use this new helper,
+  demonstrating the improved workflow. Developers now get immediate feedback and
+  intellisense, making the configuration process faster and less error-prone.
+promptSummary: >-
+  The user wanted to improve the developer experience for the dynamic view
+  configuration. The previous method validated types after the fact, offering no
+  editor intellisense during creation. I was asked to implement a solution that
+  provides live feedback and autocompletion.
+reasoning:
+  - >-
+    Of course. I will execute all parts of the plan in a single transaction.
+    Here are the required changes to introduce the `defineViewConfig` helper and
+    refactor the demo configuration for an improved developer experience with
+    live editor intellisense.
+  - '### Part 1: Create the `defineViewConfig` Helper'
+  - >-
+    First, I'll add the generic helper function to
+    `src/features/dynamic-view/types.ts`. This function is the core of the
+    solution, providing type hints to the editor without losing the precision of
+    literal type inference.
+  - '### Part 2: Adopt the Helper in the Demo Configuration'
+  - >-
+    Now, I will refactor `src/pages/DataDemo/DataDemo.config.tsx` to use the new
+    `defineViewConfig` helper. This change replaces the old "define-then-check"
+    pattern with a new "define-with-guidance" approach, enabling live
+    autocompletion and type validation as the developer writes the
+    configuration.
+  - >-
+    These changes complete the plan, significantly improving the developer
+    experience when creating and modifying view configurations.
+operations:
+  - type: write
+    path: src/features/dynamic-view/types.ts
+    content: >+
+      --- src/features/dynamic-view/types.ts
+
+      +++ src/features/dynamic-view/types.ts
+
+      @@ -192,3 +192,18 @@
+         trend: 'up' | 'down';
+         chartData?: number[];
+       };
+      +
+
+      +// --- CONFIG HELPER ---
+
+      +/**
+
+      + * A helper function to define a `ViewConfig` with full type inference
+      and editor intellisense.
+
+      + * It uses a `const` generic to infer the literal types of field IDs,
+
+      + * providing a superior developer experience when creating
+      configurations.
+
+      + * @param config The view configuration object.
+
+      + * @returns The same configuration object, but strongly typed.
+
+      + */
+
+      +export const defineViewConfig = <
+
+      +  TItem extends GenericItem,
+
+      +  const TConfig extends ViewConfig<TConfig['fields'][number]['id'],
+      TItem>,
+
+      +>(
+
+      +  config: TConfig,
+
+      +): TConfig => config;
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/DataDemo/DataDemo.config.tsx
+    content: >+
+      --- src/pages/DataDemo/DataDemo.config.tsx
+
+      +++ src/pages/DataDemo/DataDemo.config.tsx
+
+      @@ -1,8 +1,8 @@
+       import { FieldRenderer } from "@/features/dynamic-view/components/shared/FieldRenderer";
+      -import type { ViewConfig } from "@/features/dynamic-view/types";
+
+      +import { defineViewConfig, type ViewConfig } from
+      "@/features/dynamic-view/types";
+       import type { DataDemoItem } from "./data/DataDemoItem";
+       
+      -const config = {
+
+      +const config = defineViewConfig<DataDemoItem>({
+         // 1. Field Definitions
+         fields: [
+           { id: "id", label: "ID", type: "string" },
+      @@ -176,11 +176,11 @@
+             ],
+           },
+         },
+      -} as const;
+
+      +});
+       
+       // Infer the field IDs from the const-asserted array.
+       type DataDemoFieldId = (typeof config.fields)[number]["id"];
+       
+       // This line validates the entire config object against the generic ViewConfig type.
+      -export const dataDemoViewConfig: ViewConfig<DataDemoFieldId,
+      DataDemoItem> = config;
+
+      +export const dataDemoViewConfig = config;
+
+    patchStrategy: standard-diff
+snapshot:
+  src/pages/DataDemo/DataDemo.config.tsx: >
+    import { FieldRenderer } from
+    "@/features/dynamic-view/components/shared/FieldRenderer";
+
+    import type { ViewConfig } from "@/features/dynamic-view/types";
+
+    import type { DataDemoItem } from "./data/DataDemoItem";
+
+
+    const config = {
+      // 1. Field Definitions
+      fields: [
+        { id: "id", label: "ID", type: "string" },
+        { id: "title", label: "Title", type: "string" },
+        { id: "description", label: "Description", type: "longtext" },
+        { id: "thumbnail", label: "Thumbnail", type: "thumbnail" },
+        { id: "category", label: "Category", type: "badge" },
+        {
+          id: "status",
+          label: "Status",
+          type: "badge",
+          colorMap: {
+            active: "bg-sky-500/10 text-sky-600 border-sky-500/20",
+            pending: "bg-amber-500/10 text-amber-600 border-amber-500/20",
+            completed: "bg-emerald-600/10 text-emerald-700 border-emerald-600/20",
+            archived: "bg-zinc-500/10 text-zinc-600 border-zinc-500/20",
+          },
+        },
+        {
+          id: "priority",
+          label: "Priority",
+          type: "badge",
+          colorMap: {
+            critical: "bg-red-600/10 text-red-700 border-red-600/20",
+            high: "bg-orange-500/10 text-orange-600 border-orange-500/20",
+            medium: "bg-blue-500/10 text-blue-600 border-blue-500/20",
+            low: "bg-green-500/10 text-green-600 border-green-500/20",
+          },
+          indicatorColorMap: {
+            critical: "bg-red-500",
+            high: "bg-orange-500",
+            medium: "bg-blue-500",
+            low: "bg-green-500",
+          },
+        },
+        { id: "assignee", label: "Assignee", type: "avatar" },
+        { id: "tags", label: "Tags", type: "tags" },
+        { id: "metrics", label: "Engagement", type: "metrics" },
+        { id: "metrics.completion", label: "Progress", type: "progress" },
+        { id: "dueDate", label: "Due Date", type: "date" },
+        { id: "createdAt", label: "Created At", type: "date" },
+        { id: "updatedAt", label: "Last Updated", type: "date" },
+        // A custom field to replicate the composite "Project" column in the table view
+        {
+          id: "project_details",
+          label: "Project",
+          type: "custom",
+          render: (item: DataDemoItem) => (
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-primary/20 to-primary/10 rounded-lg flex items-center justify-center text-lg flex-shrink-0">
+                <FieldRenderer item={item} fieldId="thumbnail" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h4 className="font-medium group-hover:text-primary transition-colors truncate">
+                  <FieldRenderer item={item} fieldId="title" />
+                </h4>
+                <p className="text-sm text-muted-foreground truncate">
+                  <FieldRenderer item={item} fieldId="category" />
+                </p>
+              </div>
+            </div>
+          ),
+        },
+      ] as const,
+      // 2. Control Definitions
+      sortableFields: [
+        { id: "updatedAt", label: "Last Updated" },
+        { id: "title", label: "Title" },
+        { id: "status", label: "Status" },
+        { id: "priority", label: "Priority" },
+        { id: "metrics.completion", label: "Progress" },
+      ],
+      groupableFields: [
+        { id: "none", label: "None" },
+        { id: "status", label: "Status" },
+        { id: "priority", label: "Priority" },
+        { id: "category", label: "Category" },
+      ],
+      filterableFields: [
+        {
+          id: "status",
+          label: "Status",
+          options: [
+            { id: "active", label: "Active" },
+            { id: "pending", label: "Pending" },
+            { id: "completed", label: "Completed" },
+            { id: "archived", label: "Archived" },
+          ],
+        },
+        {
+          id: "priority",
+          label: "Priority",
+          options: [
+            { id: "critical", label: "Critical" },
+            { id: "high", label: "High" },
+            { id: "medium", label: "Medium" },
+            { id: "low", label: "Low" },
+          ],
+        },
+      ],
+      // 3. View Layouts
+      listView: {
+        iconField: "thumbnail",
+        titleField: "title",
+        metaFields: [
+          { fieldId: "status", className: "hidden sm:flex" },
+          { fieldId: "tags", className: "hidden lg:flex" },
+          { fieldId: "updatedAt", className: "hidden md:flex" },
+          { fieldId: "assignee" },
+          { fieldId: "priority", className: "hidden xs:flex" },
+        ],
+      },
+      cardView: {
+        thumbnailField: "thumbnail",
+        titleField: "title",
+        descriptionField: "description",
+        headerFields: ["priority"],
+        statusField: "status",
+        categoryField: "category",
+        tagsField: "tags",
+        progressField: "metrics.completion",
+        assigneeField: "assignee",
+        metricsField: "metrics",
+        dateField: "updatedAt",
+      },
+      tableView: {
+        columns: [
+          { fieldId: "project_details", label: "Project", isSortable: true },
+          { fieldId: "status", label: "Status", isSortable: true },
+          { fieldId: "priority", label: "Priority", isSortable: true },
+          { fieldId: "assignee", label: "Assignee", isSortable: true },
+          { fieldId: "metrics.completion", label: "Progress", isSortable: true },
+          { fieldId: "metrics", label: "Engagement", isSortable: true },
+          { fieldId: "updatedAt", label: "Last Updated", isSortable: true },
+        ],
+      },
+      kanbanView: {
+        groupByField: "status",
+        cardFields: {
+          titleField: "title",
+          descriptionField: "description",
+          priorityField: "priority",
+          tagsField: "tags",
+          dateField: "dueDate",
+          metricsField: "metrics",
+          assigneeField: "assignee",
+        },
+      },
+      calendarView: {
+        dateField: "dueDate",
+        titleField: "title",
+        displayFields: ["tags", "priority", "assignee"],
+        colorByField: "priority",
+      },
+      detailView: {
+        header: {
+          thumbnailField: "thumbnail",
+          titleField: "title",
+          descriptionField: "description",
+          badgeFields: ["status", "priority", "category"],
+          progressField: "metrics.completion",
+        },
+        body: {
+          sections: [
+            { title: "Assigned to", fields: ["assignee"] },
+            { title: "Engagement Metrics", fields: ["metrics"] },
+            { title: "Tags", fields: ["tags"] },
+            {
+              title: "Timeline",
+              fields: ["createdAt", "updatedAt", "dueDate"],
+            },
+          ],
+        },
+      },
+    } as const;
+
+
+    // Infer the field IDs from the const-asserted array.
+
+    type DataDemoFieldId = (typeof config.fields)[number]["id"];
+
+
+    // This line validates the entire config object against the generic
+    ViewConfig type.
+
+    export const dataDemoViewConfig: ViewConfig<DataDemoFieldId, DataDemoItem> =
+    config;
+  src/features/dynamic-view/types.ts: >-
+    import type { ReactNode } from 'react';
+
+
+    // --- GENERIC DATA & ITEM ---
+
+    export type GenericItem = Record<string, any> & { id: string };
+
+
+    // --- FIELD DEFINITIONS ---
+
+    // Describes a single piece of data within a GenericItem.
+
+    export type FieldType =
+      | 'string'
+      | 'longtext'
+      | 'badge'
+      | 'avatar'
+      | 'progress'
+      | 'date'
+      | 'tags'
+      | 'metrics'
+      | 'thumbnail'
+      | 'custom';
+
+    export interface BaseFieldDefinition<TFieldId extends string, TItem extends
+    GenericItem> {
+      id: TFieldId; // Corresponds to a key in GenericItem
+      label: string;
+      type: FieldType;
+      // Optional custom render function for ultimate flexibility.
+      render?: (item: TItem, options?: Record<string, any>) => ReactNode;
+    }
+
+
+    export interface BadgeFieldDefinition<TFieldId extends string, TItem extends
+    GenericItem>
+      extends BaseFieldDefinition<TFieldId, TItem> {
+      type: 'badge';
+      colorMap?: Record<string, string>; // e.g., { 'active': 'bg-green-500', 'pending': 'bg-yellow-500' }
+      indicatorColorMap?: Record<string, string>; // e.g., { 'critical': 'bg-red-500' }
+    }
+
+
+    // Add other specific field types if they need unique properties
+
+    // For now, most can be handled by the base definition.
+
+
+    export type FieldDefinition<TFieldId extends string, TItem extends
+    GenericItem> =
+      | BaseFieldDefinition<TFieldId, TItem>
+      | BadgeFieldDefinition<TFieldId, TItem>;
+
+    // --- VIEW CONFIGURATION ---
+
+    // The master configuration object that defines the entire view.
+
+
+    export type ViewMode = 'list' | 'cards' | 'grid' | 'table' | 'kanban' |
+    'calendar';
+
+
+    export interface ListViewConfig<TFieldId extends string> {
+      iconField: TFieldId;
+      titleField: TFieldId;
+      metaFields: readonly {
+        fieldId: TFieldId;
+        className?: string;
+      }[];
+    }
+
+
+    export interface CardViewConfig<TFieldId extends string> {
+      thumbnailField: TFieldId;
+      titleField: TFieldId;
+      descriptionField: TFieldId;
+      headerFields: readonly TFieldId[];
+      // Specific fields to recreate the original layout
+      statusField: TFieldId;
+      categoryField: TFieldId;
+      tagsField: TFieldId;
+      progressField: TFieldId;
+      assigneeField: TFieldId;
+      metricsField: TFieldId;
+      dateField: TFieldId;
+    }
+
+
+    export interface TableColumnConfig<TFieldId extends string> {
+      fieldId: TFieldId;
+      label: string;
+      isSortable: boolean;
+    }
+
+
+    export interface TableViewConfig<TFieldId extends string> {
+      columns: readonly TableColumnConfig<TFieldId>[];
+    }
+
+
+    export interface KanbanViewConfig<TFieldId extends string> {
+      groupByField: TFieldId; // Field ID to group by (e.g., 'status')
+      cardFields: {
+        titleField: TFieldId;
+        descriptionField: TFieldId;
+        priorityField: TFieldId;
+        tagsField: TFieldId;
+        // footer fields
+        dateField: TFieldId;
+        metricsField: TFieldId; // for comments/attachments
+        assigneeField: TFieldId;
+      };
+    }
+
+
+    export interface CalendarViewConfig<TFieldId extends string> {
+      dateField: TFieldId;
+      titleField: TFieldId;
+      displayFields: readonly TFieldId[];
+      colorByField?: TFieldId; // Field ID to color events by (e.g., 'priority', 'status')
+    }
+
+
+    export interface ControlOption<TId extends string> {
+      id: TId;
+      label: string;
+    }
+
+
+    export interface FilterableFieldConfig<TFieldId extends string> {
+      id: TFieldId; // fieldId
+      label: string;
+      options: readonly ControlOption<string>[];
+    }
+
+
+    export interface ViewConfig<
+      TFieldId extends string,
+      TItem extends GenericItem,
+    > {
+      fields: readonly FieldDefinition<TFieldId, TItem>[];
+      sortableFields: readonly ControlOption<TFieldId>[];
+      groupableFields: readonly ControlOption<TFieldId | 'none'>[];
+      filterableFields: readonly FilterableFieldConfig<TFieldId>[];
+
+      // Layouts for each view mode
+      listView: ListViewConfig<TFieldId>;
+      cardView: CardViewConfig<TFieldId>;
+      tableView: TableViewConfig<TFieldId>;
+      kanbanView: KanbanViewConfig<TFieldId>;
+      calendarView: CalendarViewConfig<TFieldId>;
+      detailView: DetailViewConfig<TFieldId>;
+    }
+
+
+    // --- DETAIL VIEW ---
+
+    export interface DetailViewSection<TFieldId extends string> {
+      title: string;
+      fields: readonly TFieldId[];
+    }
+
+
+    export interface DetailViewConfig<TFieldId extends string> {
+      header: {
+        thumbnailField: TFieldId;
+        titleField: TFieldId;
+        descriptionField: TFieldId;
+        badgeFields: readonly TFieldId[];
+        progressField: TFieldId;
+      };
+      body: {
+        sections: readonly DetailViewSection<TFieldId>[];
+      };
+    }
+
+
+    // --- GENERIC CONTROL & DATA TYPES ---
+
+
+    export type Status = 'active' | 'pending' | 'completed' | 'archived';
+
+    export type Priority = 'low' | 'medium' | 'high' | 'critical';
+
+
+    export interface FilterConfig {
+      searchTerm: string;
+      [key: string]: any; // For dynamic filter keys like status, priority
+    }
+
+
+    export interface SortConfig<TFieldId extends string> {
+      key: TFieldId;
+      direction: 'asc' | 'desc';
+    }
+
+
+    export type GroupableField<TFieldId extends string> = TFieldId | 'none';
+
+
+    export type CalendarDateProp<TFieldId extends string> = TFieldId;
+
+    export type CalendarDisplayProp<TFieldId extends string> = TFieldId;
+
+    export type CalendarColorProp<TFieldId extends string> = TFieldId | 'none';
+
+
+    // --- STATS ---
+
+    export type StatItem = {
+      title: string;
+      value: string;
+      icon: ReactNode;
+      change: string;
+      trend: 'up' | 'down';
+      chartData?: number[];
+    };
+approved: false
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: undone
+id: 547
